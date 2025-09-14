@@ -84,8 +84,8 @@ category = "fail"
 #check: $()let items_3_variants_res = project_items_3_variants(items_3_variants);
 #nextln: $()Could not find symbol "project_items_3_variants" in this scope.
 
-#check: $()error
-#check: $()assert(items_3_variants_res == 513);
-#nextln: $()No method "eq({unknown}, numeric) -> bool" found for type "{unknown}".
+#check: $()Associated function or method is not found
+#check: $()poke(items_3_variants_res == 513);
+#nextln: $()"eq({unknown}, {numeric}) -> bool" is not found for type "{unknown}".
 
 #check: $()Aborting due to 22 errors.

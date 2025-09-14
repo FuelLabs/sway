@@ -1,0 +1,67 @@
+{
+  "concreteTypes": [
+    {
+      "concreteTypeId": "389b2ea3cbdf4d5643e7c700fa138ffafdfdd9f8b756241f030679d7c17012b8",
+      "metadataTypeId": 2,
+      "type": "struct BiggerThanAWord"
+    }
+  ],
+  "configurables": [],
+  "encodingVersion": "1",
+  "errorCodes": {},
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "main",
+      "output": "389b2ea3cbdf4d5643e7c700fa138ffafdfdd9f8b756241f030679d7c17012b8"
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "metadataTypes": [
+    {
+      "components": [
+        {
+          "name": "__array_element",
+          "typeId": 4
+        }
+      ],
+      "metadataTypeId": 0,
+      "type": "[_; 2]"
+    },
+    {
+      "metadataTypeId": 1,
+      "type": "b256"
+    },
+    {
+      "components": [
+        {
+          "name": "field_1",
+          "typeId": 3
+        },
+        {
+          "name": "field_2",
+          "typeId": 1
+        },
+        {
+          "name": "field_3",
+          "typeId": 0
+        }
+      ],
+      "metadataTypeId": 2,
+      "type": "struct BiggerThanAWord"
+    },
+    {
+      "metadataTypeId": 3,
+      "type": "u64"
+    },
+    {
+      "metadataTypeId": 4,
+      "type": "u8"
+    }
+  ],
+  "panickingCalls": {},
+  "programType": "script",
+  "specVersion": "1.2"
+}

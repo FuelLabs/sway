@@ -13,7 +13,7 @@ warning: Returned value is ignored
 ...
 18 |     42;
    |     -- This returns a value which is not assigned to anything and is ignored.
-   |     -- help: The returned value has type "numeric".
+   |     -- help: The returned value has type "{numeric}".
    |
    = help: If you want to intentionally ignore the returned value, use `let _ = ...`:
    = help:   let _ = 42;
@@ -37,7 +37,7 @@ warning: Returned value is ignored
 ...
 20 |     B { very_long_field_name: A { very_long_field_name: 0 } }.very_long_method_name(10);
    |     ----------------------------------------------------------------------------------- This returns a value which is not assigned to anything and is ignored.
-   |     ----------------------------------------------------------------------------------- help: The returned value has type "B".
+   |     ----------------------------------------------------------------------------------- help: The returned value has type "unused_return_value::B".
    |
    = help: If you want to intentionally ignore the returned value, use `let _ = ...`:
    = help:   let _ = B { very_long_field_name: A { very_long_field_name: 0 } }.very_long_method_name(10);
@@ -53,7 +53,7 @@ warning: Returned value is ignored
 ...  ||
 25 |  |     }.very_long_method_name(10);
    | ||_______________________________- This returns a value which is not assigned to anything and is ignored.
-   |  |_______________________________- help: The returned value has type "B".
+   |  |_______________________________- help: The returned value has type "unused_return_value::B".
    |
    = help: If you want to intentionally ignore the returned value, use `let _ = ...`:
    = help:   let _ = B {...;

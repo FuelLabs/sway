@@ -1,4 +1,4 @@
 category = "fail"
 
 #check: $()Trait is already implemented for type
-#check: $()Trait "TraitA" is already implemented for type "MyType".
+#check: $()Trait "trait_impl_overlap::TraitA" is already implemented for type "trait_impl_overlap::MyType".

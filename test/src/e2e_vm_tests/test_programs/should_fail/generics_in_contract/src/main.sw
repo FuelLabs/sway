@@ -53,7 +53,7 @@ abi TestAbi {
 impl TestAbi for Contract {
     #[storage(read)]
     fn test() {
-        let y = storage.map1.to_vec1(1u64);
-        let z = storage.map2.to_vec2(1u64);
+        let _ = storage.map1.to_vec1(1u64);
+        let _ = storage.map2.to_vec2(1u64);
     }
 }

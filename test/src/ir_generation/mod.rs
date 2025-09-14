@@ -10,14 +10,15 @@ use sway_core::{
     compile_ir_context_to_finalized_asm, compile_to_ast,
     ir_generation::compile_program,
     namespace::{self, Package},
-    BuildConfig, BuildTarget, Engines, OptLevel, PanicOccurrences,
+    BuildConfig, BuildTarget, Engines, OptLevel, PanicOccurrences, PanickingCallOccurrences,
 };
 use sway_error::handler::Handler;
 
 use sway_features::ExperimentalFeatures;
 use sway_ir::{
-    create_fn_inline_pass, register_known_passes, PassGroup, PassManager, ARG_DEMOTION_NAME,
-    CONST_DEMOTION_NAME, DCE_NAME, MEMCPYOPT_NAME, MISC_DEMOTION_NAME, RET_DEMOTION_NAME,
+    create_fn_inline_pass, register_known_passes, Backtrace, PassGroup, PassManager,
+    ARG_DEMOTION_NAME, CONST_DEMOTION_NAME, DCE_NAME, MEMCPYOPT_NAME, MISC_DEMOTION_NAME,
+    RET_DEMOTION_NAME,
 };
 use sway_types::ProgramId;
 
@@ -230,6 +231,9 @@ pub(super) async fn run(
                     ..Default::default()
                 };
 
+                // TODO: Properly support backtrace build option in IR tests.
+                let backtrace = Backtrace::default();
+
                 // Compile to AST.  We need to provide a faux build config otherwise the IR will have
                 // no span metadata.
                 let bld_cfg = sway_core::BuildConfig::root_from_file_name_and_manifest_path(
@@ -283,7 +287,8 @@ pub(super) async fn run(
                 // Compile to IR.
                 let include_tests = true;
                 let mut panic_occurrences = PanicOccurrences::default();
-                let mut ir = compile_program(typed_program, &mut panic_occurrences, include_tests, &engines, experimental)
+                let mut panicking_call_occurrences = PanickingCallOccurrences::default();
+                let mut ir = compile_program(typed_program, &mut panic_occurrences, &mut panicking_call_occurrences, include_tests, &engines, experimental, backtrace)
                     .unwrap_or_else(|e| {
                         use sway_types::span::Spanned;
                         let e = e[0].clone();
@@ -380,6 +385,7 @@ pub(super) async fn run(
                                 &ir_output,
                                  engines.se(),
                                  experimental,
+                                 backtrace,
                                 )
                                 .unwrap_or_else(|e| panic!("{}: {e}\n{ir_output}", path.display()));
 
@@ -478,7 +484,7 @@ pub(super) async fn run(
                 }
 
                 // Parse the IR again, and print it yet again to make sure that IR de/serialisation works.
-                let parsed_ir = sway_ir::parser::parse(&ir_output, engines.se(), experimental)
+                let parsed_ir = sway_ir::parser::parse(&ir_output, engines.se(), experimental, backtrace)
                     .unwrap_or_else(|e| panic!("{}: {e}\n{ir_output}", path.display()));
                 let parsed_ir_output = sway_ir::printer::to_string(&parsed_ir);
                 if ir_output != parsed_ir_output {

@@ -1,4 +1,8 @@
 category = "fail"
 
 # check: $()Self::also_t2(self);
-# nextln: $()Trait "T2" is not implemented for type "T".
+# nextln: $()Trait "T2" is not implemented for type "_".
+
+# check: $()Associated function or method is not found
+# check: $()a.only_t1();
+# nextln: $()"only_t1(method_missing_constraint::S<u8>)" is not found for type "method_missing_constraint::S<u8>".

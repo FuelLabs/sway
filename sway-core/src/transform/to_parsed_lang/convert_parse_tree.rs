@@ -555,6 +555,9 @@ pub fn item_fn_to_function_declaration(
         }
     };
 
+    // TODO: This is a bug. We have to check if the function is actually a main function of a
+    //       script or a predicate.
+    //       See: https://github.com/FuelLabs/sway/issues/7371
     let kind = if item_fn.fn_signature.name.as_str() == "main" {
         FunctionDeclarationKind::Main
     } else {
@@ -891,8 +894,9 @@ fn handle_impl_contract(
         match item_impl.trait_opt {
             Some((_, _)) => return Ok(vec![]),
             None => {
-                // Generate ABI name using project name with "Abi" suffix
-                let contract_name = to_upper_camel_case(context.package_name.as_str());
+                // Generate ABI name using package name with "Abi" suffix
+                // Package name can contain hyphens, so we replace them with underscores
+                let contract_name = to_upper_camel_case(&context.package_name.replace('-', "_"));
                 let anon_abi_name =
                     Ident::new_with_override(format!("{contract_name}Abi"), span.clone());
 

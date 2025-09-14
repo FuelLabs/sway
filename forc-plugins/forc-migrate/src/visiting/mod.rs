@@ -2142,9 +2142,9 @@ impl<'a> TyMethodCallInfo<'a> {
                 call_path,
                 arguments,
                 fn_ref,
-                call_path_typeid,
+                method_target,
                 ..
-            } => Ok((call_path, arguments, fn_ref, call_path_typeid)),
+            } => Ok((call_path, arguments, fn_ref, method_target)),
             _ => bail!(internal_error(
                 "`ty_method_call` must be of variant `TyExpressionVariant::FunctionApplication`."
             )),
@@ -2152,7 +2152,7 @@ impl<'a> TyMethodCallInfo<'a> {
 
         let fn_decl = decl_engine.get_function(ty_method_call.2.id());
         let Some(parent_type_id) = ty_method_call.3 else {
-            bail!(internal_error("`TyExpressionVariant::FunctionApplication` is a method call and must have `call_path_typeid`."));
+            bail!(internal_error("`TyExpressionVariant::FunctionApplication` is a method call and must have `method_target`."));
         };
 
         Ok(Self {

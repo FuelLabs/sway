@@ -1,8 +1,8 @@
 category = "fail"
 
 # check: $()impl MyTraitGeneric2<u64> for u64 {
-# nextln:$()Trait "MyTraitGeneric<A>" is not implemented for type "u64".
+# nextln:$()Trait "MyTraitGeneric<where_clause_generic_traits::A>" is not implemented for type "u64".
 
 # check: $()impl MyTraitGeneric2<u32> for u32 {
-# nextln: $()Trait "MyTraitGeneric<A>" is not implemented for type "u32".
+# nextln: $()Trait "MyTraitGeneric<where_clause_generic_traits::A>" is not implemented for type "u32".
 

@@ -6,4 +6,4 @@ name = "trait_inference_multiple_options"
 implicit-std = false
 
 [dependencies]
-std = { path = "../../../reduced_std_libs/sway-lib-std-assert" }
+std = { path = "../../../reduced_std_libs/sway-lib-std-core" }

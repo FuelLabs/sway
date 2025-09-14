@@ -43,11 +43,11 @@ pub fn nested_panic_non_inlined(to_panic: bool, err: ErrorEnum) {
 }
 
 pub fn call_nested_panic_inlined() {
-    nested_panic_non_inlined(true, ErrorEnum::E(["this", "is not", "the best practice"]));
+    nested_panic_inlined(ErrorEnum::E(["to have", "strings", "in error enum variants"]));
 }
 
-pub fn call_nested_panic_not_inlined() {
-    nested_panic_inlined(ErrorEnum::E(["to have", "strings", "in error enum variants"]));
+pub fn call_nested_panic_non_inlined() {
+    nested_panic_non_inlined(true, ErrorEnum::E(["this", "is not", "the best practice"]));
 }
 
 #[test(should_revert)]
@@ -61,13 +61,13 @@ fn test_nested_panic_inlined_same_revert_code() {
 }
 
 #[test(should_revert)]
-fn test_nested_panic_not_inlined() {
-    call_nested_panic_not_inlined();
+fn test_nested_panic_non_inlined() {
+    call_nested_panic_non_inlined();
 }
 
 #[test(should_revert)]
-fn test_nested_panic_not_inlined_same_revert_code() {
-    call_nested_panic_not_inlined();
+fn test_nested_panic_non_inlined_same_revert_code() {
+    call_nested_panic_non_inlined();
 }
 
 pub fn generic_panic<T>(t: T) where T: Error {

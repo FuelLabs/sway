@@ -3,12 +3,13 @@ category = "fail"
 # check: $()<S as MyTrait>::asd::method();
 # nextln: $()Could not find symbol "asd" in this scope.
 
+# check: $()Associated function or method is not found
 # check: $()<S as S2>::method();
-# nextln: $()No method "method()" found for type "S as S2".
+# nextln: $()"method()" is not found for type "S as S2".
 
 # check: $()S::method(); // ambiguous method call here
 # nextln: $()Multiple applicable items in scope.
 # nextln: $()Disambiguate the associated function for candidate #0
-# nextln: $()<S as MySuperTrait>::method
+# nextln: $()<trait_method_ambiguous::S as MySuperTrait>::method
 # nextln: $()Disambiguate the associated function for candidate #1
-# nextln: $()<S as MyTrait>::method
+# nextln: $()<trait_method_ambiguous::S as MyTrait>::method

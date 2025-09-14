@@ -1,0 +1,172 @@
+{
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [
+        {
+          "name": "storage_key",
+          "type": 1,
+          "typeArguments": null
+        }
+      ],
+      "name": "get_u64",
+      "output": {
+        "name": "",
+        "type": 3,
+        "typeArguments": null
+      }
+    },
+    {
+      "attributes": null,
+      "inputs": [
+        {
+          "name": "key",
+          "type": 1,
+          "typeArguments": null
+        },
+        {
+          "name": "value",
+          "type": 3,
+          "typeArguments": null
+        }
+      ],
+      "name": "store_u64",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
+    },
+    {
+      "attributes": null,
+      "inputs": [
+        {
+          "name": "key",
+          "type": 1,
+          "typeArguments": null
+        }
+      ],
+      "name": "intrinsic_load_word",
+      "output": {
+        "name": "",
+        "type": 3,
+        "typeArguments": null
+      }
+    },
+    {
+      "attributes": null,
+      "inputs": [
+        {
+          "name": "key",
+          "type": 1,
+          "typeArguments": null
+        },
+        {
+          "name": "value",
+          "type": 3,
+          "typeArguments": null
+        }
+      ],
+      "name": "intrinsic_store_word",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
+    },
+    {
+      "attributes": null,
+      "inputs": [
+        {
+          "name": "key",
+          "type": 1,
+          "typeArguments": null
+        }
+      ],
+      "name": "intrinsic_load_quad",
+      "output": {
+        "name": "",
+        "type": 2,
+        "typeArguments": null
+      }
+    },
+    {
+      "attributes": null,
+      "inputs": [
+        {
+          "name": "key",
+          "type": 1,
+          "typeArguments": null
+        },
+        {
+          "name": "value",
+          "type": 2,
+          "typeArguments": null
+        }
+      ],
+      "name": "intrinsic_store_quad",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
+    },
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "test_storage_exhaustive",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
+    }
+  ],
+  "types": [
+    {
+      "components": [],
+      "type": "()",
+      "typeId": 0,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "b256",
+      "typeId": 1,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "v1",
+          "type": 3,
+          "typeArguments": null
+        },
+        {
+          "name": "v2",
+          "type": 3,
+          "typeArguments": null
+        },
+        {
+          "name": "v3",
+          "type": 3,
+          "typeArguments": null
+        },
+        {
+          "name": "v4",
+          "type": 3,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct Quad",
+      "typeId": 2,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u64",
+      "typeId": 3,
+      "typeParameters": null
+    }
+  ]
+}

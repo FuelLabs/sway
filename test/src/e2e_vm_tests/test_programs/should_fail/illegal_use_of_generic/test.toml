@@ -1,7 +1,9 @@
 category = "fail"
 
-# check: $()fn test_function<T>(value: T) {
-# check: $()No method "new()" found for type "T".
+# check: $()Associated function or method is not found
+# check: $()T::new(); // 1.
+# nextln: $()"new()" is not found for type "T".
 
-# check: $()fn test_function(self) {
-# check: $()No method "new()" found for type "T".
+# check: $()Associated function or method is not found
+# check: $()T::new(); // 2.
+# nextln: $()"new()" is not found for type "T".

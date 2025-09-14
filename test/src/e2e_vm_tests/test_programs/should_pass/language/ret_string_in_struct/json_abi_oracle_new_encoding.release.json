@@ -1,0 +1,41 @@
+{
+  "concreteTypes": [
+    {
+      "concreteTypeId": "fff091c1b987e0dabd44005f2ff24bd4a58ae5a2e6225b261dbd8812592472fe",
+      "metadataTypeId": 1,
+      "type": "struct Wrapper"
+    }
+  ],
+  "configurables": [],
+  "encodingVersion": "1",
+  "errorCodes": {},
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "main",
+      "output": "fff091c1b987e0dabd44005f2ff24bd4a58ae5a2e6225b261dbd8812592472fe"
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "metadataTypes": [
+    {
+      "metadataTypeId": 0,
+      "type": "str[9]"
+    },
+    {
+      "components": [
+        {
+          "name": "name",
+          "typeId": 0
+        }
+      ],
+      "metadataTypeId": 1,
+      "type": "struct Wrapper"
+    }
+  ],
+  "panickingCalls": {},
+  "programType": "script",
+  "specVersion": "1.2"
+}

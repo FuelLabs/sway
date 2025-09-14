@@ -1,0 +1,47 @@
+{
+  "configurables": [],
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "main",
+      "output": {
+        "name": "",
+        "type": 1,
+        "typeArguments": null
+      }
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "types": [
+    {
+      "components": [],
+      "type": "()",
+      "typeId": 0,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "A",
+          "type": 0,
+          "typeArguments": null
+        },
+        {
+          "name": "B",
+          "type": 0,
+          "typeArguments": null
+        },
+        {
+          "name": "C",
+          "type": 0,
+          "typeArguments": null
+        }
+      ],
+      "type": "enum E",
+      "typeId": 1,
+      "typeParameters": null
+    }
+  ]
+}

@@ -384,19 +384,21 @@ pub enum CompileError {
     },
     #[error("Field \"{field_name}\" has multiple definitions.")]
     StructFieldDuplicated { field_name: Ident, duplicate: Ident },
-    #[error("No method \"{method}\" found for type \"{type_name}\".{}", 
-        if matching_method_strings.is_empty() {
+    #[error("No function \"{expected_signature}\" found for type \"{type_name}\".{}", 
+        if matching_methods.is_empty() {
             "".to_string()
         } else {
-            format!("  \nMatching method{}:\n{}", if matching_method_strings.len()> 1 {"s"} else {""},
-            matching_method_strings.iter().map(|m| format!("    {m}")).collect::<Vec<_>>().join("\n"))
+            format!("\nDid you mean:\n{}",
+            matching_methods.iter().map(|m| format!("{}{m}", Indent::Double)).collect::<Vec<_>>().join("\n"))
         }
     )]
+    /// Note that _method_ here means **any function associated to a type**, with or without
+    /// the `self` argument.
     MethodNotFound {
-        method: String,
+        called_method: IdentUnique,
+        expected_signature: String,
         type_name: String,
-        matching_method_strings: Vec<String>,
-        span: Span,
+        matching_methods: Vec<String>,
     },
     #[error("Module \"{name}\" could not be found.")]
     ModuleNotFound { span: Span, name: String },
@@ -619,7 +621,7 @@ pub enum CompileError {
     },
     #[error("An ABI can only be implemented for the `Contract` type, so this implementation of an ABI for type \"{ty}\" is invalid.")]
     ImplAbiForNonContract { span: Span, ty: String },
-    #[error("Conflicting implementations of trait \"{trait_name}\" for type \"{type_implementing_for}\".")]
+    #[error("Trait \"{trait_name}\" is already implemented for type \"{type_implementing_for}\".")]
     ConflictingImplsForTraitAndType {
         trait_name: String,
         type_implementing_for: String,
@@ -1085,6 +1087,22 @@ pub enum CompileError {
     },
     #[error("This expression has type \"{argument_type}\", which does not implement \"std::marker::Error\". Panic expression arguments must implement \"Error\".")]
     PanicExpressionArgumentIsNotError { argument_type: String, span: Span },
+    #[error("This is the {current}{} `panic` expression occurred during the compilation.\nSway projects can have up to {max_num} `panic` expressions.\nConsider refactoring your code to reduce the number of `panic` expressions.",
+        ord_num_suffix(*current as usize)
+    )]
+    MaxNumOfPanicExpressionsReached {
+        current: u64,
+        max_num: u64,
+        span: Span,
+    },
+    #[error("This is the {current}{} panicking call occurred during the compilation.\nSway projects can have up to {max_num} panicking calls.\nConsider compiling the project with the `backtrace` build option set to `only_always` or `none`.",
+        ord_num_suffix(*current as usize)
+    )]
+    MaxNumOfPanickingCallsReached {
+        current: u64,
+        max_num: u64,
+        span: Span,
+    },
     #[error("Coherence violation: only traits defined in this crate can be implemented for external types.")]
     IncoherentImplDueToOrphanRule {
         trait_name: String,
@@ -1155,7 +1173,7 @@ impl Spanned for CompileError {
             StructFieldIsPrivate { field_name, .. } => field_name.span(),
             StructFieldDoesNotExist { field_name, .. } => field_name.span(),
             StructFieldDuplicated { field_name, .. } => field_name.span(),
-            MethodNotFound { span, .. } => span.clone(),
+            MethodNotFound { called_method, .. } => called_method.span(),
             ModuleNotFound { span, .. } => span.clone(),
             TupleElementAccessOnNonTuple { span, .. } => span.clone(),
             NotAStruct { span, .. } => span.clone(),
@@ -1324,6 +1342,8 @@ impl Spanned for CompileError {
                 enum_variant_name, ..
             } => enum_variant_name.span(),
             PanicExpressionArgumentIsNotError { span, .. } => span.clone(),
+            MaxNumOfPanicExpressionsReached { span, .. } => span.clone(),
+            MaxNumOfPanickingCallsReached { span, .. } => span.clone(),
             IncoherentImplDueToOrphanRule { span, .. } => span.clone(),
         }
     }
@@ -1615,7 +1635,9 @@ impl ToDiagnostic for CompileError {
                     Hint::info(
                         source_engine,
                         first_definition.clone(),
-                        format!("\"{variable}\" is first defined here with type \"{expected}\".")
+                        format!("\"{variable}\" is first defined here with the type \"{}\".",
+                            short_name(expected),
+                        )
                     ),
                     Hint::info(
                         source_engine,
@@ -2361,25 +2383,26 @@ impl ToDiagnostic for CompileError {
                 issue: Issue::error(
                     source_engine,
                     second_impl_span.clone(),
-                    if type_implementing_for == type_implementing_for_unaliased {
-                        format!("Trait \"{trait_name}\" is already implemented for type \"{type_implementing_for}\".")
-                    } else {
-                        format!("Trait \"{trait_name}\" is already implemented for type \"{type_implementing_for}\" (which is an alias for \"{type_implementing_for_unaliased}\").")
-                    }
+                    format!("Trait \"{trait_name}\" is already implemented for type \"{type_implementing_for}\"."),
                 ),
                 hints: vec![
+                    if type_implementing_for != type_implementing_for_unaliased {
+                        Hint::help(
+                            source_engine,
+                            second_impl_span.clone(),
+                            format!("\"{}\" is an alias for \"{type_implementing_for_unaliased}\".",
+                                short_name(type_implementing_for),
+                            ))
+                    } else {
+                        Hint::none()
+                    },
                     Hint::info(
                         source_engine,
                         existing_impl_span.clone(),
-                        if type_implementing_for == type_implementing_for_unaliased {
-                            format!("This is the already existing implementation of \"{}\" for \"{type_implementing_for}\".",
-                                    call_path_suffix_with_args(trait_name)
-                            )
-                        } else {
-                            format!("This is the already existing implementation of \"{}\" for \"{type_implementing_for}\" (which is an alias for \"{type_implementing_for_unaliased}\").",
-                                    call_path_suffix_with_args(trait_name)
-                            )
-                        }
+                        format!("This is the already existing implementation of \"{}\" for \"{}\".",
+                            short_name(trait_name),
+                            short_name(type_implementing_for),
+                        ),
                     ),
                 ],
                 help: vec![
@@ -3118,6 +3141,41 @@ impl ToDiagnostic for CompileError {
                     help
                 },
             },
+            MaxNumOfPanicExpressionsReached { current, max_num, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), format!("Project contains more than {max_num} `panic` expressions"))),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("This is the {current}{} `panic` expression occurred during the compilation.",
+                        ord_num_suffix(*current as usize)
+                    ),
+                ),
+                hints: vec![],
+                help: vec![
+                    format!("Sway projects can have up to {max_num} `panic` expressions."),
+                    "In practice, this limit should never be reached, even for large Sway programs.".to_string(),
+                    Diagnostic::help_empty_line(),
+                    "Consider refactoring your code to reduce the number of `panic` expressions.".to_string(),
+                ],
+            },
+            MaxNumOfPanickingCallsReached { current, max_num, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), format!("Project contains more than {max_num} panicking calls"))),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("This is the {current}{} panicking call occurred during the compilation.",
+                        ord_num_suffix(*current as usize)
+                    ),
+                ),
+                hints: vec![],
+                help: vec![
+                    format!("Sway projects can have up to {max_num} panicking calls."),
+                    "In practice, this limit should never be reached, even for large Sway programs.".to_string(),
+                    Diagnostic::help_empty_line(),
+                    "Consider compiling the project with the `backtrace` build option".to_string(),
+                    "set to `only_always` or `none`.".to_string(),
+                ],
+            },
             IncoherentImplDueToOrphanRule { trait_name, type_name, span } => Diagnostic {
                 reason: Some(Reason::new(
                     code(1),
@@ -3179,14 +3237,50 @@ impl ToDiagnostic for CompileError {
                         new.clone(),
                         format!("Constant \"{name}\" was already defined"),
                     ),
-                    hints:vec![
+                    hints: vec![
                         Hint::error(
                             source_engine,
                             old.clone(),
                             "Its first definition is here.".into(),
                         ),
                     ],
-                    help:vec![],
+                    help: vec![],
+                }
+            }
+            MethodNotFound { called_method, expected_signature, type_name, matching_methods } => {
+                Diagnostic {
+                    reason: Some(Reason::new(code(1), "Associated function or method is not found".into())),
+                    issue: Issue::error(
+                        source_engine,
+                        called_method.span(),
+                        format!("\"{expected_signature}\" is not found for type \"{type_name}\"."),
+                    ),
+                    hints: if matching_methods.is_empty() {
+                        vec![]
+                    } else {
+                        Hint::multi_help(
+                            source_engine,
+                            &called_method.span(),
+                            std::iter::once(
+                                    format!("{} \"{called_method}\" function{} {} implemented for the type:",
+                                        singular_plural(matching_methods.len(), "Only this", "These"),
+                                        plural_s(matching_methods.len()),
+                                        is_are(matching_methods.len()),
+                                    )
+                                )
+                                .chain(matching_methods
+                                    .iter()
+                                    .map(|m| format!("- {m}"))
+                                )
+                                .chain(std::iter::once(
+                                    format!("Did you mean to call {}?",
+                                        singular_plural(matching_methods.len(), "that function", "one of those functions"),
+                                    )
+                                ))
+                                .collect()
+                        )
+                    },
+                    help: vec![],
                 }
             }
             _ => Diagnostic {
@@ -3317,7 +3411,7 @@ impl fmt::Display for StorageAccess {
             Self::WriteSlots => f.write_str("Writing to storage slots happens here."),
             Self::ImpureFunctionCall(call_path, reads, writes) => f.write_fmt(format_args!(
                 "Function \"{}\" {} the storage.",
-                call_path_suffix_with_args(&call_path.as_str().to_string()),
+                short_name(call_path.as_str()),
                 match (reads, writes) {
                     (true, true) => "reads from and writes to",
                     (true, false) => "reads from",

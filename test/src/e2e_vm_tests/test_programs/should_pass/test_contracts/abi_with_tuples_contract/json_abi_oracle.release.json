@@ -1,0 +1,117 @@
+{
+  "configurables": [],
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [
+        {
+          "name": "_param",
+          "type": 1,
+          "typeArguments": null
+        }
+      ],
+      "name": "bug1",
+      "output": {
+        "name": "",
+        "type": 3,
+        "typeArguments": null
+      }
+    },
+    {
+      "attributes": null,
+      "inputs": [
+        {
+          "name": "_param",
+          "type": 2,
+          "typeArguments": null
+        }
+      ],
+      "name": "bug2",
+      "output": {
+        "name": "",
+        "type": 3,
+        "typeArguments": null
+      }
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "types": [
+    {
+      "components": [],
+      "type": "()",
+      "typeId": 0,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "__tuple_element",
+          "type": 5,
+          "typeArguments": null
+        },
+        {
+          "name": "__tuple_element",
+          "type": 6,
+          "typeArguments": null
+        }
+      ],
+      "type": "(_, _)",
+      "typeId": 1,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "__tuple_element",
+          "type": 4,
+          "typeArguments": null
+        },
+        {
+          "name": "__tuple_element",
+          "type": 6,
+          "typeArguments": null
+        }
+      ],
+      "type": "(_, _)",
+      "typeId": 2,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "bool",
+      "typeId": 3,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "Earth",
+          "type": 0,
+          "typeArguments": null
+        }
+      ],
+      "type": "enum abi_with_tuples::Location",
+      "typeId": 4,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "age",
+          "type": 6,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct abi_with_tuples::Person",
+      "typeId": 5,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u64",
+      "typeId": 6,
+      "typeParameters": null
+    }
+  ]
+}

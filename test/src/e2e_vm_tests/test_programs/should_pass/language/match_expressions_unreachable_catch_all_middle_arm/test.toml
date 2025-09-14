@@ -3,7 +3,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match e1_1 {
-#nextln: $()The expression to match on is of type "Enum".
+#nextln: $()The expression to match on is of type "match_expressions_unreachable_catch_all_middle_arm::Enum".
 
 #check: $()_ => 0,
 #nextln: $()Catch-all arm `_` makes all match arms below it unreachable.
@@ -13,7 +13,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match e1_1 {
-#nextln: $()The expression to match on is of type "Enum".
+#nextln: $()The expression to match on is of type "match_expressions_unreachable_catch_all_middle_arm::Enum".
 
 #check: $()_ => 0,
 #nextln: $()Catch-all arm `_` makes all match arms below it unreachable.
@@ -23,7 +23,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match e1_2 {
-#nextln: $()The expression to match on is of type "Enum".
+#nextln: $()The expression to match on is of type "match_expressions_unreachable_catch_all_middle_arm::Enum".
 
 #check: $()_ => 0,
 #nextln: $()Catch-all arm `_` makes all match arms below it unreachable.
@@ -33,7 +33,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match e1_2 {
-#nextln: $()The expression to match on is of type "Enum".
+#nextln: $()The expression to match on is of type "match_expressions_unreachable_catch_all_middle_arm::Enum".
 
 #check: $()_ => 0,
 #nextln: $()Catch-all arm `_` makes all match arms below it unreachable.
@@ -44,7 +44,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match e2_1 {
-#nextln: $()The expression to match on is of type "Enum".
+#nextln: $()The expression to match on is of type "match_expressions_unreachable_catch_all_middle_arm::Enum".
 
 #check: $()x => {
 #nextln: $()Catch-all arm `x` makes all match arms below it unreachable.
@@ -54,7 +54,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match e2_1 {
-#nextln: $()The expression to match on is of type "Enum".
+#nextln: $()The expression to match on is of type "match_expressions_unreachable_catch_all_middle_arm::Enum".
 
 #check: $()x => {
 #nextln: $()Catch-all arm `x` makes all match arms below it unreachable.
@@ -64,7 +64,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match e2_2 {
-#nextln: $()The expression to match on is of type "Enum".
+#nextln: $()The expression to match on is of type "match_expressions_unreachable_catch_all_middle_arm::Enum".
 
 #check: $()x => {
 #nextln: $()Catch-all arm `x` makes all match arms below it unreachable.
@@ -74,7 +74,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match e2_2 {
-#nextln: $()The expression to match on is of type "Enum".
+#nextln: $()The expression to match on is of type "match_expressions_unreachable_catch_all_middle_arm::Enum".
 
 #check: $()x => {
 #nextln: $()Catch-all arm `x` makes all match arms below it unreachable.
@@ -84,7 +84,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match e2_3 {
-#nextln: $()The expression to match on is of type "Enum".
+#nextln: $()The expression to match on is of type "match_expressions_unreachable_catch_all_middle_arm::Enum".
 
 #check: $()x => {
 #nextln: $()Catch-all arm `x` makes all match arms below it unreachable.
@@ -94,7 +94,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match e2_4 {
-#nextln: $()The expression to match on is of type "Enum".
+#nextln: $()The expression to match on is of type "match_expressions_unreachable_catch_all_middle_arm::Enum".
 
 #check: $()y => {
 #nextln: $()Catch-all arm `y` makes all match arms below it unreachable.
@@ -104,7 +104,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match s1 {
-#nextln: $()The expression to match on is of type "Struct".
+#nextln: $()The expression to match on is of type "match_expressions_unreachable_catch_all_middle_arm::Struct".
 
 #check: $()_ => 0,
 #nextln: $()Catch-all arm `_` makes all match arms below it unreachable.
@@ -114,7 +114,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match s2 {
-#nextln: $()The expression to match on is of type "Struct".
+#nextln: $()The expression to match on is of type "match_expressions_unreachable_catch_all_middle_arm::Struct".
 
 #check: $()x => {
 #nextln: $()Catch-all arm `x` makes all match arms below it unreachable.
@@ -124,7 +124,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match s3 {
-#nextln: $()The expression to match on is of type "Struct".
+#nextln: $()The expression to match on is of type "match_expressions_unreachable_catch_all_middle_arm::Struct".
 
 #check: $()Struct { x, y, z } => if x { y } else { z.0 },
 #nextln: $()Catch-all arm `Struct { x, y, z }` makes all match arms below it unreachable.
@@ -134,7 +134,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match s4 {
-#nextln: $()The expression to match on is of type "Struct".
+#nextln: $()The expression to match on is of type "match_expressions_unreachable_catch_all_middle_arm::Struct".
 
 #check: $()Struct { x:_, y:_, z:_ } => 0,
 #nextln: $()Catch-all arm `Struct { x:_, y:_, z:_ }` makes all match arms below it unreachable.
@@ -144,7 +144,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match s5 {
-#nextln: $()The expression to match on is of type "Struct".
+#nextln: $()The expression to match on is of type "match_expressions_unreachable_catch_all_middle_arm::Struct".
 
 #check: $()Struct { x: a, y: b, z: c } => if a { b } else { c.0 },
 #nextln: $()Catch-all arm `Struct { x: a, y: b, z: c }` makes all match arms below it unreachable.
@@ -154,7 +154,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match s6 {
-#nextln: $()The expression to match on is of type "Struct".
+#nextln: $()The expression to match on is of type "match_expressions_unreachable_catch_all_middle_arm::Struct".
 
 #check: $()Struct { x: a, y: b, z: (j, k, l) } => if a { b } else { j + k + l },
 #nextln: $()Catch-all arm `Struct { x: a, y: b, z: (j, k, l) }` makes all match arms below it unreachable.
@@ -164,7 +164,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match s7 {
-#nextln: $()The expression to match on is of type "Struct".
+#nextln: $()The expression to match on is of type "match_expressions_unreachable_catch_all_middle_arm::Struct".
 
 #check: $()Struct { x: a, y: b, z: (_, _, _) } => if a { b } else { 0 },
 #nextln: $()Catch-all arm `Struct { x: a, y: b, z: (_, _, _) }` makes all match arms below it unreachable.
@@ -174,7 +174,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match t1 {
-#nextln: $()The expression to match on is of type "(bool, Enum, Struct, u64)".
+#nextln: $()The expression to match on is of type "(bool, match_expressions_unreachable_catch_all_middle_arm::Enum, match_expressions_unreachable_catch_all_middle_arm::Struct, u64)".
 
 #check: $()_ => 0,
 #nextln: $()Catch-all arm `_` makes all match arms below it unreachable.
@@ -184,7 +184,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match t2 {
-#nextln: $()The expression to match on is of type "(bool, Enum, Struct, u64)".
+#nextln: $()The expression to match on is of type "(bool, match_expressions_unreachable_catch_all_middle_arm::Enum, match_expressions_unreachable_catch_all_middle_arm::Struct, u64)".
 
 #check: $()x => x.3,
 #nextln: $()Catch-all arm `x` makes all match arms below it unreachable.
@@ -194,7 +194,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match t3 {
-#nextln: $()The expression to match on is of type "(bool, Enum, Struct, u64)".
+#nextln: $()The expression to match on is of type "(bool, match_expressions_unreachable_catch_all_middle_arm::Enum, match_expressions_unreachable_catch_all_middle_arm::Struct, u64)".
 
 #check: $()(b, e, s, n) => {
 #nextln: $()Catch-all arm `(b, e, s, n)` makes all match arms below it unreachable.
@@ -204,7 +204,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match t4 {
-#nextln: $()The expression to match on is of type "(bool, Enum, Struct, u64)".
+#nextln: $()The expression to match on is of type "(bool, match_expressions_unreachable_catch_all_middle_arm::Enum, match_expressions_unreachable_catch_all_middle_arm::Struct, u64)".
 
 #check: $()(_, _, _, _) => 0,
 #nextln: $()Catch-all arm `(_, _, _, _)` makes all match arms below it unreachable.
@@ -214,7 +214,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match t5 {
-#nextln: $()The expression to match on is of type "(bool, Enum, Struct, u64)".
+#nextln: $()The expression to match on is of type "(bool, match_expressions_unreachable_catch_all_middle_arm::Enum, match_expressions_unreachable_catch_all_middle_arm::Struct, u64)".
 
 #check: $()(_, _, _, n) => n,
 #nextln: $()Catch-all arm `(_, _, _, n)` makes all match arms below it unreachable.
@@ -224,7 +224,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match t6 {
-#nextln: $()The expression to match on is of type "(bool, Enum, Struct, u64)".
+#nextln: $()The expression to match on is of type "(bool, match_expressions_unreachable_catch_all_middle_arm::Enum, match_expressions_unreachable_catch_all_middle_arm::Struct, u64)".
 
 #check: $()(_, _, Struct { x, y, z: (j , k, l)}, n) => {
 #nextln: $()Catch-all arm `(_, _, Struct { x, y, z: (j , k, l)}, n)` makes all match arms below it unreachable.
@@ -234,7 +234,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match t7 {
-#nextln: $()The expression to match on is of type "(bool, Enum, Struct, u64)".
+#nextln: $()The expression to match on is of type "(bool, match_expressions_unreachable_catch_all_middle_arm::Enum, match_expressions_unreachable_catch_all_middle_arm::Struct, u64)".
 
 #check: $()(_, _, Struct { x: _, y: _, z: (_ , k, _)}, n) => {
 #nextln: $()Catch-all arm `(_, _, Struct { x: _, y: _, z: (_ , k, _)}, n)` makes all match arms below it unreachable.

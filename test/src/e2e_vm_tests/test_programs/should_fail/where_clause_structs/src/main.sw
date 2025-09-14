@@ -1,4 +1,4 @@
-script;
+library;
 
 trait MyAdd {
     fn my_add(self, b: Self) -> Self;
@@ -65,7 +65,7 @@ fn add3<T>(v: T) -> T {
     v
 }
 
-fn main() -> u8 {
+pub fn main() {
     let foo = MyPoint {
         x: 1u32,
         y: 1u32,
@@ -75,6 +75,4 @@ fn main() -> u8 {
         x: 3u64,
         y: 1u64,
     };
-
-    0u8
 }

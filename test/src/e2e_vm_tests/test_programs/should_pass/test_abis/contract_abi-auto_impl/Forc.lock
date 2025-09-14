@@ -1,0 +1,8 @@
+[[package]]
+name = "contract_abi-auto_impl"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-0D89CC029E33C6A4"

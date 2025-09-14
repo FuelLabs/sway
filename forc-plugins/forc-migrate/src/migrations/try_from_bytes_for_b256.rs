@@ -86,8 +86,7 @@ fn replace_b256_from_bytes_with_try_from_bytes_step(
                 return Ok(InvalidateTypedElement::No);
             };
 
-            let Some(implementing_for_type_id) = ty_fn_call_info.fn_decl.implementing_for_typeid
-            else {
+            let Some(implementing_for_type_id) = ty_fn_call_info.fn_decl.implementing_for else {
                 return Ok(InvalidateTypedElement::No);
             };
 

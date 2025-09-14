@@ -1,12 +1,13 @@
 use crate::{
     decl_engine::{DeclEngineGet, DeclId, DeclRefFunction},
+    ir_generation::{KeyedTyFunctionDecl, PanickingFunctionCache},
     language::{ty, Visibility},
     metadata::MetadataManager,
     namespace::ResolvedDeclaration,
     semantic_analysis::namespace,
     type_system::TypeId,
     types::{LogId, MessageId},
-    Engines, PanicOccurrences,
+    Engines, PanicOccurrences, PanickingCallOccurrences,
 };
 
 use super::{
@@ -31,8 +32,10 @@ pub(super) fn compile_script(
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     panic_occurrences: &mut PanicOccurrences,
+    panicking_call_occurrences: &mut PanickingCallOccurrences,
+    panicking_fn_cache: &mut PanickingFunctionCache,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
-    cache: &mut CompiledFunctionCache,
+    compiled_fn_cache: &mut CompiledFunctionCache,
 ) -> Result<Module, Vec<CompileError>> {
     let module = Module::new(context, Kind::Script);
 
@@ -49,7 +52,9 @@ pub(super) fn compile_script(
         logged_types_map,
         messages_types_map,
         panic_occurrences,
-        cache,
+        panicking_call_occurrences,
+        panicking_fn_cache,
+        compiled_fn_cache,
     )
     .map_err(|err| vec![err])?;
     compile_entry_function(
@@ -61,8 +66,10 @@ pub(super) fn compile_script(
         logged_types_map,
         messages_types_map,
         panic_occurrences,
+        panicking_call_occurrences,
+        panicking_fn_cache,
         None,
-        cache,
+        compiled_fn_cache,
     )?;
     compile_tests(
         engines,
@@ -72,8 +79,10 @@ pub(super) fn compile_script(
         logged_types_map,
         messages_types_map,
         panic_occurrences,
+        panicking_call_occurrences,
+        panicking_fn_cache,
         test_fns,
-        cache,
+        compiled_fn_cache,
     )?;
 
     Ok(module)
@@ -88,8 +97,10 @@ pub(super) fn compile_predicate(
     logged_types: &HashMap<TypeId, LogId>,
     messages_types: &HashMap<TypeId, MessageId>,
     panic_occurrences: &mut PanicOccurrences,
+    panicking_call_occurrences: &mut PanickingCallOccurrences,
+    panicking_fn_cache: &mut PanickingFunctionCache,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
-    cache: &mut CompiledFunctionCache,
+    compiled_fn_cache: &mut CompiledFunctionCache,
 ) -> Result<Module, Vec<CompileError>> {
     let module = Module::new(context, Kind::Predicate);
 
@@ -106,7 +117,9 @@ pub(super) fn compile_predicate(
         logged_types,
         messages_types,
         panic_occurrences,
-        cache,
+        panicking_call_occurrences,
+        panicking_fn_cache,
+        compiled_fn_cache,
     )
     .map_err(|err| vec![err])?;
     compile_entry_function(
@@ -118,8 +131,10 @@ pub(super) fn compile_predicate(
         &HashMap::new(),
         &HashMap::new(),
         panic_occurrences,
+        panicking_call_occurrences,
+        panicking_fn_cache,
         None,
-        cache,
+        compiled_fn_cache,
     )?;
     compile_tests(
         engines,
@@ -129,8 +144,10 @@ pub(super) fn compile_predicate(
         logged_types,
         messages_types,
         panic_occurrences,
+        panicking_call_occurrences,
+        panicking_fn_cache,
         test_fns,
-        cache,
+        compiled_fn_cache,
     )?;
 
     Ok(module)
@@ -146,9 +163,11 @@ pub(super) fn compile_contract(
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     panic_occurrences: &mut PanicOccurrences,
+    panicking_call_occurrences: &mut PanickingCallOccurrences,
+    panicking_fn_cache: &mut PanickingFunctionCache,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
     engines: &Engines,
-    cache: &mut CompiledFunctionCache,
+    compiled_fn_cache: &mut CompiledFunctionCache,
 ) -> Result<Module, Vec<CompileError>> {
     let module = Module::new(context, Kind::Contract);
 
@@ -165,7 +184,9 @@ pub(super) fn compile_contract(
         logged_types_map,
         messages_types_map,
         panic_occurrences,
-        cache,
+        panicking_call_occurrences,
+        panicking_fn_cache,
+        compiled_fn_cache,
     )
     .map_err(|err| vec![err])?;
 
@@ -188,8 +209,10 @@ pub(super) fn compile_contract(
             logged_types_map,
             messages_types_map,
             panic_occurrences,
+            panicking_call_occurrences,
+            panicking_fn_cache,
             None,
-            cache,
+            compiled_fn_cache,
         )?;
     } else {
         // In the case of the encoding v0, we need to compile individual ABI entries
@@ -203,8 +226,10 @@ pub(super) fn compile_contract(
                 logged_types_map,
                 messages_types_map,
                 panic_occurrences,
+                panicking_call_occurrences,
+                panicking_fn_cache,
                 engines,
-                cache,
+                compiled_fn_cache,
             )?;
         }
 
@@ -221,8 +246,10 @@ pub(super) fn compile_contract(
                         logged_types_map,
                         messages_types_map,
                         panic_occurrences,
+                        panicking_call_occurrences,
+                        panicking_fn_cache,
                         engines,
-                        cache,
+                        compiled_fn_cache,
                     )?;
                 }
             }
@@ -237,8 +264,10 @@ pub(super) fn compile_contract(
         logged_types_map,
         messages_types_map,
         panic_occurrences,
+        panicking_call_occurrences,
+        panicking_fn_cache,
         test_fns,
-        cache,
+        compiled_fn_cache,
     )?;
 
     Ok(module)
@@ -252,8 +281,10 @@ pub(super) fn compile_library(
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     panic_occurrences: &mut PanicOccurrences,
+    panicking_call_occurrences: &mut PanickingCallOccurrences,
+    panicking_fn_cache: &mut PanickingFunctionCache,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
-    cache: &mut CompiledFunctionCache,
+    compiled_fn_cache: &mut CompiledFunctionCache,
 ) -> Result<Module, Vec<CompileError>> {
     let module = Module::new(context, Kind::Library);
 
@@ -269,8 +300,10 @@ pub(super) fn compile_library(
         logged_types_map,
         messages_types_map,
         panic_occurrences,
+        panicking_call_occurrences,
+        panicking_fn_cache,
         test_fns,
-        cache,
+        compiled_fn_cache,
     )?;
 
     Ok(module)
@@ -354,7 +387,9 @@ pub(crate) fn compile_configurables(
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     panic_occurrences: &mut PanicOccurrences,
-    cache: &mut CompiledFunctionCache,
+    panicking_call_occurrences: &mut PanickingCallOccurrences,
+    panicking_fn_cache: &mut PanickingFunctionCache,
+    compiled_fn_cache: &mut CompiledFunctionCache,
 ) -> Result<(), CompileError> {
     for decl_name in module_ns.root_items().get_all_declared_symbols() {
         if let Some(ResolvedDeclaration::Typed(ty::TyDecl::ConfigurableDecl(
@@ -406,15 +441,18 @@ pub(crate) fn compile_configurables(
                 assert!(encoded_bytes.len() == buffer_size);
 
                 let decode_fn = engines.de().get(decl.decode_fn.as_ref().unwrap().id());
-                let decode_fn = cache.ty_function_decl_to_unique_function(
+                let keyed_decl = KeyedTyFunctionDecl::new(&decode_fn, engines);
+                let decode_fn = compiled_fn_cache.get_compiled_function(
                     engines,
                     context,
                     module,
                     md_mgr,
-                    &decode_fn,
+                    &keyed_decl,
                     logged_types_map,
                     messages_types_map,
                     panic_occurrences,
+                    panicking_call_occurrences,
+                    panicking_fn_cache,
                 )?;
 
                 let name = decl_name.as_str().to_string();
@@ -458,13 +496,16 @@ pub(super) fn compile_function(
     module: Module,
     ast_fn_decl: &ty::TyFunctionDecl,
     original_name: &Ident,
+    abi_errors_display: String,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     panic_occurrences: &mut PanicOccurrences,
+    panicking_call_occurrences: &mut PanickingCallOccurrences,
+    panicking_fn_cache: &mut PanickingFunctionCache,
     is_entry: bool,
     is_original_entry: bool,
     test_decl_ref: Option<DeclRefFunction>,
-    cache: &mut CompiledFunctionCache,
+    compiled_fn_cache: &mut CompiledFunctionCache,
 ) -> Result<Option<Function>, Vec<CompileError>> {
     // Currently monomorphization of generics is inlined into main() and the functions with generic
     // args are still present in the AST declarations, but they can be ignored.
@@ -478,14 +519,17 @@ pub(super) fn compile_function(
             module,
             ast_fn_decl,
             original_name,
+            abi_errors_display,
             is_entry,
             is_original_entry,
             None,
             logged_types_map,
             messages_types_map,
             panic_occurrences,
+            panicking_call_occurrences,
+            panicking_fn_cache,
             test_decl_ref,
-            cache,
+            compiled_fn_cache,
         )
         .map(Some)
     }
@@ -501,8 +545,10 @@ pub(super) fn compile_entry_function(
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     panic_occurrences: &mut PanicOccurrences,
+    panicking_call_occurrences: &mut PanickingCallOccurrences,
+    panicking_fn_cache: &mut PanickingFunctionCache,
     test_decl_ref: Option<DeclRefFunction>,
-    cache: &mut CompiledFunctionCache,
+    compiled_fn_cache: &mut CompiledFunctionCache,
 ) -> Result<Function, Vec<CompileError>> {
     let is_entry = true;
     // In the new encoding, the only entry function is the `__entry`,
@@ -516,13 +562,16 @@ pub(super) fn compile_entry_function(
         module,
         &ast_fn_decl,
         &ast_fn_decl.name,
+        FnCompiler::fn_abi_errors_display(&ast_fn_decl, engines),
         logged_types_map,
         messages_types_map,
         panic_occurrences,
+        panicking_call_occurrences,
+        panicking_fn_cache,
         is_entry,
         is_original_entry,
         test_decl_ref,
-        cache,
+        compiled_fn_cache,
     )
     .map(|f| f.expect("entry point should never contain generics"))
 }
@@ -536,8 +585,10 @@ pub(super) fn compile_tests(
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     panic_occurrences: &mut PanicOccurrences,
+    panicking_call_occurrences: &mut PanickingCallOccurrences,
+    panicking_fn_cache: &mut PanickingFunctionCache,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
-    cache: &mut CompiledFunctionCache,
+    compiled_fn_cache: &mut CompiledFunctionCache,
 ) -> Result<Vec<Function>, Vec<CompileError>> {
     test_fns
         .iter()
@@ -551,8 +602,10 @@ pub(super) fn compile_tests(
                 logged_types_map,
                 messages_types_map,
                 panic_occurrences,
+                panicking_call_occurrences,
+                panicking_fn_cache,
                 Some(decl_ref.clone()),
-                cache,
+                compiled_fn_cache,
             )
         })
         .collect()
@@ -570,14 +623,17 @@ fn compile_fn(
     // The span in the name must point to the name in the
     // function declaration.
     original_name: &Ident,
+    abi_errors_display: String,
     is_entry: bool,
     is_original_entry: bool,
     selector: Option<[u8; 4]>,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     panic_occurrences: &mut PanicOccurrences,
+    panicking_call_occurrences: &mut PanickingCallOccurrences,
+    panicking_fn_cache: &mut PanickingFunctionCache,
     test_decl_ref: Option<DeclRefFunction>,
-    cache: &mut CompiledFunctionCache,
+    compiled_fn_cache: &mut CompiledFunctionCache,
 ) -> Result<Function, Vec<CompileError>> {
     let inline = ast_fn_decl.inline();
     let trace = ast_fn_decl.trace();
@@ -608,7 +664,7 @@ fn compile_fn(
     }
 
     let mut ref_mut_args = rustc_hash::FxHashSet::default();
-    let args = ast_fn_decl
+    let mut args = ast_fn_decl
         .parameters
         .iter()
         .map(|param| {
@@ -642,6 +698,17 @@ fn compile_fn(
         })
         .collect::<Result<Vec<_>, CompileError>>()
         .map_err(|err| vec![err])?;
+
+    let keyed_decl = KeyedTyFunctionDecl::new(ast_fn_decl, engines);
+    if context.backtrace != Backtrace::None && panicking_fn_cache.can_panic(&keyed_decl, engines) {
+        args.push((
+            FnCompiler::BACKTRACE_FN_ARG_NAME.to_string(),
+            Type::new_uint(context, 64),
+            None,
+        ));
+    }
+
+    let args = args; // Remove mutability.
 
     let ret_type = convert_resolved_type_id(
         engines,
@@ -678,6 +745,7 @@ fn compile_fn(
         context,
         module,
         name.as_str().to_owned(),
+        abi_errors_display,
         args,
         ret_type,
         selector,
@@ -696,7 +764,9 @@ fn compile_fn(
         logged_types_map,
         messages_types_map,
         panic_occurrences,
-        cache,
+        panicking_call_occurrences,
+        panicking_fn_cache,
+        compiled_fn_cache,
     );
     compiler.ref_mut_args = ref_mut_args;
 
@@ -758,8 +828,10 @@ fn compile_encoding_v0_abi_method(
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     panic_occurrences: &mut PanicOccurrences,
+    panicking_call_occurrences: &mut PanickingCallOccurrences,
+    panicking_fn_cache: &mut PanickingFunctionCache,
     engines: &Engines,
-    cache: &mut CompiledFunctionCache,
+    compiled_fn_cache: &mut CompiledFunctionCache,
 ) -> Result<Function, Vec<CompileError>> {
     assert!(
         !context.experimental.new_encoding,
@@ -796,6 +868,7 @@ fn compile_encoding_v0_abi_method(
         module,
         &ast_fn_decl,
         &ast_fn_decl.name,
+        FnCompiler::fn_abi_errors_display(&ast_fn_decl, engines),
         // ABI methods are only entries when the "new encoding" is off
         !context.experimental.new_encoding,
         // ABI methods are always original entries
@@ -804,7 +877,9 @@ fn compile_encoding_v0_abi_method(
         logged_types_map,
         messages_types_map,
         panic_occurrences,
+        panicking_call_occurrences,
+        panicking_fn_cache,
         None,
-        cache,
+        compiled_fn_cache,
     )
 }

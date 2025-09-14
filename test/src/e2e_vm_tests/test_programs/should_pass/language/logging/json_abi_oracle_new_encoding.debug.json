@@ -1,0 +1,210 @@
+{
+  "concreteTypes": [
+    {
+      "concreteTypeId": "469b6a3ae1aee813b2c73788d36a1e8dd84089a16afa4d87d726f87eea55a219",
+      "metadataTypeId": 1,
+      "type": "enum E"
+    },
+    {
+      "concreteTypeId": "4d1a8e2800ffb1d7af9edbf4e885657c6b930a0fe4596dec7297f2d0f064ebb5",
+      "type": "struct CustomAbiEncode"
+    },
+    {
+      "concreteTypeId": "3f8dc98862e8f3a9b179125e425353ebec6c0f5fc639afce8ed40456c21d3c62",
+      "metadataTypeId": 5,
+      "type": "struct S"
+    },
+    {
+      "concreteTypeId": "e5e8538f6cad3ebdae70cc8ba333e874c75e6478b85ac050988823aaf5fd81e2",
+      "metadataTypeId": 6,
+      "type": "struct SS<u64>",
+      "typeArguments": [
+        "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+      ]
+    },
+    {
+      "concreteTypeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0",
+      "type": "u64"
+    }
+  ],
+  "configurables": [],
+  "encodingVersion": "1",
+  "errorCodes": {},
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "main",
+      "output": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+    }
+  ],
+  "loggedTypes": [
+    {
+      "concreteTypeId": "3f8dc98862e8f3a9b179125e425353ebec6c0f5fc639afce8ed40456c21d3c62",
+      "logId": "4579537983717831593"
+    },
+    {
+      "concreteTypeId": "e5e8538f6cad3ebdae70cc8ba333e874c75e6478b85ac050988823aaf5fd81e2",
+      "logId": "16566583104751091389"
+    },
+    {
+      "concreteTypeId": "469b6a3ae1aee813b2c73788d36a1e8dd84089a16afa4d87d726f87eea55a219",
+      "logId": "5087777005172090899"
+    },
+    {
+      "concreteTypeId": "4d1a8e2800ffb1d7af9edbf4e885657c6b930a0fe4596dec7297f2d0f064ebb5",
+      "logId": "5555909392781521367"
+    }
+  ],
+  "messagesTypes": [],
+  "metadataTypes": [
+    {
+      "metadataTypeId": 0,
+      "type": "()"
+    },
+    {
+      "components": [
+        {
+          "name": "A",
+          "typeArguments": [
+            {
+              "name": "",
+              "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+            }
+          ],
+          "typeId": 6
+        },
+        {
+          "name": "B",
+          "typeId": 0
+        }
+      ],
+      "metadataTypeId": 1,
+      "type": "enum E"
+    },
+    {
+      "metadataTypeId": 2,
+      "type": "generic T"
+    },
+    {
+      "metadataTypeId": 3,
+      "type": "raw untyped ptr"
+    },
+    {
+      "metadataTypeId": 4,
+      "type": "str"
+    },
+    {
+      "components": [
+        {
+          "name": "a",
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        },
+        {
+          "name": "b",
+          "typeId": 11
+        },
+        {
+          "name": "c",
+          "typeId": 9
+        },
+        {
+          "name": "d",
+          "typeId": 12
+        },
+        {
+          "name": "e",
+          "typeArguments": [
+            {
+              "name": "",
+              "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+            }
+          ],
+          "typeId": 8
+        },
+        {
+          "name": "f",
+          "typeId": 4
+        },
+        {
+          "name": "g",
+          "typeId": 10
+        }
+      ],
+      "metadataTypeId": 5,
+      "type": "struct S"
+    },
+    {
+      "components": [
+        {
+          "name": "ss",
+          "typeId": 2
+        }
+      ],
+      "metadataTypeId": 6,
+      "type": "struct SS",
+      "typeParameters": [
+        2
+      ]
+    },
+    {
+      "components": [
+        {
+          "name": "ptr",
+          "typeId": 3
+        },
+        {
+          "name": "cap",
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        }
+      ],
+      "metadataTypeId": 7,
+      "type": "struct std::vec::RawVec",
+      "typeParameters": [
+        2
+      ]
+    },
+    {
+      "components": [
+        {
+          "name": "buf",
+          "typeArguments": [
+            {
+              "name": "",
+              "typeId": 2
+            }
+          ],
+          "typeId": 7
+        },
+        {
+          "name": "len",
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        }
+      ],
+      "metadataTypeId": 8,
+      "type": "struct std::vec::Vec",
+      "typeParameters": [
+        2
+      ]
+    },
+    {
+      "metadataTypeId": 9,
+      "type": "u16"
+    },
+    {
+      "metadataTypeId": 10,
+      "type": "u256"
+    },
+    {
+      "metadataTypeId": 11,
+      "type": "u32"
+    },
+    {
+      "metadataTypeId": 12,
+      "type": "u8"
+    }
+  ],
+  "panickingCalls": {},
+  "programType": "script",
+  "specVersion": "1.2"
+}

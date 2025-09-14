@@ -1,0 +1,91 @@
+{
+  "concreteTypes": [
+    {
+      "concreteTypeId": "93720e77cde7ac793c849579230ed2eb10cd51d3634075b9932b66153e0abafd",
+      "metadataTypeId": 3,
+      "type": "enum TopLevelEnum"
+    }
+  ],
+  "configurables": [],
+  "encodingVersion": "1",
+  "errorCodes": {},
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "main",
+      "output": "93720e77cde7ac793c849579230ed2eb10cd51d3634075b9932b66153e0abafd"
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "metadataTypes": [
+    {
+      "components": [
+        {
+          "name": "__tuple_element",
+          "typeId": 1
+        },
+        {
+          "name": "__tuple_element",
+          "typeId": 1
+        }
+      ],
+      "metadataTypeId": 0,
+      "type": "(_, _)"
+    },
+    {
+      "metadataTypeId": 1,
+      "type": "b256"
+    },
+    {
+      "components": [
+        {
+          "name": "first",
+          "typeId": 1
+        },
+        {
+          "name": "second",
+          "typeId": 5
+        }
+      ],
+      "metadataTypeId": 2,
+      "type": "enum LowerLevelEnum"
+    },
+    {
+      "components": [
+        {
+          "name": "first",
+          "typeId": 0
+        },
+        {
+          "name": "second",
+          "typeId": 4
+        }
+      ],
+      "metadataTypeId": 3,
+      "type": "enum TopLevelEnum"
+    },
+    {
+      "components": [
+        {
+          "name": "first",
+          "typeId": 5
+        },
+        {
+          "name": "second",
+          "typeId": 2
+        }
+      ],
+      "metadataTypeId": 4,
+      "type": "struct ThenAStruct"
+    },
+    {
+      "metadataTypeId": 5,
+      "type": "u32"
+    }
+  ],
+  "panickingCalls": {},
+  "programType": "script",
+  "specVersion": "1.2"
+}

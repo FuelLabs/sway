@@ -24,8 +24,9 @@ category = "fail"
 # check: $()let _ = x + y + z;
 # nextln: $()Variable "y" does not exist in this scope.
 
+# check: $()Associated function or method is not found
 # check: $()let _ = x + y + z;
-# nextln: $()No method "add({unknown}, unknown)" found for type "{unknown}".
+# nextln: $()"add({unknown}, {error})" is not found for type "{unknown}".
 
 # check: $()let _ = x + y + z;
 # nextln: $()Variable "z" does not exist in this scope.

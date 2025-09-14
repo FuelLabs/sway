@@ -1,6 +1,6 @@
 [project]
 authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
-implicit-std = false
 license = "Apache-2.0"
 name = "type_alias_shadowing_methods"
+implicit-std = false

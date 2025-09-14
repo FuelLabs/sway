@@ -1,5 +1,5 @@
 category = "fail"
 
 # check: $()storage.my_map.insert(my_struct, 2)
-# nextln: $()Trait "Hash" is not implemented for type "MyStruct".
+# nextln: $()Trait "Hash" is not implemented for type "missing_hash_trait::MyStruct".
 

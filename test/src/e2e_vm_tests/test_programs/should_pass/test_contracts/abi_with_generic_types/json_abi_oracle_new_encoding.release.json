@@ -1,0 +1,388 @@
+{
+  "concreteTypes": [
+    {
+      "concreteTypeId": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d",
+      "type": "()"
+    },
+    {
+      "concreteTypeId": "a1e229302ed2f092752a6bc4fbe66bb9305e0802b1b01ecc5e1d59356702e956",
+      "metadataTypeId": 0,
+      "type": "(str[5], bool)"
+    },
+    {
+      "concreteTypeId": "81342782c917fcfd178741cb2b3a12ea1ebeaa57253fc4ee6700b4d7d6ab32d3",
+      "metadataTypeId": 3,
+      "type": "[b256; 3]"
+    },
+    {
+      "concreteTypeId": "2d25d8a7618f6e2d5d830cf75baedc6b5081b435d08644cc9dc1ff8ceba6e97b",
+      "metadataTypeId": 5,
+      "type": "[struct MyStruct<u64,bool>; 4]"
+    },
+    {
+      "concreteTypeId": "ed705f920eb2c423c81df912430030def10f03218f0a064bfab81b68de71ae21",
+      "type": "str[6]"
+    },
+    {
+      "concreteTypeId": "c03a3a8c7676b8c228bb24c90bf19a6d8ef92aad1dea3c1939fac4181700eb09",
+      "metadataTypeId": 18,
+      "type": "struct MyArrayStruct<u8,u16>",
+      "typeArguments": [
+        "c89951a24c6ca28c13fd1cfdc646b2b656d69e61a92b91023be7eb58eb914b6b",
+        "29881aad8730c5ab11d275376323d8e4ff4179aae8ccb6c13fe4902137e162ef"
+      ]
+    },
+    {
+      "concreteTypeId": "885e4c283947ed1ad5ef39b71f7b60135e268e96c6f8101eec48528e61b361ae",
+      "metadataTypeId": 19,
+      "type": "struct MyOtherStruct"
+    },
+    {
+      "concreteTypeId": "86969aac37f36f85cea48bd525e5ff2b0e82867977905bc0121d886fa09a09c3",
+      "metadataTypeId": 20,
+      "type": "struct MyStruct<[b256; 3],u8>",
+      "typeArguments": [
+        "81342782c917fcfd178741cb2b3a12ea1ebeaa57253fc4ee6700b4d7d6ab32d3",
+        "c89951a24c6ca28c13fd1cfdc646b2b656d69e61a92b91023be7eb58eb914b6b"
+      ]
+    },
+    {
+      "concreteTypeId": "034b31a2288dc1bcad6f11d7617f613c1d1ab12b157957279b559b67cccb8136",
+      "metadataTypeId": 21,
+      "type": "struct MyStructWithTuple<struct SomeGenericStruct<u64>,u16,u32>",
+      "typeArguments": [
+        "c241e75899be40c59f0124bdf35f69f22b5e1aa4d79ed70f78689caa5e861c63",
+        "29881aad8730c5ab11d275376323d8e4ff4179aae8ccb6c13fe4902137e162ef",
+        "d7649d428b9ff33d188ecbf38a7e4d8fd167fa01b2e10fe9a8f9308e52f1d7cc"
+      ]
+    },
+    {
+      "concreteTypeId": "c241e75899be40c59f0124bdf35f69f22b5e1aa4d79ed70f78689caa5e861c63",
+      "metadataTypeId": 22,
+      "type": "struct SomeGenericStruct<u64>",
+      "typeArguments": [
+        "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+      ]
+    },
+    {
+      "concreteTypeId": "29881aad8730c5ab11d275376323d8e4ff4179aae8ccb6c13fe4902137e162ef",
+      "type": "u16"
+    },
+    {
+      "concreteTypeId": "d7649d428b9ff33d188ecbf38a7e4d8fd167fa01b2e10fe9a8f9308e52f1d7cc",
+      "type": "u32"
+    },
+    {
+      "concreteTypeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0",
+      "type": "u64"
+    },
+    {
+      "concreteTypeId": "c89951a24c6ca28c13fd1cfdc646b2b656d69e61a92b91023be7eb58eb914b6b",
+      "type": "u8"
+    }
+  ],
+  "configurables": [],
+  "encodingVersion": "1",
+  "errorCodes": {},
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [
+        {
+          "concreteTypeId": "86969aac37f36f85cea48bd525e5ff2b0e82867977905bc0121d886fa09a09c3",
+          "name": "_arg1"
+        },
+        {
+          "concreteTypeId": "2d25d8a7618f6e2d5d830cf75baedc6b5081b435d08644cc9dc1ff8ceba6e97b",
+          "name": "_arg2"
+        },
+        {
+          "concreteTypeId": "a1e229302ed2f092752a6bc4fbe66bb9305e0802b1b01ecc5e1d59356702e956",
+          "name": "_arg3"
+        },
+        {
+          "concreteTypeId": "885e4c283947ed1ad5ef39b71f7b60135e268e96c6f8101eec48528e61b361ae",
+          "name": "_arg4"
+        }
+      ],
+      "name": "complex_function",
+      "output": "ed705f920eb2c423c81df912430030def10f03218f0a064bfab81b68de71ae21"
+    },
+    {
+      "attributes": null,
+      "inputs": [
+        {
+          "concreteTypeId": "c03a3a8c7676b8c228bb24c90bf19a6d8ef92aad1dea3c1939fac4181700eb09",
+          "name": "_arg"
+        }
+      ],
+      "name": "take_generic_array",
+      "output": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+    },
+    {
+      "attributes": null,
+      "inputs": [
+        {
+          "concreteTypeId": "034b31a2288dc1bcad6f11d7617f613c1d1ab12b157957279b559b67cccb8136",
+          "name": "_arg"
+        }
+      ],
+      "name": "take_generic_struct_containing_tuple",
+      "output": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "metadataTypes": [
+    {
+      "components": [
+        {
+          "name": "__tuple_element",
+          "typeId": 17
+        },
+        {
+          "name": "__tuple_element",
+          "typeId": 8
+        }
+      ],
+      "metadataTypeId": 0,
+      "type": "(_, _)"
+    },
+    {
+      "components": [
+        {
+          "name": "__tuple_element",
+          "typeId": 16
+        },
+        {
+          "name": "__tuple_element",
+          "typeId": 14
+        }
+      ],
+      "metadataTypeId": 1,
+      "type": "(_, _)"
+    },
+    {
+      "components": [
+        {
+          "name": "__tuple_element",
+          "typeId": 14
+        },
+        {
+          "name": "__tuple_element",
+          "typeId": 15
+        },
+        {
+          "name": "__tuple_element",
+          "typeId": 16
+        }
+      ],
+      "metadataTypeId": 2,
+      "type": "(_, _, _)"
+    },
+    {
+      "components": [
+        {
+          "name": "__array_element",
+          "typeId": 7
+        }
+      ],
+      "metadataTypeId": 3,
+      "type": "[_; 3]"
+    },
+    {
+      "components": [
+        {
+          "name": "__array_element",
+          "typeId": 12
+        }
+      ],
+      "metadataTypeId": 4,
+      "type": "[_; 3]"
+    },
+    {
+      "components": [
+        {
+          "name": "__array_element",
+          "typeArguments": [
+            {
+              "name": "",
+              "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+            },
+            {
+              "name": "",
+              "typeId": 8
+            }
+          ],
+          "typeId": 20
+        }
+      ],
+      "metadataTypeId": 5,
+      "type": "[_; 4]"
+    },
+    {
+      "components": [
+        {
+          "name": "__array_element",
+          "typeArguments": [
+            {
+              "name": "",
+              "typeId": 12
+            },
+            {
+              "name": "",
+              "typeId": 13
+            }
+          ],
+          "typeId": 20
+        }
+      ],
+      "metadataTypeId": 6,
+      "type": "[_; 5]"
+    },
+    {
+      "metadataTypeId": 7,
+      "type": "b256"
+    },
+    {
+      "metadataTypeId": 8,
+      "type": "bool"
+    },
+    {
+      "components": [
+        {
+          "name": "Foo",
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        },
+        {
+          "name": "Bar",
+          "typeId": 8
+        }
+      ],
+      "metadataTypeId": 9,
+      "type": "enum MyEnum",
+      "typeParameters": [
+        12
+      ]
+    },
+    {
+      "metadataTypeId": 10,
+      "type": "generic T"
+    },
+    {
+      "metadataTypeId": 11,
+      "type": "generic U"
+    },
+    {
+      "metadataTypeId": 12,
+      "type": "generic V"
+    },
+    {
+      "metadataTypeId": 13,
+      "type": "generic W"
+    },
+    {
+      "metadataTypeId": 14,
+      "type": "generic X"
+    },
+    {
+      "metadataTypeId": 15,
+      "type": "generic Y"
+    },
+    {
+      "metadataTypeId": 16,
+      "type": "generic Z"
+    },
+    {
+      "metadataTypeId": 17,
+      "type": "str[5]"
+    },
+    {
+      "components": [
+        {
+          "name": "tim",
+          "typeId": 4
+        },
+        {
+          "name": "tam",
+          "typeId": 6
+        }
+      ],
+      "metadataTypeId": 18,
+      "type": "struct MyArrayStruct",
+      "typeParameters": [
+        12,
+        13
+      ]
+    },
+    {
+      "components": [
+        {
+          "name": "bom",
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        }
+      ],
+      "metadataTypeId": 19,
+      "type": "struct MyOtherStruct"
+    },
+    {
+      "components": [
+        {
+          "name": "bim",
+          "typeId": 10
+        },
+        {
+          "name": "bam",
+          "typeArguments": [
+            {
+              "name": "",
+              "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+            }
+          ],
+          "typeId": 9
+        }
+      ],
+      "metadataTypeId": 20,
+      "type": "struct MyStruct",
+      "typeParameters": [
+        10,
+        11
+      ]
+    },
+    {
+      "components": [
+        {
+          "name": "tuple1",
+          "typeId": 2
+        },
+        {
+          "name": "tuple2",
+          "typeId": 1
+        }
+      ],
+      "metadataTypeId": 21,
+      "type": "struct MyStructWithTuple",
+      "typeParameters": [
+        14,
+        15,
+        16
+      ]
+    },
+    {
+      "components": [
+        {
+          "name": "b",
+          "typeId": 16
+        }
+      ],
+      "metadataTypeId": 22,
+      "type": "struct SomeGenericStruct",
+      "typeParameters": [
+        16
+      ]
+    }
+  ],
+  "panickingCalls": {},
+  "programType": "contract",
+  "specVersion": "1.2"
+}

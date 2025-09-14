@@ -6,7 +6,7 @@ use crate::{
     engine_threading::*,
     language::{
         parsed::TreeType,
-        ty::{self, TyDecl, TyExpression},
+        ty::{self, TyDecl, TyExpression, TyFunctionDisplay},
         CallPath, QualifiedCallPath, Visibility,
     },
     monomorphization::{monomorphize_with_modpath, MonomorphizeHelper},
@@ -22,6 +22,7 @@ use crate::{
     EnforceTypeArguments, SubstTypesContext, TraitConstraint, TypeParameter, TypeSubstMap,
     UnifyCheck,
 };
+use itertools::Itertools;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -792,13 +793,19 @@ impl<'a> TypeCheckContext<'a> {
     }
 
     /// Given a `method_name` and a `type_id`, find that method on that type in the namespace.
-    /// `annotation_type` is the expected method return type. Requires `argument_types` because:
+    ///
+    /// `annotation_type` is the expected method return type.
+    ///
+    /// Requires `argument_types` because:
     /// - standard operations like +, <=, etc. are called like "std::ops::<operation>" and the
     ///   actual self type of the trait implementation is determined by the passed argument type.
     /// - we can have several implementations of generic traits for different types, that can
     ///   result in a method of a same name, but with different type arguments.
     ///
     /// This function will emit a [CompileError::MethodNotFound] if the method is not found.
+    ///
+    /// Note that _method_ here means **any function associated to a type**, with or without
+    /// the `self` argument.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn find_method_for_type(
         &self,
@@ -821,10 +828,10 @@ impl<'a> TypeCheckContext<'a> {
             // While collecting unification we don't decay numeric and will ignore this error.
             if self.collecting_unifications {
                 return Err(handler.emit_err(CompileError::MethodNotFound {
-                    method: method_name.clone().as_str().to_string(),
+                    called_method: method_name.into(),
+                    expected_signature: method_name.clone().as_str().to_string(),
                     type_name: self.engines.help_out(type_id).to_string(),
-                    matching_method_strings: vec![],
-                    span: method_name.span(),
+                    matching_methods: vec![],
                 }));
             }
             type_engine.decay_numeric(handler, self.engines, type_id, &method_name.span())?;
@@ -853,7 +860,7 @@ impl<'a> TypeCheckContext<'a> {
             }
         }
 
-        let mut matching_method_strings = HashSet::<String>::new();
+        let mut matching_methods = HashSet::<String>::new();
 
         let matching_method_decl_refs = matching_item_decl_refs
             .into_iter()
@@ -909,8 +916,7 @@ impl<'a> TypeCheckContext<'a> {
                 let mut impl_self_method = None;
                 for method_ref in maybe_method_decl_refs.iter() {
                     let method = decl_engine.get_function(method_ref);
-                    if let Some(ty::TyDecl::ImplSelfOrTrait(impl_trait)) =
-                        method.implementing_type.as_ref()
+                    if let Some(ty::TyDecl::ImplSelfOrTrait(impl_trait)) = &method.implementing_type
                     {
                         let trait_decl = decl_engine.get_impl_self_or_trait(&impl_trait.decl_id);
 
@@ -922,7 +928,7 @@ impl<'a> TypeCheckContext<'a> {
                                 .cloned()
                                 .map(|a| self.engines.help_out(a))
                                 .collect::<Vec<_>>(),
-                            method.implementing_for_typeid.map(|t| {
+                            method.implementing_for.map(|t| {
                                 self.engines.help_out((*self.engines.te().get(t)).clone())
                             }),
                         );
@@ -1034,7 +1040,7 @@ impl<'a> TypeCheckContext<'a> {
                         let trait_method_values = trait_methods.values();
                         for trait_method_ref in trait_method_values {
                             let method = decl_engine.get_function(trait_method_ref);
-                            if let Some(implementing_for_type) = method.implementing_for_typeid {
+                            if let Some(implementing_for_type) = method.implementing_for {
                                 if eq_check
                                     .with_unify_ref_mut(false)
                                     .check(implementing_for_type, type_id)
@@ -1113,24 +1119,10 @@ impl<'a> TypeCheckContext<'a> {
                     a.cloned()
                 }
             } else {
+                let fn_display = TyFunctionDisplay::full().without_self_param_type();
                 for decl_ref in matching_method_decl_refs.clone().into_iter() {
                     let method = decl_engine.get_function(&decl_ref);
-                    matching_method_strings.insert(format!(
-                        "{}({}) -> {}{}",
-                        method.name.as_str(),
-                        method
-                            .parameters
-                            .iter()
-                            .map(|p| self.engines.help_out(p.type_argument.type_id()).to_string())
-                            .collect::<Vec<_>>()
-                            .join(", "),
-                        self.engines.help_out(method.return_type.type_id()),
-                        if let Some(implementing_for_type_id) = method.implementing_for_typeid {
-                            format!(" in {}", self.engines.help_out(implementing_for_type_id))
-                        } else {
-                            "".to_string()
-                        }
-                    ));
+                    matching_methods.insert(fn_display.display(&method, self.engines));
                 }
 
                 // When we can't match any method with parameter types we will throw an error.
@@ -1159,7 +1151,8 @@ impl<'a> TypeCheckContext<'a> {
             };
 
             Err(handler.emit_err(CompileError::MethodNotFound {
-                method: format!(
+                called_method: method_name.into(),
+                expected_signature: format!(
                     "{}({}){}",
                     method_name.clone(),
                     arguments_types
@@ -1177,11 +1170,7 @@ impl<'a> TypeCheckContext<'a> {
                     }
                 ),
                 type_name,
-                matching_method_strings: matching_method_strings
-                    .iter()
-                    .cloned()
-                    .collect::<Vec<_>>(),
-                span: method_name.span(),
+                matching_methods: matching_methods.into_iter().sorted().collect::<Vec<_>>(),
             }))
         }
     }

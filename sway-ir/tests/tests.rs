@@ -8,9 +8,9 @@ use sway_ir::{
     create_dominators_pass, create_escaped_symbols_pass, create_mem2reg_pass,
     create_memcpyopt_pass, create_misc_demotion_pass, create_postorder_pass,
     create_ret_demotion_pass, create_simplify_cfg_pass, metadata_to_inline, optimize as opt,
-    register_known_passes, Context, Function, IrError, PassGroup, PassManager, Value, DCE_NAME,
-    FN_DEDUP_DEBUG_PROFILE_NAME, FN_DEDUP_RELEASE_PROFILE_NAME, GLOBALS_DCE_NAME, MEM2REG_NAME,
-    SROA_NAME,
+    register_known_passes, Backtrace, Context, Function, IrError, PassGroup, PassManager, Value,
+    DCE_NAME, FN_DEDUP_DEBUG_PROFILE_NAME, FN_DEDUP_RELEASE_PROFILE_NAME, GLOBALS_DCE_NAME,
+    MEM2REG_NAME, SROA_NAME,
 };
 use sway_types::SourceEngine;
 
@@ -33,12 +33,14 @@ fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
             ..Default::default()
         };
 
-        let mut ir = sway_ir::parser::parse(&input, &source_engine, experimental).unwrap_or_else(
-            |parse_err| {
+        // TODO: Properly support backtrace build option in IR tests.
+        let backtrace = Backtrace::default();
+
+        let mut ir = sway_ir::parser::parse(&input, &source_engine, experimental, backtrace)
+            .unwrap_or_else(|parse_err| {
                 println!("{}: {parse_err}", path.display());
                 panic!()
-            },
-        );
+            });
 
         let first_line = input.split('\n').next().unwrap();
 
@@ -124,8 +126,12 @@ fn run_ir_verifier_tests(sub_dir: &str) {
             }
         };
 
-        let parse_result =
-            sway_ir::parser::parse(&input, &source_engine, ExperimentalFeatures::default());
+        let parse_result = sway_ir::parser::parse(
+            &input,
+            &source_engine,
+            ExperimentalFeatures::default(),
+            Backtrace::default(),
+        );
 
         match parse_result {
             Ok(_) => {

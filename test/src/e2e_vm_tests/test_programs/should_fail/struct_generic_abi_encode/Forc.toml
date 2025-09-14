@@ -3,6 +3,4 @@ authors = ["Fuel Labs <contact@fuel.sh>"]
 license = "Apache-2.0"
 name = "struct_generic_abi_encode"
 entry = "main.sw"
-
-[dependencies]
-std = { path = "../../../../../../sway-lib-std" }
+implicit-std = false

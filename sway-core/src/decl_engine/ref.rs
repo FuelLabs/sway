@@ -287,7 +287,7 @@ impl ReplaceDecls for DeclRefFunction {
             handler,
             ctx.engines(),
             self.id.into(),
-            func.implementing_for_typeid,
+            func.implementing_for,
             ctx.self_type(),
         )? {
             return Ok(
@@ -305,7 +305,7 @@ impl ReplaceDecls for DeclRefFunction {
                 handler,
                 ctx.engines(),
                 parent.clone(),
-                func.implementing_for_typeid,
+                func.implementing_for,
                 ctx.self_type(),
             )? {
                 return Ok(

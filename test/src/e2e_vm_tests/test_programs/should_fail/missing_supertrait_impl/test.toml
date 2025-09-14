@@ -1,7 +1,7 @@
 category = "fail"
 
 # check: missing_supertrait_impl/src/main.sw:38:1
-# check: $()Trait "A" is not implemented for type "Y".
+# check: $()Trait "A" is not implemented for type "missing_supertrait_impl::Y".
 
 # check: missing_supertrait_impl/src/main.sw:44:1
-# check: $()Trait "B" is not implemented for type "Y".
+# check: $()Trait "B" is not implemented for type "missing_supertrait_impl::Y".

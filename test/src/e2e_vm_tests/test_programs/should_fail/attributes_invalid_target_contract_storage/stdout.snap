@@ -1,5 +1,6 @@
 ---
 source: test/src/snapshot/mod.rs
+assertion_line: 266
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_contract_storage
 exit status: 1
@@ -34,7 +35,7 @@ error: Attribute cannot annotate item
 5 | #[trace(invalid)]
   |   ^^^^^ "trace" attribute cannot annotate a contract storage declaration.
   |
-  = help: "trace" attribute can only annotate functions that can panic.
+  = help: "trace" attribute can only annotate functions.
 ____
 
 error: Attribute cannot annotate item
@@ -137,7 +138,7 @@ error: Attribute cannot annotate item
 16 |     #[trace(invalid)]
    |       ^^^^^ "trace" attribute cannot annotate a storage field.
    |
-   = help: "trace" attribute can only annotate functions that can panic.
+   = help: "trace" attribute can only annotate functions.
 ____
 
 error: Attribute cannot annotate item

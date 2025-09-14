@@ -1,0 +1,64 @@
+{
+  "concreteTypes": [
+    {
+      "concreteTypeId": "b760f44fa5965c2474a3b471467a22c43185152129295af588b022ae50b50903",
+      "type": "bool"
+    },
+    {
+      "concreteTypeId": "29881aad8730c5ab11d275376323d8e4ff4179aae8ccb6c13fe4902137e162ef",
+      "type": "u16"
+    },
+    {
+      "concreteTypeId": "1b5759d94094368cfd443019e7ca5ec4074300e544e5ea993a979f5da627261e",
+      "type": "u256"
+    },
+    {
+      "concreteTypeId": "d7649d428b9ff33d188ecbf38a7e4d8fd167fa01b2e10fe9a8f9308e52f1d7cc",
+      "type": "u32"
+    },
+    {
+      "concreteTypeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0",
+      "type": "u64"
+    },
+    {
+      "concreteTypeId": "c89951a24c6ca28c13fd1cfdc646b2b656d69e61a92b91023be7eb58eb914b6b",
+      "type": "u8"
+    }
+  ],
+  "configurables": [],
+  "encodingVersion": "1",
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "main",
+      "output": "b760f44fa5965c2474a3b471467a22c43185152129295af588b022ae50b50903"
+    }
+  ],
+  "loggedTypes": [
+    {
+      "concreteTypeId": "c89951a24c6ca28c13fd1cfdc646b2b656d69e61a92b91023be7eb58eb914b6b",
+      "logId": "14454674236531057292"
+    },
+    {
+      "concreteTypeId": "29881aad8730c5ab11d275376323d8e4ff4179aae8ccb6c13fe4902137e162ef",
+      "logId": "2992671284987479467"
+    },
+    {
+      "concreteTypeId": "d7649d428b9ff33d188ecbf38a7e4d8fd167fa01b2e10fe9a8f9308e52f1d7cc",
+      "logId": "15520703124961489725"
+    },
+    {
+      "concreteTypeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0",
+      "logId": "1515152261580153489"
+    },
+    {
+      "concreteTypeId": "1b5759d94094368cfd443019e7ca5ec4074300e544e5ea993a979f5da627261e",
+      "logId": "1970142151624111756"
+    }
+  ],
+  "messagesTypes": [],
+  "metadataTypes": [],
+  "programType": "script",
+  "specVersion": "1.1"
+}

@@ -1,5 +1,8 @@
 category = "fail"
 
-# check: $()No method "foo(ContractCaller<MyAbi>)" found for type "ContractCaller<MyAbi>". 
-# nextln: $()Matching method: 
-# nextln: $()foo() -> () in ContractCaller<MyAbi> 
+# check: $()Associated function or method is not found
+# check: $()caller.foo {
+# nextln: $()"foo(ContractCaller<MyAbi>)" is not found for type "ContractCaller<MyAbi>".
+# nextln: $()Only this "foo" function is implemented for the type:
+# nextln: $()- ContractCaller<MyAbi>::foo() -> ()
+# nextln: $()Did you mean to call that function?

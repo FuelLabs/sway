@@ -270,23 +270,47 @@ pub fn singular_plural<'a>(count: usize, singular: &'a str, plural: &'a str) -> 
     }
 }
 
-/// Returns the suffix of the `call_path` together with any type arguments if they
-/// exist.
-/// Convenient for subsequent showing of only the short name of a full name that was
+/// Returns the short name of a type or function represented by the `full_name`.
+/// Convenient for subsequent showing only the short name of a full name that was
 /// already shown.
 ///
+/// The `full_name` is expected to be a call path with or without generic parameters,
+/// eventually prefixed with `&`s or `&mut`s for types.
+///
 /// E.g.:
-/// SomeName -> SomeName
-/// SomeName<T> -> SomeName<T>
-/// std::ops::Eq -> Eq
-/// some_lib::Struct<A, B> -> Struct<A, B>
-pub fn call_path_suffix_with_args(call_path: &String) -> Cow<String> {
-    match call_path.rfind(':') {
-        Some(index) if index < call_path.len() - 1 => {
-            Cow::Owned(call_path.split_at(index + 1).1.to_string())
+/// - `SomeType` -> `SomeType`
+/// - `SomeType<T>` -> `SomeType`
+/// - `std::ops::Eq` -> `Eq`
+/// - `some_lib::Struct<A, B>` -> `Struct`
+/// - `some_lib::Struct<some::other::lib::A, some::other::lib::B>` -> `Struct`
+/// - `&mut some_lib::Struct<&some::other::lib::A, &mut some::other::lib::B>` -> `&mut Struct`
+/// - `&&&mut some_lib::Struct<&some::other::lib::A, &mut some::other::lib::B>` -> `&&&mut Struct`
+/// - `some_lib::fns::some_function<A, B>` -> `some_function`
+pub fn short_name(full_name: &str) -> String {
+    // Preserve leading references, `&`s and `&mut`s.
+    let mut name_start_index = 0;
+    loop {
+        let reminder = &full_name[name_start_index..];
+        if reminder.starts_with('&') {
+            name_start_index += 1;
+        } else if reminder.starts_with("mut ") {
+            name_start_index += 4;
+        } else {
+            break;
         }
-        _ => Cow::Borrowed(call_path),
     }
+    let full_name_without_refs = &full_name[name_start_index..];
+    let full_name_without_generics = match full_name_without_refs.find('<') {
+        Some(index) => &full_name_without_refs[..index],
+        None => full_name_without_refs,
+    };
+    let short_name = match full_name_without_generics.rfind(':') {
+        Some(index) if index < full_name_without_generics.len() - 1 => {
+            full_name_without_generics.split_at(index + 1).1.to_string()
+        }
+        _ => full_name_without_generics.to_string(),
+    };
+    format!("{}{short_name}", &full_name[..name_start_index])
 }
 
 /// Returns indefinite article "a" or "an" that corresponds to the `word`,
@@ -302,6 +326,20 @@ pub fn a_or_an<S: AsRef<str> + ?Sized>(word: &S) -> &'static str {
         in_definite::Is::An => "an ",
         in_definite::Is::A => "a ",
         in_definite::Is::None => "",
+    }
+}
+
+/// Returns the ordinal suffix for the given `num`.
+/// The suffix is "st", "nd", "rd", or "th" depending on the value of `num`.
+pub fn ord_num_suffix(num: usize) -> &'static str {
+    match num % 100 {
+        11..=13 => "th",
+        _ => match num % 10 {
+            1 => "st",
+            2 => "nd",
+            3 => "rd",
+            _ => "th",
+        },
     }
 }
 
@@ -392,5 +430,46 @@ where
                 sequence_to_str_or(suggestions, enclosing, max_num_of_suggestions)
             ),
         )
+    }
+}
+
+mod test {
+    #[test]
+    fn test_short_name() {
+        use super::short_name;
+
+        let test = |full_name: &str, expected: &str| {
+            let short_name = short_name(&full_name.to_string());
+            assert_eq!(short_name, expected, "Full name: {full_name}.");
+        };
+
+        test("SomeType", "SomeType");
+        test("&SomeType", "&SomeType");
+        test("&&&SomeType", "&&&SomeType");
+        test("&mut &&mut SomeType", "&mut &&mut SomeType");
+        test("&&&mut &mut SomeType", "&&&mut &mut SomeType");
+        test("SomeType<T>", "SomeType");
+        test("&SomeType<&T>", "&SomeType");
+        test("&&&SomeType<&&&T>", "&&&SomeType");
+        test("&mut &&mut SomeType<&mut &&mut T>", "&mut &&mut SomeType");
+        test(
+            "&&&mut &mut SomeType<&&&mut &mut T>",
+            "&&&mut &mut SomeType",
+        );
+        test("std::ops::Eq", "Eq");
+        test("some_lib::Struct<A, B>", "Struct");
+        test("&&mut some_lib::Struct<&A, &mut B>", "&&mut Struct");
+        test(
+            "some_lib::Struct<some::other::lib::A, some::other::lib::B>",
+            "Struct",
+        );
+        test(
+            "&&&mut some_lib::Struct<some::other::lib::A, some::other::lib::B>",
+            "&&&mut Struct",
+        );
+        test(
+            "some_lib::fn::function<some::other::lib::A<T1, T2>, some::other::lib::B<T3>>",
+            "function",
+        );
     }
 }
