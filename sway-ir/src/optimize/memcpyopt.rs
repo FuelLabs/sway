@@ -577,7 +577,7 @@ fn local_copy_prop(
                                     Either::Right(*arg)
                                 }
                             });
-                        // whichever args may get mutabed, we kill them.
+                        // whichever args may get mutated, we kill them.
                         kill_escape_args(
                             context,
                             &mutable_args,

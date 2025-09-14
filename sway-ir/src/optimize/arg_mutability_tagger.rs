@@ -61,7 +61,7 @@ pub enum ArgPointeeMutability {
     NotAPointer,
 }
 
-// The dominator tree is represented by mapping each Block to its DomTreeNode.
+/// Result of the arg pointee mutability analysis, for the arguments of each function.
 #[derive(Default)]
 pub struct ArgPointeeMutabilityResult(FxHashMap<Function, Vec<ArgPointeeMutability>>);
 
@@ -168,12 +168,14 @@ fn analyse_fn(
         }
         // Known aliases of this argument. Also serves as a visited set.
         let mut aliases: FxHashSet<Value> = FxHashSet::default();
-        let mut worklist = FxHashSet::default();
+        let mut in_worklist = FxHashSet::default();
+        let mut worklist = vec![];
         // Start with the argument value itself.
-        worklist.insert(*arg);
+        in_worklist.insert(*arg);
+        worklist.push(*arg);
 
-        while let Some(value) = worklist.iter().next().cloned() {
-            worklist.remove(&value);
+        while let Some(value) = worklist.pop() {
+            in_worklist.remove(&value);
             if !aliases.insert(value) {
                 // If we already visited this value, skip it.
                 continue;
@@ -210,7 +212,8 @@ fn analyse_fn(
                                     .unwrap_or_default()
                                     .iter()
                                     .for_each(|r#use| {
-                                        worklist.insert(*r#use);
+                                        in_worklist.insert(*r#use);
+                                        worklist.push(*r#use);
                                     });
                             }
                             BinaryOpKind::Mul
@@ -241,7 +244,8 @@ fn analyse_fn(
                             .unwrap_or_default()
                             .iter()
                             .for_each(|r#use| {
-                                worklist.insert(*r#use);
+                                in_worklist.insert(*r#use);
+                                worklist.push(*r#use);
                             });
                     }
                     InstOp::Load(_) => {
@@ -255,7 +259,7 @@ fn analyse_fn(
                         // then the argument is being mutated. (We could be here
                         // because the source pointer is a use of the argument pointer,
                         // but that doesn't indicate mutability).
-                        if worklist.contains(dst_val_ptr) || aliases.contains(dst_val_ptr) {
+                        if in_worklist.contains(dst_val_ptr) || aliases.contains(dst_val_ptr) {
                             // If the destination pointer is the same as the argument pointer,
                             // we can assume that the pointee is mutable.
                             *arg_mutabilities.get_mut(arg_idx).unwrap() =
@@ -276,7 +280,8 @@ fn analyse_fn(
                                 // The callee mutates the parameter at caller_param_idx
                                 // If what we're passing at that position is an alias of our argument,
                                 // then we mark that our argument is mutable.
-                                if worklist.contains(caller_param) || aliases.contains(caller_param)
+                                if in_worklist.contains(caller_param)
+                                    || aliases.contains(caller_param)
                                 {
                                     *arg_mutabilities.get_mut(arg_idx).unwrap() =
                                         ArgPointeeMutability::Mutable;
@@ -295,7 +300,7 @@ fn analyse_fn(
                         FuelVmInstruction::StateLoadQuadWord { load_val, .. } => {
                             // If the loaded value is an alias of the argument pointer,
                             // then the argument is being mutated.
-                            if worklist.contains(load_val) || aliases.contains(load_val) {
+                            if in_worklist.contains(load_val) || aliases.contains(load_val) {
                                 *arg_mutabilities.get_mut(arg_idx).unwrap() =
                                     ArgPointeeMutability::Mutable;
                                 continue 'analyse_next_arg;
@@ -309,7 +314,7 @@ fn analyse_fn(
                         | FuelVmInstruction::WideModularOp { result, .. } => {
                             // If the result is an alias of the argument pointer,
                             // then the argument is being mutated.
-                            if worklist.contains(result) || aliases.contains(result) {
+                            if in_worklist.contains(result) || aliases.contains(result) {
                                 *arg_mutabilities.get_mut(arg_idx).unwrap() =
                                     ArgPointeeMutability::Mutable;
                                 continue 'analyse_next_arg;
@@ -327,7 +332,8 @@ fn analyse_fn(
                         .unwrap_or_default()
                         .iter()
                         .for_each(|r#use| {
-                            worklist.insert(*r#use);
+                            in_worklist.insert(*r#use);
+                            worklist.push(*r#use);
                         });
                 }
                 ValueDatum::Constant(_) => panic!("Constants cannot be users"),
@@ -336,13 +342,6 @@ fn analyse_fn(
     }
 
     res.0.insert(function, arg_mutabilities);
-
-    // crate::function_print(ctx, function);
-    // println!(
-    //     "Function {}: arg_mutabilities: {:?}",
-    //     function.get_name(ctx),
-    //     res.0.get(&function).unwrap()
-    // );
 
     Ok(())
 }
