@@ -455,6 +455,12 @@ impl Block {
         context.blocks[self.0].instructions = insts;
     }
 
+    pub fn insert_instructions_after(&self, context: &mut Context, value: Value, insts: impl IntoIterator<Item = Value>) {
+        let block_ins = &mut context.blocks[self.0].instructions;
+        let pos = block_ins.iter().position(|x| x == &value).unwrap();
+        block_ins.splice(pos+1..pos+1, insts);
+    }
+
     /// Replace an instruction in this block with another.  Will return a ValueNotFound on error.
     /// Any use of the old instruction value will also be replaced by the new value throughout the
     /// owning function if `replace_uses` is set.
