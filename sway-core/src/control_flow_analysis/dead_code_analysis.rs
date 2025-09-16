@@ -2589,7 +2589,13 @@ fn allow_dead_code_ast_node(decl_engine: &DeclEngine, node: &ty::TyAstNode) -> b
                 allow_dead_code(decl_engine.get_configurable(decl_id).attributes.clone())
             }
             ty::TyDecl::ConstGenericDecl(_) => {
+<<<<<<< HEAD
                 unreachable!("ConstGenericDecl is not reachable from AstNode")
+=======
+                // only called from AstNode from where
+                // ConstGenericDecl is unreacheable
+                unreachable!()
+>>>>>>> 00aafac35 (removing todos for const generics)
             }
             ty::TyDecl::TraitTypeDecl(ty::TraitTypeDecl { decl_id, .. }) => {
                 allow_dead_code(decl_engine.get_type(decl_id).attributes.clone())

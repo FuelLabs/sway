@@ -1177,6 +1177,26 @@ impl Ord for ConstGenericExpr {
     }
 }
 
+impl Ord for ConstGenericExpr {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match (self, other) {
+            (Self::Literal { val: l, .. }, Self::Literal { val: r, .. }) => l.cmp(r),
+            (
+                Self::AmbiguousVariableExpression { ident: l, .. },
+                Self::AmbiguousVariableExpression { ident: r, .. },
+            ) => l.cmp(r),
+            (
+                ConstGenericExpr::Literal { .. },
+                ConstGenericExpr::AmbiguousVariableExpression { .. },
+            ) => Ordering::Less,
+            (
+                ConstGenericExpr::AmbiguousVariableExpression { .. },
+                ConstGenericExpr::Literal { .. },
+            ) => Ordering::Greater,
+        }
+    }
+}
+
 impl Eq for ConstGenericExpr {}
 
 impl PartialEq for ConstGenericExpr {
