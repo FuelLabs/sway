@@ -1785,7 +1785,11 @@ fn ty_to_type_info(
             }
         }
         Ty::Never { .. } => TypeInfo::Never,
-        Ty::Expr(_) => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+        Ty::Expr(expr) => {
+            return Err(
+                handler.emit_err(CompileError::ConstGenericNotSupportedHere { span: expr.span() })
+            );
+        }
     };
     Ok(type_info)
 }

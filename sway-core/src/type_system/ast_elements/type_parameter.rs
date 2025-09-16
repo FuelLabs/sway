@@ -196,7 +196,9 @@ impl PartialEqWithEngines for TypeParameter {
     fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         match (self, other) {
             (TypeParameter::Type(l), TypeParameter::Type(r)) => l.eq(r, ctx),
-            (TypeParameter::Const(l), TypeParameter::Const(r)) => l.eq(r, ctx),
+            (TypeParameter::Const(l), TypeParameter::Const(r)) => {
+                <ConstGenericParameter as PartialEqWithEngines>::eq(l, r, ctx)
+            }
             _ => false,
         }
     }
@@ -234,9 +236,7 @@ impl OrdWithEngines for TypeParameter {
     fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
         match (self, other) {
             (TypeParameter::Type(l), TypeParameter::Type(r)) => l.cmp(r, ctx),
-            (TypeParameter::Const(_), TypeParameter::Const(_)) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
-            }
+            (TypeParameter::Const(l), TypeParameter::Const(r)) => l.cmp(r),
             _ => todo!(),
         }
     }
@@ -1136,6 +1136,26 @@ impl PartialOrd for ConstGenericExpr {
     }
 }
 
+impl Ord for ConstGenericExpr {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match (self, other) {
+            (Self::Literal { val: l, .. }, Self::Literal { val: r, .. }) => l.cmp(r),
+            (
+                Self::AmbiguousVariableExpression { ident: l, .. },
+                Self::AmbiguousVariableExpression { ident: r, .. },
+            ) => l.cmp(r),
+            (
+                ConstGenericExpr::Literal { .. },
+                ConstGenericExpr::AmbiguousVariableExpression { .. },
+            ) => Ordering::Less,
+            (
+                ConstGenericExpr::AmbiguousVariableExpression { .. },
+                ConstGenericExpr::Literal { .. },
+            ) => Ordering::Greater,
+        }
+    }
+}
+
 impl Eq for ConstGenericExpr {}
 
 impl PartialEq for ConstGenericExpr {
@@ -1250,5 +1270,25 @@ impl SubstTypes for ConstGenericParameter {
 impl IsConcrete for ConstGenericParameter {
     fn is_concrete(&self, _engines: &Engines) -> bool {
         todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+    }
+}
+
+impl PartialEq for ConstGenericParameter {
+    fn eq(&self, other: &Self) -> bool {
+        self.name.as_str() == other.name.as_str()
+    }
+}
+
+impl Eq for ConstGenericParameter {}
+
+impl PartialOrd for ConstGenericParameter {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.name.as_str().partial_cmp(other.name.as_str())
+    }
+}
+
+impl Ord for ConstGenericParameter {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.name.as_str().cmp(other.name.as_str())
     }
 }
