@@ -10,27 +10,23 @@
     },
     {
       "concreteTypeId": "ab7cd04e05be58e3fc15d424c2c4a57f824a2a2d97d67252440a3925ebdc1335",
-      "metadataTypeId": 1,
+      "metadataTypeId": 0,
       "type": "enum std::identity::Identity"
     },
     {
       "concreteTypeId": "f597b637c3b0f588fb8d7086c6f4735caa3122b85f0423b82e489f9bb58e2308",
-      "metadataTypeId": 3,
       "type": "struct std::address::Address"
     },
     {
       "concreteTypeId": "745e252e80bec590efc3999ae943f07ccea4d5b45b00bb6575499b64abdd3322",
-      "metadataTypeId": 4,
       "type": "struct std::b512::B512"
     },
     {
       "concreteTypeId": "cdd87b7d12fe505416570c294c884bca819364863efe3bf539245fa18515fbbb",
-      "metadataTypeId": 5,
       "type": "struct std::bytes::Bytes"
     },
     {
       "concreteTypeId": "29c10735d33b5159f0c71ee1dbd17b36a3e69e41f00fab0d42e1bd9f428d8a54",
-      "metadataTypeId": 7,
       "type": "struct std::contract_id::ContractId"
     },
     {
@@ -108,90 +104,21 @@
     {
       "components": [
         {
-          "name": "__array_element",
-          "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
-        }
-      ],
-      "metadataTypeId": 0,
-      "type": "[_; 2]"
-    },
-    {
-      "components": [
-        {
           "name": "Address",
-          "typeId": 3
+          "offset": null,
+          "typeId": "f597b637c3b0f588fb8d7086c6f4735caa3122b85f0423b82e489f9bb58e2308"
         },
         {
           "name": "ContractId",
-          "typeId": 7
+          "offset": null,
+          "typeId": "29c10735d33b5159f0c71ee1dbd17b36a3e69e41f00fab0d42e1bd9f428d8a54"
         }
       ],
-      "metadataTypeId": 1,
+      "metadataTypeId": 0,
       "type": "enum std::identity::Identity"
-    },
-    {
-      "metadataTypeId": 2,
-      "type": "raw untyped ptr"
-    },
-    {
-      "components": [
-        {
-          "name": "bits",
-          "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
-        }
-      ],
-      "metadataTypeId": 3,
-      "type": "struct std::address::Address"
-    },
-    {
-      "components": [
-        {
-          "name": "bits",
-          "typeId": 0
-        }
-      ],
-      "metadataTypeId": 4,
-      "type": "struct std::b512::B512"
-    },
-    {
-      "components": [
-        {
-          "name": "buf",
-          "typeId": 6
-        },
-        {
-          "name": "len",
-          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
-        }
-      ],
-      "metadataTypeId": 5,
-      "type": "struct std::bytes::Bytes"
-    },
-    {
-      "components": [
-        {
-          "name": "ptr",
-          "typeId": 2
-        },
-        {
-          "name": "cap",
-          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
-        }
-      ],
-      "metadataTypeId": 6,
-      "type": "struct std::bytes::RawBytes"
-    },
-    {
-      "components": [
-        {
-          "name": "bits",
-          "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
-        }
-      ],
-      "metadataTypeId": 7,
-      "type": "struct std::contract_id::ContractId"
     }
   ],
+  "panickingCalls": null,
   "programType": "script",
   "specVersion": "1.1"
 }

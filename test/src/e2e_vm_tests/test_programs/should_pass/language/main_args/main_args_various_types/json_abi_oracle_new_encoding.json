@@ -38,10 +38,12 @@
       "components": [
         {
           "name": "__tuple_element",
-          "typeId": 4
+          "offset": null,
+          "typeId": 3
         },
         {
           "name": "__tuple_element",
+          "offset": null,
           "typeId": 2
         }
       ],
@@ -52,6 +54,7 @@
       "components": [
         {
           "name": "__array_element",
+          "offset": null,
           "typeId": 0
         }
       ],
@@ -62,11 +65,13 @@
       "components": [
         {
           "name": "Positive",
-          "typeId": 5
+          "offset": null,
+          "typeId": 4
         },
         {
           "name": "Negative",
-          "typeId": 5
+          "offset": null,
+          "typeId": 4
         }
       ],
       "metadataTypeId": 2,
@@ -74,23 +79,14 @@
     },
     {
       "metadataTypeId": 3,
-      "type": "str[3]"
-    },
-    {
-      "components": [
-        {
-          "name": "val",
-          "typeId": 3
-        }
-      ],
-      "metadataTypeId": 4,
       "type": "struct OpName"
     },
     {
-      "metadataTypeId": 5,
+      "metadataTypeId": 4,
       "type": "u64"
     }
   ],
+  "panickingCalls": null,
   "programType": "script",
   "specVersion": "1.1"
 }

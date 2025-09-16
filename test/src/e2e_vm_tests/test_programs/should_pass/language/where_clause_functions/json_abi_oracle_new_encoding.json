@@ -19,6 +19,7 @@
   "loggedTypes": [],
   "messagesTypes": [],
   "metadataTypes": [],
+  "panickingCalls": null,
   "programType": "script",
   "specVersion": "1.1"
 }

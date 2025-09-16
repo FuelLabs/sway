@@ -33,6 +33,7 @@
       "components": [
         {
           "name": "__array_element",
+          "offset": null,
           "typeId": 1
         }
       ],
@@ -44,6 +45,7 @@
       "type": "u64"
     }
   ],
+  "panickingCalls": null,
   "programType": "script",
   "specVersion": "1.1"
 }

@@ -6,12 +6,10 @@
     },
     {
       "concreteTypeId": "c0710b6731b1dd59799cf6bef33eee3b3b04a2e40e80a0724090215bbf2ca974",
-      "metadataTypeId": 1,
       "type": "struct std::asset_id::AssetId"
     },
     {
       "concreteTypeId": "29c10735d33b5159f0c71ee1dbd17b36a3e69e41f00fab0d42e1bd9f428d8a54",
-      "metadataTypeId": 2,
       "type": "struct std::contract_id::ContractId"
     },
     {
@@ -67,32 +65,8 @@
   ],
   "loggedTypes": [],
   "messagesTypes": [],
-  "metadataTypes": [
-    {
-      "metadataTypeId": 0,
-      "type": "b256"
-    },
-    {
-      "components": [
-        {
-          "name": "bits",
-          "typeId": 0
-        }
-      ],
-      "metadataTypeId": 1,
-      "type": "struct std::asset_id::AssetId"
-    },
-    {
-      "components": [
-        {
-          "name": "bits",
-          "typeId": 0
-        }
-      ],
-      "metadataTypeId": 2,
-      "type": "struct std::contract_id::ContractId"
-    }
-  ],
+  "metadataTypes": [],
+  "panickingCalls": null,
   "programType": "contract",
   "specVersion": "1.1"
 }

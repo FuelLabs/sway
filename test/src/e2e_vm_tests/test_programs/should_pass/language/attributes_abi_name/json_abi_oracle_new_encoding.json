@@ -38,6 +38,7 @@
       "components": [
         {
           "name": "A",
+          "offset": null,
           "typeId": 0
         }
       ],
@@ -45,6 +46,7 @@
       "type": "enum RenamedMyEnum"
     }
   ],
+  "panickingCalls": null,
   "programType": "contract",
   "specVersion": "1.1"
 }

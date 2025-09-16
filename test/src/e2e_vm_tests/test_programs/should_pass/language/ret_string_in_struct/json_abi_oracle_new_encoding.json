@@ -2,7 +2,6 @@
   "concreteTypes": [
     {
       "concreteTypeId": "fff091c1b987e0dabd44005f2ff24bd4a58ae5a2e6225b261dbd8812592472fe",
-      "metadataTypeId": 1,
       "type": "struct Wrapper"
     }
   ],
@@ -19,22 +18,8 @@
   ],
   "loggedTypes": [],
   "messagesTypes": [],
-  "metadataTypes": [
-    {
-      "metadataTypeId": 0,
-      "type": "str[9]"
-    },
-    {
-      "components": [
-        {
-          "name": "name",
-          "typeId": 0
-        }
-      ],
-      "metadataTypeId": 1,
-      "type": "struct Wrapper"
-    }
-  ],
+  "metadataTypes": [],
+  "panickingCalls": null,
   "programType": "script",
   "specVersion": "1.1"
 }

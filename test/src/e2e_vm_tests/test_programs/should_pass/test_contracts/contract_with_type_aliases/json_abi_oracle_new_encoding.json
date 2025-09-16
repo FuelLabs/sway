@@ -33,7 +33,6 @@
     },
     {
       "concreteTypeId": "1567acc73497bb83e04c376e2c8d3997d0207f0b9b8fa17b0192ee62e1c7a60b",
-      "metadataTypeId": 6,
       "type": "struct contract_with_type_aliases_abi::IdentityAliasWrapper"
     }
   ],
@@ -80,10 +79,12 @@
       "components": [
         {
           "name": "__tuple_element",
+          "offset": null,
           "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
         },
         {
           "name": "__tuple_element",
+          "offset": null,
           "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
         }
       ],
@@ -94,32 +95,39 @@
       "components": [
         {
           "name": "__tuple_element",
+          "offset": null,
           "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
         },
         {
           "name": "__tuple_element",
+          "offset": null,
           "typeId": 2
         },
         {
           "name": "__tuple_element",
-          "typeId": 6
+          "offset": null,
+          "typeId": "1567acc73497bb83e04c376e2c8d3997d0207f0b9b8fa17b0192ee62e1c7a60b"
         },
         {
           "name": "__tuple_element",
+          "offset": null,
           "typeArguments": [
             {
               "name": "",
-              "typeId": 6
+              "offset": null,
+              "typeId": "1567acc73497bb83e04c376e2c8d3997d0207f0b9b8fa17b0192ee62e1c7a60b"
             }
           ],
           "typeId": 5
         },
         {
           "name": "__tuple_element",
+          "offset": null,
           "typeId": 0
         },
         {
           "name": "__tuple_element",
+          "offset": null,
           "typeId": "bc5b9d5b85b9fb6e78bbb779cc67a95e60d6f291cd256a4c7dba66308dc7dfb8"
         }
       ],
@@ -130,6 +138,7 @@
       "components": [
         {
           "name": "__array_element",
+          "offset": null,
           "typeId": 3
         }
       ],
@@ -140,11 +149,13 @@
       "components": [
         {
           "name": "Address",
-          "typeId": 7
+          "offset": null,
+          "typeId": 6
         },
         {
           "name": "ContractId",
-          "typeId": 8
+          "offset": null,
+          "typeId": 7
         }
       ],
       "metadataTypeId": 3,
@@ -155,12 +166,6 @@
       "type": "generic T"
     },
     {
-      "components": [
-        {
-          "name": "f",
-          "typeId": 4
-        }
-      ],
       "metadataTypeId": 5,
       "type": "struct contract_with_type_aliases_abi::Generic",
       "typeParameters": [
@@ -168,36 +173,15 @@
       ]
     },
     {
-      "components": [
-        {
-          "name": "i",
-          "typeId": 3
-        }
-      ],
       "metadataTypeId": 6,
-      "type": "struct contract_with_type_aliases_abi::IdentityAliasWrapper"
-    },
-    {
-      "components": [
-        {
-          "name": "bits",
-          "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
-        }
-      ],
-      "metadataTypeId": 7,
       "type": "struct std::address::Address"
     },
     {
-      "components": [
-        {
-          "name": "bits",
-          "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
-        }
-      ],
-      "metadataTypeId": 8,
+      "metadataTypeId": 7,
       "type": "struct std::contract_id::ContractId"
     }
   ],
+  "panickingCalls": null,
   "programType": "contract",
   "specVersion": "1.1"
 }

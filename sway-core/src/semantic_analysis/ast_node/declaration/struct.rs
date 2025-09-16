@@ -6,7 +6,10 @@ use crate::{
     Engines,
 };
 use ast_elements::type_parameter::GenericTypeParameter;
-use sway_error::handler::{ErrorEmitted, Handler};
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
 use sway_types::Spanned;
 use symbol_collection_context::SymbolCollectionContext;
 
@@ -59,7 +62,32 @@ impl ty::TyStructDecl {
             // type check the fields
             let mut new_fields = vec![];
             for field in fields.into_iter() {
-                new_fields.push(ty::TyStructField::type_check(handler, ctx.by_ref(), field)?);
+                let ty_field = ty::TyStructField::type_check(handler, ctx.by_ref(), field)?;
+                if ty_field.attributes.indexed().is_some() && attributes.event().is_none() {
+                    return Err(
+                        handler.emit_err(CompileError::IndexedFieldInNonEventStruct {
+                            field_name: ty_field.name.into(),
+                            struct_name: name.into(),
+                        }),
+                    );
+                }
+
+                let abi_size_hint = ctx
+                    .engines()
+                    .te()
+                    .get(ty_field.type_argument.type_id())
+                    .abi_encode_size_hint(ctx.engines());
+                if ty_field.attributes.indexed().is_some()
+                    && !matches!(abi_size_hint, AbiEncodeSizeHint::Exact(_))
+                {
+                    return Err(handler.emit_err(
+                        CompileError::IndexedFieldIsNotFixedSizeABIType {
+                            field_name: ty_field.name.into(),
+                        },
+                    ));
+                }
+
+                new_fields.push(ty_field);
             }
 
             let path = CallPath::ident_to_fullpath(name, ctx.namespace());

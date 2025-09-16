@@ -20,7 +20,6 @@ members = [
     "sway-utils",
     "swayfmt",
     "test",
-    "test/src/sdk-harness",
 ]
 exclude = ["examples/*", "swayfmt/test_macros", "forc-test/test_data"]
 
@@ -90,9 +89,9 @@ fuel-core-types = { version = "0.44", default-features = false }
 
 # Dependencies from the `fuels-rs` repository:
 
-fuels = "0.74"
-fuels-core = "0.74"
-fuels-accounts = "0.74"
+fuels = "0.75"
+fuels-core = "0.75"
+fuels-accounts = "0.75"
 
 # Dependencies from the `fuel-vm` repository:
 fuel-asm = "0.62"
@@ -254,3 +253,8 @@ vte = "0.13"
 walkdir = "2.3"
 whoami = "1.5"
 wiremock = "0.6"
+
+[patch.crates-io]
+fuels = { git = "https://github.com/FuelLabs/fuels-rs", branch = "bump-version-0.75.0" }
+fuels-core = { git = "https://github.com/FuelLabs/fuels-rs", branch = "bump-version-0.75.0" }
+fuels-accounts = { git = "https://github.com/FuelLabs/fuels-rs", branch = "bump-version-0.75.0" }

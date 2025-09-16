@@ -66,10 +66,11 @@ fn log_demotion(context: &mut Context, function: Function) -> Result<bool, IrErr
                     log_val,
                     log_ty,
                     log_id,
+                    log_data,
                 }) = instr.op
                 {
                     super::target_fuel::is_demotable_type(context, &log_ty)
-                        .then_some((block, instr_val, log_val, log_ty, log_id))
+                        .then_some((block, instr_val, log_val, log_ty, log_id, log_data))
                 } else {
                     None
                 }
@@ -83,7 +84,7 @@ fn log_demotion(context: &mut Context, function: Function) -> Result<bool, IrErr
 
     // Take the logged value, store it in a temporary local, and replace it with its pointer in the
     // log instruction.
-    for (block, log_instr_val, logged_val, logged_ty, log_id_val) in candidates {
+    for (block, log_instr_val, logged_val, logged_ty, log_id_val, log_data) in candidates {
         // Create a variable for the arg, a get_local for it and a store.
         let loc_var =
             function.new_unique_local_var(context, "__log_arg".to_owned(), logged_ty, None, false);
@@ -106,6 +107,7 @@ fn log_demotion(context: &mut Context, function: Function) -> Result<bool, IrErr
                 log_val: get_loc_val,
                 log_ty: ptr_ty,
                 log_id: log_id_val,
+                log_data,
             }),
         );
 

@@ -18,12 +18,11 @@
     },
     {
       "concreteTypeId": "6906df92e2e485dde893b7d719d621b8910422e7c468f99caa5920e6ac19d9c6",
-      "metadataTypeId": 3,
       "type": "struct basic_storage_abi::Quad"
     },
     {
       "concreteTypeId": "7880d311d30802b48bd6a100a31adb5af17f94bff12daee556d4f02c1ac5b2ff",
-      "metadataTypeId": 5,
+      "metadataTypeId": 2,
       "type": "struct std::vec::Vec<struct basic_storage_abi::Quad>",
       "typeArguments": [
         "6906df92e2e485dde893b7d719d621b8910422e7c468f99caa5920e6ac19d9c6"
@@ -209,10 +208,12 @@
       "components": [
         {
           "name": "None",
+          "offset": null,
           "typeId": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
         },
         {
           "name": "Some",
+          "offset": null,
           "typeId": 1
         }
       ],
@@ -228,71 +229,13 @@
     },
     {
       "metadataTypeId": 2,
-      "type": "raw untyped ptr"
-    },
-    {
-      "components": [
-        {
-          "name": "v1",
-          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
-        },
-        {
-          "name": "v2",
-          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
-        },
-        {
-          "name": "v3",
-          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
-        },
-        {
-          "name": "v4",
-          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
-        }
-      ],
-      "metadataTypeId": 3,
-      "type": "struct basic_storage_abi::Quad"
-    },
-    {
-      "components": [
-        {
-          "name": "ptr",
-          "typeId": 2
-        },
-        {
-          "name": "cap",
-          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
-        }
-      ],
-      "metadataTypeId": 4,
-      "type": "struct std::vec::RawVec",
-      "typeParameters": [
-        1
-      ]
-    },
-    {
-      "components": [
-        {
-          "name": "buf",
-          "typeArguments": [
-            {
-              "name": "",
-              "typeId": 1
-            }
-          ],
-          "typeId": 4
-        },
-        {
-          "name": "len",
-          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
-        }
-      ],
-      "metadataTypeId": 5,
       "type": "struct std::vec::Vec",
       "typeParameters": [
         1
       ]
     }
   ],
+  "panickingCalls": null,
   "programType": "contract",
   "specVersion": "1.1"
 }
