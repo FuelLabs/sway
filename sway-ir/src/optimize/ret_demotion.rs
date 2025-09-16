@@ -67,6 +67,7 @@ pub fn ret_val_demotion(
                     block: entry_block,
                     idx: function.num_args(context),
                     ty: ptr_ret_type,
+                    is_immutable: false,
                 },
             );
             function.add_arg(context, "__ret_value", ptr_arg_val);
