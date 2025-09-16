@@ -1,15 +1,16 @@
 use crate::{
-    create_arg_demotion_pass, create_ccp_pass, create_const_demotion_pass,
-    create_const_folding_pass, create_cse_pass, create_dce_pass, create_dom_fronts_pass,
-    create_dominators_pass, create_escaped_symbols_pass, create_fn_dedup_debug_profile_pass,
-    create_fn_dedup_release_profile_pass, create_fn_inline_pass, create_globals_dce_pass,
-    create_mem2reg_pass, create_memcpyopt_pass, create_misc_demotion_pass,
-    create_module_printer_pass, create_module_verifier_pass, create_postorder_pass,
-    create_ret_demotion_pass, create_simplify_cfg_pass, create_sroa_pass, Context, Function,
-    IrError, Module, ARG_DEMOTION_NAME, CCP_NAME, CONST_DEMOTION_NAME, CONST_FOLDING_NAME,
-    CSE_NAME, DCE_NAME, FN_DEDUP_DEBUG_PROFILE_NAME, FN_DEDUP_RELEASE_PROFILE_NAME, FN_INLINE_NAME,
-    GLOBALS_DCE_NAME, MEM2REG_NAME, MEMCPYOPT_NAME, MISC_DEMOTION_NAME, RET_DEMOTION_NAME,
-    SIMPLIFY_CFG_NAME, SROA_NAME,
+    create_arg_demotion_pass, create_arg_pointee_mutability_tagger_pass, create_ccp_pass,
+    create_const_demotion_pass, create_const_folding_pass, create_cse_pass, create_dce_pass,
+    create_dom_fronts_pass, create_dominators_pass, create_escaped_symbols_pass,
+    create_fn_dedup_debug_profile_pass, create_fn_dedup_release_profile_pass,
+    create_fn_inline_pass, create_globals_dce_pass, create_mem2reg_pass, create_memcpyopt_pass,
+    create_misc_demotion_pass, create_module_printer_pass, create_module_verifier_pass,
+    create_postorder_pass, create_ret_demotion_pass, create_simplify_cfg_pass, create_sroa_pass,
+    Context, Function, IrError, Module, ARG_DEMOTION_NAME, ARG_POINTEE_MUTABILITY_TAGGER_NAME,
+    CCP_NAME, CONST_DEMOTION_NAME, CONST_FOLDING_NAME, CSE_NAME, DCE_NAME,
+    FN_DEDUP_DEBUG_PROFILE_NAME, FN_DEDUP_RELEASE_PROFILE_NAME, FN_INLINE_NAME, GLOBALS_DCE_NAME,
+    MEM2REG_NAME, MEMCPYOPT_NAME, MISC_DEMOTION_NAME, RET_DEMOTION_NAME, SIMPLIFY_CFG_NAME,
+    SROA_NAME,
 };
 use downcast_rs::{impl_downcast, Downcast};
 use rustc_hash::FxHashMap;
@@ -39,6 +40,7 @@ impl PassScope for Function {
 }
 
 /// Is a pass an Analysis or a Transformation over the IR?
+#[derive(Clone)]
 pub enum PassMutability<S: PassScope> {
     /// An analysis pass, producing an analysis result.
     Analysis(fn(&Context, analyses: &AnalysisResults, S) -> Result<AnalysisResult, IrError>),
@@ -47,6 +49,7 @@ pub enum PassMutability<S: PassScope> {
 }
 
 /// A concrete version of [PassScope].
+#[derive(Clone)]
 pub enum ScopedPass {
     ModulePass(PassMutability<Module>),
     FunctionPass(PassMutability<Function>),
@@ -71,8 +74,17 @@ impl Pass {
             ScopedPass::FunctionPass(pm) => matches!(pm, PassMutability::Analysis(_)),
         }
     }
+
     pub fn is_transform(&self) -> bool {
         !self.is_analysis()
+    }
+
+    pub fn is_module_pass(&self) -> bool {
+        matches!(self.runner, ScopedPass::ModulePass(_))
+    }
+
+    pub fn is_function_pass(&self) -> bool {
+        matches!(self.runner, ScopedPass::FunctionPass(_))
     }
 }
 
@@ -191,6 +203,12 @@ impl PassManager {
                         pass.name, dep
                     );
                 }
+                if pass.is_function_pass() && dep_t.is_module_pass() {
+                    panic!(
+                        "Function pass {} cannot depend on module pass {}",
+                        pass.name, dep
+                    );
+                }
             } else {
                 panic!(
                     "Pass {} depends on a (yet) unregistered pass {}",
@@ -212,52 +230,117 @@ impl PassManager {
 
     fn actually_run(&mut self, ir: &mut Context, pass: &'static str) -> Result<bool, IrError> {
         let mut modified = false;
-        let pass_t = self.passes.get(pass).expect("Unregistered pass");
 
-        // Run passes that this depends on.
-        for dep in pass_t.deps.clone() {
-            self.actually_run(ir, dep)?;
+        fn run_module_pass(
+            pm: &mut PassManager,
+            ir: &mut Context,
+            pass: &'static str,
+            module: Module,
+        ) -> Result<bool, IrError> {
+            let mut modified = false;
+            let pass_t = pm.passes.get(pass).expect("Unregistered pass");
+            for dep in pass_t.deps.clone() {
+                let dep_t = pm.passes.get(dep).expect("Unregistered dependent pass");
+                // If pass registration allows transformations as dependents, we could remove this I guess.
+                assert!(dep_t.is_analysis());
+                match dep_t.runner {
+                    ScopedPass::ModulePass(_) => {
+                        if !pm.analyses.is_analysis_result_available(dep, module) {
+                            run_module_pass(pm, ir, dep, module)?;
+                        }
+                    }
+                    ScopedPass::FunctionPass(_) => {
+                        for f in module.function_iter(ir) {
+                            if !pm.analyses.is_analysis_result_available(dep, f) {
+                                run_function_pass(pm, ir, dep, f)?;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Get the pass again to satisfy the borrow checker.
+            let pass_t = pm.passes.get(pass).expect("Unregistered pass");
+            let ScopedPass::ModulePass(mp) = pass_t.runner.clone() else {
+                panic!("Expected a module pass");
+            };
+            match mp {
+                PassMutability::Analysis(analysis) => {
+                    let result = analysis(ir, &pm.analyses, module)?;
+                    pm.analyses.add_result(pass, module, result);
+                }
+                PassMutability::Transform(transform) => {
+                    if transform(ir, &pm.analyses, module)? {
+                        pm.analyses.invalidate_all_results_at_scope(module);
+                        for f in module.function_iter(ir) {
+                            pm.analyses.invalidate_all_results_at_scope(f);
+                        }
+                        modified = true;
+                    }
+                }
+            }
+
+            Ok(modified)
         }
 
-        // To please the borrow checker, get current pass again.
-        let pass_t = self.passes.get(pass).expect("Unregistered pass");
+        fn run_function_pass(
+            pm: &mut PassManager,
+            ir: &mut Context,
+            pass: &'static str,
+            function: Function,
+        ) -> Result<bool, IrError> {
+            let mut modified = false;
+            let pass_t = pm.passes.get(pass).expect("Unregistered pass");
+            for dep in pass_t.deps.clone() {
+                let dep_t = pm.passes.get(dep).expect("Unregistered dependent pass");
+                // If pass registration allows transformations as dependents, we could remove this I guess.
+                assert!(dep_t.is_analysis());
+                match dep_t.runner {
+                    ScopedPass::ModulePass(_) => {
+                        panic!(
+                            "Function pass {} cannot depend on module pass {}",
+                            pass, dep
+                        )
+                    }
+                    ScopedPass::FunctionPass(_) => {
+                        if !pm.analyses.is_analysis_result_available(dep, function) {
+                            run_function_pass(pm, ir, dep, function)?;
+                        };
+                    }
+                }
+            }
+
+            // Get the pass again to satisfy the borrow checker.
+            let pass_t = pm.passes.get(pass).expect("Unregistered pass");
+            let ScopedPass::FunctionPass(fp) = pass_t.runner.clone() else {
+                panic!("Expected a function pass");
+            };
+            match fp {
+                PassMutability::Analysis(analysis) => {
+                    let result = analysis(ir, &pm.analyses, function)?;
+                    pm.analyses.add_result(pass, function, result);
+                }
+                PassMutability::Transform(transform) => {
+                    if transform(ir, &pm.analyses, function)? {
+                        pm.analyses.invalidate_all_results_at_scope(function);
+                        modified = true;
+                    }
+                }
+            }
+
+            Ok(modified)
+        }
 
         for m in ir.module_iter() {
-            match &pass_t.runner {
-                ScopedPass::ModulePass(mp) => match mp {
-                    PassMutability::Analysis(analysis) => {
-                        if !self.analyses.is_analysis_result_available(pass_t.name, m) {
-                            let result = analysis(ir, &self.analyses, m)?;
-                            self.analyses.add_result(pass_t.name, m, result);
-                        }
-                    }
-                    PassMutability::Transform(transform) => {
-                        if transform(ir, &self.analyses, m)? {
-                            self.analyses.invalidate_all_results_at_scope(m);
-                            for f in m.function_iter(ir) {
-                                self.analyses.invalidate_all_results_at_scope(f);
-                            }
-                            modified = true;
-                        }
-                    }
-                },
-                ScopedPass::FunctionPass(fp) => {
+            let pass_t = self.passes.get(pass).expect("Unregistered pass");
+            let pass_runner = pass_t.runner.clone();
+            match pass_runner {
+                ScopedPass::ModulePass(_) => {
+                    modified |= run_module_pass(self, ir, pass, m)?;
+                }
+                ScopedPass::FunctionPass(_) => {
                     for f in m.function_iter(ir) {
-                        match fp {
-                            PassMutability::Analysis(analysis) => {
-                                if !self.analyses.is_analysis_result_available(pass_t.name, f) {
-                                    let result = analysis(ir, &self.analyses, f)?;
-                                    self.analyses.add_result(pass_t.name, f, result);
-                                }
-                            }
-                            PassMutability::Transform(transform) => {
-                                if transform(ir, &self.analyses, f)? {
-                                    self.analyses.invalidate_all_results_at_scope(f);
-                                    self.analyses.invalidate_all_results_at_scope(m);
-                                    modified = true;
-                                }
-                            }
-                        }
+                        modified |= run_function_pass(self, ir, pass, f)?;
                     }
                 }
             }
@@ -391,6 +474,7 @@ pub fn register_known_passes(pm: &mut PassManager) {
     pm.register(create_module_printer_pass());
     pm.register(create_module_verifier_pass());
     // Optimization passes.
+    pm.register(create_arg_pointee_mutability_tagger_pass());
     pm.register(create_fn_dedup_release_profile_pass());
     pm.register(create_fn_dedup_debug_profile_pass());
     pm.register(create_mem2reg_pass());
@@ -416,10 +500,12 @@ pub fn create_o1_pass_group() -> PassGroup {
     o1.append_pass(MEM2REG_NAME);
     o1.append_pass(FN_DEDUP_RELEASE_PROFILE_NAME);
     o1.append_pass(FN_INLINE_NAME);
+    o1.append_pass(ARG_POINTEE_MUTABILITY_TAGGER_NAME);
     o1.append_pass(SIMPLIFY_CFG_NAME);
     o1.append_pass(GLOBALS_DCE_NAME);
     o1.append_pass(DCE_NAME);
     o1.append_pass(FN_INLINE_NAME);
+    o1.append_pass(ARG_POINTEE_MUTABILITY_TAGGER_NAME);
     o1.append_pass(CCP_NAME);
     o1.append_pass(CONST_FOLDING_NAME);
     o1.append_pass(SIMPLIFY_CFG_NAME);
