@@ -600,7 +600,9 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             }
         }
         ty::TyDecl::ConstGenericDecl(_) => {
-            todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860");
+            //This is only called from AstNode
+            // where a ConstGenericDecl is unreacheable
+            unreachable!()
         }
         ty::TyDecl::FunctionDecl(ty::FunctionDecl { decl_id, .. }) => {
             let fn_decl = decl_engine.get_function(decl_id);
@@ -2589,7 +2591,9 @@ fn allow_dead_code_ast_node(decl_engine: &DeclEngine, node: &ty::TyAstNode) -> b
                 allow_dead_code(decl_engine.get_configurable(decl_id).attributes.clone())
             }
             ty::TyDecl::ConstGenericDecl(_) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                // only called from AstNode from where
+                // ConstGenericDecl is unreacheable
+                unreachable!()
             }
             ty::TyDecl::TraitTypeDecl(ty::TraitTypeDecl { decl_id, .. }) => {
                 allow_dead_code(decl_engine.get_type(decl_id).attributes.clone())

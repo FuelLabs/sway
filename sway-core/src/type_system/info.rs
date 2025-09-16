@@ -741,13 +741,22 @@ impl GetCallPathWithEngines for TypeInfo {
             TypeInfo::RawUntypedPtr => None,
             TypeInfo::RawUntypedSlice => None,
             TypeInfo::Ptr(generic_argument) => generic_argument
-                .call_path_tree()
+                .as_type_argument()
+                .unwrap()
+                .call_path_tree
+                .as_ref()
                 .map(|v| v.qualified_call_path.call_path.clone()),
             TypeInfo::Slice(generic_argument) => generic_argument
-                .call_path_tree()
+                .as_type_argument()
+                .unwrap()
+                .call_path_tree
+                .as_ref()
                 .map(|v| v.qualified_call_path.call_path.clone()),
             TypeInfo::Alias { name: _, ty } => ty
-                .call_path_tree()
+                .as_type_argument()
+                .unwrap()
+                .call_path_tree
+                .as_ref()
                 .map(|v| v.qualified_call_path.call_path.clone()),
             TypeInfo::TraitType {
                 name: _,
@@ -757,7 +766,10 @@ impl GetCallPathWithEngines for TypeInfo {
                 to_mutable_value: _,
                 referenced_type,
             } => referenced_type
-                .call_path_tree()
+                .as_type_argument()
+                .unwrap()
+                .call_path_tree
+                .as_ref()
                 .map(|v| v.qualified_call_path.call_path.clone()),
         }
     }
