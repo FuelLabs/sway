@@ -3,7 +3,11 @@ use crate::{
     type_system::priv_prelude::*,
 };
 use serde::{Deserialize, Serialize};
-use std::{cmp::Ordering, fmt, hash::Hasher};
+use std::{
+    cmp::Ordering,
+    fmt,
+    hash::{Hash as _, Hasher},
+};
 use sway_types::{Span, Spanned};
 
 use super::type_parameter::ConstGenericExpr;
@@ -92,23 +96,19 @@ impl GenericArgument {
             .initial_type_id
     }
 
-    pub fn call_path_tree(&self) -> Option<&CallPathTree> {
-        match self {
-            GenericArgument::Type(a) => a.call_path_tree.as_ref(),
-            GenericArgument::Const(_) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
-            }
-        }
-    }
+    // pub fn call_path_tree(&self) -> Option<&CallPathTree> {
+    //     match self {
+    //         GenericArgument::Type(a) => a.call_path_tree.as_ref(),
+    //         GenericArgument::Const(_) => None,
+    //     }
+    // }
 
-    pub fn call_path_tree_mut(&mut self) -> Option<&mut CallPathTree> {
-        match self {
-            GenericArgument::Type(a) => a.call_path_tree.as_mut(),
-            GenericArgument::Const(_) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
-            }
-        }
-    }
+    // pub fn call_path_tree_mut(&mut self) -> Option<&mut CallPathTree> {
+    //     match self {
+    //         GenericArgument::Type(a) => a.call_path_tree.as_mut(),
+    //         GenericArgument::Const(_) => None,
+    //     }
+    // }
 
     /// Returns true if `self` is annotated by having either
     /// its [Self::initial_type_id] different from [Self::type_id],
@@ -119,9 +119,7 @@ impl GenericArgument {
             GenericArgument::Type(a) => {
                 a.type_id != a.initial_type_id || a.call_path_tree.is_some() || !a.span.is_dummy()
             }
-            GenericArgument::Const(_) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
-            }
+            GenericArgument::Const(_) => false,
         }
     }
 }
@@ -130,9 +128,7 @@ impl Spanned for GenericArgument {
     fn span(&self) -> Span {
         match self {
             GenericArgument::Type(a) => a.span.clone(),
-            GenericArgument::Const(_) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
-            }
+            GenericArgument::Const(a) => a.expr.span(),
         }
     }
 }
@@ -164,9 +160,7 @@ impl HashWithEngines for GenericArgument {
                 let type_engine = engines.te();
                 type_engine.get(*type_id).hash(state, engines);
             }
-            GenericArgument::Const(_) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
-            }
+            GenericArgument::Const(GenericConstArgument { expr }) => expr.hash(state),
         }
     }
 }
@@ -182,9 +176,7 @@ impl PartialEqWithEngines for GenericArgument {
                         .get(l.type_id)
                         .eq(&type_engine.get(r.type_id), ctx)
             }
-            (GenericArgument::Const(_), GenericArgument::Const(_)) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
-            }
+            (GenericArgument::Const(l), GenericArgument::Const(r)) => l.expr.eq(&r.expr),
             _ => false,
         }
     }
@@ -219,9 +211,7 @@ impl OrdWithEngines for GenericArgument {
                     .get(*lti)
                     .cmp(&ctx.engines().te().get(*rti), ctx)
             }
-            (GenericArgument::Const(_), GenericArgument::Const(_)) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
-            }
+            (GenericArgument::Const(l), GenericArgument::Const(r)) => l.expr.cmp(&r.expr),
             (GenericArgument::Type(_), _) => Ordering::Less,
             (GenericArgument::Const(_), _) => Ordering::Greater,
         }
@@ -234,9 +224,14 @@ impl DisplayWithEngines for GenericArgument {
             GenericArgument::Type(a) => {
                 write!(f, "{}", engines.help_out(&*engines.te().get(a.type_id)))
             }
-            GenericArgument::Const(_) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
-            }
+            GenericArgument::Const(a) => match &a.expr {
+                ConstGenericExpr::Literal { val, .. } => {
+                    write!(f, "{val}")
+                }
+                ConstGenericExpr::AmbiguousVariableExpression { ident, .. } => {
+                    write!(f, "{}", ident.as_str())
+                }
+            },
         }
     }
 }
@@ -247,9 +242,14 @@ impl DebugWithEngines for GenericArgument {
             GenericArgument::Type(a) => {
                 write!(f, "{:?}", engines.help_out(&*engines.te().get(a.type_id)))
             }
-            GenericArgument::Const(_) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
-            }
+            GenericArgument::Const(a) => match &a.expr {
+                ConstGenericExpr::Literal { val, .. } => {
+                    write!(f, "{val}")
+                }
+                ConstGenericExpr::AmbiguousVariableExpression { ident, .. } => {
+                    write!(f, "{}", ident.as_str())
+                }
+            },
         }
     }
 }
