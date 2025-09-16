@@ -570,7 +570,7 @@ impl TyDecl {
             TyDecl::VariableDecl(_decl) => None,
             TyDecl::ConstantDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
             TyDecl::ConfigurableDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
-            TyDecl::ConstGenericDecl(decl) => {
+            TyDecl::ConstGenericDecl(_) => {
                 todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
             }
             TyDecl::TraitTypeDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),

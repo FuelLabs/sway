@@ -1125,14 +1125,7 @@ impl ConstGenericExpr {
 
 impl PartialOrd for ConstGenericExpr {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        match (self, other) {
-            (Self::Literal { val: l, .. }, Self::Literal { val: r, .. }) => l.partial_cmp(r),
-            (
-                Self::AmbiguousVariableExpression { ident: l, .. },
-                Self::AmbiguousVariableExpression { ident: r, .. },
-            ) => l.partial_cmp(r),
-            _ => None,
-        }
+        Some(self.cmp(other))
     }
 }
 
@@ -1283,7 +1276,7 @@ impl Eq for ConstGenericParameter {}
 
 impl PartialOrd for ConstGenericParameter {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.name.as_str().partial_cmp(other.name.as_str())
+        Some(self.cmp(other))
     }
 }
 
