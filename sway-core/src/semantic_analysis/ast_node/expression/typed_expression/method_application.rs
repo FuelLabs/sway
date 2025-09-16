@@ -900,65 +900,58 @@ fn unify_arguments_and_parameters(
 pub(crate) fn resolve_method_name(
     handler: &Handler,
     mut ctx: TypeCheckContext,
-    method_name: &TypeBinding<MethodName>,
+    method_name_binding: &TypeBinding<MethodName>,
     arguments_types: &[TypeId],
 ) -> Result<(DeclRefFunction, TypeId), ErrorEmitted> {
     ctx.engines
         .obs()
-        .raise_on_before_method_resolution(&ctx, method_name, arguments_types);
+        .raise_on_before_method_resolution(&ctx, method_name_binding, arguments_types);
 
     let type_engine = ctx.engines.te();
     let engines = ctx.engines();
 
-    // retrieve the function declaration using the components of the method name
-    let (decl_ref, type_id) = match &method_name.inner {
+    // Helper: first argument type or an unknown placeholder.
+    let first_arg_or_unknown = || {
+        arguments_types
+            .first()
+            .cloned()
+            .unwrap_or_else(|| type_engine.new_unknown())
+    };
+
+    let (type_id, module_path, method_ident) = match &method_name_binding.inner {
         MethodName::FromType {
             call_path_binding,
             method_name,
         } => {
-            // type check the call path
             let type_id = call_path_binding
                 .type_check_with_type_info(handler, &mut ctx)
                 .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
-            // find the module that the symbol is in
-            let type_info_prefix = &call_path_binding
+            let type_info_path = call_path_binding
                 .inner
-                .to_fullpath(engines, ctx.namespace())
-                .prefixes;
+                .to_fullpath(engines, ctx.namespace());
+            let module_path = type_info_path.prefixes.clone();
             ctx.namespace()
-                .require_module_from_absolute_path(handler, type_info_prefix)?;
+                .require_module_from_absolute_path(handler, &module_path)?;
 
-            // find the method
-            let decl_ref = ctx.find_method_for_type(
-                handler,
-                type_id,
-                type_info_prefix,
-                method_name,
-                ctx.type_annotation(),
-                arguments_types,
-                None,
-            )?;
-
-            (decl_ref, type_id)
+            (type_id, module_path, method_name)
         }
+
         MethodName::FromTrait { call_path } => {
-            // find the module that the symbol is in
-            let module_path = match call_path.callpath_type {
+            let module_path: Vec<_> = match call_path.callpath_type {
                 CallPathType::RelativeToPackageRoot => {
                     let mut path = vec![ctx.namespace().current_package_name().clone()];
-                    for ident in call_path.prefixes.iter() {
-                        path.push(ident.clone())
-                    }
+                    path.extend(call_path.prefixes.iter().cloned());
                     path
                 }
                 CallPathType::Full => call_path.prefixes.clone(),
                 CallPathType::Ambiguous => {
+                    let first = call_path.prefixes.first().expect("prefixes is non-empty");
                     if ctx
                         .namespace()
                         .current_module()
                         .submodules()
-                        .contains_key(call_path.prefixes.first().unwrap().as_str())
+                        .contains_key(first.as_str())
                     {
                         ctx.namespace().prepend_module_path(&call_path.prefixes)
                     } else {
@@ -967,77 +960,38 @@ pub(crate) fn resolve_method_name(
                 }
             };
 
-            // find the type of the first argument
-            let type_id = arguments_types
-                .first()
-                .cloned()
-                .unwrap_or_else(|| type_engine.new_unknown());
-
-            // find the method
-            let decl_ref = ctx.find_method_for_type(
-                handler,
-                type_id,
-                &module_path,
-                &call_path.suffix,
-                ctx.type_annotation(),
-                arguments_types,
-                None,
-            )?;
-
-            (decl_ref, type_id)
+            let type_id = first_arg_or_unknown();
+            (type_id, module_path, &call_path.suffix)
         }
+
         MethodName::FromModule { method_name } => {
-            // find the module that the symbol is in
-            let module_path = ctx.namespace().current_mod_path();
-
-            // find the type of the first argument
-            let type_id = arguments_types
-                .first()
-                .cloned()
-                .unwrap_or_else(|| type_engine.new_unknown());
-
-            // find the method
-            let decl_ref = ctx.find_method_for_type(
-                handler,
-                type_id,
-                module_path.as_slice(),
-                method_name,
-                ctx.type_annotation(),
-                arguments_types,
-                None,
-            )?;
-
-            (decl_ref, type_id)
+            let module_path = ctx.namespace().current_mod_path().to_vec();
+            let type_id = first_arg_or_unknown();
+            (type_id, module_path, method_name)
         }
+
         MethodName::FromQualifiedPathRoot {
-            ty,
-            as_trait,
-            method_name,
+            ty, method_name, ..
         } => {
-            // type check the call path
             let type_id = ty.type_id();
-
-            // find the module that the symbol is in
-            let module_path = ctx.namespace().current_mod_path();
-
-            // find the method
-            let decl_ref = ctx.find_method_for_type(
-                handler,
-                type_id,
-                module_path,
-                method_name,
-                ctx.type_annotation(),
-                arguments_types,
-                Some(*as_trait),
-            )?;
-
-            (decl_ref, type_id)
+            let module_path = ctx.namespace().current_mod_path().to_vec();
+            (type_id, module_path, method_name)
         }
     };
 
+    let decl_ref = ctx.find_method_for_type(
+        handler,
+        type_id,
+        module_path.as_slice(),
+        method_ident,
+        ctx.type_annotation(),
+        arguments_types,
+        Some(&method_name_binding.inner),
+    )?;
+
     ctx.engines.obs().raise_on_after_method_resolution(
         &ctx,
-        method_name,
+        method_name_binding,
         arguments_types,
         decl_ref.clone(),
         type_id,
