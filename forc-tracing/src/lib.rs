@@ -293,7 +293,8 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
             options
                 .silent
                 .and_then(|silent| silent.then_some(LevelFilter::OFF))
-        });
+        })
+        .unwrap_or(LevelFilter::INFO); // Default to INFO level when nothing else is specified
 
     let writer_mode = match options.writer_mode {
         Some(TracingWriter::Json) => {
@@ -338,150 +339,77 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
                 // Use the HideTelemetryFilter to prevent telemetry spans from appearing in fmt output
                 let hide_filter = HideTelemetryFilter;
 
-                match (is_json_mode_active(), level_filter) {
-                    (true, Some(level)) => {
-                        registry()
-                            .with(telemetry_layer)
-                            .with(
-                                tracing_subscriber::fmt::layer()
-                                    .json()
-                                    .with_ansi(true)
-                                    .with_level(false)
-                                    .with_file(false)
-                                    .with_line_number(false)
-                                    .without_time()
-                                    .with_target(false)
-                                    .with_writer(writer_mode)
-                                    .with_filter(hide_filter)
-                                    .with_filter(level),
-                            )
-                            .init();
-                        return;
-                    }
-                    (true, None) => {
-                        registry()
-                            .with(telemetry_layer)
-                            .with(
-                                tracing_subscriber::fmt::layer()
-                                    .json()
-                                    .with_ansi(true)
-                                    .with_level(false)
-                                    .with_file(false)
-                                    .with_line_number(false)
-                                    .without_time()
-                                    .with_target(false)
-                                    .with_writer(writer_mode)
-                                    .with_filter(hide_filter),
-                            )
-                            .init();
-                        return;
-                    }
-                    (false, Some(level)) => {
-                        registry()
-                            .with(telemetry_layer)
-                            .with(
-                                tracing_subscriber::fmt::layer()
-                                    .with_ansi(true)
-                                    .with_level(false)
-                                    .with_file(false)
-                                    .with_line_number(false)
-                                    .without_time()
-                                    .with_target(false)
-                                    .with_writer(writer_mode)
-                                    .with_filter(hide_filter)
-                                    .with_filter(level),
-                            )
-                            .init();
-                        return;
-                    }
-                    (false, None) => {
-                        registry()
-                            .with(telemetry_layer)
-                            .with(
-                                tracing_subscriber::fmt::layer()
-                                    .with_ansi(true)
-                                    .with_level(false)
-                                    .with_file(false)
-                                    .with_line_number(false)
-                                    .without_time()
-                                    .with_target(false)
-                                    .with_writer(writer_mode)
-                                    .with_filter(hide_filter),
-                            )
-                            .init();
-                        return;
-                    }
+                if is_json_mode_active() {
+                    registry()
+                        .with(telemetry_layer)
+                        .with(
+                            tracing_subscriber::fmt::layer()
+                                .json()
+                                .with_ansi(true)
+                                .with_level(false)
+                                .with_file(false)
+                                .with_line_number(false)
+                                .without_time()
+                                .with_target(false)
+                                .with_writer(writer_mode)
+                                .with_filter(hide_filter)
+                                .with_filter(level_filter),
+                        )
+                        .init();
+                } else {
+                    registry()
+                        .with(telemetry_layer)
+                        .with(
+                            tracing_subscriber::fmt::layer()
+                                .with_ansi(true)
+                                .with_level(false)
+                                .with_file(false)
+                                .with_line_number(false)
+                                .without_time()
+                                .with_target(false)
+                                .with_writer(writer_mode)
+                                .with_filter(hide_filter)
+                                .with_filter(level_filter),
+                        )
+                        .init();
                 }
+                return;
             }
         }
     }
 
     // Fallback: no telemetry layer
-    match (is_json_mode_active(), level_filter) {
-        (true, Some(level)) => {
-            registry()
-                .with(
-                    tracing_subscriber::fmt::layer()
-                        .json()
-                        .with_ansi(true)
-                        .with_level(false)
-                        .with_file(false)
-                        .with_line_number(false)
-                        .without_time()
-                        .with_target(false)
-                        .with_writer(writer_mode)
-                        .with_filter(composite_filter)
-                        .with_filter(level),
-                )
-                .init();
-        }
-        (true, None) => {
-            registry()
-                .with(
-                    tracing_subscriber::fmt::layer()
-                        .json()
-                        .with_ansi(true)
-                        .with_level(false)
-                        .with_file(false)
-                        .with_line_number(false)
-                        .without_time()
-                        .with_target(false)
-                        .with_writer(writer_mode)
-                        .with_filter(composite_filter),
-                )
-                .init();
-        }
-        (false, Some(level)) => {
-            registry()
-                .with(
-                    tracing_subscriber::fmt::layer()
-                        .with_ansi(true)
-                        .with_level(false)
-                        .with_file(false)
-                        .with_line_number(false)
-                        .without_time()
-                        .with_target(false)
-                        .with_writer(writer_mode)
-                        .with_filter(composite_filter)
-                        .with_filter(level),
-                )
-                .init();
-        }
-        (false, None) => {
-            registry()
-                .with(
-                    tracing_subscriber::fmt::layer()
-                        .with_ansi(true)
-                        .with_level(false)
-                        .with_file(false)
-                        .with_line_number(false)
-                        .without_time()
-                        .with_target(false)
-                        .with_writer(writer_mode)
-                        .with_filter(composite_filter),
-                )
-                .init();
-        }
+    if is_json_mode_active() {
+        registry()
+            .with(
+                tracing_subscriber::fmt::layer()
+                    .json()
+                    .with_ansi(true)
+                    .with_level(false)
+                    .with_file(false)
+                    .with_line_number(false)
+                    .without_time()
+                    .with_target(false)
+                    .with_writer(writer_mode)
+                    .with_filter(composite_filter)
+                    .with_filter(level_filter),
+            )
+            .init();
+    } else {
+        registry()
+            .with(
+                tracing_subscriber::fmt::layer()
+                    .with_ansi(true)
+                    .with_level(false)
+                    .with_file(false)
+                    .with_line_number(false)
+                    .without_time()
+                    .with_target(false)
+                    .with_writer(writer_mode)
+                    .with_filter(composite_filter)
+                    .with_filter(level_filter),
+            )
+            .init();
     }
 }
 
