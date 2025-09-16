@@ -1,0 +1,8 @@
+[[package]]
+name = "all_types"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-D6326E097E5EED05"

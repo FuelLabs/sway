@@ -272,6 +272,7 @@ pub fn compile_html(
                 documented_libraries.push(lib_info);
                 build_docs(opts, ctx, &ty_program, &ctx.manifest, pkg_manifest)?
             } else {
+                eprintln!("275 oh no {:?}", pkg_manifest.project_name().to_string());
                 bail!(
                     "forc-doc only supports libraries. '{}' is not a library.",
                     pkg_manifest.project_name()
@@ -331,6 +332,9 @@ pub fn compile_html(
                                 .0,
                         );
                     }
+                } else {
+                    eprintln!("336 yikes {:?}", pkg_manifest_file.project_name().to_string());
+
                 }
             }
         }

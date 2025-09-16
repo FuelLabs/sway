@@ -370,7 +370,7 @@ impl Descriptor {
                 }
             }
             _ => {
-                println_warning(&format!("Non-documentable declaration: {:?}", ty_decl));
+                eprintln!("Non-documentable declaration: {:?}", ty_decl);
                 Ok(Descriptor::NonDocumentable)
             }
         }

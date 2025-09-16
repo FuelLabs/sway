@@ -24,6 +24,16 @@ fn builds_lib_std_docs() {
 }
 
 #[test]
+fn test_all_types() {
+    let project_name = "all_types";
+    let command = Command {
+        path: Some(format!("{DATA_DIR}/{project_name}")),
+        ..Default::default()
+    };
+    let (doc_path, _doc_result) = generate_docs(&command).unwrap();
+}
+
+#[test]
 fn test_impl_traits_default() {
     let doc_dir_name: &str = "impl_traits_default";
     let project_name = "impl_traits";
