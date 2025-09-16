@@ -324,6 +324,7 @@ pub fn generate_program_abi(
                 generate_configurables(handler, ctx, engines, metadata_types, concrete_types)?;
             let error_codes = generate_error_codes(ctx.panic_occurrences);
             Ok(program_abi::ProgramABI {
+                panicking_calls: None,
                 program_type: "contract".to_string(),
                 spec_version,
                 encoding_version,
@@ -353,6 +354,7 @@ pub fn generate_program_abi(
                 generate_configurables(handler, ctx, engines, metadata_types, concrete_types)?;
             let error_codes = generate_error_codes(ctx.panic_occurrences);
             Ok(program_abi::ProgramABI {
+                panicking_calls: None,
                 program_type: "script".to_string(),
                 spec_version,
                 encoding_version,
@@ -382,6 +384,7 @@ pub fn generate_program_abi(
                 generate_configurables(handler, ctx, engines, metadata_types, concrete_types)?;
             let error_codes = generate_error_codes(ctx.panic_occurrences);
             Ok(program_abi::ProgramABI {
+                panicking_calls: None,
                 program_type: "predicate".to_string(),
                 spec_version,
                 encoding_version,
@@ -401,6 +404,7 @@ pub fn generate_program_abi(
                 generate_messages_types(handler, ctx, engines, metadata_types, concrete_types)?;
             let error_codes = generate_error_codes(ctx.panic_occurrences);
             Ok(program_abi::ProgramABI {
+                panicking_calls: None,
                 program_type: "library".to_string(),
                 spec_version,
                 encoding_version,
@@ -650,6 +654,7 @@ fn generate_concrete_type_declaration(
     let (type_field, concrete_type_id) =
         type_id.get_abi_type_field_and_concrete_id(handler, ctx, engines, resolved_type_id)?;
     let concrete_type_decl = TypeConcreteDeclaration {
+        alias_of: None,
         type_field,
         concrete_type_id: concrete_type_id.clone(),
         metadata_type_id,
@@ -818,6 +823,7 @@ fn generate_error_codes(panic_occurrences: &PanicOccurrences) -> BTreeMap<u64, E
                         file: panic_occurrence.loc.file.clone(),
                         line: panic_occurrence.loc.loc.line as u64,
                         column: panic_occurrence.loc.loc.col as u64,
+                        function: String::default(),
                     },
                     log_id: panic_occurrence
                         .log_id
@@ -918,6 +924,7 @@ impl TypeId {
                             type_id: program_abi::TypeId::Metadata(MetadataTypeId(
                                 x.type_argument.initial_type_id().index(),
                             )),
+                            offset: None,
                             error_message: x.attributes.error_message().cloned(),
                             type_arguments: x
                                 .type_argument
@@ -972,6 +979,7 @@ impl TypeId {
                                 x.type_argument.initial_type_id().index(),
                             )),
                             error_message: None,
+                            offset: None,
                             type_arguments: x
                                 .type_argument
                                 .initial_type_id()

@@ -8,11 +8,9 @@ use crate::{
 };
 use anyhow::{anyhow, bail, Result};
 use fuel_abi_types::abi::unified_program::UnifiedProgramABI;
-use fuel_core_client::client::types::TransactionStatus;
+use fuel_core_client::client::{types::TransactionStatus, FuelClient};
 use fuel_core_types::services::executor::{TransactionExecutionResult, TransactionExecutionStatus};
 use fuels::{
-    accounts::ViewOnlyAccount,
-    client::FuelClient,
     programs::calls::{
         receipt_parser::ReceiptParser,
         traits::{ContractDependencyConfigurator, TransactionTuner},
@@ -20,6 +18,7 @@ use fuels::{
     },
     types::transaction::Transaction,
 };
+use fuels_accounts::ViewOnlyAccount;
 use fuels_core::{
     codec::{
         encode_fn_selector, log_formatters_lookup, ABIDecoder, ABIEncoder, DecoderConfig,
@@ -157,16 +156,31 @@ pub async fn call_function(
     };
 
     // Execute the call based on execution mode
-    let client = FuelClient::new(wallet.provider().url())
-        .map_err(|e| anyhow!("Failed to create client: {e}"))?;
-    let consensus_params = wallet.provider().consensus_parameters().await?;
+    let provider = wallet.provider();
+    let client =
+        FuelClient::new(provider.url()).map_err(|e| anyhow!("Failed to create client: {e}"))?;
+    let consensus_params = provider.consensus_parameters().await?;
     let chain_id = consensus_params.chain_id();
+
+    let required_asset_amounts = call.required_assets(*consensus_params.base_asset_id());
+    let mut asset_inputs = Vec::new();
+    for &(asset_id, amount) in &required_asset_amounts {
+        let resources = wallet
+            .get_asset_inputs_for_amount(asset_id, amount, None)
+            .await?;
+        asset_inputs.extend(resources);
+    }
 
     let tb = call
         .clone()
         .with_external_contracts(external_contracts)
-        .transaction_builder(tx_policies, variable_output_policy, &wallet)
-        .await
+        .transaction_builder(
+            tx_policies,
+            variable_output_policy,
+            &consensus_params,
+            asset_inputs,
+            &wallet,
+        )
         .map_err(|e| anyhow!("Failed to initialize transaction builder: {e}"))?;
 
     #[cfg_attr(test, allow(unused_variables))]
@@ -305,7 +319,7 @@ pub async fn call_function(
     let trace_events = {
         use crate::op::call::trace::interpret_execution_trace;
         interpret_execution_trace(
-            wallet.provider(),
+            provider,
             &mode,
             &consensus_params,
             script,
