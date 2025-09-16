@@ -50,6 +50,7 @@ pub async fn call_function(
         mut output,
         external_contracts,
         contract_abis,
+        variable_output,
         ..
     } = cmd;
 
@@ -88,7 +89,9 @@ pub async fn call_function(
     };
 
     // Setup variable output policy and log decoder
-    let variable_output_policy = VariableOutputPolicy::Exactly(call_parameters.amount as usize);
+    let variable_output_policy = variable_output
+        .map(VariableOutputPolicy::Exactly)
+        .unwrap_or(VariableOutputPolicy::EstimateMinimum);
     let error_codes = abi
         .unified
         .error_codes
@@ -275,8 +278,6 @@ pub async fn call_function(
     let fuel_tx::Transaction::Script(script) = &tx else {
         bail!("Transaction is not a script");
     };
-    let script_json = serde_json::to_value(script)
-        .map_err(|e| anyhow!("Failed to convert script to JSON: {e}"))?;
 
     // Parse the result based on output format
     let mut receipt_parser =
@@ -330,7 +331,7 @@ pub async fn call_function(
 
         super::display_detailed_call_info(
             &tx_execution,
-            &script_json,
+            script,
             &abi_map,
             cmd.verbosity,
             &mut output,
@@ -357,7 +358,7 @@ pub async fn call_function(
         result: Some(result),
         total_gas: *tx_execution.result.total_gas(),
         receipts: tx_execution.result.receipts().to_vec(),
-        script_json: Some(script_json),
+        script: Some(script.to_owned()),
         trace_events,
     })
 }
@@ -466,6 +467,7 @@ pub mod tests {
         cmd,
         op::call::{call, get_wallet, PrivateKeySigner},
     };
+    use fuel_tx::field::Outputs;
     use fuels::{crypto::SecretKey, prelude::*};
     use std::path::PathBuf;
 
@@ -493,6 +495,7 @@ pub mod tests {
             label: None,
             output: cmd::call::OutputFormat::Raw,
             list_functions: false,
+            variable_output: None,
             verbosity: 0,
             debug: false,
         }
@@ -948,15 +951,9 @@ pub mod tests {
             gas_forwarded: None,
         };
         // validate balance is unchanged (dry-run)
-        assert_eq!(
-            call(operation.clone(), cmd.clone())
-                .await
-                .unwrap()
-                .result
-                .unwrap(),
-            "()"
-        );
-        assert_eq!(get_contract_balance(id_2, provider.clone()).await, 0);
+        let call_response = call(operation.clone(), cmd.clone()).await.unwrap();
+        assert_eq!(call_response.result.unwrap(), "()");
+        assert_eq!(call_response.script.unwrap().outputs().len(), 2);
         cmd.mode = cmd::call::ExecutionMode::Live;
         assert_eq!(call(operation, cmd).await.unwrap().result.unwrap(), "()");
         assert_eq!(get_contract_balance(id_2, provider.clone()).await, 1);
@@ -983,7 +980,9 @@ pub mod tests {
         };
         cmd.mode = cmd::call::ExecutionMode::Live;
         let operation = cmd.validate_and_get_operation().unwrap();
-        assert_eq!(call(operation, cmd).await.unwrap().result.unwrap(), "()");
+        let call_response = call(operation, cmd).await.unwrap();
+        assert_eq!(call_response.result.unwrap(), "()");
+        assert_eq!(call_response.script.unwrap().outputs().len(), 3);
         assert_eq!(
             get_recipient_balance(random_wallet.address(), provider.clone()).await,
             2
@@ -1041,7 +1040,9 @@ pub mod tests {
         };
         cmd.mode = cmd::call::ExecutionMode::Live;
         let operation = cmd.validate_and_get_operation().unwrap();
-        assert_eq!(call(operation, cmd).await.unwrap().result.unwrap(), "()");
+        let call_response = call(operation, cmd).await.unwrap();
+        assert_eq!(call_response.result.unwrap(), "()");
+        assert_eq!(call_response.script.unwrap().outputs().len(), 3);
         assert_eq!(
             get_recipient_balance(random_wallet.address(), provider.clone()).await,
             3

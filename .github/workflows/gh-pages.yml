@@ -6,6 +6,10 @@ on:
       - master
     tags:
       - v*
+  workflow_dispatch:
+
+env:
+  RUST_VERSION: 1.86.0
 
 jobs:
   deploy:
@@ -14,15 +18,16 @@ jobs:
       - uses: actions/checkout@v3
 
       - uses: Swatinem/rust-cache@v1
-      - uses: actions-rs/toolchain@v1
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
-          toolchain: stable
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: wasm32-unknown-unknown
+
       - name: Install Forc
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --locked --debug --path ./forc
+        run: cargo install --locked --debug --path ./forc
+
       - name: Install Forc plugins
         run: |
           cargo install --locked --debug --path ./forc-plugins/forc-client
@@ -35,11 +40,9 @@ jobs:
           cargo install --locked --debug --path ./forc-plugins/forc-migrate
           cargo install --locked --debug --path ./forc-plugins/forc-node
           cargo install --locked --debug --path ./forc-plugins/forc-publish
+
       - name: Install mdbook-forc-documenter
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: --locked --debug --path ./scripts/mdbook-forc-documenter
+        run: cargo install --locked --debug --path ./scripts/mdbook-forc-documenter
 
       - name: Setup mdBook
         uses: peaceiris/actions-mdbook@v1
@@ -55,20 +58,12 @@ jobs:
       - name: Build Sway std library
         run: forc doc --path ./sway-lib-std
 
-      - name: Move assets into std directory  
-        run: |
-          mv ./sway-lib-std/out/doc/static.files ./sway-lib-std/out/doc/std/
-          mv ./sway-lib-std/out/doc/search.js ./sway-lib-std/out/doc/std/
-          # Fix relative paths in HTML files
-          find ./sway-lib-std/out/doc/std -name "*.html" -type f -exec sed -i 's|../static\.files/|static.files/|g' {} \;
-          find ./sway-lib-std/out/doc/std -name "*.html" -type f -exec sed -i 's|../search\.js|search.js|g' {} \;
-
       - name: Deploy master std
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./sway-lib-std/out/doc/std
-          destination_dir: master/std
+          publish_dir: ./sway-lib-std/out/doc
+          destination_dir: master
         if: github.ref == 'refs/heads/master'
 
       - name: Deploy master book
@@ -133,7 +128,7 @@ jobs:
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./sway-lib-std/out/doc
+          publish_dir: ./sway-lib-std/out/doc/std
           destination_dir: ${{ steps.branch_name.outputs.BRANCH_NAME }}/std
         if: startsWith(github.ref, 'refs/tags')
 

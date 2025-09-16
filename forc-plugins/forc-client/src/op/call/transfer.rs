@@ -48,7 +48,7 @@ pub async fn transfer(
         total_gas: tx_response.tx_status.total_gas,
         result: None,
         receipts: tx_response.tx_status.receipts,
-        script_json: None,
+        script: None,
         trace_events: vec![],
     })
 }

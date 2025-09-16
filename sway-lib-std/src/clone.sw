@@ -78,8 +78,7 @@ fn ok_string_array_clone() {
     let a = __to_str_array("abc");
     let b = a.clone();
 
-    let _ = __dbg(a); // TODO __dbg((a, b)) is not working
-    let _ = __dbg(b);
+    let _ = __dbg((a, b));
 
     assert(a == __to_str_array("abc"));
     assert(b == __to_str_array("abc"));

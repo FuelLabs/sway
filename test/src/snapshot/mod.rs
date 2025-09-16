@@ -210,7 +210,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                                                 captured.push_str(line);
                                                 captured.push('\n');
 
-                                                write!(&mut snapshot, "{}", captured).unwrap();
+                                                write!(&mut snapshot, "{captured}").unwrap();
                                                 captured.clear();
                                             }
 

@@ -12,6 +12,7 @@ async fn start_local_node_check_health() {
         chain_config: None,
         port: Some(port),
         db_path: None,
+        account: vec![],
     };
 
     let _service = run(local_cmd, false).await.unwrap().unwrap();

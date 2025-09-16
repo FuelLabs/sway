@@ -1,0 +1,63 @@
+---
+source: test/src/snapshot/mod.rs
+assertion_line: 266
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/unused_return_value
+exit status: 0
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_pass/unused_return_value
+   Compiling library unused_return_value (test/src/e2e_vm_tests/test_programs/should_pass/unused_return_value)
+warning: Returned value is ignored
+  --> test/src/e2e_vm_tests/test_programs/should_pass/unused_return_value/src/main.sw:18:5
+   |
+...
+18 |     42;
+   |     -- This returns a value which is not assigned to anything and is ignored.
+   |     -- help: The returned value has type "numeric".
+   |
+   = help: If you want to intentionally ignore the returned value, use `let _ = ...`:
+   = help:   let _ = 42;
+____
+
+warning: Returned value is ignored
+  --> test/src/e2e_vm_tests/test_programs/should_pass/unused_return_value/src/main.sw:19:5
+   |
+...
+19 |     poke(42);
+   |     -------- This returns a value which is not assigned to anything and is ignored.
+   |     -------- help: The returned value has type "u64".
+   |
+   = help: If you want to intentionally ignore the returned value, use `let _ = ...`:
+   = help:   let _ = poke(42);
+____
+
+warning: Returned value is ignored
+  --> test/src/e2e_vm_tests/test_programs/should_pass/unused_return_value/src/main.sw:20:5
+   |
+...
+20 |     B { very_long_field_name: A { very_long_field_name: 0 } }.very_long_method_name(10);
+   |     ----------------------------------------------------------------------------------- This returns a value which is not assigned to anything and is ignored.
+   |     ----------------------------------------------------------------------------------- help: The returned value has type "B".
+   |
+   = help: If you want to intentionally ignore the returned value, use `let _ = ...`:
+   = help:   let _ = B { very_long_field_name: A { very_long_field_name: 0 } }.very_long_method_name(10);
+____
+
+warning: Returned value is ignored
+  --> test/src/e2e_vm_tests/test_programs/should_pass/unused_return_value/src/main.sw:21:5
+   |
+...    
+21 |        B {
+   |   _____-
+   |   _____-
+...  ||
+25 |  |     }.very_long_method_name(10);
+   | ||_______________________________- This returns a value which is not assigned to anything and is ignored.
+   |  |_______________________________- help: The returned value has type "B".
+   |
+   = help: If you want to intentionally ignore the returned value, use `let _ = ...`:
+   = help:   let _ = B {...;
+____
+
+  Compiled library "unused_return_value" with 4 warnings.
+    Finished debug [unoptimized + fuel] target(s) [32 B] in ???
