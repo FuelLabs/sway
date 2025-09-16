@@ -1,0 +1,8 @@
+[[package]]
+name = "std"
+source = "path+from-root-AA6134FC2B337767"
+
+[[package]]
+name = "trait_map_use_impl_in_scope"
+source = "member"
+dependencies = ["std"]
