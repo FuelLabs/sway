@@ -600,14 +600,11 @@ impl MaterializeConstGenerics for TyExpression {
             TyExpressionVariant::AbiCast { address, .. } => {
                 address.materialize_const_generics(engines, handler, name, value)
             }
-            x => {
-                //dbg!(x);
-                Err(handler.emit_err(
-                    sway_error::error::CompileError::ConstGenericNotSupportedHere {
-                        span: self.span.clone(),
-                    },
-                ))
-            }
+            _ => Err(handler.emit_err(
+                sway_error::error::CompileError::ConstGenericNotSupportedHere {
+                    span: self.span.clone(),
+                },
+            )),
         }
     }
 }
