@@ -104,7 +104,7 @@ fn return_inner_const<const ZZZ: u64>() -> u64 {
 #[inline(never)]
 fn const_with_const_generics<const B: u64>() {
     const A: u64 = B + 1;
-    __dbg(A);
+    let _ = __dbg(A);
 }
 
 fn main(a: [u64; 2]) {

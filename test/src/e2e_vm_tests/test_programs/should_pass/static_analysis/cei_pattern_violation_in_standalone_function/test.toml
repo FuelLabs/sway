@@ -2,3 +2,4 @@ category = "compile"
 
 # check: $()Storage write after external contract interaction in function or method "standalone_function". Consider making all storage writes before calling another contract
 expected_warnings = 2
+experimental = { const_generics = true }

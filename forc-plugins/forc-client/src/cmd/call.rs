@@ -419,6 +419,10 @@ pub struct Command {
     #[clap(long, short = 'o', default_value = "default", help_heading = "OUTPUT")]
     pub output: OutputFormat,
 
+    /// Contract call variable output count
+    #[clap(long, alias = "variable-output", help_heading = "VARIABLE OUTPUT")]
+    pub variable_output: Option<usize>,
+
     /// Set verbosity levels; currently only supports max 2 levels
     /// - `-v=1`: Print decoded logs
     /// - `-v=2`: Additionally print receipts and script json

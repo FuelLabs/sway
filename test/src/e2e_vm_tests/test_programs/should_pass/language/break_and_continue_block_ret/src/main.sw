@@ -1,6 +1,6 @@
-script;
+library;
 
-fn main() {
+pub fn main() {
     while true {
         if true {
             break;

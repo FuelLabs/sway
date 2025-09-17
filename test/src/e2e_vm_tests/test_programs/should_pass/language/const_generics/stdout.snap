@@ -1,5 +1,6 @@
 ---
 source: test/src/snapshot/mod.rs
+assertion_line: 266
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics --release
 exit status: 1
@@ -7,18 +8,6 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics
    Compiling library std (sway-lib-std)
    Compiling script const_generics (test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics)
-warning
-   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:107:5
-    |
-105 | fn const_with_const_generics<const B: u64>() {
-106 |     const A: u64 = B + 1;
-107 |     __dbg(A);
-    |     -------- This returns a value of type u64, which is not assigned to anything and is ignored.
-108 | }
-109 | 
-    |
-____
-
 warning
   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:50:5
    |
@@ -246,7 +235,7 @@ error
 105 | fn const_with_const_generics<const B: u64>() {
     |                                    ^ This needs "const_generics" to be enabled, but it is currently disabled. For more details go to https://github.com/FuelLabs/sway/issues/6860.
 106 |     const A: u64 = B + 1;
-107 |     __dbg(A);
+107 |     let _ = __dbg(A);
     |
 ____
 
@@ -440,18 +429,6 @@ output:
    Compiling library std (sway-lib-std)
    Compiling script const_generics (test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics)
 warning
-   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:107:5
-    |
-105 | fn const_with_const_generics<const B: u64>() {
-106 |     const A: u64 = B + 1;
-107 |     __dbg(A);
-    |     -------- This returns a value of type u64, which is not assigned to anything and is ignored.
-108 | }
-109 | 
-    |
-____
-
-warning
   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:87:5
    |
 85 |       }
@@ -478,13 +455,13 @@ warning
    |
 ____
 
-  Compiled script "const_generics" with 3 warnings.
-    Finished debug [unoptimized + fuel] target(s) [9.208 KB] in ???
+  Compiled script "const_generics" with 2 warnings.
+    Finished debug [unoptimized + fuel] target(s) [9.136 KB] in ???
      Running 1 test, filtered 0 tests
 
 tested -- const_generics
 
-      test run_main ... ok (???, 19129 gas)
+      test run_main ... ok (???, 19063 gas)
            debug output:
 [src/main.sw:111:13] a = [1, 2]
 [src/main.sw:115:13] [C {}].len() = 1
@@ -500,8 +477,8 @@ tested -- const_generics
 [src/main.sw:167:13] a = "ABCDE"
 [src/main.sw:171:13] a.len() = 70
 [src/main.sw:172:13] a = "1234567890123456789012345678901234567890123456789012345678901234567890"
-[src/main.sw:107:5] A = 2
-[src/main.sw:107:5] A = 6
+[src/main.sw:107:13] A = 2
+[src/main.sw:107:13] A = 6
 
 test result: OK. 1 passed; 0 failed; finished in ???
 

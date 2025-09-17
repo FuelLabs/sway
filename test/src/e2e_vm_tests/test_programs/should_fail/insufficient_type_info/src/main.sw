@@ -1,4 +1,4 @@
-script;
+library;
 
 mod lib;
 
@@ -8,7 +8,7 @@ fn foo<T>() {
     let x = __size_of::<T>();
 }
 
-fn main() {
+pub fn main() {
     foo();
 
     None::<T>;
