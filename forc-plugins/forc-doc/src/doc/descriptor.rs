@@ -258,7 +258,9 @@ impl Descriptor {
             }
             ty::TyDecl::FunctionDecl(ty::FunctionDecl { decl_id, .. }) => {
                 let fn_decl = decl_engine.get_function(decl_id);
-                if !document_private_items && fn_decl.visibility.is_private() {
+                if fn_decl.is_entry() // skip automatically generated entry functions
+                    || (!document_private_items && fn_decl.visibility.is_private())
+                {
                     Ok(Descriptor::NonDocumentable)
                 } else {
                     let item_name = fn_decl.name.clone();
