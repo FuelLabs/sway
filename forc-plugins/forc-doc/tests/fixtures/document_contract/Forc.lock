@@ -1,8 +1,8 @@
 [[package]]
-name = "all_types"
+name = "document_contract"
 source = "member"
 dependencies = ["std"]
 
 [[package]]
 name = "std"
-source = "path+from-root-D6326E097E5EED05"
+source = "path+from-root-EFD041C28C7749E2"
