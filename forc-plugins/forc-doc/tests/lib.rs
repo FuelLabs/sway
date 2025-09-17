@@ -24,8 +24,8 @@ fn builds_lib_std_docs() {
 }
 
 #[test]
-fn test_all_types() {
-    let project_name = "all_types";
+fn test_contract() {
+    let project_name = "document_contract";
     let command = Command {
         path: Some(format!("{DATA_DIR}/{project_name}")),
         ..Default::default()
@@ -90,17 +90,17 @@ fn test_workspace_docs() {
 
     // Verify that we got a workspace result
     match &doc_result {
-        DocResult::Workspace { name, libraries } => {
+        DocResult::Workspace { name, programs } => {
             assert_eq!(name, workspace_name);
             assert_eq!(
-                libraries.len(),
+                programs.len(),
                 2,
-                "Expected 2 libraries, found {}: {:?}",
-                libraries.len(),
-                libraries
+                "Expected 2 programs, found {}: {:?}",
+                programs.len(),
+                programs
             );
-            assert!(libraries.iter().any(|lib| lib.name == "lib_a"));
-            assert!(libraries.iter().any(|lib| lib.name == "lib_b"));
+            assert!(programs.iter().any(|program| program.name == "lib_a"));
+            assert!(programs.iter().any(|program| program.name == "lib_b"));
         }
         DocResult::Package(_) => panic!("Expected workspace result, got package"),
     }
@@ -133,7 +133,7 @@ fn test_workspace_docs() {
         "Workspace index should link to lib_b"
     );
     assert!(
-        workspace_content.contains("This workspace contains the following libraries"),
+        workspace_content.contains("This workspace contains the following programs"),
         "Should contain workspace description"
     );
 }

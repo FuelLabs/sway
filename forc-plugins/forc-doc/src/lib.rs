@@ -14,7 +14,7 @@ use forc_pkg::{
 use forc_tracing::println_action_green;
 use forc_util::default_output_directory;
 use render::{
-    index::{LibraryInfo, WorkspaceIndex},
+    index::{ProgramInfo, WorkspaceIndex},
     HTMLString, Renderable, RenderedDocumentation,
 };
 use std::{
@@ -22,7 +22,7 @@ use std::{
     path::{Path, PathBuf},
 };
 use sway_core::{
-    language::ty::{TyProgram, TyProgramKind},
+    language::ty::TyProgram,
     BuildTarget, Engines,
 };
 use sway_features::ExperimentalFeatures;
@@ -93,7 +93,7 @@ pub enum DocResult {
     Package(Box<PackageManifestFile>),
     Workspace {
         name: String,
-        libraries: Vec<LibraryInfo>,
+        programs: Vec<ProgramInfo>,
     },
 }
 
@@ -243,7 +243,7 @@ pub fn compile_html(
     ctx: &DocContext,
     compile_results: &mut Vec<Option<Programs>>,
 ) -> Result<DocResult> {
-    let mut documented_libraries = Vec::new();
+    let mut documented_programs = Vec::new();
 
     let raw_docs = if opts.no_deps {
         if let Some(pkg_manifest) = ctx.pkg_manifest() {
@@ -259,25 +259,16 @@ pub fn compile_html(
                 }
             };
 
-            // Only document if it's a library
-            if matches!(ty_program.kind, TyProgramKind::Library { .. }) {
-                let lib_info = LibraryInfo {
-                    name: pkg_manifest.project_name().to_string(),
-                    description: pkg_manifest
-                        .project
-                        .description
-                        .clone()
-                        .unwrap_or_else(|| format!("Library {}", pkg_manifest.project_name())),
-                };
-                documented_libraries.push(lib_info);
-                build_docs(opts, ctx, &ty_program, &ctx.manifest, pkg_manifest)?
-            } else {
-                eprintln!("275 oh no {:?}", pkg_manifest.project_name().to_string());
-                bail!(
-                    "forc-doc only supports libraries. '{}' is not a library.",
-                    pkg_manifest.project_name()
-                );
-            }
+            let lib_info = ProgramInfo {
+                name: pkg_manifest.project_name().to_string(),
+                description: pkg_manifest
+                    .project
+                    .description
+                    .clone()
+                    .unwrap_or_else(|| format!("{} {}", ty_program.kind.as_title_str(), pkg_manifest.project_name())),
+            };
+            documented_programs.push(lib_info);
+            build_docs(opts, ctx, &ty_program, &ctx.manifest, pkg_manifest)?
         } else {
             // Workspace mode with no_deps
             bail!("--no-deps flag is not meaningful for workspaces");
@@ -304,37 +295,31 @@ pub fn compile_html(
                         )
                     })?;
 
-                // Only document libraries that are workspace members
-                if matches!(ty_program.kind, TyProgramKind::Library { .. }) {
-                    // Check if this package is a workspace member
-                    let is_workspace_member = if ctx.is_workspace() {
-                        ctx.manifest.member_manifests()?.iter().any(|(_, member)| {
-                            member.project_name() == pkg_manifest_file.project_name()
-                        })
-                    } else {
-                        true // For single packages, always include
-                    };
-
-                    if is_workspace_member {
-                        let lib_info = LibraryInfo {
-                            name: pkg_manifest_file.project_name().to_string(),
-                            description: pkg_manifest_file
-                                .project
-                                .description
-                                .clone()
-                                .unwrap_or_else(|| {
-                                    format!("Library {}", pkg_manifest_file.project_name())
-                                }),
-                        };
-                        documented_libraries.push(lib_info);
-                        raw_docs.0.extend(
-                            build_docs(opts, ctx, &ty_program, &manifest_file, pkg_manifest_file)?
-                                .0,
-                        );
-                    }
+                // Check if this package is a workspace member
+                let is_workspace_member = if ctx.is_workspace() {
+                    ctx.manifest.member_manifests()?.iter().any(|(_, member)| {
+                        member.project_name() == pkg_manifest_file.project_name()
+                    })
                 } else {
-                    eprintln!("336 yikes {:?}", pkg_manifest_file.project_name().to_string());
+                    true // For single packages, always include
+                };
 
+                if is_workspace_member {
+                    let lib_info = ProgramInfo {
+                        name: pkg_manifest_file.project_name().to_string(),
+                        description: pkg_manifest_file
+                            .project
+                            .description
+                            .clone()
+                            .unwrap_or_else(|| {
+                                format!("{} {}", ty_program.kind.as_title_str(), pkg_manifest_file.project_name())
+                            }),
+                    };
+                    documented_programs.push(lib_info);
+                    raw_docs.0.extend(
+                        build_docs(opts, ctx, &ty_program, &manifest_file, pkg_manifest_file)?
+                            .0,
+                    );
                 }
             }
         }
@@ -342,12 +327,12 @@ pub fn compile_html(
     };
 
     // Create workspace index if this is a workspace
-    if ctx.is_workspace() && !documented_libraries.is_empty() {
-        // Sort libraries alphabetically for consistent display
-        documented_libraries.sort_by(|a, b| a.name.cmp(&b.name));
+    if ctx.is_workspace() && !documented_programs.is_empty() {
+        // Sort programs alphabetically for consistent display
+        documented_programs.sort_by(|a, b| a.name.cmp(&b.name));
         create_workspace_index(
             &ctx.doc_path,
-            &documented_libraries,
+            &documented_programs,
             &ctx.engines,
             &ctx.workspace_name,
         )?;
@@ -358,7 +343,7 @@ pub fn compile_html(
     let result = if ctx.is_workspace() {
         DocResult::Workspace {
             name: ctx.workspace_name.clone(),
-            libraries: documented_libraries,
+            programs: documented_programs,
         }
     } else if let Some(pkg_manifest) = ctx.pkg_manifest() {
         DocResult::Package(Box::new(pkg_manifest.clone()))
@@ -437,7 +422,7 @@ fn write_content(rendered_docs: RenderedDocumentation, doc_path: &Path) -> Resul
 
 fn create_workspace_index(
     doc_path: &Path,
-    documented_libraries: &[LibraryInfo],
+    documented_programs: &[ProgramInfo],
     engines: &Engines,
     workspace_name: &str,
 ) -> Result<()> {
@@ -445,7 +430,7 @@ fn create_workspace_index(
     let workspace_info = ModuleInfo::from_ty_module(vec![workspace_name.to_string()], None);
 
     // Create the workspace index
-    let workspace_index = WorkspaceIndex::new(workspace_info, documented_libraries.to_vec());
+    let workspace_index = WorkspaceIndex::new(workspace_info, documented_programs.to_vec());
 
     let render_plan = RenderPlan::new(false, false, engines);
     let rendered_content = workspace_index.render(render_plan)?;

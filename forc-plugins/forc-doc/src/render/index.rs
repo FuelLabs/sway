@@ -11,9 +11,9 @@ use anyhow::Result;
 use horrorshow::{box_html, Raw, RenderBox};
 use std::collections::BTreeMap;
 
-/// Information about a documented library including its name and description
+/// Information about a documented program including its name and description
 #[derive(Clone, Debug, PartialEq)]
-pub struct LibraryInfo {
+pub struct ProgramInfo {
     pub name: String,
     pub description: String,
 }
@@ -23,14 +23,14 @@ pub struct LibraryInfo {
 pub(crate) struct WorkspaceIndex {
     /// The workspace root module info
     workspace_info: ModuleInfo,
-    /// All documented libraries in the workspace with their descriptions
-    documented_libraries: Vec<LibraryInfo>,
+    /// All documented programs in the workspace with their descriptions
+    documented_programs: Vec<ProgramInfo>,
 }
 impl WorkspaceIndex {
-    pub(crate) fn new(workspace_info: ModuleInfo, documented_libraries: Vec<LibraryInfo>) -> Self {
+    pub(crate) fn new(workspace_info: ModuleInfo, documented_programs: Vec<ProgramInfo>) -> Self {
         Self {
             workspace_info,
-            documented_libraries,
+            documented_programs,
         }
     }
 }
@@ -166,13 +166,13 @@ impl Renderable for WorkspaceIndex {
                         : *workspace_searchbar;
                         section(id="main-content", class="content") {
                             div(class="main-heading") {
-                                p { : "This workspace contains the following libraries:" }
+                                p { : "This workspace contains the following programs:" }
                             }
                             h2(class="small-section-header") {
-                                : "Libraries";
+                                : "Programs";
                             }
                             div(class="item-table") {
-                                @ for lib in &self.documented_libraries {
+                                @ for lib in &self.documented_programs {
                                     div(class="item-row") {
                                         div(class="item-left module-item") {
                                             a(class="mod", href=format!("{}/index.html", lib.name)) {
