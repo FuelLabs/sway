@@ -41,14 +41,16 @@ pub fn ret_val_demotion(
 
         // Change the function signature.
         let ptr_ret_type = Type::new_typed_pointer(context, ret_type);
-        // It now returns unit.
         let unit_ty = Type::get_unit(context);
-        function.set_return_type(context, unit_ty);
 
         // The storage for the return value must be determined.  For entry-point functions it's a new
         // local and otherwise it's an extra argument.
         let entry_block = function.get_entry_block(context);
         let ptr_arg_val = if function.is_entry(context) {
+            // Entry functions return a pointer to the original return type.
+            function.set_return_type(context, ptr_ret_type);
+
+            // Create a local variable to hold the return value.
             let ret_var = function.new_unique_local_var(
                 context,
                 "__ret_value".to_owned(),
@@ -63,6 +65,9 @@ pub fn ret_val_demotion(
             entry_block.prepend_instructions(context, vec![get_ret_var]);
             get_ret_var
         } else {
+            // non-entry functions now return unit.
+            function.set_return_type(context, unit_ty);
+
             let ptr_arg_val = Value::new_argument(
                 context,
                 BlockArgument {
@@ -105,11 +110,19 @@ pub fn ret_val_demotion(
                 .store(ptr_arg_val, ret_val)
                 .add_metadatum(context, md_idx);
 
-            let unit_ret = ConstantContent::get_unit(context);
-            ret_block
-                .append(context)
-                .ret(unit_ret, unit_ty)
-                .add_metadatum(context, md_idx);
+            if !function.is_entry(context) {
+                let unit_ret = ConstantContent::get_unit(context);
+                ret_block
+                    .append(context)
+                    .ret(unit_ret, unit_ty)
+                    .add_metadatum(context, md_idx);
+            } else {
+                // Entry functions still return the pointer to the return value.
+                ret_block
+                    .append(context)
+                    .ret(ptr_arg_val, ptr_ret_type)
+                    .add_metadatum(context, md_idx);
+            }
         }
 
         // If the function isn't an entry point we need to update all the callers to pass the extra
