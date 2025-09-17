@@ -7,7 +7,7 @@ use fuels::{
     prelude::*,
     types::{Bits256, Bytes32, EvmAddress},
 };
-use rand::{rngs::StdRng, Rng, SeedableRng};
+use rand::{Rng, SeedableRng, rngs::StdRng};
 use sha3::{Digest, Keccak256};
 
 abigen!(Contract(

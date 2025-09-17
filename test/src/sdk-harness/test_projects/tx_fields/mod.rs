@@ -6,7 +6,7 @@ use fuels::{
     accounts::{predicate::Predicate, signers::private_key::PrivateKeySigner},
     prelude::*,
     tx::StorageSlot,
-    types::{input::Input as SdkInput, output::Output as SdkOutput, Bits256, ChainId},
+    types::{Bits256, ChainId, input::Input as SdkInput, output::Output as SdkOutput},
 };
 use std::fs;
 
@@ -17,8 +17,7 @@ const TX_OUTPUT_PREDICATE_BYTECODE_PATH: &str =
 const TX_OUTPUT_CONTRACT_BYTECODE_PATH: &str =
     "test_artifacts/tx_output_contract/out/release/tx_output_contract.bin";
 const TX_FIELDS_PREDICATE_BYTECODE_PATH: &str = "test_projects/tx_fields/out/release/tx_fields.bin";
-const TX_CONTRACT_CREATION_PREDICATE_BYTECODE_PATH: &str =
-    "test_artifacts/tx_output_contract_creation_predicate/out/release/tx_output_contract_creation_predicate.bin";
+const TX_CONTRACT_CREATION_PREDICATE_BYTECODE_PATH: &str = "test_artifacts/tx_output_contract_creation_predicate/out/release/tx_output_contract_creation_predicate.bin";
 const TX_TYPE_PREDICATE_BYTECODE_PATH: &str =
     "test_artifacts/tx_type_predicate/out/release/tx_type_predicate.bin";
 const TX_WITNESS_PREDICATE_BYTECODE_PATH: &str =
@@ -58,7 +57,8 @@ abigen!(
     ),
     Predicate(
         name = "TestTxInputCountPredicate",
-        abi = "test_artifacts/tx_input_count_predicate/out/release/tx_input_count_predicate-abi.json"
+        abi =
+            "test_artifacts/tx_input_count_predicate/out/release/tx_input_count_predicate-abi.json"
     ),
     Predicate(
         name = "TestTxOutputCountPredicate",
@@ -466,10 +466,11 @@ mod tx {
         let witnesses = tx.witnesses().clone();
 
         let provider = wallet.provider();
-        let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
-        let receipts = tx_status
-            .take_receipts_checked(None)
+        let tx_status = provider
+            .send_transaction_and_await_commit(tx)
+            .await
             .unwrap();
+        let receipts = tx_status.take_receipts_checked(None).unwrap();
 
         assert_eq!(receipts[1].data().unwrap()[8..72], *witnesses[0].as_vec());
     }
@@ -509,10 +510,11 @@ mod tx {
         let tx = handler.build_tx().await.unwrap();
 
         let provider = wallet.provider();
-        let tx_status = provider.send_transaction_and_await_commit(tx.clone()).await.unwrap();
-        let receipts = tx_status
-            .take_receipts_checked(None)
+        let tx_status = provider
+            .send_transaction_and_await_commit(tx.clone())
+            .await
             .unwrap();
+        let receipts = tx_status.take_receipts_checked(None).unwrap();
 
         let byte_array: [u8; 32] = *tx.id(ChainId::new(0));
 
@@ -605,7 +607,10 @@ mod tx {
 
             // Submit the transaction
             let tx = builder.build(&provider).await.unwrap();
-            provider.send_transaction_and_await_commit(tx).await.unwrap();
+            provider
+                .send_transaction_and_await_commit(tx)
+                .await
+                .unwrap();
         }
 
         // The predicate has spent it's funds
@@ -704,7 +709,10 @@ mod tx {
 
             // Submit the transaction
             let tx = builder.build(&provider).await.unwrap();
-            provider.send_transaction_and_await_commit(tx).await.unwrap();
+            provider
+                .send_transaction_and_await_commit(tx)
+                .await
+                .unwrap();
 
             // The predicate has spent it's funds
             let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
@@ -895,7 +903,10 @@ mod tx {
 
         let tx = builder.build(provider.clone()).await.unwrap();
 
-        provider.send_transaction_and_await_commit(tx).await.unwrap();
+        provider
+            .send_transaction_and_await_commit(tx)
+            .await
+            .unwrap();
 
         // The predicate has spent it's funds
         let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
@@ -1108,7 +1119,10 @@ mod inputs {
 
                 // Submit the transaction
                 let tx = builder.build(&provider).await.unwrap();
-                provider.send_transaction_and_await_commit(tx).await.unwrap();
+                provider
+                    .send_transaction_and_await_commit(tx)
+                    .await
+                    .unwrap();
 
                 // The predicate has spent it's funds
                 let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
@@ -1197,7 +1211,10 @@ mod inputs {
 
             // Submit the transaction
             let tx = builder.build(&provider).await.unwrap();
-            provider.send_transaction_and_await_commit(tx).await.unwrap();
+            provider
+                .send_transaction_and_await_commit(tx)
+                .await
+                .unwrap();
 
             // The predicate has spent it's funds
             let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
@@ -1385,10 +1402,11 @@ mod inputs {
                 builder.add_signer(wallet.signer().clone()).unwrap();
                 let tx = builder.build(provider).await.unwrap();
 
-                let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
-                let receipts = tx_status
-                    .take_receipts_checked(None)
+                let tx_status = provider
+                    .send_transaction_and_await_commit(tx)
+                    .await
                     .unwrap();
+                let receipts = tx_status.take_receipts_checked(None).unwrap();
 
                 assert_eq!(
                     receipts[1].data().unwrap()[8..16],
@@ -1635,7 +1653,10 @@ mod outputs {
 
             let new_balance = predicate.get_asset_balance(&asset_id).await.unwrap();
             let expected_fee = 1;
-            assert_eq!(balance - transfer_amount as u128 - expected_fee, new_balance);
+            assert_eq!(
+                balance - transfer_amount as u128 - expected_fee,
+                new_balance
+            );
         }
 
         #[tokio::test]
@@ -1727,7 +1748,10 @@ mod outputs {
 
                 // Submit the transaction
                 let tx = builder.build(&provider).await.unwrap();
-                provider.send_transaction_and_await_commit(tx).await.unwrap();
+                provider
+                    .send_transaction_and_await_commit(tx)
+                    .await
+                    .unwrap();
 
                 // The predicate has spent it's funds
                 let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
@@ -1812,7 +1836,10 @@ mod outputs {
 
             // Submit the transaction
             let tx = builder.build(&provider).await.unwrap();
-            provider.send_transaction_and_await_commit(tx).await.unwrap();
+            provider
+                .send_transaction_and_await_commit(tx)
+                .await
+                .unwrap();
 
             // The predicate has spent it's funds
             let predicate_balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
@@ -1883,12 +1910,16 @@ mod outputs {
 
             // Assert the wallet 1 has received the change
             let wallet_1_balance = wallet.get_asset_balance(&asset_id).await.unwrap();
-            let change_amount = predicate_balance_before - transfer_amount as u128 - tx_status.total_fee() as u128;
+            let change_amount =
+                predicate_balance_before - transfer_amount as u128 - tx_status.total_fee() as u128;
             assert_eq!(wallet_1_balance, wallet_1_balance_before + change_amount);
 
             // Assert the wallet 2 has received the transfer amount
             let wallet_2_balance = wallet_2.get_asset_balance(&asset_id).await.unwrap();
-            assert_eq!(wallet_2_balance, wallet_2_balance_before + transfer_amount as u128);
+            assert_eq!(
+                wallet_2_balance,
+                wallet_2_balance_before + transfer_amount as u128
+            );
         }
 
         #[tokio::test]

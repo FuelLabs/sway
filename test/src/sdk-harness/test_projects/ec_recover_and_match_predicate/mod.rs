@@ -5,12 +5,10 @@ use fuels::{
     types::B512,
 };
 
-abigen!(
-    Predicate(
-        name = "TestPredicate",
-        abi = "test_projects/ec_recover_and_match_predicate/out/release/ec_recover_and_match_predicate-abi.json"
-    )
-);
+abigen!(Predicate(
+    name = "TestPredicate",
+    abi = "test_projects/ec_recover_and_match_predicate/out/release/ec_recover_and_match_predicate-abi.json"
+));
 
 #[tokio::test]
 async fn ec_recover_and_match_predicate_test() -> Result<()> {
@@ -75,8 +73,7 @@ async fn ec_recover_and_match_predicate_test() -> Result<()> {
     let signatures = [signature1, signature2, signature3];
 
     let predicate_data = TestPredicateEncoder::default().encode_data(signatures)?;
-    let code_path =
-        "test_projects/ec_recover_and_match_predicate/out/release/ec_recover_and_match_predicate.bin";
+    let code_path = "test_projects/ec_recover_and_match_predicate/out/release/ec_recover_and_match_predicate.bin";
 
     let predicate = Predicate::load_from(code_path)?
         .with_data(predicate_data)

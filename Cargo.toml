@@ -20,6 +20,7 @@ members = [
     "sway-utils",
     "swayfmt",
     "test",
+    "test/src/sdk-harness",
 ]
 exclude = ["examples/*", "swayfmt/test_macros", "forc-test/test_data"]
 

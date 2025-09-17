@@ -796,11 +796,7 @@ mod u64_to {
         let instance = test_storage_map_instance().await;
 
         let (key1, key2, key3) = (9001, 1980, 1000);
-        let (val1, val2, val3) = (
-            "aaaaaaaaaA",
-            "bbbbbbbbbB",
-            "cccccccccC",
-        );
+        let (val1, val2, val3) = ("aaaaaaaaaA", "bbbbbbbbbB", "cccccccccC");
 
         // Nothing to read just yet
         assert_eq!(
@@ -1550,11 +1546,7 @@ mod to_u64_map {
     async fn from_string() {
         let instance = test_storage_map_instance().await;
 
-        let (key1, key2, key3) = (
-            "aaaaaaaaaA",
-            "bbbbbbbbbB",
-            "cccccccccC",
-        );
+        let (key1, key2, key3) = ("aaaaaaaaaA", "bbbbbbbbbB", "cccccccccC");
         let (val1, val2, val3) = (9001, 1980, 1000);
 
         // Nothing to read just yet

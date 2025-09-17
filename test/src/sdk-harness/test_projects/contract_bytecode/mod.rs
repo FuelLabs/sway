@@ -28,9 +28,7 @@ async fn can_get_bytecode_root() {
     assert_eq!(expected_bytecode_root, bytecode_root);
 }
 
-async fn get_test_contract_instance(
-    wallet: Wallet,
-) -> (ContractBytecodeTest<Wallet>, ContractId) {
+async fn get_test_contract_instance(wallet: Wallet) -> (ContractBytecodeTest<Wallet>, ContractId) {
     let id = Contract::load_from(
         "test_projects/contract_bytecode/out/release/contract_bytecode.bin",
         LoadConfiguration::default(),

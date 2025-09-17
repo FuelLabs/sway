@@ -5,8 +5,8 @@ abigen!(Contract(
     abi = "test_projects/storage_vec_of_storage_string/out/release/storage_vec_of_storage_string-abi.json",
 ));
 
-async fn test_storage_vec_of_storage_string_instance(
-) -> TestStorageVecOfStorageStringContract<Wallet> {
+async fn test_storage_vec_of_storage_string_instance()
+-> TestStorageVecOfStorageStringContract<Wallet> {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
         "test_projects/storage_vec_of_storage_string/out/release/storage_vec_of_storage_string.bin",
