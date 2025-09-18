@@ -3,11 +3,11 @@ use fuels::{
     prelude::*,
     tx::UtxoId,
     types::{
-        coin::{Coin},
+        Bytes32, ContractId,
+        coin::Coin,
         coin_type::CoinType,
         input::Input,
         message::{Message, MessageStatus},
-        Bytes32, ContractId,
     },
 };
 use std::str::FromStr;
@@ -132,7 +132,10 @@ async fn input_message_msg_sender_from_contract() {
     let tx = tb.build(provider.clone()).await.unwrap();
 
     // Send and verify
-    let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
+    let tx_status = provider
+        .send_transaction_and_await_commit(tx)
+        .await
+        .unwrap();
     let response = call_handler.get_response(tx_status).unwrap();
     assert!(response.value);
 }
@@ -260,18 +263,15 @@ async fn caller_addresses_from_messages() {
     let tx = tb.enable_burn(true).build(provider.clone()).await.unwrap();
 
     // Send and verify
-    let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
+    let tx_status = provider
+        .send_transaction_and_await_commit(tx)
+        .await
+        .unwrap();
     let result = call_handler.get_response(tx_status).unwrap();
 
-    assert!(result
-        .value
-        .contains(&Address::from(wallet1.address())));
-    assert!(result
-        .value
-        .contains(&Address::from(wallet2.address())));
-    assert!(result
-        .value
-        .contains(&Address::from(wallet3.address())));
+    assert!(result.value.contains(&Address::from(wallet1.address())));
+    assert!(result.value.contains(&Address::from(wallet2.address())));
+    assert!(result.value.contains(&Address::from(wallet3.address())));
 }
 
 #[tokio::test]
@@ -356,7 +356,7 @@ async fn caller_addresses_from_coins() {
             utxo_id: UtxoId::new(Bytes32::zeroed(), 0),
             amount: coin_amount,
             asset_id: AssetId::default(),
-                }),
+        }),
     });
     tb.inputs_mut().push(Input::ResourceSigned {
         resource: CoinType::Coin(Coin {
@@ -364,7 +364,7 @@ async fn caller_addresses_from_coins() {
             utxo_id: UtxoId::new(Bytes32::zeroed(), 1),
             amount: coin_amount,
             asset_id: AssetId::default(),
-                }),
+        }),
     });
     tb.inputs_mut().push(Input::ResourceSigned {
         resource: CoinType::Coin(Coin {
@@ -372,7 +372,7 @@ async fn caller_addresses_from_coins() {
             utxo_id: UtxoId::new(Bytes32::zeroed(), 2),
             amount: coin_amount,
             asset_id: AssetId::default(),
-                }),
+        }),
     });
 
     // Build transaction
@@ -384,18 +384,15 @@ async fn caller_addresses_from_coins() {
     let tx = tb.enable_burn(true).build(provider.clone()).await.unwrap();
 
     // Send and verify
-    let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
+    let tx_status = provider
+        .send_transaction_and_await_commit(tx)
+        .await
+        .unwrap();
     let result = call_handler.get_response(tx_status).unwrap();
 
-    assert!(result
-        .value
-        .contains(&Address::from(wallet1.address())));
-    assert!(result
-        .value
-        .contains(&Address::from(wallet2.address())));
-    assert!(result
-        .value
-        .contains(&Address::from(wallet3.address())));
+    assert!(result.value.contains(&Address::from(wallet1.address())));
+    assert!(result.value.contains(&Address::from(wallet2.address())));
+    assert!(result.value.contains(&Address::from(wallet3.address())));
 }
 
 #[tokio::test]
@@ -494,7 +491,7 @@ async fn caller_addresses_from_coins_and_messages() {
             utxo_id: UtxoId::new(Bytes32::zeroed(), 1),
             amount: coin_amount,
             asset_id: AssetId::default(),
-                }),
+        }),
     });
     tb.inputs_mut().push(Input::ResourceSigned {
         resource: CoinType::Coin(Coin {
@@ -502,7 +499,7 @@ async fn caller_addresses_from_coins_and_messages() {
             utxo_id: UtxoId::new(Bytes32::zeroed(), 2),
             amount: coin_amount,
             asset_id: AssetId::default(),
-                }),
+        }),
     });
 
     // Build transaction
@@ -514,18 +511,15 @@ async fn caller_addresses_from_coins_and_messages() {
     let tx = tb.enable_burn(true).build(provider.clone()).await.unwrap();
 
     // Send and verify
-    let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
+    let tx_status = provider
+        .send_transaction_and_await_commit(tx)
+        .await
+        .unwrap();
     let result = call_handler.get_response(tx_status).unwrap();
 
-    assert!(result
-        .value
-        .contains(&Address::from(wallet1.address())));
-    assert!(result
-        .value
-        .contains(&Address::from(wallet2.address())));
-    assert!(result
-        .value
-        .contains(&Address::from(wallet3.address())));
+    assert!(result.value.contains(&Address::from(wallet1.address())));
+    assert!(result.value.contains(&Address::from(wallet2.address())));
+    assert!(result.value.contains(&Address::from(wallet3.address())));
 }
 
 async fn get_contracts() -> (

@@ -9,7 +9,7 @@ const REQUIRED_XYZ_DEP: &str = "fuel-core-client";
 
 // Dependency names allowed (but not required) to use x.y.z format
 // Add names of common dev-dependencies here if you want to allow x.y.z for them
-const ALLOWED_XYZ_DEPS: &[&str] = &["etk-asm", "etk-ops", "dap"];
+const ALLOWED_XYZ_DEPS: &[&str] = &["etk-asm", "etk-ops", "dap", "fuel-abi-types"];
 
 // Regex to strictly match semantic version x.y.z (no prefixes like ^, ~)
 const XYZ_REGEX_STR: &str = r"^\d+\.\d+\.\d+([\w.-]*)$"; // Allow suffixes like -alpha, .1

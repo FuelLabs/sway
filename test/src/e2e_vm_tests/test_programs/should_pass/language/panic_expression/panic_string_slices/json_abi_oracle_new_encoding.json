@@ -22,6 +22,7 @@
       "pos": {
         "column": 5,
         "file": "src/main.sw",
+        "function": "",
         "line": 31,
         "pkg": "panic_string_slices"
       }
@@ -32,6 +33,7 @@
       "pos": {
         "column": 5,
         "file": "src/main.sw",
+        "function": "",
         "line": 35,
         "pkg": "panic_string_slices"
       }
@@ -42,6 +44,7 @@
       "pos": {
         "column": 5,
         "file": "src/main.sw",
+        "function": "",
         "line": 39,
         "pkg": "panic_string_slices"
       }
@@ -52,6 +55,7 @@
       "pos": {
         "column": 5,
         "file": "src/main.sw",
+        "function": "",
         "line": 43,
         "pkg": "panic_string_slices"
       }
@@ -62,6 +66,7 @@
       "pos": {
         "column": 5,
         "file": "src/main.sw",
+        "function": "",
         "line": 27,
         "pkg": "panic_string_slices"
       }
@@ -72,6 +77,7 @@
       "pos": {
         "column": 5,
         "file": "src/main.sw",
+        "function": "",
         "line": 15,
         "pkg": "panic_string_slices"
       }
@@ -98,6 +104,7 @@
   ],
   "messagesTypes": [],
   "metadataTypes": [],
+  "panickingCalls": null,
   "programType": "script",
   "specVersion": "1.1"
 }

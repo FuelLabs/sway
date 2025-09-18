@@ -152,9 +152,16 @@ pub async fn run_pkg(
         external_contracts,
     };
     let tx_policies = tx_policies_from_cmd(command);
-    let mut tb = call
-        .transaction_builder(tx_policies, VariableOutputPolicy::EstimateMinimum, &account)
-        .await?;
+    let provider = account.try_provider()?;
+    let consensus_parameters = provider.consensus_parameters().await?;
+
+    let mut tb = call.transaction_builder(
+        tx_policies,
+        VariableOutputPolicy::EstimateMinimum,
+        &consensus_parameters,
+        vec![],
+        &account,
+    )?;
 
     account.add_witnesses(&mut tb)?;
     account.adjust_for_fee(&mut tb, 0).await?;

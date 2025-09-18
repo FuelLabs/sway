@@ -1,10 +1,10 @@
-use fuel_vm::fuel_asm::{op, RegId};
+use fuel_vm::fuel_asm::{RegId, op};
 use fuel_vm::fuel_tx;
 use fuel_vm::fuel_tx::{Address, AssetId, Output};
 use fuels::{
     core::codec::{ABIEncoder, EncoderConfig},
     prelude::*,
-    types::{input::Input, transaction_builders::ScriptTransactionBuilder, Token},
+    types::{Token, input::Input, transaction_builders::ScriptTransactionBuilder},
 };
 use std::str::FromStr;
 
@@ -62,7 +62,10 @@ async fn create_predicate(
     tx.add_signer(wallet.signer().clone()).unwrap();
     let tx = tx.build(provider).await.unwrap();
 
-    provider.send_transaction_and_await_commit(tx).await.unwrap();
+    provider
+        .send_transaction_and_await_commit(tx)
+        .await
+        .unwrap();
 }
 
 async fn submit_to_predicate(
@@ -113,7 +116,11 @@ async fn submit_to_predicate(
     .await
     .unwrap();
 
-    wallet.provider().send_transaction_and_await_commit(new_tx).await.map(|_| ())
+    wallet
+        .provider()
+        .send_transaction_and_await_commit(new_tx)
+        .await
+        .map(|_| ())
 }
 
 async fn get_balance(wallet: &Wallet, address: Address, asset_id: AssetId) -> u128 {

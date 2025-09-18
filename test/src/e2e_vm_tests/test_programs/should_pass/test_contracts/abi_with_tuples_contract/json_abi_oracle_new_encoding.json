@@ -64,6 +64,7 @@
       "components": [
         {
           "name": "__tuple_element",
+          "offset": null,
           "typeId": 6
         }
       ],
@@ -74,10 +75,12 @@
       "components": [
         {
           "name": "__tuple_element",
+          "offset": null,
           "typeId": 5
         },
         {
           "name": "__tuple_element",
+          "offset": null,
           "typeId": 7
         }
       ],
@@ -88,10 +91,12 @@
       "components": [
         {
           "name": "__tuple_element",
+          "offset": null,
           "typeId": 4
         },
         {
           "name": "__tuple_element",
+          "offset": null,
           "typeId": 7
         }
       ],
@@ -102,6 +107,7 @@
       "components": [
         {
           "name": "Earth",
+          "offset": null,
           "typeId": 0
         }
       ],
@@ -109,22 +115,10 @@
       "type": "enum abi_with_tuples::Location"
     },
     {
-      "components": [
-        {
-          "name": "age",
-          "typeId": 7
-        }
-      ],
       "metadataTypeId": 5,
       "type": "struct abi_with_tuples::Person"
     },
     {
-      "components": [
-        {
-          "name": "data",
-          "typeId": 7
-        }
-      ],
       "metadataTypeId": 6,
       "type": "struct abi_with_tuples::some_module::SomeStruct"
     },
@@ -133,6 +127,7 @@
       "type": "u64"
     }
   ],
+  "panickingCalls": null,
   "programType": "contract",
   "specVersion": "1.1"
 }

@@ -7,6 +7,7 @@
   "loggedTypes": [],
   "messagesTypes": [],
   "metadataTypes": [],
+  "panickingCalls": null,
   "programType": "contract",
   "specVersion": "1.1"
 }

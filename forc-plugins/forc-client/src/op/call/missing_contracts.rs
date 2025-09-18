@@ -7,6 +7,7 @@ use fuels_accounts::{
     provider::Provider,
     signers::private_key::PrivateKeySigner,
     wallet::{Unlocked, Wallet},
+    ViewOnlyAccount,
 };
 use fuels_core::types::{transaction::TxPolicies, transaction_builders::VariableOutputPolicy};
 
@@ -21,10 +22,26 @@ pub async fn determine_missing_contracts(
     log_decoder: &fuels_core::codec::LogDecoder,
     account: &Wallet<Unlocked<PrivateKeySigner>>,
 ) -> Result<Vec<ContractId>> {
-    let tb = call
-        .transaction_builder(*tx_policies, *variable_output_policy, account)
-        .await
-        .expect("Failed to initialize transaction builder");
+    let consensus_parameters = account.provider().consensus_parameters().await?;
+
+    let required_asset_amounts = call.required_assets(*consensus_parameters.base_asset_id());
+
+    // Find the spendable resources required for those calls
+    let mut asset_inputs = vec![];
+    for &(asset_id, amount) in &required_asset_amounts {
+        let resources = account
+            .get_asset_inputs_for_amount(asset_id, amount, None)
+            .await?;
+        asset_inputs.extend(resources);
+    }
+
+    let tb = call.transaction_builder(
+        *tx_policies,
+        *variable_output_policy,
+        &consensus_parameters,
+        asset_inputs,
+        account,
+    )?;
 
     let tx = call
         .build_tx(tb, account)

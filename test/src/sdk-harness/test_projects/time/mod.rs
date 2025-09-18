@@ -1,6 +1,6 @@
 use fuels::prelude::*;
-use tokio::time::{sleep, Duration};
 use std::time::{SystemTime, UNIX_EPOCH};
+use tokio::time::{Duration, sleep};
 
 abigen!(Contract(
     name = "TimeTestContract",

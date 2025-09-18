@@ -18,7 +18,7 @@ fuel-core-client = { version = "0.44.0", default-features = false }
 fuel-vm = { version = "0.62", features = ["random"] }
 
 # Dependencies from the `fuels-rs` repository:
-fuels = { version = "0.74", features = ["fuel-core-lib"] }
+fuels = { workspace = true, features = ["fuel-core-lib"] }
 
 hex = "0.4"
 paste = "1.0"
@@ -34,4 +34,16 @@ harness = true
 name = "integration_tests"
 path = "test_projects/harness.rs"
 
-[workspace]
+[package.metadata.cargo-udeps.ignore]
+normal = [
+    "assert_matches",
+    "fuel-core",
+    "fuel-core-client",
+    "fuel-vm",
+    "paste",
+    "pretty_assertions",
+    "rand",
+    "sha2",
+    "sha3",
+    "tai64",
+]

@@ -44,10 +44,12 @@
       "components": [
         {
           "name": "__tuple_element",
+          "offset": null,
           "typeId": 1
         },
         {
           "name": "__tuple_element",
+          "offset": null,
           "typeId": 1
         }
       ],
@@ -59,6 +61,7 @@
       "type": "u64"
     }
   ],
+  "panickingCalls": null,
   "programType": "contract",
   "specVersion": "1.1"
 }

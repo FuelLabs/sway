@@ -1,10 +1,10 @@
 use fuel_vm::fuel_tx::{
-    output::contract::Contract as OutputContract, Bytes32, ContractId, Output, TxPointer, UtxoId,
+    Bytes32, ContractId, Output, TxPointer, UtxoId, output::contract::Contract as OutputContract,
 };
 use fuels::{
     core::codec::*,
     prelude::*,
-    types::{input::Input, Bits256, SizedAsciiString},
+    types::{Bits256, SizedAsciiString, input::Input},
 };
 
 macro_rules! fn_selector {
@@ -22,8 +22,7 @@ macro_rules! calldata {
 abigen!(
     Contract(
         name = "TestContract",
-        abi =
-            "test_artifacts/low_level_callee_contract/out/release/low_level_callee_contract-abi.json"
+        abi = "test_artifacts/low_level_callee_contract/out/release/low_level_callee_contract-abi.json"
     ),
     Script(
         name = "TestScript",

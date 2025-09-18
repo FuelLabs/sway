@@ -1,6 +1,6 @@
 use fuels::{prelude::*, types::Bits256};
 use tai64::Tai64;
-use tokio::time::{sleep, Duration};
+use tokio::time::{Duration, sleep};
 
 abigen!(Contract(
     name = "BlockTestContract",
@@ -150,17 +150,14 @@ async fn can_get_timestamp_of_block() {
     );
 }
 
-
 #[tokio::test]
 async fn can_get_chain_id() {
     let (instance, _id, provider) = get_block_instance().await;
 
-    let id = instance
-        .methods()
-        .get_chain_id()
-        .call()
-        .await
-        .unwrap();
+    let id = instance.methods().get_chain_id().call().await.unwrap();
 
-    assert_eq!(id.value, *provider.consensus_parameters().await.unwrap().chain_id());
+    assert_eq!(
+        id.value,
+        *provider.consensus_parameters().await.unwrap().chain_id()
+    );
 }

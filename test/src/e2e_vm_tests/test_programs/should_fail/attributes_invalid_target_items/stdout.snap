@@ -255,6 +255,26 @@ error: Attribute cannot annotate item
 ____
 
 error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/type_alias_decl.sw:12:3
+   |
+...
+12 | #[event]
+   |   ^^^^^ "event" attribute cannot annotate a type alias declaration.
+   |
+   = help: "event" attribute can only annotate structs or enums.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/type_alias_decl.sw:13:3
+   |
+...
+13 | #[indexed]
+   |   ^^^^^^^ "indexed" attribute cannot annotate a type alias declaration.
+   |
+   = help: "indexed" attribute can only annotate struct fields.
+____
+
+error: Attribute cannot annotate item
  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/struct_decl.sw:3:3
   |
 ...
@@ -1550,6 +1570,26 @@ error: Attribute cannot annotate item
 ____
 
 error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_method.sw:12:7
+   |
+...
+12 |     #[event]
+   |       ^^^^^ "event" attribute cannot annotate a function signature.
+   |
+   = help: "event" attribute can only annotate structs or enums.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_method.sw:13:7
+   |
+...
+13 |     #[indexed]
+   |       ^^^^^^^ "indexed" attribute cannot annotate a function signature.
+   |
+   = help: "indexed" attribute can only annotate struct fields.
+____
+
+error: Attribute cannot annotate item
  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_provided_assoc_fn.sw:5:7
   |
 ...
@@ -1613,6 +1653,26 @@ error: Attribute cannot annotate item
 ____
 
 error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_provided_assoc_fn.sw:11:7
+   |
+...
+11 |     #[event]
+   |       ^^^^^ "event" attribute cannot annotate a provided trait function.
+   |
+   = help: "event" attribute can only annotate structs or enums.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_provided_assoc_fn.sw:12:7
+   |
+...
+12 |     #[indexed]
+   |       ^^^^^^^ "indexed" attribute cannot annotate a provided trait function.
+   |
+   = help: "indexed" attribute can only annotate struct fields.
+____
+
+error: Attribute cannot annotate item
  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_provided_method.sw:5:7
   |
 ...
@@ -1673,6 +1733,26 @@ error: Attribute cannot annotate item
    |       ^^^^^ "error" attribute cannot annotate a provided trait function.
    |
    = help: "error" attribute can only annotate enum variants of enums annotated with the "error_type" attribute.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_provided_method.sw:11:7
+   |
+...
+11 |     #[event]
+   |       ^^^^^ "event" attribute cannot annotate a provided trait function.
+   |
+   = help: "event" attribute can only annotate structs or enums.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_decl_provided_method.sw:12:7
+   |
+...
+12 |     #[indexed]
+   |       ^^^^^^^ "indexed" attribute cannot annotate a provided trait function.
+   |
+   = help: "indexed" attribute can only annotate struct fields.
 ____
 
 error: Attribute cannot annotate item
@@ -1779,33 +1859,66 @@ error: Attribute cannot annotate item
 ____
 
 error: Attribute cannot annotate item
+<<<<<<< HEAD
   --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_enum.sw:22:7
    |
 ...
 22 |     #[storage(invalid)]
    |       ^^^^^^^ "storage" attribute cannot annotate an associated type.
+=======
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_enum.sw:20:3
    |
-   = help: "storage" attribute can only annotate functions.
+...
+20 | #[event]
+   |   ^^^^^ "event" attribute cannot annotate an ABI or trait implementation.
+>>>>>>> 281b94019 (Add support for events and indexed fields.)
+   |
+   = help: "event" attribute can only annotate structs or enums.
 ____
 
 error: Attribute cannot annotate item
+<<<<<<< HEAD
   --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_enum.sw:23:7
    |
 ...
 23 |     #[inline(invalid)]
    |       ^^^^^^ "inline" attribute cannot annotate an associated type.
+=======
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_enum.sw:21:3
    |
-   = help: "inline" attribute can only annotate functions.
+...
+21 | #[indexed]
+   |   ^^^^^^^ "indexed" attribute cannot annotate an ABI or trait implementation.
+>>>>>>> 281b94019 (Add support for events and indexed fields.)
+   |
+   = help: "indexed" attribute can only annotate struct fields.
 ____
 
 error: Attribute cannot annotate item
   --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_enum.sw:24:7
    |
 ...
+<<<<<<< HEAD
 24 |     #[trace(invalid)]
    |       ^^^^^ "trace" attribute cannot annotate an associated type.
    |
    = help: "trace" attribute can only annotate functions that can panic.
+=======
+23 |     #[storage(invalid)]
+   |       ^^^^^^^ "storage" attribute cannot annotate an associated type.
+   |
+   = help: "storage" attribute can only annotate functions.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_enum.sw:24:7
+   |
+...
+24 |     #[inline(invalid)]
+   |       ^^^^^^ "inline" attribute cannot annotate an associated type.
+   |
+   = help: "inline" attribute can only annotate functions.
+>>>>>>> 281b94019 (Add support for events and indexed fields.)
 ____
 
 error: Attribute cannot annotate item
@@ -1869,6 +1982,26 @@ error: Attribute cannot annotate item
    |       ^^^^^ "error" attribute cannot annotate an associated type.
    |
    = help: "error" attribute can only annotate enum variants of enums annotated with the "error_type" attribute.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_enum.sw:31:7
+   |
+...
+31 |     #[event]
+   |       ^^^^^ "event" attribute cannot annotate an associated type.
+   |
+   = help: "event" attribute can only annotate structs or enums.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_enum.sw:32:7
+   |
+...
+32 |     #[indexed]
+   |       ^^^^^^^ "indexed" attribute cannot annotate an associated type.
+   |
+   = help: "indexed" attribute can only annotate struct fields.
 ____
 
 error: Attribute cannot annotate item
@@ -1975,33 +2108,66 @@ error: Attribute cannot annotate item
 ____
 
 error: Attribute cannot annotate item
+<<<<<<< HEAD
   --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_struct.sw:22:7
    |
 ...
 22 |     #[storage(invalid)]
    |       ^^^^^^^ "storage" attribute cannot annotate an associated type.
+=======
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_struct.sw:20:3
    |
-   = help: "storage" attribute can only annotate functions.
+...
+20 | #[event]
+   |   ^^^^^ "event" attribute cannot annotate an ABI or trait implementation.
+>>>>>>> 281b94019 (Add support for events and indexed fields.)
+   |
+   = help: "event" attribute can only annotate structs or enums.
 ____
 
 error: Attribute cannot annotate item
+<<<<<<< HEAD
   --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_struct.sw:23:7
    |
 ...
 23 |     #[inline(invalid)]
    |       ^^^^^^ "inline" attribute cannot annotate an associated type.
+=======
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_struct.sw:21:3
    |
-   = help: "inline" attribute can only annotate functions.
+...
+21 | #[indexed]
+   |   ^^^^^^^ "indexed" attribute cannot annotate an ABI or trait implementation.
+>>>>>>> 281b94019 (Add support for events and indexed fields.)
+   |
+   = help: "indexed" attribute can only annotate struct fields.
 ____
 
 error: Attribute cannot annotate item
   --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_struct.sw:24:7
    |
 ...
+<<<<<<< HEAD
 24 |     #[trace(invalid)]
    |       ^^^^^ "trace" attribute cannot annotate an associated type.
    |
    = help: "trace" attribute can only annotate functions that can panic.
+=======
+23 |     #[storage(invalid)]
+   |       ^^^^^^^ "storage" attribute cannot annotate an associated type.
+   |
+   = help: "storage" attribute can only annotate functions.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_struct.sw:24:7
+   |
+...
+24 |     #[inline(invalid)]
+   |       ^^^^^^ "inline" attribute cannot annotate an associated type.
+   |
+   = help: "inline" attribute can only annotate functions.
+>>>>>>> 281b94019 (Add support for events and indexed fields.)
 ____
 
 error: Attribute cannot annotate item
@@ -2075,6 +2241,26 @@ error: Attribute cannot annotate item
    |       ^^^^^ "error" attribute cannot annotate an associated type.
    |
    = help: "error" attribute can only annotate enum variants of enums annotated with the "error_type" attribute.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_struct.sw:32:7
+   |
+...
+32 |     #[event]
+   |       ^^^^^ "event" attribute cannot annotate an associated type.
+   |
+   = help: "event" attribute can only annotate structs or enums.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/trait_impl_for_struct.sw:33:7
+   |
+...
+33 |     #[indexed]
+   |       ^^^^^^^ "indexed" attribute cannot annotate an associated type.
+   |
+   = help: "indexed" attribute can only annotate struct fields.
 ____
 
 error: Attribute cannot annotate item
@@ -2178,6 +2364,26 @@ error: Attribute cannot annotate item
    |   ^^^^^ "error" attribute cannot annotate an import (`use`).
    |
    = help: "error" attribute can only annotate enum variants of enums annotated with the "error_type" attribute.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/use_lib.sw:13:3
+   |
+...
+13 | #[event]
+   |   ^^^^^ "event" attribute cannot annotate an import (`use`).
+   |
+   = help: "event" attribute can only annotate structs or enums.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/use_lib.sw:14:3
+   |
+...
+14 | #[indexed]
+   |   ^^^^^^^ "indexed" attribute cannot annotate an import (`use`).
+   |
+   = help: "indexed" attribute can only annotate struct fields.
 ____
 
 error: Attribute cannot annotate item
@@ -2504,11 +2710,35 @@ error: Attribute cannot annotate item
    = help: Annotating module kinds (contract, script, predicate, or library) is currently not implemented.
 ____
 
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:13:3
+   |
+...
+13 | #[event]
+   |   ^^^^^ "event" attribute cannot annotate a module kind (library).
+   |
+   = help: "event" attribute can only annotate structs or enums.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:14:3
+   |
+...
+14 | #[indexed]
+   |   ^^^^^^^ "indexed" attribute cannot annotate a module kind (library).
+   |
+   = help: "indexed" attribute can only annotate struct fields.
+____
+
 error: Inner doc comment (`//!`) cannot document item
   --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:1:1
    |
 ...  |
+<<<<<<< HEAD
 20 | | //! Invalid inner comment.
+=======
+21 | | //! Invalid inner comment.
+>>>>>>> 281b94019 (Add support for events and indexed fields.)
    | |_^ Inner doc comment (`//!`) cannot document a submodule (`mod`).
    |
    = help: Inner doc comments (`//!`) can only document modules and must be
@@ -2519,12 +2749,17 @@ error: Outer doc comment (`///`) cannot document item
   --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:1:1
    |
 ...  |
+<<<<<<< HEAD
 23 | | /// Invalid outer comment.
+=======
+24 | | /// Invalid outer comment.
+>>>>>>> 281b94019 (Add support for events and indexed fields.)
    | |_^ Outer doc comment (`///`) cannot document a submodule (`mod`).
    |
 ____
 
 error: Attribute cannot annotate item
+<<<<<<< HEAD
   --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:24:3
    |
 ...
@@ -2539,11 +2774,28 @@ error: Attribute cannot annotate item
    |
 ...
 25 | #[inline(invalid)]
+=======
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:25:3
+   |
+...
+25 | #[storage(invalid)]
+   |   ^^^^^^^ "storage" attribute cannot annotate a submodule (`mod`).
+   |
+   = help: "storage" attribute can only annotate functions.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:26:3
+   |
+...
+26 | #[inline(invalid)]
+>>>>>>> 281b94019 (Add support for events and indexed fields.)
    |   ^^^^^^ "inline" attribute cannot annotate a submodule (`mod`).
    |
    = help: "inline" attribute can only annotate functions.
 ____
 
+<<<<<<< HEAD
 error: Attribute cannot annotate item
   --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:26:3
    |
@@ -2558,6 +2810,12 @@ error: Inner doc comment (`//!`) cannot document item
   --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:27:1
    |
 ...
+=======
+error: Inner doc comment (`//!`) cannot document item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:27:1
+   |
+...
+>>>>>>> 281b94019 (Add support for events and indexed fields.)
 27 | //! Invalid inner comment.
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^ Inner doc comment (`//!`) cannot document a submodule (`mod`).
    |
@@ -2683,11 +2941,39 @@ error: Attribute cannot annotate item
    = help: "error" attribute can only annotate enum variants of enums annotated with the "error_type" attribute.
 ____
 
+<<<<<<< HEAD
 error: Inner doc comment (`//!`) cannot document item
   --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:42:1
    |
 ...
 42 | //! Invalid inner comment.
+=======
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:42:3
+   |
+...
+42 | #[event]
+   |   ^^^^^ "event" attribute cannot annotate a submodule (`mod`).
+   |
+   = help: "event" attribute can only annotate structs or enums.
+____
+
+error: Attribute cannot annotate item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:43:3
+   |
+...
+43 | #[indexed]
+   |   ^^^^^^^ "indexed" attribute cannot annotate a submodule (`mod`).
+   |
+   = help: "indexed" attribute can only annotate struct fields.
+____
+
+error: Inner doc comment (`//!`) cannot document item
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:44:1
+   |
+...
+44 | //! Invalid inner comment.
+>>>>>>> 281b94019 (Add support for events and indexed fields.)
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^ Inner doc comment (`//!`) cannot document a submodule (`mod`).
    |
    = help: Inner doc comments (`//!`) can only document modules and must be
@@ -2695,13 +2981,24 @@ error: Inner doc comment (`//!`) cannot document item
 ____
 
 error: Outer doc comment (`///`) cannot document item
+<<<<<<< HEAD
   --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:43:1
    |
 ...
 43 | /// Invalid outer comment.
+=======
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_items/src/main.sw:45:1
+   |
+...
+45 | /// Invalid outer comment.
+>>>>>>> 281b94019 (Add support for events and indexed fields.)
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^ Outer doc comment (`///`) cannot document a submodule (`mod`).
    |
 ____
 
+<<<<<<< HEAD
   Aborting due to 259 errors.
+=======
+  Aborting due to 260 errors.
+>>>>>>> 281b94019 (Add support for events and indexed fields.)
 error: Failed to compile attributes_invalid_target_items

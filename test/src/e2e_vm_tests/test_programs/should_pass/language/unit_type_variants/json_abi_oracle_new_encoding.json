@@ -28,14 +28,17 @@
       "components": [
         {
           "name": "A",
+          "offset": null,
           "typeId": 0
         },
         {
           "name": "B",
+          "offset": null,
           "typeId": 0
         },
         {
           "name": "C",
+          "offset": null,
           "typeId": 0
         }
       ],
@@ -43,6 +46,7 @@
       "type": "enum E"
     }
   ],
+  "panickingCalls": null,
   "programType": "script",
   "specVersion": "1.1"
 }

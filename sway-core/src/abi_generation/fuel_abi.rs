@@ -15,7 +15,7 @@ use crate::{
     ast_elements::type_parameter::GenericTypeParameter,
     language::ty::{TyFunctionDecl, TyProgram, TyProgramKind},
     transform::Attributes,
-    Engines, PanicOccurrences, TypeId, TypeInfo,
+    AbiEncodeSizeHint, Engines, PanicOccurrences, TypeId, TypeInfo,
 };
 
 use super::abi_str::AbiStrContext;
@@ -324,6 +324,7 @@ pub fn generate_program_abi(
                 generate_configurables(handler, ctx, engines, metadata_types, concrete_types)?;
             let error_codes = generate_error_codes(ctx.panic_occurrences);
             Ok(program_abi::ProgramABI {
+                panicking_calls: None,
                 program_type: "contract".to_string(),
                 spec_version,
                 encoding_version,
@@ -353,6 +354,7 @@ pub fn generate_program_abi(
                 generate_configurables(handler, ctx, engines, metadata_types, concrete_types)?;
             let error_codes = generate_error_codes(ctx.panic_occurrences);
             Ok(program_abi::ProgramABI {
+                panicking_calls: None,
                 program_type: "script".to_string(),
                 spec_version,
                 encoding_version,
@@ -382,6 +384,7 @@ pub fn generate_program_abi(
                 generate_configurables(handler, ctx, engines, metadata_types, concrete_types)?;
             let error_codes = generate_error_codes(ctx.panic_occurrences);
             Ok(program_abi::ProgramABI {
+                panicking_calls: None,
                 program_type: "predicate".to_string(),
                 spec_version,
                 encoding_version,
@@ -401,6 +404,7 @@ pub fn generate_program_abi(
                 generate_messages_types(handler, ctx, engines, metadata_types, concrete_types)?;
             let error_codes = generate_error_codes(ctx.panic_occurrences);
             Ok(program_abi::ProgramABI {
+                panicking_calls: None,
                 program_type: "library".to_string(),
                 spec_version,
                 encoding_version,
@@ -650,6 +654,7 @@ fn generate_concrete_type_declaration(
     let (type_field, concrete_type_id) =
         type_id.get_abi_type_field_and_concrete_id(handler, ctx, engines, resolved_type_id)?;
     let concrete_type_decl = TypeConcreteDeclaration {
+        alias_of: None,
         type_field,
         concrete_type_id: concrete_type_id.clone(),
         metadata_type_id,
@@ -818,6 +823,7 @@ fn generate_error_codes(panic_occurrences: &PanicOccurrences) -> BTreeMap<u64, E
                         file: panic_occurrence.loc.file.clone(),
                         line: panic_occurrence.loc.loc.line as u64,
                         column: panic_occurrence.loc.loc.col as u64,
+                        function: String::default(),
                     },
                     log_id: panic_occurrence
                         .log_id
@@ -894,15 +900,15 @@ impl TypeId {
 
                 let mut new_metadata_types_to_add =
                     Vec::<program_abi::TypeMetadataDeclaration>::new();
-                for x in decl.variants.iter() {
+                for variant in decl.variants.iter() {
                     generate_type_metadata_declaration(
                         handler,
                         ctx,
                         engines,
                         metadata_types,
                         concrete_types,
-                        x.type_argument.initial_type_id(),
-                        x.type_argument.type_id(),
+                        variant.type_argument.initial_type_id(),
+                        variant.type_argument.type_id(),
                         &mut new_metadata_types_to_add,
                     )?;
                 }
@@ -912,14 +918,15 @@ impl TypeId {
                 let components = decl
                     .variants
                     .iter()
-                    .map(|x| {
+                    .map(|variant| {
                         Ok(program_abi::TypeApplication {
-                            name: x.name.to_string(),
+                            name: variant.name.to_string(),
                             type_id: program_abi::TypeId::Metadata(MetadataTypeId(
-                                x.type_argument.initial_type_id().index(),
+                                variant.type_argument.initial_type_id().index(),
                             )),
-                            error_message: x.attributes.error_message().cloned(),
-                            type_arguments: x
+                            offset: None,
+                            error_message: variant.attributes.error_message().cloned(),
+                            type_arguments: variant
                                 .type_argument
                                 .initial_type_id()
                                 .get_abi_type_arguments(
@@ -928,7 +935,7 @@ impl TypeId {
                                     engines,
                                     metadata_types,
                                     concrete_types,
-                                    x.type_argument.type_id(),
+                                    variant.type_argument.type_id(),
                                     &mut new_metadata_types_to_add,
                                 )?,
                         })
@@ -947,15 +954,15 @@ impl TypeId {
 
                 let mut new_metadata_types_to_add =
                     Vec::<program_abi::TypeMetadataDeclaration>::new();
-                for x in decl.fields.iter() {
+                for field in decl.fields.iter() {
                     generate_type_metadata_declaration(
                         handler,
                         ctx,
                         engines,
                         metadata_types,
                         concrete_types,
-                        x.type_argument.initial_type_id(),
-                        x.type_argument.type_id(),
+                        field.type_argument.initial_type_id(),
+                        field.type_argument.type_id(),
                         &mut new_metadata_types_to_add,
                     )?;
                 }
@@ -965,14 +972,30 @@ impl TypeId {
                 let components = decl
                     .fields
                     .iter()
-                    .map(|x| {
+                    .scan(0u16, |field_offset, field| {
+                        field.attributes.indexed()?;
+                        let hint = engines
+                            .te()
+                            .get(field.type_argument.type_id())
+                            .abi_encode_size_hint(engines);
+                        let size = if let AbiEncodeSizeHint::Exact(sz) = hint {
+                            sz as u16
+                        } else {
+                            0
+                        };
+                        let offset = if size > 0 { Some(*field_offset) } else { None };
+                        *field_offset += size;
+                        Some((field, offset))
+                    })
+                    .map(|(field, offset)| {
                         Ok(program_abi::TypeApplication {
-                            name: x.name.to_string(),
+                            name: field.name.to_string(),
                             type_id: program_abi::TypeId::Metadata(MetadataTypeId(
-                                x.type_argument.initial_type_id().index(),
+                                field.type_argument.initial_type_id().index(),
                             )),
                             error_message: None,
-                            type_arguments: x
+                            offset,
+                            type_arguments: field
                                 .type_argument
                                 .initial_type_id()
                                 .get_abi_type_arguments(
@@ -981,7 +1004,7 @@ impl TypeId {
                                     engines,
                                     metadata_types,
                                     concrete_types,
-                                    x.type_argument.type_id(),
+                                    field.type_argument.type_id(),
                                     &mut new_metadata_types_to_add,
                                 )?,
                         })
@@ -1016,6 +1039,7 @@ impl TypeId {
                             elem_ty.initial_type_id().index(),
                         )),
                         error_message: None,
+                        offset: None,
                         type_arguments: elem_ty.initial_type_id().get_abi_type_arguments(
                             handler,
                             ctx,
@@ -1051,6 +1075,7 @@ impl TypeId {
                             elem_ty.initial_type_id().index(),
                         )),
                         error_message: None,
+                        offset: None,
                         type_arguments: elem_ty.initial_type_id().get_abi_type_arguments(
                             handler,
                             ctx,
@@ -1093,6 +1118,7 @@ impl TypeId {
                                     x.initial_type_id().index(),
                                 )),
                                 error_message: None,
+                                offset: None,
                                 type_arguments: x.initial_type_id().get_abi_type_arguments(
                                     handler,
                                     ctx,
@@ -1239,6 +1265,7 @@ impl TypeId {
                                     arg.initial_type_id().index(),
                                 )),
                                 error_message: None,
+                                offset: None,
                                 type_arguments: arg.initial_type_id().get_abi_type_arguments(
                                     handler,
                                     ctx,
@@ -1286,6 +1313,7 @@ impl TypeId {
                                     p.type_id.index(),
                                 )),
                                 error_message: None,
+                                offset: None,
                                 type_arguments: p.type_id.get_abi_type_arguments(
                                     handler,
                                     ctx,
@@ -1341,6 +1369,7 @@ impl TypeId {
                                     p.type_id.index(),
                                 )),
                                 error_message: None,
+                                offset: None,
                                 type_arguments: p.type_id.get_abi_type_arguments(
                                     handler,
                                     ctx,
