@@ -1,0 +1,8 @@
+[[package]]
+name = "std"
+source = "path+from-root-486D4EB908EA8811"
+
+[[package]]
+name = "trait_constraint_method_lookup"
+source = "member"
+dependencies = ["std"]

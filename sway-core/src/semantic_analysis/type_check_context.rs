@@ -13,7 +13,7 @@ use crate::{
     monomorphization::{monomorphize_with_modpath, MonomorphizeHelper},
     namespace::{
         IsExtendingExistingImpl, IsImplSelf, Module, ModulePath, ResolvedDeclaration,
-        ResolvedTraitImplItem, TraitMap,
+        ResolvedTraitImplItem, TraitKey, TraitMap, TraitSuffix,
     },
     semantic_analysis::{
         ast_node::{AbiMode, ConstShadowingMode},
@@ -128,11 +128,46 @@ enum MatchScore {
     Incompatible,
 }
 
+#[derive(Clone)]
+pub(crate) struct CandidateTraitItem {
+    item: ty::TyTraitItem,
+    trait_key: TraitKey,
+    original_type_id: TypeId,
+    resolved_type_id: TypeId,
+}
+
+fn trait_paths_equivalent(
+    allowed: &CallPath<TraitSuffix>,
+    other: &CallPath<TraitSuffix>,
+    unify_check: &UnifyCheck,
+) -> bool {
+    if allowed
+        .prefixes
+        .iter()
+        .zip(other.prefixes.iter())
+        .any(|(a, b)| a != b)
+    {
+        return false;
+    }
+    if allowed.suffix.name != other.suffix.name {
+        return false;
+    }
+    if allowed.suffix.args.len() != other.suffix.args.len() {
+        return false;
+    }
+    allowed
+        .suffix
+        .args
+        .iter()
+        .zip(other.suffix.args.iter())
+        .all(|(a, b)| unify_check.check(a.type_id(), b.type_id()))
+}
+
 type TraitImplId = crate::decl_engine::DeclId<ty::TyImplSelfOrTrait>;
-type TraitKey = (TraitImplId, Option<TypeId>);
+type GroupingKey = (TraitImplId, Option<TypeId>);
 
 struct GroupingResult {
-    trait_methods: BTreeMap<TraitKey, DeclRefFunction>,
+    trait_methods: BTreeMap<GroupingKey, DeclRefFunction>,
     impl_self_method: Option<DeclRefFunction>,
     qualified_call_path: Option<QualifiedCallPath>,
 }
@@ -736,8 +771,9 @@ impl<'a> TypeCheckContext<'a> {
         item_prefix: &ModulePath,
         item_name: &Ident,
         method_name: &Option<&MethodName>,
-    ) -> Result<Vec<ty::TyTraitItem>, ErrorEmitted> {
+    ) -> Result<Vec<CandidateTraitItem>, ErrorEmitted> {
         let type_engine = self.engines.te();
+        let original_type_id = type_id;
 
         // If the type that we are looking for is the error recovery type, then
         // we want to return the error case without creating a new error
@@ -747,7 +783,7 @@ impl<'a> TypeCheckContext<'a> {
         }
 
         // resolve the type
-        let type_id = resolve_type(
+        let resolved_type_id = resolve_type(
             handler,
             self.engines(),
             self.namespace(),
@@ -768,43 +804,53 @@ impl<'a> TypeCheckContext<'a> {
             .require_module_from_absolute_path(handler, &self.namespace().current_mod_path)?;
 
         // grab the local items from the local module
-        let mut matching_item_decl_refs = vec![];
-        let mut filter_item = |item, _| match &item {
+        let mut matching_items = vec![];
+        let mut filter_item = |item: ResolvedTraitImplItem, trait_key: TraitKey| match &item {
             ResolvedTraitImplItem::Parsed(_) => todo!(),
-            ResolvedTraitImplItem::Typed(item) => match item {
-                ty::TyTraitItem::Fn(decl_ref) => {
-                    if decl_ref.name() == item_name {
-                        matching_item_decl_refs.push(item.clone());
-                    }
+            ResolvedTraitImplItem::Typed(ty_item) => match ty_item {
+                ty::TyTraitItem::Fn(decl_ref) if decl_ref.name() == item_name => {
+                    matching_items.push(CandidateTraitItem {
+                        item: ty_item.clone(),
+                        trait_key: trait_key.clone(),
+                        original_type_id,
+                        resolved_type_id,
+                    });
                 }
-                ty::TyTraitItem::Constant(decl_ref) => {
-                    if decl_ref.name() == item_name {
-                        matching_item_decl_refs.push(item.clone());
-                    }
+                ty::TyTraitItem::Constant(decl_ref) if decl_ref.name() == item_name => {
+                    matching_items.push(CandidateTraitItem {
+                        item: ty_item.clone(),
+                        trait_key: trait_key.clone(),
+                        original_type_id,
+                        resolved_type_id,
+                    });
                 }
-                ty::TyTraitItem::Type(decl_ref) => {
-                    if decl_ref.name() == item_name {
-                        matching_item_decl_refs.push(item.clone());
-                    }
+                ty::TyTraitItem::Type(decl_ref) if decl_ref.name() == item_name => {
+                    matching_items.push(CandidateTraitItem {
+                        item: ty_item.clone(),
+                        trait_key: trait_key.clone(),
+                        original_type_id,
+                        resolved_type_id,
+                    });
                 }
+                _ => {}
             },
         };
 
         TraitMap::find_items_and_trait_key_for_type(
             local_module,
             self.engines,
-            type_id,
+            resolved_type_id,
             &mut filter_item,
         );
 
         // grab the items from where the argument type is declared
         if let Some(MethodName::FromTrait { .. }) = method_name {
-            let type_module = self.get_namespace_module_from_type_id(type_id);
+            let type_module = self.get_namespace_module_from_type_id(resolved_type_id);
             if let Ok(type_module) = type_module {
                 TraitMap::find_items_and_trait_key_for_type(
                     type_module,
                     self.engines,
-                    type_id,
+                    resolved_type_id,
                     &mut filter_item,
                 );
             }
@@ -820,12 +866,12 @@ impl<'a> TypeCheckContext<'a> {
             TraitMap::find_items_and_trait_key_for_type(
                 type_module,
                 self.engines,
-                type_id,
+                resolved_type_id,
                 &mut filter_item,
             );
         }
 
-        Ok(matching_item_decl_refs)
+        Ok(matching_items)
     }
 
     fn get_namespace_module_from_type_id(&self, type_id: TypeId) -> Result<&Module, ErrorEmitted> {
@@ -899,6 +945,10 @@ impl<'a> TypeCheckContext<'a> {
         let mut items =
             self.find_items_for_type(handler, type_id, method_prefix, method_ident, method_name)?;
 
+        if method_name.is_none() {
+            return Ok(items.into_iter().map(|candidate| candidate.item).collect());
+        }
+
         // Consider items from supersets indicated by the annotation return type.
         if !matches!(&*type_engine.get(annotation_type), TypeInfo::Unknown)
             && !type_id.is_concrete(self.engines, crate::TreatNumericAs::Concrete)
@@ -921,7 +971,353 @@ impl<'a> TypeCheckContext<'a> {
             }
         }
 
-        Ok(items)
+        if let Some(method_name) = method_name {
+            let method_constraints = self.trait_constraints_from_method_name(handler, method_name);
+            self.filter_items_by_trait_access(&mut items, method_constraints.as_ref());
+        }
+
+        Ok(items.into_iter().map(|candidate| candidate.item).collect())
+    }
+
+    fn trait_constraints_from_method_name(
+        &self,
+        handler: &Handler,
+        method_name: &MethodName,
+    ) -> Option<(TypeId, Vec<TraitConstraint>)> {
+        let _ = handler;
+        let MethodName::FromType {
+            call_path_binding, ..
+        } = method_name
+        else {
+            return None;
+        };
+
+        let (_, type_ident) = &call_path_binding.inner.suffix;
+        let resolve_handler = Handler::default();
+        let Ok((resolved_decl, _)) = self.namespace().current_module().resolve_symbol(
+            &resolve_handler,
+            self.engines(),
+            type_ident,
+        ) else {
+            return None;
+        };
+
+        match resolved_decl.expect_typed() {
+            ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
+                type_id,
+                ..
+            }) => {
+                let mut constraints = Vec::new();
+                let mut visited = HashSet::new();
+                self.collect_trait_constraints_recursive(type_id, &mut constraints, &mut visited);
+                Some((type_id, constraints))
+            }
+            _ => None,
+        }
+    }
+
+    /// Filter the candidate trait items so that only methods whose traits satisfy the relevant
+    /// trait bounds remain. Groups corresponding to other generic parameters are left untouched.
+    fn filter_items_by_trait_access(
+        &self,
+        items: &mut Vec<CandidateTraitItem>,
+        method_constraints: Option<&(TypeId, Vec<TraitConstraint>)>,
+    ) {
+        if items.is_empty() {
+            return;
+        }
+
+        // Group candidates by the (possibly still generic) type they originated from so we can
+        // later apply trait bounds per generic parameter.
+        let mut grouped: BTreeMap<TypeId, Vec<CandidateTraitItem>> = BTreeMap::new();
+        for item in items.drain(..) {
+            grouped
+                .entry(
+                    self.engines
+                        .te()
+                        .get_unaliased_type_id(item.resolved_type_id),
+                )
+                .or_default()
+                .push(item);
+        }
+
+        // If this lookup is resolving a concrete method name, pre-compute the generic type whose
+        // bounds we collected so we only apply those bounds to matching groups.
+        let method_constraint_info = method_constraints.map(|(type_id, constraints)| {
+            (
+                self.engines.te().get_unaliased_type_id(*type_id),
+                constraints.as_slice(),
+            )
+        });
+
+        let type_engine = self.engines.te();
+        let mut filtered = Vec::new();
+
+        for (type_id, group) in grouped {
+            let type_info = type_engine.get(type_id);
+            if !matches!(
+                *type_info,
+                TypeInfo::UnknownGeneric { .. } | TypeInfo::Placeholder(_)
+            ) {
+                filtered.extend(group);
+                continue;
+            }
+
+            let (interface_items, impl_items): (Vec<_>, Vec<_>) =
+                group.into_iter().partition(|item| {
+                    matches!(
+                        item.trait_key.is_impl_interface_surface,
+                        IsImplInterfaceSurface::Yes
+                    )
+                });
+
+            // Only groups born from the same generic parameter as the method call need to honour
+            // the method's trait bounds. Other generic parameters can pass through untouched.
+            let extra_constraints =
+                method_constraint_info.and_then(|(constraint_type_id, constraints)| {
+                    let applies_to_group =
+                        interface_items.iter().chain(impl_items.iter()).any(|item| {
+                            self.engines
+                                .te()
+                                .get_unaliased_type_id(item.original_type_id)
+                                == constraint_type_id
+                        });
+
+                    applies_to_group.then_some(constraints)
+                });
+
+            let allowed_traits =
+                self.allowed_traits_for_type(type_id, &interface_items, extra_constraints);
+
+            if allowed_traits.is_empty() {
+                filtered.extend(interface_items);
+                filtered.extend(impl_items);
+                continue;
+            }
+
+            if !impl_items.is_empty() {
+                let mut retained_impls = Vec::new();
+                for item in impl_items {
+                    if self.trait_key_matches_allowed(&item.trait_key, &allowed_traits) {
+                        retained_impls.push(item);
+                    }
+                }
+
+                if !retained_impls.is_empty() {
+                    filtered.extend(retained_impls);
+                    filtered.extend(interface_items);
+                    continue;
+                }
+            }
+
+            // No impl methods matched the bounds, so fall back to the interface placeholders.
+            filtered.extend(interface_items);
+        }
+
+        *items = filtered;
+    }
+
+    /// Build the list of trait paths that should remain visible for the given `type_id` when
+    /// resolving a method. This includes traits that supplied the interface surface entries as well
+    /// as any traits required by bounds on the generic parameter.
+    fn allowed_traits_for_type(
+        &self,
+        type_id: TypeId,
+        interface_items: &[CandidateTraitItem],
+        extra_constraints: Option<&[TraitConstraint]>,
+    ) -> Vec<CallPath<TraitSuffix>> {
+        // Seed the allow-list with the traits that provided the interface items. They act as
+        // fallbacks whenever no concrete implementation matches the bounds.
+        let mut allowed: Vec<CallPath<TraitSuffix>> = interface_items
+            .iter()
+            .map(|item| item.trait_key.name.as_ref().clone())
+            .collect();
+
+        // Add trait bounds declared on the type parameter itself (recursively following inherited
+        // bounds) so they can participate in disambiguation.
+        let mut constraints = Vec::new();
+        let mut visited = HashSet::new();
+        self.collect_trait_constraints_recursive(type_id, &mut constraints, &mut visited);
+
+        for constraint in constraints {
+            let canonical = constraint
+                .trait_name
+                .to_canonical_path(self.engines(), self.namespace());
+            allowed.push(CallPath {
+                prefixes: canonical.prefixes,
+                suffix: TraitSuffix {
+                    name: canonical.suffix,
+                    args: constraint.type_arguments.clone(),
+                },
+                callpath_type: canonical.callpath_type,
+            });
+        }
+
+        // Method-specific bounds (for example from `fn foo<T: Trait>()`) are supplied separately,
+        // include them so only the permitted traits remain candidates after filtering.
+        if let Some(extra) = extra_constraints {
+            for constraint in extra {
+                let canonical = constraint
+                    .trait_name
+                    .to_canonical_path(self.engines(), self.namespace());
+                allowed.push(CallPath {
+                    prefixes: canonical.prefixes,
+                    suffix: TraitSuffix {
+                        name: canonical.suffix,
+                        args: constraint.type_arguments.clone(),
+                    },
+                    callpath_type: canonical.callpath_type,
+                });
+            }
+        }
+
+        self.dedup_allowed_traits(allowed)
+    }
+
+    fn dedup_allowed_traits(
+        &self,
+        allowed: Vec<CallPath<TraitSuffix>>,
+    ) -> Vec<CallPath<TraitSuffix>> {
+        let mut deduped = Vec::new();
+        let unify_check = UnifyCheck::constraint_subset(self.engines);
+
+        for entry in allowed.into_iter() {
+            if deduped
+                .iter()
+                .any(|existing| trait_paths_equivalent(existing, &entry, &unify_check))
+            {
+                continue;
+            }
+            deduped.push(entry);
+        }
+
+        deduped
+    }
+
+    /// Recursively collect trait constraints that apply to `type_id`, following aliases,
+    /// placeholders, and chains of generic parameters.
+    fn collect_trait_constraints_recursive(
+        &self,
+        type_id: TypeId,
+        acc: &mut Vec<TraitConstraint>,
+        visited: &mut HashSet<TypeId>,
+    ) {
+        let type_engine = self.engines.te();
+        let type_id = type_engine.get_unaliased_type_id(type_id);
+        if !visited.insert(type_id) {
+            return;
+        }
+
+        match &*type_engine.get(type_id) {
+            TypeInfo::UnknownGeneric {
+                trait_constraints,
+                parent,
+                ..
+            } => {
+                acc.extend(trait_constraints.iter().cloned());
+                if let Some(parent_id) = parent {
+                    self.collect_trait_constraints_recursive(*parent_id, acc, visited);
+                }
+            }
+            TypeInfo::Placeholder(TypeParameter::Type(generic)) => {
+                acc.extend(generic.trait_constraints.iter().cloned());
+                self.collect_trait_constraints_recursive(generic.type_id, acc, visited);
+            }
+            TypeInfo::Alias { ty, .. } => {
+                if let Some(GenericTypeArgument { type_id: inner, .. }) = ty.as_type_argument() {
+                    self.collect_trait_constraints_recursive(*inner, acc, visited);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn retain_trait_methods_matching_constraints(
+        &self,
+        trait_methods: &mut BTreeMap<GroupingKey, DeclRefFunction>,
+        constraints: &[TraitConstraint],
+    ) {
+        if constraints.is_empty() {
+            return;
+        }
+
+        let allowed_traits = constraints
+            .iter()
+            .map(|constraint| {
+                let canonical = constraint
+                    .trait_name
+                    .to_canonical_path(self.engines(), self.namespace());
+                CallPath {
+                    prefixes: canonical.prefixes,
+                    suffix: TraitSuffix {
+                        name: canonical.suffix,
+                        args: constraint.type_arguments.clone(),
+                    },
+                    callpath_type: canonical.callpath_type,
+                }
+            })
+            .collect::<Vec<_>>();
+
+        if allowed_traits.is_empty() {
+            return;
+        }
+
+        let mut filtered = trait_methods.clone();
+        let unify_check = UnifyCheck::constraint_subset(self.engines);
+
+        filtered.retain(|(_impl_id, _), decl_ref| {
+            let method = self.engines.de().get_function(decl_ref);
+            let Some(ty::TyDecl::ImplSelfOrTrait(impl_ref)) = method.implementing_type.as_ref()
+            else {
+                return true;
+            };
+
+            let impl_decl = self.engines.de().get_impl_self_or_trait(&impl_ref.decl_id);
+
+            // Inherent impls have no trait declaration, keep them untouched.
+            if impl_decl.trait_decl_ref.is_none() {
+                return true;
+            }
+
+            // Build the canonical trait path and check whether it matches any of the trait bounds
+            // collected for this lookup. Only methods provided by traits that satisfy the bounds
+            // remain candidates for disambiguation.
+            let canonical = impl_decl
+                .trait_name
+                .to_canonical_path(self.engines(), self.namespace());
+            let candidate = CallPath {
+                prefixes: canonical.prefixes,
+                suffix: TraitSuffix {
+                    name: canonical.suffix,
+                    args: impl_decl.trait_type_arguments.clone(),
+                },
+                callpath_type: canonical.callpath_type,
+            };
+
+            allowed_traits
+                .iter()
+                .any(|allowed| trait_paths_equivalent(allowed, &candidate, &unify_check))
+        });
+
+        if !filtered.is_empty() {
+            *trait_methods = filtered;
+        }
+    }
+
+    fn trait_key_matches_allowed(
+        &self,
+        trait_key: &TraitKey,
+        allowed_traits: &[CallPath<TraitSuffix>],
+    ) -> bool {
+        if allowed_traits.is_empty() {
+            return false;
+        }
+        let call_path = trait_key.name.as_ref();
+        let unify_check = UnifyCheck::constraint_subset(self.engines);
+
+        allowed_traits
+            .iter()
+            .any(|allowed| trait_paths_equivalent(allowed, call_path, &unify_check))
     }
 
     /// Convert collected items to just the method decl refs we care about.
@@ -1102,7 +1498,7 @@ impl<'a> TypeCheckContext<'a> {
                 Ok(true)
             };
 
-        let mut trait_methods: BTreeMap<TraitKey, DeclRefFunction> = BTreeMap::new();
+        let mut trait_methods: BTreeMap<GroupingKey, DeclRefFunction> = BTreeMap::new();
         let mut impl_self_method: Option<DeclRefFunction> = None;
 
         for method_ref in method_decl_refs {
@@ -1119,7 +1515,7 @@ impl<'a> TypeCheckContext<'a> {
                 continue;
             }
 
-            let key: TraitKey = (impl_trait.decl_id, method.implementing_for_typeid);
+            let key: GroupingKey = (impl_trait.decl_id, method.implementing_for_typeid);
 
             // Prefer the method that is type-check finalized when conflicting.
             match trait_methods.get_mut(&key) {
@@ -1147,7 +1543,7 @@ impl<'a> TypeCheckContext<'a> {
         })
     }
 
-    fn prefer_non_blanket_impls(&self, trait_methods: &mut BTreeMap<TraitKey, DeclRefFunction>) {
+    fn prefer_non_blanket_impls(&self, trait_methods: &mut BTreeMap<GroupingKey, DeclRefFunction>) {
         let decl_engine = self.engines.de();
 
         let non_blanket_impl_exists = {
@@ -1187,7 +1583,7 @@ impl<'a> TypeCheckContext<'a> {
         handler: &Handler,
         method_name: &Ident,
         type_id: TypeId,
-        trait_methods: &BTreeMap<TraitKey, DeclRefFunction>,
+        trait_methods: &BTreeMap<GroupingKey, DeclRefFunction>,
         impl_self_method: &Option<DeclRefFunction>,
     ) -> Result<Option<DeclRefFunction>, ErrorEmitted> {
         let decl_engine = self.engines.de();
@@ -1323,6 +1719,12 @@ impl<'a> TypeCheckContext<'a> {
                 qualified_call_path: qcp,
             } = self.group_by_trait_impl(handler, &method_name, &maybe_method_decl_refs)?;
             qualified_call_path = qcp;
+
+            if let Some((_, constraints)) =
+                method_name.and_then(|name| self.trait_constraints_from_method_name(handler, name))
+            {
+                self.retain_trait_methods_matching_constraints(&mut trait_methods, &constraints);
+            }
 
             // Prefer non-blanket impls when any concrete impl exists.
             self.prefer_non_blanket_impls(&mut trait_methods);
