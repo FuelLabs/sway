@@ -13,7 +13,7 @@ remove_generated_code "ARRAY_ENCODE" "codec.sw"
 START=1
 END=64
 for ((i=END;i>=START;i--)); do
-    CODE="#[cfg(experimental_const_generics = false)]\nimpl<T> AbiEncode for [T; $i] where T: AbiEncode { fn abi_encode(self, buffer: Buffer) -> Buffer { let mut buffer = buffer; let mut i = 0; while i < $i { buffer = self[i].abi_encode(buffer); i += 1; }; buffer } }"
+    CODE="#[cfg(experimental_const_generics = false)]\nimpl<T> AbiEncode for [T; $i] where T: AbiEncode { const IS_MEMCOPY: bool = false;\nfn abi_encode(self, buffer: Buffer) -> Buffer { let mut buffer = buffer; let mut i = 0; while i < $i { buffer = self[i].abi_encode(buffer); i += 1; }; buffer } }"
     sed -i "s/\/\/ BEGIN ARRAY_ENCODE/\/\/ BEGIN ARRAY_ENCODE\n$CODE/g" ./src/codec.sw
 done
 
@@ -29,7 +29,7 @@ remove_generated_code "STRARRAY_ENCODE" "codec.sw"
 START=1
 END=64
 for ((i=END;i>=START;i--)); do
-    CODE="#[cfg(experimental_const_generics = false)]\nimpl AbiEncode for str[$i] { fn abi_encode(self, buffer: Buffer) -> Buffer { Buffer { buffer: __encode_buffer_append(buffer.buffer, self) } } }"
+    CODE="#[cfg(experimental_const_generics = false)]\nimpl AbiEncode for str[$i] { const IS_MEMCOPY: bool = false;\nfn abi_encode(self, buffer: Buffer) -> Buffer { Buffer { buffer: __encode_buffer_append(buffer.buffer, self) } } }"
     sed -i "s/\/\/ BEGIN STRARRAY_ENCODE/\/\/ BEGIN STRARRAY_ENCODE\n$CODE/g" ./src/codec.sw
 done
 
@@ -64,7 +64,7 @@ generate_tuple_encode() {
         CODE="$CODE $element: AbiEncode, "
     done
 
-    CODE="$CODE{ fn abi_encode(self, buffer: Buffer) -> Buffer { "
+    CODE="$CODE{ const IS_MEMCOPY: bool = false;\nfn abi_encode(self, buffer: Buffer) -> Buffer { "
 
     i=0
     for element in ${elements[@]}
