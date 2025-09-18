@@ -161,10 +161,12 @@ impl BufferReader {
 // Encode
 
 pub trait AbiEncode {
+    const MEMCOPY: bool;
     fn abi_encode(self, buffer: Buffer) -> Buffer;
 }
 
 impl AbiEncode for bool {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -175,6 +177,7 @@ impl AbiEncode for bool {
 // Encode Numbers
 
 impl AbiEncode for b256 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -183,6 +186,7 @@ impl AbiEncode for b256 {
 }
 
 impl AbiEncode for u256 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -191,6 +195,7 @@ impl AbiEncode for u256 {
 }
 
 impl AbiEncode for u64 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -199,6 +204,7 @@ impl AbiEncode for u64 {
 }
 
 impl AbiEncode for u32 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -207,6 +213,7 @@ impl AbiEncode for u32 {
 }
 
 impl AbiEncode for u16 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -215,6 +222,7 @@ impl AbiEncode for u16 {
 }
 
 impl AbiEncode for u8 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -225,6 +233,7 @@ impl AbiEncode for u8 {
 // Encode str slice and str arrays
 
 impl AbiEncode for str {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -234,6 +243,7 @@ impl AbiEncode for str {
 
 #[cfg(experimental_const_generics = true)]
 impl<const N: u64> AbiEncode for str[N] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -243,6 +253,7 @@ impl<const N: u64> AbiEncode for str[N] {
 
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[0] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         buffer
     }
@@ -251,6 +262,7 @@ impl AbiEncode for str[0] {
 // BEGIN STRARRAY_ENCODE
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[1] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -259,6 +271,7 @@ impl AbiEncode for str[1] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[2] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -267,6 +280,7 @@ impl AbiEncode for str[2] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[3] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -275,6 +289,7 @@ impl AbiEncode for str[3] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[4] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -283,6 +298,7 @@ impl AbiEncode for str[4] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[5] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -291,6 +307,7 @@ impl AbiEncode for str[5] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[6] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -299,6 +316,7 @@ impl AbiEncode for str[6] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[7] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -307,6 +325,7 @@ impl AbiEncode for str[7] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[8] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -315,6 +334,7 @@ impl AbiEncode for str[8] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[9] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -323,6 +343,7 @@ impl AbiEncode for str[9] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[10] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -331,6 +352,7 @@ impl AbiEncode for str[10] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[11] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -339,6 +361,7 @@ impl AbiEncode for str[11] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[12] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -347,6 +370,7 @@ impl AbiEncode for str[12] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[13] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -355,6 +379,7 @@ impl AbiEncode for str[13] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[14] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -363,6 +388,7 @@ impl AbiEncode for str[14] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[15] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -371,6 +397,7 @@ impl AbiEncode for str[15] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[16] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -379,6 +406,7 @@ impl AbiEncode for str[16] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[17] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -387,6 +415,7 @@ impl AbiEncode for str[17] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[18] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -395,6 +424,7 @@ impl AbiEncode for str[18] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[19] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -403,6 +433,7 @@ impl AbiEncode for str[19] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[20] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -411,6 +442,7 @@ impl AbiEncode for str[20] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[21] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -419,6 +451,7 @@ impl AbiEncode for str[21] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[22] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -427,6 +460,7 @@ impl AbiEncode for str[22] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[23] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -435,6 +469,7 @@ impl AbiEncode for str[23] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[24] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -443,6 +478,7 @@ impl AbiEncode for str[24] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[25] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -451,6 +487,7 @@ impl AbiEncode for str[25] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[26] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -459,6 +496,7 @@ impl AbiEncode for str[26] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[27] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -467,6 +505,7 @@ impl AbiEncode for str[27] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[28] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -475,6 +514,7 @@ impl AbiEncode for str[28] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[29] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -483,6 +523,7 @@ impl AbiEncode for str[29] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[30] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -491,6 +532,7 @@ impl AbiEncode for str[30] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[31] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -499,6 +541,7 @@ impl AbiEncode for str[31] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[32] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -507,6 +550,7 @@ impl AbiEncode for str[32] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[33] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -515,6 +559,7 @@ impl AbiEncode for str[33] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[34] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -523,6 +568,7 @@ impl AbiEncode for str[34] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[35] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -531,6 +577,7 @@ impl AbiEncode for str[35] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[36] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -539,6 +586,7 @@ impl AbiEncode for str[36] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[37] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -547,6 +595,7 @@ impl AbiEncode for str[37] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[38] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -555,6 +604,7 @@ impl AbiEncode for str[38] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[39] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -563,6 +613,7 @@ impl AbiEncode for str[39] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[40] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -571,6 +622,7 @@ impl AbiEncode for str[40] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[41] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -579,6 +631,7 @@ impl AbiEncode for str[41] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[42] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -587,6 +640,7 @@ impl AbiEncode for str[42] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[43] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -595,6 +649,7 @@ impl AbiEncode for str[43] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[44] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -603,6 +658,7 @@ impl AbiEncode for str[44] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[45] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -611,6 +667,7 @@ impl AbiEncode for str[45] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[46] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -619,6 +676,7 @@ impl AbiEncode for str[46] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[47] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -627,6 +685,7 @@ impl AbiEncode for str[47] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[48] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -635,6 +694,7 @@ impl AbiEncode for str[48] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[49] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -643,6 +703,7 @@ impl AbiEncode for str[49] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[50] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -651,6 +712,7 @@ impl AbiEncode for str[50] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[51] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -659,6 +721,7 @@ impl AbiEncode for str[51] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[52] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -667,6 +730,7 @@ impl AbiEncode for str[52] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[53] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -675,6 +739,7 @@ impl AbiEncode for str[53] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[54] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -683,6 +748,7 @@ impl AbiEncode for str[54] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[55] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -691,6 +757,7 @@ impl AbiEncode for str[55] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[56] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -699,6 +766,7 @@ impl AbiEncode for str[56] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[57] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -707,6 +775,7 @@ impl AbiEncode for str[57] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[58] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -715,6 +784,7 @@ impl AbiEncode for str[58] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[59] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -723,6 +793,7 @@ impl AbiEncode for str[59] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[60] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -731,6 +802,7 @@ impl AbiEncode for str[60] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[61] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -739,6 +811,7 @@ impl AbiEncode for str[61] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[62] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -747,6 +820,7 @@ impl AbiEncode for str[62] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[63] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -755,6 +829,7 @@ impl AbiEncode for str[63] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiEncode for str[64] {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -766,6 +841,7 @@ impl AbiEncode for str[64] {
 // Encode Arrays and Slices
 
 impl AbiEncode for raw_slice {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
             buffer: __encode_buffer_append(buffer.buffer, self),
@@ -778,6 +854,7 @@ impl<T, const N: u64> AbiEncode for [T; N]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -796,6 +873,7 @@ impl<T> AbiEncode for [T; 0]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         buffer
     }
@@ -807,6 +885,7 @@ impl<T> AbiEncode for [T; 1]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -822,6 +901,7 @@ impl<T> AbiEncode for [T; 2]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -837,6 +917,7 @@ impl<T> AbiEncode for [T; 3]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -852,6 +933,7 @@ impl<T> AbiEncode for [T; 4]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -867,6 +949,7 @@ impl<T> AbiEncode for [T; 5]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -882,6 +965,7 @@ impl<T> AbiEncode for [T; 6]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -897,6 +981,7 @@ impl<T> AbiEncode for [T; 7]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -912,6 +997,7 @@ impl<T> AbiEncode for [T; 8]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -927,6 +1013,7 @@ impl<T> AbiEncode for [T; 9]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -942,6 +1029,7 @@ impl<T> AbiEncode for [T; 10]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -957,6 +1045,7 @@ impl<T> AbiEncode for [T; 11]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -972,6 +1061,7 @@ impl<T> AbiEncode for [T; 12]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -987,6 +1077,7 @@ impl<T> AbiEncode for [T; 13]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1002,6 +1093,7 @@ impl<T> AbiEncode for [T; 14]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1017,6 +1109,7 @@ impl<T> AbiEncode for [T; 15]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1032,6 +1125,7 @@ impl<T> AbiEncode for [T; 16]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1047,6 +1141,7 @@ impl<T> AbiEncode for [T; 17]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1062,6 +1157,7 @@ impl<T> AbiEncode for [T; 18]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1077,6 +1173,7 @@ impl<T> AbiEncode for [T; 19]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1092,6 +1189,7 @@ impl<T> AbiEncode for [T; 20]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1107,6 +1205,7 @@ impl<T> AbiEncode for [T; 21]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1122,6 +1221,7 @@ impl<T> AbiEncode for [T; 22]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1137,6 +1237,7 @@ impl<T> AbiEncode for [T; 23]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1152,6 +1253,7 @@ impl<T> AbiEncode for [T; 24]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1167,6 +1269,7 @@ impl<T> AbiEncode for [T; 25]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1182,6 +1285,7 @@ impl<T> AbiEncode for [T; 26]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1197,6 +1301,7 @@ impl<T> AbiEncode for [T; 27]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1212,6 +1317,7 @@ impl<T> AbiEncode for [T; 28]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1227,6 +1333,7 @@ impl<T> AbiEncode for [T; 29]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1242,6 +1349,7 @@ impl<T> AbiEncode for [T; 30]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1257,6 +1365,7 @@ impl<T> AbiEncode for [T; 31]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1272,6 +1381,7 @@ impl<T> AbiEncode for [T; 32]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1287,6 +1397,7 @@ impl<T> AbiEncode for [T; 33]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1302,6 +1413,7 @@ impl<T> AbiEncode for [T; 34]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1317,6 +1429,7 @@ impl<T> AbiEncode for [T; 35]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1332,6 +1445,7 @@ impl<T> AbiEncode for [T; 36]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1347,6 +1461,7 @@ impl<T> AbiEncode for [T; 37]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1362,6 +1477,7 @@ impl<T> AbiEncode for [T; 38]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1377,6 +1493,7 @@ impl<T> AbiEncode for [T; 39]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1392,6 +1509,7 @@ impl<T> AbiEncode for [T; 40]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1407,6 +1525,7 @@ impl<T> AbiEncode for [T; 41]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1422,6 +1541,7 @@ impl<T> AbiEncode for [T; 42]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1437,6 +1557,7 @@ impl<T> AbiEncode for [T; 43]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1452,6 +1573,7 @@ impl<T> AbiEncode for [T; 44]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1467,6 +1589,7 @@ impl<T> AbiEncode for [T; 45]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1482,6 +1605,7 @@ impl<T> AbiEncode for [T; 46]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1497,6 +1621,7 @@ impl<T> AbiEncode for [T; 47]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1512,6 +1637,7 @@ impl<T> AbiEncode for [T; 48]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1527,6 +1653,7 @@ impl<T> AbiEncode for [T; 49]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1542,6 +1669,7 @@ impl<T> AbiEncode for [T; 50]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1557,6 +1685,7 @@ impl<T> AbiEncode for [T; 51]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1572,6 +1701,7 @@ impl<T> AbiEncode for [T; 52]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1587,6 +1717,7 @@ impl<T> AbiEncode for [T; 53]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1602,6 +1733,7 @@ impl<T> AbiEncode for [T; 54]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1617,6 +1749,7 @@ impl<T> AbiEncode for [T; 55]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1632,6 +1765,7 @@ impl<T> AbiEncode for [T; 56]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1647,6 +1781,7 @@ impl<T> AbiEncode for [T; 57]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1662,6 +1797,7 @@ impl<T> AbiEncode for [T; 58]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1677,6 +1813,7 @@ impl<T> AbiEncode for [T; 59]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1692,6 +1829,7 @@ impl<T> AbiEncode for [T; 60]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1707,6 +1845,7 @@ impl<T> AbiEncode for [T; 61]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1722,6 +1861,7 @@ impl<T> AbiEncode for [T; 62]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1737,6 +1877,7 @@ impl<T> AbiEncode for [T; 63]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1752,6 +1893,7 @@ impl<T> AbiEncode for [T; 64]
 where
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
         let mut i = 0;
@@ -1767,6 +1909,7 @@ where
 // Encode Tuples
 
 impl AbiEncode for () {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         buffer
     }
@@ -1777,6 +1920,7 @@ impl<A> AbiEncode for (A, )
 where
     A: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let buffer = self.0.abi_encode(buffer);
         buffer
@@ -1787,6 +1931,7 @@ where
     A: AbiEncode,
     B: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let buffer = self.0.abi_encode(buffer);
         let buffer = self.1.abi_encode(buffer);
@@ -1799,6 +1944,7 @@ where
     B: AbiEncode,
     C: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let buffer = self.0.abi_encode(buffer);
         let buffer = self.1.abi_encode(buffer);
@@ -1813,6 +1959,7 @@ where
     C: AbiEncode,
     D: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let buffer = self.0.abi_encode(buffer);
         let buffer = self.1.abi_encode(buffer);
@@ -1829,6 +1976,7 @@ where
     D: AbiEncode,
     E: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let buffer = self.0.abi_encode(buffer);
         let buffer = self.1.abi_encode(buffer);
@@ -1847,6 +1995,7 @@ where
     E: AbiEncode,
     F: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let buffer = self.0.abi_encode(buffer);
         let buffer = self.1.abi_encode(buffer);
@@ -1867,6 +2016,7 @@ where
     F: AbiEncode,
     G: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let buffer = self.0.abi_encode(buffer);
         let buffer = self.1.abi_encode(buffer);
@@ -1889,6 +2039,7 @@ where
     G: AbiEncode,
     H: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let buffer = self.0.abi_encode(buffer);
         let buffer = self.1.abi_encode(buffer);
@@ -1913,6 +2064,7 @@ where
     H: AbiEncode,
     I: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let buffer = self.0.abi_encode(buffer);
         let buffer = self.1.abi_encode(buffer);
@@ -1939,6 +2091,7 @@ where
     I: AbiEncode,
     J: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let buffer = self.0.abi_encode(buffer);
         let buffer = self.1.abi_encode(buffer);
@@ -1967,6 +2120,7 @@ where
     J: AbiEncode,
     K: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let buffer = self.0.abi_encode(buffer);
         let buffer = self.1.abi_encode(buffer);
@@ -1997,6 +2151,7 @@ where
     K: AbiEncode,
     L: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let buffer = self.0.abi_encode(buffer);
         let buffer = self.1.abi_encode(buffer);
@@ -2029,6 +2184,7 @@ where
     L: AbiEncode,
     M: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let buffer = self.0.abi_encode(buffer);
         let buffer = self.1.abi_encode(buffer);
@@ -2063,6 +2219,7 @@ where
     M: AbiEncode,
     N: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let buffer = self.0.abi_encode(buffer);
         let buffer = self.1.abi_encode(buffer);
@@ -2099,6 +2256,7 @@ where
     N: AbiEncode,
     O: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let buffer = self.0.abi_encode(buffer);
         let buffer = self.1.abi_encode(buffer);
@@ -2137,6 +2295,7 @@ where
     O: AbiEncode,
     P: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let buffer = self.0.abi_encode(buffer);
         let buffer = self.1.abi_encode(buffer);
@@ -2177,6 +2336,7 @@ where
     P: AbiEncode,
     Q: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let buffer = self.0.abi_encode(buffer);
         let buffer = self.1.abi_encode(buffer);
@@ -2219,6 +2379,7 @@ where
     Q: AbiEncode,
     R: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let buffer = self.0.abi_encode(buffer);
         let buffer = self.1.abi_encode(buffer);
@@ -2263,6 +2424,7 @@ where
     R: AbiEncode,
     S: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let buffer = self.0.abi_encode(buffer);
         let buffer = self.1.abi_encode(buffer);
@@ -2309,6 +2471,7 @@ where
     S: AbiEncode,
     T: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let buffer = self.0.abi_encode(buffer);
         let buffer = self.1.abi_encode(buffer);
@@ -2357,6 +2520,7 @@ where
     T: AbiEncode,
     U: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let buffer = self.0.abi_encode(buffer);
         let buffer = self.1.abi_encode(buffer);
@@ -2407,6 +2571,7 @@ where
     U: AbiEncode,
     V: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let buffer = self.0.abi_encode(buffer);
         let buffer = self.1.abi_encode(buffer);
@@ -2459,6 +2624,7 @@ where
     V: AbiEncode,
     W: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let buffer = self.0.abi_encode(buffer);
         let buffer = self.1.abi_encode(buffer);
@@ -2513,6 +2679,7 @@ where
     W: AbiEncode,
     X: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let buffer = self.0.abi_encode(buffer);
         let buffer = self.1.abi_encode(buffer);
@@ -2569,6 +2736,7 @@ where
     X: AbiEncode,
     Y: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let buffer = self.0.abi_encode(buffer);
         let buffer = self.1.abi_encode(buffer);
@@ -2627,6 +2795,7 @@ where
     Y: AbiEncode,
     Z: AbiEncode,
 {
+    const MEMCOPY: bool = false;
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let buffer = self.0.abi_encode(buffer);
         let buffer = self.1.abi_encode(buffer);
