@@ -3652,6 +3652,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "finl_unicode"
+version = "1.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "94c970b525906eb37d3940083aa65b95e481fc1857d467d13374e1d925cfc163"
+
+[[package]]
 name = "fixed-hash"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4150,6 +4156,7 @@ dependencies = [
  "mark-flaky-tests",
  "paste",
  "regex",
+ "rustrict",
  "serde",
  "serde_json",
  "sha2 0.10.9",
@@ -10042,6 +10049,23 @@ dependencies = [
  "ring 0.17.14",
  "rustls-pki-types",
  "untrusted 0.9.0",
+]
+
+[[package]]
+name = "rustrict"
+version = "0.7.33"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a566beb65e3d86654ff5cc7091d947589ef06f4bc6ba946455c2851ab1193914"
+dependencies = [
+ "arrayvec",
+ "bitflags 1.3.2",
+ "doc-comment",
+ "finl_unicode",
+ "itertools 0.10.5",
+ "lazy_static",
+ "rustc-hash 1.1.0",
+ "strsim 0.10.0",
+ "unicode-normalization",
 ]
 
 [[package]]
