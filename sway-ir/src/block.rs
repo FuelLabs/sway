@@ -55,6 +55,8 @@ pub struct BlockArgument {
     /// idx'th argument of the block.
     pub idx: usize,
     pub ty: Type,
+    /// Is this known to be immutable?
+    pub is_immutable: bool,
 }
 
 impl BlockArgument {
@@ -144,6 +146,7 @@ impl Block {
                 block: *self,
                 idx,
                 ty,
+                is_immutable: false,
             },
         );
         context.blocks[self.0].args.push(arg_val);
@@ -152,9 +155,12 @@ impl Block {
 
     pub fn set_arg(&self, context: &mut Context, arg: Value) {
         match context.values[arg.0].value {
-            ValueDatum::Argument(BlockArgument { block, idx, ty: _ })
-                if block == *self && idx < context.blocks[self.0].args.len() =>
-            {
+            ValueDatum::Argument(BlockArgument {
+                block,
+                idx,
+                ty: _,
+                is_immutable: _,
+            }) if block == *self && idx < context.blocks[self.0].args.len() => {
                 context.blocks[self.0].args[idx] = arg;
             }
             _ => panic!("Inconsistent block argument being set"),
@@ -164,9 +170,12 @@ impl Block {
     /// Add a block argument, asserts that `arg` is suitable here.
     pub fn add_arg(&self, context: &mut Context, arg: Value) {
         match context.values[arg.0].value {
-            ValueDatum::Argument(BlockArgument { block, idx, ty: _ })
-                if block == *self && idx == context.blocks[self.0].args.len() =>
-            {
+            ValueDatum::Argument(BlockArgument {
+                block,
+                idx,
+                ty: _,
+                is_immutable: _,
+            }) if block == *self && idx == context.blocks[self.0].args.len() => {
                 context.blocks[self.0].args.push(arg);
             }
             _ => panic!("Inconsistent block argument being added"),
@@ -518,6 +527,7 @@ impl Block {
                         block,
                         idx: _,
                         ty: _,
+                        is_immutable: _,
                     }) => {
                         // We modify the Value in place to be a BlockArgument for the new block.
                         *block = new_block;

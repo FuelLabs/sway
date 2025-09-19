@@ -220,13 +220,11 @@ fn analyze_expression(
     use crate::ty::TyExpressionVariant::*;
     let decl_engine = engines.de();
     match &expr.expression {
-        ConstGenericExpression { .. } => {
-            todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
-        }
         // base cases: no warnings can be emitted
         Literal(_)
         | ConstantExpression { .. }
         | ConfigurableExpression { .. }
+        | ConstGenericExpression { .. }
         | VariableExpression { .. }
         | FunctionParameter
         | StorageAccess(_)

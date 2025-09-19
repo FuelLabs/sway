@@ -58,9 +58,9 @@ use sway_error::warning::{CollectedTraitImpl, CompileInfo, CompileWarning, Info,
 use sway_features::ExperimentalFeatures;
 use sway_ir::{
     create_o1_pass_group, register_known_passes, Context, Kind, Module, PassGroup, PassManager,
-    PrintPassesOpts, ARG_DEMOTION_NAME, CONST_DEMOTION_NAME, DCE_NAME, FN_DEDUP_DEBUG_PROFILE_NAME,
-    FN_INLINE_NAME, GLOBALS_DCE_NAME, MEM2REG_NAME, MEMCPYOPT_NAME, MISC_DEMOTION_NAME,
-    RET_DEMOTION_NAME, SIMPLIFY_CFG_NAME, SROA_NAME,
+    PrintPassesOpts, ARG_DEMOTION_NAME, ARG_POINTEE_MUTABILITY_TAGGER_NAME, CONST_DEMOTION_NAME,
+    DCE_NAME, FN_DEDUP_DEBUG_PROFILE_NAME, FN_INLINE_NAME, GLOBALS_DCE_NAME, MEM2REG_NAME,
+    MEMCPYOPT_NAME, MISC_DEMOTION_NAME, RET_DEMOTION_NAME, SIMPLIFY_CFG_NAME, SROA_NAME,
 };
 use sway_types::span::Source;
 use sway_types::{SourceEngine, SourceLocation, Span};
@@ -1256,6 +1256,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         pass_group.append_pass(MISC_DEMOTION_NAME);
 
         // Convert loads and stores to mem_copies where possible.
+        pass_group.append_pass(ARG_POINTEE_MUTABILITY_TAGGER_NAME);
         pass_group.append_pass(MEMCPYOPT_NAME);
 
         // Run a DCE and simplify-cfg to clean up any obsolete instructions.
