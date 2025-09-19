@@ -1585,6 +1585,7 @@ impl<'a> TypeCheckContext<'a> {
         type_id: TypeId,
         trait_methods: &BTreeMap<GroupingKey, DeclRefFunction>,
         impl_self_method: &Option<DeclRefFunction>,
+        call_site_type_id: Option<TypeId>,
     ) -> Result<Option<DeclRefFunction>, ErrorEmitted> {
         let decl_engine = self.engines.de();
         let eq_check = UnifyCheck::constraint_subset(self.engines);
@@ -1613,13 +1614,21 @@ impl<'a> TypeCheckContext<'a> {
                 }
 
                 // Ambiguity: rebuild strings from impl ids.
+                let call_site_type_name =
+                    call_site_type_id.map(|id| self.engines.help_out(id).to_string());
+                let fallback_type_name = self.engines.help_out(type_id).to_string();
+
                 let mut trait_strings = trait_methods
                     .keys()
                     .map(|(impl_id, implementing_for)| {
                         let trait_str = self.trait_sig_string(impl_id);
-                        let impl_for_str = implementing_for
-                            .map(|t| self.engines.help_out(t).to_string())
-                            .unwrap_or_else(|| self.engines().help_out(type_id).to_string());
+                        let impl_for_str = if let Some(name) = call_site_type_name.as_ref() {
+                            name.clone()
+                        } else if let Some(t) = implementing_for {
+                            self.engines.help_out(t).to_string()
+                        } else {
+                            fallback_type_name.clone()
+                        };
                         (trait_str, impl_for_str)
                     })
                     .collect::<Vec<(String, String)>>();
@@ -1720,10 +1729,11 @@ impl<'a> TypeCheckContext<'a> {
             } = self.group_by_trait_impl(handler, &method_name, &maybe_method_decl_refs)?;
             qualified_call_path = qcp;
 
-            if let Some((_, constraints)) =
-                method_name.and_then(|name| self.trait_constraints_from_method_name(handler, name))
-            {
-                self.retain_trait_methods_matching_constraints(&mut trait_methods, &constraints);
+            let method_constraints =
+                method_name.and_then(|name| self.trait_constraints_from_method_name(handler, name));
+
+            if let Some((_, constraints)) = method_constraints.as_ref() {
+                self.retain_trait_methods_matching_constraints(&mut trait_methods, constraints);
             }
 
             // Prefer non-blanket impls when any concrete impl exists.
@@ -1736,6 +1746,7 @@ impl<'a> TypeCheckContext<'a> {
                 type_id,
                 &trait_methods,
                 &impl_self_method,
+                method_constraints.as_ref().map(|(type_id, _)| *type_id),
             )? {
                 return Ok(pick.get_method_safe_to_unify(self.engines, type_id));
             }
