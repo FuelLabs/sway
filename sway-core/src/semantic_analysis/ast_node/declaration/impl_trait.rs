@@ -6,6 +6,7 @@ use std::{
 };
 
 use ast_elements::type_parameter::GenericTypeParameter;
+use itertools::Itertools;
 use sway_error::{
     error::{CompileError, InterfaceName},
     handler::{ErrorEmitted, Handler},
@@ -1103,6 +1104,54 @@ fn type_check_trait_implementation(
             ImplItem::Type(_) => {}
         }
     }
+
+    // Inherit trait constants that provide default values when the impl omits them.
+    let inherited_constants = constant_checklist
+        .iter()
+        .filter(|(_, trait_const_decl)| trait_const_decl.value.is_some())
+        .filter_map(|(name, _)| {
+            let Some(TyTraitInterfaceItem::Constant(interface_decl_ref)) = interface_item_refs
+                .get(&(name.clone(), implementing_for))
+                .as_ref()
+            else {
+                return None;
+            };
+
+            let mut const_decl = (*decl_engine.get_constant(interface_decl_ref)).clone();
+            let decl_ref = if const_decl.subst(&ctx.subst_ctx()).has_changes() {
+                decl_engine.insert(
+                    const_decl,
+                    decl_engine
+                        .get_parsed_decl_id(interface_decl_ref.id())
+                        .as_ref(),
+                )
+            } else {
+                interface_decl_ref.clone()
+            };
+
+            Some((name.clone(), decl_ref))
+        })
+        .collect_vec();
+
+    let prev_const_shadowing_mode = ctx.const_shadowing_mode;
+    ctx.const_shadowing_mode = ConstShadowingMode::Allow;
+
+    for (name, decl_ref) in inherited_constants {
+        impld_item_refs.insert(
+            (name.clone(), implementing_for),
+            TyTraitItem::Constant(decl_ref.clone()),
+        );
+        let _ = ctx.insert_symbol(
+            handler,
+            name.clone(),
+            TyDecl::ConstantDecl(ConstantDecl {
+                decl_id: *decl_ref.id(),
+            }),
+        );
+        constant_checklist.remove(&name);
+    }
+
+    ctx.const_shadowing_mode = prev_const_shadowing_mode;
 
     let mut all_items_refs: Vec<TyImplItem> = impld_item_refs.values().cloned().collect();
 
