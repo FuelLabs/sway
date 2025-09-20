@@ -1104,6 +1104,49 @@ fn type_check_trait_implementation(
         }
     }
 
+    // Inherit trait constants that provide default values when the impl omits them.
+    let subst_ctx =
+        SubstTypesContext::new(engines, &trait_type_mapping, !ctx.code_block_first_pass());
+    let mut inherited_constants = Vec::new();
+    for (name, trait_const_decl) in constant_checklist.iter() {
+        if trait_const_decl.value.is_some() {
+            if let Some(TyTraitInterfaceItem::Constant(interface_decl_ref)) = interface_item_refs
+                .get(&(name.clone(), implementing_for))
+                .cloned()
+            {
+                let mut const_decl = (*decl_engine.get_constant(&interface_decl_ref)).clone();
+                const_decl.subst(&subst_ctx);
+                let decl_ref = decl_engine.insert(
+                    const_decl,
+                    decl_engine
+                        .get_parsed_decl_id(interface_decl_ref.id())
+                        .as_ref(),
+                );
+                inherited_constants.push((name.clone(), decl_ref));
+            }
+        }
+    }
+
+    if !inherited_constants.is_empty() {
+        let prev_const_shadowing_mode = ctx.const_shadowing_mode;
+        ctx.const_shadowing_mode = ConstShadowingMode::Allow;
+        for (name, decl_ref) in &inherited_constants {
+            impld_item_refs.insert(
+                (name.clone(), implementing_for),
+                TyTraitItem::Constant(decl_ref.clone()),
+            );
+            let _ = ctx.insert_symbol(
+                handler,
+                name.clone(),
+                TyDecl::ConstantDecl(ConstantDecl {
+                    decl_id: *decl_ref.id(),
+                }),
+            );
+            constant_checklist.remove(name);
+        }
+        ctx.const_shadowing_mode = prev_const_shadowing_mode;
+    }
+
     let mut all_items_refs: Vec<TyImplItem> = impld_item_refs.values().cloned().collect();
 
     // Retrieve the methods defined on the trait declaration and transform
