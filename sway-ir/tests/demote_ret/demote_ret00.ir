@@ -8,15 +8,15 @@ script {
         v0 = call a()
 
 // check: $(local_val=$ID) = get_local __ptr b256, $ret_var
-// check: $(returned_ptr=$ID) = call a($local_val)
-// check: $ID = load $returned_ptr
+// check: $ID = call a($local_val)
+// check: $ID = load $local_val
 
         v1 = const unit ()
         ret () v1
     }
 
     fn a() -> b256 {
-// check: fn a($(ret_arg_val=$ID): __ptr b256) -> __ptr b256 {
+// check: fn a($(ret_arg_val=$ID): __ptr b256) -> () {
         local b256 __const = const b256 0x2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b
 
         entry():
@@ -27,6 +27,6 @@ script {
 // check: $(twobee=$ID) = get_local __ptr b256, __const
 // check: $(load_val=$ID) = load $twobee
 // check: store $load_val to $ret_arg_val
-// check: ret __ptr b256 $ret_arg_val
+// check: ret ()
     }
 }

@@ -1,9 +1,10 @@
 ---
 source: test/src/snapshot/mod.rs
+assertion_line: 266
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/transmute --ir final --asm final | filter-fn transmute transmute_by_reference_7
 
-fn transmute_by_reference_7(__ret_value: __ptr u256) -> __ptr u256 {
+fn transmute_by_reference_7(__ret_value: __ptr u256) -> () {
     local [u8; 32] __anon_0
     local mut [u8; 32] bytes
     local __ptr u256 v
@@ -20,7 +21,8 @@ fn transmute_by_reference_7(__ret_value: __ptr u256) -> __ptr u256 {
     v5 = get_local __ptr __ptr u256, v
     v6 = load v5
     mem_copy_val __ret_value, v6
-    ret __ptr u256 __ret_value
+    v7 = const unit ()
+    ret () v7
 }
 
 
@@ -37,7 +39,7 @@ addi $r2 $$locbase i32        ; get offset to local __ptr [u8; 32]
 sw   $$locbase $r2 i8         ; store word
 lw   $r2 $$locbase i8         ; load word
 mcpi $r0 $r2 i32              ; copy memory
-move $$retv $r0               ; set return value
+move $$retv $zero             ; set return value
 cfsi i72                      ; free 72 bytes for locals and 0 slots for extra call arguments
 move $$reta $r1               ; restore return address
 poph i524288                  ; restore registers 40..64
