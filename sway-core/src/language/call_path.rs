@@ -407,6 +407,13 @@ impl CallPath {
             .collect::<Vec<_>>()
     }
 
+    pub fn as_vec_ident(&self) -> Vec<Ident> {
+        self.as_vec_string()
+            .iter()
+            .map(|s| Ident::new_no_span(s.clone()))
+            .collect::<Vec<_>>()
+    }
+
     /// Create a full [CallPath] from a given [Ident] and the [Namespace] in which the [Ident] is
     /// declared.
     ///

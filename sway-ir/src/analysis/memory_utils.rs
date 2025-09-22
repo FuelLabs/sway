@@ -391,13 +391,13 @@ impl AnalysisResultT for EscapedSymbols {}
 
 pub fn compute_escaped_symbols_pass(
     context: &Context,
-    _: &AnalysisResults,
+    _analyses: &AnalysisResults,
     function: Function,
 ) -> Result<AnalysisResult, IrError> {
     Ok(Box::new(compute_escaped_symbols(context, &function)))
 }
 
-pub fn compute_escaped_symbols(context: &Context, function: &Function) -> EscapedSymbols {
+fn compute_escaped_symbols(context: &Context, function: &Function) -> EscapedSymbols {
     let add_from_val = |result: &mut FxHashSet<Symbol>, val: &Value, is_complete: &mut bool| {
         let (complete, syms) = get_referred_symbols(context, *val).consume();
 
@@ -422,9 +422,14 @@ pub fn compute_escaped_symbols(context: &Context, function: &Function) -> Escape
             InstOp::BinaryOp { .. } => (),
             InstOp::BitCast(_, _) => (),
             InstOp::Branch(_) => (),
-            InstOp::Call(_, args) => args
+            InstOp::Call(callee, args) => args
                 .iter()
-                .for_each(|v| add_from_val(&mut result, v, &mut is_complete)),
+                .enumerate()
+                .filter(|(arg_idx, _arg)| {
+                    // Immutable arguments are not considered as escaping symbols.
+                    !callee.is_arg_immutable(context, *arg_idx)
+                })
+                .for_each(|(_, v)| add_from_val(&mut result, v, &mut is_complete)),
             InstOp::CastPtr(ptr, _) => add_from_val(&mut result, ptr, &mut is_complete),
             InstOp::Cmp(_, _, _) => (),
             InstOp::ConditionalBranch { .. } => (),

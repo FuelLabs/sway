@@ -15,6 +15,8 @@
 
 pub mod arg_demotion;
 pub use arg_demotion::*;
+pub mod arg_mutability_tagger;
+pub use arg_mutability_tagger::*;
 pub mod const_demotion;
 pub use const_demotion::*;
 pub mod constants;

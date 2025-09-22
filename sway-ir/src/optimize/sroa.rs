@@ -3,10 +3,10 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
-    combine_indices, compute_escaped_symbols, get_gep_referred_symbols, get_loaded_ptr_values,
-    get_stored_ptr_values, pointee_size, AnalysisResults, Constant, ConstantValue, Context,
+    combine_indices, get_gep_referred_symbols, get_loaded_ptr_values, get_stored_ptr_values,
+    pointee_size, AnalysisResults, Constant, ConstantValue, Context,
     EscapedSymbols, Function, InstOp, IrError, LocalVar, Pass, PassMutability, ScopedPass, Symbol,
-    Type, Value,
+    Type, Value, ESCAPED_SYMBOLS_NAME,
 };
 
 pub const SROA_NAME: &str = "sroa";
@@ -15,7 +15,7 @@ pub fn create_sroa_pass() -> Pass {
     Pass {
         name: SROA_NAME,
         descr: "Scalar replacement of aggregates",
-        deps: vec![],
+        deps: vec![ESCAPED_SYMBOLS_NAME],
         runner: ScopedPass::FunctionPass(PassMutability::Transform(sroa)),
     }
 }
@@ -108,10 +108,11 @@ fn split_aggregate(
 /// such as mem2reg can treat them as any other SSA value.
 pub fn sroa(
     context: &mut Context,
-    _analyses: &AnalysisResults,
+    analyses: &AnalysisResults,
     function: Function,
 ) -> Result<bool, IrError> {
-    let candidates = candidate_symbols(context, function);
+    let escaped_symbols: &EscapedSymbols = analyses.get_analysis_result(function);
+    let candidates = candidate_symbols(context, escaped_symbols, function);
 
     if candidates.is_empty() {
         return Ok(false);
@@ -443,8 +444,12 @@ fn profitability(context: &Context, function: Function, candidates: &mut FxHashS
 ///    (with an exception of `mem_copy_val` which we can handle).
 /// 3. Never accessed via non-const indexing.
 /// 4. Not aliased via a pointer that may point to more than one symbol.
-fn candidate_symbols(context: &Context, function: Function) -> FxHashSet<Symbol> {
-    let escaped_symbols = match compute_escaped_symbols(context, &function) {
+fn candidate_symbols(
+    context: &Context,
+    escaped_symbols: &EscapedSymbols,
+    function: Function,
+) -> FxHashSet<Symbol> {
+    let escaped_symbols = match escaped_symbols {
         EscapedSymbols::Complete(syms) => syms,
         EscapedSymbols::Incomplete(_) => return FxHashSet::<_>::default(),
     };

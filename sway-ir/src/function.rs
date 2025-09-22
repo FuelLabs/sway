@@ -125,6 +125,7 @@ impl Function {
                             block: entry_block,
                             idx,
                             ty,
+                            is_immutable: false,
                         },
                     )
                     .add_metadatum(context, arg_metadata),
@@ -400,6 +401,16 @@ impl Function {
     /// Return an iterator for each of the function arguments.
     pub fn args_iter<'a>(&self, context: &'a Context) -> impl Iterator<Item = &'a (String, Value)> {
         context.functions[self.0].arguments.iter()
+    }
+
+    /// Is argument `i` marked immutable?
+    pub fn is_arg_immutable(&self, context: &Context, i: usize) -> bool {
+        if let Some((_, val)) = context.functions[self.0].arguments.get(i) {
+            if let ValueDatum::Argument(arg) = &context.values[val.0].value {
+                return arg.is_immutable;
+            }
+        }
+        false
     }
 
     /// Get a pointer to a local value by name, if found.

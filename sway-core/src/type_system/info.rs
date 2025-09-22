@@ -1213,6 +1213,10 @@ impl TypeInfo {
         matches!(self, TypeInfo::Array(_, _))
     }
 
+    pub fn is_alias(&self) -> bool {
+        matches!(self, TypeInfo::Alias { .. })
+    }
+
     pub fn is_contract(&self) -> bool {
         matches!(self, TypeInfo::Contract)
     }
