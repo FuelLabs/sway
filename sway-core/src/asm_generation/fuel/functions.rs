@@ -191,8 +191,8 @@ impl FuelAsmBuilder<'_, '_> {
         });
 
         // Save the return value, if there's one.
+        let ret_reg = self.reg_seqr.next();
         if !function.get_return_type(self.context).is_unit(self.context) {
-            let ret_reg = self.reg_seqr.next();
             self.cur_bytecode.push(Op {
                 opcode: Either::Left(VirtualOp::MOVE(
                     ret_reg.clone(),
@@ -201,8 +201,17 @@ impl FuelAsmBuilder<'_, '_> {
                 comment: "[call]: copy the return value".into(),
                 owning_span: None,
             });
-            self.reg_map.insert(*instr_val, ret_reg);
+        } else {
+            self.cur_bytecode.push(Op {
+                opcode: Either::Left(VirtualOp::MOVE(
+                    ret_reg.clone(),
+                    VirtualRegister::Constant(ConstantRegister::Zero),
+                )),
+                comment: "[call]: unit return value".into(),
+                owning_span: None,
+            });
         }
+        self.reg_map.insert(*instr_val, ret_reg);
 
         Ok(())
     }
