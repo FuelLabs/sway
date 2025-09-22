@@ -573,7 +573,7 @@ impl DisplayWithEngines for TypeInfo {
             StringArray(length) => {
                 let length = match length.expr() {
                     ConstGenericExpr::Literal { val, .. } => format!("{val}"),
-                    ConstGenericExpr::AmbiguousVariableExpression { ident } => {
+                    ConstGenericExpr::AmbiguousVariableExpression { ident, .. } => {
                         ident.as_str().to_string()
                     }
                 };
@@ -651,7 +651,7 @@ impl DisplayWithEngines for TypeInfo {
             Array(elem_ty, length) => {
                 let l = match length.expr() {
                     ConstGenericExpr::Literal { val, .. } => format!("{val}"),
-                    ConstGenericExpr::AmbiguousVariableExpression { ident } => {
+                    ConstGenericExpr::AmbiguousVariableExpression { ident, .. } => {
                         ident.as_str().to_string()
                     }
                 };
@@ -1340,6 +1340,10 @@ impl TypeInfo {
 
     pub fn is_array(&self) -> bool {
         matches!(self, TypeInfo::Array(_, _))
+    }
+
+    pub fn is_alias(&self) -> bool {
+        matches!(self, TypeInfo::Alias { .. })
     }
 
     pub fn is_contract(&self) -> bool {

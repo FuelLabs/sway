@@ -127,7 +127,7 @@ mod ir_builder {
                 }
 
             rule fn_decl() -> IrAstFnDecl
-                = is_public:is_public() _ is_entry:is_entry() _  is_original_entry:is_original_entry() _ is_fallback:is_fallback() _ "fn" _
+                = is_public:is_public() _ is_original_entry:is_original_entry() _ is_entry:is_entry() _ is_fallback:is_fallback() _ "fn" _
                         name:id() _ selector:selector_id()? _ "(" _
                         args:(block_arg() ** comma()) ")" _ "->" _ ret_type:ast_ty()
                             metadata:comma_metadata_idx()? "{" _
@@ -646,12 +646,12 @@ mod ir_builder {
                 }
 
             rule id() -> String
-                = !ast_ty() id:$(id_char0() id_char()*) _ {
+                = !(ast_ty() (" " "\n")) id:$(id_char0() id_char()*) _ {
                     id.to_owned()
                 }
 
             rule id_id() -> Ident
-                = !ast_ty() id:$(id_char0() id_char()*) _ {
+                = !(ast_ty() (" " "\n")) id:$(id_char0() id_char()*) _ {
                     Ident::new(Span::new(id.into(), 0, id.len(), None).unwrap())
                 }
 
@@ -1180,6 +1180,8 @@ mod ir_builder {
                                         block: irblock,
                                         idx,
                                         ty,
+                                        // TODO: Support immutable flag on block arguments.
+                                        is_immutable: false,
                                     },
                                 )
                                 .add_metadatum(context, convert_md_idx(md));

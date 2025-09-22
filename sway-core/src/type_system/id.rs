@@ -126,26 +126,45 @@ impl MaterializeConstGenerics for TypeId {
     ) -> Result<(), ErrorEmitted> {
         match &*engines.te().get(*self) {
             TypeInfo::Array(
-                type_argument,
-                Length(ConstGenericExpr::AmbiguousVariableExpression { ident }),
-            ) if ident.as_str() == name => {
-                let val = match &value.expression {
-                    crate::language::ty::TyExpressionVariant::Literal(literal) => {
-                        literal.cast_value_to_u64().unwrap()
-                    }
-                    _ => {
-                        todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
-                    }
-                };
+                element_type,
+                Length(ConstGenericExpr::AmbiguousVariableExpression { ident, decl }),
+            ) => {
+                let mut elem_type = element_type.clone();
+                elem_type.materialize_const_generics(engines, handler, name, value)?;
 
-                *self = engines.te().insert_array(
-                    engines,
-                    type_argument.clone(),
-                    Length(ConstGenericExpr::Literal {
-                        val: val as usize,
-                        span: value.span.clone(),
-                    }),
-                );
+                if ident.as_str() == name {
+                    let val = match &value.expression {
+                        crate::language::ty::TyExpressionVariant::Literal(literal) => {
+                            literal.cast_value_to_u64().unwrap()
+                        }
+                        _ => {
+                            todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                        }
+                    };
+
+                    *self = engines.te().insert_array(
+                        engines,
+                        elem_type,
+                        Length(ConstGenericExpr::Literal {
+                            val: val as usize,
+                            span: value.span.clone(),
+                        }),
+                    );
+                } else {
+                    let mut decl = decl.clone();
+                    if let Some(decl) = decl.as_mut() {
+                        decl.materialize_const_generics(engines, handler, name, value)?;
+                    }
+
+                    *self = engines.te().insert_array(
+                        engines,
+                        elem_type,
+                        Length(ConstGenericExpr::AmbiguousVariableExpression {
+                            ident: ident.clone(),
+                            decl,
+                        }),
+                    );
+                }
             }
             TypeInfo::Enum(id) => {
                 let decl = engines.de().get(id);
@@ -178,6 +197,7 @@ impl MaterializeConstGenerics for TypeId {
             }
             TypeInfo::StringArray(Length(ConstGenericExpr::AmbiguousVariableExpression {
                 ident,
+                ..
             })) if ident.as_str() == name => {
                 let val = match &value.expression {
                     crate::language::ty::TyExpressionVariant::Literal(literal) => {
@@ -195,6 +215,20 @@ impl MaterializeConstGenerics for TypeId {
                         span: value.span.clone(),
                     }),
                 );
+            }
+            TypeInfo::Ref {
+                to_mutable_value,
+                referenced_type,
+                ..
+            } => {
+                let mut referenced_type = referenced_type.clone();
+                referenced_type
+                    .type_id_mut()
+                    .materialize_const_generics(engines, handler, name, value)?;
+
+                *self = engines
+                    .te()
+                    .insert_ref(engines, *to_mutable_value, referenced_type);
             }
             _ => {}
         }

@@ -7,7 +7,7 @@ use std::{
 };
 use sway_ast::Intrinsic;
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::Span;
+use sway_types::{Span, Spanned};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TyIntrinsicFunctionKind {
@@ -75,7 +75,9 @@ impl CollectTypesMetadata for TyIntrinsicFunctionKind {
         ctx: &mut CollectTypesMetadataContext,
     ) -> Result<Vec<TypeMetadata>, ErrorEmitted> {
         let mut types_metadata = vec![];
+
         for type_arg in self.type_arguments.iter() {
+            ctx.call_site_insert(type_arg.type_id(), type_arg.span());
             types_metadata.append(&mut type_arg.type_id().collect_types_metadata(handler, ctx)?);
         }
         for arg in self.arguments.iter() {

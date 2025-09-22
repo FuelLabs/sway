@@ -356,9 +356,10 @@ impl<'a> FnCompiler<'a> {
                 ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
                     let ted = self.engines.de().get_enum(decl_id);
                     create_tagged_union_type(
-                        self.engines.te(),
-                        self.engines.de(),
+                        self.engines,
                         context,
+                        md_mgr,
+                        self.module,
                         &ted.variants,
                     )
                     .map(|_| ())?;
@@ -1041,9 +1042,11 @@ impl<'a> FnCompiler<'a> {
                 let exp = &arguments[0];
                 // Compile the expression in case of side-effects but ignore its value.
                 let ir_type = convert_resolved_type_id(
-                    engines.te(),
-                    engines.de(),
+                    self.engines,
                     context,
+                    md_mgr,
+                    self.module,
+                    Some(self),
                     exp.return_type,
                     &exp.span,
                 )?;
@@ -1057,9 +1060,11 @@ impl<'a> FnCompiler<'a> {
             Intrinsic::SizeOfType => {
                 let targ = type_arguments[0].clone();
                 let ir_type = convert_resolved_type_id(
-                    engines.te(),
-                    engines.de(),
+                    self.engines,
                     context,
+                    md_mgr,
+                    self.module,
+                    Some(self),
                     targ.type_id(),
                     &targ.span(),
                 )?;
@@ -1072,9 +1077,11 @@ impl<'a> FnCompiler<'a> {
             Intrinsic::SizeOfStr => {
                 let targ = type_arguments[0].clone();
                 let ir_type = convert_resolved_type_id(
-                    engines.te(),
-                    engines.de(),
+                    self.engines,
                     context,
+                    md_mgr,
+                    self.module,
+                    Some(self),
                     targ.type_id(),
                     &targ.span(),
                 )?;
@@ -1112,9 +1119,11 @@ impl<'a> FnCompiler<'a> {
             Intrinsic::AssertIsStrArray => {
                 let targ = type_arguments[0].clone();
                 let ir_type = convert_resolved_type_id(
-                    engines.te(),
-                    engines.de(),
+                    self.engines,
                     context,
+                    md_mgr,
+                    self.module,
+                    Some(self),
                     targ.type_id(),
                     &targ.span(),
                 )?;
@@ -1199,9 +1208,11 @@ impl<'a> FnCompiler<'a> {
                 // Get the target type from the type argument provided
                 let target_type = &type_arguments[0];
                 let target_ir_type = convert_resolved_type_id(
-                    engines.te(),
-                    engines.de(),
+                    self.engines,
                     context,
+                    md_mgr,
+                    self.module,
+                    Some(self),
                     target_type.type_id(),
                     &target_type.span(),
                 )?;
@@ -1527,9 +1538,11 @@ impl<'a> FnCompiler<'a> {
 
                 let len = type_arguments[0].clone();
                 let ir_type = convert_resolved_type_id(
-                    engines.te(),
-                    engines.de(),
+                    self.engines,
                     context,
+                    md_mgr,
+                    self.module,
+                    Some(self),
                     len.type_id(),
                     &len.span(),
                 )?;
@@ -1964,6 +1977,7 @@ impl<'a> FnCompiler<'a> {
                             block: merge_block,
                             idx: 0,
                             ty: ptr_ty,
+                            is_immutable: false,
                         },
                     );
                     merge_block.add_arg(context, merge_block_ptr);
@@ -1973,6 +1987,7 @@ impl<'a> FnCompiler<'a> {
                             block: merge_block,
                             idx: 1,
                             ty: Type::get_uint64(context),
+                            is_immutable: false,
                         },
                     );
                     merge_block.add_arg(context, merge_block_cap);
@@ -2416,11 +2431,15 @@ impl<'a> FnCompiler<'a> {
     ) -> Result<TerminatorValue, CompileError> {
         assert!(arguments.len() == 1);
 
-        let te = self.engines.te();
-        let de = self.engines.de();
-
-        let return_type_ir_type = convert_resolved_type_id(te, de, context, return_type, span)?;
-        let return_type_ir_type_ptr = Type::new_typed_pointer(context, return_type_ir_type);
+        let return_type_ir_type = convert_resolved_type_id(
+            self.engines,
+            context,
+            md_mgr,
+            self.module,
+            Some(self),
+            return_type,
+            span,
+        )?;
 
         let first_argument_expr = &arguments[0];
         let first_argument_value = return_on_termination_or_extract!(
@@ -2429,24 +2448,50 @@ impl<'a> FnCompiler<'a> {
         let first_argument_type = first_argument_value
             .get_type(context)
             .expect("transmute first argument type not found");
-        let first_argument_ptr =
-            store_to_memory(self, context, first_argument_value)?.expect_memory();
 
-        // check IR sizes match
-        let first_arg_size = first_argument_type.size(context).in_bytes();
-        let return_type_size = return_type_ir_type.size(context).in_bytes();
-        if first_arg_size != return_type_size {
-            return Err(CompileError::Internal(
-                "Types size do not match",
-                span.clone(),
-            ));
-        }
+        let is_first_argument_ptr = first_argument_type.is_ptr(context);
+        let is_return_type_ptr = return_type_ir_type.is_ptr(context);
 
-        let casted_ptr = self
-            .current_block
-            .append(context)
-            .cast_ptr(first_argument_ptr, return_type_ir_type_ptr);
-        let final_value = self.current_block.append(context).load(casted_ptr);
+        // Both types needs to be pointers
+        // or both need to be non pointers
+        let final_value = match (is_first_argument_ptr, is_return_type_ptr) {
+            (true, false) | (false, true) => {
+                return Err(CompileError::Internal(
+                    "__transmute both types need to be references, or both need to be not references",
+                    span.clone(),
+                ));
+            }
+            (true, true) => {
+                let first_argument_value = first_argument_value.value();
+                self.current_block
+                    .append(context)
+                    .cast_ptr(first_argument_value, return_type_ir_type)
+            }
+            (false, false) => {
+                // check IR sizes match
+                let first_arg_size = first_argument_type.size(context).in_bytes();
+                let return_type_size = return_type_ir_type.size(context).in_bytes();
+
+                if first_arg_size != return_type_size {
+                    return Err(CompileError::Internal(
+                        "Types size do not match",
+                        span.clone(),
+                    ));
+                }
+
+                let return_type_ir_type_ptr = Type::new_typed_pointer(context, return_type_ir_type);
+                let first_argument_ptr =
+                    store_to_memory(self, context, first_argument_value)?.expect_memory();
+
+                let casted_ptr = self
+                    .current_block
+                    .append(context)
+                    .cast_ptr(first_argument_ptr, return_type_ir_type_ptr);
+
+                self.current_block.append(context).load(casted_ptr)
+            }
+        };
+
         Ok(TerminatorValue::new(
             CompiledValue::InRegister(final_value),
             context,
@@ -2458,10 +2503,9 @@ impl<'a> FnCompiler<'a> {
         context: &mut Context,
         first_argument_expr: &TyExpression,
         first_argument_value: Value,
-        _md_mgr: &mut MetadataManager,
+        md_mgr: &mut MetadataManager,
     ) -> Result<(Value, TypeId), CompileError> {
         let te = self.engines.te();
-        let de = self.engines.de();
 
         let err = CompileError::TypeArgumentsNotAllowed {
             span: first_argument_expr.span.clone(),
@@ -2489,9 +2533,11 @@ impl<'a> FnCompiler<'a> {
                 initializer: None,
             };
             let elem_ir_ty = convert_resolved_type_id(
-                te,
-                de,
+                self.engines,
                 context,
+                md_mgr,
+                self.module,
+                Some(self),
                 elem_ty,
                 &first_argument_expr.span.clone(),
             )?;
@@ -2511,18 +2557,18 @@ impl<'a> FnCompiler<'a> {
     fn advance_ptr_n_elements(
         &mut self,
         context: &mut Context,
+        md_mgr: &mut MetadataManager,
         first_argument_expr: &TyExpression,
         ptr: Value,
         elem_type_id: TypeId,
         idx: Value,
     ) -> Result<(Value, Type), CompileError> {
-        let te = self.engines.te();
-        let de = self.engines.de();
-
         let elem_ir_type = convert_resolved_type_id(
-            te,
-            de,
+            self.engines,
             context,
+            md_mgr,
+            self.module,
+            Some(self),
             elem_type_id,
             &first_argument_expr.span.clone(),
         )?;
@@ -2596,6 +2642,7 @@ impl<'a> FnCompiler<'a> {
         .expect_register();
         let (ptr_to_elem, _) = self.advance_ptr_n_elements(
             context,
+            md_mgr,
             first_argument_expr,
             ptr_to_first_elem,
             elem_type_id,
@@ -2631,6 +2678,7 @@ impl<'a> FnCompiler<'a> {
         .expect_register();
         let (ptr_to_elem, elem_ir_type) = self.advance_ptr_n_elements(
             context,
+            md_mgr,
             first_argument_expr,
             ptr_to_first_elem,
             elem_type_id,
@@ -3249,9 +3297,11 @@ impl<'a> FnCompiler<'a> {
 
         // Convert the return type.  If it's a reference type then make it a pointer.
         let return_type = convert_resolved_typeid_no_span(
-            self.engines.te(),
-            self.engines.de(),
+            self.engines,
             context,
+            md_mgr,
+            self.module,
+            Some(self),
             ast_return_type,
         )?;
         let ret_is_copy_type = self
@@ -3413,9 +3463,11 @@ impl<'a> FnCompiler<'a> {
             merge_block.append(context).branch(true_block_begin, vec![])
         } else {
             let return_type = convert_resolved_typeid_no_span(
-                self.engines.te(),
-                self.engines.de(),
+                self.engines,
                 context,
+                md_mgr,
+                self.module,
+                Some(self),
                 return_type,
             )
             .unwrap_or_else(|_| Type::get_unit(context));
@@ -3448,9 +3500,11 @@ impl<'a> FnCompiler<'a> {
     ) -> Result<TerminatorValue, CompileError> {
         // Retrieve the type info for the enum.
         let enum_type = match convert_resolved_type_id(
-            self.engines.te(),
-            self.engines.de(),
+            self.engines,
             context,
+            md_mgr,
+            self.module,
+            Some(self),
             exp.return_type,
             &exp.span,
         )? {
@@ -3746,9 +3800,11 @@ impl<'a> FnCompiler<'a> {
         let init_val = self.compile_expression_to_register(context, md_mgr, body);
 
         let return_type = convert_resolved_type_id(
-            self.engines.te(),
-            self.engines.de(),
+            self.engines,
             context,
+            md_mgr,
+            self.module,
+            Some(self),
             body.return_type,
             &body.span,
         )?;
@@ -3828,9 +3884,11 @@ impl<'a> FnCompiler<'a> {
                     .insert(call_path.suffix.as_str().to_owned());
 
                 let return_type = convert_resolved_type_id(
-                    self.engines.te(),
-                    self.engines.de(),
+                    self.engines,
                     context,
+                    md_mgr,
+                    self.module,
+                    Some(self),
                     value.return_type,
                     &value.span,
                 )?;
@@ -4103,9 +4161,11 @@ impl<'a> FnCompiler<'a> {
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
         let elem_type = convert_resolved_typeid_no_span(
-            self.engines.te(),
-            self.engines.de(),
+            self.engines,
             context,
+            md_mgr,
+            self.module,
+            Some(self),
             elem_type,
         )?;
 
@@ -4180,9 +4240,11 @@ impl<'a> FnCompiler<'a> {
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
         let elem_type = convert_resolved_typeid_no_span(
-            self.engines.te(),
-            self.engines.de(),
+            self.engines,
             context,
+            md_mgr,
+            self.module,
+            Some(self),
             elem_type,
         )?;
 
@@ -4448,9 +4510,11 @@ impl<'a> FnCompiler<'a> {
             insert_values.push(insert_val);
 
             let field_type = convert_resolved_typeid_no_span(
-                self.engines.te(),
-                self.engines.de(),
+                self.engines,
                 context,
+                md_mgr,
+                self.module,
+                Some(self),
                 struct_field.value.return_type,
             )?;
             field_types.push(field_type);
@@ -4535,9 +4599,11 @@ impl<'a> FnCompiler<'a> {
             })?;
 
         let field_type = convert_resolved_type_id(
-            self.engines.te(),
-            self.engines.de(),
+            self.engines,
             context,
+            md_mgr,
+            self.module,
+            Some(self),
             field_type_id,
             &ast_field.span,
         )?;
@@ -4560,9 +4626,10 @@ impl<'a> FnCompiler<'a> {
     ) -> Result<TerminatorValue, CompileError> {
         let span_md_idx = md_mgr.span_to_md(context, &enum_decl.span);
         let enum_type = create_tagged_union_type(
-            self.engines.te(),
-            self.engines.de(),
+            self.engines,
             context,
+            md_mgr,
+            self.module,
             &enum_decl.variants,
         )?;
         let tag_value =
@@ -4707,9 +4774,11 @@ impl<'a> FnCompiler<'a> {
                 )
                 .expect_register();
                 let init_type = convert_resolved_typeid_no_span(
-                    self.engines.te(),
-                    self.engines.de(),
+                    self.engines,
                     context,
+                    md_mgr,
+                    self.module,
+                    Some(self),
                     field_expr.return_type,
                 )?;
                 init_values.push(init_value);
@@ -4739,9 +4808,11 @@ impl<'a> FnCompiler<'a> {
         )
         .expect_memory();
         let tuple_type = convert_resolved_type_id(
-            self.engines.te(),
-            self.engines.de(),
+            self.engines,
             context,
+            md_mgr,
+            self.module,
+            Some(self),
             tuple_type,
             &span,
         )?;
@@ -4784,9 +4855,11 @@ impl<'a> FnCompiler<'a> {
 
         // Get the IR type of the storage variable.
         let base_type = convert_resolved_typeid_no_span(
-            self.engines.te(),
-            self.engines.de(),
+            self.engines,
             context,
+            md_mgr,
+            self.module,
+            Some(self),
             base_type,
         )?;
 
@@ -4864,9 +4937,11 @@ impl<'a> FnCompiler<'a> {
         });
 
         let return_type = convert_resolved_typeid_no_span(
-            self.engines.te(),
-            self.engines.de(),
+            self.engines,
             context,
+            md_mgr,
+            self.module,
+            Some(self),
             return_type,
         )?;
         let val = self
