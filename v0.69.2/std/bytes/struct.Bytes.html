@@ -1,0 +1,595 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="swaydoc"><meta name="description" content="API documentation for the Sway `Bytes` struct in `bytes`."><meta name="keywords" content="sway, swaylang, sway-lang, Bytes"><link rel="icon" href="../../static.files/sway-logo.svg"><title>Bytes in bytes - Sway</title><link rel="stylesheet" type="text/css" href="../../static.files/normalize.css"><link rel="stylesheet" type="text/css" href="../../static.files/swaydoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../static.files/ayu.css"><link rel="stylesheet" href="../../static.files/ayu.min.css"></head><body class="swaydoc struct"><nav class="sidebar"><a class="sidebar-logo" href="../../std/index.html"><div class="logo-container"><img class="sway-logo" src="../../static.files/sway-logo.svg" alt="logo"></div></a><h2 class="location">Struct Bytes</h2><div class="sidebar-elems"><section><h3><a href="#fields">Fields</a></h3><ul class="block method"><li><a href="#structfield.buf">buf</a></li><li><a href="#structfield.len">len</a></li></ul></section><section><h3><a href="#methods">Methods</a></h3><ul class="block method"><li><a href="#method.new">new</a></li><li><a href="#method.with_capacity">with_capacity</a></li><li><a href="#method.push">push</a></li><li><a href="#method.pop">pop</a></li><li><a href="#method.get">get</a></li><li><a href="#method.get_unchecked">get_unchecked</a></li><li><a href="#method.set">set</a></li><li><a href="#method.insert">insert</a></li><li><a href="#method.remove">remove</a></li><li><a href="#method.swap">swap</a></li><li><a href="#method.capacity">capacity</a></li><li><a href="#method.len">len</a></li><li><a href="#method.clear">clear</a></li><li><a href="#method.is_empty">is_empty</a></li><li><a href="#method.ptr">ptr</a></li><li><a href="#method.split_at">split_at</a></li><li><a href="#method.append">append</a></li><li><a href="#method.append_raw_slice">append_raw_slice</a></li><li><a href="#method.splice">splice</a></li><li><a href="#method.resize">resize</a></li><li><a href="#method.iter">iter</a></li><li><a href="#method.are_all_zero">are_all_zero</a></li></ul></section><section><h3><a href="#trait-implementations">Trait Implementations</a></h3><ul class="block method"><li><a href="#impl-AsRawSlice">AsRawSlice</a></li><li><a href="#impl-PartialEq">PartialEq</a></li><li><a href="#impl-Eq">Eq</a></li><li><a href="#impl-From&lt;b256&gt;">From&lt;b256&gt;</a></li><li><a href="#impl-TryInto&lt;b256&gt;">TryInto&lt;b256&gt;</a></li><li><a href="#impl-From&lt;raw_slice&gt;">From&lt;raw_slice&gt;</a></li><li><a href="#impl-From&lt;Vec&lt;u8&gt;&gt;">From&lt;Vec&lt;u8&gt;&gt;</a></li><li><a href="#impl-Clone">Clone</a></li><li><a href="#impl-AbiEncode">AbiEncode</a></li><li><a href="#impl-AbiDecode">AbiDecode</a></li><li><a href="#impl-Debug">Debug</a></li><li><a href="#impl-Hash">Hash</a></li><li><a href="#impl-From&lt;String&gt;">From&lt;String&gt;</a></li></ul></section></div></nav><main><div class="width-limiter"><script src="../../search.js" type="text/javascript"></script><script>function onSearchFormSubmit(event){event.preventDefault();const searchQuery=document.getElementById("search-input").value;const url=new URL(window.location.href);if(searchQuery){url.searchParams.set('search',searchQuery);}else{url.searchParams.delete('search');}history.pushState({search:searchQuery},"",url);window.dispatchEvent(new HashChangeEvent("hashchange"));}document.addEventListener('DOMContentLoaded',()=>{const searchbar=document.getElementById("search-input");const searchForm=document.getElementById("search-form");searchbar.addEventListener("keyup",function(event){onSearchFormSubmit(event);});searchbar.addEventListener("search",function(event){onSearchFormSubmit(event);});function onQueryParamsChange(){const searchParams=new URLSearchParams(window.location.search);const query=searchParams.get("search");const searchSection=document.getElementById('search');const mainSection=document.getElementById('main-content');const searchInput=document.getElementById('search-input');if(query){searchInput.value=query;const results=Object.values(SEARCH_INDEX).flat().filter(item=>{const lowerQuery=query.toLowerCase();return item.name.toLowerCase().includes(lowerQuery);});const header=`<h1>Results for ${query}</h1>`;if(results.length>0){const resultList=results.map(item=>{const formattedName=`<span class="type ${item.type_name}">${item.name}</span>`;const name=item.type_name==="module"?[...item.module_info.slice(0,-1),formattedName].join("::"):[...item.module_info,formattedName].join("::");const path=["../..",...item.module_info,item.html_filename].join("/");const left=`<td><span>${name}</span></td>`;const right=`<td><p>${item.preview}</p></td>`;return`<tr onclick="window.location='${path}';">${left}${right}</tr>`;}).join('');searchSection.innerHTML=`${header}<table>${resultList}</table>`;}else{searchSection.innerHTML=`${header}<p>No results found.</p>`;}searchSection.setAttribute("class","search-results");mainSection.setAttribute("class","content hidden");}else{searchSection.setAttribute("class","search-results hidden");mainSection.setAttribute("class","content");}}window.addEventListener('hashchange',onQueryParamsChange);onQueryParamsChange();});</script><nav class="sub"><form id="search-form" class="search-form" onsubmit="onSearchFormSubmit(event)"><div class="search-container"><input id="search-input" class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Search the docs..." type="search"></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1 class="fqn"><span class="in-band">Struct <a class="mod" href="../index.html">std</a><span>::</span><a class="mod" href="index.html">bytes</a><span>::</span><a class="struct" href="#">Bytes</a></span></h1></div><div class="docblock item-decl"><pre class="sway struct"><code>pub struct Bytes {
+    /// A barebones struct for the bytes.
+    buf: RawBytes,
+    /// The number of bytes being stored.
+    len: u64,
+}</code></pre></div><details class="swaydoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>A type used to represent raw bytes. It has ownership over its buffer.</p>
+</div></details><h2 id="fields" class="fields small-section-header">Fields<a class="anchor" href="#fields"></a></h2><span id="structfield.buf" class="structfield small-section-header"><a class="anchor field" href="#structfield.buf"></a><code>buf: RawBytes</code></span><div class="docblock"><p>A barebones struct for the bytes.</p>
+</div><span id="structfield.len" class="structfield small-section-header"><a class="anchor field" href="#structfield.len"></a><code>len: u64</code></span><div class="docblock"><p>The number of bytes being stored.</p>
+</div><h2 id="methods" class="small-section-header">Implementations<a href="#methods" class="anchor"></a></h2><div id="methods-list"><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-Bytes" class="impl has-srclink"><a href="#impl-Bytes" class="anchor"></a><h3 class="code-header in-band">impl Bytes</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.new" class="method trait-impl"><a href="#method.new" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.new">new</a>() -&gt; Self</h4></div></summary><div class="docblock"><p>Constructs a new, empty <code>Bytes</code>.</p>
+<h1>Additional Information</h1>
+<p>The struct will not allocate until elements are pushed onto it.</p>
+<h1>Returns</h1>
+<ul>
+<li>[Bytes] - A new, empty <code>Bytes</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::bytes::Bytes;
+
+fn foo() {
+    let bytes = Bytes::new();
+    assert(bytes.len() == 0);
+    assert(bytes.capacity() == 0);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.with_capacity" class="method trait-impl"><a href="#method.with_capacity" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.with_capacity">with_capacity</a>(capacity: u64) -&gt; Self</h4></div></summary><div class="docblock"><p>Constructs a new, empty <code>Bytes</code> with the specified capacity.</p>
+<h1>Additional Information</h1>
+<p>The <code>Bytes</code> will be able to hold exactly <code>capacity</code> bytes without<br />
+reallocating. If <code>capacity</code> is zero, the <code>Bytes</code> will not allocate.</p>
+<p>It is important to note that although the returned <code>Bytes</code> has the<br />
+capacity specified, the type will have a zero length.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>capacity</code>: [u64] - The capacity with which to initialize the <code>Bytes</code>.</li>
+</ul>
+<h1>Returns</h1>
+<ul>
+<li>[Bytes] - A new, empty <code>Bytes</code> with the specified capacity.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::bytes::Bytes;
+
+fn foo() {
+    let mut bytes = Bytes::with_capacity(2);
+    // does not allocate
+    bytes.push(5);
+    // does not re-allocate
+    bytes.push(10);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.push" class="method trait-impl"><a href="#method.push" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.push">push</a>(refmut self, byte: u8)</h4></div></summary><div class="docblock"><p>Appends an element to the back of a <code>Bytes</code> collection.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>byte</code>: [u8] - The element to be pushed onto the <code>Bytes</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::bytes::Bytes;
+
+fn foo() {
+    let mut bytes = Bytes::new();
+    let a = 5u8;
+    let b = 7u8;
+    bytes.push(a);
+    bytes.push(b);
+    assert(bytes.len() == 2);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.pop" class="method trait-impl"><a href="#method.pop" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.pop">pop</a>(refmut self) -&gt; Option&lt;u8&gt;</h4></div></summary><div class="docblock"><p>Removes the last element from a <code>Bytes</code> and returns it, or <code>None</code> if it<br />
+is empty.</p>
+<h1>Returns</h1>
+<ul>
+<li>[Option<!-- raw HTML omitted -->] - The last element of the <code>Bytes</code>, or <code>None</code> if it is empty.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::bytes::Bytes;
+
+fn foo() {
+    let mut bytes = Bytes::new();
+
+    let res = bytes.pop();
+    assert(res.is_none());
+
+    bytes.push(5);
+    let res = bytes.pop();
+    assert(res.unwrap() == 5);
+    assert(bytes.is_empty());
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.get" class="method trait-impl"><a href="#method.get" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.get">get</a>(self, index: u64) -&gt; Option&lt;u8&gt;</h4></div></summary><div class="docblock"><p>Returns <code>Some(byte)</code> at <code>index</code>, or <code>None</code> if <code>index</code> is out of<br />
+bounds.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>index</code>: [u64] - The index of the element to be returned.</li>
+</ul>
+<h1>Returns</h1>
+<ul>
+<li>[Option<!-- raw HTML omitted -->] - The element at the specified index, or <code>None</code> if the index is out of bounds.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::bytes::Byte;
+
+fn foo() {
+    let mut bytes = Bytes::new();
+    bytes.push(5u8);
+    bytes.push(10u8);
+    bytes.push(15u8);
+    let item = bytes.get(1).unwrap();
+    assert(item == 10u8);
+    let opt = bytes.get(10);
+    assert(opt.is_none()); // index out of bounds
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.get_unchecked" class="method trait-impl"><a href="#method.get_unchecked" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.get_unchecked">get_unchecked</a>(self, index: u64) -&gt; u8</h4></div></summary><div class="docblock"><p>Fetches the element stored at <code>index</code> without bounds checking.</p>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.set" class="method trait-impl"><a href="#method.set" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.set">set</a>(<br>    refmut self,<br>    index: u64,<br>    value: u8,<br>)</h4></div></summary><div class="docblock"><p>Updates an element at position <code>index</code> with a new element <code>value</code>.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>index</code>: [u64] - The index of the element to be set.</li>
+<li><code>value</code>: [u8] - The value of the element to be set.</li>
+</ul>
+<h1>Reverts</h1>
+<ul>
+<li>When <code>index</code> is greater than or equal to the length of Bytes.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::bytes::Bytes;
+
+fn foo() {
+    let mut bytes = Bytes::new();
+    let a = 5u8;
+    let b = 7u8;
+    let c = 9u8;
+    bytes.push(a);
+    bytes.push(b);
+    bytes.push(c);
+
+    let d = 11u8;
+
+    bytes.set(1, d);
+
+    assert(bytes.len() == 3);
+    assert(bytes.get(0).unwrap() == a);
+    assert(bytes.get(1).unwrap() == d);
+    assert(bytes.get(2).unwrap() == c);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.insert" class="method trait-impl"><a href="#method.insert" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.insert">insert</a>(<br>    refmut self,<br>    index: u64,<br>    element: u8,<br>)</h4></div></summary><div class="docblock"><p>Inserts an element at position <code>index</code> within the Bytes, shifting all<br />
+elements after it to the right.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>index</code>: [u64] - The index at which to insert the element.</li>
+<li><code>element</code>: [u8] - The element to be inserted.</li>
+</ul>
+<h1>Reverts</h1>
+<ul>
+<li>When <code>index &gt; len</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::bytes::Byte;
+
+fn foo() {
+    let mut bytes = Bytes::new();
+    let a = 11u8;
+    let b = 11u8;
+    let c = 11u8;
+    let d = 11u8;
+    bytes.push(a);
+    bytes.push(b);
+    bytes.push(c);
+    bytes.insert(1, d);
+
+    assert(bytes.get(0).unwrap() == a);
+    assert(bytes.get(1).unwrap() == d);
+    assert(bytes.get(2).unwrap() == b);
+    assert(bytes.get(3).unwrap() == c);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.remove" class="method trait-impl"><a href="#method.remove" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.remove">remove</a>(refmut self, index: u64) -&gt; u8</h4></div></summary><div class="docblock"><p>Removes and returns the element at position <code>index</code> within the Bytes,<br />
+shifting all elements after it to the left.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>index</code>: [u64] - The index of the element to be removed.</li>
+</ul>
+<h1>Returns</h1>
+<ul>
+<li>[u8] - The element at the specified index.</li>
+</ul>
+<h1>Reverts</h1>
+<ul>
+<li>When <code>index &gt;= self.len</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::bytes::Byte;
+
+fn foo() {
+    let mut bytes = Byte::new();
+    bytes.push(5);
+    bytes.push(10);
+    bytes.push(15);
+    let item = bytes.remove(1);
+    assert(item == 10);
+    assert(bytes.get(0).unwrap() == 5);
+    assert(bytes.get(1).unwrap() == 15);
+    assert(bytes.get(2).is_none());
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.swap" class="method trait-impl"><a href="#method.swap" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.swap">swap</a>(<br>    refmut self,<br>    element1_index: u64,<br>    element2_index: u64,<br>)</h4></div></summary><div class="docblock"><p>Swaps two elements.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>element1_index</code>: [u64] - The index of the first element.</li>
+<li><code>element2_index</code>: [u64] - The index of the second element.</li>
+</ul>
+<h1>Reverts</h1>
+<ul>
+<li>When <code>element1_index</code> or <code>element2_index</code> is greater than or equal to the length of <code>Bytes</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::bytes::Bytes;
+
+fn foo() {
+    let mut bytes = Bytes::new();
+    let a = 5u8;
+    let b = 7u8;
+    let c = 9u8;
+    bytes.push(a);
+    bytes.push(b);
+    bytes.push(c);
+
+    bytes.swap(0, 1);
+
+    assert(bytes.get(0).unwrap() == b);
+    assert(bytes.get(1).unwrap() == a);
+    assert(bytes.get(2).unwrap() == c);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.capacity" class="method trait-impl"><a href="#method.capacity" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.capacity">capacity</a>(self) -&gt; u64</h4></div></summary><div class="docblock"><p>Gets the capacity of the allocation.</p>
+<h1>Returns</h1>
+<ul>
+<li>[u64] - The capacity of the allocation.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::bytes::Bytes;
+
+fn foo() {
+    let bytes = Bytes::with_capacity(5);
+    let cap = bytes.capacity();
+    assert(cap == 5);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.len" class="method trait-impl"><a href="#method.len" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.len">len</a>(self) -&gt; u64</h4></div></summary><div class="docblock"><p>Gets the length of the <code>Bytes</code>.</p>
+<h1>Returns</h1>
+<ul>
+<li>[u64] - The length of the <code>Bytes</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::bytes::Bytes;
+
+fn foo() {
+    let mut bytes = Bytes::new();
+    assert(bytes.len() == 0);
+    bytes.push(5);
+    assert(bytes.len() == 1);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.clear" class="method trait-impl"><a href="#method.clear" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.clear">clear</a>(refmut self)</h4></div></summary><div class="docblock"><p>Clears the <code>Bytes</code>, removing all values.</p>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std:bytes::Bytes;
+
+fn foo() {
+    let mut bytes = Bytes::new();
+    bytes.push(5);
+    bytes.clear()
+    assert(bytes.is_empty());
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.is_empty" class="method trait-impl"><a href="#method.is_empty" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.is_empty">is_empty</a>(self) -&gt; bool</h4></div></summary><div class="docblock"><p>Returns <code>true</code> if the type contains no elements.</p>
+<h1>Returns</h1>
+<ul>
+<li>[bool] - <code>true</code> if the type contains no elements, <code>false</code> otherwise.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std:bytes::Bytes;
+
+fn foo() {
+    let mut bytes = Bytes::new();
+    assert(bytes.is_empty());
+    bytes.push(5);
+    assert(!bytes.is_empty());
+    bytes.clear()
+    assert(bytes.is_empty());
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.ptr" class="method trait-impl"><a href="#method.ptr" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.ptr">ptr</a>(self) -&gt; raw_ptr</h4></div></summary><div class="docblock"><p>Gets the pointer of the allocation.</p>
+<h1>Returns</h1>
+<p>[raw_ptr] - The location in memory that the allocated bytes live.</p>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::bytes::Bytes;
+
+fn foo() {
+    let bytes = Bytes::new();
+    assert(!bytes.ptr().is_null());
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.split_at" class="method trait-impl"><a href="#method.split_at" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.split_at">split_at</a>(self, mid: u64) -&gt; (Self, Self)</h4></div></summary><div class="docblock"><p>Divides one Bytes into two at an index.</p>
+<h1>Additional Information</h1>
+<p>The first will contain all indices from <code>[0, mid)</code> (excluding the index<br />
+<code>mid</code> itself) and the second will contain all indices from <code>[mid, len)</code><br />
+(excluding the index <code>len</code> itself).</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>mid</code>: [u64] - Index at which the Bytes is to be split.</li>
+</ul>
+<h1>Reverts</h1>
+<ul>
+<li>When <code>mid &gt; self.len</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std:bytes::Bytes;
+
+fn foo() {
+    let mut bytes = Bytes::new();
+    bytes.push(5u8);
+    bytes.push(7u8);
+    bytes.push(9u8);
+    assert(bytes.len() == 3);
+    let mid = 1;
+    let (left, right) = bytes.split_at(mid);
+    assert(left.capacity() == mid);
+    assert(right.capacity() == bytes.len() - mid);
+    assert(left.len() == 1);
+    assert(right.len() == 2);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.append" class="method trait-impl"><a href="#method.append" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.append">append</a>(<br>    refmut self,<br>    refmut other: Self,<br>)</h4></div></summary><div class="docblock"><p>Appends copies of all elements of <code>other</code> into <code>self</code>.</p>
+<h1>Additional Information</h1>
+<p>NOTE: Appending <code>self</code> to itself will duplicate the <code>Bytes</code>. i.e. [0, 1, 2] =&gt; [0, 1, 2, 0, 1, 2]<br />
+This function differs from the Rust <code>append</code> function in that it does not clear the <code>other</code> <code>Bytes</code>.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>other</code>: [Bytes] - The <code>Bytes</code> to append to <code>self</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">
+use std:bytes::Bytes;
+
+fn foo() {
+    let mut bytes = Bytes::new();
+    bytes.push(5u8);
+    bytes.push(7u8);
+    bytes.push(9u8);
+    assert(bytes.len() == 3);
+
+    let mut bytes2 = Bytes::new();
+    bytes2.push(5u8);
+    bytes2.push(7u8);
+    bytes2.push(9u8);
+    assert(bytes2.len() == 3);
+
+    let first_length = bytes.len();
+    let second_length = bytes2.len();
+
+    bytes.append(bytes2);
+
+    assert(bytes.len() == first_length + second_length);
+    assert(bytes2.len() == second_length);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.append_raw_slice" class="method trait-impl"><a href="#method.append_raw_slice" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.append_raw_slice">append_raw_slice</a>(<br>    refmut self,<br>    slice: raw_slice,<br>)</h4></div></summary><div class="docblock"><p>Appends copies of all bytes from the <code>slice</code> into <code>self</code>.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>slice</code>: [raw_slice] - The <code>raw_slice</code> from which to append to <code>self</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">
+use std:bytes::Bytes;
+
+fn foo() {
+    let mut bytes = Bytes::new();
+    bytes.push(5u8);
+    bytes.push(7u8);
+    bytes.push(9u8);
+
+    let mut bytes2 = Bytes::new();
+    bytes2.push(5u8);
+    bytes2.push(7u8);
+    bytes2.push(9u8);
+
+    let first_length = bytes.len();
+    let second_length = bytes2.len();
+
+    bytes.append_raw_slice(bytes2.as_raw_slice());
+
+    assert(bytes.len() == first_length + second_length);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.splice" class="method trait-impl"><a href="#method.splice" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.splice">splice</a>(refmut self, start: u64, end: u64, replace_with: Bytes) -&gt; Bytes</h4></div></summary><div class="docblock"><p>Removes and returns a range of elements from the <code>Bytes</code> (i.e. indices <code>[start, end)</code>),<br />
+then replaces that range with the contents of <code>replace_with</code>.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>start</code>: [u64] - The starting index for the splice (inclusive).</li>
+<li><code>end</code>: [u64] - The ending index for the splice (exclusive).</li>
+<li><code>replace_with</code>: [Bytes] - The elements to insert in place of the removed range.</li>
+</ul>
+<h1>Returns</h1>
+<ul>
+<li>[Bytes] - A new <code>Bytes</code> containing all of the elements from <code>start</code> up to (but not including) <code>end</code>.</li>
+</ul>
+<h1>Reverts</h1>
+<ul>
+<li>When <code>start &gt; end</code>.</li>
+<li>When <code>end &gt; self.len</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::bytes::Bytes;
+
+fn foo() {
+    let mut bytes = Bytes::new();
+    bytes.push(5u8);  // index 0
+    bytes.push(7u8);  // index 1
+    bytes.push(9u8);  // index 2
+
+    // Replace the middle item (index 1) with two new items
+    let mut replacement = Bytes::new();
+    replacement.push(42u8);
+    replacement.push(100u8);
+
+    // Splice out range [1..2) =&gt; removes the single element 7u8,
+    // then inserts [42, 100] there
+    let spliced = bytes.splice(1, 2, replacement);
+
+    // `spliced` has the element [7u8]
+    assert(spliced.len() == 1);
+    assert(spliced.get(0).unwrap() == 7u8);
+
+    // `bytes` is now [5u8, 42u8, 100u8, 9u8]
+    assert(bytes.len() == 4);
+    assert(bytes.get(0).unwrap() == 5u8);
+    assert(bytes.get(1).unwrap() == 42u8);
+    assert(bytes.get(2).unwrap() == 100u8);
+    assert(bytes.get(3).unwrap() == 9u8);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.resize" class="method trait-impl"><a href="#method.resize" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.resize">resize</a>(<br>    refmut self,<br>    new_len: u64,<br>    value: u8,<br>)</h4></div></summary><div class="docblock"><p>Resizes the <code>Bytes</code> in-place so that <code>len</code> is equal to <code>new_len</code>.</p>
+<h1>Additional Information</h1>
+<p>If <code>new_len</code> is greater than <code>len</code>, the <code>Bytes</code> is extended by the difference, with each additional slot filled with <code>value</code>. If <code>new_len</code> is less than <code>len</code>, the <code>Bytes</code> is simply truncated.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>new_len</code>: [u64] - The new length of the <code>Bytes</code>.</li>
+<li><code>value</code>: [u8] - The value to fill the new length.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">fn foo() {
+    let bytes = Bytes::new();
+    bytes.resize(1, 7u8);
+    assert(bytes.len() == 1);
+    assert(bytes.get(0).unwrap() == 7u8);
+
+    bytes.resize(2, 9u8);
+    assert(bytes.len() == 2);
+    assert(bytes.get(0).unwrap() == 7u8);
+    assert(bytes.get(1).unwrap() == 9u8);
+
+    bytes.resize(1, 0);
+    assert(bytes.len() == 1);
+    assert(bytes.get(0).unwrap() == 7u8);
+    assert(bytes.get(1) == None);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.iter" class="method trait-impl"><a href="#method.iter" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.iter">iter</a>(self) -&gt; BytesIter</h4></div></summary><div class="docblock"><p>Returns an [Iterator] to iterate over this <code>Bytes</code>.</p>
+<h1>Returns</h1>
+<ul>
+<li>[BytesIter] - The struct which can be iterated over.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">fn foo() {
+    let mut bytes = Bytes::new();
+    bytes.push(5_u8);
+    bytes.push(10_u8);
+    bytes.push(15_u8);
+
+    // Get the iterator
+    let iter = bytes.iter();
+
+    assert_eq(5_u8, iter.next().unwrap());
+    assert_eq(10_u8, iter.next().unwrap());
+    assert_eq(15_u8, iter.next().unwrap());
+
+    for elem in bytes.iter() {
+        log(elem);
+    }
+}
+
+# Undefined Behavior
+
+Modifying vector during iteration is a logical error and
+results in undefined behavior. E.g.:
+
+```sway
+fn foo() {
+    let mut bytes = Bytes::new();
+    bytes.push(5_u8);
+    bytes.push(10_u8);
+    bytes.push(15_u8);
+
+    for elem in bytes.iter() {
+        bytes.push(20_u8); // Modification causes undefined behavior.
+    }
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.are_all_zero" class="method trait-impl"><a href="#method.are_all_zero" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.are_all_zero">are_all_zero</a>(self) -&gt; bool</h4></div></summary><div class="docblock"><p>Returns true if all the bytes within the <code>Bytes</code> are zero.</p>
+<h1>Additional Information</h1>
+<p>If <code>Bytes</code> is empty, this function will return <code>true</code>.</p>
+<h1>Examples</h1>
+<pre><code class="language-sway">fn foo() {
+    let bytes = Bytes::new();
+    bytes.resize(10, 0u8);
+    assert(bytes.are_all_zero() == true);
+
+    bytes.resize(20, 42u8);
+    assert(bytes.are_all_zero() == false);
+
+    bytes.resize(0, 42u8);
+    assert(bytes.are_all_zero() == true);
+}
+</code></pre>
+</div></details></div></details></div><h2 id="trait-implementations" class="small-section-header">Trait Implementations<a href="#trait-implementations" class="anchor"></a></h2><div id="trait-implementations-list"><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-AsRawSlice" class="impl has-srclink"><a href="#impl-AsRawSlice" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../raw_slice/trait.AsRawSlice.html">AsRawSlice</a> for Bytes</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.as_raw_slice" class="method trait-impl"><a href="#method.as_raw_slice" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.as_raw_slice">as_raw_slice</a>(self) -&gt; raw_slice</h4></div></summary><div class="docblock"><p>Returns a raw slice of all of the elements in the <code>Bytes</code>.</p>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-PartialEq" class="impl has-srclink"><a href="#impl-PartialEq" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../ops/trait.PartialEq.html">PartialEq</a> for Bytes</h3></div></summary><div class="impl-items"><div id="method.eq" class="method trait-impl"><a href="#method.eq" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.eq">eq</a>(self, other: Self) -&gt; bool</h4></div><details class="swaydoc-toggle method-toggle" open><summary><div id="method.neq" class="method trait-impl"><a href="#method.neq" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.neq">neq</a>(self, other: Self) -&gt; bool</h4></div></summary><div class="docblock"><p>Evaluates if two values of the same type are not equal.</p>
+<h1>Additional Information</h1>
+<p>This function is inherited when <code>eq()</code> is implemented.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>other</code>: [Self] - The value of the same type.</li>
+</ul>
+<h1>Returns</h1>
+<ul>
+<li>[bool] - <code>true</code> if the two values are not equal, otherwise <code>false</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">struct MyStruct {
+    val: u64,
+}
+
+impl PartialEq for MyStruct {
+    fn eq(self, other: Self) -&gt; bool {
+         self.val == other.val
+    }
+}
+
+fn foo() {
+    let struct1 = MyStruct { val: 10 };
+    let struct2 = MyStruct { val: 2 };
+    let result = struct1 != struct2;
+    assert(result);
+}
+</code></pre>
+</div></details></div></details><div id="impl-Eq" class="impl has-srclink"><a href="#impl-Eq" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../ops/trait.Eq.html">Eq</a> for Bytes</h3></div><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-From&lt;b256&gt;" class="impl has-srclink"><a href="#impl-From&lt;b256&gt;" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.From.html">From</a>&lt;b256&gt; for Bytes</h3></div></summary><div class="impl-items"><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.from">from</a>(b: b256) -&gt; Self</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-TryInto&lt;b256&gt;" class="impl has-srclink"><a href="#impl-TryInto&lt;b256&gt;" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.TryInto.html">TryInto</a>&lt;b256&gt; for Bytes</h3></div></summary><div class="impl-items"><div id="method.try_into" class="method trait-impl"><a href="#method.try_into" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.try_into">try_into</a>(self) -&gt; Option&lt;b256&gt;</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-From&lt;raw_slice&gt;" class="impl has-srclink"><a href="#impl-From&lt;raw_slice&gt;" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.From.html">From</a>&lt;raw_slice&gt; for Bytes</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.from">from</a>(slice: raw_slice) -&gt; Self</h4></div></summary><div class="docblock"><p>Creates a <code>Bytes</code> from a <code>raw_slice</code>.</p>
+<h3>Examples</h3>
+<pre><code class="language-sway">use std:bytes::Bytes;
+
+let mut vec = Vec::new();
+let a = 5u8;
+let b = 7u8;
+let c = 9u8
+
+vec.push(a);
+vec.push(b);
+vec.push(c);
+
+let vec_as_raw_slice = vec.as_raw_slice();
+let bytes = Bytes::from(vec_as_raw_slice);
+
+assert(bytes.len == 3);
+assert(bytes.get(0).unwrap() == a);
+assert(bytes.get(1).unwrap() == b);
+assert(bytes.get(2).unwrap() == c);
+</code></pre>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-From&lt;Vec&lt;u8&gt;&gt;" class="impl has-srclink"><a href="#impl-From&lt;Vec&lt;u8&gt;&gt;" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.From.html">From</a>&lt;Vec&lt;u8&gt;&gt; for Bytes</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.from">from</a>(vec: Vec&lt;u8&gt;) -&gt; Self</h4></div></summary><div class="docblock"><p>Creates a <code>Bytes</code> from a <code>Vec&lt;u8&gt;</code>.</p>
+<h3>Examples</h3>
+<pre><code class="language-sway">use std:bytes::Bytes;
+
+let mut vec = Vec::new();
+let a = 5u8;
+let b = 7u8;
+let c = 9u8
+
+vec.push(a);
+vec.push(b);
+vec.push(c);
+
+let bytes = Bytes::from(vec);
+
+assert(bytes.len == 3);
+assert(bytes.get(0).unwrap() == a);
+assert(bytes.get(1).unwrap() == b);
+assert(bytes.get(2).unwrap() == c);
+</code></pre>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-Clone" class="impl has-srclink"><a href="#impl-Clone" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../clone/trait.Clone.html">Clone</a> for Bytes</h3></div></summary><div class="impl-items"><div id="method.clone" class="method trait-impl"><a href="#method.clone" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.clone">clone</a>(self) -&gt; Self</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-AbiEncode" class="impl has-srclink"><a href="#impl-AbiEncode" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../codec/trait.AbiEncode.html">AbiEncode</a> for Bytes</h3></div></summary><div class="impl-items"><div id="method.abi_encode" class="method trait-impl"><a href="#method.abi_encode" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.abi_encode">abi_encode</a>(self, buffer: Buffer) -&gt; Buffer</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-AbiDecode" class="impl has-srclink"><a href="#impl-AbiDecode" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../codec/trait.AbiDecode.html">AbiDecode</a> for Bytes</h3></div></summary><div class="impl-items"><div id="method.abi_decode" class="method trait-impl"><a href="#method.abi_decode" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.abi_decode">abi_decode</a>(refmut buffer: BufferReader) -&gt; Bytes</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-Debug" class="impl has-srclink"><a href="#impl-Debug" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../debug/trait.Debug.html">Debug</a> for Bytes</h3></div></summary><div class="impl-items"><div id="method.fmt" class="method trait-impl"><a href="#method.fmt" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.fmt">fmt</a>(self, refmut f: Formatter)</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-Hash" class="impl has-srclink"><a href="#impl-Hash" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../hash/trait.Hash.html">Hash</a> for Bytes</h3></div></summary><div class="impl-items"><div id="method.hash" class="method trait-impl"><a href="#method.hash" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.hash">hash</a>(<br>    self,<br>    refmut state: Hasher,<br>)</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-From&lt;String&gt;" class="impl has-srclink"><a href="#impl-From&lt;String&gt;" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.From.html">From</a>&lt;String&gt; for Bytes</h3></div></summary><div class="impl-items"><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.from">from</a>(s: String) -&gt; Bytes</h4></div></div></details></div></section><section id="search" class="search-results"></section></div></main><script src="../../static.files/highlight.js"></script><script>hljs.highlightAll();</script></body></html>
