@@ -16,7 +16,7 @@ env:
   CARGO_TERM_COLOR: always
   REGISTRY: ghcr.io
   RUST_VERSION: 1.86.0
-  NIGHTLY_RUST_VERSION: nightly-2025-03-20
+  NIGHTLY_RUST_VERSION: nightly-2025-08-15
 
 jobs:
   verifications-complete:
