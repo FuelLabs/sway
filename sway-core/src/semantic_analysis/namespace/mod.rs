@@ -22,7 +22,9 @@ pub(crate) use trait_map::IsImplInterfaceSurface;
 pub(crate) use trait_map::IsImplSelf;
 pub(super) use trait_map::ResolvedTraitImplItem;
 pub(crate) use trait_map::TraitEntry;
+pub(crate) use trait_map::TraitKey;
 pub use trait_map::TraitMap;
+pub(crate) use trait_map::TraitSuffix;
 pub use trait_map::TryInsertingTraitImplOnFailure;
 
 use sway_types::Ident;
