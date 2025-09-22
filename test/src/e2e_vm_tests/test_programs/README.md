@@ -58,7 +58,7 @@ Some tests are only compatible with some build targets. To indicate this the `su
 ## unsupported_profiles
 
 Some tests can only work with some profiles (release / debug). By default, tests are tested with all profiles.
-In case of incompability, the `unsupported_profiles` field may be specified, as an array value.
+In case of incompatibility, the `unsupported_profiles` field may be specified, as an array value.
 
 ## expected_warnings
 
