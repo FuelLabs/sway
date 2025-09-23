@@ -330,13 +330,13 @@ pub fn a_or_an<S: AsRef<str> + ?Sized>(word: &S) -> &'static str {
 }
 
 /// Returns the ordinal suffix for the given `num`.
-/// The suffix is "st", "nd", "rd", or "th" depending on the value of `num`.
+/// Convenient for building ordinal numbers like "1st", "2nd", "3rd", "4th", etc.
 pub fn ord_num_suffix(num: usize) -> &'static str {
     match num % 100 {
         11..=13 => "th",
         _ => match num % 10 {
             1 => "st",
-            2 => "nd",
+            2 => "nd", // typos:ignore
             3 => "rd",
             _ => "th",
         },
