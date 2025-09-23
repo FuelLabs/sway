@@ -849,6 +849,14 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
           targets: "x86_64-unknown-linux-gnu, wasm32-unknown-unknown"
 
+      - name: Link forc-mcp docs into Cargo target
+        run: |
+          set -euo pipefail
+          DOCS_SRC="${{ github.workspace }}/docs/book/src/forc/plugins/forc_mcp/forc_call_tool"
+          DOCS_DST="${{ github.workspace }}/target/docs/book/src/forc/plugins/forc_mcp/forc_call_tool"
+          mkdir -p "$(dirname "$DOCS_DST")"
+          ln -sfn "$DOCS_SRC" "$DOCS_DST"
+
       - name: Publish crate
         uses: FuelLabs/publish-crates@v1
         with:
