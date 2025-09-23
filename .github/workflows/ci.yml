@@ -847,6 +847,7 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
+          targets: "x86_64-unknown-linux-gnu, wasm32-unknown-unknown"
 
       - name: Publish crate
         uses: FuelLabs/publish-crates@v1
