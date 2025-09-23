@@ -18,8 +18,12 @@ impl<T, E> MyResult<T, E> {
     }
 }
 
-impl<T, E> Option<MyResult<T, E>> {
-    pub fn transpose(self) -> MyResult<Option<T>, E> {
+trait OptionTranspose<T, E> {
+    fn transpose(self) -> MyResult<Option<T>, E>;
+}
+
+impl<T, E> OptionTranspose<T, E> for Option<MyResult<T, E>> {
+    fn transpose(self) -> MyResult<Option<T>, E> {
       match self {
           Some(MyResult::MyOk(x)) => MyResult::MyOk(Some(x)),
           Some(MyResult::MyErr(e)) => MyResult::MyErr(e),

@@ -1085,11 +1085,17 @@ pub enum CompileError {
     },
     #[error("This expression has type \"{argument_type}\", which does not implement \"std::marker::Error\". Panic expression arguments must implement \"Error\".")]
     PanicExpressionArgumentIsNotError { argument_type: String, span: Span },
-    #[error("Coherence violation: only traits defined in this crate can be implemented for external types.")]
+    #[error("Coherence violation: only traits defined in this package can be implemented for external types.")]
     IncoherentImplDueToOrphanRule {
         trait_name: String,
         type_name: String,
         span: Span,
+    },
+    #[error("Coherence violation: inherent implementations are not allowed for external types.")]
+    InherentImplForExternalType {
+        type_name: String,
+        span: Span,
+        type_definition_span: Option<Span>,
     },
 }
 
@@ -1325,6 +1331,7 @@ impl Spanned for CompileError {
             } => enum_variant_name.span(),
             PanicExpressionArgumentIsNotError { span, .. } => span.clone(),
             IncoherentImplDueToOrphanRule { span, .. } => span.clone(),
+            InherentImplForExternalType { span, .. } => span.clone(),
         }
     }
 }
@@ -3121,22 +3128,22 @@ impl ToDiagnostic for CompileError {
             IncoherentImplDueToOrphanRule { trait_name, type_name, span } => Diagnostic {
                 reason: Some(Reason::new(
                     code(1),
-                    "coherence violation: only traits defined in this module can be implemented for external types".into()
+                    "coherence violation: only traits defined in this package can be implemented for external types".into()
                 )),
                 issue: Issue::error(
                     source_engine,
                     span.clone(),
                     format!(
-                        "cannot implement `{trait_name}` for `{type_name}`: both originate outside this module"
+                        "cannot implement `{trait_name}` for `{type_name}`: both originate outside this package"
                     ),
                 ),
                 hints: vec![],
                 help: {
                     let help = vec![
-                        "only traits defined in this module can be implemented for external types".to_string(),
+                        "only traits defined in this package can be implemented for external types".to_string(),
                         Diagnostic::help_empty_line(),
                         format!(
-                            "move this impl into the module that defines `{type_name}`"
+                            "move this impl into the package that defines `{type_name}`"
                         ),
                         format!(
                             "or define and use a local trait instead of `{trait_name}` to avoid the orphan rule"
@@ -3144,6 +3151,31 @@ impl ToDiagnostic for CompileError {
                     ];
                     help
                 },
+            },
+            InherentImplForExternalType { type_name, span, type_definition_span } => Diagnostic {
+                reason: Some(Reason::new(
+                    code(1),
+                    "coherence violation: inherent implementations must be defined in the type's defining package".into()
+                )),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!(
+                        "cannot define inherent implementation for `{type_name}`: type is defined in a different package"
+                    ),
+                ),
+                hints: match type_definition_span.clone() {
+                    Some(def_span) => vec![Hint::info(
+                        source_engine,
+                        def_span,
+                        format!("Type `{type_name}` is defined here."),
+                    )],
+                    None => vec![],
+                },
+                help: vec![
+                    "move this impl into the package that defines the type".to_string(),
+                    "or define and use a local trait instead to avoid the orphan rule".to_string(),
+                ],
             },
             ABIDuplicateName { span, other_span: other, is_attribute } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Duplicated name found for renamed ABI type".into())),
