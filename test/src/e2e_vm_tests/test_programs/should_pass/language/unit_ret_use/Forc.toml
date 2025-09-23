@@ -6,4 +6,4 @@ license = "Apache-2.0"
 name = "unit_ret_use"
 
 [dependencies]
-std = { path = "../../../../../../../sway-lib-std" }
+std = { path = "../../../../reduced_std_libs/sway-lib-std-assert" }
