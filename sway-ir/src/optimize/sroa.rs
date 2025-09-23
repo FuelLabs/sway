@@ -4,9 +4,9 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     combine_indices, get_gep_referred_symbols, get_loaded_ptr_values, get_stored_ptr_values,
-    pointee_size, AnalysisResults, Constant, ConstantValue, Context,
-    EscapedSymbols, Function, InstOp, IrError, LocalVar, Pass, PassMutability, ScopedPass, Symbol,
-    Type, Value, ESCAPED_SYMBOLS_NAME,
+    pointee_size, AnalysisResults, Constant, ConstantValue, Context, EscapedSymbols, Function,
+    InstOp, IrError, LocalVar, Pass, PassMutability, ScopedPass, Symbol, Type, Value,
+    ESCAPED_SYMBOLS_NAME,
 };
 
 pub const SROA_NAME: &str = "sroa";
