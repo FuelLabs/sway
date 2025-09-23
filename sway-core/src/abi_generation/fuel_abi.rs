@@ -965,6 +965,7 @@ impl TypeId {
                                     x.type_argument.type_id(),
                                     &mut new_metadata_types_to_add,
                                 )?,
+                            offset: None,
                         })
                     })
                     .collect::<Result<Vec<_>, _>>()?;
@@ -1018,6 +1019,7 @@ impl TypeId {
                                     x.type_argument.type_id(),
                                     &mut new_metadata_types_to_add,
                                 )?,
+                            offset: None,
                         })
                     })
                     .collect::<Result<Vec<_>, _>>()?;
@@ -1059,6 +1061,7 @@ impl TypeId {
                             elem_ty.type_id(),
                             metadata_types_to_add,
                         )?,
+                        offset: None,
                     }])
                 } else {
                     unreachable!();
@@ -1094,6 +1097,7 @@ impl TypeId {
                             elem_ty.type_id(),
                             metadata_types_to_add,
                         )?,
+                        offset: None,
                     }])
                 } else {
                     unreachable!();
@@ -1136,6 +1140,7 @@ impl TypeId {
                                     x.type_id(),
                                     metadata_types_to_add,
                                 )?,
+                                offset: None,
                             })
                         })
                         .collect::<Result<Vec<_>, _>>()?;
@@ -1282,6 +1287,7 @@ impl TypeId {
                                     p.type_id,
                                     metadata_types_to_add,
                                 )?,
+                                offset: None,
                             })
                         })
                         .collect::<Result<Vec<_>, _>>()?
@@ -1329,6 +1335,7 @@ impl TypeId {
                                     p.type_id,
                                     &mut new_metadata_types_to_add,
                                 )?,
+                                offset: None,
                             })
                         })
                         .collect::<Result<Vec<_>, _>>()?;
@@ -1384,6 +1391,7 @@ impl TypeId {
                                     p.type_id,
                                     &mut new_metadata_types_to_add,
                                 )?,
+                                offset: None,
                             })
                         })
                         .collect::<Result<Vec<_>, _>>()?;
