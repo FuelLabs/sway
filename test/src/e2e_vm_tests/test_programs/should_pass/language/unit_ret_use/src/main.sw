@@ -18,5 +18,5 @@ pub fn main() -> u64 {
 
 #[test]
 fn test() {
-   assert(main() == 2);
+   if __eq(main(), 2) { } else { __revert(0); }
 }
