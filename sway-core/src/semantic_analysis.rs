@@ -2,6 +2,7 @@
 pub mod ast_node;
 pub(crate) mod cei_pattern_analysis;
 pub(crate) mod coins_analysis;
+mod method_lookup;
 mod module;
 pub mod namespace;
 mod node_dependencies;
