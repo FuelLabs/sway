@@ -1,6 +1,5 @@
 ---
 source: test/src/snapshot/mod.rs
-assertion_line: 266
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/transmute --ir final --asm final | filter-fn transmute transmute_by_reference_7
 
@@ -39,7 +38,6 @@ addi $r2 $$locbase i32        ; get offset to local __ptr [u8; 32]
 sw   $$locbase $r2 i8         ; store word
 lw   $r2 $$locbase i8         ; load word
 mcpi $r0 $r2 i32              ; copy memory
-move $$retv $zero             ; set return value
 cfsi i72                      ; free 72 bytes for locals and 0 slots for extra call arguments
 move $$reta $r1               ; restore return address
 poph i524288                  ; restore registers 40..64

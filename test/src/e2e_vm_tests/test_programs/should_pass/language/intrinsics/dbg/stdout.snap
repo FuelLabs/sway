@@ -1,6 +1,5 @@
 ---
 source: test/src/snapshot/mod.rs
-assertion_line: 266
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg --asm final | sub ecal
 ecal $r1 $r0 $zero $zero      ; ecal id fd zero zero
@@ -72,12 +71,12 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg
    Compiling library std (sway-lib-std)
    Compiling script dbg (test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg)
-    Finished debug [unoptimized + fuel] target(s) [37.992 KB] in ???
+    Finished debug [unoptimized + fuel] target(s) [37.856 KB] in ???
      Running 1 test, filtered 0 tests
 
 tested -- dbg
 
-      test call_main ... ok (???, 120875 gas)
+      test call_main ... ok (???, 120167 gas)
            debug output:
 [src/main.sw:13:13] () = ()
 [src/main.sw:15:13] true = true
