@@ -1,17 +1,22 @@
-script;
+library;
 
 #[inline(never)]
 fn a(x: u64) -> () {
-   log(x);
+   return_unit(x);
 }
 
 #[inline(never)]
-fn b(x: ()) -> () {
+fn b(_x: ()) -> () {}
 
-}
+fn return_unit(_x: u64) {}
 
-fn main() -> u64 {
+pub fn main() -> u64 {
    let x = a(1);
    b(x);
    2
+}
+
+#[test]
+fn test() {
+   assert(main() == 2);
 }

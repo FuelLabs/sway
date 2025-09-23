@@ -190,7 +190,7 @@ impl FuelAsmBuilder<'_, '_> {
             owning_span: None,
         });
 
-        // Save the return value, if there's one.
+        // Save the return value, if it is not of type unit.
         let ret_reg = self.reg_seqr.next();
         if !function.get_return_type(self.context).is_unit(self.context) {
             self.cur_bytecode.push(Op {
@@ -207,7 +207,7 @@ impl FuelAsmBuilder<'_, '_> {
                     ret_reg.clone(),
                     VirtualRegister::Constant(ConstantRegister::Zero),
                 )),
-                comment: "[call]: unit return value".into(),
+                comment: "[call]: return unit value".into(),
                 owning_span: None,
             });
         }
