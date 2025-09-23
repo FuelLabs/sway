@@ -1,0 +1,1027 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="swaydoc"><meta name="description" content="API documentation for the Sway `StorageKey` struct in `storage_key`."><meta name="keywords" content="sway, swaylang, sway-lang, StorageKey"><link rel="icon" href="../../../static.files/sway-logo.svg"><title>StorageKey in storage_key - Sway</title><link rel="stylesheet" type="text/css" href="../../../static.files/normalize.css"><link rel="stylesheet" type="text/css" href="../../../static.files/swaydoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../static.files/ayu.css"><link rel="stylesheet" href="../../../static.files/ayu.min.css"></head><body class="swaydoc struct"><nav class="sidebar"><a class="sidebar-logo" href="../../../std/index.html"><div class="logo-container"><img class="sway-logo" src="../../../static.files/sway-logo.svg" alt="logo"></div></a><h2 class="location">Struct StorageKey</h2><div class="sidebar-elems"><section><h3><a href="#fields">Fields</a></h3><ul class="block method"><li><a href="#structfield.slot">slot</a></li><li><a href="#structfield.offset">offset</a></li><li><a href="#structfield.field_id">field_id</a></li></ul></section><section><h3><a href="#trait-implementations">Trait Implementations</a></h3><ul class="block method"><li><a href="#impl-AbiEncode">AbiEncode</a></li><li><a href="#impl-AbiDecode">AbiDecode</a></li><li><a href="#impl-Debug">Debug</a></li><li><a href="#impl-StorageKey">StorageKey</a></li><li><a href="#impl-StorageKey">StorageKey</a></li><li><a href="#impl-StorageKey">StorageKey</a></li><li><a href="#impl-StorageKey">StorageKey</a></li><li><a href="#impl-StorableSlice&lt;Bytes&gt;">StorableSlice&lt;Bytes&gt;</a></li><li><a href="#impl-StorableSlice&lt;String&gt;">StorableSlice&lt;String&gt;</a></li></ul></section></div></nav><main><div class="width-limiter"><script src="../../../search.js" type="text/javascript"></script><script>function onSearchFormSubmit(event){event.preventDefault();const searchQuery=document.getElementById("search-input").value;const url=new URL(window.location.href);if(searchQuery){url.searchParams.set('search',searchQuery);}else{url.searchParams.delete('search');}history.pushState({search:searchQuery},"",url);window.dispatchEvent(new HashChangeEvent("hashchange"));}document.addEventListener('DOMContentLoaded',()=>{const searchbar=document.getElementById("search-input");const searchForm=document.getElementById("search-form");searchbar.addEventListener("keyup",function(event){onSearchFormSubmit(event);});searchbar.addEventListener("search",function(event){onSearchFormSubmit(event);});function onQueryParamsChange(){const searchParams=new URLSearchParams(window.location.search);const query=searchParams.get("search");const searchSection=document.getElementById('search');const mainSection=document.getElementById('main-content');const searchInput=document.getElementById('search-input');if(query){searchInput.value=query;const results=Object.values(SEARCH_INDEX).flat().filter(item=>{const lowerQuery=query.toLowerCase();return item.name.toLowerCase().includes(lowerQuery);});const header=`<h1>Results for ${query}</h1>`;if(results.length>0){const resultList=results.map(item=>{const formattedName=`<span class="type ${item.type_name}">${item.name}</span>`;const name=item.type_name==="module"?[...item.module_info.slice(0,-1),formattedName].join("::"):[...item.module_info,formattedName].join("::");const path=["../../..",...item.module_info,item.html_filename].join("/");const left=`<td><span>${name}</span></td>`;const right=`<td><p>${item.preview}</p></td>`;return`<tr onclick="window.location='${path}';">${left}${right}</tr>`;}).join('');searchSection.innerHTML=`${header}<table>${resultList}</table>`;}else{searchSection.innerHTML=`${header}<p>No results found.</p>`;}searchSection.setAttribute("class","search-results");mainSection.setAttribute("class","content hidden");}else{searchSection.setAttribute("class","search-results hidden");mainSection.setAttribute("class","content");}}window.addEventListener('hashchange',onQueryParamsChange);onQueryParamsChange();});</script><nav class="sub"><form id="search-form" class="search-form" onsubmit="onSearchFormSubmit(event)"><div class="search-container"><input id="search-input" class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Search the docs..." type="search"></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1 class="fqn"><span class="in-band">Struct <a class="mod" href="../../index.html">std</a><span>::</span><a class="mod" href="../index.html">storage</a><span>::</span><a class="mod" href="index.html">storage_key</a><span>::</span><a class="struct" href="#">StorageKey</a></span></h1></div><div class="docblock item-decl"><pre class="sway struct"><code>pub struct StorageKey&lt;T&gt; {
+    /// The assigned location in storage.
+    slot: b256,
+    /// The assigned offset based on the data structure `T`.
+    offset: u64,
+    /// A unique identifier.
+    field_id: b256,
+}</code></pre></div><details class="swaydoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Describes a location in storage.</p>
+<h1>Additional Information</h1>
+<p>The location in storage is specified by the <code>b256</code> key of a particular storage slot and an<br />
+offset, in words, from the start of the storage slot at <code>key</code>. The parameter <code>T</code> is the type of<br />
+the data to be read from or written to at <code>offset</code>.<br />
+<code>field_id</code> is a unique identifier for the storage field being referred to, it is different even<br />
+for multiple zero sized fields that might live at the same location but<br />
+represent different storage constructs.</p>
+</div></details><h2 id="fields" class="fields small-section-header">Fields<a class="anchor" href="#fields"></a></h2><span id="structfield.slot" class="structfield small-section-header"><a class="anchor field" href="#structfield.slot"></a><code>slot: b256</code></span><div class="docblock"><p>The assigned location in storage.</p>
+</div><span id="structfield.offset" class="structfield small-section-header"><a class="anchor field" href="#structfield.offset"></a><code>offset: u64</code></span><div class="docblock"><p>The assigned offset based on the data structure <code>T</code>.</p>
+</div><span id="structfield.field_id" class="structfield small-section-header"><a class="anchor field" href="#structfield.field_id"></a><code>field_id: b256</code></span><div class="docblock"><p>A unique identifier.</p>
+</div><h2 id="trait-implementations" class="small-section-header">Trait Implementations<a href="#trait-implementations" class="anchor"></a></h2><div id="trait-implementations-list"><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-AbiEncode" class="impl has-srclink"><a href="#impl-AbiEncode" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../../codec/trait.AbiEncode.html">AbiEncode</a> for StorageKey&lt;T, &gt;</h3></div></summary><div class="impl-items"><div id="method.abi_encode" class="method trait-impl"><a href="#method.abi_encode" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.abi_encode">abi_encode</a>(self, buffer: Buffer) -&gt; Buffer</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-AbiDecode" class="impl has-srclink"><a href="#impl-AbiDecode" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../../codec/trait.AbiDecode.html">AbiDecode</a> for StorageKey&lt;T, &gt;</h3></div></summary><div class="impl-items"><div id="method.abi_decode" class="method trait-impl"><a href="#method.abi_decode" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.abi_decode">abi_decode</a>(refmut buffer: BufferReader) -&gt; Self</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-Debug" class="impl has-srclink"><a href="#impl-Debug" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../../debug/trait.Debug.html">Debug</a> for StorageKey&lt;T, &gt;</h3></div></summary><div class="impl-items"><div id="method.fmt" class="method trait-impl"><a href="#method.fmt" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.fmt">fmt</a>(<br>    self,<br>    refmut _f: Formatter,<br>)</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-StorageKey" class="impl has-srclink"><a href="#impl-StorageKey" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../../storage/storage_key/trait.StorageKey.html">StorageKey</a> for StorageKey&lt;T&gt;</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.new" class="method trait-impl"><a href="#method.new" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.new">new</a>(slot: b256, offset: u64, field_id: b256) -&gt; Self</h4></div></summary><div class="docblock"><p>Create a new <code>StorageKey</code>.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>slot</code>: [b256] - The assigned location in storage for the new <code>StorageKey</code>.</li>
+<li><code>offset</code>: [u64] - The assigned offset based on the data structure <code>T</code> for the new <code>StorageKey</code>.</li>
+<li><code>field_id</code>: [b256] - A unique identifier for the new <code>StorageKey</code>.</li>
+</ul>
+<h1>Returns</h1>
+<ul>
+<li>[StorageKey] - The newly created <code>StorageKey</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::hash::sha256;
+
+fn foo() {
+    let my_key = StorageKey::&lt;u64&gt;::new(b256::zero(), 0, sha256(b256::zero()));
+    assert(my_key.slot() == b256::zero());
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.slot" class="method trait-impl"><a href="#method.slot" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.slot">slot</a>(self) -&gt; b256</h4></div></summary><div class="docblock"><p>Returns the storage slot address.</p>
+<h1>Returns</h1>
+<ul>
+<li>[b256] - The address in storage that this storage slot points to.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::hash::sha256;
+
+fn foo() {
+    let my_key = StorageKey::&lt;u64&gt;::new(b256::zero(), 0, sha256(b256::zero()));
+    assert(my_key.slot() == b256::zero());
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.offset" class="method trait-impl"><a href="#method.offset" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.offset">offset</a>(self) -&gt; u64</h4></div></summary><div class="docblock"><p>Returns the offset on the storage slot.</p>
+<h1>Returns</h1>
+<ul>
+<li>[u64] - The offset in storage that this storage slot points to.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::hash::sha256;
+
+fn foo() {
+    let my_key = StorageKey::&lt;u64&gt;::new(b256::zero(), 0, sha256(b256::zero()));
+    assert(my_key.offset() == 0);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.field_id" class="method trait-impl"><a href="#method.field_id" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.field_id">field_id</a>(self) -&gt; b256</h4></div></summary><div class="docblock"><p>Returns the storage slot field id.</p>
+<h1>Additional Information</h1>
+<p>The field id is a unique identifier for the storage field being referred to, it is different even<br />
+for multiple zero sized fields that might live at the same location but<br />
+represent different storage constructs.</p>
+<h1>Returns</h1>
+<ul>
+<li>[b256] - The field id for this storage slot.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::hash::sha256;
+
+fn foo() {
+    let my_key = StorageKey::&lt;u64&gt;::new(b256::zero(), 0, sha256(b256::zero()));
+    assert(my_key.field_id() == sha256(b256::zero()));
+}
+</code></pre>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-StorageKey" class="impl has-srclink"><a href="#impl-StorageKey" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../../storage/storage_key/trait.StorageKey.html">StorageKey</a> for StorageKey&lt;T&gt;</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.read" class="method trait-impl"><a href="#method.read" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.read">read</a>(self) -&gt; T</h4></div></summary><div class="docblock"><p>Reads a value of type <code>T</code> starting at the location specified by <code>self</code>. If the value<br />
+crosses the boundary of a storage slot, reading continues at the following slot.</p>
+<h1>Returns</h1>
+<ul>
+<li>[T] - Returns the value previously stored if a the storage slots read were<br />
+valid and contain <code>value</code>. Reverts otherwise.</li>
+</ul>
+<h1>Number of Storage Accesses</h1>
+<ul>
+<li>Reads: <code>1</code></li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">fn foo() {
+    let r: StorageKey&lt;u64&gt; = StorageKey::new(b256::zero(), 2, b256::zero());
+    // Reads the third word from storage slot with key 0x000...0
+    let x: u64 = r.read();
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.try_read" class="method trait-impl"><a href="#method.try_read" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.try_read">try_read</a>(self) -&gt; Option&lt;T&gt;</h4></div></summary><div class="docblock"><p>Reads a value of type <code>T</code> starting at the location specified by <code>self</code>. If the value<br />
+crosses the boundary of a storage slot, reading continues at the following slot.</p>
+<h1>Returns</h1>
+<ul>
+<li>[Option<!-- raw HTML omitted -->] - Returns <code>Some(value)</code> if a the storage slots read were valid and contain <code>value</code>.<br />
+Otherwise, return <code>None</code>.</li>
+</ul>
+<h1>Number of Storage Accesses</h1>
+<ul>
+<li>Reads: <code>1</code></li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">fn foo() {
+    let r: StorageKey&lt;u64&gt; = StorageKey::new(b256::zero(), 2, b256::zero());
+
+    // Reads the third word from storage slot with key 0x000...0
+    let x: Option&lt;u64&gt; = r.try_read();
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.write" class="method trait-impl"><a href="#method.write" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.write">write</a>(self, value: T)</h4></div></summary><div class="docblock"><p>Writes a value of type <code>T</code> starting at the location specified by <code>self</code>. If the value<br />
+crosses the boundary of a storage slot, writing continues at the following slot.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>value</code>: [T] - The value of type <code>T</code> to write.</li>
+</ul>
+<h1>Number of Storage Accesses</h1>
+<ul>
+<li>Reads: <code>1</code></li>
+<li>Writes: <code>1</code></li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">fn foo() {
+    let r: StorageKey&lt;u64&gt; = StorageKey::new(b256::zero(), 2, b256::zero());
+
+    // Writes 42 at the third word of storage slot with key 0x000...0
+    let x = r.write(42);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.clear" class="method trait-impl"><a href="#method.clear" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.clear">clear</a>(self) -&gt; bool</h4></div></summary><div class="docblock"><p>Clears the value at <code>self</code>.</p>
+<h1>Number of Storage Accesses</h1>
+<ul>
+<li>Clears: <code>1</code></li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">fn foo() {
+    let r: StorageKey&lt;u64&gt; = StorageKey::new(b256::zero(), 2, b256::zero());
+    r.write(42);
+
+    let cleared = r.clear();
+    assert(cleared);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.zero" class="method trait-impl"><a href="#method.zero" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.zero">zero</a>() -&gt; Self</h4></div></summary><div class="docblock"><p>Returns the zero value for the <code>StorageKey&lt;T&gt;</code> type.</p>
+<h1>Returns</h1>
+<ul>
+<li>[StorageKey<!-- raw HTML omitted -->] -&gt; The zero value for the <code>StorageKey&lt;T&gt;</code> type.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">fn foo() {
+    let zero_storage_key: StorageKey&lt;u64&gt; = StorageKey::zero();
+    assert(zero_storage_key.slot() == b256::zero());
+    assert(zero_storage_key.offset() == 0);
+    assert(zero_storage_key.field_id() == b256::zero());
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.is_zero" class="method trait-impl"><a href="#method.is_zero" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.is_zero">is_zero</a>(self) -&gt; bool</h4></div></summary><div class="docblock"><p>Returns whether a <code>StorageKey&lt;T&gt;</code> is set to zero.</p>
+<h1>Returns</h1>
+<ul>
+<li>[bool] -&gt; True if the <code>StorageKey&lt;T&gt;</code> is set to zero, otherwise false.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">fn foo() {
+    let zero_storage_key: StorageKey&lt;u64&gt; = StorageKey::zero();
+    assert(zero_storage_key.is_zero());
+}
+</code></pre>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-StorageKey" class="impl has-srclink"><a href="#impl-StorageKey" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../../storage/storage_key/trait.StorageKey.html">StorageKey</a> for StorageKey&lt;StorageMap&lt;K, V&gt;&gt;</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.insert" class="method trait-impl"><a href="#method.insert" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.insert">insert</a>(<br>    self,<br>    key: K,<br>    value: V,<br>)</h4></div></summary><div class="docblock"><p>Inserts a key-value pair into the map.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>key</code>: [K] - The key to which the value is paired.</li>
+<li><code>value</code>: [V] - The value to be stored.</li>
+</ul>
+<h1>Number of Storage Accesses</h1>
+<ul>
+<li>Reads: <code>1</code></li>
+<li>Writes: <code>1</code></li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">storage {
+    map: StorageMap&lt;u64, bool&gt; = StorageMap {}
+}
+
+fn foo() {
+    let key = 5_u64;
+    let value = true;
+    storage.map.insert(key, value);
+    let retrieved_value = storage.map.get(key).read();
+    assert(value == retrieved_value);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.get" class="method trait-impl"><a href="#method.get" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.get">get</a>(self, key: K) -&gt; StorageKey&lt;V&gt;</h4></div></summary><div class="docblock"><p>Retrieves the <code>StorageKey</code> that describes the raw location in storage of the value<br />
+stored at <code>key</code>, regardless of whether a value is actually stored at that location or not.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>key</code>: [K] - The key to which the value is paired.</li>
+</ul>
+<h1>Returns</h1>
+<ul>
+<li>[StorageKey<!-- raw HTML omitted -->] - Describes the raw location in storage of the value stored at <code>key</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">storage {
+    map: StorageMap&lt;u64, bool&gt; = StorageMap {}
+}
+
+fn foo() {
+    let key = 5_u64;
+    let value = true;
+    storage.map.insert(key, value);
+    let retrieved_value = storage.map.get(key).read();
+    assert(value == retrieved_value);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.remove" class="method trait-impl"><a href="#method.remove" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.remove">remove</a>(self, key: K) -&gt; bool</h4></div></summary><div class="docblock"><p>Clears a value previously stored using a key</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>key</code>: [K] - The key to which the value is paired.</li>
+</ul>
+<h1>Returns</h1>
+<ul>
+<li>[bool] - Indicates whether there was a value previously stored at <code>key</code>.</li>
+</ul>
+<h1>Number of Storage Accesses</h1>
+<ul>
+<li>Clears: <code>1</code></li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">storage {
+    map: StorageMap&lt;u64, bool&gt; = StorageMap {}
+}
+
+fn foo() {
+    let key = 5_u64;
+    let value = true;
+    storage.map.insert(key, value);
+    let removed = storage.map.remove(key);
+    assert(removed);
+    assert(storage.map.get(key).is_none());
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.try_insert" class="method trait-impl"><a href="#method.try_insert" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.try_insert">try_insert</a>(<br>    self,<br>    key: K,<br>    value: V,<br>) -&gt; Result&lt;V, StorageMapError&lt;V&gt;&gt;</h4></div></summary><div class="docblock"><p>Inserts a key-value pair into the map if a value does not already exist for the key.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>key</code>: [K] - The key to which the value is paired.</li>
+<li><code>value</code>: [V] - The value to be stored.</li>
+</ul>
+<h1>Returns</h1>
+<ul>
+<li>[Result&lt;V, StorageMapError<!-- raw HTML omitted -->&gt;] - <code>Result::Ok(value)</code> if the value was inserted, or <code>Result::Err(StorageMapError::OccupiedError(pre_existing_value))</code> if a value already existed for the key.</li>
+</ul>
+<h1>Number of Storage Accesses</h1>
+<ul>
+<li>Reads: <code>1</code></li>
+<li>Writes: <code>1</code></li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::storage::storage_map::StorageMapError;
+
+storage {
+    map: StorageMap&lt;u64, bool&gt; = StorageMap {}
+}
+
+fn foo() {
+    let key = 5_u64;
+    let value = true;
+    storage.map.insert(key, value);
+
+    let new_value = false;
+    let result = storage.map.try_insert(key, new_value);
+    assert(result == Result::Err(StorageMapError::OccupiedError(value))); // The old value is returned.
+
+    let retrieved_value = storage.map.get(key).read();
+    assert(value == retrieved_value); // New value was not inserted, as a value already existed.
+
+    let key2 = 10_u64;
+    let returned_value = storage.map.try_insert(key2, new_value);
+    assert(returned_value == Result::Ok(new_value)); // New value is returned.
+}
+</code></pre>
+</div></details><div id="method.get_slot_key" class="method trait-impl"><a href="#method.get_slot_key" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.get_slot_key">get_slot_key</a>(self, key: K) -&gt; b256</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-StorageKey" class="impl has-srclink"><a href="#impl-StorageKey" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../../storage/storage_key/trait.StorageKey.html">StorageKey</a> for StorageKey&lt;StorageVec&lt;V&gt;&gt;</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.push" class="method trait-impl"><a href="#method.push" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.push">push</a>(self, value: V)</h4></div></summary><div class="docblock"><p>Appends the value to the end of the vector.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>value</code>: [V] - The item being added to the end of the vector.</li>
+</ul>
+<h1>Number of Storage Accesses</h1>
+<ul>
+<li>Reads: <code>3</code></li>
+<li>Writes: <code>2</code></li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::storage::storage_vec::*;
+
+storage {
+    vec: StorageVec&lt;u64&gt; = StorageVec {}
+}
+
+fn foo() {
+    let five = 5_u64;
+    storage.vec.push(five);
+    assert(five == storage.vec.get(0).unwrap().read());
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.pop" class="method trait-impl"><a href="#method.pop" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.pop">pop</a>(self) -&gt; Option&lt;V&gt;</h4></div></summary><div class="docblock"><p>Removes the last element of the vector and returns it, <code>None</code> if empty.</p>
+<h1>Returns</h1>
+<ul>
+<li>[Option<!-- raw HTML omitted -->] - The last element <code>V</code> or <code>None</code>.</li>
+</ul>
+<h1>Number of Storage Accesses</h1>
+<ul>
+<li>Reads: <code>3</code></li>
+<li>Writes: <code>1</code></li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::storage::storage_vec::*;
+
+storage {
+    vec: StorageVec&lt;u64&gt; = StorageVec {}
+}
+
+fn foo() {
+    let five = 5_u64;
+    storage.vec.push(five);
+    let popped_value = storage.vec.pop().unwrap();
+    assert(five == popped_value);
+    let none_value = storage.vec.pop();
+    assert(none_value.is_none());
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.get" class="method trait-impl"><a href="#method.get" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.get">get</a>(self, index: u64) -&gt; Option&lt;StorageKey&lt;V&gt;&gt;</h4></div></summary><div class="docblock"><p>Gets the value in the given index, <code>None</code> if index is out of bounds.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>index</code>: [u64] - The index of the vec to retrieve the item from.</li>
+</ul>
+<h1>Returns</h1>
+<ul>
+<li>[Option&lt;StorageKey<!-- raw HTML omitted -->&gt;] - Describes the raw location in storage of the value stored at<br />
+<code>key</code> or <code>None</code> if out of bounds.</li>
+</ul>
+<h1>Number of Storage Accesses</h1>
+<ul>
+<li>Reads: <code>1</code></li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::storage::storage_vec::*;
+
+storage {
+    vec: StorageVec&lt;u64&gt; = StorageVec {}
+}
+
+fn foo() {
+    let five = 5_u64;
+    storage.vec.push(five);
+    assert(five == storage.vec.get(0).unwrap().read());
+    assert(storage.vec.get(1).is_none());
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.remove" class="method trait-impl"><a href="#method.remove" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.remove">remove</a>(self, index: u64) -&gt; V</h4></div></summary><div class="docblock"><p>Removes the element in the given index and moves all the elements in the following indexes<br />
+down one index. Also returns the element.</p>
+<h1>Additional Information</h1>
+<p><strong><em>WARNING:</em></strong> Expensive for larger vecs.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>index</code>: [u64] - The index of the vec to remove the item from.</li>
+</ul>
+<h1>Returns</h1>
+<ul>
+<li>[V] - The element that has been removed at the index.</li>
+</ul>
+<h1>Reverts</h1>
+<ul>
+<li>Reverts if index is larger or equal to length of the vec.</li>
+</ul>
+<h1>Number of Storage Accesses</h1>
+<ul>
+<li>Reads: <code>3 + (2 * (self.len() - index))</code></li>
+<li>Writes: <code>self.len() - index</code></li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::storage::storage_vec::*;
+
+storage {
+    vec: StorageVec&lt;u64&gt; = StorageVec {}
+}
+
+fn foo() {
+    storage.vec.push(5);
+    storage.vec.push(10);
+    storage.vec.push(15);
+    let removed_value = storage.vec.remove(1);
+    assert(10 == removed_value);
+    assert(storage.vec.len() == 2);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.swap_remove" class="method trait-impl"><a href="#method.swap_remove" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.swap_remove">swap_remove</a>(self, index: u64) -&gt; V</h4></div></summary><div class="docblock"><p>Removes the element at the specified index and fills it with the last element.<br />
+This does not preserve ordering and returns the element.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>index</code>: [u64] - The index of the vec to remove the item from.</li>
+</ul>
+<h1>Returns</h1>
+<ul>
+<li>[V] - The element that has been removed at the index.</li>
+</ul>
+<h1>Reverts</h1>
+<ul>
+<li>Reverts if index is larger or equal to length of the vec.</li>
+</ul>
+<h1>Number of Storage Accesses</h1>
+<ul>
+<li>Reads: <code>5</code></li>
+<li>Writes: <code>2</code></li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::storage::storage_vec::*;
+
+storage {
+    vec: StorageVec&lt;u64&gt; = StorageVec {}
+}
+
+fn foo() {
+    storage.vec.push(5);
+    storage.vec.push(10);
+    storage.vec.push(15);
+    let removed_value = storage.vec.swap_remove(0);
+    assert(5 == removed_value);
+    let swapped_value = storage.vec.get(0).unwrap().read();
+    assert(15 == swapped_value);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.set" class="method trait-impl"><a href="#method.set" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.set">set</a>(<br>    self,<br>    index: u64,<br>    value: V,<br>)</h4></div></summary><div class="docblock"><p>Sets or mutates the value at the given index.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>index</code>: [u64] - The index of the vec to set the value at</li>
+<li><code>value</code>: [V] - The value to be set</li>
+</ul>
+<h1>Reverts</h1>
+<ul>
+<li>Reverts if index is larger than or equal to the length of the vec.</li>
+</ul>
+<h1>Number of Storage Accesses</h1>
+<ul>
+<li>Reads: <code>2</code></li>
+<li>Writes: <code>1</code></li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::storage::storage_vec::*;
+
+storage {
+    vec: StorageVec&lt;u64&gt; = StorageVec {}
+}
+
+fn foo() {
+    storage.vec.push(5);
+    storage.vec.push(10);
+    storage.vec.push(15);
+
+    storage.vec.set(0, 20);
+    let set_value = storage.vec.get(0).unwrap().read();
+    assert(20 == set_value);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.insert" class="method trait-impl"><a href="#method.insert" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.insert">insert</a>(<br>    self,<br>    index: u64,<br>    value: V,<br>)</h4></div></summary><div class="docblock"><p>Inserts the value at the given index, moving the current index’s value<br />
+as well as the following index’s value up by one index.</p>
+<h1>Additional Information</h1>
+<blockquote>
+<p><strong><em>WARNING:</em></strong> Expensive for larger vecs.</p>
+</blockquote>
+<h1>Arguments</h1>
+<ul>
+<li><code>index</code>: [u64] - The index of the vec to insert the item into.</li>
+<li><code>value</code>: [V] - The value to insert into the vec.</li>
+</ul>
+<h1>Reverts</h1>
+<ul>
+<li>Reverts if index is larger than the length of the vec.</li>
+</ul>
+<h1>Number of Storage Accesses</h1>
+<ul>
+<li>Reads: <code>if self.len() == index { 3 } else { 5 + (2 * (self.len() - index)) }</code></li>
+<li>Writes: <code>if self.len() == index { 2 } else { 2 + self.len() - index }</code></li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::storage::storage_vec::*;
+
+storage {
+    vec: StorageVec&lt;u64&gt; = StorageVec {}
+}
+
+fn foo() {
+    storage.vec.push(5);
+    storage.vec.push(15);
+
+    storage.vec.insert(1, 10);
+
+    assert(5 == storage.vec.get(0).unwrap().read());
+    assert(10 == storage.vec.get(1).unwrap().read());
+    assert(15 == storage.vec.get(2).unwrap().read());
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.len" class="method trait-impl"><a href="#method.len" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.len">len</a>(self) -&gt; u64</h4></div></summary><div class="docblock"><p>Returns the length of the vector.</p>
+<h1>Returns</h1>
+<ul>
+<li>[u64] - The stored length of the vector.</li>
+</ul>
+<h1>Number of Storage Accesses</h1>
+<ul>
+<li>Reads: <code>1</code></li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::storage::storage_vec::*;
+
+storage {
+    vec: StorageVec&lt;u64&gt; = StorageVec {}
+}
+
+fn foo() {
+    assert(0 == storage.vec.len());
+    storage.vec.push(5);
+    assert(1 == storage.vec.len());
+    storage.vec.push(10);
+    assert(2 == storage.vec.len());
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.is_empty" class="method trait-impl"><a href="#method.is_empty" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.is_empty">is_empty</a>(self) -&gt; bool</h4></div></summary><div class="docblock"><p>Checks whether the len is zero or not.</p>
+<h1>Returns</h1>
+<ul>
+<li>[bool] - Indicates whether the vector is or is not empty.</li>
+</ul>
+<h1>Number of Storage Accesses</h1>
+<ul>
+<li>Reads: <code>1</code></li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::storage::storage_vec::*;
+
+storage {
+    vec: StorageVec&lt;u64&gt; = StorageVec {}
+}
+
+fn foo() {
+    assert(true == storage.vec.is_empty());
+
+    storage.vec.push(5);
+
+    assert(false == storage.vec.is_empty());
+
+    storage.vec.clear();
+
+    assert(true == storage.vec.is_empty());
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.swap" class="method trait-impl"><a href="#method.swap" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.swap">swap</a>(<br>    self,<br>    element1_index: u64,<br>    element2_index: u64,<br>)</h4></div></summary><div class="docblock"><p>Swaps two elements.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>element1_index</code>: [u64] - The index of the first element.</li>
+<li><code>element2_index</code>: [u64] - The index of the second element.</li>
+</ul>
+<h1>Reverts</h1>
+<ul>
+<li>If <code>element1_index</code> or <code>element2_index</code> is greater than the length of the vector.</li>
+</ul>
+<h1>Number of Storage Accesses</h1>
+<ul>
+<li>Reads: <code>5</code></li>
+<li>Writes: <code>2</code></li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::storage::storage_vec::*;
+
+storage {
+    vec: StorageVec&lt;u64&gt; = StorageVec {}
+}
+
+fn foo() {
+    storage.vec.push(5);
+    storage.vec.push(10);
+    storage.vec.push(15);
+
+    storage.vec.swap(0, 2);
+    assert(15 == storage.vec.get(0).unwrap().read());
+    assert(10 == storage.vec.get(1).unwrap().read());
+    assert(5 == storage.vec.get(2).unwrap().read());
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.first" class="method trait-impl"><a href="#method.first" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.first">first</a>(self) -&gt; Option&lt;StorageKey&lt;V&gt;&gt;</h4></div></summary><div class="docblock"><p>Returns the first element of the vector, or <code>None</code> if it is empty.</p>
+<h1>Returns</h1>
+<ul>
+<li>[Option&lt;StorageKey<!-- raw HTML omitted -->&gt;] - Describes the raw location in storage of the value stored at<br />
+the start of the vector or zero if the vector is empty.</li>
+</ul>
+<h1>Number of Storage Accesses</h1>
+<ul>
+<li>Reads: <code>1</code></li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">storage {
+    vec: StorageVec&lt;u64&gt; = StorageVec {},
+}
+
+fn foo() {
+    assert(storage.vec.first().is_none());
+
+    storage.vec.push(5);
+
+    assert(5 == storage.vec.first().unwrap().read());
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.last" class="method trait-impl"><a href="#method.last" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.last">last</a>(self) -&gt; Option&lt;StorageKey&lt;V&gt;&gt;</h4></div></summary><div class="docblock"><p>Returns the last element of the vector, or <code>None</code> if it is empty.</p>
+<h1>Returns</h1>
+<ul>
+<li>[Option&lt;StorageKey<!-- raw HTML omitted -->&gt;] - Describes the raw location in storage of the value stored at<br />
+the end of the vector or zero if the vector is empty.</li>
+</ul>
+<h1>Number of Storage Accesses</h1>
+<ul>
+<li>Reads: <code>1</code></li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">storage {
+    vec: StorageVec&lt;u64&gt; = StorageVec {},
+}
+
+fn foo() {
+    assert(storage.vec.last().is_none());
+
+    storage.vec.push(5);
+    storage.vec.push(10);
+
+    assert(10 == storage.vec.last().unwrap().read());
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.reverse" class="method trait-impl"><a href="#method.reverse" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.reverse">reverse</a>(self)</h4></div></summary><div class="docblock"><p>Reverses the order of elements in the vector, in place.</p>
+<h1>Number of Storage Accesses</h1>
+<ul>
+<li>Reads: <code>1 + (3 * (self.len() / 2))</code></li>
+<li>Writes: <code>2 * (self.len() / 2)</code></li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">storage {
+    vec: StorageVec&lt;u64&gt; = StorageVec {},
+}
+
+fn foo() {
+    storage.vec.push(5);
+    storage.vec.push(10);
+    storage.vec.push(15);
+    storage.vec.reverse();
+
+    assert(15 == storage.vec.get(0).unwrap().read());
+    assert(10 == storage.vec.get(1).unwrap().read());
+    assert(5 == storage.vec.get(2).unwrap().read());
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.fill" class="method trait-impl"><a href="#method.fill" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.fill">fill</a>(self, value: V)</h4></div></summary><div class="docblock"><p>Fills <code>self</code> with elements by cloning <code>value</code>.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>value</code>: [V] - Value to copy to each element of the vector.</li>
+</ul>
+<h1>Number of Storage Accesses</h1>
+<ul>
+<li>Reads: <code>1 + self.len()</code></li>
+<li>Writes: <code>self.len()</code></li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">storage {
+    vec: StorageVec&lt;u64&gt; = StorageVec {},
+}
+
+fn foo() {
+    storage.vec.push(5);
+    storage.vec.push(10);
+    storage.vec.push(15);
+    storage.vec.fill(20);
+
+    assert(20 == storage.vec.get(0).unwrap().read());
+    assert(20 == storage.vec.get(1).unwrap().read());
+    assert(20 == storage.vec.get(2).unwrap().read());
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.resize" class="method trait-impl"><a href="#method.resize" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.resize">resize</a>(<br>    self,<br>    new_len: u64,<br>    value: V,<br>)</h4></div></summary><div class="docblock"><p>Resizes <code>self</code> in place so that <code>len</code> is equal to <code>new_len</code>.</p>
+<h1>Additional Information</h1>
+<p>If <code>new_len</code> is greater than <code>len</code>, <code>self</code> is extended by the difference, with each<br />
+additional slot being filled with <code>value</code>. If the <code>new_len</code> is less than <code>len</code>, <code>self</code> is<br />
+simply truncated.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>new_len</code>: [u64] - The new length to expand or truncate to</li>
+<li><code>value</code>: [V] - The value to fill into new slots if the <code>new_len</code> is greater than the current length</li>
+</ul>
+<h1>Number of Storage Accesses</h1>
+<ul>
+<li>Reads - <code>if new_len &gt; self.len() { new_len - len + 2 } else { 2 }</code></li>
+<li>Writes - <code>if new_len &gt; self.len() { new_len - len + 1 } else { 1 }</code></li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">storage {
+    vec: StorageVec&lt;u64&gt; = StorageVec {},
+}
+
+fn foo() {
+    storage.vec.push(5);
+    storage.vec.push(10);
+    storage.vec.resize(4, 20);
+
+    assert(5 == storage.vec.get(0).unwrap().read());
+    assert(10 == storage.vec.get(1).unwrap().read());
+    assert(20 == storage.vec.get(2).unwrap().read());
+    assert(20 == storage.vec.get(3).unwrap().read());
+
+    storage.vec.resize(2, 0);
+
+    assert(5 == storage.vec.get(0).unwrap().read());
+    assert(10 == storage.vec.get(1).unwrap().read());
+    assert(None == storage.vec.get(2));
+    assert(None == storage.vec.get(3));
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.store_vec" class="method trait-impl"><a href="#method.store_vec" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.store_vec">store_vec</a>(<br>    self,<br>    vec: Vec&lt;V&gt;,<br>)</h4></div></summary><div class="docblock"><p>Stores a <code>Vec</code> as a <code>StorageVec</code>.</p>
+<h1>Additional Information</h1>
+<p>This will overwrite any existing values in the <code>StorageVec</code>.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>vec</code>: [Vec<!-- raw HTML omitted -->] - The vector to store in storage.</li>
+</ul>
+<h1>Number of Storage Accesses</h1>
+<ul>
+<li>Writes - <code>2</code></li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">storage {
+    vec: StorageVec&lt;u64&gt; = StorageVec {},
+}
+
+fn foo() {
+    let mut vec = Vec::&lt;u64&gt;::new();
+    vec.push(5);
+    vec.push(10);
+    vec.push(15);
+
+    storage.vec.store_vec(vec);
+
+    assert(5 == storage.vec.get(0).unwrap().read());
+    assert(10 == storage.vec.get(1).unwrap().read());
+    assert(15 == storage.vec.get(2).unwrap().read());
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.load_vec" class="method trait-impl"><a href="#method.load_vec" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.load_vec">load_vec</a>(self) -&gt; Vec&lt;V&gt;</h4></div></summary><div class="docblock"><p>Load a <code>Vec</code> from the <code>StorageVec</code>.</p>
+<h1>Additional Information</h1>
+<p>This method does not work for any <code>V</code> type that has a 0 size, such as <code>StorageVec</code> itself. Meaning you cannot use this method on a <code>StorageVec&lt;StorageVec&lt;T&gt;&gt;</code>.</p>
+<h1>Returns</h1>
+<ul>
+<li>[Option&lt;Vec<!-- raw HTML omitted -->&gt;] - The vector constructed from storage or <code>None</code>.</li>
+</ul>
+<h1>Reverts</h1>
+<ul>
+<li>If the size of type <code>V</code> is 0.</li>
+</ul>
+<h1>Number of Storage Accesses</h1>
+<ul>
+<li>Reads - <code>2</code></li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">storage {
+    vec: StorageVec&lt;u64&gt; = StorageVec {},
+}
+
+fn foo() {
+    let mut vec = Vec::&lt;u64&gt;::new();
+    vec.push(5);
+    vec.push(10);
+    vec.push(15);
+
+    storage.vec.store_vec(vec);
+    let returned_vec = storage.vec.load_vec();
+
+    assert(5 == returned_vec.get(0).unwrap());
+    assert(10 == returned_vec.get(1).unwrap());
+    assert(15 == returned_vec.get(2).unwrap());
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.iter" class="method trait-impl"><a href="#method.iter" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.iter">iter</a>(self) -&gt; StorageVecIter&lt;V&gt;</h4></div></summary><div class="docblock"><p>Returns an [Iterator] to iterate over this <code>StorageVec</code>.</p>
+<h1>Returns</h1>
+<ul>
+<li>[StorageVecIter<!-- raw HTML omitted -->] - The struct which can be iterated over.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">storage {
+    vec: StorageVec&lt;u64&gt; = StorageVec {},
+}
+
+fn foo() {
+    storage.vec.push(5);
+    storage.vec.push(10);
+    storage.vec.push(15);
+
+    // Get the iterator
+    let iter = storage.vec.iter();
+
+    assert_eq(5, iter.next().unwrap().read());
+    assert_eq(10, iter.next().unwrap().read());
+    assert_eq(15, iter.next().unwrap().read());
+
+    for elem in storage.vec.iter() {
+        let elem_value = elem.read();
+        log(elem_value);
+    }
+}
+</code></pre>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-StorableSlice&lt;Bytes&gt;" class="impl has-srclink"><a href="#impl-StorableSlice&lt;Bytes&gt;" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../../storage/storable_slice/trait.StorableSlice.html">StorableSlice</a>&lt;Bytes&gt; for StorageKey&lt;StorageBytes&gt;</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.clear" class="method trait-impl"><a href="#method.clear" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.clear">clear</a>(self) -&gt; bool</h4></div></summary><div class="docblock"><p>Clears a collection of tightly packed bytes in storage.</p>
+<h1>Returns</h1>
+<ul>
+<li>[bool] - Indicates whether all of the storage slots cleared were previously set.</li>
+</ul>
+<h1>Number of Storage Accesses</h1>
+<ul>
+<li>Reads: <code>1</code></li>
+<li>Clears: <code>2</code></li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::{storage::storage_bytes::StorageBytes, bytes::Bytes};
+
+storage {
+    stored_bytes: StorageBytes = StorageBytes {}
+}
+
+fn foo() {
+    let mut bytes = Bytes::new();
+    bytes.push(5_u8);
+    bytes.push(7_u8);
+    bytes.push(9_u8);
+    storage.stored_bytes.write_slice(bytes);
+
+    assert(storage.stored_bytes.read_slice().is_some());
+    let cleared = storage.stored_bytes.clear();
+    assert(cleared);
+    let retrieved_bytes = storage.stored_bytes.read_slice();
+    assert(retrieved_bytes.is_none());
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.len" class="method trait-impl"><a href="#method.len" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.len">len</a>(self) -&gt; u64</h4></div></summary><div class="docblock"><p>Returns the length of tightly packed bytes in storage.</p>
+<h1>Returns</h1>
+<ul>
+<li>[u64] - The length of the bytes in storage.</li>
+</ul>
+<h1>Number of Storage Accesses</h1>
+<ul>
+<li>Reads: <code>1</code></li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::{storage::storage_bytes::StorageBytes, bytes::Bytes};
+
+storage {
+    stored_bytes: StorageBytes = StorageBytes {}
+}
+
+fn foo() {
+    let mut bytes = Bytes::new();
+    bytes.push(5_u8);
+    bytes.push(7_u8);
+    bytes.push(9_u8);
+
+    assert(storage.stored_bytes.len() == 0)
+    storage.stored_bytes.write_slice(bytes);
+    assert(storage.stored_bytes.len() == 3);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.read_slice" class="method trait-impl"><a href="#method.read_slice" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.read_slice">read_slice</a>(self) -&gt; Option&lt;Bytes&gt;</h4></div></summary><div class="docblock"><p>Constructs a <code>Bytes</code> type from a collection of tightly packed bytes in storage.</p>
+<h1>Returns</h1>
+<ul>
+<li>[Option<!-- raw HTML omitted -->] - The valid <code>Bytes</code> stored, otherwise <code>None</code>.</li>
+</ul>
+<h1>Number of Storage Accesses</h1>
+<ul>
+<li>Reads: <code>2</code></li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::{storage::storage_bytes::StorageBytes, bytes::Bytes};
+
+storage {
+    stored_bytes: StorageBytes = StorageBytes {}
+}
+
+fn foo() {
+    let mut bytes = Bytes::new();
+    bytes.push(5_u8);
+    bytes.push(7_u8);
+    bytes.push(9_u8);
+
+    assert(storage.stored_bytes.read_slice().is_none());
+    storage.stored_bytes.write_slice(bytes);
+    let retrieved_bytes = storage.stored_bytes.read_slice().unwrap();
+    assert(bytes == retrieved_bytes);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.write_slice" class="method trait-impl"><a href="#method.write_slice" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.write_slice">write_slice</a>(<br>    self,<br>    bytes: Bytes,<br>)</h4></div></summary><div class="docblock"><p>Takes a <code>Bytes</code> type and stores the underlying collection of tightly packed bytes.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>bytes</code>: [Bytes] - The bytes which will be stored.</li>
+</ul>
+<h1>Number of Storage Accesses</h1>
+<ul>
+<li>Writes: <code>2</code></li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::{storage::storage_bytes::StorageBytes, bytes::Bytes};
+
+storage {
+    stored_bytes: StorageBytes = StorageBytes {}
+}
+
+fn foo() {
+    let mut bytes = Bytes::new();
+    bytes.push(5_u8);
+    bytes.push(7_u8);
+    bytes.push(9_u8);
+
+    storage.stored_bytes.write_slice(bytes);
+}
+</code></pre>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-StorableSlice&lt;String&gt;" class="impl has-srclink"><a href="#impl-StorableSlice&lt;String&gt;" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../../storage/storable_slice/trait.StorableSlice.html">StorableSlice</a>&lt;String&gt; for StorageKey&lt;StorageString&gt;</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.clear" class="method trait-impl"><a href="#method.clear" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.clear">clear</a>(self) -&gt; bool</h4></div></summary><div class="docblock"><p>Clears a stored <code>String</code> in storage.</p>
+<h1>Returns</h1>
+<ul>
+<li>[bool] - Indicates whether all of the storage slots cleared were previously set.</li>
+</ul>
+<h1>Number of Storage Accesses</h1>
+<ul>
+<li>Reads: <code>1</code></li>
+<li>Clears: <code>2</code></li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::{storage::storage_string::StorageString, string::String};
+
+storage {
+    stored_string: StorageString = StorageString {}
+}
+
+fn foo() {
+    let string = String::from_ascii_str(&quot;Fuel is blazingly fast&quot;);
+
+    storage.stored_string.write_slice(string);
+
+    assert(storage.stored_string.read_slice().is_some());
+    let cleared = storage.stored_string.clear();
+    assert(cleared);
+    let retrieved_string = storage.stored_string.read_slice();
+    assert(retrieved_string.is_none());
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.len" class="method trait-impl"><a href="#method.len" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.len">len</a>(self) -&gt; u64</h4></div></summary><div class="docblock"><p>Returns the length of <code>String</code> in storage.</p>
+<h1>Returns</h1>
+<ul>
+<li>[u64] - The length of the bytes in storage.</li>
+</ul>
+<h1>Number of Storage Accesses</h1>
+<ul>
+<li>Reads: <code>1</code></li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::{storage::storage_string::StorageString, string::String};
+
+storage {
+    stored_string: StorageString = StorageString {}
+}
+
+fn foo() {
+    let string = String::from_ascii_str(&quot;Fuel is blazingly fast&quot;);
+
+    assert(storage.stored_string.len() == 0)
+    storage.stored_string.write_slice(string);
+    assert(storage.stored_string.len() == 3);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.read_slice" class="method trait-impl"><a href="#method.read_slice" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.read_slice">read_slice</a>(self) -&gt; Option&lt;String&gt;</h4></div></summary><div class="docblock"><p>Constructs a <code>String</code> type from storage.</p>
+<h1>Returns</h1>
+<ul>
+<li>[Option<!-- raw HTML omitted -->] - The valid <code>String</code> stored, otherwise <code>None</code>.</li>
+</ul>
+<h1>Number of Storage Accesses</h1>
+<ul>
+<li>Reads: <code>2</code></li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::{storage::storage_string::StorageString, string::String};
+
+storage {
+    stored_string: StorageString = StorageString {}
+}
+
+fn foo() {
+    let string = String::from_ascii_str(&quot;Fuel is blazingly fast&quot;);
+
+    assert(storage.stored_string.read_slice().is_none());
+    storage.stored_string.write_slice(string);
+    let retrieved_string = storage.stored_string.read_slice().unwrap();
+    assert(string == retrieved_string);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.write_slice" class="method trait-impl"><a href="#method.write_slice" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.write_slice">write_slice</a>(<br>    self,<br>    string: String,<br>)</h4></div></summary><div class="docblock"><p>Takes a <code>String</code> type and saves the underlying data in storage.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>string</code>: [String] - The string which will be stored.</li>
+</ul>
+<h1>Number of Storage Accesses</h1>
+<ul>
+<li>Writes: <code>2</code></li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::{storage::storage_string::StorageString, string::String};
+
+storage {
+    stored_string: StorageString = StorageString {}
+}
+
+fn foo() {
+    let string = String::from_ascii_str(&quot;Fuel is blazingly fast&quot;);
+
+    storage.stored_string.write_slice(string);
+}
+</code></pre>
+</div></details></div></details></div></section><section id="search" class="search-results"></section></div></main><script src="../../../static.files/highlight.js"></script><script>hljs.highlightAll();</script></body></html>
