@@ -323,7 +323,7 @@ fn clean_output(output: &str) -> String {
         let mut performer = RawText::default();
         let mut p = vte::Parser::new();
         for b in line.as_bytes() {
-            p.advance(&mut performer, &[*b]);
+            p.advance(&mut performer, *b);
         }
         raw.push_str(&performer.0);
         raw.push('\n');

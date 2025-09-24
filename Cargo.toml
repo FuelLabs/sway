@@ -81,11 +81,11 @@ fuel-abi-types = "0.15.2"
 # Although ALL versions are "X.Y", we need the complete semver for
 # fuel-core-client as the GitHub Actions workflow parses this value to pull down
 # the correct tarball.
-fuel-core = { version = "0.46.0", default-features = false }
-fuel-core-chain-config = { version = "0.46.0", default-features = false }
+fuel-core = { version = "0.46", default-features = false }
+fuel-core-chain-config = { version = "0.46", default-features = false }
 fuel-core-client = { version = "0.46.0", default-features = false }
-fuel-core-storage = { version = "0.46.0", default-features = false }
-fuel-core-types = { version = "0.46.0", default-features = false }
+fuel-core-storage = { version = "0.46", default-features = false }
+fuel-core-types = { version = "0.46", default-features = false }
 
 # Dependencies from the `fuels-rs` repository:
 
@@ -249,7 +249,7 @@ url = "2.2"
 urlencoding = "2.1"
 uuid = "1.13"
 vec1 = "1.8"
-vte = "0.15"
+vte = "0.13"
 walkdir = "2.3"
 whoami = "1.5"
 wiremock = "0.6"
