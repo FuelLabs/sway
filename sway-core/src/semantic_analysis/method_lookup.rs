@@ -254,39 +254,15 @@ impl TypeCheckContext<'_> {
         type_id: TypeId,
         method_prefix: &ModulePath,
         method_ident: &Ident,
-        annotation_type: TypeId,
+        _annotation_type: TypeId,
         method_name: &Option<&MethodName>,
     ) -> Result<Vec<ty::TyTraitItem>, ErrorEmitted> {
-        let type_engine = self.engines.te();
-
         // Start with items for the concrete type.
         let mut items =
             self.find_items_for_type(handler, type_id, method_prefix, method_ident, method_name)?;
 
         if method_name.is_none() {
             return Ok(items.into_iter().map(|candidate| candidate.item).collect());
-        }
-
-        // Consider items from supersets indicated by the annotation return type.
-        if !matches!(&*type_engine.get(annotation_type), TypeInfo::Unknown)
-            && !type_id.is_concrete(self.engines, crate::TreatNumericAs::Concrete)
-        {
-            let coercion_check = UnifyCheck::coercion(self.engines).with_ignore_generic_names(true);
-
-            let inner_types =
-                annotation_type.extract_inner_types(self.engines, crate::IncludeSelf::Yes);
-
-            for inner in inner_types {
-                if coercion_check.check(inner, type_id) {
-                    items.extend(self.find_items_for_type(
-                        handler,
-                        inner,
-                        method_prefix,
-                        method_ident,
-                        method_name,
-                    )?);
-                }
-            }
         }
 
         if let Some(method_name) = method_name {
