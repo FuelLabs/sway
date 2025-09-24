@@ -439,7 +439,7 @@ mod test {
         use super::short_name;
 
         let test = |full_name: &str, expected: &str| {
-            let short_name = short_name(&full_name.to_string());
+            let short_name = short_name(full_name);
             assert_eq!(short_name, expected, "Full name: {full_name}.");
         };
 
