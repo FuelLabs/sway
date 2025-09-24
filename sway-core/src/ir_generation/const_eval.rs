@@ -1701,7 +1701,7 @@ mod tests {
     use super::*;
     use sway_error::handler::Handler;
     use sway_features::ExperimentalFeatures;
-    use sway_ir::Kind;
+    use sway_ir::{Backtrace, Kind};
     use sway_types::ProgramId;
 
     /// This function validates if an expression can be converted to [Constant].
@@ -1720,7 +1720,7 @@ mod tests {
     fn assert_is_constant(is_constant: bool, prefix: &str, expr: &str) {
         let engines = Engines::default();
         let handler = Handler::default();
-        let mut context = Context::new(engines.se(), ExperimentalFeatures::default());
+        let mut context = Context::new(engines.se(), ExperimentalFeatures::default(), Backtrace::default());
         let mut md_mgr = MetadataManager::default();
         let core_lib = namespace::Package::new(
             sway_types::Ident::new_no_span("assert_is_constant_test".to_string()),
