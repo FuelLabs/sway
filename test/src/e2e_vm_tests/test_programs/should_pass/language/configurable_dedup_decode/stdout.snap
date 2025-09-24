@@ -356,7 +356,7 @@ jal  $$reta $pc i69           ; decode configurable WRAPPED
 move $$locbase $sp            ; save locals base register for function __entry
 cfei i360                     ; allocate 360 bytes for locals and 0 slots for call arguments
 addi $r0 $$locbase i272       ; get offset to local __ptr slice
-jal  $$reta $pc i93           ; [call]: call main_8
+jal  $$reta $pc i92           ; [call]: call main_8
 move $r1 $$retv               ; [call]: copy the return value
 movi $r2 i1024                ; initialize constant into register
 aloc $r2
@@ -443,7 +443,6 @@ mcpi $r1 $r0 i8               ; copy memory
 addi $r0 $$locbase i24        ; get offset to local __ptr { u64 }
 movi $r1 i8                   ; initialize constant into register
 mcp  $r2 $r0 $r1              ; mcp target temp size
-move $$retv $zero             ; set return value
 cfsi i32                      ; free 32 bytes for locals and 0 slots for extra call arguments
 move $$reta $r3               ; restore return address
 poph i524288                  ; restore registers 40..64
@@ -464,4 +463,4 @@ data_<Configurable, TUPLE>_0 .bytes[8] 00 00 00 00 00 00 00 02  ........
 data_<Configurable, WRAPPED>_1 .bytes[8] 00 00 00 00 00 00 00 01  ........
 
 
-    Finished release [optimized + fuel] target(s) [520 B] in ???
+    Finished release [optimized + fuel] target(s) [512 B] in ???

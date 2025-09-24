@@ -55,6 +55,16 @@ specified, as a boolean value.
 
 Some tests are only compatible with some build targets. To indicate this the `supported_targets` field may be specified, as an array value.
 
+## unsupported_profiles
+
+Some tests can only work with some profiles (release / debug). By default, tests are tested with all profiles.
+In case of incompatibility, the `unsupported_profiles` field may be specified, as an array value.
+
+## expected_warnings
+
+Some tests can have valid warnings. To allow them, specify `expected_warnings`, which takes an integer arguments.
+If more than these many number of warnings are emitted, the test fails.
+
 ## FileCheck for 'fail' tests
 
 The tests in the `fail` category _must_ employ verification using pattern matching via the [FileCheck](https://docs.rs/filecheck/latest/filecheck/)

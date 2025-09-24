@@ -30,11 +30,9 @@ fn main() {
 //
 // check: move $(reta_bk=$REG) $$$$reta
 // check: jal  $$$$reta $$pc $IMM
-// check: move $$$$retv $$zero
 // check: move $$$$reta $reta_bk
 // check: jal  $$zero $$$$reta i0
 
 // Function returns unit.
 //
-// check: move $$$$retv $$zero
 // check: jal  $$zero $$$$reta i0

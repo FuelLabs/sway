@@ -190,16 +190,27 @@ impl FuelAsmBuilder<'_, '_> {
             owning_span: None,
         });
 
-        // Save the return value.
+        // Save the return value, if it is not of type unit.
         let ret_reg = self.reg_seqr.next();
-        self.cur_bytecode.push(Op {
-            opcode: Either::Left(VirtualOp::MOVE(
-                ret_reg.clone(),
-                VirtualRegister::Constant(ConstantRegister::CallReturnValue),
-            )),
-            comment: "[call]: copy the return value".into(),
-            owning_span: None,
-        });
+        if !function.get_return_type(self.context).is_unit(self.context) {
+            self.cur_bytecode.push(Op {
+                opcode: Either::Left(VirtualOp::MOVE(
+                    ret_reg.clone(),
+                    VirtualRegister::Constant(ConstantRegister::CallReturnValue),
+                )),
+                comment: "[call]: copy the return value".into(),
+                owning_span: None,
+            });
+        } else {
+            self.cur_bytecode.push(Op {
+                opcode: Either::Left(VirtualOp::MOVE(
+                    ret_reg.clone(),
+                    VirtualRegister::Constant(ConstantRegister::Zero),
+                )),
+                comment: "[call]: return unit value".into(),
+                owning_span: None,
+            });
+        }
         self.reg_map.insert(*instr_val, ret_reg);
 
         Ok(())
@@ -210,15 +221,21 @@ impl FuelAsmBuilder<'_, '_> {
         instr_val: &Value,
         ret_val: &Value,
     ) -> Result<(), CompileError> {
-        // Move the result into the return value register.
+        // Move the result (if there is one) into the return value register.
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
-        let ret_reg = self.value_to_register(ret_val)?;
-        self.cur_bytecode.push(Op::register_move(
-            VirtualRegister::Constant(ConstantRegister::CallReturnValue),
-            ret_reg,
-            "set return value",
-            owning_span,
-        ));
+
+        if !ret_val
+            .get_type(self.context)
+            .is_some_and(|t| t.is_unit(self.context))
+        {
+            let ret_reg = self.value_to_register(ret_val)?;
+            self.cur_bytecode.push(Op::register_move(
+                VirtualRegister::Constant(ConstantRegister::CallReturnValue),
+                ret_reg,
+                "set return value",
+                owning_span,
+            ));
+        }
 
         // Jump to the end of the function.
         let end_label = self
