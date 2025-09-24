@@ -1,33 +1,50 @@
 script;
 
 trait A {
-    fn run() -> bool;
+    fn associated_method() -> bool;
+    fn method(self) -> bool;
 }
 
 trait B {
-    fn run() -> bool;
+    fn associated_method() -> bool;
+    fn method(self) -> bool;
 }
 
 impl A for bool {
-    fn run() -> bool {
+    #[allow(dead_code)]
+    fn associated_method() -> bool {
+        true
+    }
+
+    fn method(self) -> bool {
         true
     }
 }
 
 impl B for bool {
-    fn run() -> bool {
+    #[allow(dead_code)]
+    fn associated_method() -> bool {
+        false
+    }
+
+    fn method(self) -> bool {
         false
     }
 }
 
-fn f<T>()
+#[allow(dead_code)]
+fn f<T>(item: T)
 where
     T: A + B,
 {
-    if T::run() {
+    if T::associated_method() {
+    }
+
+    if item.method() {
+
     }
 }
 
 fn main() {
-    f::<bool>();
+    f::<bool>(true);
 }
