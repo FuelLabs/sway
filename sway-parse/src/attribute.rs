@@ -543,4 +543,25 @@ mod tests {
         )
         "#);
     }
+
+    #[test]
+    fn parse_fuzz_attribute_no_args() {
+        assert_ron_snapshot!(parse::<Attribute>(r#"
+            fuzz()
+        "#,), @"Attribute(name:BaseIdent(name_override_opt:None,span:Span(src:\"\\n            fuzz()\\n        \",start:13,end:17,source_id:None,),is_raw_ident:false,),args:Some(Parens(inner:Punctuated(value_separator_pairs:[],final_value_opt:None,),span:Span(src:\"\\n            fuzz()\\n        \",start:17,end:19,source_id:None,),)),)");
+    }
+
+    #[test]
+    fn parse_case_attribute() {
+        assert_ron_snapshot!(parse::<Attribute>(r#"
+            case(zero, one, is_true)
+        "#,), @"Attribute(name:BaseIdent(name_override_opt:None,span:Span(src:\"\\n            case(zero, one, is_true)\\n        \",start:13,end:17,source_id:None,),is_raw_ident:false,),args:Some(Parens(inner:Punctuated(value_separator_pairs:[(AttributeArg(name:BaseIdent(name_override_opt:None,span:Span(src:\"\\n            case(zero, one, is_true)\\n        \",start:18,end:22,source_id:None,),is_raw_ident:false,),value:None,),CommaToken(span:Span(src:\"\\n            case(zero, one, is_true)\\n        \",start:22,end:23,source_id:None,),)),(AttributeArg(name:BaseIdent(name_override_opt:None,span:Span(src:\"\\n            case(zero, one, is_true)\\n        \",start:24,end:27,source_id:None,),is_raw_ident:false,),value:None,),CommaToken(span:Span(src:\"\\n            case(zero, one, is_true)\\n        \",start:27,end:28,source_id:None,),)),],final_value_opt:Some(AttributeArg(name:BaseIdent(name_override_opt:None,span:Span(src:\"\\n            case(zero, one, is_true)\\n        \",start:29,end:36,source_id:None,),is_raw_ident:false,),value:None,)),),span:Span(src:\"\\n            case(zero, one, is_true)\\n        \",start:17,end:37,source_id:None,),)),)");
+    }
+
+    #[test]
+    fn parse_fuzz_parameterized_attribute() {
+        assert_ron_snapshot!(parse::<Attribute>(r#"
+            fuzz(x_iterations = 10, y_min = 0, y_max = 255)
+        "#,), @"Attribute(name:BaseIdent(name_override_opt:None,span:Span(src:\"\\n            fuzz(x_iterations = 10, y_min = 0, y_max = 255)\\n        \",start:13,end:17,source_id:None,),is_raw_ident:false,),args:Some(Parens(inner:Punctuated(value_separator_pairs:[(AttributeArg(name:BaseIdent(name_override_opt:None,span:Span(src:\"\\n            fuzz(x_iterations = 10, y_min = 0, y_max = 255)\\n        \",start:18,end:30,source_id:None,),is_raw_ident:false,),value:Some(Int(LitInt(span:Span(src:\"\\n            fuzz(x_iterations = 10, y_min = 0, y_max = 255)\\n        \",start:33,end:35,source_id:None,),parsed:[10,],ty_opt:None,is_generated_b256:false,))),),CommaToken(span:Span(src:\"\\n            fuzz(x_iterations = 10, y_min = 0, y_max = 255)\\n        \",start:35,end:36,source_id:None,),)),(AttributeArg(name:BaseIdent(name_override_opt:None,span:Span(src:\"\\n            fuzz(x_iterations = 10, y_min = 0, y_max = 255)\\n        \",start:37,end:42,source_id:None,),is_raw_ident:false,),value:Some(Int(LitInt(span:Span(src:\"\\n            fuzz(x_iterations = 10, y_min = 0, y_max = 255)\\n        \",start:45,end:46,source_id:None,),parsed:[],ty_opt:None,is_generated_b256:false,))),),CommaToken(span:Span(src:\"\\n            fuzz(x_iterations = 10, y_min = 0, y_max = 255)\\n        \",start:46,end:47,source_id:None,),)),],final_value_opt:Some(AttributeArg(name:BaseIdent(name_override_opt:None,span:Span(src:\"\\n            fuzz(x_iterations = 10, y_min = 0, y_max = 255)\\n        \",start:48,end:53,source_id:None,),is_raw_ident:false,),value:Some(Int(LitInt(span:Span(src:\"\\n            fuzz(x_iterations = 10, y_min = 0, y_max = 255)\\n        \",start:56,end:59,source_id:None,),parsed:[255,],ty_opt:None,is_generated_b256:false,))),)),),span:Span(src:\"\\n            fuzz(x_iterations = 10, y_min = 0, y_max = 255)\\n        \",start:17,end:60,source_id:None,),)),)");
+    }
 }

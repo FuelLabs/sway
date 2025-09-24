@@ -33,6 +33,12 @@ pub const DOC_COMMENT_ATTRIBUTE_NAME: &str = "doc-comment";
 pub const TEST_ATTRIBUTE_NAME: &str = "test";
 pub const TEST_SHOULD_REVERT_ARG_NAME: &str = "should_revert";
 
+// In-language parameterized testing.
+pub const CASE_ATTRIBUTE_NAME: &str = "case";
+
+// In-language fuzz testing.
+pub const FUZZ_ATTRIBUTE_NAME: &str = "fuzz";
+
 // Allow warnings.
 pub const ALLOW_ATTRIBUTE_NAME: &str = "allow";
 pub const ALLOW_DEAD_CODE_ARG_NAME: &str = "dead_code";
@@ -65,6 +71,7 @@ pub const KNOWN_ATTRIBUTE_NAMES: &[&str] = &[
     STORAGE_ATTRIBUTE_NAME,
     DOC_COMMENT_ATTRIBUTE_NAME,
     TEST_ATTRIBUTE_NAME,
+    CASE_ATTRIBUTE_NAME,
     INLINE_ATTRIBUTE_NAME,
     PAYABLE_ATTRIBUTE_NAME,
     ALLOW_ATTRIBUTE_NAME,
@@ -72,6 +79,7 @@ pub const KNOWN_ATTRIBUTE_NAMES: &[&str] = &[
     DEPRECATED_ATTRIBUTE_NAME,
     FALLBACK_ATTRIBUTE_NAME,
     ABI_NAME_ATTRIBUTE_NAME,
+    FUZZ_ATTRIBUTE_NAME,
 ];
 
 /// An attribute declaration. Attribute declaration
