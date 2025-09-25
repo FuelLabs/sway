@@ -351,7 +351,7 @@ impl<'a> FnCompiler<'a> {
                     unreachable!()
                 }
                 ty::TyDecl::ConstGenericDecl(_) => {
-                    // ConstGenericDecl is not reacheable from AstNode
+                    // ConstGenericDecl is not reachable from AstNode
                     unreachable!()
                 }
                 ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {

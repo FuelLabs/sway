@@ -228,7 +228,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
         }
         ty::TyDecl::ConstGenericDecl(_) => {
             // connect_declaration is only called from AstNode,
-            // from where a ConstGenericDecl is not reacheable
+            // from where a ConstGenericDecl is not reachable
             unreachable!()
         }
         ty::TyDecl::FunctionDecl(ty::FunctionDecl { decl_id, .. }) => {

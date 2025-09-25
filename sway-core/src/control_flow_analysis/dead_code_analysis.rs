@@ -601,7 +601,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
         }
         ty::TyDecl::ConstGenericDecl(_) => {
             //This is only called from AstNode
-            // where a ConstGenericDecl is unreacheable
+            // where a ConstGenericDecl is unreachable
             unreachable!()
         }
         ty::TyDecl::FunctionDecl(ty::FunctionDecl { decl_id, .. }) => {
@@ -2592,7 +2592,7 @@ fn allow_dead_code_ast_node(decl_engine: &DeclEngine, node: &ty::TyAstNode) -> b
             }
             ty::TyDecl::ConstGenericDecl(_) => {
                 // only called from AstNode from where
-                // ConstGenericDecl is unreacheable
+                // ConstGenericDecl is unreachable
                 unreachable!()
             }
             ty::TyDecl::TraitTypeDecl(ty::TraitTypeDecl { decl_id, .. }) => {

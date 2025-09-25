@@ -274,7 +274,7 @@ impl TyAstNode {
                     }
                 }
                 TyDecl::ConstGenericDecl(_) => {
-                    // Const generics are not reacheable from AstNode
+                    // Const generics are not reachable from AstNode
                     unreachable!()
                 }
                 TyDecl::TraitTypeDecl(_) => {}
