@@ -13,7 +13,7 @@ env:
 
 jobs:
   deploy:
-    runs-on: buildjet-4vcpu-ubuntu-2204
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
