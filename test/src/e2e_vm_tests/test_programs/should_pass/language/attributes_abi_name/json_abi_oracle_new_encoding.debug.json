@@ -38,6 +38,7 @@
       "components": [
         {
           "name": "A",
+          "offset": null,
           "typeId": 0
         }
       ],

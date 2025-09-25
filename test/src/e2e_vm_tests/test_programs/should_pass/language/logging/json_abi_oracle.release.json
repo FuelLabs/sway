@@ -65,6 +65,7 @@
       "components": [
         {
           "name": "A",
+          "offset": null,
           "type": 7,
           "typeArguments": [
             {
@@ -76,6 +77,7 @@
         },
         {
           "name": "B",
+          "offset": null,
           "type": 0,
           "typeArguments": null
         }
@@ -112,30 +114,36 @@
       "components": [
         {
           "name": "a",
+          "offset": null,
           "type": 13,
           "typeArguments": null
         },
         {
           "name": "b",
+          "offset": null,
           "type": 12,
           "typeArguments": null
         },
         {
           "name": "c",
+          "offset": null,
           "type": 10,
           "typeArguments": null
         },
         {
           "name": "d",
+          "offset": null,
           "type": 14,
           "typeArguments": null
         },
         {
           "name": "e",
+          "offset": null,
           "type": 9,
           "typeArguments": [
             {
               "name": "",
+              "offset": null,
               "type": 13,
               "typeArguments": null
             }
@@ -143,11 +151,13 @@
         },
         {
           "name": "f",
+          "offset": null,
           "type": 4,
           "typeArguments": null
         },
         {
           "name": "g",
+          "offset": null,
           "type": 11,
           "typeArguments": null
         }
@@ -160,6 +170,7 @@
       "components": [
         {
           "name": "ss",
+          "offset": null,
           "type": 2,
           "typeArguments": null
         }
@@ -174,11 +185,13 @@
       "components": [
         {
           "name": "ptr",
+          "offset": null,
           "type": 3,
           "typeArguments": null
         },
         {
           "name": "cap",
+          "offset": null,
           "type": 13,
           "typeArguments": null
         }
@@ -193,10 +206,12 @@
       "components": [
         {
           "name": "buf",
+          "offset": null,
           "type": 8,
           "typeArguments": [
             {
               "name": "",
+              "offset": null,
               "type": 2,
               "typeArguments": null
             }
@@ -204,6 +219,7 @@
         },
         {
           "name": "len",
+          "offset": null,
           "type": 13,
           "typeArguments": null
         }

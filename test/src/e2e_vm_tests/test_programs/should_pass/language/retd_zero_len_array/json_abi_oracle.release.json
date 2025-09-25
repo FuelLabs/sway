@@ -19,6 +19,7 @@
       "components": [
         {
           "name": "__array_element",
+          "offset": null,
           "type": 1,
           "typeArguments": null
         }

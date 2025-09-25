@@ -6,16 +6,19 @@
       "inputs": [
         {
           "name": "_arg1",
+          "offset": null,
           "type": 4,
           "typeArguments": null
         },
         {
           "name": "_arg2",
+          "offset": null,
           "type": 6,
           "typeArguments": null
         },
         {
           "name": "_arg3",
+          "offset": null,
           "type": 1,
           "typeArguments": [
             {
@@ -47,11 +50,13 @@
       "components": [
         {
           "name": "None",
+          "offset": null,
           "type": 0,
           "typeArguments": null
         },
         {
           "name": "Some",
+          "offset": null,
           "type": 2,
           "typeArguments": null
         }
@@ -78,6 +83,7 @@
       "components": [
         {
           "name": "bam",
+          "offset": null,
           "type": 5,
           "typeArguments": null
         }
@@ -90,6 +96,7 @@
       "components": [
         {
           "name": "bam",
+          "offset": null,
           "type": 8,
           "typeArguments": null
         }
@@ -102,6 +109,7 @@
       "components": [
         {
           "name": "bam",
+          "offset": null,
           "type": 7,
           "typeArguments": null
         }
@@ -114,6 +122,7 @@
       "components": [
         {
           "name": "bam",
+          "offset": null,
           "type": 8,
           "typeArguments": null
         }

@@ -138,10 +138,12 @@
       "components": [
         {
           "name": "__tuple_element",
+          "offset": null,
           "typeId": 17
         },
         {
           "name": "__tuple_element",
+          "offset": null,
           "typeId": 8
         }
       ],
@@ -152,10 +154,12 @@
       "components": [
         {
           "name": "__tuple_element",
+          "offset": null,
           "typeId": 16
         },
         {
           "name": "__tuple_element",
+          "offset": null,
           "typeId": 14
         }
       ],
@@ -166,14 +170,17 @@
       "components": [
         {
           "name": "__tuple_element",
+          "offset": null,
           "typeId": 14
         },
         {
           "name": "__tuple_element",
+          "offset": null,
           "typeId": 15
         },
         {
           "name": "__tuple_element",
+          "offset": null,
           "typeId": 16
         }
       ],
@@ -184,6 +191,7 @@
       "components": [
         {
           "name": "__array_element",
+          "offset": null,
           "typeId": 7
         }
       ],
@@ -194,6 +202,7 @@
       "components": [
         {
           "name": "__array_element",
+          "offset": null,
           "typeId": 12
         }
       ],
@@ -204,13 +213,16 @@
       "components": [
         {
           "name": "__array_element",
+          "offset": null,
           "typeArguments": [
             {
               "name": "",
+              "offset": null,
               "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
             },
             {
               "name": "",
+              "offset": null,
               "typeId": 8
             }
           ],
@@ -224,13 +236,16 @@
       "components": [
         {
           "name": "__array_element",
+          "offset": null,
           "typeArguments": [
             {
               "name": "",
+              "offset": null,
               "typeId": 12
             },
             {
               "name": "",
+              "offset": null,
               "typeId": 13
             }
           ],
@@ -252,10 +267,12 @@
       "components": [
         {
           "name": "Foo",
+          "offset": null,
           "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
         },
         {
           "name": "Bar",
+          "offset": null,
           "typeId": 8
         }
       ],
@@ -301,10 +318,12 @@
       "components": [
         {
           "name": "tim",
+          "offset": null,
           "typeId": 4
         },
         {
           "name": "tam",
+          "offset": null,
           "typeId": 6
         }
       ],
@@ -319,6 +338,7 @@
       "components": [
         {
           "name": "bom",
+          "offset": null,
           "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
         }
       ],
@@ -329,13 +349,16 @@
       "components": [
         {
           "name": "bim",
+          "offset": null,
           "typeId": 10
         },
         {
           "name": "bam",
+          "offset": null,
           "typeArguments": [
             {
               "name": "",
+              "offset": null,
               "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
             }
           ],
@@ -353,10 +376,12 @@
       "components": [
         {
           "name": "tuple1",
+          "offset": null,
           "typeId": 2
         },
         {
           "name": "tuple2",
+          "offset": null,
           "typeId": 1
         }
       ],
@@ -372,6 +397,7 @@
       "components": [
         {
           "name": "b",
+          "offset": null,
           "typeId": 16
         }
       ],

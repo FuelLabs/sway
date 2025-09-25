@@ -109,6 +109,7 @@
       "components": [
         {
           "name": "__array_element",
+          "offset": null,
           "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
         }
       ],
@@ -119,10 +120,12 @@
       "components": [
         {
           "name": "Address",
+          "offset": null,
           "typeId": 3
         },
         {
           "name": "ContractId",
+          "offset": null,
           "typeId": 7
         }
       ],
@@ -137,6 +140,7 @@
       "components": [
         {
           "name": "bits",
+          "offset": null,
           "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
         }
       ],
@@ -147,6 +151,7 @@
       "components": [
         {
           "name": "bits",
+          "offset": null,
           "typeId": 0
         }
       ],
@@ -157,10 +162,12 @@
       "components": [
         {
           "name": "buf",
+          "offset": null,
           "typeId": 6
         },
         {
           "name": "len",
+          "offset": null,
           "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
         }
       ],
@@ -171,10 +178,12 @@
       "components": [
         {
           "name": "ptr",
+          "offset": null,
           "typeId": 2
         },
         {
           "name": "cap",
+          "offset": null,
           "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
         }
       ],
@@ -185,6 +194,7 @@
       "components": [
         {
           "name": "bits",
+          "offset": null,
           "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
         }
       ],

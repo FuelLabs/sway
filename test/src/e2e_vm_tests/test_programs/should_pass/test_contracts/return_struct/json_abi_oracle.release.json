@@ -38,11 +38,13 @@
       "components": [
         {
           "name": "None",
+          "offset": null,
           "type": 0,
           "typeArguments": null
         },
         {
           "name": "Some",
+          "offset": null,
           "type": 2,
           "typeArguments": null
         }

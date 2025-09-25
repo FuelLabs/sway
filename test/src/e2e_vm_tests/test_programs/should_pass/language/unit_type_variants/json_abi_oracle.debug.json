@@ -25,16 +25,19 @@
       "components": [
         {
           "name": "A",
+          "offset": null,
           "type": 0,
           "typeArguments": null
         },
         {
           "name": "B",
+          "offset": null,
           "type": 0,
           "typeArguments": null
         },
         {
           "name": "C",
+          "offset": null,
           "type": 0,
           "typeArguments": null
         }

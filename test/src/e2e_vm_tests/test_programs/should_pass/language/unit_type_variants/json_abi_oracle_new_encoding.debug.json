@@ -28,14 +28,17 @@
       "components": [
         {
           "name": "A",
+          "offset": null,
           "typeId": 0
         },
         {
           "name": "B",
+          "offset": null,
           "typeId": 0
         },
         {
           "name": "C",
+          "offset": null,
           "typeId": 0
         }
       ],

@@ -24,6 +24,7 @@
       "components": [
         {
           "name": "__array_element",
+          "offset": null,
           "typeId": 1
         }
       ],

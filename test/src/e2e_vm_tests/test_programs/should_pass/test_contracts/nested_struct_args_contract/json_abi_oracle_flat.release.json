@@ -5,11 +5,13 @@
       "inputs": [
         {
           "name": "input1",
+          "offset": null,
           "type": 1,
           "typeArguments": null
         },
         {
           "name": "input2",
+          "offset": null,
           "type": 2,
           "typeArguments": null
         }
@@ -27,6 +29,7 @@
       "components": [
         {
           "name": "foo",
+          "offset": null,
           "type": 3,
           "typeArguments": null
         }
@@ -39,6 +42,7 @@
       "components": [
         {
           "name": "inn",
+          "offset": null,
           "type": 0,
           "typeArguments": null
         }
@@ -51,6 +55,7 @@
       "components": [
         {
           "name": "foo",
+          "offset": null,
           "type": 3,
           "typeArguments": null
         }

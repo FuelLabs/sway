@@ -45,14 +45,17 @@
       "components": [
         {
           "name": "val_1",
+          "offset": null,
           "typeId": "b760f44fa5965c2474a3b471467a22c43185152129295af588b022ae50b50903"
         },
         {
           "name": "val_2",
+          "offset": null,
           "typeId": 0
         },
         {
           "name": "val_3",
+          "offset": null,
           "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
         }
       ],

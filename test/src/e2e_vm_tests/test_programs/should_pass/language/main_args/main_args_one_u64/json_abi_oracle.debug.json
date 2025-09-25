@@ -6,6 +6,7 @@
       "inputs": [
         {
           "name": "baba",
+          "offset": null,
           "type": 0,
           "typeArguments": null
         }

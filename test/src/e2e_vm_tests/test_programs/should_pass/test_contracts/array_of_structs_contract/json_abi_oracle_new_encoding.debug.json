@@ -65,6 +65,7 @@
       "components": [
         {
           "name": "__array_element",
+          "offset": null,
           "typeId": 3
         }
       ],
@@ -75,6 +76,7 @@
       "components": [
         {
           "name": "__array_element",
+          "offset": null,
           "typeId": "0a92c8e0f509a2d3a66f68dd50408ce45a1a2596803b0bc983a69b34bd40dad2"
         }
       ],
@@ -85,6 +87,7 @@
       "components": [
         {
           "name": "number",
+          "offset": null,
           "typeId": 4
         }
       ],
@@ -95,6 +98,7 @@
       "components": [
         {
           "name": "id",
+          "offset": null,
           "typeId": 2
         }
       ],

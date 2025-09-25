@@ -24,10 +24,12 @@
       "components": [
         {
           "name": "__tuple_element",
+          "offset": null,
           "typeId": 1
         },
         {
           "name": "__tuple_element",
+          "offset": null,
           "typeId": 1
         }
       ],
@@ -42,10 +44,12 @@
       "components": [
         {
           "name": "first",
+          "offset": null,
           "typeId": 1
         },
         {
           "name": "second",
+          "offset": null,
           "typeId": 5
         }
       ],
@@ -56,10 +60,12 @@
       "components": [
         {
           "name": "first",
+          "offset": null,
           "typeId": 0
         },
         {
           "name": "second",
+          "offset": null,
           "typeId": 4
         }
       ],
@@ -70,10 +76,12 @@
       "components": [
         {
           "name": "first",
+          "offset": null,
           "typeId": 5
         },
         {
           "name": "second",
+          "offset": null,
           "typeId": 2
         }
       ],

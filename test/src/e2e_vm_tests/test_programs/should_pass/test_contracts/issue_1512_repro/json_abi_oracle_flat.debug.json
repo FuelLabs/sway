@@ -5,11 +5,13 @@
       "inputs": [
         {
           "name": "a",
+          "offset": null,
           "type": 1,
           "typeArguments": null
         },
         {
           "name": "b",
+          "offset": null,
           "type": 1,
           "typeArguments": null
         }
@@ -27,11 +29,13 @@
       "components": [
         {
           "name": "__tuple_element",
+          "offset": null,
           "type": 1,
           "typeArguments": null
         },
         {
           "name": "__tuple_element",
+          "offset": null,
           "type": 1,
           "typeArguments": null
         }

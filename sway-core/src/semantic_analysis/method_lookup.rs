@@ -1,5 +1,7 @@
 use std::collections::{BTreeMap, HashSet};
 
+use itertools::Itertools;
+
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -970,23 +972,17 @@ impl TypeCheckContext<'_> {
     }
 
     /// Produce human-readable strings for potential candidates to show in diagnostics.
-    fn format_candidate_summaries_for_error(
-        engines: &Engines,
-        decl_refs: &[DeclRefFunction],
-    ) -> Vec<String> {
+    fn format_candidate_summaries_for_error<'a>(
+        engines: &'a Engines,
+        decl_refs: &'a [DeclRefFunction],
+    ) -> impl Iterator<Item = String> + 'a {
         let de = engines.de();
         let fn_display = TyFunctionDisplay::full().without_self_param_type();
 
-        let mut out = decl_refs
-            .iter()
-            .map(|r| {
-                let m = de.get_function(r);
-                fn_display.display(&m, engines)
-            })
-            .collect::<Vec<String>>();
-
-        out.sort();
-        out
+        decl_refs.iter().map(move |r| {
+            let m = de.get_function(r);
+            fn_display.display(&m, engines)
+        })
     }
 
     /// Given a `method_name` and a `type_id`, find that method on that type in the namespace.
@@ -1035,7 +1031,7 @@ impl TypeCheckContext<'_> {
             annotation_type,
         );
 
-        let mut matching_methods = Vec::<String>::new();
+        let mut matching_methods = HashSet::<String>::new();
 
         let mut qualified_call_path: Option<QualifiedCallPath> = None;
 
@@ -1079,7 +1075,7 @@ impl TypeCheckContext<'_> {
             }
         } else {
             // No signature-compatible candidates.
-            matching_methods.append(&mut Self::format_candidate_summaries_for_error(
+            matching_methods.extend(Self::format_candidate_summaries_for_error(
                 self.engines,
                 &matching_method_decl_refs,
             ));
@@ -1124,7 +1120,7 @@ impl TypeCheckContext<'_> {
                 }
             ),
             type_name,
-            matching_methods,
+            matching_methods: matching_methods.into_iter().sorted().collect(),
         }))
     }
 }

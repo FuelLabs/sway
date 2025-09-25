@@ -161,11 +161,13 @@
       "components": [
         {
           "name": "__tuple_element",
+          "offset": null,
           "type": 5,
           "typeArguments": null
         },
         {
           "name": "__tuple_element",
+          "offset": null,
           "type": 12,
           "typeArguments": null
         }
@@ -178,6 +180,7 @@
       "components": [
         {
           "name": "__array_element",
+          "offset": null,
           "type": 5,
           "typeArguments": null
         }
@@ -190,6 +193,7 @@
       "components": [
         {
           "name": "__array_element",
+          "offset": null,
           "type": 12,
           "typeArguments": null
         }
@@ -214,11 +218,13 @@
       "components": [
         {
           "name": "A",
+          "offset": null,
           "type": 5,
           "typeArguments": null
         },
         {
           "name": "B",
+          "offset": null,
           "type": 12,
           "typeArguments": null
         }
@@ -237,11 +243,13 @@
       "components": [
         {
           "name": "a",
+          "offset": null,
           "type": 5,
           "typeArguments": null
         },
         {
           "name": "b",
+          "offset": null,
           "type": 12,
           "typeArguments": null
         }

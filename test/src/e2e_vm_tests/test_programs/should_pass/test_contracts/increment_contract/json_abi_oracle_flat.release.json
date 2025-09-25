@@ -5,6 +5,7 @@
       "inputs": [
         {
           "name": "increment_by",
+          "offset": null,
           "type": 0,
           "typeArguments": null
         }

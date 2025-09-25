@@ -135,6 +135,7 @@
       "components": [
         {
           "name": "__array_element",
+          "offset": null,
           "typeId": "c89951a24c6ca28c13fd1cfdc646b2b656d69e61a92b91023be7eb58eb914b6b"
         }
       ],
@@ -145,10 +146,12 @@
       "components": [
         {
           "name": "None",
+          "offset": null,
           "typeId": 0
         },
         {
           "name": "Some",
+          "offset": null,
           "typeId": 4
         }
       ],
@@ -162,10 +165,12 @@
       "components": [
         {
           "name": "VariantOne",
+          "offset": null,
           "typeId": 0
         },
         {
           "name": "VariantTwo",
+          "offset": null,
           "typeId": 0
         }
       ],
@@ -180,14 +185,17 @@
       "components": [
         {
           "name": "field_1",
+          "offset": null,
           "typeId": "b760f44fa5965c2474a3b471467a22c43185152129295af588b022ae50b50903"
         },
         {
           "name": "field_2",
+          "offset": null,
           "typeId": 4
         },
         {
           "name": "field_3",
+          "offset": null,
           "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
         }
       ],

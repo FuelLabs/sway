@@ -157,10 +157,12 @@
       "components": [
         {
           "name": "__tuple_element",
+          "offset": null,
           "typeId": "b760f44fa5965c2474a3b471467a22c43185152129295af588b022ae50b50903"
         },
         {
           "name": "__tuple_element",
+          "offset": null,
           "typeId": 5
         }
       ],
@@ -171,6 +173,7 @@
       "components": [
         {
           "name": "__array_element",
+          "offset": null,
           "typeId": "b760f44fa5965c2474a3b471467a22c43185152129295af588b022ae50b50903"
         }
       ],
@@ -181,6 +184,7 @@
       "components": [
         {
           "name": "__array_element",
+          "offset": null,
           "typeId": 5
         }
       ],
@@ -191,14 +195,17 @@
       "components": [
         {
           "name": "A",
+          "offset": null,
           "typeId": "b760f44fa5965c2474a3b471467a22c43185152129295af588b022ae50b50903"
         },
         {
           "name": "B",
+          "offset": null,
           "typeId": 5
         },
         {
           "name": "C",
+          "offset": null,
           "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
         }
       ],
@@ -209,10 +216,12 @@
       "components": [
         {
           "name": "a",
+          "offset": null,
           "typeId": "b760f44fa5965c2474a3b471467a22c43185152129295af588b022ae50b50903"
         },
         {
           "name": "b",
+          "offset": null,
           "typeId": 5
         }
       ],

@@ -4,6 +4,7 @@
       "inputs": [
         {
           "name": "x",
+          "offset": null,
           "type": 9,
           "typeArguments": null
         }
@@ -19,6 +20,7 @@
       "inputs": [
         {
           "name": "y",
+          "offset": null,
           "type": 1,
           "typeArguments": null
         }
@@ -34,6 +36,7 @@
       "inputs": [
         {
           "name": "s",
+          "offset": null,
           "type": 5,
           "typeArguments": null
         }
@@ -49,6 +52,7 @@
       "inputs": [
         {
           "name": "boolean",
+          "offset": null,
           "type": 2,
           "typeArguments": null
         }
@@ -64,6 +68,7 @@
       "inputs": [
         {
           "name": "int8",
+          "offset": null,
           "type": 10,
           "typeArguments": null
         }
@@ -79,6 +84,7 @@
       "inputs": [
         {
           "name": "int16",
+          "offset": null,
           "type": 7,
           "typeArguments": null
         }
@@ -94,6 +100,7 @@
       "inputs": [
         {
           "name": "int32",
+          "offset": null,
           "type": 8,
           "typeArguments": null
         }
@@ -109,6 +116,7 @@
       "inputs": [
         {
           "name": "x",
+          "offset": null,
           "type": 9,
           "typeArguments": null
         }
@@ -124,6 +132,7 @@
       "inputs": [
         {
           "name": "y",
+          "offset": null,
           "type": 9,
           "typeArguments": null
         }
@@ -139,6 +148,7 @@
       "inputs": [
         {
           "name": "z",
+          "offset": null,
           "type": 1,
           "typeArguments": null
         }
@@ -154,6 +164,7 @@
       "inputs": [
         {
           "name": "t",
+          "offset": null,
           "type": 6,
           "typeArguments": null
         }
@@ -169,6 +180,7 @@
       "inputs": [
         {
           "name": "x",
+          "offset": null,
           "type": 9,
           "typeArguments": null
         }
@@ -184,6 +196,7 @@
       "inputs": [
         {
           "name": "y",
+          "offset": null,
           "type": 9,
           "typeArguments": null
         }
@@ -199,6 +212,7 @@
       "inputs": [
         {
           "name": "z",
+          "offset": null,
           "type": 1,
           "typeArguments": null
         }
@@ -214,6 +228,7 @@
       "inputs": [
         {
           "name": "boolean",
+          "offset": null,
           "type": 2,
           "typeArguments": null
         }
@@ -229,6 +244,7 @@
       "inputs": [
         {
           "name": "int8",
+          "offset": null,
           "type": 10,
           "typeArguments": null
         }
@@ -244,6 +260,7 @@
       "inputs": [
         {
           "name": "int16",
+          "offset": null,
           "type": 7,
           "typeArguments": null
         }
@@ -259,6 +276,7 @@
       "inputs": [
         {
           "name": "int32",
+          "offset": null,
           "type": 8,
           "typeArguments": null
         }
@@ -274,6 +292,7 @@
       "inputs": [
         {
           "name": "e",
+          "offset": null,
           "type": 3,
           "typeArguments": null
         }
@@ -289,6 +308,7 @@
       "inputs": [
         {
           "name": "string",
+          "offset": null,
           "type": 4,
           "typeArguments": null
         }
@@ -493,6 +513,7 @@
       "inputs": [
         {
           "name": "k",
+          "offset": null,
           "type": 9,
           "typeArguments": null
         }
@@ -508,6 +529,7 @@
       "inputs": [
         {
           "name": "k",
+          "offset": null,
           "type": 9,
           "typeArguments": null
         }
@@ -523,6 +545,7 @@
       "inputs": [
         {
           "name": "k",
+          "offset": null,
           "type": 9,
           "typeArguments": null
         }
@@ -538,6 +561,7 @@
       "inputs": [
         {
           "name": "k",
+          "offset": null,
           "type": 9,
           "typeArguments": null
         }
@@ -553,6 +577,7 @@
       "inputs": [
         {
           "name": "k",
+          "offset": null,
           "type": 9,
           "typeArguments": null
         }
@@ -568,6 +593,7 @@
       "inputs": [
         {
           "name": "k",
+          "offset": null,
           "type": 9,
           "typeArguments": null
         }
@@ -603,11 +629,13 @@
       "components": [
         {
           "name": "A",
+          "offset": null,
           "type": 9,
           "typeArguments": null
         },
         {
           "name": "B",
+          "offset": null,
           "type": 6,
           "typeArguments": null
         }
@@ -626,21 +654,25 @@
       "components": [
         {
           "name": "x",
+          "offset": null,
           "type": 9,
           "typeArguments": null
         },
         {
           "name": "y",
+          "offset": null,
           "type": 9,
           "typeArguments": null
         },
         {
           "name": "z",
+          "offset": null,
           "type": 1,
           "typeArguments": null
         },
         {
           "name": "t",
+          "offset": null,
           "type": 6,
           "typeArguments": null
         }
@@ -653,36 +685,43 @@
       "components": [
         {
           "name": "x",
+          "offset": null,
           "type": 9,
           "typeArguments": null
         },
         {
           "name": "y",
+          "offset": null,
           "type": 9,
           "typeArguments": null
         },
         {
           "name": "z",
+          "offset": null,
           "type": 1,
           "typeArguments": null
         },
         {
           "name": "boolean",
+          "offset": null,
           "type": 2,
           "typeArguments": null
         },
         {
           "name": "int8",
+          "offset": null,
           "type": 10,
           "typeArguments": null
         },
         {
           "name": "int16",
+          "offset": null,
           "type": 7,
           "typeArguments": null
         },
         {
           "name": "int32",
+          "offset": null,
           "type": 8,
           "typeArguments": null
         }

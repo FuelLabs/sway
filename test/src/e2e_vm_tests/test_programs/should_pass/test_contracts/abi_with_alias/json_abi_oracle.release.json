@@ -43,10 +43,12 @@
       "components": [
         {
           "name": "__tuple_element",
+          "offset": null,
           "typeId": 1
         },
         {
           "name": "__tuple_element",
+          "offset": null,
           "typeId": 1
         }
       ],

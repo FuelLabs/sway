@@ -196,6 +196,7 @@
       "components": [
         {
           "name": "__array_element",
+          "offset": null,
           "type": 1,
           "typeArguments": null
         }
@@ -220,11 +221,13 @@
       "components": [
         {
           "name": "Address",
+          "offset": null,
           "type": 5,
           "typeArguments": null
         },
         {
           "name": "ContractId",
+          "offset": null,
           "type": 9,
           "typeArguments": null
         }
@@ -243,6 +246,7 @@
       "components": [
         {
           "name": "bits",
+          "offset": null,
           "type": 1,
           "typeArguments": null
         }
@@ -255,6 +259,7 @@
       "components": [
         {
           "name": "bits",
+          "offset": null,
           "type": 0,
           "typeArguments": null
         }
@@ -267,11 +272,13 @@
       "components": [
         {
           "name": "buf",
+          "offset": null,
           "type": 8,
           "typeArguments": null
         },
         {
           "name": "len",
+          "offset": null,
           "type": 12,
           "typeArguments": null
         }
@@ -284,11 +291,13 @@
       "components": [
         {
           "name": "ptr",
+          "offset": null,
           "type": 4,
           "typeArguments": null
         },
         {
           "name": "cap",
+          "offset": null,
           "type": 12,
           "typeArguments": null
         }
@@ -301,6 +310,7 @@
       "components": [
         {
           "name": "bits",
+          "offset": null,
           "type": 1,
           "typeArguments": null
         }

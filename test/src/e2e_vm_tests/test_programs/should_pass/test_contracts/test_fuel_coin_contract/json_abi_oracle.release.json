@@ -6,6 +6,7 @@
       "inputs": [
         {
           "name": "burn_amount",
+          "offset": null,
           "type": 4,
           "typeArguments": null
         }
@@ -22,16 +23,19 @@
       "inputs": [
         {
           "name": "coins",
+          "offset": null,
           "type": 4,
           "typeArguments": null
         },
         {
           "name": "asset_id",
+          "offset": null,
           "type": 2,
           "typeArguments": null
         },
         {
           "name": "c_id",
+          "offset": null,
           "type": 3,
           "typeArguments": null
         }
@@ -48,6 +52,7 @@
       "inputs": [
         {
           "name": "mint_amount",
+          "offset": null,
           "type": 4,
           "typeArguments": null
         }
@@ -79,6 +84,7 @@
       "components": [
         {
           "name": "bits",
+          "offset": null,
           "type": 1,
           "typeArguments": null
         }
@@ -91,6 +97,7 @@
       "components": [
         {
           "name": "bits",
+          "offset": null,
           "type": 1,
           "typeArguments": null
         }

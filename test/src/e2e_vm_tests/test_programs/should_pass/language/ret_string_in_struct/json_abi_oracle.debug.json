@@ -25,6 +25,7 @@
       "components": [
         {
           "name": "name",
+          "offset": null,
           "type": 0,
           "typeArguments": null
         }

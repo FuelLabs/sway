@@ -698,10 +698,12 @@
       "components": [
         {
           "name": "A",
+          "offset": null,
           "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
         },
         {
           "name": "B",
+          "offset": null,
           "typeId": 2
         }
       ],
@@ -712,18 +714,22 @@
       "components": [
         {
           "name": "x",
+          "offset": null,
           "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
         },
         {
           "name": "y",
+          "offset": null,
           "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
         },
         {
           "name": "z",
+          "offset": null,
           "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
         },
         {
           "name": "t",
+          "offset": null,
           "typeId": 2
         }
       ],
@@ -734,30 +740,37 @@
       "components": [
         {
           "name": "x",
+          "offset": null,
           "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
         },
         {
           "name": "y",
+          "offset": null,
           "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
         },
         {
           "name": "z",
+          "offset": null,
           "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
         },
         {
           "name": "boolean",
+          "offset": null,
           "typeId": "b760f44fa5965c2474a3b471467a22c43185152129295af588b022ae50b50903"
         },
         {
           "name": "int8",
+          "offset": null,
           "typeId": "c89951a24c6ca28c13fd1cfdc646b2b656d69e61a92b91023be7eb58eb914b6b"
         },
         {
           "name": "int16",
+          "offset": null,
           "typeId": "29881aad8730c5ab11d275376323d8e4ff4179aae8ccb6c13fe4902137e162ef"
         },
         {
           "name": "int32",
+          "offset": null,
           "typeId": "d7649d428b9ff33d188ecbf38a7e4d8fd167fa01b2e10fe9a8f9308e52f1d7cc"
         }
       ],

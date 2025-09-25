@@ -6,6 +6,7 @@
       "inputs": [
         {
           "name": "_arg1",
+          "offset": null,
           "type": 22,
           "typeArguments": [
             {
@@ -22,16 +23,19 @@
         },
         {
           "name": "_arg2",
+          "offset": null,
           "type": 6,
           "typeArguments": null
         },
         {
           "name": "_arg3",
+          "offset": null,
           "type": 1,
           "typeArguments": null
         },
         {
           "name": "_arg4",
+          "offset": null,
           "type": 21,
           "typeArguments": null
         }
@@ -48,6 +52,7 @@
       "inputs": [
         {
           "name": "_arg",
+          "offset": null,
           "type": 20,
           "typeArguments": [
             {
@@ -75,6 +80,7 @@
       "inputs": [
         {
           "name": "_arg",
+          "offset": null,
           "type": 23,
           "typeArguments": [
             {
@@ -122,11 +128,13 @@
       "components": [
         {
           "name": "__tuple_element",
+          "offset": null,
           "type": 18,
           "typeArguments": null
         },
         {
           "name": "__tuple_element",
+          "offset": null,
           "type": 9,
           "typeArguments": null
         }
@@ -139,11 +147,13 @@
       "components": [
         {
           "name": "__tuple_element",
+          "offset": null,
           "type": 17,
           "typeArguments": null
         },
         {
           "name": "__tuple_element",
+          "offset": null,
           "type": 15,
           "typeArguments": null
         }
@@ -156,16 +166,19 @@
       "components": [
         {
           "name": "__tuple_element",
+          "offset": null,
           "type": 15,
           "typeArguments": null
         },
         {
           "name": "__tuple_element",
+          "offset": null,
           "type": 16,
           "typeArguments": null
         },
         {
           "name": "__tuple_element",
+          "offset": null,
           "type": 17,
           "typeArguments": null
         }
@@ -178,6 +191,7 @@
       "components": [
         {
           "name": "__array_element",
+          "offset": null,
           "type": 8,
           "typeArguments": null
         }
@@ -190,6 +204,7 @@
       "components": [
         {
           "name": "__array_element",
+          "offset": null,
           "type": 13,
           "typeArguments": null
         }
@@ -202,6 +217,7 @@
       "components": [
         {
           "name": "__array_element",
+          "offset": null,
           "type": 22,
           "typeArguments": [
             {
@@ -225,6 +241,7 @@
       "components": [
         {
           "name": "__array_element",
+          "offset": null,
           "type": 22,
           "typeArguments": [
             {
@@ -260,11 +277,13 @@
       "components": [
         {
           "name": "Foo",
+          "offset": null,
           "type": 27,
           "typeArguments": null
         },
         {
           "name": "Bar",
+          "offset": null,
           "type": 9,
           "typeArguments": null
         }
@@ -333,11 +352,13 @@
       "components": [
         {
           "name": "tim",
+          "offset": null,
           "type": 5,
           "typeArguments": null
         },
         {
           "name": "tam",
+          "offset": null,
           "type": 7,
           "typeArguments": null
         }
@@ -353,6 +374,7 @@
       "components": [
         {
           "name": "bom",
+          "offset": null,
           "type": 27,
           "typeArguments": null
         }
@@ -365,11 +387,13 @@
       "components": [
         {
           "name": "bim",
+          "offset": null,
           "type": 11,
           "typeArguments": null
         },
         {
           "name": "bam",
+          "offset": null,
           "type": 10,
           "typeArguments": [
             {
@@ -391,11 +415,13 @@
       "components": [
         {
           "name": "tuple1",
+          "offset": null,
           "type": 3,
           "typeArguments": null
         },
         {
           "name": "tuple2",
+          "offset": null,
           "type": 2,
           "typeArguments": null
         }
@@ -412,6 +438,7 @@
       "components": [
         {
           "name": "b",
+          "offset": null,
           "type": 17,
           "typeArguments": null
         }

@@ -26,11 +26,13 @@
       "inputs": [
         {
           "name": "asset_id",
+          "offset": null,
           "type": 1,
           "typeArguments": null
         },
         {
           "name": "cid",
+          "offset": null,
           "type": 2,
           "typeArguments": null
         }
@@ -77,6 +79,7 @@
       "inputs": [
         {
           "name": "asset_id",
+          "offset": null,
           "type": 1,
           "typeArguments": null
         }
@@ -102,6 +105,7 @@
       "components": [
         {
           "name": "bits",
+          "offset": null,
           "type": 0,
           "typeArguments": null
         }
@@ -114,6 +118,7 @@
       "components": [
         {
           "name": "bits",
+          "offset": null,
           "type": 0,
           "typeArguments": null
         }

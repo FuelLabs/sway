@@ -5,6 +5,7 @@
       "inputs": [
         {
           "name": "param",
+          "offset": null,
           "type": 1,
           "typeArguments": null
         }
@@ -21,6 +22,7 @@
       "inputs": [
         {
           "name": "param",
+          "offset": null,
           "type": 2,
           "typeArguments": null
         }
@@ -44,11 +46,13 @@
       "components": [
         {
           "name": "__tuple_element",
+          "offset": null,
           "type": 5,
           "typeArguments": null
         },
         {
           "name": "__tuple_element",
+          "offset": null,
           "type": 6,
           "typeArguments": null
         }
@@ -61,11 +65,13 @@
       "components": [
         {
           "name": "__tuple_element",
+          "offset": null,
           "type": 4,
           "typeArguments": null
         },
         {
           "name": "__tuple_element",
+          "offset": null,
           "type": 6,
           "typeArguments": null
         }
@@ -84,6 +90,7 @@
       "components": [
         {
           "name": "Earth",
+          "offset": null,
           "type": 0,
           "typeArguments": null
         }
@@ -96,6 +103,7 @@
       "components": [
         {
           "name": "age",
+          "offset": null,
           "type": 6,
           "typeArguments": null
         }

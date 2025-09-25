@@ -142,6 +142,7 @@
       "components": [
         {
           "name": "__array_element",
+          "offset": null,
           "type": 12,
           "typeArguments": null
         }
@@ -166,11 +167,13 @@
       "components": [
         {
           "name": "None",
+          "offset": null,
           "type": 0,
           "typeArguments": null
         },
         {
           "name": "Some",
+          "offset": null,
           "type": 6,
           "typeArguments": null
         }
@@ -185,11 +188,13 @@
       "components": [
         {
           "name": "VariantOne",
+          "offset": null,
           "type": 0,
           "typeArguments": null
         },
         {
           "name": "VariantTwo",
+          "offset": null,
           "type": 0,
           "typeArguments": null
         }
@@ -214,16 +219,19 @@
       "components": [
         {
           "name": "field_1",
+          "offset": null,
           "type": 3,
           "typeArguments": null
         },
         {
           "name": "field_2",
+          "offset": null,
           "type": 6,
           "typeArguments": null
         },
         {
           "name": "field_3",
+          "offset": null,
           "type": 11,
           "typeArguments": null
         }

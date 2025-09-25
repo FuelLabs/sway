@@ -6,11 +6,13 @@
       "inputs": [
         {
           "name": "baba",
+          "offset": null,
           "type": 0,
           "typeArguments": null
         },
         {
           "name": "keke",
+          "offset": null,
           "type": 0,
           "typeArguments": null
         }
@@ -30,6 +32,7 @@
       "components": [
         {
           "name": "val",
+          "offset": null,
           "type": 1,
           "typeArguments": null
         }

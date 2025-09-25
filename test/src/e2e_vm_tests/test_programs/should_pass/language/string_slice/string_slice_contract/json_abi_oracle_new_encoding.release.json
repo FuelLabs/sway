@@ -7,6 +7,7 @@
       "inputs": [
         {
           "name": "a",
+          "offset": null,
           "type": 0,
           "typeArguments": null
         }

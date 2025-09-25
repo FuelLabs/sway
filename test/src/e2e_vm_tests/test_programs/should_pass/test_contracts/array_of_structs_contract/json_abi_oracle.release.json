@@ -6,6 +6,7 @@
       "inputs": [
         {
           "name": "param",
+          "offset": null,
           "type": 0,
           "typeArguments": null
         }
@@ -22,6 +23,7 @@
       "inputs": [
         {
           "name": "param",
+          "offset": null,
           "type": 1,
           "typeArguments": null
         }
@@ -38,6 +40,7 @@
       "inputs": [
         {
           "name": "param",
+          "offset": null,
           "type": 0,
           "typeArguments": null
         }
@@ -57,6 +60,7 @@
       "components": [
         {
           "name": "__array_element",
+          "offset": null,
           "type": 4,
           "typeArguments": null
         }
@@ -69,6 +73,7 @@
       "components": [
         {
           "name": "__array_element",
+          "offset": null,
           "type": 2,
           "typeArguments": null
         }
@@ -87,6 +92,7 @@
       "components": [
         {
           "name": "number",
+          "offset": null,
           "type": 5,
           "typeArguments": null
         }
@@ -99,6 +105,7 @@
       "components": [
         {
           "name": "id",
+          "offset": null,
           "type": 3,
           "typeArguments": null
         }

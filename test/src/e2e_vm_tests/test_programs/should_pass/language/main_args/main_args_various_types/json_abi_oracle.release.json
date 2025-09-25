@@ -7,6 +7,7 @@
       "inputs": [
         {
           "name": "ops",
+          "offset": null,
           "type": 1,
           "typeArguments": null
         }
@@ -35,11 +36,13 @@
       "components": [
         {
           "name": "__tuple_element",
+          "offset": null,
           "type": 4,
           "typeArguments": null
         },
         {
           "name": "__tuple_element",
+          "offset": null,
           "type": 2,
           "typeArguments": null
         }
@@ -52,6 +55,7 @@
       "components": [
         {
           "name": "__array_element",
+          "offset": null,
           "type": 0,
           "typeArguments": null
         }
@@ -64,11 +68,13 @@
       "components": [
         {
           "name": "Positive",
+          "offset": null,
           "type": 5,
           "typeArguments": null
         },
         {
           "name": "Negative",
+          "offset": null,
           "type": 5,
           "typeArguments": null
         }
@@ -87,6 +93,7 @@
       "components": [
         {
           "name": "val",
+          "offset": null,
           "type": 3,
           "typeArguments": null
         }
