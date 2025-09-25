@@ -6,65 +6,31 @@ exit status: 1
 output:
     Building test/src/e2e_vm_tests/test_programs/should_fail/trait_constraint_generic_hint
    Compiling script trait_constraint_generic_hint (test/src/e2e_vm_tests/test_programs/should_fail/trait_constraint_generic_hint)
-warning
-  --> test/src/e2e_vm_tests/test_programs/should_fail/trait_constraint_generic_hint/src/main.sw:19:5
-   |
-17 |       }
-18 |   
-19 |       fn method(self) -> bool {
-   |  _____-
-20 | |         true
-21 | |     }
-   | |_____- This method is never called.
-22 |   }
-23 |   
-   |
-____
-
-warning
-  --> test/src/e2e_vm_tests/test_programs/should_fail/trait_constraint_generic_hint/src/main.sw:30:5
-   |
-28 |       }
-29 |   
-30 |       fn method(self) -> bool {
-   |  _____-
-31 | |         false
-32 | |     }
-   | |_____- This method is never called.
-33 |   }
-34 |   
-   |
-____
-
 error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/trait_constraint_generic_hint/src/main.sw:40:11
+  --> test/src/e2e_vm_tests/test_programs/should_fail/trait_constraint_generic_hint/src/main.sw:42:11
    |
-38 |     T: A + B,
-39 | {
-40 |     if T::associated_method() {
+40 |     T: A + B,
+41 | {
+42 |     if T::associated_method() {
    |           ^^^^^^^^^^^^^^^^^ Multiple applicable items in scope. 
   Disambiguate the associated function for candidate #0
     <T as A>::associated_method
   Disambiguate the associated function for candidate #1
     <T as B>::associated_method
-41 |     }
-42 | 
+43 |     }
+44 | 
    |
 ____
 
 error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/trait_constraint_generic_hint/src/main.sw:43:13
+  --> test/src/e2e_vm_tests/test_programs/should_fail/trait_constraint_generic_hint/src/main.sw:45:13
    |
-41 |     }
-42 | 
-43 |     if item.method() {
-   |             ^^^^^^ Multiple applicable items in scope. 
-  Disambiguate the associated function for candidate #0
-    <bool as A>::method
-  Disambiguate the associated function for candidate #1
-    <bool as B>::method
+43 |     }
 44 | 
-45 |     }
+45 |     if item.method() {
+   |             ^^^^^^ Multiple applicable items in scope. 
+46 | 
+47 |     }
    |
 ____
 
