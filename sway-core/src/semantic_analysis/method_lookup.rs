@@ -254,7 +254,6 @@ impl TypeCheckContext<'_> {
         type_id: TypeId,
         method_prefix: &ModulePath,
         method_ident: &Ident,
-        _annotation_type: TypeId,
         method_name: &Option<&MethodName>,
     ) -> Result<Vec<ty::TyTraitItem>, ErrorEmitted> {
         // Start with items for the concrete type.
@@ -997,7 +996,6 @@ impl TypeCheckContext<'_> {
             type_id,
             method_prefix,
             method_ident,
-            annotation_type,
             &method_name,
         )?;
 
