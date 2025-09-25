@@ -16,6 +16,7 @@ impl A for bool {
         true
     }
 
+    #[allow(dead_code)]
     fn method(self) -> bool {
         true
     }
@@ -27,6 +28,7 @@ impl B for bool {
         false
     }
 
+    #[allow(dead_code)]
     fn method(self) -> bool {
         false
     }

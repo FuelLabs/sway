@@ -903,7 +903,7 @@ impl ReplaceDecls for TyExpressionVariant {
                                                 span,
                                                 item_name,
                                                 item_kind,
-                                                as_traits,
+                                                as_traits: vec![],
                                             })
                                         }
                                     }
