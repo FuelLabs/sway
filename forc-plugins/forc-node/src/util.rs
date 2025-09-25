@@ -27,15 +27,10 @@ pub enum DbConfig {
     Ignition,
 }
 
-impl From<DbConfig> for PathBuf {
-    fn from(value: DbConfig) -> Self {
-        let user_db_dir = user_forc_directory().join(DB_FOLDER);
-        match value {
-            DbConfig::Local => user_db_dir.join(LOCAL_CONFIG_FOLDER_NAME),
-            DbConfig::Testnet => user_db_dir.join(TESTNET_CONFIG_FOLDER_NAME),
-            DbConfig::Ignition => user_db_dir.join(IGNITION_CONFIG_FOLDER_NAME),
-        }
-    }
+#[derive(Serialize, Deserialize, Debug)]
+pub struct KeyPair {
+    pub peer_id: String,
+    pub secret: String,
 }
 
 /// Given a `Command`, wrap it to enable generating the actual string that would
@@ -53,6 +48,17 @@ impl From<DbConfig> for PathBuf {
 /// ```
 pub struct HumanReadableCommand<'a>(&'a Command);
 
+impl From<DbConfig> for PathBuf {
+    fn from(value: DbConfig) -> Self {
+        let user_db_dir = user_forc_directory().join(DB_FOLDER);
+        match value {
+            DbConfig::Local => user_db_dir.join(LOCAL_CONFIG_FOLDER_NAME),
+            DbConfig::Testnet => user_db_dir.join(TESTNET_CONFIG_FOLDER_NAME),
+            DbConfig::Ignition => user_db_dir.join(IGNITION_CONFIG_FOLDER_NAME),
+        }
+    }
+}
+
 impl Display for HumanReadableCommand<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let dbg_out = format!("{:?}", self.0);
@@ -68,43 +74,6 @@ impl<'a> From<&'a Command> for HumanReadableCommand<'a> {
     fn from(value: &'a Command) -> Self {
         Self(value)
     }
-}
-
-/// Display a fuel_core::service::Config in a human-readable format
-pub struct HumanReadableConfig<'a>(pub &'a fuel_core::service::Config);
-
-impl Display for HumanReadableConfig<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Fuel Core Configuration:")?;
-        writeln!(f, "  GraphQL Address: {}", self.0.graphql_config.addr)?;
-        writeln!(f, "  Continue on Error: {}", self.0.continue_on_error)?;
-        writeln!(f, "  Debug Mode: {}", self.0.debug)?;
-        writeln!(f, "  UTXO Validation: {}", self.0.utxo_validation)?;
-        writeln!(f, "  Snapshot Reader: {:?}", self.0.snapshot_reader)?;
-        writeln!(
-            f,
-            "  Database Type: {:?}",
-            self.0.combined_db_config.database_type
-        )?;
-        writeln!(
-            f,
-            "  Database Path: {}",
-            self.0.combined_db_config.database_path.display()
-        )?;
-        Ok(())
-    }
-}
-
-impl<'a> From<&'a fuel_core::service::Config> for HumanReadableConfig<'a> {
-    fn from(value: &'a fuel_core::service::Config) -> Self {
-        Self(value)
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct KeyPair {
-    pub peer_id: String,
-    pub secret: String,
 }
 
 impl KeyPair {
@@ -191,7 +160,7 @@ pub(crate) fn ask_user_keypair() -> Result<KeyPair> {
 }
 
 /// Checks the local fuel-core's version that `forc-node` will be running.
-pub fn get_fuel_core_version() -> anyhow::Result<Version> {
+pub(crate) fn get_fuel_core_version() -> anyhow::Result<Version> {
     let version_cmd = Command::new("fuel-core")
         .arg("--version")
         .stdout(Stdio::piped())
@@ -251,31 +220,45 @@ pub fn check_open_fds_limit(_max_files: u64) -> Result<(), Box<dyn std::error::E
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fuel_core::service::Config;
+    use std::process::Command;
 
     #[test]
-    fn test_human_readable_config() {
-        let config = Config::local_node();
-        let human_readable = HumanReadableConfig(&config);
-        let formatted = format!("{human_readable}");
-        let expected = format!(
-            r#"Fuel Core Configuration:
-  GraphQL Address: {}
-  Continue on Error: {}
-  Debug Mode: {}
-  UTXO Validation: {}
-  Snapshot Reader: {:?}
-  Database Type: {:?}
-  Database Path: {}
-"#,
-            config.graphql_config.addr,
-            config.continue_on_error,
-            config.debug,
-            config.utxo_validation,
-            config.snapshot_reader,
-            config.combined_db_config.database_type,
-            config.combined_db_config.database_path.display()
+    fn test_basic_command() {
+        let mut command = Command::new("fuel-core");
+        command.arg("run");
+        let human_readable = HumanReadableCommand(&command);
+        assert_eq!(format!("{human_readable}"), "fuel-core run");
+    }
+
+    #[test]
+    fn test_command_with_multiple_args() {
+        let mut command = Command::new("fuel-core");
+        command.arg("run");
+        command.arg("--config");
+        command.arg("config.toml");
+        let human_readable = HumanReadableCommand(&command);
+        assert_eq!(
+            format!("{human_readable}"),
+            "fuel-core run --config config.toml"
         );
-        assert_eq!(formatted, expected);
+    }
+
+    #[test]
+    fn test_command_no_args() {
+        let command = Command::new("fuel-core");
+        let human_readable = HumanReadableCommand(&command);
+        assert_eq!(format!("{human_readable}"), "fuel-core");
+    }
+
+    #[test]
+    fn test_command_with_path() {
+        let mut command = Command::new("fuel-core");
+        command.arg("--config");
+        command.arg("/path/to/config.toml");
+        let human_readable = HumanReadableCommand(&command);
+        assert_eq!(
+            format!("{human_readable}"),
+            "fuel-core --config /path/to/config.toml"
+        );
     }
 }
