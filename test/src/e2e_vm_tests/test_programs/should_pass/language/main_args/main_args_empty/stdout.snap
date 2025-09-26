@@ -1,0 +1,28 @@
+---
+source: test/src/snapshot/mod.rs
+---
+Because this test does not have inputs, we should not see any decoding whatsoever. 
+
+
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_empty --release --ir final --asm final --bytecode | filter-fn main_args_empty __entry
+
+pub entry fn __entry() -> () {
+    local u64 item_
+
+    entry():
+    v0 = call main_0()
+    v1 = get_local __ptr u64, item_
+    store v0 to v1
+    v2 = get_local __ptr u64, item_
+    v3 = cast_ptr v2 to ptr
+    v4 = const u64 8
+    retd v3 v4
+}
+
+
+move $$locbase $sp            ; save locals base register for function __entry
+cfei i8                       ; allocate 8 bytes for locals and 0 slots for call arguments
+jal  $$reta $pc i4            ; [call]: call main_0
+sw   $$locbase $$retv i0      ; store word
+movi $r0 i8                   ; initialize constant into register
+retd  $$locbase $r0
