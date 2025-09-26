@@ -1711,10 +1711,7 @@ mod ir_builder {
         configs
             .into_iter()
             .map(|config| {
-                let opt_metadata = config
-                    .metadata
-                    .and_then(|mdi| md_map.get(&mdi))
-                    .copied();
+                let opt_metadata = config.metadata.and_then(|mdi| md_map.get(&mdi)).copied();
 
                 let ty = config.ty.to_ir_type(context);
 

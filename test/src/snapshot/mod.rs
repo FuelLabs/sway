@@ -81,7 +81,9 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                 for cmd in cmds {
                     let cmd = cmd.replace("{root}", &root).replace("{name}", name.to_str().unwrap());
 
-                    let _ = writeln!(&mut snapshot, "> {cmd}");
+                    if !cmd.starts_with("echo ") {
+                        let _ = writeln!(&mut snapshot, "> {cmd}");
+                    }
 
                     let mut last_output: Option<String> = None;
 
@@ -187,9 +189,11 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
 
                                                     snapshot.push('\n');
 
-                                                    for l in last_asm_lines.drain(..) {
-                                                        snapshot.push_str(l);
-                                                        snapshot.push('\n');
+                                                    if f != "__entry" {
+                                                        for l in last_asm_lines.drain(..) {
+                                                            snapshot.push_str(l);
+                                                            snapshot.push('\n');
+                                                        }
                                                     }
                                                 }
                                             }
@@ -205,7 +209,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                                             inside_asm = false;
                                         }
 
-                                        if line.contains("; return from call") {
+                                        if line.contains("; return from call") || line.starts_with("retd") {
                                             if capture_line {
                                                 captured.push_str(line);
                                                 captured.push('\n');
@@ -227,7 +231,21 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                                 last_output = Some(String::new());
                             }
                             continue;
-                        } else if let Some(args) = cmd.strip_prefix("echo ") {
+                        } else if let Some(txt) = cmd.strip_prefix("echo ") {
+                            let mut words = txt.trim().split(" ");
+                            let mut width = 0;
+                            while let Some(word) = words.next() {
+                                let _ = write!(&mut snapshot, "{} ", word);
+                                width += word.len() + 1;
+
+                                if width >= 80 {
+                                    width = 0;
+                                    let _ = writeln!(&mut snapshot, "");
+                                }
+                            }
+
+                            let _ = writeln!(&mut snapshot, "");
+
                             continue;
                         } else {
                             panic!("`{cmd}` is not a supported snapshot command.\nPossible tool commands: forc doc, forc\nPossible filtering commands: sub, regex, filter-fn");

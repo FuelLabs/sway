@@ -1,0 +1,4 @@
+cmds = [
+    "echo After the `__entry` function calls `main`, it is expected the IR to save the returned value to a local and return directly from this address. We should not see any encoding whatsoever.",
+    "forc build --path {root} --release --ir final --asm final --bytecode | filter-fn {name} __entry",
+]
