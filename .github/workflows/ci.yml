@@ -232,7 +232,6 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
-          targets: wasm32-unknown-unknown
       - uses: buildjet/cache@v3
         with:
           path: |
@@ -340,7 +339,6 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
-          targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
         with:
           cache-provider: "buildjet"
@@ -358,7 +356,6 @@ jobs:
         with:
           toolchain: ${{ env.RUST_VERSION }}
           components: clippy
-          targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
         with:
           cache-provider: "buildjet"
@@ -748,7 +745,6 @@ jobs:
         with:
           # `cargo-udeps` requires nightly to run
           toolchain: ${{ env.NIGHTLY_RUST_VERSION }}
-          targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
         with:
           cache-provider: "buildjet"
@@ -955,20 +951,6 @@ jobs:
         with:
           cache-on-failure: true
           key: "${{ matrix.job.target }}"
-
-      - name: Prepare RocksDB build env
-        if: runner.os == 'Linux'
-        env:
-          DEBIAN_FRONTEND: noninteractive
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential clang llvm-dev libclang-dev pkg-config
-
-          # ensure bindgen loads the freshly installed libclang runtime
-          echo "LIBCLANG_PATH=$(llvm-config --libdir)" >> "$GITHUB_ENV"
-
-          # ensure bindgen resolves standard headers on the runner
-          echo "BINDGEN_EXTRA_CLANG_ARGS=--sysroot=/usr" >> "$GITHUB_ENV"
 
       - name: Use Cross
         uses: baptiste0928/cargo-install@v1
