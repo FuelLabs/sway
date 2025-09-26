@@ -1,4 +1,4 @@
 cmds = [
-    "forc build  --path {root} --experimental const_generics --ir final --asm final --bytecode",
+    "forc build  --path {root} --experimental const_generics --ir final --asm final --bytecode | filter-fn {name} array_fn",
     "forc test --path {root} --experimental const_generics --verbose",
 ]
