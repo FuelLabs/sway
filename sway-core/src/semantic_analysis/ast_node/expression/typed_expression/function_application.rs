@@ -1,6 +1,6 @@
 use crate::{
     decl_engine::{
-        engine::DeclEngineGetParsedDeclId, DeclEngineInsert, DeclRefFunction, ReplaceDecls,
+        engine::DeclEngineGetParsedDeclId, DeclEngineGet as _, DeclEngineInsert, DeclRefFunction, ReplaceDecls
     },
     language::{
         ty::{self, TyFunctionDecl, TyFunctionSig},
@@ -96,6 +96,7 @@ pub(crate) fn instantiate_function_application(
                 function_decl.name.as_str(),
                 &call_path_binding.span(),
             )?;
+
             function_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
         }
 
@@ -133,7 +134,7 @@ pub(crate) fn instantiate_function_application(
         expression: ty::TyExpressionVariant::FunctionApplication {
             call_path: call_path_binding.inner.clone(),
             arguments: typed_arguments_with_names,
-            fn_ref: new_decl_ref,
+            fn_ref: new_decl_ref.clone(),
             selector: None,
             type_binding: Some(call_path_binding.strip_inner()),
             call_path_typeid: None,
@@ -141,7 +142,7 @@ pub(crate) fn instantiate_function_application(
             contract_caller: None,
         },
         return_type: function_return_type_id,
-        span,
+        span: span.clone(),
     };
 
     Ok(exp)

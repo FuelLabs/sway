@@ -43,12 +43,16 @@ where
         if body.is_empty() {
             format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration_expanded} AbiEncode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
                 #[allow(dead_code, deprecated)]
+                fn is_memcopy() -> bool {{ false }}
+                #[allow(dead_code, deprecated)]
                 fn abi_encode(self, buffer: Buffer) -> Buffer {{
                     buffer
                 }}
             }}")
         } else {
             format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration_expanded} AbiEncode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
+                #[allow(dead_code, deprecated)]
+                fn is_memcopy() -> bool {{ false }}
                 #[allow(dead_code, deprecated)]
                 fn abi_encode(self, buffer: Buffer) -> Buffer {{
                     {body}
@@ -616,21 +620,21 @@ where
         };
 
         let return_encode = if return_type == "()" {
-            "asm(s: (0, 0)) { s: raw_slice }".to_string()
+            format!("__contract_ret(0, 0);")
         } else {
-            format!("encode::<{return_type}>(_result)")
+            format!("encode_and_return::<{return_type}>(_result);")
         };
 
         let code = if args_types == "()" {
             format!(
-                "pub fn __entry() -> raw_slice {{
+                "pub fn __entry() {{
                 let _result: {return_type} = main();
                 {return_encode}
             }}"
             )
         } else {
             format!(
-                "pub fn __entry() -> raw_slice {{
+                "pub fn __entry() {{
                 let args: {args_types} = decode_script_data::<{args_types}>();
                 let _result: {return_type} = main({expanded_args});
                 {return_encode}

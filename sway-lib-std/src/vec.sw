@@ -818,6 +818,7 @@ impl<T> AbiEncode for Vec<T>
 where
     T: AbiEncode,
 {
+    fn is_memcopy() -> bool { false }
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let len = self.len;
         let mut buffer = len.abi_encode(buffer);

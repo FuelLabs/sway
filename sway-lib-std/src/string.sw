@@ -376,6 +376,7 @@ impl Hash for String {
 }
 
 impl AbiEncode for String {
+    fn is_memcopy() -> bool { false }
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         self.bytes.abi_encode(buffer)
     }

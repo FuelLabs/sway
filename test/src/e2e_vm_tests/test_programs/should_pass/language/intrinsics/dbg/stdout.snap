@@ -70,13 +70,26 @@ exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg
    Compiling library std (sway-lib-std)
+warning: Returned value is ignored
+    --> sway-lib-std/src/codec.sw:3181:5
+     |
+...
+3181 |     T::is_memcopy();
+     |     --------------- This returns a value which is not assigned to anything and is ignored.
+     |     --------------- help: The returned value has type "bool".
+     |
+     = help: If you want to intentionally ignore the returned value, use `let _ = ...`:
+     = help:   let _ = T::is_memcopy();
+____
+
+  Compiled library "std" with 1 warning.
    Compiling script dbg (test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg)
-    Finished debug [unoptimized + fuel] target(s) [37.856 KB] in ???
+    Finished debug [unoptimized + fuel] target(s) [38.096 KB] in ???
      Running 1 test, filtered 0 tests
 
 tested -- dbg
 
-      test call_main ... ok (???, 120167 gas)
+      test call_main ... ok (???, 120174 gas)
            debug output:
 [src/main.sw:13:13] () = ()
 [src/main.sw:15:13] true = true

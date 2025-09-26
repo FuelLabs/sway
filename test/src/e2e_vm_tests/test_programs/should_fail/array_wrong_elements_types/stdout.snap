@@ -1,11 +1,24 @@
 ---
-source: test/tests/tests.rs
+source: test/src/snapshot/mod.rs
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types
 exit status: 1
 output:
     Building test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types
    Compiling library std (sway-lib-std)
+warning: Returned value is ignored
+    --> sway-lib-std/src/codec.sw:3181:5
+     |
+...
+3181 |     T::is_memcopy();
+     |     --------------- This returns a value which is not assigned to anything and is ignored.
+     |     --------------- help: The returned value has type "bool".
+     |
+     = help: If you want to intentionally ignore the returned value, use `let _ = ...`:
+     = help:   let _ = T::is_memcopy();
+____
+
+  Compiled library "std" with 1 warning.
    Compiling script array_wrong_elements_types (test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types)
 error
   --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:41:27
