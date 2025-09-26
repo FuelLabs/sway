@@ -3214,22 +3214,32 @@ where
 // Decode
 
 pub trait AbiDecode {
+    fn is_memcopy() -> bool;
     fn abi_decode(ref mut buffer: BufferReader) -> Self;
 }
 
 impl AbiDecode for b256 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> b256 {
         buffer.read_32_bytes::<b256>()
     }
 }
 
 impl AbiDecode for u256 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> u256 {
         buffer.read_32_bytes::<u256>()
     }
 }
 
 impl AbiDecode for u64 {
+    fn is_memcopy() -> bool {
+        true
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> u64 {
         buffer.read_8_bytes::<u64>()
     }
@@ -3248,6 +3258,9 @@ pub fn as_u32(input: u8) -> u32 {
 }
 
 impl AbiDecode for u32 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> u32 {
         let a = as_u32(buffer.read::<u8>());
         let b = as_u32(buffer.read::<u8>());
@@ -3258,6 +3271,9 @@ impl AbiDecode for u32 {
 }
 
 impl AbiDecode for u16 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> u16 {
         let a = as_u16(buffer.read::<u8>());
         let b = as_u16(buffer.read::<u8>());
@@ -3266,12 +3282,18 @@ impl AbiDecode for u16 {
 }
 
 impl AbiDecode for u8 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> u8 {
         buffer.read::<u8>()
     }
 }
 
 impl AbiDecode for bool {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> bool {
         match buffer.read::<u8>() {
             0 => false,
@@ -3282,6 +3304,9 @@ impl AbiDecode for bool {
 }
 
 impl AbiDecode for raw_slice {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> raw_slice {
         let len = buffer.read_8_bytes::<u64>();
         buffer.read_bytes(len)
@@ -3289,6 +3314,9 @@ impl AbiDecode for raw_slice {
 }
 
 impl AbiDecode for str {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str {
         let len = buffer.read_8_bytes::<u64>();
         let data = buffer.read_bytes(len);
@@ -3300,6 +3328,9 @@ impl AbiDecode for str {
 
 #[cfg(experimental_const_generics = true)]
 impl<const N: u64> AbiDecode for str[N] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[N] {
         let data = buffer.read_bytes(N);
         asm(s: data.ptr()) {
@@ -3311,6 +3342,9 @@ impl<const N: u64> AbiDecode for str[N] {
 // BEGIN STRARRAY_DECODE
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[1] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[1] {
         let data = buffer.read_bytes(1);
         asm(s: data.ptr()) {
@@ -3320,6 +3354,9 @@ impl AbiDecode for str[1] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[2] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[2] {
         let data = buffer.read_bytes(2);
         asm(s: data.ptr()) {
@@ -3329,6 +3366,9 @@ impl AbiDecode for str[2] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[3] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[3] {
         let data = buffer.read_bytes(3);
         asm(s: data.ptr()) {
@@ -3338,6 +3378,9 @@ impl AbiDecode for str[3] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[4] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[4] {
         let data = buffer.read_bytes(4);
         asm(s: data.ptr()) {
@@ -3347,6 +3390,9 @@ impl AbiDecode for str[4] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[5] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[5] {
         let data = buffer.read_bytes(5);
         asm(s: data.ptr()) {
@@ -3356,6 +3402,9 @@ impl AbiDecode for str[5] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[6] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[6] {
         let data = buffer.read_bytes(6);
         asm(s: data.ptr()) {
@@ -3365,6 +3414,9 @@ impl AbiDecode for str[6] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[7] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[7] {
         let data = buffer.read_bytes(7);
         asm(s: data.ptr()) {
@@ -3374,6 +3426,9 @@ impl AbiDecode for str[7] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[8] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[8] {
         let data = buffer.read_bytes(8);
         asm(s: data.ptr()) {
@@ -3383,6 +3438,9 @@ impl AbiDecode for str[8] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[9] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[9] {
         let data = buffer.read_bytes(9);
         asm(s: data.ptr()) {
@@ -3392,6 +3450,9 @@ impl AbiDecode for str[9] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[10] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[10] {
         let data = buffer.read_bytes(10);
         asm(s: data.ptr()) {
@@ -3401,6 +3462,9 @@ impl AbiDecode for str[10] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[11] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[11] {
         let data = buffer.read_bytes(11);
         asm(s: data.ptr()) {
@@ -3410,6 +3474,9 @@ impl AbiDecode for str[11] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[12] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[12] {
         let data = buffer.read_bytes(12);
         asm(s: data.ptr()) {
@@ -3419,6 +3486,9 @@ impl AbiDecode for str[12] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[13] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[13] {
         let data = buffer.read_bytes(13);
         asm(s: data.ptr()) {
@@ -3428,6 +3498,9 @@ impl AbiDecode for str[13] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[14] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[14] {
         let data = buffer.read_bytes(14);
         asm(s: data.ptr()) {
@@ -3437,6 +3510,9 @@ impl AbiDecode for str[14] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[15] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[15] {
         let data = buffer.read_bytes(15);
         asm(s: data.ptr()) {
@@ -3446,6 +3522,9 @@ impl AbiDecode for str[15] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[16] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[16] {
         let data = buffer.read_bytes(16);
         asm(s: data.ptr()) {
@@ -3455,6 +3534,9 @@ impl AbiDecode for str[16] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[17] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[17] {
         let data = buffer.read_bytes(17);
         asm(s: data.ptr()) {
@@ -3464,6 +3546,9 @@ impl AbiDecode for str[17] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[18] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[18] {
         let data = buffer.read_bytes(18);
         asm(s: data.ptr()) {
@@ -3473,6 +3558,9 @@ impl AbiDecode for str[18] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[19] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[19] {
         let data = buffer.read_bytes(19);
         asm(s: data.ptr()) {
@@ -3482,6 +3570,9 @@ impl AbiDecode for str[19] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[20] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[20] {
         let data = buffer.read_bytes(20);
         asm(s: data.ptr()) {
@@ -3491,6 +3582,9 @@ impl AbiDecode for str[20] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[21] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[21] {
         let data = buffer.read_bytes(21);
         asm(s: data.ptr()) {
@@ -3500,6 +3594,9 @@ impl AbiDecode for str[21] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[22] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[22] {
         let data = buffer.read_bytes(22);
         asm(s: data.ptr()) {
@@ -3509,6 +3606,9 @@ impl AbiDecode for str[22] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[23] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[23] {
         let data = buffer.read_bytes(23);
         asm(s: data.ptr()) {
@@ -3518,6 +3618,9 @@ impl AbiDecode for str[23] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[24] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[24] {
         let data = buffer.read_bytes(24);
         asm(s: data.ptr()) {
@@ -3527,6 +3630,9 @@ impl AbiDecode for str[24] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[25] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[25] {
         let data = buffer.read_bytes(25);
         asm(s: data.ptr()) {
@@ -3536,6 +3642,9 @@ impl AbiDecode for str[25] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[26] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[26] {
         let data = buffer.read_bytes(26);
         asm(s: data.ptr()) {
@@ -3545,6 +3654,9 @@ impl AbiDecode for str[26] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[27] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[27] {
         let data = buffer.read_bytes(27);
         asm(s: data.ptr()) {
@@ -3554,6 +3666,9 @@ impl AbiDecode for str[27] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[28] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[28] {
         let data = buffer.read_bytes(28);
         asm(s: data.ptr()) {
@@ -3563,6 +3678,9 @@ impl AbiDecode for str[28] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[29] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[29] {
         let data = buffer.read_bytes(29);
         asm(s: data.ptr()) {
@@ -3572,6 +3690,9 @@ impl AbiDecode for str[29] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[30] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[30] {
         let data = buffer.read_bytes(30);
         asm(s: data.ptr()) {
@@ -3581,6 +3702,9 @@ impl AbiDecode for str[30] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[31] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[31] {
         let data = buffer.read_bytes(31);
         asm(s: data.ptr()) {
@@ -3590,6 +3714,9 @@ impl AbiDecode for str[31] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[32] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[32] {
         let data = buffer.read_bytes(32);
         asm(s: data.ptr()) {
@@ -3599,6 +3726,9 @@ impl AbiDecode for str[32] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[33] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[33] {
         let data = buffer.read_bytes(33);
         asm(s: data.ptr()) {
@@ -3608,6 +3738,9 @@ impl AbiDecode for str[33] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[34] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[34] {
         let data = buffer.read_bytes(34);
         asm(s: data.ptr()) {
@@ -3617,6 +3750,9 @@ impl AbiDecode for str[34] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[35] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[35] {
         let data = buffer.read_bytes(35);
         asm(s: data.ptr()) {
@@ -3626,6 +3762,9 @@ impl AbiDecode for str[35] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[36] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[36] {
         let data = buffer.read_bytes(36);
         asm(s: data.ptr()) {
@@ -3635,6 +3774,9 @@ impl AbiDecode for str[36] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[37] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[37] {
         let data = buffer.read_bytes(37);
         asm(s: data.ptr()) {
@@ -3644,6 +3786,9 @@ impl AbiDecode for str[37] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[38] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[38] {
         let data = buffer.read_bytes(38);
         asm(s: data.ptr()) {
@@ -3653,6 +3798,9 @@ impl AbiDecode for str[38] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[39] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[39] {
         let data = buffer.read_bytes(39);
         asm(s: data.ptr()) {
@@ -3662,6 +3810,9 @@ impl AbiDecode for str[39] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[40] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[40] {
         let data = buffer.read_bytes(40);
         asm(s: data.ptr()) {
@@ -3671,6 +3822,9 @@ impl AbiDecode for str[40] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[41] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[41] {
         let data = buffer.read_bytes(41);
         asm(s: data.ptr()) {
@@ -3680,6 +3834,9 @@ impl AbiDecode for str[41] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[42] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[42] {
         let data = buffer.read_bytes(42);
         asm(s: data.ptr()) {
@@ -3689,6 +3846,9 @@ impl AbiDecode for str[42] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[43] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[43] {
         let data = buffer.read_bytes(43);
         asm(s: data.ptr()) {
@@ -3698,6 +3858,9 @@ impl AbiDecode for str[43] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[44] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[44] {
         let data = buffer.read_bytes(44);
         asm(s: data.ptr()) {
@@ -3707,6 +3870,9 @@ impl AbiDecode for str[44] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[45] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[45] {
         let data = buffer.read_bytes(45);
         asm(s: data.ptr()) {
@@ -3716,6 +3882,9 @@ impl AbiDecode for str[45] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[46] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[46] {
         let data = buffer.read_bytes(46);
         asm(s: data.ptr()) {
@@ -3725,6 +3894,9 @@ impl AbiDecode for str[46] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[47] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[47] {
         let data = buffer.read_bytes(47);
         asm(s: data.ptr()) {
@@ -3734,6 +3906,9 @@ impl AbiDecode for str[47] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[48] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[48] {
         let data = buffer.read_bytes(48);
         asm(s: data.ptr()) {
@@ -3743,6 +3918,9 @@ impl AbiDecode for str[48] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[49] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[49] {
         let data = buffer.read_bytes(49);
         asm(s: data.ptr()) {
@@ -3752,6 +3930,9 @@ impl AbiDecode for str[49] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[50] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[50] {
         let data = buffer.read_bytes(50);
         asm(s: data.ptr()) {
@@ -3761,6 +3942,9 @@ impl AbiDecode for str[50] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[51] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[51] {
         let data = buffer.read_bytes(51);
         asm(s: data.ptr()) {
@@ -3770,6 +3954,9 @@ impl AbiDecode for str[51] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[52] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[52] {
         let data = buffer.read_bytes(52);
         asm(s: data.ptr()) {
@@ -3779,6 +3966,9 @@ impl AbiDecode for str[52] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[53] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[53] {
         let data = buffer.read_bytes(53);
         asm(s: data.ptr()) {
@@ -3788,6 +3978,9 @@ impl AbiDecode for str[53] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[54] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[54] {
         let data = buffer.read_bytes(54);
         asm(s: data.ptr()) {
@@ -3797,6 +3990,9 @@ impl AbiDecode for str[54] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[55] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[55] {
         let data = buffer.read_bytes(55);
         asm(s: data.ptr()) {
@@ -3806,6 +4002,9 @@ impl AbiDecode for str[55] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[56] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[56] {
         let data = buffer.read_bytes(56);
         asm(s: data.ptr()) {
@@ -3815,6 +4014,9 @@ impl AbiDecode for str[56] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[57] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[57] {
         let data = buffer.read_bytes(57);
         asm(s: data.ptr()) {
@@ -3824,6 +4026,9 @@ impl AbiDecode for str[57] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[58] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[58] {
         let data = buffer.read_bytes(58);
         asm(s: data.ptr()) {
@@ -3833,6 +4038,9 @@ impl AbiDecode for str[58] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[59] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[59] {
         let data = buffer.read_bytes(59);
         asm(s: data.ptr()) {
@@ -3842,6 +4050,9 @@ impl AbiDecode for str[59] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[60] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[60] {
         let data = buffer.read_bytes(60);
         asm(s: data.ptr()) {
@@ -3851,6 +4062,9 @@ impl AbiDecode for str[60] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[61] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[61] {
         let data = buffer.read_bytes(61);
         asm(s: data.ptr()) {
@@ -3860,6 +4074,9 @@ impl AbiDecode for str[61] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[62] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[62] {
         let data = buffer.read_bytes(62);
         asm(s: data.ptr()) {
@@ -3869,6 +4086,9 @@ impl AbiDecode for str[62] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[63] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[63] {
         let data = buffer.read_bytes(63);
         asm(s: data.ptr()) {
@@ -3878,6 +4098,9 @@ impl AbiDecode for str[63] {
 }
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[64] {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> str[64] {
         let data = buffer.read_bytes(64);
         asm(s: data.ptr()) {
@@ -3892,6 +4115,9 @@ impl<T, const N: u64> AbiDecode for [T; N]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; N] {
         const LENGTH: u64 = __size_of::<T>() * N;
         let mut array = [0u8; LENGTH];
@@ -3915,6 +4141,9 @@ impl<T> AbiDecode for [T; 1]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 1] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 1];
@@ -3931,6 +4160,9 @@ impl<T> AbiDecode for [T; 2]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 2] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 2];
@@ -3947,6 +4179,9 @@ impl<T> AbiDecode for [T; 3]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 3] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 3];
@@ -3963,6 +4198,9 @@ impl<T> AbiDecode for [T; 4]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 4] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 4];
@@ -3979,6 +4217,9 @@ impl<T> AbiDecode for [T; 5]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 5] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 5];
@@ -3995,6 +4236,9 @@ impl<T> AbiDecode for [T; 6]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 6] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 6];
@@ -4011,6 +4255,9 @@ impl<T> AbiDecode for [T; 7]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 7] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 7];
@@ -4027,6 +4274,9 @@ impl<T> AbiDecode for [T; 8]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 8] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 8];
@@ -4043,6 +4293,9 @@ impl<T> AbiDecode for [T; 9]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 9] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 9];
@@ -4059,6 +4312,9 @@ impl<T> AbiDecode for [T; 10]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 10] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 10];
@@ -4075,6 +4331,9 @@ impl<T> AbiDecode for [T; 11]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 11] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 11];
@@ -4091,6 +4350,9 @@ impl<T> AbiDecode for [T; 12]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 12] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 12];
@@ -4107,6 +4369,9 @@ impl<T> AbiDecode for [T; 13]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 13] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 13];
@@ -4123,6 +4388,9 @@ impl<T> AbiDecode for [T; 14]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 14] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 14];
@@ -4139,6 +4407,9 @@ impl<T> AbiDecode for [T; 15]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 15] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 15];
@@ -4155,6 +4426,9 @@ impl<T> AbiDecode for [T; 16]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 16] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 16];
@@ -4171,6 +4445,9 @@ impl<T> AbiDecode for [T; 17]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 17] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 17];
@@ -4187,6 +4464,9 @@ impl<T> AbiDecode for [T; 18]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 18] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 18];
@@ -4203,6 +4483,9 @@ impl<T> AbiDecode for [T; 19]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 19] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 19];
@@ -4219,6 +4502,9 @@ impl<T> AbiDecode for [T; 20]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 20] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 20];
@@ -4235,6 +4521,9 @@ impl<T> AbiDecode for [T; 21]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 21] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 21];
@@ -4251,6 +4540,9 @@ impl<T> AbiDecode for [T; 22]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 22] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 22];
@@ -4267,6 +4559,9 @@ impl<T> AbiDecode for [T; 23]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 23] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 23];
@@ -4283,6 +4578,9 @@ impl<T> AbiDecode for [T; 24]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 24] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 24];
@@ -4299,6 +4597,9 @@ impl<T> AbiDecode for [T; 25]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 25] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 25];
@@ -4315,6 +4616,9 @@ impl<T> AbiDecode for [T; 26]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 26] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 26];
@@ -4331,6 +4635,9 @@ impl<T> AbiDecode for [T; 27]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 27] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 27];
@@ -4347,6 +4654,9 @@ impl<T> AbiDecode for [T; 28]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 28] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 28];
@@ -4363,6 +4673,9 @@ impl<T> AbiDecode for [T; 29]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 29] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 29];
@@ -4379,6 +4692,9 @@ impl<T> AbiDecode for [T; 30]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 30] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 30];
@@ -4395,6 +4711,9 @@ impl<T> AbiDecode for [T; 31]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 31] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 31];
@@ -4411,6 +4730,9 @@ impl<T> AbiDecode for [T; 32]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 32] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 32];
@@ -4427,6 +4749,9 @@ impl<T> AbiDecode for [T; 33]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 33] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 33];
@@ -4443,6 +4768,9 @@ impl<T> AbiDecode for [T; 34]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 34] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 34];
@@ -4459,6 +4787,9 @@ impl<T> AbiDecode for [T; 35]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 35] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 35];
@@ -4475,6 +4806,9 @@ impl<T> AbiDecode for [T; 36]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 36] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 36];
@@ -4491,6 +4825,9 @@ impl<T> AbiDecode for [T; 37]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 37] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 37];
@@ -4507,6 +4844,9 @@ impl<T> AbiDecode for [T; 38]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 38] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 38];
@@ -4523,6 +4863,9 @@ impl<T> AbiDecode for [T; 39]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 39] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 39];
@@ -4539,6 +4882,9 @@ impl<T> AbiDecode for [T; 40]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 40] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 40];
@@ -4555,6 +4901,9 @@ impl<T> AbiDecode for [T; 41]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 41] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 41];
@@ -4571,6 +4920,9 @@ impl<T> AbiDecode for [T; 42]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 42] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 42];
@@ -4587,6 +4939,9 @@ impl<T> AbiDecode for [T; 43]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 43] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 43];
@@ -4603,6 +4958,9 @@ impl<T> AbiDecode for [T; 44]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 44] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 44];
@@ -4619,6 +4977,9 @@ impl<T> AbiDecode for [T; 45]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 45] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 45];
@@ -4635,6 +4996,9 @@ impl<T> AbiDecode for [T; 46]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 46] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 46];
@@ -4651,6 +5015,9 @@ impl<T> AbiDecode for [T; 47]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 47] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 47];
@@ -4667,6 +5034,9 @@ impl<T> AbiDecode for [T; 48]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 48] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 48];
@@ -4683,6 +5053,9 @@ impl<T> AbiDecode for [T; 49]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 49] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 49];
@@ -4699,6 +5072,9 @@ impl<T> AbiDecode for [T; 50]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 50] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 50];
@@ -4715,6 +5091,9 @@ impl<T> AbiDecode for [T; 51]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 51] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 51];
@@ -4731,6 +5110,9 @@ impl<T> AbiDecode for [T; 52]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 52] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 52];
@@ -4747,6 +5129,9 @@ impl<T> AbiDecode for [T; 53]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 53] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 53];
@@ -4763,6 +5148,9 @@ impl<T> AbiDecode for [T; 54]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 54] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 54];
@@ -4779,6 +5167,9 @@ impl<T> AbiDecode for [T; 55]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 55] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 55];
@@ -4795,6 +5186,9 @@ impl<T> AbiDecode for [T; 56]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 56] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 56];
@@ -4811,6 +5205,9 @@ impl<T> AbiDecode for [T; 57]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 57] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 57];
@@ -4827,6 +5224,9 @@ impl<T> AbiDecode for [T; 58]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 58] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 58];
@@ -4843,6 +5243,9 @@ impl<T> AbiDecode for [T; 59]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 59] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 59];
@@ -4859,6 +5262,9 @@ impl<T> AbiDecode for [T; 60]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 60] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 60];
@@ -4875,6 +5281,9 @@ impl<T> AbiDecode for [T; 61]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 61] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 61];
@@ -4891,6 +5300,9 @@ impl<T> AbiDecode for [T; 62]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 62] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 62];
@@ -4907,6 +5319,9 @@ impl<T> AbiDecode for [T; 63]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 63] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 63];
@@ -4923,6 +5338,9 @@ impl<T> AbiDecode for [T; 64]
 where
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 64] {
         let first: T = buffer.decode::<T>();
         let mut array = [first; 64];
@@ -4937,6 +5355,9 @@ where
 // END ARRAY_DECODE
 
 impl AbiDecode for () {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut _buffer: BufferReader) -> () {
         ()
     }
@@ -4947,6 +5368,9 @@ impl<A> AbiDecode for (A, )
 where
     A: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (A::abi_decode(buffer), )
     }
@@ -4956,6 +5380,9 @@ where
     A: AbiDecode,
     B: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (A::abi_decode(buffer), B::abi_decode(buffer))
     }
@@ -4966,6 +5393,9 @@ where
     B: AbiDecode,
     C: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (A::abi_decode(buffer), B::abi_decode(buffer), C::abi_decode(buffer))
     }
@@ -4977,6 +5407,9 @@ where
     C: AbiDecode,
     D: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
             A::abi_decode(buffer),
@@ -4994,6 +5427,9 @@ where
     D: AbiDecode,
     E: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
             A::abi_decode(buffer),
@@ -5013,6 +5449,9 @@ where
     E: AbiDecode,
     F: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
             A::abi_decode(buffer),
@@ -5034,6 +5473,9 @@ where
     F: AbiDecode,
     G: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
             A::abi_decode(buffer),
@@ -5057,6 +5499,9 @@ where
     G: AbiDecode,
     H: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
             A::abi_decode(buffer),
@@ -5082,6 +5527,9 @@ where
     H: AbiDecode,
     I: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
             A::abi_decode(buffer),
@@ -5109,6 +5557,9 @@ where
     I: AbiDecode,
     J: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
             A::abi_decode(buffer),
@@ -5138,6 +5589,9 @@ where
     J: AbiDecode,
     K: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
             A::abi_decode(buffer),
@@ -5169,6 +5623,9 @@ where
     K: AbiDecode,
     L: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
             A::abi_decode(buffer),
@@ -5202,6 +5659,9 @@ where
     L: AbiDecode,
     M: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
             A::abi_decode(buffer),
@@ -5237,6 +5697,9 @@ where
     M: AbiDecode,
     N: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
             A::abi_decode(buffer),
@@ -5274,6 +5737,9 @@ where
     N: AbiDecode,
     O: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
             A::abi_decode(buffer),
@@ -5313,6 +5779,9 @@ where
     O: AbiDecode,
     P: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
             A::abi_decode(buffer),
@@ -5354,6 +5823,9 @@ where
     P: AbiDecode,
     Q: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
             A::abi_decode(buffer),
@@ -5397,6 +5869,9 @@ where
     Q: AbiDecode,
     R: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
             A::abi_decode(buffer),
@@ -5442,6 +5917,9 @@ where
     R: AbiDecode,
     S: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
             A::abi_decode(buffer),
@@ -5489,6 +5967,9 @@ where
     S: AbiDecode,
     T: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
             A::abi_decode(buffer),
@@ -5538,6 +6019,9 @@ where
     T: AbiDecode,
     U: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
             A::abi_decode(buffer),
@@ -5589,6 +6073,9 @@ where
     U: AbiDecode,
     V: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
             A::abi_decode(buffer),
@@ -5642,6 +6129,9 @@ where
     V: AbiDecode,
     W: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
             A::abi_decode(buffer),
@@ -5697,6 +6187,9 @@ where
     W: AbiDecode,
     X: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
             A::abi_decode(buffer),
@@ -5754,6 +6247,9 @@ where
     X: AbiDecode,
     Y: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
             A::abi_decode(buffer),
@@ -5813,6 +6309,9 @@ where
     Y: AbiDecode,
     Z: AbiDecode,
 {
+    fn is_memcopy() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
             A::abi_decode(buffer),
@@ -5883,12 +6382,18 @@ where
     T::abi_decode(buffer)
 }
 
+#[inline(always)]
 pub fn decode_script_data<T>() -> T
 where
     T: AbiDecode,
 {
-    let mut buffer = BufferReader::from_script_data();
-    T::abi_decode(buffer)
+    if T::is_memcopy() {
+        let ptr = __gtf::<raw_ptr>(0, 0xA); // SCRIPT_DATA
+        *__transmute::<raw_ptr, &T>(ptr)
+    } else {
+        let mut buffer = BufferReader::from_script_data();
+        T::abi_decode(buffer)
+    }
 }
 
 pub fn decode_predicate_data<T>() -> T

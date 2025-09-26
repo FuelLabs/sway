@@ -79,6 +79,8 @@ where
 
         if body == "Self {  }" {
             format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration_expanded} AbiDecode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
+                #[allow(dead_code)]
+                fn is_memcopy() -> bool {{ false }}
                 #[allow(dead_code, deprecated)]
                 fn abi_decode(ref mut _buffer: BufferReader) -> Self {{
                     {body}
@@ -86,6 +88,8 @@ where
             }}")
         } else {
             format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration_expanded} AbiDecode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
+                #[allow(dead_code)]
+                fn is_memcopy() -> bool {{ false }}
                 #[allow(dead_code, deprecated)]
                 fn abi_decode(ref mut buffer: BufferReader) -> Self {{
                     {body}
@@ -596,21 +600,27 @@ where
             });
             return Err(err);
         };
-        let args_types = itertools::intersperse(args_types, ", ".into()).collect::<String>();
-        let args_types = if args_types.is_empty() {
-            "()".into()
-        } else {
-            format!("({args_types},)")
-        };
 
-        let expanded_args = itertools::intersperse(
-            decl.parameters
-                .iter()
-                .enumerate()
-                .map(|(i, _)| format!("args.{i}")),
-            ", ".into(),
-        )
-        .collect::<String>();
+        let (args_types, expanded_args) = match args_types.len() {
+            0 => ("()".to_string(), String::new()),
+            1 => (args_types.into_iter().next().unwrap(), "args".to_string()),
+            _ => {
+                let args_types =
+                    itertools::intersperse(args_types, ", ".into()).collect::<String>();
+                let args_types = format!("({args_types},)");
+
+                let expanded_args = itertools::intersperse(
+                    decl.parameters
+                        .iter()
+                        .enumerate()
+                        .map(|(i, _)| format!("args.{i}")),
+                    ", ".into(),
+                )
+                .collect::<String>();
+
+                (args_types, expanded_args)
+            }
+        };
 
         let Some(return_type) = Self::generate_type(engines, &decl.return_type) else {
             let err = handler.emit_err(CompileError::UnknownType {
