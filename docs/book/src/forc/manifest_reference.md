@@ -19,6 +19,7 @@ The `Forc.toml` (the _manifest_ file) is a compulsory file for each package and 
   * `implicit-std` -  Controls whether provided `std` version (with the current `forc` version) will get added as a dependency _implicitly_. _Unless you know what you are doing, leave this as default._
   * `forc-version` - The minimum forc version required for this project to work properly.
   * `metadata` - Metadata for the project; can be used by tools which would like to store package configuration in `Forc.toml`.
+  * `experimental` - [Experimental features](../reference/experimental_features.md) enabled or disabled during the compilation.
 
 * [`[dependencies]`](#the-dependencies-section) — Defines the dependencies.
 * `[network]` — Defines a network for forc to interact with.
@@ -43,6 +44,7 @@ An example `Forc.toml` is shown below. Under `[project]` the following fields ar
 * `documentation`
 * `categories`
 * `keywords`
+* `experimental`
 
 Also for the following fields, a default value is provided so omitting them is allowed:
 
@@ -63,6 +65,7 @@ license = "Apache-2.0"
 name = "wallet_contract"
 categories = ["example"]
 keywords = ["example"]
+experimental = { some_feature = true, some_other_feature = false }
 
 [project.metadata]
 indexing = { namespace = "counter-contract", schema_path = "out/release/counter-contract-abi.json" }

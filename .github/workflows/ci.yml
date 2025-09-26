@@ -917,35 +917,39 @@ jobs:
     strategy:
       matrix:
         job:
-          - os: ubuntu-22.04
+          - os: ubuntu-24.04
             platform: linux
             target: x86_64-unknown-linux-gnu
             arch: amd64
             svm_target_platform: linux-amd64
-          - os: ubuntu-22.04
+            cross_image: x86_64-linux-gnu
+          - os: ubuntu-24.04
             platform: linux
             target: aarch64-unknown-linux-gnu
             arch: arm64
             svm_target_platform: linux-aarch64
-          - os: macos-latest
+            cross_image: aarch64-linux-gnu
+          - os: macos-14
             platform: darwin
             target: x86_64-apple-darwin
             arch: amd64
             svm_target_platform: macosx-amd64
-          - os: macos-latest
+          - os: macos-14
             platform: darwin
             target: aarch64-apple-darwin
             arch: arm64
             svm_target_platform: macosx-aarch64
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@master
+      - name: Setup cross build environment
+        uses: FuelLabs/sway-nightly-binaries/.github/actions/setup-cross-build@0f842ee1f5c50f9260f0e6d09367b415dc572af8
         with:
-          toolchain: ${{ env.RUST_VERSION }}
           target: ${{ matrix.job.target }}
+          cross_image: ${{ matrix.job.cross_image }}
+          os: ${{ matrix.job.os }}
+          rust_version: ${{ env.RUST_VERSION }}
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -973,8 +977,7 @@ jobs:
           cache-key: "${{ matrix.job.target }}"
 
       - name: Build forc binaries
-        run: |
-          cross build --profile=release --target ${{ matrix.job.target }} --bins
+        run: cross build --profile=release --target ${{ matrix.job.target }} --bins
 
       - name: Strip release binaries x86_64-linux-gnu
         if: matrix.job.target == 'x86_64-unknown-linux-gnu'
