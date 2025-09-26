@@ -167,10 +167,12 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
 
                                             for m in ir.module_iter() {
                                                 for f in m.function_iter(&ir) {
-                                                    if fns.contains(f.get_name(&ir)) {
-                                                        snapshot.push('\n');
-                                                        function_print(&mut snapshot, &ir, f, false).unwrap();
-                                                        snapshot.push('\n');
+                                                    for candidate in fns.iter() {
+                                                        if f.get_name(&ir).contains(candidate) {
+                                                            snapshot.push('\n');
+                                                            function_print(&mut snapshot, &ir, f, false).unwrap();
+                                                            snapshot.push('\n');
+                                                        }
                                                     }
                                                 }
                                             }

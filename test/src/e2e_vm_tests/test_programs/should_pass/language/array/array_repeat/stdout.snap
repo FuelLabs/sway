@@ -3,6 +3,238 @@ source: test/src/snapshot/mod.rs
 ---
 > forc build  --path test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat --experimental const_generics --ir final --asm final --bytecode | filter-fn array_repeat array_fn
 
+fn array_fn_should_use_mcli_small_u8_1(__ret_value: __ptr [u8; 5]) -> () {
+    local [u8; 5] __anon_0
+
+    entry(__ret_value: __ptr [u8; 5]):
+    v0 = get_local __ptr [u8; 5], __anon_0
+    mem_clear_val v0
+    mem_copy_val __ret_value, v0
+    v1 = const unit ()
+    ret () v1
+}
+
+
+fn array_fn_should_use_mcli_small_u16_2(__ret_value: __ptr [u64; 5]) -> () {
+    local [u64; 5] __anon_0
+
+    entry(__ret_value: __ptr [u64; 5]):
+    v0 = get_local __ptr [u64; 5], __anon_0
+    mem_clear_val v0
+    mem_copy_val __ret_value, v0
+    v1 = const unit ()
+    ret () v1
+}
+
+
+fn array_fn_should_use_mcli_small_u32_3(__ret_value: __ptr [u64; 5]) -> () {
+    local [u64; 5] __anon_0
+
+    entry(__ret_value: __ptr [u64; 5]):
+    v0 = get_local __ptr [u64; 5], __anon_0
+    mem_clear_val v0
+    mem_copy_val __ret_value, v0
+    v1 = const unit ()
+    ret () v1
+}
+
+
+fn array_fn_should_use_mcli_small_u64_4(__ret_value: __ptr [u64; 5]) -> () {
+    local [u64; 5] __anon_0
+
+    entry(__ret_value: __ptr [u64; 5]):
+    v0 = get_local __ptr [u64; 5], __anon_0
+    mem_clear_val v0
+    mem_copy_val __ret_value, v0
+    v1 = const unit ()
+    ret () v1
+}
+
+
+fn array_fn_should_use_mcli_small_u256_5(__ret_value: __ptr [u256; 5]) -> () {
+    local [u256; 5] __anon_0
+
+    entry(__ret_value: __ptr [u256; 5]):
+    v0 = get_local __ptr [u256; 5], __anon_0
+    mem_clear_val v0
+    mem_copy_val __ret_value, v0
+    v1 = const unit ()
+    ret () v1
+}
+
+
+fn array_fn_should_use_mcli_small_b256_6(__ret_value: __ptr [b256; 5]) -> () {
+    local [b256; 5] __anon_0
+
+    entry(__ret_value: __ptr [b256; 5]):
+    v0 = get_local __ptr [b256; 5], __anon_0
+    mem_clear_val v0
+    mem_copy_val __ret_value, v0
+    v1 = const unit ()
+    ret () v1
+}
+
+
+fn array_fn_should_use_mcli_small_bool_7(__ret_value: __ptr [bool; 5]) -> () {
+    local [bool; 5] __anon_0
+
+    entry(__ret_value: __ptr [bool; 5]):
+    v0 = get_local __ptr [bool; 5], __anon_0
+    mem_clear_val v0
+    mem_copy_val __ret_value, v0
+    v1 = const unit ()
+    ret () v1
+}
+
+
+fn array_fn_should_use_mcli_big_u8_8(__ret_value: __ptr [u8; 25]) -> () {
+    local [u8; 25] __anon_0
+
+    entry(__ret_value: __ptr [u8; 25]):
+    v0 = get_local __ptr [u8; 25], __anon_0
+    mem_clear_val v0
+    mem_copy_val __ret_value, v0
+    v1 = const unit ()
+    ret () v1
+}
+
+
+fn array_fn_should_use_mcli_big_u16_9(__ret_value: __ptr [u64; 25]) -> () {
+    local [u64; 25] __anon_0
+
+    entry(__ret_value: __ptr [u64; 25]):
+    v0 = get_local __ptr [u64; 25], __anon_0
+    mem_clear_val v0
+    mem_copy_val __ret_value, v0
+    v1 = const unit ()
+    ret () v1
+}
+
+
+fn array_fn_should_use_mcli_big_u32_10(__ret_value: __ptr [u64; 25]) -> () {
+    local [u64; 25] __anon_0
+
+    entry(__ret_value: __ptr [u64; 25]):
+    v0 = get_local __ptr [u64; 25], __anon_0
+    mem_clear_val v0
+    mem_copy_val __ret_value, v0
+    v1 = const unit ()
+    ret () v1
+}
+
+
+fn array_fn_should_use_mcli_big_u64_11(__ret_value: __ptr [u64; 25]) -> () {
+    local [u64; 25] __anon_0
+
+    entry(__ret_value: __ptr [u64; 25]):
+    v0 = get_local __ptr [u64; 25], __anon_0
+    mem_clear_val v0
+    mem_copy_val __ret_value, v0
+    v1 = const unit ()
+    ret () v1
+}
+
+
+fn array_fn_should_use_mcli_big_u256_12(__ret_value: __ptr [u256; 25]) -> () {
+    local [u256; 25] __anon_0
+
+    entry(__ret_value: __ptr [u256; 25]):
+    v0 = get_local __ptr [u256; 25], __anon_0
+    mem_clear_val v0
+    mem_copy_val __ret_value, v0
+    v1 = const unit ()
+    ret () v1
+}
+
+
+fn array_fn_should_use_mcli_big_b256_13(__ret_value: __ptr [b256; 25]) -> () {
+    local [b256; 25] __anon_0
+
+    entry(__ret_value: __ptr [b256; 25]):
+    v0 = get_local __ptr [b256; 25], __anon_0
+    mem_clear_val v0
+    mem_copy_val __ret_value, v0
+    v1 = const unit ()
+    ret () v1
+}
+
+
+fn array_fn_should_use_mcli_big_bool_14(__ret_value: __ptr [bool; 25]) -> () {
+    local [bool; 25] __anon_0
+
+    entry(__ret_value: __ptr [bool; 25]):
+    v0 = get_local __ptr [bool; 25], __anon_0
+    mem_clear_val v0
+    mem_copy_val __ret_value, v0
+    v1 = const unit ()
+    ret () v1
+}
+
+
+fn array_fn_should_store_each_item_bool_15(__ret_value: __ptr [bool; 5]) -> () {
+    local [bool; 5] __anon_0
+
+    entry(__ret_value: __ptr [bool; 5]):
+    v0 = get_local __ptr [bool; 5], __anon_0
+    v1 = const u64 0
+    v2 = get_elem_ptr v0, __ptr bool, v1
+    v3 = const bool true
+    store v3 to v2
+    v4 = const u64 1
+    v5 = get_elem_ptr v0, __ptr bool, v4
+    store v3 to v5
+    v6 = const u64 2
+    v7 = get_elem_ptr v0, __ptr bool, v6
+    store v3 to v7
+    v8 = const u64 3
+    v9 = get_elem_ptr v0, __ptr bool, v8
+    store v3 to v9
+    v10 = const u64 4
+    v11 = get_elem_ptr v0, __ptr bool, v10
+    store v3 to v11
+    mem_copy_val __ret_value, v0
+    v12 = const unit ()
+    ret () v12
+}
+
+
+fn array_fn_should_loop_bool_16(__ret_value: __ptr [bool; 25]) -> () {
+    local [bool; 25] __anon_0
+
+    entry(__ret_value: __ptr [bool; 25]):
+    v0 = get_local __ptr [bool; 25], __anon_0
+    v1 = const u64 0
+    br array_init_loop(v1)
+
+    array_init_loop(v2: u64):
+    v3 = get_elem_ptr v0, __ptr bool, v2
+    v4 = const bool true
+    store v4 to v3
+    v5 = const u64 1
+    v6 = add v2, v5
+    v7 = const u64 25
+    v8 = cmp lt v6 v7
+    cbr v8, array_init_loop(v6), array_init_exit()
+
+    array_init_exit():
+    mem_copy_val __ret_value, v0
+    v9 = const unit ()
+    ret () v9
+}
+
+
+fn array_fn_should_use_mcl_u8_17(__ret_value: __ptr [u8; 262145]) -> () {
+    local [u8; 262145] __anon_0
+
+    entry(__ret_value: __ptr [u8; 262145]):
+    v0 = get_local __ptr [u8; 262145], __anon_0
+    mem_clear_val v0
+    mem_copy_val __ret_value, v0
+    v1 = const unit ()
+    ret () v1
+}
+
+
 pshl i3                       ; save registers 16..40
 pshh i524288                  ; save registers 40..64
 move $$locbase $sp            ; save locals base register for function array_fn_should_use_mcli_small_u8_1
