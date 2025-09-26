@@ -1,1 +1,4 @@
-cmds = ["forc build --path {root} --release --ir final --asm final"]
+cmds = [
+    "echo The following snapshot should contain only one `abi_decode_in_place_0` function.",
+    "forc build --path {root} --release --ir final --asm final | filter-fn {name} abi_decode_in_place"
+]
