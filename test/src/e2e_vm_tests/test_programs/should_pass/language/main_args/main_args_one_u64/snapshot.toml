@@ -1,4 +1,4 @@
 cmds = [
-    "echo After the `__entry` function calls `main`, it is expected the IR to save the returned value to a local and return directly from this address. We should not see any encoding whatsoever.",
+    "echo Because this test receives and returns an `u64`, we should not see any encoding/decoding whatsoever. Just loading from the `script_data` pointer directly, and simply returning a pointer to a local variable inside `__entry` stack frame.",
     "forc build --path {root} --release --ir final --asm final --bytecode | filter-fn {name} __entry",
 ]
