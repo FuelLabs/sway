@@ -85,7 +85,7 @@ The `#[cfg(...)]` attribute allows conditional compilation. The annotated code e
 
 - `#[cfg(target = "<target>")]` where `<target>` can be either "evm" or "fuel";
 - `#[cfg(program_type = "<program_type>")]` where `<program_type>` can be either "predicate", "script", "contract", or "library";
-- `#[cfg(experimental_<feature_flag> = true/false)]` where `<feature_flag>` is one of the known experimental feature flags.
+- `#[cfg(experimental_<feature_flag> = true/false)]` where `<feature_flag>` is one of the known [experimental feature](../reference/experimental_features.md) flags.
 
 ## Deprecated
 
