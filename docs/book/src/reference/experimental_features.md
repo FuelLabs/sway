@@ -8,7 +8,7 @@ Sway compiler supports experimental features. Experimental features are used to:
 
 The list of [currently active](https://github.com/FuelLabs/sway/issues/?q=is%3Aissue%20state%3Aopen%20label%3Atracking-issue) and [already integrated](https://github.com/FuelLabs/sway/issues/?q=is%3Aissue%20state%3Aclosed%20label%3Atracking-issue) experimental features can be seen at Sway GitHub repository, as [issues marked with `tracking-issue` label](https://github.com/FuelLabs/sway/issues/?q=is%3Aissue%20label%3Atracking-issue). Each tracking issue contains detailed description of its experimental feature, as well as any breaking changes that the feature brings.
 
-### Enabling and Disabling Experimental Features
+## Enabling and Disabling Experimental Features
 
 Each experimental feature has a unique _feature flag_ defined for it. Feature flags are used to early opt-in for a feature, or to opt-out if the feature is already enabled by default, and you want to have the previous compiler behavior.
 
@@ -22,7 +22,7 @@ If a feature is _not_ turned on in the `Forc.toml`, it can still be turned on by
 
 **Environment variables overwrite CLI arguments, which overwrite the `Forc.toml` configuration.**
 
-#### `Forc.toml`
+### `Forc.toml`
 
 To enable and disable experimental features for a package, use the `experimental` field inside of the `Forc.toml`'s `[project]` section. Each experimental feature can be turned on or off, by setting its feature flag to `true` or `false`, respectively. If a feature flag of some existing experimental feature is not listed in the `experimental` field, the default value for enabling that feature will be used.
 
@@ -32,7 +32,7 @@ To enable and disable experimental features for a package, use the `experimental
 experimental = { some_feature = true, some_other_feature = false }
 ```
 
-#### `forc` CLI
+### `forc` CLI
 
 In `forc` CLI, opting in and out of an experimental feature is done by using two compiler flags, `--experimental` and `--no-experimental`, respectively:
 
@@ -46,9 +46,9 @@ To opt-in or out of several experimental features, separate them by comma:
 forc build --experimental some_feature_1,some_feature_2 --no-experimental some_other_feature_1,some_other_feature_2
 ```
 
-#### Environment Variables
+### Environment Variables
 
-To enable and disable experimental features on the environment level, use the environment variables `FORC_EXPERIMENTAL` and `FORC_NO_EXPERIMENTAL`, respectively. Here are some examples that set those environment variables prior running `forc`: 
+To enable and disable experimental features on the environment level, use the environment variables `FORC_EXPERIMENTAL` and `FORC_NO_EXPERIMENTAL`, respectively. Here are some examples that set those environment variables prior running `forc`:
 
 ```console
 FORC_EXPERIMENTAL=some_feature,other_feature forc build
@@ -56,7 +56,7 @@ FORC_NO_EXPERIMENTAL=some_feature,other_feature forc build
 FORC_EXPERIMENTAL=some_feature FORC_NO_EXPERIMENTAL=other_feature forc build
 ```
 
-### Conditional Compilation
+## Conditional Compilation
 
 Experimental features are supported in [conditional compilation](../reference/attributes.md#cfg) using the `#[cfg]` attribute. For each `<feature_flag>` there is a boolean argument named `experimental_<feature_flag>` which can be set to `true` or `false`. The annotated code will be compiled only:
 
