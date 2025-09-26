@@ -6,6 +6,47 @@ The following snapshot should contain only one `abi_decode_in_place_0` function.
 
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode --release --ir final --asm final | filter-fn configurable_dedup_decode abi_decode_in_place
 
+pub fn abi_decode_in_place_0(ptr: ptr, len: u64, target: ptr) -> () {
+    local { ptr } __anon_0
+    local { u64 } __anon_00
+    local mut { ptr } buffer
+    local { u64 } temp
+
+    entry(ptr: ptr, len: u64, target: ptr):
+    v0 = get_local __ptr { ptr }, __anon_0
+    v1 = const u64 0
+    v2 = get_elem_ptr v0, __ptr ptr, v1
+    store ptr to v2
+    v3 = get_local __ptr { ptr }, buffer
+    mem_copy_val v3, v0
+    v4 = get_local __ptr { ptr }, buffer
+    v5 = const u64 0
+    v6 = get_elem_ptr v4, __ptr ptr, v5
+    v7 = load v6
+    v8 = asm(ptr: v7, val) -> u64 val {
+        lw     val ptr i0
+    }
+    v9 = load v6
+    v10 = const u64 8
+    v11 = add v9, v10
+    store v11 to v6
+    v12 = get_local __ptr { u64 }, __anon_00
+    v13 = const u64 0
+    v14 = get_elem_ptr v12, __ptr u64, v13
+    store v8 to v14
+    v15 = get_local __ptr { u64 }, temp
+    mem_copy_val v15, v12
+    v16 = get_local __ptr { u64 }, temp
+    v17 = cast_ptr v16 to ptr
+    v18 = const u64 8
+    v19 = asm(target: target, temp: v17, size: v18) -> () {
+        mcp    target temp size
+    }
+    v20 = const unit ()
+    ret () v20
+}
+
+
 pshl i31                      ; save registers 16..40
 pshh i524288                  ; save registers 40..64
 move $$locbase $sp            ; save locals base register for function abi_decode_in_place_0
