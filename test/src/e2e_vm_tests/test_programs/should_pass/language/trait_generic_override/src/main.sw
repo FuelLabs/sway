@@ -42,6 +42,18 @@ impl From<u64> for MyStruct<u64> {
     }
 }
 
+// https://github.com/FuelLabs/sway/issues/7398
+
+trait A { fn f() -> bool; }
+
+impl A for u64 { fn f () -> bool { true } }
+impl A for bool { fn f () -> bool { false } }
+
+fn ff<T>() -> bool where T: A {
+    let v: bool = T::f();
+    v
+}
+
 fn main() -> bool {
     let my_struct: MyStruct<u64> = MyStruct { val: 1 };
     let my_b256 = ZERO_B256;
@@ -55,6 +67,11 @@ fn main() -> bool {
 
     let _try_from_b256: Option<MyStruct<b256>> = MyStruct::try_from2(my_b256);
     let _try_from_u64: Option<MyStruct<u64>> = MyStruct::try_from2(my_u64);
+
+    // https://github.com/FuelLabs/sway/issues/7398
+    if !(ff::<u64>()) {
+        __revert(0);
+    }
 
     true
 }
