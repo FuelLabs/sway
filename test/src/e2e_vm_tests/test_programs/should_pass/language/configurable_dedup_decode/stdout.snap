@@ -1,7 +1,8 @@
 ---
 source: test/src/snapshot/mod.rs
 ---
-> echo The following snapshot should contain only one `abi_decode_in_place_0` function.
+The following snapshot should contain only one `abi_decode_in_place_0` function. 
+
 
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode --release --ir final --asm final | filter-fn configurable_dedup_decode abi_decode_in_place
 
