@@ -3173,7 +3173,7 @@ where
     buffer.as_raw_slice()
 }
 
-#[inline(never)]
+#[inline(always)]
 pub fn encode_and_return<T>(item: T)
 where
     T: AbiEncode,

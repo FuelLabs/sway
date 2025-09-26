@@ -1,0 +1,80 @@
+---
+source: test/src/snapshot/mod.rs
+---
+After the `__entry` function calls `main`, it is expected the IR to save the returned 
+value to a local and return directly from this address. We should not see any encoding 
+whatsoever. 
+
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_one_u64 --release --ir final --asm final --bytecode | filter-fn main_args_one_u64 __entry
+
+pub entry fn __entry() -> () {
+    local { ptr } __anon_0
+    local { u64 } __anon_00
+    local { u64 } args
+    local mut { ptr } buffer
+    local u64 item_
+
+    entry():
+    v0 = const u64 0
+    v1 = gtf v0, 10
+    v2 = bitcast v1 to ptr
+    v3 = get_local __ptr { ptr }, __anon_0
+    v4 = const u64 0
+    v5 = get_elem_ptr v3, __ptr ptr, v4
+    store v2 to v5
+    v6 = get_local __ptr { ptr }, buffer
+    mem_copy_val v6, v3
+    v7 = get_local __ptr { ptr }, buffer
+    v8 = const u64 0
+    v9 = get_elem_ptr v7, __ptr ptr, v8
+    v10 = load v9
+    v11 = asm(ptr: v10, val) -> u64 val {
+        lw     val ptr i0
+    }
+    v12 = load v9
+    v13 = const u64 8
+    v14 = add v12, v13
+    store v14 to v9
+    v15 = get_local __ptr { u64 }, __anon_00
+    v16 = const u64 0
+    v17 = get_elem_ptr v15, __ptr u64, v16
+    store v11 to v17
+    v18 = get_local __ptr { u64 }, args
+    mem_copy_val v18, v15
+    v19 = get_local __ptr { u64 }, args
+    v20 = const u64 0
+    v21 = get_elem_ptr v19, __ptr u64, v20
+    v22 = load v21
+    v23 = call main_5(v22)
+    v24 = get_local __ptr u64, item_
+    store v23 to v24
+    v25 = get_local __ptr u64, item_
+    v26 = cast_ptr v25 to ptr
+    v27 = const u64 8
+    retd v26 v27
+}
+
+
+move $$locbase $sp            ; save locals base register for function __entry
+cfei i40                      ; allocate 40 bytes for locals and 0 slots for call arguments
+gtf  $r0 $zero i10            ; get transaction field
+sw   $$locbase $r0 i0         ; store word
+addi $r0 $$locbase i24        ; get offset to local __ptr { ptr }
+mcpi $r0 $$locbase i8         ; copy memory
+lw   $r0 $$locbase i3         ; load word
+lw   $r1 $r0 i0               ; lw val ptr i0
+lw   $r0 $$locbase i3         ; load word
+movi $r2 i8                   ; initialize constant into register
+add  $r0 $r0 $r2
+sw   $$locbase $r0 i3         ; store word
+addi $r0 $$locbase i8         ; get offset to local __ptr { u64 }
+sw   $$locbase $r1 i1         ; store word
+addi $r1 $$locbase i16        ; get offset to local __ptr { u64 }
+mcpi $r1 $r0 i8               ; copy memory
+lw   $r0 $$locbase i2         ; load word
+move $$arg0 $r0               ; [call]: pass argument 0
+jal  $$reta $pc i5            ; [call]: call main_5
+sw   $$locbase $$retv i4      ; store word
+addi $r0 $$locbase i32        ; get offset to local __ptr u64
+movi $r1 i8                   ; initialize constant into register
+retd  $r0 $r1
