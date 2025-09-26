@@ -227,6 +227,8 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                                 last_output = Some(String::new());
                             }
                             continue;
+                        } else if let Some(args) = cmd.strip_prefix("echo ") {
+                            continue;
                         } else {
                             panic!("`{cmd}` is not a supported snapshot command.\nPossible tool commands: forc doc, forc\nPossible filtering commands: sub, regex, filter-fn");
                         };

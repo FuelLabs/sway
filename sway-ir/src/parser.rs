@@ -1713,7 +1713,7 @@ mod ir_builder {
             .map(|config| {
                 let opt_metadata = config
                     .metadata
-                    .map(|mdi| md_map.get(&mdi).unwrap())
+                    .and_then(|mdi| md_map.get(&mdi))
                     .copied();
 
                 let ty = config.ty.to_ir_type(context);
