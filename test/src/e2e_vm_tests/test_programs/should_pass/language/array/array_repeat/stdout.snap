@@ -21,19 +21,6 @@ library {
 .data_section:
 ;; --- END OF TARGET BYTECODE ---
 
-warning: Returned value is ignored
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert/src/codec.sw:3181:5
-     |
-...
-3181 |     T::is_memcopy();
-     |     --------------- This returns a value which is not assigned to anything and is ignored.
-     |     --------------- help: The returned value has type "bool".
-     |
-     = help: If you want to intentionally ignore the returned value, use `let _ = ...`:
-     = help:   let _ = T::is_memcopy();
-____
-
-  Compiled library "std" with 1 warning.
    Compiling script array_repeat (test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat)
 // IR: Final
 script {
@@ -1113,12 +1100,12 @@ script {
 !182 = span !160 1257 1262
 !183 = (!157 !158 !179 !180 !182)
 !184 = "test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert/src/codec.sw"
-!185 = span !184 79692 79865
-!186 = fn_name_span !184 79699 79709
+!185 = span !184 79656 79829
+!186 = fn_name_span !184 79663 79673
 !187 = (!185 !186 !69)
-!188 = span !184 79807 79811
-!189 = span !184 79807 79817
-!190 = fn_call_path_span !184 79812 79815
+!188 = span !184 79771 79775
+!189 = span !184 79771 79781
+!190 = fn_call_path_span !184 79776 79779
 !191 = (!189 !190)
 !192 = span !160 2922 2926
 !193 = (!189 !190 !192)
@@ -1129,9 +1116,9 @@ script {
 !198 = (!189 !190 !194 !195 !197)
 !199 = span !160 2928 2929
 !200 = (!189 !190 !199)
-!201 = span !184 79819 79823
-!202 = span !184 79819 79835
-!203 = fn_call_path_span !184 79824 79827
+!201 = span !184 79783 79787
+!202 = span !184 79783 79799
+!203 = fn_call_path_span !184 79788 79791
 !204 = (!202 !203)
 !205 = span !160 3420 3424
 !206 = (!202 !203 !205)
@@ -1153,39 +1140,39 @@ script {
 !222 = (!202 !203 !213 !214 !221)
 !223 = (!202 !203 !213 !214)
 !224 = (!202 !203 !213 !214)
-!225 = span !184 79782 79836
-!226 = fn_call_path_span !184 79782 79806
+!225 = span !184 79746 79800
+!226 = fn_call_path_span !184 79746 79770
 !227 = (!225 !226)
 !228 = span !184 750 753
 !229 = (!225 !226 !228)
 !230 = span !184 735 755
 !231 = (!225 !226 !230)
-!232 = span !184 79765 79837
-!233 = span !184 79856 79862
-!234 = span !184 79842 79863
-!235 = fn_call_path_span !184 79842 79855
+!232 = span !184 79729 79801
+!233 = span !184 79820 79826
+!234 = span !184 79806 79827
+!235 = fn_call_path_span !184 79806 79819
 !236 = (!234 !235)
-!237 = span !184 98349 98389
+!237 = span !184 98313 98353
 !238 = (!234 !235 !237)
-!239 = span !184 98369 98389
+!239 = span !184 98333 98353
 !240 = (!234 !235 !237)
-!241 = span !184 98415 98428
+!241 = span !184 98379 98392
 !242 = (!234 !235 !241)
-!243 = span !184 98399 98429
+!243 = span !184 98363 98393
 !244 = (!234 !235 !243)
-!245 = span !184 98514 98519
+!245 = span !184 98478 98483
 !246 = (!234 !235 !245)
-!247 = span !184 98438 98521
+!247 = span !184 98402 98485
 !248 = (!234 !235 !247)
 !249 = (!234 !235 !247)
-!250 = span !184 98531 98545
+!250 = span !184 98495 98509
 !251 = (!234 !235 !250)
-!252 = span !184 98543 98544
+!252 = span !184 98507 98508
 !253 = (!234 !235 !250)
-!254 = span !184 98561 98562
+!254 = span !184 98525 98526
 !255 = (!234 !235 !254)
-!256 = span !184 98561 98566
-!257 = fn_call_path_span !184 98563 98564
+!256 = span !184 98525 98530
+!257 = fn_call_path_span !184 98527 98528
 !258 = (!234 !235 !256 !257)
 !259 = (!234 !235 !256 !257)
 !260 = (!234 !235 !256 !257)
@@ -1196,27 +1183,27 @@ script {
 !265 = (!234 !235 !256 !257 !264)
 !266 = (!234 !235 !256 !257)
 !267 = (!234 !235 !256 !257)
-!268 = span !184 98610 98615
+!268 = span !184 98574 98579
 !269 = (!234 !235 !268)
-!270 = span !184 98617 98618
+!270 = span !184 98581 98582
 !271 = (!234 !235 !270)
-!272 = span !184 98581 98620
+!272 = span !184 98545 98584
 !273 = (!234 !235 !272)
 !274 = (!234 !235 !272)
-!275 = span !184 98641 98647
+!275 = span !184 98605 98611
 !276 = (!234 !235 !275)
-!277 = span !184 98641 98661
-!278 = fn_call_path_span !184 98648 98654
+!277 = span !184 98605 98625
+!278 = fn_call_path_span !184 98612 98618
 !279 = (!234 !235 !277 !278)
 !280 = span !184 3973 3977
 !281 = (!234 !235 !277 !278 !280)
 !282 = span !184 3959 3978
 !283 = fn_call_path_span !184 3959 3972
 !284 = (!234 !235 !277 !278 !282 !283)
-!285 = span !184 81482 81488
+!285 = span !184 81446 81452
 !286 = (!234 !235 !277 !278 !282 !283 !285)
-!287 = span !184 81482 81501
-!288 = fn_call_path_span !184 81489 81493
+!287 = span !184 81446 81465
+!288 = fn_call_path_span !184 81453 81457
 !289 = (!234 !235 !277 !278 !282 !283 !287 !288)
 !290 = span !184 3371 3399
 !291 = (!234 !235 !277 !278 !282 !283 !287 !288 !290)
@@ -1331,17 +1318,17 @@ script {
 !400 = (!234 !235 !277 !278 !282 !283 !287 !288 !371 !372)
 !401 = (!234 !235 !277 !278 !282 !283 !287 !288)
 !402 = (!234 !235 !277 !278 !282 !283 !287 !288)
-!403 = span !184 98634 98638
+!403 = span !184 98598 98602
 !404 = (!234 !235 !403)
-!405 = span !184 98633 98661
+!405 = span !184 98597 98625
 !406 = (!234 !235 !405)
-!407 = span !184 98675 98676
+!407 = span !184 98639 98640
 !408 = (!234 !235 !407)
-!409 = span !184 98675 98681
-!410 = fn_call_path_span !184 98677 98679
+!409 = span !184 98639 98645
+!410 = fn_call_path_span !184 98641 98643
 !411 = (!234 !235 !409 !410)
 !412 = (!234 !235 !409 !410)
-!413 = span !184 98680 98681
+!413 = span !184 98644 98645
 !414 = (!234 !235 !409 !410)
 !415 = span !28 1322 1326
 !416 = (!234 !235 !409 !410 !415)
@@ -1352,7 +1339,7 @@ script {
 !421 = (!234 !235 !409 !410)
 !422 = (!234 !235 !409)
 !423 = (!234 !235 !409)
-!424 = span !184 98703 98708
+!424 = span !184 98667 98672
 !425 = (!234 !235 !424)
 !426 = span !184 79232 79236
 !427 = span !184 79215 79356
@@ -2947,19 +2934,6 @@ exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert)
-warning: Returned value is ignored
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert/src/codec.sw:3181:5
-     |
-...
-3181 |     T::is_memcopy();
-     |     --------------- This returns a value which is not assigned to anything and is ignored.
-     |     --------------- help: The returned value has type "bool".
-     |
-     = help: If you want to intentionally ignore the returned value, use `let _ = ...`:
-     = help:   let _ = T::is_memcopy();
-____
-
-  Compiled library "std" with 1 warning.
    Compiling script array_repeat (test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat)
 <<<<<<< HEAD
     Finished debug [unoptimized + fuel] target(s) [7.064 KB] in ???

@@ -10,19 +10,6 @@ output:
 library {
 }
 
-warning: Returned value is ignored
-    --> sway-lib-std/src/codec.sw:3181:5
-     |
-...
-3181 |     T::is_memcopy();
-     |     --------------- This returns a value which is not assigned to anything and is ignored.
-     |     --------------- help: The returned value has type "bool".
-     |
-     = help: If you want to intentionally ignore the returned value, use `let _ = ...`:
-     = help:   let _ = T::is_memcopy();
-____
-
-  Compiled library "std" with 1 warning.
    Compiling script configurable_dedup_decode (test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode)
 // IR: Final
 script {
@@ -92,167 +79,15 @@ script {
     }
 
     pub fn encode_and_return_10(item !65: u64) -> (), !68 {
-        local slice __ret_val
-        local slice slice
-        local slice slice_
-        local slice slice_0
+        local u64 item_
 
         entry(item: u64):
-        v0 = get_local __ptr slice, __ret_val
-        v1 = call encode_13(item, v0)
-        v2 = get_local __ptr slice, slice, !69
-        mem_copy_val v2, v0
-        v3 = get_local __ptr slice, slice, !74
-        v4 = get_local __ptr slice, slice_, !77
-        mem_copy_val v4, v3
-        v5 = get_local __ptr slice, slice_, !79
-        v6 = asm(ptr: v5) -> __ptr { ptr, u64 } ptr {
-        }
-        v7 = const u64 0
-        v8 = get_elem_ptr v6, __ptr ptr, v7
-        v9 = load v8
-        v10 = get_local __ptr slice, slice, !83
-        v11 = get_local __ptr slice, slice_0, !86
-        mem_copy_val v11, v10
-        v12 = get_local __ptr slice, slice_0, !87
-        v13 = asm(ptr: v12) -> __ptr { ptr, u64 } ptr {
-        }
-        v14 = const u64 1
-        v15 = get_elem_ptr v13, __ptr u64, v14
-        v16 = load v15
-        retd v9 v16, !88
-    }
-
-    pub fn encode_13(item !89: u64, __ret_value: __ptr slice) -> (), !92 {
-        local mut { ptr, u64, u64 } __aggr_memcpy_0
-        local mut { ptr, u64, u64 } __aggr_memcpy_00
-        local mut { ptr, u64, u64 } __aggr_memcpy_01
-        local mut { ptr, u64, u64 } __aggr_memcpy_02
-        local mut slice __aggr_memcpy_03
-        local { ptr, u64, u64 } __anon_0
-        local { ptr, u64, u64 } __anon_00
-        local { ptr, u64, u64 } __anon_01
-        local { { ptr, u64, u64 } } __anon_1
-        local { ptr, u64, u64 } __anon_10
-        local { ptr, u64 } __anon_11
-        local { { ptr, u64, u64 } } __anon_2
-        local { { ptr, u64, u64 } } buffer
-        local { { ptr, u64, u64 } } buffer_
-        local { { ptr, u64, u64 } } self_0
-
-        entry(item: u64, __ret_value: __ptr slice):
-        v0 = const u64 1024
-        v1 = asm(cap: v0) -> ptr hp, !95 {
-            aloc   cap
-        }
-        v2 = get_local __ptr { ptr, u64, u64 }, __anon_0, !95
-        v3 = const u64 0
-        v4 = get_elem_ptr v2, __ptr ptr, v3, !95
-        store v1 to v4, !95
-        v5 = const u64 1
-        v6 = get_elem_ptr v2, __ptr u64, v5, !95
-        store v0 to v6, !95
-        v7 = const u64 2
-        v8 = get_elem_ptr v2, __ptr u64, v7, !95
-        v9 = const u64 0
-        store v9 to v8, !95
-        v10 = asm(buffer: v2) -> __ptr { ptr, u64, u64 } buffer {
-        }
-        v11 = get_local __ptr { ptr, u64, u64 }, __aggr_memcpy_0
-        mem_copy_val v11, v10
-        v12 = get_local __ptr { { ptr, u64, u64 } }, __anon_1, !97
-        v13 = const u64 0
-        v14 = get_elem_ptr v12, __ptr { ptr, u64, u64 }, v13, !95
-        mem_copy_val v14, v11
-        v15 = get_local __ptr { { ptr, u64, u64 } }, buffer_, !100
-        mem_copy_val v15, v12
-        v16 = get_local __ptr { { ptr, u64, u64 } }, buffer_, !102
-        v17 = const u64 0
-        v18 = get_elem_ptr v16, __ptr { ptr, u64, u64 }, v17, !104
-        v19 = asm(buffer: v18) -> __ptr { ptr, u64, u64 } buffer {
-        }
-        v20 = get_local __ptr { ptr, u64, u64 }, __aggr_memcpy_00
-        mem_copy_val v20, v19
-        v21 = get_local __ptr { ptr, u64, u64 }, __anon_00, !100
-        mem_copy_val v21, v20
-        v22 = const u64 0
-        v23 = get_elem_ptr v21, __ptr ptr, v22, !100
-        v24 = load v23, !100
-        v25 = const u64 1
-        v26 = get_elem_ptr v21, __ptr u64, v25, !100
-        v27 = load v26, !100
-        v28 = const u64 2
-        v29 = get_elem_ptr v21, __ptr u64, v28, !100
-        v30 = load v29, !100
-        v31 = const u64 8
-        v32 = add v30, v31, !100
-        v33 = cmp gt v32 v27, !100
-        cbr v33, abi_encode_14_block1(), abi_encode_14_block0(v24, v27), !100
-
-        abi_encode_14_block0(v34: ptr, v35: u64):
-        v36 = add v34, v30, !100
-        v37 = cast_ptr v36 to __ptr u64, !100
-        store item to v37, !100
-        v38 = get_local __ptr { ptr, u64, u64 }, __anon_10, !100
-        v39 = const u64 0
-        v40 = get_elem_ptr v38, __ptr ptr, v39, !100
-        store v34 to v40, !100
-        v41 = const u64 1
-        v42 = get_elem_ptr v38, __ptr u64, v41, !100
-        store v35 to v42, !100
-        v43 = const u64 2
-        v44 = get_elem_ptr v38, __ptr u64, v43, !100
-        store v32 to v44, !100
-        v45 = asm(buffer: v38) -> __ptr { ptr, u64, u64 } buffer {
-        }
-        v46 = get_local __ptr { ptr, u64, u64 }, __aggr_memcpy_01
-        mem_copy_val v46, v45
-        v47 = get_local __ptr { { ptr, u64, u64 } }, __anon_2, !106
-        v48 = const u64 0
-        v49 = get_elem_ptr v47, __ptr { ptr, u64, u64 }, v48, !100
-        mem_copy_val v49, v46
-        v50 = get_local __ptr { { ptr, u64, u64 } }, buffer, !107
-        mem_copy_val v50, v47
-        v51 = get_local __ptr { { ptr, u64, u64 } }, buffer, !108
-        v52 = get_local __ptr { { ptr, u64, u64 } }, self_0, !111
-        mem_copy_val v52, v51
-        v53 = get_local __ptr { { ptr, u64, u64 } }, self_0, !113
-        v54 = const u64 0
-        v55 = get_elem_ptr v53, __ptr { ptr, u64, u64 }, v54, !114
-        v56 = asm(buffer: v55) -> __ptr { ptr, u64, u64 } buffer {
-        }
-        v57 = get_local __ptr { ptr, u64, u64 }, __aggr_memcpy_02
-        mem_copy_val v57, v56
-        v58 = get_local __ptr { ptr, u64, u64 }, __anon_01, !111
-        mem_copy_val v58, v57
-        v59 = const u64 0
-        v60 = get_elem_ptr v58, __ptr ptr, v59, !111
-        v61 = const u64 2
-        v62 = get_elem_ptr v58, __ptr u64, v61, !111
-        v63 = get_local __ptr { ptr, u64 }, __anon_11, !111
-        v64 = const u64 0
-        v65 = get_elem_ptr v63, __ptr ptr, v64, !111
-        mem_copy_val v65, v60
-        v66 = const u64 1
-        v67 = get_elem_ptr v63, __ptr u64, v66, !111
-        mem_copy_val v67, v62
-        v68 = asm(s: v63) -> __ptr slice s {
-        }
-        v69 = get_local __ptr slice, __aggr_memcpy_03
-        mem_copy_val v69, v68
-        mem_copy_val __ret_value, v69
-        v70 = const unit ()
-        ret () v70
-
-        abi_encode_14_block1():
-        v71 = const u64 2
-        v72 = mul v27, v71, !100
-        v73 = add v72, v31, !100
-        v74 = asm(new_cap: v73, old_ptr: v24, len: v30) -> __ptr u8 hp, !100 {
-            aloc   new_cap
-            mcp    hp old_ptr len
-        }
-        br abi_encode_14_block0(v74, v73), !100
+        v0 = get_local __ptr u64, item_
+        store item to v0
+        v1 = get_local __ptr u64, item_, !69
+        v2 = cast_ptr v1 to ptr, !70
+        v3 = const u64 8
+        retd v2 v3, !71
     }
 }
 
@@ -260,27 +95,27 @@ script {
 !1 = span !0 177 182
 !2 = span !0 136 143
 !3 = "sway-lib-std/src/codec.sw"
-!4 = span !3 79914 79917
-!5 = span !3 79928 79931
-!6 = span !3 79938 79944
-!7 = span !3 79884 80217
-!8 = fn_name_span !3 79891 79910
+!4 = span !3 79878 79881
+!5 = span !3 79892 79895
+!6 = span !3 79902 79908
+!7 = span !3 79848 80181
+!8 = fn_name_span !3 79855 79874
 !9 = inline "never"
 !10 = (!7 !8 !9)
-!11 = span !3 80002 80036
-!12 = fn_call_path_span !3 80002 80026
+!11 = span !3 79966 80000
+!12 = fn_call_path_span !3 79966 79990
 !13 = span !3 735 755
 !14 = (!11 !12 !13)
 !15 = (!11 !12)
 !16 = (!11 !12 !13)
-!17 = span !3 79985 80037
-!18 = span !3 80067 80073
-!19 = span !3 80053 80074
-!20 = fn_call_path_span !3 80053 80066
-!21 = span !3 123738 123759
-!22 = fn_call_path_span !3 123738 123751
-!23 = span !3 80666 80694
-!24 = fn_call_path_span !3 80673 80685
+!17 = span !3 79949 80001
+!18 = span !3 80031 80037
+!19 = span !3 80017 80038
+!20 = fn_call_path_span !3 80017 80030
+!21 = span !3 123702 123723
+!22 = fn_call_path_span !3 123702 123715
+!23 = span !3 80630 80658
+!24 = fn_call_path_span !3 80637 80649
 !25 = span !3 625 637
 !26 = (!19 !20 !21 !22 !23 !24 !25)
 !27 = (!19 !20 !21 !22 !23 !24)
@@ -292,15 +127,15 @@ script {
 !33 = (!19 !20 !21 !22 !23 !24)
 !34 = span !3 2857 2896
 !35 = (!19 !20 !21 !22 !23 !24 !34)
-!36 = span !3 123737 123762
+!36 = span !3 123701 123726
 !37 = (!19 !20 !36)
 !38 = (!19 !20 !36)
 !39 = (!19 !20 !36)
-!40 = span !3 80042 80075
-!41 = span !3 80133 80137
-!42 = span !3 80123 80138
-!43 = span !3 80080 80215
-!44 = span !3 80188 80208
+!40 = span !3 80006 80039
+!41 = span !3 80097 80101
+!42 = span !3 80087 80102
+!43 = span !3 80044 80179
+!44 = span !3 80152 80172
 !45 = "test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode/src/main.<autogenerated>.sw"
 !46 = span !45 0 126
 !47 = fn_name_span !45 7 14
@@ -322,55 +157,12 @@ script {
 !63 = fn_call_path_span !0 235 236
 !64 = (!62 !63)
 !65 = span !3 79403 79407
-!66 = span !3 79375 79673
+!66 = span !3 79375 79637
 !67 = fn_name_span !3 79382 79399
 !68 = (!66 !67 !9)
-!69 = span !3 79579 79609
-!70 = span !3 79633 79644
-!71 = fn_call_path_span !3 79639 79642
-!72 = "sway-lib-std/src/raw_slice.sw"
-!73 = span !72 2922 2926
-!74 = (!70 !71 !73)
-!75 = span !72 2911 2927
-!76 = fn_call_path_span !72 2911 2921
-!77 = (!70 !71 !75 !76)
-!78 = span !72 1633 1638
-!79 = (!70 !71 !75 !76 !78)
-!80 = span !3 79646 79663
-!81 = fn_call_path_span !3 79652 79655
-!82 = span !72 3420 3424
-!83 = (!80 !81 !82)
-!84 = span !72 3409 3425
-!85 = fn_call_path_span !72 3409 3419
-!86 = (!80 !81 !84 !85)
-!87 = (!80 !81 !84 !85 !78)
-!88 = span !3 79618 79664
-!89 = span !3 79232 79236
-!90 = span !3 79215 79356
-!91 = fn_name_span !3 79222 79228
-!92 = (!90 !91 !9)
-!93 = span !3 79313 79326
-!94 = fn_call_path_span !3 79313 79324
-!95 = (!93 !94)
-!96 = span !3 191 254
-!97 = (!93 !94 !96)
-!98 = span !3 79297 79327
-!99 = fn_call_path_span !3 79302 79312
-!100 = (!98 !99)
-!101 = span !3 4996 5002
-!102 = (!98 !99 !101)
-!103 = span !3 87 114
-!104 = (!98 !99 !103)
-!105 = span !3 4944 5027
-!106 = (!98 !99 !105)
-!107 = span !3 79284 79328
-!108 = span !3 79333 79339
-!109 = span !3 79333 79354
-!110 = fn_call_path_span !3 79340 79352
-!111 = (!109 !110)
-!112 = span !3 573 577
-!113 = (!109 !110 !112)
-!114 = (!109 !110 !103)
+!69 = span !3 79496 79500
+!70 = span !3 79486 79501
+!71 = span !3 79471 79520
 
 ;; ASM: Final program
 ;; Program kind: Script
@@ -434,104 +226,22 @@ move $$retv $r0               ; set return value
 poph i524288                  ; restore registers 40..64
 popl i3                       ; restore registers 16..40
 jal  $zero $$reta i0          ; return from call
-pshl i15                      ; save registers 16..40
+pshl i3                       ; save registers 16..40
 pshh i524288                  ; save registers 40..64
 move $$locbase $sp            ; save locals base register for function encode_and_return_10
-cfei i64                      ; allocate 64 bytes for locals and 0 slots for call arguments
+cfei i8                       ; allocate 8 bytes for locals and 0 slots for call arguments
 move $r0 $$reta               ; save return address
-move $$arg1 $$locbase         ; [call]: pass argument 1
-jal  $$reta $pc i17           ; [call]: call encode_13
-addi $r1 $$locbase i16        ; get offset to local __ptr slice
-mcpi $r1 $$locbase i16        ; copy memory
-addi $r1 $$locbase i16        ; get offset to local __ptr slice
-addi $r2 $$locbase i32        ; get offset to local __ptr slice
-mcpi $r2 $r1 i16              ; copy memory
-lw   $r1 $$locbase i4         ; load word
-addi $r2 $$locbase i16        ; get offset to local __ptr slice
-addi $r3 $$locbase i48        ; get offset to local __ptr slice
-mcpi $r3 $r2 i16              ; copy memory
-lw   $r2 $$locbase i7         ; load word
-retd  $r1 $r2
-cfsi i64                      ; free 64 bytes for locals and 0 slots for extra call arguments
+sw   $$locbase $$arg0 i0      ; store word
+movi $r1 i8                   ; initialize constant into register
+retd  $$locbase $r1
+cfsi i8                       ; free 8 bytes for locals and 0 slots for extra call arguments
 move $$reta $r0               ; restore return address
 poph i524288                  ; restore registers 40..64
-popl i15                      ; restore registers 16..40
-jal  $zero $$reta i0          ; return from call
-pshl i255                     ; save registers 16..40
-pshh i524288                  ; save registers 40..64
-move $$locbase $sp            ; save locals base register for function encode_13
-cfei i344                     ; allocate 344 bytes for locals and 0 slots for call arguments
-move $r0 $$arg0               ; save argument 0 (item)
-move $r1 $$arg1               ; save argument 1 (__ret_value)
-move $r2 $$reta               ; save return address
-movi $r3 i1024                ; initialize constant into register
-aloc $r3
-addi $r3 $$locbase i112       ; get offset to local __ptr { ptr, u64, u64 }
-sw   $$locbase $hp i14        ; store word
-movi $r4 i1024                ; initialize constant into register
-sw   $$locbase $r4 i15        ; store word
-sw   $$locbase $zero i16      ; store word
-mcpi $$locbase $r3 i24        ; copy memory
-addi $r3 $$locbase i184       ; get offset to local __ptr { { ptr, u64, u64 } }
-mcpi $r3 $$locbase i24        ; copy memory
-addi $r4 $$locbase i296       ; get offset to local __ptr { { ptr, u64, u64 } }
-mcpi $r4 $r3 i24              ; copy memory
-addi $r3 $$locbase i296       ; get offset to local __ptr { { ptr, u64, u64 } }
-addi $r4 $$locbase i24        ; get offset to local __ptr { ptr, u64, u64 }
-mcpi $r4 $r3 i24              ; copy memory
-addi $r3 $$locbase i136       ; get offset to local __ptr { ptr, u64, u64 }
-mcpi $r3 $r4 i24              ; copy memory
-lw   $r3 $$locbase i17        ; load word
-lw   $r7 $$locbase i18        ; load word
-lw   $r4 $$locbase i19        ; load word
-movi $r5 i8                   ; initialize constant into register
-add  $r5 $r4 $r5
-gt   $r6 $r5 $r7
-jnzf $r6 $zero i1
-jmpf $zero i7
-movi $r6 i2                   ; initialize constant into register
-mul  $r6 $r7 $r6
-movi $r7 i8                   ; initialize constant into register
-add  $r7 $r6 $r7
-aloc $r7
-mcp  $hp $r3 $r4
-move $r3 $hp                  ; move parameter from branch to block argument
-add  $r4 $r3 $r4
-sw   $r4 $r0 i0               ; store word
-addi $r0 $$locbase i208       ; get offset to local __ptr { ptr, u64, u64 }
-sw   $$locbase $r3 i26        ; store word
-sw   $$locbase $r7 i27        ; store word
-sw   $$locbase $r5 i28        ; store word
-addi $r3 $$locbase i48        ; get offset to local __ptr { ptr, u64, u64 }
-mcpi $r3 $r0 i24              ; copy memory
-addi $r0 $$locbase i248       ; get offset to local __ptr { { ptr, u64, u64 } }
-mcpi $r0 $r3 i24              ; copy memory
-addi $r3 $$locbase i272       ; get offset to local __ptr { { ptr, u64, u64 } }
-mcpi $r3 $r0 i24              ; copy memory
-addi $r0 $$locbase i272       ; get offset to local __ptr { { ptr, u64, u64 } }
-addi $r3 $$locbase i320       ; get offset to local __ptr { { ptr, u64, u64 } }
-mcpi $r3 $r0 i24              ; copy memory
-addi $r0 $$locbase i320       ; get offset to local __ptr { { ptr, u64, u64 } }
-addi $r3 $$locbase i72        ; get offset to local __ptr { ptr, u64, u64 }
-mcpi $r3 $r0 i24              ; copy memory
-addi $r0 $$locbase i160       ; get offset to local __ptr { ptr, u64, u64 }
-mcpi $r0 $r3 i24              ; copy memory
-addi $r3 $r0 i16              ; get offset to aggregate element
-addi $r4 $$locbase i232       ; get offset to local __ptr { ptr, u64 }
-mcpi $r4 $r0 i8               ; copy memory
-addi $r0 $r4 i8               ; get offset to aggregate element
-mcpi $r0 $r3 i8               ; copy memory
-addi $r0 $$locbase i96        ; get offset to local __ptr slice
-mcpi $r0 $r4 i16              ; copy memory
-mcpi $r1 $r0 i16              ; copy memory
-cfsi i344                     ; free 344 bytes for locals and 0 slots for extra call arguments
-move $$reta $r2               ; restore return address
-poph i524288                  ; restore registers 40..64
-popl i255                     ; restore registers 16..40
+popl i3                       ; restore registers 16..40
 jal  $zero $$reta i0          ; return from call
 .data:
 data_<Configurable, TUPLE>_0 .bytes[8] 00 00 00 00 00 00 00 02  ........
 data_<Configurable, WRAPPED>_1 .bytes[8] 00 00 00 00 00 00 00 01  ........
 
 
-    Finished release [optimized + fuel] target(s) [640 B] in ???
+    Finished release [optimized + fuel] target(s) [312 B] in ???

@@ -95,8 +95,6 @@ pub(crate) fn type_check_method_application(
             None => type_engine.new_unknown(),
         })
         .collect::<Vec<_>>();
-
-    
     let method_result = resolve_method_name(
         handler,
         ctx.by_ref(),
