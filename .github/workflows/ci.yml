@@ -12,6 +12,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 env:
   CARGO_TERM_COLOR: always
   REGISTRY: ghcr.io
@@ -817,6 +820,8 @@ jobs:
     runs-on: ${{ matrix.job.os }}
     if: github.event_name == 'release' && github.event.action == 'published'
     needs: [publish]
+    permissions:
+      contents: write
     strategy:
       matrix:
         job:
