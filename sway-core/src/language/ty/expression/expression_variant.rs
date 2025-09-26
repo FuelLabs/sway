@@ -16,7 +16,10 @@ use std::{
     fmt::{self, Write},
     hash::{Hash, Hasher},
 };
-use sway_error::handler::{ErrorEmitted, Handler};
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
 use sway_types::{Ident, Named, Span, Spanned};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -866,15 +869,48 @@ impl ReplaceDecls for TyExpressionVariant {
                                 .iter()
                                 .map(|a| a.1.return_type)
                                 .collect::<Vec<_>>();
-                            let implementing_type_method_ref = ctx.find_method_for_type(
-                                handler,
+
+                            // find method and improve error
+                            let find_handler = Handler::default();
+                            let r = ctx.find_method_for_type(
+                                &find_handler,
                                 implementing_for,
                                 &[ctx.namespace().current_package_name().clone()],
                                 &call_path.suffix,
                                 method.return_type.type_id(),
                                 &arguments_types,
                                 None,
-                            )?;
+                            );
+                            let _ =
+                                handler.map_and_emit_errors_from(find_handler, |err| match err {
+                                    CompileError::MultipleApplicableItemsInScope {
+                                        span,
+                                        item_name,
+                                        item_kind,
+                                        as_traits,
+                                    } => {
+                                        if let Some(ty) = call_path.prefixes.get(1) {
+                                            Some(CompileError::MultipleApplicableItemsInScope {
+                                                span,
+                                                item_name,
+                                                item_kind,
+                                                as_traits: as_traits
+                                                    .into_iter()
+                                                    .map(|(tt, _)| (tt, ty.as_str().to_string()))
+                                                    .collect(),
+                                            })
+                                        } else {
+                                            Some(CompileError::MultipleApplicableItemsInScope {
+                                                span,
+                                                item_name,
+                                                item_kind,
+                                                as_traits: vec![],
+                                            })
+                                        }
+                                    }
+                                    _ => None,
+                                });
+                            let implementing_type_method_ref = r?;
                             method = (*decl_engine.get(&implementing_type_method_ref)).clone();
                         }
                     }
