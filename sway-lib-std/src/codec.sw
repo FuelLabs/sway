@@ -3178,9 +3178,7 @@ pub fn encode_and_return<T>(item: T)
 where
     T: AbiEncode,
 {
-    T::is_memcopy();
-    let a = T::is_memcopy();
-    if a {
+    if T::is_memcopy() {
         __contract_ret(__addr_of(item), __size_of::<T>());
     } else {
         let slice = encode::<T>(item);
