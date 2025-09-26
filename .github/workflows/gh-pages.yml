@@ -11,6 +11,9 @@ on:
 env:
   RUST_VERSION: 1.86.0
 
+permissions:
+  contents: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
