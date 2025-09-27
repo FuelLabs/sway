@@ -11,9 +11,12 @@ on:
 env:
   RUST_VERSION: 1.86.0
 
+permissions:
+  contents: write
+
 jobs:
   deploy:
-    runs-on: buildjet-4vcpu-ubuntu-2204
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
