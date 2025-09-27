@@ -1,8 +1,3 @@
-// This test will check if array initialization is correct. That means:
-// - mcli for zero initialized arrays when the array size in bytes allows it;
-// - mcl for zero initialized arrays when the array size in bytes is too big;
-// - store each item individiually when the array is not zero initialized, but its length is small;
-// - initialize the array using a loop for all other cases.
 script;
 
 // u8
