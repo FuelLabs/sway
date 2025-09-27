@@ -234,7 +234,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                             }
                             continue;
                         } else if let Some(txt) = cmd.strip_prefix("echo ") {
-                            let mut words = txt.trim().split(" ");
+                            let words = txt.trim().split(" ");
                             let mut width = 0;
                             for word in words {
                                 let _ = write!(&mut snapshot, "{} ", word);
