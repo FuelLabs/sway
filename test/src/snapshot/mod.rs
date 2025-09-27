@@ -236,17 +236,17 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                         } else if let Some(txt) = cmd.strip_prefix("echo ") {
                             let mut words = txt.trim().split(" ");
                             let mut width = 0;
-                            while let Some(word) = words.next() {
+                            for word in words {
                                 let _ = write!(&mut snapshot, "{} ", word);
                                 width += word.len() + 1;
 
                                 if width >= 80 {
                                     width = 0;
-                                    let _ = writeln!(&mut snapshot, "");
+                                    let _ = writeln!(&mut snapshot);
                                 }
                             }
 
-                            let _ = writeln!(&mut snapshot, "");
+                            let _ = writeln!(&mut snapshot);
 
                             continue;
                         } else {
