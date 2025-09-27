@@ -12,9 +12,9 @@ Sway is a language developed for the [Fuel](https://docs.fuel.network/docs/intro
 
 For user documentation, including installing release builds, see the Sway Book: <https://fuellabs.github.io/sway/latest/>.
 
-For Sway Standard library documentation, see: <https://fuellabs.github.io/sway/master/std/>
+For Sway Standard library documentation, see: <https://fuellabs.github.io/sway/master/std/>.
 
-Also view the technical reference for the Sway programming language: <https://fuellabs.github.io/sway/master/reference/>
+Also view the technical reference for the Sway programming language: <https://fuellabs.github.io/sway/master/reference/>.
 
 ## Building from Source
 
