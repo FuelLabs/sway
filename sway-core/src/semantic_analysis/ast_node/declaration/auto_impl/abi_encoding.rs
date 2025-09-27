@@ -630,7 +630,7 @@ where
         };
 
         let return_encode = if return_type == "()" {
-            format!("__contract_ret(0, 0);")
+            "__contract_ret(0, 0);".to_string()
         } else {
             format!("encode_and_return::<{return_type}>(_result);")
         };
