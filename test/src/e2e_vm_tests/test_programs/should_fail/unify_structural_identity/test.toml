@@ -3,13 +3,13 @@ category = "fail"
 #check: $()error
 #check: $()let _: Lib_A_E = Lib_B_E::X(123);
 #nextln: $()Mismatched types.
-#nextln: $()expected: E
-#nextln: $()found:    E.
+#nextln: $()expected: unify_structural_identity::lib_a::E
+#nextln: $()found:    unify_structural_identity::lib_b::E.
 #nextln: $()Variable declaration's type annotation does not match up with the assigned expression's type.
 
 #check: $()error
 #check: $()let _: Lib_A_S = Lib_B_S { x: 123 };
 #nextln: $()Mismatched types.
-#nextln: $()expected: S
-#nextln: $()found:    S.
+#nextln: $()expected: unify_structural_identity::lib_a::S
+#nextln: $()found:    unify_structural_identity::lib_b::S.
 #nextln: $()Variable declaration's type annotation does not match up with the assigned expression's type.

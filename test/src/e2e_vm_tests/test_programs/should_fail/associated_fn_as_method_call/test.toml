@@ -1,8 +1,10 @@
 category = "fail"
 
-# check: bar.associated()
-# nextln: $()No method "associated(Bar)" found for type "Bar".
-# nextln: $()Matching method:
-# nextln: $()associated() -> () in Bar
+# check: $()Associated function or method is not found
+# check: $()bar.associated();
+# nextln: $()"associated(associated_fn_as_method_call::Bar)" is not found for type "associated_fn_as_method_call::Bar".
+# nextln: $()Only this "associated" function is implemented for the type:
+# nextln: $()- associated_fn_as_method_call::Bar::associated() -> ()
+# nextln: $()Did you mean to call that function?
 
 expected_warnings = 1

@@ -1,4 +1,4 @@
-script;
+library;
 
 struct Bar {}
 
@@ -6,10 +6,7 @@ impl Bar {
   fn associated() {}
 }
 
-fn main() -> u64 {
+pub fn main() {
   let bar = Bar {};
-
-  
   bar.associated();
-  0
 }

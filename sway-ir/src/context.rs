@@ -21,7 +21,16 @@ use crate::{
     Constant, ConstantContent, GlobalVarContent, StorageKeyContent, Type, TypeContent,
 };
 
-const PANIC_REVERT_CODE_LOWER_BOUND: u64 = 0xffff_ffff_0000_0000;
+// Copy of `sway_core::build_config::Backtrace`, which cannot
+// be used here directly due to circular dependency.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum Backtrace {
+    All,
+    #[default]
+    AllExceptNever,
+    OnlyAlways,
+    None,
+}
 
 /// The main IR context handle.
 ///
@@ -48,13 +57,19 @@ pub struct Context<'eng> {
     pub program_kind: Kind,
 
     pub experimental: ExperimentalFeatures,
+    pub backtrace: Backtrace,
 
     next_unique_sym_tag: u64,
-    next_unique_panic_revert_code: u64,
+    next_unique_panic_error_code: u64,
+    next_unique_panicking_call_id: u64,
 }
 
 impl<'eng> Context<'eng> {
-    pub fn new(source_engine: &'eng SourceEngine, experimental: ExperimentalFeatures) -> Self {
+    pub fn new(
+        source_engine: &'eng SourceEngine,
+        experimental: ExperimentalFeatures,
+        backtrace: Backtrace,
+    ) -> Self {
         let mut def = Self {
             source_engine,
             modules: Default::default(),
@@ -69,10 +84,14 @@ impl<'eng> Context<'eng> {
             constants: Default::default(),
             constants_map: Default::default(),
             metadata: Default::default(),
-            next_unique_sym_tag: Default::default(),
-            next_unique_panic_revert_code: PANIC_REVERT_CODE_LOWER_BOUND,
+            next_unique_sym_tag: 0,
+            next_unique_panic_error_code: 0,
+            // The next unique panicking call ID starts at 1, as 0 is reserved
+            // for the "there was no panicking call" case.
+            next_unique_panicking_call_id: 1,
             program_kind: Kind::Contract,
             experimental,
+            backtrace,
         };
         Type::create_basic_types(&mut def);
         def
@@ -101,11 +120,18 @@ impl<'eng> Context<'eng> {
         sym
     }
 
-    /// Get the next, unique, panic revert code.
-    pub fn get_next_panic_revert_code(&mut self) -> u64 {
-        let sym = self.next_unique_panic_revert_code;
-        self.next_unique_panic_revert_code += 1;
-        sym
+    /// Get the next, unique, panic error code.
+    pub fn get_unique_panic_error_code(&mut self) -> u64 {
+        let code = self.next_unique_panic_error_code;
+        self.next_unique_panic_error_code += 1;
+        code
+    }
+
+    /// Get the next, unique, panicking call ID.
+    pub fn get_unique_panicking_call_id(&mut self) -> u64 {
+        let id = self.next_unique_panicking_call_id;
+        self.next_unique_panicking_call_id += 1;
+        id
     }
 }
 

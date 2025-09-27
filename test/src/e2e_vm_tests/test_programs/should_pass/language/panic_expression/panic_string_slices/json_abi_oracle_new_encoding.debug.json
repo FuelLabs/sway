@@ -1,0 +1,161 @@
+{
+  "concreteTypes": [
+    {
+      "concreteTypeId": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d",
+      "type": "()"
+    },
+    {
+      "concreteTypeId": "8c25cb3686462e9a86d2883c5688a22fe738b0bbc85f458d2d2b5f3f667c6d5a",
+      "type": "str"
+    },
+    {
+      "concreteTypeId": "c89951a24c6ca28c13fd1cfdc646b2b656d69e61a92b91023be7eb58eb914b6b",
+      "type": "u8"
+    }
+  ],
+  "configurables": [],
+  "encodingVersion": "1",
+  "errorCodes": {
+    "0": {
+      "logId": null,
+      "msg": "This is the first panic string.",
+      "pos": {
+        "column": 5,
+        "file": "src/main.sw",
+        "function": "panic_string_slices::call_return_const_str_0",
+        "line": 31,
+        "pkg": "panic_string_slices"
+      }
+    },
+    "1": {
+      "logId": null,
+      "msg": "This is the second panic string.",
+      "pos": {
+        "column": 5,
+        "file": "src/main.sw",
+        "function": "panic_string_slices::call_return_const_str_1",
+        "line": 35,
+        "pkg": "panic_string_slices"
+      }
+    },
+    "2": {
+      "logId": null,
+      "msg": "This is a default panic string.",
+      "pos": {
+        "column": 5,
+        "file": "src/main.sw",
+        "function": "panic_string_slices::call_return_const_str_2",
+        "line": 39,
+        "pkg": "panic_string_slices"
+      }
+    },
+    "3": {
+      "logId": null,
+      "msg": "This is a panic string in then branch.",
+      "pos": {
+        "column": 5,
+        "file": "src/main.sw",
+        "function": "panic_string_slices::panic_if_result",
+        "line": 43,
+        "pkg": "panic_string_slices"
+      }
+    },
+    "4": {
+      "logId": "10098701174489624218",
+      "msg": null,
+      "pos": {
+        "column": 5,
+        "file": "src/main.sw",
+        "function": "panic_string_slices::call_return_const_str_no_const_eval",
+        "line": 27,
+        "pkg": "panic_string_slices"
+      }
+    },
+    "5": {
+      "logId": null,
+      "msg": "This is a panic string.",
+      "pos": {
+        "column": 5,
+        "file": "src/main.sw",
+        "function": "panic_string_slices::main",
+        "line": 15,
+        "pkg": "panic_string_slices"
+      }
+    }
+  },
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [
+        {
+          "concreteTypeId": "c89951a24c6ca28c13fd1cfdc646b2b656d69e61a92b91023be7eb58eb914b6b",
+          "name": "choice"
+        }
+      ],
+      "name": "main",
+      "output": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
+    }
+  ],
+  "loggedTypes": [
+    {
+      "concreteTypeId": "8c25cb3686462e9a86d2883c5688a22fe738b0bbc85f458d2d2b5f3f667c6d5a",
+      "logId": "10098701174489624218"
+    }
+  ],
+  "messagesTypes": [],
+  "metadataTypes": [],
+  "panickingCalls": {
+    "1": {
+      "function": "panic_string_slices::call_return_const_str_0",
+      "pos": {
+        "column": 5,
+        "file": "src/main.sw",
+        "function": "panic_string_slices::main",
+        "line": 8,
+        "pkg": "panic_string_slices"
+      }
+    },
+    "2": {
+      "function": "panic_string_slices::call_return_const_str_1",
+      "pos": {
+        "column": 5,
+        "file": "src/main.sw",
+        "function": "panic_string_slices::main",
+        "line": 9,
+        "pkg": "panic_string_slices"
+      }
+    },
+    "3": {
+      "function": "panic_string_slices::call_return_const_str_2",
+      "pos": {
+        "column": 5,
+        "file": "src/main.sw",
+        "function": "panic_string_slices::main",
+        "line": 10,
+        "pkg": "panic_string_slices"
+      }
+    },
+    "4": {
+      "function": "panic_string_slices::panic_if_result",
+      "pos": {
+        "column": 5,
+        "file": "src/main.sw",
+        "function": "panic_string_slices::main",
+        "line": 11,
+        "pkg": "panic_string_slices"
+      }
+    },
+    "5": {
+      "function": "panic_string_slices::call_return_const_str_no_const_eval",
+      "pos": {
+        "column": 5,
+        "file": "src/main.sw",
+        "function": "panic_string_slices::main",
+        "line": 12,
+        "pkg": "panic_string_slices"
+      }
+    }
+  },
+  "programType": "script",
+  "specVersion": "1.2"
+}

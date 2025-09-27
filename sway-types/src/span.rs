@@ -103,13 +103,13 @@ impl From<&str> for Source {
 /// Represents a span of the source code in a specific file.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Span {
-    // The original source code.
+    /// The original source code.
     src: Source,
-    // The byte position in the string of the start of the span.
+    /// The byte position in the string of the start of the span.
     start: usize,
-    // The byte position in the string of the end of the span.
+    /// The byte position in the string of the end of the span.
     end: usize,
-    // A reference counted pointer to the file from which this span originated.
+    /// The source ID of the file from which this span originated.
     source_id: Option<SourceId>,
 }
 

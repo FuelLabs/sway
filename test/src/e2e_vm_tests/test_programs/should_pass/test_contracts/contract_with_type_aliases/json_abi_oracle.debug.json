@@ -1,0 +1,234 @@
+{
+  "configurables": [],
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [
+        {
+          "name": "x",
+          "offset": null,
+          "type": 3,
+          "typeArguments": null
+        },
+        {
+          "name": "y",
+          "offset": null,
+          "type": 2,
+          "typeArguments": null
+        },
+        {
+          "name": "z",
+          "offset": null,
+          "type": 8,
+          "typeArguments": null
+        },
+        {
+          "name": "w",
+          "offset": null,
+          "type": 7,
+          "typeArguments": [
+            {
+              "name": "",
+              "type": 8,
+              "typeArguments": null
+            }
+          ]
+        },
+        {
+          "name": "u",
+          "offset": null,
+          "type": 0,
+          "typeArguments": null
+        },
+        {
+          "name": "s",
+          "offset": null,
+          "type": 6,
+          "typeArguments": null
+        }
+      ],
+      "name": "foo",
+      "output": {
+        "name": "",
+        "type": 1,
+        "typeArguments": null
+      }
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "types": [
+    {
+      "components": [
+        {
+          "name": "__tuple_element",
+          "offset": null,
+          "type": 3,
+          "typeArguments": null
+        },
+        {
+          "name": "__tuple_element",
+          "offset": null,
+          "type": 3,
+          "typeArguments": null
+        }
+      ],
+      "type": "(_, _)",
+      "typeId": 0,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "__tuple_element",
+          "offset": null,
+          "type": 3,
+          "typeArguments": null
+        },
+        {
+          "name": "__tuple_element",
+          "offset": null,
+          "type": 2,
+          "typeArguments": null
+        },
+        {
+          "name": "__tuple_element",
+          "offset": null,
+          "type": 8,
+          "typeArguments": null
+        },
+        {
+          "name": "__tuple_element",
+          "offset": null,
+          "type": 7,
+          "typeArguments": [
+            {
+              "name": "",
+              "type": 8,
+              "typeArguments": null
+            }
+          ]
+        },
+        {
+          "name": "__tuple_element",
+          "offset": null,
+          "type": 0,
+          "typeArguments": null
+        },
+        {
+          "name": "__tuple_element",
+          "offset": null,
+          "type": 6,
+          "typeArguments": null
+        }
+      ],
+      "type": "(_, _, _, _, _, _)",
+      "typeId": 1,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "__array_element",
+          "offset": null,
+          "type": 4,
+          "typeArguments": null
+        }
+      ],
+      "type": "[_; 2]",
+      "typeId": 2,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "b256",
+      "typeId": 3,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "Address",
+          "offset": null,
+          "type": 9,
+          "typeArguments": null
+        },
+        {
+          "name": "ContractId",
+          "offset": null,
+          "type": 10,
+          "typeArguments": null
+        }
+      ],
+      "type": "enum std::identity::Identity",
+      "typeId": 4,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "generic T",
+      "typeId": 5,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "str[9]",
+      "typeId": 6,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "f",
+          "offset": null,
+          "type": 5,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct contract_with_type_aliases_abi::Generic",
+      "typeId": 7,
+      "typeParameters": [
+        5
+      ]
+    },
+    {
+      "components": [
+        {
+          "name": "i",
+          "offset": null,
+          "type": 4,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct contract_with_type_aliases_abi::IdentityAliasWrapper",
+      "typeId": 8,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "bits",
+          "offset": null,
+          "type": 3,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct std::address::Address",
+      "typeId": 9,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "bits",
+          "offset": null,
+          "type": 3,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct std::contract_id::ContractId",
+      "typeId": 10,
+      "typeParameters": null
+    }
+  ]
+}

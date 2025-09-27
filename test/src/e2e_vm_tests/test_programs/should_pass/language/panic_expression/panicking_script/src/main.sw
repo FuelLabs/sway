@@ -22,13 +22,13 @@ fn test_nested_panic_inlined_same_revert_code() {
 }
 
 #[test(should_revert)]
-fn test_nested_panic_not_inlined() {
-    call_nested_panic_not_inlined();
+fn test_nested_panic_non_inlined() {
+    call_nested_panic_non_inlined();
 }
 
 #[test(should_revert)]
-fn test_nested_panic_not_inlined_same_revert_code() {
-    call_nested_panic_not_inlined();
+fn test_nested_panic_non_inlined_same_revert_code() {
+    call_nested_panic_non_inlined();
 }
 
 #[test(should_revert)]

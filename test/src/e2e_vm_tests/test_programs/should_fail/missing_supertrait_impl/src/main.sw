@@ -1,4 +1,4 @@
-script;
+library;
 
 trait A {
     fn a();
@@ -44,5 +44,3 @@ impl C for Y {
 impl D for Y {
     fn d() { }
 }
-
-fn main() { } 

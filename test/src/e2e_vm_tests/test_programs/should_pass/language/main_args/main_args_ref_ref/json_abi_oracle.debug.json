@@ -1,0 +1,51 @@
+{
+  "configurables": [],
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [
+        {
+          "name": "baba",
+          "offset": null,
+          "type": 0,
+          "typeArguments": null
+        },
+        {
+          "name": "keke",
+          "offset": null,
+          "type": 0,
+          "typeArguments": null
+        }
+      ],
+      "name": "main",
+      "output": {
+        "name": "",
+        "type": 1,
+        "typeArguments": null
+      }
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "types": [
+    {
+      "components": [
+        {
+          "name": "val",
+          "offset": null,
+          "type": 1,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct TestStruct",
+      "typeId": 0,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u64",
+      "typeId": 1,
+      "typeParameters": null
+    }
+  ]
+}

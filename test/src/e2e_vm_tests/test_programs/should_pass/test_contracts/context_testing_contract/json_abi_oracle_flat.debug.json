@@ -1,0 +1,121 @@
+{
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "get_id",
+      "output": {
+        "name": "",
+        "type": 1,
+        "typeArguments": null
+      }
+    },
+    {
+      "attributes": null,
+      "inputs": [
+        {
+          "name": "asset_id",
+          "offset": null,
+          "type": 1,
+          "typeArguments": null
+        }
+      ],
+      "name": "get_this_balance",
+      "output": {
+        "name": "",
+        "type": 2,
+        "typeArguments": null
+      }
+    },
+    {
+      "attributes": null,
+      "inputs": [
+        {
+          "name": "asset_id",
+          "offset": null,
+          "type": 1,
+          "typeArguments": null
+        },
+        {
+          "name": "cid",
+          "offset": null,
+          "type": 1,
+          "typeArguments": null
+        }
+      ],
+      "name": "get_balance_of_contract",
+      "output": {
+        "name": "",
+        "type": 2,
+        "typeArguments": null
+      }
+    },
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "get_amount",
+      "output": {
+        "name": "",
+        "type": 2,
+        "typeArguments": null
+      }
+    },
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "get_asset_id",
+      "output": {
+        "name": "",
+        "type": 1,
+        "typeArguments": null
+      }
+    },
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "get_gas",
+      "output": {
+        "name": "",
+        "type": 2,
+        "typeArguments": null
+      }
+    },
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "get_global_gas",
+      "output": {
+        "name": "",
+        "type": 2,
+        "typeArguments": null
+      }
+    }
+  ],
+  "types": [
+    {
+      "components": null,
+      "type": "b256",
+      "typeId": 0,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "value",
+          "offset": null,
+          "type": 0,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct ContractId",
+      "typeId": 1,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u64",
+      "typeId": 2,
+      "typeParameters": null
+    }
+  ]
+}

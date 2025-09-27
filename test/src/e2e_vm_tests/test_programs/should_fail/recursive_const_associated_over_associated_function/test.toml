@@ -3,7 +3,8 @@ category = "fail"
 #check: $()Self::S_ASSOC
 #nextln: $()Could not find symbol "S_ASSOC" in this scope.
 
+#check: $()Associated function or method is not found
 #check: $()const S_ASSOC: u8 = Self::assoc();
-#nextln: $()No method "assoc() -> u8" found for type "S".
+#nextln: $()"assoc() -> u8" is not found for type "recursive_const_associated_over_associated_function::S".
 
-#check: $()2 errors.
+#check: $()Aborting due to 2 errors.

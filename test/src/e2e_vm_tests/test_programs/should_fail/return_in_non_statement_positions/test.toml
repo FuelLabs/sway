@@ -1,0 +1,266 @@
+category = "fail"
+
+# check: $()warning
+# check: $()pub enum Enum {
+# nextln: $()This enum is never used.
+
+# check: $()warning
+# check: $()pub enum EnumMultivariant {
+# nextln: $()This enum is never used.
+
+# check: $()warning
+# check: $()45
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: $()145
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: $()145
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: $()245
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: $()445
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: $()545
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: $()457
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: $()457
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: $()745
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: $()break
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: $()845
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: $()_ => 458,
+# nextln: $()};
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: $()945
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: $()fn helper_fun(_x : u64, _y : u64) -> u64 {
+# nextln: $()This function is never called.
+
+# check: $()warning
+# check: $()1345
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: $()1445
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: $()1545
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: $()1645
+# nextln: $()This code is unreachable.
+
+# check: $()error
+# check: $()let _ = return + return;
+# nextln: $()Expected an expression.
+
+# check: $()error
+# check: $()let _ = return && return;
+# nextln: $()Expected an expression.
+
+# check: $()error
+# check: $()let _ = return || return;
+# nextln: $()Expected an expression.
+
+# check: $()error
+# check: $()let _ = return;
+# nextln: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    ().
+# nextln: $()help: Return expression must return the declared function return type.
+
+# # TODO: Enable tests for arrays once https://github.com/FuelLabs/sway/issues/7363 is fixed.
+
+# # check: $()error
+# # check: $()let _ = [return, return];
+# # nextln: $()Mismatched types.
+# # nextln: $()expected: u64
+# # nextln: $()found:    ().
+# # nextln: $()help: Return expression must return the declared function return type.
+# 
+# # check: $()error
+# # check: $()let _ = [return, return];
+# # nextln: $()Mismatched types.
+# # nextln: $()expected: u64
+# # nextln: $()found:    ().
+# # nextln: $()help: Return expression must return the declared function return type.
+# 
+# # check: $()error
+# # check: $()let _ = [return];
+# # nextln: $()Mismatched types.
+# # nextln: $()expected: u64
+# # nextln: $()found:    ().
+# # nextln: $()help: Return expression must return the declared function return type.
+# 
+# # check: $()error
+# # check: $()let _ = [return, 0];
+# # nextln: $()Mismatched types.
+# # nextln: $()expected: u64
+# # nextln: $()found:    ().
+# # nextln: $()help: Return expression must return the declared function return type.
+# 
+# # check: $()error
+# # check: $()let _ = [0, return];
+# # nextln: $()Mismatched types.
+# # nextln: $()expected: u64
+# # nextln: $()found:    ().
+# # nextln: $()help: Return expression must return the declared function return type.
+
+# check: $()error
+# check: $()let _ = (return, return);
+# nextln: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    ().
+# nextln: $()help: Return expression must return the declared function return type.
+
+# check: $()error
+# check: $()let _ = (return, return);
+# nextln: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    ().
+# nextln: $()help: Return expression must return the declared function return type.
+
+# check: $()error
+# check: $()let _ = S { x: return, y: return };
+# nextln: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    ().
+# nextln: $()help: Return expression must return the declared function return type.
+
+# check: $()error
+# check: $()let _ = S { x: return, y: return };
+# nextln: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    ().
+# nextln: $()help: Return expression must return the declared function return type.
+
+# check: $()error
+# check: $()let _ = (return);
+# nextln: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    ().
+# nextln: $()help: Return expression must return the declared function return type.
+
+# check: $()error
+# check: $()let _ = if (return) {
+# nextln: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    ().
+# nextln: $()help: Return expression must return the declared function return type.
+
+# check: $()error
+# check: $()while (return) {
+# nextln: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    ().
+# nextln: $()help: Return expression must return the declared function return type.
+
+# check: $()error
+# check: $()let _ = match (return) {
+# nextln: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    ().
+# nextln: $()help: Return expression must return the declared function return type.
+
+# check: $()error
+# check: $()let _ = Enum::A((return, return));
+# nextln: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    ().
+# nextln: $()help: Return expression must return the declared function return type.
+
+# check: $()error
+# check: $()let _ = Enum::A((return, return));
+# nextln: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    ().
+# nextln: $()help: Return expression must return the declared function return type.
+
+# check: $()error
+# check: $()let _ = EnumMultivariant::B((return, return));
+# nextln: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    ().
+# nextln: $()help: Return expression must return the declared function return type.
+
+# check: $()error
+# check: $()let _ = EnumMultivariant::B((return, return));
+# nextln: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    ().
+# nextln: $()help: Return expression must return the declared function return type.
+
+# check: $()error
+# check: $()let _ = helper_fun(return, return);
+# nextln: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    ().
+# nextln: $()help: Return expression must return the declared function return type.
+
+# check: $()error
+# check: $()let _ = helper_fun(return, return);
+# nextln: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    ().
+# nextln: $()help: Return expression must return the declared function return type.
+
+# check: $()error
+# check: $()let _ = (return) && return;
+# nextln: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    ().
+# nextln: $()help: Return expression must return the declared function return type.
+
+# check: $()error
+# check: $()let _ = (return) && return;
+# nextln: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    ().
+# nextln: $()help: Return expression must return the declared function return type.
+
+# check: $()error
+# check: $()let _ = (return) || return;
+# nextln: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    ().
+# nextln: $()help: Return expression must return the declared function return type.
+
+# check: $()error
+# check: $()let _ = (return) || return;
+# nextln: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    ().
+# nextln: $()help: Return expression must return the declared function return type.
+
+# check: $()Aborting due to 25 errors.

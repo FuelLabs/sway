@@ -103,7 +103,7 @@ pub(crate) fn type_check_method_application(
     );
 
     // In case resolve_method_name fails throw argument errors.
-    let (original_decl_ref, call_path_typeid) = if let Err(e) = method_result {
+    let (original_decl_ref, method_target) = if let Err(e) = method_result {
         for (_, arg_handler, _) in args_opt_buf.iter() {
             handler.append(arg_handler.clone());
         }
@@ -611,8 +611,8 @@ pub(crate) fn type_check_method_application(
     }
 
     // Unify method type parameters with implementing type type parameters.
-    if let Some(implementing_for_typeid) = method.implementing_for_typeid {
-        if let Some(TyDecl::ImplSelfOrTrait(t)) = method.implementing_type.clone() {
+    if let Some(implementing_for) = method.implementing_for {
+        if let Some(TyDecl::ImplSelfOrTrait(t)) = &method.implementing_type {
             let t = &engines.de().get(&t.decl_id).implementing_for;
             if let TypeInfo::Custom {
                 type_arguments: Some(type_arguments),
@@ -633,8 +633,7 @@ pub(crate) fn type_check_method_application(
                         names_index.insert(qualified_call_path.call_path.suffix.clone(), index);
                     }
                 }
-                let implementing_type_parameters =
-                    implementing_for_typeid.get_type_parameters(engines);
+                let implementing_type_parameters = implementing_for.get_type_parameters(engines);
                 if let Some(implementing_type_parameters) = implementing_type_parameters {
                     for p in method.type_parameters.clone() {
                         let Some(p) = p.as_type_parameter() else {
@@ -682,7 +681,7 @@ pub(crate) fn type_check_method_application(
     {
         fn_ref = cached_fn_ref;
     } else {
-        if let Some(TyDecl::ImplSelfOrTrait(t)) = method.implementing_type.clone() {
+        if let Some(TyDecl::ImplSelfOrTrait(t)) = &method.implementing_type {
             let t = &engines.de().get(&t.decl_id).implementing_for;
             if let TypeInfo::Custom {
                 qualified_call_path,
@@ -708,11 +707,11 @@ pub(crate) fn type_check_method_application(
                     }
                 }
 
-                // This handles the case of substituting the generic blanket type by call_path_typeid.
+                // This handles the case of substituting the generic blanket type by `method_target`.
                 for p in method.type_parameters.iter() {
                     if p.name().as_str() == qualified_call_path.call_path.suffix.as_str() {
                         subst_type_parameters.push(t.initial_type_id());
-                        subst_type_arguments.push(call_path_typeid);
+                        subst_type_arguments.push(method_target);
                         break;
                     }
                 }
@@ -787,7 +786,7 @@ pub(crate) fn type_check_method_application(
         fn_ref,
         selector,
         type_binding: Some(method_name_binding.strip_inner()),
-        call_path_typeid: Some(call_path_typeid),
+        method_target: Some(method_target),
         contract_call_params: contract_call_params_map,
         contract_caller: None,
     };

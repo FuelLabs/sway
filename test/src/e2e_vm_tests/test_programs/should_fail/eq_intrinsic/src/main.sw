@@ -1,4 +1,4 @@
-script;
+library;
 
 struct A {
     a: u64,
@@ -9,7 +9,7 @@ enum B {
   Second: u64
 }
 
-fn main() {
+pub fn main() {
     let _ = __eq("hi", "ho");
     let _ = __eq(false, 11);
     let _ = __eq(A { a: 1 }, B { a: 1 });

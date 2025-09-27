@@ -476,6 +476,7 @@ impl TestContext {
                                 run_config.update_output_files,
                                 &suffix,
                                 has_experimental_field,
+                                run_config.release,
                             )
                         })
                         .await;
@@ -526,6 +527,7 @@ impl TestContext {
                                 run_config.update_output_files,
                                 &suffix,
                                 has_experimental_field,
+                                run_config.release,
                             )
                         })
                         .await;

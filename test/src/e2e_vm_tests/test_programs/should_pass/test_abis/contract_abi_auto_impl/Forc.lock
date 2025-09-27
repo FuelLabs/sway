@@ -1,8 +1,0 @@
-[[package]]
-name = "contract_abi_auto_impl"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "std"
-source = "path+from-root-8ECB7FD43A4A6D77"

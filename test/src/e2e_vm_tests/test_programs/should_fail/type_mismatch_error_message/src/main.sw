@@ -1,4 +1,4 @@
-script;
+library;
 
 pub enum MyResult<T, E> {
     Ok: T,
@@ -20,7 +20,7 @@ fn test<A, I>(arg: A) -> Item<I> {
     }
 }
 
-fn main() {
+pub fn main() {
     example();
     let i: Item<u64> = test(true);
 }

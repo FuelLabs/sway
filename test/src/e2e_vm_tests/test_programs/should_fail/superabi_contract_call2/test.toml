@@ -1,3 +1,5 @@
 category = "fail"
 
-# check: $()No method "super_abi_method() -> ()" found for type "contract".
+# check: $()Associated function or method is not found
+# check: $()fn abi_method() { Self::super_abi_method() }
+# nextln: $()"super_abi_method() -> ()" is not found for type "Contract".

@@ -1,0 +1,25 @@
+{
+  "configurables": [],
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "test_function",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "types": [
+    {
+      "components": null,
+      "type": "bool",
+      "typeId": 0,
+      "typeParameters": null
+    }
+  ]
+}

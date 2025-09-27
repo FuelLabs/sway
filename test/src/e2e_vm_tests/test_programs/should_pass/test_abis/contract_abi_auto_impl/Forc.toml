@@ -1,8 +1,0 @@
-[project]
-name = "contract_abi_auto_impl"
-authors = ["Fuel Labs <contact@fuel.sh>"]
-entry = "main.sw"
-license = "Apache-2.0"
-
-[dependencies]
-std = { path = "../../../../reduced_std_libs/sway-lib-std-assert" }

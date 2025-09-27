@@ -337,12 +337,8 @@ pub(crate) fn check_impls_for_overlap(
                                     overlap_err = Some(
                                         handler.emit_err(
                                             CompileError::ConflictingImplsForTraitAndType {
-                                                trait_name: self_entry
-                                                    .inner
-                                                    .key
-                                                    .name
-                                                    .suffix
-                                                    .name
+                                                trait_name: engines
+                                                    .help_out(self_entry.inner.key.name.as_ref())
                                                     .to_string(),
                                                 type_implementing_for: engines
                                                     .help_out(self_entry.inner.key.type_id)

@@ -20,13 +20,13 @@ category = "fail"
 # nextln: $()fn unused(self, x: u64, other: u64) -> u64 {
 # check: $()}
 # nextln: $()}
-# nextln: $()This is the already existing implementation of "Multiple<u64>" for "FooBarData<F>".
+# nextln: $()This is the already existing implementation of "Multiple" for "FooBarData".
 
 # check: $()impl<F> Multiple<u64> for FooBarData<F> {
 # nextln: $()fn unused(self, x: u64, other: u64) -> u64 {
 # check: $()}
 # nextln: $()}
-# nextln: $()Trait "generic_traits::Multiple<u64>" is already implemented for type "FooBarData<F>".
+# nextln: $()Trait "generic_traits::Multiple<u64>" is already implemented for type "generic_traits::FooBarData<F>".
 
 # check: $()Self type of an impl block is not valid
 # check: $()impl<T> Returner<T> for Self {
@@ -53,5 +53,5 @@ category = "fail"
 # check: $()help: Function body's return type does not match up with its return type annotation.
 
 # check: $()let b = a.set(42);
-# check: $()No method "set(FooBarData<u8>, numeric) -> bool" found for type "FooBarData<u8>".
+# check: $()"set(generic_traits::FooBarData<u8>, {numeric}) -> bool" is not found for type "generic_traits::FooBarData<u8>"
 

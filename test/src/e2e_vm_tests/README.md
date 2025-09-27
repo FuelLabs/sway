@@ -4,8 +4,8 @@ In order to minimize compilation time of individual tests, strive to reduce depe
 
 To achieve that, follow these guidelines:
 
-- Use `implicit-std = false` if dependency on `core` is not needed. This is often possible when testing `should_pass/language` features.
-- If the dependency on `core` is not needed, instead of using the project type `script`, that will, because of the encoding, depend on `core`, try using `library` instead.
+- Use `implicit-std = false` if dependency on `std` is not needed. This is often possible when testing `should_pass/language` features.
+- Instead of using the project type `script` as default, try using `library` instead. Because of the encoding, every `script` depends on at least the [reduced `std` library](reduced_std_libs/README.md) `sway-lib-std-core`. Libraries do not have this mandatory dependency.
 - Do not use `std` just to conveniently get an arbitrary type or trait. E.g., if a test requires an arbitrary type or trait, go with `struct Dummy {}` or `trait Trait {}` instead of importing `Option` or `Hash`.
 - If `std` functionality is needed, import the minimal [reduced `std` library](reduced_std_libs/README.md) that provides the functionality.
 - Import the full `std` only if the provided [reduced `std` libraries](reduced_std_libs/README.md) do not provide required types.

@@ -1,93 +1,102 @@
 category = "fail"
 
-#check: $()error
+#check: $()Associated function or method is not found
 #check: $()concrete_types.sw
 #check: $()r_x.ref_mut_u64_method();
-#nextln: $()No method "ref_mut_u64_method(&u64)" found for type "&u64".
+#nextln: $()ref_mut_u64_method(&u64)" is not found for type "&u64".
 
-#check: $()error
+#check: $()Associated function or method is not found
 #check: $()concrete_types.sw
 #check: $()r_r_x.ref_mut_ref_mut_u64_method();
-#nextln: $()No method "ref_mut_ref_mut_u64_method(&&u64)" found for type "&&u64".
+#nextln: $()"ref_mut_ref_mut_u64_method(&&u64)" is not found for type "&&u64".
 
-#check: $()error
+#check: $()Associated function or method is not found
 #check: $()ref_and_ref_mut.sw
 #check: $()r.ref_mut_u64();
-#nextln: $()No method "ref_mut_u64(&u64)" found for type "&u64".
+#nextln: $()"ref_mut_u64(&u64)" is not found for type "&u64".
 
-#check: $()error
+#check: $()Associated function or method is not found
 #check: $()ref_and_ref_mut.sw
 #check: $()r.ref_mut_ref_mut_u64();
-#nextln: $()No method "ref_mut_ref_mut_u64(&&u64)" found for type "&&u64".
+#nextln: $()"ref_mut_ref_mut_u64(&&u64)" is not found for type "&&u64".
 
-#check: $()error
+#check: $()Associated function or method is not found
 #check: $()ref_and_ref_mut.sw
 #check: $()r.ref_ref_mut_u64();
-#nextln: $()No method "ref_ref_mut_u64(&&u64)" found for type "&&u64".
+#nextln: $()"ref_ref_mut_u64(&&u64)" is not found for type "&&u64".
 
-#check: $()error
+#check: $()Associated function or method is not found
 #check: $()ref_and_ref_mut.sw
 #check: $()r.ref_mut_ref_u64();
-#nextln: $()No method "ref_mut_ref_u64(&&u64)" found for type "&&u64".
+#nextln: $()"ref_mut_ref_u64(&&u64)" is not found for type "&&u64".
 
-#check: $()error
+#check: $()Associated function or method is not found
 #check: $()ref_and_ref_mut.sw
 #check: $()r.ref_mut_ref_mut_ref_mut_u64();
-#nextln: $()No method "ref_mut_ref_mut_ref_mut_u64(&&&u64)" found for type "&&&u64".
+#nextln: $()"ref_mut_ref_mut_ref_mut_u64(&&&u64)" is not found for type "&&&u64".
 
-#check: $()error
+#check: $()Associated function or method is not found
 #check: $()ref_and_ref_mut.sw
 #check: $()r.ref_ref_mut_ref_mut_u64();
-#nextln: $()No method "ref_ref_mut_ref_mut_u64(&&&u64)" found for type "&&&u64".
+#nextln: $()"ref_ref_mut_ref_mut_u64(&&&u64)" is not found for type "&&&u64".
 
-#check: $()error
+#check: $()Associated function or method is not found
 #check: $()ref_and_ref_mut.sw
 #check: $()r.ref_mut_ref_ref_mut_u64();
-#nextln: $()No method "ref_mut_ref_ref_mut_u64(&&&u64)" found for type "&&&u64".
+#nextln: $()"ref_mut_ref_ref_mut_u64(&&&u64)" is not found for type "&&&u64".
 
-#check: $()error
+#check: $()Associated function or method is not found
 #check: $()ref_and_ref_mut.sw
 #check: $()r.ref_mut_ref_mut_ref_u64();
-#nextln: $()No method "ref_mut_ref_mut_ref_u64(&&&u64)" found for type "&&&u64".
+#nextln: $()"ref_mut_ref_mut_ref_u64(&&&u64)" is not found for type "&&&u64".
 
 #check: $()Trait is already implemented for type
 #check: $()ref_and_ref_mut_trait_impls.sw
 #check: $()impl<A> Trait for &S<A> { }
-#nextln: $()This is the already existing implementation of "Trait" for "&S<B>".
+#nextln: $()This is the already existing implementation of "Trait" for "&S".
 #nextln: $()impl<B> Trait for &S<B> { }
-#nextln: $()Trait "impl_reference_types::ref_and_ref_mut_trait_impls::Trait" is already implemented for type "&S<B>".
+#nextln: $()Trait "impl_reference_types::ref_and_ref_mut_trait_impls::Trait" is already implemented for type "&impl_reference_types::ref_and_ref_mut_trait_impls::S<B>".
 
 #check: $()Trait is already implemented for type
 #check: $()ref_and_ref_mut_trait_impls.sw
 #check: $()impl<A> Trait for &mut S<A> { }
-#nextln: $()This is the already existing implementation of "Trait" for "&mut S<B>".
+#nextln: $()This is the already existing implementation of "Trait" for "&mut S".
 #nextln: $()impl<B> Trait for &mut S<B> { }
-#nextln: $()Trait "impl_reference_types::ref_and_ref_mut_trait_impls::Trait" is already implemented for type "&mut S<B>".
+#nextln: $()Trait "impl_reference_types::ref_and_ref_mut_trait_impls::Trait" is already implemented for type "&mut impl_reference_types::ref_and_ref_mut_trait_impls::S<B>".
 
 #check: $()Trait is already implemented for type
 #check: $()ref_and_ref_mut_trait_impls.sw
 #check: $()impl<A> Trait for & &S<A> { }
-#nextln: $()This is the already existing implementation of "Trait" for "&&S<B>"
+#nextln: $()This is the already existing implementation of "Trait" for "&&S"
 #nextln: $()impl<B> Trait for & &S<B> { }
-#nextln: $()Trait "impl_reference_types::ref_and_ref_mut_trait_impls::Trait" is already implemented for type "&&S<B>".
+#nextln: $()Trait "impl_reference_types::ref_and_ref_mut_trait_impls::Trait" is already implemented for type "&&impl_reference_types::ref_and_ref_mut_trait_impls::S<B>".
 
 #check: $()Trait is already implemented for type
 #check: $()ref_and_ref_mut_trait_impls.sw
 #check: $()impl<A> Trait for &mut &mut S<A> { }
-#nextln: $()This is the already existing implementation of "Trait" for "&mut &mut S<B>".
+#nextln: $()This is the already existing implementation of "Trait" for "&mut &mut S".
 #nextln: $()impl<B> Trait for &mut &mut S<B> { }
-#nextln: $()Trait "impl_reference_types::ref_and_ref_mut_trait_impls::Trait" is already implemented for type "&mut &mut S<B>".
+#nextln: $()Trait "impl_reference_types::ref_and_ref_mut_trait_impls::Trait" is already implemented for type "&mut &mut impl_reference_types::ref_and_ref_mut_trait_impls::S<B>".
 
 #check: $()Trait is already implemented for type
 #check: $()ref_and_ref_mut_trait_impls.sw
 #check: $()impl<A> Trait for & & &S<A> { }
-#nextln: $()This is the already existing implementation of "Trait" for "&&&S<B>".
+#nextln: $()This is the already existing implementation of "Trait" for "&&&S".
 #nextln: $()impl<B> Trait for & & &S<B> { }
-#nextln: $()Trait "impl_reference_types::ref_and_ref_mut_trait_impls::Trait" is already implemented for type "&&&S<B>".
+#nextln: $()Trait "impl_reference_types::ref_and_ref_mut_trait_impls::Trait" is already implemented for type "&&&impl_reference_types::ref_and_ref_mut_trait_impls::S<B>".
 
 #check: $()Trait is already implemented for type
 #check: $()ref_and_ref_mut_trait_impls.sw
 #check: $()impl<A> Trait for &mut &mut &mut S<A> { }
-#nextln: $()This is the already existing implementation of "Trait" for "&mut &mut &mut S<B>".
+#nextln: $()This is the already existing implementation of "Trait" for "&mut &mut &mut S".
 #nextln: $()impl<B> Trait for &mut &mut &mut S<B> { }
-#nextln: $()Trait "impl_reference_types::ref_and_ref_mut_trait_impls::Trait" is already implemented for type "&mut &mut &mut S<B>".
+#nextln: $()Trait "impl_reference_types::ref_and_ref_mut_trait_impls::Trait" is already implemented for type "&mut &mut &mut impl_reference_types::ref_and_ref_mut_trait_impls::S<B>".
+
+#check: $()Trait is already implemented for type
+#check: $()ref_and_ref_mut_trait_impls.sw
+#check: $()impl<A> Trait for &mut & &mut S<A> { }
+#nextln: $()This is the already existing implementation of "Trait" for "&mut &&mut S".
+#nextln: $()impl<B> Trait for &mut & &mut S<B> { }
+#nextln: $()Trait "impl_reference_types::ref_and_ref_mut_trait_impls::Trait" is already implemented for type "&mut &&mut impl_reference_types::ref_and_ref_mut_trait_impls::S<B>".
+
+#check: $()Aborting due to 17 errors.

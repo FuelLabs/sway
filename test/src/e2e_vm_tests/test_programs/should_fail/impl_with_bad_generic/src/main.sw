@@ -1,4 +1,4 @@
-script;
+library;
 
 struct S { }
 
@@ -19,14 +19,14 @@ enum OtherOption<T> {
 }
 
 impl<T> Option<T> {
-    fn return_false(self, other: OtherOption<Self>) -> bool {
+    fn return_false(self, _other: OtherOption<Self>) -> bool {
         false
     }
 }
 
-fn main() {
+pub fn main() {
     (S{}).f(true);
     let a = Option::Some(5u64);
-    let b = OtherOption::Some(None(()));
-    let c = a.return_false(b);
+    let b = OtherOption::Some(Option::None);
+    let _ = a.return_false(b);
 }

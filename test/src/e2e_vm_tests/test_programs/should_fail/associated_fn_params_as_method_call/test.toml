@@ -1,8 +1,0 @@
-category = "fail"
-
-# check: bar.associated()
-# nextln: $()No method "associated(Bar)" found for type "Bar".
-# nextln: $()Matching method:
-# nextln: $()associated() -> () in Bar
-
-expected_warnings = 1

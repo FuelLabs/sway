@@ -1,5 +1,8 @@
 category = "fail"
 
-# check: $()No method "add_values(Data, Data, Data) -> u64" found for type "Data".
-# nextln: $()Matching method:
-# nextln: $()add_values(Data, Data) -> u64 in Data
+# check: $()Associated function or method is not found
+# check: $()Data::add_values(data1, data2, data2);
+# nextln: $()"add_values(excess_associated_fn_arguments::Data, excess_associated_fn_arguments::Data, excess_associated_fn_arguments::Data)" is not found for type "excess_associated_fn_arguments::Data".
+# nextln: $()Only this "add_values" function is implemented for the type:
+# nextln: $()- excess_associated_fn_arguments::Data::add_values(_first: excess_associated_fn_arguments::Data, _other: excess_associated_fn_arguments::Data) -> u64
+# nextln: $()Did you mean to call that function?

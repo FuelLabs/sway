@@ -10,7 +10,7 @@ use std::{
 };
 use sway_core::Engines;
 use sway_features::ExperimentalFeatures;
-use sway_ir::function_print;
+use sway_ir::{function_print, Backtrace};
 
 static FORC_COMPILATION: Once = Once::new();
 static FORC_DOC_COMPILATION: Once = Once::new();
@@ -161,7 +161,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
 
                                         if line.starts_with("!0 =") {
                                             let engines = Engines::default();
-                                            let ir = sway_ir::parse(&captured, engines.se(), ExperimentalFeatures::default()).unwrap();
+                                            let ir = sway_ir::parse(&captured, engines.se(), ExperimentalFeatures::default(), Backtrace::default()).unwrap();
 
                                             for m in ir.module_iter() {
                                                 for f in m.function_iter(&ir) {

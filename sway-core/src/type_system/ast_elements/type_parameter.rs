@@ -20,6 +20,7 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 use std::{
+    borrow::Cow,
     cmp::Ordering,
     collections::{BTreeMap, HashMap},
     fmt,
@@ -1103,7 +1104,7 @@ impl ConstGenericExpr {
         }
     }
 
-    /// Creates a new literal [Length] without span annotation.
+    /// Creates a new [ConstGenericExpr::Literal] with optional span annotation.
     pub fn literal(val: usize, span: Option<Span>) -> Self {
         Self::Literal {
             val,
@@ -1120,6 +1121,33 @@ impl ConstGenericExpr {
 
     pub fn is_annotated(&self) -> bool {
         !self.span().is_dummy()
+    }
+
+    /// For [ConstGenericExpr::Literal] returns the numeric value
+    /// as a decimal string, regardless of its original representation
+    /// in the source code. E.g., if the original value was `"0x1_F"`,
+    /// it will return `"31"`.
+    pub fn get_normalized_str(&self) -> Cow<str> {
+        match self {
+            Self::Literal { val, span: _ } => val.to_string().into(),
+            Self::AmbiguousVariableExpression { ident, decl: _ } => ident.as_str().into(),
+        }
+    }
+
+    /// For [ConstGenericExpr::Literal] returns the numeric value
+    /// as it was originally represented in the source code, if the
+    /// span exists. Otherwise, it will return the normalized value.
+    pub fn get_original_str(&self) -> Cow<str> {
+        match self {
+            Self::Literal { val, span } => {
+                if !span.is_dummy() {
+                    span.as_str().into()
+                } else {
+                    val.to_string().into()
+                }
+            }
+            Self::AmbiguousVariableExpression { ident, decl: _ } => ident.as_str().into(),
+        }
     }
 }
 
@@ -1172,12 +1200,13 @@ impl Spanned for ConstGenericExpr {
 
 impl DebugWithEngines for ConstGenericExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>, _engines: &crate::Engines) -> std::fmt::Result {
-        match self {
-            Self::Literal { val, .. } => write!(f, "{val}"),
-            Self::AmbiguousVariableExpression { ident, .. } => {
-                write!(f, "{}", ident.as_str())
-            }
-        }
+        write!(f, "{}", self.get_original_str())
+    }
+}
+
+impl DisplayWithEngines for ConstGenericExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>, _engines: &crate::Engines) -> std::fmt::Result {
+        write!(f, "{}", self.get_normalized_str())
     }
 }
 
