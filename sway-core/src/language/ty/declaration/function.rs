@@ -62,14 +62,24 @@ impl DebugWithEngines for TyFunctionDecl {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         write!(
             f,
-            "{}{:?}{}({}): {:?} -> {:?}",
-            if self.is_trait_method_dummy {
+            "{dummy_or_not}{implementing_for_typeid}{implementing_type}{path}{type_parameters}({parameters}): [{return_type_inital:?} -> {return_type:?}]",
+            dummy_or_not = if self.is_trait_method_dummy {
                 "dummy ".to_string()
             } else {
                 "".to_string()
             },
-            self.name,
-            if !self.type_parameters.is_empty() {
+            implementing_for_typeid = if let Some(implementing_for_typeid) = self.implementing_for_typeid.as_ref() {
+                format!("[{:?}]", engines.help_out(implementing_for_typeid))
+            } else {
+                "".to_string()
+            },
+            implementing_type = if let Some(implementing_type) = self.implementing_type.as_ref() {
+                format!("[{:?}]", engines.help_out(implementing_type))
+            } else {
+                "".to_string()
+            },
+            path = self.call_path.as_vec_string().join("::"),
+            type_parameters = if !self.type_parameters.is_empty() {
                 format!(
                     "<{}>",
                     self.type_parameters
@@ -81,7 +91,7 @@ impl DebugWithEngines for TyFunctionDecl {
             } else {
                 "".to_string()
             },
-            self.parameters
+            parameters = self.parameters
                 .iter()
                 .map(|p| format!(
                     "{}: {:?} -> {:?}",
@@ -91,8 +101,8 @@ impl DebugWithEngines for TyFunctionDecl {
                 ))
                 .collect::<Vec<_>>()
                 .join(", "),
-            engines.help_out(self.return_type.initial_type_id()),
-            engines.help_out(self.return_type.type_id()),
+            return_type_inital = engines.help_out(self.return_type.initial_type_id()),
+            return_type = engines.help_out(self.return_type.type_id()),
         )
     }
 }

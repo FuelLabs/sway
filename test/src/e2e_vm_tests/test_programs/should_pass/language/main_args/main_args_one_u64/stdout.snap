@@ -1,0 +1,37 @@
+---
+source: test/src/snapshot/mod.rs
+---
+Because this test receives and returns an `u64`, we should see decoding loading 
+from the `script_data` pointer directly, and encoding just returning a pointer to 
+a local variable inside `__entry` stack frame. 
+
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_one_u64 --release --ir final --asm final --bytecode | filter-fn main_args_one_u64 __entry
+
+pub entry fn __entry() -> () {
+    local u64 item_
+
+    entry():
+    v0 = const u64 0
+    v1 = gtf v0, 10
+    v2 = bitcast v1 to ptr
+    v3 = cast_ptr v2 to __ptr u64
+    v4 = load v3
+    v5 = call main_5(v4)
+    v6 = get_local __ptr u64, item_
+    store v5 to v6
+    v7 = get_local __ptr u64, item_
+    v8 = cast_ptr v7 to ptr
+    v9 = const u64 8
+    retd v8 v9
+}
+
+
+move $$locbase $sp            ; save locals base register for function __entry
+cfei i8                       ; allocate 8 bytes for locals and 0 slots for call arguments
+gtf  $r0 $zero i10            ; get transaction field
+lw   $r0 $r0 i0               ; load word
+move $$arg0 $r0               ; [call]: pass argument 0
+jal  $$reta $pc i4            ; [call]: call main_5
+sw   $$locbase $$retv i0      ; store word
+movi $r0 i8                   ; initialize constant into register
+retd  $$locbase $r0
