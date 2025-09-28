@@ -1,0 +1,6 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+name = "attributes_fuzz_invalid_args"
+implicit-std = false

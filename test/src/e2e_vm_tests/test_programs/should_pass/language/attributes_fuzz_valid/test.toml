@@ -1,0 +1,4 @@
+category = "compile"
+expected_warnings = 9
+
+# check: $()
