@@ -4665,39 +4665,39 @@ impl<'a> FnCompiler<'a> {
             if let Some(contents_expr) = contents {
                 // Insert the value too.
                 // Only store if the value does not diverge.
-            let contents_value = return_on_termination_or_extract!(
-                self.compile_expression_to_register(context, md_mgr, contents_expr)?
-            )
-            .expect_register();
-            let contents_type = contents_value.get_type(context).ok_or_else(|| {
-                CompileError::Internal(
-                    "Unable to get type for enum contents.",
-                    enum_decl.span.clone(),
+                let contents_value = return_on_termination_or_extract!(
+                    self.compile_expression_to_register(context, md_mgr, contents_expr)?
                 )
-            })?;
-
-            let variant_type = field_tys[1].get_field_type(context, tag as u64).unwrap();
-            if contents_type != variant_type {
-                return Err(CompileError::Internal(
-                    format!(
-                        "Expression type \"{}\" and Variant type \"{}\" do not match",
-                        contents_type.as_string(context),
-                        variant_type.as_string(context)
+                .expect_register();
+                let contents_type = contents_value.get_type(context).ok_or_else(|| {
+                    CompileError::Internal(
+                        "Unable to get type for enum contents.",
+                        enum_decl.span.clone(),
                     )
-                    .leak(),
-                    contents_expr.span.clone(),
-                ));
-            }
+                })?;
 
-            let gep_val = self
-                .current_block
-                .append(context)
-                .get_elem_ptr_with_idcs(enum_ptr, contents_type, &[1, tag as u64])
-                .add_metadatum(context, span_md_idx);
-            self.current_block
-                .append(context)
-                .store(gep_val, contents_value)
-                .add_metadatum(context, span_md_idx);
+                let variant_type = field_tys[1].get_field_type(context, tag as u64).unwrap();
+                if contents_type != variant_type {
+                    return Err(CompileError::Internal(
+                        format!(
+                            "Expression type \"{}\" and Variant type \"{}\" do not match",
+                            contents_type.as_string(context),
+                            variant_type.as_string(context)
+                        )
+                        .leak(),
+                        contents_expr.span.clone(),
+                    ));
+                }
+
+                let gep_val = self
+                    .current_block
+                    .append(context)
+                    .get_elem_ptr_with_idcs(enum_ptr, contents_type, &[1, tag as u64])
+                    .add_metadatum(context, span_md_idx);
+                self.current_block
+                    .append(context)
+                    .store(gep_val, contents_value)
+                    .add_metadatum(context, span_md_idx);
             }
         }
 

@@ -244,7 +244,8 @@ impl Namespace {
     }
 
     pub fn package_exists(&self, name: &Ident) -> bool {
-        self.module_from_absolute_path(std::slice::from_ref(name)).is_some()
+        self.module_from_absolute_path(std::slice::from_ref(name))
+            .is_some()
     }
 
     pub(crate) fn module_has_binding(
