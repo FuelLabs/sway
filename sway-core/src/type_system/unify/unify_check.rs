@@ -540,7 +540,7 @@ impl<'a> UnifyCheck<'a> {
                         // Perform this check otherwise &T and T would return true
                         !matches!(&*left_info, TypeInfo::Ref { .. })
                     }
-
+                    (Placeholder(..), _) => true,
                     (a, b) => a.eq(b, &PartialEqWithEnginesContext::new(self.engines)),
                 }
             }

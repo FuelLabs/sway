@@ -1,0 +1,38 @@
+---
+source: test/src/snapshot/mod.rs
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/trait_constraint_generic_hint
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_fail/trait_constraint_generic_hint
+   Compiling script trait_constraint_generic_hint (test/src/e2e_vm_tests/test_programs/should_fail/trait_constraint_generic_hint)
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/trait_constraint_generic_hint/src/main.sw:42:11
+   |
+40 |     T: A + B,
+41 | {
+42 |     if T::associated_method() {
+   |           ^^^^^^^^^^^^^^^^^ Multiple applicable items in scope. 
+  Disambiguate the associated function for candidate #0
+    <T as A>::associated_method
+  Disambiguate the associated function for candidate #1
+    <T as B>::associated_method
+43 |     }
+44 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/trait_constraint_generic_hint/src/main.sw:45:13
+   |
+43 |     }
+44 | 
+45 |     if item.method() {
+   |             ^^^^^^ Multiple applicable items in scope. 
+46 | 
+47 |     }
+   |
+____
+
+  Aborting due to 2 errors.
+error: Failed to compile trait_constraint_generic_hint
