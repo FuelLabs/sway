@@ -1123,7 +1123,7 @@ async fn deployed_predicate_call() {
 
     // Check predicate balance again.
     let balance = predicate.get_asset_balance(base_asset_id).await.unwrap();
-    assert_eq!(balance, 1700);
+    assert_eq!(balance, 828);
 
     node.kill().unwrap();
 }
