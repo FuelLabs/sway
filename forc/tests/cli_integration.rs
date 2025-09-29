@@ -55,7 +55,6 @@ fn test_forc_test_raw_logs() -> Result<(), rexpect::error::Error> {
     process.exp_string("      test test_log_2")?;
     process.exp_string("raw logs:")?;
     process.exp_string(r#"[{"LogData":{"data":"0000000000000002","digest":"cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":8,"pc":11432,"ptr":67107840,"ra":0,"rb":1515152261580153489}}]"#)?;
-    
 
     process.process.exit()?;
     Ok(())
