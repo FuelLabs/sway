@@ -791,7 +791,7 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
                 inst_list: &mut Vec<Op>,
                 offset_bytes: u32,
             ) -> (VirtualRegister, VirtualImmediate12) {
-                assert!(offset_bytes % 8 == 0);
+                assert!(offset_bytes.is_multiple_of(8));
                 if offset_bytes <= compiler_constants::EIGHTEEN_BITS as u32 {
                     let offset_mov_instr = Op {
                         opcode: Either::Left(VirtualOp::MOVI(
@@ -877,7 +877,7 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
             for &spilled_use in use_registers.iter().filter(|r#use| spills.contains(r#use)) {
                 // Load the spilled register from its stack slot.
                 let offset_bytes = spill_offsets_bytes[spilled_use];
-                assert!(offset_bytes % 8 == 0);
+                assert!(offset_bytes.is_multiple_of(8));
                 if offset_bytes / 8 <= compiler_constants::TWELVE_BITS as u32 {
                     spilled.push(Op {
                         opcode: Either::Left(VirtualOp::LW(
@@ -916,7 +916,7 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
             for &spilled_def in def_registers.iter().filter(|def| spills.contains(def)) {
                 // Store the def register to its stack slot.
                 let offset_bytes = spill_offsets_bytes[spilled_def];
-                assert!(offset_bytes % 8 == 0);
+                assert!(offset_bytes.is_multiple_of(8));
                 if offset_bytes / 8 <= compiler_constants::TWELVE_BITS as u32 {
                     spilled.push(Op {
                         opcode: Either::Left(VirtualOp::SW(

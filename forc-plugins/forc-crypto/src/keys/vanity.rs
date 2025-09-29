@@ -212,7 +212,7 @@ pub fn find_vanity_address_with_timeout(
                 }
 
                 let current = attempts.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                if current != 0 && current % breakpoint == 0 {
+                if current != 0 && current.is_multiple_of(breakpoint) {
                     let elapsed = start.elapsed().as_secs_f64();
                     let rate = current as f64 / elapsed;
                     println!("└─ tried {current} addresses ({rate:.2} addresses/sec)...");
