@@ -210,7 +210,6 @@ async fn deploy_chunked(
     let node_url = provider.url();
     let client = FuelClient::new(node_url)?;
     let chain_info = client.chain_info().await?;
-    let target = Target::from_str(&chain_info.name).unwrap_or_default();
 
     let blobs = compiled
         .bytecode
