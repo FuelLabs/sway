@@ -743,7 +743,7 @@ jobs:
         pre-publish-check,
       ]
     if: github.event_name == 'release' && github.event.action == 'published'
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-4x
 
     steps:
       - name: Checkout repository
