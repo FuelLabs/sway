@@ -211,10 +211,6 @@ async fn deploy_chunked(
     let client = FuelClient::new(node_url)?;
     let chain_info = client.chain_info().await?;
     let target = Target::from_str(&chain_info.name).unwrap_or_default();
-    let contract_url = match target.explorer_url() {
-        Some(explorer_url) => format!("{explorer_url}/contract/0x"),
-        None => "".to_string(),
-    };
 
     let blobs = compiled
         .bytecode
