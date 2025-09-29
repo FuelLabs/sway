@@ -99,7 +99,7 @@ impl Namespace {
 
     pub(crate) fn current_module_has_submodule(&self, submod_name: &Ident) -> bool {
         self.current_module()
-            .submodule(&[submod_name.clone()])
+            .submodule(std::slice::from_ref(submod_name))
             .is_some()
     }
 
@@ -244,7 +244,7 @@ impl Namespace {
     }
 
     pub fn package_exists(&self, name: &Ident) -> bool {
-        self.module_from_absolute_path(&[name.clone()]).is_some()
+        self.module_from_absolute_path(std::slice::from_ref(name)).is_some()
     }
 
     pub(crate) fn module_has_binding(

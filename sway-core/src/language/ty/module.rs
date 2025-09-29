@@ -100,7 +100,7 @@ pub struct SubmodulesRecursive<'module> {
 
 impl TyModule {
     /// An iterator yielding all submodules recursively, depth-first.
-    pub fn submodules_recursive(&self) -> SubmodulesRecursive {
+    pub fn submodules_recursive(&self) -> SubmodulesRecursive<'_> {
         SubmodulesRecursive {
             submods: self.submodules.iter(),
             current: None,

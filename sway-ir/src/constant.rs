@@ -218,7 +218,7 @@ impl ConstantContent {
     pub fn enum_tag_and_value_with_paddings(
         &self,
         context: &Context,
-    ) -> Option<(ConstantWithPadding, ConstantWithPadding)> {
+    ) -> Option<(ConstantWithPadding<'_>, ConstantWithPadding<'_>)> {
         if !self.ty.is_enum(context) {
             return None;
         }
@@ -240,7 +240,7 @@ impl ConstantContent {
     pub fn array_elements_with_padding(
         &self,
         context: &Context,
-    ) -> Option<Vec<ConstantWithPadding>> {
+    ) -> Option<Vec<ConstantWithPadding<'_>>> {
         if !self.ty.is_array(context) {
             return None;
         }
@@ -253,7 +253,7 @@ impl ConstantContent {
     pub fn struct_fields_with_padding(
         &self,
         context: &Context,
-    ) -> Option<Vec<ConstantWithPadding>> {
+    ) -> Option<Vec<ConstantWithPadding<'_>>> {
         if !self.ty.is_struct(context) {
             return None;
         }

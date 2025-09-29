@@ -280,7 +280,7 @@ pub fn singular_plural<'a>(count: usize, singular: &'a str, plural: &'a str) -> 
 /// SomeName<T> -> SomeName<T>
 /// std::ops::Eq -> Eq
 /// some_lib::Struct<A, B> -> Struct<A, B>
-pub fn call_path_suffix_with_args(call_path: &String) -> Cow<String> {
+pub fn call_path_suffix_with_args(call_path: &String) -> Cow<'_, String> {
     match call_path.rfind(':') {
         Some(index) if index < call_path.len() - 1 => {
             Cow::Owned(call_path.split_at(index + 1).1.to_string())
@@ -306,7 +306,7 @@ pub fn a_or_an<S: AsRef<str> + ?Sized>(word: &S) -> &'static str {
 }
 
 /// Returns `text` with the first character turned into ASCII uppercase.
-pub fn ascii_sentence_case(text: &String) -> Cow<String> {
+pub fn ascii_sentence_case(text: &String) -> Cow<'_, String> {
     if text.is_empty() || text.chars().next().unwrap().is_uppercase() {
         Cow::Borrowed(text)
     } else {
@@ -331,7 +331,7 @@ pub fn ascii_sentence_case(text: &String) -> Cow<String> {
 ///   }
 ///  the returned value, with ellipses, will be:
 ///   if x {...
-pub fn first_line(text: &str, with_ellipses: bool) -> Cow<str> {
+pub fn first_line(text: &str, with_ellipses: bool) -> Cow<'_, str> {
     if !text.contains('\n') {
         Cow::Borrowed(text)
     } else {

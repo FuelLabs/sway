@@ -4661,10 +4661,10 @@ impl<'a> FnCompiler<'a> {
         // all the variants must have unit types, hence the absence of the union. Therefore, there
         // is no need for another `store` instruction here.
         let field_tys = enum_type.get_field_types(context);
-        if field_tys.len() != 1 && contents.is_some() {
-            // Insert the value too.
-            // Only store if the value does not diverge.
-            let contents_expr = contents.unwrap();
+        if field_tys.len() != 1 {
+            if let Some(contents_expr) = contents {
+                // Insert the value too.
+                // Only store if the value does not diverge.
             let contents_value = return_on_termination_or_extract!(
                 self.compile_expression_to_register(context, md_mgr, contents_expr)?
             )
@@ -4698,6 +4698,7 @@ impl<'a> FnCompiler<'a> {
                 .append(context)
                 .store(gep_val, contents_value)
                 .add_metadatum(context, span_md_idx);
+            }
         }
 
         // Return the pointer.

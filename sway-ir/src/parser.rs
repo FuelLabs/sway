@@ -1078,7 +1078,7 @@ mod ir_builder {
         ir_ast_mod: IrAstModule,
         source_engine: &SourceEngine,
         experimental: ExperimentalFeatures,
-    ) -> Result<Context, IrError> {
+    ) -> Result<Context<'_>, IrError> {
         let mut ctx = Context::new(source_engine, experimental);
         let md_map = build_metadata_map(&mut ctx, ir_ast_mod.metadata);
         let module = Module::new(&mut ctx, ir_ast_mod.kind);

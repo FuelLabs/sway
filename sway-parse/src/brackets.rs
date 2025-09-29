@@ -103,6 +103,7 @@ impl_brackets!(Parens, Parenthesis, ExpectedOpenParen);
 impl_brackets!(SquareBrackets, Bracket, ExpectedOpenBracket);
 
 #[derive(Clone, Debug)]
+#[allow(dead_code)]
 pub struct AngleBrackets<T> {
     pub open_angle_bracket_token: OpenAngleBracketToken,
     #[allow(unused)]

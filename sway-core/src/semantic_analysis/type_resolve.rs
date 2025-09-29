@@ -464,7 +464,7 @@ fn resolve_symbol_and_mod_path_inner(
                 is_self_type = IsSelfType::Yes;
             }
         } else {
-            match current_module.submodule(&[ident.clone()]) {
+            match current_module.submodule(std::slice::from_ref(ident)) {
                 Some(ns) => {
                     current_module = ns;
                     current_mod_path.push(ident.clone());

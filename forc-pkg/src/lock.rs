@@ -136,7 +136,7 @@ impl PkgLock {
     ///
     /// If this package's name is not enough to disambiguate it from other packages within the
     /// graph, this returns `<name> <source>`. If it is, it simply returns the name.
-    pub fn name_disambiguated(&self, disambiguate: &HashSet<&str>) -> Cow<str> {
+    pub fn name_disambiguated(&self, disambiguate: &HashSet<&str>) -> Cow<'_, str> {
         let disambiguate = disambiguate.contains(&self.name[..]);
         pkg_name_disambiguated(&self.name, &self.source, disambiguate)
     }
@@ -302,7 +302,7 @@ type ParsedPkgLine<'a> = (Option<&'a str>, &'a str, Option<fuel_tx::Salt>);
 // I.e. given "(<dep_name>) <name> <source> (<salt>)", returns ("<dep_name>", "<name> <source>", "<salt>").
 //
 // Note that <source> may not appear in the case it is not required for disambiguation.
-fn parse_pkg_dep_line(pkg_dep_line: &str) -> anyhow::Result<ParsedPkgLine> {
+fn parse_pkg_dep_line(pkg_dep_line: &str) -> anyhow::Result<ParsedPkgLine<'_>> {
     let s = pkg_dep_line.trim();
     let (dep_name, s) = match s.starts_with('(') {
         false => (None, s),

@@ -24,7 +24,7 @@ where
     fn submodules(&self) -> &[(ModName, E)];
 
     /// An iterator yielding all submodules recursively, depth-first.
-    fn submodules_recursive(&self) -> SubmodulesRecursive<Self, E> {
+    fn submodules_recursive(&self) -> SubmodulesRecursive<'_, Self, E> {
         SubmodulesRecursive {
             _module_type: std::marker::PhantomData,
             submods: self.submodules().iter(),

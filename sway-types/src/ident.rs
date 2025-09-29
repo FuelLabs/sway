@@ -28,7 +28,7 @@ impl BaseIdent {
     }
 
     /// Returns the identifier as a string, prefixed with `r#` if it is a raw identifier.
-    pub fn as_raw_ident_str(&self) -> Cow<str> {
+    pub fn as_raw_ident_str(&self) -> Cow<'_, str> {
         if self.is_raw_ident {
             Cow::Owned(format!("r#{}", self.as_str()))
         } else {
