@@ -68,6 +68,13 @@ impl Format for UseTree {
                     && !formatter.shape.code_line.line_style.is_multiline()
                 {
                     // we can have: path::{single_import}
+                    // Record that we're removing the opening and closing braces
+                    // Format: (byte_position, bytes_removed)
+                    let open_brace_pos = imports.span().start();
+                    let close_brace_pos = imports.span().end() - 1;
+                    formatter.removed_spans.push((open_brace_pos, 1)); // Remove '{'
+                    formatter.removed_spans.push((close_brace_pos, 1)); // Remove '}'
+
                     if let Some(single_import) = &imports.inner.final_value_opt {
                         single_import.format(formatted_code, formatter)?;
                     }
@@ -77,6 +84,13 @@ impl Format for UseTree {
                 {
                     // but we can also have: path::{single_import,}
                     // note that in the case of multiline we want to keep the trailing comma
+                    let open_brace_pos = imports.span().start();
+                    let close_brace_pos = imports.span().end() - 1;
+                    formatter.removed_spans.push((open_brace_pos, 1)); // Remove '{'
+                    // Also removing the trailing comma (1 byte) before the '}'
+                    formatter.removed_spans.push((close_brace_pos - 1, 1)); // Remove ','
+                    formatter.removed_spans.push((close_brace_pos, 1)); // Remove '}'
+
                     let single_import = &imports
                         .inner
                         .value_separator_pairs

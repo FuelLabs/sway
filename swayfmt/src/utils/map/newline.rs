@@ -130,6 +130,7 @@ pub fn handle_newlines(
         formatted_code,
         unformatted_input,
         newline_threshold,
+        &formatter.removed_spans,
     )?;
     Ok(())
 }
@@ -162,6 +163,7 @@ fn add_newlines(
     formatted_code: &mut FormattedCode,
     unformatted_code: Arc<str>,
     newline_threshold: usize,
+    removed_spans: &[(usize, usize)],
 ) -> Result<(), FormatterError> {
     let mut unformatted_newline_spans = unformatted_module.leaf_spans();
     let mut formatted_newline_spans = formatted_module.leaf_spans();
@@ -185,6 +187,28 @@ fn add_newlines(
     let mut previous_formatted_newline_span = formatted_newline_spans
         .first()
         .ok_or(FormatterError::NewlineSequenceError)?;
+    // Check if AST structure changed during formatting (e.g., braces removed from imports)
+    if !removed_spans.is_empty() {
+        // When AST structure changed, directly map newline positions from unformatted to formatted
+        newline_map.iter().try_fold(0_i64, |mut offset, (newline_span, newline_sequence)| -> Result<i64, FormatterError> {
+            let formatted_pos = map_unformatted_to_formatted_position(
+                newline_span.end,
+                removed_spans,
+            );
+
+            offset += insert_after_span(
+                calculate_offset(formatted_pos, offset),
+                newline_sequence.clone(),
+                formatted_code,
+                newline_threshold,
+            )?;
+
+            Ok(offset)
+        })?;
+
+        return Ok(());
+    }
+
     for (unformatted_newline_span, formatted_newline_span) in unformatted_newline_spans
         .iter()
         .skip(1)
@@ -385,6 +409,25 @@ fn first_newline_sequence_in_span(
         }
     }
     None
+}
+
+/// Maps an unformatted byte position to the corresponding formatted byte position
+/// by accounting for removed spans during formatting.
+///
+/// For example, if we removed 2 bytes at position 22 (e.g., '{' and '}'),
+/// then position 40 in unformatted maps to position 38 in formatted.
+fn map_unformatted_to_formatted_position(
+    unformatted_pos: usize,
+    removed_spans: &[(usize, usize)],
+) -> usize {
+    // Sum all bytes removed before this position
+    let total_removed = removed_spans
+        .iter()
+        .filter(|(removed_pos, _)| *removed_pos < unformatted_pos)
+        .map(|(_, removed_count)| removed_count)
+        .sum::<usize>();
+
+    unformatted_pos.saturating_sub(total_removed)
 }
 
 #[cfg(test)]
