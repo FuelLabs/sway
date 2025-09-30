@@ -92,6 +92,13 @@ pub struct ChunkedDeploymentInfo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum DeploymentType {
+    Standard,
+    Chunked,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeploymentArtifact {
     #[serde(skip_serializing_if = "Option::is_none")]
     transaction_id: Option<String>,
@@ -101,8 +108,7 @@ pub struct DeploymentArtifact {
     contract_id: String,
     deployment_size: usize,
     deployed_block_height: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    deployment_type: Option<String>,
+    deployment_type: DeploymentType,
     #[serde(skip_serializing_if = "Option::is_none")]
     chunked_deployment_info: Option<ChunkedDeploymentInfo>,
 }
@@ -740,7 +746,7 @@ pub async fn deploy_pkg(
                         contract_id: format!("0x{contract_id}"),
                         deployment_size: bytecode.len(),
                         deployed_block_height: None,
-                        deployment_type: None,
+                        deployment_type: DeploymentType::Standard,
                         chunked_deployment_info: None,
                     },
                     command,
@@ -775,7 +781,7 @@ pub async fn deploy_pkg(
                             contract_id: format!("0x{contract_id}"),
                             deployment_size: bytecode.len(),
                             deployed_block_height: Some(*block_height),
-                            deployment_type: None,
+                            deployment_type: DeploymentType::Standard,
                             chunked_deployment_info: None,
                         },
                         command,
@@ -955,7 +961,7 @@ fn create_chunked_deployment_artifact(
         contract_id: format!("0x{contract_id}"),
         deployment_size: original_size,
         deployed_block_height: None, // Cannot get this from fuels SDK for chunked deployments
-        deployment_type: Some("chunked".to_string()),
+        deployment_type: DeploymentType::Chunked,
         chunked_deployment_info: Some(chunked_info),
     };
 
