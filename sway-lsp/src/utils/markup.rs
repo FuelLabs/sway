@@ -120,7 +120,7 @@ impl Markup {
     /// Add text to the markup.
     pub fn text(self, contents: &str) -> Self {
         if !self.text.is_empty() {
-            return self.line_sperator().push_str(contents);
+            return self.line_seperator().push_str(contents);
         }
         self.push_str(contents)
     }
@@ -132,7 +132,7 @@ impl Markup {
     }
 
     /// Add a new section.
-    fn line_sperator(mut self) -> Self {
+    fn line_seperator(mut self) -> Self {
         self.text.push_str("\n---\n");
         self
     }
