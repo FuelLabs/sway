@@ -45,7 +45,7 @@ pub fn write<T>(slot: b256, offset: u64, value: T) {
 
     // Allocate enough memory on the heap for `value` as well as any potential padding required due 
     // to `offset`.
-    let padded_value = alloc::<u64>(number_of_slots * 32);
+    let padded_value = alloc_bytes(number_of_slots * 32);
 
     // Read the values that currently exist in the affected storage slots.
     let _ = __state_load_quad(offset_slot, padded_value, number_of_slots);
@@ -98,7 +98,7 @@ pub fn read<T>(slot: b256, offset: u64) -> Option<T> {
 
     // Allocate a buffer for the result. Its size needs to be a multiple of 32 bytes so we can 
     // make the 'quad' storage instruction read without overflowing.
-    let result_ptr = alloc::<u64>(number_of_slots * 32);
+    let result_ptr = alloc_bytes(number_of_slots * 32);
 
     // Read `number_of_slots * 32` bytes starting at storage slot `slot` and return an `Option` 
     // wrapping the value stored at `result_ptr + offset` if all the slots are valid. Otherwise, 
