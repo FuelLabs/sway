@@ -1,0 +1,9 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+name = "bug_fix_associated_const_shadowing_itself"
+implicit-std = false
+
+[dependencies]
+test_asserts = { path = "../../../../test_asserts" }
