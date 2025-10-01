@@ -1,4 +1,6 @@
-use crate::{ast_elements::type_parameter::ConstGenericExprTyDecl, decl_engine::DeclEngineGet as _, Engines};
+use crate::{
+    ast_elements::type_parameter::ConstGenericExprTyDecl, decl_engine::DeclEngineGet as _, Engines,
+};
 
 use super::type_parameter::ConstGenericExpr;
 
@@ -32,10 +34,10 @@ impl Length {
                         let expr = decl.value.as_ref()?;
                         let expr = expr.expression.as_literal()?;
                         expr.cast_value_to_u64()
-                    },
+                    }
                     ConstGenericExprTyDecl::ConstantDecl(_) => todo!(),
                 }
-            },
+            }
         }
     }
 }

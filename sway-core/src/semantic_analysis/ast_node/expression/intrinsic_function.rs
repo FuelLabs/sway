@@ -103,46 +103,14 @@ impl ty::TyIntrinsicFunctionKind {
             Intrinsic::EncodeBufferAsRawSlice => {
                 type_check_encode_as_raw_slice(handler, ctx, kind, arguments, type_arguments, span)
             }
-            Intrinsic::EncodeMemcopy => {
-                if arguments.len() != 0 {
-                    return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
-                        name: kind.to_string(),
-                        expected: 0,
-                        span,
-                    }));
-                }
-
-                if type_arguments.len() != 1 {
-                    return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
-                        name: kind.to_string(),
-                        expected: 1,
-                        span,
-                    }));
-                }
-
-                let t = ctx
-                    .resolve_type(
-                        handler,
-                        type_arguments[0].type_id(),
-                        &type_arguments[0].span(),
-                        EnforceTypeArguments::Yes,
-                        None,
-                    )
-                    .unwrap_or_else(|err| ctx.engines.te().id_of_error_recovery(err));
-
-                let mut final_type_arguments = type_arguments.to_vec();
-                *final_type_arguments[0].type_id_mut() = t;
-
-                Ok((
-                    TyIntrinsicFunctionKind {
-                        kind,
-                        arguments: vec![],
-                        type_arguments: final_type_arguments,
-                        span,
-                    },
-                    ctx.engines.te().id_of_bool(),
-                ))
-            }
+            Intrinsic::EncodeMemcopy => type_check_intrinsic_encode_memcopy(
+                handler,
+                &ctx,
+                arguments,
+                span,
+                kind,
+                type_arguments,
+            ),
             Intrinsic::Slice => {
                 type_check_slice(handler, ctx, kind, arguments, type_arguments, span)
             }
@@ -155,6 +123,56 @@ impl ty::TyIntrinsicFunctionKind {
             }
         }
     }
+}
+
+fn type_check_intrinsic_encode_memcopy(
+    handler: &Handler,
+    ctx: &TypeCheckContext<'_>,
+    arguments: &[Expression],
+    span: Span,
+    kind: Intrinsic,
+    type_arguments: &[GenericArgument],
+) -> Result<(TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
+    if arguments.len() != 0 {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+            name: kind.to_string(),
+            expected: 0,
+            span: span,
+        }));
+    }
+
+    if type_arguments.len() != 1 {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
+            name: kind.to_string(),
+            expected: 1,
+            span: span,
+        }));
+    }
+
+    let targ = &type_arguments[0];
+
+    let t = ctx
+        .resolve_type(
+            handler,
+            targ.type_id(),
+            &targ.span(),
+            EnforceTypeArguments::Yes,
+            None,
+        )
+        .unwrap_or_else(|err| ctx.engines.te().id_of_error_recovery(err));
+
+    let mut final_type_arguments = type_arguments.to_vec();
+    *final_type_arguments[0].type_id_mut() = t;
+
+    Ok((
+        TyIntrinsicFunctionKind {
+            kind,
+            arguments: vec![],
+            type_arguments: final_type_arguments,
+            span,
+        },
+        ctx.engines.te().id_of_bool(),
+    ))
 }
 
 fn type_check_transmute(
