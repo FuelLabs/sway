@@ -5,6 +5,7 @@ use regex::Regex;
 use std::{
     collections::{BTreeSet, VecDeque},
     path::{Path, PathBuf},
+    process::ExitStatus,
     str::FromStr,
     sync::Once,
 };
@@ -85,6 +86,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                         let _ = writeln!(&mut snapshot, "> {cmd}");
                     }
 
+                    let mut last_status: Option<ExitStatus> = None;
                     let mut last_output: Option<String> = None;
 
                     // We intentionally split the command by " | " to allow for
@@ -132,6 +134,11 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                             }
                             continue;
                         } else if let Some(args) = cmd.strip_prefix("filter-fn") {
+                            // Do not filter if compilation failed
+                            if !last_status.as_ref().unwrap().success() {
+                                break;
+                            }
+
                             if let Some(output) = last_output.take() {
                                 let (name, fns) = args.trim().split_once(" ").unwrap();
 
@@ -266,11 +273,14 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
 
                         let o = o.env("COLUMNS", "10").unchecked().start().unwrap();
                         let o = o.wait().unwrap();
+
+                        last_status = Some(o.status.clone());
                         last_output = Some(clean_output(&format!(
                             "exit status: {}\noutput:\n{}",
                             o.status.code().unwrap(),
                             std::str::from_utf8(&o.stdout).unwrap(),
                         )));
+
                     }
 
                     let _ = writeln!(&mut snapshot, "{}", last_output.unwrap_or_default());

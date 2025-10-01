@@ -599,7 +599,7 @@ impl Type {
             TypeContent::B256 => TypeSize::new(32),
             TypeContent::StringSlice => TypeSize::new(16),
             TypeContent::StringArray(n) => {
-                TypeSize::new(super::size_bytes_round_up_to_word_alignment!(*n))
+                TypeSize::new(*n)
             }
             TypeContent::Array(el_ty, cnt) => TypeSize::new(cnt * el_ty.size(context).in_bytes()),
             TypeContent::Struct(field_tys) => {

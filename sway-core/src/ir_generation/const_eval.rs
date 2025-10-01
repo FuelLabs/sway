@@ -1470,6 +1470,9 @@ fn const_eval_intrinsic(
             };
             Ok(Some(Constant::unique(lookup.context, c)))
         }
+        Intrinsic::EncodeMemcopy => {
+            todo!()
+        }
         Intrinsic::Slice => {
             let start = args[1]
                 .get_content(lookup.context)

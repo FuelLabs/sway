@@ -1,4 +1,5 @@
 cmds = [
     "echo Because this test does not have inputs, we should not see any decoding whatsoever.",
     "forc build --path {root} --release --ir final --asm final --bytecode | filter-fn {name} __entry",
+    "forc test --path {root}",
 ]

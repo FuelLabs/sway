@@ -26,3 +26,156 @@ jal  $$reta $pc i4            ; [call]: call main_0
 sw   $$locbase $$retv i0      ; store word
 movi $r0 i8                   ; initialize constant into register
 retd  $$locbase $r0
+
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_empty
+exit status: 0
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_empty
+   Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert)
+   Compiling script main_args_empty (test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_empty)
+mem: b8, encoding: Some(b8)
+mem: {}, encoding: Some({})
+mem: b1, encoding: Some(b1)
+mem: b1, encoding: Some(b1)
+mem: b8, encoding: Some(b2)
+mem: b8, encoding: Some(b4)
+mem: b8, encoding: Some(b8)
+mem: b32, encoding: Some(b32)
+mem: b32, encoding: Some(b32)
+mem: {b1,p7}, encoding: Some({b1})
+mem: {b8}, encoding: Some({b2})
+mem: {b8}, encoding: Some({b4})
+mem: {b8}, encoding: Some({b8})
+mem: {b1,p7,b1,p7}, encoding: Some({b1,b1})
+mem: {b8,b8}, encoding: Some({b2,b8})
+mem: {b8,b8}, encoding: Some({b8,b2})
+mem: {b8,b8}, encoding: Some({b4,b8})
+mem: {b8,b8}, encoding: Some({b8,b4})
+mem: {b8,b8}, encoding: Some({b8,b8})
+mem: {b1,p7}, encoding: Some({b1})
+mem: {b8}, encoding: Some({b2})
+mem: {b8}, encoding: Some({b4})
+mem: {b8}, encoding: Some({b8})
+mem: {b1,p7,b1,p7}, encoding: Some({b1,b1})
+mem: {b8,b8}, encoding: Some({b2,b2})
+mem: {b8,b8}, encoding: Some({b4,b4})
+mem: {b8,b8}, encoding: Some({b8,b8})
+mem: {b8,({b1,p7})}, encoding: Some({b8,(b1)})
+mem: {b8,(b8)}, encoding: Some({b8,(b2)})
+mem: {b8,(b8)}, encoding: Some({b8,(b4)})
+mem: {b8,(b8)}, encoding: Some({b8,(b8)})
+mem: {b8,({b1,p7}|{b1,p7})}, encoding: Some({b8,(b1|b1)})
+mem: {b8,(b8|b8)}, encoding: Some({b8,(b2|b2)})
+mem: {b8,(b8|b8)}, encoding: Some({b8,(b4|b4)})
+mem: {b8,(b8|b8)}, encoding: Some({b8,(b8|b8)})
+mem: b0, encoding: Some(b0)
+mem: {b8,b8,b8,b8,b8,b8,b8,b8,b8,b8}, encoding: Some({b8,b8,b8,b8,b8,b8,b8,b8,b8,b8})
+mem: b1, encoding: Some(b1)
+mem: b8, encoding: Some(b8)
+mem: {b1,p7}, encoding: Some({b1})
+mem: {b8}, encoding: Some({b8})
+mem: [b1;0], encoding: Some([b1;0])
+mem: {[b1;1],p7}, encoding: Some([b1;1])
+mem: [b1;8], encoding: Some([b1;8])
+mem: {{[b1;1],p7}}, encoding: Some({[b1;1]})
+mem: {[b1;8]}, encoding: Some({[b1;8]})
+mem: b8, encoding: None
+mem: b16, encoding: None
+mem: b16, encoding: None
+mem: b16, encoding: None
+mem: b16, encoding: None
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_empty/src/main.sw:22:5
+   |
+20 | enum EA<T1> {
+21 |     #[allow(dead_code)]
+22 |     A: T1,
+   |     - Enum variant A is never constructed.
+23 | }
+24 | 
+   |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_empty/src/main.sw:27:5
+   |
+25 | enum EB<T1, T2> {
+26 |     #[allow(dead_code)]
+27 |     A: T1,
+   |     - Enum variant A is never constructed.
+28 |     #[allow(dead_code)]
+29 |     B: T2,
+   |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_empty/src/main.sw:29:5
+   |
+27 |     A: T1,
+28 |     #[allow(dead_code)]
+29 |     B: T2,
+   |     - Enum variant B is never constructed.
+30 | }
+31 | 
+   |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_empty/src/main.sw:8:8
+   |
+ 6 | }
+ 7 | 
+ 8 | struct SA<T1> {
+   |        -- This struct is never used.
+ 9 |     #[allow(dead_code)]
+10 |     a: T1
+   |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_empty/src/main.sw:13:8
+   |
+11 | }
+12 | 
+13 | struct SB<T1, T2> {
+   |        -- This struct is never used.
+14 |     #[allow(dead_code)]
+15 |     a: T1,
+   |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_empty/src/main.sw:20:6
+   |
+18 | }
+19 | 
+20 | enum EA<T1> {
+   |      -- This enum is never used.
+21 |     #[allow(dead_code)]
+22 |     A: T1,
+   |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_empty/src/main.sw:25:6
+   |
+23 | }
+24 | 
+25 | enum EB<T1, T2> {
+   |      -- This enum is never used.
+26 |     #[allow(dead_code)]
+27 |     A: T1,
+   |
+____
+
+  Compiled script "main_args_empty" with 7 warnings.
+    Finished debug [unoptimized + fuel] target(s) [1.552 KB] in ???
+     Running 1 test, filtered 0 tests
+
+tested -- main_args_empty
+
+      test test_is_memcopy ... ok (???, 1369 gas)
+
+test result: OK. 1 passed; 0 failed; finished in ???
+
+    Finished in ???

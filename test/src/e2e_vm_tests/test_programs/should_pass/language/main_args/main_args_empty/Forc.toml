@@ -5,4 +5,4 @@ license = "Apache-2.0"
 name = "main_args_empty"
 
 [dependencies]
-std = { path = "../../../../../reduced_std_libs/sway-lib-std-core" }
+std = { path = "../../../../../reduced_std_libs/sway-lib-std-assert" }
