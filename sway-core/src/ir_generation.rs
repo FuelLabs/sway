@@ -218,6 +218,7 @@ impl PanickingFunctionCache {
             FunctionApplication { fn_ref, .. } => {
                 let decl = engines.de().get_function(fn_ref.id());
                 let keyed_decl = KeyedTyFunctionDecl::new(&decl, engines);
+                // TODO: Add support for recursive functions once https://github.com/FuelLabs/sway/issues/3018 gets developed.
                 self.can_panic(&keyed_decl, engines)
             }
 
