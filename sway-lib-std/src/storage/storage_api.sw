@@ -1,6 +1,6 @@
 library;
 
-use ::alloc::alloc_byts;
+use ::alloc::alloc_bytes;
 use ::option::Option::{self, *};
 use ::ops::*;
 use ::primitive_conversions::{b256::*, u256::*, u64::*};
