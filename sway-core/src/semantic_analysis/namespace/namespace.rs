@@ -374,7 +374,7 @@ impl Namespace {
     /// Given a path to a prelude in the standard library, create synonyms to every symbol in that
     /// prelude to the current module.
     ///
-    /// This is used when a new module is created in order to pupulate the module with implicit
+    /// This is used when a new module is created in order to populate the module with implicit
     /// imports from the standard library preludes.
     ///
     /// `src` is assumed to be absolute.

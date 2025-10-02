@@ -12,12 +12,12 @@ use std::collections::{HashMap, HashSet};
 
 pub(super) struct LexicalMap {
     symbol_map: Vec<HashMap<String, String>>,
-    reserved_sybols: HashSet<String>,
+    reserved_symbols: HashSet<String>,
 }
 
 impl LexicalMap {
     pub(super) fn from_iter<I: IntoIterator<Item = String>>(names: I) -> Self {
-        let (root_symbol_map, reserved_sybols): (HashMap<String, String>, HashSet<String>) = names
+        let (root_symbol_map, reserved_symbols): (HashMap<String, String>, HashSet<String>) = names
             .into_iter()
             .fold((HashMap::new(), HashSet::new()), |(mut m, mut r), name| {
                 m.insert(name.clone(), name.clone());
@@ -27,7 +27,7 @@ impl LexicalMap {
 
         LexicalMap {
             symbol_map: vec![root_symbol_map],
-            reserved_sybols,
+            reserved_symbols,
         }
     }
 
@@ -61,12 +61,12 @@ impl LexicalMap {
                 candidate
             }
         }
-        let local_symbol = get_new_local_symbol(&self.reserved_sybols, new_symbol.clone());
+        let local_symbol = get_new_local_symbol(&self.reserved_symbols, new_symbol.clone());
         self.symbol_map
             .last_mut()
             .expect("LexicalMap should always have at least the root scope.")
             .insert(new_symbol, local_symbol.clone());
-        self.reserved_sybols.insert(local_symbol.clone());
+        self.reserved_symbols.insert(local_symbol.clone());
         local_symbol
     }
 
@@ -75,13 +75,13 @@ impl LexicalMap {
     pub(super) fn insert_anon(&mut self) -> String {
         let anon_symbol = (0..)
             .map(|n| format!("__anon_{n}"))
-            .find(|candidate| !self.reserved_sybols.contains(candidate))
+            .find(|candidate| !self.reserved_symbols.contains(candidate))
             .unwrap();
         self.symbol_map
             .last_mut()
             .expect("LexicalMap should always have at least the root scope.")
             .insert(anon_symbol.clone(), anon_symbol.clone());
-        self.reserved_sybols.insert(anon_symbol.clone());
+        self.reserved_symbols.insert(anon_symbol.clone());
         anon_symbol
     }
 }
