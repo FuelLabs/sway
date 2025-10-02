@@ -271,7 +271,7 @@ mod tests {
     // Attribute name and its list of parameters
     type ParameterizedAttr<'a> = (&'a str, Option<Vec<&'a str>>);
 
-    fn attributes(attributes: &[AttributeDecl]) -> Vec<Vec<ParameterizedAttr<'_>>> {
+    fn attributes(attributes: &[AttributeDecl]) -> Vec<Vec<ParameterizedAttr>> {
         attributes
             .iter()
             .map(|attr_decl| {

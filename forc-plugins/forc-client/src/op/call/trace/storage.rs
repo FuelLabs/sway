@@ -89,9 +89,7 @@ macro_rules! storage_rw {
                 &self,
                 key: &<$vm_type as fuel_vm::fuel_storage::Mappable>::Key,
             ) -> Result<
-                Option<
-                    std::borrow::Cow<'_, <$vm_type as fuel_vm::fuel_storage::Mappable>::OwnedValue>,
-                >,
+                Option<std::borrow::Cow<<$vm_type as fuel_vm::fuel_storage::Mappable>::OwnedValue>>,
                 Self::Error,
             > {
                 tracing::debug!(
@@ -346,10 +344,8 @@ impl InterpreterStorage for ShallowStorage {
         id: &fuel_vm::prelude::ContractId,
         start_key: &fuel_vm::prelude::Bytes32,
         range: usize,
-    ) -> Result<
-        Vec<Option<std::borrow::Cow<'_, fuel_vm::storage::ContractsStateData>>>,
-        Self::DataError,
-    > {
+    ) -> Result<Vec<Option<std::borrow::Cow<fuel_vm::storage::ContractsStateData>>>, Self::DataError>
+    {
         tracing::debug!("contract_state_range {id:?} {start_key:?} {range:?}");
 
         let mut results = Vec::new();

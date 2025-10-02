@@ -527,7 +527,7 @@ pub fn format_diagnostic(diagnostic: &Diagnostic) {
     }
 }
 
-fn construct_slice(labels: Vec<&Label>) -> Slice<'_> {
+fn construct_slice(labels: Vec<&Label>) -> Slice {
     debug_assert!(
         !labels.is_empty(),
         "To construct slices, at least one label must be provided."

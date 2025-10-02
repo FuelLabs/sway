@@ -483,7 +483,7 @@ impl<'a> TypeCheckContext<'a> {
         self.self_type
     }
 
-    pub(crate) fn subst_ctx(&self) -> SubstTypesContext<'_, '_> {
+    pub(crate) fn subst_ctx(&self) -> SubstTypesContext {
         SubstTypesContext::new(
             self.engines(),
             &self.type_subst,

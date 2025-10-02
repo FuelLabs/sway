@@ -56,7 +56,7 @@ pub(crate) struct MutProgramInfo<'a> {
 }
 
 impl ProgramInfo<'_> {
-    pub(crate) fn as_mut(&mut self) -> MutProgramInfo<'_> {
+    pub(crate) fn as_mut(&mut self) -> MutProgramInfo {
         MutProgramInfo {
             pkg_name: &self.pkg_name,
             // Because the `ProgramsCacheEntry` clones the `programs`, the compilation will always
