@@ -137,9 +137,11 @@ impl DeclMapping {
         let mut dest_decl_refs = HashSet::<DestinationDecl>::new();
 
         if let Some(mut typeid) = typeid {
-            if engines.te().get(typeid).is_self_type() && self_typeid.is_some() {
-                // If typeid is `Self`, then we use the self_typeid instead.
-                typeid = self_typeid.unwrap();
+            if let Some(self_ty) = self_typeid {
+                if engines.te().get(typeid).is_self_type() {
+                    // If typeid is `Self`, then we use the self_typeid instead.
+                    typeid = self_ty;
+                }
             }
             for (source_decl_ref, dest_decl_ref) in self.mapping.iter() {
                 let unify_check = UnifyCheck::non_dynamic_equality(engines);

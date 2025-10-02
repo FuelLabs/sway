@@ -147,7 +147,7 @@ impl FuelAsmBuilder<'_, '_> {
                 } else {
                     // All arguments [NUM_ARG_REGISTERS - 1 ..] go into the stack.
                     assert!(
-                        self.locals_size_bytes() % 8 == 0,
+                        self.locals_size_bytes().is_multiple_of(8),
                         "The size of locals is not word aligned"
                     );
                     let stack_offset =
@@ -431,7 +431,7 @@ impl FuelAsmBuilder<'_, '_> {
                 } else {
                     // All arguments [NUM_ARG_REGISTERS - 1 ..] go into the stack.
                     assert!(
-                        self.locals_size_bytes() % 8 == 0,
+                        self.locals_size_bytes().is_multiple_of(8),
                         "The size of locals is not word aligned"
                     );
                     let stack_offset =

@@ -41,3 +41,6 @@ tracing-subscriber.workspace = true
 fuels.workspace = true
 fuels-accounts.workspace = true
 tempfile.workspace = true
+
+[lints]
+workspace = true

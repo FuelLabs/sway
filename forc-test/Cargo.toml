@@ -20,3 +20,6 @@ rayon.workspace = true
 sway-core.workspace = true
 sway-features.workspace = true
 sway-types.workspace = true
+
+[lints]
+workspace = true

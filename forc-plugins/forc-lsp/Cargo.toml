@@ -14,3 +14,6 @@ clap = { workspace = true, features = ["derive"] }
 sway-lsp.workspace = true
 tikv-jemallocator.workspace = true
 tokio.workspace = true
+
+[lints]
+workspace = true

@@ -16,5 +16,5 @@ serde = { workspace = true, features = ["derive"] }
 sway-error.workspace = true
 sway-types.workspace = true
 
-[lints.clippy]
-iter_over_hash_type = "deny"
+[lints]
+workspace = true
