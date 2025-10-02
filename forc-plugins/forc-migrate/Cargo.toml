@@ -24,3 +24,7 @@ sway-error.workspace = true
 sway-features.workspace = true
 sway-types.workspace = true
 swayfmt.workspace = true
+
+[lints]
+workspace = true
+

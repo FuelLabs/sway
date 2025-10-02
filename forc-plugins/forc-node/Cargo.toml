@@ -44,3 +44,6 @@ serde_json.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["full"] }
 wiremock.workspace = true
+
+[lints]
+workspace = true

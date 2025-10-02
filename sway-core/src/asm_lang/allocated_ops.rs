@@ -866,7 +866,7 @@ fn realize_load(
     // all data is word-aligned right now, and `offset_to_id` returns the offset in bytes
     let offset_bytes = data_section.data_id_to_offset(data_id) as u64;
     assert!(
-        offset_bytes % 8 == 0,
+        offset_bytes.is_multiple_of(8),
         "Internal miscalculation in data section -- data offset is not aligned to a word",
     );
     let offset_words = offset_bytes / 8;

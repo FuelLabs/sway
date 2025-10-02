@@ -261,6 +261,7 @@ impl ForcCallTools {
     #[tool(
         description = "Generate a formatted execution trace from trace events. Takes trace events from a CallResponse and returns a human-readable trace visualization."
     )]
+    #[allow(clippy::iter_over_hash_type)]
     async fn get_execution_trace(
         &self,
         Parameters(args): Parameters<GetExecutionTraceArgs>,

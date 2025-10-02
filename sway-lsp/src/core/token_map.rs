@@ -254,7 +254,7 @@ impl<'a> TokenMap {
     /// Remove all tokens for the given file from the token map.
     pub fn remove_tokens_for_file(&self, path_to_remove: &PathBuf) {
         self.0
-            .retain(|key, _value| (key.path.as_ref() != Some(path_to_remove)));
+            .retain(|key, _value| key.path.as_ref() != Some(path_to_remove));
     }
 }
 

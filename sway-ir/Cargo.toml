@@ -25,5 +25,5 @@ sway-ir-macros.workspace = true
 sway-types.workspace = true
 sway-utils.workspace = true
 
-[lints.clippy]
-iter_over_hash_type = "deny"
+[lints]
+workspace = true

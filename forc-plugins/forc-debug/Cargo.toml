@@ -44,3 +44,6 @@ dap = { version = "0.4.1-alpha1", features = ["client"] }
 escargot.workspace = true
 portpicker.workspace = true
 rexpect.workspace = true
+
+[lints]
+workspace = true

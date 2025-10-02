@@ -233,7 +233,7 @@ pub fn serialize_to_storage_slots(
                 packed.len().div_ceil(4) * 4 - packed.len()
             ]);
 
-            assert!(packed.len() % 4 == 0);
+            assert!(packed.len().is_multiple_of(4));
 
             // Return a list of `StorageSlot`s
             // First get the keys then get the values
@@ -246,7 +246,7 @@ pub fn serialize_to_storage_slots(
             //       want to improve and refactor Storage API in the future.
             let type_size_in_bytes = ty.size(context).in_bytes();
             assert!(
-                type_size_in_bytes % 8 == 0,
+                type_size_in_bytes.is_multiple_of(8),
                 "Expected string arrays, structs, and enums to be aligned to word boundary. The type size in bytes was {} and the type was {}.",
                 type_size_in_bytes,
                 ty.as_string(context)

@@ -26,5 +26,5 @@ sway-utils.workspace = true
 thiserror.workspace = true
 toml.workspace = true
 
-[lints.clippy]
-iter_over_hash_type = "deny"
+[lints]
+workspace = true
