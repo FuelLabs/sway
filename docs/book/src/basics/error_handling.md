@@ -126,7 +126,7 @@ At compile time, an entry similar to these will be added to the ABI JSON `errorC
         "pos": { // Location in code, at which the function call that might panic occurs.
             "function": "guards_package::preconditions::check_admin", // The caller function, `check_admin`.
             "pkg": "guards_package@0.1.0",
-            // Position withing the `check_admin` where `only_admin` is called.
+            // Position within the `check_admin` where `only_admin` is called.
             "file": "src/preconditions.sw",
             "line": 4,
             "column": 9
