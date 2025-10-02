@@ -275,11 +275,6 @@ impl<'a> MakeWriter<'a> for TracingWriter {
 ///
 /// `RUST_LOG` environment variable can be used to set different minimum level for the subscriber, default is `INFO`.
 pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
-    let env_filter = match env::var_os(LOG_FILTER) {
-        Some(_) => EnvFilter::try_from_default_env().expect("Invalid `RUST_LOG` provided"),
-        None => EnvFilter::new("info"),
-    };
-
     let level_filter = options
         .log_level
         .or_else(|| {
@@ -314,17 +309,60 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
 
     // Use regex to filter logs - if provided; otherwise allow all logs
     let regex_filter = options.regex_filter.clone();
-    let regex_filter_fn = filter_fn(move |metadata| {
-        if let Some(ref regex_filter) = regex_filter {
-            let regex = regex::Regex::new(regex_filter).unwrap();
-            regex.is_match(metadata.target())
-        } else {
-            true
-        }
-    });
 
-    // Create filters for non-telemetry mode
-    let composite_filter = env_filter.and(hide_telemetry_filter).and(regex_filter_fn);
+    macro_rules! init_registry {
+        ($registry:expr) => {{
+            let env_filter = match env::var_os(LOG_FILTER) {
+                Some(_) => EnvFilter::try_from_default_env().expect("Invalid `RUST_LOG` provided"),
+                None => EnvFilter::new("info"),
+            };
+
+            let regex_filter = regex_filter.clone();
+            let regex_filter_fn = filter_fn(move |metadata| {
+                if let Some(ref regex_filter) = regex_filter {
+                    let regex = regex::Regex::new(regex_filter).unwrap();
+                    regex.is_match(metadata.target())
+                } else {
+                    true
+                }
+            });
+
+            let composite_filter = env_filter.and(hide_telemetry_filter).and(regex_filter_fn);
+
+            if is_json_mode_active() {
+                $registry
+                    .with(
+                        tracing_subscriber::fmt::layer()
+                            .json()
+                            .with_ansi(true)
+                            .with_level(false)
+                            .with_file(false)
+                            .with_line_number(false)
+                            .without_time()
+                            .with_target(false)
+                            .with_writer(writer_mode)
+                            .with_filter(composite_filter)
+                            .with_filter(level_filter),
+                    )
+                    .init();
+            } else {
+                $registry
+                    .with(
+                        tracing_subscriber::fmt::layer()
+                            .with_ansi(true)
+                            .with_level(false)
+                            .with_file(false)
+                            .with_line_number(false)
+                            .without_time()
+                            .with_target(false)
+                            .with_writer(writer_mode)
+                            .with_filter(composite_filter)
+                            .with_filter(level_filter),
+                    )
+                    .init();
+            }
+        }};
+    }
 
     // Initialize registry with explicit layer handling
     #[cfg(feature = "telemetry")]
@@ -336,81 +374,14 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
                     *g.borrow_mut() = Some(guard);
                 });
 
-                // Use the HideTelemetryFilter to prevent telemetry spans from appearing in fmt output
-                let hide_filter = HideTelemetryFilter;
-
-                if is_json_mode_active() {
-                    registry()
-                        .with(telemetry_layer)
-                        .with(
-                            tracing_subscriber::fmt::layer()
-                                .json()
-                                .with_ansi(true)
-                                .with_level(false)
-                                .with_file(false)
-                                .with_line_number(false)
-                                .without_time()
-                                .with_target(false)
-                                .with_writer(writer_mode)
-                                .with_filter(hide_filter)
-                                .with_filter(level_filter),
-                        )
-                        .init();
-                } else {
-                    registry()
-                        .with(telemetry_layer)
-                        .with(
-                            tracing_subscriber::fmt::layer()
-                                .with_ansi(true)
-                                .with_level(false)
-                                .with_file(false)
-                                .with_line_number(false)
-                                .without_time()
-                                .with_target(false)
-                                .with_writer(writer_mode)
-                                .with_filter(hide_filter)
-                                .with_filter(level_filter),
-                        )
-                        .init();
-                }
+                init_registry!(registry().with(telemetry_layer));
                 return;
             }
         }
     }
 
     // Fallback: no telemetry layer
-    if is_json_mode_active() {
-        registry()
-            .with(
-                tracing_subscriber::fmt::layer()
-                    .json()
-                    .with_ansi(true)
-                    .with_level(false)
-                    .with_file(false)
-                    .with_line_number(false)
-                    .without_time()
-                    .with_target(false)
-                    .with_writer(writer_mode)
-                    .with_filter(composite_filter)
-                    .with_filter(level_filter),
-            )
-            .init();
-    } else {
-        registry()
-            .with(
-                tracing_subscriber::fmt::layer()
-                    .with_ansi(true)
-                    .with_level(false)
-                    .with_file(false)
-                    .with_line_number(false)
-                    .without_time()
-                    .with_target(false)
-                    .with_writer(writer_mode)
-                    .with_filter(composite_filter)
-                    .with_filter(level_filter),
-            )
-            .init();
-    }
+    init_registry!(registry());
 }
 
 fn is_telemetry_disabled_from_options(options: &TracingSubscriberOptions) -> bool {
