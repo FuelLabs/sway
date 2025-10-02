@@ -427,7 +427,6 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics
    Compiling library std (sway-lib-std)
    Compiling script const_generics (test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics)
-mem: [b8;2], encoding: Some([b8;2])
 warning
   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:87:5
    |

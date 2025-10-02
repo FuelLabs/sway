@@ -1,7 +1,7 @@
 ---
 source: test/src/snapshot/mod.rs
 ---
-Because this test receives and returns a simple struct, we should see decoding loading 
+Because this test receives and returns simple structs, we should see decoding loading 
 from the `script_data` pointer directly, and encoding just returning a pointer to 
 a local variable inside `__entry` stack frame. 
 
