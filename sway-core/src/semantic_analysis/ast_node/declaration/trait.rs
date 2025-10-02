@@ -603,10 +603,17 @@ impl TyTraitDecl {
             }
         }
 
+        // TODO: This is a temporary symptom-fix for https://github.com/FuelLabs/sway/issues/7396.
+        //       Remove it once the underlying issue https://github.com/FuelLabs/sway/issues/7428 is fixed.
+        let prev_const_shadowing_mode = ctx.const_shadowing_mode;
+        ctx.const_shadowing_mode = crate::semantic_analysis::ConstShadowingMode::Allow;
+
         // Insert the constants into the namespace.
         for (name, decl) in const_symbols.into_iter() {
             let _ = ctx.insert_symbol(handler, name, decl);
         }
+
+        ctx.const_shadowing_mode = prev_const_shadowing_mode;
 
         // Insert the methods of the trait into the namespace.
         // Specifically do not check for conflicting definitions because
