@@ -29,3 +29,6 @@ paste.workspace = true
 prettydiff.workspace = true
 similar.workspace = true
 test-macros = { path = "test_macros" }
+
+[lints]
+workspace = true

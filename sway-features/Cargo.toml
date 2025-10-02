@@ -13,3 +13,6 @@ clap = { workspace = true, features = ["derive"] }
 paste.workspace = true
 sway-error.workspace = true
 sway-types.workspace = true
+
+[lints]
+workspace = true

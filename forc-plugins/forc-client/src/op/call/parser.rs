@@ -62,7 +62,7 @@ pub fn param_type_val_to_token(param_type: &ParamType, input: &str) -> Result<To
         ParamType::Bytes => {
             // remove 0x prefix if provided
             let input = input.trim_start_matches("0x");
-            if input.len() % 2 != 0 {
+            if !input.len().is_multiple_of(2) {
                 return Err(anyhow!("bytes value must be even length: {}", input));
             }
             hex::decode(input)
@@ -72,7 +72,7 @@ pub fn param_type_val_to_token(param_type: &ParamType, input: &str) -> Result<To
         ParamType::RawSlice => {
             // remove 0x prefix if provided
             let input = input.trim_start_matches("0x");
-            if input.len() % 2 != 0 {
+            if !input.len().is_multiple_of(2) {
                 return Err(anyhow!("raw slice value must be even length: {}", input));
             }
             hex::decode(input)

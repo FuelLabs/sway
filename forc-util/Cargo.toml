@@ -43,3 +43,6 @@ unicode-xid.workspace = true
 
 [dev-dependencies]
 mark-flaky-tests.workspace = true
+
+[lints]
+workspace = true

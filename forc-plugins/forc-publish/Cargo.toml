@@ -34,3 +34,6 @@ walkdir.workspace = true
 [dev-dependencies]
 serial_test.workspace = true
 wiremock.workspace = true
+
+[lints]
+workspace = true

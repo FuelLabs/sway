@@ -17,5 +17,5 @@ proc-macro2.workspace = true
 quote.workspace = true
 syn = { workspace = true, features = ["derive", "extra-traits", "parsing"] }
 
-[lints.clippy]
-iter_over_hash_type = "deny"
+[lints]
+workspace = true

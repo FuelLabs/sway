@@ -206,6 +206,7 @@ impl std::fmt::Display for Error {
 }
 
 impl ExperimentalFeatures {
+    #[allow(clippy::iter_over_hash_type)]
     pub fn parse_from_package_manifest(
         &mut self,
         experimental: &std::collections::HashMap<String, bool>,
