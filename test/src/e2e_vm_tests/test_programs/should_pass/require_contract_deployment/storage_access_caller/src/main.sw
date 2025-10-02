@@ -6,7 +6,7 @@ use std::hash::*;
 #[cfg(experimental_new_encoding = false)]
 const CONTRACT_ID = 0x3bc28acd66d327b8c1b9624c1fabfc07e9ffa1b5d71c2832c3bfaaf8f4b805e9;
 #[cfg(experimental_new_encoding = true)]
-const CONTRACT_ID = 0xceab009d47e8b888c5ef03e0ca458c7c831a015308a09a9f64c09de6406b2606; // AUTO-CONTRACT-ID ../../test_contracts/storage_access_contract --release
+const CONTRACT_ID = 0xa74dbbee17ccadc66dfa2107af075e89125a12b1668f390ffe253996e019e6a8; // AUTO-CONTRACT-ID ../../test_contracts/storage_access_contract --release
 
 fn main() -> bool {
     let caller = abi(StorageAccess, CONTRACT_ID);

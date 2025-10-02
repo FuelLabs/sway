@@ -37,6 +37,61 @@ pub struct BufferReader {
     ptr: raw_ptr,
 }
 
+
+
+// Encode
+
+pub trait AbiEncode {
+    fn is_memcopy() -> bool;
+    fn abi_encode(self, buffer: Buffer) -> Buffer;
+}
+
+impl AbiEncode for bool {
+    fn is_memcopy() -> bool {
+        __encode_memcopy::<Self>()
+    }
+    fn abi_encode(self, buffer: Buffer) -> Buffer {
+        Buffer {
+            buffer: __encode_buffer_append(buffer.buffer, self),
+        }
+    }
+}
+
+// Encode Numbers
+
+impl AbiEncode for b256 {
+    fn is_memcopy() -> bool {
+        __encode_memcopy::<Self>()
+    }
+    fn abi_encode(self, buffer: Buffer) -> Buffer {
+        Buffer {
+            buffer: __encode_buffer_append(buffer.buffer, self),
+        }
+    }
+}
+
+impl AbiEncode for u256 {
+    fn is_memcopy() -> bool {
+        __encode_memcopy::<Self>()
+    }
+    fn abi_encode(self, buffer: Buffer) -> Buffer {
+        Buffer {
+            buffer: __encode_buffer_append(buffer.buffer, self),
+        }
+    }
+}
+
+impl AbiEncode for u64 {
+    fn is_memcopy() -> bool {
+        __encode_memcopy::<Self>()
+    }
+    fn abi_encode(self, buffer: Buffer) -> Buffer {
+        Buffer {
+            buffer: __encode_buffer_append(buffer.buffer, self),
+        }
+    }
+}
+
 impl BufferReader {
     pub fn from_parts(ptr: raw_ptr, _len: u64) -> BufferReader {
         BufferReader { ptr }
@@ -155,64 +210,7 @@ impl BufferReader {
     where
         T: AbiDecode,
     {
-        if T::is_memcopy() {
-            *__transmute::<raw_ptr, &T>(self.ptr)
-        } else {
-            T::abi_decode(self)
-        }
-    }
-}
-
-// Encode
-
-pub trait AbiEncode {
-    fn is_memcopy() -> bool;
-    fn abi_encode(self, buffer: Buffer) -> Buffer;
-}
-
-impl AbiEncode for bool {
-    fn is_memcopy() -> bool {
-        __encode_memcopy::<Self>()
-    }
-    fn abi_encode(self, buffer: Buffer) -> Buffer {
-        Buffer {
-            buffer: __encode_buffer_append(buffer.buffer, self),
-        }
-    }
-}
-
-// Encode Numbers
-
-impl AbiEncode for b256 {
-    fn is_memcopy() -> bool {
-        __encode_memcopy::<Self>()
-    }
-    fn abi_encode(self, buffer: Buffer) -> Buffer {
-        Buffer {
-            buffer: __encode_buffer_append(buffer.buffer, self),
-        }
-    }
-}
-
-impl AbiEncode for u256 {
-    fn is_memcopy() -> bool {
-        __encode_memcopy::<Self>()
-    }
-    fn abi_encode(self, buffer: Buffer) -> Buffer {
-        Buffer {
-            buffer: __encode_buffer_append(buffer.buffer, self),
-        }
-    }
-}
-
-impl AbiEncode for u64 {
-    fn is_memcopy() -> bool {
-        __encode_memcopy::<Self>()
-    }
-    fn abi_encode(self, buffer: Buffer) -> Buffer {
-        Buffer {
-            buffer: __encode_buffer_append(buffer.buffer, self),
-        }
+        T::abi_decode(self)
     }
 }
 
@@ -3184,8 +3182,10 @@ where
     T: AbiEncode,
 {
     if T::is_memcopy() {
+        __log(10);
         __contract_ret(__addr_of(item), __size_of::<T>());
     } else {
+        __log(11);
         let slice = encode::<T>(item);
         __contract_ret(slice.ptr(), slice.len::<u8>());
     }
@@ -6383,8 +6383,17 @@ where
         retl: u64
     };
 
-    let mut buffer = BufferReader::from_parts(ptr, len);
-    T::abi_decode(buffer)
+    contract_call_decode::<T>(ptr, len)
+}
+
+#[inline(always)]
+fn contract_call_decode<T>(ptr: raw_ptr, len: u64) -> T where T: AbiDecode {
+    if T::is_memcopy() {
+        *__transmute::<raw_ptr, &T>(ptr)
+    } else {
+        let mut buffer = BufferReader::from_parts(ptr, len);
+        T::abi_decode(buffer)
+    }
 }
 
 #[inline(always)]

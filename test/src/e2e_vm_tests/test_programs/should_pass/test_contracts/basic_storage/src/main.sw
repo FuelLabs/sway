@@ -39,6 +39,8 @@ impl BasicStorage for Contract {
 
     #[storage(write)]
     fn store_u64(key: b256, value: u64) {
+        __log(key);
+        __log(value);
         write(key, 0, value);
     }
 
