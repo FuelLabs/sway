@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: warp-ubuntu-latest-x64-2x # needs at least 100 gb hdd
     steps:
       - uses: actions/checkout@v3
 
