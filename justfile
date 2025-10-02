@@ -35,14 +35,15 @@ collect-gas-usage:
 [linux]
 compare-gas-usage branchBefore branchAfter:
     #! /bin/bash
-    CHANGES=$(git status --porcelain | wc -l)
-    if [ "$CHANGES" != "0" ]; then
-        echo -e "git is not clean. Aborting."
-        exit
-    fi
-    echo "a" >> target/gas-{{branchAfter}}.txt
-    #git checkout {{branchAfter}}
-    #cargo r -p test --release -- --verbose --forc-test-only | ./scripts/compare-gas-usage/extract-gas-usage.sh >> target/gas-{{branchAfter}}.txt
+    #CHANGES=$(git status --porcelain | wc -l)
+    #if [ "$CHANGES" != "0" ]; then
+    #    echo -e "git is not clean. Aborting."
+    #    exit
+    #fi
+    OUT=$(sed "s/\//-/g" <<< "{{branchAfter}}")
+    OUT="target/gas-$OUT.txt"
+    git checkout {{branchAfter}}
+    cargo r -p test --release -- main_args --verbose --forc-test-only | ./scripts/compare-gas-usage/extract-gas-usage.sh > "$OUT"
 
     #git checkout {{branchBefore}}
     #cargo r -p test --release -- --verbose --forc-test-only | ./scripts/compare-gas-usage/extract-gas-usage.sh

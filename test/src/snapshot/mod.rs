@@ -170,7 +170,6 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
 
                                         if line.starts_with("!0 =") {
                                             let engines = Engines::default();
-                                            eprintln!("{}", captured);
                                             let ir = sway_ir::parse(&captured, engines.se(), ExperimentalFeatures::default()).unwrap();
 
                                             for m in ir.module_iter() {

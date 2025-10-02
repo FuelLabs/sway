@@ -2432,7 +2432,7 @@ impl<'a> FnCompiler<'a> {
 
                 let runtime = get_memory_representation(context, type_arg_ir_type);
                 let encoding = get_encoding_representation(self.engines, tid);
-                eprintln!("{} vs {}; mem: {:?}, encoding: {:?}", self.engines.help_out(tid), type_arg_ir_type.as_string(context), &runtime, &encoding);
+                // eprintln!("{} vs {}; mem: {:?}, encoding: {:?}", self.engines.help_out(tid), type_arg_ir_type.as_string(context), &runtime, &encoding);
 
                 let constant = ConstantContent {
                     ty: Type::get_bool(context),
