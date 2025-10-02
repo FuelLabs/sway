@@ -16,7 +16,7 @@ use sway_types::{SourceEngine, Spanned};
 
 pub(crate) mod shape;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Formatter {
     pub source_engine: Arc<SourceEngine>,
     pub shape: Shape,
@@ -27,19 +27,6 @@ pub struct Formatter {
     /// Maps: unformatted_byte_position -> number_of_bytes_removed
     /// This allows handle_newlines() to adjust span mapping when AST structure changes.
     pub(crate) removed_spans: Vec<(usize, usize)>,
-}
-
-impl Default for Formatter {
-    fn default() -> Self {
-        Self {
-            source_engine: Arc::default(),
-            shape: Shape::default(),
-            config: Config::default(),
-            comments_context: CommentsContext::default(),
-            experimental: ExperimentalFeatures::default(),
-            removed_spans: Vec::new(),
-        }
-    }
 }
 
 pub type FormattedCode = String;
