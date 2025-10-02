@@ -1,5 +1,5 @@
 cmds = [
-    "echo Because this test receives and returns an `u64`, we should see decoding loading from the `script_data` pointer directly, and encoding just returning a pointer to a local variable inside `__entry` stack frame.",
+    "echo Because this test receives and returns a simple struct, we should see decoding loading from the `script_data` pointer directly, and encoding just returning a pointer to a local variable inside `__entry` stack frame.",
     "forc build --path {root} --release --ir final --asm final --bytecode | filter-fn {name} __entry",
     "echo This is the result using encoding v0 for comparison.",
     "forc build --path {root} --release --ir final --asm final --bytecode --no-experimental new_encoding  | filter-fn {name} main",

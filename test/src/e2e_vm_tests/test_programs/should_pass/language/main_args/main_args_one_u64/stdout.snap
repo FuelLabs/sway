@@ -35,3 +35,23 @@ jal  $$reta $pc i4            ; [call]: call main_5
 sw   $$locbase $$retv i0      ; store word
 movi $r0 i8                   ; initialize constant into register
 retd  $$locbase $r0
+
+This is the result using encoding v0 for comparison. 
+
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_one_u64 --release --ir final --asm final --bytecode --no-experimental new_encoding  | filter-fn main_args_one_u64 main
+
+entry entry_orig fn main(baba: u64) -> u64 {
+    entry(baba: u64):
+    v0 = const u64 1
+    v1 = add baba, v0
+    ret u64 v1
+}
+
+
+add  $$ds $$ds $$tmp
+cfei i0                       ; allocate stack space for globals
+move $$locbase $sp            ; save locals base register for function main
+gtf  $r0 $zero i10            ; get base register for main function arguments
+lw   $r0 $r0 i0               ; load main function parameter
+add  $r0 $r0 $one
+ret  $r0

@@ -1,5 +1,7 @@
 cmds = [
-    "echo Because this test does not have inputs, we should not see any decoding whatsoever.",
+    "echo Because this test does not have inputs nor outputs, we should not see any decoding whatsoever.",
     "forc build --path {root} --release --ir final --asm final --bytecode | filter-fn {name} __entry",
-    "forc test --path {root}",
+    "echo This is the result using encoding v0 for comparison.",
+    "echo The difference comes from the fact that the optimizer never inlines `main` inside the `__entry` function.",
+    "forc build --path {root} --release --ir final --asm final --bytecode --no-experimental new_encoding  | filter-fn {name} main",
 ]

@@ -2432,7 +2432,7 @@ impl<'a> FnCompiler<'a> {
 
                 let runtime = get_memory_representation(context, type_arg_ir_type);
                 let encoding = get_encoding_representation(self.engines, tid);
-                eprintln!("mem: {:?}, encoding: {:?}", &runtime, &encoding);
+                eprintln!("{} vs {}; mem: {:?}, encoding: {:?}", self.engines.help_out(tid), type_arg_ir_type.as_string(context), &runtime, &encoding);
 
                 let constant = ConstantContent {
                     ty: Type::get_bool(context),
@@ -5192,8 +5192,19 @@ fn get_memory_representation(ctx: &Context, t: Type) -> MemoryRepresentation {
 
             MemoryRepresentation::Or(items)
         }
-        TypeContent::StringArray(len_in_bytes) => MemoryRepresentation::Blob {
-            len_in_bytes: *len_in_bytes,
+        TypeContent::StringArray(len) => {
+            let item = MemoryRepresentation::Blob { len_in_bytes: *len };
+            let item_len_as_bytes = item.len_in_bytes();
+            if !item_len_as_bytes.is_multiple_of(8) {
+                MemoryRepresentation::And(vec![
+                    item,
+                    MemoryRepresentation::Padding {
+                        len_in_bytes: item_len_as_bytes.next_multiple_of(8) - item_len_as_bytes,
+                    },
+                ])
+            } else {
+                item
+            }
         },
         TypeContent::Array(t, len) => {
             let item = get_memory_representation(ctx, *t);

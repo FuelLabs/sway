@@ -170,6 +170,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
 
                                         if line.starts_with("!0 =") {
                                             let engines = Engines::default();
+                                            eprintln!("{}", captured);
                                             let ir = sway_ir::parse(&captured, engines.se(), ExperimentalFeatures::default()).unwrap();
 
                                             for m in ir.module_iter() {
@@ -218,7 +219,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                                             inside_asm = false;
                                         }
 
-                                        if line.contains("; return from call") || line.starts_with("retd") {
+                                        if line.contains("; return from call") || line.starts_with("ret") {
                                             if capture_line {
                                                 captured.push_str(line);
                                                 captured.push('\n');

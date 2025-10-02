@@ -1,0 +1,4 @@
+cmds = [
+    "echo Because both inputs and outputs are not `memcopy`, we should be seeing the whole encoding/decoding apparatus",
+    "forc build --path {root} --release --ir final --asm final --bytecode",
+]

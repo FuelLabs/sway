@@ -4,6 +4,13 @@ struct TestStruct {
     val: u64,
 }
 
-fn main(baba: TestStruct, keke: TestStruct) -> u64 {
-    baba.val + keke.val
+fn main(baba: TestStruct, keke: TestStruct) -> (TestStruct, TestStruct) {
+    (
+        TestStruct {
+            val: baba.val + keke.val
+        },
+        TestStruct {
+            val: baba.val + keke.val
+        }
+    )    
 }

@@ -6729,3 +6729,101 @@ fn nok_abi_encoding_invalid_bool() {
     let actual = encode(2u8);
     let _ = abi_decode::<bool>(actual);
 }
+
+// __encode_memcopy
+// The following types where the intrinsics return true
+// will use an optimized encoding/decoding.
+// All others will fallback to the normal algorithm.
+
+#[allow(dead_code)]
+struct SA<T1> {
+    a: T1
+}
+
+#[allow(dead_code)]
+struct SB<T1, T2> {
+    a: T1,
+    b: T2
+}
+
+#[allow(dead_code)]
+enum EA<T1> {
+    A: T1,
+}
+
+#[allow(dead_code)]
+enum EB<T1, T2> {
+    A: T1,
+    B: T2,
+}
+
+fn assert(v: bool) {
+    if !v {
+        __revert(0)
+    }
+}
+
+#[test]
+fn ok_encode_memcopy() {
+    assert(__encode_memcopy::<()>());
+
+    assert(__encode_memcopy::<bool>());
+
+    assert(__encode_memcopy::<u8>());
+    assert(!__encode_memcopy::<u16>());
+    assert(!__encode_memcopy::<u32>());
+    assert(__encode_memcopy::<u64>());
+    assert(__encode_memcopy::<u256>());
+    assert(__encode_memcopy::<b256>());
+
+    assert(!__encode_memcopy::<(u8,)>());
+    assert(!__encode_memcopy::<(u16,)>());
+    assert(!__encode_memcopy::<(u32,)>());
+    assert(__encode_memcopy::<(u64,)>());
+
+    assert(!__encode_memcopy::<(u8, u8)>());
+    assert(!__encode_memcopy::<(u16, u64)>());
+    assert(!__encode_memcopy::<(u64, u16)>());
+    assert(!__encode_memcopy::<(u32, u64)>());
+    assert(!__encode_memcopy::<(u64, u32)>());
+    assert(__encode_memcopy::<(u64, u64)>());
+
+    assert(!__encode_memcopy::<SA<u8>>());
+    assert(!__encode_memcopy::<SA<u16>>());
+    assert(!__encode_memcopy::<SA<u32>>());
+    assert(__encode_memcopy::<SA<u64>>());
+
+    assert(!__encode_memcopy::<SB<u8, u8>>());
+    assert(!__encode_memcopy::<SB<u16, u16>>());
+    assert(!__encode_memcopy::<SB<u32, u32>>());
+    assert(__encode_memcopy::<SB<u64, u64>>());
+
+    assert(!__encode_memcopy::<EA<u8>>());
+    assert(!__encode_memcopy::<EA<u16>>());
+    assert(!__encode_memcopy::<EA<u32>>());
+    assert(__encode_memcopy::<EA<u64>>());
+
+    assert(!__encode_memcopy::<EB<u8, u8>>());
+    assert(!__encode_memcopy::<EB<u16, u16>>());
+    assert(!__encode_memcopy::<EB<u32, u32>>());
+    assert(__encode_memcopy::<EB<u64, u64>>());
+
+    assert(__encode_memcopy::<str[0]>());
+    assert(__encode_memcopy::<(u64, u64,u64, u64,u64, u64,u64, u64,u64, u64,)>());
+    assert(!__encode_memcopy::<str[1]>());
+    assert(__encode_memcopy::<str[8]>());
+    assert(!__encode_memcopy::<SA<str[1]>>());
+    assert(__encode_memcopy::<SA<str[8]>>());
+
+    assert(__encode_memcopy::<[u8; 0]>());
+    assert(!__encode_memcopy::<[u8; 1]>());
+    assert(__encode_memcopy::<[u8; 8]>());
+    assert(!__encode_memcopy::<SA<[u8; 1]>>());
+    assert(__encode_memcopy::<SA<[u8; 8]>>());
+
+    assert(!__encode_memcopy::<raw_ptr>());
+    assert(!__encode_memcopy::<raw_slice>());
+    assert(!__encode_memcopy::<str>());
+    assert(!__encode_memcopy::<&__slice[u8]>());
+    assert(!__encode_memcopy::<&[u8]>());
+}

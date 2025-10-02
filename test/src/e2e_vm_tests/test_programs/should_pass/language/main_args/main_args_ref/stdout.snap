@@ -1,0 +1,98 @@
+---
+source: test/src/snapshot/mod.rs
+---
+Because this test receives and returns a simple struct, we should see decoding loading 
+from the `script_data` pointer directly, and encoding just returning a pointer to 
+a local variable inside `__entry` stack frame. 
+
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_ref --release --ir final --asm final --bytecode | filter-fn main_args_ref __entry
+
+pub entry fn __entry() -> () {
+    local mut { u64 } __aggr_memcpy_0
+    local { u64 } __ret_val
+    local { u64 } __tmp_arg
+    local { u64 } _result
+    local { u64 } args
+    local { u64 } item_
+
+    entry():
+    v0 = const u64 0
+    v1 = gtf v0, 10
+    v2 = bitcast v1 to ptr
+    v3 = cast_ptr v2 to __ptr { u64 }
+    v4 = get_local __ptr { u64 }, __aggr_memcpy_0
+    mem_copy_val v4, v3
+    v5 = get_local __ptr { u64 }, args
+    mem_copy_val v5, v4
+    v6 = get_local __ptr { u64 }, args
+    v7 = get_local __ptr { u64 }, __tmp_arg
+    mem_copy_val v7, v6
+    v8 = get_local __ptr { u64 }, __ret_val
+    v9 = call main_7(v7, v8)
+    v10 = get_local __ptr { u64 }, _result
+    mem_copy_val v10, v8
+    v11 = get_local __ptr { u64 }, _result
+    v12 = get_local __ptr { u64 }, item_
+    mem_copy_val v12, v11
+    v13 = get_local __ptr { u64 }, item_
+    v14 = cast_ptr v13 to ptr
+    v15 = const u64 8
+    retd v14 v15
+}
+
+
+move $$locbase $sp            ; save locals base register for function __entry
+cfei i48                      ; allocate 48 bytes for locals and 0 slots for call arguments
+gtf  $r0 $zero i10            ; get transaction field
+mcpi $$locbase $r0 i8         ; copy memory
+addi $r0 $$locbase i32        ; get offset to local __ptr { u64 }
+mcpi $r0 $$locbase i8         ; copy memory
+addi $r0 $$locbase i32        ; get offset to local __ptr { u64 }
+addi $r1 $$locbase i16        ; get offset to local __ptr { u64 }
+mcpi $r1 $r0 i8               ; copy memory
+addi $r0 $$locbase i8         ; get offset to local __ptr { u64 }
+move $$arg0 $r1               ; [call]: pass argument 0
+move $$arg1 $r0               ; [call]: pass argument 1
+jal  $$reta $pc i9            ; [call]: call main_7
+addi $r1 $$locbase i24        ; get offset to local __ptr { u64 }
+mcpi $r1 $r0 i8               ; copy memory
+addi $r0 $$locbase i24        ; get offset to local __ptr { u64 }
+addi $r1 $$locbase i40        ; get offset to local __ptr { u64 }
+mcpi $r1 $r0 i8               ; copy memory
+addi $r0 $$locbase i40        ; get offset to local __ptr { u64 }
+movi $r1 i8                   ; initialize constant into register
+retd  $r0 $r1
+
+This is the result using encoding v0 for comparison. 
+
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_ref --release --ir final --asm final --bytecode --no-experimental new_encoding  | filter-fn main_args_ref main
+
+entry entry_orig fn main(baba: __ptr { u64 }) -> __ptr { u64 } {
+    local { u64 } __anon_0
+
+    entry(baba: __ptr { u64 }):
+    v0 = get_local __ptr { u64 }, __anon_0
+    v1 = const u64 0
+    v2 = get_elem_ptr baba, __ptr u64, v1
+    v3 = load v2
+    v4 = const u64 1
+    v5 = add v3, v4
+    v6 = get_local __ptr { u64 }, __anon_0
+    v7 = const u64 0
+    v8 = get_elem_ptr v6, __ptr u64, v7
+    store v5 to v8
+    ret __ptr { u64 } v0
+}
+
+
+add  $$ds $$ds $$tmp
+cfei i0                       ; allocate stack space for globals
+move $$locbase $sp            ; save locals base register for function main
+cfei i8                       ; allocate 8 bytes for locals and 0 slots for call arguments
+gtf  $r0 $zero i10            ; get base register for main function arguments
+lw   $r0 $r0 i0               ; load main function parameter
+lw   $r0 $r0 i0               ; load word
+add  $r0 $r0 $one
+sw   $$locbase $r0 i0         ; store word
+movi $r0 i8                   ; get size of type returned by pointer
+retd  $$locbase $r0
