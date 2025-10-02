@@ -1,10 +1,9 @@
 use crate::{Parse, ParseResult, ParseToEnd, Parser};
 
 use sway_ast::brackets::{Braces, Parens, SquareBrackets};
-use sway_ast::keywords::{CloseAngleBracketToken, OpenAngleBracketToken};
 use sway_error::handler::ErrorEmitted;
 use sway_error::parser_error::ParseErrorKind;
-use sway_types::{ast::Delimiter, Span, Spanned};
+use sway_types::ast::Delimiter;
 
 pub trait ParseBracket<T>: Sized {
     fn try_parse(parser: &mut Parser) -> ParseResult<Option<Self>>
@@ -101,20 +100,3 @@ macro_rules! impl_brackets (
 impl_brackets!(Braces, Brace, ExpectedOpenBrace);
 impl_brackets!(Parens, Parenthesis, ExpectedOpenParen);
 impl_brackets!(SquareBrackets, Bracket, ExpectedOpenBracket);
-
-#[derive(Clone, Debug)]
-pub struct AngleBrackets<T> {
-    pub open_angle_bracket_token: OpenAngleBracketToken,
-    #[allow(unused)]
-    pub inner: T,
-    pub close_angle_bracket_token: CloseAngleBracketToken,
-}
-
-impl<T> Spanned for AngleBrackets<T> {
-    fn span(&self) -> Span {
-        Span::join(
-            self.open_angle_bracket_token.span(),
-            &self.close_angle_bracket_token.span(),
-        )
-    }
-}

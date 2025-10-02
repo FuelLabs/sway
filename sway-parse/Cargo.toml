@@ -25,5 +25,5 @@ unicode-xid.workspace = true
 assert_matches.workspace = true
 insta = { workspace = true, features = ["ron"] }
 
-[lints.clippy]
-iter_over_hash_type = "deny"
+[lints]
+workspace = true

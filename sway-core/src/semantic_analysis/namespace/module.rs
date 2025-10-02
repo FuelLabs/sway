@@ -135,7 +135,7 @@ impl Module {
     }
 
     pub fn has_submodule(&self, name: &Ident) -> bool {
-        self.submodule(&[name.clone()]).is_some()
+        self.submodule(std::slice::from_ref(name)).is_some()
     }
 
     /// Mutable access to this module's submodules.

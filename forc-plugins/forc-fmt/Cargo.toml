@@ -21,3 +21,6 @@ sway-utils.workspace = true
 swayfmt.workspace = true
 taplo.workspace = true
 tracing.workspace = true
+
+[lints]
+workspace = true
