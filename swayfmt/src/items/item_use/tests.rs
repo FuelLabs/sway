@@ -71,19 +71,15 @@ fmt_test_item!(single_import_multiline_with_braces_with_trailing_comma      "use
           braced_single_import      "use std::tx::{xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,};"
 );
 
-// Regression test for: https://github.com/FuelLabs/sway/issues/XXXX
-// Bug: When braces are removed from single-element imports, the newline handling
-// would use incorrect span positions, causing corruption like "pub struct\n Name"
 #[test]
 fn single_import_with_braces_preserves_following_item() {
-    use indoc::indoc;
+    // Regression test for: https://github.com/FuelLabs/sway/issues/7434
     use crate::Formatter;
+    use indoc::indoc;
 
     let unformatted = indoc! {r#"
         contract;
-
         use utils::{IssuanceParams};
-
         pub struct BridgeRegisteredEvent {
             pub bridge_name: String,
             pub bridge_id: b256,
@@ -92,9 +88,7 @@ fn single_import_with_braces_preserves_following_item() {
 
     let expected = indoc! {r#"
         contract;
-
         use utils::IssuanceParams;
-
         pub struct BridgeRegisteredEvent {
             pub bridge_name: String,
             pub bridge_id: b256,
@@ -105,12 +99,15 @@ fn single_import_with_braces_preserves_following_item() {
     let first_formatted = Formatter::format(&mut formatter, unformatted.into()).unwrap();
 
     // The critical assertion: "pub struct BridgeRegisteredEvent" should stay on one line
-    assert!(!first_formatted.contains("pub struct\n"),
-        "Bug regression: struct name was split from 'pub struct' keyword");
+    assert!(
+        !first_formatted.contains("pub struct\n"),
+        "Bug regression: struct name was split from 'pub struct' keyword"
+    );
 
     assert_eq!(first_formatted, expected);
 
     // Ensure idempotency
-    let second_formatted = Formatter::format(&mut formatter, first_formatted.as_str().into()).unwrap();
+    let second_formatted =
+        Formatter::format(&mut formatter, first_formatted.as_str().into()).unwrap();
     assert_eq!(second_formatted, first_formatted);
 }
