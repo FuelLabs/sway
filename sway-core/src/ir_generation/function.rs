@@ -2432,7 +2432,15 @@ impl<'a> FnCompiler<'a> {
 
                 let runtime = get_memory_representation(context, type_arg_ir_type);
                 let encoding = get_encoding_representation(self.engines, tid);
-                // eprintln!("{} vs {}; mem: {:?}, encoding: {:?}", self.engines.help_out(tid), type_arg_ir_type.as_string(context), &runtime, &encoding);
+                // Uncomment this to understand if a type can use optimized encoding/decoding
+                // eprintln!(
+                //     "{} vs {}; mem: {:?}, encoding: {:?}; {}",
+                //     self.engines.help_out(tid),
+                //     type_arg_ir_type.as_string(context),
+                //     &runtime,
+                //     &encoding,
+                //     Some(&runtime) == encoding.as_ref()
+                // );
 
                 let constant = ConstantContent {
                     ty: Type::get_bool(context),
@@ -5205,7 +5213,7 @@ fn get_memory_representation(ctx: &Context, t: Type) -> MemoryRepresentation {
             } else {
                 item
             }
-        },
+        }
         TypeContent::Array(t, len) => {
             let item = get_memory_representation(ctx, *t);
             let total_len_in_bytes = item.len_in_bytes() * len;
@@ -5269,18 +5277,29 @@ fn get_encoding_representation<'a>(
         }
         TypeInfo::Enum(id) => {
             let decl = engines.de().get(id);
-            let variants = decl
-                .variants
-                .iter()
-                .map(|variant| {
-                    get_encoding_representation(engines, variant.type_argument.type_id())
-                })
-                .collect::<Option<Vec<_>>>()?;
 
-            Some(MemoryRepresentation::And(vec![
-                MemoryRepresentation::Blob { len_in_bytes: 8 },
-                MemoryRepresentation::Or(variants),
-            ]))
+            if decl.variants.is_empty() {
+                Some(MemoryRepresentation::Blob { len_in_bytes: 8 })
+            } else {
+                let variants = decl
+                    .variants
+                    .iter()
+                    .map(|variant| {
+                        get_encoding_representation(engines, variant.type_argument.type_id())
+                    })
+                    .collect::<Option<Vec<_>>>()?;
+
+                if variants.iter().all(|x| x.len_in_bytes() == 0) {
+                    Some(MemoryRepresentation::And(vec![
+                        MemoryRepresentation::Blob { len_in_bytes: 8 }
+                    ]))
+                } else {
+                    Some(MemoryRepresentation::And(vec![
+                        MemoryRepresentation::Blob { len_in_bytes: 8 },
+                        MemoryRepresentation::Or(variants),
+                    ]))
+                }
+            }
         }
         TypeInfo::StringArray(len) => Some(MemoryRepresentation::Blob {
             len_in_bytes: len.extract_literal(engines).unwrap(),

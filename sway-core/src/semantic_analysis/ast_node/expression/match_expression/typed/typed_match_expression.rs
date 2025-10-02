@@ -19,7 +19,7 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{BaseIdent, Ident, Span, Spanned};
 
 // Enable this to see a pseudo-code printed to understand what is being generated.
-const RADIX_TREE_DEBUG: bool = true;
+const RADIX_TREE_DEBUG: bool = false;
 
 #[derive(Default, Debug, Clone)]
 struct TrieNode {
@@ -204,7 +204,11 @@ impl ty::TyMatchExpression {
             });
 
         if RADIX_TREE_DEBUG {
-            println!("let packed_string = {packed_strings:?}");
+            print!("                     ");
+            for i in 0..packed_strings.len() {
+                print!("{:X}", i % 16);
+            }
+            println!("\nlet packed_string = {packed_strings:?}");
         }
 
         // Now create the outer expression checking the size of the string slice

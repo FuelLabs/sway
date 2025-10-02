@@ -150,11 +150,16 @@ impl BufferReader {
         }
     }
 
+    #[inline(always)]
     pub fn decode<T>(ref mut self) -> T
     where
         T: AbiDecode,
     {
-        T::abi_decode(self)
+        if T::is_memcopy() {
+            *__transmute::<raw_ptr, &T>(self.ptr)
+        } else {
+            T::abi_decode(self)
+        }
     }
 }
 
