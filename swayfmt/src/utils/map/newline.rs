@@ -190,21 +190,22 @@ fn add_newlines(
     // Check if AST structure changed during formatting (e.g., braces removed from imports)
     if !removed_spans.is_empty() {
         // When AST structure changed, directly map newline positions from unformatted to formatted
-        newline_map.iter().try_fold(0_i64, |mut offset, (newline_span, newline_sequence)| -> Result<i64, FormatterError> {
-            let formatted_pos = map_unformatted_to_formatted_position(
-                newline_span.end,
-                removed_spans,
-            );
+        newline_map.iter().try_fold(
+            0_i64,
+            |mut offset, (newline_span, newline_sequence)| -> Result<i64, FormatterError> {
+                let formatted_pos =
+                    map_unformatted_to_formatted_position(newline_span.end, removed_spans);
 
-            offset += insert_after_span(
-                calculate_offset(formatted_pos, offset),
-                newline_sequence.clone(),
-                formatted_code,
-                newline_threshold,
-            )?;
+                offset += insert_after_span(
+                    calculate_offset(formatted_pos, offset),
+                    newline_sequence.clone(),
+                    formatted_code,
+                    newline_threshold,
+                )?;
 
-            Ok(offset)
-        })?;
+                Ok(offset)
+            },
+        )?;
 
         return Ok(());
     }

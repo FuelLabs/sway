@@ -87,7 +87,7 @@ impl Format for UseTree {
                     let open_brace_pos = imports.span().start();
                     let close_brace_pos = imports.span().end() - 1;
                     formatter.removed_spans.push((open_brace_pos, 1)); // Remove '{'
-                    // Also removing the trailing comma (1 byte) before the '}'
+                                                                       // Also removing the trailing comma (1 byte) before the '}'
                     formatter.removed_spans.push((close_brace_pos - 1, 1)); // Remove ','
                     formatter.removed_spans.push((close_brace_pos, 1)); // Remove '}'
 
