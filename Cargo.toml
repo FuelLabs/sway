@@ -31,6 +31,12 @@ homepage = "https://fuel.network/"
 license = "Apache-2.0"
 repository = "https://github.com/FuelLabs/sway"
 
+[workspace.lints.rust]
+mismatched_lifetime_syntaxes = "allow"
+
+[workspace.lints.clippy]
+iter_over_hash_type = "deny"
+
 [workspace.dependencies]
 #
 # Internal dependencies in order to propagate `workspace.version`

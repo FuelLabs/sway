@@ -16,3 +16,6 @@ tracing-subscriber = { workspace = true, features = ["ansi", "env-filter", "json
 
 [dev-dependencies]
 tracing-test.workspace = true
+
+[lints]
+workspace = true

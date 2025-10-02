@@ -72,5 +72,5 @@ tower = { workspace = true, default-features = false, features = ["util"] }
 name = "bench_main"
 harness = false
 
-[lints.clippy]
-iter_over_hash_type = "deny"
+[lints]
+workspace = true
