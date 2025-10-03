@@ -118,7 +118,7 @@ fn check_test_forc_tomls(all_tests_dir: &Path) -> Result<()> {
             match implicit_std.as_bool() {
                 Some(true) => Err(anyhow!("'project.implicit-std' cannot be set to `true` in tests. To import the standard library use, e.g., `std = {{ path = \"../<...>/sway-lib-std\" }}`.")),
                 Some(false) => Ok(()),
-                _ => Err(anyhow!("'project.implicit-std' value is invalid: `{}`. In tests 'project.implicit-std' must be set to `false`.", implicit_std)),
+                _ => Err(anyhow!("'project.implicit-std' value is invalid: `{implicit_std}`. In tests 'project.implicit-std' must be set to `false`.")),
             }
         } else {
             // 'implicit-std' is not explicitly set.
@@ -189,7 +189,7 @@ fn check_test_forc_tomls(all_tests_dir: &Path) -> Result<()> {
 
         if let Some(field) = toml.get("project").and_then(|v| v.get("authors")) {
             let err = |field: &Value| {
-                Err(anyhow!("'project.authors' value is invalid: `{}`. 'project.authors' field is mandatory and must be set to `[\"{AUTHOR}\"]`.", field))
+                Err(anyhow!("'project.authors' value is invalid: `{field}`. 'project.authors' field is mandatory and must be set to `[\"{AUTHOR}\"]`."))
             };
 
             match field.as_array() {
@@ -230,7 +230,7 @@ fn check_test_forc_tomls(all_tests_dir: &Path) -> Result<()> {
         if let Some(field) = toml.get("project").and_then(|v| v.get(field_name)) {
             match field.as_str() {
                 Some(value) if value == field_value => Ok(()),
-                _ => Err(anyhow!("'project.{field_name}' value is invalid: `{}`. 'project.{field_name}' field is mandatory and must be set to `\"{field_value}\"`.", field)),
+                _ => Err(anyhow!("'project.{field_name}' value is invalid: `{field}`. 'project.{field_name}' field is mandatory and must be set to `\"{field_value}\"`.")),
             }
         } else {
             Err(anyhow!("'project.{field_name}' field not found. 'project.{field_name}' field is mandatory and must be set to `\"{field_value}\"`."))
