@@ -31,7 +31,6 @@ use crate::{
 use indexmap::IndexMap;
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::error::CompileError;
-use sway_features::ExperimentalFeatures;
 use sway_ir::{Context, *};
 use sway_types::{
     constants,
@@ -39,13 +38,11 @@ use sway_types::{
     integer_bits::IntegerBits,
     span::{Span, Spanned},
     u256::U256,
-    Named, Source,
+    Named,
 };
-
-use std::{
-    collections::HashMap,
-    hash::{DefaultHasher, Hash, Hasher},
-};
+use std::
+    collections::HashMap
+;
 
 /// The result of compiling an expression can be in memory, or in an (SSA) register.
 #[derive(Debug, Clone, Copy)]
@@ -5121,7 +5118,7 @@ impl std::fmt::Debug for MemoryRepresentation {
             }
             Self::Array(item, len) => {
                 f.write_str("[").unwrap();
-                item.fmt(f);
+                item.fmt(f).unwrap();
                 f.write_fmt(format_args!(";{}]", len))
             }
         }
@@ -5313,6 +5310,9 @@ fn get_encoding_representation<'a>(
         TypeInfo::RawUntypedSlice => None,
         TypeInfo::Slice(_) => None,
         TypeInfo::Ref { .. } => None,
+        TypeInfo::Alias { ty, .. } => {
+            get_encoding_representation(engines, ty.type_id())
+        }
         x => todo!("{x:#?}"),
     }
 }

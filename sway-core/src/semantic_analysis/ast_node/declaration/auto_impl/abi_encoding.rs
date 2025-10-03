@@ -320,8 +320,6 @@ where
         fallback_fn: Option<DeclId<TyFunctionDecl>>,
         handler: &Handler,
     ) -> Result<TyAstNode, ErrorEmitted> {
-        let mut code = String::new();
-
         let mut reads = false;
         let mut writes = false;
 
@@ -404,7 +402,7 @@ where
                 ));
             } else {
                 fn_arms.push_str(&format!(
-                    "let args: {args_types} = _buffer.decode::<{args_types}>();
+                    "let args: {args_types} = _buffer.decode_or_transmute::<{args_types}>();
                     let _result: {return_type} = __contract_entry_{method_name}({expanded_args});\n"
                 ));
             }

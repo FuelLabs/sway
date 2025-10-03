@@ -206,6 +206,18 @@ impl BufferReader {
     }
 
     #[inline(always)]
+    pub fn decode_or_transmute<T>(ref mut self) -> T
+    where
+        T: AbiDecode,
+    {
+        if T::is_memcopy() {
+            *__transmute::<raw_ptr, &T>(self.ptr)
+        } else {
+            T::abi_decode(self)
+        }
+    }
+
+    #[inline(always)]
     pub fn decode<T>(ref mut self) -> T
     where
         T: AbiDecode,
@@ -3182,10 +3194,8 @@ where
     T: AbiEncode,
 {
     if T::is_memcopy() {
-        __log(10);
         __contract_ret(__addr_of(item), __size_of::<T>());
     } else {
-        __log(11);
         let slice = encode::<T>(item);
         __contract_ret(slice.ptr(), slice.len::<u8>());
     }
@@ -6364,18 +6374,23 @@ where
     TArgs: AbiEncode,
 {
     let first_parameter = encode(method_name);
-    let second_parameter = encode(args);
-    let params = encode((
+    let second_parameter: raw_ptr = if TArgs::is_memcopy() {
+        __transmute::<&TArgs, raw_ptr>(&args)
+    } else {
+        encode(args).ptr()
+    };
+
+    let params = (
         contract_id,
         asm(a: first_parameter.ptr()) {
             a: u64
         },
-        asm(a: second_parameter.ptr()) {
+        asm(a: second_parameter) {
             a: u64
         },
-    ));
+    );
 
-    __contract_call(params.ptr(), coins, asset_id, gas);
+    __contract_call(__addr_of(params), coins, asset_id, gas);
     let ptr = asm() {
         ret: raw_ptr
     };
