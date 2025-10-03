@@ -505,14 +505,7 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert)
    Compiling script array_repeat (test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat)
-<<<<<<< HEAD
-    Finished debug [unoptimized + fuel] target(s) [7.064 KB] in ???
-=======
     Finished debug [unoptimized + fuel] target(s) [7.072 KB] in ???
-    script array_repeat
-      Bytecode size: 7072 bytes (7.072 KB)
-      Bytecode hash: 0x219d14849a80aedeb7c7eb544d4ca32ad257c99a51a713e943d1dd2596fcf797
->>>>>>> 150dba742 (optimize encoding for u64)
      Running 1 test, filtered 0 tests
 
 tested -- array_repeat
