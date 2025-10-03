@@ -171,7 +171,7 @@ features! {
     "https://github.com/FuelLabs/sway/issues/5063",
     const_generics = false,
     "https://github.com/FuelLabs/sway/issues/6860",
-    new_hashing = false,
+    new_hashing = true,
     "https://github.com/FuelLabs/sway/issues/7256",
 }
 
