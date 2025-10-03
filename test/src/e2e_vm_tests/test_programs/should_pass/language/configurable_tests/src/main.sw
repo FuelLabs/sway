@@ -49,34 +49,34 @@ fn main() {}
 
 #[test]
 fn t() {
-    assert(BOOL == true);
-    assert(U8 == 1);
-    assert(ANOTHER_U8 == 3);
-    assert(U16 == 2);
-    assert(U32 == 3);
-    assert(U64 == 4);
-    assert(U256 == 0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAu256);
-    assert(B256 == 0xBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB);
-    assert(CONFIGURABLE_STRUCT.a == true);
-    assert(CONFIGURABLE_STRUCT.b == 5);
-    assert(CONFIGURABLE_ENUM_A == ConfigurableEnum::A(true));
-    assert(CONFIGURABLE_ENUM_B == ConfigurableEnum::B(12));
-    assert(ARRAY_BOOL[0] == true);
-    assert(ARRAY_BOOL[1] == false);
-    assert(ARRAY_BOOL[2] == true);
-    assert(ARRAY_U64[0] == 9);
-    assert(ARRAY_U64[1] == 8);
-    assert(ARRAY_U64[2] == 7);
-    assert(TUPLE_BOOL_U64.0 == true);
-    assert(TUPLE_BOOL_U64.1 == 11);
-    assert(sha256_str_array(STR_4) == sha256("abcd"));
+    assert_eq(BOOL, true);
+    assert_eq(U8, 1);
+    assert_eq(ANOTHER_U8, 3);
+    assert_eq(U16, 2);
+    assert_eq(U32, 3);
+    assert_eq(U64, 4);
+    assert_eq(U256, 0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAu256);
+    assert_eq(B256, 0xBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB);
+    assert_eq(CONFIGURABLE_STRUCT.a, true);
+    assert_eq(CONFIGURABLE_STRUCT.b, 5);
+    assert_eq(CONFIGURABLE_ENUM_A, ConfigurableEnum::A(true));
+    assert_eq(CONFIGURABLE_ENUM_B, ConfigurableEnum::B(12));
+    assert_eq(ARRAY_BOOL[0], true);
+    assert_eq(ARRAY_BOOL[1], false);
+    assert_eq(ARRAY_BOOL[2], true);
+    assert_eq(ARRAY_U64[0], 9);
+    assert_eq(ARRAY_U64[1], 8);
+    assert_eq(ARRAY_U64[2], 7);
+    assert_eq(TUPLE_BOOL_U64.0, true);
+    assert_eq(TUPLE_BOOL_U64.1, 11);
+    assert_eq(sha256_str_array(STR_4), sha256("abcd"));
 
-    // Assert address do not change
+    // Assert address does not change
     let addr_1 = asm(addr: &BOOL) {
         addr: u64
     };
     let addr_2 = asm(addr: &BOOL) {
         addr: u64
     };
-    assert(addr_1 == addr_2);
+    assert_eq(addr_1, addr_2);
 }
