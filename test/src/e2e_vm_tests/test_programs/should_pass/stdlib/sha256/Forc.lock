@@ -1,8 +1,0 @@
-[[package]]
-name = "sha256"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "std"
-source = "path+from-root-FC46EB1241085B23"

@@ -62,6 +62,7 @@ fn hash_hasher_write_str_array() {
     assert_eq(hasher.keccak256(), 0xab8e83e041e001bcf797c9cc7d6bc472bfdb8c736bab7999f13b7c26f48c354f);
 }
 
+#[cfg(experimental_new_hashing = false)]
 #[test()]
 fn hash_fn_sha256_str_array() {
     let digest = sha256_str_array(__to_str_array(""));
@@ -72,6 +73,19 @@ fn hash_fn_sha256_str_array() {
 
     let digest = sha256_str_array(__to_str_array("Fastest Modular Execution Layer!"));
     assert_eq(digest, 0x4a3cd7c8b44dbf7941e55179425f746adeaa97fe2d99b571fffee78e9b41743c);
+}
+
+#[cfg(experimental_new_hashing = true)]
+#[test()]
+fn hash_fn_sha256_str_array() {
+    let digest = sha256_str_array(__to_str_array(""));
+    assert_eq(digest, 0xaf5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc);
+
+    let digest = sha256_str_array(__to_str_array("test"));
+    assert_eq(digest, 0x09a7d352412717c7e0b93286eb544f83ddf6da4260b795e90aa44e8e58f5dadd);
+
+    let digest = sha256_str_array(__to_str_array("Fastest Modular Execution Layer!"));
+    assert_eq(digest, 0x03e88f60c46971ad474fbcc4b8532136a378b140f5eeb2b26cb490dbd10c51e8);
 }
 
 // Test `Hash` implementations for all `std` types.

@@ -453,26 +453,12 @@ jobs:
         run: cargo run --locked --release -p forc -- test --release --locked --path ./test/src/sdk-harness
       - name: Cargo Test sway-lib-std
         run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
-      # TODO: Enable `const_generics` tests once the necessary https://github.com/FuelLabs/sway/issues/6860 TODOs are resolved.
-      # - name: Build All Tests - Experimental Feature 'const_generics'
-      #   run: cargo run --locked --release -p forc -- build --release --locked --path ./test/src/sdk-harness --experimental const_generics
-      # - name: Test All Tests - Experimental Feature 'const_generics'
-      #   run: cargo run --locked --release -p forc -- test --release --locked --path ./test/src/sdk-harness --experimental const_generics
-      # - name: Cargo Test sway-lib-std - Experimental Feature 'const_generics'
-      #   run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
-      - name: Build All Tests - Experimental Feature 'new_hashing'
-        run: cargo run --locked --release -p forc -- build --release --locked --path ./test/src/sdk-harness --experimental new_hashing
-      - name: Test All Tests - Experimental Feature 'new_hashing'
-        run: cargo run --locked --release -p forc -- test --release --locked --path ./test/src/sdk-harness --experimental new_hashing
-      - name: Cargo Test sway-lib-std - Experimental Feature 'new_hashing'
+      - name: Build All Tests - Experimental Feature 'new_hashing' disabled
+        run: cargo run --locked --release -p forc -- build --release --locked --path ./test/src/sdk-harness --no-experimental new_hashing
+      - name: Test All Tests - Experimental Feature 'new_hashing' disabled
+        run: cargo run --locked --release -p forc -- test --release --locked --path ./test/src/sdk-harness --no-experimental new_hashing
+      - name: Cargo Test sway-lib-std - Experimental Feature 'new_hashing' disabled
         run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
-      # TODO: Enable `const_generics,new_hashing` tests once the necessary https://github.com/FuelLabs/sway/issues/6860 TODOs are resolved.
-      # - name: Build All Tests - Experimental Feature 'const_generics,new_hashing'
-      #   run: cargo run --locked --release -p forc -- build --release --locked --path ./test/src/sdk-harness --experimental const_generics,new_hashing
-      # - name: Test All Tests - Experimental Feature 'const_generics,new_hashing'
-      #   run: cargo run --locked --release -p forc -- test --release --locked --path ./test/src/sdk-harness --experimental const_generics,new_hashing
-      # - name: Cargo Test sway-lib-std - Experimental Feature 'const_generics,new_hashing'
-      #   run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
 
   forc-run-benchmarks:
     runs-on: warp-ubuntu-latest-x64-4x
@@ -544,13 +530,13 @@ jobs:
       - name: Run Std Unit Tests - Experimental feature 'const_generics' (Release)
         run: forc test --release --path sway-lib-std --experimental const_generics
       - name: Run Std Unit Tests - Experimental feature 'new_hashing' (Debug)
-        run: forc test --path sway-lib-std --experimental new_hashing
+        run: forc test --path sway-lib-std --no-experimental new_hashing
       - name: Run Std Unit Tests - Experimental feature 'new_hashing' (Release)
-        run: forc test --release --path sway-lib-std --experimental new_hashing
+        run: forc test --release --path sway-lib-std --no-experimental new_hashing
       - name: Run Std Unit Tests - Experimental feature 'const_generics,new_hashing' (Debug)
-        run: forc test --path sway-lib-std --experimental const_generics,new_hashing
+        run: forc test --path sway-lib-std --experimental const_generics --no-experimental new_hashing
       - name: Run Std Unit Tests - Experimental feature 'const_generics,new_hashing' (Release)
-        run: forc test --release --path sway-lib-std --experimental const_generics,new_hashing
+        run: forc test --release --path sway-lib-std --experimental const_generics --no-experimental new_hashing
       - name: Run In Language Unit Tests (Debug)
         run: forc test --path test/src/in_language_tests
       - name: Run In Language Unit Tests (Release)
@@ -560,13 +546,13 @@ jobs:
       - name: Run In Language Unit Tests - Experimental feature 'const_generics' (Release)
         run: forc test --release --path test/src/in_language_tests --experimental const_generics
       - name: Run In Language Unit Tests - Experimental feature 'new_hashing' (Debug)
-        run: forc test --path test/src/in_language_tests --experimental new_hashing
+        run: forc test --path test/src/in_language_tests --no-experimental new_hashing
       - name: Run In Language Unit Tests - Experimental feature 'new_hashing' (Release)
-        run: forc test --release --path test/src/in_language_tests --experimental new_hashing
+        run: forc test --release --path test/src/in_language_tests --no-experimental new_hashing
       - name: Run In Language Unit Tests - Experimental feature 'const_generics,new_hashing' (Debug)
-        run: forc test --path test/src/in_language_tests --experimental const_generics,new_hashing
+        run: forc test --path test/src/in_language_tests --experimental const_generics --no-experimental new_hashing
       - name: Run In Language Unit Tests - Experimental feature 'const_generics,new_hashing' (Release)
-        run: forc test --release --path test/src/in_language_tests --experimental const_generics,new_hashing
+        run: forc test --release --path test/src/in_language_tests --experimental const_generics --no-experimental new_hashing
 
   forc-pkg-fuels-deps-check:
     runs-on: ubuntu-latest
