@@ -31,7 +31,7 @@ The `Forc.toml` (the _manifest_ file) is a compulsory file for each package and 
 
 * [`[contract-dependencies]`](#the-contract-dependencies-section) - Defines the contract dependencies.
 
-## The `[project]` section
+## The `[project]` Section
 
 An example `Forc.toml` is shown below. Under `[project]` the following fields are optional:
 
@@ -145,7 +145,7 @@ This allows for a streamlined developer experience while maintaining clear separ
 * [forc-index-ts](https://github.com/FuelLabs/example-forc-plugins/tree/master/forc-index-ts): A TypeScript CLI tool for parsing `Forc.toml` metadata to read contract ABI JSON file.
 * [forc-index-rs](https://github.com/FuelLabs/example-forc-plugins/tree/master/forc-index-rs): A Rust CLI tool for parsing `Forc.toml` metadata to read contract ABI JSON file.
 
-## The `[dependencies]` section
+## The `[dependencies]` Section
 
 The following fields can be provided with a dependency:
 
@@ -159,13 +159,13 @@ The following fields can be provided with a dependency:
 
 Please see [dependencies](./dependencies.md) for details
 
-## The `[network]` section
+## The `[network]` Section
 
 For the following fields, a default value is provided so omitting them is allowed:
 
 * `URL` - (default: _<http://127.0.0.1:4000>_)
 
-## The `[build-profile.*]` section
+## The `[build-profile.*]` Section
 
 The `[build-profile]` tables provide a way to customize compiler settings such as debug options.
 
@@ -180,6 +180,7 @@ The following fields can be provided for a build-profile:
 * `time_phases` - Whether to output the time elapsed over each part of the compilation process, defaults to false.
 * `include_tests` -  Whether or not to include test functions in parsing, type-checking, and code generation. This is set to true by invocations like `forc test`, but defaults to false.
 * `error_on_warnings` - Whether to treat errors as warnings, defaults to false.
+* `backtrace` - Defines which panicking functions to include in a `panic` backtrace. Possible values are `all`, `all_except_never`, `only_always`, and `none`. Defaults to `all_except_never` and `only_always` in the default `debug` and `release` profiles, respectively. For more information on backtracing see the chapter [Irrecoverable Errors](../basics/error_handling.md#irrecoverable-errors).
 
 There are two default `[build-profile]` available with every manifest file. These are `debug` and `release` profiles. If you want to override these profiles, you can provide them explicitly in the manifest file like the following example:
 
@@ -217,7 +218,7 @@ error-on-warnings = false
 experimental-private-modules = false
 ```
 
-## The `[patch]` section
+## The `[patch]` Section
 
 The [patch] section of `Forc.toml` can be used to override dependencies with other copies. The example provided below patches `https://github.com/fuellabs/sway` with the `test` branch of the same repo.
 

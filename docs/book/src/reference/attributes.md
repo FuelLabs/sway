@@ -15,6 +15,7 @@ Below is the list of attributes supported by the Sway compiler, ordered alphabet
 - [Payable](#payable)
 - [Storage](#payable)
 - [Test](#test)
+- [Tracing](#tracing)
 
 ## ABI Name
 
@@ -155,3 +156,13 @@ The `#[test]` attribute marks a function to be executed as a test.
 The `#[test(should_revert)]` attribute marks a function to be executed as a test that should revert.
 
 More details in [Unit Testing](../testing/unit-testing.md).
+
+## Tracing
+
+The tracing attribute tells the compiler if a function should be included in a backtrace of a revert caused by a `panic` expression call.
+
+The `#[tracing(never)]` signals the compiler not to include the function in a backtrace, unless the `backtrace` build option is set to `all`.
+
+The `#[tracing(always)]` signals the compiler to always include the function in a backtrace, unless the `backtrace` build option is set to `none`.
+
+More details in [Irrecoverable Errors](../basics/error_handling.md#irrecoverable-errors).
