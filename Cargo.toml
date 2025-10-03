@@ -106,6 +106,9 @@ fuel-types = "0.62"
 fuel-tx = "0.62"
 fuel-vm = "0.62"
 
+# Dependencies for Fuel Telemetry
+fuel-telemetry = "0.1"
+
 # Dependencies from the `forc-wallet` repository:
 forc-wallet = "0.15"
 
