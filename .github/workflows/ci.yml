@@ -229,7 +229,6 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
-          targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
         with:
           cache-provider: "warpbuild"
@@ -334,7 +333,6 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
-          targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
         with:
           cache-provider: "warpbuild"
@@ -352,7 +350,6 @@ jobs:
         with:
           toolchain: ${{ env.RUST_VERSION }}
           components: clippy
-          targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
         with:
           cache-provider: "github"
@@ -613,7 +610,7 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
-          targets: "x86_64-unknown-linux-gnu, wasm32-unknown-unknown"
+          targets: "x86_64-unknown-linux-gnu"
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
         with:
@@ -642,7 +639,6 @@ jobs:
         with:
           # `cargo-udeps` requires nightly to run
           toolchain: ${{ env.NIGHTLY_RUST_VERSION }}
-          targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
         with:
           cache-provider: "github"
@@ -739,7 +735,6 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
-          targets: "x86_64-unknown-linux-gnu, wasm32-unknown-unknown"
 
       - name: Link forc-mcp docs into Cargo target
         run: |
