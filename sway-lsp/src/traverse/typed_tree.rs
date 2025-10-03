@@ -234,7 +234,7 @@ impl Parse for ty::TyExpression {
                 arguments,
                 fn_ref,
                 type_binding,
-                call_path_typeid,
+                method_target,
                 ..
             } => {
                 if let Some(type_binding) = type_binding {
@@ -251,11 +251,11 @@ impl Parse for ty::TyExpression {
                     if let Some((last, prefixes)) = call_path.prefixes.split_last() {
                         if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(last))
                         {
-                            if let Some(call_path_typeid) = call_path_typeid {
+                            if let Some(method_target) = method_target {
                                 token.ast_node = TokenAstNode::Typed(TypedAstToken::Ident(
                                     impl_type_name.clone(),
                                 ));
-                                token.type_def = Some(TypeDefinition::TypeId(*call_path_typeid));
+                                token.type_def = Some(TypeDefinition::TypeId(*method_target));
                             }
                         }
                         prefixes

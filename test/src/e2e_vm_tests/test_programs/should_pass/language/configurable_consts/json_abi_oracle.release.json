@@ -1,0 +1,237 @@
+{
+  "concreteTypes": [
+    {
+      "concreteTypeId": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d",
+      "type": "()"
+    },
+    {
+      "concreteTypeId": "c998ca9a5f221fe7b5c66ae70c8a9562b86d964408b00d17f883c906bc1fe4be",
+      "metadataTypeId": 0,
+      "type": "(bool, u64)"
+    },
+    {
+      "concreteTypeId": "4926d35d1a5157936b0a29bc126b8aace6d911209a5c130e9b716b0c73643ea6",
+      "metadataTypeId": 1,
+      "type": "[bool; 3]"
+    },
+    {
+      "concreteTypeId": "776fb5a3824169d6736138565fdc20aad684d9111266a5ff6d5c675280b7e199",
+      "metadataTypeId": 2,
+      "type": "[u64; 3]"
+    },
+    {
+      "concreteTypeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b",
+      "type": "b256"
+    },
+    {
+      "concreteTypeId": "b760f44fa5965c2474a3b471467a22c43185152129295af588b022ae50b50903",
+      "type": "bool"
+    },
+    {
+      "concreteTypeId": "a2922861f03be8a650595dd76455b95383a61b46dd418f02607fa2e00dc39d5c",
+      "metadataTypeId": 3,
+      "type": "enum ConfigurableEnum"
+    },
+    {
+      "concreteTypeId": "94f0fa95c830be5e4f711963e83259fe7e8bc723278ab6ec34449e791a99b53a",
+      "type": "str[4]"
+    },
+    {
+      "concreteTypeId": "81fc10c4681a3271cf2d66b2ec6fbc8ed007a442652930844fcf11818c295bff",
+      "metadataTypeId": 4,
+      "type": "struct ConfigurableStruct"
+    },
+    {
+      "concreteTypeId": "29881aad8730c5ab11d275376323d8e4ff4179aae8ccb6c13fe4902137e162ef",
+      "type": "u16"
+    },
+    {
+      "concreteTypeId": "1b5759d94094368cfd443019e7ca5ec4074300e544e5ea993a979f5da627261e",
+      "type": "u256"
+    },
+    {
+      "concreteTypeId": "d7649d428b9ff33d188ecbf38a7e4d8fd167fa01b2e10fe9a8f9308e52f1d7cc",
+      "type": "u32"
+    },
+    {
+      "concreteTypeId": "c89951a24c6ca28c13fd1cfdc646b2b656d69e61a92b91023be7eb58eb914b6b",
+      "type": "u8"
+    }
+  ],
+  "configurables": [
+    {
+      "concreteTypeId": "b760f44fa5965c2474a3b471467a22c43185152129295af588b022ae50b50903",
+      "name": "BOOL",
+      "offset": 6640
+    },
+    {
+      "concreteTypeId": "c89951a24c6ca28c13fd1cfdc646b2b656d69e61a92b91023be7eb58eb914b6b",
+      "name": "U8",
+      "offset": 6832
+    },
+    {
+      "concreteTypeId": "c89951a24c6ca28c13fd1cfdc646b2b656d69e61a92b91023be7eb58eb914b6b",
+      "name": "ANOTHER_U8",
+      "offset": 6568
+    },
+    {
+      "concreteTypeId": "29881aad8730c5ab11d275376323d8e4ff4179aae8ccb6c13fe4902137e162ef",
+      "name": "U16",
+      "offset": 6776
+    },
+    {
+      "concreteTypeId": "d7649d428b9ff33d188ecbf38a7e4d8fd167fa01b2e10fe9a8f9308e52f1d7cc",
+      "name": "U32",
+      "offset": 6816
+    },
+    {
+      "concreteTypeId": "d7649d428b9ff33d188ecbf38a7e4d8fd167fa01b2e10fe9a8f9308e52f1d7cc",
+      "name": "U64",
+      "offset": 6824
+    },
+    {
+      "concreteTypeId": "1b5759d94094368cfd443019e7ca5ec4074300e544e5ea993a979f5da627261e",
+      "name": "U256",
+      "offset": 6784
+    },
+    {
+      "concreteTypeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b",
+      "name": "B256",
+      "offset": 6608
+    },
+    {
+      "concreteTypeId": "81fc10c4681a3271cf2d66b2ec6fbc8ed007a442652930844fcf11818c295bff",
+      "name": "CONFIGURABLE_STRUCT",
+      "offset": 6728
+    },
+    {
+      "concreteTypeId": "a2922861f03be8a650595dd76455b95383a61b46dd418f02607fa2e00dc39d5c",
+      "name": "CONFIGURABLE_ENUM_A",
+      "offset": 6648
+    },
+    {
+      "concreteTypeId": "a2922861f03be8a650595dd76455b95383a61b46dd418f02607fa2e00dc39d5c",
+      "name": "CONFIGURABLE_ENUM_B",
+      "offset": 6688
+    },
+    {
+      "concreteTypeId": "4926d35d1a5157936b0a29bc126b8aace6d911209a5c130e9b716b0c73643ea6",
+      "name": "ARRAY_BOOL",
+      "offset": 6576
+    },
+    {
+      "concreteTypeId": "776fb5a3824169d6736138565fdc20aad684d9111266a5ff6d5c675280b7e199",
+      "name": "ARRAY_U64",
+      "offset": 6584
+    },
+    {
+      "concreteTypeId": "c998ca9a5f221fe7b5c66ae70c8a9562b86d964408b00d17f883c906bc1fe4be",
+      "name": "TUPLE_BOOL_U64",
+      "offset": 6760
+    },
+    {
+      "concreteTypeId": "94f0fa95c830be5e4f711963e83259fe7e8bc723278ab6ec34449e791a99b53a",
+      "name": "STR_4",
+      "offset": 6752
+    },
+    {
+      "concreteTypeId": "c89951a24c6ca28c13fd1cfdc646b2b656d69e61a92b91023be7eb58eb914b6b",
+      "name": "NOT_USED",
+      "offset": 6744
+    }
+  ],
+  "encodingVersion": "1",
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "main",
+      "output": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "metadataTypes": [
+    {
+      "components": [
+        {
+          "name": "__tuple_element",
+          "offset": null,
+          "typeId": "b760f44fa5965c2474a3b471467a22c43185152129295af588b022ae50b50903"
+        },
+        {
+          "name": "__tuple_element",
+          "offset": null,
+          "typeId": 5
+        }
+      ],
+      "metadataTypeId": 0,
+      "type": "(_, _)"
+    },
+    {
+      "components": [
+        {
+          "name": "__array_element",
+          "offset": null,
+          "typeId": "b760f44fa5965c2474a3b471467a22c43185152129295af588b022ae50b50903"
+        }
+      ],
+      "metadataTypeId": 1,
+      "type": "[_; 3]"
+    },
+    {
+      "components": [
+        {
+          "name": "__array_element",
+          "offset": null,
+          "typeId": 5
+        }
+      ],
+      "metadataTypeId": 2,
+      "type": "[_; 3]"
+    },
+    {
+      "components": [
+        {
+          "name": "A",
+          "offset": null,
+          "typeId": "b760f44fa5965c2474a3b471467a22c43185152129295af588b022ae50b50903"
+        },
+        {
+          "name": "B",
+          "offset": null,
+          "typeId": 5
+        },
+        {
+          "name": "C",
+          "offset": null,
+          "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
+        }
+      ],
+      "metadataTypeId": 3,
+      "type": "enum ConfigurableEnum"
+    },
+    {
+      "components": [
+        {
+          "name": "a",
+          "offset": null,
+          "typeId": "b760f44fa5965c2474a3b471467a22c43185152129295af588b022ae50b50903"
+        },
+        {
+          "name": "b",
+          "offset": null,
+          "typeId": 5
+        }
+      ],
+      "metadataTypeId": 4,
+      "type": "struct ConfigurableStruct"
+    },
+    {
+      "metadataTypeId": 5,
+      "type": "u64"
+    }
+  ],
+  "programType": "script",
+  "specVersion": "1.2"
+}

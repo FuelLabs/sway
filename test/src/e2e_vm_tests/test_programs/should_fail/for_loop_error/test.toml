@@ -3,11 +3,11 @@ category = "fail"
 # check: $()1234567890
 # nextln: $()Mismatched types.
 # nextln: $()expected: ()
-# nextln: $()found:    numeric.
+# nextln: $()found:    {numeric}.
 # nextln: $()Implicit return must match up with block's type.
 
 # check: $()1234567890
 # nextln: $()Mismatched types.
 # nextln: $()expected: ()
-# nextln: $()found:    numeric.
+# nextln: $()found:    {numeric}.
 # nextln: $()A for loop's loop body cannot implicitly return a value. Try assigning it to a mutable variable declared outside of the loop instead.

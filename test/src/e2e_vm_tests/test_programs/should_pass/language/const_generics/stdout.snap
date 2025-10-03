@@ -238,183 +238,138 @@ error
     |
 ____
 
-error
+error: Associated function or method is not found
    --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:115:26
     |
-113 |     let a = [C {}].my_len();
-114 |     assert(a == 1);
+...
 115 |     let _ = __dbg([C {}].len());
-    |                          ^^^ No method "len([C; 1])" found for type "[C; 1]".
-116 |     assert([C {}].len() == 1);
-117 | 
+    |                          ^^^ "len([const_generics::C; 1])" is not found for type "[const_generics::C; 1]".
     |
 ____
 
-error
+error: Associated function or method is not found
    --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:116:19
     |
-114 |     assert(a == 1);
-115 |     let _ = __dbg([C {}].len());
+...
 116 |     assert([C {}].len() == 1);
-    |                   ^^^ No method "len([C; 1])" found for type "[C; 1]".
-117 | 
-118 |     let b = [C {}, C{}].my_len();
+    |                   ^^^ "len([const_generics::C; 1])" is not found for type "[const_generics::C; 1]".
     |
 ____
 
-error
+error: Associated function or method is not found
    --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:116:25
     |
-114 |     assert(a == 1);
-115 |     let _ = __dbg([C {}].len());
+...
 116 |     assert([C {}].len() == 1);
-    |                         ^^ No method "eq({unknown}, numeric) -> bool" found for type "{unknown}".
-117 | 
-118 |     let b = [C {}, C{}].my_len();
+    |                         ^^ "eq({unknown}, {numeric}) -> bool" is not found for type "{unknown}".
     |
 ____
 
-error
+error: Associated function or method is not found
    --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:120:31
     |
-118 |     let b = [C {}, C{}].my_len();
-119 |     assert(b == 2);
+...
 120 |     let _ = __dbg([C {}, C{}].len());
-    |                               ^^^ No method "len([C; 2])" found for type "[C; 2]".
-121 |     assert([C {}, C{}].len() == 2);
-122 | 
+    |                               ^^^ "len([const_generics::C; 2])" is not found for type "[const_generics::C; 2]".
     |
 ____
 
-error
+error: Associated function or method is not found
    --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:121:24
     |
-119 |     assert(b == 2);
-120 |     let _ = __dbg([C {}, C{}].len());
+...
 121 |     assert([C {}, C{}].len() == 2);
-    |                        ^^^ No method "len([C; 2])" found for type "[C; 2]".
-122 | 
-123 |     let s: S<u64, 3> = S { };
+    |                        ^^^ "len([const_generics::C; 2])" is not found for type "[const_generics::C; 2]".
     |
 ____
 
-error
+error: Associated function or method is not found
    --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:121:30
     |
-119 |     assert(b == 2);
-120 |     let _ = __dbg([C {}, C{}].len());
+...
 121 |     assert([C {}, C{}].len() == 2);
-    |                              ^^ No method "eq({unknown}, numeric) -> bool" found for type "{unknown}".
-122 | 
-123 |     let s: S<u64, 3> = S { };
+    |                              ^^ "eq({unknown}, {numeric}) -> bool" is not found for type "{unknown}".
     |
 ____
 
-error
+error: Associated function or method is not found
    --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:160:14
     |
-158 |     // string arrays
-159 |     let a: str[3] = __to_str_array("ABC");
+...
 160 |     assert(a.len() == 3);
-    |              ^^^ No method "len(str[3])" found for type "str[3]".
-161 |     let _ = __dbg(a.len());
-162 |     let _ = __dbg(a);
+    |              ^^^ "len(str[3])" is not found for type "str[3]".
     |
 ____
 
-error
+error: Associated function or method is not found
    --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:160:20
     |
-158 |     // string arrays
-159 |     let a: str[3] = __to_str_array("ABC");
+...
 160 |     assert(a.len() == 3);
-    |                    ^^ No method "eq({unknown}, numeric) -> bool" found for type "{unknown}".
-161 |     let _ = __dbg(a.len());
-162 |     let _ = __dbg(a);
+    |                    ^^ "eq({unknown}, {numeric}) -> bool" is not found for type "{unknown}".
     |
 ____
 
-error
+error: Associated function or method is not found
    --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:161:21
     |
-159 |     let a: str[3] = __to_str_array("ABC");
-160 |     assert(a.len() == 3);
+...
 161 |     let _ = __dbg(a.len());
-    |                     ^^^ No method "len(str[3])" found for type "str[3]".
-162 |     let _ = __dbg(a);
-163 | 
+    |                     ^^^ "len(str[3])" is not found for type "str[3]".
     |
 ____
 
-error
+error: Associated function or method is not found
    --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:165:14
     |
-163 | 
-164 |     let a: str[5] = __to_str_array("ABCDE");
+...
 165 |     assert(a.len() == 5);
-    |              ^^^ No method "len(str[5])" found for type "str[5]".
-166 |     let _ = __dbg(a.len());
-167 |     let _ = __dbg(a);
+    |              ^^^ "len(str[5])" is not found for type "str[5]".
     |
 ____
 
-error
+error: Associated function or method is not found
    --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:165:20
     |
-163 | 
-164 |     let a: str[5] = __to_str_array("ABCDE");
+...
 165 |     assert(a.len() == 5);
-    |                    ^^ No method "eq({unknown}, numeric) -> bool" found for type "{unknown}".
-166 |     let _ = __dbg(a.len());
-167 |     let _ = __dbg(a);
+    |                    ^^ "eq({unknown}, {numeric}) -> bool" is not found for type "{unknown}".
     |
 ____
 
-error
+error: Associated function or method is not found
    --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:166:21
     |
-164 |     let a: str[5] = __to_str_array("ABCDE");
-165 |     assert(a.len() == 5);
+...
 166 |     let _ = __dbg(a.len());
-    |                     ^^^ No method "len(str[5])" found for type "str[5]".
-167 |     let _ = __dbg(a);
-168 | 
+    |                     ^^^ "len(str[5])" is not found for type "str[5]".
     |
 ____
 
-error
+error: Associated function or method is not found
    --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:170:14
     |
-168 | 
-169 |     let a: str[70] = __to_str_array("1234567890123456789012345678901234567890123456789012345678901234567890");
+...
 170 |     assert(a.len() == 70);
-    |              ^^^ No method "len(str[70])" found for type "str[70]".
-171 |     let _ = __dbg(a.len());
-172 |     let _ = __dbg(a);
+    |              ^^^ "len(str[70])" is not found for type "str[70]".
     |
 ____
 
-error
+error: Associated function or method is not found
    --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:170:20
     |
-168 | 
-169 |     let a: str[70] = __to_str_array("1234567890123456789012345678901234567890123456789012345678901234567890");
+...
 170 |     assert(a.len() == 70);
-    |                    ^^ No method "eq({unknown}, numeric) -> bool" found for type "{unknown}".
-171 |     let _ = __dbg(a.len());
-172 |     let _ = __dbg(a);
+    |                    ^^ "eq({unknown}, {numeric}) -> bool" is not found for type "{unknown}".
     |
 ____
 
-error
+error: Associated function or method is not found
    --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:171:21
     |
-169 |     let a: str[70] = __to_str_array("1234567890123456789012345678901234567890123456789012345678901234567890");
-170 |     assert(a.len() == 70);
+...
 171 |     let _ = __dbg(a.len());
-    |                     ^^^ No method "len(str[70])" found for type "str[70]".
-172 |     let _ = __dbg(a);
-173 | 
+    |                     ^^^ "len(str[70])" is not found for type "str[70]".
     |
 ____
 

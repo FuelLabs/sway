@@ -1,10 +1,15 @@
 category = "fail"
 
+# check: $()Associated function or method is not found
 # check: $()x: a.x.my_add(b.x),
+# nextln: $()"my_add(T, T) -> T" is not found for type "T".
 
-# check: $()x: a.x.my_add(b.x),
-# nextln: $()No method "my_add(T, T) -> T" found for type "T".
+# check: $()Associated function or method is not found
 # check: $()y: a.y.my_add(b.y),
+# nextln: $()"my_add(T, T) -> T" is not found for type "T".
 
-# check: $()y: a.y.my_add(b.y),
-# nextln: $()No method "my_add(T, T) -> T" found for type "T".
+# check: $()error
+# check: $()let baz = foo.my_add(bar);
+# nextln: $()Cannot call associated function "my_add" as a method. Use associated function syntax instead.
+
+# check: $()Aborting due to 5 errors.

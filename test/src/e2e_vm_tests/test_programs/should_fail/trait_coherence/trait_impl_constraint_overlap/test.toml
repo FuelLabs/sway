@@ -1,6 +1,6 @@
 category = "fail"
 
 #check: $()Type contains duplicate declarations
-#check: $()Method "foo" already declared in type "S<u32>".
-#check: $()Trait "S" is already implemented for type "S<Z>".
-#check: $()Trait "S" is already implemented for type "S<u32>".
+#check: $()Method "foo" already declared in type "trait_impl_constraint_overlap::S<u32>".
+#check: $()Trait "trait_impl_constraint_overlap::S" is already implemented for type "trait_impl_constraint_overlap::S<Z>".
+#check: $()Trait "trait_impl_constraint_overlap::S" is already implemented for type "trait_impl_constraint_overlap::S<u32>".

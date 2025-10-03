@@ -1,4 +1,4 @@
-script;
+library;
 
 pub mod items_1;
 pub mod lib_1;  // Aliased item reexports of items_1
@@ -15,6 +15,6 @@ pub mod lib_5_2;  // Aliased trait reexports from items_5
 
 mod tests; // All tests
 
-fn main() -> u64 {
+pub fn main() -> u64 {
     tests::run_all_tests()
 }

@@ -57,6 +57,13 @@ impl Value {
         Value(context.values.insert(content))
     }
 
+    /// Return a new `u64` constant [`Value`] set to `value`.
+    pub fn new_u64_constant(context: &mut Context, value: u64) -> Value {
+        let constant = crate::ConstantContent::new_uint(context, 64, value);
+        let constant = Constant::unique(context, constant);
+        Self::new_constant(context, constant)
+    }
+
     /// Return a new instruction [`Value`].
     pub fn new_instruction(context: &mut Context, block: Block, instruction: InstOp) -> Value {
         let content = ValueContent {

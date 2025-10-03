@@ -1,0 +1,33 @@
+{
+  "concreteTypes": [
+    {
+      "concreteTypeId": "b760f44fa5965c2474a3b471467a22c43185152129295af588b022ae50b50903",
+      "type": "bool"
+    }
+  ],
+  "configurables": [],
+  "encodingVersion": "1",
+  "errorCodes": {},
+  "functions": [
+    {
+      "attributes": [
+        {
+          "arguments": [
+            "read",
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
+      "inputs": [],
+      "name": "impure_func",
+      "output": "b760f44fa5965c2474a3b471467a22c43185152129295af588b022ae50b50903"
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "metadataTypes": [],
+  "panickingCalls": {},
+  "programType": "contract",
+  "specVersion": "1.2"
+}

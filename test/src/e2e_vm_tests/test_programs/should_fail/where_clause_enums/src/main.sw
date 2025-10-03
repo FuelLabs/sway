@@ -1,4 +1,4 @@
-script;
+library;
 
 trait MyAdd {
     fn my_add(self, b: Self) -> Self;
@@ -6,7 +6,7 @@ trait MyAdd {
 
 impl MyAdd for u32 {
     fn my_add(self, b: u32) -> u32 {
-        self + b
+        self
     }
 }
 
@@ -55,11 +55,9 @@ fn add3<T>(v: T) -> T {
     v
 }
 
-fn main() -> u8 {
+pub fn main() {
     let foo = MyEnum::X(1u32);
 
     // Trait "MyAdd" is not implemented for type "u64".
     let bar = MyEnum::X(3u64);
-
-    0u8
 }

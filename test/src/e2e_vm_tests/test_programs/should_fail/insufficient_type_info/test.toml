@@ -3,7 +3,7 @@ category = "fail"
 # check: $()Returned value is ignored
 # check: $()None::<T>;
 # nextln: $()This returns a value which is not assigned to anything and is ignored.
-# nextln: $()The returned value has type "MyOption<T>".
+# nextln: $()The returned value has type "insufficient_type_info::lib::MyOption<T>".
 # check: $()If you want to intentionally ignore the returned value, use `let _ = ...`:
 # nextln: $()let _ = None::<T>;
 

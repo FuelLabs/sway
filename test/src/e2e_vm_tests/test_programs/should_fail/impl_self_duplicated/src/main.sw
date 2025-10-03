@@ -1,42 +1,42 @@
-script;
+library;
+
 trait Cat {
- fn speak(self) -> u64;
+    fn speak(self) -> u64;
 }
 trait Dog {
- fn speak(self) -> u64;
+    fn speak(self) -> u64;
 }
 struct S<T> {
- x: T,
+    x: T,
 }
 impl<T> S<T>
 where
- T: Cat,
+    T: Cat,
 {
- fn foo(self) -> u64 {
- self.x.speak() + 1
- }
+    fn foo(self) -> u64 {
+        self.x.speak()
+    }
 }
 impl<T> S<T>
 where
- T: Dog,
+    T: Dog,
 {
- fn foo(self) -> u64 {
- self.x.speak() + 2
- }
+    fn foo(self) -> u64 {
+        self.x.speak()
+    }
 }
 impl Dog for u64 {
- fn speak(self) -> u64 {
- 2
- }
+    fn speak(self) -> u64 {
+        2
+    }
 }
 impl Cat for u64 {
- fn speak(self) -> u64 {
- 1
- }
+    fn speak(self) -> u64 {
+        1
+    }
 }
-fn main() -> u64 {
- let s = S::<u64> { x: 1 };
- s.foo();
 
- 42
+pub fn main() {
+    let s = S::<u64> { x: 1 };
+    s.foo();
 }

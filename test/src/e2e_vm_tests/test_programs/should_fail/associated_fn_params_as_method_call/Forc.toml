@@ -1,6 +1,0 @@
-[project]
-authors = ["Fuel Labs <contact@fuel.sh>"]
-license = "Apache-2.0"
-name = "associated_fn_params_as_method_call"
-entry = "main.sw"
-implicit-std = false

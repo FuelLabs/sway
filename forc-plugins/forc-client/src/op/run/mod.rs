@@ -13,7 +13,7 @@ use forc_tracing::println_warning;
 use forc_util::tx_utils::format_log_receipts;
 use fuel_abi_types::abi::program::ProgramABI;
 use fuel_core_client::client::FuelClient;
-use fuel_tx::{ContractId, Transaction};
+use fuel_tx::{ConsensusParameters, ContractId, Transaction};
 use fuels::{
     programs::calls::{traits::TransactionTuner, ScriptCall},
     types::{
@@ -152,9 +152,13 @@ pub async fn run_pkg(
         external_contracts,
     };
     let tx_policies = tx_policies_from_cmd(command);
-    let mut tb = call
-        .transaction_builder(tx_policies, VariableOutputPolicy::EstimateMinimum, &account)
-        .await?;
+    let mut tb = call.transaction_builder(
+        tx_policies,
+        VariableOutputPolicy::EstimateMinimum,
+        &ConsensusParameters::standard(),
+        vec![],
+        &account,
+    )?;
 
     account.add_witnesses(&mut tb)?;
     account.adjust_for_fee(&mut tb, 0).await?;

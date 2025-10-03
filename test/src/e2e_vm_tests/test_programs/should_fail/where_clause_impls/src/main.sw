@@ -13,6 +13,7 @@ struct MyU64 {
 }
 
 impl MyAdd for MyU32 {
+    #[allow(dead_code)]
     fn my_add(a: MyU32, b: MyU32) -> MyU32 {
         MyU32 {
             value: a.value + b.value
@@ -21,6 +22,7 @@ impl MyAdd for MyU32 {
 }
 
 impl MyAdd for MyU64 {
+    #[allow(dead_code)]
     fn my_add(a: MyU64, b: MyU64) -> MyU64 {
         MyU64 {
             value: a.value + b.value
@@ -35,6 +37,7 @@ struct MyPoint<T> {
 
 // Missing where T: MyAdd
 impl<T> MyAdd for MyPoint<T> {
+    #[allow(dead_code)]
     fn my_add(a: MyPoint<T>, b: MyPoint<T>) -> MyPoint<T> {
         MyPoint {
             x: a.x.my_add(b.x),

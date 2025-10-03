@@ -1,8 +1,3 @@
 [[package]]
 name = "impl_with_bad_generic"
 source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "std"
-source = "path+from-root-52B9F714BAB9BDCA"

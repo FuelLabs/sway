@@ -185,14 +185,14 @@ pub fn resolve_type(
         }
         TypeInfo::TraitType {
             name,
-            trait_type_id,
+            implemented_in,
         } => {
             let trait_item_ref = TraitMap::get_trait_item_for_type(
                 namespace.current_package_root_module(),
                 handler,
                 engines,
                 name,
-                *trait_type_id,
+                *implemented_in,
                 None,
             )?;
 

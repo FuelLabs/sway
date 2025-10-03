@@ -1,4 +1,4 @@
-script;
+library;
 
 trait TypeTrait {
     type T;
@@ -8,8 +8,4 @@ trait TypeTrait {
     fn method2<T>() -> T {
         Self::method()
     }
-}
-
-fn main() -> u32 {
-    1
 }

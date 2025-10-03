@@ -1,4 +1,4 @@
-script;
+library;
 
 struct A {}
 
@@ -61,7 +61,4 @@ where
     fn method3(self) -> u64 {
         T::method2(self)
     }
-}
-
-fn main() {
 }

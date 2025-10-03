@@ -543,7 +543,7 @@ pub fn fetch(fetch_id: u64, name: &str, pinned: &Pinned) -> Result<PathBuf> {
         let current_head = repo.revparse_single("HEAD")?;
         let head_commit = current_head
             .as_commit()
-            .ok_or_else(|| anyhow!("Cannot get commit from {}", current_head.id().to_string()))?;
+            .ok_or_else(|| anyhow!("Cannot get commit from {}", current_head.id()))?;
         let head_time = head_commit.time().seconds();
         let source_index = SourceIndex::new(
             head_time,

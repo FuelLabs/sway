@@ -4,6 +4,3 @@ entry = "main.sw"
 implicit-std = false
 license = "Apache-2.0"
 name = "for_bad_iterator"
-
-[dependencies]
-std = { path = "../../../reduced_std_libs/sway-lib-std-vec" }

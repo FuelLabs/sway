@@ -1,0 +1,8 @@
+[[package]]
+name = "std"
+source = "path+from-root-4CA0C782DA72B79C"
+
+[[package]]
+name = "too_many_panic_expressions"
+source = "member"
+dependencies = ["std"]

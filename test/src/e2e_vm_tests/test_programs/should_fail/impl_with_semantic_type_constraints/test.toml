@@ -1,10 +1,13 @@
 category = "fail"
 
-# check: let _i = b.add();
-# nextln: $()No method "add(DoubleIdentity<bool, bool>)" found for type "DoubleIdentity<bool, bool>".
+# check: $()Associated function or method is not found
+# check: $()let _i = b.add();
+# nextln: $()"add(impl_with_semantic_type_constraints::DoubleIdentity<bool, bool>)" is not found for type "impl_with_semantic_type_constraints::DoubleIdentity<bool, bool>".
 
+# check: $()Associated function or method is not found
 # check: let _j = c.get_first();
-# nextln: $()No method "get_first(DoubleIdentity<u64, str>)" found for type "DoubleIdentity<u64, str>".
+# nextln: $()"get_first(impl_with_semantic_type_constraints::DoubleIdentity<u64, str>)" is not found for type "impl_with_semantic_type_constraints::DoubleIdentity<u64, str>".
 
+# check: $()Associated function or method is not found
 # check: let _l = c.add();
-# nextln: $()No method "add(DoubleIdentity<u64, str>)" found for type "DoubleIdentity<u64, str>".
+# nextln: $()"add(impl_with_semantic_type_constraints::DoubleIdentity<u64, str>)" is not found for type "impl_with_semantic_type_constraints::DoubleIdentity<u64, str>".

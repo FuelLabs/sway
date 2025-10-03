@@ -6,7 +6,7 @@ category = "fail"
 # nextln: $()The expression to match on is of type "(A, B)".
 # nextln: $()(x, y) | (y, x) => 0,
 # nextln: $()Variable "x" is expected to be of type "A", but is "B".
-# nextln: $()"x" is first defined here with type "A".
+# nextln: $()"x" is first defined here with the type "A".
 
 # check: $()Match pattern variable has mismatched type
 
@@ -14,153 +14,153 @@ category = "fail"
 # nextln: $()The expression to match on is of type "(A, B)".
 # nextln: $()(x, y) | (y, x) => 0,
 # nextln: $()Variable "y" is expected to be of type "B", but is "A".
-# nextln: $()"y" is first defined here with type "B".
+# nextln: $()"y" is first defined here with the type "B".
 
 # check: $()Match pattern variable has mismatched type
 
 # check: $()let _x = match s1 {
-# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()The expression to match on is of type "match_expressions_or_mismatched_types::Struct".
 # nextln: $()Struct { x, y } | Struct { x: y, y: x } => if y { 0 } else { x },
 # nextln: $()Variable "x" is expected to be of type "bool", but is "u64".
-# nextln: $()"x" is first defined here with type "bool".
+# nextln: $()"x" is first defined here with the type "bool".
 
 # check: $()Match pattern variable has mismatched type
 
 # check: $()let _x = match s1 {
-# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()The expression to match on is of type "match_expressions_or_mismatched_types::Struct".
 # nextln: $()Struct { x, y } | Struct { x: y, y: x } => if y { 0 } else { x },
 # nextln: $()Variable "y" is expected to be of type "u64", but is "bool".
-# nextln: $()"y" is first defined here with type "u64".
+# nextln: $()"y" is first defined here with the type "u64".
 
 # check: $()Match pattern variable has mismatched type
 
 # check: $()let _x = match s2 {
-# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()The expression to match on is of type "match_expressions_or_mismatched_types::Struct".
 # nextln: $()Struct { x: a, y: b } | Struct { x: b, y: a } => if b { 0 } else { a },
 # nextln: $()Variable "a" is expected to be of type "bool", but is "u64".
-# nextln: $()"a" is first defined here with type "bool".
+# nextln: $()"a" is first defined here with the type "bool".
 
 # check: $()Match pattern variable has mismatched type
 
 # check: $()let _x = match s2 {
-# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()The expression to match on is of type "match_expressions_or_mismatched_types::Struct".
 # nextln: $()Struct { x: a, y: b } | Struct { x: b, y: a } => if b { 0 } else { a },
 # nextln: $()Variable "b" is expected to be of type "u64", but is "bool".
-# nextln: $()"b" is first defined here with type "u64".
+# nextln: $()"b" is first defined here with the type "u64".
 
 # check: $()Match pattern variable has mismatched type
 
 # check: $()let _x = match s3 {
-# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()The expression to match on is of type "match_expressions_or_mismatched_types::Struct".
 # nextln: $()Struct { x, y } | Struct { x, y } | Struct { x: y, y: x } => if y { 0 } else { x },
 # nextln: $()Variable "x" is expected to be of type "bool", but is "u64".
-# nextln: $()"x" is first defined here with type "bool".
+# nextln: $()"x" is first defined here with the type "bool".
 
 # check: $()Match pattern variable has mismatched type
 
 # check: $()let _x = match s3 {
-# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()The expression to match on is of type "match_expressions_or_mismatched_types::Struct".
 # nextln: $()Struct { x, y } | Struct { x, y } | Struct { x: y, y: x } => if y { 0 } else { x },
 # nextln: $()Variable "y" is expected to be of type "u64", but is "bool".
-# nextln: $()"y" is first defined here with type "u64".
+# nextln: $()"y" is first defined here with the type "u64".
 
 # check: $()Match pattern variable has mismatched type
 
 # check: $()let _x = match s4 {
-# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()The expression to match on is of type "match_expressions_or_mismatched_types::Struct".
 # nextln: $()Struct { x: a, y: b } | Struct { x: a, y: b } | Struct { x: b, y: a } => if b { 0 } else { a },
 # nextln: $()Variable "a" is expected to be of type "bool", but is "u64".
-# nextln: $()"a" is first defined here with type "bool".
+# nextln: $()"a" is first defined here with the type "bool".
 
 # check: $()Match pattern variable has mismatched type
 
 # check: $()let _x = match s4 {
-# nextln: $()The expression to match on is of type "Struct".
+# nextln: $()The expression to match on is of type "match_expressions_or_mismatched_types::Struct".
 # nextln: $()Struct { x: a, y: b } | Struct { x: a, y: b } | Struct { x: b, y: a } => if b { 0 } else { a },
 # nextln: $()Variable "b" is expected to be of type "u64", but is "bool".
-# nextln: $()"b" is first defined here with type "u64".
+# nextln: $()"b" is first defined here with the type "u64".
 
 # check: $()Match pattern variable has mismatched type
 
 # check: $()let _x = match e1 {
-# nextln: $()The expression to match on is of type "Enum".
+# nextln: $()The expression to match on is of type "match_expressions_or_mismatched_types::Enum".
 # nextln: $()Enum::A(x) | Enum::B(x) => x,
 # nextln: $()Variable "x" is expected to be of type "bool", but is "u64".
-# nextln: $()"x" is first defined here with type "bool".
+# nextln: $()"x" is first defined here with the type "bool".
 
 # check: $()Match pattern variable has mismatched type
 
 # check: $()let _x = match e2 {
-# nextln: $()The expression to match on is of type "Enum".
+# nextln: $()The expression to match on is of type "match_expressions_or_mismatched_types::Enum".
 # nextln: $()Enum::A(x) | Enum::A(x) | Enum::C(x) => x.x,
-# nextln: $()Variable "x" is expected to be of type "bool", but is "Struct".
-# nextln: $()"x" is first defined here with type "bool".
+# nextln: $()Variable "x" is expected to be of type "bool", but is "match_expressions_or_mismatched_types::Struct".
+# nextln: $()"x" is first defined here with the type "bool".
 
 # not: $()_no_error {
 
 # check: $()Match pattern variable has mismatched type
 
 # check: $()let _x = match t1 {
-# nextln: $()The expression to match on is of type "(u64, bool, Struct, Enum)".
+# nextln: $()The expression to match on is of type "(u64, bool, match_expressions_or_mismatched_types::Struct, match_expressions_or_mismatched_types::Enum)".
 # nextln: $()(x, y, z, k) | (y, x, k, z) => 0,
 # nextln: $()Variable "x" is expected to be of type "u64", but is "bool".
-# nextln: $()"x" is first defined here with type "u64".
+# nextln: $()"x" is first defined here with the type "u64".
 
 # check: $()Match pattern variable has mismatched type
 
 # check: $()let _x = match t1 {
-# nextln: $()The expression to match on is of type "(u64, bool, Struct, Enum)".
+# nextln: $()The expression to match on is of type "(u64, bool, match_expressions_or_mismatched_types::Struct, match_expressions_or_mismatched_types::Enum)".
 # nextln: $()(x, y, z, k) | (y, x, k, z) => 0,
 # nextln: $()Variable "y" is expected to be of type "bool", but is "u64".
-# nextln: $()"y" is first defined here with type "bool".
+# nextln: $()"y" is first defined here with the type "bool".
 
 # check: $()Match pattern variable has mismatched type
 
 # check: $()let _x = match t1 {
-# nextln: $()The expression to match on is of type "(u64, bool, Struct, Enum)".
+# nextln: $()The expression to match on is of type "(u64, bool, match_expressions_or_mismatched_types::Struct, match_expressions_or_mismatched_types::Enum)".
 # nextln: $()(x, y, z, k) | (y, x, k, z) => 0,
-# nextln: $()Variable "z" is expected to be of type "Struct", but is "Enum".
-# nextln: $()"z" is first defined here with type "Struct".
+# nextln: $()Variable "z" is expected to be of type "match_expressions_or_mismatched_types::Struct", but is "match_expressions_or_mismatched_types::Enum".
+# nextln: $()"z" is first defined here with the type "Struct".
 
 # check: $()Match pattern variable has mismatched type
 
 # check: $()let _x = match t1 {
-# nextln: $()The expression to match on is of type "(u64, bool, Struct, Enum)".
+# nextln: $()The expression to match on is of type "(u64, bool, match_expressions_or_mismatched_types::Struct, match_expressions_or_mismatched_types::Enum)".
 # nextln: $()(x, y, z, k) | (y, x, k, z) => 0,
-# nextln: $()Variable "k" is expected to be of type "Enum", but is "Struct".
-# nextln: $()"k" is first defined here with type "Enum".
+# nextln: $()Variable "k" is expected to be of type "match_expressions_or_mismatched_types::Enum", but is "match_expressions_or_mismatched_types::Struct".
+# nextln: $()"k" is first defined here with the type "Enum".
 
 # check: $()Match pattern variable has mismatched type
 
 # check: $()let _x = match t2 {
-# nextln: $()The expression to match on is of type "(u64, bool, Struct, Enum)".
+# nextln: $()The expression to match on is of type "(u64, bool, match_expressions_or_mismatched_types::Struct, match_expressions_or_mismatched_types::Enum)".
 # nextln: $()(x, y, Struct { x: a, y: b }, _) | (x, y, Struct { x: b, .. }, Enum::B(a)) => 0,
 # nextln: $()Variable "a" is expected to be of type "bool", but is "u64".
-# nextln: $()"a" is first defined here with type "bool".
+# nextln: $()"a" is first defined here with the type "bool".
 
 # check: $()Match pattern variable has mismatched type
 
 # check: $()let _x = match t2 {
-# nextln: $()The expression to match on is of type "(u64, bool, Struct, Enum)".
+# nextln: $()The expression to match on is of type "(u64, bool, match_expressions_or_mismatched_types::Struct, match_expressions_or_mismatched_types::Enum)".
 # nextln: $()(x, y, Struct { x: a, y: b }, _) | (x, y, Struct { x: b, .. }, Enum::B(a)) => 0,
 # nextln: $()Variable "b" is expected to be of type "u64", but is "bool".
-# nextln: $()"b" is first defined here with type "u64".
+# nextln: $()"b" is first defined here with the type "u64".
 
 # check: $()Match pattern variable has mismatched type
 
 # check: $()let _x = match t3 {
-# nextln: $()The expression to match on is of type "(u64, bool, Struct, Enum)".
+# nextln: $()The expression to match on is of type "(u64, bool, match_expressions_or_mismatched_types::Struct, match_expressions_or_mismatched_types::Enum)".
 # nextln: $()(x, y, Struct { x: a, y: b } | Struct { x: b, y: a }, _) => if y { 0 } else { x },
 # nextln: $()Variable "a" is expected to be of type "bool", but is "u64".
-# nextln: $()"a" is first defined here with type "bool".
+# nextln: $()"a" is first defined here with the type "bool".
 
 # check: $()Match pattern variable has mismatched type
 
 # check: $()let _x = match t3 {
-# nextln: $()The expression to match on is of type "(u64, bool, Struct, Enum)".
+# nextln: $()The expression to match on is of type "(u64, bool, match_expressions_or_mismatched_types::Struct, match_expressions_or_mismatched_types::Enum)".
 # nextln: $()(x, y, Struct { x: a, y: b } | Struct { x: b, y: a }, _) => if y { 0 } else { x },
 # nextln: $()Variable "b" is expected to be of type "u64", but is "bool".
-# nextln: $()"b" is first defined here with type "u64".
+# nextln: $()"b" is first defined here with the type "u64".
 
 # check: $()Match pattern variable has mismatched type
 
@@ -168,7 +168,7 @@ category = "fail"
 # nextln: $()The expression to match on is of type "(u8, u16, u32, u64, u256)".
 # nextln: $()(x, y, _, _, _) | (y, x, _, _, _) => x + y,
 # nextln: $()Variable "x" is expected to be of type "u8", but is "u16".
-# nextln: $()"x" is first defined here with type "u8".
+# nextln: $()"x" is first defined here with the type "u8".
 
 # check: $()Match pattern variable has mismatched type
 
@@ -176,7 +176,7 @@ category = "fail"
 # nextln: $()The expression to match on is of type "(u8, u16, u32, u64, u256)".
 # nextln: $()(x, y, _, _, _) | (y, x, _, _, _) => x + y,
 # nextln: $()Variable "y" is expected to be of type "u16", but is "u8".
-# nextln: $()"y" is first defined here with type "u16".
+# nextln: $()"y" is first defined here with the type "u16".
 
 # check: $()Match pattern variable has mismatched type
 
@@ -184,7 +184,7 @@ category = "fail"
 # nextln: $()The expression to match on is of type "(u8, u16, u32, u64, u256)".
 # nextln: $()(_, x, y, _, _) | (_, y, x, _, _) => x + y,
 # nextln: $()Variable "x" is expected to be of type "u16", but is "u32".
-# nextln: $()"x" is first defined here with type "u16".
+# nextln: $()"x" is first defined here with the type "u16".
 
 # check: $()Match pattern variable has mismatched type
 
@@ -192,7 +192,7 @@ category = "fail"
 # nextln: $()The expression to match on is of type "(u8, u16, u32, u64, u256)".
 # nextln: $()(_, x, y, _, _) | (_, y, x, _, _) => x + y,
 # nextln: $()Variable "y" is expected to be of type "u32", but is "u16".
-# nextln: $()"y" is first defined here with type "u32".
+# nextln: $()"y" is first defined here with the type "u32".
 
 # check: $()Match pattern variable has mismatched type
 
@@ -200,7 +200,7 @@ category = "fail"
 # nextln: $()The expression to match on is of type "(u8, u16, u32, u64, u256)".
 # nextln: $()(_, _, x, y, _) | (_, _, y, x, _) => x + y,
 # nextln: $()Variable "x" is expected to be of type "u32", but is "u64".
-# nextln: $()"x" is first defined here with type "u32".
+# nextln: $()"x" is first defined here with the type "u32".
 
 # check: $()Match pattern variable has mismatched type
 
@@ -208,7 +208,7 @@ category = "fail"
 # nextln: $()The expression to match on is of type "(u8, u16, u32, u64, u256)".
 # nextln: $()(_, _, x, y, _) | (_, _, y, x, _) => x + y,
 # nextln: $()Variable "y" is expected to be of type "u64", but is "u32".
-# nextln: $()"y" is first defined here with type "u64".
+# nextln: $()"y" is first defined here with the type "u64".
 
 # check: $()Match pattern variable has mismatched type
 
@@ -216,7 +216,7 @@ category = "fail"
 # nextln: $()The expression to match on is of type "(u8, u16, u32, u64, u256)".
 # nextln: $()(_, _, _, x, y) | (_, _, _, y, x) => x + y,
 # nextln: $()Variable "x" is expected to be of type "u64", but is "u256".
-# nextln: $()"x" is first defined here with type "u64".
+# nextln: $()"x" is first defined here with the type "u64".
 
 # check: $()Match pattern variable has mismatched type
 
@@ -224,4 +224,4 @@ category = "fail"
 # nextln: $()The expression to match on is of type "(u8, u16, u32, u64, u256)".
 # nextln: $()(_, _, _, x, y) | (_, _, _, y, x) => x + y,
 # nextln: $()Variable "y" is expected to be of type "u256", but is "u64".
-# nextln: $()"y" is first defined here with type "u256".
+# nextln: $()"y" is first defined here with the type "u256".

@@ -10,19 +10,19 @@ category = "fail"
 
 #check: $()error
 #check: $()implements_error(Struct { x: 0 });
-#nextln: $()Trait "Error" is not implemented for type "Struct".
+#nextln: $()Trait "Error" is not implemented for type "marker_trait_error_not_implemented_for_non_error_types::Struct".
 
 #check: $()error
 #check: $()implements_error_no_args::<Struct>();
-#nextln: $()Trait "Error" is not implemented for type "Struct".
+#nextln: $()Trait "Error" is not implemented for type "marker_trait_error_not_implemented_for_non_error_types::Struct".
 
 #check: $()error
 #check: $()implements_error(EmptyStruct { });
-#nextln: $()Trait "Error" is not implemented for type "EmptyStruct".
+#nextln: $()Trait "Error" is not implemented for type "marker_trait_error_not_implemented_for_non_error_types::EmptyStruct".
 
 #check: $()error
 #check: $()implements_error_no_args::<EmptyStruct>();
-#nextln: $()Trait "Error" is not implemented for type "EmptyStruct".
+#nextln: $()Trait "Error" is not implemented for type "marker_trait_error_not_implemented_for_non_error_types::EmptyStruct".
 
 #check: $()error
 #check: $()implements_error([0u8, 0, 0]);
@@ -42,9 +42,9 @@ category = "fail"
 
 #check: $()error
 #check: $()implements_error(Enum::A);
-#nextln: $()Trait "Error" is not implemented for type "Enum".
+#nextln: $()Trait "Error" is not implemented for type "marker_trait_error_not_implemented_for_non_error_types::Enum".
 
 #check: $()error
 #check: $()implements_error_no_args::<Enum>();
-#nextln: $()Trait "Error" is not implemented for type "Enum".
+#nextln: $()Trait "Error" is not implemented for type "marker_trait_error_not_implemented_for_non_error_types::Enum".
 

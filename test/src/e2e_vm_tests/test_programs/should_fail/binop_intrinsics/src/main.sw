@@ -1,10 +1,10 @@
-script;
+library;
 
 struct A {
     a: u64,
 }
 
-fn main() {
+pub fn main() {
    let _ = __add(A { a: 32 }, 32);
    let _ = __add("Hello", 22);
    let _ = __add("Hello", "Hello");

@@ -3,6 +3,4 @@ authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
 license = "Apache-2.0"
 name = "abi_supertrait_method_call"
-
-[dependencies]
-std = { path = "../../../reduced_std_libs/sway-lib-std-assert" }
+implicit-std = false

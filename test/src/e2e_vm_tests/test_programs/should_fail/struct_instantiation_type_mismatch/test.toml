@@ -3,15 +3,15 @@ category = "fail"
 #check: $()error
 #check: $()let _: MyStruct = Struct { x: 123 };
 #nextln: $()Mismatched types.
-#nextln: $()expected: MyStruct
-#nextln: $()found:    Struct<numeric>.
+#nextln: $()expected: struct_instantiation_type_mismatch::MyStruct
+#nextln: $()found:    struct_instantiation_type_mismatch::lib::Struct<{numeric}>.
 #nextln: $()Variable declaration's type annotation does not match up with the assigned expression's type.
 
 #check: $()error
 #check: $()let _: MyOtherStruct = Struct { x: 123 };
 #nextln: $()Mismatched types.
-#nextln: $()expected: MyOtherStruct
-#nextln: $()found:    Struct<numeric>.
+#nextln: $()expected: struct_instantiation_type_mismatch::MyOtherStruct
+#nextln: $()found:    struct_instantiation_type_mismatch::lib::Struct<{numeric}>.
 #nextln: $()Variable declaration's type annotation does not match up with the assigned expression's type.
 
 #check: $()error
@@ -47,8 +47,8 @@ category = "fail"
 #check: $()error
 #check: $()let _: Struct<u8> = Struct::<bool> { x: true };
 #nextln: $()Mismatched types.
-#nextln: $()expected: Struct<u8>
-#nextln: $()found:    Struct<bool>.
+#nextln: $()expected: struct_instantiation_type_mismatch::lib::Struct<u8>
+#nextln: $()found:    struct_instantiation_type_mismatch::lib::Struct<bool>.
 #nextln: $()Variable declaration's type annotation does not match up with the assigned expression's type.
 #nextln: $()let _ = s.x == 123u8; // No error here.
 
@@ -69,15 +69,15 @@ category = "fail"
 #check: $()error
 #check: $()let _: MyStruct = Struct { x: Option::Some(123) };
 #nextln: $()Mismatched types.
-#nextln: $()expected: MyStruct
-#nextln: $()found:    Struct<Option<numeric>>.
+#nextln: $()expected: struct_instantiation_type_mismatch::MyStruct
+#nextln: $()found:    struct_instantiation_type_mismatch::lib::Struct<std::option::Option<{numeric}>>.
 #nextln: $()Variable declaration's type annotation does not match up with the assigned expression's type.
 
 #check: $()error
 #check: $()let _: MyOtherStruct = Struct { x: Option::Some(123) };
 #nextln: $()Mismatched types.
-#nextln: $()expected: MyOtherStruct
-#nextln: $()found:    Struct<Option<numeric>>.
+#nextln: $()expected: struct_instantiation_type_mismatch::MyOtherStruct
+#nextln: $()found:    struct_instantiation_type_mismatch::lib::Struct<std::option::Option<{numeric}>>.
 #nextln: $()Variable declaration's type annotation does not match up with the assigned expression's type.
 
 #check: $()error
@@ -113,8 +113,8 @@ category = "fail"
 #check: $()error
 #check: $()let s: Struct<Option<u8>> = Struct::<Option<bool>> { x: Option::Some(true) };
 #nextln: $()Mismatched types.
-#nextln: $()expected: Struct<Option<u8>>
-#nextln: $()found:    Struct<Option<bool>>.
+#nextln: $()expected: struct_instantiation_type_mismatch::lib::Struct<std::option::Option<u8>>
+#nextln: $()found:    struct_instantiation_type_mismatch::lib::Struct<std::option::Option<bool>>.
 #nextln: $()Variable declaration's type annotation does not match up with the assigned expression's type.
 
 #check: $()error

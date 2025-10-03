@@ -376,39 +376,31 @@ pub(crate) fn test_json_abi(
     update_output_files: bool,
     suffix: &Option<String>,
     has_experimental_field: bool,
+    is_release: bool,
 ) -> Result<()> {
     emit_json_abi(file_name, built_package)?;
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
 
-    let oracle_path = match (has_experimental_field, experimental_new_encoding) {
-        (true, _) => {
-            format!(
-                "{}/src/e2e_vm_tests/test_programs/{}/json_abi_oracle.{}json",
-                manifest_dir,
-                file_name,
-                suffix
-                    .as_ref()
-                    .unwrap()
-                    .strip_prefix("test")
-                    .unwrap()
-                    .strip_suffix("toml")
-                    .unwrap()
-                    .trim_start_matches('.')
-            )
-        }
-        (false, true) => {
-            format!(
-                "{}/src/e2e_vm_tests/test_programs/{}/{}",
-                manifest_dir, file_name, "json_abi_oracle_new_encoding.json"
-            )
-        }
-        (false, false) => {
-            format!(
-                "{}/src/e2e_vm_tests/test_programs/{}/{}",
-                manifest_dir, file_name, "json_abi_oracle.json"
-            )
-        }
+    let experimental_suffix = match (has_experimental_field, experimental_new_encoding) {
+        (true, _) => suffix
+            .as_ref()
+            .unwrap()
+            .strip_prefix("test")
+            .unwrap()
+            .strip_suffix("toml")
+            .unwrap()
+            .trim_end_matches('.'),
+        (false, true) => "_new_encoding",
+        (false, false) => "",
     };
+
+    let oracle_path = format!(
+        "{}/src/e2e_vm_tests/test_programs/{}/json_abi_oracle{}.{}.json",
+        manifest_dir,
+        file_name,
+        experimental_suffix,
+        if is_release { "release" } else { "debug" },
+    );
 
     let output_path = format!(
         "{}/src/e2e_vm_tests/test_programs/{}/{}",

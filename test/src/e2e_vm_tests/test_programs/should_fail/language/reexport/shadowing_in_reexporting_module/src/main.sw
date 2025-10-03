@@ -1,4 +1,4 @@
-script;
+library;
 
 pub mod items_1;
 pub mod lib_1;  // Item reexports of items_1
@@ -15,6 +15,6 @@ pub mod lib_4;  // Item reexports of items_4_1 and items_4_2
 
 mod tests; // All tests
 
-fn main() -> u64 {
+pub fn main() -> u64 {
     tests::run_all_tests()
 }

@@ -1,0 +1,75 @@
+{
+  "configurables": [],
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "main",
+      "output": {
+        "name": "",
+        "type": 2,
+        "typeArguments": null
+      }
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "types": [
+    {
+      "components": [
+        {
+          "name": "__array_element",
+          "offset": null,
+          "type": 4,
+          "typeArguments": null
+        }
+      ],
+      "type": "[_; 2]",
+      "typeId": 0,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "b256",
+      "typeId": 1,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "field_1",
+          "offset": null,
+          "type": 3,
+          "typeArguments": null
+        },
+        {
+          "name": "field_2",
+          "offset": null,
+          "type": 1,
+          "typeArguments": null
+        },
+        {
+          "name": "field_3",
+          "offset": null,
+          "type": 0,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct BiggerThanAWord",
+      "typeId": 2,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u64",
+      "typeId": 3,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u8",
+      "typeId": 4,
+      "typeParameters": null
+    }
+  ]
+}

@@ -1205,7 +1205,7 @@ fn type_check_trait_implementation(
                         .collect::<Vec<_>>(),
                 );
 
-                method.implementing_for_typeid = Some(implementing_for);
+                method.implementing_for = Some(implementing_for);
                 method.replace_decls(&decl_mapping, handler, &mut ctx)?;
                 method.subst(&SubstTypesContext::new(
                     engines,

@@ -1,5 +1,7 @@
 category = "fail"
 
-# check: $()No method "add_values(Data) -> u64" found for type "Data".
-# nextln: $()Matching method:
-# nextln: $()add_values(Data, Data) -> u64 in Data
+# check: $()Associated function or method is not found
+# check: $()"add_values(missing_method_arguments::Data) -> u64" is not found for type "missing_method_arguments::Data".
+# nextln: $()Only this "add_values" function is implemented for the type:
+# nextln: $()- missing_method_arguments::Data::add_values(self, _other: missing_method_arguments::Data) -> u64
+# nextln: $()Did you mean to call that function?

@@ -90,9 +90,9 @@ category = "fail"
 #nextln: $()expected: u64
 #nextln: $()found:    bool.
 
-#check: $()error
+#check: $()Associated function or method is not found
 #check: $()Items1_Enum::B(val) => val + 1000,
-#nextln: $()No method "add(bool, numeric) -> u64" found for type "bool".
+#nextln: $()"add(bool, {numeric}) -> u64" is not found for type "bool".
 
 #check: $()error
 #check: $()items_1_function()
@@ -135,9 +135,9 @@ category = "fail"
 #nextln: $()expected: u64
 #nextln: $()found:    bool.
 
-#check: $()error
+#check: $()Associated function or method is not found
 #check: $()Items2_Enum::D(val) => val + 1000,
-#nextln: $()No method "add(bool, numeric) -> u64" found for type "bool".
+#nextln: $()"add(bool, {numeric}) -> u64" is not found for type "bool".
 
 #check: $()error
 #check: $()items_2_function()
@@ -166,37 +166,39 @@ category = "fail"
 #check: $()let items_1_struct = Items1_Struct { a: 123 };
 #nextln: $()Mismatched types.
 #nextln: $()expected: bool
-#nextln: $()found:    numeric.
+#nextln: $()found:    {numeric}.
 
 #check: $()error
 #check: $()let items_1_enum = Items1_Enum::A(432);
 #nextln: $()Mismatched types.
 #nextln: $()expected: bool
-#nextln: $()found:    numeric.
+#nextln: $()found:    {numeric}.
 
-#check: $()error
+#check: $()Associated function or method is not found
 #check: $()let items_1_trait_teststruct_1_res = teststruct_1.items_1_trait_function(teststruct_2);
-#nextln: $()No method "items_1_trait_function(TestStruct1, TestStruct2)" found for type "TestStruct1".
-#nextln: $()Matching method:
-#nextln: $()items_1_trait_function() -> u64
+#nextln: $()"items_1_trait_function(shadowing_in_reexporting_module::tests::TestStruct1, shadowing_in_reexporting_module::tests::TestStruct2)" is not found for type "shadowing_in_reexporting_module::tests::TestStruct1".
+#nextln: $()Only this "items_1_trait_function" function is implemented for the type:
+#nextln: $()- <shadowing_in_reexporting_module::tests::TestStruct1 as shadowing_in_reexporting_module::items_1::Items1Trait<shadowing_in_reexporting_module::tests::TestStruct2>>::items_1_trait_function() -> u64
+#nextln: $()Did you mean to call that function?
 
 #check: $()error
 #check: $()let items_2_struct = Items2_Struct { b: 879 };
 #nextln: $()Mismatched types.
 #nextln: $()expected: bool
-#nextln: $()found:    numeric.
+#nextln: $()found:    {numeric}.
 
 #check: $()error
 #check: $()let items_2_enum = Items2_Enum::C(246);
 #nextln: $()Mismatched types.
 #nextln: $()expected: bool
-#nextln: $()found:    numeric.
+#nextln: $()found:    {numeric}.
 
-#check: $()error
+#check: $()Associated function or method is not found
 #check: $()let items_2_trait_teststruct_1_res = teststruct_1.items_2_trait_function(teststruct_2);
-#nextln: $()No method "items_2_trait_function(TestStruct1, TestStruct2)" found for type "TestStruct1".
-#nextln: $()Matching method:
-#nextln: $()items_2_trait_function() -> u64
+#nextln: $()"items_2_trait_function(shadowing_in_reexporting_module::tests::TestStruct1, shadowing_in_reexporting_module::tests::TestStruct2)" is not found for type "shadowing_in_reexporting_module::tests::TestStruct1".
+#nextln: $()Only this "items_2_trait_function" function is implemented for the type:
+#nextln: $()- <shadowing_in_reexporting_module::tests::TestStruct1 as shadowing_in_reexporting_module::items_2_1::Items2Trait<shadowing_in_reexporting_module::tests::TestStruct2>>::items_2_trait_function() -> u64
+#nextln: $()Did you mean to call that function?
 
 #check: $()error
 #check: $()This path must return a value of type "u64" from function "items_1_trait_function", but it does not.
@@ -205,4 +207,3 @@ category = "fail"
 #check: $()This path must return a value of type "u64" from function "items_2_trait_function", but it does not.
 
 #check: $()Aborting due to 44 errors.
-

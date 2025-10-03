@@ -995,8 +995,8 @@ impl TraitMap {
             ResolvedTraitImplItem::Typed(item) => match item {
                 ty::TyTraitItem::Fn(decl_ref) => {
                     let mut decl = (*decl_engine.get(decl_ref.id())).clone();
-                    if let Some(decl_implementing_for_typeid) = decl.implementing_for_typeid {
-                        type_mapping.insert(decl_implementing_for_typeid, type_id);
+                    if let Some(decl_implementing_for) = decl.implementing_for {
+                        type_mapping.insert(decl_implementing_for, type_id);
                     }
                     decl.subst(&SubstTypesContext::new(
                         engines,
