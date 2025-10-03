@@ -21,7 +21,7 @@ clap = { workspace = true, features = ["derive", "string"] }
 dialoguer.workspace = true
 forc-tracing.workspace = true
 forc-util.workspace = true
-fuel-core = { workspace = true, features = ["wasm-executor", "rocksdb", "test-helpers"] }
+fuel-core = { workspace = true, default-features = false, features = ["relayer", "rocksdb", "test-helpers"] }
 fuel-core-chain-config.workspace = true
 fuel-core-types.workspace = true
 fuel-crypto = { workspace = true, features = ["random"] }
