@@ -77,7 +77,7 @@ fn copy_module(from: &Path, to: &Path) -> Result<()> {
         CoreOk(from_metadata) => from_metadata,
         Err(err) => bail!(
             "Cannot get metadata for module file {from:#?}: {}",
-            err.to_string()
+            err
         ),
     };
     let to_metadata = fs::metadata(to);
@@ -95,7 +95,7 @@ fn copy_module(from: &Path, to: &Path) -> Result<()> {
     if should_copy {
         fs::create_dir_all(to.parent().unwrap())?;
         if let Err(err) = fs::copy(from, to) {
-            bail!("Cannot copy module {from:#?}: {}", err.to_string())
+            bail!("Cannot copy module {from:#?}: {}", err)
         };
     }
 
