@@ -274,7 +274,7 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                         let o = o.env("COLUMNS", "10").unchecked().start().unwrap();
                         let o = o.wait().unwrap();
 
-                        last_status = Some(o.status.clone());
+                        last_status = Some(o.status);
                         last_output = Some(clean_output(&format!(
                             "exit status: {}\noutput:\n{}",
                             o.status.code().unwrap(),

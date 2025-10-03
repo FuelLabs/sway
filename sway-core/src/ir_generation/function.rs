@@ -29,6 +29,7 @@ use crate::{
 };
 
 use indexmap::IndexMap;
+use std::collections::HashMap;
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::error::CompileError;
 use sway_ir::{Context, *};
@@ -40,9 +41,6 @@ use sway_types::{
     u256::U256,
     Named,
 };
-use std::
-    collections::HashMap
-;
 
 /// The result of compiling an expression can be in memory, or in an (SSA) register.
 #[derive(Debug, Clone, Copy)]
@@ -5232,10 +5230,7 @@ fn get_memory_representation(ctx: &Context, t: Type) -> MemoryRepresentation {
     }
 }
 
-fn get_encoding_representation<'a>(
-    engines: &'a Engines,
-    type_id: TypeId,
-) -> Option<MemoryRepresentation> {
+fn get_encoding_representation(engines: &Engines, type_id: TypeId) -> Option<MemoryRepresentation> {
     match &*engines.te().get(type_id) {
         TypeInfo::Boolean => Some(MemoryRepresentation::Blob { len_in_bytes: 1 }),
         TypeInfo::UnsignedInteger(IntegerBits::Eight) => {
@@ -5288,7 +5283,7 @@ fn get_encoding_representation<'a>(
 
                 if variants.iter().all(|x| x.len_in_bytes() == 0) {
                     Some(MemoryRepresentation::And(vec![
-                        MemoryRepresentation::Blob { len_in_bytes: 8 }
+                        MemoryRepresentation::Blob { len_in_bytes: 8 },
                     ]))
                 } else {
                     Some(MemoryRepresentation::And(vec![
@@ -5310,9 +5305,7 @@ fn get_encoding_representation<'a>(
         TypeInfo::RawUntypedSlice => None,
         TypeInfo::Slice(_) => None,
         TypeInfo::Ref { .. } => None,
-        TypeInfo::Alias { ty, .. } => {
-            get_encoding_representation(engines, ty.type_id())
-        }
+        TypeInfo::Alias { ty, .. } => get_encoding_representation(engines, ty.type_id()),
         x => todo!("{x:#?}"),
     }
 }

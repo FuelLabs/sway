@@ -133,11 +133,11 @@ fn type_check_intrinsic_encode_memcopy(
     kind: Intrinsic,
     type_arguments: &[GenericArgument],
 ) -> Result<(TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
-    if arguments.len() != 0 {
+    if !arguments.is_empty() {
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
             expected: 0,
-            span: span,
+            span,
         }));
     }
 
@@ -145,7 +145,7 @@ fn type_check_intrinsic_encode_memcopy(
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
             name: kind.to_string(),
             expected: 1,
-            span: span,
+            span,
         }));
     }
 

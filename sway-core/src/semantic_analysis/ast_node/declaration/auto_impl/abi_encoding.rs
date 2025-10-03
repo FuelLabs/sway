@@ -392,9 +392,7 @@ where
 
             let method_name = decl.name.as_str();
 
-            fn_arms.push_str(
-                &format!("\"{method_name}\" => {{\n")
-            );
+            fn_arms.push_str(&format!("\"{method_name}\" => {{\n"));
 
             if args_types == "()" {
                 fn_arms.push_str(&format!(
