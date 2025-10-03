@@ -1,7 +1,13 @@
 use crate::consts::DEFAULT_PORT;
 use anyhow;
 use clap::Parser;
-use fuel_core::{chain_config::default_consensus_dev_key, service::Config};
+use fuel_core::{
+    chain_config::default_consensus_dev_key,
+    service::{
+        config::{DbType, Trigger},
+        Config,
+    },
+};
 use fuel_core_chain_config::{
     coin_config_helpers::CoinConfigGenerator, ChainConfig, CoinConfig, SnapshotMetadata,
     TESTNET_INITIAL_BALANCE,
@@ -17,15 +23,32 @@ use std::{path::PathBuf, str::FromStr};
 pub struct LocalCmd {
     #[clap(long)]
     pub chain_config: Option<PathBuf>,
+
     #[clap(long)]
     pub port: Option<u16>,
-    #[clap(long)]
+
     /// If a db path is provided local node runs in persistent mode.
-    pub db_path: Option<PathBuf>,
     #[clap(long)]
+    pub db_path: Option<PathBuf>,
+
+    #[clap(long = "db-type", value_enum)]
+    pub db_type: Option<DbType>,
+
     /// Fund accounts with the format: <account-id>:<asset-id>:<amount>
     /// Multiple accounts can be provided via comma separation or multiple --account flags
+    #[clap(long)]
     pub account: Vec<String>,
+
+    #[arg(long = "debug", env)]
+    pub debug: bool,
+
+    /// Allows execution of transactions based on past block, such as:
+    /// - Dry run in the past
+    #[arg(long = "historical-execution", env)]
+    pub historical_execution: bool,
+
+    #[arg(long = "poa-instant", env)]
+    pub poa_instant: bool,
 }
 
 fn get_coins_per_account(
@@ -85,16 +108,28 @@ fn get_coins_per_account(
 
 impl From<LocalCmd> for Config {
     fn from(cmd: LocalCmd) -> Self {
-        let snapshot_path = cmd
-            .chain_config
-            .unwrap_or_else(|| crate::chain_config::ChainConfig::Local.into());
-        let chain_config = match SnapshotMetadata::read(&snapshot_path) {
-            Ok(metadata) => ChainConfig::from_snapshot_metadata(&metadata).unwrap(),
-            Err(e) => {
-                tracing::error!("Failed to open snapshot reader: {}", e);
-                tracing::warn!("Using local testnet snapshot reader");
-                ChainConfig::local_testnet()
-            }
+        let LocalCmd {
+            chain_config,
+            port,
+            db_path,
+            db_type,
+            account,
+            debug,
+            historical_execution,
+            poa_instant,
+            ..
+        } = cmd;
+
+        let chain_config = match chain_config {
+            Some(path) => match SnapshotMetadata::read(&path) {
+                Ok(metadata) => ChainConfig::from_snapshot_metadata(&metadata).unwrap(),
+                Err(e) => {
+                    tracing::error!("Failed to open snapshot reader: {}", e);
+                    tracing::warn!("Using local testnet snapshot reader");
+                    ChainConfig::local_testnet()
+                }
+            },
+            None => ChainConfig::local_testnet(),
         };
         let base_asset_id = chain_config.consensus_parameters.base_asset_id();
 
@@ -106,8 +141,8 @@ impl From<LocalCmd> for Config {
             .for_each(|coin| coin.asset_id = *base_asset_id);
 
         let current_coin_idx = state_config.coins.len();
-        if !cmd.account.is_empty() {
-            let coins = get_coins_per_account(cmd.account, base_asset_id, current_coin_idx)
+        if !account.is_empty() {
+            let coins = get_coins_per_account(account, base_asset_id, current_coin_idx)
                 .map_err(|e| anyhow::anyhow!("Error parsing account funding: {}", e))
                 .unwrap();
             if !coins.is_empty() {
@@ -128,22 +163,33 @@ impl From<LocalCmd> for Config {
         config.name = "fuel-core".to_string();
 
         // Local-specific settings
-        config.debug = true;
+        config.debug = debug;
         let key = default_consensus_dev_key();
         config.consensus_signer = SignMode::Key(Secret::new(key.into()));
 
         // Database configuration
-        if let Some(db_path) = cmd.db_path {
-            config.combined_db_config.database_type = fuel_core::service::config::DbType::RocksDb;
-            config.combined_db_config.database_path = db_path;
-        } else {
-            config.combined_db_config.database_type = fuel_core::service::config::DbType::InMemory;
-            config.historical_execution = false;
+        match db_type {
+            Some(DbType::RocksDb) => {
+                config.combined_db_config.database_type = DbType::RocksDb;
+                if let Some(db_path) = db_path {
+                    config.combined_db_config.database_path = db_path;
+                }
+                config.historical_execution = historical_execution;
+            }
+            _ => {
+                config.combined_db_config.database_type = DbType::InMemory;
+                config.historical_execution = false;
+            }
         }
+
+        config.block_production = match poa_instant {
+            true => Trigger::Instant,
+            false => Trigger::Never,
+        };
 
         // Network configuration
         let ip = "127.0.0.1".parse().unwrap();
-        let port = cmd.port.unwrap_or(DEFAULT_PORT);
+        let port = port.unwrap_or(DEFAULT_PORT);
         config.graphql_config.addr = std::net::SocketAddr::new(ip, port);
 
         config.utxo_validation = false; // local development
