@@ -655,7 +655,13 @@ impl Parse for ty::TyVariableDecl {
             ));
             token.type_def = Some(TypeDefinition::Ident(self.name.clone()));
         }
-        if let Some(call_path_tree) = &self.type_ascription.call_path_tree() {
+        if let Some(call_path_tree) = &self
+            .type_ascription
+            .as_type_argument()
+            .unwrap()
+            .call_path_tree
+            .as_ref()
+        {
             collect_call_path_tree(ctx, call_path_tree, &self.type_ascription);
         }
         self.body.parse(ctx);
@@ -879,7 +885,10 @@ impl Parse for ty::ImplSelfOrTrait {
                 implementing_for.type_id(),
                 &typed_token,
                 implementing_for
-                    .call_path_tree()
+                    .as_type_argument()
+                    .unwrap()
+                    .call_path_tree
+                    .as_ref()
                     .map(|tree| tree.qualified_call_path.call_path.suffix.span())
                     .unwrap_or(implementing_for.span()),
             );
@@ -1367,7 +1376,13 @@ fn collect_const_decl(ctx: &ParseContext, const_decl: &ty::TyConstantDecl, ident
             TokenAstNode::Typed(TypedAstToken::TypedConstantDeclaration(const_decl.clone()));
         token.type_def = Some(TypeDefinition::Ident(const_decl.call_path.suffix.clone()));
     }
-    if let Some(call_path_tree) = &const_decl.type_ascription.call_path_tree() {
+    if let Some(call_path_tree) = &const_decl
+        .type_ascription
+        .as_type_argument()
+        .unwrap()
+        .call_path_tree
+        .as_ref()
+    {
         collect_call_path_tree(ctx, call_path_tree, &const_decl.type_ascription);
     }
     if let Some(value) = &const_decl.value {
@@ -1387,7 +1402,13 @@ fn collect_configurable_decl(
             TokenAstNode::Typed(TypedAstToken::TypedConfigurableDeclaration(decl.clone()));
         token.type_def = Some(TypeDefinition::Ident(decl.call_path.suffix.clone()));
     }
-    if let Some(call_path_tree) = &decl.type_ascription.call_path_tree() {
+    if let Some(call_path_tree) = &decl
+        .type_ascription
+        .as_type_argument()
+        .unwrap()
+        .call_path_tree
+        .as_ref()
+    {
         collect_call_path_tree(ctx, call_path_tree, &decl.type_ascription);
     }
     if let Some(value) = &decl.value {
@@ -1516,7 +1537,7 @@ fn collect_type_id(
 }
 
 fn collect_type_argument(ctx: &ParseContext, type_arg: &GenericArgument) {
-    if let Some(call_path_tree) = type_arg.call_path_tree() {
+    if let Some(call_path_tree) = type_arg.as_type_argument().unwrap().call_path_tree.as_ref() {
         collect_call_path_tree(ctx, call_path_tree, type_arg);
     } else {
         collect_type_id(
