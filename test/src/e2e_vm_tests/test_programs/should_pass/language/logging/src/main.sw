@@ -31,6 +31,7 @@ struct CustomAbiEncode {
 }
 
 impl AbiEncode for CustomAbiEncode {
+    fn is_memcopy() -> bool { false }
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         77u64.abi_encode(buffer)
     }

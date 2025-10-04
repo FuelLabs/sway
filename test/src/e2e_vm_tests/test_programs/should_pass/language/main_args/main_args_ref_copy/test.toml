@@ -1,9 +1,7 @@
 category = "run"
-# (1336, 1)
-script_data = "0000000000000538 0000000000000001"
-expected_result = { action = "return", value = 1337 }
 
+# (1336, 1)
 script_data_new_encoding = "0000000000000538 0000000000000001"
-expected_result_new_encoding = { action = "return_data", value = "0000000000000539" }
+expected_result_new_encoding = { action = "return_data", value = "0000000000000539 0000000000000539" }
 
 validate_abi = true

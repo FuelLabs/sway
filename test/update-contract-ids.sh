@@ -57,6 +57,9 @@ ask_confirmation() {
     fi
 }
 
+# We need to run this to update the tests std-libs
+cargo r -p test --release -- NON_EXISTING_TEST -k e2e
+
 $grep --include \*.sw -Hno "// AUTO-CONTRACT-ID" . -R | while read line ; do
     PARTS=($(echo $line | $sed 's/:/ /g'))
     FOLDER=$(dirname ${PARTS[0]})

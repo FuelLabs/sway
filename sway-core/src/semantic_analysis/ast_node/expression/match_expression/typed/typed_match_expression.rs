@@ -12,15 +12,17 @@ use crate::{
         ast_node::expression::typed_expression::instantiate_if_expression,
         expression::match_expression::typed::instantiate::Instantiate, TypeCheckContext,
     },
-    CompileError, TypeEngine, TypeId, TypeInfo,
+    CompileError, TypeEngine, TypeId,
 };
 use std::{collections::BTreeMap, ops::ControlFlow};
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{BaseIdent, Ident, Span, Spanned};
 
 // Enable this to see a pseudo-code printed to understand what is being generated.
+#[allow(dead_code)]
 const RADIX_TREE_DEBUG: bool = true;
 
+#[allow(dead_code)]
 #[derive(Default, Debug, Clone)]
 struct TrieNode {
     output: Option<usize>,
@@ -28,10 +30,13 @@ struct TrieNode {
     next: BTreeMap<String, usize>,
 }
 
+#[allow(dead_code)]
+#[derive(Debug)]
 struct Trie {
     nodes: Vec<TrieNode>,
 }
 
+#[allow(dead_code)]
 fn revert(type_engine: &TypeEngine) -> TyExpression {
     TyExpression {
         expression: TyExpressionVariant::IntrinsicFunction(TyIntrinsicFunctionKind {
@@ -109,17 +114,19 @@ impl ty::TyMatchExpression {
             );
         }
 
-        let typed_if_exp =
-            handler.scope(
-                |handler| match &*ctx.engines().te().get(self.value_type_id) {
-                    TypeInfo::StringSlice => self.desugar_to_radix_trie(ctx),
-                    _ => self.desugar_to_typed_if_expression(instantiate, ctx, handler),
-                },
-            )?;
+        let typed_if_exp = handler.scope(|handler| {
+            self.desugar_to_typed_if_expression(instantiate, ctx, handler)
+            // TODO radix trie needs fixing
+            // match &*ctx.engines().te().get(self.value_type_id) {
+            //     TypeInfo::StringSlice => self.desugar_to_radix_trie(ctx),
+            //     _ => self.desugar_to_typed_if_expression(instantiate, ctx, handler),
+            // }
+        })?;
 
         Ok(typed_if_exp)
     }
 
+    #[allow(dead_code)]
     fn desugar_to_radix_trie(
         &self,
         mut ctx: TypeCheckContext<'_>,
@@ -185,6 +192,7 @@ impl ty::TyMatchExpression {
             .values()
             .map(|branches| self.generate_radix_trie(branches).unwrap())
             .collect::<Vec<Trie>>();
+        dbg!(&tries);
 
         // Navigate all valid nodes and collect string pieces.
         // Then pack them starting from the biggest.
@@ -197,6 +205,7 @@ impl ty::TyMatchExpression {
         let packed_strings = string_pieces
             .into_iter()
             .fold(String::new(), |mut pack, item| {
+                dbg!(&pack, &item);
                 if !pack.contains(&item) {
                     pack.push_str(&item);
                 }
@@ -204,7 +213,11 @@ impl ty::TyMatchExpression {
             });
 
         if RADIX_TREE_DEBUG {
-            println!("let packed_string = {packed_strings:?}");
+            print!("                     ");
+            for i in 0..packed_strings.len() {
+                print!("{:X}", i % 16);
+            }
+            println!("\nlet packed_string = {packed_strings:?}");
         }
 
         // Now create the outer expression checking the size of the string slice
@@ -424,8 +437,8 @@ impl ty::TyMatchExpression {
         let mut block = block_when_all_fail.clone();
 
         for (prefix, next_node_index) in current.next.iter().rev() {
-            let start = current_node_index;
-            let end = current_node_index + prefix.len();
+            let start = slice_pos;
+            let end = slice_pos + prefix.len();
             let eq_len: u64 = end as u64 - start as u64;
 
             let prefix_pos = packed_strings

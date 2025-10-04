@@ -68,8 +68,8 @@ where
 
         let r = p.parse();
 
-        assert!(!handler.has_errors(), "{handler:?}");
-        assert!(!handler.has_warnings(), "{handler:?}");
+        assert!(!handler.has_errors(), "{src} {handler:?}");
+        assert!(!handler.has_warnings(), "{src} {handler:?}");
 
         assert!(!p.has_errors());
         assert!(!p.has_warnings());

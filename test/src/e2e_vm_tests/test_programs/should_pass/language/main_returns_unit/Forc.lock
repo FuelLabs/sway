@@ -1,8 +1,0 @@
-[[package]]
-name = "main_returns_unit"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "std"
-source = "path+from-root-FA2A8FF2F74B6948"

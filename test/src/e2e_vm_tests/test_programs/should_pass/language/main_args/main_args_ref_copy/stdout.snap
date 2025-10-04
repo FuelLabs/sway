@@ -1,0 +1,118 @@
+---
+source: test/src/snapshot/mod.rs
+---
+Because this test receives and returns a simple struct and a u64, we should see 
+decoding loading from the `script_data` pointer directly, and encoding just returning 
+a pointer to a local variable inside `__entry` stack frame. 
+
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_ref_copy --release --ir final --asm final --bytecode | filter-fn main_args_ref_copy __entry
+
+pub entry fn __entry() -> () {
+    local mut { { u64 }, u64 } __aggr_memcpy_0
+    local { { u64 }, u64 } __ret_val
+    local { u64 } __tmp_arg
+    local { { u64 }, u64 } _result
+    local { { u64 }, u64 } args
+    local { { u64 }, u64 } item_
+
+    entry():
+    v0 = const u64 0
+    v1 = gtf v0, 10
+    v2 = bitcast v1 to ptr
+    v3 = cast_ptr v2 to __ptr { { u64 }, u64 }
+    v4 = get_local __ptr { { u64 }, u64 }, __aggr_memcpy_0
+    mem_copy_val v4, v3
+    v5 = get_local __ptr { { u64 }, u64 }, args
+    mem_copy_val v5, v4
+    v6 = get_local __ptr { { u64 }, u64 }, args
+    v7 = const u64 0
+    v8 = get_elem_ptr v6, __ptr { u64 }, v7
+    v9 = get_local __ptr { { u64 }, u64 }, args
+    v10 = const u64 1
+    v11 = get_elem_ptr v9, __ptr u64, v10
+    v12 = load v11
+    v13 = get_local __ptr { u64 }, __tmp_arg
+    mem_copy_val v13, v8
+    v14 = get_local __ptr { { u64 }, u64 }, __ret_val
+    v15 = call main_8(v13, v12, v14)
+    v16 = get_local __ptr { { u64 }, u64 }, _result
+    mem_copy_val v16, v14
+    v17 = get_local __ptr { { u64 }, u64 }, _result
+    v18 = get_local __ptr { { u64 }, u64 }, item_
+    mem_copy_val v18, v17
+    v19 = get_local __ptr { { u64 }, u64 }, item_
+    v20 = cast_ptr v19 to ptr
+    v21 = const u64 16
+    retd v20 v21
+}
+
+
+move $$locbase $sp            ; save locals base register for function __entry
+cfei i88                      ; allocate 88 bytes for locals and 0 slots for call arguments
+gtf  $r0 $zero i10            ; get transaction field
+mcpi $$locbase $r0 i16        ; copy memory
+addi $r0 $$locbase i56        ; get offset to local __ptr { { u64 }, u64 }
+mcpi $r0 $$locbase i16        ; copy memory
+addi $r0 $$locbase i56        ; get offset to local __ptr { { u64 }, u64 }
+lw   $r1 $$locbase i8         ; load word
+addi $r2 $$locbase i32        ; get offset to local __ptr { u64 }
+mcpi $r2 $r0 i8               ; copy memory
+addi $r3 $$locbase i16        ; get offset to local __ptr { { u64 }, u64 }
+move $$arg0 $r2               ; [call]: pass argument 0
+move $$arg1 $r1               ; [call]: pass argument 1
+move $$arg2 $r3               ; [call]: pass argument 2
+jal  $$reta $pc i9            ; [call]: call main_8
+addi $r0 $$locbase i40        ; get offset to local __ptr { { u64 }, u64 }
+mcpi $r0 $r3 i16              ; copy memory
+addi $r0 $$locbase i40        ; get offset to local __ptr { { u64 }, u64 }
+addi $r1 $$locbase i72        ; get offset to local __ptr { { u64 }, u64 }
+mcpi $r1 $r0 i16              ; copy memory
+addi $r0 $$locbase i72        ; get offset to local __ptr { { u64 }, u64 }
+movi $r1 i16                  ; initialize constant into register
+retd  $r0 $r1
+
+This is the result using encoding v0 for comparison. 
+
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_ref_copy --release --ir final --asm final --bytecode --no-experimental new_encoding  | filter-fn main_args_ref_copy main
+
+entry entry_orig fn main(baba: __ptr { u64 }, keke: u64) -> __ptr { { u64 }, u64 } {
+    local { { u64 }, u64 } __anon_1
+
+    entry(baba: __ptr { u64 }, keke: u64):
+    v0 = get_local __ptr { { u64 }, u64 }, __anon_1
+    v1 = const u64 0
+    v2 = get_elem_ptr baba, __ptr u64, v1
+    v3 = load v2
+    v4 = add v3, keke
+    v5 = const u64 0
+    v6 = get_elem_ptr baba, __ptr u64, v5
+    v7 = load v6
+    v8 = add v7, keke
+    v9 = get_local __ptr { { u64 }, u64 }, __anon_1
+    v10 = const u64 0
+    v11 = get_elem_ptr v9, __ptr { u64 }, v10
+    v12 = const u64 0
+    v13 = get_elem_ptr v11, __ptr u64, v12
+    store v4 to v13
+    v14 = const u64 1
+    v15 = get_elem_ptr v9, __ptr u64, v14
+    store v8 to v15
+    ret __ptr { { u64 }, u64 } v0
+}
+
+
+add  $$ds $$ds $$tmp
+cfei i0                       ; allocate stack space for globals
+move $$locbase $sp            ; save locals base register for function main
+cfei i16                      ; allocate 16 bytes for locals and 0 slots for call arguments
+gtf  $r0 $zero i10            ; get base register for main function arguments
+addi $r1 $r0 i0               ; get offset of argument baba
+lw   $r0 $r0 i1               ; get argument keke
+lw   $r2 $r1 i0               ; load word
+add  $r2 $r2 $r0
+lw   $r1 $r1 i0               ; load word
+add  $r0 $r1 $r0
+sw   $$locbase $r2 i0         ; store word
+sw   $$locbase $r0 i1         ; store word
+movi $r0 i16                  ; get size of type returned by pointer
+retd  $$locbase $r0

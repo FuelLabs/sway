@@ -43,12 +43,16 @@ where
         if body.is_empty() {
             format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration_expanded} AbiEncode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
                 #[allow(dead_code, deprecated)]
+                fn is_memcopy() -> bool {{ __encode_memcopy::<{name}{type_parameters_declaration}>() }}
+                #[allow(dead_code, deprecated)]
                 fn abi_encode(self, buffer: Buffer) -> Buffer {{
                     buffer
                 }}
             }}")
         } else {
             format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration_expanded} AbiEncode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
+                #[allow(dead_code, deprecated)]
+                fn is_memcopy() -> bool {{ __encode_memcopy::<{name}{type_parameters_declaration}>() }}
                 #[allow(dead_code, deprecated)]
                 fn abi_encode(self, buffer: Buffer) -> Buffer {{
                     {body}
@@ -75,6 +79,8 @@ where
 
         if body == "Self {  }" {
             format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration_expanded} AbiDecode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
+                #[allow(dead_code)]
+                fn is_memcopy() -> bool {{ __encode_memcopy::<{name}{type_parameters_declaration}>() }}
                 #[allow(dead_code, deprecated)]
                 fn abi_decode(ref mut _buffer: BufferReader) -> Self {{
                     {body}
@@ -82,6 +88,8 @@ where
             }}")
         } else {
             format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration_expanded} AbiDecode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
+                #[allow(dead_code)]
+                fn is_memcopy() -> bool {{ __encode_memcopy::<{name}{type_parameters_declaration}>() }}
                 #[allow(dead_code, deprecated)]
                 fn abi_decode(ref mut buffer: BufferReader) -> Self {{
                     {body}
@@ -312,8 +320,6 @@ where
         fallback_fn: Option<DeclId<TyFunctionDecl>>,
         handler: &Handler,
     ) -> Result<TyAstNode, ErrorEmitted> {
-        let mut code = String::new();
-
         let mut reads = false;
         let mut writes = false;
 
@@ -321,6 +327,7 @@ where
         let mut contract_methods: BTreeMap<String, Vec<Span>> = <_>::default();
 
         // generate code
+        let mut fn_arms = String::new();
         for r in contract_fns {
             let decl = engines.de().get(r);
 
@@ -357,22 +364,24 @@ where
                 });
                 return Err(err);
             };
-            let args_types = itertools::intersperse(args_types, ", ".into()).collect::<String>();
-
-            let args_types = if args_types.is_empty() {
-                "()".into()
-            } else {
-                format!("({args_types},)")
+            let (args_types, expanded_args) = match args_types.len() {
+                0 => ("()".to_string(), String::new()),
+                1 => (args_types.into_iter().next().unwrap(), "args".to_string()),
+                _ => (
+                    format!(
+                        "({},)",
+                        itertools::intersperse(args_types, ", ".into()).collect::<String>()
+                    ),
+                    itertools::intersperse(
+                        decl.parameters
+                            .iter()
+                            .enumerate()
+                            .map(|(i, _)| format!("args.{i}")),
+                        ", ".into(),
+                    )
+                    .collect::<String>(),
+                ),
             };
-
-            let expanded_args = itertools::intersperse(
-                decl.parameters
-                    .iter()
-                    .enumerate()
-                    .map(|(i, _)| format!("args.{i}")),
-                ", ".into(),
-            )
-            .collect::<String>();
 
             let Some(return_type) = Self::generate_type(engines, &decl.return_type) else {
                 let err = handler.emit_err(CompileError::UnknownType {
@@ -383,29 +392,26 @@ where
 
             let method_name = decl.name.as_str();
 
-            code.push_str(&format!("if _method_name == \"{method_name}\" {{\n"));
+            fn_arms.push_str(&format!("\"{method_name}\" => {{\n"));
 
             if args_types == "()" {
-                code.push_str(&format!(
+                fn_arms.push_str(&format!(
                     "let _result = __contract_entry_{method_name}();\n"
                 ));
             } else {
-                code.push_str(&format!(
-                    "let args: {args_types} = _buffer.decode::<{args_types}>();
+                fn_arms.push_str(&format!(
+                    "let args: {args_types} = _buffer.decode_or_transmute::<{args_types}>();
                     let _result: {return_type} = __contract_entry_{method_name}({expanded_args});\n"
                 ));
             }
 
             if return_type == "()" {
-                code.push_str("__contract_ret(asm() { zero: raw_ptr }, 0);");
+                fn_arms.push_str("__contract_ret(asm() { zero: raw_ptr }, 0);");
             } else {
-                code.push_str(&format!(
-                    "let _result: raw_slice = encode::<{return_type}>(_result);
-                    __contract_ret(_result.ptr(), _result.len::<u8>());"
-                ));
+                fn_arms.push_str(&format!("encode_and_return::<{return_type}>(_result);"));
             }
 
-            code.push_str("\n}\n");
+            fn_arms.push_str("}\n");
         }
 
         // check contract methods are unique
@@ -444,7 +450,7 @@ where
             format!("let result: raw_slice = encode::<{return_type}>({method_name}()); __contract_ret(result.ptr(), result.len::<u8>());")
         } else {
             // as the old encoding does
-            format!("__revert({MISMATCHED_SELECTOR_REVERT_CODE});")
+            format!("__dbg(1);__revert({MISMATCHED_SELECTOR_REVERT_CODE});")
         };
 
         let att = match (reads, writes) {
@@ -455,11 +461,14 @@ where
         };
 
         let code = format!(
-            "{att} pub fn __entry() {{
+            "{att} pub fn __entry() {{            
             let mut _buffer = BufferReader::from_second_parameter();
-            let _method_name = decode_first_param::<str>();
-            {code}
-            {fallback}
+            match decode_first_param::<str>() {{
+                {fn_arms}
+                _ => {{
+                    {fallback}
+                }}
+            }}            
         }}"
         );
 
@@ -592,21 +601,27 @@ where
             });
             return Err(err);
         };
-        let args_types = itertools::intersperse(args_types, ", ".into()).collect::<String>();
-        let args_types = if args_types.is_empty() {
-            "()".into()
-        } else {
-            format!("({args_types},)")
-        };
 
-        let expanded_args = itertools::intersperse(
-            decl.parameters
-                .iter()
-                .enumerate()
-                .map(|(i, _)| format!("args.{i}")),
-            ", ".into(),
-        )
-        .collect::<String>();
+        let (args_types, expanded_args) = match args_types.len() {
+            0 => ("()".to_string(), String::new()),
+            1 => (args_types.into_iter().next().unwrap(), "args".to_string()),
+            _ => {
+                let args_types =
+                    itertools::intersperse(args_types, ", ".into()).collect::<String>();
+                let args_types = format!("({args_types},)");
+
+                let expanded_args = itertools::intersperse(
+                    decl.parameters
+                        .iter()
+                        .enumerate()
+                        .map(|(i, _)| format!("args.{i}")),
+                    ", ".into(),
+                )
+                .collect::<String>();
+
+                (args_types, expanded_args)
+            }
+        };
 
         let Some(return_type) = Self::generate_type(engines, &decl.return_type) else {
             let err = handler.emit_err(CompileError::UnknownType {
@@ -616,21 +631,21 @@ where
         };
 
         let return_encode = if return_type == "()" {
-            "asm(s: (0, 0)) { s: raw_slice }".to_string()
+            "__contract_ret(0, 0);".to_string()
         } else {
-            format!("encode::<{return_type}>(_result)")
+            format!("encode_and_return::<{return_type}>(_result);")
         };
 
         let code = if args_types == "()" {
             format!(
-                "pub fn __entry() -> raw_slice {{
+                "pub fn __entry() {{
                 let _result: {return_type} = main();
                 {return_encode}
             }}"
             )
         } else {
             format!(
-                "pub fn __entry() -> raw_slice {{
+                "pub fn __entry() {{
                 let args: {args_types} = decode_script_data::<{args_types}>();
                 let _result: {return_type} = main({expanded_args});
                 {return_encode}

@@ -1258,7 +1258,7 @@ mod ir_builder {
                                 },
                             )
                             .collect();
-                        let md_idx = meta_idx.map(|mdi| self.md_map.get(&mdi).unwrap()).copied();
+                        let md_idx = meta_idx.and_then(|mdi| self.md_map.get(&mdi)).copied();
                         let return_type = return_type.to_ir_type(context);
                         block
                             .append(context)
@@ -1711,10 +1711,7 @@ mod ir_builder {
         configs
             .into_iter()
             .map(|config| {
-                let opt_metadata = config
-                    .metadata
-                    .map(|mdi| md_map.get(&mdi).unwrap())
-                    .copied();
+                let opt_metadata = config.metadata.and_then(|mdi| md_map.get(&mdi)).copied();
 
                 let ty = config.ty.to_ir_type(context);
 

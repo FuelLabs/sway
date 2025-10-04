@@ -1,8 +1,13 @@
 {
   "concreteTypes": [
     {
-      "concreteTypeId": "f662bc0a8cc3280d0e276822675f38d76d489e5b30f23542d6724ffb81d17030",
+      "concreteTypeId": "2bbd3731f47ee6344a7faa41bbba6d4425c2ac241356b2fd6431ae412fc9bb9c",
       "metadataTypeId": 0,
+      "type": "(struct TestStruct, u64)"
+    },
+    {
+      "concreteTypeId": "f662bc0a8cc3280d0e276822675f38d76d489e5b30f23542d6724ffb81d17030",
+      "metadataTypeId": 1,
       "type": "struct TestStruct"
     },
     {
@@ -27,7 +32,7 @@
         }
       ],
       "name": "main",
-      "output": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+      "output": "2bbd3731f47ee6344a7faa41bbba6d4425c2ac241356b2fd6431ae412fc9bb9c"
     }
   ],
   "loggedTypes": [],
@@ -36,11 +41,25 @@
     {
       "components": [
         {
-          "name": "val",
+          "name": "__tuple_element",
+          "typeId": 1
+        },
+        {
+          "name": "__tuple_element",
           "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
         }
       ],
       "metadataTypeId": 0,
+      "type": "(_, _)"
+    },
+    {
+      "components": [
+        {
+          "name": "val",
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        }
+      ],
+      "metadataTypeId": 1,
       "type": "struct TestStruct"
     }
   ],

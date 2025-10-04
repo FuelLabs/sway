@@ -1,0 +1,39 @@
+---
+source: test/src/snapshot/mod.rs
+---
+Because this test does not have inputs nor outputs, we should not see any decoding 
+whatsoever. 
+
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_empty --release --ir final --asm final --bytecode | filter-fn main_args_empty __entry
+
+pub entry fn __entry() -> () {
+    entry():
+    v0 = call main_0()
+    v1 = const u64 0
+    v2 = const u64 0
+    retd v1 v2
+}
+
+
+move $$locbase $sp            ; save locals base register for function __entry
+jal  $$reta $pc i2            ; [call]: call main_0
+retd  $zero $zero
+
+This is the result using encoding v0 for comparison. 
+
+The difference comes from the fact that the optimizer never inlines `main` inside 
+the `__entry` function. 
+
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_empty --release --ir final --asm final --bytecode --no-experimental new_encoding  | filter-fn main_args_empty main
+
+entry entry_orig fn main() -> () {
+    entry():
+    v0 = const unit ()
+    ret () v0
+}
+
+
+add  $$ds $$ds $$tmp
+cfei i0                       ; allocate stack space for globals
+move $$locbase $sp            ; save locals base register for function main
+ret  $zero                    ; return unit as zero

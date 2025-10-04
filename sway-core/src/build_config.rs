@@ -38,7 +38,7 @@ impl BuildTarget {
     pub const CFG: &'static [&'static str] = &["evm", "fuel"];
 }
 
-#[derive(Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy)]
 pub enum DbgGeneration {
     Full,
     #[default]

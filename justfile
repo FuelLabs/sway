@@ -31,6 +31,27 @@ benchmark-tests:
 collect-gas-usage:
     cargo r -p test --release -- --verbose --forc-test-only | ./scripts/compare-gas-usage/extract-gas-usage.sh
 
+[group('benchmark')]
+[linux]
+compare-gas-usage branchBefore branchAfter:
+    #! /bin/bash
+    CHANGES=$(git status --porcelain | wc -l)
+    if [ "$CHANGES" != "0" ]; then
+        echo -e "git is not clean. Aborting."
+        exit
+    fi
+    AFTEROUT=$(sed "s/\//-/g" <<< "{{branchAfter}}")
+    AFTEROUT="target/gas-$AFTEROUT.txt"
+    git checkout {{branchAfter}}
+    cargo r -p test --release -- --verbose --forc-test-only | tee /dev/tty | ./scripts/compare-gas-usage/extract-gas-usage.sh > "$AFTEROUT"
+
+    BEFOREOUT=$(sed "s/\//-/g" <<< "{{branchBefore}}")
+    BEFOREOUT="target/gas-$BEFOREOUT.txt"
+    git checkout {{branchBefore}}
+    cargo r -p test --release -- --verbose --forc-test-only | tee /dev/tty | ./scripts/compare-gas-usage/extract-gas-usage.sh > "$BEFOREOUT"
+
+    scripts/compare-gas-usage/generate-diff.sh "$BEFOREOUT" "$AFTEROUT"
+
 [group('build')]
 build-prism:
     cd ./scripts/prism && ./build.sh
