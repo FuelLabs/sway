@@ -527,6 +527,56 @@ impl TyImplSelfOrTrait {
                     implementing_for.type_id(),
                 )?;
 
+                // Disallow inherent implementations for types defined outside the current package
+                let current_pkg = ctx.namespace().current_package_ref();
+                let is_external = match &*type_engine.get(implementing_for.type_id()) {
+                    TypeInfo::Struct(decl_id) => {
+                        let s = decl_engine.get_struct(decl_id);
+                        let pkg_name = s.call_path.prefixes.first().map(|p| p.as_str());
+                        match pkg_name {
+                            Some(name) => name != current_pkg.name().as_str(),
+                            None => false,
+                        }
+                    }
+                    TypeInfo::Enum(decl_id) => {
+                        let e = decl_engine.get_enum(decl_id);
+                        let pkg_name = e.call_path.prefixes.first().map(|p| p.as_str());
+                        match pkg_name {
+                            Some(name) => name != current_pkg.name().as_str(),
+                            None => false,
+                        }
+                    }
+                    _ => false,
+                };
+
+                // Temporary workaround: allow inherent impls on `std::storage::StorageKey<_>`.
+                let is_storage_key_in_std = match &*type_engine.get(implementing_for.type_id()) {
+                    TypeInfo::Struct(decl_id) => {
+                        let s = decl_engine.get_struct(decl_id);
+                        s.call_path.suffix.as_str() == "StorageKey"
+                            && s.call_path.prefixes.len() >= 2
+                            && s.call_path.prefixes[0].as_str() == "std"
+                            && s.call_path.prefixes[1].as_str() == "storage"
+                    }
+                    _ => false,
+                };
+
+                if is_external && !is_storage_key_in_std {
+                    let type_name = engines.help_out(implementing_for.type_id()).to_string();
+                    let type_definition_span = match &*type_engine.get(implementing_for.type_id()) {
+                        TypeInfo::Struct(decl_id) => {
+                            Some(decl_engine.get_struct(decl_id).span.clone())
+                        }
+                        TypeInfo::Enum(decl_id) => Some(decl_engine.get_enum(decl_id).span.clone()),
+                        _ => None,
+                    };
+                    return Err(handler.emit_err(CompileError::InherentImplForExternalType {
+                        type_name,
+                        span: implementing_for.span(),
+                        type_definition_span,
+                    }));
+                }
+
                 implementing_for.type_id().check_type_parameter_bounds(
                     handler,
                     ctx.by_ref(),
