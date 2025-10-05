@@ -3380,14 +3380,18 @@ impl<T, const N: u64> AbiDecode for [T; N]
 where
     T: AbiDecode,
 {
+    #[inline(never)]
     fn abi_decode(ref mut buffer: BufferReader) -> [T; N] {
         const LENGTH: u64 = __size_of::<T>() * N;
-        let mut array = [0u8; LENGTH];
+        __log(LENGTH);
+        let mut array = [0u8; LENGTH];        
         let array: &mut [T; N] = __transmute::<&mut [u8; LENGTH], &mut [T; N]>(&mut array);
 
         let mut i = 0;
 
+        __log(N);
         while i < N {
+            __log(2);
             let item: &mut T = __elem_at(array, i);
             *item = buffer.decode::<T>();
             i += 1;
@@ -5369,6 +5373,7 @@ where
         },
     ));
 
+    __log(100);
     __contract_call(params.ptr(), coins, asset_id, gas);
     let ptr = asm() {
         ret: raw_ptr
@@ -5377,8 +5382,12 @@ where
         retl: u64
     };
 
+    __log(101);
     let mut buffer = BufferReader::from_parts(ptr, len);
-    T::abi_decode(buffer)
+    __log(102);
+    let r = T::abi_decode(buffer);
+    __log(103);
+    r
 }
 
 pub fn decode_script_data<T>() -> T
