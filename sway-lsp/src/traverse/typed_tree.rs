@@ -66,6 +66,7 @@ impl Parse for ty::TyAstNode {
     fn parse(&self, ctx: &ParseContext) {
         match &self.content {
             ty::TyAstNodeContent::Declaration(declaration) => declaration.parse(ctx),
+            ty::TyAstNodeContent::Statement(statement) => statement.parse(ctx),
             ty::TyAstNodeContent::Expression(expression) => expression.parse(ctx),
             ty::TyAstNodeContent::SideEffect(side_effect) => side_effect.parse(ctx),
             ty::TyAstNodeContent::Error(_, _) => {}
@@ -659,6 +660,26 @@ impl Parse for ty::TyVariableDecl {
             collect_call_path_tree(ctx, call_path_tree, &self.type_ascription);
         }
         self.body.parse(ctx);
+    }
+}
+
+impl Parse for ty::TyStatement {
+    fn parse(&self, ctx: &ParseContext) {
+        match self {
+            ty::TyStatement::Let(binding) => {
+                if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(&binding.name))
+                {
+                    token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedStatement(
+                        self.clone(),
+                    ));
+                    token.type_def = Some(TypeDefinition::Ident(binding.name.clone()));
+                }
+                if let Some(call_path_tree) = &binding.type_ascription.call_path_tree() {
+                    collect_call_path_tree(ctx, call_path_tree, &binding.type_ascription);
+                }
+                binding.value.parse(ctx);
+            }
+        }
     }
 }
 

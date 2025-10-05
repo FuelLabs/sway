@@ -86,6 +86,7 @@ pub enum TypedAstToken {
     TypedModuleName,
     TypedIncludeStatement(ty::TyIncludeStatement),
     TypedUseStatement(ty::TyUseStatement),
+    TypedStatement(ty::TyStatement),
     Ident(Ident),
 }
 

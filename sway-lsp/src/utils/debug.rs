@@ -114,6 +114,7 @@ pub(crate) fn print_decl_engine_types(
             ty::TyAstNodeContent::Expression(expression) => {
                 format!("{expression:#?}")
             }
+            ty::TyAstNodeContent::Statement(statement) => format!("{statement:#?}"),
             ty::TyAstNodeContent::SideEffect(side_effect) => format!("{side_effect:#?}"),
             ty::TyAstNodeContent::Error(_, _) => "error".to_string(),
         })

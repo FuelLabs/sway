@@ -465,7 +465,9 @@ fn connect_node<'eng: 'cfg, 'cfg>(
                 },
             )
         }
-        ty::TyAstNodeContent::SideEffect(_) => (leaves.to_vec(), exit_node),
+        ty::TyAstNodeContent::Statement(_) | ty::TyAstNodeContent::SideEffect(_) => {
+            (leaves.to_vec(), exit_node)
+        }
         ty::TyAstNodeContent::Declaration(decl) => {
             // all leaves connect to this node, then this node is the singular leaf
             let cfg_node: ControlFlowGraphNode =
@@ -2435,6 +2437,10 @@ fn construct_dead_code_warning_from_node(
             content: ty::TyAstNodeContent::Declaration(ty::TyDecl::AbiDecl(_)),
             ..
         } => return None,
+        ty::TyAstNode {
+            content: ty::TyAstNodeContent::Statement(_),
+            ..
+        } => return None,
         // We handle storage fields individually. There is no need to emit any warnings for the
         // storage declaration itself.
         ty::TyAstNode {
@@ -2456,7 +2462,9 @@ fn construct_dead_code_warning_from_node(
         // Otherwise, this is unreachable.
         ty::TyAstNode {
             span,
-            content: ty::TyAstNodeContent::Expression(_) | ty::TyAstNodeContent::SideEffect(_),
+            content:
+                ty::TyAstNodeContent::Expression(_)
+                | ty::TyAstNodeContent::SideEffect(_),
         } => CompileWarning {
             span: span.clone(),
             warning_content: Warning::UnreachableCode,
@@ -2629,7 +2637,7 @@ fn allow_dead_code_ast_node(decl_engine: &DeclEngine, node: &ty::TyAstNode) -> b
             ty::TyDecl::StorageDecl { .. } => false,
         },
         ty::TyAstNodeContent::Expression(_) => false,
-        ty::TyAstNodeContent::SideEffect(_) => false,
+        ty::TyAstNodeContent::Statement(_) | ty::TyAstNodeContent::SideEffect(_) => false,
         ty::TyAstNodeContent::Error(_, _) => false,
     }
 }
