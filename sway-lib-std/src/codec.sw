@@ -3382,7 +3382,7 @@ where
 {
     fn abi_decode(ref mut buffer: BufferReader) -> [T; N] {
         const LENGTH: u64 = __size_of::<T>() * N;
-        let mut array = [0u8; LENGTH];        
+        let mut array = [0u8; LENGTH];
         let array: &mut [T; N] = __transmute::<&mut [u8; LENGTH], &mut [T; N]>(&mut array);
 
         let mut i = 0;
