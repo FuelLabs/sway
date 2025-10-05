@@ -12,6 +12,7 @@ output:
 
 tested -- const_of_contract_call
 
+<<<<<<< HEAD
       test cost_of_in_bool ... ok (???, 14600 gas)
       test cost_of_in_u8 ... ok (???, 18427 gas)
       test cost_of_in_u16 ... ok (???, 17781 gas)
@@ -41,6 +42,38 @@ tested -- const_of_contract_call
       test in_enum_u64 ... ok (???, 15575 gas)
       test in_enum_u64_u64 ... ok (???, 15362 gas)
       test in_enum_u64_u64_u64 ... ok (???, 15551 gas)
+=======
+<<<<<<< HEAD
+      test cost_of_in_bool ... ok (???, 2082 gas)
+      test cost_of_in_u8 ... ok (???, 4331 gas)
+      test cost_of_in_u16 ... ok (???, 3948 gas)
+      test cost_of_in_u32 ... ok (???, 4389 gas)
+      test cost_of_in_u64 ... ok (???, 4397 gas)
+      test cost_of_in_u256 ... ok (???, 4240 gas)
+      test cost_of_in_b256 ... ok (???, 1954 gas)
+      test cost_of_in_str_0 ... ok (???, 2505 gas)
+      test cost_of_in_str_1 ... ok (???, 2806 gas)
+      test cost_of_in_str_8 ... ok (???, 3229 gas)
+      test cost_of_in_str_16 ... ok (???, 2837 gas)
+      test cost_of_in_str_32 ... ok (???, 3035 gas)
+      test cost_of_in_array_0 ... FAILED (???, 1095 gas)
+      test cost_of_in_array_1 ... ok (???, 1589 gas)
+      test cost_of_in_array_8 ... ok (???, 4192 gas)
+      test cost_of_in_array_16 ... ok (???, 4563 gas)
+      test cost_of_in_array_32 ... ok (???, 7889 gas)
+      test cost_of_in_array_64 ... ok (???, 14352 gas)
+      test cost_of_in_tuple_0 ... ok (???, 3289 gas)
+      test cost_of_in_tuple_1 ... ok (???, 3860 gas)
+      test cost_of_in_tuple_2 ... ok (???, 4228 gas)
+      test cost_of_in_tuple_3 ... ok (???, 4571 gas)
+      test cost_of_in_tuple_4 ... ok (???, 4935 gas)
+      test in_struct_u64 ... ok (???, 3103 gas)
+      test in_struct_u64_u64 ... ok (???, 3364 gas)
+      test in_struct_u64_u64_u64 ... ok (???, 3623 gas)
+      test in_enum_u64 ... ok (???, 2653 gas)
+      test in_enum_u64_u64 ... ok (???, 2528 gas)
+      test in_enum_u64_u64_u64 ... ok (???, 2640 gas)
+>>>>>>> ce8248b66 (better tests to measure cost of contract calls)
 
    failures:
       test cost_of_in_array_0, "test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call/src/main.sw":347
@@ -639,3 +672,1024 @@ tested -- const_of_contract_call
 test result: OK. 1 passed; 0 failed; finished in ???
 
     Finished in ???
+=======
+      test cost_of_in_bool ... ok (???, 3371 gas)
+           decoded log values:
+100, log rb: 1515152261580153489
+101, log rb: 1515152261580153489
+102, log rb: 1515152261580153489
+103, log rb: 1515152261580153489
+      test cost_of_in_u8 ... ok (???, 5610 gas)
+           decoded log values:
+100, log rb: 1515152261580153489
+101, log rb: 1515152261580153489
+102, log rb: 1515152261580153489
+103, log rb: 1515152261580153489
+      test cost_of_in_u16 ... ok (???, 5227 gas)
+           decoded log values:
+100, log rb: 1515152261580153489
+101, log rb: 1515152261580153489
+102, log rb: 1515152261580153489
+103, log rb: 1515152261580153489
+      test cost_of_in_u32 ... ok (???, 5672 gas)
+           decoded log values:
+100, log rb: 1515152261580153489
+101, log rb: 1515152261580153489
+102, log rb: 1515152261580153489
+103, log rb: 1515152261580153489
+      test cost_of_in_u64 ... ok (???, 5673 gas)
+           decoded log values:
+100, log rb: 1515152261580153489
+101, log rb: 1515152261580153489
+102, log rb: 1515152261580153489
+103, log rb: 1515152261580153489
+      test cost_of_in_u256 ... ok (???, 5520 gas)
+           decoded log values:
+100, log rb: 1515152261580153489
+101, log rb: 1515152261580153489
+102, log rb: 1515152261580153489
+103, log rb: 1515152261580153489
+      test cost_of_in_b256 ... ok (???, 3250 gas)
+           decoded log values:
+100, log rb: 1515152261580153489
+101, log rb: 1515152261580153489
+102, log rb: 1515152261580153489
+103, log rb: 1515152261580153489
+      test cost_of_in_str_0 ... ok (???, 3784 gas)
+           decoded log values:
+100, log rb: 1515152261580153489
+101, log rb: 1515152261580153489
+102, log rb: 1515152261580153489
+103, log rb: 1515152261580153489
+      test cost_of_in_str_1 ... ok (???, 4091 gas)
+           decoded log values:
+100, log rb: 1515152261580153489
+101, log rb: 1515152261580153489
+102, log rb: 1515152261580153489
+103, log rb: 1515152261580153489
+      test cost_of_in_str_8 ... ok (???, 4512 gas)
+           decoded log values:
+100, log rb: 1515152261580153489
+101, log rb: 1515152261580153489
+102, log rb: 1515152261580153489
+103, log rb: 1515152261580153489
+      test cost_of_in_str_16 ... ok (???, 4122 gas)
+           decoded log values:
+100, log rb: 1515152261580153489
+101, log rb: 1515152261580153489
+102, log rb: 1515152261580153489
+103, log rb: 1515152261580153489
+      test cost_of_in_str_32 ... ok (???, 4318 gas)
+           decoded log values:
+100, log rb: 1515152261580153489
+101, log rb: 1515152261580153489
+102, log rb: 1515152261580153489
+103, log rb: 1515152261580153489
+      test cost_of_in_array_0 ... ok (???, 3174 gas)
+           decoded log values:
+100, log rb: 1515152261580153489
+0, log rb: 1515152261580153489
+0, log rb: 1515152261580153489
+101, log rb: 1515152261580153489
+102, log rb: 1515152261580153489
+0, log rb: 1515152261580153489
+0, log rb: 1515152261580153489
+103, log rb: 1515152261580153489
+      test cost_of_in_array_1 ... ok (???, 4031 gas)
+           decoded log values:
+100, log rb: 1515152261580153489
+1, log rb: 1515152261580153489
+1, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+101, log rb: 1515152261580153489
+102, log rb: 1515152261580153489
+1, log rb: 1515152261580153489
+1, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+103, log rb: 1515152261580153489
+      test cost_of_in_array_8 ... ok (???, 9221 gas)
+           decoded log values:
+100, log rb: 1515152261580153489
+8, log rb: 1515152261580153489
+8, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+[0, 0, 0, 0, 0, 0, 0, 0], log rb: 3565715504387854074
+101, log rb: 1515152261580153489
+102, log rb: 1515152261580153489
+8, log rb: 1515152261580153489
+8, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+103, log rb: 1515152261580153489
+      test cost_of_in_array_16 ... FAILED (???, 5970 gas)
+           decoded log values:
+100, log rb: 1515152261580153489
+16, log rb: 1515152261580153489
+16, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+      test cost_of_in_array_32 ... FAILED (???, 7884 gas)
+           decoded log values:
+100, log rb: 1515152261580153489
+32, log rb: 1515152261580153489
+32, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+      test cost_of_in_array_64 ... FAILED (???, 11544 gas)
+           decoded log values:
+100, log rb: 1515152261580153489
+64, log rb: 1515152261580153489
+64, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+      test cost_of_in_tuple_0 ... ok (???, 4538 gas)
+           decoded log values:
+100, log rb: 1515152261580153489
+101, log rb: 1515152261580153489
+102, log rb: 1515152261580153489
+103, log rb: 1515152261580153489
+      test cost_of_in_tuple_1 ... ok (???, 5114 gas)
+           decoded log values:
+100, log rb: 1515152261580153489
+101, log rb: 1515152261580153489
+102, log rb: 1515152261580153489
+103, log rb: 1515152261580153489
+      test cost_of_in_tuple_2 ... ok (???, 5484 gas)
+           decoded log values:
+100, log rb: 1515152261580153489
+101, log rb: 1515152261580153489
+102, log rb: 1515152261580153489
+103, log rb: 1515152261580153489
+      test cost_of_in_tuple_3 ... ok (???, 5828 gas)
+           decoded log values:
+100, log rb: 1515152261580153489
+101, log rb: 1515152261580153489
+102, log rb: 1515152261580153489
+103, log rb: 1515152261580153489
+      test cost_of_in_tuple_4 ... ok (???, 6188 gas)
+           decoded log values:
+100, log rb: 1515152261580153489
+101, log rb: 1515152261580153489
+102, log rb: 1515152261580153489
+103, log rb: 1515152261580153489
+      test in_struct_u64 ... ok (???, 4357 gas)
+           decoded log values:
+100, log rb: 1515152261580153489
+101, log rb: 1515152261580153489
+102, log rb: 1515152261580153489
+103, log rb: 1515152261580153489
+      test in_struct_u64_u64 ... ok (???, 4612 gas)
+           decoded log values:
+100, log rb: 1515152261580153489
+101, log rb: 1515152261580153489
+102, log rb: 1515152261580153489
+103, log rb: 1515152261580153489
+      test in_struct_u64_u64_u64 ... ok (???, 4872 gas)
+           decoded log values:
+100, log rb: 1515152261580153489
+101, log rb: 1515152261580153489
+102, log rb: 1515152261580153489
+103, log rb: 1515152261580153489
+      test in_enum_u64 ... ok (???, 3910 gas)
+           decoded log values:
+100, log rb: 1515152261580153489
+101, log rb: 1515152261580153489
+102, log rb: 1515152261580153489
+103, log rb: 1515152261580153489
+      test in_enum_u64_u64 ... ok (???, 3781 gas)
+           decoded log values:
+100, log rb: 1515152261580153489
+101, log rb: 1515152261580153489
+102, log rb: 1515152261580153489
+103, log rb: 1515152261580153489
+      test in_enum_u64_u64_u64 ... ok (???, 3891 gas)
+           decoded log values:
+100, log rb: 1515152261580153489
+101, log rb: 1515152261580153489
+102, log rb: 1515152261580153489
+103, log rb: 1515152261580153489
+
+   failures:
+      test cost_of_in_array_16, "test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call/src/main.sw":368
+           revert code: 0
+           decoded log values:
+100, log rb: 1515152261580153489
+16, log rb: 1515152261580153489
+16, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+           raw logs:
+[
+  {
+    "LogData": {
+      "data": "0000000000000064",
+      "digest": "5fcba2633bef1c29420e0eed7b037ced8b00466b0e8f1c5ce1cad2e97e117aad",
+      "id": "0000000000000000000000000000000000000000000000000000000000000000",
+      "is": 10368,
+      "len": 8,
+      "pc": 41476,
+      "ptr": 67104768,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000010",
+      "digest": "998e907bfbb34f71c66b6dc6c40fe98ca6d2d5a29755bc5a04824c36082a61d1",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 69320,
+      "len": 8,
+      "pc": 86656,
+      "ptr": 67103744,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000010",
+      "digest": "998e907bfbb34f71c66b6dc6c40fe98ca6d2d5a29755bc5a04824c36082a61d1",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 69320,
+      "len": 8,
+      "pc": 86788,
+      "ptr": 67102720,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 69320,
+      "len": 8,
+      "pc": 86928,
+      "ptr": 67101696,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 69320,
+      "len": 8,
+      "pc": 86928,
+      "ptr": 67100672,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 69320,
+      "len": 8,
+      "pc": 86928,
+      "ptr": 67099648,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 69320,
+      "len": 8,
+      "pc": 86928,
+      "ptr": 67098624,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 69320,
+      "len": 8,
+      "pc": 86928,
+      "ptr": 67097600,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 69320,
+      "len": 8,
+      "pc": 86928,
+      "ptr": 67096576,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 69320,
+      "len": 8,
+      "pc": 86928,
+      "ptr": 67095552,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 69320,
+      "len": 8,
+      "pc": 86928,
+      "ptr": 67094528,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 69320,
+      "len": 8,
+      "pc": 86928,
+      "ptr": 67093504,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 69320,
+      "len": 8,
+      "pc": 86928,
+      "ptr": 67092480,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 69320,
+      "len": 8,
+      "pc": 86928,
+      "ptr": 67091456,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 69320,
+      "len": 8,
+      "pc": 86928,
+      "ptr": 67090432,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  }
+]
+
+
+      test cost_of_in_array_32, "test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call/src/main.sw":375
+           revert code: 0
+           decoded log values:
+100, log rb: 1515152261580153489
+32, log rb: 1515152261580153489
+32, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+           raw logs:
+[
+  {
+    "LogData": {
+      "data": "0000000000000064",
+      "digest": "5fcba2633bef1c29420e0eed7b037ced8b00466b0e8f1c5ce1cad2e97e117aad",
+      "id": "0000000000000000000000000000000000000000000000000000000000000000",
+      "is": 10368,
+      "len": 8,
+      "pc": 42520,
+      "ptr": 67104768,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000020",
+      "digest": "707d56f1f282aee234577e650bea2e7b18bb6131a499582be18876aba99d4b60",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 70472,
+      "len": 8,
+      "pc": 88292,
+      "ptr": 67103744,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000020",
+      "digest": "707d56f1f282aee234577e650bea2e7b18bb6131a499582be18876aba99d4b60",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 70472,
+      "len": 8,
+      "pc": 88424,
+      "ptr": 67102720,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 70472,
+      "len": 8,
+      "pc": 88564,
+      "ptr": 67101696,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 70472,
+      "len": 8,
+      "pc": 88564,
+      "ptr": 67100672,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 70472,
+      "len": 8,
+      "pc": 88564,
+      "ptr": 67099648,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 70472,
+      "len": 8,
+      "pc": 88564,
+      "ptr": 67098624,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 70472,
+      "len": 8,
+      "pc": 88564,
+      "ptr": 67097600,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 70472,
+      "len": 8,
+      "pc": 88564,
+      "ptr": 67096576,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 70472,
+      "len": 8,
+      "pc": 88564,
+      "ptr": 67095552,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 70472,
+      "len": 8,
+      "pc": 88564,
+      "ptr": 67094528,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 70472,
+      "len": 8,
+      "pc": 88564,
+      "ptr": 67093504,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 70472,
+      "len": 8,
+      "pc": 88564,
+      "ptr": 67092480,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 70472,
+      "len": 8,
+      "pc": 88564,
+      "ptr": 67091456,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 70472,
+      "len": 8,
+      "pc": 88564,
+      "ptr": 67090432,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 70472,
+      "len": 8,
+      "pc": 88564,
+      "ptr": 67089408,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 70472,
+      "len": 8,
+      "pc": 88564,
+      "ptr": 67088384,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  }
+]
+
+
+      test cost_of_in_array_64, "test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call/src/main.sw":382
+           revert code: 0
+           decoded log values:
+100, log rb: 1515152261580153489
+64, log rb: 1515152261580153489
+64, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+2, log rb: 1515152261580153489
+           raw logs:
+[
+  {
+    "LogData": {
+      "data": "0000000000000064",
+      "digest": "5fcba2633bef1c29420e0eed7b037ced8b00466b0e8f1c5ce1cad2e97e117aad",
+      "id": "0000000000000000000000000000000000000000000000000000000000000000",
+      "is": 10368,
+      "len": 8,
+      "pc": 43656,
+      "ptr": 67104768,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000040",
+      "digest": "3f710ac088db33363087de2b9a657541fe5447821debaa9fe5cbd538eb1a5f29",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 72776,
+      "len": 8,
+      "pc": 91080,
+      "ptr": 67103744,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000040",
+      "digest": "3f710ac088db33363087de2b9a657541fe5447821debaa9fe5cbd538eb1a5f29",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 72776,
+      "len": 8,
+      "pc": 91212,
+      "ptr": 67102720,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 72776,
+      "len": 8,
+      "pc": 91352,
+      "ptr": 67101696,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 72776,
+      "len": 8,
+      "pc": 91352,
+      "ptr": 67100672,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 72776,
+      "len": 8,
+      "pc": 91352,
+      "ptr": 67099648,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 72776,
+      "len": 8,
+      "pc": 91352,
+      "ptr": 67098624,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 72776,
+      "len": 8,
+      "pc": 91352,
+      "ptr": 67097600,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 72776,
+      "len": 8,
+      "pc": 91352,
+      "ptr": 67096576,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 72776,
+      "len": 8,
+      "pc": 91352,
+      "ptr": 67095552,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 72776,
+      "len": 8,
+      "pc": 91352,
+      "ptr": 67094528,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 72776,
+      "len": 8,
+      "pc": 91352,
+      "ptr": 67093504,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 72776,
+      "len": 8,
+      "pc": 91352,
+      "ptr": 67092480,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 72776,
+      "len": 8,
+      "pc": 91352,
+      "ptr": 67091456,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 72776,
+      "len": 8,
+      "pc": 91352,
+      "ptr": 67090432,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 72776,
+      "len": 8,
+      "pc": 91352,
+      "ptr": 67089408,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 72776,
+      "len": 8,
+      "pc": 91352,
+      "ptr": 67088384,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 72776,
+      "len": 8,
+      "pc": 91352,
+      "ptr": 67087360,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 72776,
+      "len": 8,
+      "pc": 91352,
+      "ptr": 67086336,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 72776,
+      "len": 8,
+      "pc": 91352,
+      "ptr": 67085312,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  },
+  {
+    "LogData": {
+      "data": "0000000000000002",
+      "digest": "cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70",
+      "id": "e0e478ce6c0db695cca5ddfd11e1d041fd4bbb30bde397218a24a1a4df3ac422",
+      "is": 72776,
+      "len": 8,
+      "pc": 91352,
+      "ptr": 67084288,
+      "ra": 0,
+      "rb": 1515152261580153489
+    }
+  }
+]
+
+
+
+test result: FAILED. 26 passed; 3 failed; finished in ???
+
+    Finished in ???
+error: Some tests failed.
+>>>>>>> 58e204d50 (better tests to measure cost of contract calls)
