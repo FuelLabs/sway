@@ -245,7 +245,7 @@ impl SubstTypes for DeclId<TyConstantDecl> {
         let decl_engine = ctx.engines.de();
         let mut decl = (*decl_engine.get(self)).clone();
         if decl.subst(ctx).has_changes() {
-            decl_engine.replace(*self, decl);
+            *self = *decl_engine.insert(decl, None).id();
             HasChanges::Yes
         } else {
             HasChanges::No

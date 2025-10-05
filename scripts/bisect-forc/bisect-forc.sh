@@ -20,15 +20,7 @@ compile_and_cp_to_cache() {
     fi
 }
 
-run_cargo() {
-    if [ "$2" = "" ]; then
-        bash -c "$CACHE/$CACHENAME build --path $PROJ" &>> /dev/null
-        echo "$?"
-    else
-        bash -c "$CACHE/$CACHENAME $2 --path $PROJ" &>> /dev/null
-        echo "$?"
-    fi
-}
+
 
 INITIAL_COMMIT="$(git show -s --format='%H' HEAD)"
 END_COMMIT=""
@@ -47,8 +39,17 @@ git log -1 --oneline
 echo -n "Running: "
 
 CACHENAME="$(git show -s --format='%as-%ct-%H' HEAD)"
+run_cargo() {
+    if [ "$2" = "" ]; then
+        bash -c "$CACHE/$CACHENAME build --path $PROJ" &>> /dev/null
+        echo "$?"
+    else
+        bash -c "$CACHE/$CACHENAME $2 --path $PROJ" &>> /dev/null
+        echo "$?"
+    fi
+}
 compile_and_cp_to_cache "$CACHENAME"
-INITIAL_COMPILATION_STATUS=$(run_cargo)
+INITIAL_COMPILATION_STATUS=$(run_cargo "$1" "$2")
 
 if [ "$INITIAL_COMPILATION_STATUS" = "0" ]; then
     echo -e " ${BOLD_GREEN}Ok${NC}"
@@ -69,7 +70,7 @@ for HASH in `git log --format="%H" --tags --no-walk`; do
 
     CACHENAME="$(git show -s --format='%as-%ct-%H' HEAD)"
     compile_and_cp_to_cache "$CACHENAME"
-    LAST_STATUS=$(run_cargo)
+    LAST_STATUS=$(run_cargo "$1" "$2")
     if [ "$INITIAL_COMPILATION_STATUS" != "$LAST_STATUS" ]; then
         echo -e "^^^^^^^^^ ${BOLD_WHITE}This version result is different!${NC}"
         break
@@ -93,14 +94,14 @@ do
     #git --no-pager bisect visualize --oneline
 
     git bisect next | grep "is the first new commit" &>> /dev/null
-    if [ "$LAST_STATUS" = "0" ]; then
+    if [ "$?" = "0" ]; then
         FIRST_COMMIT="$(git bisect next 2>&1 | head -n 1 | cut -f1 -d" ")"
         git checkout "$FIRST_COMMIT" &>> /dev/null
         break
     fi
-    
+
     git bisect next | grep "Bisecting"
-    if [ "$LAST_STATUS" != "0" ]; then
+    if [ "$?" != "0" ]; then
         break
     fi
 
@@ -108,7 +109,7 @@ do
 
     CACHENAME="$(git show -s --format='%as-%ct-%H' HEAD)"
     compile_and_cp_to_cache "$CACHENAME"
-    LAST_STATUS=$(run_cargo)
+    LAST_STATUS=$(run_cargo "$1" "$2")
     if [ "$LAST_STATUS" = "$INITIAL_COMPILATION_STATUS" ]; then
         git bisect new &>> /dev/null
     else
@@ -127,7 +128,7 @@ echo -n "checking the found commit has the same behaviour as the initial commit.
 
 CACHENAME="$(git show -s --format='%as-%ct-%H' HEAD)"
 compile_and_cp_to_cache "$CACHENAME"
-LAST_STATUS=$(run_cargo)
+LAST_STATUS=$(run_cargo "$1" "$2")
 
 if [ "$INITIAL_COMPILATION_STATUS" != "$LAST_STATUS" ]; then
     echo -e " ${BOLD_RED}Unexpected exit code${NC}"
@@ -143,7 +144,7 @@ git checkout HEAD~1 &>> /dev/null
 PREVIOUS_COMMIT="$(git show -s --format='%H' HEAD)"
 CACHENAME="$(git show -s --format='%as-%ct-%H' HEAD)"
 compile_and_cp_to_cache "$CACHENAME"
-LAST_STATUS=$(run_cargo)
+LAST_STATUS=$(run_cargo "$1" "$2")
 
 if [ "$INITIAL_COMPILATION_STATUS" = "$LAST_STATUS" ]; then
     echo -e " ${BOLD_RED}Unexpected exit code${NC}"
