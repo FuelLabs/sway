@@ -3376,28 +3376,23 @@ impl AbiDecode for str[64] {
 // END STRARRAY_DECODE
 
 #[cfg(experimental_const_generics = true)]
-impl<TTT, const N: u64> AbiDecode for [TTT; N]
+impl<T, const N: u64> AbiDecode for [T; N]
 where
-    TTT: AbiEncode + AbiDecode,
+    T: AbiDecode,
 {
-    #[inline(never)]
-    fn abi_decode(ref mut buffer: BufferReader) -> [TTT; N] {
-        const SIZE_OF_TTT = __size_of::<TTT>();
-        const LENGTH: u64 = SIZE_OF_TTT * N;
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; N] {
+        const LENGTH: u64 = __size_of::<T>() * N;
         let mut array = [0u8; LENGTH];        
-        let array: &mut [TTT; N] = __transmute::<&mut [u8; LENGTH], &mut [TTT; N]>(&mut array);
+        let array: &mut [T; N] = __transmute::<&mut [u8; LENGTH], &mut [T; N]>(&mut array);
 
         let mut i = 0;
 
         while i < N {
-            let item: &mut TTT = __elem_at(array, i);
-            let decoded = buffer.decode::<TTT>();
-            __log((i, decoded));
-            *item = decoded;
+            let item: &mut T = __elem_at(array, i);
+            *item = buffer.decode::<T>();
             i += 1;
         }
 
-        __log(*array);
         *array
     }
 }
