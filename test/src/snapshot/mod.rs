@@ -3,7 +3,10 @@ use libtest_mimic::{Arguments, Trial};
 use normalize_path::NormalizePath;
 use regex::{Captures, Regex};
 use std::{
-    collections::{BTreeSet, HashMap, HashSet, VecDeque}, ffi::OsStr, path::{Path, PathBuf}, str::FromStr, sync::Once
+    collections::{BTreeSet, HashMap, VecDeque},
+    path::{Path, PathBuf},
+    str::FromStr,
+    sync::Once,
 };
 use sway_core::Engines;
 use sway_features::ExperimentalFeatures;
@@ -37,7 +40,8 @@ struct UndoFiles {
 
 impl Drop for UndoFiles {
     fn drop(&mut self) {
-        for (path, contents) in self.contents.iter() {
+        #[allow(clippy::iter_over_hash_type)]
+        for (path, contents) in self.contents.drain() {
             let _ = std::fs::write(path, contents);
         }
     }
@@ -79,14 +83,11 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                 let snapshot_toml = toml::from_str::<toml::Value>(&snapshot_toml)?;
                 let root = dir.strip_prefix(&repo_root).unwrap().display().to_string();
 
-                let cmds = snapshot_toml
-                    .get("cmds")
-                    .unwrap()
-                    .as_array()
-                    .unwrap();
+                let cmds = snapshot_toml.get("cmds").unwrap().as_array().unwrap();
 
                 let mut snapshot = String::new();
-                run_cmds(&name, &repo_root, &root, cmds, &mut snapshot);
+
+                let _ = run_cmds(&name, &repo_root, &root, cmds, &mut snapshot);
 
                 fn stdout(root: &str, snapshot: &str) {
                     let root = PathBuf::from_str(root).unwrap();
@@ -117,13 +118,12 @@ fn run_cmds(
     cmds: &Vec<toml::Value>,
     snapshot: &mut String,
 ) -> std::result::Result<(), libtest_mimic::Failed> {
-    // file contents to be set again after all cmds
-    let mut undo = UndoFiles::default();
-
     use std::fmt::Write;
 
     let name = PathBuf::from_str(test_name).unwrap();
     let name = name.file_stem().unwrap();
+
+    let find_blocks_regex = Regex::new(r#"START ([0-9a-zA-Z_]*)"#).unwrap();
 
     for cmd in cmds {
         match cmd {
@@ -320,33 +320,34 @@ fn run_cmds(
                     "for-each-block" => {
                         fn remove_block_from_file(contents: &str, block_name: &str) -> String {
                             let block_regex = Regex::new(&format!("\\/\\* START {block_name} \\*\\/[.\\s\\S]+?END {block_name} \\*\\/")).unwrap();
-                            block_regex.replace_all(&contents, |_: &Captures| -> String {
-                                String::new()
-                            }).to_string()
+                            block_regex
+                                .replace_all(contents, |_: &Captures| -> String { String::new() })
+                                .to_string()
                         }
 
-                        let path = PathBuf::from_str(&root).unwrap().join("src/main.sw");
+                        let path = PathBuf::from_str(root).unwrap().join("src/main.sw");
                         let byte_contents = std::fs::read(&path).unwrap();
                         let contents = String::from_utf8(byte_contents.clone()).unwrap();
 
                         let mut blocks = BTreeSet::new();
 
-                        let regex = Regex::new(r#"START ([0-9a-zA-Z_]*)"#).unwrap();
-                        for capture in regex.captures_iter(&contents) {
+                        for capture in find_blocks_regex.captures_iter(&contents) {
                             let name = capture.get(1).unwrap().as_str().to_string();
                             blocks.insert(name);
                         }
-                        
+
                         for block in blocks.iter() {
-                            writeln!(snapshot, "> Block: {block}");
+                            let _ = writeln!(snapshot, "> Block: {block}");
 
                             let mut undo = UndoFiles::default();
                             undo.contents.insert(path.clone(), byte_contents.clone());
-                            
+
                             let mut new_contents = contents.clone();
                             for remove_block in blocks.iter() {
                                 if remove_block != block {
-                                    new_contents = remove_block_from_file(&new_contents, &remove_block).to_string();
+                                    new_contents =
+                                        remove_block_from_file(&new_contents, remove_block)
+                                            .to_string();
                                 }
                             }
 
