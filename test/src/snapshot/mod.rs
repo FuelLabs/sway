@@ -74,8 +74,8 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
             Trial::test(name.clone(), move || {
                 let snapshot_toml =
                     std::fs::read_to_string(format!("{}/snapshot.toml", dir.display()))?;
-                let snapshot_toml = if snapshot_toml.is_empty() {
-                    "cmds = [ \"forc build --path {root}\"]".to_string()
+                let snapshot_toml = if snapshot_toml.trim().is_empty() {
+                    "cmds = [ \"forc build --path {root}\" ]".to_string()
                 } else {
                     snapshot_toml
                 };
