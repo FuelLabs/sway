@@ -20,15 +20,7 @@ compile_and_cp_to_cache() {
     fi
 }
 
-run_cargo() {
-    if [ "$2" = "" ]; then
-        bash -c "$CACHE/$CACHENAME build --path $PROJ" &>> /dev/null
-        echo "$?"
-    else
-        bash -c "$CACHE/$CACHENAME $2 --path $PROJ" &>> /dev/null
-        echo "$?"
-    fi
-}
+
 
 INITIAL_COMMIT="$(git show -s --format='%H' HEAD)"
 END_COMMIT=""
@@ -47,6 +39,15 @@ git log -1 --oneline
 echo -n "Running: "
 
 CACHENAME="$(git show -s --format='%as-%ct-%H' HEAD)"
+run_cargo() {
+    if [ "$2" = "" ]; then
+        bash -c "$CACHE/$CACHENAME build --path $PROJ" &>> /dev/null
+        echo "$?"
+    else
+        bash -c "$CACHE/$CACHENAME $2 --path $PROJ" &>> /dev/null
+        echo "$?"
+    fi
+}
 compile_and_cp_to_cache "$CACHENAME"
 INITIAL_COMPILATION_STATUS=$(run_cargo "$1" "$2")
 

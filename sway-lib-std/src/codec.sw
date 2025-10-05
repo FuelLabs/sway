@@ -3376,27 +3376,28 @@ impl AbiDecode for str[64] {
 // END STRARRAY_DECODE
 
 #[cfg(experimental_const_generics = true)]
-impl<T, const N: u64> AbiDecode for [T; N]
+impl<TTT, const N: u64> AbiDecode for [TTT; N]
 where
-    T: AbiDecode,
+    TTT: AbiEncode + AbiDecode,
 {
     #[inline(never)]
-    fn abi_decode(ref mut buffer: BufferReader) -> [T; N] {
-        const LENGTH: u64 = __size_of::<T>() * N;
-        __log(LENGTH);
+    fn abi_decode(ref mut buffer: BufferReader) -> [TTT; N] {
+        const SIZE_OF_TTT = __size_of::<TTT>();
+        const LENGTH: u64 = SIZE_OF_TTT * N;
         let mut array = [0u8; LENGTH];        
-        let array: &mut [T; N] = __transmute::<&mut [u8; LENGTH], &mut [T; N]>(&mut array);
+        let array: &mut [TTT; N] = __transmute::<&mut [u8; LENGTH], &mut [TTT; N]>(&mut array);
 
         let mut i = 0;
 
-        __log(N);
         while i < N {
-            __log(2);
-            let item: &mut T = __elem_at(array, i);
-            *item = buffer.decode::<T>();
+            let item: &mut TTT = __elem_at(array, i);
+            let decoded = buffer.decode::<TTT>();
+            __log((i, decoded));
+            *item = decoded;
             i += 1;
         }
 
+        __log(*array);
         *array
     }
 }
@@ -5373,7 +5374,6 @@ where
         },
     ));
 
-    __log(100);
     __contract_call(params.ptr(), coins, asset_id, gas);
     let ptr = asm() {
         ret: raw_ptr
@@ -5382,12 +5382,8 @@ where
         retl: u64
     };
 
-    __log(101);
     let mut buffer = BufferReader::from_parts(ptr, len);
-    __log(102);
-    let r = T::abi_decode(buffer);
-    __log(103);
-    r
+    T::abi_decode(buffer)
 }
 
 pub fn decode_script_data<T>() -> T
