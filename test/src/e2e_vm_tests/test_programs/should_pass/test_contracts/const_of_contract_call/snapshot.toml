@@ -1,6 +1,6 @@
 cmds = [
-    "forc test --path {root} --release --experimental const_generics --logs --ir final",
-    # { repeat = "for-each-block", cmds = [
-    #     "forc test --path {root} --release --experimental const_generics"
-    # ] }
+    "forc test --path {root} --release --experimental const_generics",
+    { repeat = "for-each-block", cmds = [
+        "forc test --path {root} --release --experimental const_generics"
+    ] }
 ]
