@@ -3,14 +3,10 @@ use libtest_mimic::{Arguments, Trial};
 use normalize_path::NormalizePath;
 use regex::{Captures, Regex};
 use std::{
-<<<<<<< HEAD
     collections::{BTreeSet, HashMap, VecDeque},
     path::{Path, PathBuf},
     str::FromStr,
     sync::Once,
-=======
-    collections::{BTreeSet, HashMap, HashSet, VecDeque}, ffi::OsStr, path::{Path, PathBuf}, str::FromStr, sync::Once
->>>>>>> 58e204d50 (better tests to measure cost of contract calls)
 };
 use sway_core::Engines;
 use sway_features::ExperimentalFeatures;
@@ -44,12 +40,8 @@ struct UndoFiles {
 
 impl Drop for UndoFiles {
     fn drop(&mut self) {
-<<<<<<< HEAD
         #[allow(clippy::iter_over_hash_type)]
         for (path, contents) in self.contents.drain() {
-=======
-        for (path, contents) in self.contents.iter() {
->>>>>>> 58e204d50 (better tests to measure cost of contract calls)
             let _ = std::fs::write(path, contents);
         }
     }
@@ -82,13 +74,8 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
             Trial::test(name.clone(), move || {
                 let snapshot_toml =
                     std::fs::read_to_string(format!("{}/snapshot.toml", dir.display()))?;
-<<<<<<< HEAD
                 let snapshot_toml = if snapshot_toml.trim().is_empty() {
                     "cmds = [ \"forc build --path {root}\" ]".to_string()
-=======
-                let snapshot_toml = if snapshot_toml.is_empty() {
-                    "cmds = [ \"forc build --path {root}\"]".to_string()
->>>>>>> 58e204d50 (better tests to measure cost of contract calls)
                 } else {
                     snapshot_toml
                 };
@@ -96,22 +83,11 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
                 let snapshot_toml = toml::from_str::<toml::Value>(&snapshot_toml)?;
                 let root = dir.strip_prefix(&repo_root).unwrap().display().to_string();
 
-<<<<<<< HEAD
                 let cmds = snapshot_toml.get("cmds").unwrap().as_array().unwrap();
 
                 let mut snapshot = String::new();
 
                 let _ = run_cmds(&name, &repo_root, &root, cmds, &mut snapshot);
-=======
-                let cmds = snapshot_toml
-                    .get("cmds")
-                    .unwrap()
-                    .as_array()
-                    .unwrap();
-
-                let mut snapshot = String::new();
-                run_cmds(&name, &repo_root, &root, cmds, &mut snapshot);
->>>>>>> 58e204d50 (better tests to measure cost of contract calls)
 
                 fn stdout(root: &str, snapshot: &str) {
                     let root = PathBuf::from_str(root).unwrap();
@@ -142,22 +118,13 @@ fn run_cmds(
     cmds: &Vec<toml::Value>,
     snapshot: &mut String,
 ) -> std::result::Result<(), libtest_mimic::Failed> {
-<<<<<<< HEAD
-=======
-    // file contents to be set again after all cmds
-    let mut undo = UndoFiles::default();
-
->>>>>>> 58e204d50 (better tests to measure cost of contract calls)
     use std::fmt::Write;
 
     let name = PathBuf::from_str(test_name).unwrap();
     let name = name.file_stem().unwrap();
 
-<<<<<<< HEAD
     let find_blocks_regex = Regex::new(r#"START ([0-9a-zA-Z_]*)"#).unwrap();
 
-=======
->>>>>>> 58e204d50 (better tests to measure cost of contract calls)
     for cmd in cmds {
         match cmd {
             toml::Value::String(cmd) => {
@@ -179,20 +146,12 @@ fn run_cmds(
                         FORC_DOC_COMPILATION.call_once(|| {
                             compile_forc_doc();
                         });
-<<<<<<< HEAD
                         format!("target/release/forc-doc {cmd} 1>&2")
-=======
-                        format!("target/debug/forc-doc {cmd} 1>&2")
->>>>>>> 58e204d50 (better tests to measure cost of contract calls)
                     } else if let Some(cmd) = cmd.strip_prefix("forc ") {
                         FORC_COMPILATION.call_once(|| {
                             compile_forc();
                         });
-<<<<<<< HEAD
                         format!("target/release/forc {cmd} 1>&2")
-=======
-                        format!("target/debug/forc {cmd} 1>&2")
->>>>>>> 58e204d50 (better tests to measure cost of contract calls)
                     } else if let Some(cmd) = cmd.strip_prefix("sub ") {
                         let arg = cmd.trim();
                         if let Some(l) = last_output.take() {
@@ -221,7 +180,6 @@ fn run_cmds(
                             last_output = Some(new_output);
                         }
                         continue;
-<<<<<<< HEAD
                     } else if let Some(args) = cmd.strip_prefix("replace-file ") {
                         let Some((path, args)) = args.trim().split_once(" ") else {
                             panic!("replace needs three arguments: file from to");
@@ -257,8 +215,6 @@ fn run_cmds(
                         std::fs::write(path, contents).unwrap();
 
                         continue;
-=======
->>>>>>> 58e204d50 (better tests to measure cost of contract calls)
                     } else if let Some(args) = cmd.strip_prefix("filter-fn ") {
                         if let Some(output) = last_output.take() {
                             let (name, fns) = args.trim().split_once(" ").unwrap();
@@ -392,7 +348,6 @@ fn run_cmds(
                 let _ = writeln!(snapshot, "{}", last_output.unwrap_or_default());
             }
             toml::Value::Table(map) => {
-<<<<<<< HEAD
                 let repeat_type = map["repeat"].as_str().unwrap();
                 let cmds = map["cmds"].as_array().unwrap();
 
@@ -406,27 +361,11 @@ fn run_cmds(
                         }
 
                         let path = PathBuf::from_str(root).unwrap().join("src/main.sw");
-=======
-                let ty = map["repeat"].as_str().unwrap();
-                let cmds = map["cmds"].as_array().unwrap();
-
-                match ty {
-                    "for-each-block" => {
-                        fn remove_block_from_file(contents: &str, block_name: &str) -> String {
-                            let block_regex = Regex::new(&format!("\\/\\* START {block_name} \\*\\/[.\\s\\S]+?END {block_name} \\*\\/")).unwrap();
-                            block_regex.replace_all(&contents, |_: &Captures| -> String {
-                                String::new()
-                            }).to_string()
-                        }
-
-                        let path = PathBuf::from_str(&root).unwrap().join("src/main.sw");
->>>>>>> 58e204d50 (better tests to measure cost of contract calls)
                         let byte_contents = std::fs::read(&path).unwrap();
                         let contents = String::from_utf8(byte_contents.clone()).unwrap();
 
                         let mut blocks = BTreeSet::new();
 
-<<<<<<< HEAD
                         for capture in find_blocks_regex.captures_iter(&contents) {
                             let name = capture.get(1).unwrap().as_str().to_string();
                             blocks.insert(name);
@@ -444,24 +383,6 @@ fn run_cmds(
                                     new_contents =
                                         remove_block_from_file(&new_contents, remove_block)
                                             .to_string();
-=======
-                        let regex = Regex::new(r#"START ([0-9a-zA-Z_]*)"#).unwrap();
-                        for capture in regex.captures_iter(&contents) {
-                            let name = capture.get(1).unwrap().as_str().to_string();
-                            blocks.insert(name);
-                        }
-                        
-                        for block in blocks.iter() {
-                            writeln!(snapshot, "> Block: {block}");
-
-                            let mut undo = UndoFiles::default();
-                            undo.contents.insert(path.clone(), byte_contents.clone());
-                            
-                            let mut new_contents = contents.clone();
-                            for remove_block in blocks.iter() {
-                                if remove_block != block {
-                                    new_contents = remove_block_from_file(&new_contents, &remove_block).to_string();
->>>>>>> 58e204d50 (better tests to measure cost of contract calls)
                                 }
                             }
 
@@ -469,7 +390,6 @@ fn run_cmds(
                             let _ = run_cmds(test_name, repo_root, root, cmds, snapshot);
                         }
                     }
-<<<<<<< HEAD
                     _ => {
                         panic!("`{cmd}` is not a supported repeat type.\nPossible types are: for-each-block.");
                     }
@@ -478,12 +398,6 @@ fn run_cmds(
             _ => {
                 panic!("`cmds` items can only be strings or inline tables.");
             }
-=======
-                    _ => todo!(),
-                }
-            }
-            _ => todo!(),
->>>>>>> 58e204d50 (better tests to measure cost of contract calls)
         }
     }
 
