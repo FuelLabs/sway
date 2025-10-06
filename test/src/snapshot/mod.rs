@@ -312,10 +312,10 @@ fn run_cmds(
                 let _ = writeln!(snapshot, "{}", last_output.unwrap_or_default());
             }
             toml::Value::Table(map) => {
-                let ty = map["repeat"].as_str().unwrap();
+                let repeat_type = map["repeat"].as_str().unwrap();
                 let cmds = map["cmds"].as_array().unwrap();
 
-                match ty {
+                match repeat_type {
                     "for-each-block" => {
                         fn remove_block_from_file(contents: &str, block_name: &str) -> String {
                             let block_regex = Regex::new(&format!("\\/\\* START {block_name} \\*\\/[.\\s\\S]+?END {block_name} \\*\\/")).unwrap();
@@ -354,10 +354,14 @@ fn run_cmds(
                             let _ = run_cmds(test_name, repo_root, root, cmds, snapshot);
                         }
                     }
-                    _ => todo!(),
+                    _ => {
+                        panic!("`{cmd}` is not a supported repeat type.\nPossible types are: for-each-block.");
+                    },
                 }
             }
-            _ => todo!(),
+            _ => {
+                panic!("`cmds` items can only be strings or inline tables.");
+            },
         }
     }
 
