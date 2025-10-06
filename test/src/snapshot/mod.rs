@@ -357,12 +357,12 @@ fn run_cmds(
                     }
                     _ => {
                         panic!("`{cmd}` is not a supported repeat type.\nPossible types are: for-each-block.");
-                    },
+                    }
                 }
             }
             _ => {
                 panic!("`cmds` items can only be strings or inline tables.");
-            },
+            }
         }
     }
 
