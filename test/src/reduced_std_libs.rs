@@ -75,7 +75,7 @@ fn get_modules_from_config(config_file: &Path) -> Result<Vec<String>> {
 fn copy_module(from: &Path, to: &Path) -> Result<()> {
     let from_metadata = match fs::metadata(from) {
         CoreOk(from_metadata) => from_metadata,
-        Err(err) => bail!("Cannot get metadata for module file {from:#?}: {err}",),
+        Err(err) => bail!("Cannot get metadata for module file {from:#?}: {err}"),
     };
     let to_metadata = fs::metadata(to);
 
