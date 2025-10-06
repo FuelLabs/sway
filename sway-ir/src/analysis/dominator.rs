@@ -1,6 +1,6 @@
 use crate::{
     block::Block, AnalysisResult, AnalysisResultT, AnalysisResults, BranchToWithArgs, Context,
-    Function, IrError, Pass, PassMutability, ScopedPass,
+    Function, IrError, Pass, PassMutability, ScopedPass, Value,
 };
 use indexmap::IndexSet;
 /// Dominator tree and related algorithms.
@@ -221,6 +221,34 @@ impl DomTree {
     /// Get i'th child of a given node
     pub fn child(&self, node: Block, i: usize) -> Option<Block> {
         self.0[&node].children.get(i).cloned()
+    }
+
+    /// Does `dominator` `dominate` `dominatee`?
+    pub fn dominates_instr(&self, context: &Context, dominator: Value, dominatee: Value) -> bool {
+        let dominator_inst = dominator.get_instruction(context).unwrap();
+        let dominatee_inst = dominatee.get_instruction(context).unwrap();
+
+        if dominator == dominatee {
+            return true;
+        }
+        let dominator_block = dominator_inst.parent;
+        let dominatee_block = dominatee_inst.parent;
+        if dominator_block == dominatee_block {
+            // Same block, but different instructions.
+            // Check the order of instructions in the block.
+            let mut found_dominator = false;
+            for instr in dominator_block.instruction_iter(context) {
+                if instr == dominator {
+                    found_dominator = true;
+                }
+                if instr == dominatee {
+                    return found_dominator;
+                }
+            }
+            false
+        } else {
+            self.dominates(dominator_block, dominatee_block)
+        }
     }
 }
 
