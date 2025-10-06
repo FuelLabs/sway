@@ -658,9 +658,7 @@ impl Parse for ty::TyVariableDecl {
         if let Some(call_path_tree) = &self
             .type_ascription
             .as_type_argument()
-            .unwrap()
-            .call_path_tree
-            .as_ref()
+            .and_then(|type_arg| type_arg.call_path_tree)
         {
             collect_call_path_tree(ctx, call_path_tree, &self.type_ascription);
         }
