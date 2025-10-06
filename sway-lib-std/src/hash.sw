@@ -1064,6 +1064,7 @@ where
 ///     assert(result == 0xa80f942f4112036dfc2da86daf6d2ef6ede3164dd56d1000eb82fa87c992450f);
 /// }
 /// ```
+#[cfg(experimental_new_hashing = false)]
 #[inline(never)]
 pub fn sha256_str_array<S>(param: S) -> b256 {
     // TODO: Replace `capacity` with a compile-time constant once
@@ -1073,6 +1074,34 @@ pub fn sha256_str_array<S>(param: S) -> b256 {
     //       const CAPACITY: u64 = get_initial_capacity::<S>();
     let capacity = get_initial_capacity::<S>();
     let mut hasher = Hasher::with_capacity(capacity);
+    hasher.write_str_array(param);
+    hasher.sha256()
+}
+
+/// Returns the `SHA-2-256` hash of `param`.
+/// This function is specific for string arrays.
+///
+/// # Examples
+///
+/// ```sway
+/// use std::hash::*;
+///
+/// fn foo() {
+///     let result = sha256_str_array(__to_str_array("Fuel"));
+///     assert(result == 0xa80f942f4112036dfc2da86daf6d2ef6ede3164dd56d1000eb82fa87c992450f);
+/// }
+/// ```
+#[cfg(experimental_new_hashing = true)]
+#[inline(never)]
+pub fn sha256_str_array<S>(param: S) -> b256 {
+    // TODO: Replace `capacity` with a compile-time constant once
+    //       `const fn` is implemented and const evaluation is
+    //       deferred for generic functions:
+    //
+    //       const CAPACITY: u64 = get_initial_capacity::<S>();
+    let capacity = get_initial_capacity::<S>();
+    let mut hasher = Hasher::with_capacity(capacity);
+    __size_of_str_array::<S>().hash(hasher);
     hasher.write_str_array(param);
     hasher.sha256()
 }

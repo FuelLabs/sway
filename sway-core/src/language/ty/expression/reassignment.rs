@@ -472,7 +472,7 @@ impl Spanned for ProjectionKind {
 }
 
 impl ProjectionKind {
-    pub(crate) fn pretty_print(&self) -> Cow<str> {
+    pub(crate) fn pretty_print(&self) -> Cow<'_, str> {
         match self {
             ProjectionKind::StructField {
                 name,

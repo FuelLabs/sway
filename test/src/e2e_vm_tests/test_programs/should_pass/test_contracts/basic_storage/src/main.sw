@@ -298,9 +298,6 @@ fn test_storage() {
     assert_eq(storage.c1.slot(), C1KEY);
 }
 
-// If these comparisons are done inline just above then it blows out the register allocator due to
-// all the ASM blocks.
-#[inline(never)]
 fn assert_streq<S1>(lhs: S1, rhs: str) {
-    assert(sha256_str_array(lhs) == sha256(rhs));
+    assert_eq(sha256_str_array(lhs), sha256(rhs));
 }

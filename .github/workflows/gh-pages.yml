@@ -11,9 +11,12 @@ on:
 env:
   RUST_VERSION: 1.86.0
 
+permissions:
+  contents: write
+
 jobs:
   deploy:
-    runs-on: buildjet-4vcpu-ubuntu-2204
+    runs-on: warp-ubuntu-latest-x64-2x # needs at least 100 gb hdd
     steps:
       - uses: actions/checkout@v3
 
@@ -23,7 +26,6 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
-          targets: wasm32-unknown-unknown
 
       - name: Install Forc
         run: cargo install --locked --debug --path ./forc

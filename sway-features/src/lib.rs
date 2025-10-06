@@ -171,7 +171,7 @@ features! {
     "https://github.com/FuelLabs/sway/issues/5063",
     const_generics = false,
     "https://github.com/FuelLabs/sway/issues/6860",
-    new_hashing = false,
+    new_hashing = true,
     "https://github.com/FuelLabs/sway/issues/7256",
 }
 
@@ -206,6 +206,7 @@ impl std::fmt::Display for Error {
 }
 
 impl ExperimentalFeatures {
+    #[allow(clippy::iter_over_hash_type)]
     pub fn parse_from_package_manifest(
         &mut self,
         experimental: &std::collections::HashMap<String, bool>,

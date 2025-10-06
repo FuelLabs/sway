@@ -1,8 +1,0 @@
-category = "fail"
-
-# check: $()if T::run() {
-# nextln: $()Multiple applicable items in scope.
-# nextln: $()Disambiguate the associated function for candidate #0
-# nextln: $()<T as A>::run
-# nextln: $()Disambiguate the associated function for candidate #1
-# nextln: $()<T as B>::run

@@ -25,49 +25,55 @@ exclude = ["examples/*", "swayfmt/test_macros", "forc-test/test_data"]
 
 [workspace.package]
 edition = "2021"
-version = "0.69.4"
+version = "0.70.0"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 homepage = "https://fuel.network/"
 license = "Apache-2.0"
 repository = "https://github.com/FuelLabs/sway"
+
+[workspace.lints.rust]
+mismatched_lifetime_syntaxes = "allow"
+
+[workspace.lints.clippy]
+iter_over_hash_type = "deny"
 
 [workspace.dependencies]
 #
 # Internal dependencies in order to propagate `workspace.version`
 #
 
-forc = { path = "forc/", version = "0.69.4" }
-forc-pkg = { path = "forc-pkg/", version = "0.69.4" }
-forc-test = { path = "forc-test/", version = "0.69.4" }
-forc-tracing = { path = "forc-tracing/", version = "0.69.4" }
-forc-util = { path = "forc-util/", version = "0.69.4" }
+forc = { path = "forc/", version = "0.70.0" }
+forc-pkg = { path = "forc-pkg/", version = "0.70.0" }
+forc-test = { path = "forc-test/", version = "0.70.0" }
+forc-tracing = { path = "forc-tracing/", version = "0.70.0" }
+forc-util = { path = "forc-util/", version = "0.70.0" }
 
 # Forc plugins
-forc-plugins = { path = "forc-plugins/", version = "0.69.4" }
-forc-client = { path = "forc-plugins/forc-client/", version = "0.69.4" }
-forc-crypto = { path = "forc-plugins/forc-crypto/", version = "0.69.4" }
-forc-debug = { path = "forc-plugins/forc-debug/", version = "0.69.4" }
-forc-doc = { path = "forc-plugins/forc-doc/", version = "0.69.4" }
-forc-fmt = { path = "forc-plugins/forc-fmt/", version = "0.69.4" }
-forc-lsp = { path = "forc-plugins/forc-lsp/", version = "0.69.4" }
-forc-mcp = { path = "forc-plugins/forc-mcp/", version = "0.69.4" }
-forc-migrate = { path = "forc-plugins/forc-migrate/", version = "0.69.4" }
-forc-publish = { path = "forc-plugins/forc-publish/", version = "0.69.4" }
-forc-tx = { path = "forc-plugins/forc-tx/", version = "0.69.4" }
+forc-plugins = { path = "forc-plugins/", version = "0.70.0" }
+forc-client = { path = "forc-plugins/forc-client/", version = "0.70.0" }
+forc-crypto = { path = "forc-plugins/forc-crypto/", version = "0.70.0" }
+forc-debug = { path = "forc-plugins/forc-debug/", version = "0.70.0" }
+forc-doc = { path = "forc-plugins/forc-doc/", version = "0.70.0" }
+forc-fmt = { path = "forc-plugins/forc-fmt/", version = "0.70.0" }
+forc-lsp = { path = "forc-plugins/forc-lsp/", version = "0.70.0" }
+forc-mcp = { path = "forc-plugins/forc-mcp/", version = "0.70.0" }
+forc-migrate = { path = "forc-plugins/forc-migrate/", version = "0.70.0" }
+forc-publish = { path = "forc-plugins/forc-publish/", version = "0.70.0" }
+forc-tx = { path = "forc-plugins/forc-tx/", version = "0.70.0" }
 
-sway-ast = { path = "sway-ast/", version = "0.69.4" }
-sway-core = { path = "sway-core/", version = "0.69.4" }
-sway-error = { path = "sway-error/", version = "0.69.4" }
-sway-features = { path = "sway-features/", version = "0.69.4" }
-sway-lsp = { path = "sway-lsp/", version = "0.69.4" }
-sway-parse = { path = "sway-parse/", version = "0.69.4" }
-sway-types = { path = "sway-types/", version = "0.69.4" }
-sway-utils = { path = "sway-utils/", version = "0.69.4" }
-swayfmt = { path = "swayfmt/", version = "0.69.4" }
+sway-ast = { path = "sway-ast/", version = "0.70.0" }
+sway-core = { path = "sway-core/", version = "0.70.0" }
+sway-error = { path = "sway-error/", version = "0.70.0" }
+sway-features = { path = "sway-features/", version = "0.70.0" }
+sway-lsp = { path = "sway-lsp/", version = "0.70.0" }
+sway-parse = { path = "sway-parse/", version = "0.70.0" }
+sway-types = { path = "sway-types/", version = "0.70.0" }
+sway-utils = { path = "sway-utils/", version = "0.70.0" }
+swayfmt = { path = "swayfmt/", version = "0.70.0" }
 
 # Sway IR
-sway-ir = { path = "sway-ir/", version = "0.69.4" }
-sway-ir-macros = { path = "sway-ir/sway-ir-macros", version = "0.69.4" }
+sway-ir = { path = "sway-ir/", version = "0.70.0" }
+sway-ir-macros = { path = "sway-ir/sway-ir-macros", version = "0.70.0" }
 
 #
 # External Fuel dependencies
@@ -99,6 +105,9 @@ fuel-crypto = "0.62"
 fuel-types = "0.62"
 fuel-tx = "0.62"
 fuel-vm = "0.62"
+
+# Dependencies for Fuel Telemetry
+fuel-telemetry = "0.1"
 
 # Dependencies from the `forc-wallet` repository:
 forc-wallet = "0.15"

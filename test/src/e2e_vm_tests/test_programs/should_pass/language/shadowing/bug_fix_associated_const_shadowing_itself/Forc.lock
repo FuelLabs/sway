@@ -1,0 +1,8 @@
+[[package]]
+name = "bug_fix_associated_const_shadowing_itself"
+source = "member"
+dependencies = ["test_asserts"]
+
+[[package]]
+name = "test_asserts"
+source = "path+from-root-55D3E4BEA82AEF30"

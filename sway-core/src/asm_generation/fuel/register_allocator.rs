@@ -14,6 +14,7 @@ use petgraph::{
     Direction::{Incoming, Outgoing},
 };
 use rustc_hash::{FxHashMap, FxHashSet};
+use std::cmp::Ordering;
 use std::collections::{hash_map, BTreeSet, HashMap};
 use sway_error::error::CompileError;
 use sway_ir::size_bytes_round_up_to_word_alignment;
@@ -498,13 +499,26 @@ pub(crate) fn color_interference_graph(
             }
         }
 
-        if let Some(&spill_reg_index) = pending.iter().max_by(|&&node1, &&node2| {
-            // At the moment, our spill priority function is just this,
-            // i.e., spill the register with more incoming interferences.
-            // (roughly indicating how long the interval is).
-            get_connected_incoming_neighbors(interference_graph, node1)
-                .count()
-                .cmp(&get_connected_incoming_neighbors(interference_graph, node2).count())
+        // At the moment, our spill priority function is just this,
+        // i.e., spill the register with more incoming interferences.
+        // (roughly indicating how long the interval is).
+        if let Some(spill_reg_index) = pending.iter().copied().max_by(|node1, node2| {
+            let node1_priority =
+                get_connected_incoming_neighbors(interference_graph, *node1).count();
+            let node2_priority =
+                get_connected_incoming_neighbors(interference_graph, *node2).count();
+            match node1_priority.cmp(&node2_priority) {
+                Ordering::Equal => {
+                    // Equal priorities are broken deterministically and do not alter the spill heuristic.
+                    let reg_cmp = interference_graph[*node1].cmp(&interference_graph[*node2]);
+                    if reg_cmp == Ordering::Equal {
+                        node1.index().cmp(&node2.index())
+                    } else {
+                        reg_cmp
+                    }
+                }
+                other => other,
+            }
         }) {
             let spill_reg = interference_graph[spill_reg_index].clone();
             spills.insert(spill_reg.clone());
@@ -740,11 +754,7 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
     let locals_size_bytes = size_bytes_round_up_to_word_alignment!(locals_size_bytes);
 
     // Determine the stack slots for each spilled register.
-    let spill_offsets_bytes: FxHashMap<VirtualRegister, u32> = spills
-        .iter()
-        .enumerate()
-        .map(|(i, reg)| (reg.clone(), (i * 8) as u32 + locals_size_bytes))
-        .collect();
+    let spill_offsets_bytes = spill_offsets(spills, locals_size_bytes);
 
     let spills_size = (8 * spills.len()) as u32;
     let new_locals_byte_size = locals_size_bytes + spills_size;
@@ -791,7 +801,7 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
                 inst_list: &mut Vec<Op>,
                 offset_bytes: u32,
             ) -> (VirtualRegister, VirtualImmediate12) {
-                assert!(offset_bytes % 8 == 0);
+                assert!(offset_bytes.is_multiple_of(8));
                 if offset_bytes <= compiler_constants::EIGHTEEN_BITS as u32 {
                     let offset_mov_instr = Op {
                         opcode: Either::Left(VirtualOp::MOVI(
@@ -877,7 +887,7 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
             for &spilled_use in use_registers.iter().filter(|r#use| spills.contains(r#use)) {
                 // Load the spilled register from its stack slot.
                 let offset_bytes = spill_offsets_bytes[spilled_use];
-                assert!(offset_bytes % 8 == 0);
+                assert!(offset_bytes.is_multiple_of(8));
                 if offset_bytes / 8 <= compiler_constants::TWELVE_BITS as u32 {
                     spilled.push(Op {
                         opcode: Either::Left(VirtualOp::LW(
@@ -916,7 +926,7 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
             for &spilled_def in def_registers.iter().filter(|def| spills.contains(def)) {
                 // Store the def register to its stack slot.
                 let offset_bytes = spill_offsets_bytes[spilled_def];
-                assert!(offset_bytes % 8 == 0);
+                assert!(offset_bytes.is_multiple_of(8));
                 if offset_bytes / 8 <= compiler_constants::TWELVE_BITS as u32 {
                     spilled.push(Op {
                         opcode: Either::Left(VirtualOp::SW(
@@ -951,4 +961,59 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
     }
 
     spilled
+}
+
+fn spill_offsets(
+    spills: &FxHashSet<VirtualRegister>,
+    locals_size_bytes: u32,
+) -> FxHashMap<VirtualRegister, u32> {
+    let mut spill_regs: Vec<_> = spills.iter().collect();
+    spill_regs.sort();
+    spill_regs
+        .into_iter()
+        .enumerate()
+        .map(|(i, reg)| (reg.clone(), (i * 8) as u32 + locals_size_bytes))
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rustc_hash::FxHashSet;
+
+    fn make_reg(name: &str) -> VirtualRegister {
+        VirtualRegister::Virtual(name.to_owned())
+    }
+
+    #[test]
+    fn spill_offsets_are_deterministic() {
+        let locals_size_bytes = 24u32;
+
+        let mut set_a = FxHashSet::default();
+        set_a.insert(make_reg("r1"));
+        set_a.insert(make_reg("r2"));
+        set_a.insert(make_reg("r3"));
+
+        let mut set_b = FxHashSet::default();
+        set_b.insert(make_reg("r3"));
+        set_b.insert(make_reg("r1"));
+        set_b.insert(make_reg("r2"));
+
+        let offsets_a = spill_offsets(&set_a, locals_size_bytes);
+        let offsets_b = spill_offsets(&set_b, locals_size_bytes);
+
+        assert_eq!(offsets_a, offsets_b);
+
+        let mut sorted: Vec<_> = offsets_a.into_iter().collect();
+        sorted.sort_by(|(reg_l, _), (reg_r, _)| reg_l.cmp(reg_r));
+        assert_eq!(
+            sorted,
+            vec![
+                (make_reg("r1"), locals_size_bytes),
+                (make_reg("r2"), locals_size_bytes + 8),
+                (make_reg("r3"), locals_size_bytes + 16),
+            ]
+        );
+        assert_eq!(offsets_b.len(), 3);
+    }
 }

@@ -2296,7 +2296,7 @@ lsp_capability_test!(
     test_fixtures_dir().join("auto_import/src/main.sw")
 );
 
-// TODO: Fix, has unnecessary completitions such as into and try_into Issue #7002
+// TODO: Fix, has unnecessary completions such as into and try_into Issue #7002
 // lsp_capability_test!(
 //     completion,
 //     lsp::completion_request,

@@ -31,7 +31,7 @@ clap_complete.workspace = true
 clap_complete_fig.workspace = true
 forc-pkg.workspace = true
 forc-test.workspace = true
-forc-tracing.workspace = true
+forc-tracing = { workspace = true, features = ["telemetry"] }
 forc-util = { workspace = true, features = ["tx"] }
 fs_extra.workspace = true
 fuel-abi-types.workspace = true
@@ -57,3 +57,7 @@ whoami.workspace = true
 [dev-dependencies]
 completest-pty.workspace = true
 rexpect.workspace = true
+
+[lints]
+workspace = true
+

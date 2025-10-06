@@ -9,6 +9,7 @@ To achieve that, follow these guidelines:
 - Do not use `std` just to conveniently get an arbitrary type or trait. E.g., if a test requires an arbitrary type or trait, go with `struct Dummy {}` or `trait Trait {}` instead of importing `Option` or `Hash`.
 - If `std` functionality is needed, import the minimal [reduced `std` library](reduced_std_libs/README.md) that provides the functionality.
 - Import the full `std` only if the provided [reduced `std` libraries](reduced_std_libs/README.md) do not provide required types.
+- If a test uses the reduced `sway-lib-std-assert` only because of the `assert` functions, and does not need `std` otherwise, instead of depending on `std`, use the [`test_asserts` library](test_programs/test_asserts/).
 
 Additionally, try to meaningfully group tests with high cohesion, rather then splitting them into several tests. Having only one test project reduces compilation time. E.g., instead of having two tests `test_some_feature_for_option_a` and `test_some_feature_for_option_b`, try having just `test_some_feature` and the two cases tested in, e.g., modules in that one test. Makes sure, though, that such test groupings are meaningful. We don't want to end up having artificially combined tests.
 

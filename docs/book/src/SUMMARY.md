@@ -78,6 +78,7 @@
   - [Differences From Rust](./reference/rust_differences.md)
   - [Contributing To Sway](./reference/contributing_to_sway.md)
   - [Keywords](./reference/keywords.md)
+  - [Experimental Features](./reference/experimental_features.md)
 - [Forc Reference](./forc/index.md)
   - [Manifest Reference](./forc/manifest_reference.md)
   - [Workspaces](./forc/workspaces.md)

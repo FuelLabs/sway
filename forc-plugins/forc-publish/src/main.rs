@@ -26,7 +26,8 @@ pub struct Opt {
 
 #[tokio::main]
 async fn main() {
-    init_tracing_subscriber(TracingSubscriberOptions::default());
+    let tracing_options = TracingSubscriberOptions::default();
+    init_tracing_subscriber(tracing_options.clone());
 
     if let Err(err) = run().await {
         println!();
