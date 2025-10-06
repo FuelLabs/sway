@@ -95,9 +95,9 @@ fuel-core-types = { version = "0.46", default-features = false }
 
 # Dependencies from the `fuels-rs` repository:
 
-fuels = "0.74"
-fuels-core = "0.74"
-fuels-accounts = "0.74"
+fuels = "0.75"
+fuels-core = "0.75"
+fuels-accounts = "0.75"
 
 # Dependencies from the `fuel-vm` repository:
 fuel-asm = "0.62"
