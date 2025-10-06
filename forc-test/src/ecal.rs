@@ -6,11 +6,13 @@ use fuel_vm::{
 // ssize_t write(int fd, const void buf[.count], size_t count);
 pub const WRITE_SYSCALL: u64 = 1000;
 pub const FFLUSH_SYSCALL: u64 = 1001;
+pub const RANDOM_SYSCALL: u64 = 1002;
 
 #[derive(Debug, Clone)]
 pub enum Syscall {
     Write { fd: u64, bytes: Vec<u8> },
     Fflush { fd: u64 },
+    Random { dest_addr: u64, count: u64, bytes: Vec<u8> },
     Unknown { ra: u64, rb: u64, rc: u64, rd: u64 },
 }
 
@@ -35,6 +37,10 @@ impl Syscall {
                 // Don't close the fd
                 std::mem::forget(f);
             }
+            Syscall::Random { .. } => {
+                // Random generation happens in the ecal handler
+                // This is just for applying captured syscalls
+            }
             Syscall::Unknown { ra, rb, rc, rd } => {
                 println!("Unknown ecal: {ra} {rb} {rc} {rd}");
             }
@@ -52,6 +58,8 @@ impl Syscall {
 ///
 /// Supported syscalls:
 /// 1000 - write(fd: u64, buf: raw_ptr, count: u64) -> u64
+/// 1001 - fflush(fd: u64)
+/// 1002 - random(dest: raw_ptr, count: u64)
 #[derive(Debug, Clone)]
 pub struct EcalSyscallHandler {
     pub apply: bool,
@@ -110,6 +118,22 @@ impl EcalHandler for EcalSyscallHandler {
             FFLUSH_SYSCALL => {
                 let fd = regs[b.to_u8() as usize];
                 Syscall::Fflush { fd }
+            }
+            RANDOM_SYSCALL => {
+                use rand::Rng;
+                let dest_addr = regs[b.to_u8() as usize];
+                let count = regs[c.to_u8() as usize];
+
+                // Generate random bytes
+                let random_bytes: Vec<u8> = (0..count)
+                    .map(|_| rand::thread_rng().gen::<u8>())
+                    .collect();
+
+                // Write to VM memory
+                let mem_slice = vm.memory_mut().write_noownerchecks(dest_addr, count)?;
+                mem_slice.copy_from_slice(&random_bytes);
+
+                Syscall::Random { dest_addr, count, bytes: random_bytes }
             }
             _ => {
                 let ra = regs[a.to_u8() as usize];
