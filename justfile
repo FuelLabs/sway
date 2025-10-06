@@ -19,6 +19,10 @@ update-fuel-dependencies:
 update-contract-ids:
     bash ./test/update-contract-ids.sh
 
+[group('automation')]
+bisect-forc path command:
+    bash ./scripts/bisect-forc/bisect-forc.sh "{{path}}" "{{command}}"
+
 [group('benchmark')]
 benchmark:
     bash ./benchmark.sh
