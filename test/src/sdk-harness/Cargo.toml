@@ -10,9 +10,9 @@ publish = false
 assert_matches = "1.5"
 
 # Dependencies from the `fuel-core` repository:
-fuel-core = { version = "0.44", default-features = false }
+fuel-core = { version = "0.46", default-features = false }
 # Using full semver as the workspace Cargo.toml (see the comment there) 
-fuel-core-client = { version = "0.44.0", default-features = false }
+fuel-core-client = { version = "0.46.0", default-features = false }
 
 # Dependencies from the `fuel-vm` repository:
 fuel-vm = { version = "0.62", features = ["random"] }
