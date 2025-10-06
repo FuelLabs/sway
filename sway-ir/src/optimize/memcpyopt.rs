@@ -1047,8 +1047,6 @@ fn copy_prop_reverse(
 ) -> Result<bool, IrError> {
     let mut modified = false;
 
-    return Ok(modified);
-
     // let's first compute the definitions and uses of every symbol.
     let mut stores_map: FxHashMap<Symbol, Vec<Value>> = FxHashMap::default();
     let mut loads_map: FxHashMap<Symbol, Vec<Value>> = FxHashMap::default();
