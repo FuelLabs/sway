@@ -23,7 +23,13 @@ pub async fn determine_missing_contracts(
     account: &Wallet<Unlocked<PrivateKeySigner>>,
 ) -> Result<Vec<ContractId>> {
     let tb = call
-        .transaction_builder(*tx_policies, *variable_output_policy, consensus_params, call.inputs.clone(), account)
+        .transaction_builder(
+            *tx_policies,
+            *variable_output_policy,
+            consensus_params,
+            call.inputs.clone(),
+            account,
+        )
         .expect("Failed to initialize transaction builder");
 
     let tx = call

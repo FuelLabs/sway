@@ -166,7 +166,13 @@ pub async fn call_function(
     let tb = call
         .clone()
         .with_external_contracts(external_contracts)
-        .transaction_builder(tx_policies, variable_output_policy, &consensus_params, call.inputs.clone(), &wallet)
+        .transaction_builder(
+            tx_policies,
+            variable_output_policy,
+            &consensus_params,
+            call.inputs.clone(),
+            &wallet,
+        )
         .map_err(|e| anyhow!("Failed to initialize transaction builder: {e}"))?;
 
     #[cfg_attr(test, allow(unused_variables))]
