@@ -116,6 +116,12 @@ pub async fn call_function(
         });
     let log_decoder = LogDecoder::new(log_formatters_lookup(vec![], contract_id), error_codes);
 
+    // Execute the call based on execution mode
+    let client = FuelClient::new(wallet.provider().url())
+        .map_err(|e| anyhow!("Failed to create client: {e}"))?;
+    let consensus_params = wallet.provider().consensus_parameters().await?;
+    let chain_id = consensus_params.chain_id();
+
     // Get external contracts (either provided or auto-detected)
     let external_contracts = match external_contracts {
         Some(contracts) if contracts.first().is_some_and(|s| s.is_empty()) => vec![],
@@ -140,6 +146,7 @@ pub async fn call_function(
                 wallet.provider(),
                 &tx_policies,
                 &variable_output_policy,
+                &consensus_params,
                 &log_decoder,
                 &wallet,
             )
@@ -156,17 +163,10 @@ pub async fn call_function(
         }
     };
 
-    // Execute the call based on execution mode
-    let client = FuelClient::new(wallet.provider().url())
-        .map_err(|e| anyhow!("Failed to create client: {e}"))?;
-    let consensus_params = wallet.provider().consensus_parameters().await?;
-    let chain_id = consensus_params.chain_id();
-
     let tb = call
         .clone()
         .with_external_contracts(external_contracts)
-        .transaction_builder(tx_policies, variable_output_policy, &wallet)
-        .await
+        .transaction_builder(tx_policies, variable_output_policy, &consensus_params, call.inputs.clone(), &wallet)
         .map_err(|e| anyhow!("Failed to initialize transaction builder: {e}"))?;
 
     #[cfg_attr(test, allow(unused_variables))]
