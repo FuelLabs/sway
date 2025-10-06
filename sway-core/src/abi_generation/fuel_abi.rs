@@ -334,6 +334,7 @@ pub fn generate_program_abi(
                 messages_types: Some(messages_types),
                 configurables: Some(configurables),
                 error_codes: Some(error_codes),
+                panicking_calls: None,
             })
         }
         TyProgramKind::Script { main_function, .. } => {
@@ -363,6 +364,7 @@ pub fn generate_program_abi(
                 messages_types: Some(messages_types),
                 configurables: Some(configurables),
                 error_codes: Some(error_codes),
+                panicking_calls: None,
             })
         }
         TyProgramKind::Predicate { main_function, .. } => {
@@ -392,6 +394,7 @@ pub fn generate_program_abi(
                 messages_types: Some(messages_types),
                 configurables: Some(configurables),
                 error_codes: Some(error_codes),
+                panicking_calls: None,
             })
         }
         TyProgramKind::Library { .. } => {
@@ -411,6 +414,7 @@ pub fn generate_program_abi(
                 messages_types: Some(messages_types),
                 configurables: None,
                 error_codes: Some(error_codes),
+                panicking_calls: None,
             })
         }
     })?;
@@ -654,6 +658,7 @@ fn generate_concrete_type_declaration(
         concrete_type_id: concrete_type_id.clone(),
         metadata_type_id,
         type_arguments,
+        alias_of: Some(concrete_type_id.clone()),
     };
 
     concrete_types.push(concrete_type_decl);
@@ -818,6 +823,7 @@ fn generate_error_codes(panic_occurrences: &PanicOccurrences) -> BTreeMap<u64, E
                         file: panic_occurrence.loc.file.clone(),
                         line: panic_occurrence.loc.loc.line as u64,
                         column: panic_occurrence.loc.loc.col as u64,
+                        function: "".to_string(),
                     },
                     log_id: panic_occurrence
                         .log_id
@@ -931,6 +937,7 @@ impl TypeId {
                                     x.type_argument.type_id(),
                                     &mut new_metadata_types_to_add,
                                 )?,
+                            offset: None,
                         })
                     })
                     .collect::<Result<Vec<_>, _>>()?;
@@ -984,6 +991,7 @@ impl TypeId {
                                     x.type_argument.type_id(),
                                     &mut new_metadata_types_to_add,
                                 )?,
+                            offset: None,
                         })
                     })
                     .collect::<Result<Vec<_>, _>>()?;
@@ -1025,6 +1033,7 @@ impl TypeId {
                             elem_ty.type_id(),
                             metadata_types_to_add,
                         )?,
+                        offset: None,
                     }])
                 } else {
                     unreachable!();
@@ -1060,6 +1069,7 @@ impl TypeId {
                             elem_ty.type_id(),
                             metadata_types_to_add,
                         )?,
+                        offset: None,
                     }])
                 } else {
                     unreachable!();
@@ -1102,6 +1112,7 @@ impl TypeId {
                                     x.type_id(),
                                     metadata_types_to_add,
                                 )?,
+                                offset: None,
                             })
                         })
                         .collect::<Result<Vec<_>, _>>()?;
@@ -1248,6 +1259,7 @@ impl TypeId {
                                     p.type_id,
                                     metadata_types_to_add,
                                 )?,
+                                offset: None,
                             })
                         })
                         .collect::<Result<Vec<_>, _>>()?
@@ -1295,6 +1307,7 @@ impl TypeId {
                                     p.type_id,
                                     &mut new_metadata_types_to_add,
                                 )?,
+                                offset: None,
                             })
                         })
                         .collect::<Result<Vec<_>, _>>()?;
@@ -1350,6 +1363,7 @@ impl TypeId {
                                     p.type_id,
                                     &mut new_metadata_types_to_add,
                                 )?,
+                                offset: None,
                             })
                         })
                         .collect::<Result<Vec<_>, _>>()?;
