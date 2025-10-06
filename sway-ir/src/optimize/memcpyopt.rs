@@ -1033,7 +1033,7 @@ pub const MEMCPYPROP_REVERSE_NAME: &str = "memcpyprop_reverse";
 pub fn create_memcpyprop_reverse_pass() -> Pass {
     Pass {
         name: MEMCPYPROP_REVERSE_NAME,
-        descr: "Memcpyprop Reverse: Copy propagation of memcpy instructions".into(),
+        descr: "Memcpyprop Reverse: Copy propagation of memcpy instructions",
         deps: vec![DOMINATORS_NAME],
         runner: ScopedPass::FunctionPass(PassMutability::Transform(copy_prop_reverse)),
     }
@@ -1095,12 +1095,12 @@ fn copy_prop_reverse(
             _ => continue,
         };
 
-        let all_uses_dominated = loads_map.get(&dst_sym).map_or(true, |uses| {
+        let all_uses_dominated = loads_map.get(&dst_sym).is_none_or(|uses| {
             uses.iter()
-                .all(|use_inst| dom_tree.dominates_instr(&context, inst, *use_inst))
-        }) && loads_map.get(&src_sym).map_or(true, |uses| {
+                .all(|use_inst| dom_tree.dominates_instr(context, inst, *use_inst))
+        }) && loads_map.get(&src_sym).is_none_or(|uses| {
             uses.iter()
-                .all(|use_inst| dom_tree.dominates_instr(&context, inst, *use_inst))
+                .all(|use_inst| dom_tree.dominates_instr(context, inst, *use_inst))
         });
 
         if all_uses_dominated {
@@ -1141,12 +1141,12 @@ fn copy_prop_reverse(
         let mut changed = true;
         while changed {
             changed = false;
-            for (src, dst) in src_to_dst.clone() {
-                if let Some(next_dst) = src_to_dst.get(&dst) {
-                    src_to_dst.insert(src, *next_dst);
+            src_to_dst.clone().iter().for_each(|(src, dst)| {
+                if let Some(next_dst) = src_to_dst.get(dst) {
+                    src_to_dst.insert(*src, *next_dst);
                     changed = true;
                 }
-            }
+            });
         }
     }
 
@@ -1158,8 +1158,8 @@ fn copy_prop_reverse(
                 op: InstOp::GetLocal(sym),
                 ..
             } => {
-                if let Some(dst) = src_to_dst.get(&Symbol::Local(sym.clone())) {
-                    repl_locals.push((inst, dst.clone()));
+                if let Some(dst) = src_to_dst.get(&Symbol::Local(*sym)) {
+                    repl_locals.push((inst, *dst));
                 }
             }
             _ => {
