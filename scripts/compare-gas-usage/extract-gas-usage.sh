@@ -2,6 +2,7 @@
 
 # This script extracts full test names and test gas usage from a `forc test` output.
 # Usage: `forc test | test_gas_usage.sh`.
+# if $1 is not empty it will be appended as a new column to the csv
 
 current_suite=""
 results=()
@@ -19,7 +20,12 @@ while IFS= read -r line; do
         # printf 'Test: %s\n' "$test_name"
         gas="${BASH_REMATCH[2]}"
         # printf 'Gas: %s\n' "$gas"
-        results+=("${current_suite}::${test_name},${gas}")
+
+        if [ "$1" = "" ]; then
+            results+=("${current_suite}::${test_name},${gas}")
+        else
+            results+=("${current_suite}::${test_name},${gas},$1")
+        fi
     fi
 done
 

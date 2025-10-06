@@ -1,6 +1,9 @@
 cmds = [
+    #"echo This test will first run all test together. In this way we can measure the cost of contract method selection.",
+    #"echo After that, each test will be run isolated, giving a more precise cost of encoding/decoding boilerplate for each type.",
     "forc test --path {root} --release --experimental const_generics",
     { repeat = "for-each-block", cmds = [
+        "replace-file src/main.sw \"fn cost_of_in\" \"fn isolated_cost_of_in\"",
         "forc test --path {root} --release --experimental const_generics"
     ] }
 ]

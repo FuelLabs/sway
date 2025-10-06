@@ -35,6 +35,21 @@ benchmark-tests:
 collect-gas-usage:
     cargo r -p test --release -- --verbose --forc-test-only | ./scripts/compare-gas-usage/extract-gas-usage.sh
 
+[group('benchmark')]
+collect-historic-gas-usage path:
+    #! /bin/bash
+    mkdir -p target
+    rm target/a.csv
+    rm target/a.html
+    rm target/report.html
+    echo "test,gas,hash" > target/a.csv
+    for HASH in `git log --format='%H' -- {{path}}`; do
+        TIMESTAMP=$(git show -s --format='%as-%ct-%H' "$HASH")
+        git --no-pager show "$HASH:{{path}}" | bash -c "scripts/compare-gas-usage/extract-gas-usage.sh $TIMESTAMP" >> target/a.csv
+        ./scripts/csv2html/csv2html.sh target/a.csv >> target/a.html
+    done
+    ./scripts/csv2html/htmltable2report.sh target/a.html > target/report.html
+
 [group('build')]
 build-prism:
     cd ./scripts/prism && ./build.sh

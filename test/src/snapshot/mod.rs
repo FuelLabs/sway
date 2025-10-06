@@ -180,6 +180,32 @@ fn run_cmds(
                             last_output = Some(new_output);
                         }
                         continue;
+                    } else if let Some(args) = cmd.strip_prefix("replace-file ") {
+                        let Some((path, args)) = args.trim().split_once(" ") else {
+                            panic!("replace needs three arguments: file from to");
+                        };
+                        let Some(from) = args.trim().strip_prefix("\"") else {
+                            panic!("replace arguments must be quoted");
+                        };
+                        let Some((from, args)) = from.split_once("\"") else {
+                            panic!("replace arguments must be quoted");
+                        };
+
+                        let Some(to) = args.trim().strip_prefix("\"") else {
+                            panic!("replace arguments must be quoted");
+                        };
+                        let Some((to, _)) = to.split_once("\"") else {
+                            panic!("replace arguments must be quoted");
+                        };
+
+                        let path = PathBuf::from_str(&root).unwrap().join(path);
+
+                        let contents = std::fs::read_to_string(&path).unwrap();
+                        let contents = contents.replace(from, to);
+                        std::fs::write(path, contents).unwrap();
+
+                        // last_output = Some(output.replace(from, to));
+                        continue;
                     } else if let Some(args) = cmd.strip_prefix("filter-fn ") {
                         if let Some(output) = last_output.take() {
                             let (name, fns) = args.trim().split_once(" ").unwrap();
