@@ -2,7 +2,7 @@
 mod code_block;
 pub mod declaration;
 mod expression;
-mod include_statement;
+mod mod_statement;
 mod module;
 mod program;
 mod use_statement;
@@ -10,7 +10,7 @@ mod use_statement;
 pub use code_block::*;
 pub use declaration::*;
 pub use expression::*;
-pub use include_statement::IncludeStatement;
+pub use mod_statement::ModStatement;
 pub use module::{ModuleEvaluationOrder, ParseModule, ParseSubmodule};
 pub use program::{ParseProgram, TreeType};
 use sway_error::handler::ErrorEmitted;
@@ -62,7 +62,7 @@ pub enum AstNodeContent {
     /// Any type of expression, of which there are quite a few. See [Expression] for more details.
     Expression(Expression),
     /// A statement of the form `mod foo::bar;` which imports/includes another source file.
-    IncludeStatement(IncludeStatement),
+    ModStatement(ModStatement),
     /// A malformed statement.
     ///
     /// Used for parser recovery when we cannot form a more specific node.
@@ -80,7 +80,7 @@ impl PartialEqWithEngines for AstNodeContent {
                 lhs.eq(rhs, ctx)
             }
             (AstNodeContent::Expression(lhs), AstNodeContent::Expression(rhs)) => lhs.eq(rhs, ctx),
-            (AstNodeContent::IncludeStatement(lhs), AstNodeContent::IncludeStatement(rhs)) => {
+            (AstNodeContent::ModStatement(lhs), AstNodeContent::ModStatement(rhs)) => {
                 lhs.eq(rhs)
             }
             (AstNodeContent::Error(lhs, ..), AstNodeContent::Error(rhs, ..)) => lhs.eq(rhs),

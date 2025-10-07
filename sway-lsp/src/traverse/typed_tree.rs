@@ -642,16 +642,16 @@ impl Parse for ty::TyStatement {
                     ImportType::Star => {}
                 }
             }
-            ty::TyStatement::Include(
-                include_statement @ ty::TyIncludeStatement {
+            ty::TyStatement::Mod(
+                mod_statement @ ty::TyModStatement {
                     span: _,
                     mod_name,
                     visibility: _,
                 },
             ) => {
                 if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(mod_name)) {
-                    token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedIncludeStatement(
-                        include_statement.clone(),
+                    token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedModStatement(
+                        mod_statement.clone(),
                     ));
                     if let Some(span) = ctx
                         .namespace

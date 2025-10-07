@@ -32,7 +32,7 @@ impl ty::TyAstNode {
             AstNodeContent::UseStatement(stmt) => {
                 collect_use_statement(handler, engines, ctx, &stmt);
             }
-            AstNodeContent::IncludeStatement(_i) => (),
+            AstNodeContent::ModStatement(_i) => (),
             AstNodeContent::Declaration(decl) => ty::TyDecl::collect(handler, engines, ctx, decl)?,
             AstNodeContent::Expression(expr) => {
                 ty::TyExpression::collect(handler, engines, ctx, &expr)?
@@ -64,8 +64,8 @@ impl ty::TyAstNode {
                         import_type: stmt.import_type,
                     }))
                 }
-                AstNodeContent::IncludeStatement(i) => ty::TyAstNodeContent::Statement(
-                    ty::TyStatement::Include(ty::TyIncludeStatement {
+                AstNodeContent::ModStatement(i) => ty::TyAstNodeContent::Statement(
+                    ty::TyStatement::Mod(ty::TyModStatement {
                         mod_name: i.mod_name,
                         span: i.span,
                         visibility: i.visibility,

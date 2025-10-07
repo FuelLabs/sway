@@ -832,7 +832,7 @@ impl ty::TySubmodule {
                 }
                 AstNodeContent::Declaration(_) => {}
                 AstNodeContent::Expression(_) => {}
-                AstNodeContent::IncludeStatement(_) => {}
+                AstNodeContent::ModStatement(_) => {}
                 AstNodeContent::Error(_, _) => {}
             }
         }

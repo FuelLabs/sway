@@ -122,8 +122,8 @@ pub fn item_to_ast_nodes(
                 ));
             }
 
-            let incl_stmt = submodule_to_include_statement(&submodule);
-            vec![AstNodeContent::IncludeStatement(incl_stmt)]
+            let mod_stmt = submodule_to_mod_statement(&submodule);
+            vec![AstNodeContent::ModStatement(mod_stmt)]
         }
         ItemKind::Use(item_use) => item_use_to_use_statements(context, handler, item_use)?
             .into_iter()
@@ -4647,8 +4647,8 @@ fn statement_let_to_ast_nodes_unfold(
     Ok(ast_nodes)
 }
 
-fn submodule_to_include_statement(submodule: &Submodule) -> IncludeStatement {
-    IncludeStatement {
+fn submodule_to_mod_statement(submodule: &Submodule) -> ModStatement {
+    ModStatement {
         span: submodule.span(),
         mod_name: submodule.name.clone(),
         visibility: pub_token_opt_to_visibility(submodule.visibility.clone()),

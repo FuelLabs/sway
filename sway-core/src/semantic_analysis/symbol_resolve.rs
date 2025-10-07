@@ -64,7 +64,7 @@ impl ResolveSymbols for AstNode {
             AstNodeContent::UseStatement(_) => {}
             AstNodeContent::Declaration(decl) => decl.resolve_symbols(handler, ctx),
             AstNodeContent::Expression(expr) => expr.resolve_symbols(handler, ctx),
-            AstNodeContent::IncludeStatement(_) => {}
+            AstNodeContent::ModStatement(_) => {}
             AstNodeContent::Error(_, _) => {}
         }
     }

@@ -1,7 +1,7 @@
 use crate::{
     decl_engine::{DeclMapping, MaterializeConstGenerics, ReplaceDecls},
     engine_threading::*,
-    language::{parsed, Visibility, ty::{TyExpression, TyVariableDecl}},
+    language::{parsed, Visibility, ty::{TyExpression, TyVariableDecl, VariableMutability}},
     semantic_analysis::{
         TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext, TypeCheckFinalization,
         TypeCheckFinalizationContext,
@@ -17,13 +17,13 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{ident::Ident as BaseIdent, Ident, Named, Span, Spanned};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct TyIncludeStatement {
+pub struct TyModStatement {
     pub span: Span,
     pub visibility: Visibility,
     pub mod_name: BaseIdent,
 }
 
-impl Spanned for TyIncludeStatement {
+impl Spanned for TyModStatement {
     fn span(&self) -> Span {
         self.span.clone()
     }
@@ -58,7 +58,7 @@ impl Spanned for TyUseStatement {
 pub enum TyStatement {
     Let(TyLetBinding),
     Use(TyUseStatement),
-    Include(TyIncludeStatement),
+    Mod(TyModStatement),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -88,7 +88,7 @@ impl PartialEqWithEngines for TyStatement {
         match (self, other) {
             (TyStatement::Let(lhs), TyStatement::Let(rhs)) => lhs.eq(rhs, ctx),
             (TyStatement::Use(lhs), TyStatement::Use(rhs)) => lhs == rhs,
-            (TyStatement::Include(lhs), TyStatement::Include(rhs)) => lhs == rhs,
+            (TyStatement::Mod(lhs), TyStatement::Mod(rhs)) => lhs == rhs,
             _ => false,
         }
     }
@@ -99,7 +99,7 @@ impl HashWithEngines for TyStatement {
         match self {
             TyStatement::Let(binding) => binding.hash(state, engines),
             TyStatement::Use(stmt) => stmt.hash(state),
-            TyStatement::Include(stmt) => stmt.hash(state),
+            TyStatement::Mod(stmt) => stmt.hash(state),
         }
     }
 }
@@ -108,7 +108,7 @@ impl SubstTypes for TyStatement {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         match self {
             TyStatement::Let(binding) => binding.subst(ctx),
-            TyStatement::Use(_) | TyStatement::Include(_) => HasChanges::No,
+            TyStatement::Use(_) | TyStatement::Mod(_) => HasChanges::No,
         }
     }
 }
@@ -122,7 +122,7 @@ impl ReplaceDecls for TyStatement {
     ) -> Result<bool, ErrorEmitted> {
         match self {
             TyStatement::Let(binding) => binding.value.replace_decls(decl_mapping, handler, ctx),
-            TyStatement::Use(_) | TyStatement::Include(_) => Ok(false),
+            TyStatement::Use(_) | TyStatement::Mod(_) => Ok(false),
         }
     }
 }
@@ -135,7 +135,7 @@ impl TypeCheckAnalysis for TyStatement {
     ) -> Result<(), ErrorEmitted> {
         match self {
             TyStatement::Let(binding) => binding.value.type_check_analyze(handler, ctx)?,
-            TyStatement::Use(_) | TyStatement::Include(_) => {}
+            TyStatement::Use(_) | TyStatement::Mod(_) => {}
         }
         Ok(())
     }
@@ -149,7 +149,7 @@ impl TypeCheckFinalization for TyStatement {
     ) -> Result<(), ErrorEmitted> {
         match self {
             TyStatement::Let(binding) => binding.value.type_check_finalize(handler, ctx)?,
-            TyStatement::Use(_) | TyStatement::Include(_) => {}
+            TyStatement::Use(_) | TyStatement::Mod(_) => {}
         }
         Ok(())
     }
@@ -172,7 +172,7 @@ impl CollectTypesMetadata for TyStatement {
                 );
                 Ok(metadata)
             }
-            TyStatement::Use(_) | TyStatement::Include(_) => Ok(vec![]),
+            TyStatement::Use(_) | TyStatement::Mod(_) => Ok(vec![]),
         }
     }
 }
@@ -209,7 +209,7 @@ impl MaterializeConstGenerics for TyStatement {
                 }
                 Ok(())
             }
-            TyStatement::Use(_) | TyStatement::Include(_) => Ok(()),
+            TyStatement::Use(_) | TyStatement::Mod(_) => Ok(()),
         }
     }
 }

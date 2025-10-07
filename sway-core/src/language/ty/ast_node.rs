@@ -104,7 +104,7 @@ impl UpdateConstantExpression for TyAstNode {
                         .value
                         .update_constant_expression(engines, implementing_type);
                 }
-                TyStatement::Use(_) | TyStatement::Include(_) => {}
+                TyStatement::Use(_) | TyStatement::Mod(_) => {}
             },
             TyAstNodeContent::Expression(ref mut expr) => {
                 expr.update_constant_expression(engines, implementing_type)
@@ -339,7 +339,7 @@ impl TyAstNode {
                         .value
                         .check_deprecated(engines, handler, allow_deprecated);
                 }
-                TyStatement::Use(_) | TyStatement::Include(_) => {}
+                TyStatement::Use(_) | TyStatement::Mod(_) => {}
             },
             TyAstNodeContent::Error(_, _) => {}
         }

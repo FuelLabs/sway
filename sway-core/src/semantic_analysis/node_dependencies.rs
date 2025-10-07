@@ -268,16 +268,16 @@ fn depends_on(
 ) -> bool {
     match (&dependant_node.content, &dependee_node.content) {
         // Include statements first.
-        (AstNodeContent::IncludeStatement(_), AstNodeContent::IncludeStatement(_)) => false,
-        (_, AstNodeContent::IncludeStatement(_)) => true,
+        (AstNodeContent::ModStatement(_), AstNodeContent::ModStatement(_)) => false,
+        (_, AstNodeContent::ModStatement(_)) => true,
 
         // Use statements next.
-        (AstNodeContent::IncludeStatement(_), AstNodeContent::UseStatement(_)) => false,
+        (AstNodeContent::ModStatement(_), AstNodeContent::UseStatement(_)) => false,
         (AstNodeContent::UseStatement(_), AstNodeContent::UseStatement(_)) => false,
         (_, AstNodeContent::UseStatement(_)) => true,
 
         // Then declarations, ordered using the dependencies list.
-        (AstNodeContent::IncludeStatement(_), AstNodeContent::Declaration(_)) => false,
+        (AstNodeContent::ModStatement(_), AstNodeContent::Declaration(_)) => false,
         (AstNodeContent::UseStatement(_), AstNodeContent::Declaration(_)) => false,
         (AstNodeContent::Declaration(dependant), AstNodeContent::Declaration(dependee)) => {
             match (decl_name(engines, dependant), decl_name(engines, dependee)) {
@@ -769,7 +769,7 @@ impl Dependencies {
 
             // No deps from these guys.
             AstNodeContent::UseStatement(_)
-            | AstNodeContent::IncludeStatement(_)
+            | AstNodeContent::ModStatement(_)
             | AstNodeContent::Error(_, _) => self,
         }
     }

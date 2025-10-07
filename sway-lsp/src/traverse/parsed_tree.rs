@@ -24,7 +24,7 @@ use sway_core::{
             ConstGenericDeclaration, ConstantDeclaration, Declaration, DelineatedPathExpression,
             EnumDeclaration, EnumVariant, Expression, ExpressionKind, ForLoopExpression,
             FunctionApplicationExpression, FunctionDeclaration, FunctionParameter, IfExpression,
-            ImplItem, ImplSelfOrTrait, ImportType, IncludeStatement, IntrinsicFunctionExpression,
+            ImplItem, ImplSelfOrTrait, ImportType, ModStatement, IntrinsicFunctionExpression,
             LazyOperatorExpression, MatchExpression, MethodApplicationExpression, MethodName,
             ParseModule, ParseProgram, ParseSubmodule, QualifiedPathType, ReassignmentExpression,
             ReassignmentTarget, RefExpression, Scrutinee, StorageAccessExpression,
@@ -112,7 +112,7 @@ impl Parse for AstNode {
                 expression.parse(ctx);
             }
             AstNodeContent::UseStatement(use_statement) => use_statement.parse(ctx),
-            AstNodeContent::IncludeStatement(include_statement) => include_statement.parse(ctx),
+            AstNodeContent::ModStatement(mod_statement) => mod_statement.parse(ctx),
             AstNodeContent::Error(_, _) => {}
         }
     }
@@ -184,12 +184,12 @@ impl Parse for UseStatement {
     }
 }
 
-impl Parse for IncludeStatement {
+impl Parse for ModStatement {
     fn parse(&self, ctx: &ParseContext) {
         ctx.tokens.insert(
             ctx.ident(&self.mod_name),
             Token::from_parsed(
-                ParsedAstToken::IncludeStatement(self.clone()),
+                ParsedAstToken::ModStatement(self.clone()),
                 SymbolKind::Unknown,
             ),
         );
