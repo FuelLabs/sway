@@ -432,7 +432,7 @@ impl OrdWithEngines for TypeInfo {
                     is_from_type_parameter: _,
                 },
             ) => l.cmp(r).then_with(|| ltc.cmp(rtc, ctx)),
-            (Self::Placeholder(l), Self::Placeholder(r)) => l.cmp(r, ctx),
+            (Self::Placeholder(l), Self::Placeholder(r)) => { todo!() } //l.cmp(r, ctx),
             (
                 Self::Custom {
                     qualified_call_path: l_call_path,
@@ -469,11 +469,11 @@ impl OrdWithEngines for TypeInfo {
                     .call_path
                     .suffix
                     .cmp(&r_decl.call_path.suffix)
-                    .then_with(|| {
-                        l_decl
-                            .generic_parameters
-                            .cmp(&r_decl.generic_parameters, ctx)
-                    })
+                    // .then_with(|| {
+                    //     l_decl
+                    //         .generic_parameters
+                    //         .cmp(&r_decl.generic_parameters, ctx)
+                    // })
                     .then_with(|| l_decl.variants.cmp(&r_decl.variants, ctx))
             }
             (Self::Struct(l_decl_ref), Self::Struct(r_decl_ref)) => {
@@ -483,11 +483,11 @@ impl OrdWithEngines for TypeInfo {
                     .call_path
                     .suffix
                     .cmp(&r_decl.call_path.suffix)
-                    .then_with(|| {
-                        l_decl
-                            .generic_parameters
-                            .cmp(&r_decl.generic_parameters, ctx)
-                    })
+                    // .then_with(|| {
+                    //     l_decl
+                    //         .generic_parameters
+                    //         .cmp(&r_decl.generic_parameters, ctx)
+                    // })
                     .then_with(|| l_decl.fields.cmp(&r_decl.fields, ctx))
             }
             (Self::Tuple(l), Self::Tuple(r)) => l.cmp(r, ctx),

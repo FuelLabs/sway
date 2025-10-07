@@ -500,7 +500,6 @@ impl CollectTypesMetadata for TyDecl {
                     return Ok(vec![]);
                 }
             }
-            TyDecl::ConstGenericDecl(_) => return Ok(vec![]),
             TyDecl::ErrorRecovery(..)
             | TyDecl::StorageDecl(_)
             | TyDecl::TraitDecl(_)
@@ -511,7 +510,8 @@ impl CollectTypesMetadata for TyDecl {
             | TyDecl::AbiDecl(_)
             | TyDecl::TypeAliasDecl(_)
             | TyDecl::TraitTypeDecl(_)
-            | TyDecl::GenericTypeForFunctionScope(_) => vec![],
+            | TyDecl::GenericTypeForFunctionScope(_) 
+            | TyDecl::ConstGenericDecl(_) => vec![],
         };
         Ok(metadata)
     }
@@ -912,8 +912,7 @@ impl TyDecl {
                 decl_engine.get_configurable(decl_id).visibility
             }
             TyDecl::ConstGenericDecl(_) => {
-                // const generics do not have visibility
-                unreachable!()
+                unreachable!("Const generics do not have visibility");
             }
             TyDecl::StructDecl(StructDecl { decl_id, .. }) => {
                 decl_engine.get_struct(decl_id).visibility

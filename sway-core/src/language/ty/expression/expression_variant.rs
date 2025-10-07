@@ -1525,7 +1525,7 @@ impl DebugWithEngines for TyExpressionVariant {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         let s = match self {
             TyExpressionVariant::ConstGenericExpression { call_path, .. } => {
-                format!("const generics {}", call_path.span().as_str())
+                format!("const generic {}", call_path.span().as_str())
             }
             TyExpressionVariant::Literal(lit) => format!("literal {lit}"),
             TyExpressionVariant::FunctionApplication {

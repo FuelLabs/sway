@@ -227,9 +227,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             Ok(Some(entry_node))
         }
         ty::TyDecl::ConstGenericDecl(_) => {
-            // connect_declaration is only called from AstNode,
-            // from where a ConstGenericDecl is not reachable
-            unreachable!()
+            unreachable!("ConstGenericDecl is not reachable from AstNode")
         }
         ty::TyDecl::FunctionDecl(ty::FunctionDecl { decl_id, .. }) => {
             let fn_decl = decl_engine.get_function(decl_id);
