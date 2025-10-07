@@ -202,7 +202,11 @@ fn run_cmds(
                         let path = proj_root.join(path);
                         let path = path.canonicalize().unwrap();
 
-                        if !path.display().to_string().starts_with(&proj_root.display().to_string()) {
+                        if !path
+                            .display()
+                            .to_string()
+                            .starts_with(&proj_root.display().to_string())
+                        {
                             panic!("not allowed to edit files outside project folder");
                         }
 
