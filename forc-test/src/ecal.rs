@@ -3,32 +3,38 @@ use fuel_vm::{
     prelude::{Interpreter, RegId},
 };
 
-// ssize_t write(int fd, const void buf[.count], size_t count);
+/// Syscall IDs for forc-test VM operations
 pub const WRITE_SYSCALL: u64 = 1000;
 pub const FFLUSH_SYSCALL: u64 = 1001;
 pub const RANDOM_SYSCALL: u64 = 1002;
 pub const RANDOM_SEEDED_SYSCALL: u64 = 1003;
 
+/// Syscall types that can be captured and applied during VM execution
 #[derive(Debug, Clone)]
 pub enum Syscall {
+    /// Write bytes to a file descriptor
     Write {
         fd: u64,
         bytes: Vec<u8>,
     },
+    /// Flush a file descriptor
     Fflush {
         fd: u64,
     },
+    /// Generate random bytes (non-deterministic)
     Random {
         dest_addr: u64,
         count: u64,
         bytes: Vec<u8>,
     },
+    /// Generate random bytes from a seed (deterministic)
     RandomSeeded {
         dest_addr: u64,
         count: u64,
         seed: u64,
         bytes: Vec<u8>,
     },
+    /// Unknown syscall with raw register values
     Unknown {
         ra: u64,
         rb: u64,
@@ -38,33 +44,25 @@ pub enum Syscall {
 }
 
 impl Syscall {
+    /// Apply the syscall to the host system
     pub fn apply(&self) {
         use std::io::Write;
         use std::os::fd::FromRawFd;
         match self {
             Syscall::Write { fd, bytes } => {
                 let s = std::str::from_utf8(bytes.as_slice()).unwrap();
-
                 let mut f = unsafe { std::fs::File::from_raw_fd(*fd as i32) };
                 write!(&mut f, "{s}").unwrap();
-
-                // Don't close the fd
-                std::mem::forget(f);
+                std::mem::forget(f); // Prevent closing the fd
             }
             Syscall::Fflush { fd } => {
                 let mut f = unsafe { std::fs::File::from_raw_fd(*fd as i32) };
                 let _ = f.flush();
-
-                // Don't close the fd
-                std::mem::forget(f);
+                std::mem::forget(f); // Prevent closing the fd
             }
-            Syscall::Random { .. } => {
-                // Random generation happens in the ecal handler
-                // This is just for applying captured syscalls
-            }
-            Syscall::RandomSeeded { .. } => {
-                // Random generation happens in the ecal handler
-                // This is just for applying captured syscalls
+            Syscall::Random { .. } | Syscall::RandomSeeded { .. } => {
+                // Memory writes happen directly in the ecal handler
+                // No additional application needed for captured syscalls
             }
             Syscall::Unknown { ra, rb, rc, rd } => {
                 println!("Unknown ecal: {ra} {rb} {rc} {rd}");
@@ -73,23 +71,27 @@ impl Syscall {
     }
 }
 
-/// Handle VM `ecal` as syscalls.
+/// Handles VM environment calls (ecal) as syscalls with configurable capture and application.
 ///
-/// The application of the syscalls can be turned off,
-/// guaranteeing total isolation from the outside world.
+/// This handler provides a flexible interface for intercepting and processing syscalls
+/// during VM execution. Syscalls can be:
+/// - **Applied**: Executed on the host system (e.g., writing to stdout)
+/// - **Captured**: Recorded for inspection or replay
+/// - **Both**: Applied immediately and saved for later analysis
 ///
-/// Capture of the syscalls can be turned on, allowing
-/// its application even after the VM is not running anymore.
+/// # Supported Syscalls
 ///
-/// Supported syscalls:
-/// 1000 - write(fd: u64, buf: raw_ptr, count: u64) -> u64
-/// 1001 - fflush(fd: u64)
-/// 1002 - random(dest: raw_ptr, count: u64)
-/// 1003 - random_seeded(dest: raw_ptr, count: u64, seed: u64)
+/// - `1000` - `write(fd: u64, buf: raw_ptr, count: u64)` - Write bytes to file descriptor
+/// - `1001` - `fflush(fd: u64)` - Flush file descriptor
+/// - `1002` - `random(dest: raw_ptr, count: u64)` - Generate non-deterministic random bytes
+/// - `1003` - `random_seeded(dest: raw_ptr, count: u64, seed: u64)` - Generate deterministic random bytes
 #[derive(Debug, Clone)]
 pub struct EcalSyscallHandler {
+    /// Whether to apply syscalls to the host system
     pub apply: bool,
+    /// Whether to capture syscalls for later inspection
     pub capture: bool,
+    /// Vector of captured syscalls
     pub captured: Vec<Syscall>,
 }
 
@@ -104,6 +106,7 @@ impl Default for EcalSyscallHandler {
 }
 
 impl EcalSyscallHandler {
+    /// Create a handler that only captures syscalls without applying them
     pub fn only_capturing() -> Self {
         Self {
             apply: false,
@@ -112,6 +115,7 @@ impl EcalSyscallHandler {
         }
     }
 
+    /// Create a handler that only applies syscalls without capturing them
     pub fn only_applying() -> Self {
         Self {
             apply: true,
@@ -120,6 +124,7 @@ impl EcalSyscallHandler {
         }
     }
 
+    /// Clear all captured syscalls
     pub fn clear(&mut self) {
         self.captured.clear();
     }
@@ -154,11 +159,9 @@ impl EcalHandler for EcalSyscallHandler {
                 let dest_addr = regs[b.to_u8() as usize];
                 let count = regs[c.to_u8() as usize];
 
-                // Generate random bytes using thread_rng (non-deterministic)
                 let random_bytes: Vec<u8> =
                     (0..count).map(|_| rand::thread_rng().gen::<u8>()).collect();
 
-                // Write to VM memory
                 let mem_slice = vm.memory_mut().write_noownerchecks(dest_addr, count)?;
                 mem_slice.copy_from_slice(&random_bytes);
 
@@ -174,11 +177,9 @@ impl EcalHandler for EcalSyscallHandler {
                 let count = regs[c.to_u8() as usize];
                 let seed = regs[d.to_u8() as usize];
 
-                // Generate random bytes using the provided seed (deterministic)
                 let mut rng = StdRng::seed_from_u64(seed);
                 let random_bytes: Vec<u8> = (0..count).map(|_| rng.gen::<u8>()).collect();
 
-                // Write to VM memory
                 let mem_slice = vm.memory_mut().write_noownerchecks(dest_addr, count)?;
                 mem_slice.copy_from_slice(&random_bytes);
 
@@ -213,7 +214,7 @@ impl EcalHandler for EcalSyscallHandler {
 }
 
 #[test]
-fn ok_capture_ecals() {
+fn test_write_syscall_capture() {
     use fuel_vm::fuel_asm::op::*;
     use fuel_vm::prelude::*;
     let vm: Interpreter<MemoryInstance, MemoryStorage, Script, EcalSyscallHandler> = <_>::default();
@@ -230,7 +231,6 @@ fn ok_capture_ecals() {
     .into_iter()
     .collect();
 
-    // Execute transaction
     let mut client = MemoryClient::from_txtor(vm.into());
     let tx = TransactionBuilder::script(script, script_data)
         .script_gas_limit(1_000_000)
@@ -240,7 +240,6 @@ fn ok_capture_ecals() {
         .expect("failed to generate a checked tx");
     let _ = client.transact(tx);
 
-    // Verify
     let t: Transactor<MemoryInstance, MemoryStorage, Script, EcalSyscallHandler> = client.into();
     let syscalls = t.interpreter().ecal_state().captured.clone();
 
@@ -251,7 +250,7 @@ fn ok_capture_ecals() {
 }
 
 #[test]
-fn ok_random_syscall() {
+fn test_random_syscall_generates_bytes() {
     use fuel_vm::fuel_asm::op::*;
     use fuel_vm::prelude::*;
     let vm: Interpreter<MemoryInstance, MemoryStorage, Script, EcalSyscallHandler> = <_>::default();
@@ -290,7 +289,7 @@ fn ok_random_syscall() {
 }
 
 #[test]
-fn ok_random_seeded_syscall() {
+fn test_random_seeded_syscall_generates_deterministic_bytes() {
     use fuel_vm::fuel_asm::op::*;
     use fuel_vm::prelude::*;
     let vm: Interpreter<MemoryInstance, MemoryStorage, Script, EcalSyscallHandler> = <_>::default();
@@ -309,7 +308,6 @@ fn ok_random_seeded_syscall() {
     .into_iter()
     .collect();
 
-    // Execute transaction
     let mut client = MemoryClient::from_txtor(vm.into());
     let tx = TransactionBuilder::script(script, vec![])
         .script_gas_limit(1_000_000)
@@ -319,7 +317,6 @@ fn ok_random_seeded_syscall() {
         .expect("failed to generate a checked tx");
     let _ = client.transact(tx);
 
-    // Verify
     let t: Transactor<MemoryInstance, MemoryStorage, Script, EcalSyscallHandler> = client.into();
     let syscalls = t.interpreter().ecal_state().captured.clone();
 
@@ -331,7 +328,7 @@ fn ok_random_seeded_syscall() {
 }
 
 #[test]
-fn ok_random_seeded_deterministic() {
+fn test_random_seeded_syscall_produces_same_output_with_same_seed() {
     use fuel_vm::fuel_asm::op::*;
     use fuel_vm::prelude::*;
 
