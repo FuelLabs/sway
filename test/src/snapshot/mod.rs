@@ -198,7 +198,7 @@ fn run_cmds(
                             panic!("replace arguments must be quoted");
                         };
 
-                        let path = PathBuf::from_str(&root).unwrap().join(path);
+                        let path = PathBuf::from_str(root).unwrap().join(path);
                         let path = path.canonicalize().unwrap();
 
                         if !path.display().to_string().starts_with(root) {
