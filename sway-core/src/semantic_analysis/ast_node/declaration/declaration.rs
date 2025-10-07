@@ -587,9 +587,7 @@ impl TypeCheckAnalysis for TyDecl {
                 const_decl.type_check_analyze(handler, ctx)?;
             }
             TyDecl::ConstGenericDecl(_) => {
-                // Only called from AstNode, from where
-                // const generics are unreachable
-                unreachable!()
+                unreachable!("ConstGenericDecl is not reachable from AstNode")
             }
             TyDecl::FunctionDecl(node) => {
                 let fn_decl = ctx.engines.de().get_function(&node.decl_id);
@@ -649,9 +647,7 @@ impl TypeCheckFinalization for TyDecl {
                 config_decl.type_check_finalize(handler, ctx)?;
             }
             TyDecl::ConstGenericDecl(_) => {
-                // Only called from AstNode from where
-                // const generics are unreachable
-                unreachable!()
+                unreachable!("ConstGenericDecl is not reachable from AstNode")
             }
             TyDecl::FunctionDecl(node) => {
                 let mut fn_decl = (*ctx.engines.de().get_function(&node.decl_id)).clone();

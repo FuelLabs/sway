@@ -96,20 +96,6 @@ impl GenericArgument {
             .initial_type_id
     }
 
-    // pub fn call_path_tree(&self) -> Option<&CallPathTree> {
-    //     match self {
-    //         GenericArgument::Type(a) => a.call_path_tree.as_ref(),
-    //         GenericArgument::Const(_) => None,
-    //     }
-    // }
-
-    // pub fn call_path_tree_mut(&mut self) -> Option<&mut CallPathTree> {
-    //     match self {
-    //         GenericArgument::Type(a) => a.call_path_tree.as_mut(),
-    //         GenericArgument::Const(_) => None,
-    //     }
-    // }
-
     /// Returns true if `self` is annotated by having either
     /// its [Self::initial_type_id] different from [Self::type_id],
     /// or [Self::span] different from [Span::dummy]

@@ -274,8 +274,7 @@ impl TyAstNode {
                     }
                 }
                 TyDecl::ConstGenericDecl(_) => {
-                    // Const generics are not reachable from AstNode
-                    unreachable!()
+                    unreachable!("ConstGenericDecl is not reachable from AstNode")
                 }
                 TyDecl::TraitTypeDecl(_) => {}
                 TyDecl::FunctionDecl(decl) => {
@@ -337,8 +336,7 @@ impl TyAstNode {
                     TyDecl::ConstantDecl(_decl) => {}
                     TyDecl::ConfigurableDecl(_decl) => {}
                     TyDecl::ConstGenericDecl(_decl) => {
-                        // Const generics are not reachable from AstNode
-                        unreachable!()
+                        unreachable!("ConstGenericDecl is not reachable from AstNode")
                     }
                     TyDecl::TraitTypeDecl(_) => {}
                     TyDecl::FunctionDecl(decl) => {
