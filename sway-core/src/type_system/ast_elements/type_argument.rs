@@ -1,3 +1,4 @@
+use super::type_parameter::ConstGenericExpr;
 use crate::{
     decl_engine::MaterializeConstGenerics, engine_threading::*, language::CallPathTree,
     type_system::priv_prelude::*,
@@ -9,8 +10,6 @@ use std::{
     hash::{Hash as _, Hasher},
 };
 use sway_types::{Span, Spanned};
-
-use super::type_parameter::ConstGenericExpr;
 
 /// [GenericTypeArgument] can be seen as an "annotated reference" to a [TypeInfo].
 /// It holds the [GenericTypeArgument::type_id] which is the actual "reference"
