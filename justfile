@@ -153,6 +153,8 @@ perf-remove:
         echo "Removing canceled."
     fi
 
+# This recipe should be used on snapshot tests that contains gas usage from `forc test`,
+# because it will extract gas usage from all versions of the file and generate an html interactive report.
 # path: path to file to extract gas usage
 # open: "-o" will open the default browser showing the report
 [linux]
