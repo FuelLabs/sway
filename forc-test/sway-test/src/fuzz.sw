@@ -2,34 +2,33 @@ library;
 
 use ::random::*;
 
-/// Trait for types that can be generated from random bytes
-pub trait Arbitrary {
-    /// Generate a random value from a seed
-    fn arbitrary(seed: u64) -> Self;
-}
+/// Generate a fuzzed value of any type by filling its memory with random bytes.
+///
+/// # Type Parameters
+/// * `T` - The type to fuzz
+///
+/// # Arguments
+/// * `seed` - Seed for deterministic random generation
+///
+/// # Returns
+/// A randomly generated value of type T
+///
+/// # Example
+/// ```sway
+/// struct MyStruct { a: u64, b: u32 }
+/// let value: MyStruct = fuzz_any(42);
+/// ```
+pub fn fuzz_any<T>(seed: u64) -> T {
+    let size_in_bytes = __size_of::<T>();
 
-impl Arbitrary for u64 {
-    fn arbitrary(seed: u64) -> Self {
-        random_u64_seeded(seed)
-    }
-}
+    let mut value: T = asm(size: size_in_bytes) {
+        size: T
+    };
 
-impl Arbitrary for u32 {
-    fn arbitrary(seed: u64) -> Self {
-        random_u32_seeded(seed)
-    }
-}
+    let ptr = asm(r1: __addr_of(value)) { r1: u64 };
+    random_bytes_seeded(ptr, size_in_bytes, seed);
 
-impl Arbitrary for u8 {
-    fn arbitrary(seed: u64) -> Self {
-        random_u8_seeded(seed)
-    }
-}
-
-impl Arbitrary for bool {
-    fn arbitrary(seed: u64) -> Self {
-        random_u8_seeded(seed) % 2 == 0
-    }
+    value
 }
 
 /// Fuzzing configuration
@@ -41,7 +40,7 @@ pub struct FuzzConfig {
 }
 
 impl FuzzConfig {
-    /// Create a new fuzz configuration with default settings
+    /// Create a new fuzz configuration
     pub fn new(iterations: u64) -> Self {
         Self {
             iterations,
@@ -58,14 +57,18 @@ impl FuzzConfig {
     }
 }
 
-/// Fuzzer for generating random test inputs
-pub struct Fuzzer<T> where T: Arbitrary {
+/// Fuzzer for generating random test inputs.
+/// Works with any type T automatically.
+pub struct Fuzzer<T> {
     config: FuzzConfig,
     current: u64,
 }
 
-impl<T> Fuzzer<T> where T: Arbitrary {
-    /// Create a new fuzzer with the given number of iterations
+impl<T> Fuzzer<T> {
+    /// Create a new fuzzer
+    ///
+    /// # Arguments
+    /// * `iterations` - Number of values to generate
     pub fn new(iterations: u64) -> Self {
         Self {
             config: FuzzConfig::new(iterations),
@@ -73,7 +76,7 @@ impl<T> Fuzzer<T> where T: Arbitrary {
         }
     }
 
-    /// Create a new fuzzer with custom configuration
+    /// Create a fuzzer with custom configuration
     pub fn with_config(config: FuzzConfig) -> Self {
         Self {
             config,
@@ -86,12 +89,10 @@ impl<T> Fuzzer<T> where T: Arbitrary {
         self.current < self.config.iterations
     }
 
-    /// Get the next fuzzed value
-    /// Panics if has_next() is false
+    /// Generate the next fuzzed value
     pub fn next(ref mut self) -> T {
         let seed = self.config.base_seed + self.current;
         self.current += 1;
-        T::arbitrary(seed)
+        fuzz_any::<T>(seed)
     }
 }
-
