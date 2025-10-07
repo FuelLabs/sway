@@ -2789,6 +2789,15 @@ impl<const N: u64> AbiDecode for str[N] {
     }
 }
 
+#[cfg(experimental_const_generics = false)]
+impl AbiDecode for str[0] {
+    fn abi_decode(ref mut _buffer: BufferReader) -> str[0] {
+        asm(s: 0) {
+            s: str[0]
+        }
+    }
+}
+
 // BEGIN STRARRAY_DECODE
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[1] {
@@ -3387,6 +3396,16 @@ where
         }
 
         *array
+    }
+}
+
+#[cfg(experimental_const_generics = false)]
+impl<T> AbiDecode for [T; 0]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut _buffer: BufferReader) -> [T; 0] {
+        []
     }
 }
 
@@ -5342,7 +5361,7 @@ where
 {
     let first_parameter = encode(method_name);
     let second_parameter = encode(args);
-    let params = encode((
+    let params = (
         contract_id,
         asm(a: first_parameter.ptr()) {
             a: u64
@@ -5350,9 +5369,9 @@ where
         asm(a: second_parameter.ptr()) {
             a: u64
         },
-    ));
+    );
 
-    __contract_call(params.ptr(), coins, asset_id, gas);
+    __contract_call(&params, coins, asset_id, gas);
     let ptr = asm() {
         ret: raw_ptr
     };
