@@ -655,7 +655,7 @@ impl Parse for ty::TyVariableDecl {
             ));
             token.type_def = Some(TypeDefinition::Ident(self.name.clone()));
         }
-        if let Some(call_path_tree) = &self
+        if let Some(call_path_tree) = self
             .type_ascription
             .as_type_argument()
             .and_then(|type_arg| type_arg.call_path_tree.as_ref())
@@ -1374,7 +1374,7 @@ fn collect_const_decl(ctx: &ParseContext, const_decl: &ty::TyConstantDecl, ident
             TokenAstNode::Typed(TypedAstToken::TypedConstantDeclaration(const_decl.clone()));
         token.type_def = Some(TypeDefinition::Ident(const_decl.call_path.suffix.clone()));
     }
-    if let Some(call_path_tree) = &const_decl
+    if let Some(call_path_tree) = const_decl
         .type_ascription
         .as_type_argument()
         .unwrap()
@@ -1400,7 +1400,7 @@ fn collect_configurable_decl(
             TokenAstNode::Typed(TypedAstToken::TypedConfigurableDeclaration(decl.clone()));
         token.type_def = Some(TypeDefinition::Ident(decl.call_path.suffix.clone()));
     }
-    if let Some(call_path_tree) = &decl
+    if let Some(call_path_tree) = decl
         .type_ascription
         .as_type_argument()
         .unwrap()
