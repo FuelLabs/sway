@@ -198,11 +198,12 @@ fn run_cmds(
                             panic!("replace arguments must be quoted");
                         };
 
-                        let path = PathBuf::from_str(root).unwrap().join(path);
+                        let proj_root = repo_root.join(root);
+                        let path = proj_root.join(path);
                         let path = path.canonicalize().unwrap();
 
-                        if !path.display().to_string().starts_with(root) {
-                            panic!("not allowed to editfiles outside project folder");
+                        if !path.display().to_string().starts_with(&proj_root.display().to_string()) {
+                            panic!("not allowed to edit files outside project folder");
                         }
 
                         let contents = std::fs::read_to_string(&path).unwrap();
