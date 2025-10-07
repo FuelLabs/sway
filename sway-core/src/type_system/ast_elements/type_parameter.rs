@@ -233,15 +233,15 @@ impl IsConcrete for TypeParameter {
     }
 }
 
-impl OrdWithEngines for TypeParameter {
-    fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
-        match (self, other) {
-            (TypeParameter::Type(l), TypeParameter::Type(r)) => l.cmp(r, ctx),
-            (TypeParameter::Const(l), TypeParameter::Const(r)) => l.cmp(r),
-            _ => todo!(),
-        }
-    }
-}
+// impl OrdWithEngines for TypeParameter {
+//     fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
+//         match (self, other) {
+//             (TypeParameter::Type(l), TypeParameter::Type(r)) => l.cmp(r, ctx),
+//             (TypeParameter::Const(l), TypeParameter::Const(r)) => l.cmp(r),
+//             _ => todo!(),
+//         }
+//     }
+// }
 
 impl DebugWithEngines for TypeParameter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
@@ -1315,22 +1315,22 @@ impl IsConcrete for ConstGenericParameter {
     }
 }
 
-impl PartialEq for ConstGenericParameter {
-    fn eq(&self, other: &Self) -> bool {
-        self.name.as_str() == other.name.as_str()
-    }
-}
+// impl PartialEq for ConstGenericParameter {
+//     fn eq(&self, other: &Self) -> bool {
+//         self.name.as_str() == other.name.as_str()
+//     }
+// }
 
-impl Eq for ConstGenericParameter {}
+// impl Eq for ConstGenericParameter {}
 
-impl PartialOrd for ConstGenericParameter {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
+// impl PartialOrd for ConstGenericParameter {
+//     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+//         Some(self.cmp(other))
+//     }
+// }
 
-impl Ord for ConstGenericParameter {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.name.as_str().cmp(other.name.as_str())
-    }
-}
+// impl Ord for ConstGenericParameter {
+//     fn cmp(&self, other: &Self) -> Ordering {
+//         self.name.as_str().cmp(other.name.as_str())
+//     }
+// }
