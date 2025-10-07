@@ -198,7 +198,7 @@ fn run_cmds(
                             panic!("replace arguments must be quoted");
                         };
 
-                        let path = PathBuf::from_str(&root).unwrap().join(path);
+                        let path = PathBuf::from_str(root).unwrap().join(path);
 
                         let contents = std::fs::read_to_string(&path).unwrap();
                         let contents = contents.replace(from, to);
