@@ -1077,6 +1077,7 @@ fn copy_prop_reverse(
         let Some((dst_ptr, src_ptr, _byte_len)) = deconstruct_memcpy(context, inst) else {
             continue;
         };
+
         if dst_ptr.get_type(context) != src_ptr.get_type(context) {
             continue;
         }
@@ -1094,6 +1095,10 @@ fn copy_prop_reverse(
             ReferredSymbols::Complete(syms) if syms.len() == 1 => syms.into_iter().next().unwrap(),
             _ => continue,
         };
+
+        if dst_sym.get_type(context) != src_sym.get_type(context) {
+            continue;
+        }
 
         let all_uses_dominated = loads_map.get(&dst_sym).is_none_or(|uses| {
             uses.iter()
