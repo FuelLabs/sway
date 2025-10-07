@@ -198,13 +198,17 @@ fn run_cmds(
                             panic!("replace arguments must be quoted");
                         };
 
-                        let path = PathBuf::from_str(root).unwrap().join(path);
+                        let path = PathBuf::from_str(&root).unwrap().join(path);
+                        let path = path.canonicalize().unwrap();
+
+                        if !path.display().to_string().starts_with(root) {
+                            panic!("not allowed to editfiles outside project folder");
+                        }
 
                         let contents = std::fs::read_to_string(&path).unwrap();
                         let contents = contents.replace(from, to);
                         std::fs::write(path, contents).unwrap();
 
-                        // last_output = Some(output.replace(from, to));
                         continue;
                     } else if let Some(args) = cmd.strip_prefix("filter-fn ") {
                         if let Some(output) = last_output.take() {
