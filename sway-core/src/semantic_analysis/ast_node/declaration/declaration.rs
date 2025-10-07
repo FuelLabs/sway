@@ -558,9 +558,7 @@ impl TyDecl {
                 unreachable!();
             }
             parsed::Declaration::ConstGenericDeclaration(_) => {
-                // This is called from AstNode and auto_impl
-                // both will never ask for a const generic decl
-                unreachable!()
+                unreachable!("ConstGenericDecl is not reachable from AstNode")
             }
         };
 

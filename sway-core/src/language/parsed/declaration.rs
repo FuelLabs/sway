@@ -232,8 +232,7 @@ impl Declaration {
             | Declaration::TraitTypeDeclaration(_)
             | Declaration::TraitFnDeclaration(_) => Visibility::Public,
             Declaration::ConstGenericDeclaration(_) => {
-                // const generics do not have visibility
-                unreachable!()
+                unreachable!("Const generics do not have visibility")
             }
         }
     }
