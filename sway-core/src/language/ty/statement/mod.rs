@@ -1,7 +1,11 @@
 use crate::{
     decl_engine::{DeclMapping, MaterializeConstGenerics, ReplaceDecls},
     engine_threading::*,
-    language::{parsed, Visibility, ty::{TyExpression, TyVariableDecl, VariableMutability}},
+    language::{
+        parsed,
+        ty::{TyExpression, TyVariableDecl, VariableMutability},
+        Visibility,
+    },
     semantic_analysis::{
         TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext, TypeCheckFinalization,
         TypeCheckFinalizationContext,

@@ -7,9 +7,9 @@ use sway_core::{
         parsed::{
             AbiCastExpression, AmbiguousPathExpression, Declaration, DelineatedPathExpression,
             EnumVariant, Expression, FunctionApplicationExpression, FunctionParameter,
-            ModStatement, MethodApplicationExpression, Scrutinee, StorageField,
-            StorageNamespace, StructExpression, StructExpressionField, StructField,
-            StructScrutineeField, Supertrait, TraitFn, UseStatement,
+            MethodApplicationExpression, ModStatement, Scrutinee, StorageField, StorageNamespace,
+            StructExpression, StructExpressionField, StructField, StructScrutineeField, Supertrait,
+            TraitFn, UseStatement,
         },
         ty,
     },

@@ -17,9 +17,7 @@ use std::{
 };
 use sway_core::language::{
     parsed::ImportType,
-    ty::{
-        TyConstantDecl, TyDecl, TyFunctionDecl, TyModStatement, TyTypeAliasDecl, TyUseStatement,
-    },
+    ty::{TyConstantDecl, TyDecl, TyFunctionDecl, TyModStatement, TyTypeAliasDecl, TyUseStatement},
     CallPath,
 };
 use sway_types::{Ident, Spanned};
@@ -43,9 +41,7 @@ pub(crate) fn import_code_action(
     ctx.tokens.tokens_for_file(ctx.temp_uri).for_each(|item| {
         if let Some(TypedAstToken::TypedUseStatement(use_stmt)) = &item.value().as_typed() {
             use_statements.push(use_stmt.clone());
-        } else if let Some(TypedAstToken::TypedModStatement(mod_stmt)) =
-            &item.value().as_typed()
-        {
+        } else if let Some(TypedAstToken::TypedModStatement(mod_stmt)) = &item.value().as_typed() {
             mod_statements.push(mod_stmt.clone());
         } else if item.value().kind == SymbolKind::ProgramTypeKeyword {
             if let Some(ParsedAstToken::Keyword(ident)) = &item.value().as_parsed() {

@@ -6,7 +6,10 @@ use crate::{
         generate_tuple_var_name,
     },
     decl_engine::{parsed_engine::ParsedDeclEngineInsert, parsed_id::ParsedDeclId},
-    language::{parsed::*, *},
+    language::{
+        parsed::{self, *},
+        *,
+    },
     transform::{attribute::*, to_parsed_lang::context::Context},
     type_system::*,
     BuildTarget, Engines,
@@ -123,11 +126,11 @@ pub fn item_to_ast_nodes(
             }
 
             let mod_stmt = submodule_to_mod_statement(&submodule);
-            vec![AstNodeContent::ModStatement(mod_stmt)]
+            vec![AstNodeContent::Statement(parsed::Statement::Mod(mod_stmt))]
         }
         ItemKind::Use(item_use) => item_use_to_use_statements(context, handler, item_use)?
             .into_iter()
-            .map(AstNodeContent::UseStatement)
+            .map(|use_stmt| AstNodeContent::Statement(parsed::Statement::Use(use_stmt)))
             .collect(),
         ItemKind::Struct(item_struct) => {
             let struct_decl = Declaration::StructDeclaration(item_struct_to_struct_declaration(

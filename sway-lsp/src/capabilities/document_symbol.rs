@@ -4,8 +4,8 @@ use std::path::PathBuf;
 use sway_core::{
     language::ty::{
         TyAbiDecl, TyAstNodeContent, TyConstantDecl, TyDecl, TyEnumDecl, TyFunctionDecl,
-        TyFunctionParameter, TyModStatement, TyProgram, TyStatement, TyStorageDecl,
-        TyStructDecl, TyTraitInterfaceItem, TyTraitItem, TyTraitType,
+        TyFunctionParameter, TyModStatement, TyProgram, TyStatement, TyStorageDecl, TyStructDecl,
+        TyTraitInterfaceItem, TyTraitItem, TyTraitType,
     },
     Engines, GenericArgument,
 };

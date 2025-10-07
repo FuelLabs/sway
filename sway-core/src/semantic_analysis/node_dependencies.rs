@@ -268,17 +268,26 @@ fn depends_on(
 ) -> bool {
     match (&dependant_node.content, &dependee_node.content) {
         // Include statements first.
-        (AstNodeContent::ModStatement(_), AstNodeContent::ModStatement(_)) => false,
-        (_, AstNodeContent::ModStatement(_)) => true,
+        (
+            AstNodeContent::Statement(Statement::Mod(_)),
+            AstNodeContent::Statement(Statement::Mod(_)),
+        ) => false,
+        (_, AstNodeContent::Statement(Statement::Mod(_))) => true,
 
         // Use statements next.
-        (AstNodeContent::ModStatement(_), AstNodeContent::UseStatement(_)) => false,
-        (AstNodeContent::UseStatement(_), AstNodeContent::UseStatement(_)) => false,
-        (_, AstNodeContent::UseStatement(_)) => true,
+        (
+            AstNodeContent::Statement(Statement::Mod(_)),
+            AstNodeContent::Statement(Statement::Use(_)),
+        ) => false,
+        (
+            AstNodeContent::Statement(Statement::Use(_)),
+            AstNodeContent::Statement(Statement::Use(_)),
+        ) => false,
+        (_, AstNodeContent::Statement(Statement::Use(_))) => true,
 
         // Then declarations, ordered using the dependencies list.
-        (AstNodeContent::ModStatement(_), AstNodeContent::Declaration(_)) => false,
-        (AstNodeContent::UseStatement(_), AstNodeContent::Declaration(_)) => false,
+        (AstNodeContent::Statement(Statement::Mod(_)), AstNodeContent::Declaration(_)) => false,
+        (AstNodeContent::Statement(Statement::Use(_)), AstNodeContent::Declaration(_)) => false,
         (AstNodeContent::Declaration(dependant), AstNodeContent::Declaration(dependee)) => {
             match (decl_name(engines, dependant), decl_name(engines, dependee)) {
                 (Some(dependant_name), Some(dependee_name)) => decl_dependencies
@@ -768,9 +777,7 @@ impl Dependencies {
             AstNodeContent::Declaration(decl) => self.gather_from_decl(engines, decl),
 
             // No deps from these guys.
-            AstNodeContent::UseStatement(_)
-            | AstNodeContent::ModStatement(_)
-            | AstNodeContent::Error(_, _) => self,
+            AstNodeContent::Statement(_) | AstNodeContent::Error(_, _) => self,
         }
     }
 

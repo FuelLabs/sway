@@ -813,26 +813,27 @@ impl ty::TySubmodule {
         let sub_mod_node = module_dep_graph.get_node_id_for_module(&mod_name).unwrap();
         for node in module.tree.root_nodes.iter() {
             match &node.content {
-                AstNodeContent::UseStatement(use_stmt) => {
-                    if let Some(use_mod_ident) = use_stmt.call_path.first() {
-                        if let Some(mod_name_node) =
-                            module_dep_graph.get_node_id_for_module(use_mod_ident)
-                        {
-                            // Prevent adding edge loops between the same node as that will throw off
-                            // the cyclic dependency analysis.
-                            if sub_mod_node != mod_name_node {
-                                module_dep_graph.dep_graph.add_edge(
-                                    sub_mod_node,
-                                    mod_name_node,
-                                    ModuleDepGraphEdge {},
-                                );
+                AstNodeContent::Statement(statement) => {
+                    if let Statement::Use(use_stmt) = statement {
+                        if let Some(use_mod_ident) = use_stmt.call_path.first() {
+                            if let Some(mod_name_node) =
+                                module_dep_graph.get_node_id_for_module(use_mod_ident)
+                            {
+                                // Prevent adding edge loops between the same node as that will throw off
+                                // the cyclic dependency analysis.
+                                if sub_mod_node != mod_name_node {
+                                    module_dep_graph.dep_graph.add_edge(
+                                        sub_mod_node,
+                                        mod_name_node,
+                                        ModuleDepGraphEdge {},
+                                    );
+                                }
                             }
                         }
                     }
                 }
                 AstNodeContent::Declaration(_) => {}
                 AstNodeContent::Expression(_) => {}
-                AstNodeContent::ModStatement(_) => {}
                 AstNodeContent::Error(_, _) => {}
             }
         }
