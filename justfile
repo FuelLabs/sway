@@ -153,20 +153,30 @@ perf-remove:
         echo "Removing canceled."
     fi
 
+# path: path to file to extract gas usage
+# open: "-o" will open the default browser showing the report
+[linux]
 [group('benchmark')]
-collect-historic-gas-usage path:
+collect-historic-gas-usage path open:
     #! /bin/bash
     mkdir -p target
     rm target/a.csv
     rm target/a.html
-    rm target/report.html
-    echo "test,gas,hash" > target/a.csv
+    echo "test,gas,commit" > target/a.csv
     for HASH in `git log --format='%H' -- {{path}}`; do
         TIMESTAMP=$(git show -s --format='%as-%ct-%H' "$HASH")
         git --no-pager show "$HASH:{{path}}" | bash -c "scripts/compare-gas-usage/extract-gas-usage.sh $TIMESTAMP" >> target/a.csv
-        ./scripts/csv2html/csv2html.sh target/a.csv >> target/a.html
     done
-    ./scripts/csv2html/htmltable2report.sh target/a.html > target/report.html
+    ./scripts/csv2html/csv2html.sh target/a.csv >> target/a.html
+    if [ -n "{{open}}" ]; then
+        if which xdg-open &>> /dev/null
+        then
+            xdg-open target/a.html
+        elif which gnome-open &>> /dev/null
+        then
+            gnome-open target/a.html
+        fi
+    fi
 
 [group('build')]
 build-prism:
