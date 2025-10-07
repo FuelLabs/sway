@@ -1,4 +1,3 @@
-use std::hash::{Hash as _, Hasher};
 use crate::{
     decl_engine::MaterializeConstGenerics,
     engine_threading::HashWithEngines,
