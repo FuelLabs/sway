@@ -338,6 +338,11 @@ impl TyAstNode {
                 node.check_deprecated(engines, handler, allow_deprecated);
             }
             TyAstNodeContent::Statement(statement) => match statement {
+                TyStatement::Let(binding) => {
+                    binding
+                        .value
+                        .check_deprecated(engines, handler, allow_deprecated);
+                }
             },
             TyAstNodeContent::SideEffect(_) | TyAstNodeContent::Error(_, _) => {}
         }
