@@ -113,6 +113,7 @@ fn hash_fn_sha256_str_array() {
 // hex    = "0.4"
 // bincode = "1.3"
 // serde  = { version = "1", features = ["derive"] }
+
 #[test()]
 fn hash_u8() {
     let mut hasher = Hasher::new();
