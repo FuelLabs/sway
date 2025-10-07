@@ -87,11 +87,7 @@ pub struct EcalSyscallHandler {
 
 impl Default for EcalSyscallHandler {
     fn default() -> Self {
-        Self {
-            apply: true,
-            capture: true,
-            captured: vec![],
-        }
+        Self::only_capturing()
     }
 }
 
