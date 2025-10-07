@@ -57,4 +57,8 @@ tail -n +2 "$1" | sed -e 's/^/<tr><td>/' -e 's/,/<\/td><td>/g' -e 's/$/<\/td><\/
 echo "      </tbody>
         </table>
     <body>
+<<<<<<< HEAD
 </html>"
+=======
+</html>"
+>>>>>>> bdd5b43f5 (fixing CI)
