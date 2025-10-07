@@ -13,14 +13,9 @@ pub const RANDOM_SEEDED_SYSCALL: u64 = 1003;
 #[derive(Debug, Clone)]
 pub enum Syscall {
     /// Write bytes to a file descriptor
-    Write {
-        fd: u64,
-        bytes: Vec<u8>,
-    },
+    Write { fd: u64, bytes: Vec<u8> },
     /// Flush a file descriptor
-    Fflush {
-        fd: u64,
-    },
+    Fflush { fd: u64 },
     /// Generate random bytes (non-deterministic)
     Random {
         dest_addr: u64,
@@ -35,12 +30,7 @@ pub enum Syscall {
         bytes: Vec<u8>,
     },
     /// Unknown syscall with raw register values
-    Unknown {
-        ra: u64,
-        rb: u64,
-        rc: u64,
-        rd: u64,
-    },
+    Unknown { ra: u64, rb: u64, rc: u64, rd: u64 },
 }
 
 impl Syscall {
