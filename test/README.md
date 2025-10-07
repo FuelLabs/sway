@@ -38,7 +38,7 @@ To make snapshot "environment free", the test harness changes `forc` output a li
 
 ## Commands
 
-To make snapshot tests more versalite there are a lot of options of what one can use inside `cmds`:
+To make snapshot tests more versatile there are a lot of options of what one can use inside `cmds`:
 
 1 - `forc`; Any native forc command is available;
 2 - Forc plugins; Currently only `forc doc` is available;
