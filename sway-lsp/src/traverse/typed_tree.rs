@@ -68,7 +68,6 @@ impl Parse for ty::TyAstNode {
             ty::TyAstNodeContent::Declaration(declaration) => declaration.parse(ctx),
             ty::TyAstNodeContent::Statement(statement) => statement.parse(ctx),
             ty::TyAstNodeContent::Expression(expression) => expression.parse(ctx),
-            ty::TyAstNodeContent::SideEffect(side_effect) => side_effect.parse(ctx),
             ty::TyAstNodeContent::Error(_, _) => {}
         };
     }
@@ -93,120 +92,6 @@ impl Parse for ty::TyDecl {
             ty::TyDecl::StorageDecl(decl) => decl.parse(ctx),
             ty::TyDecl::TypeAliasDecl(decl) => decl.parse(ctx),
             ty::TyDecl::TraitTypeDecl(decl) => decl.parse(ctx),
-        }
-    }
-}
-
-impl Parse for ty::TySideEffect {
-    fn parse(&self, ctx: &ParseContext) {
-        match self {
-            ty::TySideEffect::UseStatement(use_statement) => {
-                let full_path = mod_path_to_full_path(
-                    &use_statement.call_path,
-                    use_statement.is_relative_to_package_root,
-                    ctx.namespace,
-                );
-                for (mod_path, ident) in iter_prefixes(&full_path).zip(&full_path) {
-                    if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(ident)) {
-                        token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedUseStatement(
-                            use_statement.clone(),
-                        ));
-
-                        if let Some(span) = ctx
-                            .namespace
-                            .module_from_absolute_path(mod_path)
-                            .and_then(|tgt_submod| tgt_submod.span().clone())
-                        {
-                            token.type_def = Some(TypeDefinition::Ident(Ident::new(span)));
-                        }
-                    }
-                }
-                match &use_statement.import_type {
-                    ImportType::Item(item) => {
-                        if let Some(mut token) =
-                            ctx.tokens.try_get_mut_with_retry(&ctx.ident(item))
-                        {
-                            token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedUseStatement(
-                                use_statement.clone(),
-                            ));
-                            let mut symbol_kind = SymbolKind::Unknown;
-                            let mut type_def = None;
-                            if let Some(decl_ident) = ctx
-                                .namespace
-                                .module_from_absolute_path(&full_path)
-                                .and_then(|module| {
-                                    module
-                                        .resolve_symbol(&Handler::default(), ctx.engines, item)
-                                        .ok()
-                                })
-                                .and_then(|(decl, _)| {
-                                    decl.expect_typed_ref().get_decl_ident(ctx.engines)
-                                })
-                            {
-                                if let Some(decl) =
-                                    ctx.tokens.try_get(&ctx.ident(&decl_ident)).try_unwrap()
-                                {
-                                    symbol_kind = decl.value().kind.clone();
-                                }
-                                type_def = Some(TypeDefinition::Ident(decl_ident));
-                            }
-                            token.kind = symbol_kind.clone();
-                            token.type_def.clone_from(&type_def);
-                            if let Some(alias) = &use_statement.alias {
-                                if let Some(mut token) = ctx
-                                    .tokens
-                                    .try_get_mut_with_retry(&ctx.ident(alias))
-                                {
-                                    token.ast_node = TokenAstNode::Typed(
-                                        TypedAstToken::TypedUseStatement(use_statement.clone()),
-                                    );
-                                    token.kind = symbol_kind;
-                                    token.type_def = type_def;
-                                }
-                            }
-                        }
-                    }
-                    ImportType::SelfImport(span) => {
-                        if let Some(mut token) = ctx
-                            .tokens
-                            .try_get_mut_with_retry(&ctx.ident(&Ident::new(span.clone())))
-                        {
-                            token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedUseStatement(
-                                use_statement.clone(),
-                            ));
-                            if let Some(span) = ctx
-                                .namespace
-                                .module_from_absolute_path(&full_path)
-                                .and_then(|tgt_submod| tgt_submod.span().clone())
-                            {
-                                token.type_def = Some(TypeDefinition::Ident(Ident::new(span)));
-                            }
-                        }
-                    }
-                    ImportType::Star => {}
-                }
-            }
-            ty::TySideEffect::IncludeStatement(
-                include_statement @ ty::TyIncludeStatement {
-                    span: _,
-                    mod_name,
-                    visibility: _,
-                },
-            ) => {
-                if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(mod_name)) {
-                    token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedIncludeStatement(
-                        include_statement.clone(),
-                    ));
-                    if let Some(span) = ctx
-                        .namespace
-                        .root_module()
-                        .submodule(std::slice::from_ref(mod_name))
-                        .and_then(|tgt_submod| tgt_submod.span().clone())
-                    {
-                        token.type_def = Some(TypeDefinition::Ident(Ident::new(span)));
-                    }
-                }
-            }
         }
     }
 }
@@ -661,17 +546,122 @@ impl Parse for ty::TyStatement {
     fn parse(&self, ctx: &ParseContext) {
         match self {
             ty::TyStatement::Let(binding) => {
-                if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(&binding.name))
+                if let Some(mut token) =
+                    ctx.tokens.try_get_mut_with_retry(&ctx.ident(&binding.name))
                 {
-                    token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedStatement(
-                        self.clone(),
-                    ));
+                    token.ast_node =
+                        TokenAstNode::Typed(TypedAstToken::TypedStatement(self.clone()));
                     token.type_def = Some(TypeDefinition::Ident(binding.name.clone()));
                 }
                 if let Some(call_path_tree) = &binding.type_ascription.call_path_tree() {
                     collect_call_path_tree(ctx, call_path_tree, &binding.type_ascription);
                 }
                 binding.value.parse(ctx);
+            }
+            ty::TyStatement::Use(use_statement) => {
+                let full_path = mod_path_to_full_path(
+                    &use_statement.call_path,
+                    use_statement.is_relative_to_package_root,
+                    ctx.namespace,
+                );
+                for (mod_path, ident) in iter_prefixes(&full_path).zip(&full_path) {
+                    if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(ident)) {
+                        token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedUseStatement(
+                            use_statement.clone(),
+                        ));
+
+                        if let Some(span) = ctx
+                            .namespace
+                            .module_from_absolute_path(mod_path)
+                            .and_then(|tgt_submod| tgt_submod.span().clone())
+                        {
+                            token.type_def = Some(TypeDefinition::Ident(Ident::new(span)));
+                        }
+                    }
+                }
+                match &use_statement.import_type {
+                    ImportType::Item(item) => {
+                        if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(item))
+                        {
+                            token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedUseStatement(
+                                use_statement.clone(),
+                            ));
+                            let mut symbol_kind = SymbolKind::Unknown;
+                            let mut type_def = None;
+                            if let Some(decl_ident) = ctx
+                                .namespace
+                                .module_from_absolute_path(&full_path)
+                                .and_then(|module| {
+                                    module
+                                        .resolve_symbol(&Handler::default(), ctx.engines, item)
+                                        .ok()
+                                })
+                                .and_then(|(decl, _)| {
+                                    decl.expect_typed_ref().get_decl_ident(ctx.engines)
+                                })
+                            {
+                                if let Some(decl) =
+                                    ctx.tokens.try_get(&ctx.ident(&decl_ident)).try_unwrap()
+                                {
+                                    symbol_kind = decl.value().kind.clone();
+                                }
+                                type_def = Some(TypeDefinition::Ident(decl_ident));
+                            }
+                            token.kind = symbol_kind.clone();
+                            token.type_def.clone_from(&type_def);
+                            if let Some(alias) = &use_statement.alias {
+                                if let Some(mut token) =
+                                    ctx.tokens.try_get_mut_with_retry(&ctx.ident(alias))
+                                {
+                                    token.ast_node = TokenAstNode::Typed(
+                                        TypedAstToken::TypedUseStatement(use_statement.clone()),
+                                    );
+                                    token.kind = symbol_kind;
+                                    token.type_def = type_def;
+                                }
+                            }
+                        }
+                    }
+                    ImportType::SelfImport(span) => {
+                        if let Some(mut token) = ctx
+                            .tokens
+                            .try_get_mut_with_retry(&ctx.ident(&Ident::new(span.clone())))
+                        {
+                            token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedUseStatement(
+                                use_statement.clone(),
+                            ));
+                            if let Some(span) = ctx
+                                .namespace
+                                .module_from_absolute_path(&full_path)
+                                .and_then(|tgt_submod| tgt_submod.span().clone())
+                            {
+                                token.type_def = Some(TypeDefinition::Ident(Ident::new(span)));
+                            }
+                        }
+                    }
+                    ImportType::Star => {}
+                }
+            }
+            ty::TyStatement::Include(
+                include_statement @ ty::TyIncludeStatement {
+                    span: _,
+                    mod_name,
+                    visibility: _,
+                },
+            ) => {
+                if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(mod_name)) {
+                    token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedIncludeStatement(
+                        include_statement.clone(),
+                    ));
+                    if let Some(span) = ctx
+                        .namespace
+                        .root_module()
+                        .submodule(std::slice::from_ref(mod_name))
+                        .and_then(|tgt_submod| tgt_submod.span().clone())
+                    {
+                        token.type_def = Some(TypeDefinition::Ident(Ident::new(span)));
+                    }
+                }
             }
         }
     }

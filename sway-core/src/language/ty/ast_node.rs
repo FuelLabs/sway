@@ -55,7 +55,6 @@ impl DebugWithEngines for TyAstNode {
             Declaration(typed_decl) => DebugWithEngines::fmt(typed_decl, f, engines),
             Statement(stmt) => Debug::fmt(stmt, f),
             Expression(exp) => DebugWithEngines::fmt(exp, f, engines),
-            SideEffect(_) => f.write_str(""),
             Error(_, _) => f.write_str("error"),
         }
     }
@@ -67,7 +66,7 @@ impl SubstTypes for TyAstNode {
             TyAstNodeContent::Declaration(ref mut decl) => decl.subst(ctx),
             TyAstNodeContent::Statement(ref mut statement) => statement.subst(ctx),
             TyAstNodeContent::Expression(ref mut expr) => expr.subst(ctx),
-            TyAstNodeContent::SideEffect(_) | TyAstNodeContent::Error(_, _) => HasChanges::No,
+            TyAstNodeContent::Error(_, _) => HasChanges::No,
         }
     }
 }
@@ -90,7 +89,6 @@ impl ReplaceDecls for TyAstNode {
             TyAstNodeContent::Expression(ref mut expr) => {
                 expr.replace_decls(decl_mapping, handler, ctx)
             }
-            TyAstNodeContent::SideEffect(_) => Ok(false),
             TyAstNodeContent::Error(_, _) => Ok(false),
         }
     }
@@ -106,11 +104,11 @@ impl UpdateConstantExpression for TyAstNode {
                         .value
                         .update_constant_expression(engines, implementing_type);
                 }
+                TyStatement::Use(_) | TyStatement::Include(_) => {}
             },
             TyAstNodeContent::Expression(ref mut expr) => {
                 expr.update_constant_expression(engines, implementing_type)
             }
-            TyAstNodeContent::SideEffect(_) => (),
             TyAstNodeContent::Error(_, _) => (),
         }
     }
@@ -208,7 +206,6 @@ impl TyAstNode {
             TyAstNodeContent::Declaration(decl) => decl.visibility(decl_engine).is_public(),
             TyAstNodeContent::Expression(_)
             | TyAstNodeContent::Statement(_)
-            | TyAstNodeContent::SideEffect(_)
             | TyAstNodeContent::Error(_, _) => false,
         }
     }
@@ -261,7 +258,6 @@ impl TyAstNode {
                 (*type_engine.get(*return_type)).clone()
             }
             TyAstNodeContent::Statement(_) => TypeInfo::Tuple(Vec::new()),
-            TyAstNodeContent::SideEffect(_) => TypeInfo::Tuple(Vec::new()),
             TyAstNodeContent::Error(_, error) => TypeInfo::ErrorRecovery(*error),
         }
     }
@@ -343,8 +339,9 @@ impl TyAstNode {
                         .value
                         .check_deprecated(engines, handler, allow_deprecated);
                 }
+                TyStatement::Use(_) | TyStatement::Include(_) => {}
             },
-            TyAstNodeContent::SideEffect(_) | TyAstNodeContent::Error(_, _) => {}
+            TyAstNodeContent::Error(_, _) => {}
         }
     }
 
@@ -388,7 +385,7 @@ impl TyAstNode {
                     | TyDecl::TypeAliasDecl(_) => {}
                 },
                 TyAstNodeContent::Expression(_node) => {}
-                TyAstNodeContent::Statement(_) | TyAstNodeContent::SideEffect(_) => {}
+                TyAstNodeContent::Statement(_) => {}
                 TyAstNodeContent::Error(_, _) => {}
             };
             Ok(())
@@ -436,8 +433,6 @@ pub enum TyAstNodeContent {
     Declaration(TyDecl),
     Statement(TyStatement),
     Expression(TyExpression),
-    // a no-op node used for something that just issues a side effect, like an import statement.
-    SideEffect(TySideEffect),
     Error(Box<[Span]>, #[serde(skip)] ErrorEmitted),
 }
 
@@ -448,7 +443,6 @@ impl PartialEqWithEngines for TyAstNodeContent {
             (Self::Declaration(x), Self::Declaration(y)) => x.eq(y, ctx),
             (Self::Statement(x), Self::Statement(y)) => x.eq(y, ctx),
             (Self::Expression(x), Self::Expression(y)) => x.eq(y, ctx),
-            (Self::SideEffect(_), Self::SideEffect(_)) => true,
             _ => false,
         }
     }
@@ -468,9 +462,6 @@ impl HashWithEngines for TyAstNodeContent {
             Expression(exp) => {
                 exp.hash(state, engines);
             }
-            SideEffect(effect) => {
-                effect.hash(state);
-            }
             Error(_, _) => {}
         }
     }
@@ -486,7 +477,6 @@ impl TypeCheckAnalysis for TyAstNodeContent {
             TyAstNodeContent::Declaration(node) => node.type_check_analyze(handler, ctx)?,
             TyAstNodeContent::Statement(node) => node.type_check_analyze(handler, ctx)?,
             TyAstNodeContent::Expression(node) => node.type_check_analyze(handler, ctx)?,
-            TyAstNodeContent::SideEffect(_) => {}
             TyAstNodeContent::Error(_, _) => {}
         }
         Ok(())
@@ -503,7 +493,6 @@ impl TypeCheckFinalization for TyAstNodeContent {
             TyAstNodeContent::Declaration(node) => node.type_check_finalize(handler, ctx)?,
             TyAstNodeContent::Statement(node) => node.type_check_finalize(handler, ctx)?,
             TyAstNodeContent::Expression(node) => node.type_check_finalize(handler, ctx)?,
-            TyAstNodeContent::SideEffect(_) => {}
             TyAstNodeContent::Error(_, _) => {}
         }
         Ok(())
@@ -521,7 +510,6 @@ impl CollectTypesMetadata for TyAstNodeContent {
             Declaration(decl) => decl.collect_types_metadata(handler, ctx),
             Statement(stmt) => stmt.collect_types_metadata(handler, ctx),
             Expression(expr) => expr.collect_types_metadata(handler, ctx),
-            SideEffect(_) => Ok(vec![]),
             Error(_, _) => Ok(vec![]),
         }
     }
@@ -533,7 +521,6 @@ impl GetDeclIdent for TyAstNodeContent {
             TyAstNodeContent::Declaration(decl) => decl.get_decl_ident(engines),
             TyAstNodeContent::Expression(_expr) => None, //expr.get_decl_ident(),
             TyAstNodeContent::Statement(_) => None,
-            TyAstNodeContent::SideEffect(_) => None,
             TyAstNodeContent::Error(_, _) => None,
         }
     }

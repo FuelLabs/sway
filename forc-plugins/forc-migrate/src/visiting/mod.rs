@@ -23,8 +23,8 @@ use sway_core::{
         ty::{
             TyAbiDecl, TyAstNodeContent, TyCodeBlock, TyDecl, TyExpression, TyExpressionVariant,
             TyFunctionDecl, TyImplSelfOrTrait, TyIntrinsicFunctionKind, TyModule,
-            TyReassignmentTarget, TySideEffect, TyStorageDecl, TyStorageField,
-            TyStructDecl, TyTraitDecl, TyTraitItem, TyUseStatement, TyVariableDecl,
+            TyReassignmentTarget, TyStatement, TyStorageDecl, TyStorageField, TyStructDecl,
+            TyTraitDecl, TyTraitItem, TyUseStatement, TyVariableDecl,
         },
         CallPath,
     },
@@ -369,7 +369,7 @@ impl __ProgramVisitor {
                             .all_nodes
                             .iter()
                             .find_map(|node| match &node.content {
-                                TyAstNodeContent::SideEffect(TySideEffect::UseStatement(ty_use))
+                                TyAstNodeContent::Statement(TyStatement::Use(ty_use))
                                     if ty_use.span == item_use.span() =>
                                 {
                                     Some(ty_use)
@@ -822,14 +822,14 @@ impl __ProgramVisitor {
                         ItemKind::Use(item_use) => {
                             let ty_use = ty_node
                                 .map(|ty_node| match &ty_node.content {
-                                    TyAstNodeContent::SideEffect(TySideEffect::UseStatement(ty_use)) => {
+                                    TyAstNodeContent::Statement(TyStatement::Use(ty_use)) => {
                                         Ok(ty_use)
                                     }
-                                    TyAstNodeContent::SideEffect(_) => bail!(internal_error(
-                                        "`ItemKind::Use` must correspond to a `TySideEffect::UseStatement`.",
+                                    TyAstNodeContent::Statement(_) => bail!(internal_error(
+                                        "`ItemKind::Use` must correspond to a `TyStatement::Use`.",
                                     )),
                                     _ => bail!(internal_error(
-                                        "`ItemKind::Use` must correspond to a `TyAstNodeContent::SideEffect`.",
+                                        "`ItemKind::Use` must correspond to a `TyAstNodeContent::Statement`.",
                                     )),
                                 })
                                 .transpose()?;

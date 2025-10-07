@@ -387,7 +387,7 @@ impl<'a> FnCompiler<'a> {
                 ty::TyDecl::EnumVariantDecl { .. } => unexpected_decl("enum variant"),
                 ty::TyDecl::TraitTypeDecl { .. } => unexpected_decl("trait type"),
             },
-            ty::TyAstNodeContent::Statement(_) | ty::TyAstNodeContent::SideEffect(_) => Ok(None),
+            ty::TyAstNodeContent::Statement(_) => Ok(None),
             ty::TyAstNodeContent::Expression(te) => {
                 match &te.expression {
                     TyExpressionVariant::ImplicitReturn(exp) => self

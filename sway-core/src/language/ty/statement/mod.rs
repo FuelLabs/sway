@@ -1,7 +1,7 @@
 use crate::{
     decl_engine::{DeclMapping, MaterializeConstGenerics, ReplaceDecls},
     engine_threading::*,
-    language::ty::{TyExpression, TyVariableDecl, VariableMutability},
+    language::{parsed, Visibility, ty::{TyExpression, TyVariableDecl}},
     semantic_analysis::{
         TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext, TypeCheckFinalization,
         TypeCheckFinalizationContext,
@@ -14,12 +14,51 @@ use ast_elements::type_parameter::ConstGenericExpr;
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{Ident, Named, Span, Spanned};
+use sway_types::{ident::Ident as BaseIdent, Ident, Named, Span, Spanned};
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct TyIncludeStatement {
+    pub span: Span,
+    pub visibility: Visibility,
+    pub mod_name: BaseIdent,
+}
+
+impl Spanned for TyIncludeStatement {
+    fn span(&self) -> Span {
+        self.span.clone()
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct TyUseStatement {
+    pub call_path: Vec<BaseIdent>,
+    pub span: Span,
+    pub import_type: parsed::ImportType,
+    // If `is_relative_to_package_root` is true, then this use statement is a path relative to the
+    // project root. For example, if the path is `::X::Y` and occurs in package `P`, then the path
+    // refers to the full path `P::X::Y`.
+    // If `is_relative_to_package_root` is false, then there are two options:
+    // - The path refers to a path relative to the current namespace. For example, if the path is
+    //   `X::Y` and it occurs in a module whose path is `P::M`, then the path refers to the full
+    //   path `P::M::X::Y`.
+    // - The path refers to a path in an external package. For example, the path `X::Y` refers to an
+    //   entity `Y` in the external package `X`.
+    pub is_relative_to_package_root: bool,
+    pub alias: Option<BaseIdent>,
+}
+
+impl Spanned for TyUseStatement {
+    fn span(&self) -> Span {
+        self.span.clone()
+    }
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[allow(clippy::large_enum_variant)]
 pub enum TyStatement {
     Let(TyLetBinding),
+    Use(TyUseStatement),
+    Include(TyIncludeStatement),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -48,6 +87,9 @@ impl PartialEqWithEngines for TyStatement {
     fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         match (self, other) {
             (TyStatement::Let(lhs), TyStatement::Let(rhs)) => lhs.eq(rhs, ctx),
+            (TyStatement::Use(lhs), TyStatement::Use(rhs)) => lhs == rhs,
+            (TyStatement::Include(lhs), TyStatement::Include(rhs)) => lhs == rhs,
+            _ => false,
         }
     }
 }
@@ -56,6 +98,8 @@ impl HashWithEngines for TyStatement {
     fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         match self {
             TyStatement::Let(binding) => binding.hash(state, engines),
+            TyStatement::Use(stmt) => stmt.hash(state),
+            TyStatement::Include(stmt) => stmt.hash(state),
         }
     }
 }
@@ -64,6 +108,7 @@ impl SubstTypes for TyStatement {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         match self {
             TyStatement::Let(binding) => binding.subst(ctx),
+            TyStatement::Use(_) | TyStatement::Include(_) => HasChanges::No,
         }
     }
 }
@@ -77,6 +122,7 @@ impl ReplaceDecls for TyStatement {
     ) -> Result<bool, ErrorEmitted> {
         match self {
             TyStatement::Let(binding) => binding.value.replace_decls(decl_mapping, handler, ctx),
+            TyStatement::Use(_) | TyStatement::Include(_) => Ok(false),
         }
     }
 }
@@ -89,6 +135,7 @@ impl TypeCheckAnalysis for TyStatement {
     ) -> Result<(), ErrorEmitted> {
         match self {
             TyStatement::Let(binding) => binding.value.type_check_analyze(handler, ctx)?,
+            TyStatement::Use(_) | TyStatement::Include(_) => {}
         }
         Ok(())
     }
@@ -102,6 +149,7 @@ impl TypeCheckFinalization for TyStatement {
     ) -> Result<(), ErrorEmitted> {
         match self {
             TyStatement::Let(binding) => binding.value.type_check_finalize(handler, ctx)?,
+            TyStatement::Use(_) | TyStatement::Include(_) => {}
         }
         Ok(())
     }
@@ -124,6 +172,7 @@ impl CollectTypesMetadata for TyStatement {
                 );
                 Ok(metadata)
             }
+            TyStatement::Use(_) | TyStatement::Include(_) => Ok(vec![]),
         }
     }
 }
@@ -160,6 +209,7 @@ impl MaterializeConstGenerics for TyStatement {
                 }
                 Ok(())
             }
+            TyStatement::Use(_) | TyStatement::Include(_) => Ok(()),
         }
     }
 }
