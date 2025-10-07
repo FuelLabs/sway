@@ -107,42 +107,21 @@ impl Hash for u8 {
 
 impl Hash for u16 {
     fn hash(self, ref mut state: Hasher) {
-        // TODO: Remove this workaround once `__addr_of(self)` is supported
-        //       for `u16`.
-        let temp = self;
-        let ptr = asm(ptr: &temp) {
-            ptr: raw_ptr
-        };
-        let ptr = ptr.add::<u8>(6);
-
+        let ptr = __addr_of(self).add::<u8>(6);
         state.write_raw_slice(raw_slice::from_parts::<u8>(ptr, 2));
     }
 }
 
 impl Hash for u32 {
     fn hash(self, ref mut state: Hasher) {
-        // TODO: Remove this workaround once `__addr_of(self)` is supported
-        //       for `u32`.
-        let temp = self;
-        let ptr = asm(ptr: &temp) {
-            ptr: raw_ptr
-        };
-        let ptr = ptr.add::<u8>(4);
-
+        let ptr = __addr_of(self).add::<u8>(4);
         state.write_raw_slice(raw_slice::from_parts::<u8>(ptr, 4));
     }
 }
 
 impl Hash for u64 {
     fn hash(self, ref mut state: Hasher) {
-        // TODO: Remove this workaround once `__addr_of(self)` is supported
-        //       for `u64`.
-        let temp = self;
-        let ptr = asm(ptr: &temp) {
-            ptr: raw_ptr
-        };
-
-        state.write_raw_slice(raw_slice::from_parts::<u8>(ptr, 8));
+        state.write_raw_slice(raw_slice::from_parts::<u8>(__addr_of(self), 8));
     }
 }
 
