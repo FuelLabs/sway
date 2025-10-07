@@ -1121,24 +1121,35 @@ fn copy_prop_reverse(
     let mut src_to_dst: FxHashMap<Symbol, Symbol> = FxHashMap::default();
 
     for (inst, dst_sym, src_sym) in candidates {
-        if let Symbol::Arg(_) = src_sym {
-            // TODO: Handle args (and remove this filter)
-            // They just require handling more instructions where they can be used.
-            continue;
-        }
-        // We only handle local symbols for now.
-        match src_to_dst.entry(src_sym) {
-            std::collections::hash_map::Entry::Vacant(e) => {
-                e.insert(dst_sym);
+        match src_sym {
+            Symbol::Arg(_) => {
+                // TODO: Handle args (and remove this filter)
+                // They just require handling more instructions where they can be used.
+                continue;
             }
-            std::collections::hash_map::Entry::Occupied(e) => {
-                if *e.get() != dst_sym {
-                    // src_sym is copied to two different dst_syms. We cannot optimize this.
+            Symbol::Local(local) => {
+                if local.get_initializer(context).is_some() {
+                    // TODO: If the source is a local and it has an initializer, we run into trouble
+                    // 1. If the destination (after transitive closure below) is not a local,
+                    //    we cannot initialize it with the source's initializer.
+                    // 2. If the destination is a local, but it already has an initializer (by itself
+                    //    or by another source in the chain), we cannot initialize it with this initializer.
                     continue;
                 }
+                match src_to_dst.entry(src_sym) {
+                    std::collections::hash_map::Entry::Vacant(e) => {
+                        e.insert(dst_sym);
+                    }
+                    std::collections::hash_map::Entry::Occupied(e) => {
+                        if *e.get() != dst_sym {
+                            // src_sym is copied to two different dst_syms. We cannot optimize this.
+                            continue;
+                        }
+                    }
+                }
+                to_delete.insert(inst);
             }
         }
-        to_delete.insert(inst);
     }
 
     // Take a transitive closure of src_to_dst.
