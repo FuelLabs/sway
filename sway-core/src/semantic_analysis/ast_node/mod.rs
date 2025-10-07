@@ -56,26 +56,24 @@ impl ty::TyAstNode {
             content: match node.content.clone() {
                 AstNodeContent::UseStatement(stmt) => {
                     handle_use_statement(&mut ctx, &stmt, handler);
-                    ty::TyAstNodeContent::SideEffect(ty::TySideEffect {
-                        side_effect: ty::TySideEffectVariant::UseStatement(ty::TyUseStatement {
+                    ty::TyAstNodeContent::SideEffect(ty::TySideEffect::UseStatement(
+                        ty::TyUseStatement {
                             alias: stmt.alias,
                             call_path: stmt.call_path,
                             span: stmt.span,
                             is_relative_to_package_root: stmt.is_relative_to_package_root,
                             import_type: stmt.import_type,
-                        }),
-                    })
+                        },
+                    ))
                 }
                 AstNodeContent::IncludeStatement(i) => {
-                    ty::TyAstNodeContent::SideEffect(ty::TySideEffect {
-                        side_effect: ty::TySideEffectVariant::IncludeStatement(
-                            ty::TyIncludeStatement {
-                                mod_name: i.mod_name,
-                                span: i.span,
-                                visibility: i.visibility,
-                            },
-                        ),
-                    })
+                    ty::TyAstNodeContent::SideEffect(ty::TySideEffect::IncludeStatement(
+                        ty::TyIncludeStatement {
+                            mod_name: i.mod_name,
+                            span: i.span,
+                            visibility: i.visibility,
+                        },
+                    ))
                 }
                 AstNodeContent::Declaration(decl) => ty::TyAstNodeContent::Declaration(
                     ty::TyDecl::type_check(handler, &mut ctx, decl)?,

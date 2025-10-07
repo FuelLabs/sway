@@ -99,19 +99,13 @@ impl Parse for ty::TyDecl {
 
 impl Parse for ty::TySideEffect {
     fn parse(&self, ctx: &ParseContext) {
-        use ty::TySideEffectVariant::{IncludeStatement, UseStatement};
-        match &self.side_effect {
-            UseStatement(
-                use_statement @ ty::TyUseStatement {
-                    call_path,
-                    span: _,
-                    import_type,
-                    alias,
-                    is_relative_to_package_root,
-                },
-            ) => {
-                let full_path =
-                    mod_path_to_full_path(call_path, *is_relative_to_package_root, ctx.namespace);
+        match self {
+            ty::TySideEffect::UseStatement(use_statement) => {
+                let full_path = mod_path_to_full_path(
+                    &use_statement.call_path,
+                    use_statement.is_relative_to_package_root,
+                    ctx.namespace,
+                );
                 for (mod_path, ident) in iter_prefixes(&full_path).zip(&full_path) {
                     if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(ident)) {
                         token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedUseStatement(
@@ -127,9 +121,10 @@ impl Parse for ty::TySideEffect {
                         }
                     }
                 }
-                match &import_type {
+                match &use_statement.import_type {
                     ImportType::Item(item) => {
-                        if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(item))
+                        if let Some(mut token) =
+                            ctx.tokens.try_get_mut_with_retry(&ctx.ident(item))
                         {
                             token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedUseStatement(
                                 use_statement.clone(),
@@ -148,7 +143,6 @@ impl Parse for ty::TySideEffect {
                                     decl.expect_typed_ref().get_decl_ident(ctx.engines)
                                 })
                             {
-                                // Update the symbol kind to match the declarations symbol kind
                                 if let Some(decl) =
                                     ctx.tokens.try_get(&ctx.ident(&decl_ident)).try_unwrap()
                                 {
@@ -158,10 +152,10 @@ impl Parse for ty::TySideEffect {
                             }
                             token.kind = symbol_kind.clone();
                             token.type_def.clone_from(&type_def);
-                            // the alias should take on the same symbol kind and type definition
-                            if let Some(alias) = alias {
-                                if let Some(mut token) =
-                                    ctx.tokens.try_get_mut_with_retry(&ctx.ident(alias))
+                            if let Some(alias) = &use_statement.alias {
+                                if let Some(mut token) = ctx
+                                    .tokens
+                                    .try_get_mut_with_retry(&ctx.ident(alias))
                                 {
                                     token.ast_node = TokenAstNode::Typed(
                                         TypedAstToken::TypedUseStatement(use_statement.clone()),
@@ -192,7 +186,7 @@ impl Parse for ty::TySideEffect {
                     ImportType::Star => {}
                 }
             }
-            IncludeStatement(
+            ty::TySideEffect::IncludeStatement(
                 include_statement @ ty::TyIncludeStatement {
                     span: _,
                     mod_name,

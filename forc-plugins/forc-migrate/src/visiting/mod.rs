@@ -23,7 +23,7 @@ use sway_core::{
         ty::{
             TyAbiDecl, TyAstNodeContent, TyCodeBlock, TyDecl, TyExpression, TyExpressionVariant,
             TyFunctionDecl, TyImplSelfOrTrait, TyIntrinsicFunctionKind, TyModule,
-            TyReassignmentTarget, TySideEffect, TySideEffectVariant, TyStorageDecl, TyStorageField,
+            TyReassignmentTarget, TySideEffect, TyStorageDecl, TyStorageField,
             TyStructDecl, TyTraitDecl, TyTraitItem, TyUseStatement, TyVariableDecl,
         },
         CallPath,
@@ -369,9 +369,11 @@ impl __ProgramVisitor {
                             .all_nodes
                             .iter()
                             .find_map(|node| match &node.content {
-                                TyAstNodeContent::SideEffect(TySideEffect {
-                                    side_effect: TySideEffectVariant::UseStatement(ty_use),
-                                }) if ty_use.span == item_use.span() => Some(ty_use),
+                                TyAstNodeContent::SideEffect(TySideEffect::UseStatement(ty_use))
+                                    if ty_use.span == item_use.span() =>
+                                {
+                                    Some(ty_use)
+                                }
                                 _ => None,
                             })
                     });
@@ -818,15 +820,19 @@ impl __ProgramVisitor {
                     // TODO: Implement visiting `annotations`.
                     match __ref([annotated.value]) {
                         ItemKind::Use(item_use) => {
-                            let ty_use = ty_node.map(|ty_node|
-                                match &ty_node.content {
-                                    TyAstNodeContent::SideEffect(ty_side_effect) => match &ty_side_effect.side_effect {
-                                        TySideEffectVariant::UseStatement(ty_use) => Ok(ty_use),
-                                        _ => bail!(internal_error("`ItemKind::Use` must correspond to a `TySideEffectVariant::UseStatement`.")),
-                                    },
-                                    _ => bail!(internal_error("`ItemKind::Use` must correspond to a `TyAstNodeContent::SideEffect`.")),
-                                }
-                            ).transpose()?;
+                            let ty_use = ty_node
+                                .map(|ty_node| match &ty_node.content {
+                                    TyAstNodeContent::SideEffect(TySideEffect::UseStatement(ty_use)) => {
+                                        Ok(ty_use)
+                                    }
+                                    TyAstNodeContent::SideEffect(_) => bail!(internal_error(
+                                        "`ItemKind::Use` must correspond to a `TySideEffect::UseStatement`.",
+                                    )),
+                                    _ => bail!(internal_error(
+                                        "`ItemKind::Use` must correspond to a `TyAstNodeContent::SideEffect`.",
+                                    )),
+                                })
+                                .transpose()?;
 
                             visitor.visit_use(ctx, item_use, ty_use, output)?;
                         }

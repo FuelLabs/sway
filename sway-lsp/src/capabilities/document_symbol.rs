@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use sway_core::{
     language::ty::{
         TyAbiDecl, TyAstNodeContent, TyConstantDecl, TyDecl, TyEnumDecl, TyFunctionDecl,
-        TyFunctionParameter, TyIncludeStatement, TyProgram, TySideEffectVariant, TyStorageDecl,
+        TyFunctionParameter, TyIncludeStatement, TyProgram, TySideEffect, TyStorageDecl,
         TyStructDecl, TyTraitInterfaceItem, TyTraitItem, TyTraitType,
     },
     Engines, GenericArgument,
@@ -51,15 +51,10 @@ pub fn to_document_symbols(
     .flatten()
     .filter_map(|node| {
         match &node.content {
-            TyAstNodeContent::SideEffect(side_effect) => {
-                if let TySideEffectVariant::IncludeStatement(include_statement) =
-                    &side_effect.side_effect
-                {
-                    Some(build_include_symbol(include_statement))
-                } else {
-                    None
-                }
+            TyAstNodeContent::SideEffect(TySideEffect::IncludeStatement(include_statement)) => {
+                Some(build_include_symbol(include_statement))
             }
+            TyAstNodeContent::SideEffect(_) => None,
             TyAstNodeContent::Declaration(decl) => match decl {
                 TyDecl::TypeAliasDecl(decl) => {
                     let type_alias_decl = engines.de().get_type_alias(&decl.decl_id);
