@@ -1,4 +1,3 @@
-use std::hash::{Hash as _, Hasher};
 use crate::{
     decl_engine::MaterializeConstGenerics,
     engine_threading::HashWithEngines,
@@ -8,6 +7,7 @@ use crate::{
     Engines, HasChanges, SubstTypes, TypeId,
 };
 use serde::{Deserialize, Serialize};
+use std::hash::{Hash as _, Hasher};
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Ident, Named, Span, Spanned};
 

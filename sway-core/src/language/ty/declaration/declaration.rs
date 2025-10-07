@@ -510,7 +510,7 @@ impl CollectTypesMetadata for TyDecl {
             | TyDecl::AbiDecl(_)
             | TyDecl::TypeAliasDecl(_)
             | TyDecl::TraitTypeDecl(_)
-            | TyDecl::GenericTypeForFunctionScope(_) 
+            | TyDecl::GenericTypeForFunctionScope(_)
             | TyDecl::ConstGenericDecl(_) => vec![],
         };
         Ok(metadata)
