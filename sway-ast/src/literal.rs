@@ -42,6 +42,7 @@ pub enum LitIntType {
     I16,
     I32,
     I64,
+    B256,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Serialize, Deserialize)]
@@ -97,6 +98,7 @@ impl Literal {
                             LitIntType::I16 => "i16",
                             LitIntType::I32 => "i32",
                             LitIntType::I64 => "i64",
+                            LitIntType::B256 => "b256",
                         })
                 }
             }
