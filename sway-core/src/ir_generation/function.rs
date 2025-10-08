@@ -199,8 +199,8 @@ fn calc_addr_as_ptr(
 
 impl<'a> FnCompiler<'a> {
     pub(super) const BACKTRACE_FN_ARG_NAME: &'static str = "__backtrace";
-    const MAX_PANIC_ERROR_CODE: u64 = 2u64.pow(8) - 1;
-    const MAX_PANICKING_CALL_ID: u64 = 2u64.pow(11) - 1;
+    const MAX_PANIC_ERROR_CODE: u64 = 255; // 2^8 - 1.
+    const MAX_PANICKING_CALL_ID: u64 = 2047; // 2^11 - 1.
     const FN_DISPLAY_FOR_ABI_ERRORS: TyFunctionDisplay =
         TyFunctionDisplay::full().without_signature();
 
