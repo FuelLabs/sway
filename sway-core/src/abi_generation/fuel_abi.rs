@@ -658,7 +658,7 @@ fn generate_concrete_type_declaration(
         concrete_type_id: concrete_type_id.clone(),
         metadata_type_id,
         type_arguments,
-        alias_of: Some(concrete_type_id.clone()),
+        alias_of: None,
     };
 
     concrete_types.push(concrete_type_decl);
