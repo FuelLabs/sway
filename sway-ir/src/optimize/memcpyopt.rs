@@ -1225,6 +1225,33 @@ fn copy_prop_reverse(
 
     // Replace get_locals with the right values.
     function.replace_values(context, &value_replacements, None);
+
+    // In instances such as
+    //        (1) b <- a
+    //        /         \
+    // (2) x <- b    (3):  x <- a
+    // when we decide to eliminate (1) and (2), i.e., both `b` and `a` end up
+    // being replaced by `x`, (3) will end up becoming `x <- x`. We need to
+    // clean these up.
+    for (_, inst) in function.instruction_iter(context) {
+        let Some((dst_ptr, src_ptr, byte_len)) = deconstruct_memcpy(context, inst) else {
+            continue;
+        };
+
+        let dst_sym = match get_referred_symbols(context, dst_ptr) {
+            ReferredSymbols::Complete(syms) if syms.len() == 1 => syms.into_iter().next().unwrap(),
+            _ => continue,
+        };
+        let src_sym = match get_referred_symbols(context, src_ptr) {
+            ReferredSymbols::Complete(syms) if syms.len() == 1 => syms.into_iter().next().unwrap(),
+            _ => continue,
+        };
+
+        if dst_sym == src_sym {
+            to_delete.insert(inst);
+        }
+    }
+
     function.remove_instructions(context, |v| to_delete.contains(&v));
 
     Ok(modified)
