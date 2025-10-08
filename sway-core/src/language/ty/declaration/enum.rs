@@ -1,10 +1,5 @@
 use crate::{
-    decl_engine::MaterializeConstGenerics,
-    engine_threading::*,
-    has_changes,
-    language::{parsed::EnumDeclaration, ty::TyDeclParsedType, CallPath, Visibility},
-    transform,
-    type_system::*,
+    ast_elements::type_argument::GenericTypeArgument, decl_engine::MaterializeConstGenerics, engine_threading::*, has_changes, language::{parsed::EnumDeclaration, ty::TyDeclParsedType, CallPath, Visibility}, transform, type_system::*
 };
 use ast_elements::type_parameter::ConstGenericExpr;
 use monomorphization::MonomorphizeHelper;
@@ -129,7 +124,7 @@ impl MaterializeConstGenerics for TyEnumDecl {
         for variant in self.variants.iter_mut() {
             variant
                 .type_argument
-                .type_id_mut()
+                .type_id
                 .materialize_const_generics(engines, handler, name, value)?;
         }
 
@@ -167,7 +162,7 @@ impl Spanned for TyEnumVariant {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TyEnumVariant {
     pub name: Ident,
-    pub type_argument: GenericArgument,
+    pub type_argument: GenericTypeArgument,
     pub(crate) tag: usize,
     pub span: Span,
     pub attributes: transform::Attributes,

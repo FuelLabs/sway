@@ -38,7 +38,7 @@ pub(crate) fn instantiate_enum(
     // Return an error if enum variant is of type unit and it is called with parenthesis.
     // `args_opt.is_some()` returns true when this variant was called with parenthesis.
     if type_engine
-        .get(enum_variant.type_argument.initial_type_id())
+        .get(enum_variant.type_argument.initial_type_id)
         .is_unit()
         && args_opt.is_some()
     {
@@ -56,7 +56,7 @@ pub(crate) fn instantiate_enum(
 
     match (
         &args,
-        &*type_engine.get(enum_variant.type_argument.type_id()),
+        &*type_engine.get(enum_variant.type_argument.type_id),
     ) {
         ([], ty) if ty.is_unit() => Ok(ty::TyExpression {
             return_type: type_engine.insert_enum(engines, *enum_ref.id()),
@@ -116,20 +116,20 @@ pub(crate) fn instantiate_enum(
                                 .cloned()?;
                             (
                                 true,
-                                context_expected_enum_variant.type_argument.type_id(),
+                                context_expected_enum_variant.type_argument.type_id,
                                 ctx.help_text(),
                             )
                         } else {
                             (
                                 false,
-                                enum_variant.type_argument.type_id(),
+                                enum_variant.type_argument.type_id,
                                 UNIFY_ENUM_VARIANT_HELP_TEXT,
                             )
                         }
                     }
                     _ => (
                         false,
-                        enum_variant.type_argument.type_id(),
+                        enum_variant.type_argument.type_id,
                         UNIFY_ENUM_VARIANT_HELP_TEXT,
                     ),
                 };
@@ -164,7 +164,7 @@ pub(crate) fn instantiate_enum(
                         handler,
                         engines,
                         typed_expr.return_type,
-                        enum_variant.type_argument.type_id(),
+                        enum_variant.type_argument.type_id,
                         &single_expr.span, // Use the span of the instantiator expression.
                         help_text,
                         || None,

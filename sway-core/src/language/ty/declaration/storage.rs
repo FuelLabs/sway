@@ -165,7 +165,7 @@ impl TyStorageDecl {
 
                             // Everything is fine. Push the storage access descriptor and move to the next field.
 
-                            let current_field_type_id = struct_field.type_argument.type_id();
+                            let current_field_type_id = struct_field.type_argument.type_id;
 
                             access_descriptors.push(TyStorageAccessDescriptor {
                                 name: field.clone(),

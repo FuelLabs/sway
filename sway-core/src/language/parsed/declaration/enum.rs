@@ -1,8 +1,5 @@
 use crate::{
-    engine_threading::{EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext},
-    language::Visibility,
-    transform,
-    type_system::*,
+    ast_elements::type_argument::GenericTypeArgument, engine_threading::{EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext}, language::Visibility, transform, type_system::*
 };
 use sway_types::{ident::Ident, span::Span, Named, Spanned};
 
@@ -44,7 +41,7 @@ impl Spanned for EnumDeclaration {
 pub struct EnumVariant {
     pub name: Ident,
     pub attributes: transform::Attributes,
-    pub type_argument: GenericArgument,
+    pub type_argument: GenericTypeArgument,
     pub(crate) tag: usize,
     pub(crate) span: Span,
 }

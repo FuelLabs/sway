@@ -1,13 +1,9 @@
 use crate::{
-    concurrent_slab::{ConcurrentSlab, ListDisplay},
-    decl_engine::*,
-    engine_threading::*,
-    language::{
+    ast_elements::type_argument::GenericTypeArgument, concurrent_slab::{ConcurrentSlab, ListDisplay}, decl_engine::*, engine_threading::*, language::{
         parsed::{EnumDeclaration, StructDeclaration},
         ty::{TyEnumDecl, TyExpression, TyStructDecl},
         QualifiedCallPath,
-    },
-    type_system::priv_prelude::*,
+    }, type_system::priv_prelude::*
 };
 use core::fmt::Write;
 use hashbrown::{hash_map::RawEntryMut, HashMap};
@@ -520,7 +516,7 @@ impl TypeEngine {
     /// Inserts a new [TypeInfo::Tuple] into the [TypeEngine] and returns
     /// its [TypeId], or returns a [TypeId] of an existing shareable tuple type
     /// that corresponds to the tuple given by the `elements`.
-    pub(crate) fn insert_tuple(&self, engines: &Engines, elements: Vec<GenericArgument>) -> TypeId {
+    pub(crate) fn insert_tuple(&self, engines: &Engines, elements: Vec<GenericTypeArgument>) -> TypeId {
         let source_id = self.get_tuple_fallback_source_id(&elements);
         let is_shareable_type = self.is_shareable_tuple(engines, &elements);
         let type_info = TypeInfo::Tuple(elements);
@@ -553,7 +549,7 @@ impl TypeEngine {
     pub(crate) fn insert_array(
         &self,
         engines: &Engines,
-        elem_type: GenericArgument,
+        elem_type: GenericTypeArgument,
         length: Length,
     ) -> TypeId {
         let source_id = self.get_array_fallback_source_id(&elem_type, &length);
@@ -645,7 +641,7 @@ impl TypeEngine {
     /// [TypeInfo::Alias] is not a shareable type and the method
     /// guarantees that a new (or unused) [TypeId] will be returned on every
     /// call.
-    pub(crate) fn new_alias(&self, engines: &Engines, name: Ident, ty: GenericArgument) -> TypeId {
+    pub(crate) fn new_alias(&self, engines: &Engines, name: Ident, ty: GenericTypeArgument) -> TypeId {
         // The alias type shareability would be calculated as `!(false || true) ==>> false`.
         let source_id = self.get_alias_fallback_source_id(&name, &ty);
         let type_info = TypeInfo::Alias { name, ty };
@@ -724,7 +720,7 @@ impl TypeEngine {
     /// Inserts a new [TypeInfo::Slice] into the [TypeEngine] and returns
     /// its [TypeId], or returns a [TypeId] of an existing shareable slice type
     /// that corresponds to the slice given by the `elem_type`.
-    pub(crate) fn insert_slice(&self, engines: &Engines, elem_type: GenericArgument) -> TypeId {
+    pub(crate) fn insert_slice(&self, engines: &Engines, elem_type: GenericTypeArgument) -> TypeId {
         let source_id = self.get_slice_fallback_source_id(&elem_type);
         let is_shareable_type = self.is_shareable_slice(engines, &elem_type);
         let type_info = TypeInfo::Slice(elem_type);
@@ -740,7 +736,7 @@ impl TypeEngine {
     /// Inserts a new [TypeInfo::Ptr] into the [TypeEngine] and returns
     /// its [TypeId], or returns a [TypeId] of an existing shareable pointer type
     /// that corresponds to the pointer given by the `pointee_type`.
-    pub(crate) fn insert_ptr(&self, engines: &Engines, pointee_type: GenericArgument) -> TypeId {
+    pub(crate) fn insert_ptr(&self, engines: &Engines, pointee_type: GenericTypeArgument) -> TypeId {
         let source_id = self.get_ptr_fallback_source_id(&pointee_type);
         let is_shareable_type = self.is_shareable_ptr(engines, &pointee_type);
         let type_info = TypeInfo::Ptr(pointee_type);
@@ -760,7 +756,7 @@ impl TypeEngine {
         &self,
         engines: &Engines,
         to_mutable_value: bool,
-        referenced_type: GenericArgument,
+        referenced_type: GenericTypeArgument,
     ) -> TypeId {
         let source_id = self.get_ref_fallback_source_id(&referenced_type);
         let is_shareable_type = self.is_shareable_ref(engines, &referenced_type);
@@ -1273,7 +1269,7 @@ impl TypeEngine {
         }
     }
 
-    fn is_tuple_distinguishable_by_annotations(&self, elements: &[GenericArgument]) -> bool {
+    fn is_tuple_distinguishable_by_annotations(&self, elements: &[GenericTypeArgument]) -> bool {
         if elements.is_empty() {
             false
         } else {
@@ -1294,8 +1290,8 @@ impl TypeEngine {
         self.is_type_changeable(engines, &self.slab.get(type_id.index()).type_info)
     }
 
-    fn is_changeable_type_argument(&self, engines: &Engines, ta: &GenericArgument) -> bool {
-        self.is_type_id_of_changeable_type(engines, ta.type_id())
+    fn is_changeable_type_argument(&self, engines: &Engines, ta: &GenericTypeArgument) -> bool {
+        self.is_type_id_of_changeable_type(engines, ta.type_id)
     }
 
     fn is_changeable_enum(&self, engines: &Engines, decl: &TyEnumDecl) -> bool {
@@ -1326,13 +1322,13 @@ impl TypeEngine {
         self.module_might_outlive_type_parameters(engines, decl.span.source_id(), &decl.type_parameters)
     }
 
-    fn is_changeable_tuple(&self, engines: &Engines, elements: &[GenericArgument]) -> bool {
+    fn is_changeable_tuple(&self, engines: &Engines, elements: &[GenericTypeArgument]) -> bool {
         if elements.is_empty() {
             false
         } else {
             elements
                 .iter()
-                .any(|ta| self.is_type_id_of_changeable_type(engines, ta.type_id()))
+                .any(|ta| self.is_type_id_of_changeable_type(engines, ta.type_id))
         }
     }
 
@@ -1446,7 +1442,7 @@ impl TypeEngine {
                 let decl = parsed_decl_engine.get_struct(decl_id);
                 self.module_might_outlive_type_parameters(engines, module_source_id, &decl.type_parameters)
             }
-            TypeInfo::Tuple(elements) => self.module_might_outlive_type_arguments(engines, module_source_id, elements),
+            TypeInfo::Tuple(elements) => self.module_might_outlive_type_arguments(engines, module_source_id, elements.iter()),
 
             TypeInfo::Alias { ty, .. } => self.module_might_outlive_type_argument(engines, module_source_id, ty),
 
@@ -1507,29 +1503,24 @@ impl TypeEngine {
         &self,
         engines: &Engines,
         module_source_id: Option<&SourceId>,
-        type_argument: &GenericArgument,
+        type_argument: &GenericTypeArgument,
     ) -> bool {
-        self.module_might_outlive_type(engines, module_source_id, type_argument.type_id())
+        self.module_might_outlive_type(engines, module_source_id, type_argument.type_id)
             || self.module_might_outlive_type(
                 engines,
                 module_source_id,
-                type_argument.initial_type_id(),
+                type_argument.initial_type_id,
             )
     }
 
-    fn module_might_outlive_type_arguments(
+    fn module_might_outlive_type_arguments<'a>(
         &self,
         engines: &Engines,
         module_source_id: Option<&SourceId>,
-        type_arguments: &[GenericArgument],
+        mut type_arguments: impl Iterator<Item = &'a GenericTypeArgument>,
     ) -> bool {
-        if type_arguments.is_empty() {
-            false
-        } else {
-            type_arguments
-                .iter()
-                .any(|ta| self.module_might_outlive_type_argument(engines, module_source_id, ta))
-        }
+        type_arguments
+            .any(|arg| self.module_might_outlive_type_argument(engines, module_source_id, arg))
     }
 
     fn module_might_outlive_trait_constraint(
@@ -1580,7 +1571,7 @@ impl TypeEngine {
         !self.is_changeable_struct(engines, decl)
     }
 
-    fn is_shareable_tuple(&self, engines: &Engines, elements: &[GenericArgument]) -> bool {
+    fn is_shareable_tuple(&self, engines: &Engines, elements: &[GenericTypeArgument]) -> bool {
         !(self.is_changeable_tuple(engines, elements)
             || self.is_tuple_distinguishable_by_annotations(elements))
     }
@@ -1588,7 +1579,7 @@ impl TypeEngine {
     fn is_shareable_array(
         &self,
         engines: &Engines,
-        elem_type: &GenericArgument,
+        elem_type: &GenericTypeArgument,
         length: &Length,
     ) -> bool {
         !(self.is_changeable_type_argument(engines, elem_type)
@@ -1601,15 +1592,15 @@ impl TypeEngine {
         !length.expr().is_annotated()
     }
 
-    fn is_shareable_slice(&self, engines: &Engines, elem_type: &GenericArgument) -> bool {
+    fn is_shareable_slice(&self, engines: &Engines, elem_type: &GenericTypeArgument) -> bool {
         !(self.is_changeable_type_argument(engines, elem_type) || elem_type.is_annotated())
     }
 
-    fn is_shareable_ptr(&self, engines: &Engines, pointee_type: &GenericArgument) -> bool {
+    fn is_shareable_ptr(&self, engines: &Engines, pointee_type: &GenericTypeArgument) -> bool {
         !(self.is_changeable_type_argument(engines, pointee_type) || pointee_type.is_annotated())
     }
 
-    fn is_shareable_ref(&self, engines: &Engines, referenced_type: &GenericArgument) -> bool {
+    fn is_shareable_ref(&self, engines: &Engines, referenced_type: &GenericTypeArgument) -> bool {
         !(self.is_changeable_type_argument(engines, referenced_type)
             || referenced_type.is_annotated())
     }
@@ -1694,18 +1685,18 @@ impl TypeEngine {
         item.span().source_id().copied()
     }
 
-    fn get_source_id_from_type_argument(&self, ta: &GenericArgument) -> Option<SourceId> {
+    fn get_source_id_from_type_argument(&self, ta: &GenericTypeArgument) -> Option<SourceId> {
         // If the `ta` is span-annotated, take the source id from its `span`,
         // otherwise, take the source id of the type it represents.
-        ta.span()
+        ta.span
             .source_id()
             .copied()
-            .or_else(|| self.get_type_source_id(ta.type_id()))
+            .or_else(|| self.get_type_source_id(ta.type_id))
     }
 
     fn get_source_id_from_type_arguments(
         &self,
-        type_arguments: &[GenericArgument],
+        type_arguments: &[GenericTypeArgument],
     ) -> Option<SourceId> {
         // For type arguments, if they are annotated, we take the use site source file.
         // In semantically valid usages, in a vector of `TypeArgument`s, the use site source file
@@ -1721,11 +1712,11 @@ impl TypeEngine {
         } else {
             type_arguments
                 .iter()
-                .find_map(|ta| ta.span().source_id().copied())
+                .find_map(|ta| ta.span.source_id().copied())
                 .or_else(|| {
                     type_arguments
                         .iter()
-                        .find_map(|ta| self.get_type_source_id(ta.type_id()))
+                        .find_map(|ta| self.get_type_source_id(ta.type_id))
                 })
         }
     }
@@ -1807,13 +1798,13 @@ impl TypeEngine {
         decl.span.source_id().copied()
     }
 
-    fn get_tuple_fallback_source_id(&self, elements: &[GenericArgument]) -> Option<SourceId> {
+    fn get_tuple_fallback_source_id(&self, elements: &[GenericTypeArgument]) -> Option<SourceId> {
         self.get_source_id_from_type_arguments(elements)
     }
 
     fn get_array_fallback_source_id(
         &self,
-        elem_type: &GenericArgument,
+        elem_type: &GenericTypeArgument,
         _length: &Length,
     ) -> Option<SourceId> {
         self.get_source_id_from_type_argument(elem_type)
@@ -1842,7 +1833,7 @@ impl TypeEngine {
         }
     }
 
-    fn get_alias_fallback_source_id(&self, name: &Ident, ty: &GenericArgument) -> Option<SourceId> {
+    fn get_alias_fallback_source_id(&self, name: &Ident, ty: &GenericTypeArgument) -> Option<SourceId> {
         // For `TypeInfo::Alias`, we take the source file in which the alias is declared, if it exists.
         // Otherwise, we take the source file of the aliased type `ty`.
         name.span()
@@ -1851,15 +1842,15 @@ impl TypeEngine {
             .or_else(|| self.get_source_id_from_type_argument(ty))
     }
 
-    fn get_slice_fallback_source_id(&self, elem_type: &GenericArgument) -> Option<SourceId> {
+    fn get_slice_fallback_source_id(&self, elem_type: &GenericTypeArgument) -> Option<SourceId> {
         self.get_source_id_from_type_argument(elem_type)
     }
 
-    fn get_ptr_fallback_source_id(&self, pointee_type: &GenericArgument) -> Option<SourceId> {
+    fn get_ptr_fallback_source_id(&self, pointee_type: &GenericTypeArgument) -> Option<SourceId> {
         self.get_source_id_from_type_argument(pointee_type)
     }
 
-    fn get_ref_fallback_source_id(&self, referenced_type: &GenericArgument) -> Option<SourceId> {
+    fn get_ref_fallback_source_id(&self, referenced_type: &GenericTypeArgument) -> Option<SourceId> {
         self.get_source_id_from_type_argument(referenced_type)
     }
 
@@ -1879,9 +1870,13 @@ impl TypeEngine {
             .source_id()
             .copied()
             .or_else(|| {
-                type_arguments
-                    .as_ref()
-                    .and_then(|tas| self.get_source_id_from_type_arguments(tas))
+                let args = type_arguments
+                    .iter()
+                    .flat_map(|args| args)
+                    .flat_map(|args| args.as_type_argument())
+                    .cloned()
+                    .collect::<Vec<_>>();
+                self.get_source_id_from_type_arguments(&args)
             })
     }
 
@@ -2008,7 +2003,7 @@ impl TypeEngine {
         // shouldn't be possible.
         let tsi = self.slab.get(id.index());
         match &*tsi.type_info {
-            TypeInfo::Alias { ty, .. } => self.get_unaliased(ty.type_id()),
+            TypeInfo::Alias { ty, .. } => self.get_unaliased(ty.type_id),
             _ => tsi.type_info.clone(),
         }
     }
@@ -2020,7 +2015,7 @@ impl TypeEngine {
         // shouldn't be possible.
         let tsi = self.slab.get(id.index());
         match &*tsi.type_info {
-            TypeInfo::Alias { ty, .. } => self.get_unaliased_type_id(ty.type_id()),
+            TypeInfo::Alias { ty, .. } => self.get_unaliased_type_id(ty.type_id),
             _ => id,
         }
     }
@@ -2218,7 +2213,7 @@ impl TypeEngine {
                     .variants
                     .iter()
                     .all(|variant_type| {
-                        self.contains_numeric(engines, variant_type.type_argument.type_id())
+                        self.contains_numeric(engines, variant_type.type_argument.type_id)
                     })
             }
             TypeInfo::UntypedStruct(decl_id) => engines
@@ -2226,30 +2221,30 @@ impl TypeEngine {
                 .get_struct(decl_id)
                 .fields
                 .iter()
-                .any(|field| self.contains_numeric(engines, field.type_argument.type_id())),
+                .any(|field| self.contains_numeric(engines, field.type_argument.type_id)),
             TypeInfo::Enum(decl_ref) => {
                 decl_engine
                     .get_enum(decl_ref)
                     .variants
                     .iter()
                     .all(|variant_type| {
-                        self.contains_numeric(engines, variant_type.type_argument.type_id())
+                        self.contains_numeric(engines, variant_type.type_argument.type_id)
                     })
             }
             TypeInfo::Struct(decl_ref) => decl_engine
                 .get_struct(decl_ref)
                 .fields
                 .iter()
-                .any(|field| self.contains_numeric(engines, field.type_argument.type_id())),
+                .any(|field| self.contains_numeric(engines, field.type_argument.type_id)),
             TypeInfo::Tuple(fields) => fields
                 .iter()
-                .any(|field_type| self.contains_numeric(engines, field_type.type_id())),
-            TypeInfo::Array(elem_ty, _length) => self.contains_numeric(engines, elem_ty.type_id()),
-            TypeInfo::Ptr(targ) => self.contains_numeric(engines, targ.type_id()),
-            TypeInfo::Slice(targ) => self.contains_numeric(engines, targ.type_id()),
+                .any(|field_type| self.contains_numeric(engines, field_type.type_id)),
+            TypeInfo::Array(elem_ty, _length) => self.contains_numeric(engines, elem_ty.type_id),
+            TypeInfo::Ptr(targ) => self.contains_numeric(engines, targ.type_id),
+            TypeInfo::Slice(targ) => self.contains_numeric(engines, targ.type_id),
             TypeInfo::Ref {
                 referenced_type, ..
-            } => self.contains_numeric(engines, referenced_type.type_id()),
+            } => self.contains_numeric(engines, referenced_type.type_id),
             TypeInfo::Unknown
             | TypeInfo::Never
             | TypeInfo::UnknownGeneric { .. }
@@ -2288,14 +2283,14 @@ impl TypeEngine {
                     self.decay_numeric(
                         handler,
                         engines,
-                        variant_type.type_argument.type_id(),
+                        variant_type.type_argument.type_id,
                         span,
                     )?;
                 }
             }
             TypeInfo::UntypedStruct(decl_id) => {
                 for field in &engines.pe().get_struct(decl_id).fields {
-                    self.decay_numeric(handler, engines, field.type_argument.type_id(), span)?;
+                    self.decay_numeric(handler, engines, field.type_argument.type_id, span)?;
                 }
             }
             TypeInfo::Enum(decl_ref) => {
@@ -2303,29 +2298,29 @@ impl TypeEngine {
                     self.decay_numeric(
                         handler,
                         engines,
-                        variant_type.type_argument.type_id(),
+                        variant_type.type_argument.type_id,
                         span,
                     )?;
                 }
             }
             TypeInfo::Struct(decl_ref) => {
                 for field in &decl_engine.get_struct(decl_ref).fields {
-                    self.decay_numeric(handler, engines, field.type_argument.type_id(), span)?;
+                    self.decay_numeric(handler, engines, field.type_argument.type_id, span)?;
                 }
             }
             TypeInfo::Tuple(fields) => {
                 for field_type in fields {
-                    self.decay_numeric(handler, engines, field_type.type_id(), span)?;
+                    self.decay_numeric(handler, engines, field_type.type_id, span)?;
                 }
             }
             TypeInfo::Array(elem_ty, _length) => {
-                self.decay_numeric(handler, engines, elem_ty.type_id(), span)?;
+                self.decay_numeric(handler, engines, elem_ty.type_id, span)?;
             }
-            TypeInfo::Ptr(targ) => self.decay_numeric(handler, engines, targ.type_id(), span)?,
-            TypeInfo::Slice(targ) => self.decay_numeric(handler, engines, targ.type_id(), span)?,
+            TypeInfo::Ptr(targ) => self.decay_numeric(handler, engines, targ.type_id, span)?,
+            TypeInfo::Slice(targ) => self.decay_numeric(handler, engines, targ.type_id, span)?,
             TypeInfo::Ref {
                 referenced_type, ..
-            } => self.decay_numeric(handler, engines, referenced_type.type_id(), span)?,
+            } => self.decay_numeric(handler, engines, referenced_type.type_id, span)?,
             TypeInfo::Unknown
             | TypeInfo::Never
             | TypeInfo::UnknownGeneric { .. }

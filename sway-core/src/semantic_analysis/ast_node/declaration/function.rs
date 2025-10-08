@@ -199,11 +199,11 @@ impl ty::TyFunctionDecl {
                 })?;
 
                 // type check the return type
-                *return_type.type_id_mut() = ctx
+                return_type.type_id = ctx
                     .resolve_type(
                         handler,
-                        return_type.type_id(),
-                        &return_type.span(),
+                        return_type.type_id,
+                        &return_type.span,
                         EnforceTypeArguments::Yes,
                         None,
                     )
@@ -298,8 +298,8 @@ impl ty::TyFunctionDecl {
                     .with_help_text(
                         "Function body's return type does not match up with its return type annotation.",
                     )
-                    .with_type_annotation(return_type.type_id())
-                    .with_function_type_annotation(return_type.type_id());
+                    .with_type_annotation(return_type.type_id)
+                    .with_function_type_annotation(return_type.type_id);
 
                 let body = ty::TyCodeBlock::type_check(handler, ctx.by_ref(), body, true)
                     .unwrap_or_else(|_err| ty::TyCodeBlock::default());
@@ -307,10 +307,10 @@ impl ty::TyFunctionDecl {
                 ty_fn_decl.body = body;
                 ty_fn_decl.is_type_check_finalized = true;
 
-                return_type.type_id().check_type_parameter_bounds(
+                return_type.type_id.check_type_parameter_bounds(
                     handler,
                     ctx.by_ref(),
-                    &return_type.span(),
+                    &return_type.span,
                     None,
                 )?;
 

@@ -7,11 +7,7 @@ use monomorphization::MonomorphizeHelper;
 use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
-    engine_threading::*,
-    has_changes,
-    language::{parsed::TraitFn, ty::*, Purity},
-    transform,
-    type_system::*,
+    ast_elements::type_argument::GenericTypeArgument, engine_threading::*, has_changes, language::{parsed::TraitFn, ty::*, Purity}, transform, type_system::*
 };
 
 #[derive(Clone, Debug)]
@@ -20,7 +16,7 @@ pub struct TyTraitFn {
     pub(crate) span: Span,
     pub(crate) purity: Purity,
     pub parameters: Vec<TyFunctionParameter>,
-    pub return_type: GenericArgument,
+    pub return_type: GenericTypeArgument,
     pub attributes: transform::Attributes,
 }
 
@@ -39,11 +35,11 @@ impl DebugWithEngines for TyTraitFn {
                 .map(|p| format!(
                     "{}:{}",
                     p.name.as_str(),
-                    engines.help_out(p.type_argument.initial_type_id())
+                    engines.help_out(p.type_argument.initial_type_id)
                 ))
                 .collect::<Vec<_>>()
                 .join(", "),
-            engines.help_out(self.return_type.initial_type_id()),
+            engines.help_out(self.return_type.initial_type_id),
         )
     }
 }
@@ -67,11 +63,11 @@ impl IsConcrete for TyTraitFn {
             .all(|tp| tp.is_concrete(engines))
             && self
                 .return_type
-                .type_id()
+                .type_id
                 .is_concrete(engines, TreatNumericAs::Concrete)
             && self.parameters().iter().all(|t| {
                 t.type_argument
-                    .type_id()
+                    .type_id
                     .is_concrete(engines, TreatNumericAs::Concrete)
             })
     }
@@ -82,7 +78,7 @@ impl declaration::FunctionSignature for TyTraitFn {
         &self.parameters
     }
 
-    fn return_type(&self) -> &GenericArgument {
+    fn return_type(&self) -> &GenericTypeArgument {
         &self.return_type
     }
 }
@@ -95,8 +91,8 @@ impl PartialEqWithEngines for TyTraitFn {
             && self.purity == other.purity
             && self.parameters.eq(&other.parameters, ctx)
             && type_engine
-                .get(self.return_type.type_id())
-                .eq(&type_engine.get(other.return_type.type_id()), ctx)
+                .get(self.return_type.type_id)
+                .eq(&type_engine.get(other.return_type.type_id), ctx)
             && self.attributes == other.attributes
     }
 }
@@ -116,7 +112,7 @@ impl HashWithEngines for TyTraitFn {
         let type_engine = engines.te();
         name.hash(state);
         parameters.hash(state, engines);
-        type_engine.get(return_type.type_id()).hash(state, engines);
+        type_engine.get(return_type.type_id).hash(state, engines);
         purity.hash(state);
     }
 }

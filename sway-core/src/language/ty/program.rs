@@ -350,7 +350,7 @@ impl TyProgram {
                 };
 
                 let main_fn = decl_engine.get(&main_fn_id);
-                if !ty_engine.get(main_fn.return_type.type_id()).is_bool() {
+                if !ty_engine.get(main_fn.return_type.type_id).is_bool() {
                     handler.emit_err(CompileError::PredicateMainDoesNotReturnBool(
                         main_fn.span.clone(),
                     ));
@@ -404,7 +404,7 @@ impl TyProgram {
                     for p in main_fn.parameters() {
                         if let Some(error) = get_type_not_allowed_error(
                             engines,
-                            p.type_argument.type_id(),
+                            p.type_argument.type_id,
                             &p.type_argument,
                             |t| match t {
                                 TypeInfo::StringSlice => {
@@ -423,7 +423,7 @@ impl TyProgram {
                     // Check main return type is valid
                     if let Some(error) = get_type_not_allowed_error(
                         engines,
-                        main_fn.return_type.type_id(),
+                        main_fn.return_type.type_id,
                         &main_fn.return_type,
                         |t| match t {
                             TypeInfo::StringSlice => {
@@ -437,7 +437,7 @@ impl TyProgram {
                     ) {
                         // Let main return `raw_slice` directly
                         if !matches!(
-                            &*engines.te().get(main_fn.return_type.type_id()),
+                            &*engines.te().get(main_fn.return_type.type_id),
                             TypeInfo::RawUntypedSlice
                         ) {
                             handler.emit_err(error);

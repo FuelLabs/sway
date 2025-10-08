@@ -1414,11 +1414,11 @@ fn type_check_impl_method(
             }
 
             // this subst is required to replace associated types, namely TypeInfo::TraitType.
-            let mut impl_method_param_type_id = impl_method_param.type_argument.type_id();
+            let mut impl_method_param_type_id = impl_method_param.type_argument.type_id;
             impl_method_param_type_id.subst(&ctx.subst_ctx());
 
             let mut impl_method_signature_param_type_id =
-                impl_method_signature_param.type_argument.type_id();
+                impl_method_signature_param.type_argument.type_id;
             impl_method_signature_param_type_id.subst(&ctx.subst_ctx());
 
             if !UnifyCheck::non_dynamic_equality(engines).check(
@@ -1427,7 +1427,7 @@ fn type_check_impl_method(
             ) {
                 handler.emit_err(CompileError::MismatchedTypeInInterfaceSurface {
                     interface_name: interface_name(),
-                    span: impl_method_param.type_argument.span(),
+                    span: impl_method_param.type_argument.span.clone(),
                     decl_type: "function".to_string(),
                     given: engines.help_out(impl_method_param_type_id).to_string(),
                     expected: engines
@@ -1489,11 +1489,11 @@ fn type_check_impl_method(
         }
 
         // this subst is required to replace associated types, namely TypeInfo::TraitType.
-        let mut impl_method_return_type_id = impl_method.return_type.type_id();
+        let mut impl_method_return_type_id = impl_method.return_type.type_id;
         impl_method_return_type_id.subst(&ctx.subst_ctx());
 
         let mut impl_method_signature_return_type_type_id =
-            impl_method_signature.return_type.type_id();
+            impl_method_signature.return_type.type_id;
         impl_method_signature_return_type_type_id.subst(&ctx.subst_ctx());
 
         if !UnifyCheck::non_dynamic_equality(engines).check(
@@ -1503,7 +1503,7 @@ fn type_check_impl_method(
             return Err(
                 handler.emit_err(CompileError::MismatchedTypeInInterfaceSurface {
                     interface_name: interface_name(),
-                    span: impl_method.return_type.span(),
+                    span: impl_method.return_type.span,
                     decl_type: "function".to_string(),
                     expected: engines
                         .help_out(impl_method_signature_return_type_type_id)

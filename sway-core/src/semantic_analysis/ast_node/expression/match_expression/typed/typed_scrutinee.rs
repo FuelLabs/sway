@@ -561,12 +561,12 @@ fn type_check_tuple(
         typed_elems
             .iter()
             .map(|elem| {
-                GenericArgument::Type(GenericTypeArgument {
+                GenericTypeArgument {
                     type_id: elem.type_id,
                     initial_type_id: elem.type_id,
                     span: elem.span.clone(),
                     call_path_tree: None,
-                })
+                }
             })
             .collect(),
     );
