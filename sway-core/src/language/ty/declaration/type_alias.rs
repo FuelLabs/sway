@@ -1,8 +1,5 @@
 use crate::{
-    engine_threading::*,
-    language::{parsed::TypeAliasDeclaration, ty::TyDeclParsedType, CallPath, Visibility},
-    transform,
-    type_system::*,
+    ast_elements::type_argument::GenericTypeArgument, engine_threading::*, language::{parsed::TypeAliasDeclaration, ty::TyDeclParsedType, CallPath, Visibility}, transform, type_system::*
 };
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
@@ -13,7 +10,7 @@ pub struct TyTypeAliasDecl {
     pub name: Ident,
     pub call_path: CallPath,
     pub attributes: transform::Attributes,
-    pub ty: GenericArgument,
+    pub ty: GenericTypeArgument,
     pub visibility: Visibility,
     pub span: Span,
 }

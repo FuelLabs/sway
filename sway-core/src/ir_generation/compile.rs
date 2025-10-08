@@ -675,8 +675,8 @@ fn compile_fn(
                 md_mgr,
                 module,
                 None,
-                param.type_argument.type_id(),
-                &param.type_argument.span(),
+                param.type_argument.type_id,
+                &param.type_argument.span,
             )
             .map(|ty| {
                 if param.is_reference && param.is_mutable {
@@ -716,8 +716,8 @@ fn compile_fn(
         md_mgr,
         module,
         None,
-        return_type.type_id(),
-        &return_type.span(),
+        return_type.type_id,
+        &return_type.span,
     )
     .map_err(|err| vec![err])?;
 

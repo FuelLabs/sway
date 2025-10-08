@@ -165,17 +165,9 @@ impl MaterializeConstGenerics for TyAstNode {
                     .materialize_const_generics(engines, handler, name, value)?;
                 decl.return_type
                     .materialize_const_generics(engines, handler, name, value)?;
-                match &mut decl.type_ascription {
-                    GenericArgument::Type(arg) => arg
-                        .type_id
-                        .materialize_const_generics(engines, handler, name, value)?,
-                    GenericArgument::Const(arg) => {
-                        if matches!(&arg.expr, ConstGenericExpr::AmbiguousVariableExpression { ident, .. } if ident.as_str() == name)
-                        {
-                            arg.expr = ConstGenericExpr::from_ty_expression(handler, value)?;
-                        }
-                    }
-                }
+                decl.type_ascription
+                    .type_id
+                    .materialize_const_generics(engines, handler, name, value)?;
                 Ok(())
             }
             TyAstNodeContent::Expression(expr) => {

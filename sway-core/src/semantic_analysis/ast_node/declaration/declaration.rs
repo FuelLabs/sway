@@ -521,7 +521,7 @@ impl TyDecl {
                 let new_ty = ctx
                     .resolve_type(
                         handler,
-                        ty.type_id(),
+                        ty.type_id,
                         &span,
                         EnforceTypeArguments::Yes,
                         None,
@@ -533,17 +533,15 @@ impl TyDecl {
                     name: name.clone(),
                     call_path: CallPath::from(name.clone()).to_fullpath(engines, ctx.namespace()),
                     attributes: decl.attributes.clone(),
-                    ty: GenericArgument::Type(GenericTypeArgument {
-                        initial_type_id: ty.initial_type_id(),
+                    ty: GenericTypeArgument {
+                        initial_type_id: ty.initial_type_id,
                         type_id: new_ty,
                         call_path_tree: ty
-                            .as_type_argument()
-                            .unwrap()
                             .call_path_tree
                             .as_ref()
                             .cloned(),
-                        span: ty.span(),
-                    }),
+                        span: ty.span.clone(),
+                    },
                     visibility: decl.visibility,
                     span,
                 };

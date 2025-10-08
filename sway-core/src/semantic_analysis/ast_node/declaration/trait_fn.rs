@@ -69,11 +69,11 @@ impl ty::TyTraitFn {
 
             // Type check the return type.
             let mut new_return_type = return_type.clone();
-            *new_return_type.type_id_mut() = ctx
+            new_return_type.type_id = ctx
                 .resolve_type(
                     handler,
-                    return_type.type_id(),
-                    &return_type.span(),
+                    return_type.type_id,
+                    &return_type.span,
                     EnforceTypeArguments::Yes,
                     None,
                 )

@@ -1,10 +1,6 @@
 use super::{ConstantDeclaration, FunctionDeclaration, FunctionParameter};
 use crate::{
-    decl_engine::{parsed_id::ParsedDeclId, DeclRefTrait},
-    engine_threading::*,
-    language::*,
-    transform,
-    type_system::*,
+    ast_elements::type_argument::GenericTypeArgument, decl_engine::{parsed_id::ParsedDeclId, DeclRefTrait}, engine_threading::*, language::*, transform, type_system::*
 };
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
@@ -116,7 +112,7 @@ pub struct TraitFn {
     pub attributes: transform::Attributes,
     pub purity: Purity,
     pub parameters: Vec<FunctionParameter>,
-    pub return_type: GenericArgument,
+    pub return_type: GenericTypeArgument,
 }
 
 impl Spanned for TraitFn {

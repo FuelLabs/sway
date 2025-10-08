@@ -1,7 +1,5 @@
 use crate::{
-    engine_threading::*,
-    language::{parsed::VariableDeclaration, ty::*},
-    type_system::*,
+    ast_elements::type_argument::GenericTypeArgument, engine_threading::*, language::{parsed::VariableDeclaration, ty::*}, type_system::*
 };
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
@@ -13,7 +11,7 @@ pub struct TyVariableDecl {
     pub body: TyExpression,
     pub mutability: VariableMutability,
     pub return_type: TypeId,
-    pub type_ascription: GenericArgument,
+    pub type_ascription: GenericTypeArgument,
 }
 
 impl TyDeclParsedType for TyVariableDecl {
