@@ -1234,7 +1234,7 @@ fn copy_prop_reverse(
     // being replaced by `x`, (3) will end up becoming `x <- x`. We need to
     // clean these up.
     for (_, inst) in function.instruction_iter(context) {
-        let Some((dst_ptr, src_ptr, byte_len)) = deconstruct_memcpy(context, inst) else {
+        let Some((dst_ptr, src_ptr, _byte_len)) = deconstruct_memcpy(context, inst) else {
             continue;
         };
 
