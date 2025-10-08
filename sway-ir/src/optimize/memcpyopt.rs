@@ -1074,7 +1074,7 @@ fn copy_prop_reverse(
     let mut candidates = vec![];
 
     for (_block, inst) in function.instruction_iter(context) {
-        let Some((dst_ptr, src_ptr, _byte_len)) = deconstruct_memcpy(context, inst) else {
+        let Some((dst_ptr, src_ptr, byte_len)) = deconstruct_memcpy(context, inst) else {
             continue;
         };
 
@@ -1097,6 +1097,18 @@ fn copy_prop_reverse(
         };
 
         if dst_sym.get_type(context) != src_sym.get_type(context) {
+            continue;
+        }
+
+        // We don't deal with partial memcpys
+        if dst_sym
+            .get_type(context)
+            .get_pointee_type(context)
+            .expect("All symbols must be pointer types")
+            .size(context)
+            .in_bytes()
+            != byte_len
+        {
             continue;
         }
 
