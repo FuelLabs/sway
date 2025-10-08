@@ -7,7 +7,7 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_lib
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
    Compiling library panicking_lib (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_lib)
-    Finished release [optimized + fuel] target(s) [4.832 KB] in ???
+    Finished release [optimized + fuel] target(s) [4.816 KB] in ???
      Running 18 tests, filtered 0 tests
 
 tested -- panicking_lib
@@ -107,7 +107,7 @@ C(true), log rb: 2721958641300806892
             └─ panicked in:   panicking_lib, src/lib.sw:133:5
            decoded log values:
 A(42), log rb: 12408470889216862137
-      test test_panic_with_nested_generic_error_type ... ok (???, 557 gas)
+      test test_panic_with_nested_generic_error_type ... ok (???, 555 gas)
            revert code: ffffffff0000000a
             ├─ panic value:   B(B(C(true)))
             └─ panicked in:   panicking_lib, src/lib.sw:138:5
@@ -119,7 +119,7 @@ B(B(C(true))), log rb: 14988555917426256081
             └─ panicked in:   panicking_lib, src/lib.sw:143:5
            decoded log values:
 A(42), log rb: 17388243649088655852
-      test test_panic_with_nested_generic_error_type_enum_with_abi_encode ... ok (???, 557 gas)
+      test test_panic_with_nested_generic_error_type_enum_with_abi_encode ... ok (???, 555 gas)
            revert code: ffffffff0000000c
             ├─ panic value:   B(B(C(true)))
             └─ panicked in:   panicking_lib, src/lib.sw:148:5
