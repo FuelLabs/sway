@@ -18,6 +18,7 @@ pub async fn determine_missing_contracts(
     provider: &Provider,
     tx_policies: &TxPolicies,
     variable_output_policy: &VariableOutputPolicy,
+    consensus_params: &ConsensusParameters,
     log_decoder: &fuels_core::codec::LogDecoder,
     account: &Wallet<Unlocked<PrivateKeySigner>>,
 ) -> Result<Vec<ContractId>> {
@@ -25,8 +26,8 @@ pub async fn determine_missing_contracts(
         .transaction_builder(
             *tx_policies,
             *variable_output_policy,
-            &ConsensusParameters::standard(),
-            vec![],
+            consensus_params,
+            call.inputs.clone(),
             account,
         )
         .expect("Failed to initialize transaction builder");

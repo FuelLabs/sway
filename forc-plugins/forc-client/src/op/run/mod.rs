@@ -13,7 +13,7 @@ use forc_tracing::println_warning;
 use forc_util::tx_utils::format_log_receipts;
 use fuel_abi_types::abi::program::ProgramABI;
 use fuel_core_client::client::FuelClient;
-use fuel_tx::{ConsensusParameters, ContractId, Transaction};
+use fuel_tx::{ContractId, Transaction};
 use fuels::{
     programs::calls::{traits::TransactionTuner, ScriptCall},
     types::{
@@ -102,6 +102,7 @@ pub async fn run_pkg(
 ) -> Result<RanScript> {
     let node_url = command.node.get_node_url(&manifest.network)?;
     let provider = Provider::connect(node_url.clone()).await?;
+    let consensus_params = provider.consensus_parameters().await?;
     let tx_count = 1;
     let account = select_account(
         signer_mode,
@@ -155,8 +156,8 @@ pub async fn run_pkg(
     let mut tb = call.transaction_builder(
         tx_policies,
         VariableOutputPolicy::EstimateMinimum,
-        &ConsensusParameters::standard(),
-        vec![],
+        &consensus_params,
+        call.inputs.clone(),
         &account,
     )?;
 
