@@ -1,5 +1,6 @@
 ---
 source: test/src/snapshot/mod.rs
+assertion_line: 266
 ---
 > forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests --logs --raw-logs --dbgs --reverts passing_
 exit status: 0
@@ -113,14 +114,14 @@ AsciiString { data: "This is a log from the reverting test." }, log rb: 10098701
 
       test failing_error_signal_assert, "test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests/src/main.sw":49
            revert code: ffffffffffff0004
-            └─ error message: Failing call to `std::assert::assert`
+            └─ error message: Failing call to `std::assert::assert`.
            debug output:
 [src/main.sw:51:13] TestError::A = A
 
 
       test failing_error_signal_assert_eq, "test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests/src/main.sw":55
            revert code: ffffffffffff0003
-            └─ error message: Failing call to `std::assert::assert_eq`
+            └─ error message: Failing call to `std::assert::assert_eq`.
            debug output:
 [src/main.sw:57:13] "This is a `__dbg` before the failing assert_eq." = "This is a `__dbg` before the failing assert_eq."
            decoded log values:
@@ -173,7 +174,7 @@ AsciiString { data: "We will get logged the asserted values and this message." }
 
       test failing_error_signal_assert_ne, "test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests/src/main.sw":62
            revert code: ffffffffffff0005
-            └─ error message: Failing call to `std::assert::assert_ne`
+            └─ error message: Failing call to `std::assert::assert_ne`.
            debug output:
 [src/main.sw:64:13] "This is a `__dbg` before the failing assert_ne." = "This is a `__dbg` before the failing assert_ne."
            decoded log values:
@@ -226,7 +227,7 @@ AsciiString { data: "We will get logged the asserted values and this message." }
 
       test failing_error_signal_require_str_error, "test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests/src/main.sw":69
            revert code: ffffffffffff0000
-            └─ error message: Failing call to `std::revert::require`
+            └─ error message: Failing call to `std::revert::require`.
            decoded log values:
 AsciiString { data: "This is an error message in a `require` call." }, log rb: 10098701174489624218
            raw logs:
@@ -249,7 +250,7 @@ AsciiString { data: "This is an error message in a `require` call." }, log rb: 1
 
       test failing_error_signal_require_enum_error, "test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests/src/main.sw":74
            revert code: ffffffffffff0000
-            └─ error message: Failing call to `std::revert::require`
+            └─ error message: Failing call to `std::revert::require`.
            decoded log values:
 B(true), log rb: 8516346929033386016
            raw logs:
