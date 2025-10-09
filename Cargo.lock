@@ -3872,7 +3872,7 @@ dependencies = [
  "forc-tracing 0.70.0",
  "forc-util",
  "fs_extra",
- "fuel-abi-types 0.15.2",
+ "fuel-abi-types 0.15.3",
  "fuel-asm",
  "hex",
  "rexpect",
@@ -3915,7 +3915,7 @@ dependencies = [
  "forc-tx",
  "forc-util",
  "forc-wallet",
- "fuel-abi-types 0.15.2",
+ "fuel-abi-types 0.15.3",
  "fuel-core-client 0.46.0",
  "fuel-core-storage 0.46.0",
  "fuel-core-types 0.46.0",
@@ -3993,7 +3993,7 @@ dependencies = [
  "forc-test",
  "forc-tracing 0.70.0",
  "forc-util",
- "fuel-abi-types 0.15.2",
+ "fuel-abi-types 0.15.3",
  "fuel-core-client 0.46.0",
  "fuel-tx",
  "fuel-types",
@@ -4159,7 +4159,7 @@ dependencies = [
  "flate2",
  "forc-tracing 0.70.0",
  "forc-util",
- "fuel-abi-types 0.15.2",
+ "fuel-abi-types 0.15.3",
  "futures",
  "git2",
  "gix-url",
@@ -4228,7 +4228,7 @@ dependencies = [
  "anyhow",
  "forc-pkg",
  "forc-util",
- "fuel-abi-types 0.15.2",
+ "fuel-abi-types 0.15.3",
  "fuel-tx",
  "fuel-vm",
  "rand 0.8.5",
@@ -4289,7 +4289,7 @@ dependencies = [
  "dirs 5.0.1",
  "fd-lock",
  "forc-tracing 0.70.0",
- "fuel-abi-types 0.15.2",
+ "fuel-abi-types 0.15.3",
  "fuel-asm",
  "fuel-tx",
  "fuels-core 0.75.0",
@@ -4386,9 +4386,9 @@ dependencies = [
 
 [[package]]
 name = "fuel-abi-types"
-version = "0.15.2"
+version = "0.15.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c1e66dabe110e398990f0a37c517a2d8c435f7d6a974e9295a475b39597a1d5"
+checksum = "472b28d88f9d49dde82679ae6adfaff75a95f3f0b324f90eaa42a6ac3270d4ce"
 dependencies = [
  "itertools 0.10.5",
  "lazy_static",
@@ -5380,7 +5380,7 @@ version = "0.75.0"
 source = "git+https://github.com/FuelLabs/fuels-rs?branch=feat%2Fabi-backtracing#6915023e477bfdf0722181147995865c9648851c"
 dependencies = [
  "Inflector",
- "fuel-abi-types 0.15.2",
+ "fuel-abi-types 0.15.3",
  "itertools 0.12.1",
  "proc-macro2",
  "quote",
@@ -5426,7 +5426,7 @@ dependencies = [
  "async-trait",
  "auto_impl",
  "chrono",
- "fuel-abi-types 0.15.2",
+ "fuel-abi-types 0.15.3",
  "fuel-asm",
  "fuel-core-chain-config 0.46.0",
  "fuel-core-client 0.46.0",
@@ -5497,7 +5497,7 @@ version = "0.75.0"
 source = "git+https://github.com/FuelLabs/fuels-rs?branch=feat%2Fabi-backtracing#6915023e477bfdf0722181147995865c9648851c"
 dependencies = [
  "async-trait",
- "fuel-abi-types 0.15.2",
+ "fuel-abi-types 0.15.3",
  "fuel-asm",
  "fuel-tx",
  "fuel-types",
@@ -11590,7 +11590,7 @@ dependencies = [
  "clap",
  "dirs 5.0.1",
  "either",
- "fuel-abi-types 0.15.2",
+ "fuel-abi-types 0.15.3",
  "fuel-ethabi",
  "fuel-etk-asm",
  "fuel-etk-ops",
