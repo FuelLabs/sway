@@ -1942,7 +1942,7 @@ impl TypeInfoDisplay {
             RawUntypedSlice => "raw_slice".into(),
             Alias { name, ty: _ } if self.display_alias_name => name.as_str().into(),
             Alias { ty, name: _ } => {
-                let type_info = engines.te().get(ty.type_id());
+                let type_info = engines.te().get(ty.type_id);
                 self.display(&type_info, engines).to_string().into()
             }
             TraitType {
@@ -2018,7 +2018,7 @@ impl TypeInfoDisplay {
                 let fields = fields
                     .iter()
                     .map(|field| {
-                        let type_info = engines.te().get(field.type_id());
+                        let type_info = engines.te().get(field.type_id);
                         self.display(&type_info, engines).to_string()
                     })
                     .collect::<Vec<_>>()
@@ -2101,18 +2101,18 @@ impl TypeInfoDisplay {
                     .into()
             }
             Array(elem_ty, length) => {
-                let elem_ty = engines.te().get(elem_ty.type_id());
+                let elem_ty = engines.te().get(elem_ty.type_id);
                 let elem_ty = self.display(&elem_ty, engines);
                 let length = length.expr().get_normalized_str();
                 ["[", &elem_ty, "; ", &length, "]"].concat().into()
             }
             Ptr(ty) => {
-                let ty = engines.te().get(ty.type_id());
+                let ty = engines.te().get(ty.type_id);
                 let ty = self.display(&ty, engines);
                 ["__ptr[", &ty, "]"].concat().into()
             }
             Slice(ty) => {
-                let ty = engines.te().get(ty.type_id());
+                let ty = engines.te().get(ty.type_id);
                 let ty = self.display(&ty, engines);
                 ["__slice[", &ty, "]"].concat().into()
             }
@@ -2120,7 +2120,7 @@ impl TypeInfoDisplay {
                 to_mutable_value,
                 referenced_type,
             } => {
-                let referenced_type = engines.te().get(referenced_type.type_id());
+                let referenced_type = engines.te().get(referenced_type.type_id);
                 let referenced_type = self.display(&referenced_type, engines);
                 let as_mut = if *to_mutable_value { "mut " } else { "" };
                 ["&", as_mut, &referenced_type].concat().into()

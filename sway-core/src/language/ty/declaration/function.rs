@@ -1400,7 +1400,7 @@ impl TyFunctionDisplay {
                                 // from the `impl_self_or_trait_decl`.
                                 engines
                                     .te()
-                                    .get(impl_self_or_trait_decl.implementing_for.type_id())
+                                    .get(impl_self_or_trait_decl.implementing_for.type_id)
                             }
                         };
                         Some(
@@ -1484,7 +1484,7 @@ impl TyFunctionDisplay {
                     }
                 }
                 if self.should_display_param_type(param) {
-                    let param_type = engines.te().get(param.type_argument.type_id());
+                    let param_type = engines.te().get(param.type_argument.type_id);
                     result.push_str(&self.types_display.display(&param_type, engines));
                 }
 
@@ -1500,7 +1500,7 @@ impl TyFunctionDisplay {
         // Append return type, if configured so.
         if self.display_return_type {
             result.push_str(" -> ");
-            let return_type = engines.te().get(fn_decl.return_type.type_id());
+            let return_type = engines.te().get(fn_decl.return_type.type_id);
             result.push_str(&self.types_display.display(&return_type, engines));
         }
 

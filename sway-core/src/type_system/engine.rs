@@ -1474,7 +1474,10 @@ impl TypeEngine {
 
             TypeInfo::Custom { type_arguments, .. } =>
                 type_arguments.as_ref().is_some_and(|type_arguments|
-                    self.module_might_outlive_type_arguments(engines, module_source_id, type_arguments)),
+                    {
+                        let type_arguments = type_arguments.iter().filter_map(|x| x.as_type_argument());
+                        self.module_might_outlive_type_arguments(engines, module_source_id, type_arguments)
+                    }),
             TypeInfo::TraitType { implemented_in, .. } => self.module_might_outlive_type(engines, module_source_id, *implemented_in)
         }
     }
