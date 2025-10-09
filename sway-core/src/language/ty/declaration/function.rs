@@ -1,9 +1,17 @@
 use crate::{
-    ast_elements::type_argument::GenericTypeArgument, decl_engine::*, engine_threading::*, has_changes, language::{
+    ast_elements::type_argument::GenericTypeArgument,
+    decl_engine::*,
+    engine_threading::*,
+    has_changes,
+    language::{
         parsed::{self, FunctionDeclaration, FunctionDeclarationKind},
         ty::*,
         CallPath, Inline, Purity, Trace, Visibility,
-    }, semantic_analysis::TypeCheckContext, transform::{self, AttributeKind}, type_system::*, types::*
+    },
+    semantic_analysis::TypeCheckContext,
+    transform::{self, AttributeKind},
+    type_system::*,
+    types::*,
 };
 use ast_elements::type_parameter::ConstGenericExpr;
 use either::Either;
@@ -222,8 +230,8 @@ fn rename_const_generics_on_function(
     impl_self_or_trait: &TyImplSelfOrTrait,
     function: &mut TyFunctionDecl,
 ) {
-    let from = impl_self_or_trait.implementing_for.initial_type_id();
-    let to = impl_self_or_trait.implementing_for.type_id();
+    let from = impl_self_or_trait.implementing_for.initial_type_id;
+    let to = impl_self_or_trait.implementing_for.type_id;
 
     let from = engines.te().get(from);
     let to = engines.te().get(to);
@@ -333,7 +341,7 @@ impl DeclRefFunction {
                     0,
                     &mut type_id_type_parameters,
                     &mut const_generic_parameters,
-                    impl_self_or_trait.implementing_for.type_id(),
+                    impl_self_or_trait.implementing_for.type_id,
                 );
 
                 type_id_type_subst_map
@@ -360,7 +368,7 @@ impl DeclRefFunction {
                         type_id_type_subst_map.insert(p.type_id, matches[0].0);
                     } else if engines
                         .te()
-                        .get(impl_self_or_trait.implementing_for.initial_type_id())
+                        .get(impl_self_or_trait.implementing_for.initial_type_id)
                         .eq(
                             &*engines.te().get(p.initial_type_id),
                             &PartialEqWithEnginesContext::new(engines),
@@ -764,7 +772,7 @@ impl TyFunctionDecl {
             Some(TyDecl::ImplSelfOrTrait(t)) => {
                 let unify_check = UnifyCheck::non_dynamic_equality(engines);
 
-                let implementing_for = engines.de().get(&t.decl_id).implementing_for.type_id();
+                let implementing_for = engines.de().get(&t.decl_id).implementing_for.type_id;
 
                 // TODO: Implement the check in detail for all possible cases (e.g. trait impls for generics etc.)
                 //       and return just the definite `bool` and not `Option<bool>`.
@@ -792,7 +800,7 @@ impl TyFunctionDecl {
                 && matches!(
                     *engines
                         .te()
-                        .get(existing_trait_decl.implementing_for.type_id()),
+                        .get(existing_trait_decl.implementing_for.type_id),
                     TypeInfo::UnknownGeneric { .. }
                 )
             {

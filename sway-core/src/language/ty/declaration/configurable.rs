@@ -22,7 +22,7 @@ pub struct TyConfigurableDecl {
     pub visibility: Visibility,
     pub attributes: transform::Attributes,
     pub return_type: TypeId,
-    pub type_ascription: GenericArgument,
+    pub type_ascription: GenericTypeArgument,
     pub span: Span,
     // Only encoding v1 has a decode_fn
     pub decode_fn: Option<DeclRef<DeclId<TyFunctionDecl>>>,

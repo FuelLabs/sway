@@ -6,14 +6,19 @@ pub mod marker_traits;
 use std::ops::Deref;
 
 use crate::{
-    ast_elements::type_argument::GenericTypeArgument, build_config::DbgGeneration, engine_threading::SpannedWithEngines, language::{
+    ast_elements::type_argument::GenericTypeArgument,
+    build_config::DbgGeneration,
+    engine_threading::SpannedWithEngines,
+    language::{
         parsed::{self, AstNodeContent, Declaration, FunctionDeclarationKind},
         ty::{self, TyAstNode, TyDecl},
-    }, semantic_analysis::TypeCheckContext, BuildTarget, Engines, GenericArgument, TypeInfo, TypeParameter
+    },
+    semantic_analysis::TypeCheckContext,
+    BuildTarget, Engines, TypeInfo, TypeParameter,
 };
 use sway_error::handler::Handler;
 use sway_parse::Parse;
-use sway_types::{SourceId, Spanned};
+use sway_types::SourceId;
 
 /// Contains all information needed to auto-implement code for a certain feature.
 pub struct AutoImplContext<'a, 'b, I>
@@ -287,7 +292,7 @@ where
                 &handler,
                 impl_trait.trait_name.clone(),
                 impl_trait.trait_type_arguments.clone(),
-                impl_trait.implementing_for.type_id(),
+                impl_trait.implementing_for.type_id,
                 impl_trait.impl_type_parameters.clone(),
                 &impl_trait.items,
                 &impl_trait.span,

@@ -1,7 +1,10 @@
 use sway_types::{Named, Spanned};
 
 use crate::{
-    ast_elements::type_argument::GenericTypeArgument, engine_threading::{EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext}, language::parsed::Expression, GenericArgument, Ident
+    ast_elements::type_argument::GenericTypeArgument,
+    engine_threading::{EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext},
+    language::parsed::Expression,
+    Ident,
 };
 
 #[derive(Debug, Clone)]

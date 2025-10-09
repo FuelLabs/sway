@@ -74,14 +74,8 @@ pub fn inlay_hints(
             }
 
             // Variable declaration hints
-            if var
-                .type_ascription
-                .as_type_argument()
-                .unwrap()
-                .call_path_tree
-                .is_none()
-            {
-                let type_info = engines.te().get(var.type_ascription.type_id());
+            if var.type_ascription.call_path_tree.is_none() {
+                let type_info = engines.te().get(var.type_ascription.type_id);
                 if !matches!(
                     *type_info,
                     TypeInfo::Unknown | TypeInfo::UnknownGeneric { .. }

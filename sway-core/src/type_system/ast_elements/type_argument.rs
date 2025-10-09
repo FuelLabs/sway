@@ -86,7 +86,9 @@ impl DisplayWithEngines for GenericTypeArgument {
 
 impl DebugWithEngines for GenericTypeArgument {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
-        write!(f, "{:?} -> {:?}", 
+        write!(
+            f,
+            "{:?} -> {:?}",
             engines.help_out(self.initial_type_id),
             engines.help_out(self.type_id)
         )
@@ -101,13 +103,16 @@ impl MaterializeConstGenerics for GenericTypeArgument {
         name: &str,
         value: &crate::language::ty::TyExpression,
     ) -> Result<(), sway_error::handler::ErrorEmitted> {
-        self.type_id.materialize_const_generics(engines, handler, name, value)
+        self.type_id
+            .materialize_const_generics(engines, handler, name, value)
     }
 }
 
 impl GenericTypeArgument {
     pub fn is_annotated(&self) -> bool {
-        self.type_id != self.initial_type_id || self.call_path_tree.is_some() || !self.span.is_dummy()
+        self.type_id != self.initial_type_id
+            || self.call_path_tree.is_some()
+            || !self.span.is_dummy()
     }
 }
 
@@ -207,9 +212,7 @@ impl EqWithEngines for GenericArgument {}
 impl PartialEqWithEngines for GenericArgument {
     fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         match (self, other) {
-            (GenericArgument::Type(l), GenericArgument::Type(r)) => {
-                l.eq(r, ctx)
-            }
+            (GenericArgument::Type(l), GenericArgument::Type(r)) => l.eq(r, ctx),
             (GenericArgument::Const(l), GenericArgument::Const(r)) => l.expr.eq(&r.expr),
             _ => false,
         }
@@ -219,12 +222,7 @@ impl PartialEqWithEngines for GenericArgument {
 impl OrdWithEngines for GenericArgument {
     fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
         match (self, other) {
-            (
-                GenericArgument::Type(l),
-                GenericArgument::Type(r),
-            ) => {
-                l.cmp(r, ctx)
-            }
+            (GenericArgument::Type(l), GenericArgument::Type(r)) => l.cmp(r, ctx),
             (GenericArgument::Const(l), GenericArgument::Const(r)) => l.expr.cmp(&r.expr),
             (GenericArgument::Type(_), _) => Ordering::Less,
             (GenericArgument::Const(_), _) => Ordering::Greater,

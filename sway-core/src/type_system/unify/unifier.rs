@@ -1,11 +1,5 @@
 use std::fmt;
 
-use sway_error::{
-    handler::{ErrorEmitted, Handler},
-    type_error::TypeError,
-};
-use sway_types::{Span, Spanned};
-
 use crate::{
     ast_elements::{type_argument::GenericTypeArgument, type_parameter::ConstGenericExpr},
     decl_engine::{DeclEngineGet, DeclId},
@@ -13,6 +7,11 @@ use crate::{
     language::ty::{TyEnumDecl, TyStructDecl},
     type_system::{engine::Unification, priv_prelude::*},
 };
+use sway_error::{
+    handler::{ErrorEmitted, Handler},
+    type_error::TypeError,
+};
+use sway_types::Span;
 
 use super::occurs_check::OccursCheck;
 
@@ -417,7 +416,12 @@ impl<'a> Unifier<'a> {
         }
     }
 
-    fn unify_tuples(&self, handler: &Handler, rfs: &[GenericTypeArgument], efs: &[GenericTypeArgument]) {
+    fn unify_tuples(
+        &self,
+        handler: &Handler,
+        rfs: &[GenericTypeArgument],
+        efs: &[GenericTypeArgument],
+    ) {
         for (rf, ef) in rfs.iter().zip(efs.iter()) {
             self.unify(handler, rf.type_id, ef.type_id, &rf.span, false);
         }

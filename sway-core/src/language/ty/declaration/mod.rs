@@ -31,7 +31,7 @@ pub use trait_type::*;
 pub use type_alias::*;
 pub use variable::*;
 
-use crate::{ast_elements::type_argument::GenericTypeArgument, GenericArgument};
+use crate::ast_elements::type_argument::GenericTypeArgument;
 
 pub trait FunctionSignature {
     fn parameters(&self) -> &Vec<TyFunctionParameter>;

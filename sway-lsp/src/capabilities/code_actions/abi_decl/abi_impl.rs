@@ -59,10 +59,7 @@ impl AbiImplCodeAction<'_> {
     fn return_type_string(&self, function_decl: &TyTraitFn) -> String {
         let type_engine = self.engines.te();
         // Unit is the implicit return type for ABI functions.
-        if type_engine
-            .get(function_decl.return_type.type_id())
-            .is_unit()
-        {
+        if type_engine.get(function_decl.return_type.type_id).is_unit() {
             String::new()
         } else {
             format!(" -> {}", function_decl.return_type.span().as_str())

@@ -617,7 +617,7 @@ pub(crate) fn type_check_method_application(
             if let TypeInfo::Custom {
                 type_arguments: Some(type_arguments),
                 ..
-            } = &*type_engine.get(t.initial_type_id())
+            } = &*type_engine.get(t.initial_type_id)
             {
                 // Method type parameters that have is_from_parent set to true use the base ident as defined in
                 // in the impl trait. The type parameter name may be different in the Struct or Enum.
@@ -686,7 +686,7 @@ pub(crate) fn type_check_method_application(
             if let TypeInfo::Custom {
                 qualified_call_path,
                 type_arguments,
-            } = &*type_engine.get(t.initial_type_id())
+            } = &*type_engine.get(t.initial_type_id)
             {
                 let mut subst_type_parameters = vec![];
                 let mut subst_type_arguments = vec![];

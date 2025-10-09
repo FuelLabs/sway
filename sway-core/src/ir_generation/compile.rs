@@ -404,7 +404,7 @@ pub(crate) fn compile_configurables(
                 md_mgr,
                 module,
                 None,
-                decl.type_ascription.type_id(),
+                decl.type_ascription.type_id,
                 &decl.type_ascription.span(),
             )
             .unwrap();
@@ -428,7 +428,7 @@ pub(crate) fn compile_configurables(
                     _ => unreachable!(),
                 };
 
-                let config_type_info = engines.te().get(decl.type_ascription.type_id());
+                let config_type_info = engines.te().get(decl.type_ascription.type_id);
                 let buffer_size = match config_type_info.abi_encode_size_hint(engines) {
                     crate::AbiEncodeSizeHint::Exact(len) => len,
                     crate::AbiEncodeSizeHint::Range(_, len) => len,

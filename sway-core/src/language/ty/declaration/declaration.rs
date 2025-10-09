@@ -813,7 +813,7 @@ impl TyDecl {
         match self {
             TyDecl::ImplSelfOrTrait(ImplSelfOrTrait { decl_id, .. }) => {
                 let decl = decl_engine.get_impl_self_or_trait(decl_id);
-                let implementing_for_type_id_arc = type_engine.get(decl.implementing_for.type_id());
+                let implementing_for_type_id_arc = type_engine.get(decl.implementing_for.type_id);
                 let implementing_for_type_id = &*implementing_for_type_id_arc;
                 format!(
                     "{} for {:?}",

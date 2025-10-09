@@ -398,7 +398,7 @@ impl ResolveSymbols for GenericArgument {
             GenericArgument::Type(arg) => {
                 arg.resolve_symbols(handler, ctx);
             }
-            GenericArgument::Const(_) => {},
+            GenericArgument::Const(_) => {}
         }
     }
 }

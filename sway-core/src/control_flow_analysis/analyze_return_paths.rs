@@ -12,7 +12,7 @@ use crate::{
 };
 use petgraph::prelude::NodeIndex;
 use sway_error::error::CompileError;
-use sway_types::{ident::Ident, span::Span, IdentUnique, Spanned};
+use sway_types::{ident::Ident, span::Span, IdentUnique};
 
 impl<'cfg> ControlFlowGraph<'cfg> {
     pub(crate) fn construct_return_path_graph<'eng: 'cfg>(

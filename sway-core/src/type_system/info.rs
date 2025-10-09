@@ -1031,11 +1031,10 @@ impl TypeInfo {
             RawUntypedPtr => "rawptr".to_string(),
             RawUntypedSlice => "rawslice".to_string(),
             Alias { ty, .. } => {
-                let name = type_engine.get(ty.type_id).to_selector_name(
-                    handler,
-                    engines,
-                    error_msg_span,
-                );
+                let name =
+                    type_engine
+                        .get(ty.type_id)
+                        .to_selector_name(handler, engines, error_msg_span);
                 name?
             }
             // TODO: (REFERENCES) No references in ABIs according to the RFC. Or we want to have them?

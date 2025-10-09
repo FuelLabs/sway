@@ -546,10 +546,10 @@ pub fn item_fn_to_function_declaration(
         Some((_right_arrow, ty)) => {
             let span = ty.span();
             let arg = ty_to_generic_argument(context, handler, engines, ty)?;
-            arg.as_type_argument().ok_or_else(|| {
-                handler.emit_err(CompileError::UnknownType { span })
-            }).cloned()?
-        },
+            arg.as_type_argument()
+                .ok_or_else(|| handler.emit_err(CompileError::UnknownType { span }))
+                .cloned()?
+        }
         None => {
             let type_id = engines.te().id_of_unit();
             GenericTypeArgument {
@@ -770,8 +770,15 @@ pub fn item_impl_to_declaration(
     item_impl: ItemImpl,
 ) -> Result<Declaration, ErrorEmitted> {
     let block_span = item_impl.span();
-    let implementing_for = ty_to_generic_argument(context, handler, engines, item_impl.ty)?;
-    let impl_item_parent = (&*engines.te().get(implementing_for.type_id())).into();
+
+    let span = item_impl.ty.span();
+    let arg = ty_to_generic_argument(context, handler, engines, item_impl.ty)?;
+    let implementing_for = arg
+        .as_type_argument()
+        .ok_or_else(|| handler.emit_err(CompileError::UnknownType { span }))
+        .cloned()?;
+
+    let impl_item_parent = (&*engines.te().get(implementing_for.type_id)).into();
 
     let items = item_impl
         .contents
@@ -892,10 +899,16 @@ fn handle_impl_contract(
     item_impl: ItemImpl,
     span: Span,
 ) -> Result<Vec<AstNodeContent>, ErrorEmitted> {
-    let implementing_for = ty_to_generic_argument(context, handler, engines, item_impl.ty)?;
+    let implementing_for = {
+        let span = item_impl.ty.span();
+        let arg = ty_to_generic_argument(context, handler, engines, item_impl.ty)?;
+        arg.as_type_argument()
+            .ok_or_else(|| handler.emit_err(CompileError::UnknownType { span }))
+            .cloned()?
+    };
 
     // Only handle if this is an impl Contract block
-    if let TypeInfo::Contract = &*engines.te().get(implementing_for.type_id()) {
+    if let TypeInfo::Contract = &*engines.te().get(implementing_for.type_id) {
         // Check if there's an explicit trait being implemented
         match item_impl.trait_opt {
             Some((_, _)) => return Ok(vec![]),
@@ -958,7 +971,7 @@ fn handle_impl_contract(
 
                 // Insert ABI declaration
                 let abi_decl_id = engines.pe().insert(abi_decl);
-                let impl_item_parent = (&*engines.te().get(implementing_for.type_id())).into();
+                let impl_item_parent = (&*engines.te().get(implementing_for.type_id)).into();
 
                 // Convert original impl items to ImplItems
                 let items = item_impl
@@ -1210,7 +1223,13 @@ pub(crate) fn item_const_to_constant_declaration(
     };
 
     let type_ascription = match item_const.ty_opt {
-        Some((_colon_token, ty)) => ty_to_generic_argument(context, handler, engines, ty)?,
+        Some((_colon_token, ty)) => {
+            let span = ty.span().clone();
+            let arg = ty_to_generic_argument(context, handler, engines, ty)?;
+            arg.as_type_argument()
+                .ok_or_else(|| handler.emit_err(CompileError::UnknownType { span }))
+                .cloned()?
+        }
         None => {
             if expr.is_none() {
                 let err =
@@ -1433,11 +1452,10 @@ fn item_type_alias_to_type_alias_declaration(
     let type_alias_decl = TypeAliasDeclaration {
         name: item_type_alias.name.clone(),
         attributes,
-        ty: ty.as_type_argument()
+        ty: ty
+            .as_type_argument()
             .cloned()
-            .ok_or_else(|| {
-                handler.emit_err(CompileError::UnknownType { span: span.clone() })
-            })?,
+            .ok_or_else(|| handler.emit_err(CompileError::UnknownType { span: span.clone() }))?,
         visibility: pub_token_opt_to_visibility(item_type_alias.visibility),
         span,
     };
@@ -1458,11 +1476,10 @@ fn type_field_to_struct_field(
         visibility: pub_token_opt_to_visibility(type_field.visibility),
         name: type_field.name,
         attributes,
-        type_argument: type_argument.as_type_argument()
+        type_argument: type_argument
+            .as_type_argument()
             .cloned()
-            .ok_or_else(|| {
-                handler.emit_err(CompileError::UnknownType { span: span.clone() })
-            })?,
+            .ok_or_else(|| handler.emit_err(CompileError::UnknownType { span: span.clone() }))?,
         span,
     };
     Ok(struct_field)
@@ -1634,9 +1651,9 @@ fn type_field_to_enum_variant(
         type_argument: {
             let span = type_field.ty.span();
             let arg = ty_to_generic_argument(context, handler, engines, type_field.ty)?;
-            arg.as_type_argument().ok_or_else(|| {
-                handler.emit_err(CompileError::UnknownType { span })
-            }).cloned()?
+            arg.as_type_argument()
+                .ok_or_else(|| handler.emit_err(CompileError::UnknownType { span }))
+                .cloned()?
         },
         tag,
         span,
@@ -1776,17 +1793,21 @@ fn ty_to_type_info(
                 handler,
                 engines,
                 parenthesized_ty_tuple_descriptor.into_inner(),
-            )?.iter().filter_map(|x| x.as_type_argument()).cloned().collect::<Vec<_>>();
+            )?
+            .iter()
+            .filter_map(|x| x.as_type_argument())
+            .cloned()
+            .collect::<Vec<_>>();
             TypeInfo::Tuple(args)
         }
         Ty::Array(bracketed_ty_array_descriptor) => {
             let span = bracketed_ty_array_descriptor.span();
             let ty_array_descriptor = bracketed_ty_array_descriptor.into_inner();
-            let item_type = ty_to_generic_argument(context, handler, engines, *ty_array_descriptor.ty)?
-                .as_type_argument()
-                .ok_or_else(|| {
-                    handler.emit_err(CompileError::UnknownType { span })
-                })?.clone();
+            let item_type =
+                ty_to_generic_argument(context, handler, engines, *ty_array_descriptor.ty)?
+                    .as_type_argument()
+                    .ok_or_else(|| handler.emit_err(CompileError::UnknownType { span }))?
+                    .clone();
             TypeInfo::Array(
                 item_type,
                 Length(expr_to_const_generic_expr(
@@ -1804,31 +1825,27 @@ fn ty_to_type_info(
         Ty::Infer { .. } => TypeInfo::Unknown,
         Ty::Ptr { ty, .. } => {
             let span = ty.span();
-            let type_argument = ty_to_generic_argument(context, handler, engines, *ty.into_inner())?
-                .as_type_argument()
-                .ok_or_else(|| {
-                    handler.emit_err(CompileError::UnknownType { span })
-                })?
-                .clone();
+            let type_argument =
+                ty_to_generic_argument(context, handler, engines, *ty.into_inner())?
+                    .as_type_argument()
+                    .ok_or_else(|| handler.emit_err(CompileError::UnknownType { span }))?
+                    .clone();
             TypeInfo::Ptr(type_argument)
         }
         Ty::Slice { ty, .. } => {
             let span = ty.span().clone();
-            let type_argument = ty_to_generic_argument(context, handler, engines, *ty.into_inner())?
-                .as_type_argument()
-                .ok_or_else(|| {
-                    handler.emit_err(CompileError::UnknownType { span })
-                })?
-                .clone();
+            let type_argument =
+                ty_to_generic_argument(context, handler, engines, *ty.into_inner())?
+                    .as_type_argument()
+                    .ok_or_else(|| handler.emit_err(CompileError::UnknownType { span }))?
+                    .clone();
             TypeInfo::Slice(type_argument)
         }
         Ty::Ref { mut_token, ty, .. } => {
             let span = ty.span().clone();
             let referenced_type = ty_to_generic_argument(context, handler, engines, *ty)?
                 .as_type_argument()
-                .ok_or_else(|| {
-                    handler.emit_err(CompileError::UnknownType { span })
-                })?
+                .ok_or_else(|| handler.emit_err(CompileError::UnknownType { span }))?
                 .clone();
             TypeInfo::Ref {
                 to_mutable_value: mut_token.is_some(),
@@ -1959,10 +1976,10 @@ fn fn_signature_to_trait_fn(
         Some((_right_arrow, ty)) => {
             let span = ty.span().clone();
             let arg = ty_to_generic_argument(context, handler, engines, ty.clone())?;
-            arg.as_type_argument().ok_or_else(|| {
-                handler.emit_err(CompileError::UnknownType { span })
-            }).cloned()?
-        },
+            arg.as_type_argument()
+                .ok_or_else(|| handler.emit_err(CompileError::UnknownType { span }))
+                .cloned()?
+        }
         None => {
             let type_id = engines.te().id_of_unit();
             GenericTypeArgument {
@@ -3212,7 +3229,13 @@ fn storage_field_to_storage_field(
         attributes,
         name: storage_field.name,
         key_expression: key_expr_opt,
-        type_argument: ty_to_generic_argument(context, handler, engines, storage_field.ty)?,
+        type_argument: {
+            let span = storage_field.ty.span();
+            let arg = ty_to_generic_argument(context, handler, engines, storage_field.ty)?;
+            arg.as_type_argument()
+                .ok_or_else(|| handler.emit_err(CompileError::UnknownType { span }))
+                .cloned()?
+        },
         span,
         initializer: expr_to_expression(context, handler, engines, storage_field.initializer)?,
     };
@@ -3227,10 +3250,14 @@ fn configurable_field_to_configurable_declaration(
     attributes: Attributes,
     item_configurable_keyword_span: Span,
 ) -> Result<ParsedDeclId<ConfigurableDeclaration>, ErrorEmitted> {
+    let span = configurable_field.ty.span();
+    let arg = ty_to_generic_argument(context, handler, engines, configurable_field.ty)?;
+    let type_ascription = arg
+        .as_type_argument()
+        .ok_or_else(|| handler.emit_err(CompileError::UnknownType { span }))
+        .cloned()?;
+
     let span = configurable_field.name.span();
-
-    let type_ascription = ty_to_generic_argument(context, handler, engines, configurable_field.ty)?;
-
     let value = expr_to_expression(context, handler, engines, configurable_field.initializer)?;
     let value = if context.experimental.new_encoding {
         let call_encode =
@@ -3241,7 +3268,9 @@ fn configurable_field_to_configurable_declaration(
                         suffix: Ident::new_with_override("encode".into(), span.clone()),
                         callpath_type: CallPathType::Ambiguous,
                     },
-                    type_arguments: TypeArgs::Regular(vec![type_ascription.clone()]),
+                    type_arguments: TypeArgs::Regular(vec![GenericArgument::Type(
+                        type_ascription.clone(),
+                    )]),
                     span: span.clone(),
                 },
                 resolved_call_path_binding: None,
@@ -3350,9 +3379,9 @@ fn fn_arg_to_function_parameter(
         type_argument: {
             let span = fn_arg.ty.span().clone();
             let arg = ty_to_generic_argument(context, handler, engines, fn_arg.ty)?;
-            arg.as_type_argument().ok_or_else(|| {
-                handler.emit_err(CompileError::UnknownType { span })
-            }).cloned()?
+            arg.as_type_argument()
+                .ok_or_else(|| handler.emit_err(CompileError::UnknownType { span }))
+                .cloned()?
         },
     };
     Ok(function_parameter)
@@ -4459,10 +4488,10 @@ fn statement_let_to_ast_nodes_unfold(
                 Some(ty) => {
                     let span = ty.span();
                     let arg = ty_to_generic_argument(context, handler, engines, ty)?;
-                    arg.as_type_argument().ok_or_else(|| {
-                        handler.emit_err(CompileError::UnknownType { span })
-                    }).cloned()?
-                },
+                    arg.as_type_argument()
+                        .ok_or_else(|| handler.emit_err(CompileError::UnknownType { span }))
+                        .cloned()?
+                }
                 None => {
                     let type_id = engines.te().new_unknown();
                     GenericTypeArgument {
@@ -4516,10 +4545,9 @@ fn statement_let_to_ast_nodes_unfold(
                     let span = ty.span().clone();
                     ty_to_generic_argument(context, handler, engines, ty.clone())?
                         .as_type_argument()
-                        .ok_or_else(|| {
-                            handler.emit_err(CompileError::UnknownType { span })
-                        }).cloned()?
-                },
+                        .ok_or_else(|| handler.emit_err(CompileError::UnknownType { span }))
+                        .cloned()?
+                }
                 None => {
                     let type_id = engines.te().new_unknown();
                     GenericTypeArgument {
@@ -4650,10 +4678,10 @@ fn statement_let_to_ast_nodes_unfold(
                 Some(ty) => {
                     let span = ty.span().clone();
                     let arg = ty_to_generic_argument(context, handler, engines, ty.clone())?;
-                    arg.as_type_argument().ok_or_else(|| {
-                        handler.emit_err(CompileError::UnknownType { span })
-                    }).cloned()?
-                },
+                    arg.as_type_argument()
+                        .ok_or_else(|| handler.emit_err(CompileError::UnknownType { span }))
+                        .cloned()?
+                }
                 None => placeholders_type_ascription.clone(),
             };
 
@@ -5234,7 +5262,8 @@ fn ty_tuple_descriptor_to_type_arguments(
     let type_arguments = match ty_tuple_descriptor {
         TyTupleDescriptor::Nil => vec![],
         TyTupleDescriptor::Cons { head, tail, .. } => {
-            let mut type_arguments = vec![ty_to_generic_argument(context, handler, engines, *head)?];
+            let mut type_arguments =
+                vec![ty_to_generic_argument(context, handler, engines, *head)?];
             for ty in tail {
                 type_arguments.push(ty_to_generic_argument(context, handler, engines, ty)?);
             }
@@ -5373,11 +5402,7 @@ fn error_if_self_param_is_not_allowed(
     fn_kind: &str,
 ) -> Result<(), ErrorEmitted> {
     for param in parameters {
-        if engines
-            .te()
-            .get(param.type_argument.type_id)
-            .is_self_type()
-        {
+        if engines.te().get(param.type_argument.type_id).is_self_type() {
             let error = ConvertParseTreeError::SelfParameterNotAllowedForFn {
                 fn_kind: fn_kind.to_owned(),
                 span: param.type_argument.span(),

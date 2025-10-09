@@ -1,9 +1,14 @@
 use crate::{
-    ast_elements::type_argument::GenericTypeArgument, concurrent_slab::{ConcurrentSlab, ListDisplay}, decl_engine::*, engine_threading::*, language::{
+    ast_elements::type_argument::GenericTypeArgument,
+    concurrent_slab::{ConcurrentSlab, ListDisplay},
+    decl_engine::*,
+    engine_threading::*,
+    language::{
         parsed::{EnumDeclaration, StructDeclaration},
         ty::{TyEnumDecl, TyExpression, TyStructDecl},
         QualifiedCallPath,
-    }, type_system::priv_prelude::*
+    },
+    type_system::priv_prelude::*,
 };
 use core::fmt::Write;
 use hashbrown::{hash_map::RawEntryMut, HashMap};
@@ -516,7 +521,11 @@ impl TypeEngine {
     /// Inserts a new [TypeInfo::Tuple] into the [TypeEngine] and returns
     /// its [TypeId], or returns a [TypeId] of an existing shareable tuple type
     /// that corresponds to the tuple given by the `elements`.
-    pub(crate) fn insert_tuple(&self, engines: &Engines, elements: Vec<GenericTypeArgument>) -> TypeId {
+    pub(crate) fn insert_tuple(
+        &self,
+        engines: &Engines,
+        elements: Vec<GenericTypeArgument>,
+    ) -> TypeId {
         let source_id = self.get_tuple_fallback_source_id(&elements);
         let is_shareable_type = self.is_shareable_tuple(engines, &elements);
         let type_info = TypeInfo::Tuple(elements);
@@ -641,7 +650,12 @@ impl TypeEngine {
     /// [TypeInfo::Alias] is not a shareable type and the method
     /// guarantees that a new (or unused) [TypeId] will be returned on every
     /// call.
-    pub(crate) fn new_alias(&self, engines: &Engines, name: Ident, ty: GenericTypeArgument) -> TypeId {
+    pub(crate) fn new_alias(
+        &self,
+        engines: &Engines,
+        name: Ident,
+        ty: GenericTypeArgument,
+    ) -> TypeId {
         // The alias type shareability would be calculated as `!(false || true) ==>> false`.
         let source_id = self.get_alias_fallback_source_id(&name, &ty);
         let type_info = TypeInfo::Alias { name, ty };
@@ -736,7 +750,11 @@ impl TypeEngine {
     /// Inserts a new [TypeInfo::Ptr] into the [TypeEngine] and returns
     /// its [TypeId], or returns a [TypeId] of an existing shareable pointer type
     /// that corresponds to the pointer given by the `pointee_type`.
-    pub(crate) fn insert_ptr(&self, engines: &Engines, pointee_type: GenericTypeArgument) -> TypeId {
+    pub(crate) fn insert_ptr(
+        &self,
+        engines: &Engines,
+        pointee_type: GenericTypeArgument,
+    ) -> TypeId {
         let source_id = self.get_ptr_fallback_source_id(&pointee_type);
         let is_shareable_type = self.is_shareable_ptr(engines, &pointee_type);
         let type_info = TypeInfo::Ptr(pointee_type);
@@ -1833,7 +1851,11 @@ impl TypeEngine {
         }
     }
 
-    fn get_alias_fallback_source_id(&self, name: &Ident, ty: &GenericTypeArgument) -> Option<SourceId> {
+    fn get_alias_fallback_source_id(
+        &self,
+        name: &Ident,
+        ty: &GenericTypeArgument,
+    ) -> Option<SourceId> {
         // For `TypeInfo::Alias`, we take the source file in which the alias is declared, if it exists.
         // Otherwise, we take the source file of the aliased type `ty`.
         name.span()
@@ -1850,7 +1872,10 @@ impl TypeEngine {
         self.get_source_id_from_type_argument(pointee_type)
     }
 
-    fn get_ref_fallback_source_id(&self, referenced_type: &GenericTypeArgument) -> Option<SourceId> {
+    fn get_ref_fallback_source_id(
+        &self,
+        referenced_type: &GenericTypeArgument,
+    ) -> Option<SourceId> {
         self.get_source_id_from_type_argument(referenced_type)
     }
 
@@ -1872,7 +1897,7 @@ impl TypeEngine {
             .or_else(|| {
                 let args = type_arguments
                     .iter()
-                    .flat_map(|args| args)
+                    .flatten()
                     .flat_map(|args| args.as_type_argument())
                     .cloned()
                     .collect::<Vec<_>>();
@@ -2280,12 +2305,7 @@ impl TypeEngine {
         match &&*self.get(type_id) {
             TypeInfo::UntypedEnum(decl_id) => {
                 for variant_type in &engines.pe().get_enum(decl_id).variants {
-                    self.decay_numeric(
-                        handler,
-                        engines,
-                        variant_type.type_argument.type_id,
-                        span,
-                    )?;
+                    self.decay_numeric(handler, engines, variant_type.type_argument.type_id, span)?;
                 }
             }
             TypeInfo::UntypedStruct(decl_id) => {
@@ -2295,12 +2315,7 @@ impl TypeEngine {
             }
             TypeInfo::Enum(decl_ref) => {
                 for variant_type in &decl_engine.get_enum(decl_ref).variants {
-                    self.decay_numeric(
-                        handler,
-                        engines,
-                        variant_type.type_argument.type_id,
-                        span,
-                    )?;
+                    self.decay_numeric(handler, engines, variant_type.type_argument.type_id, span)?;
                 }
             }
             TypeInfo::Struct(decl_ref) => {

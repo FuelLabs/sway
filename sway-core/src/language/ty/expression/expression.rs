@@ -694,7 +694,7 @@ impl TyExpression {
                 let fn_ty = engines.de().get(fn_ref);
                 if let Some(TyDecl::ImplSelfOrTrait(t)) = &fn_ty.implementing_type {
                     let t = &engines.de().get(&t.decl_id).implementing_for;
-                    if let TypeInfo::Struct(struct_id) = &*engines.te().get(t.type_id()) {
+                    if let TypeInfo::Struct(struct_id) = &*engines.te().get(t.type_id) {
                         let s = engines.de().get(struct_id);
                         emit_warning_if_deprecated(
                             &s.attributes,

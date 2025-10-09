@@ -38,7 +38,7 @@ use sway_core::{
     },
     transform::Attributes,
     type_system::{GenericArgument, TypeParameter},
-    TraitConstraint, TypeInfo,
+    GenericTypeArgument, TraitConstraint, TypeInfo,
 };
 use sway_types::{Ident, Span, Spanned};
 
@@ -844,7 +844,7 @@ impl Parse for ParsedDeclId<ImplSelfOrTrait> {
         } = &&*ctx
             .engines
             .te()
-            .get(impl_self_or_trait.implementing_for.type_id())
+            .get(impl_self_or_trait.implementing_for.type_id)
         {
             ctx.tokens.insert(
                 ctx.ident(&qualified_call_path.call_path.suffix),
@@ -1101,7 +1101,18 @@ impl Parse for TypeParameter {
 
 impl Parse for GenericArgument {
     fn parse(&self, ctx: &ParseContext) {
-        let type_info = ctx.engines.te().get(self.type_id());
+        match self {
+            GenericArgument::Type(arg) => {
+                arg.parse(ctx);
+            }
+            GenericArgument::Const(_) => {}
+        }
+    }
+}
+
+impl Parse for GenericTypeArgument {
+    fn parse(&self, ctx: &ParseContext) {
+        let type_info = ctx.engines.te().get(self.type_id);
         match &*type_info {
             TypeInfo::Array(type_arg, length) => {
                 let ident = Ident::new(length.expr().span());
@@ -1122,7 +1133,7 @@ impl Parse for GenericArgument {
             }
             _ => {
                 let symbol_kind = type_info_to_symbol_kind(ctx.engines.te(), &type_info, None);
-                if let Some(tree) = self.as_type_argument().unwrap().call_path_tree.as_ref() {
+                if let Some(tree) = self.call_path_tree.as_ref() {
                     let token =
                         Token::from_parsed(ParsedAstToken::TypeArgument(self.clone()), symbol_kind);
                     collect_call_path_tree(ctx, tree, &token, ctx.tokens);

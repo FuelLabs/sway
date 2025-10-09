@@ -560,13 +560,11 @@ fn type_check_tuple(
         engines,
         typed_elems
             .iter()
-            .map(|elem| {
-                GenericTypeArgument {
-                    type_id: elem.type_id,
-                    initial_type_id: elem.type_id,
-                    span: elem.span.clone(),
-                    call_path_tree: None,
-                }
+            .map(|elem| GenericTypeArgument {
+                type_id: elem.type_id,
+                initial_type_id: elem.type_id,
+                span: elem.span.clone(),
+                call_path_tree: None,
             })
             .collect(),
     );

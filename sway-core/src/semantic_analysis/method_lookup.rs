@@ -9,7 +9,6 @@ use sway_error::{
 use sway_types::{span::Span, Ident, Spanned};
 
 use crate::{
-    ast_elements::type_argument::GenericTypeArgument,
     decl_engine::DeclRefFunction,
     language::{
         parsed::MethodName,

@@ -199,7 +199,7 @@ impl TyProgram {
                         ..
                     } = &*impl_trait_decl;
                     if matches!(
-                        &*ty_engine.get(implementing_for.type_id()),
+                        &*ty_engine.get(implementing_for.type_id),
                         TypeInfo::Contract
                     ) {
                         // add methods to the ABI only if they come from an ABI implementation
@@ -269,7 +269,7 @@ impl TyProgram {
                         for field in storage_decl.fields.iter() {
                             if let Some(error) = get_type_not_allowed_error(
                                 engines,
-                                field.type_argument.type_id(),
+                                field.type_argument.type_id,
                                 &field.type_argument,
                                 |t| match t {
                                     TypeInfo::StringSlice => {

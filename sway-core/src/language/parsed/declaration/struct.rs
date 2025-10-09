@@ -1,5 +1,9 @@
 use crate::{
-    ast_elements::type_argument::GenericTypeArgument, engine_threading::{EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext}, language::Visibility, transform, type_system::TypeParameter, GenericArgument
+    ast_elements::type_argument::GenericTypeArgument,
+    engine_threading::{EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext},
+    language::Visibility,
+    transform,
+    type_system::TypeParameter,
 };
 use sway_types::{ident::Ident, span::Span, Named, Spanned};
 

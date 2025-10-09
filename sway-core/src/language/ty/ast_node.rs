@@ -10,7 +10,6 @@ use crate::{
     type_system::*,
     types::*,
 };
-use ast_elements::type_parameter::ConstGenericExpr;
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::{self, Debug},

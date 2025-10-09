@@ -7,7 +7,7 @@ use sway_core::{
         TyFunctionParameter, TyIncludeStatement, TyProgram, TySideEffectVariant, TyStorageDecl,
         TyStructDecl, TyTraitInterfaceItem, TyTraitItem, TyTraitType,
     },
-    Engines, GenericArgument,
+    Engines, GenericTypeArgument,
 };
 use sway_types::{Span, Spanned};
 
@@ -316,7 +316,7 @@ fn collect_fields_from_storage(decl: &TyStorageDecl) -> Vec<DocumentSymbol> {
         .collect()
 }
 
-fn build_field_symbol(span: &Span, type_argument: &GenericArgument) -> DocumentSymbol {
+fn build_field_symbol(span: &Span, type_argument: &GenericTypeArgument) -> DocumentSymbol {
     let range = get_range_from_span(span);
     DocumentSymbolBuilder::new()
         .name(span.clone().str().to_string())
@@ -330,7 +330,7 @@ fn build_field_symbol(span: &Span, type_argument: &GenericArgument) -> DocumentS
 fn build_function_symbol(
     span: &Span,
     parameters: &[TyFunctionParameter],
-    return_type: &GenericArgument,
+    return_type: &GenericTypeArgument,
 ) -> DocumentSymbol {
     let range = get_range_from_span(span);
     DocumentSymbolBuilder::new()
@@ -375,8 +375,6 @@ fn collect_enum_variants(decl: &TyEnumDecl) -> Vec<DocumentSymbol> {
             // Check for the presence of a CallPathTree, and if it exists, use the type information as the detail.
             let detail = variant
                 .type_argument
-                .as_type_argument()
-                .unwrap()
                 .call_path_tree
                 .as_ref()
                 .map(|_| Some(variant.type_argument.span().as_str().to_string()))
@@ -404,7 +402,7 @@ fn collect_variables_from_func_decl(
         .filter_map(|node| {
             if let TyAstNodeContent::Declaration(TyDecl::VariableDecl(var_decl)) = &node.content {
                 let range = get_range_from_span(&var_decl.name.span());
-                let type_name = format!("{}", engines.help_out(var_decl.type_ascription.type_id()));
+                let type_name = format!("{}", engines.help_out(var_decl.type_ascription.type_id));
                 let symbol = DocumentSymbolBuilder::new()
                     .name(var_decl.name.span().str().to_string())
                     .kind(lsp_types::SymbolKind::VARIABLE)
@@ -421,7 +419,7 @@ fn collect_variables_from_func_decl(
 }
 
 // Generate the signature for functions
-fn fn_decl_detail(parameters: &[TyFunctionParameter], return_type: &GenericArgument) -> String {
+fn fn_decl_detail(parameters: &[TyFunctionParameter], return_type: &GenericTypeArgument) -> String {
     let params = parameters
         .iter()
         .map(|p| format!("{}: {}", p.name, p.type_argument.span().as_str()))
@@ -430,8 +428,6 @@ fn fn_decl_detail(parameters: &[TyFunctionParameter], return_type: &GenericArgum
 
     // Check for the presence of a CallPathTree, and if it exists, add it to the return type.
     let return_type = return_type
-        .as_type_argument()
-        .unwrap()
         .call_path_tree
         .as_ref()
         .map(|_| format!(" -> {}", return_type.span().as_str()))

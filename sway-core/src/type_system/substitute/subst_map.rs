@@ -385,8 +385,7 @@ impl TypeSubstMap {
                 let mut need_to_create_new = false;
 
                 for variant in &mut decl.variants {
-                    if let Some(type_id) = self.find_match(variant.type_argument.type_id, engines)
-                    {
+                    if let Some(type_id) = self.find_match(variant.type_argument.type_id, engines) {
                         need_to_create_new = true;
                         variant.type_argument.type_id = type_id;
                     }
@@ -487,8 +486,7 @@ impl TypeSubstMap {
                 let mut need_to_create_new = false;
 
                 for variant in &mut decl.variants {
-                    if let Some(type_id) = self.find_match(variant.type_argument.type_id, engines)
-                    {
+                    if let Some(type_id) = self.find_match(variant.type_argument.type_id, engines) {
                         need_to_create_new = true;
                         variant.type_argument.type_id = type_id;
                     }
@@ -511,18 +509,17 @@ impl TypeSubstMap {
                     None
                 }
             }
-            TypeInfo::Array(mut elem_type, length) => self
-                .find_match(elem_type.type_id, engines)
-                .map(|type_id| {
+            TypeInfo::Array(mut elem_type, length) => {
+                self.find_match(elem_type.type_id, engines).map(|type_id| {
                     elem_type.type_id = type_id;
                     type_engine.insert_array(engines, elem_type, length)
-                }),
+                })
+            }
             TypeInfo::Slice(mut elem_type) => {
-                self.find_match(elem_type.type_id, engines)
-                    .map(|type_id| {
-                        elem_type.type_id = type_id;
-                        type_engine.insert_slice(engines, elem_type)
-                    })
+                self.find_match(elem_type.type_id, engines).map(|type_id| {
+                    elem_type.type_id = type_id;
+                    type_engine.insert_slice(engines, elem_type)
+                })
             }
             TypeInfo::Tuple(fields) => {
                 let mut need_to_create_new = false;
