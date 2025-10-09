@@ -710,7 +710,7 @@ pub(crate) fn type_check_method_application(
                 // This handles the case of substituting the generic blanket type by `method_target`.
                 for p in method.type_parameters.iter() {
                     if p.name().as_str() == qualified_call_path.call_path.suffix.as_str() {
-                        subst_type_parameters.push(t.initial_type_id());
+                        subst_type_parameters.push(t.initial_type_id);
                         subst_type_arguments.push(method_target);
                         break;
                     }
