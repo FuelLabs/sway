@@ -877,7 +877,7 @@ impl ReplaceDecls for TyExpressionVariant {
                                 implementing_for,
                                 &[ctx.namespace().current_package_name().clone()],
                                 &call_path.suffix,
-                                method.return_type.type_id(),
+                                method.return_type.type_id,
                                 &arguments_types,
                                 None,
                             );
@@ -1121,7 +1121,7 @@ impl TypeCheckAnalysis for TyExpressionVariant {
                     unifier.unify(
                         handler,
                         arg.1.return_type,
-                        decl_param.type_argument.type_id(),
+                        decl_param.type_argument.type_id,
                         &Span::dummy(),
                         false,
                     );
@@ -1525,8 +1525,8 @@ impl DisplayWithEngines for TyExpressionVariant {
 impl DebugWithEngines for TyExpressionVariant {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         let s = match self {
-            TyExpressionVariant::ConstGenericExpression { .. } => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+            TyExpressionVariant::ConstGenericExpression { call_path, .. } => {
+                format!("const generic {}", call_path.span().as_str())
             }
             TyExpressionVariant::Literal(lit) => format!("literal {lit}"),
             TyExpressionVariant::FunctionApplication {

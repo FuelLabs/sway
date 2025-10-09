@@ -141,7 +141,7 @@ impl ty::TyExpression {
                 contract_call_params: IndexMap::new(),
                 contract_caller: None,
             },
-            return_type: return_type.type_id(),
+            return_type: return_type.type_id,
             span,
         };
         Ok(exp)
@@ -1189,26 +1189,26 @@ impl ty::TyExpression {
                 .map(|field_type_ids| field_type_ids[i].clone())
                 .unwrap_or_else(|| {
                     let initial_type_id = type_engine.new_unknown();
-                    GenericArgument::Type(GenericTypeArgument {
+                    GenericTypeArgument {
                         type_id: initial_type_id,
                         initial_type_id,
                         span: Span::dummy(),
                         call_path_tree: None,
-                    })
+                    }
                 });
             let field_span = field.span();
             let ctx = ctx
                 .by_ref()
                 .with_help_text("tuple field type does not match the expected type")
-                .with_type_annotation(field_type.type_id());
+                .with_type_annotation(field_type.type_id);
             let typed_field = ty::TyExpression::type_check(handler, ctx, field)
                 .unwrap_or_else(|err| ty::TyExpression::error(err, field_span, engines));
-            typed_field_types.push(GenericArgument::Type(GenericTypeArgument {
+            typed_field_types.push(GenericTypeArgument {
                 type_id: typed_field.return_type,
-                initial_type_id: field_type.type_id(),
+                initial_type_id: field_type.type_id,
                 span: typed_field.span.clone(),
                 call_path_tree: None,
-            }));
+            });
             typed_fields.push(typed_field);
         }
         let exp = ty::TyExpression {
@@ -2045,7 +2045,7 @@ impl ty::TyExpression {
         // otherwise, fallback to Unknown.
         let elem_type = match &*ctx.engines().te().get(ctx.type_annotation()) {
             TypeInfo::Array(element_type, _) => {
-                let element_type = (*ctx.engines().te().get(element_type.type_id())).clone();
+                let element_type = (*ctx.engines().te().get(element_type.type_id)).clone();
                 if matches!(element_type, TypeInfo::Never) {
                     TypeInfo::Unknown //Even if array element type is Never other elements may not be of type Never.
                 } else {
@@ -2055,12 +2055,12 @@ impl ty::TyExpression {
             _ => TypeInfo::Unknown,
         };
         let elem_type = type_engine.insert(engines, elem_type, None);
-        let elem_type_arg = GenericArgument::Type(GenericTypeArgument {
+        let elem_type_arg = GenericTypeArgument {
             type_id: elem_type,
             initial_type_id: elem_type,
             span: span.clone(),
             call_path_tree: None,
-        });
+        };
 
         let value_ctx = ctx
             .by_ref()
@@ -2114,7 +2114,7 @@ impl ty::TyExpression {
         // otherwise, fallback to Unknown.
         let initial_type = match &*ctx.engines().te().get(ctx.type_annotation()) {
             TypeInfo::Array(element_type, _) => {
-                let element_type = (*ctx.engines().te().get(element_type.type_id())).clone();
+                let element_type = (*ctx.engines().te().get(element_type.type_id)).clone();
                 if matches!(element_type, TypeInfo::Never) {
                     TypeInfo::Unknown //Even if array element type is Never other elements may not be of type Never.
                 } else {
@@ -2215,7 +2215,7 @@ impl ty::TyExpression {
                 TypeInfo::Ref {
                     referenced_type, ..
                 } => {
-                    let referenced_type_id = referenced_type.type_id();
+                    let referenced_type_id = referenced_type.type_id;
 
                     current_prefix_te = Box::new(ty::TyExpression {
                         expression: ty::TyExpressionVariant::Deref(current_prefix_te),
@@ -2252,7 +2252,7 @@ impl ty::TyExpression {
                 prefix: current_prefix_te,
                 index: Box::new(index_te),
             },
-            return_type: array_type_argument.type_id(),
+            return_type: array_type_argument.type_id,
             span,
         })
     }
@@ -2725,7 +2725,7 @@ impl ty::TyExpression {
                                 }));
                             }
 
-                            struct_field.type_argument.type_id()
+                            struct_field.type_argument.type_id
                         }
                         None => {
                             return Err(handler.emit_err(CompileError::StructFieldDoesNotExist {
@@ -2749,7 +2749,6 @@ impl ty::TyExpression {
                     let field_type_opt = {
                         fields
                             .get(*index)
-                            .and_then(|x| x.as_type_argument())
                             .map(|GenericTypeArgument { type_id, .. }| type_id)
                     };
                     let field_type = match field_type_opt {
@@ -2774,14 +2773,14 @@ impl ty::TyExpression {
                         referenced_type, ..
                     } = actually
                     {
-                        actually = (*engines.te().get(referenced_type.type_id())).clone();
+                        actually = (*engines.te().get(referenced_type.type_id)).clone();
                     }
                     match actually {
                         TypeInfo::Array(elem_ty, array_length)
                             if array_length.expr().as_literal_val().is_some() =>
                         {
                             parent_rover = symbol;
-                            symbol = elem_ty.type_id();
+                            symbol = elem_ty.type_id;
                             symbol_span = index_span.clone();
 
                             if let Some(index_literal) = index
@@ -2876,7 +2875,7 @@ impl ty::TyExpression {
         let type_annotation = match &*type_engine.get(ctx.type_annotation()) {
             TypeInfo::Ref {
                 referenced_type, ..
-            } => referenced_type.type_id(),
+            } => referenced_type.type_id,
             _ => type_engine.new_unknown(),
         };
 
@@ -2998,7 +2997,7 @@ impl ty::TyExpression {
             TypeInfo::Ref {
                 referenced_type: ref exp,
                 ..
-            } => Ok(exp.type_id()), // Get the referenced type.
+            } => Ok(exp.type_id), // Get the referenced type.
             _ => Err(
                 handler.emit_err(CompileError::ExpressionCannotBeDereferenced {
                     expression_type: engines.help_out(expr.return_type).to_string(),

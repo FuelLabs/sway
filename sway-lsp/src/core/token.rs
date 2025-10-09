@@ -15,7 +15,7 @@ use sway_core::{
     },
     transform::Attribute,
     type_system::{TypeId, TypeInfo, TypeParameter},
-    Engines, GenericArgument, TraitConstraint, TypeEngine,
+    Engines, GenericTypeArgument, TraitConstraint, TypeEngine,
 };
 use sway_types::{Ident, ProgramId, SourceEngine, SourceId, Span, Spanned};
 
@@ -52,7 +52,7 @@ pub enum ParsedAstToken {
     Supertrait(Supertrait),
     TraitConstraint(TraitConstraint),
     TraitFn(ParsedDeclId<TraitFn>),
-    TypeArgument(GenericArgument),
+    TypeArgument(GenericTypeArgument),
     TypeParameter(TypeParameter),
     UseStatement(UseStatement),
 }
@@ -80,7 +80,7 @@ pub enum TypedAstToken {
     TypedStorageAccess(ty::TyStorageAccess),
     TypedStorageAccessDescriptor(ty::TyStorageAccessDescriptor),
     TypedReassignment(ty::TyReassignment),
-    TypedArgument(GenericArgument),
+    TypedArgument(GenericTypeArgument),
     TypedParameter(TypeParameter),
     TypedTraitConstraint(TraitConstraint),
     TypedModuleName,
@@ -309,11 +309,11 @@ pub fn type_info_to_symbol_kind(
         }
         TypeInfo::Enum { .. } => SymbolKind::Enum,
         TypeInfo::Array(elem_ty, ..) => {
-            let type_info = type_engine.get(elem_ty.type_id());
+            let type_info = type_engine.get(elem_ty.type_id);
             type_info_to_symbol_kind(type_engine, &type_info, Some(&elem_ty.span()))
         }
         TypeInfo::Slice(elem_ty) => {
-            let type_info = type_engine.get(elem_ty.type_id());
+            let type_info = type_engine.get(elem_ty.type_id);
             type_info_to_symbol_kind(type_engine, &type_info, Some(&elem_ty.span()))
         }
         _ => SymbolKind::Unknown,

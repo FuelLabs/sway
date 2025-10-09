@@ -246,7 +246,7 @@ impl TyDecl {
                         handler,
                         impl_trait.trait_name.clone(),
                         impl_trait.trait_type_arguments.clone(),
-                        impl_trait.implementing_for.type_id(),
+                        impl_trait.implementing_for.type_id,
                         impl_trait.impl_type_parameters.clone(),
                         &impl_trait.items,
                         &impl_trait.span,
@@ -274,7 +274,7 @@ impl TyDecl {
                 // Insert prefixed symbols when implementing_for is Contract
                 let is_contract = engines
                     .te()
-                    .get(impl_trait.implementing_for.type_id())
+                    .get(impl_trait.implementing_for.type_id)
                     .is_contract();
                 if is_contract {
                     for i in &impl_trait.items {
@@ -315,7 +315,7 @@ impl TyDecl {
                     handler,
                     impl_trait.trait_name.clone(),
                     impl_trait.trait_type_arguments.clone(),
-                    impl_trait.implementing_for.type_id(),
+                    impl_trait.implementing_for.type_id,
                     impl_trait.impl_type_parameters.clone(),
                     impl_trait_items,
                     &impl_trait.span,
@@ -418,9 +418,9 @@ impl TyDecl {
                             ..
                         }) = entry
                         {
-                            *type_argument.type_id_mut() = ctx.by_ref().resolve_type(
+                            type_argument.type_id = ctx.by_ref().resolve_type(
                                 handler,
-                                type_argument.type_id(),
+                                type_argument.type_id,
                                 &name.span(),
                                 EnforceTypeArguments::Yes,
                                 None,
@@ -428,7 +428,7 @@ impl TyDecl {
 
                             let mut ctx = ctx
                                 .by_ref()
-                                .with_type_annotation(type_argument.type_id())
+                                .with_type_annotation(type_argument.type_id)
                                 .with_storage_declaration();
                             let initializer =
                                 ty::TyExpression::type_check(handler, ctx.by_ref(), &initializer)?;
@@ -519,13 +519,7 @@ impl TyDecl {
 
                 // Resolve the type that the type alias replaces
                 let new_ty = ctx
-                    .resolve_type(
-                        handler,
-                        ty.type_id(),
-                        &span,
-                        EnforceTypeArguments::Yes,
-                        None,
-                    )
+                    .resolve_type(handler, ty.type_id, &span, EnforceTypeArguments::Yes, None)
                     .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
                 // create the type alias decl using the resolved type above
@@ -533,12 +527,12 @@ impl TyDecl {
                     name: name.clone(),
                     call_path: CallPath::from(name.clone()).to_fullpath(engines, ctx.namespace()),
                     attributes: decl.attributes.clone(),
-                    ty: GenericArgument::Type(GenericTypeArgument {
-                        initial_type_id: ty.initial_type_id(),
+                    ty: GenericTypeArgument {
+                        initial_type_id: ty.initial_type_id,
                         type_id: new_ty,
-                        call_path_tree: ty.call_path_tree().cloned(),
-                        span: ty.span(),
-                    }),
+                        call_path_tree: ty.call_path_tree.as_ref().cloned(),
+                        span: ty.span.clone(),
+                    },
                     visibility: decl.visibility,
                     span,
                 };
@@ -553,7 +547,7 @@ impl TyDecl {
                 unreachable!();
             }
             parsed::Declaration::ConstGenericDeclaration(_) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                unreachable!("ConstGenericDecl is not reachable from AstNode")
             }
         };
 
@@ -580,7 +574,7 @@ impl TypeCheckAnalysis for TyDecl {
                 const_decl.type_check_analyze(handler, ctx)?;
             }
             TyDecl::ConstGenericDecl(_) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                unreachable!("ConstGenericDecl is not reachable from AstNode")
             }
             TyDecl::FunctionDecl(node) => {
                 let fn_decl = ctx.engines.de().get_function(&node.decl_id);
@@ -640,7 +634,7 @@ impl TypeCheckFinalization for TyDecl {
                 config_decl.type_check_finalize(handler, ctx)?;
             }
             TyDecl::ConstGenericDecl(_) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                unreachable!("ConstGenericDecl is not reachable from AstNode")
             }
             TyDecl::FunctionDecl(node) => {
                 let mut fn_decl = (*ctx.engines.de().get_function(&node.decl_id)).clone();

@@ -512,7 +512,7 @@ impl ty::TyModule {
                 &node.content
             {
                 let decl = &*engines.pe().get_impl_self_or_trait(decl_id);
-                let implementing_for = ctx.engines.te().get(decl.implementing_for.type_id());
+                let implementing_for = ctx.engines.te().get(decl.implementing_for.type_id);
                 let implementing_for = match &*implementing_for {
                     TypeInfo::Struct(decl_id) => {
                         Some(ctx.engines().de().get(decl_id).name().clone())

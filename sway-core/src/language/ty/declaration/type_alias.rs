@@ -1,4 +1,5 @@
 use crate::{
+    ast_elements::type_argument::GenericTypeArgument,
     engine_threading::*,
     language::{parsed::TypeAliasDeclaration, ty::TyDeclParsedType, CallPath, Visibility},
     transform,
@@ -13,7 +14,7 @@ pub struct TyTypeAliasDecl {
     pub name: Ident,
     pub call_path: CallPath,
     pub attributes: transform::Attributes,
-    pub ty: GenericArgument,
+    pub ty: GenericTypeArgument,
     pub visibility: Visibility,
     pub span: Span,
 }

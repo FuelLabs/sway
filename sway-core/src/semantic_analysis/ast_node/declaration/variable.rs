@@ -40,18 +40,18 @@ impl ty::TyVariableDecl {
 
         let mut type_ascription = var_decl.type_ascription.clone();
 
-        *type_ascription.type_id_mut() = ctx
+        type_ascription.type_id = ctx
             .resolve_type(
                 handler,
-                type_ascription.type_id(),
-                &type_ascription.span(),
+                type_ascription.type_id,
+                &type_ascription.span,
                 EnforceTypeArguments::Yes,
                 None,
             )
             .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
         let mut ctx = ctx
-            .with_type_annotation(type_ascription.type_id())
+            .with_type_annotation(type_ascription.type_id)
             .with_help_text(
                 "Variable declaration's type annotation does not match up \
                  with the assigned expression's type.",
@@ -67,7 +67,7 @@ impl ty::TyVariableDecl {
         // in a way to always use the context provided by the LHS, and use the unified type of LHS
         // and RHS as the return type of the RHS.  Remove this special case as a part of the
         // initiative of improving type inference.
-        let return_type = match (&*type_engine.get(type_ascription.type_id()), &*type_engine.get(body.return_type)) {
+        let return_type = match (&*type_engine.get(type_ascription.type_id), &*type_engine.get(body.return_type)) {
             // Integers: We can't rely on the type of the RHS to give us the correct integer
             // type, so the type of the variable *has* to follow `type_ascription` if
             // `type_ascription` is a concrete integer type that does not conflict with the type
@@ -84,7 +84,7 @@ impl ty::TyVariableDecl {
             //   let v = <some error>; // `v` will remain "{unknown}".
             // TODO: Refine and improve this further. E.g.,
             //   let v: Struct { /* MISSING FIELDS */ }; // Despite the error, `v` should be of type "Struct".
-            (_, TypeInfo::ErrorRecovery(_)) => type_ascription.type_id(),
+            (_, TypeInfo::ErrorRecovery(_)) => type_ascription.type_id,
             // In all other cases we use the type of the RHS.
             _ => body.return_type,
         };

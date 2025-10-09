@@ -1,5 +1,4 @@
 use crate::{
-    ast_elements::type_parameter::ConstGenericExpr,
     decl_engine::{DeclMapping, MaterializeConstGenerics, ReplaceDecls},
     engine_threading::*,
     has_changes,
@@ -23,7 +22,7 @@ pub struct TyConstantDecl {
     pub visibility: Visibility,
     pub attributes: transform::Attributes,
     pub return_type: TypeId,
-    pub type_ascription: GenericArgument,
+    pub type_ascription: GenericTypeArgument,
     pub span: Span,
 }
 
@@ -130,17 +129,9 @@ impl MaterializeConstGenerics for TyConstantDecl {
         }
         self.return_type
             .materialize_const_generics(engines, handler, name, value)?;
-        match &mut self.type_ascription {
-            GenericArgument::Type(arg) => arg
-                .type_id
-                .materialize_const_generics(engines, handler, name, value)?,
-            GenericArgument::Const(arg) => {
-                if matches!(&arg.expr, ConstGenericExpr::AmbiguousVariableExpression { ident, .. } if ident.as_str() == name)
-                {
-                    arg.expr = ConstGenericExpr::from_ty_expression(handler, value)?;
-                }
-            }
-        }
+        self.type_ascription
+            .type_id
+            .materialize_const_generics(engines, handler, name, value)?;
         Ok(())
     }
 }

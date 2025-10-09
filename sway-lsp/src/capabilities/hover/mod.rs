@@ -157,8 +157,8 @@ fn hover_format(
             TypedAstToken::TypedDeclaration(decl) => match decl {
                 ty::TyDecl::VariableDecl(var_decl) => {
                     let type_name =
-                        format!("{}", engines.help_out(var_decl.type_ascription.type_id()));
-                    hover_link_contents.add_related_types(&var_decl.type_ascription.type_id());
+                        format!("{}", engines.help_out(var_decl.type_ascription.type_id));
+                    hover_link_contents.add_related_types(&var_decl.type_ascription.type_id);
                     Some(format_variable_hover(
                         var_decl.mutability.is_mutable(),
                         &type_name,
@@ -199,24 +199,24 @@ fn hover_format(
                 _ => None,
             },
             TypedAstToken::TypedFunctionDeclaration(func) => {
-                hover_link_contents.add_related_types(&func.return_type.type_id());
+                hover_link_contents.add_related_types(&func.return_type.type_id);
                 Some(extract_fn_signature(&func.span()))
             }
             TypedAstToken::TypedFunctionParameter(param) => {
-                hover_link_contents.add_related_types(&param.type_argument.type_id());
+                hover_link_contents.add_related_types(&param.type_argument.type_id);
                 Some(format_name_with_type(
                     param.name.as_str(),
-                    &param.type_argument.type_id(),
+                    &param.type_argument.type_id,
                 ))
             }
             TypedAstToken::TypedStructField(field) => {
                 hover_link_contents.add_implementations_for_type(
                     &field.type_argument.span(),
-                    field.type_argument.type_id(),
+                    field.type_argument.type_id,
                 );
                 Some(format_name_with_type(
                     field.name.as_str(),
-                    &field.type_argument.type_id(),
+                    &field.type_argument.type_id,
                 ))
             }
             TypedAstToken::TypedExpression(expr) => match expr.expression {

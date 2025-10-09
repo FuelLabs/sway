@@ -1,13 +1,15 @@
 use crate::{
     decl_engine::MaterializeConstGenerics,
+    engine_threading::HashWithEngines,
     has_changes,
     language::{parsed::ConstGenericDeclaration, ty::TyExpression, CallPath},
     semantic_analysis::{TypeCheckAnalysis, TypeCheckAnalysisContext},
-    HasChanges, SubstTypes, TypeId,
+    Engines, HasChanges, SubstTypes, TypeId,
 };
 use serde::{Deserialize, Serialize};
+use std::hash::{Hash as _, Hasher};
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{BaseIdent, Ident, Named, Span, Spanned};
+use sway_types::{Ident, Named, Span, Spanned};
 
 use super::TyDeclParsedType;
 
@@ -17,6 +19,20 @@ pub struct TyConstGenericDecl {
     pub return_type: TypeId,
     pub span: Span,
     pub value: Option<TyExpression>,
+}
+
+impl HashWithEngines for TyConstGenericDecl {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+        let type_engine = engines.te();
+        let TyConstGenericDecl {
+            call_path,
+            return_type,
+            span: _,
+            value: _,
+        } = self;
+        call_path.hash(state);
+        type_engine.get(*return_type).hash(state, engines);
+    }
 }
 
 impl SubstTypes for TyConstGenericDecl {
@@ -73,12 +89,6 @@ impl TypeCheckAnalysis for TyConstGenericDecl {
         _ctx: &mut TypeCheckAnalysisContext,
     ) -> Result<(), ErrorEmitted> {
         Ok(())
-    }
-}
-
-impl TyConstGenericDecl {
-    pub fn name(&self) -> &BaseIdent {
-        &self.call_path.suffix
     }
 }
 

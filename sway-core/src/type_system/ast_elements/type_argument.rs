@@ -1,12 +1,15 @@
+use super::type_parameter::ConstGenericExpr;
 use crate::{
     decl_engine::MaterializeConstGenerics, engine_threading::*, language::CallPathTree,
     type_system::priv_prelude::*,
 };
 use serde::{Deserialize, Serialize};
-use std::{cmp::Ordering, fmt, hash::Hasher};
+use std::{
+    cmp::Ordering,
+    fmt,
+    hash::{Hash as _, Hasher},
+};
 use sway_types::{Span, Spanned};
-
-use super::type_parameter::ConstGenericExpr;
 
 /// [GenericTypeArgument] can be seen as an "annotated reference" to a [TypeInfo].
 /// It holds the [GenericTypeArgument::type_id] which is the actual "reference"
@@ -45,6 +48,72 @@ pub struct GenericTypeArgument {
     /// annotated.
     pub span: Span,
     pub call_path_tree: Option<CallPathTree>,
+}
+
+impl From<TypeId> for GenericTypeArgument {
+    /// Creates *a non-annotated* [GenericArgument::Type] that points
+    /// to the [TypeInfo] represented by the `type_id`.
+    fn from(type_id: TypeId) -> Self {
+        GenericTypeArgument {
+            type_id,
+            initial_type_id: type_id,
+            span: Span::dummy(),
+            call_path_tree: None,
+        }
+    }
+}
+
+impl HashWithEngines for GenericTypeArgument {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+        let GenericTypeArgument {
+            type_id,
+            // these fields are not hashed because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            initial_type_id: _,
+            span: _,
+            call_path_tree: _,
+        } = self;
+        let type_engine = engines.te();
+        type_engine.get(*type_id).hash(state, engines);
+    }
+}
+
+impl DisplayWithEngines for GenericTypeArgument {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        write!(f, "{}", engines.help_out(self.type_id))
+    }
+}
+
+impl DebugWithEngines for GenericTypeArgument {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        write!(
+            f,
+            "{:?} -> {:?}",
+            engines.help_out(self.initial_type_id),
+            engines.help_out(self.type_id)
+        )
+    }
+}
+
+impl MaterializeConstGenerics for GenericTypeArgument {
+    fn materialize_const_generics(
+        &mut self,
+        engines: &Engines,
+        handler: &sway_error::handler::Handler,
+        name: &str,
+        value: &crate::language::ty::TyExpression,
+    ) -> Result<(), sway_error::handler::ErrorEmitted> {
+        self.type_id
+            .materialize_const_generics(engines, handler, name, value)
+    }
+}
+
+impl GenericTypeArgument {
+    pub fn is_annotated(&self) -> bool {
+        self.type_id != self.initial_type_id
+            || self.call_path_tree.is_some()
+            || !self.span.is_dummy()
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -92,24 +161,6 @@ impl GenericArgument {
             .initial_type_id
     }
 
-    pub fn call_path_tree(&self) -> Option<&CallPathTree> {
-        match self {
-            GenericArgument::Type(a) => a.call_path_tree.as_ref(),
-            GenericArgument::Const(_) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
-            }
-        }
-    }
-
-    pub fn call_path_tree_mut(&mut self) -> Option<&mut CallPathTree> {
-        match self {
-            GenericArgument::Type(a) => a.call_path_tree.as_mut(),
-            GenericArgument::Const(_) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
-            }
-        }
-    }
-
     /// Returns true if `self` is annotated by having either
     /// its [Self::initial_type_id] different from [Self::type_id],
     /// or [Self::span] different from [Span::dummy]
@@ -119,9 +170,7 @@ impl GenericArgument {
             GenericArgument::Type(a) => {
                 a.type_id != a.initial_type_id || a.call_path_tree.is_some() || !a.span.is_dummy()
             }
-            GenericArgument::Const(_) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
-            }
+            GenericArgument::Const(_) => false,
         }
     }
 }
@@ -129,10 +178,8 @@ impl GenericArgument {
 impl Spanned for GenericArgument {
     fn span(&self) -> Span {
         match self {
-            GenericArgument::Type(a) => a.span.clone(),
-            GenericArgument::Const(_) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
-            }
+            GenericArgument::Type(a) => a.span(),
+            GenericArgument::Const(a) => a.expr.span(),
         }
     }
 }
@@ -153,20 +200,10 @@ impl From<TypeId> for GenericArgument {
 impl HashWithEngines for GenericArgument {
     fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         match self {
-            GenericArgument::Type(GenericTypeArgument {
-                type_id,
-                // these fields are not hashed because they aren't relevant/a
-                // reliable source of obj v. obj distinction
-                initial_type_id: _,
-                span: _,
-                call_path_tree: _,
-            }) => {
-                let type_engine = engines.te();
-                type_engine.get(*type_id).hash(state, engines);
+            GenericArgument::Type(a) => {
+                HashWithEngines::hash(&a, state, engines);
             }
-            GenericArgument::Const(_) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
-            }
+            GenericArgument::Const(GenericConstArgument { expr }) => expr.hash(state),
         }
     }
 }
@@ -175,16 +212,8 @@ impl EqWithEngines for GenericArgument {}
 impl PartialEqWithEngines for GenericArgument {
     fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         match (self, other) {
-            (GenericArgument::Type(l), GenericArgument::Type(r)) => {
-                let type_engine = ctx.engines().te();
-                l.type_id == r.type_id
-                    || type_engine
-                        .get(l.type_id)
-                        .eq(&type_engine.get(r.type_id), ctx)
-            }
-            (GenericArgument::Const(_), GenericArgument::Const(_)) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
-            }
+            (GenericArgument::Type(l), GenericArgument::Type(r)) => l.eq(r, ctx),
+            (GenericArgument::Const(l), GenericArgument::Const(r)) => l.expr.eq(&r.expr),
             _ => false,
         }
     }
@@ -193,35 +222,8 @@ impl PartialEqWithEngines for GenericArgument {
 impl OrdWithEngines for GenericArgument {
     fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
         match (self, other) {
-            (
-                GenericArgument::Type(GenericTypeArgument {
-                    type_id: lti,
-                    // these fields are not compared because they aren't relevant/a
-                    // reliable source of obj v. obj distinction
-                    initial_type_id: _,
-                    span: _,
-                    call_path_tree: _,
-                }),
-                GenericArgument::Type(GenericTypeArgument {
-                    type_id: rti,
-                    // these fields are not compared because they aren't relevant/a
-                    // reliable source of obj v. obj distinction
-                    initial_type_id: _,
-                    span: _,
-                    call_path_tree: _,
-                }),
-            ) => {
-                if lti == rti {
-                    return Ordering::Equal;
-                }
-                ctx.engines()
-                    .te()
-                    .get(*lti)
-                    .cmp(&ctx.engines().te().get(*rti), ctx)
-            }
-            (GenericArgument::Const(_), GenericArgument::Const(_)) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
-            }
+            (GenericArgument::Type(l), GenericArgument::Type(r)) => l.cmp(r, ctx),
+            (GenericArgument::Const(l), GenericArgument::Const(r)) => l.expr.cmp(&r.expr),
             (GenericArgument::Type(_), _) => Ordering::Less,
             (GenericArgument::Const(_), _) => Ordering::Greater,
         }
@@ -234,9 +236,14 @@ impl DisplayWithEngines for GenericArgument {
             GenericArgument::Type(a) => {
                 write!(f, "{}", engines.help_out(&*engines.te().get(a.type_id)))
             }
-            GenericArgument::Const(_) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
-            }
+            GenericArgument::Const(a) => match &a.expr {
+                ConstGenericExpr::Literal { val, .. } => {
+                    write!(f, "{val}")
+                }
+                ConstGenericExpr::AmbiguousVariableExpression { ident, .. } => {
+                    write!(f, "{}", ident.as_str())
+                }
+            },
         }
     }
 }
@@ -244,12 +251,15 @@ impl DisplayWithEngines for GenericArgument {
 impl DebugWithEngines for GenericArgument {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         match self {
-            GenericArgument::Type(a) => {
-                write!(f, "{:?}", engines.help_out(&*engines.te().get(a.type_id)))
-            }
-            GenericArgument::Const(_) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
-            }
+            GenericArgument::Type(a) => DebugWithEngines::fmt(&a, f, engines),
+            GenericArgument::Const(a) => match &a.expr {
+                ConstGenericExpr::Literal { val, .. } => {
+                    write!(f, "{val}")
+                }
+                ConstGenericExpr::AmbiguousVariableExpression { ident, .. } => {
+                    write!(f, "{}", ident.as_str())
+                }
+            },
         }
     }
 }
@@ -279,7 +289,7 @@ impl From<&TypeParameter> for GenericArgument {
 impl SubstTypes for GenericArgument {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         match self {
-            GenericArgument::Type(a) => a.type_id.subst(ctx),
+            GenericArgument::Type(a) => a.subst(ctx),
             GenericArgument::Const(_) => HasChanges::No,
         }
     }
@@ -295,8 +305,7 @@ impl MaterializeConstGenerics for GenericArgument {
     ) -> Result<(), sway_error::handler::ErrorEmitted> {
         match self {
             GenericArgument::Type(arg) => {
-                arg.type_id
-                    .materialize_const_generics(engines, handler, name, value)?;
+                arg.materialize_const_generics(engines, handler, name, value)?;
             }
             GenericArgument::Const(arg) => {
                 arg.expr = match arg.expr.clone() {
@@ -323,5 +332,57 @@ impl MaterializeConstGenerics for GenericArgument {
             }
         }
         Ok(())
+    }
+}
+
+impl Spanned for GenericTypeArgument {
+    fn span(&self) -> Span {
+        self.span.clone()
+    }
+}
+
+impl SubstTypes for GenericTypeArgument {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        self.type_id.subst(ctx)
+    }
+}
+
+impl PartialEqWithEngines for GenericTypeArgument {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        let type_engine = ctx.engines().te();
+        self.type_id == other.type_id
+            || type_engine
+                .get(self.type_id)
+                .eq(&type_engine.get(other.type_id), ctx)
+    }
+}
+
+impl OrdWithEngines for GenericTypeArgument {
+    fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
+        let GenericTypeArgument {
+            type_id: lti,
+            // these fields are not compared because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            initial_type_id: _,
+            span: _,
+            call_path_tree: _,
+        } = self;
+
+        let GenericTypeArgument {
+            type_id: rti,
+            // these fields are not compared because they aren't relevant/a
+            // reliable source of obj v. obj distinction
+            initial_type_id: _,
+            span: _,
+            call_path_tree: _,
+        } = other;
+
+        if lti == rti {
+            return Ordering::Equal;
+        }
+        ctx.engines()
+            .te()
+            .get(*lti)
+            .cmp(&ctx.engines().te().get(*rti), ctx)
     }
 }

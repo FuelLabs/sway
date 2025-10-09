@@ -293,15 +293,15 @@ impl<'a> UnifyCheck<'a> {
         match (&*left_info, &*right_info) {
             // when a type alias is encountered, defer the decision to the type it contains (i.e. the
             // type it aliases with)
-            (Alias { ty, .. }, _) => return self.check_inner(ty.type_id(), right),
-            (_, Alias { ty, .. }) => return self.check_inner(left, ty.type_id()),
+            (Alias { ty, .. }, _) => return self.check_inner(ty.type_id, right),
+            (_, Alias { ty, .. }) => return self.check_inner(left, ty.type_id),
 
             (Never, Never) => {
                 return true;
             }
 
             (Array(l0, l1), Array(r0, r1)) => {
-                let elem_types_unify = self.check_inner(l0.type_id(), r0.type_id());
+                let elem_types_unify = self.check_inner(l0.type_id, r0.type_id);
                 return if !elem_types_unify {
                     false
                 } else {
@@ -310,12 +310,12 @@ impl<'a> UnifyCheck<'a> {
             }
 
             (Slice(l0), Slice(r0)) => {
-                return self.check_inner(l0.type_id(), r0.type_id());
+                return self.check_inner(l0.type_id, r0.type_id);
             }
 
             (Tuple(l_types), Tuple(r_types)) => {
-                let l_types = l_types.iter().map(|x| x.type_id()).collect::<Vec<_>>();
-                let r_types = r_types.iter().map(|x| x.type_id()).collect::<Vec<_>>();
+                let l_types = l_types.iter().map(|x| x.type_id).collect::<Vec<_>>();
+                let r_types = r_types.iter().map(|x| x.type_id).collect::<Vec<_>>();
                 return self.check_multiple(&l_types, &r_types);
             }
 
@@ -392,8 +392,7 @@ impl<'a> UnifyCheck<'a> {
                 //  - `&` -> `&`
                 //  - `&mut` -> `&`
                 //  - `&mut` -> `&mut`
-                return (*l_to_mut || !*r_to_mut)
-                    && self.check_inner(l_ty.type_id(), r_ty.type_id());
+                return (*l_to_mut || !*r_to_mut) && self.check_inner(l_ty.type_id, r_ty.type_id);
             }
 
             (
@@ -406,7 +405,7 @@ impl<'a> UnifyCheck<'a> {
                     referenced_type: r_ty,
                 },
             ) => {
-                return *l_to_mut == *r_to_mut && self.check_inner(l_ty.type_id(), r_ty.type_id());
+                return *l_to_mut == *r_to_mut && self.check_inner(l_ty.type_id, r_ty.type_id);
             }
 
             (UnknownGeneric { parent: lp, .. }, r)
@@ -793,7 +792,7 @@ impl<'a> UnifyCheck<'a> {
             .variants
             .iter()
             .zip(right.variants.iter())
-            .any(|(l, r)| !self.check_inner(l.type_argument.type_id(), r.type_argument.type_id()))
+            .any(|(l, r)| !self.check_inner(l.type_argument.type_id, r.type_argument.type_id))
         {
             return false;
         }
@@ -875,7 +874,7 @@ impl<'a> UnifyCheck<'a> {
             .fields
             .iter()
             .zip(right.fields.iter())
-            .any(|(l, r)| !self.check_inner(l.type_argument.type_id(), r.type_argument.type_id()))
+            .any(|(l, r)| !self.check_inner(l.type_argument.type_id, r.type_argument.type_id))
         {
             return false;
         }
@@ -910,15 +909,16 @@ impl<'a> UnifyCheck<'a> {
 
 #[test]
 pub fn array_constraint_subset() {
+    use crate::ast_elements::type_argument::GenericTypeArgument;
     let engines = Engines::default();
     let array_u64_1 = engines.te().insert_array(
         &engines,
-        GenericArgument::Type(crate::ast_elements::type_argument::GenericTypeArgument {
+        GenericTypeArgument {
             type_id: engines.te().id_of_u64(),
             initial_type_id: engines.te().id_of_u64(),
             span: sway_types::Span::dummy(),
             call_path_tree: None,
-        }),
+        },
         Length(ConstGenericExpr::Literal {
             val: 1,
             span: sway_types::Span::dummy(),
@@ -926,12 +926,12 @@ pub fn array_constraint_subset() {
     );
     let array_u64_n = engines.te().insert_array(
         &engines,
-        GenericArgument::Type(crate::ast_elements::type_argument::GenericTypeArgument {
+        GenericTypeArgument {
             type_id: engines.te().id_of_u64(),
             initial_type_id: engines.te().id_of_u64(),
             span: sway_types::Span::dummy(),
             call_path_tree: None,
-        }),
+        },
         Length(ConstGenericExpr::AmbiguousVariableExpression {
             ident: sway_types::BaseIdent::new_no_span("N".into()),
             decl: None,
