@@ -1,5 +1,5 @@
 use anyhow::{bail, Result};
-use fuel_tx::ContractId;
+use fuel_tx::{ConsensusParameters, ContractId};
 use fuels::programs::calls::{
     traits::TransactionTuner, utils::find_ids_of_missing_contracts, ContractCall,
 };
@@ -18,12 +18,18 @@ pub async fn determine_missing_contracts(
     provider: &Provider,
     tx_policies: &TxPolicies,
     variable_output_policy: &VariableOutputPolicy,
+    consensus_params: &ConsensusParameters,
     log_decoder: &fuels_core::codec::LogDecoder,
     account: &Wallet<Unlocked<PrivateKeySigner>>,
 ) -> Result<Vec<ContractId>> {
     let tb = call
-        .transaction_builder(*tx_policies, *variable_output_policy, account)
-        .await
+        .transaction_builder(
+            *tx_policies,
+            *variable_output_policy,
+            consensus_params,
+            call.inputs.clone(),
+            account,
+        )
         .expect("Failed to initialize transaction builder");
 
     let tx = call

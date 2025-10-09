@@ -11,6 +11,10 @@ extend-ignore-identifiers-re = [
     "typ",
 ]
 
+extend-ignore-re = [
+    "(?Rm)^.*(#|//)\\s*typos:ignore$",
+]
+
 [files]
 extend-exclude = [
     "docs/book/theme/highlight.js",

@@ -63,8 +63,9 @@ category = "fail"
 #check: $()error
 #check: $()Could not find symbol "project_items_1_struct" in this scope.
 
-#check: $()error
-#check: $()No method "eq({unknown}, numeric) -> bool" found for type "{unknown}".
+#check: $()Associated function or method is not found
+#check: $()poke(items_1_struct_res == 123)
+#nextln: $()"eq({unknown}, {numeric}) -> bool" is not found for type "{unknown}".
 
 #check: $()error
 #check: $()Could not find symbol "Items1_Enum" in this scope.
@@ -75,8 +76,9 @@ category = "fail"
 #check: $()error
 #check: $()Could not find symbol "project_items_1_enum" in this scope.
 
-#check: $()error
-#check: $()No method "eq({unknown}, numeric) -> bool" found for type "{unknown}".
+#check: $()Associated function or method is not found
+#check: $()poke(items_1_enum_res == 432);
+#nextln: $()"eq({unknown}, {numeric}) -> bool" is not found for type "{unknown}".
 
 #check: $()error
 #check: $()Could not find symbol "X" in this scope.
@@ -84,8 +86,9 @@ category = "fail"
 #check: $()error
 #check: $()Variable "ITEMS_1_FUNCTION_RES" does not exist in this scope.
 
-#check: $()error
-#check: $()No method "items_1_trait_function(TestStruct1, TestStruct2) -> bool" found for type "TestStruct1".
+#check: $()Associated function or method is not found
+#check: $()let items_1_trait_teststruct_1_res = teststruct_1.items_1_trait_function(teststruct_2);
+#nextln: $()"items_1_trait_function(simple_glob_import::tests::TestStruct1, simple_glob_import::tests::TestStruct2) -> bool" is not found for type "simple_glob_import::tests::TestStruct1".
 
 #check: $()error
 #check: $()Could not find symbol "Items2_Struct" in this scope.
@@ -96,8 +99,9 @@ category = "fail"
 #check: $()error
 #check: $()Could not find symbol "project_items_2_struct" in this scope.
 
-#check: $()error
-#check: $()No method "eq({unknown}, numeric) -> bool" found for type "{unknown}".
+#check: $()Associated function or method is not found
+#check: $()poke(items_2_struct_res == 789);
+#nextln: $()"eq({unknown}, {numeric}) -> bool" is not found for type "{unknown}".
 
 #check: $()error
 #check: $()Could not find symbol "Items2_Enum" in this scope.
@@ -108,8 +112,9 @@ category = "fail"
 #check: $()error
 #check: $()Could not find symbol "project_items_2_enum" in this scope.
 
-#check: $()error
-#check: $()No method "eq({unknown}, numeric) -> bool" found for type "{unknown}".
+#check: $()Associated function or method is not found
+#check: $()poke(items_2_enum_res == 246);
+#nextln: $()"eq({unknown}, {numeric}) -> bool" is not found for type "{unknown}".
 
 #check: $()error
 #check: $()Could not find symbol "O" in this scope.
@@ -117,13 +122,15 @@ category = "fail"
 #check: $()error
 #check: $()Could not find symbol "project_items_2_variants" in this scope.
 
-#check: $()error
-#check: $()No method "eq({unknown}, numeric) -> bool" found for type "{unknown}".
+#check: $()Associated function or method is not found
+#check: $()poke(items_2_variants_res == 468);
+#nextln: $()"eq({unknown}, {numeric}) -> bool" is not found for type "{unknown}"
 
 #check: $()error
 #check: $()Variable "ITEMS_2_FUNCTION_RES" does not exist in this scope.
 
-#check: $()error
-#check: $()No method "items_2_trait_function(TestStruct1, TestStruct2) -> bool" found for type "TestStruct1".
+#check: $()Associated function or method is not found
+#check: $()let items_2_trait_teststruct_1_res = teststruct_1.items_2_trait_function(teststruct_2);
+#nextln: $()"items_2_trait_function(simple_glob_import::tests::TestStruct1, simple_glob_import::tests::TestStruct2) -> bool" is not found for type "simple_glob_import::tests::TestStruct1".
 
 #check: $()Aborting due to 42 errors.

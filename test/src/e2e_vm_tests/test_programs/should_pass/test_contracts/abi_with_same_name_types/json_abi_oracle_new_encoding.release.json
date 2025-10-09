@@ -1,0 +1,126 @@
+{
+  "concreteTypes": [
+    {
+      "concreteTypeId": "d852149004cc9ec0bbe7dc4e37bffea1d41469b759512b6136f2e865a4c06e7d",
+      "metadataTypeId": 1,
+      "type": "enum std::option::Option<u64>",
+      "typeArguments": [
+        "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+      ]
+    },
+    {
+      "concreteTypeId": "ed705f920eb2c423c81df912430030def10f03218f0a064bfab81b68de71ae21",
+      "type": "str[6]"
+    },
+    {
+      "concreteTypeId": "a45846b92d83fc9bce3ae9107300f47b4adc654abc3a42c7bd6395f4ab30a519",
+      "metadataTypeId": 3,
+      "type": "struct dep_1::MyStruct1"
+    },
+    {
+      "concreteTypeId": "871f7c31e4209def536096b47765433990004089691aa2814a497f27040bee45",
+      "metadataTypeId": 5,
+      "type": "struct dep_2::MyStruct2"
+    },
+    {
+      "concreteTypeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0",
+      "type": "u64"
+    }
+  ],
+  "configurables": [],
+  "encodingVersion": "1",
+  "errorCodes": {},
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [
+        {
+          "concreteTypeId": "a45846b92d83fc9bce3ae9107300f47b4adc654abc3a42c7bd6395f4ab30a519",
+          "name": "_arg1"
+        },
+        {
+          "concreteTypeId": "871f7c31e4209def536096b47765433990004089691aa2814a497f27040bee45",
+          "name": "_arg2"
+        },
+        {
+          "concreteTypeId": "d852149004cc9ec0bbe7dc4e37bffea1d41469b759512b6136f2e865a4c06e7d",
+          "name": "_arg3"
+        }
+      ],
+      "name": "function",
+      "output": "ed705f920eb2c423c81df912430030def10f03218f0a064bfab81b68de71ae21"
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "metadataTypes": [
+    {
+      "metadataTypeId": 0,
+      "type": "()"
+    },
+    {
+      "components": [
+        {
+          "name": "None",
+          "typeId": 0
+        },
+        {
+          "name": "Some",
+          "typeId": 2
+        }
+      ],
+      "metadataTypeId": 1,
+      "type": "enum std::option::Option",
+      "typeParameters": [
+        2
+      ]
+    },
+    {
+      "metadataTypeId": 2,
+      "type": "generic T"
+    },
+    {
+      "components": [
+        {
+          "name": "bam",
+          "typeId": 4
+        }
+      ],
+      "metadataTypeId": 3,
+      "type": "struct dep_1::MyStruct1"
+    },
+    {
+      "components": [
+        {
+          "name": "bam",
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        }
+      ],
+      "metadataTypeId": 4,
+      "type": "struct dep_1::MyStructDuplicated"
+    },
+    {
+      "components": [
+        {
+          "name": "bam",
+          "typeId": 6
+        }
+      ],
+      "metadataTypeId": 5,
+      "type": "struct dep_2::MyStruct2"
+    },
+    {
+      "components": [
+        {
+          "name": "bam",
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        }
+      ],
+      "metadataTypeId": 6,
+      "type": "struct dep_2::MyStructDuplicated"
+    }
+  ],
+  "panickingCalls": {},
+  "programType": "contract",
+  "specVersion": "1.2"
+}

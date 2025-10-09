@@ -1,9 +1,15 @@
 ---
 source: test/src/snapshot/mod.rs
+assertion_line: 266
 ---
-> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_const_eval_string_slices_not_in_bytecode --ir initial | regex '        (v0 = call call|v0 = const|v1 = const|revert)'
-        v0 = call call_return_const_str_0_1(), !18
-        v1 = const u64 18446744069414584321
-        revert v1, !19
-        v0 = const u64 18446744069414584320
-        revert v0, !23
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_const_eval_string_slices_not_in_bytecode --ir initial | regex '        (v1 = call call|v0 = const|v1 = const|v2 = const|v3 = const|v2 = and|v4 = or|revert)'
+        v3 = const u64 0
+        v0 = const u64 1
+        v1 = call call_return_const_str_0_1(v0), !18
+        v2 = const u64 9259400833873739776
+        revert v2, !19
+        v1 = const u64 36028797018963967
+        v2 = and __backtrace, v1, !23
+        v3 = const u64 9223372036854775808
+        v4 = or v3, v2, !23
+        revert v4, !23

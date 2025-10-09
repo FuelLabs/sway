@@ -1,13 +1,14 @@
 category = "fail"
 
 # check: $()error
-# check: type_mismatch_error_message/src/main.sw:19:15
 # check: $()item: arg,
 # nextln: $()Mismatched types.
 # nextln: $()expected: I
 # nextln: $()found:    A
 # nextln: $()Implicit return must match up with block's type.
 
-# check: $()error
-# check: $()No method "does_not_exist(MyResult<Data<bool>, str[4]>)" found for type "MyResult<Data<bool>, str[4]>"
+# check: $()Associated function or method is not found
+# check: $()foo.does_not_exist();
+# nextln: $()"does_not_exist(type_mismatch_error_message::MyResult<type_mismatch_error_message::Data<bool>, str[4]>)" is not found for type "type_mismatch_error_message::MyResult<type_mismatch_error_message::Data<bool>, str[4]>".
 
+# check: $()Aborting due to 2 errors.

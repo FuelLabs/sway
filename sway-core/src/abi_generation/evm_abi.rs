@@ -133,7 +133,7 @@ pub fn abi_str(type_info: &TypeInfo, engines: &Engines) -> String {
         Alias { ty, .. } => abi_str_type_arg(ty, engines),
         TraitType {
             name,
-            trait_type_id: _,
+            implemented_in: _,
         } => format!("trait type {name}"),
         Ref {
             to_mutable_value,

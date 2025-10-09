@@ -1,8 +1,3 @@
 [[package]]
 name = "missing_method_arguments"
 source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "std"
-source = "path+from-root-02CB52E4F1733F6E"

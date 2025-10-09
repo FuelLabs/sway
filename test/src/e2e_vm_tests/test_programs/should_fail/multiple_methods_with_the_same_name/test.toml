@@ -4,34 +4,34 @@ category = "fail"
 # check: $()fn my_add(self, other: Self) -> Self {
 # check: $()"my_add" previously defined here.
 # check: $()fn my_add(self, other: Self) -> Self {
-# check: $()Method "my_add" already declared in type "Data<T>".
+# check: $()Method "my_add" already declared in type "multiple_methods_with_the_same_name::Data<T>".
 
 # check: $()Type contains duplicate declarations
 # check: $()fn get_value(self) -> u64 {
 # check: $()"get_value" previously defined here.
 # check: $()fn get_value(self) -> u64 {
-# check: $(Method "get_value" already declared in type "Data<u64>".
+# check: $(Method "get_value" already declared in type "multiple_methods_with_the_same_name::Data<u64>".
 
 # check: $()Type contains duplicate declarations
 # check: $()fn my_add(self, other: Self) -> Self {
 # check: $()"my_add" previously defined here.
 # check: $()fn my_add(self, other: Self) -> Self {
-# check: $()Method "my_add" already declared in type "Data<u64>".
+# check: $()Method "my_add" already declared in type "multiple_methods_with_the_same_name::Data<u64>".
 
 # check: $()Type contains duplicate declarations
 # check: $()fn my_add(self, other: Self) -> Self {
 # check: $()"my_add" previously defined here.
 # check: $()fn my_add(self, other: Self) -> Self {
-# check: $()Method "my_add" already declared in type "Data<u64>".
+# check: $()Method "my_add" already declared in type "multiple_methods_with_the_same_name::Data<u64>".
 
 # check: $()Type contains duplicate declarations
 # check: $()fn my_add(self, other: Self) -> Self {
 # check: $()"my_add" previously defined here.
 # check: $()fn my_add(self, other: Self) -> Self {
-# check: $()Method "my_add" already declared in type "Data<u32>".
+# check: $()Method "my_add" already declared in type "multiple_methods_with_the_same_name::Data<u32>".
 
 # check: $()Type contains duplicate declarations
 # check: $()fn my_add(self, other: Self) -> Self {
 # check: $()"my_add" previously defined here.
 # check: $()fn my_add(self, other: Self) -> Self {
-# check: $()Method "my_add" already declared in type "Data<u32>".
+# check: $()Method "my_add" already declared in type "multiple_methods_with_the_same_name::Data<u32>".

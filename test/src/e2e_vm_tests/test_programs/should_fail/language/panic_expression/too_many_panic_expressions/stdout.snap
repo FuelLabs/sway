@@ -1,0 +1,25 @@
+---
+source: test/src/snapshot/mod.rs
+assertion_line: 266
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/language/panic_expression/too_many_panic_expressions
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_fail/language/panic_expression/too_many_panic_expressions
+   Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
+   Compiling script too_many_panic_expressions (test/src/e2e_vm_tests/test_programs/should_fail/language/panic_expression/too_many_panic_expressions)
+error: Project contains more than 256 `panic` expressions
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/panic_expression/too_many_panic_expressions/src/main.sw:38:11
+   |
+...
+38 |     if t {panic "This is the 261st `panic` expression.";}
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ This is the 261st `panic` expression occurred during the compilation.
+   |
+   = help: Sway projects can have up to 256 `panic` expressions.
+   = help: In practice, this limit should never be reached, even for large Sway programs.
+   = help:  
+   = help: Consider refactoring your code to reduce the number of `panic` expressions.
+____
+
+  Aborting due to 1 error.
+error: Failed to compile too_many_panic_expressions

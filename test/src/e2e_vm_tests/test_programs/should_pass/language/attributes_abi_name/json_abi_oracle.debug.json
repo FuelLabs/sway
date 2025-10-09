@@ -1,0 +1,51 @@
+{
+  "concreteTypes": [
+    {
+      "concreteTypeId": "215af2bca9e1aa8fec647dab22a0cd36c63ce5ed051a132d51323807e28c0d67",
+      "metadataTypeId": 1,
+      "type": "enum RenamedMyEnum"
+    },
+    {
+      "concreteTypeId": "d31db280ac133d726851d8003bd2f06ec2d3fc76a46f1007d13914088fbd0791",
+      "type": "struct RenamedMyStruct"
+    }
+  ],
+  "configurables": [],
+  "encodingVersion": "1",
+  "errorCodes": {},
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "my_enum",
+      "output": "215af2bca9e1aa8fec647dab22a0cd36c63ce5ed051a132d51323807e28c0d67"
+    },
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "my_struct",
+      "output": "d31db280ac133d726851d8003bd2f06ec2d3fc76a46f1007d13914088fbd0791"
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "metadataTypes": [
+    {
+      "metadataTypeId": 0,
+      "type": "()"
+    },
+    {
+      "components": [
+        {
+          "name": "A",
+          "offset": null,
+          "typeId": 0
+        }
+      ],
+      "metadataTypeId": 1,
+      "type": "enum RenamedMyEnum"
+    }
+  ],
+  "programType": "contract",
+  "specVersion": "1"
+}

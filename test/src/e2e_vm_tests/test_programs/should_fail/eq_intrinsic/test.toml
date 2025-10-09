@@ -8,11 +8,11 @@ category = "fail"
 # check: $()__eq(false, 11);
 # check: $()Mismatched types.
 # check: $()expected: bool
-# check: $()found:    numeric.
+# check: $()found:    {numeric}.
 # check: $()help: Variable declaration's type annotation does not match up with the assigned expression's type.
 
 # check: $()__eq(A { a: 1 }, B { a: 1 });
-# check: $()This is a B, not a struct.
+# check: $()This is a eq_intrinsic::B, not a struct.
 
 # check: $()__eq(A { a: 1 }, A { a: 1 });
 # check: $()Unsupported argument type to intrinsic "eq".

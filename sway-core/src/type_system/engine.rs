@@ -779,21 +779,21 @@ impl TypeEngine {
 
     /// Inserts a new [TypeInfo::TraitType] into the [TypeEngine] and returns
     /// its [TypeId], or returns a [TypeId] of an existing shareable trait type type
-    /// that corresponds to the trait type given by the `name` and `trait_type_id`.
+    /// that corresponds to the trait type given by the `name` and `implemented_in`.
     pub(crate) fn insert_trait_type(
         &self,
         engines: &Engines,
         name: Ident,
-        trait_type_id: TypeId,
+        implemented_in: TypeId,
     ) -> TypeId {
-        let source_id = self.get_trait_type_fallback_source_id(&name, &trait_type_id);
+        let source_id = self.get_trait_type_fallback_source_id(&name, &implemented_in);
         // The trait type type shareability would be calculated as `!(false || false) ==>> true`.
         // TODO: Improve handling of `TypeInfo::Custom` and `TypeInfo::TraitType`` within the `TypeEngine`:
         //       https://github.com/FuelLabs/sway/issues/6601
         let is_shareable_type = true;
         let type_info = TypeInfo::TraitType {
             name,
-            trait_type_id,
+            implemented_in,
         };
         self.insert_or_replace_type_source_info(
             engines,
@@ -1461,7 +1461,7 @@ impl TypeEngine {
             TypeInfo::Custom { type_arguments, .. } =>
                 type_arguments.as_ref().is_some_and(|type_arguments|
                     self.module_might_outlive_type_arguments(engines, module_source_id, type_arguments)),
-            TypeInfo::TraitType { trait_type_id, .. } => self.module_might_outlive_type(engines, module_source_id, *trait_type_id)
+            TypeInfo::TraitType { implemented_in, .. } => self.module_might_outlive_type(engines, module_source_id, *implemented_in)
         }
     }
 
@@ -1685,8 +1685,8 @@ impl TypeEngine {
 
             TypeInfo::TraitType {
                 name,
-                trait_type_id,
-            } => self.get_trait_type_fallback_source_id(name, trait_type_id),
+                implemented_in,
+            } => self.get_trait_type_fallback_source_id(name, implemented_in),
         }
     }
 
@@ -1888,16 +1888,16 @@ impl TypeEngine {
     fn get_trait_type_fallback_source_id(
         &self,
         name: &Ident,
-        trait_type_id: &TypeId,
+        implemented_in: &TypeId,
     ) -> Option<SourceId> {
         // For `TypeInfo::TraitType`, we take the source file in which the trait type is declared, extracted from the `name`.
         // For non-generated source code, this will always exists.
         // For potential situation of having a `name` without spans in generated code, we do a fallback and
-        // extract the source id from the `trait_type_id`.
+        // extract the source id from the `implemented_in`.
         name.span()
             .source_id()
             .copied()
-            .or_else(|| self.get_type_source_id(*trait_type_id))
+            .or_else(|| self.get_type_source_id(*implemented_in))
     }
 
     /// Returns the known [SourceId] of a type that already exists

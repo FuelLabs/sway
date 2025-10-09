@@ -603,9 +603,9 @@ fn type_check_not(
         )),
         _ => Err(handler.emit_err(CompileError::TypeError(
             sway_error::type_error::TypeError::MismatchedType {
-                expected: "numeric or b256".into(),
+                expected: "unsigned integer or b256".into(),
                 received: engines.help_out(return_type).to_string(),
-                help_text: "".into(),
+                help_text: "Incorrect argument type".into(),
                 span,
             },
         ))),
@@ -1475,9 +1475,9 @@ fn type_check_bitwise_binary_op(
         )),
         _ => Err(handler.emit_err(CompileError::TypeError(
             sway_error::type_error::TypeError::MismatchedType {
-                expected: "numeric or b256".into(),
+                expected: "unsigned integer or b256".into(),
                 received: engines.help_out(return_type).to_string(),
-                help_text: "".into(),
+                help_text: "Incorrect argument type".into(),
                 span,
             },
         ))),
@@ -1549,7 +1549,7 @@ fn type_check_shift_binary_op(
         )),
         _ => Err(handler.emit_err(CompileError::TypeError(
             sway_error::type_error::TypeError::MismatchedType {
-                expected: "numeric or b256".into(),
+                expected: "unsigned integer or b256".into(),
                 received: engines.help_out(return_type).to_string(),
                 help_text: "Incorrect argument type".into(),
                 span: lhs.span,

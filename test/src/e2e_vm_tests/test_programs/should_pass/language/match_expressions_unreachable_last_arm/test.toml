@@ -3,7 +3,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match e {
-#nextln: $()The expression to match on is of type "Enum".
+#nextln: $()The expression to match on is of type "match_expressions_unreachable_last_arm::Enum".
 
 #check: $()Enum::E(_) => 0,
 #nextln: $()Preceding match arms already match all possible values of `e`.
@@ -13,7 +13,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match s1 {
-#nextln: $()The expression to match on is of type "Struct".
+#nextln: $()The expression to match on is of type "match_expressions_unreachable_last_arm::Struct".
 
 #check: $()Struct { x: false, y, z } => y + z.0,
 #nextln: $()Preceding match arms already match all possible values of `s1`.
@@ -23,7 +23,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match s2 {
-#nextln: $()The expression to match on is of type "Struct".
+#nextln: $()The expression to match on is of type "match_expressions_unreachable_last_arm::Struct".
 
 #check: $()Struct { x: false, y, z } => y + z.0,
 #nextln: $()Preceding match arms already match all possible values of `s2`.
@@ -33,7 +33,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match s3 {
-#nextln: $()The expression to match on is of type "Struct".
+#nextln: $()The expression to match on is of type "match_expressions_unreachable_last_arm::Struct".
 
 #check: $()Struct { x: false, y, z } => y + z.0,
 #nextln: $()Preceding match arms already match all possible values of `s3`.
@@ -43,7 +43,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match s4 {
-#nextln: $()The expression to match on is of type "Struct".
+#nextln: $()The expression to match on is of type "match_expressions_unreachable_last_arm::Struct".
 
 #check: $()Struct { x: false, y, z } => y + z.0,
 #nextln: $()Preceding match arms already match all possible values of `s4`.
@@ -53,7 +53,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match s5 {
-#nextln: $()The expression to match on is of type "Struct".
+#nextln: $()The expression to match on is of type "match_expressions_unreachable_last_arm::Struct".
 
 #check: $()Struct { x: false, y, z } => y + z.0,
 #nextln: $()Preceding match arms already match all possible values of `s5`.
@@ -63,7 +63,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match s6 {
-#nextln: $()The expression to match on is of type "Struct".
+#nextln: $()The expression to match on is of type "match_expressions_unreachable_last_arm::Struct".
 
 #check: $()Struct { x: false, y, z } => y + z.0,
 #nextln: $()Preceding match arms already match all possible values of `s6`.
@@ -73,7 +73,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match t1 {
-#nextln: $()The expression to match on is of type "(bool, Enum, Struct, u32)".
+#nextln: $()The expression to match on is of type "(bool, match_expressions_unreachable_last_arm::Enum, match_expressions_unreachable_last_arm::Struct, u32)".
 
 #check: $()(false, _, s, n) => n + s.y,
 #nextln: $()Preceding match arms already match all possible values of `t1`.
@@ -83,7 +83,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match t2 {
-#nextln: $()The expression to match on is of type "(bool, Enum, Struct, u32)".
+#nextln: $()The expression to match on is of type "(bool, match_expressions_unreachable_last_arm::Enum, match_expressions_unreachable_last_arm::Struct, u32)".
 
 #check: $()(false, _, s, n) => n + s.y,
 #nextln: $()Preceding match arms already match all possible values of `t2`.
@@ -93,7 +93,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match t3 {
-#nextln: $()The expression to match on is of type "(bool, Enum, Struct, u32)".
+#nextln: $()The expression to match on is of type "(bool, match_expressions_unreachable_last_arm::Enum, match_expressions_unreachable_last_arm::Struct, u32)".
 
 #check: $()(false, _, s, n) => n + s.y,
 #nextln: $()Preceding match arms already match all possible values of `t3`.
@@ -103,7 +103,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match t4 {
-#nextln: $()The expression to match on is of type "(bool, Enum, Struct, u32)".
+#nextln: $()The expression to match on is of type "(bool, match_expressions_unreachable_last_arm::Enum, match_expressions_unreachable_last_arm::Struct, u32)".
 
 #check: $()(false, _, s, n) => n + s.y,
 #nextln: $()Preceding match arms already match all possible values of `t4`.
@@ -113,7 +113,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match t5 {
-#nextln: $()The expression to match on is of type "(bool, Enum, Struct, u32)".
+#nextln: $()The expression to match on is of type "(bool, match_expressions_unreachable_last_arm::Enum, match_expressions_unreachable_last_arm::Struct, u32)".
 
 #check: $()(false, _, s, n) => n + s.y,
 #nextln: $()Preceding match arms already match all possible values of `t5`.
@@ -123,7 +123,7 @@ category = "compile"
 #check: $()Match arm is unreachable
 
 #check: $()let _x = match t6 {
-#nextln: $()The expression to match on is of type "(bool, Enum, Struct, u32)".
+#nextln: $()The expression to match on is of type "(bool, match_expressions_unreachable_last_arm::Enum, match_expressions_unreachable_last_arm::Struct, u32)".
 
 #check: $()(false, _, s, n) => n + s.y,
 #nextln: $()Preceding match arms already match all possible values of `t6`.

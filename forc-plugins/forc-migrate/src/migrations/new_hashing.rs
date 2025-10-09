@@ -252,7 +252,7 @@ fn review_existing_usages_of_storage_map_sha256_and_keccak256(
                     },
 
                     // Trait type.
-                    TypeInfo::TraitType { trait_type_id, .. } => is_affected_type_impl(visitor, engines, original_type_name, *trait_type_id, depth + 1),
+                    TypeInfo::TraitType { implemented_in, .. } => is_affected_type_impl(visitor, engines, original_type_name, *implemented_in, depth + 1),
                 }
             }
 
