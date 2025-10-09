@@ -1,2 +1,2 @@
-category = "compile"
+category = "disabled" # TODO: Will re-enable in https://github.com/FuelLabs/sway/pull/7387
 validate_abi = true

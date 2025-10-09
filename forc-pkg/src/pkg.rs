@@ -2896,6 +2896,7 @@ mod test {
                 logged_types: None,
                 messages_types: None,
                 error_codes: None,
+                panicking_calls: None,
             }),
             storage_slots: vec![],
             warnings: vec![],
