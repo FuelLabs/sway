@@ -28,7 +28,6 @@
       "components": [
         {
           "name": "name",
-          "offset": null,
           "typeId": 0
         }
       ],

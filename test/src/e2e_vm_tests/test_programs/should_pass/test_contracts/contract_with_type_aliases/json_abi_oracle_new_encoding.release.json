@@ -80,12 +80,10 @@
       "components": [
         {
           "name": "__tuple_element",
-          "offset": null,
           "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
         },
         {
           "name": "__tuple_element",
-          "offset": null,
           "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
         }
       ],
@@ -96,26 +94,21 @@
       "components": [
         {
           "name": "__tuple_element",
-          "offset": null,
           "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
         },
         {
           "name": "__tuple_element",
-          "offset": null,
           "typeId": 2
         },
         {
           "name": "__tuple_element",
-          "offset": null,
           "typeId": 6
         },
         {
           "name": "__tuple_element",
-          "offset": null,
           "typeArguments": [
             {
               "name": "",
-              "offset": null,
               "typeId": 6
             }
           ],
@@ -123,12 +116,10 @@
         },
         {
           "name": "__tuple_element",
-          "offset": null,
           "typeId": 0
         },
         {
           "name": "__tuple_element",
-          "offset": null,
           "typeId": "bc5b9d5b85b9fb6e78bbb779cc67a95e60d6f291cd256a4c7dba66308dc7dfb8"
         }
       ],
@@ -139,7 +130,6 @@
       "components": [
         {
           "name": "__array_element",
-          "offset": null,
           "typeId": 3
         }
       ],
@@ -150,12 +140,10 @@
       "components": [
         {
           "name": "Address",
-          "offset": null,
           "typeId": 7
         },
         {
           "name": "ContractId",
-          "offset": null,
           "typeId": 8
         }
       ],
@@ -170,7 +158,6 @@
       "components": [
         {
           "name": "f",
-          "offset": null,
           "typeId": 4
         }
       ],
@@ -184,7 +171,6 @@
       "components": [
         {
           "name": "i",
-          "offset": null,
           "typeId": 3
         }
       ],
@@ -195,7 +181,6 @@
       "components": [
         {
           "name": "bits",
-          "offset": null,
           "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
         }
       ],
@@ -206,7 +191,6 @@
       "components": [
         {
           "name": "bits",
-          "offset": null,
           "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
         }
       ],

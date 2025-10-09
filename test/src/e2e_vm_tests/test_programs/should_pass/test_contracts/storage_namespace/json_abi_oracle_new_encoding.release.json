@@ -201,12 +201,10 @@
       "components": [
         {
           "name": "None",
-          "offset": null,
           "typeId": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
         },
         {
           "name": "Some",
-          "offset": null,
           "typeId": 1
         }
       ],
@@ -228,22 +226,18 @@
       "components": [
         {
           "name": "v1",
-          "offset": null,
           "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
         },
         {
           "name": "v2",
-          "offset": null,
           "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
         },
         {
           "name": "v3",
-          "offset": null,
           "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
         },
         {
           "name": "v4",
-          "offset": null,
           "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
         }
       ],
@@ -254,12 +248,10 @@
       "components": [
         {
           "name": "ptr",
-          "offset": null,
           "typeId": 2
         },
         {
           "name": "cap",
-          "offset": null,
           "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
         }
       ],
@@ -273,11 +265,9 @@
       "components": [
         {
           "name": "buf",
-          "offset": null,
           "typeArguments": [
             {
               "name": "",
-              "offset": null,
               "typeId": 1
             }
           ],
@@ -285,7 +275,6 @@
         },
         {
           "name": "len",
-          "offset": null,
           "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
         }
       ],

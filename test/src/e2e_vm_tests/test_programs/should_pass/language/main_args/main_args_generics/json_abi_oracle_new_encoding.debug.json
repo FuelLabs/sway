@@ -29,16 +29,13 @@
       "components": [
         {
           "name": "__tuple_element",
-          "offset": null,
           "typeArguments": [
             {
               "name": "",
-              "offset": null,
               "typeId": 7
             },
             {
               "name": "",
-              "offset": null,
               "typeId": 6
             }
           ],
@@ -46,11 +43,9 @@
         },
         {
           "name": "__tuple_element",
-          "offset": null,
           "typeArguments": [
             {
               "name": "",
-              "offset": null,
               "typeId": 8
             }
           ],
@@ -76,7 +71,6 @@
       "components": [
         {
           "name": "a",
-          "offset": null,
           "typeId": 2
         }
       ],
@@ -90,11 +84,9 @@
       "components": [
         {
           "name": "b",
-          "offset": null,
           "typeArguments": [
             {
               "name": "",
-              "offset": null,
               "typeId": 1
             }
           ],
@@ -102,7 +94,6 @@
         },
         {
           "name": "c",
-          "offset": null,
           "typeId": 3
         }
       ],

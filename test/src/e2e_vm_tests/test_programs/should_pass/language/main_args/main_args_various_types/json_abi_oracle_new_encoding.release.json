@@ -38,12 +38,10 @@
       "components": [
         {
           "name": "__tuple_element",
-          "offset": null,
           "typeId": 4
         },
         {
           "name": "__tuple_element",
-          "offset": null,
           "typeId": 2
         }
       ],
@@ -54,7 +52,6 @@
       "components": [
         {
           "name": "__array_element",
-          "offset": null,
           "typeId": 0
         }
       ],
@@ -65,12 +62,10 @@
       "components": [
         {
           "name": "Positive",
-          "offset": null,
           "typeId": 5
         },
         {
           "name": "Negative",
-          "offset": null,
           "typeId": 5
         }
       ],
@@ -85,7 +80,6 @@
       "components": [
         {
           "name": "val",
-          "offset": null,
           "typeId": 3
         }
       ],

@@ -66,11 +66,9 @@
       "components": [
         {
           "name": "A",
-          "offset": null,
           "typeArguments": [
             {
               "name": "",
-              "offset": null,
               "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
             }
           ],
@@ -78,7 +76,6 @@
         },
         {
           "name": "B",
-          "offset": null,
           "typeId": 0
         }
       ],
@@ -101,31 +98,25 @@
       "components": [
         {
           "name": "a",
-          "offset": null,
           "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
         },
         {
           "name": "b",
-          "offset": null,
           "typeId": 11
         },
         {
           "name": "c",
-          "offset": null,
           "typeId": 9
         },
         {
           "name": "d",
-          "offset": null,
           "typeId": 12
         },
         {
           "name": "e",
-          "offset": null,
           "typeArguments": [
             {
               "name": "",
-              "offset": null,
               "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
             }
           ],
@@ -133,12 +124,10 @@
         },
         {
           "name": "f",
-          "offset": null,
           "typeId": 4
         },
         {
           "name": "g",
-          "offset": null,
           "typeId": 10
         }
       ],
@@ -149,7 +138,6 @@
       "components": [
         {
           "name": "ss",
-          "offset": null,
           "typeId": 2
         }
       ],
@@ -163,12 +151,10 @@
       "components": [
         {
           "name": "ptr",
-          "offset": null,
           "typeId": 3
         },
         {
           "name": "cap",
-          "offset": null,
           "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
         }
       ],
@@ -182,11 +168,9 @@
       "components": [
         {
           "name": "buf",
-          "offset": null,
           "typeArguments": [
             {
               "name": "",
-              "offset": null,
               "typeId": 2
             }
           ],
@@ -194,7 +178,6 @@
         },
         {
           "name": "len",
-          "offset": null,
           "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
         }
       ],

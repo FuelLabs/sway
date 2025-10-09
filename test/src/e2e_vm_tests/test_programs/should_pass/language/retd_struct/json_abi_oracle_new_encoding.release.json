@@ -24,7 +24,6 @@
       "components": [
         {
           "name": "__array_element",
-          "offset": null,
           "typeId": 4
         }
       ],
@@ -39,17 +38,14 @@
       "components": [
         {
           "name": "field_1",
-          "offset": null,
           "typeId": 3
         },
         {
           "name": "field_2",
-          "offset": null,
           "typeId": 1
         },
         {
           "name": "field_3",
-          "offset": null,
           "typeId": 0
         }
       ],

@@ -87,7 +87,6 @@
       "components": [
         {
           "name": "bits",
-          "offset": null,
           "typeId": 0
         }
       ],
@@ -98,7 +97,6 @@
       "components": [
         {
           "name": "bits",
-          "offset": null,
           "typeId": 0
         }
       ],

@@ -64,7 +64,6 @@
       "components": [
         {
           "name": "__tuple_element",
-          "offset": null,
           "typeId": 6
         }
       ],
@@ -75,12 +74,10 @@
       "components": [
         {
           "name": "__tuple_element",
-          "offset": null,
           "typeId": 5
         },
         {
           "name": "__tuple_element",
-          "offset": null,
           "typeId": 7
         }
       ],
@@ -91,12 +88,10 @@
       "components": [
         {
           "name": "__tuple_element",
-          "offset": null,
           "typeId": 4
         },
         {
           "name": "__tuple_element",
-          "offset": null,
           "typeId": 7
         }
       ],
@@ -107,7 +102,6 @@
       "components": [
         {
           "name": "Earth",
-          "offset": null,
           "typeId": 0
         }
       ],
@@ -118,7 +112,6 @@
       "components": [
         {
           "name": "age",
-          "offset": null,
           "typeId": 7
         }
       ],
@@ -129,7 +122,6 @@
       "components": [
         {
           "name": "data",
-          "offset": null,
           "typeId": 7
         }
       ],

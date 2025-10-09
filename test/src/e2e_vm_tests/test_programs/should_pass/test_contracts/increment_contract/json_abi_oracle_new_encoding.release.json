@@ -80,12 +80,10 @@
       "components": [
         {
           "name": "None",
-          "offset": null,
           "typeId": 0
         },
         {
           "name": "Some",
-          "offset": null,
           "typeId": 2
         }
       ],
