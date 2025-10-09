@@ -3922,9 +3922,9 @@ dependencies = [
  "fuel-crypto",
  "fuel-tx",
  "fuel-vm",
- "fuels 0.75.0",
- "fuels-accounts 0.75.0",
- "fuels-core 0.75.0",
+ "fuels 0.75.1",
+ "fuels-accounts 0.75.1",
+ "fuels-core 0.75.1",
  "futures",
  "hex",
  "k256",
@@ -3962,8 +3962,8 @@ dependencies = [
  "forc-util",
  "fuel-core-types 0.46.0",
  "fuel-crypto",
- "fuels-accounts 0.75.0",
- "fuels-core 0.75.0",
+ "fuels-accounts 0.75.1",
+ "fuels-core 0.75.1",
  "futures",
  "hex",
  "libp2p-identity",
@@ -4082,9 +4082,9 @@ dependencies = [
  "forc-client",
  "forc-tx",
  "fuel-crypto",
- "fuels 0.75.0",
- "fuels-accounts 0.75.0",
- "fuels-core 0.75.0",
+ "fuels 0.75.1",
+ "fuels-accounts 0.75.1",
+ "fuels-core 0.75.1",
  "hex",
  "rand 0.8.5",
  "rmcp",
@@ -4272,7 +4272,7 @@ dependencies = [
  "forc-util",
  "fuel-tx",
  "fuel-types",
- "fuels-core 0.75.0",
+ "fuels-core 0.75.1",
  "serde",
  "serde_json",
  "thiserror 1.0.69",
@@ -4292,7 +4292,7 @@ dependencies = [
  "fuel-abi-types 0.15.3",
  "fuel-asm",
  "fuel-tx",
- "fuels-core 0.75.0",
+ "fuels-core 0.75.1",
  "hex",
  "mark-flaky-tests",
  "paste",
@@ -5294,17 +5294,17 @@ dependencies = [
 
 [[package]]
 name = "fuels"
-version = "0.75.0"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=feat%2Fabi-backtracing#6915023e477bfdf0722181147995865c9648851c"
+version = "0.75.1"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=feat%2Fabi-backtracing#8ec2c51e8b94735d07ad9272cb5dde90dc4648e3"
 dependencies = [
  "fuel-core-client 0.46.0",
  "fuel-crypto",
  "fuel-tx",
- "fuels-accounts 0.75.0",
- "fuels-core 0.75.0",
- "fuels-macros 0.75.0",
- "fuels-programs 0.75.0",
- "fuels-test-helpers 0.75.0",
+ "fuels-accounts 0.75.1",
+ "fuels-core 0.75.1",
+ "fuels-macros 0.75.1",
+ "fuels-programs 0.75.1",
+ "fuels-test-helpers 0.75.1",
 ]
 
 [[package]]
@@ -5335,8 +5335,8 @@ dependencies = [
 
 [[package]]
 name = "fuels-accounts"
-version = "0.75.0"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=feat%2Fabi-backtracing#6915023e477bfdf0722181147995865c9648851c"
+version = "0.75.1"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=feat%2Fabi-backtracing#8ec2c51e8b94735d07ad9272cb5dde90dc4648e3"
 dependencies = [
  "async-trait",
  "chrono",
@@ -5346,7 +5346,7 @@ dependencies = [
  "fuel-crypto",
  "fuel-tx",
  "fuel-types",
- "fuels-core 0.75.0",
+ "fuels-core 0.75.1",
  "futures",
  "itertools 0.12.1",
  "k256",
@@ -5376,8 +5376,8 @@ dependencies = [
 
 [[package]]
 name = "fuels-code-gen"
-version = "0.75.0"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=feat%2Fabi-backtracing#6915023e477bfdf0722181147995865c9648851c"
+version = "0.75.1"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=feat%2Fabi-backtracing#8ec2c51e8b94735d07ad9272cb5dde90dc4648e3"
 dependencies = [
  "Inflector",
  "fuel-abi-types 0.15.3",
@@ -5420,8 +5420,8 @@ dependencies = [
 
 [[package]]
 name = "fuels-core"
-version = "0.75.0"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=feat%2Fabi-backtracing#6915023e477bfdf0722181147995865c9648851c"
+version = "0.75.1"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=feat%2Fabi-backtracing#8ec2c51e8b94735d07ad9272cb5dde90dc4648e3"
 dependencies = [
  "async-trait",
  "auto_impl",
@@ -5435,8 +5435,8 @@ dependencies = [
  "fuel-tx",
  "fuel-types",
  "fuel-vm",
- "fuels-code-gen 0.75.0",
- "fuels-macros 0.75.0",
+ "fuels-code-gen 0.75.1",
+ "fuels-macros 0.75.1",
  "hex",
  "itertools 0.12.1",
  "postcard",
@@ -5462,10 +5462,10 @@ dependencies = [
 
 [[package]]
 name = "fuels-macros"
-version = "0.75.0"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=feat%2Fabi-backtracing#6915023e477bfdf0722181147995865c9648851c"
+version = "0.75.1"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=feat%2Fabi-backtracing#8ec2c51e8b94735d07ad9272cb5dde90dc4648e3"
 dependencies = [
- "fuels-code-gen 0.75.0",
+ "fuels-code-gen 0.75.1",
  "itertools 0.12.1",
  "proc-macro2",
  "quote",
@@ -5493,16 +5493,16 @@ dependencies = [
 
 [[package]]
 name = "fuels-programs"
-version = "0.75.0"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=feat%2Fabi-backtracing#6915023e477bfdf0722181147995865c9648851c"
+version = "0.75.1"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=feat%2Fabi-backtracing#8ec2c51e8b94735d07ad9272cb5dde90dc4648e3"
 dependencies = [
  "async-trait",
  "fuel-abi-types 0.15.3",
  "fuel-asm",
  "fuel-tx",
  "fuel-types",
- "fuels-accounts 0.75.0",
- "fuels-core 0.75.0",
+ "fuels-accounts 0.75.1",
+ "fuels-core 0.75.1",
  "itertools 0.12.1",
  "rand 0.8.5",
  "serde_json",
@@ -5535,8 +5535,8 @@ dependencies = [
 
 [[package]]
 name = "fuels-test-helpers"
-version = "0.75.0"
-source = "git+https://github.com/FuelLabs/fuels-rs?branch=feat%2Fabi-backtracing#6915023e477bfdf0722181147995865c9648851c"
+version = "0.75.1"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=feat%2Fabi-backtracing#8ec2c51e8b94735d07ad9272cb5dde90dc4648e3"
 dependencies = [
  "fuel-core-chain-config 0.46.0",
  "fuel-core-client 0.46.0",
@@ -5546,8 +5546,8 @@ dependencies = [
  "fuel-crypto",
  "fuel-tx",
  "fuel-types",
- "fuels-accounts 0.75.0",
- "fuels-core 0.75.0",
+ "fuels-accounts 0.75.1",
+ "fuels-core 0.75.1",
  "futures",
  "portpicker",
  "rand 0.8.5",
@@ -6441,7 +6441,7 @@ dependencies = [
  "js-sys",
  "log",
  "wasm-bindgen",
- "windows-core 0.62.1",
+ "windows-core 0.57.0",
 ]
 
 [[package]]
@@ -13579,23 +13579,10 @@ version = "0.57.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d2ed2439a290666cd67ecce2b0ffaad89c2a56b976b736e6ece670297897832d"
 dependencies = [
- "windows-implement 0.57.0",
- "windows-interface 0.57.0",
+ "windows-implement",
+ "windows-interface",
  "windows-result 0.1.2",
  "windows-targets 0.52.6",
-]
-
-[[package]]
-name = "windows-core"
-version = "0.62.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6844ee5416b285084d3d3fffd743b925a6c9385455f64f6d4fa3031c4c2749a9"
-dependencies = [
- "windows-implement 0.60.1",
- "windows-interface 0.59.2",
- "windows-link 0.2.0",
- "windows-result 0.4.0",
- "windows-strings 0.5.0",
 ]
 
 [[package]]
@@ -13610,32 +13597,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "windows-implement"
-version = "0.60.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "edb307e42a74fb6de9bf3a02d9712678b22399c87e6fa869d6dfcd8c1b7754e0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.106",
-]
-
-[[package]]
 name = "windows-interface"
 version = "0.57.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "29bee4b38ea3cde66011baa44dba677c432a78593e202392d1e9070cf2a7fca7"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.106",
-]
-
-[[package]]
-name = "windows-interface"
-version = "0.59.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c0abd1ddbc6964ac14db11c7213d6532ef34bd9aa042c2e5935f59d7908b46a5"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -13662,7 +13627,7 @@ checksum = "5b8a9ed28765efc97bbc954883f4e6796c33a06546ebafacbabee9696967499e"
 dependencies = [
  "windows-link 0.1.3",
  "windows-result 0.3.4",
- "windows-strings 0.4.2",
+ "windows-strings",
 ]
 
 [[package]]
@@ -13684,30 +13649,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "windows-result"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7084dcc306f89883455a206237404d3eaf961e5bd7e0f312f7c91f57eb44167f"
-dependencies = [
- "windows-link 0.2.0",
-]
-
-[[package]]
 name = "windows-strings"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "56e6c93f3a0c3b36176cb1327a4958a0353d5d166c2a35cb268ace15e91d3b57"
 dependencies = [
  "windows-link 0.1.3",
-]
-
-[[package]]
-name = "windows-strings"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7218c655a553b0bed4426cf54b20d7ba363ef543b52d515b3e48d7fd55318dda"
-dependencies = [
- "windows-link 0.2.0",
 ]
 
 [[package]]
