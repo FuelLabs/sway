@@ -1,0 +1,97 @@
+{
+  "functions": [
+    {
+      "inputs": [
+        {
+          "name": "mint_amount",
+          "offset": null,
+          "type": 3,
+          "typeArguments": null
+        }
+      ],
+      "name": "mint",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
+    },
+    {
+      "inputs": [
+        {
+          "name": "burn_amount",
+          "offset": null,
+          "type": 3,
+          "typeArguments": null
+        }
+      ],
+      "name": "burn",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
+    },
+    {
+      "inputs": [
+        {
+          "name": "coins",
+          "offset": null,
+          "type": 3,
+          "typeArguments": null
+        },
+        {
+          "name": "asset_id",
+          "offset": null,
+          "type": 2,
+          "typeArguments": null
+        },
+        {
+          "name": "c_id",
+          "offset": null,
+          "type": 2,
+          "typeArguments": null
+        }
+      ],
+      "name": "force_transfer",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
+    }
+  ],
+  "types": [
+    {
+      "components": [],
+      "type": "()",
+      "typeId": 0,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "b256",
+      "typeId": 1,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "value",
+          "offset": null,
+          "type": 1,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct ContractId",
+      "typeId": 2,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u64",
+      "typeId": 3,
+      "typeParameters": null
+    }
+  ]
+}

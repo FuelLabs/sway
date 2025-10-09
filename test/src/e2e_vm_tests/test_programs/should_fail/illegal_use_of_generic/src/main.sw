@@ -1,8 +1,7 @@
-script;
+library;
 
-// We want this to error without crashing the compiler.
-fn test_function<T>(value: T) {
-    T::new();
+pub fn test_function<T>(_value: T) {
+    T::new(); // 1.
 }
 
 struct Data<T> {
@@ -11,10 +10,6 @@ struct Data<T> {
 
 impl<T> Data<T> {
     fn test_function(self) {
-        T::new();
+        T::new(); // 2.
     }
-}
-
-fn main() {
-
 }

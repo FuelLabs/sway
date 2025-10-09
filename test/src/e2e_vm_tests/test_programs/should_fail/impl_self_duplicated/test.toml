@@ -5,6 +5,6 @@ expected_warnings = 3
 # check: $()Type contains duplicate declarations
 # check: $()fn foo(self) -> u64 {
 # check: $()"foo" previously defined here.
-# check: $()Method "foo" already declared in type "S<T>".
+# check: $()Method "foo" already declared in type "impl_self_duplicated::S<T>".
 
 # check: $()Aborting due to 1 error.

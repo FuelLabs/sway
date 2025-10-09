@@ -125,7 +125,8 @@ category = "fail"
 #check: $()Could not find symbol "Items3Trait" in this scope.
 
 #check: $()Trait is already implemented for type
-#check: $()Trait "aliases::items_5::Items5Trait<TestStruct2>" is already implemented for type "TestStruct1".
+#check: $()This is the already existing implementation of "Items5Trait" for "TestStruct1".
+#check: $()Trait "aliases::items_5::Items5Trait<aliases::tests::TestStruct2>" is already implemented for type "aliases::tests::TestStruct1".
 
 #check: $()error
 #check: $()let items_2_struct = Items2_Struct { b: 123 };
@@ -139,9 +140,9 @@ category = "fail"
 #check: $()let items_2_struct_res = project_items_2_struct(items_2_struct);
 #nextln: $()Could not find symbol "project_items_2_struct" in this scope.
 
-#check: $()error
-#check: $()assert(items_2_struct_res == 123);
-#nextln: $()No method "eq({unknown}, numeric) -> bool" found for type "{unknown}".
+#check: $()Associated function or method is not found
+#check: $()poke(items_2_struct_res == 123);
+#nextln: $()"eq({unknown}, {numeric}) -> bool" is not found for type "{unknown}".
 
 #check: $()error
 #check: $()let items_2_enum = Items2_Enum::C(432);
@@ -155,21 +156,21 @@ category = "fail"
 #check: $()let items_2_enum_res = project_items_2_enum(items_2_enum);
 #nextln: $()Could not find symbol "project_items_2_enum" in this scope.
 
-#check: $()error
-#check: $()assert(items_2_enum_res == 432);
-#nextln: $()No method "eq({unknown}, numeric) -> bool" found for type "{unknown}".
+#check: $()Associated function or method is not found
+#check: $()poke(items_2_enum_res == 432);
+#nextln: $()"eq({unknown}, {numeric}) -> bool" is not found for type "{unknown}".
 
 #check: $()error
 #check: $()let items_2_variants = Z(680);
 #nextln: $()Could not find symbol "Z" in this scope.
 
 #check: $()error
-#check: $()assert(items_2_function_res == ITEMS_2_FUNCTION_RES);
+#check: $()poke(items_2_function_res == ITEMS_2_FUNCTION_RES);
 #nextln: $()Variable "ITEMS_2_FUNCTION_RES" does not exist in this scope.
 
-#check: $()error
+#check: $()Associated function or method is not found
 #check: $()let items_2_trait_teststruct_1_res = teststruct_1.items_2_trait_function(teststruct_2);
-#nextln: $()No method "items_2_trait_function(TestStruct1, TestStruct2) -> bool" found for type "TestStruct1".
+#nextln: $()"items_2_trait_function(aliases::tests::TestStruct1, aliases::tests::TestStruct2) -> bool" is not found for type "aliases::tests::TestStruct1".
 
 #check: $()error
 #check: $()let items_3_struct = Items3_Struct { c: 123 };
@@ -183,9 +184,9 @@ category = "fail"
 #check: $()let items_3_struct_res = project_items_3_struct(items_3_struct);
 #nextln: $()Could not find symbol "project_items_3_struct" in this scope.
 
-#check: $()error
-#check: $()assert(items_3_struct_res == 123);
-#nextln: $()No method "eq({unknown}, numeric) -> bool" found for type "{unknown}".
+#check: $()Associated function or method is not found
+#check: $()poke(items_3_struct_res == 123);
+#nextln: $()"eq({unknown}, {numeric}) -> bool" is not found for type "{unknown}".
 
 #check: $()error
 #check: $()let items_3_enum = Items3_Enum::E(432);
@@ -199,21 +200,21 @@ category = "fail"
 #check: $()let items_3_enum_res = project_items_3_enum(items_3_enum);
 #nextln: $()Could not find symbol "project_items_3_enum" in this scope.
 
-#check: $()error
-#check: $()assert(items_3_enum_res == 432);
-#nextln: $()No method "eq({unknown}, numeric) -> bool" found for type "{unknown}".
+#check: $()Associated function or method is not found
+#check: $()poke(items_3_enum_res == 432);
+#nextln: $()"eq({unknown}, {numeric}) -> bool" is not found for type "{unknown}".
 
 #check: $()error
 #check: $()let items_3_variants = U(680);
 #nextln: $()Could not find symbol "U" in this scope.
 
 #check: $()error
-#check: $()assert(items_3_function_res == ITEMS_3_FUNCTION_RES);
+#check: $()poke(items_3_function_res == ITEMS_3_FUNCTION_RES);
 #nextln: $()Variable "ITEMS_3_FUNCTION_RES" does not exist in this scope.
 
-#check: $()error
+#check: $()Associated function or method is not found
 #check: $()let items_3_trait_teststruct_1_res = teststruct_1.items_3_trait_function(teststruct_2);
-#nextln: $()No method "items_3_trait_function(TestStruct1, TestStruct2) -> bool" found for type "TestStruct1".
+#nextln: $()"items_3_trait_function(aliases::tests::TestStruct1, aliases::tests::TestStruct2) -> bool" is not found for type "aliases::tests::TestStruct1".
 
 #check: $()Aborting due to 55 errors.
 

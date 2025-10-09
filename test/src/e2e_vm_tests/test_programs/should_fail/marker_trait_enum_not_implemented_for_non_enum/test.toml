@@ -10,19 +10,19 @@ category = "fail"
 
 #check: $()error
 #check: $()implements_enum(Struct { x: 0 });
-#nextln: $()Trait "Enum" is not implemented for type "Struct".
+#nextln: $()Trait "Enum" is not implemented for type "marker_trait_enum_not_implemented_for_non_enum::Struct".
 
 #check: $()error
 #check: $()implements_enum_no_args::<Struct>();
-#nextln: $()Trait "Enum" is not implemented for type "Struct".
+#nextln: $()Trait "Enum" is not implemented for type "marker_trait_enum_not_implemented_for_non_enum::Struct".
 
 #check: $()error
 #check: $()implements_enum(EmptyStruct { });
-#nextln: $()Trait "Enum" is not implemented for type "EmptyStruct".
+#nextln: $()Trait "Enum" is not implemented for type "marker_trait_enum_not_implemented_for_non_enum::EmptyStruct".
 
 #check: $()error
 #check: $()implements_enum_no_args::<EmptyStruct>();
-#nextln: $()Trait "Enum" is not implemented for type "EmptyStruct".
+#nextln: $()Trait "Enum" is not implemented for type "marker_trait_enum_not_implemented_for_non_enum::EmptyStruct".
 
 #check: $()error
 #check: $()implements_enum([0u8, 0, 0]);

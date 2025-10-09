@@ -27,26 +27,26 @@ use d::MyOtherEnumVariants::*; // Not an error despite variant name clash
 
 fn bad_variants_project_my_enum_b(e : b::MyEnum) -> u64 {
     match e {
-	// Error - A and B are not in scope
-	A(val)
-	| B(val) => val,
+        // Error - A and B are not in scope
+        A(val)
+        | B(val) => val,
     }
 }
 
 // Error: MyEnum is ambiguous
 fn bad_enum_project_my_enum_b(e : MyEnum) -> u64 {
     match e {
-	// Error - MyEnum::A and MyEnum::B are ambiguous - not reported because the signature is faulty
-	MyEnum::A(val)
-	| MyEnum::B(val) => val,
+        // Error - MyEnum::A and MyEnum::B are ambiguous - not reported because the signature is faulty
+        MyEnum::A(val)
+        | MyEnum::B(val) => val,
     }
 }
 
 fn bad_variants_project_my_enum_variants(e : MyEnumVariants) -> u64 {
     match e {
-	// Error - E is ambiguous
-	D(val)
-	| E(val) => val,
+        // Error - E is ambiguous
+        D(val)
+        | E(val) => val,
     }
 }
 

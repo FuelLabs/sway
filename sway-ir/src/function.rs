@@ -32,6 +32,15 @@ pub struct Function(pub slotmap::DefaultKey);
 #[doc(hidden)]
 pub struct FunctionContent {
     pub name: String,
+    /// Display string representing the function in the ABI errors
+    /// related context (in "errorCodes" and "panickingCalls" sections).
+    // TODO: Explore how and if we should lazy evaluate `abi_errors_display`,
+    //       only for functions that are actually used in ABI errors context.
+    //       Having it precomputed for every function is a simple design.
+    //       Lazy evaluation might be much more complex to implement and
+    //       a premature optimization, considering that even for large
+    //       project we compile <1500 functions.
+    pub abi_errors_display: String,
     pub arguments: Vec<(String, Value)>,
     pub return_type: Type,
     pub blocks: Vec<Block>,
@@ -63,6 +72,7 @@ impl Function {
         context: &mut Context,
         module: Module,
         name: String,
+        abi_errors_display: String,
         args: Vec<(String, Type, Option<MetadataIndex>)>,
         return_type: Type,
         selector: Option<[u8; 4]>,
@@ -74,6 +84,7 @@ impl Function {
     ) -> Function {
         let content = FunctionContent {
             name,
+            abi_errors_display,
             // Arguments to a function are the arguments to its entry block.
             // We set it up after creating the entry block below.
             arguments: Vec::new(),
@@ -290,6 +301,12 @@ impl Function {
     /// Return the function name.
     pub fn get_name<'a>(&self, context: &'a Context) -> &'a str {
         &context.functions[self.0].name
+    }
+
+    /// Return the display string representing the function in the ABI errors
+    /// related context, in the "errorCodes" and "panickingCalls" sections.
+    pub fn get_abi_errors_display(&self, context: &Context) -> String {
+        context.functions[self.0].abi_errors_display.clone()
     }
 
     /// Return the module that this function belongs to.

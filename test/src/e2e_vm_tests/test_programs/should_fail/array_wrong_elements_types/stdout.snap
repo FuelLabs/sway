@@ -1,5 +1,6 @@
 ---
-source: test/tests/tests.rs
+source: test/src/snapshot/mod.rs
+assertion_line: 266
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types
 exit status: 1
@@ -14,8 +15,8 @@ error
 40 |     let a = [None, Some(1), Some(1u8)];
 41 |     let _b: Option<u16> = a[1];
    |                           ^^^^ Mismatched types.
-expected: Option<u16>
-found:    Option<u8>.
+expected: std::option::Option<u16>
+found:    std::option::Option<u8>.
 help: Variable declaration's type annotation does not match up with the assigned expression's type.
 42 | 
 43 |     // unexpected u8
@@ -235,7 +236,7 @@ error
 31 |     let _ = [1, "", 1u16];
 32 |     let _ = [1, 2, "hello"];
    |                    ^^^^^^^ Mismatched types.
-expected: numeric
+expected: {numeric}
 found:    str.
 
 33 |     let _ = [1, return, "", 1u16];
@@ -280,8 +281,8 @@ error
 36 |     // unexpected Vec<u16>
 37 |     let _ = [Vec::new(), vec::<u8>(), vec::<u16>()];
    |                                       ^^^^^^^^^^^^ Mismatched types.
-expected: Vec<u8>
-found:    Vec<u16>.
+expected: std::vec::Vec<u8>
+found:    std::vec::Vec<u16>.
 
 38 |     
 39 |     // unexpected Option<u8>

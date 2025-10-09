@@ -4,4 +4,4 @@ category = "fail"
 #check: $()fn foo() {}
 #nextln: $()"foo" previously defined here.
 #check: $()fn foo() {}
-#nextln: $()Method "foo" already declared in type "Alias2" (which is an alias for "MyStruct1").
+#nextln: $()Method "foo" already declared in type "Alias2" (which is an alias for "type_alias_shadowing_methods::MyStruct1").

@@ -1,0 +1,30 @@
+{
+  "concreteTypes": [
+    {
+      "concreteTypeId": "1e1c7c52c1c7a9901681337f8669555f62aac58911332c9ff6b4ea8e73786570",
+      "type": "raw untyped slice"
+    }
+  ],
+  "configurables": [],
+  "encodingVersion": "1",
+  "errorCodes": {},
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [
+        {
+          "concreteTypeId": "1e1c7c52c1c7a9901681337f8669555f62aac58911332c9ff6b4ea8e73786570",
+          "name": "a"
+        }
+      ],
+      "name": "main",
+      "output": "1e1c7c52c1c7a9901681337f8669555f62aac58911332c9ff6b4ea8e73786570"
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "metadataTypes": [],
+  "panickingCalls": {},
+  "programType": "script",
+  "specVersion": "1.2"
+}

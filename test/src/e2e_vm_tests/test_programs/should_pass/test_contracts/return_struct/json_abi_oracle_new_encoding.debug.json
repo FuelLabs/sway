@@ -1,0 +1,66 @@
+{
+  "concreteTypes": [
+    {
+      "concreteTypeId": "37c06f042972ba5bedfdee34c16f38ace7789cdc2a879df80724d91fb6268d03",
+      "metadataTypeId": 1,
+      "type": "enum std::option::Option<struct data_structures::MyStruct>",
+      "typeArguments": [
+        "37837f87e64f16ec63ac8568b452352098ff2a330df38aa21a9d794dfe33e7cc"
+      ]
+    },
+    {
+      "concreteTypeId": "37837f87e64f16ec63ac8568b452352098ff2a330df38aa21a9d794dfe33e7cc",
+      "type": "struct data_structures::MyStruct"
+    }
+  ],
+  "configurables": [],
+  "encodingVersion": "1",
+  "errorCodes": {},
+  "functions": [
+    {
+      "attributes": [
+        {
+          "arguments": [
+            "read"
+          ],
+          "name": "storage"
+        }
+      ],
+      "inputs": [],
+      "name": "test_function",
+      "output": "37c06f042972ba5bedfdee34c16f38ace7789cdc2a879df80724d91fb6268d03"
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "metadataTypes": [
+    {
+      "metadataTypeId": 0,
+      "type": "()"
+    },
+    {
+      "components": [
+        {
+          "name": "None",
+          "typeId": 0
+        },
+        {
+          "name": "Some",
+          "typeId": 2
+        }
+      ],
+      "metadataTypeId": 1,
+      "type": "enum std::option::Option",
+      "typeParameters": [
+        2
+      ]
+    },
+    {
+      "metadataTypeId": 2,
+      "type": "generic T"
+    }
+  ],
+  "panickingCalls": {},
+  "programType": "contract",
+  "specVersion": "1.2"
+}

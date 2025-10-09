@@ -1,0 +1,22 @@
+{
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "get_42",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
+    }
+  ],
+  "types": [
+    {
+      "components": null,
+      "type": "u64",
+      "typeId": 0,
+      "typeParameters": null
+    }
+  ]
+}

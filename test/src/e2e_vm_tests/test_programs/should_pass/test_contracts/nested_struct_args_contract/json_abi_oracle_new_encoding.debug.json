@@ -1,0 +1,75 @@
+{
+  "concreteTypes": [
+    {
+      "concreteTypeId": "42ec906f917884c527853724049ec3e303d2de2916baa4aee461cb71433d0b22",
+      "metadataTypeId": 1,
+      "type": "struct nested_struct_args_abi::StructOne"
+    },
+    {
+      "concreteTypeId": "13f26ca88e0921e7c728fb5763d18dfb2cdad4d55629991628dd5d9f986d6242",
+      "metadataTypeId": 2,
+      "type": "struct nested_struct_args_abi::StructTwo"
+    },
+    {
+      "concreteTypeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0",
+      "type": "u64"
+    }
+  ],
+  "configurables": [],
+  "encodingVersion": "1",
+  "errorCodes": {},
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [
+        {
+          "concreteTypeId": "42ec906f917884c527853724049ec3e303d2de2916baa4aee461cb71433d0b22",
+          "name": "input1"
+        },
+        {
+          "concreteTypeId": "13f26ca88e0921e7c728fb5763d18dfb2cdad4d55629991628dd5d9f986d6242",
+          "name": "input2"
+        }
+      ],
+      "name": "foo",
+      "output": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "metadataTypes": [
+    {
+      "components": [
+        {
+          "name": "foo",
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        }
+      ],
+      "metadataTypeId": 0,
+      "type": "struct nested_struct_args_abi::Inner"
+    },
+    {
+      "components": [
+        {
+          "name": "inn",
+          "typeId": 0
+        }
+      ],
+      "metadataTypeId": 1,
+      "type": "struct nested_struct_args_abi::StructOne"
+    },
+    {
+      "components": [
+        {
+          "name": "foo",
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        }
+      ],
+      "metadataTypeId": 2,
+      "type": "struct nested_struct_args_abi::StructTwo"
+    }
+  ],
+  "panickingCalls": {},
+  "programType": "contract",
+  "specVersion": "1.2"
+}

@@ -397,7 +397,7 @@ pub(crate) async fn document_symbols_request(server: &ServerState, uri: &Url) {
         .expect("Function should have variables");
     assert!(vars
         .iter()
-        .any(|v| v.name == "_data" && v.detail.as_deref() == Some("Data")));
+        .any(|v| v.name == "_data" && v.detail.as_deref() == Some("doc_comments::Data")));
 }
 
 pub(crate) async fn format_request(server: &ServerState, uri: &Url) {

@@ -136,7 +136,7 @@ pub(crate) fn instantiate_function_application(
             fn_ref: new_decl_ref,
             selector: None,
             type_binding: Some(call_path_binding.strip_inner()),
-            call_path_typeid: None,
+            method_target: None,
             contract_call_params: IndexMap::new(),
             contract_caller: None,
         },

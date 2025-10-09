@@ -4,5 +4,5 @@ category = "fail"
 # check: enum_bad_type_inference/src/main.sw:25:9
 # check: $()y = x;
 # nextln: $()Mismatched types.
-# nextln: $()expected: Result<bool, SaleError>
-# nextln: $()found:    Result<u64, SaleError>
+# nextln: $()expected: enum_bad_type_inference::Result<bool, enum_bad_type_inference::SaleError>
+# nextln: $()found:    enum_bad_type_inference::Result<u64, enum_bad_type_inference::SaleError>.

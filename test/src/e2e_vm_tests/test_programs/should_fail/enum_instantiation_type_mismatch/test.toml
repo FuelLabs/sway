@@ -3,29 +3,29 @@ category = "fail"
 #check: $()error
 #check: $()let _: MyOption = Option::Some(123);
 #nextln: $()Mismatched types.
-#nextln: $()expected: MyOption
-#nextln: $()found:    Option<numeric>.
+#nextln: $()expected: enum_instantiation_type_mismatch::MyOption
+#nextln: $()found:    std::option::Option<{numeric}>.
 #nextln: $()Variable declaration's type annotation does not match up with the assigned expression's type.
 
 #check: $()error
 #check: $()let _: MyOption = Option::None;
 #nextln: $()Mismatched types.
-#nextln: $()expected: MyOption
-#nextln: $()found:    Option<T>.
+#nextln: $()expected: enum_instantiation_type_mismatch::MyOption
+#nextln: $()found:    std::option::Option<_>.
 #nextln: $()Variable declaration's type annotation does not match up with the assigned expression's type.
 
 #check: $()error
 #check: $()let _: MyOtherOption = Option::Some(123);
 #nextln: $()Mismatched types.
-#nextln: $()expected: MyOtherOption
-#nextln: $()found:    Option<numeric>.
+#nextln: $()expected: enum_instantiation_type_mismatch::MyOtherOption
+#nextln: $()found:    std::option::Option<{numeric}>.
 #nextln: $()Variable declaration's type annotation does not match up with the assigned expression's type.
 
 #check: $()error
 #check: $()let _: MyOtherOption = Option::None;
 #nextln: $()Mismatched types.
-#nextln: $()expected: MyOtherOption
-#nextln: $()found:    Option<T>.
+#nextln: $()expected: enum_instantiation_type_mismatch::MyOtherOption
+#nextln: $()found:    std::option::Option<_>.
 #nextln: $()Variable declaration's type annotation does not match up with the assigned expression's type.
 
 #check: $()error
@@ -52,8 +52,8 @@ category = "fail"
 #check: $()error
 #check: $()let _: Option<u8> = Option::Some::<bool>(true);
 #nextln: $()Mismatched types.
-#nextln: $()expected: Option<u8>
-#nextln: $()found:    Option<bool>.
+#nextln: $()expected: std::option::Option<u8>
+#nextln: $()found:    std::option::Option<bool>.
 #nextln: $()Variable declaration's type annotation does not match up with the assigned expression's type.
 
 #check: $()error
@@ -74,8 +74,8 @@ category = "fail"
 #check: $()error
 #check: $()et o: GenericEnum<u8, bool> = GenericEnum::<u8, u32>::A(123u8);
 #nextln: $()Mismatched types.
-#nextln: $()expected: GenericEnum<u8, bool>
-#nextln: $()found:    GenericEnum<u8, u32>.
+#nextln: $()expected: enum_instantiation_type_mismatch::GenericEnum<u8, bool>
+#nextln: $()found:    enum_instantiation_type_mismatch::GenericEnum<u8, u32>.
 #nextln: $()Variable declaration's type annotation does not match up with the assigned expression's type.
 
 #not: $()GenericEnum::B(x) => x == 123u32, // No error here.

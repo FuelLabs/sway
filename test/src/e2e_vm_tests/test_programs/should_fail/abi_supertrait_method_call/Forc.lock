@@ -1,8 +1,3 @@
 [[package]]
 name = "abi_supertrait_method_call"
 source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "std"
-source = "path+from-root-04428BB22B0E7E56"

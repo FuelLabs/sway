@@ -1,8 +1,3 @@
 [[package]]
 name = "excess_associated_fn_arguments"
 source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "std"
-source = "path+from-root-38536451AF31C078"

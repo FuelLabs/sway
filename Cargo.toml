@@ -106,9 +106,6 @@ fuel-types = "0.62"
 fuel-tx = "0.62"
 fuel-vm = "0.62"
 
-# Dependencies for Fuel Telemetry
-fuel-telemetry = "0.1"
-
 # Dependencies from the `forc-wallet` repository:
 forc-wallet = "0.15"
 
@@ -262,3 +259,9 @@ vte = "0.13"
 walkdir = "2.3"
 whoami = "1.5"
 wiremock = "0.6"
+
+[patch.crates-io]
+fuels = { git = "https://github.com/FuelLabs/fuels-rs", branch = "feat/abi-backtracing" }
+fuels-core = { git = "https://github.com/FuelLabs/fuels-rs", branch = "feat/abi-backtracing" }
+fuels-accounts = { git = "https://github.com/FuelLabs/fuels-rs", branch = "feat/abi-backtracing" }
+fuels-code-gen = { git = "https://github.com/FuelLabs/fuels-rs", branch = "feat/abi-backtracing" }

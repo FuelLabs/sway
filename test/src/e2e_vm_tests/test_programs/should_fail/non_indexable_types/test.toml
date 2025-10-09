@@ -6,22 +6,22 @@ category = "fail"
 #check: $()Type is not indexable
 #check: $()let _ = not_array[0];
 #nextln: $()^^^^^^^^^
-#sameln: $()This expression has type "numeric", which is not an indexable type.
+#sameln: $()This expression has type "{numeric}", which is not an indexable type.
 
 #check: $()Type is not indexable
 #check: $()not_array[0] = 1;
 #nextln: $()^^^^^^^^^
-#sameln: $()This expression has type "numeric", which is not an indexable type.
+#sameln: $()This expression has type "{numeric}", which is not an indexable type.
 
 #check: $()Type is not indexable
 #check: $()let _ = s[0];
 #nextln: $()^
-#sameln: $()This expression has type "S", which is not an indexable type.
+#sameln: $()This expression has type "non_indexable_types::S", which is not an indexable type.
 
 #check: $()Type is not indexable
 #check: $()s[0] = 1;
 #nextln: $()^
-#sameln: $()This expression has type "S", which is not an indexable type.
+#sameln: $()This expression has type "non_indexable_types::S", which is not an indexable type.
 
 #check: $()Type is not indexable
 #check: $()let _ = s.x[0];
@@ -56,29 +56,29 @@ category = "fail"
 #check: $()Type is not indexable
 #check: $()let _ = array[0][0];
 #nextln: $()^^^^^^^^
-#sameln: $()This expression has type "S", which is not an indexable type.
+#sameln: $()This expression has type "non_indexable_types::S", which is not an indexable type.
 
 #check: $()Type is not indexable
 #check: $()array[0][0] = 1;
 #nextln: $()^^^^^^^
-#sameln: $()This expression has type "S", which is not an indexable type.
+#sameln: $()This expression has type "non_indexable_types::S", which is not an indexable type.
 
 #check: $()Type is not indexable
 #check: $()let _ = tuple[0];
 #nextln: $()^^^^^
-#sameln: $()This expression has type "(numeric, numeric)", which is not an indexable type.
+#sameln: $()This expression has type "({numeric}, {numeric})", which is not an indexable type.
 
 #check: $()Type is not indexable
 #check: $()tuple[0] = 1;
 #nextln: $()^^^^^
-#sameln: $()This expression has type "(numeric, numeric)", which is not an indexable type.
+#sameln: $()This expression has type "({numeric}, {numeric})", which is not an indexable type.
 
 #check: $()Type is not indexable
 #check: $()let _ = tuple.1[0];
 #nextln: $()^^^^^^^
-#sameln: $()This expression has type "numeric", which is not an indexable type.
+#sameln: $()This expression has type "{numeric}", which is not an indexable type.
 
 #check: $()Type is not indexable
 #check: $()tuple.1[0] = 1;
 #nextln: $()^^^^^^^
-#sameln: $()This expression has type "numeric", which is not an indexable type.
+#sameln: $()This expression has type "{numeric}", which is not an indexable type.
