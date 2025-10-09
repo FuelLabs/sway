@@ -1,5 +1,9 @@
 use crate::{
-    ast_elements::type_argument::GenericTypeArgument, engine_threading::*, language::{parsed::*, *}, transform::{self, AttributeKind}, type_system::*
+    ast_elements::type_argument::GenericTypeArgument,
+    engine_threading::*,
+    language::{parsed::*, *},
+    transform::{self, AttributeKind},
+    type_system::*,
 };
 use sway_types::{ident::Ident, span::Span, Named, Spanned};
 

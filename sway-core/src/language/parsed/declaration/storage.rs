@@ -81,7 +81,7 @@ pub struct StorageField {
     pub name: Ident,
     pub key_expression: Option<Expression>,
     pub attributes: transform::Attributes,
-    pub type_argument: GenericArgument,
+    pub type_argument: GenericTypeArgument,
     pub span: Span,
     pub initializer: Expression,
 }

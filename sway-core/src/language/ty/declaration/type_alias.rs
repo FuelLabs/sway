@@ -1,5 +1,9 @@
 use crate::{
-    ast_elements::type_argument::GenericTypeArgument, engine_threading::*, language::{parsed::TypeAliasDeclaration, ty::TyDeclParsedType, CallPath, Visibility}, transform, type_system::*
+    ast_elements::type_argument::GenericTypeArgument,
+    engine_threading::*,
+    language::{parsed::TypeAliasDeclaration, ty::TyDeclParsedType, CallPath, Visibility},
+    transform,
+    type_system::*,
 };
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};

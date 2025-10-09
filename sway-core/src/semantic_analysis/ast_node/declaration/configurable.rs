@@ -60,18 +60,18 @@ impl ty::TyConfigurableDecl {
             block_keyword_span,
         } = decl;
 
-        *type_ascription.type_id_mut() = ctx
+        type_ascription.type_id = ctx
             .resolve_type(
                 handler,
-                type_ascription.type_id(),
-                &type_ascription.span(),
+                type_ascription.type_id,
+                &type_ascription.span,
                 EnforceTypeArguments::No,
                 None,
             )
             .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
         // this subst is required to replace associated types, namely TypeInfo::TraitType.
-        type_ascription.type_id_mut().subst(&ctx.subst_ctx());
+        type_ascription.type_id.subst(&ctx.subst_ctx());
 
         if !is_screaming_snake_case(name.as_str()) {
             handler.emit_warn(CompileWarning {
@@ -114,8 +114,8 @@ impl ty::TyConfigurableDecl {
                     },
                     type_arguments: crate::TypeArgs::Regular(vec![GenericArgument::Type(
                         GenericTypeArgument {
-                            type_id: type_ascription.type_id(),
-                            initial_type_id: type_ascription.type_id(),
+                            type_id: type_ascription.type_id,
+                            initial_type_id: type_ascription.type_id,
                             span: sway_types::Span::dummy(),
                             call_path_tree: None,
                         },
@@ -160,7 +160,7 @@ impl ty::TyConfigurableDecl {
             // while configurables using encoding v0 will typed as the configurable type itself
             let mut ctx = ctx
                 .by_ref()
-                .with_type_annotation(type_ascription.type_id())
+                .with_type_annotation(type_ascription.type_id)
                 .with_help_text(
                     "This declaration's type annotation does not match up with the assigned \
             expression's type.",
@@ -180,7 +180,7 @@ impl ty::TyConfigurableDecl {
         Ok(ty::TyConfigurableDecl {
             call_path,
             attributes,
-            return_type: type_ascription.type_id(),
+            return_type: type_ascription.type_id,
             type_ascription,
             span,
             value,

@@ -53,10 +53,10 @@ impl ty::TyConstantDecl {
             visibility,
         } = decl.clone();
 
-        *type_ascription.type_id_mut() = ctx
+        type_ascription.type_id = ctx
             .resolve_type(
                 handler,
-                type_ascription.type_id(),
+                type_ascription.type_id,
                 &type_ascription.span(),
                 EnforceTypeArguments::No,
                 None,
@@ -64,7 +64,7 @@ impl ty::TyConstantDecl {
             .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
         // this subst is required to replace associated types, namely TypeInfo::TraitType.
-        type_ascription.type_id_mut().subst(&ctx.subst_ctx());
+        type_ascription.type_id.subst(&ctx.subst_ctx());
 
         if !is_screaming_snake_case(name.as_str()) {
             handler.emit_warn(CompileWarning {
@@ -75,7 +75,7 @@ impl ty::TyConstantDecl {
 
         let mut ctx = ctx
             .by_ref()
-            .with_type_annotation(type_ascription.type_id())
+            .with_type_annotation(type_ascription.type_id)
             .with_help_text(
                 "This declaration's type annotation does not match up with the assigned \
         expression's type.",
@@ -90,11 +90,11 @@ impl ty::TyConstantDecl {
         // to get the type of the variable. The type of the variable *has* to follow
         // `type_ascription` if `type_ascription` is a concrete integer type that does not
         // conflict with the type of `expression` (i.e. passes the type checking above).
-        let return_type = match &*type_engine.get(type_ascription.type_id()) {
-            TypeInfo::UnsignedInteger(_) => type_ascription.type_id(),
+        let return_type = match &*type_engine.get(type_ascription.type_id) {
+            TypeInfo::UnsignedInteger(_) => type_ascription.type_id,
             _ => match &value {
                 Some(value) => value.return_type,
-                None => type_ascription.type_id(),
+                None => type_ascription.type_id,
             },
         };
 

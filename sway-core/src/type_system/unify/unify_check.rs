@@ -392,8 +392,7 @@ impl<'a> UnifyCheck<'a> {
                 //  - `&` -> `&`
                 //  - `&mut` -> `&`
                 //  - `&mut` -> `&mut`
-                return (*l_to_mut || !*r_to_mut)
-                    && self.check_inner(l_ty.type_id, r_ty.type_id);
+                return (*l_to_mut || !*r_to_mut) && self.check_inner(l_ty.type_id, r_ty.type_id);
             }
 
             (
@@ -910,15 +909,16 @@ impl<'a> UnifyCheck<'a> {
 
 #[test]
 pub fn array_constraint_subset() {
+    use crate::ast_elements::type_argument::GenericTypeArgument;
     let engines = Engines::default();
     let array_u64_1 = engines.te().insert_array(
         &engines,
-        GenericArgument::Type(crate::ast_elements::type_argument::GenericTypeArgument {
+        GenericTypeArgument {
             type_id: engines.te().id_of_u64(),
             initial_type_id: engines.te().id_of_u64(),
             span: sway_types::Span::dummy(),
             call_path_tree: None,
-        }),
+        },
         Length(ConstGenericExpr::Literal {
             val: 1,
             span: sway_types::Span::dummy(),
@@ -926,12 +926,12 @@ pub fn array_constraint_subset() {
     );
     let array_u64_n = engines.te().insert_array(
         &engines,
-        GenericArgument::Type(crate::ast_elements::type_argument::GenericTypeArgument {
+        GenericTypeArgument {
             type_id: engines.te().id_of_u64(),
             initial_type_id: engines.te().id_of_u64(),
             span: sway_types::Span::dummy(),
             call_path_tree: None,
-        }),
+        },
         Length(ConstGenericExpr::AmbiguousVariableExpression {
             ident: sway_types::BaseIdent::new_no_span("N".into()),
             decl: None,

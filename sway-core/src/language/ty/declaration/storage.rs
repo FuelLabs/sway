@@ -109,7 +109,7 @@ impl TyStorageDecl {
                     key_expression,
                     name,
                     ..
-                }) => (type_argument.type_id(), key_expression, name),
+                }) => (type_argument.type_id, key_expression, name),
                 None => {
                     return Err(handler.emit_err(CompileError::StorageFieldDoesNotExist {
                         field_name: first_field.into(),
@@ -247,7 +247,7 @@ pub struct TyStorageField {
     pub name: Ident,
     pub namespace_names: Vec<Ident>,
     pub key_expression: Option<TyExpression>,
-    pub type_argument: GenericArgument,
+    pub type_argument: GenericTypeArgument,
     pub initializer: TyExpression,
     pub(crate) span: Span,
     pub attributes: transform::Attributes,

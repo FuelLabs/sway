@@ -11,7 +11,7 @@ use crate::{
     },
     transform::Attributes,
     type_system::TypeInfo,
-    Engines, GenericArgument, TypeEngine, TypeId,
+    Engines, GenericTypeArgument, TypeEngine, TypeId,
 };
 use petgraph::{prelude::NodeIndex, visit::Dfs};
 use std::collections::{BTreeSet, HashMap};
@@ -581,7 +581,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
                 .namespace
                 .insert_configurable(call_path.suffix.clone(), entry_node);
 
-            connect_type_id(engines, type_ascription.type_id(), graph, entry_node)?;
+            connect_type_id(engines, type_ascription.type_id, graph, entry_node)?;
 
             if let Some(value) = &value {
                 connect_expression(
@@ -738,7 +738,7 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
     entry_node: NodeIndex,
     tree_type: &TreeType,
     trait_decl_ref: &Option<DeclRef<InterfaceDeclId>>,
-    implementing_for: &GenericArgument,
+    implementing_for: &GenericTypeArgument,
     options: NodeConnectionOptions,
 ) -> Result<(), CompileError> {
     let decl_engine = engines.de();
@@ -758,7 +758,7 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
         };
     }
 
-    connect_type_id(engines, implementing_for.type_id(), graph, entry_node)?;
+    connect_type_id(engines, implementing_for.type_id, graph, entry_node)?;
 
     let trait_entry = graph.namespace.find_trait(trait_name).cloned();
     // Collect the methods that are directly implemented in the trait.
@@ -1100,10 +1100,8 @@ fn connect_fn_params_struct_enums<'eng: 'cfg, 'cfg>(
 ) -> Result<(), CompileError> {
     let type_engine = engines.te();
     for fn_param in fn_decl.parameters.iter() {
-        let ty = type_engine.to_typeinfo(
-            fn_param.type_argument.type_id,
-            &fn_param.type_argument.span,
-        )?;
+        let ty = type_engine
+            .to_typeinfo(fn_param.type_argument.type_id, &fn_param.type_argument.span)?;
         match ty {
             TypeInfo::Enum(decl_ref) => {
                 let decl = engines.de().get_enum(&decl_ref);

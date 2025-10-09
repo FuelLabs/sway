@@ -1,5 +1,9 @@
 use crate::{
-    ast_elements::type_argument::GenericTypeArgument, decl_engine::ParsedDeclEngineGet, language::{parsed::*, CallPath}, type_system::*, Engines
+    ast_elements::type_argument::GenericTypeArgument,
+    decl_engine::ParsedDeclEngineGet,
+    language::{parsed::*, CallPath},
+    type_system::*,
+    Engines,
 };
 use hashbrown::{HashMap, HashSet};
 use std::{
@@ -386,7 +390,10 @@ impl Dependencies {
                         TraitItem::TraitFn(decl_id) => {
                             let sig = engines.pe().get_trait_fn(decl_id);
                             deps.gather_from_iter(sig.parameters.iter(), |deps, param| {
-                                deps.gather_from_generic_type_argument(engines, &param.type_argument)
+                                deps.gather_from_generic_type_argument(
+                                    engines,
+                                    &param.type_argument,
+                                )
                             })
                             .gather_from_generic_type_argument(engines, &sig.return_type)
                         }
@@ -418,7 +425,7 @@ impl Dependencies {
                     ..
                 } = &*engines.pe().get_impl_self_or_trait(decl_id);
                 self.gather_from_call_path(trait_name, false, false)
-                    .gather_from_generic_argument(engines, implementing_for)
+                    .gather_from_generic_type_argument(engines, implementing_for)
                     .gather_from_type_parameters(impl_type_parameters)
                     .gather_from_iter(items.iter(), |deps, item| match item {
                         ImplItem::Fn(fn_decl_id) => {
@@ -490,7 +497,7 @@ impl Dependencies {
                     deps.gather_from_storage_entry(engines, entry)
                 }),
             StorageEntry::Field(field) => {
-                self.gather_from_generic_argument(engines, &field.type_argument)
+                self.gather_from_generic_type_argument(engines, &field.type_argument)
             }
         }
     }
@@ -507,7 +514,7 @@ impl Dependencies {
         } = const_decl;
         match value {
             Some(value) => self
-                .gather_from_generic_argument(engines, type_ascription)
+                .gather_from_generic_type_argument(engines, type_ascription)
                 .gather_from_expr(engines, value),
             None => self,
         }
@@ -525,7 +532,7 @@ impl Dependencies {
         } = const_decl;
         match value {
             Some(value) => self
-                .gather_from_generic_argument(engines, type_ascription)
+                .gather_from_generic_type_argument(engines, type_ascription)
                 .gather_from_expr(engines, value),
             None => self,
         }
@@ -801,28 +808,30 @@ impl Dependencies {
         })
     }
 
-    fn gather_from_type_arguments(
-        self,
-        engines: &Engines,
-        args: &[GenericArgument],
-    ) -> Self {
+    fn gather_from_type_arguments(self, engines: &Engines, args: &[GenericArgument]) -> Self {
         self.gather_from_iter(args.iter(), |deps, arg| {
             deps.gather_from_generic_argument(engines, arg)
         })
     }
 
-    fn gather_from_generic_argument(self, engines: &Engines, type_argument: &GenericArgument) -> Self {
+    fn gather_from_generic_argument(
+        self,
+        engines: &Engines,
+        type_argument: &GenericArgument,
+    ) -> Self {
         match type_argument {
-            GenericArgument::Type(a) => {
-                self.gather_from_generic_type_argument(engines, a)
-            }
+            GenericArgument::Type(a) => self.gather_from_generic_type_argument(engines, a),
             GenericArgument::Const(_) => Dependencies {
                 deps: HashSet::default(),
             },
         }
     }
 
-    fn gather_from_generic_type_argument(self, engines: &Engines, type_argument: &GenericTypeArgument) -> Self {
+    fn gather_from_generic_type_argument(
+        self,
+        engines: &Engines,
+        type_argument: &GenericTypeArgument,
+    ) -> Self {
         let type_engine = engines.te();
         self.gather_from_typeinfo(engines, &type_engine.get(type_argument.type_id))
     }
@@ -850,15 +859,21 @@ impl Dependencies {
             TypeInfo::Tuple(elems) => self.gather_from_iter(elems.iter(), |deps, elem| {
                 deps.gather_from_generic_type_argument(engines, elem)
             }),
-            TypeInfo::Array(elem_type, _) => self.gather_from_generic_type_argument(engines, elem_type),
-            TypeInfo::Slice(elem_type) => self.gather_from_generic_type_argument(engines, elem_type),
+            TypeInfo::Array(elem_type, _) => {
+                self.gather_from_generic_type_argument(engines, elem_type)
+            }
+            TypeInfo::Slice(elem_type) => {
+                self.gather_from_generic_type_argument(engines, elem_type)
+            }
             TypeInfo::Struct(decl_ref) => self.gather_from_iter(
                 decl_engine.get_struct(decl_ref).fields.iter(),
                 |deps, field| deps.gather_from_generic_type_argument(engines, &field.type_argument),
             ),
             TypeInfo::Enum(decl_ref) => self.gather_from_iter(
                 decl_engine.get_enum(decl_ref).variants.iter(),
-                |deps, variant| deps.gather_from_generic_type_argument(engines, &variant.type_argument),
+                |deps, variant| {
+                    deps.gather_from_generic_type_argument(engines, &variant.type_argument)
+                },
             ),
             TypeInfo::Alias { ty, .. } => self.gather_from_generic_type_argument(engines, ty),
             _ => self,
@@ -1016,13 +1031,13 @@ fn decl_name(engines: &Engines, decl: &Declaration) -> Option<DependentSymbol> {
                     Ident::new_with_override("self".into(), decl.implementing_for.span());
                 impl_sym(
                     trait_name,
-                    &type_engine.get(decl.implementing_for.type_id()),
+                    &type_engine.get(decl.implementing_for.type_id),
                     method_names,
                 )
             } else if decl.trait_name.prefixes.is_empty() {
                 impl_sym(
                     decl.trait_name.suffix.clone(),
-                    &type_engine.get(decl.implementing_for.type_id()),
+                    &type_engine.get(decl.implementing_for.type_id),
                     method_names,
                 )
             } else {

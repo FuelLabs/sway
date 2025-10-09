@@ -4,7 +4,7 @@ use crate::{
     language::ty,
     metadata::MetadataManager,
     type_system::{TypeId, TypeInfo},
-    Engines, GenericArgument, TypeEngine,
+    Engines, TypeEngine,
 };
 
 use super::convert::convert_resolved_typeid_no_span;

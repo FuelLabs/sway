@@ -1,7 +1,11 @@
 use sway_types::{integer_bits::IntegerBits, Named};
 
 use crate::{
-    asm_generation::EvmAbiResult, ast_elements::type_argument::GenericTypeArgument, decl_engine::DeclId, language::ty::{TyFunctionDecl, TyProgram, TyProgramKind}, Engines, GenericArgument, TypeId, TypeInfo
+    asm_generation::EvmAbiResult,
+    ast_elements::type_argument::GenericTypeArgument,
+    decl_engine::DeclId,
+    language::ty::{TyFunctionDecl, TyProgram, TyProgramKind},
+    Engines, TypeId, TypeInfo,
 };
 
 pub fn generate_abi_program(program: &TyProgram, engines: &Engines) -> EvmAbiResult {

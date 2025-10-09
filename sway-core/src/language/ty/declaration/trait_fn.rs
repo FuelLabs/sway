@@ -7,7 +7,12 @@ use monomorphization::MonomorphizeHelper;
 use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
-    ast_elements::type_argument::GenericTypeArgument, engine_threading::*, has_changes, language::{parsed::TraitFn, ty::*, Purity}, transform, type_system::*
+    ast_elements::type_argument::GenericTypeArgument,
+    engine_threading::*,
+    has_changes,
+    language::{parsed::TraitFn, ty::*, Purity},
+    transform,
+    type_system::*,
 };
 
 #[derive(Clone, Debug)]

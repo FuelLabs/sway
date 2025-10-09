@@ -1,7 +1,15 @@
 use crate::{
-    ast_elements::type_argument::GenericTypeArgument, decl_engine::MaterializeConstGenerics, engine_threading::*, error::module_can_be_changed, has_changes, language::{
+    ast_elements::type_argument::GenericTypeArgument,
+    decl_engine::MaterializeConstGenerics,
+    engine_threading::*,
+    error::module_can_be_changed,
+    has_changes,
+    language::{
         parsed::StructDeclaration, ty::TyDeclParsedType, CallPath, CallPathType, Visibility,
-    }, transform, type_system::*, Namespace
+    },
+    transform,
+    type_system::*,
+    Namespace,
 };
 use ast_elements::type_parameter::ConstGenericExpr;
 use monomorphization::MonomorphizeHelper;

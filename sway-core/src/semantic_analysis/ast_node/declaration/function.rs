@@ -1,14 +1,5 @@
 mod function_parameter;
 
-use ast_elements::type_parameter::GenericTypeParameter;
-use hashbrown::HashMap;
-use sway_error::{
-    error::CompileError,
-    handler::{ErrorEmitted, Handler},
-    warning::{CompileWarning, Warning},
-};
-use symbol_collection_context::SymbolCollectionContext;
-
 use crate::{
     decl_engine::{
         parsed_id::ParsedDeclId, DeclEngineInsert as _, DeclId, DeclRefFunction,
@@ -23,7 +14,15 @@ use crate::{
     type_system::*,
     Engines,
 };
+use ast_elements::type_parameter::GenericTypeParameter;
+use hashbrown::HashMap;
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+    warning::{CompileWarning, Warning},
+};
 use sway_types::{style::is_snake_case, Spanned};
+use symbol_collection_context::SymbolCollectionContext;
 
 impl ty::TyFunctionDecl {
     pub(crate) fn collect(
@@ -386,6 +385,7 @@ impl TypeCheckFinalization for ty::TyFunctionDecl {
 
 #[test]
 fn test_function_selector_behavior() {
+    use crate::ast_elements::type_argument::GenericTypeArgument;
     use crate::language::Visibility;
     use crate::Engines;
     use sway_types::{Ident, Span};
@@ -440,16 +440,14 @@ fn test_function_selector_behavior() {
                 is_reference: false,
                 is_mutable: false,
                 mutability_span: Span::dummy(),
-                type_argument: GenericArgument::Type(
-                    ast_elements::type_argument::GenericTypeArgument {
-                        type_id: engines.te().id_of_u32(),
-                        initial_type_id: engines
-                            .te()
-                            .insert_string_array_without_annotations(&engines, 5),
-                        span: Span::dummy(),
-                        call_path_tree: None,
-                    },
-                ),
+                type_argument: GenericTypeArgument {
+                    type_id: engines.te().id_of_u32(),
+                    initial_type_id: engines
+                        .te()
+                        .insert_string_array_without_annotations(&engines, 5),
+                    span: Span::dummy(),
+                    call_path_tree: None,
+                },
             },
         ],
         span: Span::dummy(),

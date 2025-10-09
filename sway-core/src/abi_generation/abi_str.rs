@@ -1,7 +1,9 @@
+use crate::{
+    ast_elements::type_argument::GenericTypeArgument, language::CallPath, transform, Engines,
+    TypeId, TypeInfo,
+};
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{integer_bits::IntegerBits, Ident, Named};
-
-use crate::{ast_elements::type_argument::GenericTypeArgument, language::CallPath, transform, Engines, GenericArgument, TypeId, TypeInfo};
 
 #[derive(Clone)]
 pub struct AbiStrContext {
@@ -35,10 +37,9 @@ impl TypeId {
                 | (TypeInfo::Custom { .. }, TypeInfo::Enum { .. }) => type_engine
                     .get(resolved_type_id)
                     .abi_str(handler, ctx, engines, true),
-                (_, TypeInfo::Alias { ty, .. }) => {
-                    ty.type_id
-                        .get_abi_type_str(handler, ctx, engines, ty.type_id)
-                }
+                (_, TypeInfo::Alias { ty, .. }) => ty
+                    .type_id
+                    .get_abi_type_str(handler, ctx, engines, ty.type_id),
                 (TypeInfo::Tuple(fields), TypeInfo::Tuple(resolved_fields)) => {
                     assert_eq!(fields.len(), resolved_fields.len());
                     let field_strs = resolved_fields
