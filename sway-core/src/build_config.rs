@@ -192,6 +192,17 @@ pub enum Backtrace {
     None,
 }
 
+impl From<Backtrace> for sway_ir::Backtrace {
+    fn from(value: Backtrace) -> Self {
+        match value {
+            Backtrace::All => sway_ir::Backtrace::All,
+            Backtrace::AllExceptNever => sway_ir::Backtrace::AllExceptNever,
+            Backtrace::OnlyAlways => sway_ir::Backtrace::OnlyAlways,
+            Backtrace::None => sway_ir::Backtrace::None,
+        }
+    }
+}
+
 /// Configuration for the overall build and compilation process.
 #[derive(Clone)]
 pub struct BuildConfig {
@@ -209,9 +220,6 @@ pub struct BuildConfig {
     pub(crate) print_ir: PrintIr,
     pub(crate) include_tests: bool,
     pub(crate) optimization_level: OptLevel,
-    // TODO: (ABI-BACKTRACING) Remove `#[allow(dead_code)]` once the `backtrace`
-    //       option is used in IR compilation.
-    #[allow(dead_code)]
     pub(crate) backtrace: Backtrace,
     pub time_phases: bool,
     pub profile: bool,

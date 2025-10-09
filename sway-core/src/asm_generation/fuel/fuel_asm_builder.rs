@@ -2355,7 +2355,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             self.cur_bytecode.push(Op {
                 opcode: Either::Left(VirtualOp::MOVI(
                     reg.clone(),
-                    VirtualImmediate18::new_unchecked(imm, "immediate must fit in 12 bits"),
+                    VirtualImmediate18::new_unchecked(imm, "immediate must fit in 18 bits"),
                 )),
                 comment: comment.clone(),
                 owning_span: span.clone(),

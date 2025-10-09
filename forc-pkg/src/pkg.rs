@@ -1790,7 +1790,7 @@ pub fn compile(
 
     const ENCODING_V0: &str = "0";
     const ENCODING_V1: &str = "1";
-    const SPEC_VERSION: &str = "1.1";
+    const SPEC_VERSION: &str = "1.2";
 
     let mut program_abi = match pkg.target {
         BuildTarget::Fuel => {
@@ -1803,6 +1803,7 @@ pub fn compile(
                     &mut AbiContext {
                         program: typed_program,
                         panic_occurrences: &asm.panic_occurrences,
+                        panicking_call_occurrences: &asm.panicking_call_occurrences,
                         abi_with_callpaths: true,
                         type_ids_to_full_type_str: HashMap::<String, String>::new(),
                         unique_names: HashMap::new(),

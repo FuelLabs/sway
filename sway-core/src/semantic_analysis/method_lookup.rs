@@ -1,5 +1,7 @@
 use std::collections::{BTreeMap, HashSet};
 
+use itertools::Itertools;
+
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -9,13 +11,17 @@ use sway_types::{span::Span, Ident, Spanned};
 use crate::{
     ast_elements::type_argument::GenericTypeArgument,
     decl_engine::DeclRefFunction,
-    language::{parsed::MethodName, ty, CallPath, QualifiedCallPath},
+    language::{
+        parsed::MethodName,
+        ty::{self, TyFunctionDisplay},
+        CallPath, QualifiedCallPath,
+    },
     namespace::{
         IsImplInterfaceSurface, Module, ModulePath, ResolvedTraitImplItem, TraitKey, TraitMap,
         TraitSuffix,
     },
     type_system::{GenericArgument, TypeId, TypeInfo, TypeParameter},
-    EnforceTypeArguments, TraitConstraint, UnifyCheck,
+    EnforceTypeArguments, Engines, TraitConstraint, UnifyCheck,
 };
 
 use super::{
@@ -233,10 +239,10 @@ impl TypeCheckContext<'_> {
             // While collecting unifications we don't decay numeric and will ignore this error.
             if self.collecting_unifications() {
                 return Err(handler.emit_err(CompileError::MethodNotFound {
-                    method: method_name.clone().as_str().to_string(),
+                    called_method: method_name.into(),
+                    expected_signature: method_name.clone().as_str().to_string(),
                     type_name: self.engines.help_out(type_id).to_string(),
-                    matching_method_strings: vec![],
-                    span: method_name.span(),
+                    matching_methods: vec![],
                 }));
             }
             type_engine.decay_numeric(handler, self.engines, type_id, &method_name.span())?;
@@ -807,7 +813,7 @@ impl TypeCheckContext<'_> {
                 continue;
             }
 
-            let key: GroupingKey = (impl_trait.decl_id, method.implementing_for_typeid);
+            let key: GroupingKey = (impl_trait.decl_id, method.implementing_for);
 
             // Prefer the method that is type-check finalized when conflicting.
             match trait_methods.get_mut(&key) {
@@ -897,7 +903,7 @@ impl TypeCheckContext<'_> {
                 let mut exact = vec![];
                 for r in trait_methods.values() {
                     let m = decl_engine.get_function(r);
-                    if let Some(impl_for) = m.implementing_for_typeid {
+                    if let Some(impl_for) = m.implementing_for {
                         if eq_check.with_unify_ref_mut(false).check(impl_for, type_id) {
                             exact.push(r.clone());
                         }
@@ -941,41 +947,33 @@ impl TypeCheckContext<'_> {
     }
 
     /// Produce human-readable strings for potential candidates to show in diagnostics.
-    fn format_candidate_summaries_for_error(&self, decl_refs: &[DeclRefFunction]) -> Vec<String> {
-        let de = self.engines.de();
+    fn format_candidate_summaries_for_error<'a>(
+        engines: &'a Engines,
+        decl_refs: &'a [DeclRefFunction],
+    ) -> impl Iterator<Item = String> + 'a {
+        let de = engines.de();
+        let fn_display = TyFunctionDisplay::full().without_self_param_type();
 
-        let mut out: Vec<String> = decl_refs
-            .iter()
-            .map(|r| {
-                let m = de.get_function(r);
-                let params = m
-                    .parameters
-                    .iter()
-                    .map(|p| self.engines.help_out(p.type_argument.type_id()).to_string())
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                let ret = self.engines.help_out(m.return_type.type_id());
-                let in_impl = if let Some(for_ty) = m.implementing_for_typeid {
-                    format!(" in {}", self.engines.help_out(for_ty))
-                } else {
-                    String::new()
-                };
-                format!("{}({}) -> {}{}", m.name.as_str(), params, ret, in_impl)
-            })
-            .collect();
-
-        out.sort();
-        out
+        decl_refs.iter().map(move |r| {
+            let m = de.get_function(r);
+            fn_display.display(&m, engines)
+        })
     }
 
     /// Given a `method_name` and a `type_id`, find that method on that type in the namespace.
-    /// `annotation_type` is the expected method return type. Requires `argument_types` because:
+    ///
+    /// `annotation_type` is the expected method return type.
+    ///
+    /// Requires `argument_types` because:
     /// - standard operations like +, <=, etc. are called like "std::ops::<operation>" and the
     ///   actual self type of the trait implementation is determined by the passed argument type.
     /// - we can have several implementations of generic traits for different types, that can
     ///   result in a method of a same name, but with different type arguments.
     ///
     /// This function will emit a [CompileError::MethodNotFound] if the method is not found.
+    ///
+    /// Note that _method_ here means **any function associated to a type**, with or without
+    /// the `self` argument.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn find_method_for_type(
         &self,
@@ -1007,7 +1005,7 @@ impl TypeCheckContext<'_> {
             annotation_type,
         );
 
-        let mut matching_method_strings = HashSet::<String>::new();
+        let mut matching_methods = HashSet::<String>::new();
 
         let mut qualified_call_path: Option<QualifiedCallPath> = None;
 
@@ -1032,6 +1030,7 @@ impl TypeCheckContext<'_> {
             // Prefer non-blanket impls when any concrete impl exists.
             self.prefer_non_blanket_impls(&mut trait_methods);
 
+            // Final selection / ambiguity handling.
             if let Some(pick) = self.select_method_from_grouped(
                 handler,
                 method_ident,
@@ -1050,8 +1049,10 @@ impl TypeCheckContext<'_> {
             }
         } else {
             // No signature-compatible candidates.
-            matching_method_strings
-                .extend(self.format_candidate_summaries_for_error(&matching_method_decl_refs));
+            matching_methods.extend(Self::format_candidate_summaries_for_error(
+                self.engines,
+                &matching_method_decl_refs,
+            ));
         }
 
         // Forward an ErrorRecovery from the first argument if present.
@@ -1074,7 +1075,8 @@ impl TypeCheckContext<'_> {
 
         // Final: MethodNotFound with formatted signature and candidates.
         Err(handler.emit_err(CompileError::MethodNotFound {
-            method: format!(
+            called_method: method_ident.into(),
+            expected_signature: format!(
                 "{}({}){}",
                 method_ident.clone(),
                 arguments_types
@@ -1092,8 +1094,7 @@ impl TypeCheckContext<'_> {
                 }
             ),
             type_name,
-            matching_method_strings: matching_method_strings.iter().cloned().collect::<Vec<_>>(),
-            span: method_ident.span(),
+            matching_methods: matching_methods.into_iter().sorted().collect(),
         }))
     }
 }

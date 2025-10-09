@@ -1,4 +1,4 @@
-script;
+library;
 
 // We should definitely implement something like the "fully qualified syntax",
 // but until then, multiple methods with the same name is undefined behavior.
@@ -42,7 +42,7 @@ impl Data<u64> {
     // duplicate definition
     fn my_add(self, other: Self) -> Self {
         Data {
-            value: self.value + other.value
+            value: self.value
         }
     }
 }
@@ -51,7 +51,7 @@ impl Data<u32> {
     // duplicate definition
     fn my_add(self, other: Self) -> Self {
         Data {
-            value: self.value + other.value
+            value: self.value
         }
     }
 }
@@ -60,8 +60,4 @@ impl Data<u8> {
     fn get_value(self) -> u8 {
         self.value
     }
-}
-
-fn main() {
-
 }

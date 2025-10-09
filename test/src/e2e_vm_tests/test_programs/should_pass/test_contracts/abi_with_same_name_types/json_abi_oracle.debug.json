@@ -1,0 +1,141 @@
+{
+  "configurables": [],
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [
+        {
+          "name": "_arg1",
+          "offset": null,
+          "type": 4,
+          "typeArguments": null
+        },
+        {
+          "name": "_arg2",
+          "offset": null,
+          "type": 6,
+          "typeArguments": null
+        },
+        {
+          "name": "_arg3",
+          "offset": null,
+          "type": 1,
+          "typeArguments": [
+            {
+              "name": "",
+              "type": 8,
+              "typeArguments": null
+            }
+          ]
+        }
+      ],
+      "name": "function",
+      "output": {
+        "name": "",
+        "type": 3,
+        "typeArguments": null
+      }
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "types": [
+    {
+      "components": [],
+      "type": "()",
+      "typeId": 0,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "None",
+          "offset": null,
+          "type": 0,
+          "typeArguments": null
+        },
+        {
+          "name": "Some",
+          "offset": null,
+          "type": 2,
+          "typeArguments": null
+        }
+      ],
+      "type": "enum std::option::Option",
+      "typeId": 1,
+      "typeParameters": [
+        2
+      ]
+    },
+    {
+      "components": null,
+      "type": "generic T",
+      "typeId": 2,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "str[6]",
+      "typeId": 3,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "bam",
+          "offset": null,
+          "type": 5,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct dep_1::MyStruct1",
+      "typeId": 4,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "bam",
+          "offset": null,
+          "type": 8,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct dep_1::MyStructDuplicated",
+      "typeId": 5,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "bam",
+          "offset": null,
+          "type": 7,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct dep_2::MyStruct2",
+      "typeId": 6,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "bam",
+          "offset": null,
+          "type": 8,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct dep_2::MyStructDuplicated",
+      "typeId": 7,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u64",
+      "typeId": 8,
+      "typeParameters": null
+    }
+  ]
+}

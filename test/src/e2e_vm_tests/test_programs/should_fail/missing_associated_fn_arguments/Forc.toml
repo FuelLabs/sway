@@ -3,7 +3,4 @@ authors = ["Fuel Labs <contact@fuel.sh>"]
 license = "Apache-2.0"
 name = "missing_associated_fn_arguments"
 entry = "main.sw"
-
-[dependencies]
-std = { path = "../../../reduced_std_libs/sway-lib-std-core" }
-
+implicit-std = false
