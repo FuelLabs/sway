@@ -533,10 +533,17 @@ pub(crate) fn type_check_method_application(
             }
         }
 
-        fn string_slice_literal(ident: &BaseIdent) -> Expression {
+        fn method_name_literal(method_name: &BaseIdent) -> Expression {
+            let method_name_str = method_name.as_str().to_string();
+            let len_bytes = (method_name_str.len() as u64).to_be_bytes();
+
+            let mut blob = vec![];
+            blob.extend(len_bytes);
+            blob.extend(method_name_str.as_bytes());
+
             Expression {
-                kind: ExpressionKind::Literal(Literal::String(ident.span())),
-                span: ident.span(),
+                kind: ExpressionKind::Literal(Literal::Binary(blob)),
+                span: method_name.span(),
             }
         }
 
@@ -581,7 +588,7 @@ pub(crate) fn type_check_method_application(
             &mut ctx,
             span,
             method.return_type.type_id(),
-            string_slice_literal(&method.name),
+            method_name_literal(&method.name),
             old_arguments.first().cloned().unwrap(),
             args,
             arguments.iter().map(|x| x.1.return_type).collect(),
