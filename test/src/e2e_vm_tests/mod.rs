@@ -421,6 +421,8 @@ impl TestContext {
                                     output.push_str(s);
                                 }
                                 Syscall::Fflush { .. } => {}
+                                Syscall::Random { .. } => {}
+                                Syscall::RandomSeeded { .. } => {}
                                 Syscall::Unknown { ra, rb, rc, rd } => {
                                     let _ = writeln!(output, "Unknown ecal: {ra} {rb} {rc} {rd}");
                                 }
