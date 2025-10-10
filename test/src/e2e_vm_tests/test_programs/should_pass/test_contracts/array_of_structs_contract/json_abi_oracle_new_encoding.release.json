@@ -16,7 +16,6 @@
     },
     {
       "concreteTypeId": "ed2e4683365827293d77b21104cd3278cdff5ebcd36bda8544e30c8c42261d27",
-      "metadataTypeId": 3,
       "type": "struct array_of_structs_abi::Wrapper"
     }
   ],
@@ -65,7 +64,7 @@
       "components": [
         {
           "name": "__array_element",
-          "typeId": 3
+          "typeId": "ed2e4683365827293d77b21104cd3278cdff5ebcd36bda8544e30c8c42261d27"
         }
       ],
       "metadataTypeId": 0,
@@ -80,30 +79,6 @@
       ],
       "metadataTypeId": 1,
       "type": "[_; 3]"
-    },
-    {
-      "components": [
-        {
-          "name": "number",
-          "typeId": 4
-        }
-      ],
-      "metadataTypeId": 2,
-      "type": "struct array_of_structs_abi::Id"
-    },
-    {
-      "components": [
-        {
-          "name": "id",
-          "typeId": 2
-        }
-      ],
-      "metadataTypeId": 3,
-      "type": "struct array_of_structs_abi::Wrapper"
-    },
-    {
-      "metadataTypeId": 4,
-      "type": "u64"
     }
   ],
   "panickingCalls": {},

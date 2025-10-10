@@ -38,7 +38,6 @@
     },
     {
       "concreteTypeId": "81fc10c4681a3271cf2d66b2ec6fbc8ed007a442652930844fcf11818c295bff",
-      "metadataTypeId": 4,
       "type": "struct ConfigurableStruct"
     },
     {
@@ -177,7 +176,7 @@
         },
         {
           "name": "__tuple_element",
-          "typeId": 5
+          "typeId": 4
         }
       ],
       "metadataTypeId": 0,
@@ -197,7 +196,7 @@
       "components": [
         {
           "name": "__array_element",
-          "typeId": 5
+          "typeId": 4
         }
       ],
       "metadataTypeId": 2,
@@ -211,7 +210,7 @@
         },
         {
           "name": "B",
-          "typeId": 5
+          "typeId": 4
         },
         {
           "name": "C",
@@ -222,21 +221,7 @@
       "type": "enum ConfigurableEnum"
     },
     {
-      "components": [
-        {
-          "name": "a",
-          "typeId": "b760f44fa5965c2474a3b471467a22c43185152129295af588b022ae50b50903"
-        },
-        {
-          "name": "b",
-          "typeId": 5
-        }
-      ],
       "metadataTypeId": 4,
-      "type": "struct ConfigurableStruct"
-    },
-    {
-      "metadataTypeId": 5,
       "type": "u64"
     }
   ],

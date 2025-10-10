@@ -33,7 +33,6 @@
     },
     {
       "concreteTypeId": "1567acc73497bb83e04c376e2c8d3997d0207f0b9b8fa17b0192ee62e1c7a60b",
-      "metadataTypeId": 6,
       "type": "struct contract_with_type_aliases_abi::IdentityAliasWrapper"
     }
   ],
@@ -102,14 +101,14 @@
         },
         {
           "name": "__tuple_element",
-          "typeId": 6
+          "typeId": "1567acc73497bb83e04c376e2c8d3997d0207f0b9b8fa17b0192ee62e1c7a60b"
         },
         {
           "name": "__tuple_element",
           "typeArguments": [
             {
               "name": "",
-              "typeId": 6
+              "typeId": "1567acc73497bb83e04c376e2c8d3997d0207f0b9b8fa17b0192ee62e1c7a60b"
             }
           ],
           "typeId": 5
@@ -140,11 +139,11 @@
       "components": [
         {
           "name": "Address",
-          "typeId": 7
+          "typeId": 6
         },
         {
           "name": "ContractId",
-          "typeId": 8
+          "typeId": 7
         }
       ],
       "metadataTypeId": 3,
@@ -155,12 +154,6 @@
       "type": "generic T"
     },
     {
-      "components": [
-        {
-          "name": "f",
-          "typeId": 4
-        }
-      ],
       "metadataTypeId": 5,
       "type": "struct contract_with_type_aliases_abi::Generic",
       "typeParameters": [
@@ -168,33 +161,11 @@
       ]
     },
     {
-      "components": [
-        {
-          "name": "i",
-          "typeId": 3
-        }
-      ],
       "metadataTypeId": 6,
-      "type": "struct contract_with_type_aliases_abi::IdentityAliasWrapper"
-    },
-    {
-      "components": [
-        {
-          "name": "bits",
-          "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
-        }
-      ],
-      "metadataTypeId": 7,
       "type": "struct std::address::Address"
     },
     {
-      "components": [
-        {
-          "name": "bits",
-          "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
-        }
-      ],
-      "metadataTypeId": 8,
+      "metadataTypeId": 7,
       "type": "struct std::contract_id::ContractId"
     }
   ],

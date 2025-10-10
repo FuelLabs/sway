@@ -109,22 +109,10 @@
       "type": "enum abi_with_tuples::Location"
     },
     {
-      "components": [
-        {
-          "name": "age",
-          "typeId": 7
-        }
-      ],
       "metadataTypeId": 5,
       "type": "struct abi_with_tuples::Person"
     },
     {
-      "components": [
-        {
-          "name": "data",
-          "typeId": 7
-        }
-      ],
       "metadataTypeId": 6,
       "type": "struct abi_with_tuples::some_module::SomeStruct"
     },
