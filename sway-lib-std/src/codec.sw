@@ -5345,9 +5345,10 @@ where
 // END TUPLES_DECODE
 use ::ops::*;
 
+#[inline(never)]
 pub fn contract_call<T, TArgs>(
     contract_id: b256,
-    method_name: str,
+    method_name: raw_slice,
     args: TArgs,
     coins: u64,
     asset_id: b256,
@@ -5357,11 +5358,10 @@ where
     T: AbiDecode,
     TArgs: AbiEncode,
 {
-    let first_parameter = encode(method_name);
     let second_parameter = encode(args);
     let params = (
         contract_id,
-        asm(a: first_parameter.ptr()) {
+        asm(a: method_name.ptr()) {
             a: u64
         },
         asm(a: second_parameter.ptr()) {

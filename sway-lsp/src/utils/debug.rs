@@ -67,6 +67,7 @@ fn literal_to_string(literal: &Literal) -> String {
         Literal::String(len) => format!("str[{}]", len.as_str().len()),
         Literal::Boolean(_) => "bool".into(),
         Literal::B256(_) => "b256".into(),
+        Literal::Binary(_) => todo!(),
     }
 }
 

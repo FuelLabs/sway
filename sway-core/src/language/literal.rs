@@ -19,6 +19,7 @@ pub enum Literal {
     Numeric(u64),
     Boolean(bool),
     B256([u8; 32]),
+    Binary(Vec<u8>),
 }
 
 impl Literal {
@@ -74,6 +75,10 @@ impl Hash for Literal {
                 state.write_u8(8);
                 x.hash(state);
             }
+            Binary(x) => {
+                state.write_u8(9);
+                x.hash(state);
+            }
         }
     }
 }
@@ -111,6 +116,7 @@ impl fmt::Display for Literal {
                 .map(|x| x.to_string())
                 .collect::<Vec<_>>()
                 .join(", "),
+            Literal::Binary(_) => todo!(),
         };
         write!(f, "{s}")
     }
@@ -154,6 +160,7 @@ impl Literal {
             Literal::U256(_) => TypeInfo::UnsignedInteger(IntegerBits::V256),
             Literal::Boolean(_) => TypeInfo::Boolean,
             Literal::B256(_) => TypeInfo::B256,
+            Literal::Binary(_) => todo!(),
         }
     }
 }
