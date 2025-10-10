@@ -225,7 +225,12 @@ impl DebugWithEngines for GenericArgument {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         match self {
             GenericArgument::Type(a) => {
-                write!(f, "{:?}", engines.help_out(&*engines.te().get(a.type_id)))
+                write!(
+                    f,
+                    "{:?} -> {:?}",
+                    engines.help_out(&*engines.te().get(a.initial_type_id)),
+                    engines.help_out(&*engines.te().get(a.type_id))
+                )
             }
             GenericArgument::Const(a) => match &a.expr {
                 ConstGenericExpr::Literal { val, .. } => {

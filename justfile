@@ -19,6 +19,10 @@ update-fuel-dependencies:
 update-contract-ids:
     bash ./test/update-contract-ids.sh
 
+[group('automation')]
+bisect-forc path command:
+    bash ./scripts/bisect-forc/bisect-forc.sh "{{path}}" "{{command}}"
+
 [group('benchmark')]
 benchmark:
     bash ./benchmark.sh
@@ -30,6 +34,33 @@ benchmark-tests:
 [group('benchmark')]
 collect-gas-usage:
     cargo r -p test --release -- --verbose --forc-test-only | ./scripts/compare-gas-usage/extract-gas-usage.sh
+
+# This recipe should be used on snapshot tests that contains gas usage from `forc test`,
+# because it will extract gas usage from all versions of the file and generate an html interactive report.
+# path: path to file to extract gas usage
+# open: "-o" will open the default browser showing the report
+[linux]
+[group('benchmark')]
+collect-historic-gas-usage path open:
+    #! /bin/bash
+    mkdir -p target
+    rm target/a.csv
+    rm target/a.html
+    echo "test,gas,commit" > target/a.csv
+    for HASH in `git log --format='%H' -- {{path}}`; do
+        TIMESTAMP=$(git show -s --format='%as-%ct-%H' "$HASH")
+        git --no-pager show "$HASH:{{path}}" | bash -c "scripts/compare-gas-usage/extract-gas-usage.sh $TIMESTAMP" >> target/a.csv
+    done
+    ./scripts/csv2html/csv2html.sh target/a.csv >> target/a.html
+    if [ -n "{{open}}" ]; then
+        if which xdg-open &>> /dev/null
+        then
+            xdg-open target/a.html
+        elif which gnome-open &>> /dev/null
+        then
+            gnome-open target/a.html
+        fi
+    fi
 
 [group('build')]
 build-prism:
