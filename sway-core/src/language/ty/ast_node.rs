@@ -274,7 +274,7 @@ impl TyAstNode {
                     }
                 }
                 TyDecl::ConstGenericDecl(_) => {
-                    todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                    unreachable!("ConstGenericDecl is not reachable from AstNode")
                 }
                 TyDecl::TraitTypeDecl(_) => {}
                 TyDecl::FunctionDecl(decl) => {
@@ -336,7 +336,7 @@ impl TyAstNode {
                     TyDecl::ConstantDecl(_decl) => {}
                     TyDecl::ConfigurableDecl(_decl) => {}
                     TyDecl::ConstGenericDecl(_decl) => {
-                        todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                        unreachable!("ConstGenericDecl is not reachable from AstNode")
                     }
                     TyDecl::TraitTypeDecl(_) => {}
                     TyDecl::FunctionDecl(decl) => {

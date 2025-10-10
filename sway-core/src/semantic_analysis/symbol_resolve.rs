@@ -394,7 +394,7 @@ impl ResolveSymbols for TypeAliasDeclaration {
 
 impl ResolveSymbols for GenericArgument {
     fn resolve_symbols(&mut self, handler: &Handler, ctx: SymbolResolveContext) {
-        if let Some(call_path) = self.call_path_tree_mut() {
+        if let Some(call_path) = self.as_type_argument_mut().unwrap().call_path_tree.as_mut() {
             call_path.resolve_symbols(handler, ctx);
         }
     }
