@@ -457,12 +457,13 @@ impl<'a> FnCompiler<'a> {
         ))
     }
 
-    fn compile_string_slice(
+    // Can be used to raw untyped slice and string slice
+    fn compile_slice(
         &mut self,
         context: &mut Context,
         span_md_idx: Option<MetadataIndex>,
-        string_data: Value,
-        string_len: u64,
+        slice_ptr: Value,
+        slice_len: u64,
     ) -> Result<TerminatorValue, CompileError> {
         let int_ty = Type::get_uint64(context);
         let ptr_ty = Type::get_ptr(context);
@@ -471,9 +472,9 @@ impl<'a> FnCompiler<'a> {
         let ptr_val = self
             .current_block
             .append(context)
-            .cast_ptr(string_data, ptr_ty)
+            .cast_ptr(slice_ptr, ptr_ty)
             .add_metadatum(context, span_md_idx);
-        let len_val = ConstantContent::get_uint(context, 64, string_len);
+        let len_val = ConstantContent::get_uint(context, 64, slice_len);
 
         // a slice is a pointer and a length
         let field_types = vec![ptr_ty, int_ty];
@@ -569,7 +570,24 @@ impl<'a> FnCompiler<'a> {
                     .append(context)
                     .get_global(string_data_ptr);
                 let string_len = s.as_str().len() as u64;
-                self.compile_string_slice(context, span_md_idx, string_ptr, string_len)
+                self.compile_slice(context, span_md_idx, string_ptr, string_len)
+            }
+            ty::TyExpressionVariant::Literal(Literal::Binary(bytes)) => {
+                let data = ConstantContent::get_untyped_slice(context, bytes.clone())
+                    .get_constant(context)
+                    .unwrap();
+                let data_ptr = self.module.new_unique_global_var(
+                    context,
+                    "__const_global".into(),
+                    data.get_content(context).ty,
+                    Some(*data),
+                    false,
+                );
+
+                let slice_ptr = self.current_block.append(context).get_global(data_ptr);
+                let slice_len = bytes.len() as u64;
+
+                self.compile_slice(context, span_md_idx, slice_ptr, slice_len)
             }
             ty::TyExpressionVariant::Literal(Literal::Numeric(n)) => {
                 let implied_lit = match &*self.engines.te().get(ast_expr.return_type) {

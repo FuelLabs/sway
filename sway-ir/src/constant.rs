@@ -120,6 +120,13 @@ impl ConstantContent {
         }
     }
 
+    pub fn new_untyped_slice(context: &mut Context, bytes: Vec<u8>) -> Self {
+        ConstantContent {
+            ty: Type::new_untyped_slice(context),
+            value: ConstantValue::RawUntypedSlice(bytes),
+        }
+    }
+
     pub fn new_array(context: &mut Context, elm_ty: Type, elems: Vec<ConstantContent>) -> Self {
         ConstantContent {
             ty: Type::new_array(context, elm_ty, elems.len() as u64),
@@ -177,6 +184,12 @@ impl ConstantContent {
 
     pub fn get_string(context: &mut Context, value: Vec<u8>) -> Value {
         let new_const_contents = ConstantContent::new_string(context, value);
+        let new_const = Constant::unique(context, new_const_contents);
+        Value::new_constant(context, new_const)
+    }
+
+    pub fn get_untyped_slice(context: &mut Context, value: Vec<u8>) -> Value {
+        let new_const_contents = ConstantContent::new_untyped_slice(context, value);
         let new_const = Constant::unique(context, new_const_contents);
         Value::new_constant(context, new_const)
     }

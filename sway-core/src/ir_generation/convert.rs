@@ -14,15 +14,6 @@ use sway_types::{integer_bits::IntegerBits, span::Span};
 
 pub(super) fn convert_literal_to_value(context: &mut Context, ast_literal: &Literal) -> Value {
     match ast_literal {
-        // In Sway for now we don't have `as` casting and for integers which may be implicitly cast
-        // between widths we just emit a warning, and essentially ignore it. We also assume a
-        // 'Numeric' integer of undetermined width is 'u64`. The IR would like to be type
-        // consistent and doesn't tolerate missing integers of different width, so for now, until we
-        // do introduce explicit `as` casting, all integers are `u64` as far as the IR is
-        // concerned.
-        //
-        // XXX The above isn't true for other targets.  We need to improved this.
-        // FIXME
         Literal::U8(n) => ConstantContent::get_uint(context, 8, *n as u64),
         Literal::U16(n) => ConstantContent::get_uint(context, 64, *n as u64),
         Literal::U32(n) => ConstantContent::get_uint(context, 64, *n as u64),
@@ -32,6 +23,7 @@ pub(super) fn convert_literal_to_value(context: &mut Context, ast_literal: &Lite
         Literal::String(s) => ConstantContent::get_string(context, s.as_str().as_bytes().to_vec()),
         Literal::Boolean(b) => ConstantContent::get_bool(context, *b),
         Literal::B256(bs) => ConstantContent::get_b256(context, *bs),
+        Literal::Binary(bytes) => ConstantContent::get_untyped_slice(context, bytes.clone()),
     }
 }
 
@@ -40,7 +32,6 @@ pub(super) fn convert_literal_to_constant(
     ast_literal: &Literal,
 ) -> Constant {
     let c = match ast_literal {
-        // All integers are `u64`.  See comment above.
         Literal::U8(n) => ConstantContent::new_uint(context, 8, *n as u64),
         Literal::U16(n) => ConstantContent::new_uint(context, 64, *n as u64),
         Literal::U32(n) => ConstantContent::new_uint(context, 64, *n as u64),
@@ -50,6 +41,7 @@ pub(super) fn convert_literal_to_constant(
         Literal::String(s) => ConstantContent::new_string(context, s.as_str().as_bytes().to_vec()),
         Literal::Boolean(b) => ConstantContent::new_bool(context, *b),
         Literal::B256(bs) => ConstantContent::new_b256(context, *bs),
+        Literal::Binary(_) => todo!(),
     };
     Constant::unique(context, c)
 }
