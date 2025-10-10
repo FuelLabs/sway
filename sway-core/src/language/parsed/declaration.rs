@@ -232,7 +232,7 @@ impl Declaration {
             | Declaration::TraitTypeDeclaration(_)
             | Declaration::TraitFnDeclaration(_) => Visibility::Public,
             Declaration::ConstGenericDeclaration(_) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                unreachable!("Const generics do not have visibility")
             }
         }
     }

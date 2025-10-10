@@ -375,7 +375,9 @@ fn collect_enum_variants(decl: &TyEnumDecl) -> Vec<DocumentSymbol> {
             // Check for the presence of a CallPathTree, and if it exists, use the type information as the detail.
             let detail = variant
                 .type_argument
-                .call_path_tree()
+                .as_type_argument()
+                .unwrap()
+                .call_path_tree
                 .as_ref()
                 .map(|_| Some(variant.type_argument.span().as_str().to_string()))
                 .unwrap_or(None);
@@ -428,7 +430,10 @@ fn fn_decl_detail(parameters: &[TyFunctionParameter], return_type: &GenericArgum
 
     // Check for the presence of a CallPathTree, and if it exists, add it to the return type.
     let return_type = return_type
-        .call_path_tree()
+        .as_type_argument()
+        .unwrap()
+        .call_path_tree
+        .as_ref()
         .map(|_| format!(" -> {}", return_type.span().as_str()))
         .unwrap_or_default();
     format!("fn({params}){return_type}")

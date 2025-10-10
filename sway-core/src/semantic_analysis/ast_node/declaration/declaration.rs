@@ -536,7 +536,12 @@ impl TyDecl {
                     ty: GenericArgument::Type(GenericTypeArgument {
                         initial_type_id: ty.initial_type_id(),
                         type_id: new_ty,
-                        call_path_tree: ty.call_path_tree().cloned(),
+                        call_path_tree: ty
+                            .as_type_argument()
+                            .unwrap()
+                            .call_path_tree
+                            .as_ref()
+                            .cloned(),
                         span: ty.span(),
                     }),
                     visibility: decl.visibility,
@@ -553,7 +558,7 @@ impl TyDecl {
                 unreachable!();
             }
             parsed::Declaration::ConstGenericDeclaration(_) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                unreachable!("ConstGenericDecl is not reachable from AstNode")
             }
         };
 
@@ -580,7 +585,7 @@ impl TypeCheckAnalysis for TyDecl {
                 const_decl.type_check_analyze(handler, ctx)?;
             }
             TyDecl::ConstGenericDecl(_) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                unreachable!("ConstGenericDecl is not reachable from AstNode")
             }
             TyDecl::FunctionDecl(node) => {
                 let fn_decl = ctx.engines.de().get_function(&node.decl_id);
@@ -640,7 +645,7 @@ impl TypeCheckFinalization for TyDecl {
                 config_decl.type_check_finalize(handler, ctx)?;
             }
             TyDecl::ConstGenericDecl(_) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                unreachable!("ConstGenericDecl is not reachable from AstNode")
             }
             TyDecl::FunctionDecl(node) => {
                 let mut fn_decl = (*ctx.engines.de().get_function(&node.decl_id)).clone();
