@@ -4,7 +4,7 @@ use fuel_vm::{
     fuel_types::Bytes32,
 };
 use fuels::{accounts::signers::private_key::PrivateKeySigner, prelude::*, types::Bits256};
-use rand::{rngs::StdRng, Rng, SeedableRng};
+use rand::{Rng, SeedableRng, rngs::StdRng};
 
 abigen!(Contract(
     name = "EcRecoverContract",

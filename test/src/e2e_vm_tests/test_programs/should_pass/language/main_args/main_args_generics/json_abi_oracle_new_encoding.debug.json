@@ -68,12 +68,6 @@
       "type": "generic V"
     },
     {
-      "components": [
-        {
-          "name": "a",
-          "typeId": 2
-        }
-      ],
       "metadataTypeId": 4,
       "type": "struct OneGeneric",
       "typeParameters": [
@@ -81,22 +75,6 @@
       ]
     },
     {
-      "components": [
-        {
-          "name": "b",
-          "typeArguments": [
-            {
-              "name": "",
-              "typeId": 1
-            }
-          ],
-          "typeId": 4
-        },
-        {
-          "name": "c",
-          "typeId": 3
-        }
-      ],
       "metadataTypeId": 5,
       "type": "struct TwoGenerics",
       "typeParameters": [

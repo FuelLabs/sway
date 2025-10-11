@@ -2,7 +2,7 @@ use fuel_core::types::fuel_tx::ContractIdExt;
 use fuel_vm::consts::VM_MAX_RAM;
 use fuels::{
     prelude::*,
-    types::{Bits256, SubAssetId, ContractId},
+    types::{Bits256, ContractId, SubAssetId},
 };
 
 abigen!(
@@ -96,7 +96,10 @@ async fn can_get_balance_of_contract() {
 
     let result = context_instance
         .methods()
-        .get_balance_of_contract(Bits256(*caller_id.asset_id(&SubAssetId::zeroed())), caller_id)
+        .get_balance_of_contract(
+            Bits256(*caller_id.asset_id(&SubAssetId::zeroed())),
+            caller_id,
+        )
         .with_contracts(&[&caller_instance])
         .call()
         .await

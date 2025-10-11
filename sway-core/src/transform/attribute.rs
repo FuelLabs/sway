@@ -356,6 +356,8 @@ pub enum AttributeKind {
     Error,
     Trace,
     AbiName,
+    Event,
+    Indexed,
 }
 
 /// Denotes if an [ItemTraitItem] belongs to an ABI or to a trait.
@@ -388,6 +390,8 @@ impl AttributeKind {
             ERROR_ATTRIBUTE_NAME => AttributeKind::Error,
             TRACE_ATTRIBUTE_NAME => AttributeKind::Trace,
             ABI_NAME_ATTRIBUTE_NAME => AttributeKind::AbiName,
+            EVENT_ATTRIBUTE_NAME => AttributeKind::Event,
+            INDEXED_ATTRIBUTE_NAME => AttributeKind::Indexed,
             _ => AttributeKind::Unknown,
         }
     }
@@ -418,6 +422,8 @@ impl AttributeKind {
             Error => false,
             Trace => false,
             AbiName => false,
+            Event => false,
+            Indexed => false,
         }
     }
 }
@@ -461,6 +467,8 @@ impl Attribute {
             // `trace(never)` or `trace(always)`.
             Trace => Multiplicity::exactly(1),
             AbiName => Multiplicity::exactly(1),
+            Event => Multiplicity::zero(),
+            Indexed => Multiplicity::zero(),
         }
     }
 
@@ -518,6 +526,8 @@ impl Attribute {
             Error => MustBeIn(vec![ERROR_M_ARG_NAME]),
             Trace => MustBeIn(vec![TRACE_ALWAYS_ARG_NAME, TRACE_NEVER_ARG_NAME]),
             AbiName => MustBeIn(vec![ABI_NAME_NAME_ARG_NAME]),
+            Event => None,
+            Indexed => None,
         }
     }
 
@@ -543,6 +553,8 @@ impl Attribute {
             Error => Yes,
             Trace => No,
             AbiName => Yes,
+            Event => No,
+            Indexed => No,
         }
     }
 
@@ -565,6 +577,8 @@ impl Attribute {
             Error => false,
             Trace => false,
             AbiName => false,
+            Event => false,
+            Indexed => false,
         }
     }
 
@@ -620,6 +634,8 @@ impl Attribute {
             Error => false,
             Trace => matches!(item_kind, ItemKind::Fn(_)),
             AbiName => matches!(item_kind, ItemKind::Struct(_) | ItemKind::Enum(_)),
+            Event => matches!(item_kind, ItemKind::Struct(_) | ItemKind::Enum(_)),
+            Indexed => false,
         }
     }
 
@@ -647,6 +663,8 @@ impl Attribute {
             Error => struct_or_enum_field == StructOrEnumField::EnumField,
             Trace => false,
             AbiName => false,
+            Event => false,
+            Indexed => matches!(struct_or_enum_field, StructOrEnumField::StructField),
         }
     }
 
@@ -676,6 +694,8 @@ impl Attribute {
             // because they don't have implementation.
             Trace => false,
             AbiName => false,
+            Event => false,
+            Indexed => false,
         }
     }
 
@@ -700,6 +720,8 @@ impl Attribute {
             Error => false,
             Trace => matches!(item, ItemImplItem::Fn(..)),
             AbiName => false,
+            Event => false,
+            Indexed => false,
         }
     }
 
@@ -723,6 +745,8 @@ impl Attribute {
             Error => false,
             Trace => true,
             AbiName => false,
+            Event => false,
+            Indexed => false,
         }
     }
 
@@ -744,6 +768,8 @@ impl Attribute {
             Error => false,
             Trace => false,
             AbiName => false,
+            Event => false,
+            Indexed => false,
         }
     }
 
@@ -764,6 +790,8 @@ impl Attribute {
             Error => false,
             Trace => false,
             AbiName => false,
+            Event => false,
+            Indexed => false,
         }
     }
 
@@ -818,6 +846,12 @@ impl Attribute {
             Trace => vec!["\"trace\" attribute can only annotate functions."],
             AbiName => vec![
                 "\"abi_name\" attribute can only annotate structs and enums.",
+            ],
+            Event => vec![
+                "\"event\" attribute can only annotate structs or enums.",
+            ],
+            Indexed => vec![
+                "\"indexed\" attribute can only annotate struct fields.",
             ],
         };
 
@@ -1082,6 +1116,18 @@ impl Attributes {
                 .next_back()
                 .and_then(|arg| arg.get_string_opt(&Handler::default()).ok().flatten())
         })
+    }
+
+    /// Returns the `#[event]` [Attribute], or `None` if the
+    /// [Attributes] does not contain any `#[event]` attributes.
+    pub fn event(&self) -> Option<&Attribute> {
+        self.of_kind(AttributeKind::Event).last()
+    }
+
+    /// Returns the `#[indexed]` [Attribute], or `None` if the
+    /// [Attributes] does not contain any `#[indexed]` attributes.
+    pub fn indexed(&self) -> Option<&Attribute> {
+        self.of_kind(AttributeKind::Indexed).last()
     }
 }
 

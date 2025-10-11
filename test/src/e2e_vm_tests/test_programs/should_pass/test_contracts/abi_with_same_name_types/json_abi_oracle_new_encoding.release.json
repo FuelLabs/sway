@@ -14,12 +14,10 @@
     },
     {
       "concreteTypeId": "a45846b92d83fc9bce3ae9107300f47b4adc654abc3a42c7bd6395f4ab30a519",
-      "metadataTypeId": 3,
       "type": "struct dep_1::MyStruct1"
     },
     {
       "concreteTypeId": "871f7c31e4209def536096b47765433990004089691aa2814a497f27040bee45",
-      "metadataTypeId": 5,
       "type": "struct dep_2::MyStruct2"
     },
     {
@@ -78,46 +76,6 @@
     {
       "metadataTypeId": 2,
       "type": "generic T"
-    },
-    {
-      "components": [
-        {
-          "name": "bam",
-          "typeId": 4
-        }
-      ],
-      "metadataTypeId": 3,
-      "type": "struct dep_1::MyStruct1"
-    },
-    {
-      "components": [
-        {
-          "name": "bam",
-          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
-        }
-      ],
-      "metadataTypeId": 4,
-      "type": "struct dep_1::MyStructDuplicated"
-    },
-    {
-      "components": [
-        {
-          "name": "bam",
-          "typeId": 6
-        }
-      ],
-      "metadataTypeId": 5,
-      "type": "struct dep_2::MyStruct2"
-    },
-    {
-      "components": [
-        {
-          "name": "bam",
-          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
-        }
-      ],
-      "metadataTypeId": 6,
-      "type": "struct dep_2::MyStructDuplicated"
     }
   ],
   "panickingCalls": {},

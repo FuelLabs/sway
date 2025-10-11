@@ -38,7 +38,7 @@
       "components": [
         {
           "name": "__tuple_element",
-          "typeId": 4
+          "typeId": 3
         },
         {
           "name": "__tuple_element",
@@ -62,11 +62,11 @@
       "components": [
         {
           "name": "Positive",
-          "typeId": 5
+          "typeId": 4
         },
         {
           "name": "Negative",
-          "typeId": 5
+          "typeId": 4
         }
       ],
       "metadataTypeId": 2,
@@ -74,20 +74,10 @@
     },
     {
       "metadataTypeId": 3,
-      "type": "str[3]"
-    },
-    {
-      "components": [
-        {
-          "name": "val",
-          "typeId": 3
-        }
-      ],
-      "metadataTypeId": 4,
       "type": "struct OpName"
     },
     {
-      "metadataTypeId": 5,
+      "metadataTypeId": 4,
       "type": "u64"
     }
   ],

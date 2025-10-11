@@ -1109,6 +1109,13 @@ pub enum CompileError {
         type_name: String,
         span: Span,
     },
+    #[error("Field \"{field_name}\" is marked as `#[indexed]`, but \"{struct_name}\" is not an `#[event]` struct.")]
+    IndexedFieldInNonEventStruct {
+        field_name: IdentUnique,
+        struct_name: IdentUnique,
+    },
+    #[error("Field \"{field_name}\" is marked as `#[indexed]`, but not a fized size type.")]
+    IndexedFieldIsNotFixedSizeABIType { field_name: IdentUnique },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1344,6 +1351,8 @@ impl Spanned for CompileError {
             PanicExpressionArgumentIsNotError { span, .. } => span.clone(),
             MaxNumOfPanicExpressionsReached { span, .. } => span.clone(),
             MaxNumOfPanickingCallsReached { span, .. } => span.clone(),
+            IndexedFieldInNonEventStruct { field_name, .. } => field_name.span(),
+            IndexedFieldIsNotFixedSizeABIType { field_name } => field_name.span(),
             IncoherentImplDueToOrphanRule { span, .. } => span.clone(),
         }
     }
@@ -3228,6 +3237,24 @@ impl ToDiagnostic for CompileError {
                 ),
                 hints: vec![],
                 help: vec![format!("The name must be a valid Sway identifier{}.", if name.is_empty() { " and cannot be empty" } else { "" })],
+            },
+            IndexedFieldInNonEventStruct { field_name, struct_name } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Indexed fields must be in event structs".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    field_name.span(),
+                    format!("Field \"{field_name}\" is marked as `#[indexed]`, but its struct is not an event.")
+                ),
+                hints: vec![
+                    Hint::help(
+                        source_engine,
+                        struct_name.span(),
+                        format!("Consider annotating \"{struct_name}\" struct with the `#[event]` attribute."),
+                    )
+                ],
+                help: vec![
+                    "Fields can be marked as `#[indexed]` only if their parent struct is annotated with the `#[event]` attribute.".to_string(),
+                ]
             },
             MultipleDefinitionsOfConstant { name, old, new } => {
                 Diagnostic {
