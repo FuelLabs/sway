@@ -50,5 +50,6 @@ fn build_opts_from_cmd(cmd: PredicateRootCommand) -> pkg::BuildOpts {
         member_filter: pkg::MemberFilter::only_predicates(),
         experimental: cmd.experimental.experimental,
         no_experimental: cmd.experimental.no_experimental,
+        no_output: false,
     }
 }

@@ -23,7 +23,7 @@ struct Cli {
     exclude: Option<regex::Regex>,
 
     /// Skip all tests until a test matches this regex
-    #[arg(long, short, value_name = "REGEX")]
+    #[arg(long, value_name = "REGEX")]
     skip_until: Option<regex::Regex>,
 
     /// Only run tests with ABI JSON output validation
@@ -31,8 +31,8 @@ struct Cli {
     abi_only: bool,
 
     /// Only run tests with no `std` dependencies
-    #[arg(long, visible_alias = "exclude_std")]
-    exclude_std: bool,
+    #[arg(long, visible_alias = "no_std")]
+    no_std_only: bool,
 
     /// Only run tests that deploy contracts
     #[arg(long, visible_alias = "contract")]
@@ -43,11 +43,13 @@ struct Cli {
     first_only: bool,
 
     /// Print out warnings, errors, and output of print options
+    ///
+    /// This option is ignored if tests are run in parallel.
     #[arg(long, env = "SWAY_TEST_VERBOSE")]
     verbose: bool,
 
     /// Compile Sway code in release mode
-    #[arg(long)]
+    #[arg(long, short)]
     release: bool,
 
     /// Intended for use in CI to ensure test lock files are up to date
@@ -63,14 +65,20 @@ struct Cli {
     update_output_files: bool,
 
     /// Print out the specified IR (separate options with comma), if the verbose option is on
+    ///
+    /// This option is ignored if tests are run in parallel.
     #[arg(long, num_args(1..=18), value_parser = clap::builder::PossibleValuesParser::new(PrintIrCliOpt::cli_options()))]
     print_ir: Option<Vec<String>>,
 
     /// Print out the specified ASM (separate options with comma), if the verbose option is on
+    ///
+    /// This option is ignored if tests are run in parallel.
     #[arg(long, num_args(1..=5), value_parser = clap::builder::PossibleValuesParser::new(&PrintAsmCliOpt::CLI_OPTIONS))]
     print_asm: Option<Vec<String>>,
 
     /// Print out the final bytecode, if the verbose option is on
+    ///
+    /// This option is ignored if tests are run in parallel.
     #[arg(long)]
     print_bytecode: bool,
 
@@ -80,6 +88,25 @@ struct Cli {
     /// Only run tests of a particular kind
     #[arg(long, short, num_args(1..=4), value_parser = clap::builder::PossibleValuesParser::new(&TestKindOpt::CLI_OPTIONS))]
     kind: Option<Vec<String>>,
+
+    /// Run only the exact test provided by an absolute path to a `test.toml` or `test.<feature>.toml` file
+    ///
+    /// This flag is used internally for parallel test execution, and is not intended for general use.
+    #[arg(long, hide = true)]
+    exact: Option<String>,
+
+    /// Run tests sequentially (not in parallel)
+    #[arg(long, short)]
+    sequential: bool,
+
+    /// Write compilation output (e.g., bytecode, ABI JSON, storage slots JSON, etc.) to the filesystem
+    ///
+    /// This is primarily useful for troubleshooting test failures.
+    /// Output files are written to the `out` directory within each test's directory.
+    ///
+    /// This option is ignored if tests are run in parallel.
+    #[arg(long)]
+    write_output: bool,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -133,7 +160,7 @@ pub struct FilterConfig {
     pub exclude: Option<regex::Regex>,
     pub skip_until: Option<regex::Regex>,
     pub abi_only: bool,
-    pub exclude_std: bool,
+    pub no_std_only: bool,
     pub contract_only: bool,
     pub first_only: bool,
 }
@@ -149,31 +176,75 @@ pub struct RunConfig {
     pub print_asm: PrintAsm,
     pub print_bytecode: bool,
     pub experimental: sway_features::CliFields,
-    pub kind: TestKind,
+    pub write_output: bool,
 }
 
-#[tokio::main]
+#[derive(Debug, Clone)]
+pub struct RunKindConfig {
+    pub kind: TestKind,
+    pub sequential: bool,
+}
+
+// We want to use the "current_thread" flavor because running
+// Tokio runtime on another thread brings only overhead with
+// no benefits, especially when running tests in parallel.
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
     init_tracing_subscriber(Default::default());
 
-    // Parse args
     let cli = Cli::parse();
+
+    let build_target = match cli.build_target {
+        Some(target) => match BuildTarget::from_str(target.as_str()) {
+            Ok(target) => target,
+            _ => panic!("Unexpected build target: {}", target),
+        },
+        None => BuildTarget::default(),
+    };
+
+    if let Some(exact) = &cli.exact {
+        if !std::fs::exists(exact).unwrap_or(false) {
+            panic!("The --exact test path does not exist: {exact}\nThe --exact path must be an absolute path to an existing `test.toml` or `test.<feature>.toml` file");
+        }
+
+        let run_config = RunConfig {
+            // Take over options that are supported when running tests in parallel.
+            locked: cli.locked,
+            release: cli.release,
+            build_target,
+            experimental: cli.experimental,
+            update_output_files: cli.update_output_files,
+            // Ignore options that are not supported when running tests in parallel.
+            print_ir: PrintIr::none(),
+            print_asm: PrintAsm::none(),
+            print_bytecode: false,
+            write_output: false,
+            verbose: false,
+        };
+
+        e2e_vm_tests::run_exact(exact, &run_config).await?;
+
+        return Ok(());
+    }
+
+    let run_kind_config = RunKindConfig {
+        kind: cli
+            .kind
+            .as_ref()
+            .map_or(TestKind::all(), |opts| TestKindOpt::from(opts).0),
+        sequential: cli.sequential,
+    };
+
     let filter_config = FilterConfig {
         include: cli.include.clone(),
         exclude: cli.exclude,
         skip_until: cli.skip_until,
         abi_only: cli.abi_only,
-        exclude_std: cli.exclude_std,
+        no_std_only: cli.no_std_only,
         contract_only: cli.contract_only,
         first_only: cli.first_only,
     };
-    let build_target = match cli.build_target {
-        Some(target) => match BuildTarget::from_str(target.as_str()) {
-            Ok(target) => target,
-            _ => panic!("unexpected build target"),
-        },
-        None => BuildTarget::default(),
-    };
+
     let run_config = RunConfig {
         locked: cli.locked,
         verbose: cli.verbose,
@@ -190,10 +261,7 @@ async fn main() -> Result<()> {
             .as_ref()
             .map_or(PrintAsm::default(), |opts| PrintAsmCliOpt::from(opts).0),
         print_bytecode: cli.print_bytecode,
-        kind: cli
-            .kind
-            .as_ref()
-            .map_or(TestKind::all(), |opts| TestKindOpt::from(opts).0),
+        write_output: cli.write_output,
     };
 
     // Check that the tests are consistent
@@ -203,14 +271,20 @@ async fn main() -> Result<()> {
     reduced_std_libs::create()?;
 
     // Run E2E tests
-    if run_config.kind.e2e {
-        e2e_vm_tests::run(&filter_config, &run_config)
-            .instrument(tracing::trace_span!("E2E"))
-            .await?;
+    if run_kind_config.kind.e2e {
+        if run_kind_config.sequential {
+            e2e_vm_tests::run_sequentially(&filter_config, &run_config)
+                .instrument(tracing::trace_span!("E2E"))
+                .await?;
+        } else {
+            e2e_vm_tests::run_in_parallel(&filter_config, &run_config)
+                .instrument(tracing::trace_span!("E2E"))
+                .await?;
+        }
     }
 
     // Run IR tests
-    if run_config.kind.ir && !filter_config.first_only {
+    if run_kind_config.kind.ir && !filter_config.first_only {
         println!("\n");
         ir_generation::run(filter_config.include.as_ref(), cli.verbose, &run_config)
             .instrument(tracing::trace_span!("IR"))
@@ -218,7 +292,7 @@ async fn main() -> Result<()> {
     }
 
     // Run snapshot tests
-    if run_config.kind.snapshot && !filter_config.first_only {
+    if run_kind_config.kind.snapshot && !filter_config.first_only {
         println!("\n");
         snapshot::run(filter_config.include.as_ref())
             .instrument(tracing::trace_span!("SNAPSHOT"))

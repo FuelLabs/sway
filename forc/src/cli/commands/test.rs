@@ -323,6 +323,7 @@ fn opts_from_cmd(cmd: Command) -> forc_test::TestOpts {
         build_target: cmd.build.build_target,
         experimental: cmd.experimental.experimental,
         no_experimental: cmd.experimental.no_experimental,
+        no_output: false,
     }
 }
 

@@ -16,12 +16,15 @@ use forc_util::tx_utils::decode_log_data;
 use fuel_vm::fuel_tx;
 use fuel_vm::fuel_types::canonical::Input;
 use fuel_vm::prelude::*;
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use regex::Regex;
+use std::borrow::Cow;
 use std::collections::{BTreeMap, HashSet};
 use std::io::stdout;
 use std::io::Write;
+use std::process::{Command, Stdio};
 use std::str::FromStr;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -86,6 +89,7 @@ impl FileCheck {
 
 #[derive(Clone)]
 struct TestDescription {
+    test_toml_path: String,
     name: String,
     suffix: Option<String>,
     category: TestCategory,
@@ -105,6 +109,16 @@ struct TestDescription {
     run_config: RunConfig,
     experimental: ExperimentalFeatures,
     has_experimental_field: bool,
+}
+
+impl TestDescription {
+    pub fn display_name(&self) -> Cow<str> {
+        if let Some(suffix) = self.suffix.as_ref() {
+            format!("{} ({})", self.name, suffix).into()
+        } else {
+            self.name.as_str().into()
+        }
+    }
 }
 
 #[derive(PartialEq, Eq, Hash)]
@@ -306,7 +320,7 @@ impl TestContext {
         })
     }
 
-    async fn run(&self, test: TestDescription, output: &mut String, verbose: bool) -> Result<()> {
+    async fn run(&self, test: &TestDescription, output: &mut String, verbose: bool) -> Result<()> {
         let TestDescription {
             name,
             suffix,
@@ -344,10 +358,12 @@ impl TestContext {
 
         match category {
             TestCategory::Runs => {
-                let expected_result = expected_result.expect("No expected result found. This is likely because test.toml is missing either an \"expected_result_new_encoding\" or \"expected_result\" entry");
+                let expected_result = expected_result
+                    .as_ref()
+                    .expect("No expected result found. This is likely because the `test.toml` is missing either an \"expected_result_new_encoding\" or \"expected_result\" entry.");
 
                 let (result, out) =
-                    run_and_capture_output(|| harness::compile_to_bytes(&name, &run_config)).await;
+                    run_and_capture_output(|| harness::compile_to_bytes(name, run_config)).await;
                 *output = out;
 
                 if let Ok(result) = result.as_ref() {
@@ -385,7 +401,7 @@ impl TestContext {
                     }
                 }
 
-                check_file_checker(checker, &name, output)?;
+                check_file_checker(checker, name, output)?;
 
                 let compiled = result?;
 
@@ -396,14 +412,18 @@ impl TestContext {
                     }
                 };
 
-                if compiled.warnings.len() > expected_warnings as usize {
+                if compiled.warnings.len() > *expected_warnings as usize {
                     return Err(anyhow::Error::msg(format!(
                         "Expected warnings: {expected_warnings}\nActual number of warnings: {}",
                         compiled.warnings.len()
                     )));
                 }
 
-                let result = harness::runs_in_vm(compiled.clone(), script_data, witness_data)?;
+                let result = harness::runs_in_vm(
+                    compiled.clone(),
+                    script_data.clone(),
+                    witness_data.clone(),
+                )?;
                 let actual_result = match result {
                     harness::VMExecutionResult::Fuel(state, receipts, ecal) => {
                         print_receipts(output, &receipts);
@@ -462,20 +482,20 @@ impl TestContext {
                     },
                 };
 
-                if actual_result != expected_result {
+                if &actual_result != expected_result {
                     Err(anyhow::Error::msg(format!(
                         "expected: {expected_result:?}\nactual: {actual_result:?}"
                     )))
                 } else {
-                    if validate_abi {
+                    if *validate_abi {
                         let (result, out) = run_and_capture_output(|| async {
                             harness::test_json_abi(
-                                &name,
+                                name,
                                 &compiled,
                                 experimental.new_encoding,
                                 run_config.update_output_files,
-                                &suffix,
-                                has_experimental_field,
+                                suffix,
+                                *has_experimental_field,
                             )
                         })
                         .await;
@@ -489,12 +509,12 @@ impl TestContext {
 
             TestCategory::Compiles => {
                 let (result, out) =
-                    run_and_capture_output(|| harness::compile_to_bytes(&name, &run_config)).await;
+                    run_and_capture_output(|| harness::compile_to_bytes(name, run_config)).await;
                 *output = out;
 
                 let compiled_pkgs = match result? {
                     forc_pkg::Built::Package(built_pkg) => {
-                        if built_pkg.warnings.len() > expected_warnings as usize {
+                        if built_pkg.warnings.len() > *expected_warnings as usize {
                             return Err(anyhow::Error::msg(format!(
                                 "Expected warnings: {expected_warnings}\nActual number of warnings: {}",
                                 built_pkg.warnings.len()
@@ -513,9 +533,9 @@ impl TestContext {
                         .collect(),
                 };
 
-                check_file_checker(checker, &name, output)?;
+                check_file_checker(checker, name, output)?;
 
-                if validate_abi {
+                if *validate_abi {
                     for (name, built_pkg) in &compiled_pkgs {
                         let (result, out) = run_and_capture_output(|| async {
                             harness::test_json_abi(
@@ -523,8 +543,8 @@ impl TestContext {
                                 built_pkg,
                                 experimental.new_encoding,
                                 run_config.update_output_files,
-                                &suffix,
-                                has_experimental_field,
+                                suffix,
+                                *has_experimental_field,
                             )
                         })
                         .await;
@@ -533,10 +553,10 @@ impl TestContext {
                     }
                 }
 
-                if validate_storage_slots {
+                if *validate_storage_slots {
                     for (name, built_pkg) in &compiled_pkgs {
                         let (result, out) = run_and_capture_output(|| async {
-                            harness::test_json_storage_slots(name, built_pkg, &suffix)
+                            harness::test_json_storage_slots(name, built_pkg, suffix)
                         })
                         .await;
                         result?;
@@ -548,7 +568,7 @@ impl TestContext {
 
             TestCategory::FailsToCompile => {
                 let (result, out) =
-                    run_and_capture_output(|| harness::compile_to_bytes(&name, &run_config)).await;
+                    run_and_capture_output(|| harness::compile_to_bytes(name, run_config)).await;
 
                 *output = out;
 
@@ -559,7 +579,7 @@ impl TestContext {
 
                     Err(anyhow::Error::msg("Test compiles but is expected to fail"))
                 } else {
-                    check_file_checker(checker, &name, output)?;
+                    check_file_checker(checker, name, output)?;
                     Ok(())
                 }
             }
@@ -575,7 +595,7 @@ impl TestContext {
                 let mut contract_ids = Vec::new();
                 for contract_path in contract_paths.clone() {
                     let (result, out) = run_and_capture_output(|| async {
-                        self.deploy_contract(&run_config, contract_path).await
+                        self.deploy_contract(run_config, contract_path).await
                     })
                     .await;
                     output.push_str(&out);
@@ -583,7 +603,7 @@ impl TestContext {
                 }
                 let contract_ids = contract_ids.into_iter().collect::<Result<Vec<_>, _>>()?;
 
-                let (result, out) = harness::runs_on_node(&name, &run_config, &contract_ids).await;
+                let (result, out) = harness::runs_on_node(name, run_config, &contract_ids).await;
 
                 output.push_str(&out);
 
@@ -615,9 +635,9 @@ impl TestContext {
                 }
 
                 match &receipts[receipts.len() - 2] {
-                    Receipt::Return { val, .. } => match expected_result.unwrap() {
+                    Receipt::Return { val, .. } => match expected_result.as_ref().unwrap() {
                         TestResult::Result(v) => {
-                            if v != *val {
+                            if *v != *val {
                                 return Err(anyhow::Error::msg(format!(
                                     "return value does not match expected: {v:?}, {val:?}"
                                 )));
@@ -633,9 +653,9 @@ impl TestContext {
                             todo!("Test result `Revert` is currently not implemented.")
                         }
                     },
-                    Receipt::ReturnData { data, .. } => match expected_result.unwrap() {
+                    Receipt::ReturnData { data, .. } => match expected_result.as_ref().unwrap() {
                         TestResult::ReturnData(v) => {
-                            if v != *data.as_ref().unwrap() {
+                            if v != data.as_ref().unwrap() {
                                 return Err(anyhow::Error::msg(format!(
                                     "return value does not match expected: {v:?}, {data:?}"
                                 )));
@@ -659,7 +679,7 @@ impl TestContext {
 
             TestCategory::UnitTestsPass => {
                 let (result, out) =
-                    harness::compile_and_run_unit_tests(&name, &run_config, true).await;
+                    harness::compile_and_run_unit_tests(name, run_config, true).await;
                 *output = out;
 
                 let mut decoded_logs = vec![];
@@ -713,7 +733,11 @@ impl TestContext {
                         }
                     }
 
-                    let expected_decoded_test_logs = expected_decoded_test_logs.unwrap_or_default();
+                    let expected_decoded_test_logs = if let Some(expected_decoded_test_logs) = expected_decoded_test_logs.as_ref() {
+                        expected_decoded_test_logs
+                    } else {
+                        &vec![]
+                    };
 
                     if !failed.is_empty() {
                         println!("FAILED!! output:\n{}", output);
@@ -722,7 +746,7 @@ impl TestContext {
                             failed.len(),
                             failed.into_iter().collect::<String>()
                         );
-                    } else if expected_decoded_test_logs != decoded_logs {
+                    } else if expected_decoded_test_logs != &decoded_logs {
                         println!("FAILED!! output:\n{}", output);
                         panic!(
                             "For {name}\ncollected decoded logs: {:?}\nexpected decoded logs: {:?}",
@@ -739,88 +763,236 @@ impl TestContext {
     }
 }
 
-pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result<()> {
-    // Discover tests
-    let mut tests = discover_test_tomls(run_config)?;
-    let total_number_of_tests = tests.len();
+struct TestsInRun {
+    total_number_of_tests: usize,
+    skipped_tests: Vec<TestDescription>,
+    disabled_tests: Vec<TestDescription>,
+    included_tests: Vec<TestDescription>,
+    excluded_tests: Vec<TestDescription>,
+    tests_to_run: Vec<TestDescription>,
+}
 
-    // Filter tests
-    let skipped_tests = filter_config
-        .skip_until
-        .as_ref()
-        .map(|skip_until| {
-            let mut found = false;
-            tests.retained(|t| {
-                found
-                    || if skip_until.is_match(&t.name) {
-                        found = true;
-                        true
-                    } else {
-                        false
-                    }
+impl TestsInRun {
+    fn new(filter_config: &FilterConfig, run_config: &RunConfig) -> Result<Self> {
+        let all_tests = discover_test_tomls(run_config)?;
+        let total_number_of_tests = all_tests.len();
+
+        let mut tests_to_run = all_tests;
+        let skipped_tests = filter_config
+            .skip_until
+            .as_ref()
+            .map(|skip_until| {
+                let mut found = false;
+                tests_to_run.retain_and_get_removed(|t| {
+                    found
+                        || if skip_until.is_match(&t.name) {
+                            found = true;
+                            true
+                        } else {
+                            false
+                        }
+                })
             })
-        })
-        .unwrap_or_default();
-    let disabled_tests = tests.retained(|t| t.category != TestCategory::Disabled);
-    let included_tests = filter_config
-        .include
-        .as_ref()
-        .map(|include| tests.retained(|t| include.is_match(&t.name)))
-        .unwrap_or_default();
-    let excluded_tests = filter_config
-        .exclude
-        .as_ref()
-        .map(|exclude| tests.retained(|t| !exclude.is_match(&t.name)))
-        .unwrap_or_default();
+            .unwrap_or_default();
+        let disabled_tests =
+            tests_to_run.retain_and_get_removed(|t| t.category != TestCategory::Disabled);
+        let included_tests = filter_config
+            .include
+            .as_ref()
+            .map(|include| tests_to_run.retain_and_get_removed(|t| include.is_match(&t.name)))
+            .unwrap_or_default();
+        let excluded_tests = filter_config
+            .exclude
+            .as_ref()
+            .map(|exclude| tests_to_run.retain_and_get_removed(|t| !exclude.is_match(&t.name)))
+            .unwrap_or_default();
 
-    if filter_config.exclude_std {
-        tests.retain(|t| exclude_tests_dependency(t, "std"));
-    }
-    if filter_config.abi_only {
-        tests.retain(|t| t.validate_abi);
-    }
-    if filter_config.contract_only {
-        tests.retain(|t| t.category == TestCategory::RunsWithContract);
-    }
-    if filter_config.first_only && !tests.is_empty() {
-        tests = vec![tests.remove(0)];
-    }
-
-    // Run tests
-    let context = TestContext {
-        deployed_contracts: Default::default(),
-    };
-    let mut number_of_tests_executed = 0;
-    let mut number_of_tests_failed = 0;
-    let mut failed_tests = vec![];
-
-    let start_time = Instant::now();
-    for (i, test) in tests.into_iter().enumerate() {
+        if filter_config.no_std_only {
+            tests_to_run.retain(|t| exclude_tests_dependency(t, "std"));
+        }
+        if filter_config.abi_only {
+            tests_to_run.retain(|t| t.validate_abi);
+        }
+        if filter_config.contract_only {
+            tests_to_run.retain(|t| t.category == TestCategory::RunsWithContract);
+        }
+        // if filter_config.forc_test_only {
+        //     tests_to_run.retain(|t| t.category == TestCategory::UnitTestsPass);
+        // }
         let cur_profile = if run_config.release {
             BuildProfile::RELEASE
         } else {
             BuildProfile::DEBUG
         };
+        tests_to_run.retain(|test| !test.unsupported_profiles.contains(&cur_profile));
+        tests_to_run.retain(|test| test.supported_targets.contains(&run_config.build_target));
 
-        if test.unsupported_profiles.contains(&cur_profile) {
-            continue;
+        if filter_config.first_only {
+            tests_to_run.truncate(1);
         }
 
-        let name = if let Some(suffix) = test.suffix.as_ref() {
-            format!("{} ({})", test.name, suffix)
+        Ok(Self {
+            total_number_of_tests,
+            skipped_tests,
+            disabled_tests,
+            included_tests,
+            excluded_tests,
+            tests_to_run,
+        })
+    }
+}
+
+pub async fn run_exact(exact: &str, run_config: &RunConfig) -> Result<()> {
+    let test = parse_test_toml(Path::new(exact), run_config)?;
+    let context = TestContext {
+        deployed_contracts: Default::default(),
+    };
+    let mut output = String::new();
+    context.run(&test, &mut output, run_config.verbose).await
+}
+
+pub async fn run_in_parallel(filter_config: &FilterConfig, run_config: &RunConfig) -> Result<()> {
+    let mut tests_in_run = TestsInRun::new(filter_config, run_config)?;
+
+    // Build common CLI args to pass to each subprocess.
+    let mut common_args = vec![];
+    common_args.push("--build-target".to_string());
+    common_args.push(run_config.build_target.to_string());
+    if run_config.locked {
+        common_args.push("--locked".to_string());
+    }
+    if run_config.release {
+        common_args.push("--release".to_string());
+    }
+    if run_config.update_output_files {
+        common_args.push("--update-output-files".to_string());
+    }
+    if let Some(experimental) = run_config.experimental.experimental_as_cli_string() {
+        common_args.push("--experimental".to_string());
+        common_args.push(experimental);
+    }
+    if let Some(no_experimental) = run_config.experimental.no_experimental_as_cli_string() {
+        common_args.push("--no-experimental".to_string());
+        common_args.push(no_experimental);
+    }
+
+    // Running tests of all test categories in parallel is safe by default, except for "run_on_node" tests.
+    //
+    // All other test categories ("compiles", "fails_to_compile", "runs", "forc_test") do not produce
+    // compiler output files that could interfere with each other when run in parallel (e.g., JSON ABI files,
+    // storage slots files, etc) for different `test.<feature>.toml`s in the same test. Also, the
+    // storage slots JSON and ABI JSON files created to compare with the corresponding oracles,
+    // are given unique names based on the test name and the profile (debug/release).
+    //
+    // However, "run_on_node" tests deploy contracts to a local node, and if multiple such tests
+    // are run in parallel, they will try to deploy a same contract multiple times. For sequential
+    // execution, the `TestContext` caches deployed contracts by their path, so that each contract
+    // is deployed only once per test run. But for parallel execution, this cache cannot be shared
+    // across multiple processes. Therefore, to avoid multiple deployments of the same contract
+    // from different processes, we run "run_on_node" tests in parallel only if they don't share
+    // contracts. Those that share contracts are run sequentially.
+
+    // Maps contract path to the list of tests that deploy it.
+    let mut contracts_deployed_in_tests = HashMap::<String, Vec<_>>::new();
+    tests_in_run
+        .tests_to_run
+        .iter()
+        .filter(|t| t.category == TestCategory::RunsWithContract)
+        .for_each(|test| {
+            test.contract_paths.iter().for_each(|contract_path| {
+                contracts_deployed_in_tests
+                    .entry(contract_path.clone())
+                    .or_default()
+                    .push(test);
+            });
+        });
+    let tests_sharing_contracts: HashSet<_> = contracts_deployed_in_tests
+        .values()
+        .filter(|tests| tests.len() > 1)
+        .flat_map(|tests| tests.iter())
+        .map(|t| t.test_toml_path.clone())
+        .collect();
+
+    let failed_tests = std::sync::Mutex::new(Vec::<String>::new());
+    let start_time = Instant::now();
+
+    // Splitting the tests into two groups, sequential and parallel, by keeping
+    // in `tests_in_run.tests_to_run` only those that can be run in parallel.
+    // It turns out that doing the explicit split upfront is **way faster**
+    // than filtering inside the parallel iterator.
+    let tests_to_run_sequentially = tests_in_run
+        .tests_to_run
+        .retain_and_get_removed(|test| !tests_sharing_contracts.contains(&test.test_toml_path));
+
+    // Run tests that can be safely run in parallel.
+    tests_in_run.tests_to_run.par_iter().for_each(|test| {
+        let name = test.display_name();
+
+        let status = Command::new(std::env::current_exe().unwrap())
+            .args(common_args.clone())
+            .args(vec!["--exact".to_string(), test.test_toml_path.clone()])
+            .stdout(Stdio::null())
+            .stdin(Stdio::null())
+            .status()
+            .unwrap();
+
+        if status.success() {
+            println!("  ✅ Passed: {name}");
         } else {
-            test.name.clone()
-        };
+            println!("  ❌ Failed: {name}");
+            failed_tests.lock().unwrap().push(name.into());
+        }
+    });
+
+    // Run sequentially "run_on_node" tests that share contracts.
+    let context = TestContext {
+        deployed_contracts: Default::default(),
+    };
+
+    for test in tests_to_run_sequentially.iter() {
+        let name = test.display_name();
+
+        let mut output = String::new();
+        let result = context.run(test, &mut output, run_config.verbose).await;
+
+        if result.is_ok() {
+            println!("  ✅ Passed: {name}");
+        } else {
+            println!("  ❌ Failed: {name}");
+            failed_tests.lock().unwrap().push(name.into());
+        }
+    }
+
+    let duration = Instant::now().duration_since(start_time);
+
+    // To ensure proper statistics printed in the results, get the list of tests that
+    // were run sequentially and add them back to the list of tests to run.
+    tests_in_run.tests_to_run.extend(tests_to_run_sequentially);
+
+    print_run_results(
+        &tests_in_run,
+        filter_config,
+        &failed_tests.into_inner().unwrap(),
+        &duration,
+    )
+}
+
+pub async fn run_sequentially(filter_config: &FilterConfig, run_config: &RunConfig) -> Result<()> {
+    let tests_in_run = TestsInRun::new(filter_config, run_config)?;
+
+    let context = TestContext {
+        deployed_contracts: Default::default(),
+    };
+
+    let mut failed_tests = Vec::<String>::new();
+    let start_time = Instant::now();
+    for (i, test) in tests_in_run.tests_to_run.iter().enumerate() {
+        let name = test.display_name();
 
         print!("Testing {} ...", name.clone().bold());
         stdout().flush().unwrap();
 
         let mut output = String::new();
-
-        // Skip the test if its not compatible with the current build target.
-        if !test.supported_targets.contains(&run_config.build_target) {
-            continue;
-        }
 
         use std::fmt::Write;
         let _ = writeln!(output, " {}", "Verbose Output".green().bold());
@@ -837,49 +1009,79 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
             println!(" {}", "failed".red().bold());
             println!("{}", textwrap::indent(err.to_string().as_str(), "     "));
             println!("{}", textwrap::indent(&output, "          "));
-            number_of_tests_failed += 1;
-            failed_tests.push(name);
+            failed_tests.push(name.into());
         } else {
             println!(" {}", "ok".green().bold());
-
-            // If verbosity is requested then print it out.
             if run_config.verbose && !output.is_empty() {
                 println!("{}", textwrap::indent(&output, "     "));
             }
         }
-
-        number_of_tests_executed += 1;
     }
     let duration = Instant::now().duration_since(start_time);
+
+    print_run_results(&tests_in_run, filter_config, &failed_tests, &duration)
+}
+
+fn print_run_results(
+    tests_in_run: &TestsInRun,
+    filter_config: &FilterConfig,
+    failed_tests: &[String],
+    duration: &Duration,
+) -> Result<()> {
+    let number_of_tests_executed = tests_in_run.tests_to_run.len();
+    let number_of_tests_failed = failed_tests.len();
 
     if number_of_tests_executed == 0 {
         if let Some(skip_until) = &filter_config.skip_until {
             tracing::info!(
-                "Filtered {} tests with `skip-until` regex: {:?}",
-                skipped_tests.len(),
-                skip_until.to_string()
+                "Filtered {} test{} with `skip-until` regex: {:?}",
+                tests_in_run.skipped_tests.len(),
+                if tests_in_run.skipped_tests.len() == 1 {
+                    ""
+                } else {
+                    "s"
+                },
+                skip_until.to_string(),
             );
         }
         if let Some(include) = &filter_config.include {
             tracing::info!(
-                "Filtered {} tests with `include` regex: {:?}",
-                included_tests.len(),
-                include.to_string()
+                "Filtered {} test{} with `include` regex: {:?}",
+                tests_in_run.included_tests.len(),
+                if tests_in_run.included_tests.len() == 1 {
+                    ""
+                } else {
+                    "s"
+                },
+                include.to_string(),
             );
         }
         if let Some(exclude) = &filter_config.exclude {
             tracing::info!(
-                "Filtered {} tests with `exclude` regex: {:?}",
-                excluded_tests.len(),
-                exclude.to_string()
+                "Filtered {} test{} with `exclude` regex: {:?}",
+                tests_in_run.excluded_tests.len(),
+                if tests_in_run.excluded_tests.len() == 1 {
+                    ""
+                } else {
+                    "s"
+                },
+                exclude.to_string(),
             );
         }
-        if !disabled_tests.is_empty() {
-            tracing::info!("{} tests were disabled.", disabled_tests.len());
+        if !tests_in_run.disabled_tests.is_empty() {
+            tracing::info!(
+                "{} test{} disabled.",
+                tests_in_run.disabled_tests.len(),
+                if tests_in_run.disabled_tests.len() == 1 {
+                    " was"
+                } else {
+                    "s were"
+                },
+            );
         }
         tracing::warn!(
-            "No tests were run. Regex filters filtered out all {} tests.",
-            total_number_of_tests
+            "No tests were run. Provided test filters filtered out all {} tests.",
+            tests_in_run.total_number_of_tests
         );
     } else {
         tracing::info!("_________________________________");
@@ -890,24 +1092,29 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
             } else {
                 "failed".red().bold()
             },
-            total_number_of_tests,
+            tests_in_run.total_number_of_tests,
             number_of_tests_executed - number_of_tests_failed,
             number_of_tests_failed,
-            disabled_tests.len(),
-            util::duration_to_str(&duration)
+            tests_in_run.disabled_tests.len(),
+            util::duration_to_str(duration),
         );
         if number_of_tests_failed > 0 {
             tracing::info!("{}", "Failing tests:".red().bold());
             tracing::info!(
                 "    {}",
                 failed_tests
-                    .into_iter()
-                    .map(|test_name| format!("{} ... {}", test_name.bold(), "failed".red().bold()))
+                    .iter()
+                    .map(|failed_test| format!(
+                        "{} ... {}",
+                        failed_test.bold(),
+                        "failed".red().bold()
+                    ))
                     .collect::<Vec<_>>()
                     .join("\n    ")
             );
         }
     }
+
     if number_of_tests_failed != 0 {
         Err(anyhow::Error::msg("Failed tests"))
     } else {
@@ -1264,6 +1471,7 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
     });
 
     Ok(TestDescription {
+        test_toml_path: path.to_str().unwrap().into(),
         name,
         suffix: path.file_name().unwrap().to_str().map(|x| x.to_string()),
         category,

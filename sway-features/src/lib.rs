@@ -184,6 +184,30 @@ pub struct CliFields {
     pub no_experimental: Vec<Feature>,
 }
 
+impl CliFields {
+    pub fn experimental_as_cli_string(&self) -> Option<String> {
+        Self::features_as_cli_string(&self.experimental)
+    }
+
+    pub fn no_experimental_as_cli_string(&self) -> Option<String> {
+        Self::features_as_cli_string(&self.no_experimental)
+    }
+
+    fn features_as_cli_string(features: &[Feature]) -> Option<String> {
+        if features.is_empty() {
+            None
+        } else {
+            Some(
+                features
+                    .iter()
+                    .map(|f| f.name())
+                    .collect::<Vec<_>>()
+                    .join(","),
+            )
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum Error {
     ParseError(String),
