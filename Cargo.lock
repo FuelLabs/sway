@@ -12163,6 +12163,7 @@ dependencies = [
  "normalize-path",
  "prettydiff",
  "rand 0.8.5",
+ "rayon",
  "regex",
  "revm",
  "rhai",

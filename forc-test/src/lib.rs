@@ -164,6 +164,8 @@ pub struct TestOpts {
     pub experimental: Vec<sway_features::Feature>,
     /// Set of disabled experimental flags
     pub no_experimental: Vec<sway_features::Feature>,
+    /// Do not output any build artifacts, e.g., bytecode, ABI JSON, etc.
+    pub no_output: bool,
 }
 
 /// The set of options provided for controlling logs printed for each test.
@@ -468,6 +470,7 @@ impl From<TestOpts> for pkg::BuildOpts {
             member_filter: Default::default(),
             experimental: val.experimental,
             no_experimental: val.no_experimental,
+            no_output: val.no_output,
         }
     }
 }
@@ -494,6 +497,7 @@ impl TestOpts {
             member_filter: Default::default(),
             experimental: self.experimental,
             no_experimental: self.no_experimental,
+            no_output: self.no_output,
         }
     }
 }
