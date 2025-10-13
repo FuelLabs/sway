@@ -9,10 +9,7 @@ use crate::{FilterConfig, RunConfig};
 
 use anyhow::{anyhow, bail, Result};
 use colored::*;
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use core::fmt;
-use std::borrow::Cow;
-use std::process::{Command, Stdio};
 use forc_pkg::manifest::{GenericManifestFile, ManifestFile};
 use forc_pkg::BuildProfile;
 use forc_test::ecal::Syscall;
@@ -20,10 +17,13 @@ use forc_util::tx_utils::decode_log_data;
 use fuel_vm::fuel_tx;
 use fuel_vm::fuel_types::canonical::Input;
 use fuel_vm::prelude::*;
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use regex::Regex;
+use std::borrow::Cow;
 use std::collections::{BTreeMap, HashSet};
 use std::io::stdout;
 use std::io::Write;
+use std::process::{Command, Stdio};
 use std::str::FromStr;
 use std::time::{Duration, Instant};
 use std::{
@@ -115,7 +115,7 @@ struct TestDescription {
 
 impl TestDescription {
     pub fn display_name(&self) -> Cow<str> {
-         if let Some(suffix) = self.suffix.as_ref() {
+        if let Some(suffix) = self.suffix.as_ref() {
             format!("{} ({})", self.name, suffix).into()
         } else {
             self.name.as_str().into()
@@ -423,7 +423,11 @@ impl TestContext {
                     )));
                 }
 
-                let result = harness::runs_in_vm(compiled.clone(), script_data.clone(), witness_data.clone())?;
+                let result = harness::runs_in_vm(
+                    compiled.clone(),
+                    script_data.clone(),
+                    witness_data.clone(),
+                )?;
                 let actual_result = match result {
                     harness::VMExecutionResult::Fuel(state, receipts, ecal) => {
                         print_receipts(output, &receipts);
@@ -801,7 +805,8 @@ impl TestsInRun {
                 })
             })
             .unwrap_or_default();
-        let disabled_tests = tests_to_run.retain_and_get_removed(|t| t.category != TestCategory::Disabled);
+        let disabled_tests =
+            tests_to_run.retain_and_get_removed(|t| t.category != TestCategory::Disabled);
         let included_tests = filter_config
             .include
             .as_ref()
@@ -897,7 +902,7 @@ pub async fn run_in_parallel(filter_config: &FilterConfig, run_config: &RunConfi
     // across multiple processes. Therefore, to avoid multiple deployments of the same contract
     // from different processes, we run "run_on_node" tests in parallel only if they don't share
     // contracts. Those that share contracts are run sequentially.
-    
+
     // Maps contract path to the list of tests that deploy it.
     let mut contracts_deployed_in_tests = HashMap::<String, Vec<_>>::new();
     tests_in_run
@@ -926,23 +931,17 @@ pub async fn run_in_parallel(filter_config: &FilterConfig, run_config: &RunConfi
     // in `tests_in_run.tests_to_run` only those that can be run in parallel.
     // It turns out that doing the explicit split upfront is **way faster**
     // than filtering inside the parallel iterator.
-    let tests_to_run_sequentially = tests_in_run.tests_to_run.retain_and_get_removed(|test| 
-        !tests_sharing_contracts.contains(&test.test_toml_path)
-    );
+    let tests_to_run_sequentially = tests_in_run
+        .tests_to_run
+        .retain_and_get_removed(|test| !tests_sharing_contracts.contains(&test.test_toml_path));
 
     // Run tests that can be safely run in parallel.
-    tests_in_run.tests_to_run
-        .par_iter()
-        .for_each(|test|
-    {
+    tests_in_run.tests_to_run.par_iter().for_each(|test| {
         let name = test.display_name();
 
         let status = Command::new(std::env::current_exe().unwrap())
             .args(common_args.clone())
-            .args(vec![
-                "--exact".to_string(),
-                test.test_toml_path.clone(),
-            ])
+            .args(vec!["--exact".to_string(), test.test_toml_path.clone()])
             .stdout(Stdio::null())
             .stdin(Stdio::null())
             .status()
@@ -961,8 +960,7 @@ pub async fn run_in_parallel(filter_config: &FilterConfig, run_config: &RunConfi
         deployed_contracts: Default::default(),
     };
 
-    for test in tests_to_run_sequentially.iter()
-    {
+    for test in tests_to_run_sequentially.iter() {
         let name = test.display_name();
 
         let mut output = String::new();
@@ -982,7 +980,12 @@ pub async fn run_in_parallel(filter_config: &FilterConfig, run_config: &RunConfi
     // were run sequentially and add them back to the list of tests to run.
     tests_in_run.tests_to_run.extend(tests_to_run_sequentially);
 
-    print_run_results(&tests_in_run, filter_config, &failed_tests.into_inner().unwrap(), &duration)
+    print_run_results(
+        &tests_in_run,
+        filter_config,
+        &failed_tests.into_inner().unwrap(),
+        &duration,
+    )
 }
 
 pub async fn run_sequentially(filter_config: &FilterConfig, run_config: &RunConfig) -> Result<()> {
@@ -1030,7 +1033,12 @@ pub async fn run_sequentially(filter_config: &FilterConfig, run_config: &RunConf
     print_run_results(&tests_in_run, filter_config, &failed_tests, &duration)
 }
 
-fn print_run_results(tests_in_run: &TestsInRun, filter_config: &FilterConfig, failed_tests: &[String], duration: &Duration) -> Result<()> {
+fn print_run_results(
+    tests_in_run: &TestsInRun,
+    filter_config: &FilterConfig,
+    failed_tests: &[String],
+    duration: &Duration,
+) -> Result<()> {
     let number_of_tests_executed = tests_in_run.tests_to_run.len();
     let number_of_tests_failed = failed_tests.len();
 
@@ -1039,7 +1047,11 @@ fn print_run_results(tests_in_run: &TestsInRun, filter_config: &FilterConfig, fa
             tracing::info!(
                 "Filtered {} test{} with `skip-until` regex: {:?}",
                 tests_in_run.skipped_tests.len(),
-                if tests_in_run.skipped_tests.len() == 1 { "" } else { "s" },
+                if tests_in_run.skipped_tests.len() == 1 {
+                    ""
+                } else {
+                    "s"
+                },
                 skip_until.to_string(),
             );
         }
@@ -1047,7 +1059,11 @@ fn print_run_results(tests_in_run: &TestsInRun, filter_config: &FilterConfig, fa
             tracing::info!(
                 "Filtered {} test{} with `include` regex: {:?}",
                 tests_in_run.included_tests.len(),
-                if tests_in_run.included_tests.len() == 1 { "" } else { "s" },
+                if tests_in_run.included_tests.len() == 1 {
+                    ""
+                } else {
+                    "s"
+                },
                 include.to_string(),
             );
         }
@@ -1055,7 +1071,11 @@ fn print_run_results(tests_in_run: &TestsInRun, filter_config: &FilterConfig, fa
             tracing::info!(
                 "Filtered {} test{} with `exclude` regex: {:?}",
                 tests_in_run.excluded_tests.len(),
-                if tests_in_run.excluded_tests.len() == 1 { "" } else { "s" },
+                if tests_in_run.excluded_tests.len() == 1 {
+                    ""
+                } else {
+                    "s"
+                },
                 exclude.to_string(),
             );
         }
@@ -1063,7 +1083,11 @@ fn print_run_results(tests_in_run: &TestsInRun, filter_config: &FilterConfig, fa
             tracing::info!(
                 "{} test{} disabled.",
                 tests_in_run.disabled_tests.len(),
-                if tests_in_run.disabled_tests.len() == 1 { " was" } else { "s were" },
+                if tests_in_run.disabled_tests.len() == 1 {
+                    " was"
+                } else {
+                    "s were"
+                },
             );
         }
         tracing::warn!(
@@ -1091,7 +1115,11 @@ fn print_run_results(tests_in_run: &TestsInRun, filter_config: &FilterConfig, fa
                 "    {}",
                 failed_tests
                     .iter()
-                    .map(|failed_test| format!("{} ... {}", failed_test.bold(), "failed".red().bold()))
+                    .map(|failed_test| format!(
+                        "{} ... {}",
+                        failed_test.bold(),
+                        "failed".red().bold()
+                    ))
                     .collect::<Vec<_>>()
                     .join("\n    ")
             );

@@ -279,9 +279,13 @@ async fn main() -> Result<()> {
     // Run E2E tests
     if run_kind_config.kind.e2e {
         if run_kind_config.sequential {
-            e2e_vm_tests::run_sequentially(&filter_config, &run_config).instrument(tracing::trace_span!("E2E")).await?;
+            e2e_vm_tests::run_sequentially(&filter_config, &run_config)
+                .instrument(tracing::trace_span!("E2E"))
+                .await?;
         } else {
-            e2e_vm_tests::run_in_parallel(&filter_config, &run_config).instrument(tracing::trace_span!("E2E")).await?;
+            e2e_vm_tests::run_in_parallel(&filter_config, &run_config)
+                .instrument(tracing::trace_span!("E2E"))
+                .await?;
         }
     }
 

@@ -445,7 +445,11 @@ pub(crate) fn test_json_abi(
     Ok(())
 }
 
-fn emit_json_abi(file_name: &str, json_abi_output_path: &str, built_package: &BuiltPackage) -> Result<()> {
+fn emit_json_abi(
+    file_name: &str,
+    json_abi_output_path: &str,
+    built_package: &BuiltPackage,
+) -> Result<()> {
     tracing::info!("ABI JSON gen {} ...", file_name.bold());
     let json_abi = match &built_package.program_abi {
         ProgramABI::Fuel(abi) => serde_json::json!(abi),
@@ -475,16 +479,12 @@ pub(crate) fn test_json_storage_slots(
 
     let oracle_path = format!(
         "{}/src/e2e_vm_tests/test_programs/{}/json_storage_slots_oracle{}.json",
-        manifest_dir,
-        file_name,
-        experimental_suffix,
+        manifest_dir, file_name, experimental_suffix,
     );
 
     let output_path = format!(
         "{}/src/e2e_vm_tests/test_programs/{}/json_storage_slots_output{}.json",
-        manifest_dir,
-        file_name,
-        experimental_suffix,
+        manifest_dir, file_name, experimental_suffix,
     );
 
     emit_json_storage_slots(file_name, &output_path, built_package)?;
@@ -510,7 +510,11 @@ pub(crate) fn test_json_storage_slots(
     Ok(())
 }
 
-fn emit_json_storage_slots(file_name: &str, json_storage_slots_output_path: &str, built_package: &BuiltPackage) -> Result<()> {
+fn emit_json_storage_slots(
+    file_name: &str,
+    json_storage_slots_output_path: &str,
+    built_package: &BuiltPackage,
+) -> Result<()> {
     tracing::info!("Storage slots JSON gen {} ...", file_name.bold());
     let json_storage_slots = serde_json::json!(built_package.storage_slots);
     let file = std::fs::File::create(json_storage_slots_output_path)?;
