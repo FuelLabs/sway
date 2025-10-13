@@ -81,5 +81,6 @@ fn build_opts_from_cmd(cmd: &ContractIdCommand) -> pkg::BuildOpts {
         member_filter: pkg::MemberFilter::only_contracts(),
         experimental: cmd.experimental.experimental.clone(),
         no_experimental: cmd.experimental.no_experimental.clone(),
+        no_output: false,
     }
 }

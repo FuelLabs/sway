@@ -82,6 +82,10 @@ impl PrintAsm {
         }
     }
 
+    pub fn none() -> Self {
+        Self::default()
+    }
+
     pub fn abstract_virtual() -> Self {
         Self {
             virtual_abstract: true,
@@ -144,6 +148,10 @@ impl PrintIr {
                 .map(|pass| pass.to_string())
                 .collect_vec(),
         }
+    }
+
+    pub fn none() -> Self {
+        Self::default()
     }
 
     pub fn r#final() -> Self {

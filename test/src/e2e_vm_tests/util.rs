@@ -1,11 +1,13 @@
 pub trait VecExt<T> {
-    fn retained<F>(&mut self, f: F) -> Vec<T>
+    /// Retains the elements specified by the predicate `f`,
+    /// and returns the elements that were removed.
+    fn retain_and_get_removed<F>(&mut self, f: F) -> Vec<T>
     where
         F: FnMut(&T) -> bool;
 }
 
 impl<T> VecExt<T> for Vec<T> {
-    fn retained<F>(&mut self, mut f: F) -> Vec<T>
+    fn retain_and_get_removed<F>(&mut self, mut f: F) -> Vec<T>
     where
         F: FnMut(&T) -> bool,
     {
