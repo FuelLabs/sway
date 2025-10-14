@@ -300,7 +300,7 @@ fn depends_on(
 // -------------------------------------------------------------------------------------------------
 // Dependencies are just a collection of dependee symbols.
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 struct Dependencies {
     deps: DependencySet,
 }
@@ -482,9 +482,7 @@ impl Dependencies {
                 let TypeAliasDeclaration { ty, .. } = &*engines.pe().get_type_alias(decl_id);
                 self.gather_from_type_argument(engines, ty)
             }
-            Declaration::ConstGenericDeclaration(_) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
-            }
+            Declaration::ConstGenericDeclaration(_) => Dependencies::default(),
         }
     }
 

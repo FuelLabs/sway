@@ -600,7 +600,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             }
         }
         ty::TyDecl::ConstGenericDecl(_) => {
-            todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860");
+            unreachable!("ConstGenericDecl is not reachable from AstNode")
         }
         ty::TyDecl::FunctionDecl(ty::FunctionDecl { decl_id, .. }) => {
             let fn_decl = decl_engine.get_function(decl_id);
@@ -1224,7 +1224,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             fn_ref,
             contract_call_params,
             selector,
-            call_path_typeid,
+            method_target,
             contract_caller,
             ..
         } => {
@@ -1247,12 +1247,12 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             let fn_namespace_entry = graph.namespace.get_function(&fn_decl).cloned();
 
             // connect function entry point to type in function application call path.
-            if let (Some(call_path_typeid), Some(fn_namespace_entry)) =
-                (call_path_typeid, fn_namespace_entry.clone())
+            if let (Some(method_target), Some(fn_namespace_entry)) =
+                (method_target, fn_namespace_entry.clone())
             {
                 connect_type_id(
                     engines,
-                    *call_path_typeid,
+                    *method_target,
                     graph,
                     fn_namespace_entry.entry_point,
                 )?;
@@ -2589,7 +2589,7 @@ fn allow_dead_code_ast_node(decl_engine: &DeclEngine, node: &ty::TyAstNode) -> b
                 allow_dead_code(decl_engine.get_configurable(decl_id).attributes.clone())
             }
             ty::TyDecl::ConstGenericDecl(_) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                unreachable!("ConstGenericDecl is not reachable from AstNode")
             }
             ty::TyDecl::TraitTypeDecl(ty::TraitTypeDecl { decl_id, .. }) => {
                 allow_dead_code(decl_engine.get_type(decl_id).attributes.clone())

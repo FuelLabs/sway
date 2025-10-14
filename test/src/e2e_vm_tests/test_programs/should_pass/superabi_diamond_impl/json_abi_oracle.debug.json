@@ -1,0 +1,55 @@
+{
+  "configurables": [],
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "top",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
+    },
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "left",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
+    },
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "right",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
+    },
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "bottom",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "types": [
+    {
+      "components": [],
+      "type": "()",
+      "typeId": 0,
+      "typeParameters": null
+    }
+  ]
+}

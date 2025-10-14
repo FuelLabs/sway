@@ -1,4 +1,4 @@
-script;
+library;
 
 trait MyTrait {
     fn extract_a(self) -> u64;
@@ -20,13 +20,13 @@ type B = A;
 // so this should cause a compilation error.
 impl MyTrait for B {
     fn extract_a(self) -> u64 {
-        self.a + 1
+        self.a
     }
 }
 
-fn main() {
+pub fn main() {
     let struct_a = A { a: 1 }; 
     let struct_b = B { a: 42 };
-    assert(struct_a.extract_a() == 1);
-    assert(struct_b.extract_a() == 42);
+    let _: u64 = struct_a.extract_a();
+    let _: u64 = struct_b.extract_a();
 }

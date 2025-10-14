@@ -1122,7 +1122,7 @@ impl Parse for GenericArgument {
             }
             _ => {
                 let symbol_kind = type_info_to_symbol_kind(ctx.engines.te(), &type_info, None);
-                if let Some(tree) = &self.call_path_tree() {
+                if let Some(tree) = self.as_type_argument().unwrap().call_path_tree.as_ref() {
                     let token =
                         Token::from_parsed(ParsedAstToken::TypeArgument(self.clone()), symbol_kind);
                     collect_call_path_tree(ctx, tree, &token, ctx.tokens);

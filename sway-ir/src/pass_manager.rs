@@ -297,10 +297,7 @@ impl PassManager {
                 assert!(dep_t.is_analysis());
                 match dep_t.runner {
                     ScopedPass::ModulePass(_) => {
-                        panic!(
-                            "Function pass {} cannot depend on module pass {}",
-                            pass, dep
-                        )
+                        panic!("Function pass {pass} cannot depend on module pass {dep}")
                     }
                     ScopedPass::FunctionPass(_) => {
                         if !pm.analyses.is_analysis_result_available(dep, function) {

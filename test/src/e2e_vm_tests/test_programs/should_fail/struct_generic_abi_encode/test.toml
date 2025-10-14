@@ -1,4 +1,5 @@
 category = "fail"
 
+#check: $()Associated function or method is not found
 #check: $()self.ptr.abi_encode2(buffer);
-#nextln: $()No method "abi_encode2(pointer, Buffer)" found for type "pointer".
+#nextln: $()abi_encode2(raw_ptr, struct_generic_abi_encode::Buffer)" is not found for type "raw_ptr".

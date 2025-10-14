@@ -1,0 +1,79 @@
+{
+  "concreteTypes": [
+    {
+      "concreteTypeId": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d",
+      "type": "()"
+    },
+    {
+      "concreteTypeId": "8c25cb3686462e9a86d2883c5688a22fe738b0bbc85f458d2d2b5f3f667c6d5a",
+      "type": "str"
+    }
+  ],
+  "configurables": [],
+  "encodingVersion": "1",
+  "errorCodes": {
+    "0": {
+      "logId": null,
+      "msg": "This is an error message.",
+      "pos": {
+        "column": 5,
+        "file": "src/main.sw",
+        "function": "panic_in_same_functions::function",
+        "line": 15,
+        "pkg": "panic_in_same_functions"
+      }
+    },
+    "1": {
+      "logId": null,
+      "msg": "This is an error message.",
+      "pos": {
+        "column": 9,
+        "file": "src/main.sw",
+        "function": "panic_in_same_functions::S::function",
+        "line": 10,
+        "pkg": "panic_in_same_functions"
+      }
+    },
+    "2": {
+      "logId": null,
+      "msg": "This is an error message.",
+      "pos": {
+        "column": 5,
+        "file": "src/module.sw",
+        "function": "panic_in_same_functions::module::function",
+        "line": 12,
+        "pkg": "panic_in_same_functions"
+      }
+    },
+    "3": {
+      "logId": null,
+      "msg": "This is an error message.",
+      "pos": {
+        "column": 9,
+        "file": "src/module.sw",
+        "function": "panic_in_same_functions::module::S::function",
+        "line": 7,
+        "pkg": "panic_in_same_functions"
+      }
+    }
+  },
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "main",
+      "output": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
+    }
+  ],
+  "loggedTypes": [
+    {
+      "concreteTypeId": "8c25cb3686462e9a86d2883c5688a22fe738b0bbc85f458d2d2b5f3f667c6d5a",
+      "logId": "10098701174489624218"
+    }
+  ],
+  "messagesTypes": [],
+  "metadataTypes": [],
+  "panickingCalls": {},
+  "programType": "script",
+  "specVersion": "1.2"
+}

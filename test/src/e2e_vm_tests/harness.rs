@@ -291,6 +291,7 @@ pub(crate) async fn compile_to_bytes(
         },
         experimental: run_config.experimental.experimental.clone(),
         no_experimental: run_config.experimental.no_experimental.clone(),
+        no_output: !run_config.write_output,
         ..Default::default()
     };
 
@@ -351,6 +352,7 @@ pub(crate) async fn compile_and_run_unit_tests(
                     ..Default::default()
                 },
                 build_target: run_config.build_target,
+                no_output: !run_config.write_output,
                 ..Default::default()
             })
         }) {
@@ -376,44 +378,40 @@ pub(crate) fn test_json_abi(
     update_output_files: bool,
     suffix: &Option<String>,
     has_experimental_field: bool,
+    is_release: bool,
 ) -> Result<()> {
-    emit_json_abi(file_name, built_package)?;
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
 
-    let oracle_path = match (has_experimental_field, experimental_new_encoding) {
-        (true, _) => {
-            format!(
-                "{}/src/e2e_vm_tests/test_programs/{}/json_abi_oracle.{}json",
-                manifest_dir,
-                file_name,
-                suffix
-                    .as_ref()
-                    .unwrap()
-                    .strip_prefix("test")
-                    .unwrap()
-                    .strip_suffix("toml")
-                    .unwrap()
-                    .trim_start_matches('.')
-            )
-        }
-        (false, true) => {
-            format!(
-                "{}/src/e2e_vm_tests/test_programs/{}/{}",
-                manifest_dir, file_name, "json_abi_oracle_new_encoding.json"
-            )
-        }
-        (false, false) => {
-            format!(
-                "{}/src/e2e_vm_tests/test_programs/{}/{}",
-                manifest_dir, file_name, "json_abi_oracle.json"
-            )
-        }
+    let experimental_suffix = match (has_experimental_field, experimental_new_encoding) {
+        (true, _) => suffix
+            .as_ref()
+            .unwrap()
+            .strip_prefix("test")
+            .unwrap()
+            .strip_suffix("toml")
+            .unwrap()
+            .trim_end_matches('.'),
+        (false, true) => "_new_encoding",
+        (false, false) => "",
     };
 
-    let output_path = format!(
-        "{}/src/e2e_vm_tests/test_programs/{}/{}",
-        manifest_dir, file_name, "json_abi_output.json"
+    let oracle_path = format!(
+        "{}/src/e2e_vm_tests/test_programs/{}/json_abi_oracle{}.{}.json",
+        manifest_dir,
+        file_name,
+        experimental_suffix,
+        if is_release { "release" } else { "debug" },
     );
+
+    let output_path = format!(
+        "{}/src/e2e_vm_tests/test_programs/{}/json_abi_output{}.{}.json",
+        manifest_dir,
+        file_name,
+        experimental_suffix,
+        if is_release { "release" } else { "debug" },
+    );
+
+    emit_json_abi(file_name, &output_path, built_package)?;
 
     // Update the oracle failing silently
     if update_output_files {
@@ -447,20 +445,19 @@ pub(crate) fn test_json_abi(
     Ok(())
 }
 
-fn emit_json_abi(file_name: &str, built_package: &BuiltPackage) -> Result<()> {
-    tracing::info!("ABI gen {} ...", file_name.bold());
+fn emit_json_abi(
+    file_name: &str,
+    json_abi_output_path: &str,
+    built_package: &BuiltPackage,
+) -> Result<()> {
+    tracing::info!("ABI JSON gen {} ...", file_name.bold());
     let json_abi = match &built_package.program_abi {
         ProgramABI::Fuel(abi) => serde_json::json!(abi),
         ProgramABI::Evm(abi) => serde_json::json!(abi),
         ProgramABI::MidenVM(_) => todo!(),
     };
-    let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    let file = std::fs::File::create(format!(
-        "{}/src/e2e_vm_tests/test_programs/{}/{}",
-        manifest_dir, file_name, "json_abi_output.json"
-    ))?;
-    let res = serde_json::to_writer_pretty(&file, &json_abi);
-    res?;
+    let file = std::fs::File::create(json_abi_output_path)?;
+    serde_json::to_writer_pretty(&file, &json_abi)?;
     Ok(())
 }
 
@@ -469,25 +466,29 @@ pub(crate) fn test_json_storage_slots(
     built_package: &BuiltPackage,
     suffix: &Option<String>,
 ) -> Result<()> {
-    emit_json_storage_slots(file_name, built_package)?;
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
+
+    let experimental_suffix = suffix
+        .as_ref()
+        .unwrap()
+        .strip_prefix("test")
+        .unwrap()
+        .strip_suffix("toml")
+        .unwrap()
+        .trim_end_matches('.');
+
     let oracle_path = format!(
-        "{}/src/e2e_vm_tests/test_programs/{}/json_storage_slots_oracle.{}json",
-        manifest_dir,
-        file_name,
-        suffix
-            .as_ref()
-            .unwrap()
-            .strip_prefix("test")
-            .unwrap()
-            .strip_suffix("toml")
-            .unwrap()
-            .trim_start_matches('.')
+        "{}/src/e2e_vm_tests/test_programs/{}/json_storage_slots_oracle{}.json",
+        manifest_dir, file_name, experimental_suffix,
     );
+
     let output_path = format!(
-        "{}/src/e2e_vm_tests/test_programs/{}/{}",
-        manifest_dir, file_name, "json_storage_slots_output.json"
+        "{}/src/e2e_vm_tests/test_programs/{}/json_storage_slots_output{}.json",
+        manifest_dir, file_name, experimental_suffix,
     );
+
+    emit_json_storage_slots(file_name, &output_path, built_package)?;
+
     if fs::metadata(oracle_path.clone()).is_err() {
         bail!("JSON storage slots oracle file does not exist for this test.\nExpected oracle path: {}", &oracle_path);
     }
@@ -509,15 +510,14 @@ pub(crate) fn test_json_storage_slots(
     Ok(())
 }
 
-fn emit_json_storage_slots(file_name: &str, built_package: &BuiltPackage) -> Result<()> {
+fn emit_json_storage_slots(
+    file_name: &str,
+    json_storage_slots_output_path: &str,
+    built_package: &BuiltPackage,
+) -> Result<()> {
     tracing::info!("Storage slots JSON gen {} ...", file_name.bold());
     let json_storage_slots = serde_json::json!(built_package.storage_slots);
-    let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    let file = std::fs::File::create(format!(
-        "{}/src/e2e_vm_tests/test_programs/{}/{}",
-        manifest_dir, file_name, "json_storage_slots_output.json"
-    ))?;
-    let res = serde_json::to_writer_pretty(&file, &json_storage_slots);
-    res?;
+    let file = std::fs::File::create(json_storage_slots_output_path)?;
+    serde_json::to_writer_pretty(&file, &json_storage_slots)?;
     Ok(())
 }

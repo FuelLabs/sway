@@ -781,17 +781,67 @@ pub fn build_module_dep_graph(
 /// **Every [PanicOccurrence] has exactly one revert code assigned to it.**
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PanicOccurrence {
+    pub function: String,
     pub loc: SourceLocation,
     pub log_id: Option<LogId>,
     pub msg: Option<String>,
 }
 
-/// [PanicOccurrence]s mapped to their corresponding revert codes.
+/// Represents a function call that could panic during execution.
+/// E.g., for the following code:
+///
+/// ```ignore
+/// fn some_function() {
+///    let _ = this_function_might_panic(42);
+///}
+/// ```
+///
+/// the `function` field will contain the name of the function that might panic:
+///   `function: "some_other_package::module::this_function_might_panic"`
+///
+/// and the `loc` and `caller_function` fields will contain the source location of the call to the `function`
+/// that might panic:
+///
+/// ```ignore
+///     caller_function: "some_package::some_module::some_function",
+///     pkg: "some_package@0.1.0",
+///     file: "src/some_module.sw",
+///     ...
+/// ```
+///
+/// Note that, in case of panicking function or caller function being
+/// generic functions, a single panicking call can have multiple
+/// [PanickingCallOccurrence]s related to it.
+///
+/// For example:
+/// - `this_function_might_panic(42);` will have a single occurrence,
+///   with `function` containing the full name of the function that might panic.
+/// - `this_generic_function_might_panic::<u64>(42);` will have a single occurrence,
+///   with `function` containing the full name of the function that might panic,
+///   but with the generic type parameter `u64` included in the name.
+/// - `this_generic_function_might_panic::<T>(42);` will have multiple occurrences,
+///   one for every monomorphized type.
+///
+/// Similar is for a generic caller function.
+///
+/// **Every [PanickingCallOccurrence] has exactly one panicking call code assigned to it.**
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct PanickingCallOccurrence {
+    pub function: String,
+    pub caller_function: String,
+    pub loc: SourceLocation,
+}
+
+/// [PanicOccurrence]s mapped to their corresponding panic error codes.
 pub type PanicOccurrences = HashMap<PanicOccurrence, u64>;
+
+/// [PanickingCallOccurrence]s mapped to their corresponding panicking call codes.
+pub type PanickingCallOccurrences = HashMap<PanickingCallOccurrence, u64>;
 
 pub struct CompiledAsm {
     pub finalized_asm: FinalizedAsm,
     pub panic_occurrences: PanicOccurrences,
+    pub panicking_call_occurrences: PanickingCallOccurrences,
 }
 
 #[allow(clippy::result_large_err)]
@@ -805,6 +855,7 @@ pub fn parsed_to_ast(
     package_name: &str,
     retrigger_compilation: Option<Arc<AtomicBool>>,
     experimental: ExperimentalFeatures,
+    backtrace: Backtrace,
 ) -> Result<ty::TyProgram, TypeCheckFailed> {
     let lsp_config = build_config.map(|x| x.lsp_mode.clone()).unwrap_or_default();
 
@@ -946,7 +997,7 @@ pub fn parsed_to_ast(
     };
 
     // Evaluate const declarations, to allow storage slots initialization with consts.
-    let mut ctx = Context::new(engines.se(), experimental);
+    let mut ctx = Context::new(engines.se(), experimental, backtrace.into());
     let module = Module::new(&mut ctx, Kind::Contract);
     if let Err(errs) = ir_generation::compile::compile_constants_for_package(
         engines,
@@ -1076,7 +1127,8 @@ pub fn compile_to_ast(
             build_config,
             package_name,
             retrigger_compilation.clone(),
-            experimental
+            experimental,
+            build_config.map(|cfg| cfg.backtrace).unwrap_or_default()
         ),
         build_config,
         metrics
@@ -1148,12 +1200,14 @@ pub fn ast_to_asm(
     };
 
     let mut panic_occurrences = PanicOccurrences::default();
+    let mut panicking_call_occurrences = PanickingCallOccurrences::default();
 
     let asm = match compile_ast_to_ir_to_asm(
         handler,
         engines,
         typed_program,
         &mut panic_occurrences,
+        &mut panicking_call_occurrences,
         build_config,
         experimental,
     ) {
@@ -1167,6 +1221,7 @@ pub fn ast_to_asm(
     Ok(CompiledAsm {
         finalized_asm: asm,
         panic_occurrences,
+        panicking_call_occurrences,
     })
 }
 
@@ -1175,6 +1230,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     engines: &Engines,
     program: &ty::TyProgram,
     panic_occurrences: &mut PanicOccurrences,
+    panicking_call_occurrences: &mut PanickingCallOccurrences,
     build_config: &BuildConfig,
     experimental: ExperimentalFeatures,
 ) -> Result<FinalizedAsm, ErrorEmitted> {
@@ -1192,9 +1248,11 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     let mut ir = match ir_generation::compile_program(
         program,
         panic_occurrences,
+        panicking_call_occurrences,
         build_config.include_tests,
         engines,
         experimental,
+        build_config.backtrace.into(),
     ) {
         Ok(ir) => ir,
         Err(errors) => {

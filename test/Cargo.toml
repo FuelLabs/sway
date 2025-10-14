@@ -28,6 +28,7 @@ libtest-mimic.workspace = true
 normalize-path.workspace = true
 prettydiff.workspace = true
 rand.workspace = true
+rayon.workspace = true
 regex.workspace = true
 revm.workspace = true
 rhai = "1.22.2"

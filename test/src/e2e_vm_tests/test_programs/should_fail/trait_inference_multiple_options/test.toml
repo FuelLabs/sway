@@ -1,6 +1,6 @@
 category = "fail"
 
-# check: $()Multiple impls satisfying MyFrom<u256> for (numeric, _, _, _)
+# check: $()Multiple impls satisfying MyFrom<u256> for ({numeric}, _, _, _)
 # check: $()Trait implemented for types:
 # nextln: $()#0 MyFrom<u256> for (u64, u64, u64, u64)
 # nextln: $()#1 MyFrom<u256> for (u64, u64, u64, u32)

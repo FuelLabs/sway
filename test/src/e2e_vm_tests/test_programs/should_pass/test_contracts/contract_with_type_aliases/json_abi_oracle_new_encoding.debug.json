@@ -1,0 +1,204 @@
+{
+  "concreteTypes": [
+    {
+      "concreteTypeId": "a28cf4bd3deddbee8bde0daa7b4534d37db682c73dc398fd720c75f3775a3df0",
+      "metadataTypeId": 1,
+      "type": "(b256, [enum std::identity::Identity; 2], struct contract_with_type_aliases_abi::IdentityAliasWrapper, struct contract_with_type_aliases_abi::Generic<struct contract_with_type_aliases_abi::IdentityAliasWrapper>, (b256, b256), str[9])"
+    },
+    {
+      "concreteTypeId": "bc42ec26f2a17c5b23fc007d96b96bf35f8949ee156afdd789064210d881f7e0",
+      "metadataTypeId": 0,
+      "type": "(b256, b256)"
+    },
+    {
+      "concreteTypeId": "2771ee6889dff227342d90c5f1ea6019ad8c8de50880048f823e1b926b26c13e",
+      "metadataTypeId": 2,
+      "type": "[enum std::identity::Identity; 2]"
+    },
+    {
+      "concreteTypeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b",
+      "type": "b256"
+    },
+    {
+      "concreteTypeId": "bc5b9d5b85b9fb6e78bbb779cc67a95e60d6f291cd256a4c7dba66308dc7dfb8",
+      "type": "str[9]"
+    },
+    {
+      "concreteTypeId": "3981e3d30e52d053c35da213685243d8c82ef363f58bfc2d14986c393254c450",
+      "metadataTypeId": 5,
+      "type": "struct contract_with_type_aliases_abi::Generic<struct contract_with_type_aliases_abi::IdentityAliasWrapper>",
+      "typeArguments": [
+        "1567acc73497bb83e04c376e2c8d3997d0207f0b9b8fa17b0192ee62e1c7a60b"
+      ]
+    },
+    {
+      "concreteTypeId": "1567acc73497bb83e04c376e2c8d3997d0207f0b9b8fa17b0192ee62e1c7a60b",
+      "metadataTypeId": 6,
+      "type": "struct contract_with_type_aliases_abi::IdentityAliasWrapper"
+    }
+  ],
+  "configurables": [],
+  "encodingVersion": "1",
+  "errorCodes": {},
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [
+        {
+          "concreteTypeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b",
+          "name": "x"
+        },
+        {
+          "concreteTypeId": "2771ee6889dff227342d90c5f1ea6019ad8c8de50880048f823e1b926b26c13e",
+          "name": "y"
+        },
+        {
+          "concreteTypeId": "1567acc73497bb83e04c376e2c8d3997d0207f0b9b8fa17b0192ee62e1c7a60b",
+          "name": "z"
+        },
+        {
+          "concreteTypeId": "3981e3d30e52d053c35da213685243d8c82ef363f58bfc2d14986c393254c450",
+          "name": "w"
+        },
+        {
+          "concreteTypeId": "bc42ec26f2a17c5b23fc007d96b96bf35f8949ee156afdd789064210d881f7e0",
+          "name": "u"
+        },
+        {
+          "concreteTypeId": "bc5b9d5b85b9fb6e78bbb779cc67a95e60d6f291cd256a4c7dba66308dc7dfb8",
+          "name": "s"
+        }
+      ],
+      "name": "foo",
+      "output": "a28cf4bd3deddbee8bde0daa7b4534d37db682c73dc398fd720c75f3775a3df0"
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "metadataTypes": [
+    {
+      "components": [
+        {
+          "name": "__tuple_element",
+          "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
+        },
+        {
+          "name": "__tuple_element",
+          "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
+        }
+      ],
+      "metadataTypeId": 0,
+      "type": "(_, _)"
+    },
+    {
+      "components": [
+        {
+          "name": "__tuple_element",
+          "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
+        },
+        {
+          "name": "__tuple_element",
+          "typeId": 2
+        },
+        {
+          "name": "__tuple_element",
+          "typeId": 6
+        },
+        {
+          "name": "__tuple_element",
+          "typeArguments": [
+            {
+              "name": "",
+              "typeId": 6
+            }
+          ],
+          "typeId": 5
+        },
+        {
+          "name": "__tuple_element",
+          "typeId": 0
+        },
+        {
+          "name": "__tuple_element",
+          "typeId": "bc5b9d5b85b9fb6e78bbb779cc67a95e60d6f291cd256a4c7dba66308dc7dfb8"
+        }
+      ],
+      "metadataTypeId": 1,
+      "type": "(_, _, _, _, _, _)"
+    },
+    {
+      "components": [
+        {
+          "name": "__array_element",
+          "typeId": 3
+        }
+      ],
+      "metadataTypeId": 2,
+      "type": "[_; 2]"
+    },
+    {
+      "components": [
+        {
+          "name": "Address",
+          "typeId": 7
+        },
+        {
+          "name": "ContractId",
+          "typeId": 8
+        }
+      ],
+      "metadataTypeId": 3,
+      "type": "enum std::identity::Identity"
+    },
+    {
+      "metadataTypeId": 4,
+      "type": "generic T"
+    },
+    {
+      "components": [
+        {
+          "name": "f",
+          "typeId": 4
+        }
+      ],
+      "metadataTypeId": 5,
+      "type": "struct contract_with_type_aliases_abi::Generic",
+      "typeParameters": [
+        4
+      ]
+    },
+    {
+      "components": [
+        {
+          "name": "i",
+          "typeId": 3
+        }
+      ],
+      "metadataTypeId": 6,
+      "type": "struct contract_with_type_aliases_abi::IdentityAliasWrapper"
+    },
+    {
+      "components": [
+        {
+          "name": "bits",
+          "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
+        }
+      ],
+      "metadataTypeId": 7,
+      "type": "struct std::address::Address"
+    },
+    {
+      "components": [
+        {
+          "name": "bits",
+          "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
+        }
+      ],
+      "metadataTypeId": 8,
+      "type": "struct std::contract_id::ContractId"
+    }
+  ],
+  "panickingCalls": {},
+  "programType": "contract",
+  "specVersion": "1.2"
+}

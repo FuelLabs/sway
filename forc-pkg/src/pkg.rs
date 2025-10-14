@@ -323,6 +323,8 @@ pub struct BuildOpts {
     pub experimental: Vec<sway_features::Feature>,
     /// Set of disabled experimental flags
     pub no_experimental: Vec<sway_features::Feature>,
+    /// Do not output any build artifacts, e.g., bytecode, ABI JSON, etc.
+    pub no_output: bool,
 }
 
 /// The set of options to filter type of projects to build in a workspace.
@@ -1790,7 +1792,7 @@ pub fn compile(
 
     const ENCODING_V0: &str = "0";
     const ENCODING_V1: &str = "1";
-    const SPEC_VERSION: &str = "1.1";
+    const SPEC_VERSION: &str = "1.2";
 
     let mut program_abi = match pkg.target {
         BuildTarget::Fuel => {
@@ -1803,6 +1805,7 @@ pub fn compile(
                     &mut AbiContext {
                         program: typed_program,
                         panic_occurrences: &asm.panic_occurrences,
+                        panicking_call_occurrences: &asm.panicking_call_occurrences,
                         abi_with_callpaths: true,
                         type_ids_to_full_type_str: HashMap::<String, String>::new(),
                         unique_names: HashMap::new(),
@@ -2209,6 +2212,7 @@ pub fn build_with_options(
         member_filter,
         experimental,
         no_experimental,
+        no_output,
         ..
     } = &build_options;
 
@@ -2300,7 +2304,10 @@ pub fn build_with_options(
             built_package.write_hexcode(&hexfile_path)?;
         }
 
-        built_package.write_output(minify, &pkg_manifest.project.name, &output_dir)?;
+        if !no_output {
+            built_package.write_output(minify, &pkg_manifest.project.name, &output_dir)?;
+        }
+
         built_workspace.push(Arc::new(built_package));
     }
 
@@ -2896,6 +2903,7 @@ mod test {
                 logged_types: None,
                 messages_types: None,
                 error_codes: None,
+                panicking_calls: None,
             }),
             storage_slots: vec![],
             warnings: vec![],

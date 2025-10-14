@@ -25,7 +25,7 @@ exclude = ["examples/*", "swayfmt/test_macros", "forc-test/test_data"]
 
 [workspace.package]
 edition = "2021"
-version = "0.70.0"
+version = "0.70.1"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 homepage = "https://fuel.network/"
 license = "Apache-2.0"
@@ -42,62 +42,62 @@ iter_over_hash_type = "deny"
 # Internal dependencies in order to propagate `workspace.version`
 #
 
-forc = { path = "forc/", version = "0.70.0" }
-forc-pkg = { path = "forc-pkg/", version = "0.70.0" }
-forc-test = { path = "forc-test/", version = "0.70.0" }
-forc-tracing = { path = "forc-tracing/", version = "0.70.0" }
-forc-util = { path = "forc-util/", version = "0.70.0" }
+forc = { path = "forc/", version = "0.70.1" }
+forc-pkg = { path = "forc-pkg/", version = "0.70.1" }
+forc-test = { path = "forc-test/", version = "0.70.1" }
+forc-tracing = { path = "forc-tracing/", version = "0.70.1" }
+forc-util = { path = "forc-util/", version = "0.70.1" }
 
 # Forc plugins
-forc-plugins = { path = "forc-plugins/", version = "0.70.0" }
-forc-client = { path = "forc-plugins/forc-client/", version = "0.70.0" }
-forc-crypto = { path = "forc-plugins/forc-crypto/", version = "0.70.0" }
-forc-debug = { path = "forc-plugins/forc-debug/", version = "0.70.0" }
-forc-doc = { path = "forc-plugins/forc-doc/", version = "0.70.0" }
-forc-fmt = { path = "forc-plugins/forc-fmt/", version = "0.70.0" }
-forc-lsp = { path = "forc-plugins/forc-lsp/", version = "0.70.0" }
-forc-mcp = { path = "forc-plugins/forc-mcp/", version = "0.70.0" }
-forc-migrate = { path = "forc-plugins/forc-migrate/", version = "0.70.0" }
-forc-publish = { path = "forc-plugins/forc-publish/", version = "0.70.0" }
-forc-tx = { path = "forc-plugins/forc-tx/", version = "0.70.0" }
+forc-plugins = { path = "forc-plugins/", version = "0.70.1" }
+forc-client = { path = "forc-plugins/forc-client/", version = "0.70.1" }
+forc-crypto = { path = "forc-plugins/forc-crypto/", version = "0.70.1" }
+forc-debug = { path = "forc-plugins/forc-debug/", version = "0.70.1" }
+forc-doc = { path = "forc-plugins/forc-doc/", version = "0.70.1" }
+forc-fmt = { path = "forc-plugins/forc-fmt/", version = "0.70.1" }
+forc-lsp = { path = "forc-plugins/forc-lsp/", version = "0.70.1" }
+forc-mcp = { path = "forc-plugins/forc-mcp/", version = "0.70.1" }
+forc-migrate = { path = "forc-plugins/forc-migrate/", version = "0.70.1" }
+forc-publish = { path = "forc-plugins/forc-publish/", version = "0.70.1" }
+forc-tx = { path = "forc-plugins/forc-tx/", version = "0.70.1" }
 
-sway-ast = { path = "sway-ast/", version = "0.70.0" }
-sway-core = { path = "sway-core/", version = "0.70.0" }
-sway-error = { path = "sway-error/", version = "0.70.0" }
-sway-features = { path = "sway-features/", version = "0.70.0" }
-sway-lsp = { path = "sway-lsp/", version = "0.70.0" }
-sway-parse = { path = "sway-parse/", version = "0.70.0" }
-sway-types = { path = "sway-types/", version = "0.70.0" }
-sway-utils = { path = "sway-utils/", version = "0.70.0" }
-swayfmt = { path = "swayfmt/", version = "0.70.0" }
+sway-ast = { path = "sway-ast/", version = "0.70.1" }
+sway-core = { path = "sway-core/", version = "0.70.1" }
+sway-error = { path = "sway-error/", version = "0.70.1" }
+sway-features = { path = "sway-features/", version = "0.70.1" }
+sway-lsp = { path = "sway-lsp/", version = "0.70.1" }
+sway-parse = { path = "sway-parse/", version = "0.70.1" }
+sway-types = { path = "sway-types/", version = "0.70.1" }
+sway-utils = { path = "sway-utils/", version = "0.70.1" }
+swayfmt = { path = "swayfmt/", version = "0.70.1" }
 
 # Sway IR
-sway-ir = { path = "sway-ir/", version = "0.70.0" }
-sway-ir-macros = { path = "sway-ir/sway-ir-macros", version = "0.70.0" }
+sway-ir = { path = "sway-ir/", version = "0.70.1" }
+sway-ir-macros = { path = "sway-ir/sway-ir-macros", version = "0.70.1" }
 
 #
 # External Fuel dependencies
 #
 
 # Dependencies from the `fuel-abi-types` repository:
-fuel-abi-types = "0.12"
+fuel-abi-types = "0.15"
 
 # Dependencies from the `fuel-core` repository:
 #
 # Although ALL versions are "X.Y", we need the complete semver for
 # fuel-core-client as the GitHub Actions workflow parses this value to pull down
 # the correct tarball.
-fuel-core = { version = "0.44", default-features = false }
-fuel-core-chain-config = { version = "0.44", default-features = false }
-fuel-core-client = { version = "0.44.0", default-features = false }
-fuel-core-storage = { version = "0.44", default-features = false }
-fuel-core-types = { version = "0.44", default-features = false }
+fuel-core = { version = "0.46", default-features = false }
+fuel-core-chain-config = { version = "0.46", default-features = false }
+fuel-core-client = { version = "0.46.0", default-features = false }
+fuel-core-storage = { version = "0.46", default-features = false }
+fuel-core-types = { version = "0.46", default-features = false }
 
 # Dependencies from the `fuels-rs` repository:
 
-fuels = "0.74"
-fuels-core = "0.74"
-fuels-accounts = "0.74"
+fuels = "0.75"
+fuels-core = "0.75"
+fuels-accounts = "0.75"
 
 # Dependencies from the `fuel-vm` repository:
 fuel-asm = "0.62"
@@ -105,9 +105,6 @@ fuel-crypto = "0.62"
 fuel-types = "0.62"
 fuel-tx = "0.62"
 fuel-vm = "0.62"
-
-# Dependencies for Fuel Telemetry
-fuel-telemetry = "0.1"
 
 # Dependencies from the `forc-wallet` repository:
 forc-wallet = "0.15"

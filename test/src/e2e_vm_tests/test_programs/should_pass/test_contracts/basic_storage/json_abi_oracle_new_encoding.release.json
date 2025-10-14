@@ -1,0 +1,299 @@
+{
+  "concreteTypes": [
+    {
+      "concreteTypeId": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d",
+      "type": "()"
+    },
+    {
+      "concreteTypeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b",
+      "type": "b256"
+    },
+    {
+      "concreteTypeId": "d852149004cc9ec0bbe7dc4e37bffea1d41469b759512b6136f2e865a4c06e7d",
+      "metadataTypeId": 0,
+      "type": "enum std::option::Option<u64>",
+      "typeArguments": [
+        "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+      ]
+    },
+    {
+      "concreteTypeId": "6906df92e2e485dde893b7d719d621b8910422e7c468f99caa5920e6ac19d9c6",
+      "metadataTypeId": 3,
+      "type": "struct basic_storage_abi::Quad"
+    },
+    {
+      "concreteTypeId": "7880d311d30802b48bd6a100a31adb5af17f94bff12daee556d4f02c1ac5b2ff",
+      "metadataTypeId": 5,
+      "type": "struct std::vec::Vec<struct basic_storage_abi::Quad>",
+      "typeArguments": [
+        "6906df92e2e485dde893b7d719d621b8910422e7c468f99caa5920e6ac19d9c6"
+      ]
+    },
+    {
+      "concreteTypeId": "1b5759d94094368cfd443019e7ca5ec4074300e544e5ea993a979f5da627261e",
+      "type": "u256"
+    },
+    {
+      "concreteTypeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0",
+      "type": "u64"
+    },
+    {
+      "concreteTypeId": "c89951a24c6ca28c13fd1cfdc646b2b656d69e61a92b91023be7eb58eb914b6b",
+      "type": "u8"
+    }
+  ],
+  "configurables": [],
+  "encodingVersion": "1",
+  "errorCodes": {},
+  "functions": [
+    {
+      "attributes": [
+        {
+          "arguments": [
+            "read"
+          ],
+          "name": "storage"
+        }
+      ],
+      "inputs": [
+        {
+          "concreteTypeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b",
+          "name": "storage_key"
+        }
+      ],
+      "name": "get_u64",
+      "output": "d852149004cc9ec0bbe7dc4e37bffea1d41469b759512b6136f2e865a4c06e7d"
+    },
+    {
+      "attributes": [
+        {
+          "arguments": [
+            "read"
+          ],
+          "name": "storage"
+        }
+      ],
+      "inputs": [
+        {
+          "concreteTypeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b",
+          "name": "key"
+        },
+        {
+          "concreteTypeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0",
+          "name": "slots"
+        }
+      ],
+      "name": "intrinsic_load_quad",
+      "output": "7880d311d30802b48bd6a100a31adb5af17f94bff12daee556d4f02c1ac5b2ff"
+    },
+    {
+      "attributes": [
+        {
+          "arguments": [
+            "read"
+          ],
+          "name": "storage"
+        }
+      ],
+      "inputs": [
+        {
+          "concreteTypeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b",
+          "name": "key"
+        }
+      ],
+      "name": "intrinsic_load_word",
+      "output": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+    },
+    {
+      "attributes": [
+        {
+          "arguments": [
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
+      "inputs": [
+        {
+          "concreteTypeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b",
+          "name": "key"
+        },
+        {
+          "concreteTypeId": "7880d311d30802b48bd6a100a31adb5af17f94bff12daee556d4f02c1ac5b2ff",
+          "name": "values"
+        }
+      ],
+      "name": "intrinsic_store_quad",
+      "output": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
+    },
+    {
+      "attributes": [
+        {
+          "arguments": [
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
+      "inputs": [
+        {
+          "concreteTypeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b",
+          "name": "key"
+        },
+        {
+          "concreteTypeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0",
+          "name": "value"
+        }
+      ],
+      "name": "intrinsic_store_word",
+      "output": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
+    },
+    {
+      "attributes": [
+        {
+          "arguments": [
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
+      "inputs": [
+        {
+          "concreteTypeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b",
+          "name": "key"
+        },
+        {
+          "concreteTypeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0",
+          "name": "value"
+        }
+      ],
+      "name": "store_u64",
+      "output": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
+    },
+    {
+      "attributes": [
+        {
+          "arguments": [
+            "read",
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
+      "inputs": [],
+      "name": "test_storage_exhaustive",
+      "output": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
+    }
+  ],
+  "loggedTypes": [
+    {
+      "concreteTypeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b",
+      "logId": "8961848586872524460"
+    },
+    {
+      "concreteTypeId": "c89951a24c6ca28c13fd1cfdc646b2b656d69e61a92b91023be7eb58eb914b6b",
+      "logId": "14454674236531057292"
+    },
+    {
+      "concreteTypeId": "1b5759d94094368cfd443019e7ca5ec4074300e544e5ea993a979f5da627261e",
+      "logId": "1970142151624111756"
+    },
+    {
+      "concreteTypeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0",
+      "logId": "1515152261580153489"
+    }
+  ],
+  "messagesTypes": [],
+  "metadataTypes": [
+    {
+      "components": [
+        {
+          "name": "None",
+          "typeId": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
+        },
+        {
+          "name": "Some",
+          "typeId": 1
+        }
+      ],
+      "metadataTypeId": 0,
+      "type": "enum std::option::Option",
+      "typeParameters": [
+        1
+      ]
+    },
+    {
+      "metadataTypeId": 1,
+      "type": "generic T"
+    },
+    {
+      "metadataTypeId": 2,
+      "type": "raw untyped ptr"
+    },
+    {
+      "components": [
+        {
+          "name": "v1",
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        },
+        {
+          "name": "v2",
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        },
+        {
+          "name": "v3",
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        },
+        {
+          "name": "v4",
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        }
+      ],
+      "metadataTypeId": 3,
+      "type": "struct basic_storage_abi::Quad"
+    },
+    {
+      "components": [
+        {
+          "name": "ptr",
+          "typeId": 2
+        },
+        {
+          "name": "cap",
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        }
+      ],
+      "metadataTypeId": 4,
+      "type": "struct std::vec::RawVec",
+      "typeParameters": [
+        1
+      ]
+    },
+    {
+      "components": [
+        {
+          "name": "buf",
+          "typeArguments": [
+            {
+              "name": "",
+              "typeId": 1
+            }
+          ],
+          "typeId": 4
+        },
+        {
+          "name": "len",
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        }
+      ],
+      "metadataTypeId": 5,
+      "type": "struct std::vec::Vec",
+      "typeParameters": [
+        1
+      ]
+    }
+  ],
+  "panickingCalls": {},
+  "programType": "contract",
+  "specVersion": "1.2"
+}

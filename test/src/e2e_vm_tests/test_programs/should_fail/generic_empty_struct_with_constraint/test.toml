@@ -1,4 +1,4 @@
 category = "fail"
 
 # check: let _: GenericEmptyStruct<NoTraitStruct> = GenericEmptyStruct {};
-# nextln: $()Trait "Trait" is not implemented for type "NoTraitStruct".
+# nextln: $()Trait "Trait" is not implemented for type "generic_empty_struct_with_constraint::NoTraitStruct".

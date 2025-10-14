@@ -208,8 +208,6 @@ impl MetadataManager {
         })
     }
 
-    // TODO: (ABI-BACKTRACING) Remove `#[allow(dead_code)]` once the backtracing is
-    //       implemented in IR compilation.
     #[allow(dead_code)]
     pub(crate) fn md_to_trace(
         &mut self,

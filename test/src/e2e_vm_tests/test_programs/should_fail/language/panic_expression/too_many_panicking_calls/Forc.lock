@@ -1,0 +1,8 @@
+[[package]]
+name = "std"
+source = "path+from-root-C3F137E221E376F8"
+
+[[package]]
+name = "too_many_panicking_calls"
+source = "member"
+dependencies = ["std"]

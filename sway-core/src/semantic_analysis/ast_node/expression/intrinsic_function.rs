@@ -603,9 +603,9 @@ fn type_check_not(
         )),
         _ => Err(handler.emit_err(CompileError::TypeError(
             sway_error::type_error::TypeError::MismatchedType {
-                expected: "numeric or b256".into(),
+                expected: "unsigned integer or b256".into(),
                 received: engines.help_out(return_type).to_string(),
-                help_text: "".into(),
+                help_text: "Incorrect argument type".into(),
                 span,
             },
         ))),
@@ -695,7 +695,12 @@ fn type_check_size_of_type(
             type_id,
             initial_type_id,
             span: targ.span(),
-            call_path_tree: targ.call_path_tree().cloned(),
+            call_path_tree: targ
+                .as_type_argument()
+                .unwrap()
+                .call_path_tree
+                .as_ref()
+                .cloned(),
         })],
         span,
     };
@@ -745,7 +750,12 @@ fn type_check_is_reference_type(
             type_id,
             initial_type_id,
             span: targ.span(),
-            call_path_tree: targ.call_path_tree().cloned(),
+            call_path_tree: targ
+                .as_type_argument()
+                .unwrap()
+                .call_path_tree
+                .as_ref()
+                .cloned(),
         })],
         span,
     };
@@ -795,7 +805,12 @@ fn type_check_assert_is_str_array(
             type_id,
             initial_type_id,
             span: targ.span(),
-            call_path_tree: targ.call_path_tree().cloned(),
+            call_path_tree: targ
+                .as_type_argument()
+                .unwrap()
+                .call_path_tree
+                .as_ref()
+                .cloned(),
         })],
         span,
     };
@@ -975,7 +990,12 @@ fn type_check_gtf(
                 type_id,
                 initial_type_id,
                 span: targ.span(),
-                call_path_tree: targ.call_path_tree().cloned(),
+                call_path_tree: targ
+                    .as_type_argument()
+                    .unwrap()
+                    .call_path_tree
+                    .as_ref()
+                    .cloned(),
             })],
             span,
         },
@@ -1184,7 +1204,12 @@ fn type_check_state_store_word(
             type_id,
             initial_type_id,
             span: span.clone(),
-            call_path_tree: targ.call_path_tree().cloned(),
+            call_path_tree: targ
+                .as_type_argument()
+                .unwrap()
+                .call_path_tree
+                .as_ref()
+                .cloned(),
         })
     });
     let intrinsic_function = ty::TyIntrinsicFunctionKind {
@@ -1275,7 +1300,12 @@ fn type_check_state_quad(
             type_id,
             initial_type_id,
             span: span.clone(),
-            call_path_tree: targ.call_path_tree().cloned(),
+            call_path_tree: targ
+                .as_type_argument()
+                .unwrap()
+                .call_path_tree
+                .as_ref()
+                .cloned(),
         })
     });
     let intrinsic_function = ty::TyIntrinsicFunctionKind {
@@ -1445,9 +1475,9 @@ fn type_check_bitwise_binary_op(
         )),
         _ => Err(handler.emit_err(CompileError::TypeError(
             sway_error::type_error::TypeError::MismatchedType {
-                expected: "numeric or b256".into(),
+                expected: "unsigned integer or b256".into(),
                 received: engines.help_out(return_type).to_string(),
-                help_text: "".into(),
+                help_text: "Incorrect argument type".into(),
                 span,
             },
         ))),
@@ -1519,7 +1549,7 @@ fn type_check_shift_binary_op(
         )),
         _ => Err(handler.emit_err(CompileError::TypeError(
             sway_error::type_error::TypeError::MismatchedType {
-                expected: "numeric or b256".into(),
+                expected: "unsigned integer or b256".into(),
                 received: engines.help_out(return_type).to_string(),
                 help_text: "Incorrect argument type".into(),
                 span: lhs.span,
@@ -1692,7 +1722,12 @@ fn type_check_ptr_ops(
                 type_id,
                 initial_type_id,
                 span: targ.span(),
-                call_path_tree: targ.call_path_tree().cloned(),
+                call_path_tree: targ
+                    .as_type_argument()
+                    .unwrap()
+                    .call_path_tree
+                    .as_ref()
+                    .cloned(),
             })],
             span,
         },
@@ -1756,7 +1791,12 @@ fn type_check_smo(
             type_id,
             initial_type_id,
             span: span.clone(),
-            call_path_tree: targ.call_path_tree().cloned(),
+            call_path_tree: targ
+                .as_type_argument()
+                .unwrap()
+                .call_path_tree
+                .as_ref()
+                .cloned(),
         })
     });
 

@@ -1,0 +1,54 @@
+{
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [
+        {
+          "name": "a",
+          "offset": null,
+          "type": 1,
+          "typeArguments": null
+        },
+        {
+          "name": "b",
+          "offset": null,
+          "type": 1,
+          "typeArguments": null
+        }
+      ],
+      "name": "multiply_u64",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
+    }
+  ],
+  "types": [
+    {
+      "components": [
+        {
+          "name": "__tuple_element",
+          "offset": null,
+          "type": 1,
+          "typeArguments": null
+        },
+        {
+          "name": "__tuple_element",
+          "offset": null,
+          "type": 1,
+          "typeArguments": null
+        }
+      ],
+      "type": "(_, _)",
+      "typeId": 0,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u64",
+      "typeId": 1,
+      "typeParameters": null
+    }
+  ]
+}

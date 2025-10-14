@@ -15,7 +15,8 @@ use sway_types::{Ident, Named, Span, Spanned};
 
 pub type TyImplItem = TyTraitItem;
 
-// impl <A, B, C> Trait<Arg, Arg> for Type<Arg, Arg>
+/// Self impl, e.g.: `impl<A> Type<A>`,
+/// or trait impl, e.g.: `impl<A, B, C> Trait<A, B> for Type<C>`.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyImplSelfOrTrait {
     pub impl_type_parameters: Vec<TypeParameter>,

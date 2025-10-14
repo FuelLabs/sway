@@ -1,11 +1,12 @@
 ---
 source: test/src/snapshot/mod.rs
+assertion_line: 266
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/transmute
 exit status: 1
 output:
     Building test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/transmute
-   Compiling library std (sway-lib-std)
+   Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
    Compiling script transmute (test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/transmute)
 error
  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/transmute/src/main.sw:5:13

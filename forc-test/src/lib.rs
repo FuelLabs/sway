@@ -8,8 +8,9 @@ use crate::setup::{
 };
 use ecal::EcalSyscallHandler;
 use forc_pkg::{self as pkg, BuildOpts, DumpOpts};
-use forc_util::tx_utils::RevertInfo;
+use forc_util::tx_utils::decode_fuel_vm_log_data;
 use fuel_abi_types::abi::program::ProgramABI;
+use fuel_abi_types::revert_info::RevertInfo;
 use fuel_tx as tx;
 use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
 use fuel_vm::{self as vm};
@@ -163,6 +164,8 @@ pub struct TestOpts {
     pub experimental: Vec<sway_features::Feature>,
     /// Set of disabled experimental flags
     pub no_experimental: Vec<sway_features::Feature>,
+    /// Do not output any build artifacts, e.g., bytecode, ABI JSON, etc.
+    pub no_output: bool,
 }
 
 /// The set of options provided for controlling logs printed for each test.
@@ -467,6 +470,7 @@ impl From<TestOpts> for pkg::BuildOpts {
             member_filter: Default::default(),
             experimental: val.experimental,
             no_experimental: val.no_experimental,
+            no_output: val.no_output,
         }
     }
 }
@@ -493,6 +497,7 @@ impl TestOpts {
             member_filter: Default::default(),
             experimental: self.experimental,
             no_experimental: self.no_experimental,
+            no_output: self.no_output,
         }
     }
 }
@@ -524,8 +529,23 @@ impl TestResult {
         program_abi: Option<&ProgramABI>,
         logs: &[fuel_tx::Receipt],
     ) -> Option<RevertInfo> {
+        let decode_last_log_data = |log_id: &str, program_abi: &ProgramABI| {
+            logs.last()
+                .and_then(|log| {
+                    if let fuel_tx::Receipt::LogData {
+                        data: Some(data), ..
+                    } = log
+                    {
+                        decode_fuel_vm_log_data(log_id, data, program_abi).ok()
+                    } else {
+                        None
+                    }
+                })
+                .map(|decoded_log| decoded_log.value)
+        };
+
         self.revert_code()
-            .map(|revert_code| RevertInfo::new(revert_code, program_abi, logs))
+            .map(|revert_code| RevertInfo::new(revert_code, program_abi, decode_last_log_data))
     }
 
     /// Return [TestDetails] from the span of the function declaring this test.

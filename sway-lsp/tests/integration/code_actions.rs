@@ -220,7 +220,7 @@ pub(crate) async fn code_action_trait_fn_request(server: &ServerState, uri: &Url
               character: 0,
           },
         },
-        "    /// Add a brief description.\n    /// \n    /// ### Additional Information\n    /// \n    /// Provide information beyond the core purpose or functionality.\n    /// \n    /// ### Returns\n    /// \n    /// * [Empty] - Add description here\n    /// \n    /// ### Reverts\n    /// \n    /// * List any cases where the function will revert\n    /// \n    /// ### Number of Storage Accesses\n    /// \n    /// * Reads: `0`\n    /// * Writes: `0`\n    /// * Clears: `0`\n    /// \n    /// ### Examples\n    /// \n    /// ```sway\n    /// let x = test_function();\n    /// ```\n");
+        "    /// Add a brief description.\n    /// \n    /// ### Additional Information\n    /// \n    /// Provide information beyond the core purpose or functionality.\n    /// \n    /// ### Returns\n    /// \n    /// * [abi::Empty] - Add description here\n    /// \n    /// ### Reverts\n    /// \n    /// * List any cases where the function will revert\n    /// \n    /// ### Number of Storage Accesses\n    /// \n    /// * Reads: `0`\n    /// * Writes: `0`\n    /// * Clears: `0`\n    /// \n    /// ### Examples\n    /// \n    /// ```sway\n    /// let x = test_function();\n    /// ```\n");
     let expected = vec![create_code_action(
         uri.clone(),
         "Generate a documentation template".to_string(),

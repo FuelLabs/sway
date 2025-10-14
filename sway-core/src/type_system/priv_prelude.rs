@@ -22,5 +22,5 @@ pub use super::{
     engine::IsConcrete,
     engine::TypeEngine,
     id::{IncludeSelf, TreatNumericAs, TypeId},
-    info::{AbiEncodeSizeHint, AbiName, TypeInfo},
+    info::{AbiEncodeSizeHint, AbiName, TypeInfo, TypeInfoDisplay},
 };

@@ -2,7 +2,7 @@ category = "fail"
 
 # check: $()fn set(self, val: Dummy<T>) {
 # check: $()expected: T
-# check: $()found:    Dummy<T>
+# check: $()found:    trait_method_signature_mismatch::Dummy<T>
 # check: $()help:     The definition of this function must match the one in the trait "MyTrait" declaration.
 
 # check: fn foo(s: str[7]) -> str[7] {

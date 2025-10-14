@@ -1,0 +1,264 @@
+{
+  "configurables": [],
+  "encoding": "1",
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "main",
+      "output": {
+        "name": "",
+        "type": 13,
+        "typeArguments": null
+      }
+    }
+  ],
+  "loggedTypes": [
+    {
+      "logId": "4579537983717831593",
+      "loggedType": {
+        "name": "",
+        "type": 6,
+        "typeArguments": []
+      }
+    },
+    {
+      "logId": "16566583104751091389",
+      "loggedType": {
+        "name": "",
+        "type": 7,
+        "typeArguments": [
+          {
+            "name": "",
+            "type": 13,
+            "typeArguments": null
+          }
+        ]
+      }
+    },
+    {
+      "logId": "5087777005172090899",
+      "loggedType": {
+        "name": "",
+        "type": 1,
+        "typeArguments": []
+      }
+    },
+    {
+      "logId": "5555909392781521367",
+      "loggedType": {
+        "name": "",
+        "type": 5,
+        "typeArguments": []
+      }
+    }
+  ],
+  "messagesTypes": [],
+  "types": [
+    {
+      "components": [],
+      "type": "()",
+      "typeId": 0,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "A",
+          "offset": null,
+          "type": 7,
+          "typeArguments": [
+            {
+              "name": "",
+              "type": 13,
+              "typeArguments": null
+            }
+          ]
+        },
+        {
+          "name": "B",
+          "offset": null,
+          "type": 0,
+          "typeArguments": null
+        }
+      ],
+      "type": "enum E",
+      "typeId": 1,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "generic T",
+      "typeId": 2,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "raw untyped ptr",
+      "typeId": 3,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "str",
+      "typeId": 4,
+      "typeParameters": null
+    },
+    {
+      "components": [],
+      "type": "struct CustomAbiEncode",
+      "typeId": 5,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "a",
+          "offset": null,
+          "type": 13,
+          "typeArguments": null
+        },
+        {
+          "name": "b",
+          "offset": null,
+          "type": 12,
+          "typeArguments": null
+        },
+        {
+          "name": "c",
+          "offset": null,
+          "type": 10,
+          "typeArguments": null
+        },
+        {
+          "name": "d",
+          "offset": null,
+          "type": 14,
+          "typeArguments": null
+        },
+        {
+          "name": "e",
+          "offset": null,
+          "type": 9,
+          "typeArguments": [
+            {
+              "name": "",
+              "offset": null,
+              "type": 13,
+              "typeArguments": null
+            }
+          ]
+        },
+        {
+          "name": "f",
+          "offset": null,
+          "type": 4,
+          "typeArguments": null
+        },
+        {
+          "name": "g",
+          "offset": null,
+          "type": 11,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct S",
+      "typeId": 6,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "ss",
+          "offset": null,
+          "type": 2,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct SS",
+      "typeId": 7,
+      "typeParameters": [
+        2
+      ]
+    },
+    {
+      "components": [
+        {
+          "name": "ptr",
+          "offset": null,
+          "type": 3,
+          "typeArguments": null
+        },
+        {
+          "name": "cap",
+          "offset": null,
+          "type": 13,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct std::vec::RawVec",
+      "typeId": 8,
+      "typeParameters": [
+        2
+      ]
+    },
+    {
+      "components": [
+        {
+          "name": "buf",
+          "offset": null,
+          "type": 8,
+          "typeArguments": [
+            {
+              "name": "",
+              "offset": null,
+              "type": 2,
+              "typeArguments": null
+            }
+          ]
+        },
+        {
+          "name": "len",
+          "offset": null,
+          "type": 13,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct std::vec::Vec",
+      "typeId": 9,
+      "typeParameters": [
+        2
+      ]
+    },
+    {
+      "components": null,
+      "type": "u16",
+      "typeId": 10,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u256",
+      "typeId": 11,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u32",
+      "typeId": 12,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u64",
+      "typeId": 13,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u8",
+      "typeId": 14,
+      "typeParameters": null
+    }
+  ]
+}

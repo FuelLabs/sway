@@ -1,0 +1,261 @@
+---
+source: test/src/snapshot/mod.rs
+assertion_line: 266
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/method_not_found
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_fail/method_not_found
+   Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
+   Compiling contract method_not_found (test/src/e2e_vm_tests/test_programs/should_fail/method_not_found)
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_fail/method_not_found/src/main.sw:64:15
+   |
+62 | }
+63 | 
+64 | fn generic<T>(t: T) where T: TraitB {
+   |               - This declaration is never used.
+65 |   t.method();
+66 |   t.method_b(42);
+   |
+____
+
+warning
+   --> test/src/e2e_vm_tests/test_programs/should_fail/method_not_found/src/main.sw:107:9
+    |
+105 |     s.method_b(42);
+106 | 
+107 |     let gs_u64 = GenericStruct::<u64> {};
+    |         ------ This declaration is never used.
+108 |     gs_u64.method_on_generic_struct();
+109 | 
+    |
+____
+
+warning
+   --> test/src/e2e_vm_tests/test_programs/should_fail/method_not_found/src/main.sw:114:9
+    |
+112 |     generic(s);
+113 | 
+114 |     let caller = abi(Abi, 0x0000000000000000000000000000000000000000000000000000000000000000);
+    |         ------ This declaration is never used.
+115 |     caller.provided_fn_in_abi();
+116 |     caller.provided_fn_in_abi(true);
+    |
+____
+
+error: Associated function or method is not found
+  --> test/src/e2e_vm_tests/test_programs/should_fail/method_not_found/src/main.sw:65:5
+   |
+...
+65 |   t.method();
+   |     ^^^^^^ "method(T)" is not found for type "T".
+   |
+____
+
+error: Associated function or method is not found
+  --> test/src/e2e_vm_tests/test_programs/should_fail/method_not_found/src/main.sw:66:5
+   |
+...
+66 |   t.method_b(42);
+   |     ^^^^^^^^ "method_b(T, {numeric})" is not found for type "T".
+   |     -------- help: Only this "method_b" function is implemented for the type:
+   |     -------- help: - T::method_b(self) -> ()
+   |     -------- help: Did you mean to call that function?
+   |
+____
+
+error: Associated function or method is not found
+  --> test/src/e2e_vm_tests/test_programs/should_fail/method_not_found/src/main.sw:67:6
+   |
+...
+67 |   T::associated();
+   |      ^^^^^^^^^^ "associated()" is not found for type "T".
+   |
+____
+
+error: Associated function or method is not found
+  --> test/src/e2e_vm_tests/test_programs/should_fail/method_not_found/src/main.sw:68:6
+   |
+...
+68 |   T::associated_b(42);
+   |      ^^^^^^^^^^^^ "associated_b({numeric})" is not found for type "T".
+   |      ------------ help: Only this "associated_b" function is implemented for the type:
+   |      ------------ help: - T::associated_b() -> ()
+   |      ------------ help: Did you mean to call that function?
+   |
+____
+
+error: Associated function or method is not found
+  --> test/src/e2e_vm_tests/test_programs/should_fail/method_not_found/src/main.sw:91:31
+   |
+...
+91 |     let _: ReturnedStruct = s.associated();
+   |                               ^^^^^^^^^^ "associated(method_not_found::Struct) -> method_not_found::ReturnedStruct" is not found for type "method_not_found::Struct".
+   |                               ---------- help: These "associated" functions are implemented for the type:
+   |                               ---------- help: - <method_not_found::Struct as method_not_found::TraitA>::associated() -> method_not_found::ReturnedStruct
+   |                               ---------- help: - method_not_found::Struct::associated() -> method_not_found::ReturnedStruct
+   |                               ---------- help: Did you mean to call one of those functions?
+   |
+____
+
+error: Associated function or method is not found
+  --> test/src/e2e_vm_tests/test_programs/should_fail/method_not_found/src/main.sw:93:37
+   |
+...
+93 |     let _: ReturnedStruct = Struct::method();
+   |                                     ^^^^^^ "method() -> method_not_found::ReturnedStruct" is not found for type "method_not_found::Struct".
+   |                                     ------ help: These "method" functions are implemented for the type:
+   |                                     ------ help: - <method_not_found::Struct as method_not_found::TraitA>::method(self) -> ()
+   |                                     ------ help: - method_not_found::Struct::method(self) -> ()
+   |                                     ------ help: Did you mean to call one of those functions?
+   |
+____
+
+error: Associated function or method is not found
+  --> test/src/e2e_vm_tests/test_programs/should_fail/method_not_found/src/main.sw:95:30
+   |
+...
+95 |     let _: ReturnedStruct =s.method(42);
+   |                              ^^^^^^ "method(method_not_found::Struct, {numeric}) -> method_not_found::ReturnedStruct" is not found for type "method_not_found::Struct".
+   |                              ------ help: These "method" functions are implemented for the type:
+   |                              ------ help: - <method_not_found::Struct as method_not_found::TraitA>::method(self) -> ()
+   |                              ------ help: - method_not_found::Struct::method(self) -> ()
+   |                              ------ help: Did you mean to call one of those functions?
+   |
+____
+
+error: Associated function or method is not found
+  --> test/src/e2e_vm_tests/test_programs/should_fail/method_not_found/src/main.sw:96:36
+   |
+...
+96 |     let _: ReturnedStruct =Struct::associated(42);
+   |                                    ^^^^^^^^^^ "associated({numeric}) -> method_not_found::ReturnedStruct" is not found for type "method_not_found::Struct".
+   |                                    ---------- help: These "associated" functions are implemented for the type:
+   |                                    ---------- help: - <method_not_found::Struct as method_not_found::TraitA>::associated() -> method_not_found::ReturnedStruct
+   |                                    ---------- help: - method_not_found::Struct::associated() -> method_not_found::ReturnedStruct
+   |                                    ---------- help: Did you mean to call one of those functions?
+   |
+____
+
+error: Associated function or method is not found
+  --> test/src/e2e_vm_tests/test_programs/should_fail/method_not_found/src/main.sw:98:7
+   |
+...
+98 |     s.different_method(true);
+   |       ^^^^^^^^^^^^^^^^ "different_method(method_not_found::Struct, bool)" is not found for type "method_not_found::Struct".
+   |       ---------------- help: These "different_method" functions are implemented for the type:
+   |       ---------------- help: - <method_not_found::Struct as method_not_found::TraitA>::different_method(self) -> ()
+   |       ---------------- help: - method_not_found::Struct::different_method(self, _x: u64) -> ()
+   |       ---------------- help: Did you mean to call one of those functions?
+   |
+____
+
+error: Associated function or method is not found
+  --> test/src/e2e_vm_tests/test_programs/should_fail/method_not_found/src/main.sw:99:13
+   |
+...
+99 |     Struct::different_associated(true);
+   |             ^^^^^^^^^^^^^^^^^^^^ "different_associated(bool)" is not found for type "method_not_found::Struct".
+   |             -------------------- help: These "different_associated" functions are implemented for the type:
+   |             -------------------- help: - <method_not_found::Struct as method_not_found::TraitA>::different_associated() -> ()
+   |             -------------------- help: - method_not_found::Struct::different_associated(_x: u64) -> ()
+   |             -------------------- help: Did you mean to call one of those functions?
+   |
+____
+
+error: Associated function or method is not found
+   --> test/src/e2e_vm_tests/test_programs/should_fail/method_not_found/src/main.sw:101:13
+    |
+...
+101 |     Struct::associated_with_params();
+    |             ^^^^^^^^^^^^^^^^^^^^^^ "associated_with_params()" is not found for type "method_not_found::Struct".
+    |             ---------------------- help: These "associated_with_params" functions are implemented for the type:
+    |             ---------------------- help: - <method_not_found::Struct as method_not_found::TraitA>::associated_with_params(_x: u64) -> ()
+    |             ---------------------- help: - method_not_found::Struct::associated_with_params(_x: u64) -> ()
+    |             ---------------------- help: Did you mean to call one of those functions?
+    |
+____
+
+error: Associated function or method is not found
+   --> test/src/e2e_vm_tests/test_programs/should_fail/method_not_found/src/main.sw:103:7
+    |
+...
+103 |     s.method_with_params();
+    |       ^^^^^^^^^^^^^^^^^^ "method_with_params(method_not_found::Struct)" is not found for type "method_not_found::Struct".
+    |       ------------------ help: These "method_with_params" functions are implemented for the type:
+    |       ------------------ help: - <method_not_found::Struct as method_not_found::TraitA>::method_with_params(self, _x: u64) -> ()
+    |       ------------------ help: - method_not_found::Struct::method_with_params(self, _x: u64) -> ()
+    |       ------------------ help: Did you mean to call one of those functions?
+    |
+____
+
+error: Associated function or method is not found
+   --> test/src/e2e_vm_tests/test_programs/should_fail/method_not_found/src/main.sw:105:7
+    |
+...
+105 |     s.method_b(42);
+    |       ^^^^^^^^ "method_b(method_not_found::Struct, {numeric})" is not found for type "method_not_found::Struct".
+    |       -------- help: These "method_b" functions are implemented for the type:
+    |       -------- help: - <method_not_found::Struct as method_not_found::TraitB>::method_b(self) -> ()
+    |       -------- help: - <method_not_found::Struct as method_not_found::TraitBB>::method_b(self, _x: u64, _y: u64) -> ()
+    |       -------- help: Did you mean to call one of those functions?
+    |
+____
+
+error: Associated function or method is not found
+   --> test/src/e2e_vm_tests/test_programs/should_fail/method_not_found/src/main.sw:108:12
+    |
+...
+108 |     gs_u64.method_on_generic_struct();
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^ "method_on_generic_struct(method_not_found::GenericStruct<u64>)" is not found for type "method_not_found::GenericStruct<u64>".
+    |
+____
+
+error: Associated function or method is not found
+   --> test/src/e2e_vm_tests/test_programs/should_fail/method_not_found/src/main.sw:110:27
+    |
+...
+110 |     GenericStruct::<u64>::associated_on_generic_struct();
+    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ "associated_on_generic_struct()" is not found for type "method_not_found::GenericStruct<u64>".
+    |
+____
+
+error: Associated function or method is not found
+   --> test/src/e2e_vm_tests/test_programs/should_fail/method_not_found/src/main.sw:115:12
+    |
+...
+115 |     caller.provided_fn_in_abi();
+    |            ^^^^^^^^^^^^^^^^^^ "provided_fn_in_abi(ContractCaller<Abi>)" is not found for type "ContractCaller<Abi>".
+    |            ------------------ help: Only this "provided_fn_in_abi" function is implemented for the type:
+    |            ------------------ help: - Abi::provided_fn_in_abi(x: u64) -> ()
+    |            ------------------ help: Did you mean to call that function?
+    |
+____
+
+error: Associated function or method is not found
+   --> test/src/e2e_vm_tests/test_programs/should_fail/method_not_found/src/main.sw:116:12
+    |
+...
+116 |     caller.provided_fn_in_abi(true);
+    |            ^^^^^^^^^^^^^^^^^^ "provided_fn_in_abi(ContractCaller<Abi>, bool)" is not found for type "ContractCaller<Abi>".
+    |            ------------------ help: Only this "provided_fn_in_abi" function is implemented for the type:
+    |            ------------------ help: - Abi::provided_fn_in_abi(x: u64) -> ()
+    |            ------------------ help: Did you mean to call that function?
+    |
+____
+
+error: Associated function or method is not found
+   --> test/src/e2e_vm_tests/test_programs/should_fail/method_not_found/src/main.sw:118:17
+    |
+...
+118 |     let _ = 0u8 + true;
+    |                 ^ "add(u8, bool)" is not found for type "u8".
+    |                 - help: Only this "add" function is implemented for the type:
+    |                 - help: - <u8 as std::ops::Add>::add(self, other: u8) -> u8
+    |                 - help: Did you mean to call that function?
+    |
+____
+
+  Aborting due to 18 errors.
+error: Failed to compile method_not_found

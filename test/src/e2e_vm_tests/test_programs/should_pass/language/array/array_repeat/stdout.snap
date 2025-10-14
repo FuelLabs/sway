@@ -2994,6 +2994,9 @@ output:
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert)
    Compiling script array_repeat (test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat)
     Finished debug [unoptimized + fuel] target(s) [7.064 KB] in ???
+    script array_repeat
+      Bytecode size: 7064 bytes (7.064 KB)
+      Bytecode hash: 0x69ce3ea2c40196fda9c534574731a978c37ff95d2eedacfed5f1c9c8c1611414
      Running 1 test, filtered 0 tests
 
 tested -- array_repeat

@@ -1,4 +1,4 @@
-script;
+library;
 
 pub trait MyFrom<T> {
     fn from(b: T) -> Self;
@@ -31,10 +31,11 @@ impl MyFrom<u256> for (u64, u64, u64, u32) {
     }
 }
 
-fn main() -> bool {
+pub fn main() -> bool {
     let (a, _b, _c, _d) = u256::min().into();
+    ping_to_assign_type(a, 42)
+}
 
-    assert_eq(a, 42);
-    
+fn ping_to_assign_type<T>(_a: T, _b: T) -> bool {
     true
 }

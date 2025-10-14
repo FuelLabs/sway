@@ -1,21 +1,15 @@
-script;
+library;
 
-struct Data {
-    value: u64
-}
+struct Data { }
 
 impl Data {
-    fn add_values(self, other: Data) -> u64 {
-        self.value + other.value
+    fn add_values(_first: Data, _other: Data) -> u64 {
+        0
     }
 }
 
-fn main() -> u64 {
-    let data1 = Data {
-        value: 42u64
-    };
-    let data2 = Data {
-        value: 1u64
-    };
-    Data::add_values(data1, data2, data2)
+pub fn main() {
+    let data1 = Data { };
+    let data2 = Data { };
+    Data::add_values(data1, data2, data2);
 }

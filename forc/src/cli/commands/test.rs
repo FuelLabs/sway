@@ -5,9 +5,10 @@ use forc_pkg as pkg;
 use forc_test::{TestFilter, TestResult, TestRunnerCount, TestedPackage};
 use forc_tracing::println_action_green;
 use forc_util::{
-    tx_utils::{decode_fuel_vm_log_data, format_log_receipts, RevertKind},
+    tx_utils::{decode_fuel_vm_log_data, format_log_receipts},
     ForcError, ForcResult,
 };
+use fuel_abi_types::{abi::program::PanickingCall, revert_info::RevertKind};
 use sway_core::{asm_generation::ProgramABI, fuel_prelude::fuel_tx::Receipt};
 use tracing::info;
 
@@ -237,6 +238,7 @@ fn print_test_output(
                     err_msg,
                     err_val,
                     pos,
+                    backtrace,
                 } => {
                     if let Some(err_msg) = err_msg {
                         info!("{TEST_NAME_INDENT} ├─ panic message: {err_msg}");
@@ -245,9 +247,54 @@ fn print_test_output(
                         info!("{TEST_NAME_INDENT} ├─ panic value:   {err_val}");
                     }
                     info!(
-                        "{TEST_NAME_INDENT} └─ panicked in:   {}, {}:{}:{}",
-                        pos.pkg, pos.file, pos.line, pos.column
+                        "{TEST_NAME_INDENT} {} panicked:      in {}",
+                        if backtrace.is_empty() {
+                            "└─"
+                        } else {
+                            "├─"
+                        },
+                        pos.function
                     );
+                    info!(
+                        "{TEST_NAME_INDENT} {}                 └─ at {}, {}:{}:{}",
+                        if backtrace.is_empty() { "  " } else { "│ " },
+                        pos.pkg,
+                        pos.file,
+                        pos.line,
+                        pos.column
+                    );
+
+                    fn print_backtrace_call(call: &PanickingCall, is_first: bool) {
+                        // The `__entry` function is a part of a backtrace,
+                        // but we don't want to show it, since it is an internal implementation detail.
+                        if call.pos.function.ends_with("::__entry")
+                            || call.pos.function.eq("__entry")
+                        {
+                            return;
+                        }
+
+                        let prefix = if is_first {
+                            "└─ backtrace:"
+                        } else {
+                            "             "
+                        };
+
+                        info!(
+                            "{TEST_NAME_INDENT} {prefix}     called in {}",
+                            call.pos.function
+                        );
+                        info!(
+                            "{TEST_NAME_INDENT}                    └─ at {}, {}:{}:{}",
+                            call.pos.pkg, call.pos.file, call.pos.line, call.pos.column
+                        );
+                    }
+
+                    if let Some((first, others)) = backtrace.split_first() {
+                        print_backtrace_call(first, true);
+                        for call in others {
+                            print_backtrace_call(call, false);
+                        }
+                    }
                 }
             }
         }
@@ -323,6 +370,7 @@ fn opts_from_cmd(cmd: Command) -> forc_test::TestOpts {
         build_target: cmd.build.build_target,
         experimental: cmd.experimental.experimental,
         no_experimental: cmd.experimental.no_experimental,
+        no_output: false,
     }
 }
 

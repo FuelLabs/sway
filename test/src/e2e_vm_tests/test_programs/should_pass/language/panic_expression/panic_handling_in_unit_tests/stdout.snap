@@ -1,5 +1,6 @@
 ---
 source: test/src/snapshot/mod.rs
+assertion_line: 266
 ---
 > forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests --logs --raw-logs --dbgs --reverts passing_
 exit status: 0
@@ -18,7 +19,7 @@ warning: Error message is empty
 ____
 
   Compiled script "panic_handling_in_unit_tests" with 1 warning.
-    Finished debug [unoptimized + fuel] target(s) [8.104 KB] in ???
+    Finished debug [unoptimized + fuel] target(s) [8.144 KB] in ???
      Running 2 tests, filtered 18 tests
 
 tested -- panic_handling_in_unit_tests
@@ -31,7 +32,7 @@ tested -- panic_handling_in_unit_tests
 AsciiString { data: "This is a log from the passing test." }, log rb: 10098701174489624218
 42, log rb: 1515152261580153489
            raw logs:
-[{"LogData":{"data":"0000000000000024546869732069732061206c6f672066726f6d207468652070617373696e6720746573742e","digest":"29d742ad9093cdf81404ff756467a44448729b85ab3c0d65197829fb61d2dd29","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":44,"pc":14928,"ptr":67107840,"ra":0,"rb":10098701174489624218}},{"LogData":{"data":"000000000000002a","digest":"a6bb133cb1e3638ad7b8a3ff0539668e9e56f9b850ef1b2a810f5422eaa6c323","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":8,"pc":15516,"ptr":67106816,"ra":0,"rb":1515152261580153489}}]
+[{"LogData":{"data":"0000000000000024546869732069732061206c6f672066726f6d207468652070617373696e6720746573742e","digest":"29d742ad9093cdf81404ff756467a44448729b85ab3c0d65197829fb61d2dd29","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":44,"pc":14948,"ptr":67107840,"ra":0,"rb":10098701174489624218}},{"LogData":{"data":"000000000000002a","digest":"a6bb133cb1e3638ad7b8a3ff0539668e9e56f9b850ef1b2a810f5422eaa6c323","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":8,"pc":15536,"ptr":67106816,"ra":0,"rb":1515152261580153489}}]
       test passing_no_dbgs_or_logs ... ok (???, 18 gas)
 
 test result: OK. 2 passed; 0 failed; finished in ???
@@ -55,7 +56,7 @@ warning: Error message is empty
 ____
 
   Compiled script "panic_handling_in_unit_tests" with 1 warning.
-    Finished debug [unoptimized + fuel] target(s) [8.104 KB] in ???
+    Finished debug [unoptimized + fuel] target(s) [8.144 KB] in ???
      Running 20 tests, filtered 0 tests
 
 tested -- panic_handling_in_unit_tests
@@ -74,9 +75,9 @@ tested -- panic_handling_in_unit_tests
       test failing_panic_const_eval_str_arg ... FAILED (???, 19 gas)
       test failing_panic_const_eval_empty_str_arg ... FAILED (???, 19 gas)
       test failing_panic_const_eval_whitespace_str_arg ... FAILED (???, 19 gas)
-      test failing_panic_non_const_eval_str_arg ... FAILED (???, 267 gas)
-      test failing_panic_non_const_eval_str_empty_arg ... FAILED (???, 266 gas)
-      test failing_panic_non_const_eval_str_whitespace_arg ... FAILED (???, 267 gas)
+      test failing_panic_non_const_eval_str_arg ... FAILED (???, 272 gas)
+      test failing_panic_non_const_eval_str_empty_arg ... FAILED (???, 272 gas)
+      test failing_panic_non_const_eval_str_whitespace_arg ... FAILED (???, 273 gas)
       test failing_panic_error_enum_arg ... FAILED (???, 371 gas)
       test failing_panic_error_enum_arg_with_empty_msg ... FAILED (???, 455 gas)
       test failing_panic_error_enum_arg_with_whitespace_msg ... FAILED (???, 472 gas)
@@ -102,7 +103,7 @@ AsciiString { data: "This is a log from the reverting test." }, log rb: 10098701
       "id": "0000000000000000000000000000000000000000000000000000000000000000",
       "is": 10368,
       "len": 46,
-      "pc": 14928,
+      "pc": 14948,
       "ptr": 67107840,
       "ra": 0,
       "rb": 10098701174489624218
@@ -113,14 +114,14 @@ AsciiString { data: "This is a log from the reverting test." }, log rb: 10098701
 
       test failing_error_signal_assert, "test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests/src/main.sw":49
            revert code: ffffffffffff0004
-            └─ error message: Failing call to `std::assert::assert`
+            └─ error message: Failing call to `std::assert::assert`.
            debug output:
 [src/main.sw:51:13] TestError::A = A
 
 
       test failing_error_signal_assert_eq, "test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests/src/main.sw":55
            revert code: ffffffffffff0003
-            └─ error message: Failing call to `std::assert::assert_eq`
+            └─ error message: Failing call to `std::assert::assert_eq`.
            debug output:
 [src/main.sw:57:13] "This is a `__dbg` before the failing assert_eq." = "This is a `__dbg` before the failing assert_eq."
            decoded log values:
@@ -136,7 +137,7 @@ AsciiString { data: "We will get logged the asserted values and this message." }
       "id": "0000000000000000000000000000000000000000000000000000000000000000",
       "is": 10368,
       "len": 64,
-      "pc": 14928,
+      "pc": 14948,
       "ptr": 67107840,
       "ra": 0,
       "rb": 10098701174489624218
@@ -149,7 +150,7 @@ AsciiString { data: "We will get logged the asserted values and this message." }
       "id": "0000000000000000000000000000000000000000000000000000000000000000",
       "is": 10368,
       "len": 8,
-      "pc": 15516,
+      "pc": 15536,
       "ptr": 67106816,
       "ra": 0,
       "rb": 1515152261580153489
@@ -162,7 +163,7 @@ AsciiString { data: "We will get logged the asserted values and this message." }
       "id": "0000000000000000000000000000000000000000000000000000000000000000",
       "is": 10368,
       "len": 8,
-      "pc": 15516,
+      "pc": 15536,
       "ptr": 67105792,
       "ra": 0,
       "rb": 1515152261580153489
@@ -173,7 +174,7 @@ AsciiString { data: "We will get logged the asserted values and this message." }
 
       test failing_error_signal_assert_ne, "test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests/src/main.sw":62
            revert code: ffffffffffff0005
-            └─ error message: Failing call to `std::assert::assert_ne`
+            └─ error message: Failing call to `std::assert::assert_ne`.
            debug output:
 [src/main.sw:64:13] "This is a `__dbg` before the failing assert_ne." = "This is a `__dbg` before the failing assert_ne."
            decoded log values:
@@ -189,7 +190,7 @@ AsciiString { data: "We will get logged the asserted values and this message." }
       "id": "0000000000000000000000000000000000000000000000000000000000000000",
       "is": 10368,
       "len": 64,
-      "pc": 14928,
+      "pc": 14948,
       "ptr": 67107840,
       "ra": 0,
       "rb": 10098701174489624218
@@ -202,7 +203,7 @@ AsciiString { data: "We will get logged the asserted values and this message." }
       "id": "0000000000000000000000000000000000000000000000000000000000000000",
       "is": 10368,
       "len": 8,
-      "pc": 15516,
+      "pc": 15536,
       "ptr": 67106816,
       "ra": 0,
       "rb": 1515152261580153489
@@ -215,7 +216,7 @@ AsciiString { data: "We will get logged the asserted values and this message." }
       "id": "0000000000000000000000000000000000000000000000000000000000000000",
       "is": 10368,
       "len": 8,
-      "pc": 15516,
+      "pc": 15536,
       "ptr": 67105792,
       "ra": 0,
       "rb": 1515152261580153489
@@ -226,7 +227,7 @@ AsciiString { data: "We will get logged the asserted values and this message." }
 
       test failing_error_signal_require_str_error, "test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests/src/main.sw":69
            revert code: ffffffffffff0000
-            └─ error message: Failing call to `std::revert::require`
+            └─ error message: Failing call to `std::revert::require`.
            decoded log values:
 AsciiString { data: "This is an error message in a `require` call." }, log rb: 10098701174489624218
            raw logs:
@@ -238,7 +239,7 @@ AsciiString { data: "This is an error message in a `require` call." }, log rb: 1
       "id": "0000000000000000000000000000000000000000000000000000000000000000",
       "is": 10368,
       "len": 53,
-      "pc": 14928,
+      "pc": 14948,
       "ptr": 67107840,
       "ra": 0,
       "rb": 10098701174489624218
@@ -249,7 +250,7 @@ AsciiString { data: "This is an error message in a `require` call." }, log rb: 1
 
       test failing_error_signal_require_enum_error, "test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests/src/main.sw":74
            revert code: ffffffffffff0000
-            └─ error message: Failing call to `std::revert::require`
+            └─ error message: Failing call to `std::revert::require`.
            decoded log values:
 B(true), log rb: 8516346929033386016
            raw logs:
@@ -271,9 +272,10 @@ B(true), log rb: 8516346929033386016
 
 
       test failing_panic_no_arg, "test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests/src/main.sw":79
-           revert code: ffffffff00000000
+           revert code: 8000000000000000
             ├─ panic value:   ()
-            └─ panicked in:   panic_handling_in_unit_tests@0.1.2, src/main.sw:81:5
+            └─ panicked:      in panic_handling_in_unit_tests::failing_panic_no_arg
+                               └─ at panic_handling_in_unit_tests@0.1.2, src/main.sw:81:5
            decoded log values:
 (), log rb: 3330666440490685604
            raw logs:
@@ -295,9 +297,10 @@ B(true), log rb: 8516346929033386016
 
 
       test failing_panic_unit_arg, "test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests/src/main.sw":84
-           revert code: ffffffff00000001
+           revert code: 8080000000000000
             ├─ panic value:   ()
-            └─ panicked in:   panic_handling_in_unit_tests@0.1.2, src/main.sw:86:5
+            └─ panicked:      in panic_handling_in_unit_tests::failing_panic_unit_arg
+                               └─ at panic_handling_in_unit_tests@0.1.2, src/main.sw:86:5
            decoded log values:
 (), log rb: 3330666440490685604
            raw logs:
@@ -319,27 +322,33 @@ B(true), log rb: 8516346929033386016
 
 
       test failing_panic_const_eval_str_arg, "test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests/src/main.sw":89
-           revert code: ffffffff00000002
+           revert code: 8100000000000000
             ├─ panic message: Panicked with a string argument.
-            └─ panicked in:   panic_handling_in_unit_tests@0.1.2, src/main.sw:91:5
+            └─ panicked:      in panic_handling_in_unit_tests::failing_panic_const_eval_str_arg
+                               └─ at panic_handling_in_unit_tests@0.1.2, src/main.sw:91:5
 
 
       test failing_panic_const_eval_empty_str_arg, "test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests/src/main.sw":94
-           revert code: ffffffff00000003
+           revert code: 8180000000000000
             ├─ panic message: 
-            └─ panicked in:   panic_handling_in_unit_tests@0.1.2, src/main.sw:96:5
+            └─ panicked:      in panic_handling_in_unit_tests::failing_panic_const_eval_empty_str_arg
+                               └─ at panic_handling_in_unit_tests@0.1.2, src/main.sw:96:5
 
 
       test failing_panic_const_eval_whitespace_str_arg, "test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests/src/main.sw":99
-           revert code: ffffffff00000004
+           revert code: 8200000000000000
             ├─ panic message:     
-            └─ panicked in:   panic_handling_in_unit_tests@0.1.2, src/main.sw:101:5
+            └─ panicked:      in panic_handling_in_unit_tests::failing_panic_const_eval_whitespace_str_arg
+                               └─ at panic_handling_in_unit_tests@0.1.2, src/main.sw:101:5
 
 
       test failing_panic_non_const_eval_str_arg, "test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests/src/main.sw":104
-           revert code: ffffffff00000005
+           revert code: 8280000000000001
             ├─ panic message: Panicked with a non-const evaluated string argument.
-            └─ panicked in:   panic_handling_in_unit_tests@0.1.2, src/main.sw:135:5
+            ├─ panicked:      in panic_handling_in_unit_tests::non_const_eval_str
+            │                  └─ at panic_handling_in_unit_tests@0.1.2, src/main.sw:135:5
+            └─ backtrace:     called in panic_handling_in_unit_tests::failing_panic_non_const_eval_str_arg
+                               └─ at panic_handling_in_unit_tests@0.1.2, src/main.sw:106:11
            decoded log values:
 AsciiString { data: "Panicked with a non-const evaluated string argument." }, log rb: 10098701174489624218
            raw logs:
@@ -351,7 +360,7 @@ AsciiString { data: "Panicked with a non-const evaluated string argument." }, lo
       "id": "0000000000000000000000000000000000000000000000000000000000000000",
       "is": 10368,
       "len": 60,
-      "pc": 17280,
+      "pc": 17304,
       "ptr": 67107840,
       "ra": 0,
       "rb": 10098701174489624218
@@ -361,9 +370,12 @@ AsciiString { data: "Panicked with a non-const evaluated string argument." }, lo
 
 
       test failing_panic_non_const_eval_str_empty_arg, "test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests/src/main.sw":109
-           revert code: ffffffff00000005
+           revert code: 8280000000000002
             ├─ panic message: 
-            └─ panicked in:   panic_handling_in_unit_tests@0.1.2, src/main.sw:135:5
+            ├─ panicked:      in panic_handling_in_unit_tests::non_const_eval_str
+            │                  └─ at panic_handling_in_unit_tests@0.1.2, src/main.sw:135:5
+            └─ backtrace:     called in panic_handling_in_unit_tests::failing_panic_non_const_eval_str_empty_arg
+                               └─ at panic_handling_in_unit_tests@0.1.2, src/main.sw:111:11
            decoded log values:
 AsciiString { data: "" }, log rb: 10098701174489624218
            raw logs:
@@ -375,7 +387,7 @@ AsciiString { data: "" }, log rb: 10098701174489624218
       "id": "0000000000000000000000000000000000000000000000000000000000000000",
       "is": 10368,
       "len": 8,
-      "pc": 17280,
+      "pc": 17304,
       "ptr": 67107840,
       "ra": 0,
       "rb": 10098701174489624218
@@ -385,9 +397,12 @@ AsciiString { data: "" }, log rb: 10098701174489624218
 
 
       test failing_panic_non_const_eval_str_whitespace_arg, "test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests/src/main.sw":114
-           revert code: ffffffff00000005
+           revert code: 8280000000000003
             ├─ panic message:     
-            └─ panicked in:   panic_handling_in_unit_tests@0.1.2, src/main.sw:135:5
+            ├─ panicked:      in panic_handling_in_unit_tests::non_const_eval_str
+            │                  └─ at panic_handling_in_unit_tests@0.1.2, src/main.sw:135:5
+            └─ backtrace:     called in panic_handling_in_unit_tests::failing_panic_non_const_eval_str_whitespace_arg
+                               └─ at panic_handling_in_unit_tests@0.1.2, src/main.sw:116:11
            decoded log values:
 AsciiString { data: "    " }, log rb: 10098701174489624218
            raw logs:
@@ -399,7 +414,7 @@ AsciiString { data: "    " }, log rb: 10098701174489624218
       "id": "0000000000000000000000000000000000000000000000000000000000000000",
       "is": 10368,
       "len": 12,
-      "pc": 17280,
+      "pc": 17304,
       "ptr": 67107840,
       "ra": 0,
       "rb": 10098701174489624218
@@ -409,10 +424,11 @@ AsciiString { data: "    " }, log rb: 10098701174489624218
 
 
       test failing_panic_error_enum_arg, "test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests/src/main.sw":119
-           revert code: ffffffff00000009
+           revert code: 8480000000000000
             ├─ panic message: Error B has occurred, with a boolean value.
             ├─ panic value:   B(true)
-            └─ panicked in:   panic_handling_in_unit_tests@0.1.2, src/main.sw:121:5
+            └─ panicked:      in panic_handling_in_unit_tests::failing_panic_error_enum_arg
+                               └─ at panic_handling_in_unit_tests@0.1.2, src/main.sw:121:5
            decoded log values:
 B(true), log rb: 8516346929033386016
            raw logs:
@@ -424,7 +440,7 @@ B(true), log rb: 8516346929033386016
       "id": "0000000000000000000000000000000000000000000000000000000000000000",
       "is": 10368,
       "len": 9,
-      "pc": 13520,
+      "pc": 13540,
       "ptr": 67107840,
       "ra": 0,
       "rb": 8516346929033386016
@@ -434,10 +450,11 @@ B(true), log rb: 8516346929033386016
 
 
       test failing_panic_error_enum_arg_with_empty_msg, "test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests/src/main.sw":124
-           revert code: ffffffff0000000a
+           revert code: 8500000000000000
             ├─ panic message: 
             ├─ panic value:   C(AsciiString { data: "This is an error with an empty error message." })
-            └─ panicked in:   panic_handling_in_unit_tests@0.1.2, src/main.sw:126:5
+            └─ panicked:      in panic_handling_in_unit_tests::failing_panic_error_enum_arg_with_empty_msg
+                               └─ at panic_handling_in_unit_tests@0.1.2, src/main.sw:126:5
            decoded log values:
 C(AsciiString { data: "This is an error with an empty error message." }), log rb: 8516346929033386016
            raw logs:
@@ -449,7 +466,7 @@ C(AsciiString { data: "This is an error with an empty error message." }), log rb
       "id": "0000000000000000000000000000000000000000000000000000000000000000",
       "is": 10368,
       "len": 61,
-      "pc": 13624,
+      "pc": 13644,
       "ptr": 67107840,
       "ra": 0,
       "rb": 8516346929033386016
@@ -459,10 +476,11 @@ C(AsciiString { data: "This is an error with an empty error message." }), log rb
 
 
       test failing_panic_error_enum_arg_with_whitespace_msg, "test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests/src/main.sw":129
-           revert code: ffffffff0000000b
+           revert code: 8580000000000000
             ├─ panic message:     
             ├─ panic value:   D(AsciiString { data: "This is an error with a whitespace error message." })
-            └─ panicked in:   panic_handling_in_unit_tests@0.1.2, src/main.sw:131:5
+            └─ panicked:      in panic_handling_in_unit_tests::failing_panic_error_enum_arg_with_whitespace_msg
+                               └─ at panic_handling_in_unit_tests@0.1.2, src/main.sw:131:5
            decoded log values:
 D(AsciiString { data: "This is an error with a whitespace error message." }), log rb: 8516346929033386016
            raw logs:
@@ -474,7 +492,7 @@ D(AsciiString { data: "This is an error with a whitespace error message." }), lo
       "id": "0000000000000000000000000000000000000000000000000000000000000000",
       "is": 10368,
       "len": 65,
-      "pc": 13728,
+      "pc": 13748,
       "ptr": 67107840,
       "ra": 0,
       "rb": 8516346929033386016

@@ -1,10 +1,6 @@
 [project]
 authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
-implicit-std = false
 license = "Apache-2.0"
 name = "impl_self_duplicated"
-
-[dependencies]
-std = { path = "../../../reduced_std_libs/sway-lib-std-core" }
-
+implicit-std = false

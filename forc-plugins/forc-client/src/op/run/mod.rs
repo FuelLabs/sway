@@ -102,6 +102,7 @@ pub async fn run_pkg(
 ) -> Result<RanScript> {
     let node_url = command.node.get_node_url(&manifest.network)?;
     let provider = Provider::connect(node_url.clone()).await?;
+    let consensus_params = provider.consensus_parameters().await?;
     let tx_count = 1;
     let account = select_account(
         signer_mode,
@@ -152,9 +153,13 @@ pub async fn run_pkg(
         external_contracts,
     };
     let tx_policies = tx_policies_from_cmd(command);
-    let mut tb = call
-        .transaction_builder(tx_policies, VariableOutputPolicy::EstimateMinimum, &account)
-        .await?;
+    let mut tb = call.transaction_builder(
+        tx_policies,
+        VariableOutputPolicy::EstimateMinimum,
+        &consensus_params,
+        call.inputs.clone(),
+        &account,
+    )?;
 
     account.add_witnesses(&mut tb)?;
     account.adjust_for_fee(&mut tb, 0).await?;
@@ -334,5 +339,6 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
         member_filter: pkg::MemberFilter::only_scripts(),
         experimental: cmd.experimental.experimental.clone(),
         no_experimental: cmd.experimental.no_experimental.clone(),
+        no_output: false,
     }
 }
