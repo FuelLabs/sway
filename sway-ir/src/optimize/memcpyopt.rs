@@ -7,7 +7,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use sway_types::{FxIndexMap, FxIndexSet};
 
 use crate::{
-    function, get_gep_symbol, get_loaded_symbols, get_referred_symbol, get_referred_symbols,
+    get_gep_symbol, get_loaded_symbols, get_referred_symbol, get_referred_symbols,
     get_stored_symbols, memory_utils, AnalysisResults, Block, Context, EscapedSymbols,
     FuelVmInstruction, Function, InstOp, Instruction, InstructionInserter, IrError, LocalVar, Pass,
     PassMutability, ReferredSymbols, ScopedPass, Symbol, Type, Value, ValueDatum,
