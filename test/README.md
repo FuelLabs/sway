@@ -10,7 +10,7 @@ There are two ways to run snapshot tests:
 When the snapshot flag is enabled (the default) the test harness will search for `snapshot.toml` files. For every `toml` file found a new snapshot test will run. If the `toml` file is empty, it will be interpreted as simply being:
 
 ```toml
-# this is how the test harness understand when it sees an empty snapshot.toml
+# this is how the test harness understands an empty `snapshot.toml
 cmds = [
     \"forc build --path {root}\"
 ]
@@ -18,7 +18,7 @@ cmds = [
 
 When the test harness runs a snapshot test, it will iterate the `cmds` array of each file, run each command, and append everything into the snapshot.
 
-So the snapshot of the above file would be something like
+So the snapshot of the above file would be something like:
 
 ```
 > forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
@@ -32,8 +32,8 @@ output:
 
 To make snapshot "environment free", the test harness changes `forc` output a little bit.
 
-1 - First it does not show complete file paths. All paths are relative to the swat repo root.
-2 - Test harness also remove all printing of times.
+1 - First it does not show complete file paths. All paths are relative to the Sway repo root.
+2 - Test harness also removes all printing of times.
 3 - It also removes all ANSI codes for coloring and others.
 
 ## Commands
@@ -59,7 +59,7 @@ cmds = [
 ]
 ```
 
-The example above will only show asm lines that contains the `ecal` instruction.
+The example above will only show asm lines that contain the `ecal` instruction.
 
 5 - `regex`; Regex is very similar to `sub`, but allows a regex to be written.
 
@@ -79,8 +79,8 @@ cmds = [
 
 In the example above, the snapshot will only contain IR and asm from the function "transmute_by_reference_7"
 
-Some commands manipulate files. These commands have an "undo" list that will restore the file original content when they a finished.
-So it is guaranteed that if the test harness finishes gracefully, `main.sw` will have its original value.
+Some commands manipulate files. These commands have an "undo" list that will restore the file original content when they are finished.
+So it is guaranteed that if the test harness finishes gracefully, manipulated files will have their original values.
 
 For security reasons, these commands can ONLY manipulate files under its project folder.
 
@@ -101,7 +101,7 @@ cmds = [
 
 Blocks are blocks of code that live inside two comments of the form below:
 
-```rust
+```sway
 /* START BOOL */
 #[test]
 fn cost_of_in_bool() {
@@ -110,7 +110,7 @@ fn cost_of_in_bool() {
 /* END BOOL */
 ```
 
-These blocks can be manipulade from inside the snapshot.toml and allowing multiples tests to use the same project.
+These blocks can be manipulated from inside the `snapshot.toml` and allowing multiples tests to use the same project.
 To manipulate these blocks one can:
 
 1 - Use the `repeat-for-each-block`. 

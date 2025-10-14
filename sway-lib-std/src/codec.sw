@@ -2792,9 +2792,7 @@ impl<const N: u64> AbiDecode for str[N] {
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[0] {
     fn abi_decode(ref mut _buffer: BufferReader) -> str[0] {
-        asm(s: 0) {
-            s: str[0]
-        }
+        __to_str_array("")
     }
 }
 
