@@ -8,8 +8,11 @@ use crate::e2e_vm_tests::harness::run_and_capture_output;
 use crate::{FilterConfig, RunConfig};
 
 use anyhow::{anyhow, bail, Result};
+use chrono::Local;
 use colored::*;
+use git2::Repository;
 use core::fmt;
+use std::fs::File;
 use forc_pkg::manifest::{GenericManifestFile, ManifestFile};
 use forc_pkg::BuildProfile;
 use forc_test::ecal::Syscall;
@@ -37,6 +40,8 @@ use tokio::sync::Mutex;
 use tracing::Instrument;
 
 use self::util::VecExt;
+
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, PartialEq, Debug)]
 enum TestCategory {
@@ -127,6 +132,64 @@ impl TestDescription {
 struct DeployedContractKey {
     pub contract_path: String,
     pub new_encoding: bool,
+}
+
+#[derive(Serialize, Deserialize)]
+struct GasUsage {
+    /// The name of the unit test, or `None` if it is the gas usage of a script run.
+    pub unit_test_name: Option<String>,
+    pub gas_used: usize,
+}
+
+impl GasUsage {
+    pub fn new(gas_used: usize) -> Self {
+        Self { unit_test_name: None, gas_used }
+    }
+
+    pub fn with_unit_test_name(unit_test_name: String, gas_used: usize) -> Self {
+        Self { unit_test_name: Some(unit_test_name), gas_used }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+struct BytecodeSize {
+    /// The name of the compiled package if more than one package is compiled
+    /// within a test, or `None` if it is a single package whose name is the
+    /// same as the test name.
+    pub package_name: Option<String>,
+    pub bytecode_size: usize,
+}
+
+impl BytecodeSize {
+    pub fn new(bytecode_size: usize) -> Self {
+        Self { package_name: None, bytecode_size }
+    }
+
+    pub fn with_package_name(package_name: String, bytecode_size: usize) -> Self {
+        Self { package_name: Some(package_name), bytecode_size }
+    }
+}
+
+/// Performance data, bytecode sizes and gas usages,
+/// collected during the run of a single test.
+///
+/// Performance data can be collected for tests of
+/// these categories: "compile", "run", "unit_tests_pass".
+///
+/// A single test can have several bytecode sizes, if a
+/// workspace is "compiled", and several gas usages, if
+/// "unit_tests_pass" is run.
+#[derive(Serialize, Deserialize)]
+struct TestPerfData {
+    pub test_display_name: String,
+    pub bytecode_sizes: Vec<BytecodeSize>,
+    pub gas_usages: Vec<GasUsage>,
+}
+
+impl TestPerfData {
+    fn new(test_display_name: String) -> Self {    
+        Self { test_display_name, bytecode_sizes: vec![], gas_usages: vec![] }
+    }
 }
 
 #[derive(Clone)]
@@ -322,7 +385,7 @@ impl TestContext {
         })
     }
 
-    async fn run(&self, test: &TestDescription, output: &mut String, verbose: bool) -> Result<()> {
+    async fn run(&self, test: &TestDescription, output: &mut String, verbose: bool) -> Result<TestPerfData> {
         let TestDescription {
             name,
             suffix,
@@ -358,6 +421,8 @@ impl TestContext {
         } else {
             expected_result
         };
+
+        let mut perf_data = TestPerfData::new(test.display_name().into());
 
         match category {
             TestCategory::Runs => {
@@ -416,6 +481,8 @@ impl TestContext {
                     }
                 };
 
+                perf_data.bytecode_sizes.push(BytecodeSize::new(compiled.bytecode.bytes.len()));
+
                 if compiled.warnings.len() > *expected_warnings as usize {
                     return Err(anyhow::Error::msg(format!(
                         "Expected warnings: {expected_warnings}\nActual number of warnings: {}",
@@ -431,6 +498,20 @@ impl TestContext {
                 let actual_result = match result {
                     harness::VMExecutionResult::Fuel(state, receipts, ecal) => {
                         print_receipts(output, &receipts);
+
+                        let gas_used = receipts
+                            .iter()
+                            .find_map(|r| {
+                                if let Receipt::ScriptResult { gas_used, .. } = r {
+                                    Some(*gas_used)
+                                } else {
+                                    None
+                                }
+                            });
+
+                        if let Some(gas_used) = gas_used {
+                            perf_data.gas_usages.push(GasUsage::new(gas_used as usize));
+                        }
 
                         use std::fmt::Write;
                         let _ = writeln!(output, "  {}", "Captured Output".green().bold());
@@ -483,9 +564,9 @@ impl TestContext {
                 };
 
                 if &actual_result != expected_result {
-                    Err(anyhow::Error::msg(format!(
+                    return Err(anyhow::Error::msg(format!(
                         "expected: {expected_result:?}\nactual: {actual_result:?}"
-                    )))
+                    )));
                 } else {
                     if *validate_abi {
                         let (result, out) = run_and_capture_output(|| async {
@@ -504,7 +585,6 @@ impl TestContext {
                         output.push_str(&out);
                         result?;
                     }
-                    Ok(())
                 }
             }
 
@@ -514,7 +594,7 @@ impl TestContext {
                         .await;
                 *output = out;
 
-                let compiled_pkgs = match result? {
+                let (is_single_package, compiled_pkgs) = match result? {
                     forc_pkg::Built::Package(built_pkg) => {
                         if built_pkg.warnings.len() > *expected_warnings as usize {
                             return Err(anyhow::Error::msg(format!(
@@ -522,9 +602,9 @@ impl TestContext {
                                 built_pkg.warnings.len()
                             )));
                         }
-                        vec![(name.clone(), built_pkg.as_ref().clone())]
+                        (true, vec![(name.clone(), built_pkg.as_ref().clone())])
                     }
-                    forc_pkg::Built::Workspace(built_workspace) => built_workspace
+                    forc_pkg::Built::Workspace(built_workspace) => (false, built_workspace
                         .iter()
                         .map(|built_pkg| {
                             (
@@ -532,8 +612,19 @@ impl TestContext {
                                 built_pkg.as_ref().clone(),
                             )
                         })
-                        .collect(),
+                        .collect()),
                 };
+
+                for (name, built_pkg) in &compiled_pkgs {
+                    if is_single_package {
+                        perf_data.bytecode_sizes.push(BytecodeSize::new(built_pkg.bytecode.bytes.len()));
+                    } else {   
+                        perf_data.bytecode_sizes.push(BytecodeSize::with_package_name(
+                            name.clone(),
+                            built_pkg.bytecode.bytes.len(),
+                        ));
+                    }
+                }
 
                 check_file_checker(checker, name, output)?;
 
@@ -566,7 +657,6 @@ impl TestContext {
                         output.push_str(&out);
                     }
                 }
-                Ok(())
             }
 
             TestCategory::FailsToCompile => {
@@ -581,10 +671,9 @@ impl TestContext {
                         eprintln!("[{output}]");
                     }
 
-                    Err(anyhow::Error::msg("Test compiles but is expected to fail"))
+                    return Err(anyhow::Error::msg("Test compiles but is expected to fail"))
                 } else {
                     check_file_checker(checker, name, output)?;
-                    Ok(())
                 }
             }
 
@@ -677,8 +766,6 @@ impl TestContext {
                     },
                     _ => {}
                 };
-
-                Ok(())
             }
 
             TestCategory::UnitTestsPass => {
@@ -694,9 +781,16 @@ impl TestContext {
                         if !pkg.tests.is_empty() {
                             println!();
                         }
+                        if let Some(bytecode_size_without_tests) = pkg.built.bytecode_without_tests.as_ref().map(|bc| bc.bytes.len()) {
+                            perf_data.bytecode_sizes.push(BytecodeSize::new(bytecode_size_without_tests));
+                        }
                         for test in pkg.tests.into_iter() {
+                            perf_data.gas_usages.push(GasUsage::with_unit_test_name(
+                                test.name.clone(),
+                                test.gas_used as usize,
+                            ));
                             if verbose {
-                                //"test incorrect_def_modeling ... ok (17.673µs, 59 gas)"
+                                // "test incorrect_def_modeling ... ok (17.673µs, 59 gas)"
                                 println!("    test {} ... {} ({:?}, {} gas)", 
                                     test.name,
                                     if test.passed() { "ok" } else { "nok" },
@@ -764,13 +858,15 @@ impl TestContext {
                             "For {name}\ncollected decoded logs: {decoded_logs:?}\nexpected decoded logs: {expected_decoded_test_logs:?}"
                         );
                     }
-                })
+                })?;
             }
 
-            category => Err(anyhow::Error::msg(format!(
+            category => return Err(anyhow::Error::msg(format!(
                 "Unexpected test category: {category:?}",
             ))),
         }
+
+        Ok(perf_data)
     }
 }
 
@@ -781,6 +877,71 @@ struct TestsInRun {
     included_tests: Vec<TestDescription>,
     excluded_tests: Vec<TestDescription>,
     tests_to_run: Vec<TestDescription>,
+}
+
+/// Performance data collected during the entire test run,
+/// for all the tests that were executed.
+struct RunPerfData {
+    collect_perf_data: bool,
+    build_profile_name: String,
+    perf_data: Vec<TestPerfData>,
+}
+
+impl RunPerfData {
+    fn new(run_config: &RunConfig) -> Self {
+        Self {
+            collect_perf_data: run_config.perf,
+            build_profile_name: if run_config.release {
+                "release"
+            } else {
+                "debug"
+            }.to_string(),
+            perf_data: vec![],
+        }
+    }
+
+    fn add_perf_data(&mut self, perf_data: TestPerfData) {
+        if self.collect_perf_data {
+            self.perf_data.push(perf_data);
+        }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.perf_data.is_empty()
+    }
+
+    /// Consumes the collected performance data and returns:
+    /// - build profile name,
+    /// - vector containing full E2E test names and their bytecode sizes,
+    /// - vector containing full unit test names and their gas usages.
+    ///
+    /// Both vectors are ordered by their test names.
+    fn consume(self) -> (String, Vec<(String, usize)>, Vec<(String, usize)>) {
+        let mut bytecode_sizes = vec![];
+        let mut gas_usages = vec![];
+
+        for perf_data in self.perf_data {
+            for bytecode_size in perf_data.bytecode_sizes {
+                let full_test_name = match bytecode_size.package_name {
+                    Some(package_name) => format!("{}::{package_name}", perf_data.test_display_name),
+                    None => perf_data.test_display_name.clone(),
+                };
+                bytecode_sizes.push((full_test_name, bytecode_size.bytecode_size));
+            }
+            for gas_usage in perf_data.gas_usages {
+                let full_unit_test_name = match gas_usage.unit_test_name {
+                    Some(unit_test_name) => format!("{}::{unit_test_name}", perf_data.test_display_name),
+                    None => perf_data.test_display_name.clone(),
+                };
+                gas_usages.push((full_unit_test_name, gas_usage.gas_used));
+            }
+        }
+
+        gas_usages.sort_by(|(name_a, _), (name_b, _)| name_a.cmp(name_b));
+        bytecode_sizes.sort_by(|(name_a, _), (name_b, _)| name_a.cmp(name_b));
+
+        (self.build_profile_name, bytecode_sizes, gas_usages)
+    }
 }
 
 impl TestsInRun {
@@ -830,6 +991,9 @@ impl TestsInRun {
         if filter_config.forc_test_only {
             tests_to_run.retain(|t| t.category == TestCategory::UnitTestsPass);
         }
+        if filter_config.perf_only {
+            tests_to_run.retain(|t| matches!(t.category, TestCategory::Runs | TestCategory::Compiles | TestCategory::UnitTestsPass));
+        }
         let cur_profile = if run_config.release {
             BuildProfile::RELEASE
         } else {
@@ -859,7 +1023,16 @@ pub async fn run_exact(exact: &str, run_config: &RunConfig) -> Result<()> {
         deployed_contracts: Default::default(),
     };
     let mut output = String::new();
-    context.run(&test, &mut output, run_config.verbose).await
+    let perf_data = context.run(&test, &mut output, run_config.verbose).await?;
+
+    if run_config.perf {
+        // Print the serialized performance data to piped stdout, followed by a newline.
+        let mut std_out = std::io::stdout();
+        serde_json::to_writer(&mut std_out, &perf_data)?;
+        writeln!(&mut std_out)?;
+    }
+
+    Ok(())
 }
 
 pub async fn run_in_parallel(filter_config: &FilterConfig, run_config: &RunConfig) -> Result<()> {
@@ -877,6 +1050,9 @@ pub async fn run_in_parallel(filter_config: &FilterConfig, run_config: &RunConfi
     }
     if run_config.update_output_files {
         common_args.push("--update-output-files".to_string());
+    }
+    if run_config.perf {
+        common_args.push("--perf".to_string());
     }
     if let Some(experimental) = run_config.experimental.experimental_as_cli_string() {
         common_args.push("--experimental".to_string());
@@ -924,6 +1100,7 @@ pub async fn run_in_parallel(filter_config: &FilterConfig, run_config: &RunConfi
         .map(|t| t.test_toml_path.clone())
         .collect();
 
+    let run_perf_data = std::sync::Mutex::new(RunPerfData::new(&run_config));
     let failed_tests = std::sync::Mutex::new(Vec::<String>::new());
     let start_time = Instant::now();
 
@@ -939,16 +1116,44 @@ pub async fn run_in_parallel(filter_config: &FilterConfig, run_config: &RunConfi
     tests_in_run.tests_to_run.par_iter().for_each(|test| {
         let name = test.display_name();
 
-        let status = Command::new(std::env::current_exe().unwrap())
+        // Stdout we either ignore in parallel runs, or use for piping/reporting performance data.
+        let std_out = if run_config.perf {
+            Stdio::piped()
+        } else {
+            Stdio::null()
+        };
+
+        fn get_test_perf_data_from_stdout(output: &[u8]) -> Option<TestPerfData> {
+            // Just in case we have some extra output, we try to find
+            // the first '{"test_display_name":' and parse JSON from there
+            // until the first '\n' after that.
+            const JSON_START: &[u8] = b"{\"test_display_name\":";
+            let start_index = output
+                .windows(JSON_START.len())
+                .position(|window| window == JSON_START)?;
+            let end_index = output[start_index..].iter().position(|&b| b == b'\n')?;
+            let output = &output[start_index..end_index + start_index];
+            serde_json::from_slice(output).ok()
+        }
+
+        let output = Command::new(std::env::current_exe().unwrap())
             .args(common_args.clone())
             .args(vec!["--exact".to_string(), test.test_toml_path.clone()])
-            .stdout(Stdio::null())
+            .stdout(std_out)
             .stdin(Stdio::null())
-            .status()
+            .stderr(Stdio::inherit())
+            .spawn()
+            .unwrap()
+            .wait_with_output()
             .unwrap();
 
-        if status.success() {
+        if output.status.success() {
             println!("  ✅ Passed: {name}");
+            if run_config.perf {
+                if let Some(test_perf_data) = get_test_perf_data_from_stdout(&output.stdout) {
+                    run_perf_data.lock().unwrap().add_perf_data(test_perf_data);
+                }
+            }
         } else {
             println!("  ❌ Failed: {name}");
             failed_tests.lock().unwrap().push(name.into());
@@ -966,8 +1171,9 @@ pub async fn run_in_parallel(filter_config: &FilterConfig, run_config: &RunConfi
         let mut output = String::new();
         let result = context.run(test, &mut output, run_config.verbose).await;
 
-        if result.is_ok() {
+        if let Ok(test_perf_data) = result {
             println!("  ✅ Passed: {name}");
+            run_perf_data.lock().unwrap().add_perf_data(test_perf_data);
         } else {
             println!("  ❌ Failed: {name}");
             failed_tests.lock().unwrap().push(name.into());
@@ -979,6 +1185,8 @@ pub async fn run_in_parallel(filter_config: &FilterConfig, run_config: &RunConfi
     // To ensure proper statistics printed in the results, get the list of tests that
     // were run sequentially and add them back to the list of tests to run.
     tests_in_run.tests_to_run.extend(tests_to_run_sequentially);
+
+    output_run_perf_data(run_perf_data.into_inner().unwrap())?;
 
     print_run_results(
         &tests_in_run,
@@ -995,6 +1203,7 @@ pub async fn run_sequentially(filter_config: &FilterConfig, run_config: &RunConf
         deployed_contracts: Default::default(),
     };
 
+    let mut run_perf_data = RunPerfData::new(&run_config);
     let mut failed_tests = Vec::<String>::new();
     let start_time = Instant::now();
     for (i, test) in tests_in_run.tests_to_run.iter().enumerate() {
@@ -1016,21 +1225,79 @@ pub async fn run_sequentially(filter_config: &FilterConfig, run_config: &RunConf
             context.run(test, &mut output, run_config.verbose).await
         };
 
-        if let Err(err) = result {
-            println!(" {}", "failed".red().bold());
-            println!("{}", textwrap::indent(err.to_string().as_str(), "     "));
-            println!("{}", textwrap::indent(&output, "          "));
-            failed_tests.push(name.into());
-        } else {
-            println!(" {}", "ok".green().bold());
-            if run_config.verbose && !output.is_empty() {
-                println!("{}", textwrap::indent(&output, "     "));
+        match result {
+            Err(err) => {
+                println!(" {}", "failed".red().bold());
+                println!("{}", textwrap::indent(err.to_string().as_str(), "     "));
+                println!("{}", textwrap::indent(&output, "          "));
+                failed_tests.push(name.into());
             }
+            Ok(test_perf_data) => {
+                    println!(" {}", "ok".green().bold());
+                    if run_config.verbose && !output.is_empty() {
+                        println!("{}", textwrap::indent(&output, "     "));
+                    }
+                    if run_config.perf {
+                        run_perf_data.add_perf_data(test_perf_data);
+                    }
+                }
         }
     }
     let duration = Instant::now().duration_since(start_time);
 
+    output_run_perf_data(run_perf_data)?;
+
     print_run_results(&tests_in_run, filter_config, &failed_tests, &duration)
+}
+
+fn output_run_perf_data(run_stats: RunPerfData) -> Result<()> {
+    if run_stats.is_empty() {
+        return Ok(());
+    }
+
+    let timestamp = Local::now().format("%m%d%H%M%S").to_string();
+    let perf_out_dir = format!("{}/perf_out", env!("CARGO_MANIFEST_DIR"));
+    let branch_name = current_branch_display_name(&perf_out_dir)
+        .unwrap_or_else(|| "unknown-branch".to_string());
+
+    let (build_profile_name, bytecode_sizes, gas_usages) = run_stats.consume();
+
+    let write_stats_to_file = |stats: &[(String, usize)], stats_type: &str| -> Result<()> {
+        if !stats.is_empty() {
+            let file_name = format!("{perf_out_dir}/{timestamp}-e2e-{}-{build_profile_name}-{branch_name}.csv",
+                stats_type.to_lowercase().replace(' ', "-")
+            );
+            let mut file = File::create(&file_name)?;
+            for (test_name, stat_value) in stats {
+                writeln!(file, "{test_name},{stat_value}")?;
+            }
+            println!("{:27} .{}",
+                format!("{stats_type} written to: "),
+                &file_name.as_str()[file_name.find("/test/perf_out").unwrap()..]
+            );
+        }
+
+        Ok(())
+    };
+
+    println!("_________________________________\n");
+
+    write_stats_to_file(&bytecode_sizes, "Bytecode sizes")?;
+    write_stats_to_file(&gas_usages, "Gas usages")?;
+
+    Ok(())
+}
+
+fn current_branch_display_name<P: AsRef<Path>>(path: P) -> Option<String> {
+    Repository::discover(path)
+        .ok()
+        .and_then(|repo|
+            repo
+                .head()
+                .ok()
+                .and_then(|head| head.shorthand().map(|s| s.to_string()))
+        )
+        .map(|branch_name| branch_name.replace("/", "-"))
 }
 
 fn print_run_results(
