@@ -5,7 +5,7 @@ use storage_enum_abi::*;
 #[cfg(experimental_new_encoding = false)]
 const CONTRACT_ID = 0xc601d11767195485a6654d566c67774134668863d8c797a8c69e8778fb1f89e9;
 #[cfg(experimental_new_encoding = true)]
-const CONTRACT_ID = 0xc5372d7cbf4e77b48801d0fc236ae8f9715c1e2e16108844564237bf620f711c; // AUTO-CONTRACT-ID ../../test_contracts/storage_enum_contract --release
+const CONTRACT_ID = 0x226b8db6dc02aa73026547b4d7c82db7bc653090f5d3dfd8403de95b5d834c62; // AUTO-CONTRACT-ID ../../test_contracts/storage_enum_contract --release
 
 fn main() -> u64 {
     let caller = abi(StorageEnum, CONTRACT_ID);
