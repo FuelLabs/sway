@@ -7,10 +7,10 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use sway_types::{FxIndexMap, FxIndexSet};
 
 use crate::{
-    get_gep_symbol, get_loaded_symbols, get_referred_symbol, get_referred_symbols,
-    get_stored_symbols, memory_utils, AnalysisResults, Block, Context, DomTree, EscapedSymbols,
+    function, get_gep_symbol, get_loaded_symbols, get_referred_symbol, get_referred_symbols,
+    get_stored_symbols, memory_utils, AnalysisResults, Block, Context, EscapedSymbols,
     FuelVmInstruction, Function, InstOp, Instruction, InstructionInserter, IrError, LocalVar, Pass,
-    PassMutability, ReferredSymbols, ScopedPass, Symbol, Type, Value, ValueDatum, DOMINATORS_NAME,
+    PassMutability, ReferredSymbols, ScopedPass, Symbol, Type, Value, ValueDatum,
     ESCAPED_SYMBOLS_NAME,
 };
 
@@ -826,59 +826,79 @@ enum CandidateKind {
     NonClobbered(Candidate),
 }
 
-// Is (an alias of) src_ptr clobbered on any path from load_val to store_val?
+/// Starting backwards from end_inst, till we reach start_inst or the entry block,
+/// is scrutiny_ptr (or an alias of it) stored to (i.e., clobbered)?/
+/// Also checks that there is no overlap (common symbols) b/w no_overlap_ptr and scrutiny_ptr.
 fn is_clobbered(
     context: &Context,
-    Candidate {
-        load_val,
-        store_val,
-        dst_ptr,
-        src_ptr,
-    }: &Candidate,
+    start_inst: &Value,
+    end_inst: &Value,
+    no_overlap_ptr: &Value,
+    scrutiny_ptr: &Value,
 ) -> bool {
-    let store_block = store_val.get_instruction(context).unwrap().parent;
+    let end_block = end_inst.get_instruction(context).unwrap().parent;
+    let function = end_block.get_function(context);
 
-    let mut iter = store_block
+    let mut iter = end_block
         .instruction_iter(context)
         .rev()
-        .skip_while(|i| i != store_val);
-    assert!(iter.next().unwrap() == *store_val);
+        .skip_while(|i| i != end_inst);
+    assert!(iter.next().unwrap() == *end_inst);
 
-    let ReferredSymbols::Complete(src_symbols) = get_referred_symbols(context, *src_ptr) else {
+    let ReferredSymbols::Complete(scrutiny_symbols) = get_referred_symbols(context, *scrutiny_ptr)
+    else {
         return true;
     };
 
-    let ReferredSymbols::Complete(dst_symbols) = get_referred_symbols(context, *dst_ptr) else {
+    let ReferredSymbols::Complete(no_overlap_symbols) =
+        get_referred_symbols(context, *no_overlap_ptr)
+    else {
         return true;
     };
 
-    // If the source and destination may have an overlap, we'll end up generating a mcp
+    // If the two pointers may have an overlap, we'll end up generating a mcp
     // with overlapping source/destination which is not allowed.
-    if src_symbols.intersection(&dst_symbols).next().is_some() {
+    if scrutiny_symbols
+        .intersection(&no_overlap_symbols)
+        .next()
+        .is_some()
+    {
         return true;
     }
 
-    // Scan backwards till we encounter load_val, checking if
-    // any store aliases with src_ptr.
+    // Scan backwards till we encounter start_val, checking if
+    // any store aliases with scrutiny_ptr.
     let mut worklist: Vec<(Block, Box<dyn Iterator<Item = Value>>)> =
-        vec![(store_block, Box::new(iter))];
+        vec![(end_block, Box::new(iter))];
     let mut visited = FxHashSet::default();
     'next_job: while let Some((block, iter)) = worklist.pop() {
         visited.insert(block);
         for inst in iter {
-            if inst == *load_val || inst == *store_val {
-                // We don't need to go beyond either the source load or the candidate store.
+            if inst == *start_inst || inst == *end_inst {
+                // We don't need to go beyond either start_inst or end_inst.
                 continue 'next_job;
             }
             let stored_syms = get_stored_symbols(context, inst);
             if let ReferredSymbols::Complete(syms) = stored_syms {
-                if syms.iter().any(|sym| src_symbols.contains(sym)) {
+                if syms.iter().any(|sym| scrutiny_symbols.contains(sym)) {
                     return true;
                 }
             } else {
                 return true;
             }
         }
+
+        if function.get_entry_block(context) == block {
+            // We've reached the entry block. If any of the scrutiny_symbols
+            // is an argument, then we consider it clobbered.
+            if scrutiny_symbols
+                .iter()
+                .any(|sym| matches!(sym, Symbol::Arg(_)))
+            {
+                return true;
+            }
+        }
+
         for pred in block.pred_iter(context) {
             if !visited.contains(pred) {
                 worklist.push((
@@ -946,7 +966,13 @@ fn load_store_to_memcopy(context: &mut Context, function: Function) -> Result<bo
                 })
                 .and_then(|candidate @ Candidate { dst_ptr, .. }| {
                     // Check that there's no path from load_val to store_val that might overwrite src_ptr.
-                    if !is_clobbered(context, &candidate) {
+                    if !is_clobbered(
+                        context,
+                        &candidate.load_val,
+                        &candidate.store_val,
+                        &candidate.dst_ptr,
+                        &candidate.src_ptr,
+                    ) {
                         Some(CandidateKind::NonClobbered(candidate))
                     } else if !is_copy_type(&dst_ptr.match_ptr_type(context).unwrap(), context) {
                         Some(CandidateKind::ClobberedNoncopyType(candidate))
@@ -1034,7 +1060,7 @@ pub fn create_memcpyprop_reverse_pass() -> Pass {
     Pass {
         name: MEMCPYPROP_REVERSE_NAME,
         descr: "Memcpyprop Reverse: Copy propagation of memcpy instructions",
-        deps: vec![DOMINATORS_NAME],
+        deps: vec![],
         runner: ScopedPass::FunctionPass(PassMutability::Transform(copy_prop_reverse)),
     }
 }
@@ -1042,7 +1068,7 @@ pub fn create_memcpyprop_reverse_pass() -> Pass {
 /// Copy propagation of `memcpy`s, replacing source with destination.
 fn copy_prop_reverse(
     context: &mut Context,
-    analyses: &AnalysisResults,
+    _analyses: &AnalysisResults,
     function: Function,
 ) -> Result<bool, IrError> {
     let mut modified = false;
@@ -1068,8 +1094,6 @@ fn copy_prop_reverse(
             loads_map.entry(sym).or_default().push(instr_val);
         }
     }
-
-    let dom_tree: &DomTree = analyses.get_analysis_result(function);
 
     let mut candidates = vec![];
 
@@ -1112,15 +1136,30 @@ fn copy_prop_reverse(
             continue;
         }
 
-        let all_uses_dominated = loads_map.get(&dst_sym).is_none_or(|uses| {
-            uses.iter()
-                .all(|use_inst| dom_tree.dominates_instr(context, inst, *use_inst))
-        }) && loads_map.get(&src_sym).is_none_or(|uses| {
-            uses.iter()
-                .all(|use_inst| dom_tree.dominates_instr(context, inst, *use_inst))
-        });
+        // For every use of the source symbol:
+        //   starting from the use, walk backwards till we reach this memcpy,
+        //   checking if there's a store to an alias of the destination symbol in that path.
+        let source_uses_not_clobbered = loads_map
+            .get(&src_sym)
+            .map(|uses| {
+                uses.iter().all(|use_val: &Value| {
+                    *use_val == inst || !is_clobbered(context, &inst, use_val, &src_ptr, &dst_ptr)
+                })
+            })
+            .unwrap_or(true);
 
-        if all_uses_dominated {
+        // For every use of the destination symbol:
+        //   starting from the use, walk backwards till we reach this memcpy,
+        //   checking if there's a store to an alias of the source symbol in that path.
+        let destination_uses_not_clobbered = loads_map
+            .get(&dst_sym)
+            .map(|uses| {
+                uses.iter()
+                    .all(|use_val| !is_clobbered(context, &inst, use_val, &dst_ptr, &src_ptr))
+            })
+            .unwrap_or(true);
+
+        if source_uses_not_clobbered && destination_uses_not_clobbered {
             candidates.push((inst, dst_sym, src_sym));
         }
     }
