@@ -2,52 +2,51 @@ use crate::{
     compiler_generated::INVALID_DESUGARED_MATCHED_EXPRESSION_SIGNAL,
     language::{
         parsed::*,
-        ty::{
-            self, TyAsmRegisterDeclaration, TyExpression, TyExpressionVariant,
-            TyIntrinsicFunctionKind,
-        },
-        AsmOp, AsmRegister,
+        ty::{self, TyExpression},
     },
     semantic_analysis::{
         ast_node::expression::typed_expression::instantiate_if_expression,
         expression::match_expression::typed::instantiate::Instantiate, TypeCheckContext,
     },
-    CompileError, TypeEngine, TypeId, TypeInfo,
+    CompileError, TypeId,
 };
-use std::{collections::BTreeMap, ops::ControlFlow};
+use std::ops::ControlFlow;
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{BaseIdent, Ident, Span, Spanned};
+use sway_types::{Span, Spanned};
+
+// Trie for matching strings is disabled as it is not generating the best possible code.
+// Sometimes mac=tching by the trie is actually worse than comparing each individually
 
 // Enable this to see a pseudo-code printed to understand what is being generated.
-const RADIX_TREE_DEBUG: bool = true;
+// const RADIX_TRIE_DEBUG: bool = false;
 
-#[derive(Default, Debug, Clone)]
-struct TrieNode {
-    output: Option<usize>,
-    previous: Option<usize>,
-    next: BTreeMap<String, usize>,
-}
+// #[derive(Default, Debug, Clone)]
+// struct TrieNode {
+//     output: Option<usize>,
+//     previous: Option<usize>,
+//     next: BTreeMap<String, usize>,
+// }
 
-struct Trie {
-    nodes: Vec<TrieNode>,
-}
+// struct Trie {
+//     nodes: Vec<TrieNode>,
+// }
 
-fn revert(type_engine: &TypeEngine) -> TyExpression {
-    TyExpression {
-        expression: TyExpressionVariant::IntrinsicFunction(TyIntrinsicFunctionKind {
-            kind: sway_ast::Intrinsic::Revert,
-            arguments: vec![TyExpression {
-                expression: TyExpressionVariant::Literal(crate::language::Literal::U64(17)),
-                return_type: type_engine.id_of_u64(),
-                span: Span::dummy(),
-            }],
-            type_arguments: vec![],
-            span: Span::dummy(),
-        }),
-        return_type: type_engine.id_of_never(),
-        span: Span::dummy(),
-    }
-}
+// fn revert(type_engine: &TypeEngine) -> TyExpression {
+//     TyExpression {
+//         expression: TyExpressionVariant::IntrinsicFunction(TyIntrinsicFunctionKind {
+//             kind: sway_ast::Intrinsic::Revert,
+//             arguments: vec![TyExpression {
+//                 expression: TyExpressionVariant::Literal(crate::language::Literal::U64(17)),
+//                 return_type: type_engine.id_of_u64(),
+//                 span: Span::dummy(),
+//             }],
+//             type_arguments: vec![],
+//             span: Span::dummy(),
+//         }),
+//         return_type: type_engine.id_of_never(),
+//         span: Span::dummy(),
+//     }
+// }
 
 impl ty::TyMatchExpression {
     pub(crate) fn type_check(
@@ -109,466 +108,460 @@ impl ty::TyMatchExpression {
             );
         }
 
-        let typed_if_exp =
-            handler.scope(
-                |handler| match &*ctx.engines().te().get(self.value_type_id) {
-                    //TypeInfo::StringSlice => self.desugar_to_radix_trie(ctx),
-                    _ => self.desugar_to_typed_if_expression(instantiate, ctx, handler),
-                },
-            )?;
+        let typed_if_exp = handler
+            .scope(|handler| self.desugar_to_typed_if_expression(instantiate, ctx, handler))?;
 
         Ok(typed_if_exp)
     }
 
-    fn desugar_to_radix_trie(
-        &self,
-        mut ctx: TypeCheckContext<'_>,
-    ) -> Result<TyExpression, ErrorEmitted> {
-        let type_engine = ctx.engines.te();
+    // fn desugar_to_radix_trie(
+    //     &self,
+    //     mut ctx: TypeCheckContext<'_>,
+    // ) -> Result<TyExpression, ErrorEmitted> {
+    //     let type_engine = ctx.engines.te();
 
-        let branch_return_type_id = self
-            .branches
-            .iter()
-            .map(|x| x.result.return_type)
-            .next()
-            .unwrap();
+    //     let branch_return_type_id = self
+    //         .branches
+    //         .iter()
+    //         .map(|x| x.result.return_type)
+    //         .next()
+    //         .unwrap();
 
-        let matched_value = self
-            .branches
-            .iter()
-            .flat_map(|x| match &x.condition.as_ref().map(|x| &x.expression) {
-                Some(TyExpressionVariant::FunctionApplication { arguments, .. }) => {
-                    Some(&arguments[0].1)
-                }
-                _ => None,
-            })
-            .next()
-            .unwrap();
+    //     let matched_value = self
+    //         .branches
+    //         .iter()
+    //         .flat_map(|x| match &x.condition.as_ref().map(|x| &x.expression) {
+    //             Some(TyExpressionVariant::FunctionApplication { arguments, .. }) => {
+    //                 Some(&arguments[0].1)
+    //             }
+    //             _ => None,
+    //         })
+    //         .next()
+    //         .unwrap();
 
-        // the block for the wildcard arm
-        let wildcard_return_expr = self
-            .branches
-            .iter()
-            .filter(|x| x.condition.is_none())
-            .map(|x| x.result.clone())
-            .next()
-            .unwrap_or_else(|| revert(type_engine));
+    //     // the block for the wildcard arm
+    //     let wildcard_return_expr = self
+    //         .branches
+    //         .iter()
+    //         .filter(|x| x.condition.is_none())
+    //         .map(|x| x.result.clone())
+    //         .next()
+    //         .unwrap_or_else(|| revert(type_engine));
 
-        // All the match string slices, ignoring the wildcard
-        let match_arms_string_slices = self
-            .branches
-            .iter()
-            .flat_map(|x| match &x.condition.as_ref().map(|x| &x.expression) {
-                Some(TyExpressionVariant::FunctionApplication { arguments, .. }) => {
-                    match &arguments[1].1.expression {
-                        TyExpressionVariant::Literal(crate::language::Literal::String(v)) => {
-                            Some(v.as_str().to_string())
-                        }
-                        _ => None,
-                    }
-                }
-                _ => None,
-            })
-            .collect::<Vec<_>>();
+    //     // All the match string slices, ignoring the wildcard
+    //     let match_arms_string_slices = self
+    //         .branches
+    //         .iter()
+    //         .flat_map(|x| match &x.condition.as_ref().map(|x| &x.expression) {
+    //             Some(TyExpressionVariant::FunctionApplication { arguments, .. }) => {
+    //                 match &arguments[1].1.expression {
+    //                     TyExpressionVariant::Literal(crate::language::Literal::String(v)) => {
+    //                         Some(v.as_str().to_string())
+    //                     }
+    //                     _ => None,
+    //                 }
+    //             }
+    //             _ => None,
+    //         })
+    //         .collect::<Vec<_>>();
 
-        // group match arms by size of the arm string slice
-        let match_arms_by_size = match_arms_string_slices.iter().enumerate().fold(
-            BTreeMap::<usize, Vec<(String, usize)>>::new(),
-            |mut map, (i, item)| {
-                map.entry(item.len()).or_default().push((item.clone(), i));
-                map
-            },
-        );
+    //     // group match arms by size of the arm string slice
+    //     let match_arms_by_size = match_arms_string_slices.iter().enumerate().fold(
+    //         BTreeMap::<usize, Vec<(String, usize)>>::new(),
+    //         |mut map, (i, item)| {
+    //             map.entry(item.len()).or_default().push((item.clone(), i));
+    //             map
+    //         },
+    //     );
 
-        // create and compress all tries. One per arm size
-        let tries = match_arms_by_size
-            .values()
-            .map(|branches| self.generate_radix_trie(branches).unwrap())
-            .collect::<Vec<Trie>>();
+    //     // create and compress all tries. One per arm size
+    //     let tries = match_arms_by_size
+    //         .values()
+    //         .map(|branches| self.generate_radix_trie(branches).unwrap())
+    //         .collect::<Vec<Trie>>();
 
-        // Navigate all valid nodes and collect string pieces.
-        // Then pack them starting from the biggest.
-        let mut string_pieces = tries
-            .iter()
-            .flat_map(|x| x.nodes.iter())
-            .flat_map(|x| x.next.keys().cloned())
-            .collect::<Vec<String>>();
-        string_pieces.sort_by(|l, r| l.len().cmp(&r.len()).reverse());
-        let packed_strings = string_pieces
-            .into_iter()
-            .fold(String::new(), |mut pack, item| {
-                if !pack.contains(&item) {
-                    pack.push_str(&item);
-                }
-                pack
-            });
+    //     // Navigate all valid nodes and collect string pieces.
+    //     // Then pack them starting from the biggest.
+    //     let mut string_pieces = tries
+    //         .iter()
+    //         .flat_map(|x| x.nodes.iter())
+    //         .flat_map(|x| x.next.keys().cloned())
+    //         .collect::<Vec<String>>();
+    //     string_pieces.sort_by(|l, r| l.len().cmp(&r.len()).reverse());
+    //     let packed_strings = string_pieces
+    //         .into_iter()
+    //         .fold(String::new(), |mut pack, item| {
+    //             if !pack.contains(&item) {
+    //                 pack.push_str(&item);
+    //             }
+    //             pack
+    //         });
 
-        if RADIX_TREE_DEBUG {
-            println!("let packed_string = {packed_strings:?}");
-        }
+    //     if RADIX_TRIE_DEBUG {
+    //         println!("let packed_string = {packed_strings:?}");
+    //     }
 
-        // Now create the outer expression checking the size of the string slice
-        let mut block = wildcard_return_expr.clone();
+    //     // Now create the outer expression checking the size of the string slice
+    //     let mut block = wildcard_return_expr.clone();
 
-        for ((k, _), trie) in match_arms_by_size.into_iter().zip(tries.into_iter()) {
-            if RADIX_TREE_DEBUG {
-                println!("if str.len() == {k}");
-            }
+    //     for ((k, _), trie) in match_arms_by_size.into_iter().zip(tries.into_iter()) {
+    //         if RADIX_TRIE_DEBUG {
+    //             println!("if str.len() == {k}");
+    //         }
 
-            let expression = TyExpressionVariant::AsmExpression {
-                registers: vec![
-                    TyAsmRegisterDeclaration {
-                        name: Ident::new_no_span("is_eq".into()),
-                        initializer: None,
-                    },
-                    TyAsmRegisterDeclaration {
-                        name: Ident::new_no_span("slice".into()),
-                        initializer: Some(matched_value.clone()),
-                    },
-                    TyAsmRegisterDeclaration {
-                        name: Ident::new_no_span("len".into()),
-                        initializer: None,
-                    },
-                    TyAsmRegisterDeclaration {
-                        name: Ident::new_no_span("expected_len".into()),
-                        initializer: Some(TyExpression {
-                            expression: TyExpressionVariant::Literal(
-                                crate::language::Literal::U64(k as u64),
-                            ),
-                            return_type: type_engine.id_of_u64(),
-                            span: Span::dummy(),
-                        }),
-                    },
-                ],
-                body: vec![
-                    AsmOp {
-                        op_name: Ident::new_no_span("lw".into()),
-                        op_args: vec![
-                            BaseIdent::new_no_span("len".into()),
-                            BaseIdent::new_no_span("slice".into()),
-                        ],
-                        immediate: Some(BaseIdent::new_no_span("i1".into())),
-                        span: Span::dummy(),
-                    },
-                    AsmOp {
-                        op_name: Ident::new_no_span("eq".into()),
-                        op_args: vec![
-                            BaseIdent::new_no_span("is_eq".into()),
-                            BaseIdent::new_no_span("len".into()),
-                            BaseIdent::new_no_span("expected_len".into()),
-                        ],
-                        immediate: None,
-                        span: Span::dummy(),
-                    },
-                ],
-                returns: Some((
-                    AsmRegister {
-                        name: "is_eq".into(),
-                    },
-                    Span::dummy(),
-                )),
-                whole_block_span: self.span.clone(),
-            };
+    //         let expression = TyExpressionVariant::AsmExpression {
+    //             registers: vec![
+    //                 TyAsmRegisterDeclaration {
+    //                     name: Ident::new_no_span("is_eq".into()),
+    //                     initializer: None,
+    //                 },
+    //                 TyAsmRegisterDeclaration {
+    //                     name: Ident::new_no_span("slice".into()),
+    //                     initializer: Some(matched_value.clone()),
+    //                 },
+    //                 TyAsmRegisterDeclaration {
+    //                     name: Ident::new_no_span("len".into()),
+    //                     initializer: None,
+    //                 },
+    //                 TyAsmRegisterDeclaration {
+    //                     name: Ident::new_no_span("expected_len".into()),
+    //                     initializer: Some(TyExpression {
+    //                         expression: TyExpressionVariant::Literal(
+    //                             crate::language::Literal::U64(k as u64),
+    //                         ),
+    //                         return_type: type_engine.id_of_u64(),
+    //                         span: Span::dummy(),
+    //                     }),
+    //                 },
+    //             ],
+    //             body: vec![
+    //                 AsmOp {
+    //                     op_name: Ident::new_no_span("lw".into()),
+    //                     op_args: vec![
+    //                         BaseIdent::new_no_span("len".into()),
+    //                         BaseIdent::new_no_span("slice".into()),
+    //                     ],
+    //                     immediate: Some(BaseIdent::new_no_span("i1".into())),
+    //                     span: Span::dummy(),
+    //                 },
+    //                 AsmOp {
+    //                     op_name: Ident::new_no_span("eq".into()),
+    //                     op_args: vec![
+    //                         BaseIdent::new_no_span("is_eq".into()),
+    //                         BaseIdent::new_no_span("len".into()),
+    //                         BaseIdent::new_no_span("expected_len".into()),
+    //                     ],
+    //                     immediate: None,
+    //                     span: Span::dummy(),
+    //                 },
+    //             ],
+    //             returns: Some((
+    //                 AsmRegister {
+    //                     name: "is_eq".into(),
+    //                 },
+    //                 Span::dummy(),
+    //             )),
+    //             whole_block_span: self.span.clone(),
+    //         };
 
-            let then_node = self
-                .generate_radix_tree_checks(
-                    ctx.by_ref(),
-                    matched_value,
-                    branch_return_type_id,
-                    wildcard_return_expr.clone(),
-                    trie,
-                    &packed_strings,
-                )
-                .unwrap();
+    //         let then_node = self
+    //             .generate_radix_tree_checks(
+    //                 ctx.by_ref(),
+    //                 matched_value,
+    //                 branch_return_type_id,
+    //                 wildcard_return_expr.clone(),
+    //                 trie,
+    //                 &packed_strings,
+    //             )
+    //             .unwrap();
 
-            block = TyExpression {
-                expression: TyExpressionVariant::IfExp {
-                    condition: Box::new(TyExpression {
-                        expression,
-                        return_type: type_engine.id_of_bool(),
-                        span: self.span.clone(),
-                    }),
-                    then: Box::new(then_node),
-                    r#else: Some(Box::new(block)),
-                },
-                return_type: branch_return_type_id,
-                span: self.span.clone(),
-            };
-        }
+    //         block = TyExpression {
+    //             expression: TyExpressionVariant::IfExp {
+    //                 condition: Box::new(TyExpression {
+    //                     expression,
+    //                     return_type: type_engine.id_of_bool(),
+    //                     span: self.span.clone(),
+    //                 }),
+    //                 then: Box::new(then_node),
+    //                 r#else: Some(Box::new(block)),
+    //             },
+    //             return_type: branch_return_type_id,
+    //             span: self.span.clone(),
+    //         };
+    //     }
 
-        if RADIX_TREE_DEBUG {
-            println!("return wildcard branch");
-        }
+    //     if RADIX_TRIE_DEBUG {
+    //         println!("return wildcard branch");
+    //     }
 
-        Ok(block)
-    }
+    //     Ok(block)
+    // }
 
-    #[allow(clippy::too_many_arguments)]
-    fn generate_radix_trie(&self, branches: &[(String, usize)]) -> Result<Trie, ErrorEmitted> {
-        let mut nodes = vec![TrieNode::default()];
+    // fn generate_radix_trie(&self, branches: &[(String, usize)]) -> Result<Trie, ErrorEmitted> {
+    //     let mut nodes = vec![TrieNode::default()];
 
-        for (b, i) in branches.iter() {
-            let mut current = 0;
-            for c in b.chars() {
-                let c = c.to_string();
-                if let Some(next) = nodes[current].next.get(&c) {
-                    current = *next;
-                    continue;
-                }
+    //     for (b, i) in branches.iter() {
+    //         let mut current = 0;
+    //         for c in b.chars() {
+    //             let c = c.to_string();
+    //             if let Some(next) = nodes[current].next.get(&c) {
+    //                 current = *next;
+    //                 continue;
+    //             }
 
-                let next = nodes.len();
-                nodes[current].next.insert(c, next);
-                current = next;
-                nodes.push(TrieNode::default());
-            }
+    //             let next = nodes.len();
+    //             nodes[current].next.insert(c, next);
+    //             current = next;
+    //             nodes.push(TrieNode::default());
+    //         }
 
-            nodes[current].output = Some(*i);
-        }
+    //         nodes[current].output = Some(*i);
+    //     }
 
-        // compress trie
-        let mut q = vec![0];
-        while let Some(i) = q.pop() {
-            let mut current = nodes[i].clone();
-            if current.next.len() == 1 {
-                let edge = current.next.pop_first().unwrap();
-                let mut next = nodes[edge.1].clone();
-                if next.next.len() == 1 {
-                    let next_edge = next.next.pop_first().unwrap();
-                    let compressed_key = format!("{}{}", edge.0, next_edge.0);
+    //     // compress trie
+    //     let mut q = vec![0];
+    //     while let Some(i) = q.pop() {
+    //         let mut current = nodes[i].clone();
+    //         if current.next.len() == 1 {
+    //             let edge = current.next.pop_first().unwrap();
+    //             let mut next = nodes[edge.1].clone();
+    //             if next.next.len() == 1 {
+    //                 let next_edge = next.next.pop_first().unwrap();
+    //                 let compressed_key = format!("{}{}", edge.0, next_edge.0);
 
-                    nodes[i].next.clear();
-                    nodes[i].next.insert(compressed_key, next_edge.1);
-                    nodes[i].output = next.output.take();
+    //                 nodes[i].next.clear();
+    //                 nodes[i].next.insert(compressed_key, next_edge.1);
+    //                 nodes[i].output = next.output.take();
 
-                    q.push(i);
-                } else {
-                    nodes[edge.1].previous = Some(i);
-                    q.push(edge.1);
-                }
-            } else {
-                for (_, v) in current.next.iter() {
-                    nodes[*v].previous = Some(i);
-                    q.push(*v);
-                }
-            }
-        }
+    //                 q.push(i);
+    //             } else {
+    //                 nodes[edge.1].previous = Some(i);
+    //                 q.push(edge.1);
+    //             }
+    //         } else {
+    //             for (_, v) in current.next.iter() {
+    //                 nodes[*v].previous = Some(i);
+    //                 q.push(*v);
+    //             }
+    //         }
+    //     }
 
-        Ok(Trie { nodes })
-    }
+    //     Ok(Trie { nodes })
+    // }
 
-    #[allow(clippy::too_many_arguments)]
-    fn generate_radix_tree_checks(
-        &self,
-        ctx: TypeCheckContext<'_>,
-        matched_value: &TyExpression,
-        branch_return_type_id: TypeId,
-        wildcard_return_expr: TyExpression,
-        trie: Trie,
-        packed_strings: &str,
-    ) -> Result<TyExpression, ErrorEmitted> {
-        let type_engine = ctx.engines.te();
+    // #[allow(clippy::too_many_arguments)]
+    // fn generate_radix_tree_checks(
+    //     &self,
+    //     ctx: TypeCheckContext<'_>,
+    //     matched_value: &TyExpression,
+    //     branch_return_type_id: TypeId,
+    //     wildcard_return_expr: TyExpression,
+    //     trie: Trie,
+    //     packed_strings: &str,
+    // ) -> Result<TyExpression, ErrorEmitted> {
+    //     let type_engine = ctx.engines.te();
 
-        let packed_strings_expr = TyExpression {
-            expression: TyExpressionVariant::Literal(crate::language::Literal::String(
-                Span::from_string(packed_strings.to_string()),
-            )),
-            return_type: type_engine.id_of_string_slice(),
-            span: Span::dummy(),
-        };
+    //     let packed_strings_expr = TyExpression {
+    //         expression: TyExpressionVariant::Literal(crate::language::Literal::String(
+    //             Span::from_string(packed_strings.to_string()),
+    //         )),
+    //         return_type: type_engine.id_of_string_slice(),
+    //         span: Span::dummy(),
+    //     };
 
-        let expr = self.generate_radrix_trie_code(
-            matched_value,
-            packed_strings,
-            &packed_strings_expr,
-            &trie.nodes,
-            0,
-            0,
-            type_engine.id_of_bool(),
-            type_engine.id_of_u64(),
-            branch_return_type_id,
-            1,
-            wildcard_return_expr,
-        );
+    //     let expr = self.generate_radrix_trie_code(
+    //         matched_value,
+    //         packed_strings,
+    //         &packed_strings_expr,
+    //         &trie.nodes,
+    //         0,
+    //         0,
+    //         type_engine.id_of_bool(),
+    //         type_engine.id_of_u64(),
+    //         branch_return_type_id,
+    //         1,
+    //         wildcard_return_expr,
+    //     );
 
-        Ok(expr)
-    }
+    //     Ok(expr)
+    // }
 
-    #[allow(clippy::too_many_arguments)]
-    fn generate_radrix_trie_code(
-        &self,
-        matched_value: &TyExpression,
-        packed_strings: &str,
-        packed_strings_expr: &TyExpression,
-        nodes: &[TrieNode],
-        slice_pos: usize,
-        current_node_index: usize,
-        bool_type_id: TypeId,
-        u64_type_id: TypeId,
-        branch_return_type_id: TypeId,
-        depth: usize,
-        block_when_all_fail: TyExpression,
-    ) -> TyExpression {
-        let current = &nodes[current_node_index];
+    // #[allow(clippy::too_many_arguments)]
+    // fn generate_radrix_trie_code(
+    //     &self,
+    //     matched_value: &TyExpression,
+    //     packed_strings: &str,
+    //     packed_strings_expr: &TyExpression,
+    //     nodes: &[TrieNode],
+    //     slice_pos: usize,
+    //     current_node_index: usize,
+    //     bool_type_id: TypeId,
+    //     u64_type_id: TypeId,
+    //     branch_return_type_id: TypeId,
+    //     depth: usize,
+    //     block_when_all_fail: TyExpression,
+    // ) -> TyExpression {
+    //     let current = &nodes[current_node_index];
 
-        if let Some(output) = current.output {
-            assert!(current.next.is_empty());
+    //     if let Some(output) = current.output {
+    //         assert!(current.next.is_empty());
 
-            if RADIX_TREE_DEBUG {
-                println!("{}return branch {:?}", " ".repeat(depth * 4), output);
-            }
+    //         if RADIX_TRIE_DEBUG {
+    //             println!("{}return branch {:?}", " ".repeat(depth * 4), output);
+    //         }
 
-            let branch = &self.branches[output];
-            return branch.result.clone();
-        }
+    //         let branch = &self.branches[output];
+    //         return branch.result.clone();
+    //     }
 
-        let mut block = block_when_all_fail.clone();
+    //     let mut block = block_when_all_fail.clone();
 
-        for (prefix, next_node_index) in current.next.iter().rev() {
-            let start = current_node_index;
-            let end = current_node_index + prefix.len();
-            let eq_len: u64 = end as u64 - start as u64;
+    //     for (prefix, next_node_index) in current.next.iter().rev() {
+    //         let start = current_node_index;
+    //         let end = current_node_index + prefix.len();
+    //         let eq_len: u64 = end as u64 - start as u64;
 
-            let prefix_pos = packed_strings
-                .find(prefix)
-                .expect("prefix should be inside this string");
+    //         let prefix_pos = packed_strings
+    //             .find(prefix)
+    //             .expect("prefix should be inside this string");
 
-            if RADIX_TREE_DEBUG {
-                println!(
-                    "{}if str[{start}..{end}] == \"{prefix}\" at packed_string[{prefix_pos}]",
-                    " ".repeat(depth * 4),
-                );
-            }
+    //         if RADIX_TRIE_DEBUG {
+    //             println!(
+    //                 "{}if str[{start}..{end}] == \"{prefix}\" at packed_string[{prefix_pos}]",
+    //                 " ".repeat(depth * 4),
+    //             );
+    //         }
 
-            let then_node = self.generate_radrix_trie_code(
-                matched_value,
-                packed_strings,
-                packed_strings_expr,
-                nodes,
-                end,
-                *next_node_index,
-                bool_type_id,
-                u64_type_id,
-                branch_return_type_id,
-                depth + 1,
-                block_when_all_fail.clone(),
-            );
+    //         let then_node = self.generate_radrix_trie_code(
+    //             matched_value,
+    //             packed_strings,
+    //             packed_strings_expr,
+    //             nodes,
+    //             end,
+    //             *next_node_index,
+    //             bool_type_id,
+    //             u64_type_id,
+    //             branch_return_type_id,
+    //             depth + 1,
+    //             block_when_all_fail.clone(),
+    //         );
 
-            let prefix_pos = packed_strings
-                .find(prefix)
-                .expect("prefix should be inside this string");
+    //         let prefix_pos = packed_strings
+    //             .find(prefix)
+    //             .expect("prefix should be inside this string");
 
-            let expression = TyExpressionVariant::AsmExpression {
-                registers: vec![
-                    TyAsmRegisterDeclaration {
-                        name: Ident::new_no_span("slice".into()),
-                        initializer: Some(matched_value.clone()),
-                    },
-                    TyAsmRegisterDeclaration {
-                        name: Ident::new_no_span("prefix".into()),
-                        initializer: Some(packed_strings_expr.clone()),
-                    },
-                    TyAsmRegisterDeclaration {
-                        name: Ident::new_no_span("slice_ptr".into()),
-                        initializer: None,
-                    },
-                    TyAsmRegisterDeclaration {
-                        name: Ident::new_no_span("prefix_ptr".into()),
-                        initializer: None,
-                    },
-                    TyAsmRegisterDeclaration {
-                        name: Ident::new_no_span("len".into()),
-                        initializer: Some(TyExpression {
-                            expression: TyExpressionVariant::Literal(
-                                crate::language::Literal::U64(eq_len),
-                            ),
-                            return_type: u64_type_id,
-                            span: Span::dummy(),
-                        }),
-                    },
-                    TyAsmRegisterDeclaration {
-                        name: Ident::new_no_span("is_eq".into()),
-                        initializer: None,
-                    },
-                ],
-                body: vec![
-                    AsmOp {
-                        op_name: Ident::new_no_span("lw".into()),
-                        op_args: vec![
-                            BaseIdent::new_no_span("slice_ptr".into()),
-                            BaseIdent::new_no_span("slice".into()),
-                        ],
-                        immediate: Some(BaseIdent::new_no_span("i0".into())),
-                        span: Span::dummy(),
-                    },
-                    AsmOp {
-                        op_name: Ident::new_no_span("addi".into()),
-                        op_args: vec![
-                            BaseIdent::new_no_span("slice_ptr".into()),
-                            BaseIdent::new_no_span("slice_ptr".into()),
-                        ],
-                        immediate: Some(BaseIdent::new_no_span(format!("i{slice_pos}"))),
-                        span: Span::dummy(),
-                    },
-                    AsmOp {
-                        op_name: Ident::new_no_span("lw".into()),
-                        op_args: vec![
-                            BaseIdent::new_no_span("prefix_ptr".into()),
-                            BaseIdent::new_no_span("prefix".into()),
-                        ],
-                        immediate: Some(BaseIdent::new_no_span("i0".into())),
-                        span: Span::dummy(),
-                    },
-                    AsmOp {
-                        op_name: Ident::new_no_span("addi".into()),
-                        op_args: vec![
-                            BaseIdent::new_no_span("prefix_ptr".into()),
-                            BaseIdent::new_no_span("prefix_ptr".into()),
-                        ],
-                        immediate: Some(BaseIdent::new_no_span(format!("i{prefix_pos}"))),
-                        span: Span::dummy(),
-                    },
-                    AsmOp {
-                        op_name: Ident::new_no_span("meq".into()),
-                        op_args: vec![
-                            BaseIdent::new_no_span("is_eq".into()),
-                            BaseIdent::new_no_span("slice_ptr".into()),
-                            BaseIdent::new_no_span("prefix_ptr".into()),
-                            BaseIdent::new_no_span("len".into()),
-                        ],
-                        immediate: None,
-                        span: Span::dummy(),
-                    },
-                ],
-                returns: Some((
-                    AsmRegister {
-                        name: "is_eq".into(),
-                    },
-                    Span::dummy(),
-                )),
-                whole_block_span: Span::dummy(),
-            };
+    //         let expression = TyExpressionVariant::AsmExpression {
+    //             registers: vec![
+    //                 TyAsmRegisterDeclaration {
+    //                     name: Ident::new_no_span("slice".into()),
+    //                     initializer: Some(matched_value.clone()),
+    //                 },
+    //                 TyAsmRegisterDeclaration {
+    //                     name: Ident::new_no_span("prefix".into()),
+    //                     initializer: Some(packed_strings_expr.clone()),
+    //                 },
+    //                 TyAsmRegisterDeclaration {
+    //                     name: Ident::new_no_span("slice_ptr".into()),
+    //                     initializer: None,
+    //                 },
+    //                 TyAsmRegisterDeclaration {
+    //                     name: Ident::new_no_span("prefix_ptr".into()),
+    //                     initializer: None,
+    //                 },
+    //                 TyAsmRegisterDeclaration {
+    //                     name: Ident::new_no_span("len".into()),
+    //                     initializer: Some(TyExpression {
+    //                         expression: TyExpressionVariant::Literal(
+    //                             crate::language::Literal::U64(eq_len),
+    //                         ),
+    //                         return_type: u64_type_id,
+    //                         span: Span::dummy(),
+    //                     }),
+    //                 },
+    //                 TyAsmRegisterDeclaration {
+    //                     name: Ident::new_no_span("is_eq".into()),
+    //                     initializer: None,
+    //                 },
+    //             ],
+    //             body: vec![
+    //                 AsmOp {
+    //                     op_name: Ident::new_no_span("lw".into()),
+    //                     op_args: vec![
+    //                         BaseIdent::new_no_span("slice_ptr".into()),
+    //                         BaseIdent::new_no_span("slice".into()),
+    //                     ],
+    //                     immediate: Some(BaseIdent::new_no_span("i0".into())),
+    //                     span: Span::dummy(),
+    //                 },
+    //                 AsmOp {
+    //                     op_name: Ident::new_no_span("addi".into()),
+    //                     op_args: vec![
+    //                         BaseIdent::new_no_span("slice_ptr".into()),
+    //                         BaseIdent::new_no_span("slice_ptr".into()),
+    //                     ],
+    //                     immediate: Some(BaseIdent::new_no_span(format!("i{slice_pos}"))),
+    //                     span: Span::dummy(),
+    //                 },
+    //                 AsmOp {
+    //                     op_name: Ident::new_no_span("lw".into()),
+    //                     op_args: vec![
+    //                         BaseIdent::new_no_span("prefix_ptr".into()),
+    //                         BaseIdent::new_no_span("prefix".into()),
+    //                     ],
+    //                     immediate: Some(BaseIdent::new_no_span("i0".into())),
+    //                     span: Span::dummy(),
+    //                 },
+    //                 AsmOp {
+    //                     op_name: Ident::new_no_span("addi".into()),
+    //                     op_args: vec![
+    //                         BaseIdent::new_no_span("prefix_ptr".into()),
+    //                         BaseIdent::new_no_span("prefix_ptr".into()),
+    //                     ],
+    //                     immediate: Some(BaseIdent::new_no_span(format!("i{prefix_pos}"))),
+    //                     span: Span::dummy(),
+    //                 },
+    //                 AsmOp {
+    //                     op_name: Ident::new_no_span("meq".into()),
+    //                     op_args: vec![
+    //                         BaseIdent::new_no_span("is_eq".into()),
+    //                         BaseIdent::new_no_span("slice_ptr".into()),
+    //                         BaseIdent::new_no_span("prefix_ptr".into()),
+    //                         BaseIdent::new_no_span("len".into()),
+    //                     ],
+    //                     immediate: None,
+    //                     span: Span::dummy(),
+    //                 },
+    //             ],
+    //             returns: Some((
+    //                 AsmRegister {
+    //                     name: "is_eq".into(),
+    //                 },
+    //                 Span::dummy(),
+    //             )),
+    //             whole_block_span: Span::dummy(),
+    //         };
 
-            block = TyExpression {
-                expression: TyExpressionVariant::IfExp {
-                    condition: Box::new(TyExpression {
-                        expression,
-                        return_type: bool_type_id,
-                        span: Span::dummy(),
-                    }),
-                    then: Box::new(then_node),
-                    r#else: Some(Box::new(block)),
-                },
-                return_type: branch_return_type_id,
-                span: Span::dummy(),
-            };
-        }
+    //         block = TyExpression {
+    //             expression: TyExpressionVariant::IfExp {
+    //                 condition: Box::new(TyExpression {
+    //                     expression,
+    //                     return_type: bool_type_id,
+    //                     span: Span::dummy(),
+    //                 }),
+    //                 then: Box::new(then_node),
+    //                 r#else: Some(Box::new(block)),
+    //             },
+    //             return_type: branch_return_type_id,
+    //             span: Span::dummy(),
+    //         };
+    //     }
 
-        if RADIX_TREE_DEBUG {
-            println!("{}return wildcard branch", " ".repeat(depth * 4),);
-        }
+    //     if RADIX_TRIE_DEBUG {
+    //         println!("{}return wildcard branch", " ".repeat(depth * 4),);
+    //     }
 
-        block
-    }
+    //     block
+    // }
 
     fn desugar_to_typed_if_expression(
         &self,
