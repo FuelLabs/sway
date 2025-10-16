@@ -8,9 +8,8 @@ use crate::{
     },
     Engines, TypeInfo, TypeParameter,
 };
+use itertools::Itertools;
 use std::collections::BTreeMap;
-use hashbrown::HashMap;
-use itertools::{join, Itertools};
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -469,9 +468,10 @@ where
             (false, false) => "",
         };
 
-        let code = arm_by_size.iter().map(|(len, code)| {
-            format!("if _method_len == {len} {{ {code} }}")
-        }).join("");
+        let code = arm_by_size
+            .iter()
+            .map(|(len, code)| format!("if _method_len == {len} {{ {code} }}"))
+            .join("");
         let code = format!(
             "{att} pub fn __entry() {{
             let _method_names = \"{method_names}\";
