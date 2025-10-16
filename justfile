@@ -37,7 +37,7 @@ collect-gas-usage:
 
 # This recipe should be used on snapshot tests that contains gas usage from `forc test`,
 # because it will extract gas usage from all versions of the file
-# revision_range: as used in git to select the verions of the file that gas will be extracted
+# revision_range: as used in git to select the versions of the file that gas will be extracted
 # path: path to file to extract gas usage
 # report: csv or html
 # open: for "html", "-o" will open the report in the default browser
