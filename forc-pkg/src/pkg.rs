@@ -323,6 +323,8 @@ pub struct BuildOpts {
     pub experimental: Vec<sway_features::Feature>,
     /// Set of disabled experimental flags
     pub no_experimental: Vec<sway_features::Feature>,
+    /// Do not output any build artifacts, e.g., bytecode, ABI JSON, etc.
+    pub no_output: bool,
 }
 
 /// The set of options to filter type of projects to build in a workspace.
@@ -2210,6 +2212,7 @@ pub fn build_with_options(
         member_filter,
         experimental,
         no_experimental,
+        no_output,
         ..
     } = &build_options;
 
@@ -2301,7 +2304,10 @@ pub fn build_with_options(
             built_package.write_hexcode(&hexfile_path)?;
         }
 
-        built_package.write_output(minify, &pkg_manifest.project.name, &output_dir)?;
+        if !no_output {
+            built_package.write_output(minify, &pkg_manifest.project.name, &output_dir)?;
+        }
+
         built_workspace.push(Arc::new(built_package));
     }
 

@@ -50,5 +50,6 @@ fn opts_from_cmd(cmd: BuildCommand) -> pkg::BuildOpts {
         member_filter: MemberFilter::default(),
         experimental: cmd.experimental.experimental,
         no_experimental: cmd.experimental.no_experimental,
+        no_output: false,
     }
 }

@@ -366,7 +366,7 @@ impl<'a> FnCompiler<'a> {
                     unreachable!()
                 }
                 ty::TyDecl::ConstGenericDecl(_) => {
-                    todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                    unreachable!("ConstGenericDecl is not reachable from AstNode")
                 }
                 ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
                     let ted = self.engines.de().get_enum(decl_id);
