@@ -21,6 +21,13 @@ impl TypeId {
         resolved_type_id: TypeId,
     ) -> Result<String, ErrorEmitted> {
         let type_engine = engines.te();
+        // let self_abi_str = if let TypeInfo::Alias { .. } = &*type_engine.get(*self) {
+        //     String::default()
+        // } else {
+        //     type_engine
+        //         .get(*self)
+        //         .abi_str(handler, ctx, engines, true)?
+        // };
         let self_abi_str = type_engine
             .get(*self)
             .abi_str(handler, ctx, engines, true)?;
@@ -200,10 +207,7 @@ impl TypeInfo {
                 "__slice {}",
                 ty.abi_str(handler, ctx, engines, false)?
             )),
-            Alias { .. } => {
-                // Aliases are handled specially when processing the ABI, so we should never get here.
-                unreachable!()
-            }
+            Alias { name, .. } => Ok(name.to_string()),
             TraitType {
                 name,
                 implemented_in: _,
