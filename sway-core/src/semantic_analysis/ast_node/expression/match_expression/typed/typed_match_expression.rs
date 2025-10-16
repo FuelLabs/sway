@@ -112,7 +112,7 @@ impl ty::TyMatchExpression {
         let typed_if_exp =
             handler.scope(
                 |handler| match &*ctx.engines().te().get(self.value_type_id) {
-                    TypeInfo::StringSlice => self.desugar_to_radix_trie(ctx),
+                    //TypeInfo::StringSlice => self.desugar_to_radix_trie(ctx),
                     _ => self.desugar_to_typed_if_expression(instantiate, ctx, handler),
                 },
             )?;

@@ -1,0 +1,125 @@
+---
+source: test/src/snapshot/mod.rs
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/match_expressions_all
+exit status: 0
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_pass/language/match_expressions_all
+   Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert)
+   Compiling script match_expressions_all (test/src/e2e_vm_tests/test_programs/should_pass/language/match_expressions_all)
+let packed_string = "get_a_b"
+if str.len() == 5
+    if str[0..4] == "get_" at packed_string[0]
+        if str[4..5] == "b" at packed_string[6]
+            return branch 2
+        if str[4..5] == "a" at packed_string[4]
+            return branch 0
+        return wildcard branch
+    return wildcard branch
+if str.len() == 7
+    if str[0..7] == "get_a_b" at packed_string[0]
+        return branch 1
+    return wildcard branch
+return wildcard branch
+let packed_string = "get_a_b"
+if str.len() == 5
+    if str[0..4] == "get_" at packed_string[0]
+        if str[4..5] == "b" at packed_string[6]
+            return branch 2
+        if str[4..5] == "a" at packed_string[4]
+            return branch 0
+        return wildcard branch
+    return wildcard branch
+if str.len() == 7
+    if str[0..7] == "get_a_b" at packed_string[0]
+        return branch 1
+    return wildcard branch
+return wildcard branch
+    Finished debug [unoptimized + fuel] target(s) [2.736 KB] in ???
+
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/match_expressions_all --ir final --asm final | filter-fn match_expressions_all return_match_on_str_slice
+
+pshl i15                      ; save registers 16..40
+pshh i524288                  ; save registers 40..64
+move $$locbase $sp            ; save locals base register for function return_match_on_str_slice_8
+cfei i144                     ; allocate 144 bytes for locals and 0 slots for call arguments
+move $r3 $$reta               ; save return address
+addi $r0 $$locbase i128       ; get offset to local __ptr slice
+mcpi $r0 $$arg0 i16           ; copy memory
+movi $r1 i7                   ; initialize constant into register
+lw   $r0 $$locbase i17
+eq   $r0 $r0 $r1
+jnzf $r0 $zero i55
+movi $r1 i5                   ; initialize constant into register
+lw   $r0 $$locbase i17
+eq   $r0 $r0 $r1
+movi $r1 i1000                ; initialize constant into register
+jnzf $r0 $zero i1
+jmpf $zero i48
+addr $r0 data_NonConfigurable_9; get __const_global0's address in data section
+addi $r1 $$locbase i32        ; get offset to local __ptr { ptr, u64 }
+sw   $$locbase $r0 i4         ; store word
+movi $r0 i7                   ; initialize constant into register
+sw   $$locbase $r0 i5         ; store word
+addi $r0 $$locbase i48        ; get offset to local __ptr slice
+mcpi $r0 $r1 i16              ; copy memory
+movi $r2 i4                   ; initialize constant into register
+lw   $r0 $$locbase i16
+addi $r0 $r0 i0
+lw   $r1 $$locbase i6
+addi $r1 $r1 i0
+meq  $r0 $r0 $r1 $r2
+movi $r1 i1000                ; initialize constant into register
+jnzf $r0 $zero i1
+jmpf $zero i31
+addr $r0 data_NonConfigurable_9; get __const_global1's address in data section
+addi $r1 $$locbase i64        ; get offset to local __ptr { ptr, u64 }
+sw   $$locbase $r0 i8         ; store word
+movi $r0 i7                   ; initialize constant into register
+sw   $$locbase $r0 i9         ; store word
+addi $r0 $$locbase i80        ; get offset to local __ptr slice
+mcpi $r0 $r1 i16              ; copy memory
+lw   $r0 $$locbase i16
+addi $r0 $r0 i4
+lw   $r1 $$locbase i10
+addi $r1 $r1 i4
+meq  $r0 $r0 $r1 $one
+move $r1 $one                 ; move parameter from branch to block argument
+jnzf $r0 $zero i16
+addr $r0 data_NonConfigurable_9; get __const_global2's address in data section
+addi $r1 $$locbase i96        ; get offset to local __ptr { ptr, u64 }
+sw   $$locbase $r0 i12        ; store word
+movi $r0 i7                   ; initialize constant into register
+sw   $$locbase $r0 i13        ; store word
+addi $r0 $$locbase i112       ; get offset to local __ptr slice
+mcpi $r0 $r1 i16              ; copy memory
+lw   $r0 $$locbase i16
+addi $r0 $r0 i4
+lw   $r1 $$locbase i14
+addi $r1 $r1 i6
+meq  $r0 $r0 $r1 $one
+movi $r1 i3                   ; initialize constant into register
+jnzf $r0 $zero i1
+movi $r1 i1000                ; initialize constant into register
+jmpf $zero i16
+addr $r0 data_NonConfigurable_9; get __const_global's address in data section
+sw   $$locbase $r0 i0         ; store word
+movi $r0 i7                   ; initialize constant into register
+sw   $$locbase $r0 i1         ; store word
+addi $r0 $$locbase i16        ; get offset to local __ptr slice
+mcpi $r0 $$locbase i16        ; copy memory
+movi $r2 i7                   ; initialize constant into register
+lw   $r0 $$locbase i16
+addi $r0 $r0 i0
+lw   $r1 $$locbase i2
+addi $r1 $r1 i0
+meq  $r0 $r0 $r1 $r2
+movi $r1 i2                   ; initialize constant into register
+jnzf $r0 $zero i1
+movi $r1 i1000                ; initialize constant into register
+move $$retv $r1               ; set return value
+cfsi i144                     ; free 144 bytes for locals and 0 slots for extra call arguments
+move $$reta $r3               ; restore return address
+poph i524288                  ; restore registers 40..64
+popl i15                      ; restore registers 16..40
+jal  $zero $$reta i0          ; return from call
