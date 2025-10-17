@@ -168,7 +168,7 @@ mod tests {
             print_dca_graph: Some("dca_graph".into()),
             print_dca_graph_url_format: Some("print_dca_graph_url_format".into()),
             print_ir: PrintIr::r#final(),
-            verify_ir: VerifyIr::r#final(),
+            verify_ir: VerifyIr::none(),
             print_asm: PrintAsm::all(),
             print_bytecode: true,
             print_bytecode_spans: false,
