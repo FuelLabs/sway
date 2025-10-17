@@ -240,12 +240,23 @@ impl SubstTypes for DeclId<TyTraitType> {
     }
 }
 
+// This implementation deviates from all other DeclId<...> implementations.
+// For more, see https://github.com/FuelLabs/sway/pull/7440#discussion_r2428833840.
+// A better solution will be implemented in the future.
+//
+// TL;DR:
+// When a constant is declared inside a function, its value is shared by every
+// “version” of that function—that is, by all monomorphizations.  If we “replace” the
+// constant, as other implementations do, we would change its value in *every* version,
+// which is incorrect.
 impl SubstTypes for DeclId<TyConstantDecl> {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         let decl_engine = ctx.engines.de();
         let mut decl = (*decl_engine.get(self)).clone();
         if decl.subst(ctx).has_changes() {
-            decl_engine.replace(*self, decl);
+            *self = *decl_engine
+                .insert(decl, decl_engine.get_parsed_decl_id(self).as_ref())
+                .id();
             HasChanges::Yes
         } else {
             HasChanges::No
