@@ -283,6 +283,7 @@ pub(crate) async fn compile_to_bytes(
             ir: run_config.print_ir.clone(),
             reverse_order: false,
         },
+        verify_ir: run_config.verify_ir.clone(),
         pkg: forc_pkg::PkgOpts {
             path: Some(root.clone()),
             locked: run_config.locked,

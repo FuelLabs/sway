@@ -1,4 +1,4 @@
-use crate::cli;
+use crate::cli::{self, shared::VerifyIrCliOpt};
 use ansiterm::Colour;
 use clap::Parser;
 use forc_pkg as pkg;
@@ -354,6 +354,7 @@ fn opts_from_cmd(cmd: Command) -> forc_test::TestOpts {
             ir: cmd.build.print.ir(),
             reverse_order: cmd.build.print.reverse_order,
         },
+        verify_ir: VerifyIrCliOpt::from(cmd.build.verify_ir.unwrap_or_default().as_ref()).0,
         time_phases: cmd.build.print.time_phases,
         profile: cmd.build.print.profile,
         metrics_outfile: cmd.build.print.metrics_outfile,

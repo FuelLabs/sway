@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use sway_core::{Backtrace, OptLevel, PrintAsm, PrintIr};
+use sway_core::{Backtrace, OptLevel, PrintAsm, PrintIr, VerifyIr};
 
 use crate::DumpOpts;
 
@@ -16,6 +16,8 @@ pub struct BuildProfile {
     pub dump: DumpOpts,
     #[serde(default)]
     pub print_ir: PrintIr,
+    #[serde(default)]
+    pub verify_ir: VerifyIr,
     #[serde(default)]
     pub print_asm: PrintAsm,
     #[serde(default)]
@@ -55,6 +57,7 @@ impl BuildProfile {
             print_dca_graph: None,
             print_dca_graph_url_format: None,
             print_ir: PrintIr::default(),
+            verify_ir: VerifyIr::default(),
             print_asm: PrintAsm::default(),
             print_bytecode: false,
             print_bytecode_spans: false,
@@ -78,6 +81,7 @@ impl BuildProfile {
             print_dca_graph: None,
             print_dca_graph_url_format: None,
             print_ir: PrintIr::default(),
+            verify_ir: VerifyIr::default(),
             print_asm: PrintAsm::default(),
             print_bytecode: false,
             print_bytecode_spans: false,
@@ -107,7 +111,7 @@ impl Default for BuildProfile {
 #[cfg(test)]
 mod tests {
     use crate::{BuildProfile, DumpOpts, PackageManifest};
-    use sway_core::{Backtrace, OptLevel, PrintAsm, PrintIr};
+    use sway_core::{Backtrace, OptLevel, PrintAsm, PrintIr, VerifyIr};
 
     #[test]
     fn test_build_profiles() {
@@ -164,6 +168,7 @@ mod tests {
             print_dca_graph: Some("dca_graph".into()),
             print_dca_graph_url_format: Some("print_dca_graph_url_format".into()),
             print_ir: PrintIr::r#final(),
+            verify_ir: VerifyIr::r#final(),
             print_asm: PrintAsm::all(),
             print_bytecode: true,
             print_bytecode_spans: false,

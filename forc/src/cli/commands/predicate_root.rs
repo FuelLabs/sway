@@ -1,5 +1,6 @@
 use clap::Parser;
 use forc_util::ForcResult;
+use sway_core::VerifyIr;
 
 pub use crate::cli::shared::{BuildOutput, BuildProfile, Minify, Pkg, Print};
 use crate::ops::forc_predicate_root;
@@ -21,6 +22,8 @@ pub struct Command {
     pub minify: Minify,
     #[clap(flatten)]
     pub print: Print,
+    #[clap(flatten)]
+    pub verify_ir: VerifyIr,
     #[clap(flatten)]
     pub build_output: BuildOutput,
     #[clap(flatten)]

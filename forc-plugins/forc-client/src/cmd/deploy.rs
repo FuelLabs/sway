@@ -5,6 +5,7 @@ use forc_pkg::BuildProfile;
 pub use forc_tx::{Gas, Maturity};
 pub use forc_util::tx_utils::Salt;
 use fuel_crypto::SecretKey;
+use sway_core::VerifyIr;
 
 forc_util::cli_examples! {
    super::Command {
@@ -23,6 +24,8 @@ pub struct Command {
     pub minify: Minify,
     #[clap(flatten)]
     pub print: Print,
+    #[clap(flatten)]
+    pub verify_ir: VerifyIr,
     #[clap(flatten)]
     pub gas: Gas,
     #[clap(flatten)]

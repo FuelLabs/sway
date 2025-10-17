@@ -4,6 +4,7 @@ use crate::{
 };
 use clap::Parser;
 use forc_util::{tx_utils::Salt, ForcResult};
+use sway_core::VerifyIr;
 
 forc_util::cli_examples! {
     crate::cli::Opt {
@@ -22,6 +23,8 @@ pub struct Command {
     pub minify: Minify,
     #[clap(flatten)]
     pub print: Print,
+    #[clap(flatten)]
+    pub verify_ir: VerifyIr,
     #[clap(flatten)]
     pub build_output: BuildOutput,
     #[clap(flatten)]

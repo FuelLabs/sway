@@ -1,4 +1,4 @@
-use crate::cli::BuildCommand;
+use crate::cli::{shared::VerifyIrCliOpt, BuildCommand};
 use forc_pkg as pkg;
 use forc_util::ForcResult;
 use pkg::MemberFilter;
@@ -29,6 +29,7 @@ fn opts_from_cmd(cmd: BuildCommand) -> pkg::BuildOpts {
             ir: cmd.build.print.ir(),
             reverse_order: cmd.build.print.reverse_order,
         },
+        verify_ir: VerifyIrCliOpt::from(cmd.build.verify_ir.unwrap_or_default().as_ref()).0,
         dump: pkg::DumpOpts {
             dump_impls: cmd.build.dump.dump_impls,
         },

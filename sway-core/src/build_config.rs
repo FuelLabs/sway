@@ -1,3 +1,4 @@
+use clap::Args;
 use itertools::Itertools;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::{
@@ -6,7 +7,7 @@ use std::{
     sync::Arc,
 };
 use strum::{Display, EnumString};
-use sway_ir::{PassManager, PrintPassesOpts};
+use sway_ir::{PassManager, PrintPassesOpts, VerifyPassesOpts};
 
 #[derive(
     Clone,
@@ -190,6 +191,88 @@ impl From<&PrintIr> for PrintPassesOpts {
     }
 }
 
+/// Which IR states to verify.
+#[derive(Args, Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct VerifyIr {
+    /// Verify IR prior to any optimization passes.
+    #[clap(long)]
+    pub initial: bool,
+    /// Verify IR after applying all optimization passes.
+    #[clap(long)]
+    pub r#final: bool,
+    /// Only verify a requested optimization pass if it has modified the IR.
+    #[serde(rename = "modified")]
+    #[clap(long)]
+    pub modified_only: bool,
+    /// Verify after the named optimization pass. Use "all" to verify after all passes.
+    #[clap(long)]
+    pub passes: Vec<String>,
+}
+
+impl Default for VerifyIr {
+    fn default() -> Self {
+        Self {
+            initial: false,
+            r#final: false,
+            modified_only: true, // Default option is more restrictive.
+            passes: vec![],
+        }
+    }
+}
+
+impl VerifyIr {
+    pub fn all(modified_only: bool) -> Self {
+        Self {
+            initial: true,
+            r#final: true,
+            modified_only,
+            passes: PassManager::OPTIMIZATION_PASSES
+                .iter()
+                .map(|pass| pass.to_string())
+                .collect_vec(),
+        }
+    }
+
+    pub fn none() -> Self {
+        Self::default()
+    }
+
+    pub fn r#final() -> Self {
+        Self {
+            r#final: true,
+            ..Self::default()
+        }
+    }
+}
+
+impl std::ops::BitOrAssign for VerifyIr {
+    fn bitor_assign(&mut self, rhs: Self) {
+        self.initial |= rhs.initial;
+        self.r#final |= rhs.r#final;
+        // Both sides must request only passes that modify IR
+        // in order for `modified_only` to be true.
+        // Otherwise, displaying passes regardless if they
+        // are modified or not wins.
+        self.modified_only &= rhs.modified_only;
+        for pass in rhs.passes {
+            if !self.passes.contains(&pass) {
+                self.passes.push(pass);
+            }
+        }
+    }
+}
+
+impl From<&VerifyIr> for VerifyPassesOpts {
+    fn from(value: &VerifyIr) -> Self {
+        Self {
+            initial: value.initial,
+            r#final: value.r#final,
+            modified_only: value.modified_only,
+            passes: HashSet::from_iter(value.passes.iter().cloned()),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum Backtrace {
@@ -226,6 +309,7 @@ pub struct BuildConfig {
     pub(crate) print_bytecode: bool,
     pub(crate) print_bytecode_spans: bool,
     pub(crate) print_ir: PrintIr,
+    pub(crate) verify_ir: VerifyIr,
     pub(crate) include_tests: bool,
     pub(crate) optimization_level: OptLevel,
     pub(crate) backtrace: Backtrace,
@@ -277,6 +361,7 @@ impl BuildConfig {
             print_bytecode: false,
             print_bytecode_spans: false,
             print_ir: PrintIr::default(),
+            verify_ir: VerifyIr::default(),
             include_tests: false,
             time_phases: false,
             profile: false,
@@ -327,6 +412,13 @@ impl BuildConfig {
     pub fn with_print_ir(self, a: PrintIr) -> Self {
         Self {
             print_ir: a,
+            ..self
+        }
+    }
+
+    pub fn with_verify_ir(self, a: VerifyIr) -> Self {
+        Self {
+            verify_ir: a,
             ..self
         }
     }

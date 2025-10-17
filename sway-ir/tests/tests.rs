@@ -50,7 +50,7 @@ fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
             "Pass returned false (no changes made to {}).",
             path.display()
         );
-        let ir = ir.verify().unwrap_or_else(|err| {
+        ir.verify().unwrap_or_else(|err| {
             println!("{err}");
             panic!();
         });
