@@ -2789,6 +2789,13 @@ impl<const N: u64> AbiDecode for str[N] {
     }
 }
 
+#[cfg(experimental_const_generics = false)]
+impl AbiDecode for str[0] {
+    fn abi_decode(ref mut _buffer: BufferReader) -> str[0] {
+        __to_str_array("")
+    }
+}
+
 // BEGIN STRARRAY_DECODE
 #[cfg(experimental_const_generics = false)]
 impl AbiDecode for str[1] {
@@ -3387,6 +3394,16 @@ where
         }
 
         *array
+    }
+}
+
+#[cfg(experimental_const_generics = false)]
+impl<T> AbiDecode for [T; 0]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut _buffer: BufferReader) -> [T; 0] {
+        []
     }
 }
 
