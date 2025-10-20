@@ -132,5 +132,17 @@ error: Number of attribute arguments is invalid
   |
 ____
 
-  Aborting due to 10 errors.
+error: Attribute can be applied only once
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_multiplicity/src/event_indexed_attr.sw:4:10
+  |
+...
+3 | #[event]
+  |   ----- info: It is already applied here.
+4 | #[event, event]
+  |          ^^^^^ "event" attribute can be applied only once, but is applied three times.
+  |   ----- info: And here.
+  |
+____
+
+  Aborting due to 11 errors.
 error: Failed to compile attributes_invalid_multiplicity
