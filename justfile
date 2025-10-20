@@ -41,13 +41,13 @@ benchmark-tests:
 # gas usages and bytecode sizes.
 
 alias pe2e := perf-e2e
-# collect gas usages and bytecode sizes for E2E tests
+# collect gas usages and bytecode sizes from E2E tests
 [group('performance')]
 perf-e2e filter='':
     cargo r -r -p test -- --release --kind e2e --perf-only --perf {{filter}}
 
 alias pil := perf-in-lang
-# collect gas usages for in-language tests
+# collect gas usages from in-language tests
 [group('performance')]
 perf-in-lang filter='':
     #!/usr/bin/env bash
@@ -57,7 +57,7 @@ perf-in-lang filter='':
     echo "Gas usages written to:      $outfile"
 
 alias pa := perf-all
-# collect gas usages and bytecode sizes for all tests (E2E and in-language)
+# collect gas usages and bytecode sizes from all tests (E2E and in-language)
 [group('performance')]
 perf-all filter='': (perf-e2e filter) (perf-in-lang filter)
 
@@ -79,7 +79,7 @@ perf-diff-latest format='md':
 # open: "-o" opens the default browser showing the report
 
 alias psh := perf-snapshot-historical
-# collect historic gas usages for a snapshot test that has a `forc test` output
+# collect historic gas usages from a snapshot test that has a `forc test` output
 [linux]
 [group('performance')]
 perf-snapshot-historical path open='':
