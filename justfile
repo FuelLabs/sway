@@ -36,30 +36,37 @@ collect-gas-usage:
     cargo r -p test --release -- --verbose --forc-test-only | ./scripts/compare-gas-usage/extract-gas-usage.sh
 
 # This recipe should be used on snapshot tests that contains gas usage from `forc test`,
-# because it will extract gas usage from all versions of the file and generate an html interactive report.
+# because it will extract gas usage from all versions of the file
+# revision_range: as used in git to select the versions of the file that gas will be extracted
 # path: path to file to extract gas usage
-# open: "-o" will open the default browser showing the report
+# report: csv or html
+# open: for "html", "-o" will open the report in the default browser
 [linux]
 [group('benchmark')]
-collect-historic-gas-usage path open:
+collect-historic-gas-usage revision_range path report open="":
     #! /bin/bash
     mkdir -p target
-    rm target/a.csv
-    rm target/a.html
+    rm target/a.csv &>> /dev/null
+    rm target/a.html &>> /dev/null
     echo "test,gas,commit" > target/a.csv
-    for HASH in `git log --format='%H' -- {{path}}`; do
+    for HASH in `git log --format='%H' {{revision_range}} -- {{path}}`; do
         TIMESTAMP=$(git show -s --format='%as-%ct-%H' "$HASH")
         git --no-pager show "$HASH:{{path}}" | bash -c "scripts/compare-gas-usage/extract-gas-usage.sh $TIMESTAMP" >> target/a.csv
     done
-    ./scripts/csv2html/csv2html.sh target/a.csv >> target/a.html
-    if [ -n "{{open}}" ]; then
-        if which xdg-open &>> /dev/null
-        then
-            xdg-open target/a.html
-        elif which gnome-open &>> /dev/null
-        then
-            gnome-open target/a.html
+
+    if [ "{{report}}" = "html" ]; then
+        ./scripts/csv2html/csv2html.sh target/a.csv >> target/a.html
+        if [ -n "{{open}}" ]; then
+            if which xdg-open &>> /dev/null
+            then
+                xdg-open target/a.html
+            elif which gnome-open &>> /dev/null
+            then
+                gnome-open target/a.html
+            fi
         fi
+    else
+        clipivot max target/a.csv --rows=test --cols=commit --val=gas > target/b.csv
     fi
 
 [group('build')]
