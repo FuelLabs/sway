@@ -8,5 +8,7 @@ trait T {
     #[fallback(invalid)]
     #[error_type(invalid)]
     #[error(invalid)]
+    #[event]
+    #[indexed]
     fn trait_provided_method(self) {}
 }

@@ -10,5 +10,7 @@ trait T {
     #[fallback(invalid)]
     #[error_type(invalid)]
     #[error(invalid)]
+    #[event]
+    #[indexed]
     fn trait_method(self);
 } 

@@ -11,6 +11,7 @@ members = [
   "test_projects/contract_bytecode",
   "test_projects/ec_recover",
   "test_projects/ec_recover_and_match_predicate",
+  "test_projects/events",
   "test_projects/evm",
   "test_projects/evm_ec_recover",
   "test_projects/generics_in_abi",
