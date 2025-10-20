@@ -64,14 +64,14 @@ pub(crate) fn instantiate_function_application(
     engines.te().unify_with_generic(
         handler,
         engines,
-        function_decl.return_type.type_id(),
+        function_decl.return_type.type_id,
         ctx.type_annotation(),
         &call_path_binding.span(),
         "Function return type does not match up with local type annotation.",
         || None,
     );
 
-    let mut function_return_type_id = function_decl.return_type.type_id();
+    let mut function_return_type_id = function_decl.return_type.type_id;
 
     let function_ident: IdentUnique = function_decl.name.clone().into();
     let function_sig = TyFunctionSig::from_fn_decl(&function_decl);
@@ -101,7 +101,7 @@ pub(crate) fn instantiate_function_application(
 
         let method_sig = TyFunctionSig::from_fn_decl(&function_decl);
 
-        function_return_type_id = function_decl.return_type.type_id();
+        function_return_type_id = function_decl.return_type.type_id;
         let function_is_type_check_finalized = function_decl.is_type_check_finalized;
         let function_is_trait_method_dummy = function_decl.is_trait_method_dummy;
         let new_decl_ref = decl_engine
@@ -172,7 +172,7 @@ fn type_check_arguments(
                 let ctx = ctx
                     .by_ref()
                     .with_help_text(UNIFY_ARGS_HELP_TEXT)
-                    .with_type_annotation(param.type_argument.type_id());
+                    .with_type_annotation(param.type_argument.type_id);
                 ty::TyExpression::type_check(handler, ctx, arg)
                     .unwrap_or_else(|err| ty::TyExpression::error(err, arg.span(), engines))
             })
@@ -203,7 +203,7 @@ fn unify_arguments_and_parameters(
                     unify_handler,
                     engines,
                     arg.return_type,
-                    param.type_argument.type_id(),
+                    param.type_argument.type_id,
                     &arg.span,
                     UNIFY_ARGS_HELP_TEXT,
                     || None,

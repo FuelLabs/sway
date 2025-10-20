@@ -1,4 +1,5 @@
 use crate::{
+    ast_elements::type_argument::GenericTypeArgument,
     decl_engine::MaterializeConstGenerics,
     engine_threading::*,
     error::module_can_be_changed,
@@ -118,7 +119,7 @@ impl MaterializeConstGenerics for TyStructDecl {
         for field in self.fields.iter_mut() {
             field
                 .type_argument
-                .type_id_mut()
+                .type_id
                 .materialize_const_generics(engines, handler, name, value)?;
         }
 
@@ -152,7 +153,7 @@ impl TyStructDecl {
             .iter()
             .enumerate()
             .find(|(_, field)| field.name == *field_name)
-            .map(|(idx, field)| (idx as u64, field.type_argument.type_id()))
+            .map(|(idx, field)| (idx as u64, field.type_argument.type_id))
     }
 
     /// Returns true if the struct `self` has at least one private field.
@@ -217,7 +218,7 @@ pub struct TyStructField {
     pub visibility: Visibility,
     pub name: Ident,
     pub span: Span,
-    pub type_argument: GenericArgument,
+    pub type_argument: GenericTypeArgument,
     pub attributes: transform::Attributes,
 }
 
