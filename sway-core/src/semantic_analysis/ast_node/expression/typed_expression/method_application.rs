@@ -588,7 +588,7 @@ pub(crate) fn type_check_method_application(
             &mut ctx,
             span,
             method.return_type.type_id,
-            string_slice_literal(&method.name),
+            method_name_literal(&method.name),
             old_arguments.first().cloned().unwrap(),
             args,
             arguments.iter().map(|x| x.1.return_type).collect(),

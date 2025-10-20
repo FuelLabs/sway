@@ -41,7 +41,7 @@ pub(super) fn convert_literal_to_constant(
         Literal::String(s) => ConstantContent::new_string(context, s.as_str().as_bytes().to_vec()),
         Literal::Boolean(b) => ConstantContent::new_bool(context, *b),
         Literal::B256(bs) => ConstantContent::new_b256(context, *bs),
-        Literal::Binary(_) => todo!(),
+        Literal::Binary(bytes) => ConstantContent::new_untyped_slice(context, bytes.clone()),
     };
     Constant::unique(context, c)
 }
