@@ -658,12 +658,31 @@ fn generate_concrete_type_declaration(
 
     let (type_field, concrete_type_id) =
         type_id.get_abi_type_field_and_concrete_id(handler, ctx, engines, resolved_type_id)?;
+
+    let type_engine = engines.te();
+    let alias_of = match &*type_engine.get(resolved_type_id) {
+        TypeInfo::Alias { ty, .. } => {
+            // Ensure the underlying representation has a declaration first
+            let target_ctid = generate_concrete_type_declaration(
+                handler,
+                ctx,
+                engines,
+                metadata_types,
+                concrete_types,
+                ty.initial_type_id(),
+                ty.type_id(),
+            )?;
+            Some(target_ctid)
+        }
+        _ => None,
+    };
+
     let concrete_type_decl = TypeConcreteDeclaration {
         type_field,
         concrete_type_id: concrete_type_id.clone(),
         metadata_type_id,
         type_arguments,
-        alias_of: None,
+        alias_of,
     };
 
     concrete_types.push(concrete_type_decl);
@@ -1183,21 +1202,6 @@ impl TypeId {
                         metadata_types,
                         concrete_types,
                         resolved_type_id,
-                        metadata_types_to_add,
-                    )?
-                } else {
-                    None
-                }
-            }
-            TypeInfo::Alias { .. } => {
-                if let TypeInfo::Alias { ty, .. } = &*type_engine.get(resolved_type_id) {
-                    ty.initial_type_id().get_abi_type_components(
-                        handler,
-                        ctx,
-                        engines,
-                        metadata_types,
-                        concrete_types,
-                        ty.type_id(),
                         metadata_types_to_add,
                     )?
                 } else {

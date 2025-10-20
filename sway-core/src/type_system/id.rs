@@ -284,13 +284,7 @@ impl TypeId {
                 },
                 TypeInfo::Struct(decl_ref),
             ) => call_path.call_path.suffix != decl_engine.get_struct(decl_ref).call_path.suffix,
-            (
-                TypeInfo::Custom {
-                    qualified_call_path: call_path,
-                    ..
-                },
-                TypeInfo::Alias { name, .. },
-            ) => call_path.call_path.suffix != name.clone(),
+            (TypeInfo::Custom { .. }, TypeInfo::Alias { .. }) => false,
             (TypeInfo::Custom { .. }, _) => true,
             _ => false,
         }

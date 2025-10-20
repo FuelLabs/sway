@@ -4,6 +4,11 @@
       "concreteTypeId": "f0ea9e428f47d8b233443fc8f7d3bb5ad2ae35d5175e8c15f0f76b3459c9c080",
       "metadataTypeId": 0,
       "type": "(struct TwoGenerics<u64,u32>, struct OneGeneric<u8>)"
+    },
+    {
+      "aliasOf": "f0ea9e428f47d8b233443fc8f7d3bb5ad2ae35d5175e8c15f0f76b3459c9c080",
+      "concreteTypeId": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd",
+      "type": "A"
     }
   ],
   "configurables": [],
@@ -14,12 +19,12 @@
       "attributes": null,
       "inputs": [
         {
-          "concreteTypeId": "f0ea9e428f47d8b233443fc8f7d3bb5ad2ae35d5175e8c15f0f76b3459c9c080",
+          "concreteTypeId": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd",
           "name": "input"
         }
       ],
       "name": "main",
-      "output": "f0ea9e428f47d8b233443fc8f7d3bb5ad2ae35d5175e8c15f0f76b3459c9c080"
+      "output": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
     }
   ],
   "loggedTypes": [],
