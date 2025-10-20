@@ -9,7 +9,6 @@ use sway_error::{
 use sway_types::{span::Span, Ident, Spanned};
 
 use crate::{
-    ast_elements::type_argument::GenericTypeArgument,
     decl_engine::DeclRefFunction,
     language::{
         parsed::MethodName,
@@ -203,9 +202,7 @@ impl TypeCheckContext<'_> {
         let type_info = self.engines().te().get(type_id);
         if type_info.is_alias() {
             if let TypeInfo::Alias { ty, .. } = &*type_info {
-                if let Some(GenericTypeArgument { type_id, .. }) = ty.as_type_argument() {
-                    return self.get_namespace_module_from_type_id(*type_id);
-                }
+                return self.get_namespace_module_from_type_id(ty.type_id);
             }
         }
 
@@ -522,9 +519,7 @@ impl TypeCheckContext<'_> {
                 self.collect_trait_constraints_recursive(generic.type_id, acc, visited);
             }
             TypeInfo::Alias { ty, .. } => {
-                if let Some(GenericTypeArgument { type_id: inner, .. }) = ty.as_type_argument() {
-                    self.collect_trait_constraints_recursive(*inner, acc, visited);
-                }
+                self.collect_trait_constraints_recursive(ty.type_id, acc, visited);
             }
             _ => {}
         }
@@ -639,9 +634,9 @@ impl TypeCheckContext<'_> {
             params: fn_decl
                 .parameters
                 .iter()
-                .map(|p| p.type_argument.type_id())
+                .map(|p| p.type_argument.type_id)
                 .collect(),
-            ret: fn_decl.return_type.type_id(),
+            ret: fn_decl.return_type.type_id,
             is_contract_call: fn_decl.is_contract_call,
         }
     }

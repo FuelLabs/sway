@@ -398,7 +398,7 @@ fn type_check_field_arguments(
                     let ctx = ctx
                         .by_ref()
                         .with_help_text(help_text)
-                        .with_type_annotation(struct_field.type_argument.type_id())
+                        .with_type_annotation(struct_field.type_argument.type_id)
                         .with_unify_generic(true);
 
                     // TODO: Remove the `handler.scope` once https://github.com/FuelLabs/sway/issues/5606 gets solved.
@@ -472,7 +472,7 @@ fn unify_field_arguments_and_struct_fields(
                     handler,
                     engines,
                     typed_field.value.return_type,
-                    struct_field.type_argument.type_id(),
+                    struct_field.type_argument.type_id,
                     &typed_field.value.span, // Use the span of the initialization value.
                     help_text,
                     || None,

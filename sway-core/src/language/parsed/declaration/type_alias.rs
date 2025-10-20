@@ -1,8 +1,8 @@
 use crate::{
+    ast_elements::type_argument::GenericTypeArgument,
     engine_threading::{EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext},
     language::Visibility,
     transform,
-    type_system::*,
 };
 
 use sway_types::{ident::Ident, span::Span, Named, Spanned};
@@ -11,7 +11,7 @@ use sway_types::{ident::Ident, span::Span, Named, Spanned};
 pub struct TypeAliasDeclaration {
     pub name: Ident,
     pub attributes: transform::Attributes,
-    pub ty: GenericArgument,
+    pub ty: GenericTypeArgument,
     pub visibility: Visibility,
     pub span: Span,
 }

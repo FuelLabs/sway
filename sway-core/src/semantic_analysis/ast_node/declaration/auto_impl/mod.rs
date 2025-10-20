@@ -6,6 +6,7 @@ pub mod marker_traits;
 use std::ops::Deref;
 
 use crate::{
+    ast_elements::type_argument::GenericTypeArgument,
     build_config::DbgGeneration,
     engine_threading::SpannedWithEngines,
     language::{
@@ -13,11 +14,11 @@ use crate::{
         ty::{self, TyAstNode, TyDecl},
     },
     semantic_analysis::TypeCheckContext,
-    BuildTarget, Engines, GenericArgument, TypeInfo, TypeParameter,
+    BuildTarget, Engines, TypeInfo, TypeParameter,
 };
 use sway_error::handler::Handler;
 use sway_parse::Parse;
-use sway_types::{SourceId, Spanned};
+use sway_types::SourceId;
 
 /// Contains all information needed to auto-implement code for a certain feature.
 pub struct AutoImplContext<'a, 'b, I>
@@ -291,7 +292,7 @@ where
                 &handler,
                 impl_trait.trait_name.clone(),
                 impl_trait.trait_type_arguments.clone(),
-                impl_trait.implementing_for.type_id(),
+                impl_trait.implementing_for.type_id,
                 impl_trait.impl_type_parameters.clone(),
                 &impl_trait.items,
                 &impl_trait.span,
@@ -318,13 +319,13 @@ where
     /// The safest way would be to return a canonical fully qualified type path.
     /// We do not have a way to do this at the moment, so the best way is to use
     /// exactly what was typed by the user, to accommodate aliased imports.
-    fn generate_type(engines: &Engines, ta: &GenericArgument) -> Option<String> {
-        match &*engines.te().get(ta.type_id()) {
+    fn generate_type(engines: &Engines, ta: &GenericTypeArgument) -> Option<String> {
+        match &*engines.te().get(ta.type_id) {
             // A special case for function return type.
             // When a function does not define a return type, the span points to the whole signature.
             TypeInfo::Tuple(v) if v.is_empty() => Some("()".into()),
             // Otherwise, take the type from the span.
-            _ => Some(ta.span().as_str().to_string()),
+            _ => Some(ta.span.as_str().to_string()),
         }
     }
 }
