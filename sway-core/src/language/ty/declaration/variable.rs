@@ -1,4 +1,5 @@
 use crate::{
+    ast_elements::type_argument::GenericTypeArgument,
     engine_threading::*,
     language::{parsed::VariableDeclaration, ty::*},
     type_system::*,
@@ -13,7 +14,7 @@ pub struct TyVariableDecl {
     pub body: TyExpression,
     pub mutability: VariableMutability,
     pub return_type: TypeId,
-    pub type_ascription: GenericArgument,
+    pub type_ascription: GenericTypeArgument,
 }
 
 impl TyDeclParsedType for TyVariableDecl {

@@ -6,7 +6,7 @@ use crate::{
     },
     language::CallPath,
     type_system::GenericArgument,
-    Engines, TypeParameter,
+    Engines, GenericTypeArgument, TypeParameter,
 };
 
 use sway_types::{span::Span, Named, Spanned};
@@ -70,7 +70,7 @@ pub struct ImplSelfOrTrait {
     pub trait_name: CallPath,
     pub trait_type_arguments: Vec<GenericArgument>,
     pub trait_decl_ref: Option<ParsedInterfaceDeclId>,
-    pub implementing_for: GenericArgument,
+    pub implementing_for: GenericTypeArgument,
     pub items: Vec<ImplItem>,
     /// The [Span] of the whole impl trait and block.
     pub(crate) block_span: Span,

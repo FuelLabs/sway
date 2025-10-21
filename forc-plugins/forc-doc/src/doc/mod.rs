@@ -84,7 +84,7 @@ impl Documentation {
         let primitive_docs: Vec<_> = impl_traits
             .par_iter()
             .filter_map(|(impl_trait, module_info)| {
-                let impl_for_type = engines.te().get(impl_trait.implementing_for.type_id());
+                let impl_for_type = engines.te().get(impl_trait.implementing_for.type_id);
                 if let Ok(Descriptor::Documentable(doc)) =
                     Descriptor::from_type_info(impl_for_type.as_ref(), engines, module_info.clone())
                 {

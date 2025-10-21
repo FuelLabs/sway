@@ -11,7 +11,7 @@ use crate::{
     },
     transform::Attributes,
     type_system::TypeInfo,
-    Engines, GenericArgument, TypeEngine, TypeId,
+    Engines, GenericTypeArgument, TypeEngine, TypeId,
 };
 use petgraph::{prelude::NodeIndex, visit::Dfs};
 use std::collections::{BTreeSet, HashMap};
@@ -527,7 +527,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             if let Ok(ref vec) = result {
                 if !vec.is_empty() {
                     // Connect variable declaration node to its type ascription.
-                    connect_type_id(engines, type_ascription.type_id(), graph, entry_node)?;
+                    connect_type_id(engines, type_ascription.type_id, graph, entry_node)?;
                 }
             }
 
@@ -581,7 +581,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
                 .namespace
                 .insert_configurable(call_path.suffix.clone(), entry_node);
 
-            connect_type_id(engines, type_ascription.type_id(), graph, entry_node)?;
+            connect_type_id(engines, type_ascription.type_id, graph, entry_node)?;
 
             if let Some(value) = &value {
                 connect_expression(
@@ -738,7 +738,7 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
     entry_node: NodeIndex,
     tree_type: &TreeType,
     trait_decl_ref: &Option<DeclRef<InterfaceDeclId>>,
-    implementing_for: &GenericArgument,
+    implementing_for: &GenericTypeArgument,
     options: NodeConnectionOptions,
 ) -> Result<(), CompileError> {
     let decl_engine = engines.de();
@@ -758,7 +758,7 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
         };
     }
 
-    connect_type_id(engines, implementing_for.type_id(), graph, entry_node)?;
+    connect_type_id(engines, implementing_for.type_id, graph, entry_node)?;
 
     let trait_entry = graph.namespace.find_trait(trait_name).cloned();
     // Collect the methods that are directly implemented in the trait.
@@ -898,7 +898,7 @@ fn connect_abi_declaration(
                 if let Some(TypeInfo::Struct(decl_ref)) = get_struct_type_info_from_type_id(
                     type_engine,
                     decl_engine,
-                    fn_decl.return_type.type_id(),
+                    fn_decl.return_type.type_id,
                 )? {
                     let decl = decl_engine.get_struct(&decl_ref);
                     if let Some(ns) = graph.namespace.get_struct(&decl.call_path.suffix).cloned() {
@@ -939,7 +939,7 @@ fn get_struct_type_info_from_type_id(
                 if let Ok(Some(type_info)) = get_struct_type_info_from_type_id(
                     type_engine,
                     decl_engine,
-                    var.type_argument.type_id(),
+                    var.type_argument.type_id,
                 ) {
                     return Ok(Some(type_info));
                 }
@@ -949,7 +949,7 @@ fn get_struct_type_info_from_type_id(
         TypeInfo::Tuple(type_args) => {
             for arg in type_args.iter() {
                 if let Ok(Some(type_info)) =
-                    get_struct_type_info_from_type_id(type_engine, decl_engine, arg.type_id())
+                    get_struct_type_info_from_type_id(type_engine, decl_engine, arg.type_id)
                 {
                     return Ok(Some(type_info));
                 }
@@ -970,10 +970,10 @@ fn get_struct_type_info_from_type_id(
         }
         TypeInfo::Struct { .. } => Ok(Some(type_info)),
         TypeInfo::Array(type_arg, _) => {
-            get_struct_type_info_from_type_id(type_engine, decl_engine, type_arg.type_id())
+            get_struct_type_info_from_type_id(type_engine, decl_engine, type_arg.type_id)
         }
         TypeInfo::Slice(type_arg) => {
-            get_struct_type_info_from_type_id(type_engine, decl_engine, type_arg.type_id())
+            get_struct_type_info_from_type_id(type_engine, decl_engine, type_arg.type_id)
         }
         _ => Ok(None),
     }
@@ -1031,7 +1031,7 @@ fn connect_typed_fn_decl<'eng: 'cfg, 'cfg>(
             param_name: fn_param.name.clone(),
             is_self: engines
                 .te()
-                .get(fn_param.type_argument.initial_type_id())
+                .get(fn_param.type_argument.initial_type_id)
                 .is_self_type(),
         });
         graph.add_edge(entry_node, fn_param_node, "".into());
@@ -1045,7 +1045,7 @@ fn connect_typed_fn_decl<'eng: 'cfg, 'cfg>(
 
         connect_type_id(
             engines,
-            fn_param.type_argument.type_id(),
+            fn_param.type_argument.type_id,
             graph,
             fn_param_node,
         )?;
@@ -1073,7 +1073,7 @@ fn connect_typed_fn_decl<'eng: 'cfg, 'cfg>(
     // not sure how correct it is to default to Unit here...
     // I think types should all be resolved by now.
     let ty = type_engine
-        .to_typeinfo(fn_decl.return_type.type_id(), &span)
+        .to_typeinfo(fn_decl.return_type.type_id, &span)
         .unwrap_or_else(|_| TypeInfo::Tuple(Vec::new()));
 
     let namespace_entry = FunctionNamespaceEntry {
@@ -1100,10 +1100,8 @@ fn connect_fn_params_struct_enums<'eng: 'cfg, 'cfg>(
 ) -> Result<(), CompileError> {
     let type_engine = engines.te();
     for fn_param in fn_decl.parameters.iter() {
-        let ty = type_engine.to_typeinfo(
-            fn_param.type_argument.type_id(),
-            &fn_param.type_argument.span(),
-        )?;
+        let ty = type_engine
+            .to_typeinfo(fn_param.type_argument.type_id, &fn_param.type_argument.span)?;
         match ty {
             TypeInfo::Enum(decl_ref) => {
                 let decl = engines.de().get_enum(&decl_ref);
@@ -2494,7 +2492,7 @@ fn connect_type_alias_declaration<'eng: 'cfg, 'cfg>(
         .insert_alias(decl.name().clone(), entry_node);
 
     let ty::TyTypeAliasDecl { ty, .. } = decl;
-    connect_type_id(engines, ty.type_id(), graph, entry_node)?;
+    connect_type_id(engines, ty.type_id, graph, entry_node)?;
 
     Ok(())
 }
