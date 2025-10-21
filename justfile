@@ -74,32 +74,53 @@ perf-diff-latest format='md':
     ./scripts/perf/perf-diff-latest.sh "{{format}}"
 
 # This recipe should be used on snapshot tests that contain gas usages from `forc test`.
-# It will extract gas usages from all versions of the test's `stdout.snap` file and generate an interactive HTML report..
-# path: repo path to `stdout.snap` file to extract gas usage from. E.g.: `test/src/e2e_vm_tests/path_to/some_test/stdout.snap`.
-# open: "-o" opens the default browser showing the report
+# It will extract gas usages from versions of the test's `stdout.snap` file
+# that are within of the `revision_range`, and output a CSV pivot table
+# or an interactive HTML report, depending on the `format`.
+# path:           repo path to `stdout.snap` file to extract gas usage from, e.g.: `test/src/e2e_vm_tests/path_to/some_test/stdout.snap`
+# revision_range: Git revision range to consider when collecting historic gas usages, e.g.: `HEAD~10..HEAD` (default: all revisions)
+# format:         output format, either `csv` or `html` (default: `csv`)
+# open:           for `html` output, `-o` opens the report in the default browser
 
 alias psh := perf-snapshot-historical
 # collect historic gas usages from a snapshot test that has a `forc test` output
 [linux]
 [group('performance')]
-perf-snapshot-historical path open='':
+perf-snapshot-historical path revision_range='' format='csv' open='':
     #!/usr/bin/env bash
-    outfile="./test/perf_out/$(date '+%m%d%H%M%S')-snapshot-gas-usages-historical-$(basename "$(dirname "{{path}}")")"
+    if [[ "{{format}}" != "csv" && "{{format}}" != "html" ]]; then
+        echo "ERROR: Invalid output format '{{format}}'.  Output format must be either 'csv' or 'html'."
+        exit 1
+    fi
+
+    now_ts=$(date '+%m%d%H%M%S')
+    outfile="./test/perf_out/$now_ts-snapshot-gas-usages-historical-$(basename "$(dirname "{{path}}")")"
+
     echo "test,gas,commit" > "$outfile.csv"
-    for HASH in `git log --format='%H' -- {{path}}`; do
+
+    for HASH in `git log --format='%H' {{revision_range}} -- {{path}}`; do
         TIMESTAMP=$(git show -s --format='%as-%ct-%H' "$HASH")
         git --no-pager show "$HASH:{{path}}" | bash -c "scripts/perf/extract-gas-usages.sh $TIMESTAMP" >> "$outfile.csv"
     done
+
     echo "Historical gas usages written to: $outfile.csv"
-    ./scripts/csv2html/csv2html.sh "$outfile.csv" >> "$outfile.html"
-    if [ -n "{{open}}" ]; then
-        if which xdg-open &>> /dev/null
-        then
-            xdg-open "$outfile.html"
-        elif which gnome-open &>> /dev/null
-        then
-            gnome-open "$outfile.html"
+
+    if [ "{{format}}" = "html" ]; then
+        ./scripts/csv2html/csv2html.sh "$outfile.csv" >> "$outfile.html"
+        echo "Pivot table written to:           $outfile.html"
+        if [ -n "{{open}}" ]; then
+            if which xdg-open &>> /dev/null
+            then
+                xdg-open "$outfile.html"
+            elif which gnome-open &>> /dev/null
+            then
+                gnome-open "$outfile.html"
+            fi
         fi
+    else
+        pivot_file="./test/perf_out/$now_ts-pivot-snapshot-gas-usages-historical-$(basename "$(dirname "{{path}}")")"
+        clipivot max $outfile.csv --rows=test --cols=commit --val=gas > $pivot_file.csv
+        echo "Pivot table written to:           $pivot_file.csv"
     fi
 
 alias pl := perf-list
