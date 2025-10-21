@@ -1209,15 +1209,6 @@ pub async fn run_in_parallel(filter_config: &FilterConfig, run_config: &RunConfi
         &failed_tests,
     );
 
-    // 2. Run "run_on_node" tests that don't share contracts in parallel over different wallets.
-    let mut run_on_node_tests_per_wallet = HashMap::new();
-    for test in run_on_node_tests.iter() {
-        let signing_key = *test.expect_signing_key();
-        run_on_node_tests_per_wallet
-            .entry(signing_key)
-            .or_insert_with(Vec::new)
-            .push(test);
-    }
     let longest_wallet_test_chain_size = run_on_node_tests_per_wallet
         .values()
         .max_by_key(|tests| tests.len())
