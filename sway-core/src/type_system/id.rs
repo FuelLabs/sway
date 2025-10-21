@@ -223,7 +223,7 @@ impl MaterializeConstGenerics for TypeId {
             } => {
                 let mut referenced_type = referenced_type.clone();
                 referenced_type
-                    .type_id_mut()
+                    .type_id
                     .materialize_const_generics(engines, handler, name, value)?;
 
                 *self = engines
@@ -508,13 +508,13 @@ impl TypeId {
             (TypeInfo::Tuple(elems), TypeInfo::Tuple(orig_elems)) => {
                 assert_eq!(elems.len(), orig_elems.len());
                 for (elem, orig_elem) in elems.iter().zip(orig_elems.iter()) {
-                    type_parameters.push((elem.type_id(), orig_elem.type_id()));
-                    elem.type_id().extract_type_parameters(
+                    type_parameters.push((elem.type_id, orig_elem.type_id));
+                    elem.type_id.extract_type_parameters(
                         engines,
                         depth + 1,
                         type_parameters,
                         const_generic_parameters,
-                        orig_elem.type_id(),
+                        orig_elem.type_id,
                     );
                 }
             }
@@ -565,17 +565,17 @@ impl TypeId {
             }
             // Primitive types have "implicit" type parameters
             (TypeInfo::Array(ty, _), TypeInfo::Array(orig_ty, _)) => {
-                type_parameters.push((ty.type_id(), orig_ty.type_id()));
-                ty.type_id().extract_type_parameters(
+                type_parameters.push((ty.type_id, orig_ty.type_id));
+                ty.type_id.extract_type_parameters(
                     engines,
                     depth + 1,
                     type_parameters,
                     const_generic_parameters,
-                    orig_ty.type_id(),
+                    orig_ty.type_id,
                 );
             }
             (TypeInfo::Alias { name: _, ty }, _) => {
-                ty.type_id().extract_type_parameters(
+                ty.type_id.extract_type_parameters(
                     engines,
                     depth + 1,
                     type_parameters,
@@ -589,30 +589,30 @@ impl TypeId {
                     depth + 1,
                     type_parameters,
                     const_generic_parameters,
-                    ty.type_id(),
+                    ty.type_id,
                 );
             }
             (TypeInfo::UnknownGeneric { .. }, TypeInfo::UnknownGeneric { .. }) => {}
             // Primitive types have "implicit" type parameters
             (TypeInfo::Ptr(ty), TypeInfo::Ptr(orig_ty)) => {
-                type_parameters.push((ty.type_id(), orig_ty.type_id()));
-                ty.type_id().extract_type_parameters(
+                type_parameters.push((ty.type_id, orig_ty.type_id));
+                ty.type_id.extract_type_parameters(
                     engines,
                     depth + 1,
                     type_parameters,
                     const_generic_parameters,
-                    orig_ty.type_id(),
+                    orig_ty.type_id,
                 );
             }
             // Primitive types have "implicit" type parameters
             (TypeInfo::Slice(ty), TypeInfo::Slice(orig_ty)) => {
-                type_parameters.push((ty.type_id(), orig_ty.type_id()));
-                ty.type_id().extract_type_parameters(
+                type_parameters.push((ty.type_id, orig_ty.type_id));
+                ty.type_id.extract_type_parameters(
                     engines,
                     depth + 1,
                     type_parameters,
                     const_generic_parameters,
-                    orig_ty.type_id(),
+                    orig_ty.type_id,
                 );
             }
             // Primitive types have "implicit" type parameters
@@ -625,13 +625,13 @@ impl TypeId {
                     ..
                 },
             ) => {
-                type_parameters.push((referenced_type.type_id(), orig_referenced_type.type_id()));
-                referenced_type.type_id().extract_type_parameters(
+                type_parameters.push((referenced_type.type_id, orig_referenced_type.type_id));
+                referenced_type.type_id.extract_type_parameters(
                     engines,
                     depth + 1,
                     type_parameters,
                     const_generic_parameters,
-                    orig_referenced_type.type_id(),
+                    orig_referenced_type.type_id,
                 );
             }
             (_, TypeInfo::UnknownGeneric { .. }) => {}
@@ -697,7 +697,7 @@ impl TypeId {
                     }
                 }
                 for variant in &enum_decl.variants {
-                    variant.type_argument.type_id().walk_any_including_self(
+                    variant.type_argument.type_id.walk_any_including_self(
                         engines,
                         filter_fn,
                         vec![],
@@ -732,7 +732,7 @@ impl TypeId {
                     }
                 }
                 for field in &struct_decl.fields {
-                    field.type_argument.type_id().walk_any_including_self(
+                    field.type_argument.type_id.walk_any_including_self(
                         engines,
                         filter_fn,
                         vec![],
@@ -767,7 +767,7 @@ impl TypeId {
                     }
                 }
                 for variant in &enum_decl.variants {
-                    variant.type_argument.type_id().walk_any_including_self(
+                    variant.type_argument.type_id.walk_any_including_self(
                         engines,
                         filter_fn,
                         vec![],
@@ -802,7 +802,7 @@ impl TypeId {
                     }
                 }
                 for field in &struct_decl.fields {
-                    field.type_argument.type_id().walk_any_including_self(
+                    field.type_argument.type_id.walk_any_including_self(
                         engines,
                         filter_fn,
                         vec![],
@@ -814,7 +814,7 @@ impl TypeId {
             }
             TypeInfo::Tuple(elems) => {
                 for elem in elems {
-                    elem.type_id().walk_any_including_self(
+                    elem.type_id.walk_any_including_self(
                         engines,
                         filter_fn,
                         vec![],
@@ -857,7 +857,7 @@ impl TypeId {
                 }
             }
             TypeInfo::Array(ty, _) => {
-                ty.type_id().walk_any_including_self(
+                ty.type_id.walk_any_including_self(
                     engines,
                     filter_fn,
                     vec![],
@@ -867,7 +867,7 @@ impl TypeId {
                 );
             }
             TypeInfo::Alias { name: _, ty } => {
-                ty.type_id().walk_any_including_self(
+                ty.type_id.walk_any_including_self(
                     engines,
                     filter_fn,
                     vec![],
@@ -899,7 +899,7 @@ impl TypeId {
                 }
             }
             TypeInfo::Ptr(ty) => {
-                ty.type_id().walk_any_including_self(
+                ty.type_id.walk_any_including_self(
                     engines,
                     filter_fn,
                     vec![],
@@ -909,7 +909,7 @@ impl TypeId {
                 );
             }
             TypeInfo::Slice(ty) => {
-                ty.type_id().walk_any_including_self(
+                ty.type_id.walk_any_including_self(
                     engines,
                     filter_fn,
                     vec![],
@@ -921,7 +921,7 @@ impl TypeId {
             TypeInfo::Ref {
                 referenced_type, ..
             } => {
-                referenced_type.type_id().walk_any_including_self(
+                referenced_type.type_id.walk_any_including_self(
                     engines,
                     filter_fn,
                     vec![],
@@ -996,7 +996,7 @@ impl TypeId {
                 for variant in &enum_decl.variants {
                     extend(
                         &mut found,
-                        variant.type_argument.type_id().extract_any_including_self(
+                        variant.type_argument.type_id.extract_any_including_self(
                             engines,
                             filter_fn,
                             vec![],
@@ -1024,7 +1024,7 @@ impl TypeId {
                 for field in &struct_decl.fields {
                     extend(
                         &mut found,
-                        field.type_argument.type_id().extract_any_including_self(
+                        field.type_argument.type_id.extract_any_including_self(
                             engines,
                             filter_fn,
                             vec![],
@@ -1053,7 +1053,7 @@ impl TypeId {
                 for variant in &enum_decl.variants {
                     extend(
                         &mut found,
-                        variant.type_argument.type_id().extract_any_including_self(
+                        variant.type_argument.type_id.extract_any_including_self(
                             engines,
                             filter_fn,
                             vec![],
@@ -1082,7 +1082,7 @@ impl TypeId {
                 for field in &struct_decl.fields {
                     extend(
                         &mut found,
-                        field.type_argument.type_id().extract_any_including_self(
+                        field.type_argument.type_id.extract_any_including_self(
                             engines,
                             filter_fn,
                             vec![],
@@ -1095,7 +1095,7 @@ impl TypeId {
                 for elem in elems {
                     extend(
                         &mut found,
-                        elem.type_id().extract_any_including_self(
+                        elem.type_id.extract_any_including_self(
                             engines,
                             filter_fn,
                             vec![],
@@ -1141,14 +1141,14 @@ impl TypeId {
             TypeInfo::Array(ty, _) => {
                 extend(
                     &mut found,
-                    ty.type_id()
+                    ty.type_id
                         .extract_any_including_self(engines, filter_fn, vec![], depth + 1),
                 );
             }
             TypeInfo::Alias { name: _, ty } => {
                 extend(
                     &mut found,
-                    ty.type_id()
+                    ty.type_id
                         .extract_any_including_self(engines, filter_fn, vec![], depth + 1),
                 );
             }
@@ -1180,14 +1180,14 @@ impl TypeId {
             TypeInfo::Ptr(ty) => {
                 extend(
                     &mut found,
-                    ty.type_id()
+                    ty.type_id
                         .extract_any_including_self(engines, filter_fn, vec![], depth + 1),
                 );
             }
             TypeInfo::Slice(ty) => {
                 extend(
                     &mut found,
-                    ty.type_id()
+                    ty.type_id
                         .extract_any_including_self(engines, filter_fn, vec![], depth + 1),
                 );
             }
@@ -1196,7 +1196,7 @@ impl TypeId {
             } => {
                 extend(
                     &mut found,
-                    referenced_type.type_id().extract_any_including_self(
+                    referenced_type.type_id.extract_any_including_self(
                         engines,
                         filter_fn,
                         vec![],

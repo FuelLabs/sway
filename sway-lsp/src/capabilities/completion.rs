@@ -170,7 +170,7 @@ fn type_id_of_raw_ident(
                                 .de()
                                 .get_function(&method.id().clone())
                                 .return_type
-                                .type_id(),
+                                .type_id,
                         );
                     }
                     None
@@ -181,7 +181,7 @@ fn type_id_of_raw_ident(
                 .fields
                 .iter()
                 .find(|field| field.name.as_str() == parts[i])
-                .map(|field| field.type_argument.type_id());
+                .map(|field| field.type_argument.type_id);
         }
         i += 1;
     }
@@ -197,7 +197,7 @@ fn type_id_of_local_ident(ident_name: &str, fn_decl: &TyFunctionDecl) -> Option<
         .find_map(|param| {
             // Check if this ident is a function parameter
             if param.name.as_str() == ident_name {
-                return Some(param.type_argument.type_id());
+                return Some(param.type_argument.type_id);
             }
             None
         })

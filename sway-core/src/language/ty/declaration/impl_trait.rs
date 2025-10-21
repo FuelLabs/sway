@@ -25,16 +25,13 @@ pub struct TyImplSelfOrTrait {
     pub items: Vec<TyImplItem>,
     pub supertrait_items: Vec<TyImplItem>,
     pub trait_decl_ref: Option<DeclRefMixedInterface>,
-    pub implementing_for: GenericArgument,
+    pub implementing_for: GenericTypeArgument,
     pub span: Span,
 }
 
 impl TyImplSelfOrTrait {
     pub fn is_impl_contract(&self, te: &TypeEngine) -> bool {
-        matches!(
-            &*te.get(self.implementing_for.type_id()),
-            TypeInfo::Contract
-        )
+        matches!(&*te.get(self.implementing_for.type_id), TypeInfo::Contract)
     }
 
     pub fn is_impl_self(&self) -> bool {
@@ -149,15 +146,15 @@ impl DebugWithEngines for TyImplSelfOrTrait {
                 f,
                 "impl<> {:?} for {:?} -> {:?}",
                 t.name().as_str(),
-                engines.help_out(self.implementing_for.initial_type_id()),
-                engines.help_out(self.implementing_for.type_id()),
+                engines.help_out(self.implementing_for.initial_type_id),
+                engines.help_out(self.implementing_for.type_id),
             )
         } else {
             write!(
                 f,
                 "impl<> {:?} -> {:?}",
-                engines.help_out(self.implementing_for.initial_type_id()),
-                engines.help_out(self.implementing_for.type_id()),
+                engines.help_out(self.implementing_for.initial_type_id),
+                engines.help_out(self.implementing_for.type_id),
             )
         }
     }

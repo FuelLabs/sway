@@ -140,7 +140,7 @@ impl TypeCheckFinalization for TyExpression {
         let res = self.expression.type_check_finalize(handler, ctx);
         if let TyExpressionVariant::FunctionApplication { fn_ref, .. } = &self.expression {
             let method = ctx.engines.de().get_function(fn_ref);
-            self.return_type = method.return_type.type_id();
+            self.return_type = method.return_type.type_id;
         }
         res
     }
@@ -327,7 +327,7 @@ impl CollectTypesMetadata for TyExpression {
                     res.append(
                         &mut variant
                             .type_argument
-                            .type_id()
+                            .type_id
                             .collect_types_metadata(handler, ctx)?,
                     );
                 }
@@ -358,7 +358,7 @@ impl CollectTypesMetadata for TyExpression {
                 res.append(
                     &mut variant
                         .type_argument
-                        .type_id()
+                        .type_id
                         .collect_types_metadata(handler, ctx)?,
                 );
             }
@@ -694,7 +694,7 @@ impl TyExpression {
                 let fn_ty = engines.de().get(fn_ref);
                 if let Some(TyDecl::ImplSelfOrTrait(t)) = &fn_ty.implementing_type {
                     let t = &engines.de().get(&t.decl_id).implementing_for;
-                    if let TypeInfo::Struct(struct_id) = &*engines.te().get(t.type_id()) {
+                    if let TypeInfo::Struct(struct_id) = &*engines.te().get(t.type_id) {
                         let s = engines.de().get(struct_id);
                         emit_warning_if_deprecated(
                             &s.attributes,

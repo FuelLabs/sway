@@ -1,7 +1,7 @@
 use sway_error::handler::Handler;
 
 use crate::{
-    ast_elements::binding::SymbolResolveTypeBinding,
+    ast_elements::{binding::SymbolResolveTypeBinding, type_argument::GenericTypeArgument},
     decl_engine::{parsed_engine::ParsedDeclEngineReplace, parsed_id::ParsedDeclId},
     language::{
         parsed::{
@@ -394,8 +394,19 @@ impl ResolveSymbols for TypeAliasDeclaration {
 
 impl ResolveSymbols for GenericArgument {
     fn resolve_symbols(&mut self, handler: &Handler, ctx: SymbolResolveContext) {
-        if let Some(call_path) = self.as_type_argument_mut().unwrap().call_path_tree.as_mut() {
-            call_path.resolve_symbols(handler, ctx);
+        match self {
+            GenericArgument::Type(arg) => {
+                arg.resolve_symbols(handler, ctx);
+            }
+            GenericArgument::Const(_) => {}
+        }
+    }
+}
+
+impl ResolveSymbols for GenericTypeArgument {
+    fn resolve_symbols(&mut self, handler: &Handler, ctx: SymbolResolveContext) {
+        if let Some(call_path_tree) = self.call_path_tree.as_mut() {
+            call_path_tree.resolve_symbols(handler, ctx);
         }
     }
 }
