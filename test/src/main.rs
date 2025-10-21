@@ -42,6 +42,10 @@ struct Cli {
     #[arg(long, visible_alias = "first")]
     first_only: bool,
 
+    /// Only run the tests that emit performance data (gas usages and bytecode sizes)
+    #[arg(long)]
+    perf_only: bool,
+
     /// Print out warnings, errors, and output of print options
     ///
     /// This option is ignored if tests are run in parallel.
@@ -107,6 +111,12 @@ struct Cli {
     /// This option is ignored if tests are run in parallel.
     #[arg(long)]
     write_output: bool,
+
+    /// Write performance data (gas usages and bytecode sizes) to the filesystem
+    ///
+    /// Output files are written to the `test/perf_out` directory.
+    #[arg(long)]
+    perf: bool,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -163,6 +173,7 @@ pub struct FilterConfig {
     pub no_std_only: bool,
     pub contract_only: bool,
     pub first_only: bool,
+    pub perf_only: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -177,6 +188,7 @@ pub struct RunConfig {
     pub print_bytecode: bool,
     pub experimental: sway_features::CliFields,
     pub write_output: bool,
+    pub perf: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -214,6 +226,7 @@ async fn main() -> Result<()> {
             build_target,
             experimental: cli.experimental,
             update_output_files: cli.update_output_files,
+            perf: cli.perf,
             // Ignore options that are not supported when running tests in parallel.
             print_ir: PrintIr::none(),
             print_asm: PrintAsm::none(),
@@ -243,6 +256,7 @@ async fn main() -> Result<()> {
         no_std_only: cli.no_std_only,
         contract_only: cli.contract_only,
         first_only: cli.first_only,
+        perf_only: cli.perf_only,
     };
 
     let run_config = RunConfig {
@@ -262,6 +276,7 @@ async fn main() -> Result<()> {
             .map_or(PrintAsm::default(), |opts| PrintAsmCliOpt::from(opts).0),
         print_bytecode: cli.print_bytecode,
         write_output: cli.write_output,
+        perf: cli.perf,
     };
 
     // Check that the tests are consistent
