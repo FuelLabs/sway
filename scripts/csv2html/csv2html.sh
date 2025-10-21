@@ -2,7 +2,7 @@
 echo '<!DOCTYPE html>
 <html>
     <head>
-        <title>Pivot Demo</title>
+        <title>Pivot</title>
         <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
         <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.11.4/jquery-ui.min.js"></script>
         
