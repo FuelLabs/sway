@@ -7,7 +7,6 @@ use crate::{
 };
 use ast_elements::type_parameter::GenericTypeParameter;
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::Spanned;
 use symbol_collection_context::SymbolCollectionContext;
 
 impl ty::TyStructDecl {
@@ -88,11 +87,11 @@ impl ty::TyStructField {
         let type_engine = ctx.engines.te();
 
         let mut type_argument = field.type_argument;
-        *type_argument.type_id_mut() = ctx
+        type_argument.type_id = ctx
             .resolve_type(
                 handler,
-                type_argument.type_id(),
-                &type_argument.span(),
+                type_argument.type_id,
+                &type_argument.span,
                 EnforceTypeArguments::Yes,
                 None,
             )

@@ -403,7 +403,7 @@ fn match_constant(
     span: Span,
 ) -> ReqDeclTree {
     let name = const_decl.name().clone();
-    let return_type = const_decl.type_ascription.type_id();
+    let return_type = const_decl.type_ascription.type_id;
 
     let req = (
         exp.to_owned(),

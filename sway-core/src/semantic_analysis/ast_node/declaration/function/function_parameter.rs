@@ -26,17 +26,17 @@ impl ty::TyFunctionParameter {
             mut type_argument,
         } = parameter;
 
-        *type_argument.type_id_mut() = ctx
+        type_argument.type_id = ctx
             .resolve_type(
                 handler,
-                type_argument.type_id(),
+                type_argument.type_id,
                 &type_argument.span(),
                 EnforceTypeArguments::Yes,
                 None,
             )
             .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
-        type_argument.type_id().check_type_parameter_bounds(
+        type_argument.type_id.check_type_parameter_bounds(
             handler,
             ctx,
             &type_argument.span(),
@@ -80,11 +80,11 @@ impl ty::TyFunctionParameter {
         } = parameter;
 
         let mut new_type_argument = type_argument.clone();
-        *new_type_argument.type_id_mut() = ctx
+        new_type_argument.type_id = ctx
             .resolve_type(
                 handler,
-                type_argument.type_id(),
-                &type_argument.span(),
+                type_argument.type_id,
+                &type_argument.span,
                 EnforceTypeArguments::Yes,
                 None,
             )
@@ -109,14 +109,14 @@ impl ty::TyFunctionParameter {
                 name: self.name.clone(),
                 body: ty::TyExpression {
                     expression: ty::TyExpressionVariant::FunctionParameter,
-                    return_type: self.type_argument.type_id(),
+                    return_type: self.type_argument.type_id,
                     span: self.name.span(),
                 },
                 mutability: ty::VariableMutability::new_from_ref_mut(
                     self.is_reference,
                     self.is_mutable,
                 ),
-                return_type: self.type_argument.type_id(),
+                return_type: self.type_argument.type_id,
                 type_ascription: self.type_argument.clone(),
             })),
         );

@@ -233,9 +233,9 @@ fn type_check_elem_at(
         TypeInfo::Ref {
             referenced_type,
             to_mutable_value,
-        } => match &*type_engine.get(referenced_type.type_id()) {
+        } => match &*type_engine.get(referenced_type.type_id) {
             TypeInfo::Array(elem_ty, _) | TypeInfo::Slice(elem_ty) => {
-                Some((*to_mutable_value, elem_ty.type_id()))
+                Some((*to_mutable_value, elem_ty.type_id))
             }
             _ => None,
         },
@@ -346,7 +346,7 @@ fn type_check_slice(
     fn create_ref_to_slice(
         engines: &Engines,
         to_mutable_value: bool,
-        elem_type_arg: GenericArgument,
+        elem_type_arg: GenericTypeArgument,
     ) -> TypeId {
         let type_engine = engines.te();
         let slice_type_id = type_engine.insert_slice(engines, elem_type_arg);
@@ -363,7 +363,7 @@ fn type_check_slice(
         TypeInfo::Ref {
             referenced_type,
             to_mutable_value,
-        } => match &*type_engine.get(referenced_type.type_id()) {
+        } => match &*type_engine.get(referenced_type.type_id) {
             TypeInfo::Array(elem_type_arg, array_len)
                 if array_len.expr().as_literal_val().is_some() =>
             {
