@@ -116,7 +116,11 @@ impl fmt::Display for Literal {
                 .map(|x| x.to_string())
                 .collect::<Vec<_>>()
                 .join(", "),
-            Literal::Binary(_) => todo!(),
+            Literal::Binary(content) => content
+                .iter()
+                .map(|x| x.to_string())
+                .collect::<Vec<_>>()
+                .join(", "),
         };
         write!(f, "{s}")
     }
@@ -160,7 +164,7 @@ impl Literal {
             Literal::U256(_) => TypeInfo::UnsignedInteger(IntegerBits::V256),
             Literal::Boolean(_) => TypeInfo::Boolean,
             Literal::B256(_) => TypeInfo::B256,
-            Literal::Binary(_) => todo!(),
+            Literal::Binary(_) => TypeInfo::RawUntypedSlice,
         }
     }
 }
