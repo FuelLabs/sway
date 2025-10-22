@@ -182,7 +182,7 @@ impl Pattern {
             Literal::String(s) => Pattern::String(s.as_str().to_string()),
             Literal::Binary(_) => {
                 unreachable!("literals cannot be expressed in the language yet")
-            },
+            }
         }
     }
 
