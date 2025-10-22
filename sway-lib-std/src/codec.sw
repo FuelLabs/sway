@@ -5345,7 +5345,6 @@ where
 // END TUPLES_DECODE
 use ::ops::*;
 
-#[inline(never)]
 pub fn contract_call<T, TArgs>(
     contract_id: b256,
     method_name: raw_slice,
