@@ -1252,5 +1252,6 @@ fn literal_to_symbol_kind(value: &Literal) -> SymbolKind {
         Literal::String(..) => SymbolKind::StringLiteral,
         Literal::B256(..) => SymbolKind::ByteLiteral,
         Literal::Boolean(..) => SymbolKind::BoolLiteral,
+        Literal::Binary(_) => unreachable!("literals cannot be expressed in the language yet"),
     }
 }
