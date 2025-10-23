@@ -180,7 +180,7 @@ pub struct Print {
     /// This is the final output of the compiler.
     #[clap(long)]
     pub bytecode: bool,
-    /// Print the generated Sway IR (Intermediate Representationn).
+    /// Print the generated Sway IR (Intermediate Representation).
     ///
     /// Values that can be combined:
     ///  - initial:     initial IR prior to any optimization passes.
