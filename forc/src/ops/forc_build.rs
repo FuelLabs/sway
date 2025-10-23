@@ -1,7 +1,8 @@
-use crate::cli::BuildCommand;
+use crate::cli::{shared::IrCliOpt, BuildCommand};
 use forc_pkg as pkg;
 use forc_util::ForcResult;
 use pkg::MemberFilter;
+use sway_core::IrCli;
 
 pub fn build(cmd: BuildCommand) -> ForcResult<pkg::Built> {
     let opts = opts_from_cmd(cmd);
@@ -29,7 +30,11 @@ fn opts_from_cmd(cmd: BuildCommand) -> pkg::BuildOpts {
             ir: cmd.build.print.ir(),
             reverse_order: cmd.build.print.reverse_order,
         },
-        verify_ir: cmd.build.verify_ir(),
+        verify_ir: cmd
+            .build
+            .verify_ir
+            .as_ref()
+            .map_or(IrCli::default(), |opts| IrCliOpt::from(opts).0),
         dump: pkg::DumpOpts {
             dump_impls: cmd.build.dump.dump_impls,
         },

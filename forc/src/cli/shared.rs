@@ -105,14 +105,6 @@ pub struct Build {
     pub dump: Dump,
 }
 
-impl Build {
-    pub fn verify_ir(&self) -> IrCli {
-        self.verify_ir
-            .as_ref()
-            .map_or(IrCli::default(), |opts| IrCliOpt::from(opts).0)
-    }
-}
-
 /// Build output file options.
 #[derive(Args, Debug, Default)]
 pub struct BuildOutput {
@@ -337,7 +329,7 @@ impl From<&Vec<String>> for IrCliOpt {
     fn from(value: &Vec<String>) -> Self {
         let contains_opt = |opt: &str| value.iter().any(|val| *val == opt);
 
-        let print_ir = if contains_opt(Self::ALL) {
+        let ir_cli = if contains_opt(Self::ALL) {
             IrCli::all(contains_opt(Self::MODIFIED))
         } else {
             IrCli {
@@ -352,6 +344,6 @@ impl From<&Vec<String>> for IrCliOpt {
             }
         };
 
-        Self(print_ir)
+        Self(ir_cli)
     }
 }

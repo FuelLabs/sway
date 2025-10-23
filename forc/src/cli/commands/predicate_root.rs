@@ -1,6 +1,5 @@
 use clap::Parser;
 use forc_util::ForcResult;
-use sway_core::IrCli;
 
 pub use crate::cli::shared::{BuildOutput, BuildProfile, Minify, Pkg, Print};
 use crate::{cli::shared::IrCliOpt, ops::forc_predicate_root};
@@ -23,7 +22,7 @@ pub struct Command {
     #[clap(flatten)]
     pub print: Print,
     #[arg(long, value_parser = clap::builder::PossibleValuesParser::new(IrCliOpt::cli_options()))]
-    pub verify_ir: IrCli,
+    pub verify_ir: Option<Vec<String>>,
     #[clap(flatten)]
     pub build_output: BuildOutput,
     #[clap(flatten)]

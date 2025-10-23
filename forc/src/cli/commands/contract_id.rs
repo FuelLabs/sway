@@ -4,7 +4,6 @@ use crate::{
 };
 use clap::Parser;
 use forc_util::{tx_utils::Salt, ForcResult};
-use sway_core::IrCli;
 
 forc_util::cli_examples! {
     crate::cli::Opt {
@@ -24,7 +23,7 @@ pub struct Command {
     #[clap(flatten)]
     pub print: Print,
     #[arg(long, value_parser = clap::builder::PossibleValuesParser::new(IrCliOpt::cli_options()))]
-    pub verify_ir: IrCli,
+    pub verify_ir: Option<Vec<String>>,
     #[clap(flatten)]
     pub build_output: BuildOutput,
     #[clap(flatten)]
