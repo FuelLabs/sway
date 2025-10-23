@@ -534,10 +534,10 @@ pub(crate) fn type_check_method_application(
         }
 
         fn method_name_literal(method_name: &BaseIdent) -> Expression {
-            let method_name_str = method_name.as_str().to_string();
+            let method_name_str = method_name.as_str();
             let len_bytes = (method_name_str.len() as u64).to_be_bytes();
 
-            let mut blob = vec![];
+            let mut blob = Vec::with_capacity(len_bytes.len() + method_name_str.len());
             blob.extend(len_bytes);
             blob.extend(method_name_str.as_bytes());
 

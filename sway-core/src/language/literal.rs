@@ -95,6 +95,7 @@ impl PartialEq for Literal {
             (Self::Numeric(l0), Self::Numeric(r0)) => l0 == r0,
             (Self::Boolean(l0), Self::Boolean(r0)) => l0 == r0,
             (Self::B256(l0), Self::B256(r0)) => l0 == r0,
+            (Self::Binary(l0), Self::Binary(r0)) => l0 == r0,
             _ => false,
         }
     }
