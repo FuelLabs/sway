@@ -457,7 +457,7 @@ impl<'a> FnCompiler<'a> {
         ))
     }
 
-    // Can be used to raw untyped slice and string slice
+    // Can be used for raw untyped slice and string slice
     fn compile_slice(
         &mut self,
         context: &mut Context,
