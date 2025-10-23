@@ -1,6 +1,6 @@
 use crate::NodeTarget;
 use clap::Parser;
-use forc::cli::shared::PrintIrCliOpt;
+use forc::cli::shared::IrCliOpt;
 pub use forc::cli::shared::{BuildOutput, Minify, Pkg, Print};
 use forc_pkg::BuildProfile;
 pub use forc_tx::{Gas, Maturity};
@@ -25,7 +25,7 @@ pub struct Command {
     pub minify: Minify,
     #[clap(flatten)]
     pub print: Print,
-    #[arg(long, value_parser = clap::builder::PossibleValuesParser::new(PrintIrCliOpt::cli_options()))]
+    #[arg(long, value_parser = clap::builder::PossibleValuesParser::new(IrCliOpt::cli_options()))]
     pub verify_ir: IrCli,
     #[clap(flatten)]
     pub gas: Gas,

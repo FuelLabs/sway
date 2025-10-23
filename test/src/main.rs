@@ -6,7 +6,7 @@ mod test_consistency;
 
 use anyhow::Result;
 use clap::Parser;
-use forc::cli::shared::{PrintAsmCliOpt, PrintIrCliOpt};
+use forc::cli::shared::{IrCliOpt, PrintAsmCliOpt};
 use forc_tracing::init_tracing_subscriber;
 use std::str::FromStr;
 use sway_core::{BuildTarget, IrCli, PrintAsm};
@@ -75,11 +75,11 @@ struct Cli {
     /// Print out the specified IR (separate options with comma), if the verbose option is on
     ///
     /// This option is ignored if tests are run in parallel.
-    #[arg(long, num_args(1..=18), value_parser = clap::builder::PossibleValuesParser::new(PrintIrCliOpt::cli_options()))]
+    #[arg(long, num_args(1..=18), value_parser = clap::builder::PossibleValuesParser::new(IrCliOpt::cli_options()))]
     print_ir: Option<Vec<String>>,
 
     /// Verify the generated Sway IR (Intermediate Representation).
-    #[arg(long, value_parser = clap::builder::PossibleValuesParser::new(PrintIrCliOpt::cli_options()))]
+    #[arg(long, value_parser = clap::builder::PossibleValuesParser::new(IrCliOpt::cli_options()))]
     verify_ir: Option<Vec<String>>,
 
     /// Print out the specified ASM (separate options with comma), if the verbose option is on
@@ -239,7 +239,7 @@ async fn main() -> Result<()> {
             verify_ir: cli
                 .verify_ir
                 .as_ref()
-                .map_or(IrCli::default(), |opts| PrintIrCliOpt::from(opts).0),
+                .map_or(IrCli::default(), |opts| IrCliOpt::from(opts).0),
             perf: cli.perf,
             // Ignore options that are not supported when running tests in parallel.
             print_ir: IrCli::none(),
@@ -284,11 +284,11 @@ async fn main() -> Result<()> {
         print_ir: cli
             .print_ir
             .as_ref()
-            .map_or(IrCli::default(), |opts| PrintIrCliOpt::from(opts).0),
+            .map_or(IrCli::default(), |opts| IrCliOpt::from(opts).0),
         verify_ir: cli
             .verify_ir
             .as_ref()
-            .map_or(IrCli::default(), |opts| PrintIrCliOpt::from(opts).0),
+            .map_or(IrCli::default(), |opts| IrCliOpt::from(opts).0),
         print_asm: cli
             .print_asm
             .as_ref()

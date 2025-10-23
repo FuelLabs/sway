@@ -90,7 +90,7 @@ pub struct Build {
     ///  - <pass name>: the name of an optimization pass. Verifies the IR state after that pass.
     ///  - all:         short for initial, final, and all the optimization passes.
     ///  - modified:    verify a requested optimization pass only if it has modified the IR.
-    #[arg(long, verbatim_doc_comment, num_args(1..=18), value_parser = clap::builder::PossibleValuesParser::new(PrintIrCliOpt::cli_options()))]
+    #[arg(long, verbatim_doc_comment, num_args(1..=18), value_parser = clap::builder::PossibleValuesParser::new(IrCliOpt::cli_options()))]
     pub verify_ir: Option<Vec<String>>,
     #[clap(flatten)]
     pub minify: Minify,
@@ -109,7 +109,7 @@ impl Build {
     pub fn verify_ir(&self) -> IrCli {
         self.verify_ir
             .as_ref()
-            .map_or(IrCli::default(), |opts| PrintIrCliOpt::from(opts).0)
+            .map_or(IrCli::default(), |opts| IrCliOpt::from(opts).0)
     }
 }
 
@@ -196,7 +196,7 @@ pub struct Print {
     ///  - <pass name>: the name of an optimization pass. Prints the IR state after that pass.
     ///  - all:         short for initial, final, and all the optimization passes.
     ///  - modified:    print a requested optimization pass only if it has modified the IR.
-    #[arg(long, verbatim_doc_comment, num_args(1..=18), value_parser = clap::builder::PossibleValuesParser::new(PrintIrCliOpt::cli_options()))]
+    #[arg(long, verbatim_doc_comment, num_args(1..=18), value_parser = clap::builder::PossibleValuesParser::new(IrCliOpt::cli_options()))]
     pub ir: Option<Vec<String>>,
     /// Output the time elapsed over each part of the compilation process.
     #[clap(long)]
@@ -222,7 +222,7 @@ impl Print {
     pub fn ir(&self) -> IrCli {
         self.ir
             .as_ref()
-            .map_or(IrCli::default(), |opts| PrintIrCliOpt::from(opts).0)
+            .map_or(IrCli::default(), |opts| IrCliOpt::from(opts).0)
     }
 }
 
@@ -314,9 +314,9 @@ impl From<&Vec<String>> for PrintAsmCliOpt {
     }
 }
 
-pub struct PrintIrCliOpt(pub IrCli);
+pub struct IrCliOpt(pub IrCli);
 
-impl PrintIrCliOpt {
+impl IrCliOpt {
     const INITIAL: &'static str = "initial";
     const FINAL: &'static str = "final";
     const ALL: &'static str = "all";
@@ -333,7 +333,7 @@ impl PrintIrCliOpt {
     }
 }
 
-impl From<&Vec<String>> for PrintIrCliOpt {
+impl From<&Vec<String>> for IrCliOpt {
     fn from(value: &Vec<String>) -> Self {
         let contains_opt = |opt: &str| value.iter().any(|val| *val == opt);
 
