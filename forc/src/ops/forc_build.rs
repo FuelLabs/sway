@@ -1,4 +1,4 @@
-use crate::cli::{shared::VerifyIrCliOpt, BuildCommand};
+use crate::cli::BuildCommand;
 use forc_pkg as pkg;
 use forc_util::ForcResult;
 use pkg::MemberFilter;
@@ -12,12 +12,12 @@ pub fn build(cmd: BuildCommand) -> ForcResult<pkg::Built> {
 fn opts_from_cmd(cmd: BuildCommand) -> pkg::BuildOpts {
     pkg::BuildOpts {
         pkg: pkg::PkgOpts {
-            path: cmd.build.pkg.path,
+            path: cmd.build.pkg.path.clone(),
             offline: cmd.build.pkg.offline,
             terse: cmd.build.pkg.terse,
             locked: cmd.build.pkg.locked,
-            output_directory: cmd.build.pkg.output_directory,
-            ipfs_node: cmd.build.pkg.ipfs_node.unwrap_or_default(),
+            output_directory: cmd.build.pkg.output_directory.clone(),
+            ipfs_node: cmd.build.pkg.ipfs_node.clone().unwrap_or_default(),
         },
         print: pkg::PrintOpts {
             ast: cmd.build.print.ast,
@@ -29,7 +29,7 @@ fn opts_from_cmd(cmd: BuildCommand) -> pkg::BuildOpts {
             ir: cmd.build.print.ir(),
             reverse_order: cmd.build.print.reverse_order,
         },
-        verify_ir: VerifyIrCliOpt::from(cmd.build.verify_ir.unwrap_or_default().as_ref()).0,
+        verify_ir: cmd.build.verify_ir(),
         dump: pkg::DumpOpts {
             dump_impls: cmd.build.dump.dump_impls,
         },

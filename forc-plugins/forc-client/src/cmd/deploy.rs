@@ -1,11 +1,12 @@
 use crate::NodeTarget;
 use clap::Parser;
+use forc::cli::shared::PrintIrCliOpt;
 pub use forc::cli::shared::{BuildOutput, Minify, Pkg, Print};
 use forc_pkg::BuildProfile;
 pub use forc_tx::{Gas, Maturity};
 pub use forc_util::tx_utils::Salt;
 use fuel_crypto::SecretKey;
-use sway_core::VerifyIr;
+use sway_core::IrCli;
 
 forc_util::cli_examples! {
    super::Command {
@@ -24,8 +25,8 @@ pub struct Command {
     pub minify: Minify,
     #[clap(flatten)]
     pub print: Print,
-    #[clap(flatten)]
-    pub verify_ir: VerifyIr,
+    #[arg(long, value_parser = clap::builder::PossibleValuesParser::new(PrintIrCliOpt::cli_options()))]
+    pub verify_ir: IrCli,
     #[clap(flatten)]
     pub gas: Gas,
     #[clap(flatten)]

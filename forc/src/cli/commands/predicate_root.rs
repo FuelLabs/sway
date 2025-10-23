@@ -1,9 +1,9 @@
 use clap::Parser;
 use forc_util::ForcResult;
-use sway_core::VerifyIr;
+use sway_core::IrCli;
 
 pub use crate::cli::shared::{BuildOutput, BuildProfile, Minify, Pkg, Print};
-use crate::ops::forc_predicate_root;
+use crate::{cli::shared::PrintIrCliOpt, ops::forc_predicate_root};
 
 forc_util::cli_examples! {
     crate::cli::Opt {
@@ -22,8 +22,8 @@ pub struct Command {
     pub minify: Minify,
     #[clap(flatten)]
     pub print: Print,
-    #[clap(flatten)]
-    pub verify_ir: VerifyIr,
+    #[arg(long, value_parser = clap::builder::PossibleValuesParser::new(PrintIrCliOpt::cli_options()))]
+    pub verify_ir: IrCli,
     #[clap(flatten)]
     pub build_output: BuildOutput,
     #[clap(flatten)]

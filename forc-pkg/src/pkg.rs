@@ -47,7 +47,7 @@ use sway_core::{
     write_dwarf, BuildTarget, Engines, FinalizedEntry, LspConfig,
 };
 use sway_core::{namespace::Package, Observer};
-use sway_core::{set_bytecode_configurables_offset, DbgGeneration, PrintAsm, PrintIr, VerifyIr};
+use sway_core::{set_bytecode_configurables_offset, DbgGeneration, IrCli, PrintAsm};
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_features::ExperimentalFeatures;
 use sway_types::{Ident, ProgramId, Span, Spanned};
@@ -261,7 +261,7 @@ pub struct PrintOpts {
     /// Print the original source code together with bytecode.
     pub bytecode_spans: bool,
     /// Print the generated Sway IR (Intermediate Representation).
-    pub ir: PrintIr,
+    pub ir: IrCli,
     /// Output build errors and warnings in reverse order.
     pub reverse_order: bool,
 }
@@ -290,7 +290,7 @@ pub struct DumpOpts {
 pub struct BuildOpts {
     pub pkg: PkgOpts,
     pub print: PrintOpts,
-    pub verify_ir: VerifyIr,
+    pub verify_ir: IrCli,
     pub minify: MinifyOpts,
     pub dump: DumpOpts,
     /// If set, generates a JSON file containing the hex-encoded script binary.

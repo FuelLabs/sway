@@ -19,7 +19,7 @@ use pkg::{Built, BuiltPackage};
 use rand::{Rng, SeedableRng};
 use rayon::prelude::*;
 use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
-use sway_core::{BuildTarget, VerifyIr};
+use sway_core::{BuildTarget, IrCli};
 use sway_types::Span;
 use tx::consensus_parameters::ConsensusParametersV1;
 use tx::{ConsensusParameters, ContractParameters, ScriptParameters, TxParameters};
@@ -136,7 +136,7 @@ pub enum PackageWithDeploymentToTest {
 pub struct TestOpts {
     pub pkg: pkg::PkgOpts,
     pub print: pkg::PrintOpts,
-    pub verify_ir: VerifyIr,
+    pub verify_ir: IrCli,
     pub minify: pkg::MinifyOpts,
     /// If set, outputs a binary file representing the script bytes.
     pub binary_outfile: Option<String>,

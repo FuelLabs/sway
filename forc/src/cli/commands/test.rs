@@ -1,4 +1,4 @@
-use crate::cli::{self, shared::VerifyIrCliOpt};
+use crate::cli::{self};
 use ansiterm::Colour;
 use clap::Parser;
 use forc_pkg as pkg;
@@ -337,12 +337,12 @@ fn print_test_output(
 fn opts_from_cmd(cmd: Command) -> forc_test::TestOpts {
     forc_test::TestOpts {
         pkg: pkg::PkgOpts {
-            path: cmd.build.pkg.path,
+            path: cmd.build.pkg.path.clone(),
             offline: cmd.build.pkg.offline,
             terse: cmd.build.pkg.terse,
             locked: cmd.build.pkg.locked,
-            output_directory: cmd.build.pkg.output_directory,
-            ipfs_node: cmd.build.pkg.ipfs_node.unwrap_or_default(),
+            output_directory: cmd.build.pkg.output_directory.clone(),
+            ipfs_node: cmd.build.pkg.ipfs_node.clone().unwrap_or_default(),
         },
         print: pkg::PrintOpts {
             ast: cmd.build.print.ast,
@@ -354,7 +354,7 @@ fn opts_from_cmd(cmd: Command) -> forc_test::TestOpts {
             ir: cmd.build.print.ir(),
             reverse_order: cmd.build.print.reverse_order,
         },
-        verify_ir: VerifyIrCliOpt::from(cmd.build.verify_ir.unwrap_or_default().as_ref()).0,
+        verify_ir: cmd.build.verify_ir(),
         time_phases: cmd.build.print.time_phases,
         profile: cmd.build.print.profile,
         metrics_outfile: cmd.build.print.metrics_outfile,

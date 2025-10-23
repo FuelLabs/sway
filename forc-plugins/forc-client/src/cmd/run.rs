@@ -1,7 +1,8 @@
 use crate::NodeTarget;
 use clap::Parser;
+use forc::cli::shared::PrintIrCliOpt;
 use fuel_crypto::SecretKey;
-use sway_core::VerifyIr;
+use sway_core::IrCli;
 
 pub use super::submit::Network;
 pub use forc::cli::shared::{BuildOutput, BuildProfile, Minify, Pkg, Print};
@@ -16,8 +17,8 @@ pub struct Command {
     pub pkg: Pkg,
     #[clap(flatten)]
     pub minify: Minify,
-    #[clap(flatten)]
-    pub verify_ir: VerifyIr,
+    #[arg(long, value_parser = clap::builder::PossibleValuesParser::new(PrintIrCliOpt::cli_options()))]
+    pub verify_ir: IrCli,
     #[clap(flatten)]
     pub print: Print,
     #[clap(flatten)]

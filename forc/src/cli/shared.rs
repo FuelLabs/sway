@@ -1,7 +1,7 @@
 //! Sets of arguments that are shared between commands.
 use clap::{ArgGroup, Args, Parser};
 use forc_pkg::source::IPFSNode;
-use sway_core::{BuildTarget, PrintAsm, PrintIr, VerifyIr};
+use sway_core::{BuildTarget, IrCli, PrintAsm};
 use sway_ir::PassManager;
 
 #[derive(Debug, Args)]
@@ -82,7 +82,7 @@ pub struct Build {
     pub pkg: Pkg,
     #[clap(flatten)]
     pub print: Print,
-    /// Verify the generated Sway IR (Intermediate Representationn).
+    /// Verify the generated Sway IR (Intermediate Representation).
     ///
     /// Values that can be combined:
     ///  - initial:     initial IR prior to any optimization passes.
@@ -90,7 +90,7 @@ pub struct Build {
     ///  - <pass name>: the name of an optimization pass. Verifies the IR state after that pass.
     ///  - all:         short for initial, final, and all the optimization passes.
     ///  - modified:    verify a requested optimization pass only if it has modified the IR.
-    #[arg(long, verbatim_doc_comment, num_args(1..=18), value_parser = clap::builder::PossibleValuesParser::new(VerifyIrCliOpt::cli_options()))]
+    #[arg(long, verbatim_doc_comment, num_args(1..=18), value_parser = clap::builder::PossibleValuesParser::new(PrintIrCliOpt::cli_options()))]
     pub verify_ir: Option<Vec<String>>,
     #[clap(flatten)]
     pub minify: Minify,
@@ -103,6 +103,14 @@ pub struct Build {
     pub build_target: BuildTarget,
     #[clap(flatten)]
     pub dump: Dump,
+}
+
+impl Build {
+    pub fn verify_ir(&self) -> IrCli {
+        self.verify_ir
+            .as_ref()
+            .map_or(IrCli::default(), |opts| PrintIrCliOpt::from(opts).0)
+    }
 }
 
 /// Build output file options.
@@ -211,10 +219,10 @@ impl Print {
             .map_or(PrintAsm::default(), |opts| PrintAsmCliOpt::from(opts).0)
     }
 
-    pub fn ir(&self) -> PrintIr {
+    pub fn ir(&self) -> IrCli {
         self.ir
             .as_ref()
-            .map_or(PrintIr::default(), |opts| PrintIrCliOpt::from(opts).0)
+            .map_or(IrCli::default(), |opts| PrintIrCliOpt::from(opts).0)
     }
 }
 
@@ -306,7 +314,7 @@ impl From<&Vec<String>> for PrintAsmCliOpt {
     }
 }
 
-pub struct PrintIrCliOpt(pub PrintIr);
+pub struct PrintIrCliOpt(pub IrCli);
 
 impl PrintIrCliOpt {
     const INITIAL: &'static str = "initial";
@@ -330,9 +338,9 @@ impl From<&Vec<String>> for PrintIrCliOpt {
         let contains_opt = |opt: &str| value.iter().any(|val| *val == opt);
 
         let print_ir = if contains_opt(Self::ALL) {
-            PrintIr::all(contains_opt(Self::MODIFIED))
+            IrCli::all(contains_opt(Self::MODIFIED))
         } else {
-            PrintIr {
+            IrCli {
                 initial: contains_opt(Self::INITIAL),
                 r#final: contains_opt(Self::FINAL),
                 modified_only: contains_opt(Self::MODIFIED),
@@ -345,46 +353,5 @@ impl From<&Vec<String>> for PrintIrCliOpt {
         };
 
         Self(print_ir)
-    }
-}
-pub struct VerifyIrCliOpt(pub VerifyIr);
-
-impl VerifyIrCliOpt {
-    const INITIAL: &'static str = "initial";
-    const FINAL: &'static str = "final";
-    const ALL: &'static str = "all";
-    const MODIFIED: &'static str = "modified";
-    pub const CLI_OPTIONS: [&'static str; 4] =
-        [Self::INITIAL, Self::FINAL, Self::ALL, Self::MODIFIED];
-
-    pub fn cli_options() -> Vec<&'static str> {
-        Self::CLI_OPTIONS
-            .iter()
-            .chain(PassManager::OPTIMIZATION_PASSES.iter())
-            .cloned()
-            .collect()
-    }
-}
-
-impl From<&Vec<String>> for VerifyIrCliOpt {
-    fn from(value: &Vec<String>) -> Self {
-        let contains_opt = |opt: &str| value.iter().any(|val| *val == opt);
-
-        let verify_ir = if contains_opt(Self::ALL) {
-            VerifyIr::all(contains_opt(Self::MODIFIED))
-        } else {
-            VerifyIr {
-                initial: contains_opt(Self::INITIAL),
-                r#final: contains_opt(Self::FINAL),
-                modified_only: contains_opt(Self::MODIFIED),
-                passes: value
-                    .iter()
-                    .filter(|val| !Self::CLI_OPTIONS.contains(&val.as_str()))
-                    .cloned()
-                    .collect(),
-            }
-        };
-
-        Self(verify_ir)
     }
 }

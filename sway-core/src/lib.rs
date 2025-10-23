@@ -36,9 +36,7 @@ pub use asm_generation::from_ir::compile_ir_context_to_finalized_asm;
 use asm_generation::FinalizedAsm;
 pub use asm_generation::{CompiledBytecode, FinalizedEntry};
 pub use build_config::DbgGeneration;
-pub use build_config::{
-    Backtrace, BuildConfig, BuildTarget, LspConfig, OptLevel, PrintAsm, PrintIr, VerifyIr,
-};
+pub use build_config::{Backtrace, BuildConfig, BuildTarget, IrCli, LspConfig, OptLevel, PrintAsm};
 use control_flow_analysis::ControlFlowGraph;
 pub use debug_generation::write_dwarf;
 use itertools::Itertools;

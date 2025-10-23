@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use sway_core::{Backtrace, OptLevel, PrintAsm, PrintIr, VerifyIr};
+use sway_core::{Backtrace, IrCli, OptLevel, PrintAsm};
 
 use crate::DumpOpts;
 
@@ -15,9 +15,9 @@ pub struct BuildProfile {
     pub print_dca_graph_url_format: Option<String>,
     pub dump: DumpOpts,
     #[serde(default)]
-    pub print_ir: PrintIr,
+    pub print_ir: IrCli,
     #[serde(default)]
-    pub verify_ir: VerifyIr,
+    pub verify_ir: IrCli,
     #[serde(default)]
     pub print_asm: PrintAsm,
     #[serde(default)]
@@ -56,8 +56,8 @@ impl BuildProfile {
             print_ast: false,
             print_dca_graph: None,
             print_dca_graph_url_format: None,
-            print_ir: PrintIr::default(),
-            verify_ir: VerifyIr::default(),
+            print_ir: IrCli::default(),
+            verify_ir: IrCli::default(),
             print_asm: PrintAsm::default(),
             print_bytecode: false,
             print_bytecode_spans: false,
@@ -80,8 +80,8 @@ impl BuildProfile {
             print_ast: false,
             print_dca_graph: None,
             print_dca_graph_url_format: None,
-            print_ir: PrintIr::default(),
-            verify_ir: VerifyIr::default(),
+            print_ir: IrCli::default(),
+            verify_ir: IrCli::default(),
             print_asm: PrintAsm::default(),
             print_bytecode: false,
             print_bytecode_spans: false,
@@ -111,7 +111,7 @@ impl Default for BuildProfile {
 #[cfg(test)]
 mod tests {
     use crate::{BuildProfile, DumpOpts, PackageManifest};
-    use sway_core::{Backtrace, OptLevel, PrintAsm, PrintIr, VerifyIr};
+    use sway_core::{Backtrace, IrCli, OptLevel, PrintAsm};
 
     #[test]
     fn test_build_profiles() {
@@ -136,7 +136,7 @@ mod tests {
         // Profile based on debug profile with adjusted IR printing options.
         let expected = BuildProfile {
             name: "".into(),
-            print_ir: PrintIr {
+            print_ir: IrCli {
                 initial: true,
                 r#final: false,
                 modified_only: true,
@@ -167,8 +167,8 @@ mod tests {
             print_ast: true,
             print_dca_graph: Some("dca_graph".into()),
             print_dca_graph_url_format: Some("print_dca_graph_url_format".into()),
-            print_ir: PrintIr::r#final(),
-            verify_ir: VerifyIr::none(),
+            print_ir: IrCli::r#final(),
+            verify_ir: IrCli::none(),
             print_asm: PrintAsm::all(),
             print_bytecode: true,
             print_bytecode_spans: false,

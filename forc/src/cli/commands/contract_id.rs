@@ -1,10 +1,10 @@
 use crate::{
-    cli::shared::{BuildOutput, BuildProfile, Minify, Pkg, Print},
+    cli::shared::{BuildOutput, BuildProfile, Minify, Pkg, Print, PrintIrCliOpt},
     ops::forc_contract_id,
 };
 use clap::Parser;
 use forc_util::{tx_utils::Salt, ForcResult};
-use sway_core::VerifyIr;
+use sway_core::IrCli;
 
 forc_util::cli_examples! {
     crate::cli::Opt {
@@ -23,8 +23,8 @@ pub struct Command {
     pub minify: Minify,
     #[clap(flatten)]
     pub print: Print,
-    #[clap(flatten)]
-    pub verify_ir: VerifyIr,
+    #[arg(long, value_parser = clap::builder::PossibleValuesParser::new(PrintIrCliOpt::cli_options()))]
+    pub verify_ir: IrCli,
     #[clap(flatten)]
     pub build_output: BuildOutput,
     #[clap(flatten)]

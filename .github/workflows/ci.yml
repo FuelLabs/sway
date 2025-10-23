@@ -432,7 +432,7 @@ jobs:
         run: |
           fuel-core run --db-type in-memory --debug &
           sleep 5 &&
-          cargo run --locked --release --bin test -- --locked --release --verify-ir=all
+          cargo run --locked --release --bin test -- --locked --release --verify-ir all
 
   # TODO: Remove this upon merging std tests with the rest of the E2E tests.
   cargo-test-lib-std:
