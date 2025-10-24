@@ -12143,6 +12143,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "bytes",
+ "chrono",
  "clap",
  "colored",
  "duct",
@@ -12156,6 +12157,7 @@ dependencies = [
  "fuel-vm",
  "futures",
  "gag",
+ "git2",
  "glob",
  "hex",
  "insta",
@@ -12167,6 +12169,7 @@ dependencies = [
  "regex",
  "revm",
  "rhai",
+ "serde",
  "serde_json",
  "sway-core",
  "sway-error",

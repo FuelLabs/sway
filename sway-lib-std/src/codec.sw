@@ -5359,7 +5359,7 @@ where
 {
     let first_parameter = encode(method_name);
     let second_parameter = encode(args);
-    let params = encode((
+    let params = (
         contract_id,
         asm(a: first_parameter.ptr()) {
             a: u64
@@ -5367,9 +5367,9 @@ where
         asm(a: second_parameter.ptr()) {
             a: u64
         },
-    ));
+    );
 
-    __contract_call(params.ptr(), coins, asset_id, gas);
+    __contract_call(&params, coins, asset_id, gas);
     let ptr = asm() {
         ret: raw_ptr
     };

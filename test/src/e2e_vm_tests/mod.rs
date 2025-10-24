@@ -8,6 +8,7 @@ use crate::e2e_vm_tests::harness::run_and_capture_output;
 use crate::{FilterConfig, RunConfig};
 
 use anyhow::{anyhow, bail, Result};
+use chrono::Local;
 use colored::*;
 use core::fmt;
 use forc_pkg::manifest::{GenericManifestFile, ManifestFile};
@@ -17,10 +18,12 @@ use forc_util::tx_utils::decode_log_data;
 use fuel_vm::fuel_tx;
 use fuel_vm::fuel_types::canonical::Input;
 use fuel_vm::prelude::*;
+use git2::Repository;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use regex::Regex;
 use std::borrow::Cow;
 use std::collections::{BTreeMap, HashSet};
+use std::fs::File;
 use std::io::stdout;
 use std::io::Write;
 use std::process::{Command, Stdio};
@@ -37,6 +40,8 @@ use tokio::sync::Mutex;
 use tracing::Instrument;
 
 use self::util::VecExt;
+
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, PartialEq, Debug)]
 enum TestCategory {
@@ -101,6 +106,9 @@ struct TestDescription {
     expected_result_new_encoding: Option<TestResult>,
     expected_warnings: u32,
     contract_paths: Vec<String>,
+    /// Signing key to be used if the test is of [TestCategory::RunsWithContract].
+    /// `None` if the test has any other [TestCategory].
+    signing_key: Option<SecretKey>,
     validate_abi: bool,
     validate_storage_slots: bool,
     supported_targets: HashSet<BuildTarget>,
@@ -121,12 +129,92 @@ impl TestDescription {
             self.name.as_str().into()
         }
     }
+
+    pub fn expect_signing_key(&self) -> &SecretKey {
+        self.signing_key
+            .as_ref()
+            .expect("`RunsWithContract` test must have a signing key defined")
+    }
 }
 
 #[derive(PartialEq, Eq, Hash)]
 struct DeployedContractKey {
     pub contract_path: String,
     pub new_encoding: bool,
+}
+
+#[derive(Serialize, Deserialize)]
+struct GasUsage {
+    /// The name of the unit test, or `None` if it is the gas usage of a script run.
+    pub unit_test_name: Option<String>,
+    pub gas_used: usize,
+}
+
+impl GasUsage {
+    pub fn new(gas_used: usize) -> Self {
+        Self {
+            unit_test_name: None,
+            gas_used,
+        }
+    }
+
+    pub fn with_unit_test_name(unit_test_name: String, gas_used: usize) -> Self {
+        Self {
+            unit_test_name: Some(unit_test_name),
+            gas_used,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+struct BytecodeSize {
+    /// The name of the compiled package if more than one package is compiled
+    /// within a test, or `None` if it is a single package whose name is the
+    /// same as the test name.
+    pub package_name: Option<String>,
+    pub bytecode_size: usize,
+}
+
+impl BytecodeSize {
+    pub fn new(bytecode_size: usize) -> Self {
+        Self {
+            package_name: None,
+            bytecode_size,
+        }
+    }
+
+    pub fn with_package_name(package_name: String, bytecode_size: usize) -> Self {
+        Self {
+            package_name: Some(package_name),
+            bytecode_size,
+        }
+    }
+}
+
+/// Performance data, bytecode sizes and gas usages,
+/// collected during the run of a single test.
+///
+/// Performance data can be collected for tests of
+/// these categories: "compile", "run", "unit_tests_pass".
+///
+/// A single test can have several bytecode sizes, if a
+/// workspace is "compiled", and several gas usages, if
+/// "unit_tests_pass" is run.
+#[derive(Serialize, Deserialize)]
+struct TestPerfData {
+    pub test_display_name: String,
+    pub bytecode_sizes: Vec<BytecodeSize>,
+    pub gas_usages: Vec<GasUsage>,
+}
+
+impl TestPerfData {
+    fn new(test_display_name: String) -> Self {
+        Self {
+            test_display_name,
+            bytecode_sizes: vec![],
+            gas_usages: vec![],
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -299,6 +387,7 @@ impl TestContext {
         &self,
         run_config: &RunConfig,
         contract_path: String,
+        signing_key: &SecretKey,
     ) -> Result<ContractId> {
         let experimental = ExperimentalFeatures::new(
             &HashMap::default(),
@@ -316,13 +405,19 @@ impl TestContext {
         Ok(if let Some(contract_id) = deployed_contracts.get(&key) {
             *contract_id
         } else {
-            let contract_id = harness::deploy_contract(contract_path.as_str(), run_config).await?;
+            let contract_id =
+                harness::deploy_contract(contract_path.as_str(), run_config, signing_key).await?;
             deployed_contracts.insert(key, contract_id);
             contract_id
         })
     }
 
-    async fn run(&self, test: &TestDescription, output: &mut String, verbose: bool) -> Result<()> {
+    async fn run(
+        &self,
+        test: &TestDescription,
+        output: &mut String,
+        verbose: bool,
+    ) -> Result<TestPerfData> {
         let TestDescription {
             name,
             suffix,
@@ -358,6 +453,8 @@ impl TestContext {
         } else {
             expected_result
         };
+
+        let mut perf_data = TestPerfData::new(test.display_name().into());
 
         match category {
             TestCategory::Runs => {
@@ -416,6 +513,10 @@ impl TestContext {
                     }
                 };
 
+                perf_data
+                    .bytecode_sizes
+                    .push(BytecodeSize::new(compiled.bytecode.bytes.len()));
+
                 if compiled.warnings.len() > *expected_warnings as usize {
                     return Err(anyhow::Error::msg(format!(
                         "Expected warnings: {expected_warnings}\nActual number of warnings: {}",
@@ -431,6 +532,18 @@ impl TestContext {
                 let actual_result = match result {
                     harness::VMExecutionResult::Fuel(state, receipts, ecal) => {
                         print_receipts(output, &receipts);
+
+                        let gas_used = receipts.iter().find_map(|r| {
+                            if let Receipt::ScriptResult { gas_used, .. } = r {
+                                Some(*gas_used)
+                            } else {
+                                None
+                            }
+                        });
+
+                        if let Some(gas_used) = gas_used {
+                            perf_data.gas_usages.push(GasUsage::new(gas_used as usize));
+                        }
 
                         use std::fmt::Write;
                         let _ = writeln!(output, "  {}", "Captured Output".green().bold());
@@ -483,28 +596,25 @@ impl TestContext {
                 };
 
                 if &actual_result != expected_result {
-                    Err(anyhow::Error::msg(format!(
+                    return Err(anyhow::Error::msg(format!(
                         "expected: {expected_result:?}\nactual: {actual_result:?}"
-                    )))
-                } else {
-                    if *validate_abi {
-                        let (result, out) = run_and_capture_output(|| async {
-                            harness::test_json_abi(
-                                name,
-                                &compiled,
-                                experimental.new_encoding,
-                                run_config.update_output_files,
-                                suffix,
-                                *has_experimental_field,
-                                run_config.release,
-                            )
-                        })
-                        .await;
+                    )));
+                } else if *validate_abi {
+                    let (result, out) = run_and_capture_output(|| async {
+                        harness::test_json_abi(
+                            name,
+                            &compiled,
+                            experimental.new_encoding,
+                            run_config.update_output_files,
+                            suffix,
+                            *has_experimental_field,
+                            run_config.release,
+                        )
+                    })
+                    .await;
 
-                        output.push_str(&out);
-                        result?;
-                    }
-                    Ok(())
+                    output.push_str(&out);
+                    result?;
                 }
             }
 
@@ -514,7 +624,7 @@ impl TestContext {
                         .await;
                 *output = out;
 
-                let compiled_pkgs = match result? {
+                let (is_single_package, compiled_pkgs) = match result? {
                     forc_pkg::Built::Package(built_pkg) => {
                         if built_pkg.warnings.len() > *expected_warnings as usize {
                             return Err(anyhow::Error::msg(format!(
@@ -522,18 +632,36 @@ impl TestContext {
                                 built_pkg.warnings.len()
                             )));
                         }
-                        vec![(name.clone(), built_pkg.as_ref().clone())]
+                        (true, vec![(name.clone(), built_pkg.as_ref().clone())])
                     }
-                    forc_pkg::Built::Workspace(built_workspace) => built_workspace
-                        .iter()
-                        .map(|built_pkg| {
-                            (
-                                built_pkg.descriptor.pinned.name.clone(),
-                                built_pkg.as_ref().clone(),
-                            )
-                        })
-                        .collect(),
+                    forc_pkg::Built::Workspace(built_workspace) => (
+                        false,
+                        built_workspace
+                            .iter()
+                            .map(|built_pkg| {
+                                (
+                                    built_pkg.descriptor.pinned.name.clone(),
+                                    built_pkg.as_ref().clone(),
+                                )
+                            })
+                            .collect(),
+                    ),
                 };
+
+                for (name, built_pkg) in &compiled_pkgs {
+                    if is_single_package {
+                        perf_data
+                            .bytecode_sizes
+                            .push(BytecodeSize::new(built_pkg.bytecode.bytes.len()));
+                    } else {
+                        perf_data
+                            .bytecode_sizes
+                            .push(BytecodeSize::with_package_name(
+                                name.clone(),
+                                built_pkg.bytecode.bytes.len(),
+                            ));
+                    }
+                }
 
                 check_file_checker(checker, name, output)?;
 
@@ -566,7 +694,6 @@ impl TestContext {
                         output.push_str(&out);
                     }
                 }
-                Ok(())
             }
 
             TestCategory::FailsToCompile => {
@@ -581,10 +708,9 @@ impl TestContext {
                         eprintln!("[{output}]");
                     }
 
-                    Err(anyhow::Error::msg("Test compiles but is expected to fail"))
+                    return Err(anyhow::Error::msg("Test compiles but is expected to fail"));
                 } else {
                     check_file_checker(checker, name, output)?;
-                    Ok(())
                 }
             }
 
@@ -596,10 +722,12 @@ impl TestContext {
                     );
                 }
 
+                let signing_key = test.expect_signing_key();
                 let mut contract_ids = Vec::new();
                 for contract_path in contract_paths.clone() {
                     let (result, out) = run_and_capture_output(|| async {
-                        self.deploy_contract(run_config, contract_path).await
+                        self.deploy_contract(run_config, contract_path, signing_key)
+                            .await
                     })
                     .await;
                     output.push_str(&out);
@@ -607,7 +735,8 @@ impl TestContext {
                 }
                 let contract_ids = contract_ids.into_iter().collect::<Result<Vec<_>, _>>()?;
 
-                let (result, out) = harness::runs_on_node(name, run_config, &contract_ids).await;
+                let (result, out) =
+                    harness::runs_on_node(name, run_config, &contract_ids, signing_key).await;
 
                 output.push_str(&out);
 
@@ -677,8 +806,6 @@ impl TestContext {
                     },
                     _ => {}
                 };
-
-                Ok(())
             }
 
             TestCategory::UnitTestsPass => {
@@ -694,9 +821,16 @@ impl TestContext {
                         if !pkg.tests.is_empty() {
                             println!();
                         }
+                        if let Some(bytecode_size_without_tests) = pkg.built.bytecode_without_tests.as_ref().map(|bc| bc.bytes.len()) {
+                            perf_data.bytecode_sizes.push(BytecodeSize::new(bytecode_size_without_tests));
+                        }
                         for test in pkg.tests.into_iter() {
+                            perf_data.gas_usages.push(GasUsage::with_unit_test_name(
+                                test.name.clone(),
+                                test.gas_used as usize,
+                            ));
                             if verbose {
-                                //"test incorrect_def_modeling ... ok (17.673µs, 59 gas)"
+                                // "test incorrect_def_modeling ... ok (17.673µs, 59 gas)"
                                 println!("    test {} ... {} ({:?}, {} gas)", 
                                     test.name,
                                     if test.passed() { "ok" } else { "nok" },
@@ -764,13 +898,17 @@ impl TestContext {
                             "For {name}\ncollected decoded logs: {decoded_logs:?}\nexpected decoded logs: {expected_decoded_test_logs:?}"
                         );
                     }
-                })
+                })?;
             }
 
-            category => Err(anyhow::Error::msg(format!(
-                "Unexpected test category: {category:?}",
-            ))),
+            category => {
+                return Err(anyhow::Error::msg(format!(
+                    "Unexpected test category: {category:?}",
+                )))
+            }
         }
+
+        Ok(perf_data)
     }
 }
 
@@ -781,6 +919,77 @@ struct TestsInRun {
     included_tests: Vec<TestDescription>,
     excluded_tests: Vec<TestDescription>,
     tests_to_run: Vec<TestDescription>,
+}
+
+/// Performance data collected during the entire test run,
+/// for all the tests that were executed.
+struct RunPerfData {
+    collect_perf_data: bool,
+    build_profile_name: String,
+    perf_data: Vec<TestPerfData>,
+}
+
+impl RunPerfData {
+    fn new(run_config: &RunConfig) -> Self {
+        Self {
+            collect_perf_data: run_config.perf,
+            build_profile_name: if run_config.release {
+                "release"
+            } else {
+                "debug"
+            }
+            .to_string(),
+            perf_data: vec![],
+        }
+    }
+
+    fn add_perf_data(&mut self, perf_data: TestPerfData) {
+        if self.collect_perf_data {
+            self.perf_data.push(perf_data);
+        }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.perf_data.is_empty()
+    }
+
+    /// Consumes the collected performance data and returns:
+    /// - build profile name,
+    /// - vector containing full E2E test names and their bytecode sizes,
+    /// - vector containing full unit test names and their gas usages.
+    ///
+    /// Both vectors are ordered by their test names.
+    #[allow(clippy::type_complexity)]
+    fn consume(self) -> (String, Vec<(String, usize)>, Vec<(String, usize)>) {
+        let mut bytecode_sizes = vec![];
+        let mut gas_usages = vec![];
+
+        for perf_data in self.perf_data {
+            for bytecode_size in perf_data.bytecode_sizes {
+                let full_test_name = match bytecode_size.package_name {
+                    Some(package_name) => {
+                        format!("{}::{package_name}", perf_data.test_display_name)
+                    }
+                    None => perf_data.test_display_name.clone(),
+                };
+                bytecode_sizes.push((full_test_name, bytecode_size.bytecode_size));
+            }
+            for gas_usage in perf_data.gas_usages {
+                let full_unit_test_name = match gas_usage.unit_test_name {
+                    Some(unit_test_name) => {
+                        format!("{}::{unit_test_name}", perf_data.test_display_name)
+                    }
+                    None => perf_data.test_display_name.clone(),
+                };
+                gas_usages.push((full_unit_test_name, gas_usage.gas_used));
+            }
+        }
+
+        gas_usages.sort_by(|(name_a, _), (name_b, _)| name_a.cmp(name_b));
+        bytecode_sizes.sort_by(|(name_a, _), (name_b, _)| name_a.cmp(name_b));
+
+        (self.build_profile_name, bytecode_sizes, gas_usages)
+    }
 }
 
 impl TestsInRun {
@@ -830,6 +1039,14 @@ impl TestsInRun {
         if filter_config.forc_test_only {
             tests_to_run.retain(|t| t.category == TestCategory::UnitTestsPass);
         }
+        if filter_config.perf_only {
+            tests_to_run.retain(|t| {
+                matches!(
+                    t.category,
+                    TestCategory::Runs | TestCategory::Compiles | TestCategory::UnitTestsPass
+                )
+            });
+        }
         let cur_profile = if run_config.release {
             BuildProfile::RELEASE
         } else {
@@ -840,6 +1057,24 @@ impl TestsInRun {
 
         if filter_config.first_only {
             tests_to_run.truncate(1);
+        }
+
+        // Assign signing keys to all "run_on_node" tests.
+        // Below keys are taken from the `fuel-core` repo: fuel-core/crates/chain-config/src/config/state.rs
+        const TESTNET_WALLET_SECRETS: [&str; 5] = [
+            "0xde97d8624a438121b86a1956544bd72ed68cd69f2c99555b08b1e8c51ffd511c",
+            "0x37fa81c84ccd547c30c176b118d5cb892bdb113e8e80141f266519422ef9eefd",
+            "0x862512a2363db2b3a375c0d4bbbd27172180d89f23f2e259bac850ab02619301",
+            "0x976e5c3fa620092c718d852ca703b6da9e3075b9f2ecb8ed42d9f746bf26aafb",
+            "0x7f8a325504e7315eda997db7861c9447f5c3eff26333b20180475d94443a10c6",
+        ];
+        for (signing_key_index, test) in tests_to_run
+            .iter_mut()
+            .filter(|test| test.category == TestCategory::RunsWithContract)
+            .enumerate()
+        {
+            let secret = TESTNET_WALLET_SECRETS[signing_key_index % TESTNET_WALLET_SECRETS.len()];
+            test.signing_key = Some(SecretKey::from_str(secret).unwrap());
         }
 
         Ok(Self {
@@ -854,12 +1089,34 @@ impl TestsInRun {
 }
 
 pub async fn run_exact(exact: &str, run_config: &RunConfig) -> Result<()> {
-    let test = parse_test_toml(Path::new(exact), run_config)?;
+    let mut test = parse_test_toml(Path::new(exact), run_config)?;
+    if test.category == TestCategory::RunsWithContract {
+        let Some(signing_key) = std::env::var("RUNS_ON_NODE_TEST_SIGNING_KEY")
+            .ok()
+            .and_then(|key_str| SecretKey::from_str(&key_str).ok())
+        else {
+            return Err(anyhow::Error::msg(
+                "Environment variable `RUNS_ON_NODE_TEST_SIGNING_KEY` must be set to run 'run_on_node' tests using `--exact` flag.",
+            ));
+        };
+        test.signing_key = Some(signing_key);
+    }
+
     let context = TestContext {
         deployed_contracts: Default::default(),
     };
+
     let mut output = String::new();
-    context.run(&test, &mut output, run_config.verbose).await
+    let perf_data = context.run(&test, &mut output, run_config.verbose).await?;
+
+    if run_config.perf {
+        // Print the serialized performance data to piped stdout, followed by a newline.
+        let mut std_out = std::io::stdout();
+        serde_json::to_writer(&mut std_out, &perf_data)?;
+        writeln!(&mut std_out)?;
+    }
+
+    Ok(())
 }
 
 pub async fn run_in_parallel(filter_config: &FilterConfig, run_config: &RunConfig) -> Result<()> {
@@ -877,6 +1134,9 @@ pub async fn run_in_parallel(filter_config: &FilterConfig, run_config: &RunConfi
     }
     if run_config.update_output_files {
         common_args.push("--update-output-files".to_string());
+    }
+    if run_config.perf {
+        common_args.push("--perf".to_string());
     }
     if let Some(experimental) = run_config.experimental.experimental_as_cli_string() {
         common_args.push("--experimental".to_string());
@@ -902,21 +1162,27 @@ pub async fn run_in_parallel(filter_config: &FilterConfig, run_config: &RunConfi
     // across multiple processes. Therefore, to avoid multiple deployments of the same contract
     // from different processes, we run "run_on_node" tests in parallel only if they don't share
     // contracts. Those that share contracts are run sequentially.
+    //
+    // Moreover, even for the "run_on_node" tests that don't share contracts, we still need to ensure that
+    // each test uses a different wallet/signing key, so that transactions do not collide with each other,
+    // if using the same wallet/signing key in parallel.
 
+    // Remove "run_on_node" tests from the main list of tests to run in parallel.
+    let mut run_on_node_tests = tests_in_run
+        .tests_to_run
+        .retain_and_get_removed(|test| test.category != TestCategory::RunsWithContract);
+
+    // Determine which "run_on_node" tests share contracts with each other.
     // Maps contract path to the list of tests that deploy it.
     let mut contracts_deployed_in_tests = HashMap::<String, Vec<_>>::new();
-    tests_in_run
-        .tests_to_run
-        .iter()
-        .filter(|t| t.category == TestCategory::RunsWithContract)
-        .for_each(|test| {
-            test.contract_paths.iter().for_each(|contract_path| {
-                contracts_deployed_in_tests
-                    .entry(contract_path.clone())
-                    .or_default()
-                    .push(test);
-            });
+    run_on_node_tests.iter().for_each(|test| {
+        test.contract_paths.iter().for_each(|contract_path| {
+            contracts_deployed_in_tests
+                .entry(contract_path.clone())
+                .or_default()
+                .push(test);
         });
+    });
     let tests_sharing_contracts: HashSet<_> = contracts_deployed_in_tests
         .values()
         .filter(|tests| tests.len() > 1)
@@ -924,38 +1190,60 @@ pub async fn run_in_parallel(filter_config: &FilterConfig, run_config: &RunConfi
         .map(|t| t.test_toml_path.clone())
         .collect();
 
+    // Splitting the tests into three groups:
+    //  1. `tests_in_run.tests_to_run` - non-"run_on_node" tests, which can be run in parallel
+    //  2. `run_on_node_tests`         - "run_on_node" tests that don't share contracts, which can be run in parallel over different wallets
+    //  3. `tests_to_run_sequentially` - "run_on_node" tests that share contracts, which must be run sequentially
+    let tests_to_run_sequentially = run_on_node_tests
+        .retain_and_get_removed(|test| !tests_sharing_contracts.contains(&test.test_toml_path));
+
+    let run_perf_data = std::sync::Mutex::new(RunPerfData::new(run_config));
     let failed_tests = std::sync::Mutex::new(Vec::<String>::new());
     let start_time = Instant::now();
 
-    // Splitting the tests into two groups, sequential and parallel, by keeping
-    // in `tests_in_run.tests_to_run` only those that can be run in parallel.
-    // It turns out that doing the explicit split upfront is **way faster**
-    // than filtering inside the parallel iterator.
-    let tests_to_run_sequentially = tests_in_run
-        .tests_to_run
-        .retain_and_get_removed(|test| !tests_sharing_contracts.contains(&test.test_toml_path));
+    // 1. Run non-"run_on_node" tests that can be safely run in parallel.
+    run_in_parallel_impl(
+        &tests_in_run.tests_to_run.iter().collect::<Vec<_>>(),
+        &common_args,
+        run_config.perf.then_some(&run_perf_data),
+        &failed_tests,
+    );
 
-    // Run tests that can be safely run in parallel.
-    tests_in_run.tests_to_run.par_iter().for_each(|test| {
-        let name = test.display_name();
+    // 2. Run "run_on_node" tests that don't share contracts in parallel over different wallets.
+    let mut run_on_node_tests_per_wallet = HashMap::new();
+    for test in run_on_node_tests.iter() {
+        let signing_key = *test.expect_signing_key();
+        run_on_node_tests_per_wallet
+            .entry(signing_key)
+            .or_insert_with(Vec::new)
+            .push(test);
+    }
+    let longest_wallet_test_chain_size = run_on_node_tests_per_wallet
+        .values()
+        .max_by_key(|tests| tests.len())
+        .map(|tests| tests.len())
+        .unwrap_or(0);
+    let parallel_test_groups = (0..longest_wallet_test_chain_size)
+        .map(|i| {
+            run_on_node_tests_per_wallet
+                .values()
+                .filter_map(|tests| tests.get(i))
+                .cloned()
+                .collect::<Vec<_>>()
+        })
+        .filter(|tests| !tests.is_empty())
+        .collect::<Vec<_>>();
 
-        let status = Command::new(std::env::current_exe().unwrap())
-            .args(common_args.clone())
-            .args(vec!["--exact".to_string(), test.test_toml_path.clone()])
-            .stdout(Stdio::null())
-            .stdin(Stdio::null())
-            .status()
-            .unwrap();
-
-        if status.success() {
-            println!("  ✅ Passed: {name}");
-        } else {
-            println!("  ❌ Failed: {name}");
-            failed_tests.lock().unwrap().push(name.into());
-        }
+    parallel_test_groups.iter().for_each(|tests_in_run| {
+        run_in_parallel_impl(
+            tests_in_run,
+            &common_args,
+            run_config.perf.then_some(&run_perf_data),
+            &failed_tests,
+        );
     });
 
-    // Run sequentially "run_on_node" tests that share contracts.
+    // 3. Run sequentially "run_on_node" tests that share contracts.
     let context = TestContext {
         deployed_contracts: Default::default(),
     };
@@ -966,8 +1254,9 @@ pub async fn run_in_parallel(filter_config: &FilterConfig, run_config: &RunConfi
         let mut output = String::new();
         let result = context.run(test, &mut output, run_config.verbose).await;
 
-        if result.is_ok() {
+        if let Ok(test_perf_data) = result {
             println!("  ✅ Passed: {name}");
+            run_perf_data.lock().unwrap().add_perf_data(test_perf_data);
         } else {
             println!("  ❌ Failed: {name}");
             failed_tests.lock().unwrap().push(name.into());
@@ -977,8 +1266,11 @@ pub async fn run_in_parallel(filter_config: &FilterConfig, run_config: &RunConfi
     let duration = Instant::now().duration_since(start_time);
 
     // To ensure proper statistics printed in the results, get the list of tests that
-    // were run sequentially and add them back to the list of tests to run.
+    // were run separately and add them back to the list of tests to run.
+    tests_in_run.tests_to_run.extend(run_on_node_tests);
     tests_in_run.tests_to_run.extend(tests_to_run_sequentially);
+
+    output_run_perf_data(run_perf_data.into_inner().unwrap())?;
 
     print_run_results(
         &tests_in_run,
@@ -988,6 +1280,67 @@ pub async fn run_in_parallel(filter_config: &FilterConfig, run_config: &RunConfi
     )
 }
 
+fn run_in_parallel_impl(
+    tests_to_run: &[&TestDescription],
+    common_args: &[String],
+    run_perf_data: Option<&std::sync::Mutex<RunPerfData>>,
+    failed_tests: &std::sync::Mutex<Vec<String>>,
+) {
+    tests_to_run.par_iter().for_each(|test| {
+        fn get_test_perf_data_from_stdout(output: &[u8]) -> Option<TestPerfData> {
+            // Just in case we have some extra output, we try to find
+            // the first '{"test_display_name":' and parse JSON from there
+            // until the first '\n' after that.
+            const JSON_START: &[u8] = b"{\"test_display_name\":";
+            let start_index = output
+                .windows(JSON_START.len())
+                .position(|window| window == JSON_START)?;
+            let end_index = output[start_index..].iter().position(|&b| b == b'\n')?;
+            let output = &output[start_index..end_index + start_index];
+            serde_json::from_slice(output).ok()
+        }
+
+        let name = test.display_name();
+
+        // Stdout we either ignore in parallel runs, or use for piping/reporting performance data.
+        let std_out = if run_perf_data.is_some() {
+            Stdio::piped()
+        } else {
+            Stdio::null()
+        };
+
+        let output = Command::new(std::env::current_exe().unwrap())
+            .args(common_args)
+            .args(vec!["--exact", &test.test_toml_path])
+            .stdout(std_out)
+            .stdin(Stdio::null())
+            .stderr(Stdio::inherit())
+            .env(
+                "RUNS_ON_NODE_TEST_SIGNING_KEY",
+                test.signing_key
+                    .as_ref()
+                    .map(|k| k.to_string())
+                    .unwrap_or_default(),
+            )
+            .spawn()
+            .unwrap()
+            .wait_with_output()
+            .unwrap();
+
+        if output.status.success() {
+            println!("  ✅ Passed: {name}");
+            if let Some(run_perf_data) = run_perf_data {
+                if let Some(test_perf_data) = get_test_perf_data_from_stdout(&output.stdout) {
+                    run_perf_data.lock().unwrap().add_perf_data(test_perf_data);
+                }
+            }
+        } else {
+            println!("  ❌ Failed: {name}");
+            failed_tests.lock().unwrap().push(name.into());
+        }
+    });
+}
+
 pub async fn run_sequentially(filter_config: &FilterConfig, run_config: &RunConfig) -> Result<()> {
     let tests_in_run = TestsInRun::new(filter_config, run_config)?;
 
@@ -995,6 +1348,7 @@ pub async fn run_sequentially(filter_config: &FilterConfig, run_config: &RunConf
         deployed_contracts: Default::default(),
     };
 
+    let mut run_perf_data = RunPerfData::new(run_config);
     let mut failed_tests = Vec::<String>::new();
     let start_time = Instant::now();
     for (i, test) in tests_in_run.tests_to_run.iter().enumerate() {
@@ -1016,21 +1370,80 @@ pub async fn run_sequentially(filter_config: &FilterConfig, run_config: &RunConf
             context.run(test, &mut output, run_config.verbose).await
         };
 
-        if let Err(err) = result {
-            println!(" {}", "failed".red().bold());
-            println!("{}", textwrap::indent(err.to_string().as_str(), "     "));
-            println!("{}", textwrap::indent(&output, "          "));
-            failed_tests.push(name.into());
-        } else {
-            println!(" {}", "ok".green().bold());
-            if run_config.verbose && !output.is_empty() {
-                println!("{}", textwrap::indent(&output, "     "));
+        match result {
+            Err(err) => {
+                println!(" {}", "failed".red().bold());
+                println!("{}", textwrap::indent(err.to_string().as_str(), "     "));
+                println!("{}", textwrap::indent(&output, "          "));
+                failed_tests.push(name.into());
+            }
+            Ok(test_perf_data) => {
+                println!(" {}", "ok".green().bold());
+                if run_config.verbose && !output.is_empty() {
+                    println!("{}", textwrap::indent(&output, "     "));
+                }
+                if run_config.perf {
+                    run_perf_data.add_perf_data(test_perf_data);
+                }
             }
         }
     }
     let duration = Instant::now().duration_since(start_time);
 
+    output_run_perf_data(run_perf_data)?;
+
     print_run_results(&tests_in_run, filter_config, &failed_tests, &duration)
+}
+
+fn output_run_perf_data(run_stats: RunPerfData) -> Result<()> {
+    if run_stats.is_empty() {
+        return Ok(());
+    }
+
+    let timestamp = Local::now().format("%m%d%H%M%S").to_string();
+    let perf_out_dir = format!("{}/perf_out", env!("CARGO_MANIFEST_DIR"));
+    let branch_name =
+        current_branch_display_name(&perf_out_dir).unwrap_or_else(|| "unknown-branch".to_string());
+
+    let (build_profile_name, bytecode_sizes, gas_usages) = run_stats.consume();
+
+    let write_stats_to_file = |stats: &[(String, usize)], stats_type: &str| -> Result<()> {
+        if !stats.is_empty() {
+            let file_name = format!(
+                "{perf_out_dir}/{timestamp}-e2e-{}-{build_profile_name}-{branch_name}.csv",
+                stats_type.to_lowercase().replace(' ', "-")
+            );
+            let mut file = File::create(&file_name)?;
+            for (test_name, stat_value) in stats {
+                writeln!(file, "{test_name},{stat_value}")?;
+            }
+            println!(
+                "{:27} .{}",
+                format!("{stats_type} written to: "),
+                &file_name.as_str()[file_name.find("/test/perf_out").unwrap()..]
+            );
+        }
+
+        Ok(())
+    };
+
+    println!("_________________________________\n");
+
+    write_stats_to_file(&bytecode_sizes, "Bytecode sizes")?;
+    write_stats_to_file(&gas_usages, "Gas usages")?;
+
+    Ok(())
+}
+
+fn current_branch_display_name<P: AsRef<Path>>(path: P) -> Option<String> {
+    Repository::discover(path)
+        .ok()
+        .and_then(|repo| {
+            repo.head()
+                .ok()
+                .and_then(|head| head.shorthand().map(|s| s.to_string()))
+        })
+        .map(|branch_name| branch_name.replace("/", "-"))
 }
 
 fn print_run_results(
@@ -1498,6 +1911,7 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
         expected_result_new_encoding,
         expected_warnings,
         contract_paths,
+        signing_key: None, // Not a part of `test.toml` and assigned later.
         validate_abi,
         validate_storage_slots,
         supported_targets,
