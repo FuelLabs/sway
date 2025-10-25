@@ -744,7 +744,7 @@ fn vec_encode_and_decode() {
 
 #[test]
 fn vec_resize() {
-    let (mut vec_1, a, b, c) = setup();
+    let (mut vec_1, _, _, _) = setup();
     assert(vec_1.len() == 3);
     assert(vec_1.capacity() == 4);
 
@@ -808,7 +808,7 @@ fn vec_resize() {
 
 #[test]
 fn vec_last() {
-    let (mut vec_1, a, b, c) = setup();
+    let (mut vec_1, _, _, _) = setup();
     assert(vec_1.last() == Some(9));
 
     vec_1.push(2);

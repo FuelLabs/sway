@@ -31,7 +31,7 @@ pub fn revert_math_u8_modulo_panic_on_overflow_disabled() {
 
 #[test]
 pub fn math_u8_modulo_unsafe_math() {
-    disable_panic_on_unsafe_math();
+    let _ = disable_panic_on_unsafe_math();
     assert(0u8 % 0u8 == 0u8);
     assert(1u8 % 0u8 == 0u8);
     assert(u8::max() % 0u8 == 0u8);
@@ -66,7 +66,7 @@ pub fn revert_math_u16_modulo_panic_on_overflow_disabled() {
 
 #[test]
 pub fn math_u16_modulo_unsafe_math() {
-    disable_panic_on_unsafe_math();
+    let _ = disable_panic_on_unsafe_math();
     assert(0u16 % 0u16 == 0u16);
     assert(1u16 % 0u16 == 0u16);
     assert(u16::max() % 0u16 == 0u16);
@@ -101,7 +101,7 @@ pub fn revert_math_u32_modulo_panic_on_overflow_disabled() {
 
 #[test]
 pub fn math_u32_modulo_unsafe_math() {
-    disable_panic_on_unsafe_math();
+    let _ = disable_panic_on_unsafe_math();
     assert(0u32 % 0u32 == 0u32);
     assert(1u32 % 0u32 == 0u32);
     assert(u32::max() % 0u32 == 0u32);
@@ -136,7 +136,7 @@ pub fn revert_math_u64_modulo_panic_on_disabled_overflow() {
 
 #[test]
 pub fn math_u64_modulo_unsafe_math() {
-    disable_panic_on_unsafe_math();
+    let _ = disable_panic_on_unsafe_math();
     assert(0u64 % 0u64 == 0u64);
     assert(1u64 % 0u64 == 0u64);
     assert(u64::max() % 0u64 == 0u64);
@@ -170,7 +170,7 @@ pub fn revert_math_u256_modulo_panic_on_disabled_overflow() {
 
 #[test]
 pub fn math_u256_modulo_unsafe_math() {
-    disable_panic_on_unsafe_math();
+    let _ = disable_panic_on_unsafe_math();
     assert(0x0u256 % 0x0u256 == 0x0u256);
     assert(0x1u256 % 0x0u256 == 0x0u256);
     assert(u256::max() % 0x0u256 == 0x0u256);

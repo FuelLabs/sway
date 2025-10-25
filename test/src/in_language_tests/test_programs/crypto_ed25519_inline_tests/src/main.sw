@@ -37,7 +37,7 @@ fn ed25519_bits() {
 }
 
 #[test]
-fn ed25519__verify() {
+fn ed25519_verify() {
     let pub_key = 0x314fa58689bbe1da2430517de2d772b384a1c1d2e9cb87e73c6afcf246045b10;
     let msg = b256::zero();
     let msg_hash = sha256(msg);
