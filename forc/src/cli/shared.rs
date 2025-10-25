@@ -90,7 +90,7 @@ pub struct Build {
     ///  - <pass name>: the name of an optimization pass. Verifies the IR state after that pass.
     ///  - all:         short for initial, final, and all the optimization passes.
     ///  - modified:    verify a requested optimization pass only if it has modified the IR.
-    #[arg(long, verbatim_doc_comment, num_args(1..=18), value_parser = clap::builder::PossibleValuesParser::new(IrCliOpt::cli_options()))]
+    #[arg(long, verbatim_doc_comment, num_args(1..=IrCliOpt::max_num_args()), value_parser = clap::builder::PossibleValuesParser::new(IrCliOpt::cli_options()))]
     pub verify_ir: Option<Vec<String>>,
     #[clap(flatten)]
     pub minify: Minify,
@@ -173,7 +173,7 @@ pub struct Print {
     ///  - abstract:  short for both virtual and allocated ASM.
     ///  - final:     final ASM that gets serialized to the target VM bytecode.
     ///  - all:       short for virtual, allocated, and final ASM.
-    #[arg(long, verbatim_doc_comment, num_args(1..=5), value_parser = clap::builder::PossibleValuesParser::new(&PrintAsmCliOpt::CLI_OPTIONS))]
+    #[arg(long, verbatim_doc_comment, num_args(1..=PrintAsmCliOpt::CLI_OPTIONS.len()), value_parser = clap::builder::PossibleValuesParser::new(&PrintAsmCliOpt::CLI_OPTIONS))]
     pub asm: Option<Vec<String>>,
     /// Print the bytecode.
     ///
@@ -188,7 +188,7 @@ pub struct Print {
     ///  - <pass name>: the name of an optimization pass. Prints the IR state after that pass.
     ///  - all:         short for initial, final, and all the optimization passes.
     ///  - modified:    print a requested optimization pass only if it has modified the IR.
-    #[arg(long, verbatim_doc_comment, num_args(1..=18), value_parser = clap::builder::PossibleValuesParser::new(IrCliOpt::cli_options()))]
+    #[arg(long, verbatim_doc_comment, num_args(1..=IrCliOpt::max_num_args()), value_parser = clap::builder::PossibleValuesParser::new(IrCliOpt::cli_options()))]
     pub ir: Option<Vec<String>>,
     /// Output the time elapsed over each part of the compilation process.
     #[clap(long)]
@@ -322,6 +322,10 @@ impl IrCliOpt {
             .chain(PassManager::OPTIMIZATION_PASSES.iter())
             .cloned()
             .collect()
+    }
+
+    pub fn max_num_args() -> usize {
+        Self::CLI_OPTIONS.len() + PassManager::OPTIMIZATION_PASSES.len()
     }
 }
 
