@@ -538,21 +538,21 @@ jobs:
       - name: Run Std Unit Tests - Experimental feature 'const_generics,new_hashing' (Release)
         run: forc test --release --path sway-lib-std --experimental const_generics --no-experimental new_hashing
       - name: Run In Language Unit Tests (Debug)
-        run: forc test --path test/src/in_language_tests
+        run: forc test --error-on-warnings --path test/src/in_language_tests
       - name: Run In Language Unit Tests (Release)
-        run: forc test --release --path test/src/in_language_tests
+        run: forc test --error-on-warnings --release --path test/src/in_language_tests
       - name: Run In Language Unit Tests - Experimental feature 'const_generics' (Debug)
-        run: forc test --path test/src/in_language_tests --experimental const_generics
+        run: forc test --error-on-warnings --path test/src/in_language_tests --experimental const_generics
       - name: Run In Language Unit Tests - Experimental feature 'const_generics' (Release)
-        run: forc test --release --path test/src/in_language_tests --experimental const_generics
+        run: forc test --error-on-warnings --release --path test/src/in_language_tests --experimental const_generics
       - name: Run In Language Unit Tests - Experimental feature 'new_hashing' (Debug)
-        run: forc test --path test/src/in_language_tests --no-experimental new_hashing
+        run: forc test --error-on-warnings --path test/src/in_language_tests --no-experimental new_hashing
       - name: Run In Language Unit Tests - Experimental feature 'new_hashing' (Release)
-        run: forc test --release --path test/src/in_language_tests --no-experimental new_hashing
+        run: forc test --error-on-warnings --release --path test/src/in_language_tests --no-experimental new_hashing
       - name: Run In Language Unit Tests - Experimental feature 'const_generics,new_hashing' (Debug)
-        run: forc test --path test/src/in_language_tests --experimental const_generics --no-experimental new_hashing
+        run: forc test --error-on-warnings --path test/src/in_language_tests --experimental const_generics --no-experimental new_hashing
       - name: Run In Language Unit Tests - Experimental feature 'const_generics,new_hashing' (Release)
-        run: forc test --release --path test/src/in_language_tests --experimental const_generics --no-experimental new_hashing
+        run: forc test --error-on-warnings --release --path test/src/in_language_tests --experimental const_generics --no-experimental new_hashing
 
   forc-pkg-fuels-deps-check:
     runs-on: ubuntu-latest
