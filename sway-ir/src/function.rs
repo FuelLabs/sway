@@ -219,6 +219,13 @@ impl Function {
         Ok(())
     }
 
+    /// Remove instructions from function that satisfy a given predicate.
+    pub fn remove_instructions<T: Fn(Value) -> bool>(&self, context: &mut Context, pred: T) {
+        for block in context.functions[self.0].blocks.clone() {
+            block.remove_instructions(context, &pred);
+        }
+    }
+
     /// Get a new unique block label.
     ///
     /// If `hint` is `None` then the label will be in the form `"blockN"` where N is an
