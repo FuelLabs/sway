@@ -52,7 +52,7 @@ fn signature_recover() {
     let msg_hash_3 = sha256(msg_3);
     let hi_3 = 0xf38cef9361894be6c6e0eddec28a663d099d7ddff17c8077a1447d7ecb4e6545;
     let lo_3 = 0xf5084560039486d3462dd65a40c80a74709b2f06d450ffc5dc00345c6b2cdd00;
-    let public_key_3: PublicKey = PublicKey::from(pub_key_3);
+    let _public_key_3: PublicKey = PublicKey::from(pub_key_3);
     let signature_3: Signature = Signature::Ed25519(Ed25519::from((hi_3, lo_3)));
     let message_3: Message = Message::from(msg_hash_3);
 
@@ -92,7 +92,7 @@ fn signature_address() {
     let msg_hash_3 = sha256(msg_3);
     let hi_3 = 0xf38cef9361894be6c6e0eddec28a663d099d7ddff17c8077a1447d7ecb4e6545;
     let lo_3 = 0xf5084560039486d3462dd65a40c80a74709b2f06d450ffc5dc00345c6b2cdd00;
-    let public_key_3: PublicKey = PublicKey::from(pub_key_3);
+    let _public_key_3: PublicKey = PublicKey::from(pub_key_3);
     let signature_3: Signature = Signature::Ed25519(Ed25519::from((hi_3, lo_3)));
     let message_3: Message = Message::from(msg_hash_3);
 
@@ -130,7 +130,7 @@ fn signature_evm_address() {
     let msg_hash_3 = sha256(msg_3);
     let hi_3 = 0xf38cef9361894be6c6e0eddec28a663d099d7ddff17c8077a1447d7ecb4e6545;
     let lo_3 = 0xf5084560039486d3462dd65a40c80a74709b2f06d450ffc5dc00345c6b2cdd00;
-    let public_key_3: PublicKey = PublicKey::from(pub_key_3);
+    let _public_key_3: PublicKey = PublicKey::from(pub_key_3);
     let signature_3: Signature = Signature::Ed25519(Ed25519::from((hi_3, lo_3)));
     let message_3: Message = Message::from(msg_hash_3);
 
@@ -210,7 +210,7 @@ fn signature_verify_address() {
     let msg_hash_3 = sha256(msg_3);
     let hi_3 = 0xf38cef9361894be6c6e0eddec28a663d099d7ddff17c8077a1447d7ecb4e6545;
     let lo_3 = 0xf5084560039486d3462dd65a40c80a74709b2f06d450ffc5dc00345c6b2cdd00;
-    let public_key_3: PublicKey = PublicKey::from(pub_key_3);
+    let _public_key_3: PublicKey = PublicKey::from(pub_key_3);
     let signature_3: Signature = Signature::Ed25519(Ed25519::from((hi_3, lo_3)));
     let message_3: Message = Message::from(msg_hash_3);
 
@@ -248,7 +248,7 @@ fn signature_verify_evm_address() {
     let msg_hash_3 = sha256(msg_3);
     let hi_3 = 0xf38cef9361894be6c6e0eddec28a663d099d7ddff17c8077a1447d7ecb4e6545;
     let lo_3 = 0xf5084560039486d3462dd65a40c80a74709b2f06d450ffc5dc00345c6b2cdd00;
-    let public_key_3: PublicKey = PublicKey::from(pub_key_3);
+    let _public_key_3: PublicKey = PublicKey::from(pub_key_3);
     let signature_3: Signature = Signature::Ed25519(Ed25519::from((hi_3, lo_3)));
     let message_3: Message = Message::from(msg_hash_3);
 
