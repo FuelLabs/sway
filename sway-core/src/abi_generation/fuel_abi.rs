@@ -601,34 +601,17 @@ fn generate_concrete_type_declaration(
     type_id: TypeId,
     resolved_type_id: TypeId,
 ) -> Result<ConcreteTypeId, ErrorEmitted> {
-    let mut new_metadata_types_to_add = Vec::<program_abi::TypeMetadataDeclaration>::new();
-    let type_metadata_decl = program_abi::TypeMetadataDeclaration {
-        metadata_type_id: MetadataTypeId(type_id.index()),
-        type_field: type_id.get_abi_type_str(
-            handler,
-            &ctx.to_str_context(),
-            engines,
-            resolved_type_id,
-        )?,
-        components: type_id.get_abi_type_components(
-            handler,
-            ctx,
-            engines,
-            metadata_types,
-            concrete_types,
-            resolved_type_id,
-            &mut new_metadata_types_to_add,
-        )?,
-        type_parameters: type_id.get_abi_type_parameters(
-            handler,
-            ctx,
-            engines,
-            metadata_types,
-            concrete_types,
-            resolved_type_id,
-            &mut new_metadata_types_to_add,
-        )?,
-    };
+    let mut metadata_types_to_add = Vec::<program_abi::TypeMetadataDeclaration>::new();
+    let type_metadata_decl = generate_type_metadata_declaration(
+        handler,
+        ctx,
+        engines,
+        metadata_types,
+        concrete_types,
+        type_id,
+        resolved_type_id,
+        &mut metadata_types_to_add,
+    )?;
 
     let metadata_type_id = if type_metadata_decl.type_parameters.is_some()
         || type_metadata_decl.components.is_some()
@@ -653,8 +636,7 @@ fn generate_concrete_type_declaration(
         Ok(type_arguments)
     })?;
 
-    metadata_types.push(type_metadata_decl);
-    metadata_types.extend(new_metadata_types_to_add);
+    metadata_types.extend(metadata_types_to_add);
 
     let (type_field, concrete_type_id) =
         type_id.get_abi_type_field_and_concrete_id(handler, ctx, engines, resolved_type_id)?;
@@ -681,7 +663,7 @@ fn generate_type_metadata_declaration(
     type_id: TypeId,
     resolved_type_id: TypeId,
     metadata_types_to_add: &mut Vec<program_abi::TypeMetadataDeclaration>,
-) -> Result<(), ErrorEmitted> {
+) -> Result<program_abi::TypeMetadataDeclaration, ErrorEmitted> {
     let mut new_metadata_types_to_add = Vec::<program_abi::TypeMetadataDeclaration>::new();
     let components = type_id.get_abi_type_components(
         handler,
@@ -717,7 +699,7 @@ fn generate_type_metadata_declaration(
     metadata_types_to_add.push(type_metadata_decl.clone());
     metadata_types_to_add.extend(new_metadata_types_to_add);
 
-    Ok(())
+    Ok(type_metadata_decl)
 }
 
 fn generate_logged_types(
