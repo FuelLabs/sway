@@ -135,6 +135,94 @@ pub enum InstOp {
     },
 }
 
+#[derive(Debug, Clone, Copy, DebugWithContext)]
+pub struct LogEventData {
+    version: u8,
+    is_event: bool,
+    is_indexed: bool,
+    event_type_size: u8,
+    num_elements: u16,
+}
+
+impl Default for LogEventData {
+    fn default() -> Self {
+        Self {
+            version: Self::CURRENT_VERSION,
+            is_event: false,
+            is_indexed: false,
+            event_type_size: 0,
+            num_elements: 0,
+        }
+    }
+}
+
+impl LogEventData {
+    pub const CURRENT_VERSION: u8 = 0;
+
+    pub fn new(
+        version: u8,
+        is_event: bool,
+        is_indexed: bool,
+        event_type_size: u8,
+        num_elements: u16,
+    ) -> Self {
+        Self {
+            version,
+            is_event,
+            is_indexed,
+            event_type_size,
+            num_elements,
+        }
+    }
+
+    pub fn for_event(indexed_field_size: Option<u8>, indexed_field_count: u16) -> Self {
+        match (indexed_field_size, indexed_field_count) {
+            (Some(size), count) if count > 0 => Self {
+                version: Self::CURRENT_VERSION,
+                is_event: true,
+                is_indexed: true,
+                event_type_size: size,
+                num_elements: count,
+            },
+            _ => Self {
+                version: Self::CURRENT_VERSION,
+                is_event: true,
+                is_indexed: false,
+                event_type_size: 0,
+                num_elements: 0,
+            },
+        }
+    }
+
+    pub fn version(&self) -> u8 {
+        self.version
+    }
+
+    pub fn is_event(&self) -> bool {
+        self.is_event
+    }
+
+    pub fn is_indexed(&self) -> bool {
+        self.is_indexed
+    }
+
+    pub fn event_type_size(&self) -> u8 {
+        self.event_type_size
+    }
+
+    pub fn num_elements(&self) -> u16 {
+        self.num_elements
+    }
+
+    pub fn encoded(&self) -> u64 {
+        (u64::from(self.version) << 56)
+            | (u64::from(self.is_event as u8) << 48)
+            | (u64::from(self.is_indexed as u8) << 40)
+            | (u64::from(self.event_type_size) << 32)
+            | (u64::from(self.num_elements) << 16)
+    }
+}
+
 #[derive(Debug, Clone, DebugWithContext)]
 pub enum FuelVmInstruction {
     Gtf {
@@ -146,6 +234,7 @@ pub enum FuelVmInstruction {
         log_val: Value,
         log_ty: Type,
         log_id: Value,
+        log_data: Option<LogEventData>,
     },
     /// Reads a special register in the VM.
     ReadRegister(Register),
@@ -1482,13 +1571,20 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
         insert_instruction!(self, InstOp::Load(src_val))
     }
 
-    pub fn log(self, log_val: Value, log_ty: Type, log_id: Value) -> Value {
+    pub fn log(
+        self,
+        log_val: Value,
+        log_ty: Type,
+        log_id: Value,
+        log_data: Option<LogEventData>,
+    ) -> Value {
         insert_instruction!(
             self,
             InstOp::FuelVm(FuelVmInstruction::Log {
                 log_val,
                 log_ty,
-                log_id
+                log_id,
+                log_data
             })
         )
     }

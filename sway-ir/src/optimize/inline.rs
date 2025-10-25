@@ -509,9 +509,13 @@ fn inline_instruction(
                     log_val,
                     log_ty,
                     log_id,
-                } => new_block
-                    .append(context)
-                    .log(map_value(log_val), log_ty, map_value(log_id)),
+                    log_data,
+                } => new_block.append(context).log(
+                    map_value(log_val),
+                    log_ty,
+                    map_value(log_id),
+                    log_data,
+                ),
                 FuelVmInstruction::ReadRegister(reg) => {
                     new_block.append(context).read_register(reg)
                 }

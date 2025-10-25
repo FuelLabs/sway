@@ -405,7 +405,8 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         log_val,
                         log_ty,
                         log_id,
-                    } => self.compile_log(instr_val, log_val, log_ty, log_id),
+                        log_data,
+                    } => self.compile_log(instr_val, log_val, log_ty, log_id, log_data),
                     FuelVmInstruction::ReadRegister(reg) => {
                         self.compile_read_register(instr_val, reg);
                         Ok(())
@@ -1684,10 +1685,25 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         log_val: &Value,
         log_ty: &Type,
         log_id: &Value,
+        log_data: &Option<LogEventData>,
     ) -> Result<(), CompileError> {
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
         let log_val_reg = self.value_to_register(log_val)?;
         let log_id_reg = self.value_to_register(log_id)?;
+        let log_metadata_reg = if let Some(log_data) = log_data {
+            let encoded = log_data.encoded();
+            let reg = self.reg_seqr.next();
+            self.immediate_to_reg(
+                encoded,
+                reg.clone(),
+                None,
+                "load log event metadata",
+                owning_span.clone(),
+            );
+            reg
+        } else {
+            VirtualRegister::Constant(ConstantRegister::Zero)
+        };
 
         if !log_ty.is_ptr(self.context) {
             self.cur_bytecode.push(Op {
@@ -1732,7 +1748,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 self.cur_bytecode.push(Op {
                     owning_span,
                     opcode: Either::Left(VirtualOp::LOGD(
-                        VirtualRegister::Constant(ConstantRegister::Zero),
+                        log_metadata_reg.clone(),
                         log_id_reg,
                         ptr_reg,
                         size_reg,
@@ -1754,7 +1770,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 self.cur_bytecode.push(Op {
                     owning_span: owning_span.clone(),
                     opcode: Either::Left(VirtualOp::LOGD(
-                        VirtualRegister::Constant(ConstantRegister::Zero),
+                        log_metadata_reg,
                         log_id_reg.clone(),
                         log_val_reg.clone(),
                         size_reg,

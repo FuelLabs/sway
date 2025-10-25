@@ -12,6 +12,7 @@ mod context;
 mod contract_bytecode;
 mod ec_recover;
 mod ec_recover_and_match_predicate;
+mod events;
 mod evm;
 mod evm_ec_recover;
 mod exponentiation;
