@@ -12,6 +12,7 @@ use crate::{
     },
 };
 use anyhow::{bail, Context, Result};
+use forc::cli::shared::IrCliOpt;
 use forc_pkg::{self as pkg, DumpOpts, PackageManifestFile};
 use forc_pkg::{manifest::GenericManifestFile, MemberFilter};
 use forc_tracing::{println_action_green, println_warning};
@@ -43,7 +44,7 @@ use std::{
     sync::Arc,
     time::Duration,
 };
-use sway_core::{asm_generation::ProgramABI, language::parsed::TreeType, BuildTarget};
+use sway_core::{asm_generation::ProgramABI, language::parsed::TreeType, BuildTarget, IrCli};
 
 /// Default maximum contract size allowed for a single contract. If the target
 /// contract size is bigger than this amount, forc-deploy will automatically
@@ -848,6 +849,10 @@ fn build_opts_from_cmd(cmd: &cmd::Deploy, member_filter: pkg::MemberFilter) -> p
             ir: cmd.print.ir(),
             reverse_order: cmd.print.reverse_order,
         },
+        verify_ir: cmd
+            .verify_ir
+            .as_ref()
+            .map_or(IrCli::default(), |opts| IrCliOpt::from(opts).0),
         dump: DumpOpts::default(),
         time_phases: cmd.print.time_phases,
         profile: cmd.print.profile,

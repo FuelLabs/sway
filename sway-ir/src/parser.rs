@@ -21,7 +21,9 @@ pub fn parse<'eng>(
         };
         IrError::ParseFailure(err.to_string(), found.into())
     })?;
-    ir_builder::build_context(irmod, source_engine, experimental, backtrace)?.verify()
+    let ir = ir_builder::build_context(irmod, source_engine, experimental, backtrace)?;
+    ir.verify()?;
+    Ok(ir)
 }
 
 // -------------------------------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 use crate::{
-    cli::shared::{BuildOutput, BuildProfile, Minify, Pkg, Print},
+    cli::shared::{BuildOutput, BuildProfile, IrCliOpt, Minify, Pkg, Print},
     ops::forc_contract_id,
 };
 use clap::Parser;
@@ -22,6 +22,8 @@ pub struct Command {
     pub minify: Minify,
     #[clap(flatten)]
     pub print: Print,
+    #[arg(long, value_parser = clap::builder::PossibleValuesParser::new(IrCliOpt::cli_options()))]
+    pub verify_ir: Option<Vec<String>>,
     #[clap(flatten)]
     pub build_output: BuildOutput,
     #[clap(flatten)]
