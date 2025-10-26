@@ -165,6 +165,8 @@ impl ExperimentalFeatures {
 }
 
 features! {
+    abi_type_aliases = false,
+    "https://github.com/FuelLabs/sway/issues/TBD",
     new_encoding = true,
     "https://github.com/FuelLabs/sway/issues/5727",
     references = true,

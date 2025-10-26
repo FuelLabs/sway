@@ -37,9 +37,7 @@ impl TypeId {
                 | (TypeInfo::Custom { .. }, TypeInfo::Enum { .. }) => type_engine
                     .get(resolved_type_id)
                     .abi_str(handler, ctx, engines, true),
-                (_, TypeInfo::Alias { ty, .. }) => ty
-                    .type_id
-                    .get_abi_type_str(handler, ctx, engines, ty.type_id),
+                (_, TypeInfo::Alias { .. }) => Ok(self_abi_str),
                 (TypeInfo::Tuple(fields), TypeInfo::Tuple(resolved_fields)) => {
                     assert_eq!(fields.len(), resolved_fields.len());
                     let field_strs = resolved_fields
@@ -204,7 +202,7 @@ impl TypeInfo {
                 "__slice {}",
                 ty.abi_str(handler, ctx, engines, false)?
             )),
-            Alias { ty, .. } => Ok(ty.abi_str(handler, ctx, engines, false)?),
+            Alias { name, .. } => Ok(name.to_string()),
             TraitType {
                 name,
                 implemented_in: _,

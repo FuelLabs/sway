@@ -8,6 +8,11 @@
       "concreteTypeId": "41bd1a98f0a59642d8f824c805b798a5f268d1f7d05808eb05c4189c493f1be0",
       "metadataTypeId": 0,
       "type": "(u64, u64)"
+    },
+    {
+      "aliasOf": "41bd1a98f0a59642d8f824c805b798a5f268d1f7d05808eb05c4189c493f1be0",
+      "concreteTypeId": "0c549b98c3db49207607c6f5f063b081b1a724bc479a2a1b353ff2c60f3f1d49",
+      "type": "AliasedTuple"
     }
   ],
   "configurables": [],
@@ -18,7 +23,7 @@
       "attributes": null,
       "inputs": [
         {
-          "concreteTypeId": "41bd1a98f0a59642d8f824c805b798a5f268d1f7d05808eb05c4189c493f1be0",
+          "concreteTypeId": "0c549b98c3db49207607c6f5f063b081b1a724bc479a2a1b353ff2c60f3f1d49",
           "name": "arg1"
         }
       ],
