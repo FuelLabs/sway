@@ -32,6 +32,7 @@ pub(super) fn convert_literal_to_value(context: &mut Context, ast_literal: &Lite
         Literal::String(s) => ConstantContent::get_string(context, s.as_str().as_bytes().to_vec()),
         Literal::Boolean(b) => ConstantContent::get_bool(context, *b),
         Literal::B256(bs) => ConstantContent::get_b256(context, *bs),
+        Literal::Binary(bytes) => ConstantContent::get_untyped_slice(context, bytes.clone()),
     }
 }
 
@@ -50,6 +51,7 @@ pub(super) fn convert_literal_to_constant(
         Literal::String(s) => ConstantContent::new_string(context, s.as_str().as_bytes().to_vec()),
         Literal::Boolean(b) => ConstantContent::new_bool(context, *b),
         Literal::B256(bs) => ConstantContent::new_b256(context, *bs),
+        Literal::Binary(bytes) => ConstantContent::new_untyped_slice(context, bytes.clone()),
     };
     Constant::unique(context, c)
 }

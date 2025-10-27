@@ -140,6 +140,10 @@ impl Type {
         Self::get_type(context, &TypeContent::Pointer).expect("create_basic_types not called")
     }
 
+    pub fn new_untyped_slice(context: &mut Context) -> Type {
+        Self::get_or_create_unique_type(context, TypeContent::Slice)
+    }
+
     /// Get string type
     pub fn new_string_array(context: &mut Context, len: u64) -> Type {
         Self::get_or_create_unique_type(context, TypeContent::StringArray(len))
