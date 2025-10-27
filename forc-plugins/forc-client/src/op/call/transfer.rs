@@ -47,7 +47,7 @@ pub async fn transfer(
         tx_hash: tx_response.tx_id.to_string(),
         total_gas: tx_response.tx_status.total_gas,
         result: None,
-        receipts: tx_response.tx_status.receipts,
+        receipts: tx_response.tx_status.receipts.to_vec(),
         script: None,
         trace_events: vec![],
     })
