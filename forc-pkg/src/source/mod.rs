@@ -273,19 +273,41 @@ impl Source {
 
     /// If a patch exists for this dependency source within the given project
     /// manifest, this returns the patch.
+    ///
+    /// Supports patching both Git and Registry dependencies:
+    /// - Git: [patch.'https://github.com/org/repo']
+    /// - Registry (flat): [patch.forc.pub]
+    /// - Registry (namespaced): [patch."forc.pub/namespace"]
     fn dep_patch(
         &self,
         dep_name: &str,
         manifest: &PackageManifestFile,
     ) -> Result<Option<manifest::Dependency>> {
-        if let Source::Git(git) = self {
-            if let Some(patches) = manifest.resolve_patch(&git.repo.to_string())? {
-                if let Some(patch) = patches.get(dep_name) {
-                    return Ok(Some(patch.clone()));
-                }
+        // Helper to check if a patch exists for the given key
+        let check_patches = |patch_key: &str| -> Result<Option<manifest::Dependency>> {
+            let patches = manifest.resolve_patch(patch_key)?;
+            Ok(patches.and_then(|p| p.get(dep_name).cloned()))
+        };
+
+        match self {
+            Source::Git(git) => {
+                let git_url = git.repo.to_string();
+                check_patches(&git_url)
             }
+            Source::Registry(reg_source) => {
+                // Try namespace-specific patch first (more specific takes priority)
+                if let reg::file_location::Namespace::Domain(ns) = &reg_source.namespace {
+                    let namespaced_key = format!("{}/{}", reg::REGISTRY_PATCH_KEY, ns);
+                    if let Some(patch) = check_patches(&namespaced_key)? {
+                        return Ok(Some(patch));
+                    }
+                }
+
+                // Fall back to generic registry patch
+                check_patches(reg::REGISTRY_PATCH_KEY)
+            }
+            _ => Ok(None),
         }
-        Ok(None)
     }
 
     /// If a patch exists for the dependency associated with this source within
@@ -456,4 +478,292 @@ pub fn fetch_id(path: &Path, timestamp: std::time::Instant) -> u64 {
     path.hash(&mut hasher);
     timestamp.hash(&mut hasher);
     hasher.finish()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::manifest::{Dependency, DependencyDetails, PackageManifest};
+    use std::collections::BTreeMap;
+
+    /// Helper to create a minimal test manifest file with patch table
+    fn create_test_manifest_file_with_patches(
+        patches: BTreeMap<String, BTreeMap<String, Dependency>>,
+    ) -> (tempfile::TempDir, PackageManifestFile) {
+        // Create a minimal TOML string
+        let mut toml_str = r#"[project]
+name = "test_pkg"
+license = "Apache-2.0"
+entry = "main.sw"
+implicit-std = false
+"#.to_string();
+
+        // Add patches if any
+        if !patches.is_empty() {
+            toml_str.push_str("\n");
+            for (patch_key, patch_deps) in patches {
+                toml_str.push_str(&format!("[patch.'{}']\n", patch_key));
+                for (dep_name, dep) in patch_deps {
+                    // Manually construct the dependency string
+                    let dep_toml = match dep {
+                        Dependency::Simple(ver) => format!(r#""{ver}""#),
+                        Dependency::Detailed(det) => {
+                            let mut parts = Vec::new();
+                            if let Some(path) = &det.path {
+                                parts.push(format!(r#"path = "{path}""#));
+                            }
+                            if let Some(git) = &det.git {
+                                parts.push(format!(r#"git = "{git}""#));
+                            }
+                            if let Some(branch) = &det.branch {
+                                parts.push(format!(r#"branch = "{branch}""#));
+                            }
+                            if let Some(tag) = &det.tag {
+                                parts.push(format!(r#"tag = "{tag}""#));
+                            }
+                            if let Some(version) = &det.version {
+                                parts.push(format!(r#"version = "{version}""#));
+                            }
+                            format!("{{ {} }}", parts.join(", "))
+                        }
+                    };
+                    toml_str.push_str(&format!("{} = {}\n", dep_name, dep_toml));
+                }
+            }
+        }
+
+        // Create necessary directory structure
+        let temp_dir = tempfile::tempdir().unwrap();
+        let src_dir = temp_dir.path().join("src");
+        std::fs::create_dir(&src_dir).unwrap();
+
+        // Create a minimal main.sw file
+        let main_sw_path = src_dir.join("main.sw");
+        std::fs::write(&main_sw_path, "contract;").unwrap();
+
+        // Write manifest file
+        let manifest_path = temp_dir.path().join("Forc.toml");
+        std::fs::write(&manifest_path, toml_str).unwrap();
+
+        // Read back as PackageManifestFile
+        let manifest_file = PackageManifestFile::from_file(&manifest_path).unwrap();
+
+        (temp_dir, manifest_file)
+    }
+
+    /// Helper to create a path dependency
+    fn path_dep(path: &str) -> Dependency {
+        Dependency::Detailed(DependencyDetails {
+            path: Some(path.to_string()),
+            ..Default::default()
+        })
+    }
+
+    /// Helper to create a git dependency
+    fn git_dep(repo: &str, branch: &str) -> Dependency {
+        Dependency::Detailed(DependencyDetails {
+            git: Some(repo.to_string()),
+            branch: Some(branch.to_string()),
+            ..Default::default()
+        })
+    }
+
+    #[test]
+    fn test_registry_patch_flat_namespace() {
+        // Create a registry source with flat namespace
+        let source = Source::Registry(reg::Source {
+            name: "std".to_string(),
+            version: semver::Version::new(0, 63, 0),
+            namespace: reg::file_location::Namespace::Flat,
+        });
+
+        // Create a manifest with a forc.pub patch
+        let mut patches = BTreeMap::new();
+        let mut forc_pub_patches = BTreeMap::new();
+        forc_pub_patches.insert("std".to_string(), path_dep("../local-std"));
+        patches.insert("forc.pub".to_string(), forc_pub_patches);
+
+        let (_temp_dir, manifest_file) = create_test_manifest_file_with_patches(patches);
+
+        // Test that the patch is found
+        let patch = source.dep_patch("std", &manifest_file).unwrap();
+        assert!(patch.is_some(), "Should find patch for flat namespace registry dependency");
+
+        let patch = patch.unwrap();
+        match patch {
+            Dependency::Detailed(det) => {
+                assert_eq!(det.path, Some("../local-std".to_string()));
+            }
+            _ => panic!("Expected detailed dependency"),
+        }
+    }
+
+    #[test]
+    fn test_registry_patch_domain_namespace() {
+        // Create a registry source with domain namespace
+        let source = Source::Registry(reg::Source {
+            name: "fuel-core".to_string(),
+            version: semver::Version::new(1, 0, 0),
+            namespace: reg::file_location::Namespace::Domain("com/fuel".to_string()),
+        });
+
+        // Create a manifest with a namespaced patch
+        let mut patches = BTreeMap::new();
+        let mut namespaced_patches = BTreeMap::new();
+        namespaced_patches.insert("fuel-core".to_string(), path_dep("../local-fuel-core"));
+        patches.insert("forc.pub/com/fuel".to_string(), namespaced_patches);
+
+        let (_temp_dir, manifest_file) = create_test_manifest_file_with_patches(patches);
+
+        // Test that the patch is found
+        let patch = source.dep_patch("fuel-core", &manifest_file).unwrap();
+        assert!(patch.is_some(), "Should find patch for domain namespace registry dependency");
+
+        let patch = patch.unwrap();
+        match patch {
+            Dependency::Detailed(det) => {
+                assert_eq!(det.path, Some("../local-fuel-core".to_string()));
+            }
+            _ => panic!("Expected detailed dependency"),
+        }
+    }
+
+    #[test]
+    fn test_registry_patch_namespace_priority() {
+        // Create a registry source with domain namespace
+        let source = Source::Registry(reg::Source {
+            name: "my-lib".to_string(),
+            version: semver::Version::new(2, 0, 0),
+            namespace: reg::file_location::Namespace::Domain("com/myorg".to_string()),
+        });
+
+        // Create a manifest with BOTH namespaced and generic patches
+        let mut patches = BTreeMap::new();
+
+        // Namespace-specific patch
+        let mut namespaced_patches = BTreeMap::new();
+        namespaced_patches.insert("my-lib".to_string(), path_dep("../namespaced-lib"));
+        patches.insert("forc.pub/com/myorg".to_string(), namespaced_patches);
+
+        // Generic patch
+        let mut generic_patches = BTreeMap::new();
+        generic_patches.insert("my-lib".to_string(), path_dep("../generic-lib"));
+        patches.insert("forc.pub".to_string(), generic_patches);
+
+        let (_temp_dir, manifest_file) = create_test_manifest_file_with_patches(patches);
+
+        // Test that namespace-specific patch takes priority
+        let patch = source.dep_patch("my-lib", &manifest_file).unwrap();
+        assert!(patch.is_some(), "Should find patch");
+
+        let patch = patch.unwrap();
+        match patch {
+            Dependency::Detailed(det) => {
+                assert_eq!(
+                    det.path,
+                    Some("../namespaced-lib".to_string()),
+                    "Should use namespace-specific patch, not generic patch"
+                );
+            }
+            _ => panic!("Expected detailed dependency"),
+        }
+    }
+
+    #[test]
+    fn test_registry_patch_fallback_to_generic() {
+        // Create a registry source with domain namespace
+        let source = Source::Registry(reg::Source {
+            name: "common-lib".to_string(),
+            version: semver::Version::new(1, 0, 0),
+            namespace: reg::file_location::Namespace::Domain("com/myorg".to_string()),
+        });
+
+        // Create a manifest with ONLY generic patch (no namespace-specific)
+        let mut patches = BTreeMap::new();
+        let mut generic_patches = BTreeMap::new();
+        generic_patches.insert("common-lib".to_string(), path_dep("../common-lib"));
+        patches.insert("forc.pub".to_string(), generic_patches);
+
+        let (_temp_dir, manifest_file) = create_test_manifest_file_with_patches(patches);
+
+        // Test that it falls back to generic patch
+        let patch = source.dep_patch("common-lib", &manifest_file).unwrap();
+        assert!(patch.is_some(), "Should find generic patch as fallback");
+
+        let patch = patch.unwrap();
+        match patch {
+            Dependency::Detailed(det) => {
+                assert_eq!(det.path, Some("../common-lib".to_string()));
+            }
+            _ => panic!("Expected detailed dependency"),
+        }
+    }
+
+    #[test]
+    fn test_git_patch_still_works() {
+        // Create a git source
+        let repo_url = "https://github.com/fuellabs/sway";
+        let source = Source::Git(git::Source {
+            repo: git::Url::from_str(repo_url).unwrap(),
+            reference: git::Reference::Tag("v0.63.0".to_string()),
+        });
+
+        // Create a manifest with a git patch
+        let mut patches = BTreeMap::new();
+        let mut git_patches = BTreeMap::new();
+        git_patches.insert(
+            "std".to_string(),
+            git_dep("https://github.com/fuellabs/sway", "feature-branch"),
+        );
+        patches.insert(repo_url.to_string(), git_patches);
+
+        let (_temp_dir, manifest_file) = create_test_manifest_file_with_patches(patches);
+
+        // Test that git patch still works
+        let patch = source.dep_patch("std", &manifest_file).unwrap();
+        assert!(patch.is_some(), "Should find git patch (backward compatibility)");
+
+        let patch = patch.unwrap();
+        match patch {
+            Dependency::Detailed(det) => {
+                assert_eq!(det.git, Some("https://github.com/fuellabs/sway".to_string()));
+                assert_eq!(det.branch, Some("feature-branch".to_string()));
+            }
+            _ => panic!("Expected detailed dependency"),
+        }
+    }
+
+    #[test]
+    fn test_no_patch_found() {
+        // Create a registry source
+        let source = Source::Registry(reg::Source {
+            name: "no-patch-lib".to_string(),
+            version: semver::Version::new(1, 0, 0),
+            namespace: reg::file_location::Namespace::Flat,
+        });
+
+        // Create a manifest with patches for different packages
+        let mut patches = BTreeMap::new();
+        let mut forc_pub_patches = BTreeMap::new();
+        forc_pub_patches.insert("other-lib".to_string(), path_dep("../other-lib"));
+        patches.insert("forc.pub".to_string(), forc_pub_patches);
+
+        let (_temp_dir, manifest_file) = create_test_manifest_file_with_patches(patches);
+
+        // Test that no patch is found
+        let patch = source.dep_patch("no-patch-lib", &manifest_file).unwrap();
+        assert!(patch.is_none(), "Should not find patch for different package");
+    }
+
+    #[test]
+    fn test_path_source_no_patch() {
+        // Path sources should not have patches
+        let source = Source::Path(PathBuf::from("/some/path"));
+
+        let (_temp_dir, manifest_file) = create_test_manifest_file_with_patches(BTreeMap::new());
+
+        // Test that no patch is found for path sources
+        let patch = source.dep_patch("anything", &manifest_file).unwrap();
+        assert!(patch.is_none(), "Path sources should not support patches");
+    }
 }
