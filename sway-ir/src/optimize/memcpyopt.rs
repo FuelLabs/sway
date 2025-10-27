@@ -1206,14 +1206,24 @@ fn copy_prop_reverse(
     // Take a transitive closure of src_to_dst.
     {
         let mut changed = true;
+        let mut cycle_detected = false;
         while changed {
             changed = false;
             src_to_dst.clone().iter().for_each(|(src, dst)| {
                 if let Some(next_dst) = src_to_dst.get(dst) {
+                    // Cycle detection
+                    if *next_dst == *src {
+                        cycle_detected = true;
+                        return;
+                    }
                     src_to_dst.insert(*src, *next_dst);
                     changed = true;
                 }
             });
+        }
+        if cycle_detected {
+            // We cannot optimize in presence of cycles.
+            return Ok(modified);
         }
     }
 
