@@ -498,7 +498,8 @@ name = "test_pkg"
 license = "Apache-2.0"
 entry = "main.sw"
 implicit-std = false
-"#.to_string();
+"#
+        .to_string();
 
         // Add patches if any
         if !patches.is_empty() {
@@ -589,7 +590,10 @@ implicit-std = false
 
         // Test that the patch is found
         let patch = source.dep_patch("std", &manifest_file).unwrap();
-        assert!(patch.is_some(), "Should find patch for flat namespace registry dependency");
+        assert!(
+            patch.is_some(),
+            "Should find patch for flat namespace registry dependency"
+        );
 
         let patch = patch.unwrap();
         match patch {
@@ -619,7 +623,10 @@ implicit-std = false
 
         // Test that the patch is found
         let patch = source.dep_patch("fuel-core", &manifest_file).unwrap();
-        assert!(patch.is_some(), "Should find patch for domain namespace registry dependency");
+        assert!(
+            patch.is_some(),
+            "Should find patch for domain namespace registry dependency"
+        );
 
         let patch = patch.unwrap();
         match patch {
@@ -723,12 +730,18 @@ implicit-std = false
 
         // Test that git patch still works
         let patch = source.dep_patch("std", &manifest_file).unwrap();
-        assert!(patch.is_some(), "Should find git patch (backward compatibility)");
+        assert!(
+            patch.is_some(),
+            "Should find git patch (backward compatibility)"
+        );
 
         let patch = patch.unwrap();
         match patch {
             Dependency::Detailed(det) => {
-                assert_eq!(det.git, Some("https://github.com/fuellabs/sway".to_string()));
+                assert_eq!(
+                    det.git,
+                    Some("https://github.com/fuellabs/sway".to_string())
+                );
                 assert_eq!(det.branch, Some("feature-branch".to_string()));
             }
             _ => panic!("Expected detailed dependency"),
@@ -754,7 +767,10 @@ implicit-std = false
 
         // Test that no patch is found
         let patch = source.dep_patch("no-patch-lib", &manifest_file).unwrap();
-        assert!(patch.is_none(), "Should not find patch for different package");
+        assert!(
+            patch.is_none(),
+            "Should not find patch for different package"
+        );
     }
 
     #[test]

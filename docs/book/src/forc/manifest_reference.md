@@ -296,8 +296,8 @@ std = { git = "https://github.com/fuellabs/sway", branch = "my-feature" }
 
 ### Important Notes
 
-- **Quotes are required**: Each key after `[patch]` must be in quotes (e.g., `[patch.'forc.pub']`) because they contain special characters. Without quotes, TOML will interpret dots as nested tables.
-- **Source matching**: Git patches match Git dependencies, and registry patches match registry dependencies.
+* **Quotes are required**: Each key after `[patch]` must be in quotes (e.g., `[patch.'forc.pub']`) because they contain special characters. Without quotes, TOML will interpret dots as nested tables.
+* **Source matching**: Git patches match Git dependencies, and registry patches match registry dependencies.
 
 ## The `[contract-dependencies]` section
 
