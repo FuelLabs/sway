@@ -7,9 +7,7 @@ use dialoguer::{theme::ColorfulTheme, Confirm, Password, Select};
 use forc_tracing::{println_action_green, println_warning};
 use forc_wallet::{
     account::{derive_secret_key, new_at_index_cli},
-    balance::{
-        collect_accounts_with_verification, AccountBalances, AccountVerification, AccountsMap,
-    },
+    balance::{collect_accounts_with_verification, AccountBalances, AccountVerification},
     import::{import_wallet_cli, Import},
     new::{new_wallet_cli, New},
     utils::default_wallet_path,
@@ -29,6 +27,8 @@ use fuels_accounts::{
 use std::{collections::BTreeMap, path::Path, str::FromStr};
 
 use super::aws::{AwsClient, AwsConfig};
+
+type AccountsMap = BTreeMap<usize, fuel_tx::Address>;
 
 #[derive(PartialEq, Eq)]
 pub enum SignerSelectionMode {
@@ -61,7 +61,7 @@ async fn collect_user_accounts(
     wallet_path: &Path,
     password: &str,
     node_url: &str,
-) -> Result<BTreeMap<usize, fuel_tx::Address>> {
+) -> Result<AccountsMap> {
     let verification = AccountVerification::Yes(password.to_string());
     let node_url = reqwest::Url::parse(node_url)
         .map_err(|e| anyhow::anyhow!("Failed to parse node URL: {}", e))?;
@@ -74,6 +74,13 @@ async fn collect_user_accounts(
                 e
             }
         })?;
+    let accounts = accounts
+        .into_iter()
+        .map(|(index, address)| {
+            let bytes: [u8; fuel_tx::Address::LEN] = address.into();
+            (index, fuel_tx::Address::from(bytes))
+        })
+        .collect();
     Ok(accounts)
 }
 
@@ -129,7 +136,8 @@ pub(crate) fn secret_key_from_forc_wallet(
             e
         }
     })?;
-    Ok(secret_key)
+    SecretKey::try_from(secret_key.as_ref())
+        .map_err(|e| anyhow::anyhow!("Failed to convert secret key: {e}"))
 }
 
 pub(crate) fn select_manual_secret_key(

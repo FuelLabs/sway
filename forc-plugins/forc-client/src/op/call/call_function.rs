@@ -31,7 +31,7 @@ use fuels_core::{
         ContractId,
     },
 };
-use std::{collections::HashMap, str::FromStr};
+use std::{collections::HashMap, str::FromStr, sync::Arc};
 
 /// Calls a contract function with the given parameters
 pub async fn call_function(
@@ -239,7 +239,7 @@ pub async fn call_function(
                         id: tx.id(chain_id),
                         result: TransactionExecutionResult::Success {
                             result: program_state,
-                            receipts,
+                            receipts: Arc::new(receipts),
                             total_gas,
                             total_fee,
                         },
@@ -258,7 +258,7 @@ pub async fn call_function(
                         id: tx.id(chain_id),
                         result: TransactionExecutionResult::Failed {
                             result: program_state,
-                            receipts,
+                            receipts: Arc::new(receipts),
                             total_gas,
                             total_fee,
                         },

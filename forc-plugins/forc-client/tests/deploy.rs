@@ -998,7 +998,7 @@ async fn deploy_script_calls() {
 
     receipts.iter().find(|receipt| {
         if let fuel_tx::Receipt::LogData { data, .. } = receipt {
-            data == &Some(vec![0x08])
+            matches!(data.as_ref(), Some(bytes) if bytes.as_ref() == [0x08])
         } else {
             false
         }
