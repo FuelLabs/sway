@@ -2,6 +2,7 @@ library;
 
 use std::{b512::B512, vm::evm::{ecr::ec_recover_evm_address, evm_address::EvmAddress}};
 
+#[allow(deprecated)]
 #[test]
 fn ecr_ec_recover() {
     let hi_1 = 0xbd0c9b8792876713afa8bff383eebf31c43437823ed761cc3600d0016de5110c;
