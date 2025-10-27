@@ -276,8 +276,10 @@ impl Source {
     ///
     /// Supports patching both Git and Registry dependencies:
     /// - Git: [patch.'https://github.com/org/repo']
-    /// - Registry (flat): [patch.forc.pub]
-    /// - Registry (namespaced): [patch."forc.pub/namespace"]
+    /// - Registry: [patch.'forc.pub']
+    ///
+    /// Note: Quotes are required around patch keys containing dots to follow TOML spec.
+    /// Without quotes, `[patch.forc.pub]` creates nested tables instead of a single key.
     fn dep_patch(
         &self,
         dep_name: &str,

@@ -220,7 +220,11 @@ experimental-private-modules = false
 
 ## The `[patch]` Section
 
-The [patch] section of `Forc.toml` can be used to override dependencies with other copies. The example provided below patches `https://github.com/fuellabs/sway` with the `test` branch of the same repo.
+The `[patch]` section of `Forc.toml` can be used to override dependencies with other copies. This is useful for testing local changes, using unreleased features, or debugging dependencies.
+
+### Patching Git Dependencies
+
+The example provided below patches `https://github.com/fuellabs/sway` with the `test` branch of the same repo.
 
 ```toml
 [project]
@@ -260,7 +264,40 @@ foo = { git = "https://github.com/foo/foo", branch = "master" }
 foo = { git = "https://github.com/foo/foo", branch = "test" }
 ```
 
-Note that each key after the `[patch]` is a URL of the source that is being patched.
+### Patching Registry Dependencies
+
+You can also patch dependencies from the registry (forc.pub) in the same way. This is particularly useful for testing local changes to `std` or other registry packages.
+
+```toml
+[project]
+authors = ["user"]
+entry = "main.sw"
+license = "Apache-2.0"
+name = "my_contract"
+
+[dependencies]
+std = "0.70.1"
+
+[patch.'forc.pub']
+std = { path = "../sway/sway-lib-std" }
+```
+
+In the example above, even though `std` version `0.70.1` would normally be fetched from the registry, the local path version is used instead.
+
+You can also patch registry dependencies with a git repository:
+
+```toml
+[dependencies]
+std = "0.70.1"
+
+[patch.'forc.pub']
+std = { git = "https://github.com/fuellabs/sway", branch = "my-feature" }
+```
+
+### Important Notes
+
+- **Quotes are required**: Each key after `[patch]` must be in quotes (e.g., `[patch.'forc.pub']`) because they contain special characters. Without quotes, TOML will interpret dots as nested tables.
+- **Source matching**: Git patches match Git dependencies, and registry patches match registry dependencies.
 
 ## The `[contract-dependencies]` section
 
