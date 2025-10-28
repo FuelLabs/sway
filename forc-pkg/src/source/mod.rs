@@ -503,7 +503,7 @@ implicit-std = false
 
         // Add patches if any
         if !patches.is_empty() {
-            toml_str.push_str('\n');
+            toml_str.push('\n');
             for (patch_key, patch_deps) in patches {
                 toml_str.push_str(&format!("[patch.'{}']\n", patch_key));
                 for (dep_name, dep) in patch_deps {
