@@ -28,6 +28,10 @@ use tar::Archive;
 /// Name of the folder containing fetched registry sources.
 pub const REG_DIR_NAME: &str = "registry";
 
+/// Registry identifier for use in patch tables.
+/// This allows users to patch registry dependencies like: [patch.forc.pub]
+pub const REGISTRY_PATCH_KEY: &str = "forc.pub";
+
 /// A package from the official registry.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct Source {

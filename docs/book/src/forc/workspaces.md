@@ -32,18 +32,29 @@ The `[patch]` section can be used to override any dependency in the workspace de
 
 It is not allowed to declare patch table in member of a workspace if the workspace manifest file contains a patch table.
 
-Example:
+Example with Git dependency:
 
 ```toml
 [workspace]
 members = ["member1", "path/to/member2"]
-
 
 [patch.'https://github.com/fuellabs/sway']
 std = { git = "https://github.com/fuellabs/sway", branch = "test" }
 ```
 
 In the above example each occurrence of `std` as a dependency in the workspace will be changed with `std` from `test` branch of sway repo.
+
+Example with registry dependency:
+
+```toml
+[workspace]
+members = ["contract-a", "contract-b", "script"]
+
+[patch.'forc.pub']
+std = { path = "../custom-std" }
+```
+
+In this example, all workspace members will use the local custom version of `std` instead of the registry version.
 
 ## Some `forc` commands that support workspaces
 
