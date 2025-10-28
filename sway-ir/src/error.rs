@@ -51,6 +51,8 @@ pub enum IrError {
     VerifyLocalMissingInitializer(String, String),
     VerifyLogId,
     VerifyLogMismatchedTypes,
+    VerifyLogEventDataVersion(u8),
+    VerifyLogEventDataInvalid(String),
     VerifyMemcopyNonPointer(String),
     VerifyMemcopyMismatchedTypes(String, String),
     VerifyMemClearValNonPointer(String),
@@ -405,6 +407,18 @@ impl fmt::Display for IrError {
                 write!(
                     f,
                     "Verification failed: log type must match the type of the value being logged."
+                )
+            }
+            IrError::VerifyLogEventDataVersion(version) => {
+                write!(
+                    f,
+                    "Verification failed: unsupported log event metadata version {version}."
+                )
+            }
+            IrError::VerifyLogEventDataInvalid(reason) => {
+                write!(
+                    f,
+                    "Verification failed: invalid log event metadata ({reason})."
                 )
             }
             IrError::VerifyRevertCodeBadType => {

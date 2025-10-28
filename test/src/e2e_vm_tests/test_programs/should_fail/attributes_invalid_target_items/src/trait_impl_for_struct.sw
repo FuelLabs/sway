@@ -18,6 +18,8 @@ struct S {
 #[fallback(invalid)]
 #[error_type(invalid)]
 #[error(invalid)]
+#[event]
+#[indexed]
 impl T for S {
     #[storage(invalid)]
     #[inline(invalid)]
@@ -29,5 +31,7 @@ impl T for S {
     #[fallback(invalid)]
     #[error_type(invalid)]
     #[error(invalid)]
+    #[event]
+    #[indexed]
     type Type = u8;
 }

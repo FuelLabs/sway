@@ -30,6 +30,7 @@ pub fn parse<'eng>(
 
 mod ir_builder {
     use slotmap::KeyData;
+    use std::convert::TryFrom;
     use sway_features::ExperimentalFeatures;
     use sway_types::{ident::Ident, span::Span, u256::U256, SourceEngine};
 
@@ -415,9 +416,28 @@ mod ir_builder {
                     IrAstOperation::Load(src)
                 }
 
+            rule log_event_data() -> LogEventData
+                = _ "log_data" _ "(" _
+                    "version" _ ":" _ version:decimal() comma()
+                    "is_event" _ ":" _ is_event:bool_lit() comma()
+                    "is_indexed" _ ":" _ is_indexed:bool_lit() comma()
+                    "event_type_size" _ ":" _ event_type_size:decimal() comma()
+                    "num_elements" _ ":" _ num_elements:decimal()
+                    _ ")" {
+                    LogEventData::new(
+                        u8::try_from(version).expect("log event data version must fit in u8"),
+                        is_event,
+                        is_indexed,
+                        u8::try_from(event_type_size)
+                            .expect("log event data size must fit in u8"),
+                        u16::try_from(num_elements)
+                            .expect("log event data count must fit in u16"),
+                    )
+                }
+
             rule op_log() -> IrAstOperation
-                = "log" _ log_ty:ast_ty() log_val:id() comma() log_id:id() {
-                    IrAstOperation::Log(log_ty, log_val, log_id)
+                = "log" _ log_ty:ast_ty() log_val:id() comma() log_id:id() log_data:log_event_data()? _ {
+                    IrAstOperation::Log(log_ty, log_val, log_id, log_data)
                 }
 
             rule op_mem_copy_bytes() -> IrAstOperation
@@ -718,6 +738,10 @@ mod ir_builder {
                     d
                 }
 
+            rule bool_lit() -> bool
+                = "true" _ { true }
+                / "false" _ { false }
+
             // String of decimal digits without discarding whitespace. (Useful for newline
             // sensitive metadata).
             rule dec_digits() -> u64
@@ -764,7 +788,7 @@ mod ir_builder {
         value::Value,
         variable::LocalVar,
         Backtrace, BinaryOpKind, BlockArgument, ConfigContent, Constant, GlobalVar, Instruction,
-        StorageKey, UnaryOpKind, B256,
+        LogEventData, StorageKey, UnaryOpKind, B256,
     };
 
     #[derive(Debug)]
@@ -850,7 +874,7 @@ mod ir_builder {
         Gtf(String, u64),
         IntToPtr(String, IrAstTy),
         Load(String),
-        Log(IrAstTy, String, String),
+        Log(IrAstTy, String, String, Option<LogEventData>),
         MemCopyBytes(String, String, u64),
         MemCopyVal(String, String),
         MemClearVal(String),
@@ -1470,7 +1494,7 @@ mod ir_builder {
                         .append(context)
                         .load(*val_map.get(&src_name).unwrap())
                         .add_metadatum(context, opt_metadata),
-                    IrAstOperation::Log(log_ty, log_val, log_id) => {
+                    IrAstOperation::Log(log_ty, log_val, log_id, log_data) => {
                         let log_ty = log_ty.to_ir_type(context);
                         block
                             .append(context)
@@ -1478,6 +1502,7 @@ mod ir_builder {
                                 *val_map.get(&log_val).unwrap(),
                                 log_ty,
                                 *val_map.get(&log_id).unwrap(),
+                                log_data,
                             )
                             .add_metadatum(context, opt_metadata)
                     }

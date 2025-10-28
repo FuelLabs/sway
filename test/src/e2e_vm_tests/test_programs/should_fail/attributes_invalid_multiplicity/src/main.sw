@@ -13,6 +13,7 @@ mod fallback_attr;
 mod error_type_attr;
 mod error_attr;
 mod abi_name_attr;
+mod event_indexed_attr;
 
 /// Outer doc comment supports multiple.
 /// Outer doc comment supports multiple.

@@ -16,8 +16,8 @@ use crate::{
     value::{Value, ValueDatum},
     variable::LocalVar,
     AnalysisResult, AnalysisResultT, AnalysisResults, BinaryOpKind, Block, BlockArgument,
-    BranchToWithArgs, Doc, GlobalVar, Module, Pass, PassMutability, ScopedPass, StorageKey,
-    TypeOption, UnaryOpKind,
+    BranchToWithArgs, Doc, GlobalVar, LogEventData, Module, Pass, PassMutability, ScopedPass,
+    StorageKey, TypeOption, UnaryOpKind,
 };
 
 pub struct ModuleVerifierResult;
@@ -294,7 +294,8 @@ impl InstructionVerifier<'_, '_> {
                         log_val,
                         log_ty,
                         log_id,
-                    } => self.verify_log(log_val, log_ty, log_id)?,
+                        log_data,
+                    } => self.verify_log(log_val, log_ty, log_id, log_data)?,
                     FuelVmInstruction::ReadRegister(_) => (),
                     FuelVmInstruction::JmpMem => (),
                     FuelVmInstruction::Revert(val) => self.verify_revert(val)?,
@@ -919,7 +920,13 @@ impl InstructionVerifier<'_, '_> {
             .map(|_| ())
     }
 
-    fn verify_log(&self, log_val: &Value, log_ty: &Type, log_id: &Value) -> Result<(), IrError> {
+    fn verify_log(
+        &self,
+        log_val: &Value,
+        log_ty: &Type,
+        log_id: &Value,
+        log_data: &Option<LogEventData>,
+    ) -> Result<(), IrError> {
         if !log_id
             .get_type(self.context)
             .is(Type::is_uint64, self.context)
@@ -929,6 +936,30 @@ impl InstructionVerifier<'_, '_> {
 
         if self.opt_ty_not_eq(&log_val.get_type(self.context), &Some(*log_ty)) {
             return Err(IrError::VerifyLogMismatchedTypes);
+        }
+
+        if let Some(log_data) = log_data {
+            if log_data.version() != LogEventData::CURRENT_VERSION {
+                return Err(IrError::VerifyLogEventDataVersion(log_data.version()));
+            }
+
+            if !log_data.is_event() {
+                return Err(IrError::VerifyLogEventDataInvalid(
+                    "log metadata must describe an event".into(),
+                ));
+            }
+
+            if log_data.is_indexed() {
+                if log_data.num_elements() == 0 || log_data.event_type_size() == 0 {
+                    return Err(IrError::VerifyLogEventDataInvalid(
+                        "indexed event metadata requires non-zero element count and size".into(),
+                    ));
+                }
+            } else if log_data.num_elements() != 0 || log_data.event_type_size() != 0 {
+                return Err(IrError::VerifyLogEventDataInvalid(
+                    "non-indexed event metadata must not include element size or count".into(),
+                ));
+            }
         }
 
         Ok(())
