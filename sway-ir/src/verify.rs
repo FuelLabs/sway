@@ -46,12 +46,12 @@ pub fn create_module_verifier_pass() -> Pass {
 
 impl Context<'_> {
     /// Verify the contents of this [`Context`] is valid.
-    pub fn verify(self) -> Result<Self, IrError> {
+    pub fn verify(&self) -> Result<(), IrError> {
         for (module, _) in &self.modules {
             let module = Module(module);
             self.verify_module(module)?;
         }
-        Ok(self)
+        Ok(())
     }
 
     fn verify_module(&self, module: Module) -> Result<(), IrError> {

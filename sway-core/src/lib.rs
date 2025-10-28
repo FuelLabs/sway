@@ -36,9 +36,7 @@ pub use asm_generation::from_ir::compile_ir_context_to_finalized_asm;
 use asm_generation::FinalizedAsm;
 pub use asm_generation::{CompiledBytecode, FinalizedEntry};
 pub use build_config::DbgGeneration;
-pub use build_config::{
-    Backtrace, BuildConfig, BuildTarget, LspConfig, OptLevel, PrintAsm, PrintIr,
-};
+pub use build_config::{Backtrace, BuildConfig, BuildTarget, IrCli, LspConfig, OptLevel, PrintAsm};
 use control_flow_analysis::ControlFlowGraph;
 pub use debug_generation::write_dwarf;
 use itertools::Itertools;
@@ -58,9 +56,10 @@ use sway_error::warning::{CollectedTraitImpl, CompileInfo, CompileWarning, Info,
 use sway_features::ExperimentalFeatures;
 use sway_ir::{
     create_o1_pass_group, register_known_passes, Context, Kind, Module, PassGroup, PassManager,
-    PrintPassesOpts, ARG_DEMOTION_NAME, ARG_POINTEE_MUTABILITY_TAGGER_NAME, CONST_DEMOTION_NAME,
-    DCE_NAME, FN_DEDUP_DEBUG_PROFILE_NAME, FN_INLINE_NAME, GLOBALS_DCE_NAME, MEM2REG_NAME,
-    MEMCPYOPT_NAME, MISC_DEMOTION_NAME, RET_DEMOTION_NAME, SIMPLIFY_CFG_NAME, SROA_NAME,
+    PrintPassesOpts, VerifyPassesOpts, ARG_DEMOTION_NAME, ARG_POINTEE_MUTABILITY_TAGGER_NAME,
+    CONST_DEMOTION_NAME, DCE_NAME, FN_DEDUP_DEBUG_PROFILE_NAME, FN_INLINE_NAME, GLOBALS_DCE_NAME,
+    MEM2REG_NAME, MEMCPYOPT_NAME, MISC_DEMOTION_NAME, RET_DEMOTION_NAME, SIMPLIFY_CFG_NAME,
+    SROA_NAME,
 };
 use sway_types::span::Source;
 use sway_types::{SourceEngine, SourceLocation, Span};
@@ -1333,15 +1332,20 @@ pub(crate) fn compile_ast_to_ir_to_asm(
 
     // Run the passes.
     let print_passes_opts: PrintPassesOpts = (&build_config.print_ir).into();
-    let res =
-        if let Err(ir_error) = pass_mgr.run_with_print(&mut ir, &pass_group, &print_passes_opts) {
-            Err(handler.emit_err(CompileError::InternalOwned(
-                ir_error.to_string(),
-                span::Span::dummy(),
-            )))
-        } else {
-            Ok(())
-        };
+    let verify_passes_opts: VerifyPassesOpts = (&build_config.verify_ir).into();
+    let res = if let Err(ir_error) = pass_mgr.run_with_print_verify(
+        &mut ir,
+        &pass_group,
+        &print_passes_opts,
+        &verify_passes_opts,
+    ) {
+        Err(handler.emit_err(CompileError::InternalOwned(
+            ir_error.to_string(),
+            span::Span::dummy(),
+        )))
+    } else {
+        Ok(())
+    };
     res?;
 
     compile_ir_context_to_finalized_asm(handler, &ir, Some(build_config))
