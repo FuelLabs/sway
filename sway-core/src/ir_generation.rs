@@ -440,7 +440,8 @@ pub fn compile_program<'a>(
             ir_error.to_string(),
             Span::dummy(),
         )]
-    })
+    })?;
+    Ok(ctx)
 }
 
 fn type_correction(ctx: &mut Context) -> Result<(), IrError> {

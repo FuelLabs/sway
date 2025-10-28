@@ -221,6 +221,7 @@ fn math_power_u256() {
     let zero = 0x00u256;
     let one = 0x01u256;
     let two = 0x02u256;
+    let three = 0x03u256;
     let four = 0x04u256;
     let five = 0x05u256;
     let eight = 0x08u256;
@@ -241,6 +242,9 @@ fn math_power_u256() {
 
     assert(two.pow(3) == eight);
     assert(two ** 3 == eight);
+
+    assert(three.pow(2) == nine);
+    assert(three ** 2 == nine);
 
     assert(0x2au256.pow(2) == 0x06e4u256);
     assert(0x2au256 ** 2 == 0x06e4u256);

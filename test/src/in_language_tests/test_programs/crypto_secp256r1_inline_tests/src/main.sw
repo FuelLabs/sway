@@ -165,7 +165,7 @@ fn secp256r1_verify_address() {
     let lo_2 = 0x44ac566bd156b4fc71a4a4cb2655d3dd360c695edb17dc3b64d611e122fea23d;
     let msg_hash_2 = 0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323;
     let address_2 = Address::zero();
-    let signature_2 = Secp256r1::from((hi_2, lo_2));
+    let _signature_2 = Secp256r1::from((hi_2, lo_2));
     let message_2 = Message::from(msg_hash_2);
 
     // A recovered Fuel address.

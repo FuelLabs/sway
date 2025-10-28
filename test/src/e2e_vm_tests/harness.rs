@@ -19,11 +19,10 @@ use futures::Future;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use regex::{Captures, Regex};
-use std::{fs, io::Read, path::PathBuf, str::FromStr};
+use std::{fs, io::Read, path::PathBuf};
 use sway_core::{asm_generation::ProgramABI, BuildTarget, Observer};
 
 pub const NODE_URL: &str = "http://127.0.0.1:4000";
-pub const SECRET_KEY: &str = "de97d8624a438121b86a1956544bd72ed68cd69f2c99555b08b1e8c51ffd511c";
 
 pub(crate) async fn run_and_capture_output<F, Fut, T>(func: F) -> (T, String)
 where
@@ -61,10 +60,14 @@ where
     (result, output)
 }
 
-pub(crate) async fn deploy_contract(file_name: &str, run_config: &RunConfig) -> Result<ContractId> {
-    // build the contract
-    // deploy it
+pub(crate) async fn deploy_contract(
+    file_name: &str,
+    run_config: &RunConfig,
+    signing_key: &SecretKey,
+) -> Result<ContractId> {
     println!(" Deploying {} ...", file_name.bold());
+    println!(" Signing key used: {}", signing_key.to_string().bold());
+
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
 
     let deployed_packages = deploy(DeployCommand {
@@ -76,7 +79,7 @@ pub(crate) async fn deploy_contract(file_name: &str, run_config: &RunConfig) -> 
             locked: run_config.locked,
             ..Default::default()
         },
-        signing_key: Some(SecretKey::from_str(SECRET_KEY).unwrap()),
+        signing_key: Some(*signing_key),
         default_salt: true,
         build_profile: match run_config.release {
             true => BuildProfile::RELEASE.to_string(),
@@ -106,16 +109,16 @@ pub(crate) async fn runs_on_node(
     file_name: &str,
     run_config: &RunConfig,
     contract_ids: &[fuel_tx::ContractId],
+    signing_key: &SecretKey,
 ) -> (Result<Vec<fuel_tx::Receipt>>, String) {
     run_and_capture_output(|| async {
         println!(" Running on node {} ...", file_name.bold());
         let manifest_dir = env!("CARGO_MANIFEST_DIR");
 
-        let mut contracts = Vec::<String>::with_capacity(contract_ids.len());
-        for contract_id in contract_ids {
-            let contract = format!("0x{contract_id:x}");
-            contracts.push(contract);
-        }
+        let contracts = contract_ids
+            .iter()
+            .map(|contract_id| format!("0x{contract_id:x}"))
+            .collect::<Vec<_>>();
 
         let command = RunCommand {
             pkg: forc_client::cmd::run::Pkg {
@@ -131,7 +134,7 @@ pub(crate) async fn runs_on_node(
                 ..Default::default()
             },
             contract: Some(contracts),
-            signing_key: Some(SecretKey::from_str(SECRET_KEY).unwrap()),
+            signing_key: Some(*signing_key),
             experimental: run_config.experimental.clone(),
             ..Default::default()
         };
@@ -283,6 +286,7 @@ pub(crate) async fn compile_to_bytes(
             ir: run_config.print_ir.clone(),
             reverse_order: false,
         },
+        verify_ir: run_config.verify_ir.clone(),
         pkg: forc_pkg::PkgOpts {
             path: Some(root.clone()),
             locked: run_config.locked,
