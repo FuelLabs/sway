@@ -485,7 +485,7 @@ pub fn fetch_id(path: &Path, timestamp: std::time::Instant) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::manifest::{Dependency, DependencyDetails, PackageManifest};
+    use crate::manifest::{Dependency, DependencyDetails};
     use std::collections::BTreeMap;
 
     /// Helper to create a minimal test manifest file with patch table
@@ -503,7 +503,7 @@ implicit-std = false
 
         // Add patches if any
         if !patches.is_empty() {
-            toml_str.push_str("\n");
+            toml_str.push_str('\n');
             for (patch_key, patch_deps) in patches {
                 toml_str.push_str(&format!("[patch.'{}']\n", patch_key));
                 for (dep_name, dep) in patch_deps {
