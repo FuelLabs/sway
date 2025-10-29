@@ -570,9 +570,7 @@ impl TyDecl {
             TyDecl::VariableDecl(_decl) => None,
             TyDecl::ConstantDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
             TyDecl::ConfigurableDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
-            TyDecl::ConstGenericDecl(_) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
-            }
+            TyDecl::ConstGenericDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
             TyDecl::TraitTypeDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
             TyDecl::FunctionDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
             TyDecl::TraitDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
@@ -582,9 +580,9 @@ impl TyDecl {
             TyDecl::ImplSelfOrTrait(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
             TyDecl::AbiDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
             TyDecl::GenericTypeForFunctionScope(_data) => None,
-            TyDecl::ErrorRecovery(_, _) => None,
             TyDecl::StorageDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
             TyDecl::TypeAliasDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
+            TyDecl::ErrorRecovery(_, _) => None,
         }
     }
 
