@@ -3334,6 +3334,7 @@ dependencies = [
  "fuel-vm",
  "rand 0.8.5",
  "rayon",
+ "serde_json",
  "sway-core",
  "sway-features",
  "sway-types",
