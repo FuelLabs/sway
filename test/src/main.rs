@@ -7,7 +7,9 @@ mod test_consistency;
 use anyhow::Result;
 use clap::Parser;
 use forc::cli::shared::{IrCliOpt, PrintAsmCliOpt};
+use forc_test::GasCostsSource;
 use forc_tracing::init_tracing_subscriber;
+use fuel_vm::prelude::GasCostsValues;
 use std::str::FromStr;
 use sway_core::{BuildTarget, IrCli, PrintAsm};
 use tracing::Instrument;
@@ -125,6 +127,25 @@ struct Cli {
     /// Output files are written to the `test/perf_out` directory.
     #[arg(long)]
     perf: bool,
+
+    /// Source of the gas costs values used to calculate gas costs of
+    /// unit tests and scripts executions.
+    ///
+    /// If not provided, a built-in set of gas costs values will be used.
+    /// These are the gas costs values of the Fuel mainnet as of time of
+    /// the release of the `forc` version being used.
+    ///
+    /// The mainnet and testnet options will fetch the current gas costs values from
+    /// their respective networks.
+    ///
+    /// Alternatively, the gas costs values can be specified as a file path
+    /// to a local JSON file containing the gas costs values.
+    ///
+    /// This option is ignored if tests are run in parallel.
+    ///
+    /// [possible values: built-in, mainnet, testnet, <FILE_PATH>]
+    #[clap(long)]
+    pub gas_costs: Option<GasCostsSource>,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -199,6 +220,7 @@ pub struct RunConfig {
     pub experimental: sway_features::CliFields,
     pub write_output: bool,
     pub perf: bool,
+    pub gas_costs_values: GasCostsValues,
 }
 
 #[derive(Debug, Clone)]
@@ -241,6 +263,8 @@ async fn main() -> Result<()> {
                 .as_ref()
                 .map_or(IrCli::default(), |opts| IrCliOpt::from(opts).0),
             perf: cli.perf,
+            // Always use the built-in gas costs values when running tests in parallel.
+            gas_costs_values: GasCostsValues::default(),
             // Ignore options that are not supported when running tests in parallel.
             print_ir: IrCli::none(),
             print_asm: PrintAsm::none(),
@@ -296,6 +320,12 @@ async fn main() -> Result<()> {
         print_bytecode: cli.print_bytecode,
         write_output: cli.write_output,
         perf: cli.perf,
+        gas_costs_values: cli
+            .gas_costs
+            .as_ref()
+            .map_or(Ok(GasCostsValues::default()), |source| {
+                source.provide_gas_costs()
+            })?,
     };
 
     // Check that the tests are consistent
