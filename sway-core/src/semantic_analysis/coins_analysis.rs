@@ -23,12 +23,10 @@ pub fn possibly_nonzero_u64_expression(ctx: &TypeCheckContext, expr: &ty::TyExpr
             Some(expr) => possibly_nonzero_u64_expression(ctx, expr),
             None => false,
         },
-        ConstGenericExpression { decl, .. } => {
-            match decl.value.as_ref() {
-                Some(expr) => possibly_nonzero_u64_expression(ctx, expr),
-                None => true,
-            }
-        }
+        ConstGenericExpression { decl, .. } => match decl.value.as_ref() {
+            Some(expr) => possibly_nonzero_u64_expression(ctx, expr),
+            None => true,
+        },
         VariableExpression { name, .. } => {
             match ctx.resolve_symbol(&Handler::default(), name).ok() {
                 Some(ty_decl) => {
