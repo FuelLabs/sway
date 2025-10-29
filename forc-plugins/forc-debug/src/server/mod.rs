@@ -22,6 +22,7 @@ use forc_test::{
     setup::TestSetup,
     BuiltTests,
 };
+use fuel_tx::GasCostsValues;
 use serde::{Deserialize, Serialize};
 use std::{
     io::{BufReader, BufWriter, Read, Write},
@@ -248,6 +249,8 @@ impl DapServer {
                     test_setup.clone(),
                     test_entry,
                     name.clone(),
+                    // TODO: (GAS-COSTS) Provide gas costs values here, similar like in `forc test`.
+                    GasCostsValues::default(),
                 )
                 .ok()
             })
