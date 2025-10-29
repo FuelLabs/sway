@@ -7,7 +7,9 @@ mod test_consistency;
 use anyhow::Result;
 use clap::Parser;
 use forc::cli::shared::{PrintAsmCliOpt, PrintIrCliOpt};
+use forc_test::GasCostsSource;
 use forc_tracing::init_tracing_subscriber;
+use fuel_vm::prelude::GasCostsValues;
 use std::str::FromStr;
 use sway_core::{BuildTarget, PrintAsm, PrintIr};
 use tracing::Instrument;
@@ -84,6 +86,25 @@ struct Cli {
     /// Only run tests of a particular kind
     #[arg(long, short, num_args(1..=4), value_parser = clap::builder::PossibleValuesParser::new(&TestKindOpt::CLI_OPTIONS))]
     kind: Option<Vec<String>>,
+
+    /// Source of the gas costs values used to calculate gas costs of
+    /// unit tests and scripts executions.
+    ///
+    /// If not provided, a built-in set of gas costs values will be used.
+    /// These are the gas costs values of the Fuel mainnet as of time of
+    /// the release of the `forc` version being used.
+    ///
+    /// The mainnet and testnet options will fetch the current gas costs values from
+    /// their respective networks.
+    ///
+    /// Alternatively, the gas costs values can be specified as a file path
+    /// to a local JSON file containing the gas costs values.
+    ///
+    /// This option is ignored if tests are run in parallel.
+    ///
+    /// [possible values: built-in, mainnet, testnet, <FILE_PATH>]
+    #[clap(long)]
+    pub gas_costs: Option<GasCostsSource>,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -155,6 +176,7 @@ pub struct RunConfig {
     pub print_bytecode: bool,
     pub experimental: sway_features::CliFields,
     pub kind: TestKind,
+    pub gas_costs_values: GasCostsValues,
 }
 
 #[tokio::main]
@@ -200,6 +222,12 @@ async fn main() -> Result<()> {
             .kind
             .as_ref()
             .map_or(TestKind::all(), |opts| TestKindOpt::from(opts).0),
+        gas_costs_values: cli
+            .gas_costs
+            .as_ref()
+            .map_or(Ok(GasCostsValues::default()), |source| {
+                source.provide_gas_costs()
+            })?,
     };
 
     // Check that the tests are consistent

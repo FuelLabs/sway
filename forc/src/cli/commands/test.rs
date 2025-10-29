@@ -2,14 +2,17 @@ use crate::cli;
 use ansiterm::Colour;
 use clap::Parser;
 use forc_pkg as pkg;
-use forc_test::{TestFilter, TestResult, TestRunnerCount, TestedPackage};
+use forc_test::{GasCostsSource, TestFilter, TestResult, TestRunnerCount, TestedPackage};
 use forc_tracing::println_action_green;
 use forc_util::{
     tx_utils::{decode_fuel_vm_log_data, format_log_receipts},
     ForcError, ForcResult,
 };
 use fuel_abi_types::{abi::program::PanickingCall, revert_info::RevertKind};
-use sway_core::{asm_generation::ProgramABI, fuel_prelude::fuel_tx::Receipt};
+use sway_core::{
+    asm_generation::ProgramABI,
+    fuel_prelude::fuel_tx::{GasCostsValues, Receipt},
+};
 use tracing::info;
 
 forc_util::cli_examples! {
@@ -24,20 +27,17 @@ forc_util::cli_examples! {
 /// Run the Sway unit tests for the current project.
 ///
 /// NOTE: Previously this command was used to support Rust integration testing, however the
-/// provided behaviour served no benefit over running `cargo test` directly. The proposal to change
-/// the behaviour to support unit testing can be found at the following link:
+/// provided behavior served no benefit over running `cargo test` directly. The proposal to change
+/// the behavior to support unit testing can be found at the following link:
 /// https://github.com/FuelLabs/sway/issues/1833
 ///
 /// Sway unit tests are functions decorated with the `#[test]` attribute. Each test is compiled as
 /// a unique entry point for a single program and has access to the namespace of the module in
 /// which it is declared.
 ///
-/// Unit tests decorated with the `#[test(script)]` attribute that are declared within `contract`
-/// projects may also call directly into their associated contract's ABI.
-///
 /// Upon successful compilation, test scripts are executed to their completion. A test is
 /// considered a failure in the case that a revert (`rvrt`) instruction is encountered during
-/// execution. Otherwise, it is considered a success.
+/// execution, unless it is specified as `#[test(should_revert)]`. Otherwise, it is considered a success.
 #[derive(Debug, Parser)]
 #[clap(bin_name = "forc test", version, after_help = help())]
 pub struct Command {
@@ -54,14 +54,27 @@ pub struct Command {
     /// Number of threads to utilize when running the tests. By default, this is the number of
     /// threads available in your system.
     pub test_threads: Option<usize>,
-
     #[clap(flatten)]
     pub experimental: sway_features::CliFields,
+    /// Source of the gas costs values used to calculate gas costs of test executions.
+    ///
+    /// If not provided, a built-in set of gas costs values will be used.
+    /// These are the gas costs values of the Fuel mainnet as of time of
+    /// the release of the `forc` version being used.
+    ///
+    /// The mainnet and testnet options will fetch the current gas costs values from
+    /// their respective networks.
+    ///
+    /// Alternatively, the gas costs values can be specified as a file path
+    /// to a local JSON file containing the gas costs values.
+    ///
+    /// [possible values: built-in, mainnet, testnet, <FILE_PATH>]
+    #[clap(long)]
+    pub gas_costs: Option<GasCostsSource>,
 }
 
 /// The set of options provided for controlling output of a test.
 #[derive(Parser, Debug, Clone)]
-#[clap(after_help = help())]
 pub struct TestPrintOpts {
     #[clap(long = "pretty")]
     /// Pretty-print the logs emitted from tests.
@@ -92,6 +105,12 @@ pub(crate) fn exec(cmd: Command) -> ForcResult<()> {
         filter_phrase,
         exact_match: cmd.filter_exact,
     });
+    let gas_costs_values = cmd
+        .gas_costs
+        .as_ref()
+        .map_or(Ok(GasCostsValues::default()), |source| {
+            source.provide_gas_costs()
+        })?;
     let opts = opts_from_cmd(cmd);
     let built_tests = forc_test::build(opts)?;
     let start = std::time::Instant::now();
@@ -108,7 +127,7 @@ pub(crate) fn exec(cmd: Command) -> ForcResult<()> {
             formatted_test_count_string(num_tests_ignored)
         ),
     );
-    let tested = built_tests.run(test_runner_count, test_filter)?;
+    let tested = built_tests.run(test_runner_count, test_filter, gas_costs_values)?;
     let duration = start.elapsed();
 
     // Eventually we'll print this in a fancy manner, but this will do for testing.
