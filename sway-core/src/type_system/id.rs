@@ -8,6 +8,7 @@ use sway_error::{
 use sway_types::{BaseIdent, Named, Span, Spanned};
 
 use crate::{
+    ast_elements::type_parameter::GenericTypeParameter,
     decl_engine::{
         DeclEngineGet, DeclEngineGetParsedDecl, DeclEngineInsert, MaterializeConstGenerics,
     },
@@ -133,23 +134,8 @@ impl MaterializeConstGenerics for TypeId {
                 elem_type.materialize_const_generics(engines, handler, name, value)?;
 
                 if ident.as_str() == name {
-                    let val = match &value.expression {
-                        crate::language::ty::TyExpressionVariant::Literal(literal) => {
-                            literal.cast_value_to_u64().unwrap()
-                        }
-                        _ => {
-                            todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
-                        }
-                    };
-
-                    *self = engines.te().insert_array(
-                        engines,
-                        elem_type,
-                        Length(ConstGenericExpr::Literal {
-                            val: val as usize,
-                            span: value.span.clone(),
-                        }),
-                    );
+                    let len = ConstGenericExpr::from_ty_expression(handler, value)?;
+                    *self = engines.te().insert_array(engines, elem_type, Length(len));
                 } else {
                     let mut decl = decl.clone();
                     if let Some(decl) = decl.as_mut() {
@@ -174,9 +160,7 @@ impl MaterializeConstGenerics for TypeId {
                 let parsed_decl = engines
                     .de()
                     .get_parsed_decl(id)
-                    .unwrap()
-                    .to_enum_decl(handler, engines)
-                    .ok();
+                    .and_then(|x| x.to_enum_decl(handler, engines).ok());
                 let decl_ref = engines.de().insert(decl, parsed_decl.as_ref());
 
                 *self = engines.te().insert_enum(engines, *decl_ref.id());
@@ -188,9 +172,7 @@ impl MaterializeConstGenerics for TypeId {
                 let parsed_decl = engines
                     .de()
                     .get_parsed_decl(id)
-                    .unwrap()
-                    .to_struct_decl(handler, engines)
-                    .ok();
+                    .and_then(|x| x.to_struct_decl(handler, engines).ok());
                 let decl_ref = engines.de().insert(decl, parsed_decl.as_ref());
 
                 *self = engines.te().insert_struct(engines, *decl_ref.id());
@@ -199,22 +181,8 @@ impl MaterializeConstGenerics for TypeId {
                 ident,
                 ..
             })) if ident.as_str() == name => {
-                let val = match &value.expression {
-                    crate::language::ty::TyExpressionVariant::Literal(literal) => {
-                        literal.cast_value_to_u64().unwrap()
-                    }
-                    _ => {
-                        todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
-                    }
-                };
-
-                *self = engines.te().insert_string_array(
-                    engines,
-                    Length(ConstGenericExpr::Literal {
-                        val: val as usize,
-                        span: value.span.clone(),
-                    }),
-                );
+                let len = ConstGenericExpr::from_ty_expression(handler, value)?;
+                *self = engines.te().insert_string_array(engines, Length(len));
             }
             TypeInfo::Ref {
                 to_mutable_value,
@@ -452,14 +420,11 @@ impl TypeId {
                         (
                             TypeParameter::Const(orig_type_param),
                             TypeParameter::Const(type_param),
-                        ) => match (orig_type_param.expr.as_ref(), type_param.expr.as_ref()) {
-                            (None, Some(expr)) => {
-                                const_generic_parameters.insert(
-                                    orig_type_param.name.as_str().to_string(),
-                                    expr.to_ty_expression(engines),
-                                );
-                            }
-                            _ => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+                        ) => if let (None, Some(expr)) = (orig_type_param.expr.as_ref(), type_param.expr.as_ref()) {
+                            const_generic_parameters.insert(
+                                orig_type_param.name.as_str().to_string(),
+                                expr.to_ty_expression(engines),
+                            );
                         },
                         _ => {}
                     }
@@ -491,14 +456,11 @@ impl TypeId {
                         (
                             TypeParameter::Const(orig_type_param),
                             TypeParameter::Const(type_param),
-                        ) => match (orig_type_param.expr.as_ref(), type_param.expr.as_ref()) {
-                            (None, Some(expr)) => {
-                                const_generic_parameters.insert(
-                                    orig_type_param.name.as_str().to_string(),
-                                    expr.to_ty_expression(engines),
-                                );
-                            }
-                            _ => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+                        ) => if let (None, Some(expr)) = (orig_type_param.expr.as_ref(), type_param.expr.as_ref()) {
+                            const_generic_parameters.insert(
+                                orig_type_param.name.as_str().to_string(),
+                                expr.to_ty_expression(engines),
+                            );
                         },
                         _ => {}
                     }
@@ -1329,7 +1291,7 @@ impl TypeId {
         handler: &Handler,
         mut ctx: TypeCheckContext,
         span: &Span,
-        type_param: Option<TypeParameter>,
+        type_param: Option<&GenericTypeParameter>,
     ) -> Result<(), ErrorEmitted> {
         if ctx.code_block_first_pass() {
             return Ok(());
@@ -1338,16 +1300,8 @@ impl TypeId {
         let engines = ctx.engines();
 
         let mut structure_generics = self.extract_inner_types_with_trait_constraints(engines);
-
         if let Some(type_param) = type_param {
-            match type_param {
-                TypeParameter::Type(p) => {
-                    structure_generics.insert(self, p.trait_constraints);
-                }
-                TypeParameter::Const(_) => {
-                    todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
-                }
-            }
+            structure_generics.insert(self, type_param.trait_constraints.clone());
         }
 
         handler.scope(|handler| {
