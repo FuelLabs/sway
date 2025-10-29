@@ -1,3 +1,1 @@
 category = "fail"
-
-# check: $()Possibly non-zero amount of coins transferred to non-payable contract method "non_payable_method"
