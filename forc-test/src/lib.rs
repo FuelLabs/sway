@@ -196,6 +196,7 @@ impl GasCostsSource {
                 "../gas_costs_values.json"
             ))?),
             // TODO: (GAS-COSTS) Fetch actual gas costs from mainnet/testnet and JSON file.
+            //       See: https://github.com/FuelLabs/sway/issues/7472
             Self::Mainnet => Err(anyhow::anyhow!(
                 "Fetching gas costs from mainnet is currently not implemented."
             )),

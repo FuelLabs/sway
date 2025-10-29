@@ -250,6 +250,7 @@ impl DapServer {
                     test_entry,
                     name.clone(),
                     // TODO: (GAS-COSTS) Provide gas costs values here, similar like in `forc test`.
+                    //       See: https://github.com/FuelLabs/sway/issues/7472
                     GasCostsValues::default(),
                 )
                 .ok()
