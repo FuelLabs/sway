@@ -31,38 +31,6 @@ warning
    |
 ____
 
-warning
-  --> test/src/e2e_vm_tests/test_programs/should_fail/non_payable_non_script_call_with_non_zero_coins/src/main.sw:34:9
-   |
-32 |   
-33 |           // External call using const generics
-34 |           call_using_const_generics_as_coins::<0>(external_contract_id);
-   |  _________-
-35 | | 
-36 | |         // Storage update _after_ external call
-37 | |         storage.balances.insert(sender, 0);
-   | |__________________________________________- Storage read after external contract interaction in function or method "withdraw". Consider making all storage reads before calling another contract
-38 |       }
-39 |   }
-   |
-____
-
-warning
-  --> test/src/e2e_vm_tests/test_programs/should_fail/non_payable_non_script_call_with_non_zero_coins/src/main.sw:34:9
-   |
-32 |   
-33 |           // External call using const generics
-34 |           call_using_const_generics_as_coins::<0>(external_contract_id);
-   |  _________-
-35 | | 
-36 | |         // Storage update _after_ external call
-37 | |         storage.balances.insert(sender, 0);
-   | |__________________________________________- Storage write after external contract interaction in function or method "withdraw". Consider making all storage writes before calling another contract
-38 |       }
-39 |   }
-   |
-____
-
 error
   --> test/src/e2e_vm_tests/test_programs/should_fail/non_payable_non_script_call_with_non_zero_coins/src/main.sw:18:13
    |
@@ -111,20 +79,5 @@ error
    |
 ____
 
-error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/non_payable_non_script_call_with_non_zero_coins/src/main.sw:31:44
-   |
-29 |         // External call
-30 |         let caller = abi(OtherContract, external_contract_id.into());
-31 |         caller.non_payable_method { coins: bal }();
-   |                                            ^^^ Mismatched types.
-expected: u64
-found:    std::storage::storage_key::StorageKey<u64>.
-help: The argument that has been provided to this function's type does not match the declared type of the parameter in the function declaration.
-32 | 
-33 |         // External call using const generics
-   |
-____
-
-  Aborting due to 5 errors.
+  Aborting due to 4 errors.
 error: Failed to compile non_payable_non_script_call_with_non_zero_coins
