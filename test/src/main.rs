@@ -222,12 +222,7 @@ async fn main() -> Result<()> {
             .kind
             .as_ref()
             .map_or(TestKind::all(), |opts| TestKindOpt::from(opts).0),
-        gas_costs_values: cli
-            .gas_costs
-            .as_ref()
-            .map_or(Ok(GasCostsValues::default()), |source| {
-                source.provide_gas_costs()
-            })?,
+        gas_costs_values: cli.gas_costs.unwrap_or_default().provide_gas_costs()?,
     };
 
     // Check that the tests are consistent
