@@ -17,3 +17,9 @@ impl MyContract for Contract {
         storage.a.get(1).try_read()
     }
 }
+
+#[test]
+fn collect_my_contract_gas_usages() {
+    let caller = abi(MyContract, CONTRACT_ID);
+    let _ = caller.test_function();
+}
