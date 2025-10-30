@@ -1594,7 +1594,7 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
             None => Err(anyhow!(
                 "Malformed category '{category_val}', should be a string."
             )),
-            Some(other) => Err(anyhow!("Unknown category '{}'.", other)),
+            Some(other) => Err(anyhow!("Unknown test category '{other}'. Valid categories are: run, run_on_node, fail, compile, disabled, and unit_tests_pass.")),
         })?;
 
     let expected_decoded_test_logs = if let Some(toml::Value::Array(a)) =
