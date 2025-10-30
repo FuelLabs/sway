@@ -23,9 +23,10 @@ pub fn possibly_nonzero_u64_expression(ctx: &TypeCheckContext, expr: &ty::TyExpr
             Some(expr) => possibly_nonzero_u64_expression(ctx, expr),
             None => false,
         },
-        ConstGenericExpression { .. } => {
-            todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
-        }
+        ConstGenericExpression { decl, .. } => match decl.value.as_ref() {
+            Some(expr) => possibly_nonzero_u64_expression(ctx, expr),
+            None => true,
+        },
         VariableExpression { name, .. } => {
             match ctx.resolve_symbol(&Handler::default(), name).ok() {
                 Some(ty_decl) => {
