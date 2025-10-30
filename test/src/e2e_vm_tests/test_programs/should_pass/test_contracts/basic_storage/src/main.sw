@@ -304,3 +304,52 @@ fn test_storage() {
 fn assert_streq<S1>(lhs: S1, rhs: str) {
     assert(sha256_str_array(lhs) == sha256(rhs));
 }
+
+#[test]
+fn collect_basic_storage_contract_gas_usages() {
+    let caller = abi(BasicStorage, CONTRACT_ID);
+    let key = 0x0fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+    let value = 4242;
+
+    caller.store_u64(key, value);
+    let _ = caller.get_u64(key);
+
+    let key = 0x00ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+    caller.intrinsic_store_word(key, value);
+    let _ = caller.intrinsic_load_word(key);
+
+    let key = 0x11ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+    let q = Quad {
+        v1: 1,
+        v2: 2,
+        v3: 4,
+        v4: 100,
+    };
+    let mut values = Vec::new();
+    values.push(q);
+    caller.intrinsic_store_quad(key, values);
+    let _ = caller.intrinsic_load_quad(key, 1).get(0);
+
+    let key = 0x11ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
+    let q0 = Quad {
+        v1: 1,
+        v2: 2,
+        v3: 4,
+        v4: 100,
+    };
+    let q1 = Quad {
+        v1: 2,
+        v2: 3,
+        v3: 5,
+        v4: 101,
+    };
+    let mut values = Vec::new();
+    values.push(q0);
+    values.push(q1);
+    caller.intrinsic_store_quad(key, values);
+    let r = caller.intrinsic_load_quad(key, values.len());
+    let r0 = r.get(0);
+    let r1 = r.get(1);
+
+    caller.test_storage_exhaustive();
+}
