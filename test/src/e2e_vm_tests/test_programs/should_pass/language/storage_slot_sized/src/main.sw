@@ -20,49 +20,31 @@ storage {
     var2: (S1, S1) = (S1 { f1: 11, f2: 21, f3: 31, f4: 41 }, S1 { f1: 12, f2: 22, f3: 32, f4: 42 })
 }
 
-abi StorageTest {
+impl Contract {
     #[storage(write)]
-    fn store_something_1(x: S1);
-
-    #[storage(read)]
-    fn check_store_1(x: S1);
-
-    #[storage(write)]
-    fn store_something_2(x: (S1, S1));
-
-    #[storage(read)]
-    fn check_store_2(x: (S1, S1));
-}
-
-impl StorageTest for Contract {
-    #[storage(write)]
-    #[inline(never)]
     fn store_something_1(x: S1) {
         storage.var1.write(x);
     }
 
     #[storage(read)]
-    #[inline(never)]
     fn check_store_1(x: S1) {
-       assert(storage.var1.read() == x);
+       assert_eq(storage.var1.read(), x);
     }
 
     #[storage(write)]
-    #[inline(never)]
     fn store_something_2(x: (S1, S1)) {
         storage.var2.write(x);
     }
 
     #[storage(read)]
-    #[inline(never)]
     fn check_store_2(x: (S1, S1)) {
-       assert(storage.var2.read() == x);
+       assert_eq(storage.var2.read(), x);
     }
 }
 
 #[test]
 fn test_store_something() {
-    let storage_test = abi(StorageTest, CONTRACT_ID);
+    let storage_test = abi(StorageSlotSizedAbi, CONTRACT_ID);
     let x1 = S1 { f1: 1, f2: 2, f3: 3, f4: 4 };
     storage_test.check_store_1(x1);
     let x2 = S1 { f1: 2, f2: 3, f3: 4, f4: 5 };
