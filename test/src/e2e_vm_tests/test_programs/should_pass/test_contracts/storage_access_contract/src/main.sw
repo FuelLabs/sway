@@ -165,3 +165,71 @@ impl StorageAccess for Contract {
         storage.string.read()
     }
 }
+
+#[test]
+fn collect_storage_access_contract_gas_usages() {
+    let caller = abi(StorageAccess, CONTRACT_ID);
+    let _ = caller.set_x(0);
+    let _ = caller.set_y(b256::zero());
+    let _ = caller.set_s(S {
+        x: 1,
+        y: 2,
+        z: 0x0000000000000000000000000000000000000000000000000000000000000003,
+        t: T {
+            x: 4,
+            y: 5,
+            z: 0x0000000000000000000000000000000000000000000000000000000000000006,
+            boolean: true,
+            int8: 7,
+            int16: 8,
+            int32: 9,
+        },
+    });
+    let _ = caller.set_boolean(false);
+    let _ = caller.set_int8(0);
+    let _ = caller.set_int16(0);
+    let _ = caller.set_int32(0);
+    let _ = caller.set_s_dot_x(0);
+    let _ = caller.set_s_dot_y(0);
+    let _ = caller.set_s_dot_z(b256::zero());
+    let _ = caller.set_s_dot_t(T {
+        x: 1,
+        y: 2,
+        z: 0x0000000000000000000000000000000000000000000000000000000000000003,
+        boolean: true,
+        int8: 4,
+        int16: 5,
+        int32: 6,
+    },);
+    let _ = caller.set_s_dot_t_dot_x(0);
+    let _ = caller.set_s_dot_t_dot_y(0);
+    let _ = caller.set_s_dot_t_dot_z(b256::zero());
+    let _ = caller.set_s_dot_t_dot_boolean(false);
+    let _ = caller.set_s_dot_t_dot_int8(0);
+    let _ = caller.set_s_dot_t_dot_int16(0);
+    let _ = caller.set_s_dot_t_dot_int32(0);
+    let _ = caller.set_e(E::A(0));
+    let _ = caller.set_string(__to_str_array("BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"));
+
+    let _ = caller.get_x();
+    let _ = caller.get_y();
+    let _ = caller.get_s();
+    let _ = caller.get_boolean();
+    let _ = caller.get_int8();
+    let _ = caller.get_int16();
+    let _ = caller.get_int32();
+    let _ = caller.get_s_dot_x();
+    let _ = caller.get_s_dot_y();
+    let _ = caller.get_s_dot_z();
+    let _ = caller.get_s_dot_t();
+    let _ = caller.get_s_dot_t_dot_x();
+    let _ = caller.get_s_dot_t_dot_y();
+    let _ = caller.get_s_dot_t_dot_z();
+    let _ = caller.get_s_dot_t_dot_boolean();
+    let _ = caller.get_s_dot_t_dot_int8();
+    let _ = caller.get_s_dot_t_dot_int16();
+    let _ = caller.get_s_dot_t_dot_int32();
+    let _ = caller.get_e();
+    let _ = caller.get_e2();
+    let _ = caller.get_string();
+}
