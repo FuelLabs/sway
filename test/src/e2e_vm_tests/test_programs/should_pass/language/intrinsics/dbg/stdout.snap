@@ -77,7 +77,11 @@ output:
 
 tested -- dbg
 
-      test call_main ... ok (???, 120505 gas)
+<<<<<<< HEAD
+      test call_main ... ok (???, 118518 gas)
+=======
+      test call_main ... ok (???, 217809 gas)
+>>>>>>> d6b9a876e (Fix default `--gas-costs` option to be `built-in` (#7475))
            debug output:
 [src/main.sw:13:13] () = ()
 [src/main.sw:15:13] true = true

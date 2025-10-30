@@ -298,7 +298,11 @@ output:
 
 tested -- const_generics
 
-      test run_main ... ok (???, 13986 gas)
+<<<<<<< HEAD
+      test run_main ... ok (???, 13758 gas)
+=======
+      test run_main ... ok (???, 34686 gas)
+>>>>>>> d6b9a876e (Fix default `--gas-costs` option to be `built-in` (#7475))
            debug output:
 [src/main.sw:65:13] a = [1, 2]
 [src/main.sw:69:13] [C {}].len() = 1

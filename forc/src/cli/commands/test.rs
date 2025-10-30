@@ -10,7 +10,7 @@ use forc_util::{
 };
 use sway_core::{
     asm_generation::ProgramABI,
-    fuel_prelude::fuel_tx::{GasCostsValues, Receipt},
+    fuel_prelude::fuel_tx::{Receipt},
 };
 use tracing::info;
 
@@ -107,9 +107,8 @@ pub(crate) fn exec(cmd: Command) -> ForcResult<()> {
     let gas_costs_values = cmd
         .gas_costs
         .as_ref()
-        .map_or(Ok(GasCostsValues::default()), |source| {
-            source.provide_gas_costs()
-        })?;
+        .unwrap_or(&GasCostsSource::BuiltIn)
+        .provide_gas_costs()?;
     let opts = opts_from_cmd(cmd);
     let built_tests = forc_test::build(opts)?;
     let start = std::time::Instant::now();
