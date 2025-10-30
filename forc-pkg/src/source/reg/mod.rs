@@ -653,7 +653,7 @@ where
 /// If we are already in a runtime, this will spawn a new OS thread to create a new runtime.
 ///
 /// If we are not in a runtime, a new runtime is created and the future is blocked on.
-pub(crate) fn block_on_any_runtime<F>(future: F) -> F::Output
+pub fn block_on_any_runtime<F>(future: F) -> F::Output
 where
     F: std::future::Future + Send + 'static,
     F::Output: Send + 'static,
