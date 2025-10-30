@@ -2,7 +2,7 @@ use clap::Parser;
 use forc_util::ForcResult;
 
 pub use crate::cli::shared::{BuildOutput, BuildProfile, Minify, Pkg, Print};
-use crate::ops::forc_predicate_root;
+use crate::{cli::shared::IrCliOpt, ops::forc_predicate_root};
 
 forc_util::cli_examples! {
     crate::cli::Opt {
@@ -21,6 +21,8 @@ pub struct Command {
     pub minify: Minify,
     #[clap(flatten)]
     pub print: Print,
+    #[arg(long, value_parser = clap::builder::PossibleValuesParser::new(IrCliOpt::cli_options()))]
+    pub verify_ir: Option<Vec<String>>,
     #[clap(flatten)]
     pub build_output: BuildOutput,
     #[clap(flatten)]

@@ -52,7 +52,7 @@ pub struct ForcCliResult<T> {
 }
 
 /// A forc error type which is a wrapper around `anyhow::Error`. It enables propagation of custom
-/// exit code alongisde the original error.
+/// exit code alongside the original error.
 #[derive(Debug)]
 pub struct ForcError {
     error: anyhow::Error,

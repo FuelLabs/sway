@@ -1,2 +1,2 @@
-category = "compile"
+category = "unit_tests_pass"
 validate_abi = true
