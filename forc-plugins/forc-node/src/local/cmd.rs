@@ -53,6 +53,10 @@ pub struct LocalCmd {
     /// URL of the remote node to fork from (enables state forking)
     #[clap(long, value_name = "URL")]
     pub fork_url: Option<String>,
+
+    /// Block number to fork from (latest if not specified)
+    #[clap(long, value_name = "BLOCK")]
+    pub fork_block_number: Option<u32>,
 }
 
 fn get_coins_per_account(
