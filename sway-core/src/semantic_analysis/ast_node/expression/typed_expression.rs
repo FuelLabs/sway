@@ -635,6 +635,7 @@ impl ty::TyExpression {
             Literal::U256(_) => type_engine.id_of_u256(),
             Literal::Boolean(_) => type_engine.id_of_bool(),
             Literal::B256(_) => type_engine.id_of_b256(),
+            Literal::Binary(_) => type_engine.id_of_raw_slice(),
         };
         ty::TyExpression {
             expression: ty::TyExpressionVariant::Literal(lit),

@@ -16,6 +16,7 @@ use std::{
     },
 };
 
+#[allow(deprecated)]
 #[test]
 fn ecr_ec_recover() {
     let hi_1 = 0x61f3caf4c0912cec69ff0b226638d397115c623a7f057914d48a7e4daf1cf6d8;
@@ -41,6 +42,7 @@ fn ecr_ec_recover() {
     assert(result_2.is_err());
 }
 
+#[allow(deprecated)]
 #[test]
 fn ecr_ec_recover_r1() {
     let hi_1 = 0xbd0c9b8792876712afadbff382e1bf31c44437823ed761cc3600d0016de511ac;
@@ -65,6 +67,7 @@ fn ecr_ec_recover_r1() {
     assert(result_2.is_err());
 }
 
+#[allow(deprecated)]
 #[test]
 fn ecr_ec_recover_address() {
     let hi_1 = 0x61f3caf4c0912cec69ff0b226638d397115c623a7f057914d48a7e4daf1cf6d8;
@@ -86,6 +89,7 @@ fn ecr_ec_recover_address() {
     assert(result_2.is_err());
 }
 
+#[allow(deprecated)]
 #[test]
 fn ecr_ec_recover_address_r1() {
     let hi_1 = 0xbd0c9b8792876713afa8bf3383eebf31c43437823ed761cc3600d0016de5110c;
@@ -150,6 +154,7 @@ fn ecr_ec_recover_address_r1() {
 // x = 16, (5573fe0bf140c8f1ca1b6b41fd4dc0bfcf92aefc67ab7dfd8aac1c264a66e67f, b47ed5cd8285cc2e8bf4a24a5e923a543278c43630f6e3d3da5a884de4982406)
 // x = 32, (00d8a17c74a926854155f0092fe8c2db55220cff891a38f0ee00e549fec8ba07, f2dda3573b2f03d19eefebf93aa93d4ebca81e2c42de5b0f52d8c957f6390a0b)
 // x = 64, (9a9e7077c905c855c86fb6aea6052f50a2cf29f70205f465d809cb0b81c6503f, fea5d320a5f9d4164b7eca627d3e81293083e7f6682b3b1ebc257459fcf89b08)
+#[allow(deprecated)]
 #[test]
 fn ecr_ed_verify() {
     let pub_key = 0x7127a92630327cfa3fac37b0dcc969968da0efb18bbbbf498c16966373973b21;
@@ -194,6 +199,7 @@ fn ecr_ed_verify() {
     }
 }
 
+#[allow(deprecated)]
 #[test]
 fn ecr_ed_verify_fail() {
     let pub_key = 0x7127a92630327cfa3fac37b0dcc969968da0efb18bbbbf498c16966373973b21;

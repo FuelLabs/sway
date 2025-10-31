@@ -180,6 +180,9 @@ impl Pattern {
             Literal::Boolean(b) => Pattern::Boolean(b),
             Literal::Numeric(x) => Pattern::Numeric(Range::from_single(x)),
             Literal::String(s) => Pattern::String(s.as_str().to_string()),
+            Literal::Binary(_) => {
+                unreachable!("literals cannot be expressed in the language yet")
+            }
         }
     }
 

@@ -300,8 +300,8 @@ pub(super) async fn run(
                             span.end(),
                             span.as_str()
                         );
-                    })
-                    .verify()
+                    });
+                    ir.verify()
                     .unwrap_or_else(|err| {
                         panic!("IR verification failed for test {}:\n{err}", path.display());
                     });

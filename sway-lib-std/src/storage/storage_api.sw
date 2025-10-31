@@ -43,6 +43,13 @@ pub fn write<T>(slot: b256, offset: u64, value: T) {
     // Determine how many slots and where the value is to be stored.
     let (offset_slot, number_of_slots, place_in_slot) = slot_calculator::<T>(slot, offset);
 
+    if __size_of::<T>() % 32 == 0 && place_in_slot == 0 {
+        // If the value is aligned to the start of a slot and occupies full slots, we can store it directly.
+        let value_addr = __addr_of::<T>(value);
+        let _ = __state_store_quad(offset_slot, value_addr, number_of_slots);
+        return;
+    }
+
     // Allocate enough memory on the heap for `value` as well as any potential padding required due 
     // to `offset`.
     let padded_value = alloc::<u64>(number_of_slots * 32);

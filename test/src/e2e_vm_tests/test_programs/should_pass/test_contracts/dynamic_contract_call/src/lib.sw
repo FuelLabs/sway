@@ -19,7 +19,7 @@ pub fn dynamic_contract_call(contract_id: b256) -> u64 {
 #[cfg(experimental_new_encoding = true)]
 pub fn dynamic_contract_call(contract_id: b256) -> u64 {
     contract_call::<u64, (u64, u64, u64)>(contract_id,
-        "some_method_name",
+        encode("some_method_name"),
         (1, 2, 3),
         0,
         0x0000000000000000000000000000000000000000000000000000000000000000,

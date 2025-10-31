@@ -165,7 +165,7 @@ fn secp256k1_verify_address() {
     let lo_2 = 0x2555de81cd3a40382d3d64eb1c77e463eea5a76d65ec85f283e0b3d568352678;
     let msg_hash_2 = 0xa13f4ab54057ce064d3dd97ac3ff30ed704e73956896c03650fe59b1a561fe15;
     let address_2 = Address::zero();
-    let signature_2 = Secp256k1::from((hi_2, lo_2));
+    let _signature_2 = Secp256k1::from((hi_2, lo_2));
     let message_2 = Message::from(msg_hash_2);
 
     // A recovered Fuel address.
@@ -190,7 +190,7 @@ fn secp256k1_verify_evm_address() {
     let lo_2 = 0x44ac566bd156b4fc71a4a4cb2655d3dd360c695edb17dc3b64d611e122fea23d;
     let msg_hash_2 = 0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323;
     let address_2 = EvmAddress::zero();
-    let signature_2 = Secp256k1::from((hi_2, lo_2));
+    let _signature_2 = Secp256k1::from((hi_2, lo_2));
     let message_2 = Message::from(msg_hash_2);
 
     // A recovered Fuel address.

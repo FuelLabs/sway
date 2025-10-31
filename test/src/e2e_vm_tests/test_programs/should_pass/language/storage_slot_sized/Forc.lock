@@ -1,0 +1,8 @@
+[[package]]
+name = "std"
+source = "path+from-root-0377E0F41F094EDB"
+
+[[package]]
+name = "storage_slot_sized"
+source = "member"
+dependencies = ["std"]

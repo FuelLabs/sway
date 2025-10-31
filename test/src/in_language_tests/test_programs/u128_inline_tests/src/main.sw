@@ -887,7 +887,7 @@ fn revert_u128_mod_zero() {
     let a = U128::from((0, 1));
     let b = U128::zero();
 
-    let result = a % b;
+    let _ = a % b;
 }
 
 #[test(should_revert)]
@@ -896,7 +896,7 @@ fn revert_u128_mod_zero_disabled_overflow() {
     let a = U128::from((0, 1));
     let b = U128::zero();
 
-    let result = a % b;
+    let _ = a % b;
 }
 
 #[test]

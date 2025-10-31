@@ -1,7 +1,7 @@
 //! Sets of arguments that are shared between commands.
 use clap::{ArgGroup, Args, Parser};
 use forc_pkg::source::IPFSNode;
-use sway_core::{BuildTarget, PrintAsm, PrintIr};
+use sway_core::{BuildTarget, IrCli, PrintAsm};
 use sway_ir::PassManager;
 
 #[derive(Debug, Args)]
@@ -82,6 +82,16 @@ pub struct Build {
     pub pkg: Pkg,
     #[clap(flatten)]
     pub print: Print,
+    /// Verify the generated Sway IR (Intermediate Representation).
+    ///
+    /// Values that can be combined:
+    ///  - initial:     initial IR prior to any optimization passes.
+    ///  - final:       final IR after applying all optimization passes.
+    ///  - <pass name>: the name of an optimization pass. Verifies the IR state after that pass.
+    ///  - all:         short for initial, final, and all the optimization passes.
+    ///  - modified:    verify a requested optimization pass only if it has modified the IR.
+    #[arg(long, verbatim_doc_comment, num_args(1..=IrCliOpt::max_num_args()), value_parser = clap::builder::PossibleValuesParser::new(IrCliOpt::cli_options()))]
+    pub verify_ir: Option<Vec<String>>,
     #[clap(flatten)]
     pub minify: Minify,
     #[clap(flatten)]
@@ -163,7 +173,7 @@ pub struct Print {
     ///  - abstract:  short for both virtual and allocated ASM.
     ///  - final:     final ASM that gets serialized to the target VM bytecode.
     ///  - all:       short for virtual, allocated, and final ASM.
-    #[arg(long, verbatim_doc_comment, num_args(1..=5), value_parser = clap::builder::PossibleValuesParser::new(&PrintAsmCliOpt::CLI_OPTIONS))]
+    #[arg(long, verbatim_doc_comment, num_args(1..=PrintAsmCliOpt::CLI_OPTIONS.len()), value_parser = clap::builder::PossibleValuesParser::new(&PrintAsmCliOpt::CLI_OPTIONS))]
     pub asm: Option<Vec<String>>,
     /// Print the bytecode.
     ///
@@ -178,7 +188,7 @@ pub struct Print {
     ///  - <pass name>: the name of an optimization pass. Prints the IR state after that pass.
     ///  - all:         short for initial, final, and all the optimization passes.
     ///  - modified:    print a requested optimization pass only if it has modified the IR.
-    #[arg(long, verbatim_doc_comment, num_args(1..=18), value_parser = clap::builder::PossibleValuesParser::new(PrintIrCliOpt::cli_options()))]
+    #[arg(long, verbatim_doc_comment, num_args(1..=IrCliOpt::max_num_args()), value_parser = clap::builder::PossibleValuesParser::new(IrCliOpt::cli_options()))]
     pub ir: Option<Vec<String>>,
     /// Output the time elapsed over each part of the compilation process.
     #[clap(long)]
@@ -201,10 +211,10 @@ impl Print {
             .map_or(PrintAsm::default(), |opts| PrintAsmCliOpt::from(opts).0)
     }
 
-    pub fn ir(&self) -> PrintIr {
+    pub fn ir(&self) -> IrCli {
         self.ir
             .as_ref()
-            .map_or(PrintIr::default(), |opts| PrintIrCliOpt::from(opts).0)
+            .map_or(IrCli::default(), |opts| IrCliOpt::from(opts).0)
     }
 }
 
@@ -296,9 +306,9 @@ impl From<&Vec<String>> for PrintAsmCliOpt {
     }
 }
 
-pub struct PrintIrCliOpt(pub PrintIr);
+pub struct IrCliOpt(pub IrCli);
 
-impl PrintIrCliOpt {
+impl IrCliOpt {
     const INITIAL: &'static str = "initial";
     const FINAL: &'static str = "final";
     const ALL: &'static str = "all";
@@ -313,16 +323,20 @@ impl PrintIrCliOpt {
             .cloned()
             .collect()
     }
+
+    pub fn max_num_args() -> usize {
+        Self::CLI_OPTIONS.len() + PassManager::OPTIMIZATION_PASSES.len()
+    }
 }
 
-impl From<&Vec<String>> for PrintIrCliOpt {
+impl From<&Vec<String>> for IrCliOpt {
     fn from(value: &Vec<String>) -> Self {
         let contains_opt = |opt: &str| value.iter().any(|val| *val == opt);
 
-        let print_ir = if contains_opt(Self::ALL) {
-            PrintIr::all(contains_opt(Self::MODIFIED))
+        let ir_cli = if contains_opt(Self::ALL) {
+            IrCli::all(contains_opt(Self::MODIFIED))
         } else {
-            PrintIr {
+            IrCli {
                 initial: contains_opt(Self::INITIAL),
                 r#final: contains_opt(Self::FINAL),
                 modified_only: contains_opt(Self::MODIFIED),
@@ -334,6 +348,6 @@ impl From<&Vec<String>> for PrintIrCliOpt {
             }
         };
 
-        Self(print_ir)
+        Self(ir_cli)
     }
 }
