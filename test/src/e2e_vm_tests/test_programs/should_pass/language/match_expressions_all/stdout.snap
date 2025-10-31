@@ -1,0 +1,68 @@
+---
+source: test/src/snapshot/mod.rs
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/match_expressions_all
+exit status: 0
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_pass/language/match_expressions_all
+   Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert)
+   Compiling script match_expressions_all (test/src/e2e_vm_tests/test_programs/should_pass/language/match_expressions_all)
+    Finished debug [unoptimized + fuel] target(s) [3.072 KB] in ???
+
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/match_expressions_all --ir final --asm final | filter-fn match_expressions_all return_match_on_str_slice
+
+pshl i15                      ; save registers 16..40
+pshh i524288                  ; save registers 40..64
+move $$locbase $sp            ; save locals base register for function return_match_on_str_slice_8
+cfei i112                     ; allocate 112 bytes for locals and 0 slots for call arguments
+move $r0 $$arg0               ; save argument 0 (param)
+move $r1 $$reta               ; save return address
+addi $r2 $$locbase i96        ; get offset to local __ptr slice
+mcpi $r2 $$arg0 i16           ; copy memory
+addr $r2 data_NonConfigurable_7; get __const_global's address in data section
+sw   $$locbase $r2 i0         ; store word
+movi $r2 i5                   ; initialize constant into register
+sw   $$locbase $r2 i1         ; store word
+addi $r2 $$locbase i16        ; get offset to local __ptr slice
+mcpi $r2 $$locbase i16        ; copy memory
+addi $r2 $$locbase i16        ; get offset to local __ptr slice
+move $$arg0 $r0               ; [call]: pass argument 0
+move $$arg1 $r2               ; [call]: pass argument 1
+jal  $$reta $pc i40           ; [call]: call eq_9
+move $r0 $one                 ; move parameter from branch to block argument
+jnzf $$retv $zero i31
+addi $r0 $$locbase i96        ; get offset to local __ptr slice
+addr $r2 data_NonConfigurable_9; get __const_global0's address in data section
+addi $r3 $$locbase i32        ; get offset to local __ptr { ptr, u64 }
+sw   $$locbase $r2 i4         ; store word
+movi $r2 i7                   ; initialize constant into register
+sw   $$locbase $r2 i5         ; store word
+addi $r2 $$locbase i48        ; get offset to local __ptr slice
+mcpi $r2 $r3 i16              ; copy memory
+addi $r2 $$locbase i48        ; get offset to local __ptr slice
+move $$arg0 $r0               ; [call]: pass argument 0
+move $$arg1 $r2               ; [call]: pass argument 1
+jal  $$reta $pc i25           ; [call]: call eq_9
+movi $r0 i2                   ; initialize constant into register
+jnzf $$retv $zero i16
+addi $r0 $$locbase i96        ; get offset to local __ptr slice
+addr $r2 data_NonConfigurable_10; get __const_global1's address in data section
+addi $r3 $$locbase i64        ; get offset to local __ptr { ptr, u64 }
+sw   $$locbase $r2 i8         ; store word
+movi $r2 i5                   ; initialize constant into register
+sw   $$locbase $r2 i9         ; store word
+addi $r2 $$locbase i80        ; get offset to local __ptr slice
+mcpi $r2 $r3 i16              ; copy memory
+addi $r2 $$locbase i80        ; get offset to local __ptr slice
+move $$arg0 $r0               ; [call]: pass argument 0
+move $$arg1 $r2               ; [call]: pass argument 1
+jal  $$reta $pc i10           ; [call]: call eq_9
+movi $r0 i3                   ; initialize constant into register
+jnzf $$retv $zero i1
+movi $r0 i1000                ; initialize constant into register
+move $$retv $r0               ; set return value
+cfsi i112                     ; free 112 bytes for locals and 0 slots for extra call arguments
+move $$reta $r1               ; restore return address
+poph i524288                  ; restore registers 40..64
+popl i15                      ; restore registers 16..40
+jal  $zero $$reta i0          ; return from call
