@@ -19,9 +19,9 @@ path = "src/main.rs"
 anyhow.workspace = true
 clap = { workspace = true, features = ["derive", "string"] }
 dialoguer.workspace = true
+forc-pkg.workspace = true
 forc-tracing.workspace = true
 forc-util.workspace = true
-forc-pkg.workspace = true
 fuel-core = { workspace = true, default-features = false, features = ["relayer", "rocksdb", "test-helpers"] }
 fuel-core-chain-config.workspace = true
 fuel-core-client.workspace = true
@@ -41,9 +41,9 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 
 [dev-dependencies]
+forc-client.workspace = true
 fuel-tx.workspace = true
 fuels.workspace = true
-forc-client.workspace = true
 portpicker.workspace = true
 reqwest = { workspace = true, features = ["json"] }
 serde_json.workspace = true
