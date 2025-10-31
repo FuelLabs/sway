@@ -1,0 +1,93 @@
+{
+  "programType": "contract",
+  "specVersion": "1.1",
+  "encodingVersion": "1",
+  "concreteTypes": [
+    {
+      "type": "struct Adder",
+      "concreteTypeId": "4717fd7abcab99b1028d795354df7d1cddda94883a45770a6d7c8cae0c21173f",
+      "metadataTypeId": 2
+    },
+    {
+      "type": "struct std::contract_id::ContractId",
+      "concreteTypeId": "29c10735d33b5159f0c71ee1dbd17b36a3e69e41f00fab0d42e1bd9f428d8a54",
+      "metadataTypeId": 3
+    },
+    {
+      "type": "u64",
+      "concreteTypeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+    }
+  ],
+  "metadataTypes": [
+    {
+      "type": "(_, _)",
+      "metadataTypeId": 0,
+      "components": [
+        {
+          "name": "__tuple_element",
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        },
+        {
+          "name": "__tuple_element",
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+        }
+      ]
+    },
+    {
+      "type": "b256",
+      "metadataTypeId": 1
+    },
+    {
+      "type": "struct Adder",
+      "metadataTypeId": 2,
+      "components": [
+        {
+          "name": "_vals",
+          "typeId": 0
+        }
+      ]
+    },
+    {
+      "type": "struct std::contract_id::ContractId",
+      "metadataTypeId": 3,
+      "components": [
+        {
+          "name": "bits",
+          "typeId": 1
+        }
+      ]
+    }
+  ],
+  "functions": [
+    {
+      "name": "call_increment_count",
+      "inputs": [
+        {
+          "name": "contract_id",
+          "concreteTypeId": "29c10735d33b5159f0c71ee1dbd17b36a3e69e41f00fab0d42e1bd9f428d8a54"
+        },
+        {
+          "name": "adder",
+          "concreteTypeId": "4717fd7abcab99b1028d795354df7d1cddda94883a45770a6d7c8cae0c21173f"
+        }
+      ],
+      "output": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0",
+      "attributes": null
+    },
+    {
+      "name": "check_current_count",
+      "inputs": [
+        {
+          "name": "contract_id",
+          "concreteTypeId": "29c10735d33b5159f0c71ee1dbd17b36a3e69e41f00fab0d42e1bd9f428d8a54"
+        }
+      ],
+      "output": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0",
+      "attributes": null
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "configurables": [],
+  "errorCodes": {}
+}
