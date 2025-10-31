@@ -1,7 +1,7 @@
-use fuel_core::types::fuel_tx::ContractIdExt;
 use fuel_vm::consts::VM_MAX_RAM;
 use fuels::{
     prelude::*,
+    tx::ContractIdExt,
     types::{Bits256, SubAssetId, ContractId},
 };
 

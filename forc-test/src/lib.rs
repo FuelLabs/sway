@@ -733,7 +733,7 @@ fn deployment_transaction(
     let root = contract.root();
     let state_root = tx::Contract::initial_state_root(storage_slots.iter());
     let salt = tx::Salt::zeroed();
-    let contract_id = contract.id(&salt, &root, &state_root);
+    let contract_id = tx::Contract::id(&salt, &root, &state_root);
 
     // Create the deployment transaction.
     let rng = &mut rand::rngs::StdRng::seed_from_u64(TEST_METADATA_SEED);

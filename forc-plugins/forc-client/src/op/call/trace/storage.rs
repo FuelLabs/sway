@@ -229,7 +229,7 @@ storage_rw!(
 storage_rw!(
     ContractsState,
     |key: &ContractsStateKey| -> Vec<u8> { key.as_ref().into() },
-    |data| { ContractsStateData(data) },
+    |data| { ContractsStateData(data.into()) },
     |data: &[u8]| -> Vec<u8> { data.to_vec() },
 );
 storage_rw!(
