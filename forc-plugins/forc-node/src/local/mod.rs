@@ -11,7 +11,7 @@ use fuel_core::{
     combined_database::CombinedDatabase,
     database::{database_description::on_chain::OnChain, Database, RegularStage},
     service::FuelService,
-    state::data_source::{DataSource, DataSourceType},
+    state::data_source::DataSource,
 };
 use fuel_core_types::fuel_types::BlockHeight;
 use std::sync::Arc;
@@ -22,7 +22,7 @@ use std::sync::Arc;
 pub async fn run(cmd: cmd::LocalCmd, dry_run: bool) -> anyhow::Result<Option<FuelService>> {
     check_and_update_chain_config(ChainConfig::Local).await?;
 
-    let fork_url = cmd.fork_url.clone();
+    let fork_url = cmd.fork_url.to_owned();
     let fork_block_number = cmd.fork_block_number;
     let config = fuel_core::service::Config::from(cmd);
 
@@ -54,21 +54,28 @@ pub async fn run(cmd: cmd::LocalCmd, dry_run: bool) -> anyhow::Result<Option<Fue
                 fork_settings.fork_block_height,
             )?);
 
-            let off_chain = combined_database.off_chain().clone();
-            let relayer = combined_database.relayer().clone();
-            let gas_price = combined_database.gas_price().clone();
-            let compression = combined_database.compression().clone();
-            let on_chain = {
-                let on_chain = combined_database.on_chain().clone();
-                let (_, metadata) = on_chain.clone().into_inner();
-                let stage: RegularStage<OnChain> = Default::default();
-                let forking_storage: DataSourceType<OnChain> =
-                    Arc::new(ForkingOnChainStorage::new(on_chain, fork_client));
-                let data_source = DataSource::new(forking_storage, stage);
-                Database::from_storage_and_metadata(data_source, metadata)
+            // extract all attributes from combined database (as they are all private); reconstruct them in a new combined database with forked storage
+            let combined_database = {
+                let off_chain = combined_database.off_chain().to_owned();
+                let relayer = combined_database.relayer().to_owned();
+                let gas_price = combined_database.gas_price().to_owned();
+                let compression = combined_database.compression().to_owned();
+
+                // reconstruct on-chain database with forked storage
+                let on_chain = {
+                    let on_chain = combined_database.on_chain().to_owned();
+                    let (_, metadata) = on_chain.clone().into_inner();
+                    let data_source = DataSource::new(
+                        Arc::new(ForkingOnChainStorage::new(on_chain, fork_client)),
+                        RegularStage::<OnChain>::default(),
+                    );
+                    Database::from_storage_and_metadata(data_source, metadata)
+                };
+
+                // reconstruct combined database with forked on-chain storage
+                CombinedDatabase::new(on_chain, off_chain, relayer, gas_price, compression)
             };
-            let combined_database =
-                CombinedDatabase::new(on_chain, off_chain, relayer, gas_price, compression);
+
             FuelService::from_combined_database(combined_database, config)
                 .await
                 .map_err(|e| anyhow::anyhow!("Failed to start fuel-core service: {}", e))?
