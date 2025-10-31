@@ -4105,12 +4105,18 @@ dependencies = [
  "anyhow",
  "clap",
  "dialoguer",
+ "forc-client",
+ "forc-pkg",
  "forc-tracing 0.70.1",
  "forc-util",
  "fuel-core",
  "fuel-core-chain-config 0.46.0",
+ "fuel-core-client 0.46.0",
+ "fuel-core-storage 0.46.0",
  "fuel-core-types 0.46.0",
  "fuel-crypto",
+ "fuel-tx",
+ "fuels 0.75.1",
  "libc",
  "libp2p-identity",
  "portpicker",
@@ -4407,8 +4413,7 @@ dependencies = [
 [[package]]
 name = "fuel-core"
 version = "0.46.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d31ad9ea2111f9c2f9bfcc175c565d041e1d2d4ca1d28414fea8d46f59d2259"
+source = "git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr#c5fdf0d538fac4e8ad42dd1bacee0a3ac6d835ef"
 dependencies = [
  "anyhow",
  "async-graphql",
@@ -4425,12 +4430,12 @@ dependencies = [
  "fuel-core-executor",
  "fuel-core-gas-price-service",
  "fuel-core-importer",
- "fuel-core-metrics 0.46.0",
+ "fuel-core-metrics 0.46.0 (git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr)",
  "fuel-core-p2p",
- "fuel-core-poa 0.46.0",
+ "fuel-core-poa 0.46.0 (git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr)",
  "fuel-core-producer",
  "fuel-core-relayer",
- "fuel-core-services 0.46.0",
+ "fuel-core-services 0.46.0 (git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr)",
  "fuel-core-shared-sequencer",
  "fuel-core-storage 0.46.0",
  "fuel-core-tx-status-manager",
@@ -4488,8 +4493,7 @@ dependencies = [
 [[package]]
 name = "fuel-core-chain-config"
 version = "0.46.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a22eafbabed0229dfc8af85619855887fc662a185c58cb3d578a63c8a372d327"
+source = "git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr#c5fdf0d538fac4e8ad42dd1bacee0a3ac6d835ef"
 dependencies = [
  "anyhow",
  "bech32",
@@ -4533,8 +4537,7 @@ dependencies = [
 [[package]]
 name = "fuel-core-client"
 version = "0.46.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a9543159741956f6a44d5f82127064c05a688eb6f1508a43806b9e60ffb36efe"
+source = "git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr#c5fdf0d538fac4e8ad42dd1bacee0a3ac6d835ef"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -4559,8 +4562,7 @@ dependencies = [
 [[package]]
 name = "fuel-core-compression"
 version = "0.46.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa3c474257a09a9b12eeff9f10d092b89f3d5dadd143fea299a4c6d93e2d47ef"
+source = "git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr#c5fdf0d538fac4e8ad42dd1bacee0a3ac6d835ef"
 dependencies = [
  "anyhow",
  "enum_dispatch",
@@ -4574,15 +4576,14 @@ dependencies = [
 [[package]]
 name = "fuel-core-compression-service"
 version = "0.46.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "031cde7f42dfa79927bf396c3df0bb531c0f5afef509a1202dc2bab1dd1f77e3"
+source = "git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr#c5fdf0d538fac4e8ad42dd1bacee0a3ac6d835ef"
 dependencies = [
  "anyhow",
  "async-trait",
  "enum-iterator",
  "fuel-core-compression",
- "fuel-core-metrics 0.46.0",
- "fuel-core-services 0.46.0",
+ "fuel-core-metrics 0.46.0 (git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr)",
+ "fuel-core-services 0.46.0 (git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr)",
  "fuel-core-storage 0.46.0",
  "fuel-core-types 0.46.0",
  "futures",
@@ -4598,12 +4599,11 @@ dependencies = [
 [[package]]
 name = "fuel-core-consensus-module"
 version = "0.46.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "26c427b131c6b53d9541d98903c9e7965602cb88a0d69c95e27c54e4fb599a58"
+source = "git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr#c5fdf0d538fac4e8ad42dd1bacee0a3ac6d835ef"
 dependencies = [
  "anyhow",
  "fuel-core-chain-config 0.46.0",
- "fuel-core-poa 0.46.0",
+ "fuel-core-poa 0.46.0 (git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr)",
  "fuel-core-storage 0.46.0",
  "fuel-core-types 0.46.0",
 ]
@@ -4611,8 +4611,7 @@ dependencies = [
 [[package]]
 name = "fuel-core-database"
 version = "0.46.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c8a86c1d167857f3268ea3905043bf71befa2b57fedd387c0bcc455c0f3bc4dd"
+source = "git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr#c5fdf0d538fac4e8ad42dd1bacee0a3ac6d835ef"
 dependencies = [
  "anyhow",
  "derive_more 0.99.20",
@@ -4623,8 +4622,7 @@ dependencies = [
 [[package]]
 name = "fuel-core-executor"
 version = "0.46.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "643f93d38367242c799739d50e0ff3d0b4b69ef2aca845bbcc7c708105716b73"
+source = "git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr#c5fdf0d538fac4e8ad42dd1bacee0a3ac6d835ef"
 dependencies = [
  "anyhow",
  "fuel-core-storage 0.46.0",
@@ -4637,14 +4635,13 @@ dependencies = [
 [[package]]
 name = "fuel-core-gas-price-service"
 version = "0.46.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5c313fb9d02e8ba40f7446e4742cdbfcf01a2750c1ec3368e57970c417c86c6e"
+source = "git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr#c5fdf0d538fac4e8ad42dd1bacee0a3ac6d835ef"
 dependencies = [
  "anyhow",
  "async-trait",
  "enum-iterator",
- "fuel-core-metrics 0.46.0",
- "fuel-core-services 0.46.0",
+ "fuel-core-metrics 0.46.0 (git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr)",
+ "fuel-core-services 0.46.0 (git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr)",
  "fuel-core-storage 0.46.0",
  "fuel-core-types 0.46.0",
  "fuel-gas-price-algorithm",
@@ -4666,12 +4663,11 @@ dependencies = [
 [[package]]
 name = "fuel-core-importer"
 version = "0.46.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2270df9d744fd6d5fbf4ddfbdb6aa59ee7fc2e44d8a69ea6010c6c5eb57a951a"
+source = "git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr#c5fdf0d538fac4e8ad42dd1bacee0a3ac6d835ef"
 dependencies = [
  "anyhow",
  "derive_more 0.99.20",
- "fuel-core-metrics 0.46.0",
+ "fuel-core-metrics 0.46.0 (git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr)",
  "fuel-core-storage 0.46.0",
  "fuel-core-types 0.46.0",
  "mockall",
@@ -4713,16 +4709,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "fuel-core-metrics"
+version = "0.46.0"
+source = "git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr#c5fdf0d538fac4e8ad42dd1bacee0a3ac6d835ef"
+dependencies = [
+ "once_cell",
+ "parking_lot",
+ "pin-project-lite",
+ "prometheus-client",
+ "regex",
+ "strum 0.25.0",
+ "strum_macros 0.25.3",
+ "tracing",
+]
+
+[[package]]
 name = "fuel-core-p2p"
 version = "0.46.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6923d96d610fdf816fb047e6603baae1c1cca35ee9d5dbdf0aa1632b155fd287"
+source = "git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr#c5fdf0d538fac4e8ad42dd1bacee0a3ac6d835ef"
 dependencies = [
  "anyhow",
  "async-trait",
  "fuel-core-chain-config 0.46.0",
- "fuel-core-metrics 0.46.0",
- "fuel-core-services 0.46.0",
+ "fuel-core-metrics 0.46.0 (git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr)",
+ "fuel-core-services 0.46.0 (git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr)",
  "fuel-core-storage 0.46.0",
  "fuel-core-types 0.46.0",
  "futures",
@@ -4773,7 +4783,26 @@ dependencies = [
  "anyhow",
  "async-trait",
  "fuel-core-chain-config 0.46.0",
- "fuel-core-services 0.46.0",
+ "fuel-core-services 0.46.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fuel-core-storage 0.46.0",
+ "fuel-core-types 0.46.0",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.17",
+ "tokio",
+ "tokio-stream",
+ "tracing",
+]
+
+[[package]]
+name = "fuel-core-poa"
+version = "0.46.0"
+source = "git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr#c5fdf0d538fac4e8ad42dd1bacee0a3ac6d835ef"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "fuel-core-chain-config 0.46.0",
+ "fuel-core-services 0.46.0 (git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr)",
  "fuel-core-storage 0.46.0",
  "fuel-core-types 0.46.0",
  "serde",
@@ -4787,8 +4816,7 @@ dependencies = [
 [[package]]
 name = "fuel-core-producer"
 version = "0.46.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "854ecfa61f6ff888076ff13c5912af09ee415660603b8b79c09c06316b099a81"
+source = "git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr#c5fdf0d538fac4e8ad42dd1bacee0a3ac6d835ef"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4803,8 +4831,7 @@ dependencies = [
 [[package]]
 name = "fuel-core-relayer"
 version = "0.46.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0793161971626bc9ff6c2ca0c8f771eb6ded6de4af45156a2eab645cda947e20"
+source = "git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr#c5fdf0d538fac4e8ad42dd1bacee0a3ac6d835ef"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4813,7 +4840,7 @@ dependencies = [
  "ethers-contract",
  "ethers-core",
  "ethers-providers",
- "fuel-core-services 0.46.0",
+ "fuel-core-services 0.46.0 (git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr)",
  "fuel-core-storage 0.46.0",
  "fuel-core-types 0.46.0",
  "futures",
@@ -4849,7 +4876,22 @@ checksum = "e59554b05ce13920349ca3b16169537366c2fff8e3f048f091c73c5e648c13fe"
 dependencies = [
  "anyhow",
  "async-trait",
- "fuel-core-metrics 0.46.0",
+ "fuel-core-metrics 0.46.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "futures",
+ "parking_lot",
+ "pin-project-lite",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "fuel-core-services"
+version = "0.46.0"
+source = "git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr#c5fdf0d538fac4e8ad42dd1bacee0a3ac6d835ef"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "fuel-core-metrics 0.46.0 (git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr)",
  "futures",
  "parking_lot",
  "pin-project-lite",
@@ -4861,15 +4903,14 @@ dependencies = [
 [[package]]
 name = "fuel-core-shared-sequencer"
 version = "0.46.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3683977ac19d41bfa5c659337be029c4bdfab61e75032e2ca5d4cb944a75bef5"
+source = "git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr#c5fdf0d538fac4e8ad42dd1bacee0a3ac6d835ef"
 dependencies = [
  "anyhow",
  "async-trait",
  "base64 0.22.1",
  "cosmos-sdk-proto",
  "cosmrs",
- "fuel-core-services 0.46.0",
+ "fuel-core-services 0.46.0 (git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr)",
  "fuel-core-types 0.46.0",
  "fuel-sequencer-proto",
  "futures",
@@ -4909,8 +4950,7 @@ dependencies = [
 [[package]]
 name = "fuel-core-storage"
 version = "0.46.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9794ba715ae21e0fae1c7d27715d2b9e5141d19741bd16f31ec4e39bc3d4c270"
+source = "git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr#c5fdf0d538fac4e8ad42dd1bacee0a3ac6d835ef"
 dependencies = [
  "anyhow",
  "derive_more 0.99.20",
@@ -4933,13 +4973,12 @@ dependencies = [
 [[package]]
 name = "fuel-core-tx-status-manager"
 version = "0.46.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73cfff4af5034b5f7494057de960e4a10163d68b7d8b4b368bc6f5f98c9740af"
+source = "git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr#c5fdf0d538fac4e8ad42dd1bacee0a3ac6d835ef"
 dependencies = [
  "anyhow",
  "async-trait",
- "fuel-core-metrics 0.46.0",
- "fuel-core-services 0.46.0",
+ "fuel-core-metrics 0.46.0 (git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr)",
+ "fuel-core-services 0.46.0 (git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr)",
  "fuel-core-types 0.46.0",
  "futures",
  "parking_lot",
@@ -4952,14 +4991,13 @@ dependencies = [
 [[package]]
 name = "fuel-core-txpool"
 version = "0.46.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e5d5a076a0b420aa3472625b34bbcd2d1926049b004d3ef0c3c874b0cc34c91"
+source = "git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr#c5fdf0d538fac4e8ad42dd1bacee0a3ac6d835ef"
 dependencies = [
  "anyhow",
  "async-trait",
  "derive_more 0.99.20",
- "fuel-core-metrics 0.46.0",
- "fuel-core-services 0.46.0",
+ "fuel-core-metrics 0.46.0 (git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr)",
+ "fuel-core-services 0.46.0 (git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr)",
  "fuel-core-storage 0.46.0",
  "fuel-core-types 0.46.0",
  "futures",
@@ -4995,8 +5033,7 @@ dependencies = [
 [[package]]
 name = "fuel-core-types"
 version = "0.46.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78ca27da74919063824f0826a6f707637d26db7b24ac237bf6cc1af5a866bb3a"
+source = "git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr#c5fdf0d538fac4e8ad42dd1bacee0a3ac6d835ef"
 dependencies = [
  "anyhow",
  "bs58",
@@ -5016,8 +5053,7 @@ dependencies = [
 [[package]]
 name = "fuel-core-upgradable-executor"
 version = "0.46.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "226544750e8ef4e035618ae3c2c60a81ee0a962b0bd1fe672aef9ad66a1a2229"
+source = "git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr#c5fdf0d538fac4e8ad42dd1bacee0a3ac6d835ef"
 dependencies = [
  "fuel-core-executor",
  "fuel-core-storage 0.46.0",
@@ -5109,8 +5145,7 @@ dependencies = [
 [[package]]
 name = "fuel-gas-price-algorithm"
 version = "0.46.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d734822afcc730511928425da8c1bc062e8eb62eeae4611692387b10fbba3772"
+source = "git+https://github.com/FuelLabs/fuel-core?branch=update%2Fpub-data-source-attr#c5fdf0d538fac4e8ad42dd1bacee0a3ac6d835ef"
 dependencies = [
  "serde",
  "thiserror 2.0.17",
@@ -5492,8 +5527,8 @@ checksum = "acc96b30b63b228c87a18bcd61a9a8e5bcd1fca62f4cc5729346c3538b363e48"
 dependencies = [
  "fuel-core-chain-config 0.46.0",
  "fuel-core-client 0.46.0",
- "fuel-core-poa 0.46.0",
- "fuel-core-services 0.46.0",
+ "fuel-core-poa 0.46.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fuel-core-services 0.46.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "fuel-core-types 0.46.0",
  "fuel-crypto",
  "fuel-tx",
