@@ -6,10 +6,12 @@ mod test_consistency;
 
 use anyhow::Result;
 use clap::Parser;
-use forc::cli::shared::{PrintAsmCliOpt, PrintIrCliOpt};
+use forc::cli::shared::{IrCliOpt, PrintAsmCliOpt};
+use forc_test::GasCostsSource;
 use forc_tracing::init_tracing_subscriber;
+use fuel_vm::prelude::GasCostsValues;
 use std::str::FromStr;
-use sway_core::{BuildTarget, PrintAsm, PrintIr};
+use sway_core::{BuildTarget, IrCli, PrintAsm};
 use tracing::Instrument;
 
 #[derive(Parser)]
@@ -75,8 +77,12 @@ struct Cli {
     /// Print out the specified IR (separate options with comma), if the verbose option is on
     ///
     /// This option is ignored if tests are run in parallel.
-    #[arg(long, num_args(1..=18), value_parser = clap::builder::PossibleValuesParser::new(PrintIrCliOpt::cli_options()))]
+    #[arg(long, num_args(1..=18), value_parser = clap::builder::PossibleValuesParser::new(IrCliOpt::cli_options()))]
     print_ir: Option<Vec<String>>,
+
+    /// Verify the generated Sway IR (Intermediate Representation).
+    #[arg(long, value_parser = clap::builder::PossibleValuesParser::new(IrCliOpt::cli_options()))]
+    verify_ir: Option<Vec<String>>,
 
     /// Print out the specified ASM (separate options with comma), if the verbose option is on
     ///
@@ -121,6 +127,25 @@ struct Cli {
     /// Output files are written to the `test/perf_out` directory.
     #[arg(long)]
     perf: bool,
+
+    /// Source of the gas costs values used to calculate gas costs of
+    /// unit tests and scripts executions.
+    ///
+    /// If not provided, a built-in set of gas costs values will be used.
+    /// These are the gas costs values of the Fuel mainnet as of time of
+    /// the release of the `forc` version being used.
+    ///
+    /// The mainnet and testnet options will fetch the current gas costs values from
+    /// their respective networks.
+    ///
+    /// Alternatively, the gas costs values can be specified as a file path
+    /// to a local JSON file containing the gas costs values.
+    ///
+    /// This option is ignored if tests are run in parallel.
+    ///
+    /// [possible values: built-in, mainnet, testnet, <FILE_PATH>]
+    #[clap(long)]
+    pub gas_costs: Option<GasCostsSource>,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -188,12 +213,14 @@ pub struct RunConfig {
     pub verbose: bool,
     pub release: bool,
     pub update_output_files: bool,
-    pub print_ir: PrintIr,
+    pub print_ir: IrCli,
+    pub verify_ir: IrCli,
     pub print_asm: PrintAsm,
     pub print_bytecode: bool,
     pub experimental: sway_features::CliFields,
     pub write_output: bool,
     pub perf: bool,
+    pub gas_costs_values: GasCostsValues,
 }
 
 #[derive(Debug, Clone)]
@@ -231,9 +258,15 @@ async fn main() -> Result<()> {
             build_target,
             experimental: cli.experimental,
             update_output_files: cli.update_output_files,
+            verify_ir: cli
+                .verify_ir
+                .as_ref()
+                .map_or(IrCli::default(), |opts| IrCliOpt::from(opts).0),
             perf: cli.perf,
+            // Always use the built-in gas costs values when running tests in parallel.
+            gas_costs_values: GasCostsValues::default(),
             // Ignore options that are not supported when running tests in parallel.
-            print_ir: PrintIr::none(),
+            print_ir: IrCli::none(),
             print_asm: PrintAsm::none(),
             print_bytecode: false,
             write_output: false,
@@ -275,7 +308,11 @@ async fn main() -> Result<()> {
         print_ir: cli
             .print_ir
             .as_ref()
-            .map_or(PrintIr::default(), |opts| PrintIrCliOpt::from(opts).0),
+            .map_or(IrCli::default(), |opts| IrCliOpt::from(opts).0),
+        verify_ir: cli
+            .verify_ir
+            .as_ref()
+            .map_or(IrCli::default(), |opts| IrCliOpt::from(opts).0),
         print_asm: cli
             .print_asm
             .as_ref()
@@ -283,6 +320,7 @@ async fn main() -> Result<()> {
         print_bytecode: cli.print_bytecode,
         write_output: cli.write_output,
         perf: cli.perf,
+        gas_costs_values: cli.gas_costs.unwrap_or_default().provide_gas_costs()?,
     };
 
     // Check that the tests are consistent

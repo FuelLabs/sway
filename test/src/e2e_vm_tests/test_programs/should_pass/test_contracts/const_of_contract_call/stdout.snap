@@ -13,35 +13,35 @@ output:
 
 tested -- const_of_contract_call
 
-      test cost_of_in_bool ... ok (???, 2082 gas)
-      test cost_of_in_u8 ... ok (???, 4331 gas)
-      test cost_of_in_u16 ... ok (???, 3948 gas)
-      test cost_of_in_u32 ... ok (???, 4385 gas)
-      test cost_of_in_u64 ... ok (???, 4386 gas)
-      test cost_of_in_u256 ... ok (???, 4240 gas)
-      test cost_of_in_b256 ... ok (???, 1954 gas)
-      test cost_of_in_str_0 ... ok (???, 2505 gas)
-      test cost_of_in_str_1 ... ok (???, 2806 gas)
-      test cost_of_in_str_8 ... ok (???, 3229 gas)
-      test cost_of_in_str_16 ... ok (???, 2837 gas)
-      test cost_of_in_str_32 ... ok (???, 3035 gas)
-      test cost_of_in_array_0 ... FAILED (???, 1095 gas)
-      test cost_of_in_array_1 ... ok (???, 1589 gas)
-      test cost_of_in_array_8 ... ok (???, 4180 gas)
-      test cost_of_in_array_16 ... ok (???, 4563 gas)
-      test cost_of_in_array_32 ... ok (???, 7889 gas)
-      test cost_of_in_array_64 ... ok (???, 14352 gas)
-      test cost_of_in_tuple_0 ... ok (???, 3289 gas)
-      test cost_of_in_tuple_1 ... ok (???, 3833 gas)
-      test cost_of_in_tuple_2 ... ok (???, 4190 gas)
-      test cost_of_in_tuple_3 ... ok (???, 4525 gas)
-      test cost_of_in_tuple_4 ... ok (???, 4909 gas)
-      test in_struct_u64 ... ok (???, 3070 gas)
-      test in_struct_u64_u64 ... ok (???, 3326 gas)
-      test in_struct_u64_u64_u64 ... ok (???, 3577 gas)
-      test in_enum_u64 ... ok (???, 2636 gas)
-      test in_enum_u64_u64 ... ok (???, 2507 gas)
-      test in_enum_u64_u64_u64 ... ok (???, 2618 gas)
+      test cost_of_in_bool ... ok (???, 14590 gas)
+      test cost_of_in_u8 ... ok (???, 18417 gas)
+      test cost_of_in_u16 ... ok (???, 17771 gas)
+      test cost_of_in_u32 ... ok (???, 18539 gas)
+      test cost_of_in_u64 ... ok (???, 18506 gas)
+      test cost_of_in_u256 ... ok (???, 18253 gas)
+      test cost_of_in_b256 ... ok (???, 14368 gas)
+      test cost_of_in_str_0 ... ok (???, 15292 gas)
+      test cost_of_in_str_1 ... ok (???, 15795 gas)
+      test cost_of_in_str_8 ... ok (???, 16518 gas)
+      test cost_of_in_str_16 ... ok (???, 15855 gas)
+      test cost_of_in_str_32 ... ok (???, 16195 gas)
+      test cost_of_in_array_0 ... FAILED (???, 12876 gas)
+      test cost_of_in_array_1 ... ok (???, 13765 gas)
+      test cost_of_in_array_8 ... ok (???, 18754 gas)
+      test cost_of_in_array_16 ... ok (???, 19131 gas)
+      test cost_of_in_array_32 ... ok (???, 25109 gas)
+      test cost_of_in_array_64 ... ok (???, 36752 gas)
+      test cost_of_in_tuple_0 ... ok (???, 16638 gas)
+      test cost_of_in_tuple_1 ... ok (???, 17568 gas)
+      test cost_of_in_tuple_2 ... ok (???, 18187 gas)
+      test cost_of_in_tuple_3 ... ok (???, 18767 gas)
+      test cost_of_in_tuple_4 ... ok (???, 19419 gas)
+      test in_struct_u64 ... ok (???, 16275 gas)
+      test in_struct_u64_u64 ... ok (???, 16721 gas)
+      test in_struct_u64_u64_u64 ... ok (???, 17159 gas)
+      test in_enum_u64 ... ok (???, 15537 gas)
+      test in_enum_u64_u64 ... ok (???, 15318 gas)
+      test in_enum_u64_u64_u64 ... ok (???, 15507 gas)
 
    failures:
       test cost_of_in_array_0, "test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call/src/main.sw":347
@@ -68,7 +68,7 @@ output:
 
 tested -- const_of_contract_call
 
-      test isolated_cost_of_in_array_0 ... FAILED (???, 795 gas)
+      test isolated_cost_of_in_array_0 ... FAILED (???, 10911 gas)
 
    failures:
       test isolated_cost_of_in_array_0, "test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call/src/main.sw":175
@@ -95,7 +95,7 @@ output:
 
 tested -- const_of_contract_call
 
-      test isolated_cost_of_in_array_1 ... ok (???, 1025 gas)
+      test isolated_cost_of_in_array_1 ... ok (???, 11355 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
@@ -115,7 +115,7 @@ output:
 
 tested -- const_of_contract_call
 
-      test isolated_cost_of_in_array_16 ... ok (???, 3105 gas)
+      test isolated_cost_of_in_array_16 ... ok (???, 15174 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
@@ -135,7 +135,7 @@ output:
 
 tested -- const_of_contract_call
 
-      test isolated_cost_of_in_array_32 ... ok (???, 5311 gas)
+      test isolated_cost_of_in_array_32 ... ok (???, 19221 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
@@ -155,7 +155,7 @@ output:
 
 tested -- const_of_contract_call
 
-      test isolated_cost_of_in_array_64 ... ok (???, 9745 gas)
+      test isolated_cost_of_in_array_64 ... ok (???, 27369 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
@@ -175,7 +175,7 @@ output:
 
 tested -- const_of_contract_call
 
-      test isolated_cost_of_in_array_8 ... ok (???, 2568 gas)
+      test isolated_cost_of_in_array_8 ... ok (???, 14558 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
@@ -195,7 +195,7 @@ output:
 
 tested -- const_of_contract_call
 
-      test isolated_cost_of_in_b256 ... ok (???, 959 gas)
+      test isolated_cost_of_in_b256 ... ok (???, 11220 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
@@ -215,7 +215,7 @@ output:
 
 tested -- const_of_contract_call
 
-      test isolated_cost_of_in_bool ... ok (???, 886 gas)
+      test isolated_cost_of_in_bool ... ok (???, 11100 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
@@ -235,7 +235,7 @@ output:
 
 tested -- const_of_contract_call
 
-      test in_enum_u64 ... ok (???, 1156 gas)
+      test in_enum_u64 ... ok (???, 11589 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
@@ -255,7 +255,7 @@ output:
 
 tested -- const_of_contract_call
 
-      test in_enum_u64_u64 ... ok (???, 1166 gas)
+      test in_enum_u64_u64 ... ok (???, 11620 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
@@ -275,7 +275,7 @@ output:
 
 tested -- const_of_contract_call
 
-      test in_enum_u64_u64_u64 ... ok (???, 1168 gas)
+      test in_enum_u64_u64_u64 ... ok (???, 11641 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
@@ -295,7 +295,7 @@ output:
 
 tested -- const_of_contract_call
 
-      test isolated_cost_of_in_str_0 ... ok (???, 980 gas)
+      test isolated_cost_of_in_str_0 ... ok (???, 11250 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
@@ -315,7 +315,7 @@ output:
 
 tested -- const_of_contract_call
 
-      test isolated_cost_of_in_str_1 ... ok (???, 1076 gas)
+      test isolated_cost_of_in_str_1 ... ok (???, 11411 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
@@ -335,7 +335,7 @@ output:
 
 tested -- const_of_contract_call
 
-      test isolated_cost_of_in_str_16 ... ok (???, 1080 gas)
+      test isolated_cost_of_in_str_16 ... ok (???, 11425 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
@@ -355,7 +355,7 @@ output:
 
 tested -- const_of_contract_call
 
-      test isolated_cost_of_in_str_32 ... ok (???, 1082 gas)
+      test isolated_cost_of_in_str_32 ... ok (???, 11431 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
@@ -375,7 +375,7 @@ output:
 
 tested -- const_of_contract_call
 
-      test isolated_cost_of_in_str_8 ... ok (???, 1080 gas)
+      test isolated_cost_of_in_str_8 ... ok (???, 11421 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
@@ -395,7 +395,7 @@ output:
 
 tested -- const_of_contract_call
 
-      test in_struct_u64 ... ok (???, 947 gas)
+      test in_struct_u64 ... ok (???, 11203 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
@@ -415,7 +415,7 @@ output:
 
 tested -- const_of_contract_call
 
-      test in_struct_u64_u64 ... ok (???, 1126 gas)
+      test in_struct_u64_u64 ... ok (???, 11531 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
@@ -435,7 +435,7 @@ output:
 
 tested -- const_of_contract_call
 
-      test in_struct_u64_u64_u64 ... ok (???, 1272 gas)
+      test in_struct_u64_u64_u64 ... ok (???, 11793 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
@@ -455,7 +455,7 @@ output:
 
 tested -- const_of_contract_call
 
-      test isolated_cost_of_in_tuple_0 ... ok (???, 626 gas)
+      test isolated_cost_of_in_tuple_0 ... ok (???, 10630 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
@@ -475,7 +475,7 @@ output:
 
 tested -- const_of_contract_call
 
-      test isolated_cost_of_in_tuple_1 ... ok (???, 930 gas)
+      test isolated_cost_of_in_tuple_1 ... ok (???, 11172 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
@@ -495,7 +495,7 @@ output:
 
 tested -- const_of_contract_call
 
-      test isolated_cost_of_in_tuple_2 ... ok (???, 1126 gas)
+      test isolated_cost_of_in_tuple_2 ... ok (???, 11530 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
@@ -515,7 +515,7 @@ output:
 
 tested -- const_of_contract_call
 
-      test isolated_cost_of_in_tuple_3 ... ok (???, 1272 gas)
+      test isolated_cost_of_in_tuple_3 ... ok (???, 11793 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
@@ -535,7 +535,7 @@ output:
 
 tested -- const_of_contract_call
 
-      test isolated_cost_of_in_tuple_4 ... ok (???, 1418 gas)
+      test isolated_cost_of_in_tuple_4 ... ok (???, 12055 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
@@ -555,7 +555,7 @@ output:
 
 tested -- const_of_contract_call
 
-      test isolated_cost_of_in_u16 ... ok (???, 956 gas)
+      test isolated_cost_of_in_u16 ... ok (???, 11232 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
@@ -575,7 +575,7 @@ output:
 
 tested -- const_of_contract_call
 
-      test isolated_cost_of_in_u256 ... ok (???, 959 gas)
+      test isolated_cost_of_in_u256 ... ok (???, 11220 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
@@ -595,7 +595,7 @@ output:
 
 tested -- const_of_contract_call
 
-      test isolated_cost_of_in_u32 ... ok (???, 1082 gas)
+      test isolated_cost_of_in_u32 ... ok (???, 11475 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
@@ -615,7 +615,7 @@ output:
 
 tested -- const_of_contract_call
 
-      test isolated_cost_of_in_u64 ... ok (???, 864 gas)
+      test isolated_cost_of_in_u64 ... ok (???, 11059 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
@@ -635,7 +635,7 @@ output:
 
 tested -- const_of_contract_call
 
-      test isolated_cost_of_in_u8 ... ok (???, 880 gas)
+      test isolated_cost_of_in_u8 ... ok (???, 11085 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 

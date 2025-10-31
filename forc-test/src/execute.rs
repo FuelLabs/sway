@@ -4,6 +4,7 @@ use crate::setup::TestSetup;
 use crate::TestResult;
 use crate::TEST_METADATA_SEED;
 use forc_pkg::PkgTestEntry;
+use fuel_tx::GasCostsValues;
 use fuel_tx::{self as tx, output::contract::Contract, Chargeable, Finalizable};
 use fuel_vm::error::InterpreterError;
 use fuel_vm::fuel_asm;
@@ -48,6 +49,7 @@ impl TestExecutor {
         test_setup: TestSetup,
         test_entry: &PkgTestEntry,
         name: String,
+        gas_costs_values: GasCostsValues,
     ) -> anyhow::Result<Self> {
         let storage = test_setup.storage().clone();
 
@@ -74,7 +76,7 @@ impl TestExecutor {
 
         let mut tx_builder = tx::TransactionBuilder::script(bytecode.to_vec(), script_input_data);
 
-        let params = maxed_consensus_params();
+        let params = maxed_consensus_params(gas_costs_values);
 
         tx_builder
             .with_params(params)

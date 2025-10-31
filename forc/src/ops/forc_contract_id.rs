@@ -1,8 +1,8 @@
-use crate::cli::ContractIdCommand;
+use crate::cli::{shared::IrCliOpt, ContractIdCommand};
 use anyhow::{bail, Result};
 use forc_pkg::{self as pkg, build_with_options, DumpOpts};
 use forc_tracing::println_green;
-use sway_core::{fuel_prelude::fuel_tx, BuildTarget};
+use sway_core::{fuel_prelude::fuel_tx, BuildTarget, IrCli};
 use tracing::info;
 
 pub fn contract_id(command: ContractIdCommand) -> Result<()> {
@@ -63,6 +63,10 @@ fn build_opts_from_cmd(cmd: &ContractIdCommand) -> pkg::BuildOpts {
             ir: cmd.print.ir(),
             reverse_order: cmd.print.reverse_order,
         },
+        verify_ir: cmd
+            .verify_ir
+            .as_ref()
+            .map_or(IrCli::default(), |opts| IrCliOpt::from(opts).0),
         dump: DumpOpts::default(),
         time_phases: cmd.print.time_phases,
         profile: cmd.print.profile,
