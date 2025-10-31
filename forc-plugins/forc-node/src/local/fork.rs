@@ -84,14 +84,10 @@ impl ForkClient {
                 .contract_slots_values(&contract_id, block_height, vec![key])
                 .await
         }) {
-            Ok(slot_values) => {
-                for (slot_key, slot_value) in slot_values {
-                    if slot_key == key {
-                        return Ok(Some(slot_value));
-                    }
-                }
-                Ok(None)
-            }
+            Ok(slot_values) => Ok(slot_values
+                .into_iter()
+                .find(|(slot_key, _)| *slot_key == key)
+                .map(|(_, slot_value)| slot_value)),
             Err(e) => {
                 tracing::debug!("Failed to fetch contract state: {}", e);
                 Ok(None)
@@ -270,19 +266,36 @@ where
                 if self.inner.exists(key, column)? {
                     return Ok(true);
                 }
-
-                if column == Column::ContractsRawCode {
-                    if let Ok(contract_id) = key.try_into() {
-                        let fork_client = self.fork_client.clone();
-                        match fork_client.fetch_contract_bytecode_blocking(&contract_id) {
-                            Ok(Some(_)) => Ok(true),
-                            _ => Ok(false),
+                match column {
+                    Column::ContractsRawCode => {
+                        if let Ok(contract_id) = key[..32].try_into() {
+                            let exists = self
+                                .fork_client
+                                .fetch_contract_bytecode_blocking(&contract_id)
+                                .map(|opt| opt.is_some())
+                                .unwrap_or(false);
+                            Ok(exists)
+                        } else {
+                            Ok(false)
                         }
-                    } else {
-                        Ok(false)
                     }
-                } else {
-                    Ok(false)
+                    Column::ContractsState if key.len() == 64 => {
+                        if let Ok(contract_id) = key[..32].try_into() {
+                            if let Ok(state_key) = key[32..64].try_into() {
+                                let exists = self
+                                    .fork_client
+                                    .fetch_contract_state_blocking(&contract_id, &state_key)
+                                    .map(|opt| opt.is_some())
+                                    .unwrap_or(false);
+                                Ok(exists)
+                            } else {
+                                Ok(false)
+                            }
+                        } else {
+                            Ok(false)
+                        }
+                    }
+                    _ => Ok(false),
                 }
             }
             _ => self.inner.exists(key, column),
@@ -296,11 +309,28 @@ where
 
         match column {
             Column::ContractsRawCode => {
-                if let Ok(contract_id) = key.try_into() {
-                    let fork_client = self.fork_client.clone();
-                    match fork_client.fetch_contract_bytecode_blocking(&contract_id) {
-                        Ok(Some(bytecode)) => Ok(Some(bytecode.len())),
-                        _ => Ok(None),
+                if let Ok(contract_id) = key[..32].try_into() {
+                    let size = self
+                        .fork_client
+                        .fetch_contract_bytecode_blocking(&contract_id)
+                        .map(|opt| opt.map(|bytecode| bytecode.len()))
+                        .unwrap_or(None);
+                    Ok(size)
+                } else {
+                    Ok(None)
+                }
+            }
+            Column::ContractsState if key.len() == 64 => {
+                if let Ok(contract_id) = key[..32].try_into() {
+                    if let Ok(state_key) = key[32..64].try_into() {
+                        let size = self
+                            .fork_client
+                            .fetch_contract_state_blocking(&contract_id, &state_key)
+                            .map(|opt| opt.map(|state| state.len()))
+                            .unwrap_or(None);
+                        Ok(size)
+                    } else {
+                        Ok(None)
                     }
                 } else {
                     Ok(None)
@@ -325,13 +355,15 @@ where
 
         match column {
             Column::ContractsRawCode => {
-                if let Ok(contract_id) = key.try_into() {
+                if let Ok(contract_id) = key[..32].try_into() {
                     tracing::info!(
                         "ForkedView: Attempting to fetch contract {} from fork",
                         contract_id
                     );
-                    let fork_client = self.fork_client.clone();
-                    match fork_client.fetch_contract_bytecode_blocking(&contract_id) {
+                    match self
+                        .fork_client
+                        .fetch_contract_bytecode_blocking(&contract_id)
+                    {
                         Ok(Some(bytecode)) => {
                             tracing::info!(
                                 "ForkedView: Successfully fetched contract {} from fork",
@@ -364,32 +396,14 @@ where
                     Ok(None)
                 }
             }
-            Column::ContractsAssets => Ok(None),
-            Column::ContractsState => {
-                if key.len() >= 64 {
-                    let contract_bytes = &key[..32];
-                    let state_key_bytes = &key[32..64];
-
-                    if let (Ok(contract_bytes), Ok(state_key_bytes)) = (
-                        <[u8; 32]>::try_from(contract_bytes),
-                        <[u8; 32]>::try_from(state_key_bytes),
-                    ) {
-                        let contract_id = ContractId::from(contract_bytes);
-                        let state_key = Bytes32::from(state_key_bytes);
-                        tracing::info!(
-                            "ForkedView: Attempting to fetch state for contract {} key {} from fork",
-                            contract_id,
-                            state_key
-                        );
-                        let fork_client = self.fork_client.clone();
-
-                        match fork_client.fetch_contract_state_blocking(&contract_id, &state_key) {
+            Column::ContractsState if key.len() == 64 => {
+                if let Ok(contract_id) = key[..32].try_into() {
+                    if let Ok(state_key) = key[32..64].try_into() {
+                        match self
+                            .fork_client
+                            .fetch_contract_state_blocking(&contract_id, &state_key)
+                        {
                             Ok(Some(state_data)) => {
-                                tracing::info!(
-                                    "ForkedView: Successfully fetched state for contract {} key {} from fork",
-                                    contract_id,
-                                    state_key
-                                );
                                 let mut storage_key = Vec::with_capacity(
                                     contract_id.as_ref().len() + state_key.as_ref().len(),
                                 );
@@ -412,26 +426,22 @@ where
                             }
                             Err(e) => {
                                 tracing::warn!(
-                                    "ForkedView: Error fetching state for contract {} key {} from fork: {}",
-                                    contract_id,
-                                    state_key,
-                                    e
-                                );
+                                "ForkedView: Error fetching state for contract {} key {} from fork: {}",
+                                contract_id,
+                                state_key,
+                                e
+                            );
                                 Err(fuel_core_storage::Error::Other(e))
                             }
                         }
                     } else {
-                        tracing::warn!("ForkedView: Failed to parse ContractsState key");
                         Ok(None)
                     }
                 } else {
-                    tracing::warn!(
-                        "ForkedView: ContractsState key too short: {} bytes",
-                        key.len()
-                    );
                     Ok(None)
                 }
             }
+            Column::ContractsAssets => Ok(None),
             _ => Ok(None),
         }
     }
@@ -449,10 +459,11 @@ where
 
         match column {
             Column::ContractsRawCode => {
-                if let Ok(contract_id) = key.try_into() {
-                    let fork_client = self.fork_client.clone();
-
-                    match fork_client.fetch_contract_bytecode_blocking(&contract_id) {
+                if let Ok(contract_id) = key[..32].try_into() {
+                    match self
+                        .fork_client
+                        .fetch_contract_bytecode_blocking(&contract_id)
+                    {
                         Ok(Some(bytecode)) => {
                             if offset >= bytecode.len() {
                                 return Ok(false);
@@ -463,6 +474,31 @@ where
                             Ok(true)
                         }
                         _ => Ok(false),
+                    }
+                } else {
+                    Ok(false)
+                }
+            }
+            Column::ContractsState if key.len() == 64 => {
+                if let Ok(contract_id) = key[..32].try_into() {
+                    if let Ok(state_key) = key[32..64].try_into() {
+                        match self
+                            .fork_client
+                            .fetch_contract_state_blocking(&contract_id, &state_key)
+                        {
+                            Ok(Some(state_data)) => {
+                                if offset >= state_data.len() {
+                                    return Ok(false);
+                                }
+                                let available = state_data.len() - offset;
+                                let len = available.min(buf.len());
+                                buf[..len].copy_from_slice(&state_data[offset..offset + len]);
+                                Ok(true)
+                            }
+                            _ => Ok(false),
+                        }
+                    } else {
+                        Ok(false)
                     }
                 } else {
                     Ok(false)
