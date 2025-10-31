@@ -259,3 +259,10 @@ vte = "0.13"
 walkdir = "2.3"
 whoami = "1.5"
 wiremock = "0.6"
+
+[patch.crates-io]
+fuel-core = { git = "https://github.com/FuelLabs/fuel-core", branch = "update/pub-data-source-attr" }
+fuel-core-chain-config = { git = "https://github.com/FuelLabs/fuel-core", branch = "update/pub-data-source-attr" }
+fuel-core-client = { git = "https://github.com/FuelLabs/fuel-core", branch = "update/pub-data-source-attr" }
+fuel-core-storage = { git = "https://github.com/FuelLabs/fuel-core", branch = "update/pub-data-source-attr" }
+fuel-core-types = { git = "https://github.com/FuelLabs/fuel-core", branch = "update/pub-data-source-attr" }
