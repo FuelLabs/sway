@@ -172,6 +172,7 @@ perf-e2e filter=''                    # collect gas usages and bytecode sizes fr
 perf-in-lang filter=''                # collect gas usages from in-language tests [alias: pil]
 perf-all filter=''                    # collect gas usages and bytecode sizes from all tests (E2E and in-language) [alias: pa]
 perf-diff before after format='md'    # generate performance diff between two CSV files [alias: pd]
+perf-diff-stats diff_file             # generate performance statistics summary from a `perf-diff` output CSV file [alias: pds]
 perf-diff-latest format='md'          # generate performance diffs between the latest two CSV files per testing category [alias: pdl]
 perf-snapshot-historical path open='' # collect historic gas usages from a snapshot test that has a `forc test` output [alias: psh]
 perf-list                             # list all performance files (*gas-usages-*.* and *bytecode-sizes-*.*) [alias: pl]
