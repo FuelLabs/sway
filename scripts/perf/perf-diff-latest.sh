@@ -8,6 +8,7 @@
 output_format="${1:-md}"
 perf_out_dir="./test/perf_out"
 perf_diff_script="./scripts/perf/perf-diff.sh"
+perf_diff_stats_script="./scripts/perf/perf-diff-stats.sh"
 
 categories=("e2e-gas-usages" "e2e-bytecode-sizes" "in-language-gas-usages" "in-language-bytecode-sizes")
 
@@ -70,15 +71,19 @@ process_category() {
     after_ts="${after_base%%-*}"
     now_ts="$(date '+%m%d%H%M%S')"
 
-    outfile="${perf_out_dir}/${now_ts}-diff-${category}-${before_ts}-vs-${after_ts}.${output_format}"
+    diff_outfile="${perf_out_dir}/${now_ts}-diff-${category}-${before_ts}-vs-${after_ts}.${output_format}"
+    stats_outfile="${perf_out_dir}/${now_ts}-stats-${category}-${before_ts}-vs-${after_ts}.md"
 
     echo "Comparing '$category':"
     echo " before: $before_file"
     echo " after:  $after_file"
-    echo "Diff written to: $outfile"
+    echo "Diff written to:  $diff_outfile"
+    echo "Stats written to: $stats_outfile"
     echo
 
-    "$perf_diff_script" "$before_file" "$after_file" "$output_format" | tee "$outfile"
+    "$perf_diff_script" "$before_file" "$after_file" csv | "$perf_diff_stats_script" | tee "$stats_outfile"
+    echo
+    "$perf_diff_script" "$before_file" "$after_file" "$output_format" | tee "$diff_outfile"
     echo
 }
 
