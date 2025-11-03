@@ -20,7 +20,7 @@ use std::sync::Arc;
 /// By default, the node is in `debug` mode and the db used is `in-memory`.
 /// Returns `None` if this is a dry_run and no service created for fuel-core.
 pub async fn run(cmd: cmd::LocalCmd, dry_run: bool) -> anyhow::Result<Option<FuelService>> {
-    check_and_update_chain_config(ChainConfig::Local).await?;
+    check_and_update_chain_config(ChainConfig::Local, cmd.non_interactive).await?;
 
     let fork_url = cmd.fork_url.to_owned();
     let fork_block_number = cmd.fork_block_number;

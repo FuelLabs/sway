@@ -57,6 +57,10 @@ pub struct LocalCmd {
     /// Block number to fork from (latest if not specified)
     #[clap(long, value_name = "BLOCK")]
     pub fork_block_number: Option<u32>,
+
+    /// Skip interactive prompts (intended for scripted/test environments).
+    #[clap(long, hide = true)]
+    pub non_interactive: bool,
 }
 
 fn get_coins_per_account(

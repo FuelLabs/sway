@@ -71,6 +71,7 @@ async fn run_node(fork_url: Option<String>) -> (FuelService, String) {
         poa_instant: true,
         fork_url,
         fork_block_number: None,
+        non_interactive: true,
     };
     let service = run(local_cmd, false).await.unwrap().unwrap();
     // Wait for node to start graphql service
@@ -511,6 +512,7 @@ async fn start_local_node_check_health() {
         poa_instant: false,
         fork_url: None,
         fork_block_number: None,
+        non_interactive: true,
     };
 
     let _service = run(local_cmd, false).await.unwrap().unwrap();
