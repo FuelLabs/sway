@@ -1,6 +1,6 @@
 {
   "programType": "contract",
-  "specVersion": "1.1",
+  "specVersion": "1.2",
   "encodingVersion": "1",
   "concreteTypes": [
     {
@@ -89,5 +89,6 @@
   "loggedTypes": [],
   "messagesTypes": [],
   "configurables": [],
-  "errorCodes": {}
+  "errorCodes": {},
+  "panickingCalls": {}
 }
