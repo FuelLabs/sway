@@ -45,7 +45,7 @@ if [ "$output_format" == "csv" ]; then
     echo "Test,Before,After,Percentage"
 else
     echo "| Test | Before | After | Percentage |"
-    echo "|-----:|-------:|------:|-----------:|"
+    echo "| ---- | -----: | ----: | ---------: |"
 fi
 
 paste -d, "$before_file" "$after_file" | while IFS=',' read -r test1 before test2 after; do
