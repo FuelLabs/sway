@@ -14,6 +14,7 @@ use std::{
     collections::{HashMap, HashSet},
     fmt::Display,
     fs,
+    io::IsTerminal,
     path::PathBuf,
 };
 
@@ -293,9 +294,19 @@ async fn validate_local_chainconfig(fetcher: &ConfigFetcher) -> anyhow::Result<(
             "Local node configuration files are missing at {}",
             local_conf_dir.display()
         ));
-        // Ask user if they want to update the chain config.
-        let update = ask_user_yes_no_question("Would you like to download network configuration?")?;
-        if update {
+        let non_interactive = !std::io::stdout().is_terminal();
+        if non_interactive {
+            println_action_green(
+                "Downloading",
+                "local network configuration (non-interactive mode).",
+            );
+        }
+        let should_download = if non_interactive {
+            true
+        } else {
+            ask_user_yes_no_question("Would you like to download network configuration?")?
+        };
+        if should_download {
             fetcher.download_config(&ChainConfig::Local).await?;
         } else {
             bail!(
@@ -324,10 +335,22 @@ async fn validate_remote_chainconfig(
         println_warning(&format!(
             "A network configuration update detected for {conf}, this might create problems while syncing with rest of the network"
         ));
-        // Ask user if they want to update the chain config.
-        let update = ask_user_yes_no_question("Would you like to update network configuration?")?;
-        if update {
-            println_action_green("Updating", &format!("configuration files for {conf}",));
+        let non_interactive = !std::io::stdout().is_terminal();
+        if non_interactive {
+            println_action_green(
+                "Updating",
+                &format!("configuration files for {conf} (non-interactive mode)",),
+            );
+        }
+        let should_update = if non_interactive {
+            true
+        } else {
+            ask_user_yes_no_question("Would you like to update network configuration?")?
+        };
+        if should_update {
+            if !non_interactive {
+                println_action_green("Updating", &format!("configuration files for {conf}",));
+            }
             fetcher.download_config(conf).await?;
             println_action_green(
                 "Finished",
