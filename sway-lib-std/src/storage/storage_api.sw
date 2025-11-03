@@ -40,15 +40,15 @@ pub fn write<T>(slot: b256, offset: u64, value: T) {
         return;
     }
 
-    // Determine how many slots and where the value is to be stored.
-    let (offset_slot, number_of_slots, place_in_slot) = slot_calculator::<T>(slot, offset);
-
-    if __size_of::<T>() % 32 == 0 && place_in_slot == 0 {
+    if __size_of::<T>() % 32 == 0 && offset == 0 {
         // If the value is aligned to the start of a slot and occupies full slots, we can store it directly.
         let value_addr = __addr_of::<T>(value);
-        let _ = __state_store_quad(offset_slot, value_addr, number_of_slots);
+        let _ = __state_store_quad(slot, value_addr, __size_of::<T>() / 32);
         return;
     }
+
+    // Determine how many slots and where the value is to be stored.
+    let (offset_slot, number_of_slots, place_in_slot) = slot_calculator::<T>(slot, offset);
 
     // Allocate enough memory on the heap for `value` as well as any potential padding required due 
     // to `offset`.
@@ -180,13 +180,21 @@ fn slot_calculator<T>(slot: b256, offset: u64) -> (b256, u64, u64) {
 
     // Get the number of slots `T` spans based on its packed position.
     // ((place_in_slot * bytes_in_word) + bytes + (bytes_in_slot - 1)) >> align_to_slot = number_of_slots
-    let number_of_slots = match __is_reference_type::<T>() {
-        true => ((place_in_slot * 8) + size_of_t + 31) >> 5,
-        false => 1,
+    let number_of_slots = if __is_reference_type::<T>() {
+        ((place_in_slot * 8) + size_of_t + 31) >> 5
+    } else {
+        1
     };
 
     // Determine which starting slot `T` will be stored based on the offset.
     let mut offset_slot = slot.as_u256();
-    offset_slot += last_slot.as_u256() - number_of_slots.as_u256();
-    (offset_slot.as_b256(), number_of_slots, place_in_slot)
+    add_u64_to_u256(offset_slot, last_slot - number_of_slots);
+    (__transmute::<u256, b256>(offset_slot), number_of_slots, place_in_slot)
+}
+
+#[inline(always)]
+fn add_u64_to_u256(ref mut num: u256, val: u64) {
+    asm(num: num, val: val) {
+        wqop num num val i0;
+    }
 }
