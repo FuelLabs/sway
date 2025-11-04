@@ -1,0 +1,4 @@
+cmds = [
+    "forc build --path {root}",
+    "forc build --path {root} --ir final --asm final | filter-fn {name} return_match_on_str_slice"
+]
