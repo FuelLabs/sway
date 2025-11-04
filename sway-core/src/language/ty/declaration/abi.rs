@@ -36,7 +36,7 @@ fn has_const_generics(type_id: TypeId, engines: &Engines) -> bool {
         let t = engines.te().get(t);
         match &*t {
             TypeInfo::StringArray(length) => match length.expr() {
-                ConstGenericExpr::Literal { .. } => todo!(),
+                ConstGenericExpr::Literal { .. } => {},
                 ConstGenericExpr::AmbiguousVariableExpression { .. } => return true,
             },
             TypeInfo::Enum(decl_id) => {
@@ -82,7 +82,7 @@ fn has_const_generics(type_id: TypeId, engines: &Engines) -> bool {
                 }
 
                 match length.expr() {
-                    ConstGenericExpr::Literal { .. } => todo!(),
+                    ConstGenericExpr::Literal { .. } => {},
                     ConstGenericExpr::AmbiguousVariableExpression { .. } => return true,
                 }
             }
