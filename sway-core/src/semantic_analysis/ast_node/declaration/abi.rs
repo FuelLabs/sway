@@ -233,6 +233,9 @@ impl ty::TyAbiDecl {
                     span,
                     attributes,
                 };
+
+                abi_decl.forbid_const_generics(handler, engines)?;
+
                 Ok(abi_decl)
             })
     }
