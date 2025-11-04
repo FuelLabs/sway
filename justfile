@@ -67,6 +67,12 @@ alias pd := perf-diff
 perf-diff before after format='md':
     ./scripts/perf/perf-diff.sh "{{before}}" "{{after}}" "{{format}}"
 
+alias pds := perf-diff-stats
+# generate performance statistics summary from a `perf-diff` output CSV file
+[group('performance')]
+perf-diff-stats diff_file:
+    cat "{{diff_file}}" | ./scripts/perf/perf-diff-stats.sh
+
 alias pdl := perf-diff-latest
 # generate performance diffs between the latest two CSV files per testing category
 [group('performance')]

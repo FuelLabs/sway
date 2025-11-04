@@ -156,6 +156,10 @@ impl BufferReader {
     {
         T::abi_decode(self)
     }
+
+    pub fn ptr(self) -> raw_ptr {
+        self.ptr
+    }
 }
 
 // Encode
