@@ -754,7 +754,7 @@ impl TestContext {
                 }) {
                     println!();
                     for cid in contract_ids {
-                        println!("Deployed contract: 0x{cid}");
+                        println!("Deployed contract: {}", format!("{:#x}", cid).bold(),);
                     }
 
                     return Err(anyhow::Error::msg("Receipts contain reverts or panics"));
