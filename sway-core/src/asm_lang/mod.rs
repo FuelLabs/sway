@@ -461,6 +461,34 @@ impl Op {
                 let (r1, imm) = single_reg_imm_18(handler, args, immediate, whole_op_span)?;
                 VirtualOp::JNZI(r1, imm)
             }
+            "jmpb" => {
+                let (r1, imm) = single_reg_imm_18(handler, args, immediate, whole_op_span)?;
+                VirtualOp::JMPB(r1, imm)
+            }
+            "jmpf" => {
+                let (r1, imm) = single_reg_imm_18(handler, args, immediate, whole_op_span)?;
+                VirtualOp::JMPF(r1, imm)
+            }
+            "jnzb" => {
+                let (r1, r2, imm) = two_regs_imm_12(handler, args, immediate, whole_op_span)?;
+                VirtualOp::JNZB(r1, r2, imm)
+            }
+            "jnzf" => {
+                let (r1, r2, imm) = two_regs_imm_12(handler, args, immediate, whole_op_span)?;
+                VirtualOp::JNZF(r1, r2, imm)
+            }
+            "jneb" => {
+                let (r1, r2, r3, imm) = three_regs_imm_06(handler, args, immediate, whole_op_span)?;
+                VirtualOp::JNEB(r1, r2, r3, imm)
+            }
+            "jnef" => {
+                let (r1, r2, r3, imm) = three_regs_imm_06(handler, args, immediate, whole_op_span)?;
+                VirtualOp::JNEF(r1, r2, r3, imm)
+            }
+            "jal" => {
+                let (r1, r2, imm) = two_regs_imm_12(handler, args, immediate, whole_op_span)?;
+                VirtualOp::JAL(r1, r2, imm)
+            }
             "ret" => {
                 let r1 = single_reg(handler, args, immediate, whole_op_span)?;
                 VirtualOp::RET(r1)
@@ -1184,6 +1212,12 @@ impl fmt::Display for VirtualOp {
             JNE(a, b, c) => write!(fmtr, "jne {a} {b} {c}"),
             JNEI(a, b, c) => write!(fmtr, "jnei {a} {b} {c}"),
             JNZI(a, b) => write!(fmtr, "jnzi {a} {b}"),
+            JMPB(a, b ) => write!(fmtr, "jmpb {a} {b}"),
+            JMPF(a, b ) => write!(fmtr, "jmpf {a} {b}"),
+            JNZB(a, b, c) => write!(fmtr, "jnzb {a} {b} {c}"),
+            JNZF(a, b, c) => write!(fmtr, "jnzf {a} {b} {c}"),
+            JNEB(a, b, c, d) => write!(fmtr, "jneb {a} {b} {c} {d}"),
+            JNEF(a, b, c, d) => write!(fmtr, "jnef {a} {b} {c} {d}"),
             JAL(a, b, c) => write!(fmtr, "jal {a} {b} {c}"),
             RET(a) => write!(fmtr, "ret {a}"),
 
