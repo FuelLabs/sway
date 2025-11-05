@@ -151,8 +151,18 @@ pub(crate) enum AllocatedInstruction {
     JMPF(AllocatedRegister, VirtualImmediate18),
     JNZB(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
     JNZF(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
-    JNEB(AllocatedRegister, AllocatedRegister, AllocatedRegister, VirtualImmediate06),
-    JNEF(AllocatedRegister, AllocatedRegister, AllocatedRegister, VirtualImmediate06),
+    JNEB(
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        VirtualImmediate06,
+    ),
+    JNEF(
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        VirtualImmediate06,
+    ),
     JAL(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
     RET(AllocatedRegister),
 
@@ -698,8 +708,20 @@ impl AllocatedOp {
             JMPF(a, b) => op::JMPF::new(a.to_reg_id(), b.as_imm18().unwrap()).into(),
             JNZB(a, b, c) => op::JNZB::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             JNZF(a, b, c) => op::JNZF::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
-            JNEB(a, b, c, d) => op::JNEB::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.value().into()).into(),
-            JNEF(a, b, c, d) => op::JNEF::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.value().into()).into(),
+            JNEB(a, b, c, d) => op::JNEB::new(
+                a.to_reg_id(),
+                b.to_reg_id(),
+                c.to_reg_id(),
+                d.value().into(),
+            )
+            .into(),
+            JNEF(a, b, c, d) => op::JNEF::new(
+                a.to_reg_id(),
+                b.to_reg_id(),
+                c.to_reg_id(),
+                d.value().into(),
+            )
+            .into(),
             JAL(a, b, c) => op::JAL::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
             RET(a) => op::RET::new(a.to_reg_id()).into(),
 

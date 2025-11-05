@@ -110,8 +110,18 @@ pub(crate) enum VirtualOp {
     JMPF(VirtualRegister, VirtualImmediate18),
     JNZB(VirtualRegister, VirtualRegister, VirtualImmediate12),
     JNZF(VirtualRegister, VirtualRegister, VirtualImmediate12),
-    JNEB(VirtualRegister, VirtualRegister, VirtualRegister, VirtualImmediate06),
-    JNEF(VirtualRegister, VirtualRegister, VirtualRegister, VirtualImmediate06),
+    JNEB(
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        VirtualImmediate06,
+    ),
+    JNEF(
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        VirtualImmediate06,
+    ),
     JAL(VirtualRegister, VirtualRegister, VirtualImmediate12),
     RET(VirtualRegister),
 
