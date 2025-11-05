@@ -10,10 +10,12 @@ Below is the list of attributes supported by the Sway compiler, ordered alphabet
 - [Deprecated](#deprecated)
 - [Error](#error)
 - [Error Type](#error-type)
+- [Event](#event--indexed)
 - [Fallback](#fallback)
+- [Indexed](#event--indexed)
 - [Inline](#inline)
 - [Payable](#payable)
-- [Storage](#payable)
+- [Storage](#storage)
 - [Test](#test)
 - [Tracing](#tracing)
 
@@ -118,6 +120,44 @@ enum SomeErrors {
 ```
 
 All variants of an error type enum must be annotated with the [`#[error]` attribute](#error). Error type enums are meant to be use in `panic` expressions for rich error reporting.
+
+## Event / Indexed
+
+The `#[event]` attribute marks a struct or enum as an event that can be emitted by a contract.
+
+The `#[indexed]` attribute can be applied to fields within structs that are attributed with `#[event]`. This is particularly useful for event structs, allowing for efficient filtering and searching of emitted events based on the values of these fields.
+
+When using this attribute, the indexed fields must be applied sequentially to the initial set of fields in a struct.
+
+This attribute can only be applied to fields whose type is an exact size ABI type. The exact size ABI types include:
+
+- `bool`
+- `u8`, `u16`, `u32`, `u64`, `u256`
+- `numeric`
+- `b256`
+- `Address`
+- `str[N]`
+- Tuples containing only exact size types
+- Structs containing only exact size types
+- Arrays of exact size types with a literal length
+- Type aliases to exact size types
+
+Additionally it causes the event types to be included in the JSON ABI representation for the contract.
+
+```sway
+#[event]
+struct MyEventStruct {
+    #[indexed]
+    id: u64,
+    sender: Identity,
+}
+
+#[event]
+enum MyEventEnum {
+    A: (),
+    B: (),
+}
+```
 
 ## Fallback
 
