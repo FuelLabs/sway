@@ -61,7 +61,7 @@ impl DapServer {
                 });
                 if let Some(existing_bp) = existing_breakpoints
                     .iter()
-                    .find(|bp| (bp.line == Some(source_bp.line)))
+                    .find(|bp| bp.line == Some(source_bp.line))
                 {
                     Breakpoint {
                         verified,

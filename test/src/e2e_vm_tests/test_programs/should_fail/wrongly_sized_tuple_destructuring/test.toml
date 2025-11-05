@@ -3,5 +3,5 @@ category = "fail"
 # check: let (_b, _c) = a;
 # nextln: $()Mismatched types.
 # nextln: $()expected: (_, _)
-# nextln: $()found:    (bool, numeric, numeric).
+# nextln: $()found:    (bool, {numeric}, {numeric}).
 # nextln: $()help: Variable declaration's type annotation does not match up with the assigned expression's type.

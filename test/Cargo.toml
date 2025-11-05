@@ -8,6 +8,7 @@ edition.workspace = true
 [dependencies]
 anyhow.workspace = true
 bytes.workspace = true
+chrono.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
 colored.workspace = true
 duct.workspace = true
@@ -21,6 +22,7 @@ forc-util = { workspace = true, features = ["tx"] }
 fuel-vm = { workspace = true, features = ["random"] }
 futures.workspace = true
 gag.workspace = true
+git2.workspace = true
 glob.workspace = true
 hex.workspace = true
 insta.workspace = true
@@ -28,9 +30,11 @@ libtest-mimic.workspace = true
 normalize-path.workspace = true
 prettydiff.workspace = true
 rand.workspace = true
+rayon.workspace = true
 regex.workspace = true
 revm.workspace = true
 rhai = "1.22.2"
+serde.workspace = true
 serde_json.workspace = true
 sway-core.workspace = true
 sway-error.workspace = true
@@ -43,3 +47,6 @@ tokio.workspace = true
 toml = { workspace = true, features = ["parse"] }
 tracing.workspace = true
 vte.workspace = true
+
+[lints]
+workspace = true

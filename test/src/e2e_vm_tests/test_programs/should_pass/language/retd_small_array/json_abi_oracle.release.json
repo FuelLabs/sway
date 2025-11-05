@@ -1,0 +1,38 @@
+{
+  "configurables": [],
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "main",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "types": [
+    {
+      "components": [
+        {
+          "name": "__array_element",
+          "offset": null,
+          "type": 1,
+          "typeArguments": null
+        }
+      ],
+      "type": "[_; 1]",
+      "typeId": 0,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u32",
+      "typeId": 1,
+      "typeParameters": null
+    }
+  ]
+}

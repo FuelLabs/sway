@@ -9,6 +9,13 @@ extend-ignore-identifiers-re = [
     "NOOP",
     "Nam",
     "typ",
+    "ALOC",
+    "Aloc",
+    "aloc",
+]
+
+extend-ignore-re = [
+    "(?Rm)^.*(#|//)\\s*typos:ignore$",
 ]
 
 [files]

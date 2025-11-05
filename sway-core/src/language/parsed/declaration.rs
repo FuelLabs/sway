@@ -152,7 +152,7 @@ impl Declaration {
             Declaration::StructDeclaration(decl_id) => Ok(*decl_id),
             Declaration::TypeAliasDeclaration(decl_id) => {
                 let alias = engines.pe().get_type_alias(decl_id);
-                let struct_decl_id = engines.te().get(alias.ty.type_id()).expect_struct(
+                let struct_decl_id = engines.te().get(alias.ty.type_id).expect_struct(
                     handler,
                     engines,
                     &self.span(engines),
@@ -182,7 +182,7 @@ impl Declaration {
             Declaration::EnumDeclaration(decl_id) => Ok(*decl_id),
             Declaration::TypeAliasDeclaration(decl_id) => {
                 let alias = engines.pe().get_type_alias(decl_id);
-                let enum_decl_id = engines.te().get(alias.ty.type_id()).expect_enum(
+                let enum_decl_id = engines.te().get(alias.ty.type_id).expect_enum(
                     handler,
                     engines,
                     String::default(),
@@ -232,7 +232,7 @@ impl Declaration {
             | Declaration::TraitTypeDeclaration(_)
             | Declaration::TraitFnDeclaration(_) => Visibility::Public,
             Declaration::ConstGenericDeclaration(_) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                unreachable!("Const generics do not have visibility")
             }
         }
     }

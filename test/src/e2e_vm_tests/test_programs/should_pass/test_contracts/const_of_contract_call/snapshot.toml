@@ -1,0 +1,7 @@
+cmds = [
+    "forc test --path {root} --release --experimental const_generics",
+    { repeat = "for-each-block", cmds = [
+        "replace-file src/main.sw \"fn cost_of_in\" \"fn isolated_cost_of_in\"",
+        "forc test --path {root} --release --experimental const_generics"
+    ] }
+]

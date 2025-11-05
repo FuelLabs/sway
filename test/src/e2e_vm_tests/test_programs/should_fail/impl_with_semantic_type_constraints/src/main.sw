@@ -1,4 +1,4 @@
-script;
+library;
 
 struct DoubleIdentity<T, F> {
     first: T,
@@ -19,11 +19,11 @@ impl<T, F> DoubleIdentity<T, F> {
 
 impl DoubleIdentity<u8, u8> {
     fn add(self) -> u8 {
-        self.first + self.second
+        0
     }
 }
 
-fn main() {
+pub fn main() {
     let a = DoubleIdentity {
         first: 0u8,
         second: 1u8
@@ -43,12 +43,9 @@ fn main() {
 
     let _g = b.get_first();
     let _h = b.get_second();
-    // should fail
-    let _i = b.add();
+    let _i = b.add(); // should fail
 
-    // should fail
-    let _j = c.get_first();
+    let _j = c.get_first(); // should fail
     let _k = c.get_second();
-    // should fail
-    let _l = c.add();
+    let _l = c.add(); // should fail
 }

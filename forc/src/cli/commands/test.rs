@@ -1,14 +1,15 @@
-use crate::cli;
+use crate::cli::{self, shared::IrCliOpt};
 use ansiterm::Colour;
 use clap::Parser;
 use forc_pkg as pkg;
-use forc_test::{TestFilter, TestResult, TestRunnerCount, TestedPackage};
+use forc_test::{GasCostsSource, TestFilter, TestResult, TestRunnerCount, TestedPackage};
 use forc_tracing::println_action_green;
 use forc_util::{
-    tx_utils::{decode_fuel_vm_log_data, format_log_receipts, RevertKind},
+    tx_utils::{decode_fuel_vm_log_data, format_log_receipts},
     ForcError, ForcResult,
 };
-use sway_core::{asm_generation::ProgramABI, fuel_prelude::fuel_tx::Receipt};
+use fuel_abi_types::{abi::program::PanickingCall, revert_info::RevertKind};
+use sway_core::{asm_generation::ProgramABI, fuel_prelude::fuel_tx::Receipt, IrCli};
 use tracing::info;
 
 forc_util::cli_examples! {
@@ -23,20 +24,17 @@ forc_util::cli_examples! {
 /// Run the Sway unit tests for the current project.
 ///
 /// NOTE: Previously this command was used to support Rust integration testing, however the
-/// provided behaviour served no benefit over running `cargo test` directly. The proposal to change
-/// the behaviour to support unit testing can be found at the following link:
+/// provided behavior served no benefit over running `cargo test` directly. The proposal to change
+/// the behavior to support unit testing can be found at the following link:
 /// https://github.com/FuelLabs/sway/issues/1833
 ///
 /// Sway unit tests are functions decorated with the `#[test]` attribute. Each test is compiled as
 /// a unique entry point for a single program and has access to the namespace of the module in
 /// which it is declared.
 ///
-/// Unit tests decorated with the `#[test(script)]` attribute that are declared within `contract`
-/// projects may also call directly into their associated contract's ABI.
-///
 /// Upon successful compilation, test scripts are executed to their completion. A test is
 /// considered a failure in the case that a revert (`rvrt`) instruction is encountered during
-/// execution. Otherwise, it is considered a success.
+/// execution, unless it is specified as `#[test(should_revert)]`. Otherwise, it is considered a success.
 #[derive(Debug, Parser)]
 #[clap(bin_name = "forc test", version, after_help = help())]
 pub struct Command {
@@ -53,14 +51,27 @@ pub struct Command {
     /// Number of threads to utilize when running the tests. By default, this is the number of
     /// threads available in your system.
     pub test_threads: Option<usize>,
-
     #[clap(flatten)]
     pub experimental: sway_features::CliFields,
+    /// Source of the gas costs values used to calculate gas costs of test executions.
+    ///
+    /// If not provided, a built-in set of gas costs values will be used.
+    /// These are the gas costs values of the Fuel mainnet as of time of
+    /// the release of the `forc` version being used.
+    ///
+    /// The mainnet and testnet options will fetch the current gas costs values from
+    /// their respective networks.
+    ///
+    /// Alternatively, the gas costs values can be specified as a file path
+    /// to a local JSON file containing the gas costs values.
+    ///
+    /// [possible values: built-in, mainnet, testnet, <FILE_PATH>]
+    #[clap(long)]
+    pub gas_costs: Option<GasCostsSource>,
 }
 
 /// The set of options provided for controlling output of a test.
 #[derive(Parser, Debug, Clone)]
-#[clap(after_help = help())]
 pub struct TestPrintOpts {
     #[clap(long = "pretty")]
     /// Pretty-print the logs emitted from tests.
@@ -91,6 +102,11 @@ pub(crate) fn exec(cmd: Command) -> ForcResult<()> {
         filter_phrase,
         exact_match: cmd.filter_exact,
     });
+    let gas_costs_values = cmd
+        .gas_costs
+        .as_ref()
+        .unwrap_or(&GasCostsSource::BuiltIn)
+        .provide_gas_costs()?;
     let opts = opts_from_cmd(cmd);
     let built_tests = forc_test::build(opts)?;
     let start = std::time::Instant::now();
@@ -107,7 +123,7 @@ pub(crate) fn exec(cmd: Command) -> ForcResult<()> {
             formatted_test_count_string(num_tests_ignored)
         ),
     );
-    let tested = built_tests.run(test_runner_count, test_filter)?;
+    let tested = built_tests.run(test_runner_count, test_filter, gas_costs_values)?;
     let duration = start.elapsed();
 
     // Eventually we'll print this in a fancy manner, but this will do for testing.
@@ -237,6 +253,7 @@ fn print_test_output(
                     err_msg,
                     err_val,
                     pos,
+                    backtrace,
                 } => {
                     if let Some(err_msg) = err_msg {
                         info!("{TEST_NAME_INDENT} ├─ panic message: {err_msg}");
@@ -245,9 +262,54 @@ fn print_test_output(
                         info!("{TEST_NAME_INDENT} ├─ panic value:   {err_val}");
                     }
                     info!(
-                        "{TEST_NAME_INDENT} └─ panicked in:   {}, {}:{}:{}",
-                        pos.pkg, pos.file, pos.line, pos.column
+                        "{TEST_NAME_INDENT} {} panicked:      in {}",
+                        if backtrace.is_empty() {
+                            "└─"
+                        } else {
+                            "├─"
+                        },
+                        pos.function
                     );
+                    info!(
+                        "{TEST_NAME_INDENT} {}                 └─ at {}, {}:{}:{}",
+                        if backtrace.is_empty() { "  " } else { "│ " },
+                        pos.pkg,
+                        pos.file,
+                        pos.line,
+                        pos.column
+                    );
+
+                    fn print_backtrace_call(call: &PanickingCall, is_first: bool) {
+                        // The `__entry` function is a part of a backtrace,
+                        // but we don't want to show it, since it is an internal implementation detail.
+                        if call.pos.function.ends_with("::__entry")
+                            || call.pos.function.eq("__entry")
+                        {
+                            return;
+                        }
+
+                        let prefix = if is_first {
+                            "└─ backtrace:"
+                        } else {
+                            "             "
+                        };
+
+                        info!(
+                            "{TEST_NAME_INDENT} {prefix}     called in {}",
+                            call.pos.function
+                        );
+                        info!(
+                            "{TEST_NAME_INDENT}                    └─ at {}, {}:{}:{}",
+                            call.pos.pkg, call.pos.file, call.pos.line, call.pos.column
+                        );
+                    }
+
+                    if let Some((first, others)) = backtrace.split_first() {
+                        print_backtrace_call(first, true);
+                        for call in others {
+                            print_backtrace_call(call, false);
+                        }
+                    }
                 }
             }
         }
@@ -290,12 +352,12 @@ fn print_test_output(
 fn opts_from_cmd(cmd: Command) -> forc_test::TestOpts {
     forc_test::TestOpts {
         pkg: pkg::PkgOpts {
-            path: cmd.build.pkg.path,
+            path: cmd.build.pkg.path.clone(),
             offline: cmd.build.pkg.offline,
             terse: cmd.build.pkg.terse,
             locked: cmd.build.pkg.locked,
-            output_directory: cmd.build.pkg.output_directory,
-            ipfs_node: cmd.build.pkg.ipfs_node.unwrap_or_default(),
+            output_directory: cmd.build.pkg.output_directory.clone(),
+            ipfs_node: cmd.build.pkg.ipfs_node.clone().unwrap_or_default(),
         },
         print: pkg::PrintOpts {
             ast: cmd.build.print.ast,
@@ -307,6 +369,11 @@ fn opts_from_cmd(cmd: Command) -> forc_test::TestOpts {
             ir: cmd.build.print.ir(),
             reverse_order: cmd.build.print.reverse_order,
         },
+        verify_ir: cmd
+            .build
+            .verify_ir
+            .as_ref()
+            .map_or(IrCli::default(), |opts| IrCliOpt::from(opts).0),
         time_phases: cmd.build.print.time_phases,
         profile: cmd.build.print.profile,
         metrics_outfile: cmd.build.print.metrics_outfile,
@@ -323,6 +390,7 @@ fn opts_from_cmd(cmd: Command) -> forc_test::TestOpts {
         build_target: cmd.build.build_target,
         experimental: cmd.experimental.experimental,
         no_experimental: cmd.experimental.no_experimental,
+        no_output: false,
     }
 }
 

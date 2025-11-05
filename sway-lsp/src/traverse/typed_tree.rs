@@ -16,7 +16,7 @@ use sway_core::{
         CallPathTree, CallPathType,
     },
     type_system::GenericArgument,
-    TraitConstraint, TypeId, TypeInfo,
+    GenericTypeArgument, TraitConstraint, TypeId, TypeInfo,
 };
 use sway_error::handler::Handler;
 use sway_types::{Ident, Named, Span, Spanned};
@@ -205,7 +205,7 @@ impl Parse for ty::TySideEffect {
                     if let Some(span) = ctx
                         .namespace
                         .root_module()
-                        .submodule(&[mod_name.clone()])
+                        .submodule(std::slice::from_ref(mod_name))
                         .and_then(|tgt_submod| tgt_submod.span().clone())
                     {
                         token.type_def = Some(TypeDefinition::Ident(Ident::new(span)));
@@ -234,12 +234,12 @@ impl Parse for ty::TyExpression {
                 arguments,
                 fn_ref,
                 type_binding,
-                call_path_typeid,
+                method_target,
                 ..
             } => {
                 if let Some(type_binding) = type_binding {
                     adaptive_iter(&type_binding.type_arguments.to_vec(), |type_arg| {
-                        collect_type_argument(ctx, type_arg);
+                        collect_generic_argument(ctx, type_arg);
                     });
                 }
                 let implementing_type_name = (*ctx.engines.de().get_function(fn_ref))
@@ -251,11 +251,11 @@ impl Parse for ty::TyExpression {
                     if let Some((last, prefixes)) = call_path.prefixes.split_last() {
                         if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(last))
                         {
-                            if let Some(call_path_typeid) = call_path_typeid {
+                            if let Some(method_target) = method_target {
                                 token.ast_node = TokenAstNode::Typed(TypedAstToken::Ident(
                                     impl_type_name.clone(),
                                 ));
-                                token.type_def = Some(TypeDefinition::TypeId(*call_path_typeid));
+                                token.type_def = Some(TypeDefinition::TypeId(*method_target));
                             }
                         }
                         prefixes
@@ -373,7 +373,7 @@ impl Parse for ty::TyExpression {
                     token.type_def = Some(TypeDefinition::TypeId(self.return_type));
                 }
                 adaptive_iter(&call_path_binding.type_arguments.to_vec(), |type_arg| {
-                    collect_type_argument(ctx, type_arg);
+                    collect_generic_argument(ctx, type_arg);
                 });
                 collect_call_path_prefixes(
                     ctx,
@@ -480,7 +480,7 @@ impl Parse for ty::TyExpression {
                     token.type_def = Some(TypeDefinition::Ident(enum_ref.name().clone()));
                 }
                 adaptive_iter(&call_path_binding.type_arguments.to_vec(), |type_arg| {
-                    collect_type_argument(ctx, type_arg);
+                    collect_generic_argument(ctx, type_arg);
                 });
                 collect_call_path_prefixes(
                     ctx,
@@ -655,8 +655,8 @@ impl Parse for ty::TyVariableDecl {
             ));
             token.type_def = Some(TypeDefinition::Ident(self.name.clone()));
         }
-        if let Some(call_path_tree) = &self.type_ascription.call_path_tree() {
-            collect_call_path_tree(ctx, call_path_tree, &self.type_ascription);
+        if let Some(call_path_tree) = self.type_ascription.call_path_tree.as_ref() {
+            collect_call_type_argument_path_tree(ctx, call_path_tree, &self.type_ascription);
         }
         self.body.parse(ctx);
     }
@@ -713,7 +713,7 @@ impl Parse for ty::FunctionDecl {
                 );
             }
         });
-        collect_type_argument(ctx, &func_decl.return_type);
+        collect_generic_type_argument(ctx, &func_decl.return_type);
         adaptive_iter(&func_decl.where_clause, |(ident, trait_constraints)| {
             adaptive_iter(trait_constraints, |constraint| {
                 collect_trait_constraint(ctx, constraint);
@@ -850,11 +850,11 @@ impl Parse for ty::ImplSelfOrTrait {
                 }
             } else {
                 typed_token.clone_from(&token.as_typed().cloned());
-                Some(TypeDefinition::TypeId(implementing_for.type_id()))
+                Some(TypeDefinition::TypeId(implementing_for.type_id))
             };
         }
         adaptive_iter(trait_type_arguments, |type_arg| {
-            collect_type_argument(ctx, type_arg);
+            collect_generic_argument(ctx, type_arg);
         });
         adaptive_iter(items, |item| match item {
             ty::TyTraitItem::Fn(method_ref) => {
@@ -870,16 +870,17 @@ impl Parse for ty::ImplSelfOrTrait {
                 collect_trait_type_decl(ctx, &trait_type, &type_ref.span());
             }
         });
-        collect_type_argument(ctx, implementing_for);
+        collect_generic_type_argument(ctx, implementing_for);
         // collect the root type argument again with declaration info this time so the
         // impl is registered
         if let Some(typed_token) = typed_token {
             collect_type_id(
                 ctx,
-                implementing_for.type_id(),
+                implementing_for.type_id,
                 &typed_token,
                 implementing_for
-                    .call_path_tree()
+                    .call_path_tree
+                    .as_ref()
                     .map(|tree| tree.qualified_call_path.call_path.suffix.span())
                     .unwrap_or(implementing_for.span()),
             );
@@ -939,7 +940,7 @@ impl Parse for ty::StorageDecl {
                     TokenAstNode::Typed(TypedAstToken::TypedStorageField(field.clone()));
                 token.type_def = Some(TypeDefinition::Ident(field.name.clone()));
             }
-            collect_type_argument(ctx, &field.type_argument);
+            collect_generic_type_argument(ctx, &field.type_argument);
             field.initializer.parse(ctx);
         });
     }
@@ -959,7 +960,7 @@ impl Parse for ty::TyFunctionParameter {
             token.ast_node = TokenAstNode::Typed(typed_token);
             token.type_def = Some(TypeDefinition::Ident(self.name.clone()));
         }
-        collect_type_argument(ctx, &self.type_argument);
+        collect_generic_type_argument(ctx, &self.type_argument);
     }
 }
 
@@ -973,7 +974,7 @@ impl Parse for ty::TyTraitFn {
         let return_ident = Ident::new(self.return_type.span());
         if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(&return_ident)) {
             token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedTraitFn(self.clone()));
-            token.type_def = Some(TypeDefinition::TypeId(self.return_type.type_id()));
+            token.type_def = Some(TypeDefinition::TypeId(self.return_type.type_id));
         }
     }
 }
@@ -984,7 +985,7 @@ impl Parse for ty::TyStructField {
             token.ast_node = TokenAstNode::Typed(TypedAstToken::TypedStructField(self.clone()));
             token.type_def = Some(TypeDefinition::Ident(self.name.clone()));
         }
-        collect_type_argument(ctx, &self.type_argument);
+        collect_generic_type_argument(ctx, &self.type_argument);
     }
 }
 
@@ -993,9 +994,9 @@ impl Parse for ty::TyEnumVariant {
         let typed_token = TypedAstToken::TypedEnumVariant(self.clone());
         if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(&self.name)) {
             token.ast_node = TokenAstNode::Typed(typed_token);
-            token.type_def = Some(TypeDefinition::TypeId(self.type_argument.type_id()));
+            token.type_def = Some(TypeDefinition::TypeId(self.type_argument.type_id));
         }
-        collect_type_argument(ctx, &self.type_argument);
+        collect_generic_type_argument(ctx, &self.type_argument);
     }
 }
 
@@ -1018,7 +1019,7 @@ impl Parse for ty::TyFunctionDecl {
                 );
             }
         });
-        collect_type_argument(ctx, &self.return_type);
+        collect_generic_type_argument(ctx, &self.return_type);
         adaptive_iter(&self.where_clause, |(ident, trait_constraints)| {
             adaptive_iter(trait_constraints, |constraint| {
                 collect_trait_constraint(ctx, constraint);
@@ -1046,14 +1047,14 @@ impl Parse for ty::TyTypeAliasDecl {
                 TokenAstNode::Typed(TypedAstToken::TypedTypeAliasDeclaration(self.clone()));
             token.type_def = Some(TypeDefinition::Ident(self.name.clone()));
         }
-        collect_type_argument(ctx, &self.ty);
+        collect_generic_type_argument(ctx, &self.ty);
     }
 }
 
 impl Parse for ty::TyIntrinsicFunctionKind {
     fn parse(&self, ctx: &ParseContext) {
         adaptive_iter(&self.type_arguments, |type_arg| {
-            collect_type_argument(ctx, type_arg);
+            collect_generic_argument(ctx, type_arg);
         });
         adaptive_iter(&self.arguments, |arg| {
             arg.parse(ctx);
@@ -1236,12 +1237,12 @@ fn assign_type_to_token(
     token.type_def = Some(TypeDefinition::TypeId(type_id));
 }
 
-fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, generic_arg: &GenericArgument) {
-    if generic_arg.as_type_argument().is_none() {
-        return;
-    }
-
-    let type_info = ctx.engines.te().get(generic_arg.type_id());
+fn collect_call_type_argument_path_tree(
+    ctx: &ParseContext,
+    tree: &CallPathTree,
+    type_arg: &GenericTypeArgument,
+) {
+    let type_info = ctx.engines.te().get(type_arg.type_id);
     collect_qualified_path_root(ctx, tree.qualified_call_path.qualified_path_root.clone());
     collect_call_path_prefixes(
         ctx,
@@ -1250,8 +1251,8 @@ fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, generic_arg: 
     );
     collect_type_id(
         ctx,
-        generic_arg.type_id(),
-        &TypedAstToken::TypedArgument(generic_arg.clone()),
+        type_arg.type_id,
+        &TypedAstToken::TypedArgument(type_arg.clone()),
         tree.qualified_call_path.call_path.suffix.span(),
     );
     match &*type_info {
@@ -1265,8 +1266,10 @@ fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, generic_arg: 
             tree.children
                 .par_iter()
                 .zip(child_type_args.par_iter())
-                .for_each(|(child_tree, type_arg)| {
-                    collect_call_path_tree(ctx, child_tree, type_arg);
+                .for_each(|(child_tree, arg)| {
+                    if let Some(type_arg) = arg.as_type_argument() {
+                        collect_call_type_argument_path_tree(ctx, child_tree, type_arg);
+                    }
                 });
         }
         TypeInfo::Struct(decl_ref) => {
@@ -1279,19 +1282,24 @@ fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, generic_arg: 
             tree.children
                 .par_iter()
                 .zip(child_type_args.par_iter())
-                .for_each(|(child_tree, type_arg)| {
-                    collect_call_path_tree(ctx, child_tree, type_arg);
+                .for_each(|(child_tree, arg)| {
+                    if let Some(type_arg) = arg.as_type_argument() {
+                        collect_call_type_argument_path_tree(ctx, child_tree, type_arg);
+                    }
                 });
         }
         TypeInfo::Custom {
             type_arguments: Some(type_args),
             ..
         } => {
-            tree.children.par_iter().zip(type_args.par_iter()).for_each(
-                |(child_tree, type_arg)| {
-                    collect_call_path_tree(ctx, child_tree, type_arg);
-                },
-            );
+            tree.children
+                .par_iter()
+                .zip(type_args.par_iter())
+                .for_each(|(child_tree, arg)| {
+                    if let Some(type_arg) = arg.as_type_argument() {
+                        collect_call_type_argument_path_tree(ctx, child_tree, type_arg);
+                    }
+                });
         }
         TypeInfo::ContractCaller { .. } => {
             // single generic argument to ContractCaller<_> has to be a single ABI
@@ -1309,7 +1317,7 @@ fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, generic_arg: 
                     .try_get_mut_with_retry(&ctx.ident(&abi_call_path.call_path.suffix))
                 {
                     token.ast_node =
-                        TokenAstNode::Typed(TypedAstToken::TypedArgument(generic_arg.clone()));
+                        TokenAstNode::Typed(TypedAstToken::TypedArgument(type_arg.clone()));
                     let full_path = mod_path_to_full_path(
                         &abi_call_path.call_path.prefixes,
                         false,
@@ -1367,8 +1375,8 @@ fn collect_const_decl(ctx: &ParseContext, const_decl: &ty::TyConstantDecl, ident
             TokenAstNode::Typed(TypedAstToken::TypedConstantDeclaration(const_decl.clone()));
         token.type_def = Some(TypeDefinition::Ident(const_decl.call_path.suffix.clone()));
     }
-    if let Some(call_path_tree) = &const_decl.type_ascription.call_path_tree() {
-        collect_call_path_tree(ctx, call_path_tree, &const_decl.type_ascription);
+    if let Some(call_path_tree) = const_decl.type_ascription.call_path_tree.as_ref() {
+        collect_call_type_argument_path_tree(ctx, call_path_tree, &const_decl.type_ascription);
     }
     if let Some(value) = &const_decl.value {
         value.parse(ctx);
@@ -1387,8 +1395,8 @@ fn collect_configurable_decl(
             TokenAstNode::Typed(TypedAstToken::TypedConfigurableDeclaration(decl.clone()));
         token.type_def = Some(TypeDefinition::Ident(decl.call_path.suffix.clone()));
     }
-    if let Some(call_path_tree) = &decl.type_ascription.call_path_tree() {
-        collect_call_path_tree(ctx, call_path_tree, &decl.type_ascription);
+    if let Some(call_path_tree) = decl.type_ascription.call_path_tree.as_ref() {
+        collect_call_type_argument_path_tree(ctx, call_path_tree, &decl.type_ascription);
     }
     if let Some(value) = &decl.value {
         value.parse(ctx);
@@ -1433,14 +1441,14 @@ fn collect_type_id(
     let symbol_kind = type_info_to_symbol_kind(ctx.engines.te(), &type_info, Some(&type_span));
     match &*type_info {
         TypeInfo::Array(type_arg, ..) => {
-            collect_type_argument(ctx, type_arg);
+            collect_generic_type_argument(ctx, type_arg);
         }
         TypeInfo::Slice(type_arg, ..) => {
-            collect_type_argument(ctx, type_arg);
+            collect_generic_type_argument(ctx, type_arg);
         }
         TypeInfo::Tuple(type_arguments) => {
             adaptive_iter(type_arguments, |type_arg| {
-                collect_type_argument(ctx, type_arg);
+                collect_generic_type_argument(ctx, type_arg);
             });
         }
         TypeInfo::Enum(decl_ref) => {
@@ -1500,7 +1508,7 @@ fn collect_type_id(
             }
             if let Some(type_arguments) = type_arguments {
                 adaptive_iter(type_arguments, |type_arg| {
-                    collect_type_argument(ctx, type_arg);
+                    collect_generic_argument(ctx, type_arg);
                 });
             }
         }
@@ -1515,13 +1523,19 @@ fn collect_type_id(
     }
 }
 
-fn collect_type_argument(ctx: &ParseContext, type_arg: &GenericArgument) {
-    if let Some(call_path_tree) = type_arg.call_path_tree() {
-        collect_call_path_tree(ctx, call_path_tree, type_arg);
+fn collect_generic_argument(ctx: &ParseContext, arg: &GenericArgument) {
+    if let Some(arg) = arg.as_type_argument() {
+        collect_generic_type_argument(ctx, arg);
+    }
+}
+
+fn collect_generic_type_argument(ctx: &ParseContext, type_arg: &GenericTypeArgument) {
+    if let Some(call_path_tree) = type_arg.call_path_tree.as_ref() {
+        collect_call_type_argument_path_tree(ctx, call_path_tree, type_arg);
     } else {
         collect_type_id(
             ctx,
-            type_arg.type_id(),
+            type_arg.type_id,
             &TypedAstToken::TypedArgument(type_arg.clone()),
             type_arg.span(),
         );
@@ -1558,7 +1572,7 @@ fn collect_trait_constraint(
         }
     }
     adaptive_iter(type_arguments, |type_arg| {
-        collect_type_argument(ctx, type_arg);
+        collect_generic_argument(ctx, type_arg);
     });
 }
 
@@ -1607,7 +1621,7 @@ fn collect_qualified_path_root(
     qualified_path_root: Option<Box<QualifiedPathType>>,
 ) {
     if let Some(qualified_path_root) = qualified_path_root {
-        collect_type_argument(ctx, &qualified_path_root.ty);
+        collect_generic_argument(ctx, &qualified_path_root.ty);
         collect_type_id(
             ctx,
             qualified_path_root.as_trait,

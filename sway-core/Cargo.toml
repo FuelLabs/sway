@@ -53,5 +53,5 @@ tracing.workspace = true
 uint.workspace = true
 vec1.workspace = true
 
-[lints.clippy]
-iter_over_hash_type = "deny"
+[lints]
+workspace = true

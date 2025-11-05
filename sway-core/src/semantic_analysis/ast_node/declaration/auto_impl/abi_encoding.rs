@@ -8,6 +8,7 @@ use crate::{
     },
     Engines, TypeInfo, TypeParameter,
 };
+use itertools::Itertools;
 use std::collections::BTreeMap;
 use sway_error::{
     error::CompileError,
@@ -129,7 +130,7 @@ where
         let arms = decl.variants.iter()
             .map(|x| {
                 let name = x.name.as_raw_ident_str();
-                Some(match &*engines.te().get(x.type_argument.type_id()) {
+                Some(match &*engines.te().get(x.type_argument.type_id) {
                     // unit
                     TypeInfo::Tuple(fields) if fields.is_empty() => {
                         format!("{} => {}::{}, \n", x.tag, enum_name, name)
@@ -166,7 +167,7 @@ where
             .iter()
             .map(|x| {
                 let name = x.name.as_raw_ident_str();
-                if engines.te().get(x.type_argument.type_id()).is_unit() {
+                if engines.te().get(x.type_argument.type_id).is_unit() {
                     format!(
                         "{enum_name}::{variant_name} => {{
                         {tag_value}u64.abi_encode(buffer)
@@ -312,15 +313,16 @@ where
         fallback_fn: Option<DeclId<TyFunctionDecl>>,
         handler: &Handler,
     ) -> Result<TyAstNode, ErrorEmitted> {
-        let mut code = String::new();
-
         let mut reads = false;
         let mut writes = false;
 
         // used to check for name collisions
         let mut contract_methods: BTreeMap<String, Vec<Span>> = <_>::default();
 
+        let mut arm_by_size = BTreeMap::<usize, String>::default();
+
         // generate code
+        let mut method_names = String::new();
         for r in contract_fns {
             let decl = engines.de().get(r);
 
@@ -382,8 +384,20 @@ where
             };
 
             let method_name = decl.name.as_str();
+            let offset = if let Some(offset) = method_names.find(method_name) {
+                offset
+            } else {
+                let offset = method_names.len();
+                method_names.push_str(method_name);
+                offset
+            };
 
-            code.push_str(&format!("if _method_name == \"{method_name}\" {{\n"));
+            let method_name_len = method_name.len();
+            let code = arm_by_size.entry(method_name.len()).or_default();
+
+            code.push_str(&format!("
+            let is_this_method = asm(r, ptr: _method_name_ptr, name: _method_names_ptr, len: {method_name_len}) {{ addi r name i{offset}; meq r ptr r len; r: bool }};
+            if is_this_method {{\n"));
 
             if args_types == "()" {
                 code.push_str(&format!(
@@ -454,10 +468,19 @@ where
             (false, false) => "",
         };
 
+        let code = arm_by_size
+            .iter()
+            .map(|(len, code)| format!("if _method_len == {len} {{ {code} }}"))
+            .join("");
         let code = format!(
             "{att} pub fn __entry() {{
+            let _method_names = \"{method_names}\";
             let mut _buffer = BufferReader::from_second_parameter();
-            let _method_name = decode_first_param::<str>();
+            
+            let mut _first_param_buffer = BufferReader::from_first_parameter();
+            let _method_len = _first_param_buffer.read::<u64>();
+            let _method_name_ptr = _first_param_buffer.ptr();
+            let _method_names_ptr = _method_names.as_ptr();
             {code}
             {fallback}
         }}"

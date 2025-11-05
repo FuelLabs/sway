@@ -4,9 +4,9 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     combine_indices, get_gep_referred_symbols, get_loaded_ptr_values, get_stored_ptr_values,
-    pointee_size, AnalysisResults, Constant, ConstantContent, ConstantValue, Context,
-    EscapedSymbols, Function, InstOp, IrError, LocalVar, Pass, PassMutability, ScopedPass, Symbol,
-    Type, Value, ESCAPED_SYMBOLS_NAME,
+    pointee_size, AnalysisResults, Constant, ConstantValue, Context, EscapedSymbols, Function,
+    InstOp, IrError, LocalVar, Pass, PassMutability, ScopedPass, Symbol, Type, Value,
+    ESCAPED_SYMBOLS_NAME,
 };
 
 pub const SROA_NAME: &str = "sroa";
@@ -250,27 +250,29 @@ pub fn sroa(
                         indices,
                     } in &elm_details
                     {
-                        let elm_index_values = indices
-                            .iter()
-                            .map(|&index| {
-                                let c = ConstantContent::new_uint(context, 64, index.into());
-                                let c = Constant::unique(context, c);
-                                Value::new_constant(context, c)
-                            })
-                            .collect();
-                        let elem_ptr_ty = Type::new_typed_pointer(context, *r#type);
-                        let elm_addr = Value::new_instruction(
-                            context,
-                            block,
-                            InstOp::GetElemPtr {
-                                base: src_val_ptr,
-                                elem_ptr_ty,
-                                indices: elm_index_values,
-                            },
-                        );
+                        let elm_addr = if indices.is_empty() {
+                            // We're looking at a pointer to a scalar, so no GEP needed.
+                            src_val_ptr
+                        } else {
+                            let elm_index_values = indices
+                                .iter()
+                                .map(|&index| Value::new_u64_constant(context, index.into()))
+                                .collect();
+                            let elem_ptr_ty = Type::new_typed_pointer(context, *r#type);
+                            let gep = Value::new_instruction(
+                                context,
+                                block,
+                                InstOp::GetElemPtr {
+                                    base: src_val_ptr,
+                                    elem_ptr_ty,
+                                    indices: elm_index_values,
+                                },
+                            );
+                            new_insts.push(gep);
+                            gep
+                        };
                         let load = Value::new_instruction(context, block, InstOp::Load(elm_addr));
                         elm_local_map.insert(*offset, load);
-                        new_insts.push(elm_addr);
                         new_insts.push(load);
                     }
                 }
@@ -321,24 +323,27 @@ pub fn sroa(
                         indices,
                     } in elm_details
                     {
-                        let elm_index_values = indices
-                            .iter()
-                            .map(|&index| {
-                                let c = ConstantContent::new_uint(context, 64, index.into());
-                                let c = Constant::unique(context, c);
-                                Value::new_constant(context, c)
-                            })
-                            .collect();
-                        let elem_ptr_ty = Type::new_typed_pointer(context, r#type);
-                        let elm_addr = Value::new_instruction(
-                            context,
-                            block,
-                            InstOp::GetElemPtr {
-                                base: dst_val_ptr,
-                                elem_ptr_ty,
-                                indices: elm_index_values,
-                            },
-                        );
+                        let elm_addr = if indices.is_empty() {
+                            // We're looking at a pointer to a scalar, so no GEP needed.
+                            dst_val_ptr
+                        } else {
+                            let elm_index_values = indices
+                                .iter()
+                                .map(|&index| Value::new_u64_constant(context, index.into()))
+                                .collect();
+                            let elem_ptr_ty = Type::new_typed_pointer(context, r#type);
+                            let gep = Value::new_instruction(
+                                context,
+                                block,
+                                InstOp::GetElemPtr {
+                                    base: dst_val_ptr,
+                                    elem_ptr_ty,
+                                    indices: elm_index_values,
+                                },
+                            );
+                            new_insts.push(gep);
+                            gep
+                        };
                         let loaded_source = elm_local_map
                             .get(&offset)
                             .expect("memcpy source not loaded");
@@ -350,7 +355,6 @@ pub fn sroa(
                                 stored_val: *loaded_source,
                             },
                         );
-                        new_insts.push(elm_addr);
                         new_insts.push(store);
                     }
                 }

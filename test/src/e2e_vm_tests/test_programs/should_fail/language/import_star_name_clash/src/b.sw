@@ -14,6 +14,6 @@ pub enum MyOtherEnum {
 
 pub fn project_my_enum_b(e : MyEnum) -> u64 {
     match e {
-	MyEnum::A(val) => val,
+        MyEnum::A(val) => val,
     }
 }

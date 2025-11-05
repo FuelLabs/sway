@@ -47,7 +47,7 @@ use sway_core::{
     write_dwarf, BuildTarget, Engines, FinalizedEntry, LspConfig,
 };
 use sway_core::{namespace::Package, Observer};
-use sway_core::{set_bytecode_configurables_offset, DbgGeneration, PrintAsm, PrintIr};
+use sway_core::{set_bytecode_configurables_offset, DbgGeneration, IrCli, PrintAsm};
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_features::ExperimentalFeatures;
 use sway_types::{Ident, ProgramId, Span, Spanned};
@@ -261,7 +261,7 @@ pub struct PrintOpts {
     /// Print the original source code together with bytecode.
     pub bytecode_spans: bool,
     /// Print the generated Sway IR (Intermediate Representation).
-    pub ir: PrintIr,
+    pub ir: IrCli,
     /// Output build errors and warnings in reverse order.
     pub reverse_order: bool,
 }
@@ -290,6 +290,7 @@ pub struct DumpOpts {
 pub struct BuildOpts {
     pub pkg: PkgOpts,
     pub print: PrintOpts,
+    pub verify_ir: IrCli,
     pub minify: MinifyOpts,
     pub dump: DumpOpts,
     /// If set, generates a JSON file containing the hex-encoded script binary.
@@ -323,6 +324,8 @@ pub struct BuildOpts {
     pub experimental: Vec<sway_features::Feature>,
     /// Set of disabled experimental flags
     pub no_experimental: Vec<sway_features::Feature>,
+    /// Do not output any build artifacts, e.g., bytecode, ABI JSON, etc.
+    pub no_output: bool,
 }
 
 /// The set of options to filter type of projects to build in a workspace.
@@ -1579,6 +1582,7 @@ pub fn sway_build_config(
         build_profile.print_bytecode_spans,
     )
     .with_print_ir(build_profile.print_ir.clone())
+    .with_verify_ir(build_profile.verify_ir.clone())
     .with_include_tests(build_profile.include_tests)
     .with_time_phases(build_profile.time_phases)
     .with_profile(build_profile.profile)
@@ -1790,7 +1794,7 @@ pub fn compile(
 
     const ENCODING_V0: &str = "0";
     const ENCODING_V1: &str = "1";
-    const SPEC_VERSION: &str = "1.1";
+    const SPEC_VERSION: &str = "1.2";
 
     let mut program_abi = match pkg.target {
         BuildTarget::Fuel => {
@@ -1803,6 +1807,7 @@ pub fn compile(
                     &mut AbiContext {
                         program: typed_program,
                         panic_occurrences: &asm.panic_occurrences,
+                        panicking_call_occurrences: &asm.panicking_call_occurrences,
                         abi_with_callpaths: true,
                         type_ids_to_full_type_str: HashMap::<String, String>::new(),
                         unique_names: HashMap::new(),
@@ -2116,6 +2121,7 @@ fn build_profile_from_opts(
     let BuildOpts {
         pkg,
         print,
+        verify_ir,
         time_phases,
         profile: profile_opt,
         build_profile,
@@ -2155,6 +2161,7 @@ fn build_profile_from_opts(
             .clone_from(&print.dca_graph_url_format);
     }
     profile.print_ir |= print.ir.clone();
+    profile.verify_ir |= verify_ir.clone();
     profile.print_asm |= print.asm;
     profile.print_bytecode |= print.bytecode;
     profile.print_bytecode_spans |= print.bytecode_spans;
@@ -2209,6 +2216,7 @@ pub fn build_with_options(
         member_filter,
         experimental,
         no_experimental,
+        no_output,
         ..
     } = &build_options;
 
@@ -2300,7 +2308,10 @@ pub fn build_with_options(
             built_package.write_hexcode(&hexfile_path)?;
         }
 
-        built_package.write_output(minify, &pkg_manifest.project.name, &output_dir)?;
+        if !no_output {
+            built_package.write_output(minify, &pkg_manifest.project.name, &output_dir)?;
+        }
+
         built_workspace.push(Arc::new(built_package));
     }
 
@@ -2896,6 +2907,7 @@ mod test {
                 logged_types: None,
                 messages_types: None,
                 error_codes: None,
+                panicking_calls: None,
             }),
             storage_slots: vec![],
             warnings: vec![],

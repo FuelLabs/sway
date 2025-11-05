@@ -15,6 +15,7 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 use std::{
+    borrow::Cow,
     cmp::Ordering,
     fmt,
     hash::{Hash, Hasher},
@@ -118,7 +119,7 @@ pub enum TypeInfo {
     Enum(DeclId<TyEnumDecl>),
     Struct(DeclId<TyStructDecl>),
     Boolean,
-    Tuple(Vec<GenericArgument>),
+    Tuple(Vec<GenericTypeArgument>),
     /// Represents a type which contains methods to issue a contract call.
     /// The specific contract is identified via the `Ident` within.
     ContractCaller {
@@ -142,7 +143,7 @@ pub enum TypeInfo {
     // used for recovering from errors in the ast
     ErrorRecovery(ErrorEmitted),
     // Static, constant size arrays.
-    Array(GenericArgument, Length),
+    Array(GenericTypeArgument, Length),
     /// Pointers.
     /// These are represented in memory as u64 but are a different type since pointers only make
     /// sense in the context they were created in. Users can obtain pointers via standard library
@@ -151,8 +152,8 @@ pub enum TypeInfo {
     /// gtf instruction, or manipulating u64s.
     RawUntypedPtr,
     RawUntypedSlice,
-    Ptr(GenericArgument),
-    Slice(GenericArgument),
+    Ptr(GenericTypeArgument),
+    Slice(GenericTypeArgument),
     /// Type aliases.
     /// This type and the type `ty` it encapsulates always coerce. They are effectively
     /// interchangeable.
@@ -161,15 +162,18 @@ pub enum TypeInfo {
     //       in the `TypeEngine` accordingly, e.g., the `is_type_changeable`.
     Alias {
         name: Ident,
-        ty: GenericArgument,
+        ty: GenericTypeArgument,
     },
     TraitType {
         name: Ident,
-        trait_type_id: TypeId,
+        /// [TypeId] of the type in which this associated type is implemented.
+        /// E.g., for `type AssociatedType = u8;` implemented in `struct Struct`
+        /// this will be the [TypeId] of `Struct`.
+        implemented_in: TypeId,
     },
     Ref {
         to_mutable_value: bool,
-        referenced_type: GenericArgument,
+        referenced_type: GenericTypeArgument,
     },
 }
 
@@ -243,10 +247,10 @@ impl HashWithEngines for TypeInfo {
             }
             TypeInfo::TraitType {
                 name,
-                trait_type_id,
+                implemented_in,
             } => {
                 name.hash(state);
-                trait_type_id.hash(state);
+                implemented_in.hash(state);
             }
             TypeInfo::Ref {
                 to_mutable_value,
@@ -353,10 +357,10 @@ impl PartialEqWithEngines for TypeInfo {
                 l_abi_name == r_abi_name && l_address_span == r_address_span
             }
             (Self::Array(l0, l1), Self::Array(r0, r1)) => {
-                ((l0.type_id() == r0.type_id())
+                ((l0.type_id == r0.type_id)
                     || type_engine
-                        .get(l0.type_id())
-                        .eq(&type_engine.get(r0.type_id()), ctx))
+                        .get(l0.type_id)
+                        .eq(&type_engine.get(r0.type_id), ctx))
                     && l1.expr() == r1.expr()
             }
             (
@@ -370,26 +374,26 @@ impl PartialEqWithEngines for TypeInfo {
                 },
             ) => {
                 l_name == r_name
-                    && ((l_ty.type_id() == r_ty.type_id())
+                    && ((l_ty.type_id == r_ty.type_id)
                         || type_engine
-                            .get(l_ty.type_id())
-                            .eq(&type_engine.get(r_ty.type_id()), ctx))
+                            .get(l_ty.type_id)
+                            .eq(&type_engine.get(r_ty.type_id), ctx))
             }
             (
                 Self::TraitType {
                     name: l_name,
-                    trait_type_id: l_trait_type_id,
+                    implemented_in: l_implemented_in,
                 },
                 Self::TraitType {
                     name: r_name,
-                    trait_type_id: r_trait_type_id,
+                    implemented_in: r_implemented_in,
                 },
             ) => {
                 l_name == r_name
-                    && ((*l_trait_type_id == *r_trait_type_id)
+                    && ((*l_implemented_in == *r_implemented_in)
                         || type_engine
-                            .get(*l_trait_type_id)
-                            .eq(&type_engine.get(*r_trait_type_id), ctx))
+                            .get(*l_implemented_in)
+                            .eq(&type_engine.get(*r_implemented_in), ctx))
             }
             (
                 Self::Ref {
@@ -402,10 +406,10 @@ impl PartialEqWithEngines for TypeInfo {
                 },
             ) => {
                 (l_to_mut == r_to_mut)
-                    && ((l_ty.type_id() == r_ty.type_id())
+                    && ((l_ty.type_id == r_ty.type_id)
                         || type_engine
-                            .get(l_ty.type_id())
-                            .eq(&type_engine.get(r_ty.type_id()), ctx))
+                            .get(l_ty.type_id)
+                            .eq(&type_engine.get(r_ty.type_id), ctx))
             }
 
             (l, r) => l.discriminant_value() == r.discriminant_value(),
@@ -505,8 +509,8 @@ impl OrdWithEngines for TypeInfo {
                 l_abi_name.cmp(r_abi_name)
             }
             (Self::Array(l0, l1), Self::Array(r0, r1)) => type_engine
-                .get(l0.type_id())
-                .cmp(&type_engine.get(r0.type_id()), ctx)
+                .get(l0.type_id)
+                .cmp(&type_engine.get(r0.type_id), ctx)
                 .then_with(|| {
                     if let Some(ord) = l1.expr().partial_cmp(r1.expr()) {
                         ord
@@ -526,20 +530,20 @@ impl OrdWithEngines for TypeInfo {
                     ty: r_ty,
                 },
             ) => type_engine
-                .get(l_ty.type_id())
-                .cmp(&type_engine.get(r_ty.type_id()), ctx)
+                .get(l_ty.type_id)
+                .cmp(&type_engine.get(r_ty.type_id), ctx)
                 .then_with(|| l_name.cmp(r_name)),
             (
                 Self::TraitType {
                     name: l_name,
-                    trait_type_id: l_trait_type_id,
+                    implemented_in: l_implemented_in,
                 },
                 Self::TraitType {
                     name: r_name,
-                    trait_type_id: r_trait_type_id,
+                    implemented_in: r_implemented_in,
                 },
-            ) => l_trait_type_id
-                .cmp(r_trait_type_id)
+            ) => l_implemented_in
+                .cmp(r_implemented_in)
                 .then_with(|| l_name.cmp(r_name)),
             (
                 Self::Ref {
@@ -552,8 +556,8 @@ impl OrdWithEngines for TypeInfo {
                 },
             ) => l_to_mut.cmp(r_to_mut).then_with(|| {
                 type_engine
-                    .get(l_ty.type_id())
-                    .cmp(&type_engine.get(r_ty.type_id()), ctx)
+                    .get(l_ty.type_id)
+                    .cmp(&type_engine.get(r_ty.type_id), ctx)
             }),
             (l, r) => l.discriminant_value().cmp(&r.discriminant_value()),
         }
@@ -562,135 +566,17 @@ impl OrdWithEngines for TypeInfo {
 
 impl DisplayWithEngines for TypeInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
-        use TypeInfo::*;
-        let s = match self {
-            Unknown => "{unknown}".into(),
-            Never => "!".into(),
-            UnknownGeneric { name, .. } => name.to_string(),
-            Placeholder(type_param) => type_param.name().to_string(),
-            TypeParam(param) => format!("{}", param.name()),
-            StringSlice => "str".into(),
-            StringArray(length) => {
-                let length = match length.expr() {
-                    ConstGenericExpr::Literal { val, .. } => format!("{val}"),
-                    ConstGenericExpr::AmbiguousVariableExpression { ident, .. } => {
-                        ident.as_str().to_string()
-                    }
-                };
-                format!("str[{length}]")
-            }
-            UnsignedInteger(x) => match x {
-                IntegerBits::Eight => "u8",
-                IntegerBits::Sixteen => "u16",
-                IntegerBits::ThirtyTwo => "u32",
-                IntegerBits::SixtyFour => "u64",
-                IntegerBits::V256 => "u256",
-            }
-            .into(),
-            Boolean => "bool".into(),
-            Custom {
-                qualified_call_path: call_path,
-                ..
-            } => call_path.call_path.suffix.to_string(),
-            Tuple(fields) => {
-                let field_strs = fields
-                    .iter()
-                    .map(|field| engines.help_out(field).to_string())
-                    .collect::<Vec<String>>();
-                format!("({})", field_strs.join(", "))
-            }
-            B256 => "b256".into(),
-            Numeric => "numeric".into(),
-            Contract => "contract".into(),
-            ErrorRecovery(_) => "unknown".into(),
-            UntypedEnum(decl_id) => {
-                let decl = engines.pe().get_enum(decl_id);
-                print_inner_types(
-                    engines,
-                    decl.name.as_str(),
-                    decl.type_parameters.iter().map(|arg| match arg {
-                        TypeParameter::Type(p) => engines.help_out(p.type_id).to_string(),
-                        TypeParameter::Const(p) => p.name.as_str().to_string(),
-                    }),
-                )
-            }
-            UntypedStruct(decl_id) => {
-                let decl = engines.pe().get_struct(decl_id);
-                print_inner_types(
-                    engines,
-                    decl.name.as_str(),
-                    decl.type_parameters.iter().map(|arg| match arg {
-                        TypeParameter::Type(p) => engines.help_out(p.type_id).to_string(),
-                        TypeParameter::Const(p) => p.name.as_str().to_string(),
-                    }),
-                )
-            }
-            Enum(decl_ref) => {
-                let decl = engines.de().get_enum(decl_ref);
-                print_inner_types(
-                    engines,
-                    decl.call_path.suffix.as_str(),
-                    decl.generic_parameters.iter().map(|arg| match arg {
-                        TypeParameter::Type(p) => engines.help_out(p.type_id).to_string(),
-                        TypeParameter::Const(p) => p.name.as_str().to_string(),
-                    }),
-                )
-            }
-            Struct(decl_ref) => {
-                let decl = engines.de().get_struct(decl_ref);
-                print_inner_types(
-                    engines,
-                    decl.call_path.suffix.as_str(),
-                    decl.generic_parameters.iter().map(|arg| match arg {
-                        TypeParameter::Type(p) => engines.help_out(p.type_id).to_string(),
-                        TypeParameter::Const(p) => p.name.as_str().to_string(),
-                    }),
-                )
-            }
-            ContractCaller { abi_name, .. } => format!("ContractCaller<{abi_name}>"),
-            Array(elem_ty, length) => {
-                let l = match length.expr() {
-                    ConstGenericExpr::Literal { val, .. } => format!("{val}"),
-                    ConstGenericExpr::AmbiguousVariableExpression { ident, .. } => {
-                        ident.as_str().to_string()
-                    }
-                };
-                format!("[{}; {l}]", engines.help_out(elem_ty))
-            }
-            RawUntypedPtr => "pointer".into(),
-            RawUntypedSlice => "slice".into(),
-            Ptr(ty) => {
-                format!("__ptr[{}]", engines.help_out(ty))
-            }
-            Slice(ty) => {
-                format!("__slice[{}]", engines.help_out(ty))
-            }
-            Alias { name, .. } => name.to_string(),
-            TraitType {
-                name,
-                trait_type_id,
-            } => format!("trait type {}::{}", engines.help_out(trait_type_id), name),
-            Ref {
-                to_mutable_value,
-                referenced_type: ty,
-            } => {
-                format!(
-                    "&{}{}",
-                    if *to_mutable_value { "mut " } else { "" },
-                    engines.help_out(ty)
-                )
-            }
-        };
-        write!(f, "{s}")
+        const DISPLAY: TypeInfoDisplay = TypeInfoDisplay::full().with_alias_name();
+        f.write_str(&DISPLAY.display(self, engines))
     }
 }
 
 impl DebugWithEngines for TypeInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         use TypeInfo::*;
-        let s = match self {
-            Unknown => "unknown".into(),
-            Never => "!".into(),
+        let s: &str = match self {
+            Unknown => "unknown",
+            Never => "!",
             UnknownGeneric {
                 name,
                 trait_constraints,
@@ -702,26 +588,23 @@ impl DebugWithEngines for TypeInfo {
                     .collect::<Vec<_>>()
                     .join("+");
                 if tc_str.is_empty() {
-                    name.to_string()
+                    name.as_str()
                 } else {
-                    format!("{name}:{tc_str}")
+                    &format!("{name}:{tc_str}")
                 }
             }
-            Placeholder(t) => format!("placeholder({:?})", engines.help_out(t)),
-            TypeParam(param) => format!("typeparam({})", param.name()),
-            StringSlice => "str".into(),
-            StringArray(length) => {
-                format!("str[{:?}]", engines.help_out(length.expr()),)
-            }
+            Placeholder(t) => &format!("placeholder({:?})", engines.help_out(t)),
+            TypeParam(param) => &format!("typeparam({})", param.name()),
+            StringSlice => "str",
+            StringArray(length) => &format!("str[{:?}]", engines.help_out(length.expr()),),
             UnsignedInteger(x) => match x {
                 IntegerBits::Eight => "u8",
                 IntegerBits::Sixteen => "u16",
                 IntegerBits::ThirtyTwo => "u32",
                 IntegerBits::SixtyFour => "u64",
                 IntegerBits::V256 => "u256",
-            }
-            .into(),
-            Boolean => "bool".into(),
+            },
+            Boolean => "bool",
             Custom {
                 qualified_call_path: call_path,
                 type_arguments,
@@ -740,22 +623,22 @@ impl DebugWithEngines for TypeInfo {
                         );
                     }
                 }
-                format!("unresolved {}{}", call_path.call_path, s)
+                &format!("unresolved {}{}", call_path.call_path, s)
             }
             Tuple(fields) => {
                 let field_strs = fields
                     .iter()
                     .map(|field| format!("{:?}", engines.help_out(field)))
                     .collect::<Vec<String>>();
-                format!("({})", field_strs.join(", "))
+                &format!("({})", field_strs.join(", "))
             }
-            B256 => "b256".into(),
-            Numeric => "numeric".into(),
-            Contract => "contract".into(),
-            ErrorRecovery(_) => "unknown due to error".into(),
+            B256 => "b256",
+            Numeric => "numeric",
+            Contract => "contract",
+            ErrorRecovery(_) => "unknown due to error",
             UntypedEnum(decl_id) => {
                 let decl = engines.pe().get_enum(decl_id);
-                print_inner_types_debug(
+                &print_inner_types_debug(
                     engines,
                     decl.name.as_str(),
                     decl.type_parameters
@@ -765,7 +648,7 @@ impl DebugWithEngines for TypeInfo {
             }
             UntypedStruct(decl_id) => {
                 let decl = engines.pe().get_struct(decl_id);
-                print_inner_types_debug(
+                &print_inner_types_debug(
                     engines,
                     decl.name.as_str(),
                     decl.type_parameters
@@ -775,7 +658,7 @@ impl DebugWithEngines for TypeInfo {
             }
             Enum(decl_ref) => {
                 let decl = engines.de().get_enum(decl_ref);
-                print_inner_types_debug(
+                &print_inner_types_debug(
                     engines,
                     decl.call_path.suffix.as_str(),
                     decl.generic_parameters
@@ -785,7 +668,7 @@ impl DebugWithEngines for TypeInfo {
             }
             Struct(decl_ref) => {
                 let decl = engines.de().get_struct(decl_ref);
-                print_inner_types_debug(
+                &print_inner_types_debug(
                     engines,
                     decl.call_path.suffix.as_str(),
                     decl.generic_parameters
@@ -793,48 +676,36 @@ impl DebugWithEngines for TypeInfo {
                         .map(|arg| format!("{:?}", engines.help_out(arg))),
                 )
             }
-            ContractCaller { abi_name, address } => {
-                format!(
-                    "contract caller {} ( {} )",
-                    abi_name,
-                    address.as_ref().map_or_else(
-                        || "None".into(),
-                        |address| address.span.as_str().to_string()
-                    )
+            ContractCaller { abi_name, address } => &format!(
+                "contract caller {} ( {} )",
+                abi_name,
+                address.as_ref().map_or_else(
+                    || "None".into(),
+                    |address| address.span.as_str().to_string()
                 )
-            }
-            Array(elem_ty, length) => {
-                format!(
-                    "[{:?}; {:?}]",
-                    engines.help_out(elem_ty),
-                    engines.help_out(length.expr()),
-                )
-            }
-            RawUntypedPtr => "raw untyped ptr".into(),
-            RawUntypedSlice => "raw untyped slice".into(),
-            Ptr(ty) => {
-                format!("__ptr[{:?}]", engines.help_out(ty))
-            }
-            Slice(ty) => {
-                format!("__slice[{:?}]", engines.help_out(ty))
-            }
-            Alias { name, ty } => {
-                format!("type {} = {:?}", name, engines.help_out(ty))
-            }
+            ),
+            Array(elem_ty, length) => &format!(
+                "[{:?}; {:?}]",
+                engines.help_out(elem_ty),
+                engines.help_out(length.expr()),
+            ),
+            RawUntypedPtr => "raw untyped ptr",
+            RawUntypedSlice => "raw untyped slice",
+            Ptr(ty) => &format!("__ptr[{:?}]", engines.help_out(ty)),
+            Slice(ty) => &format!("__slice[{:?}]", engines.help_out(ty)),
+            Alias { name, ty } => &format!("type {} = {:?}", name, engines.help_out(ty)),
             TraitType {
                 name,
-                trait_type_id,
-            } => format!("trait type {}::{}", engines.help_out(trait_type_id), name),
+                implemented_in,
+            } => &format!("trait type {}::{}", engines.help_out(implemented_in), name),
             Ref {
                 to_mutable_value,
                 referenced_type: ty,
-            } => {
-                format!(
-                    "&{}{:?}",
-                    if *to_mutable_value { "mut " } else { "" },
-                    engines.help_out(ty)
-                )
-            }
+            } => &format!(
+                "&{}{:?}",
+                if *to_mutable_value { "mut " } else { "" },
+                engines.help_out(ty)
+            ),
         };
         write!(f, "{s}")
     }
@@ -869,24 +740,28 @@ impl GetCallPathWithEngines for TypeInfo {
             TypeInfo::Array(_generic_argument, _length) => None,
             TypeInfo::RawUntypedPtr => None,
             TypeInfo::RawUntypedSlice => None,
-            TypeInfo::Ptr(generic_argument) => generic_argument
-                .call_path_tree()
+            TypeInfo::Ptr(ty) => ty
+                .call_path_tree
+                .as_ref()
                 .map(|v| v.qualified_call_path.call_path.clone()),
-            TypeInfo::Slice(generic_argument) => generic_argument
-                .call_path_tree()
+            TypeInfo::Slice(ty) => ty
+                .call_path_tree
+                .as_ref()
                 .map(|v| v.qualified_call_path.call_path.clone()),
             TypeInfo::Alias { name: _, ty } => ty
-                .call_path_tree()
+                .call_path_tree
+                .as_ref()
                 .map(|v| v.qualified_call_path.call_path.clone()),
             TypeInfo::TraitType {
                 name: _,
-                trait_type_id,
-            } => engines.te().get(*trait_type_id).call_path(engines),
+                implemented_in,
+            } => engines.te().get(*implemented_in).call_path(engines),
             TypeInfo::Ref {
                 to_mutable_value: _,
                 referenced_type,
             } => referenced_type
-                .call_path_tree()
+                .call_path_tree
+                .as_ref()
                 .map(|v| v.qualified_call_path.call_path.clone()),
         }
     }
@@ -1013,7 +888,7 @@ impl TypeInfo {
                         .iter()
                         .map(|field_type| {
                             type_engine
-                                .to_typeinfo(field_type.type_id(), error_msg_span)
+                                .to_typeinfo(field_type.type_id, error_msg_span)
                                 .expect("unreachable?")
                                 .to_selector_name(handler, engines, error_msg_span)
                         })
@@ -1036,7 +911,7 @@ impl TypeInfo {
                         .iter()
                         .map(|ty| {
                             let ty = match type_engine
-                                .to_typeinfo(ty.type_argument.type_id(), error_msg_span)
+                                .to_typeinfo(ty.type_argument.type_id, error_msg_span)
                             {
                                 Err(e) => return Err(handler.emit_err(e.into())),
                                 Ok(ty) => ty,
@@ -1093,7 +968,7 @@ impl TypeInfo {
                         .iter()
                         .map(|ty| {
                             let ty = match type_engine
-                                .to_typeinfo(ty.type_argument.type_id(), error_msg_span)
+                                .to_typeinfo(ty.type_argument.type_id, error_msg_span)
                             {
                                 Err(e) => return Err(handler.emit_err(e.into())),
                                 Ok(ty) => ty,
@@ -1145,7 +1020,7 @@ impl TypeInfo {
                     .expr()
                     .as_literal_val()
                     .expect("unexpected non literal length");
-                let name = type_engine.get(elem_ty.type_id()).to_selector_name(
+                let name = type_engine.get(elem_ty.type_id).to_selector_name(
                     handler,
                     engines,
                     error_msg_span,
@@ -1156,11 +1031,10 @@ impl TypeInfo {
             RawUntypedPtr => "rawptr".to_string(),
             RawUntypedSlice => "rawslice".to_string(),
             Alias { ty, .. } => {
-                let name = type_engine.get(ty.type_id()).to_selector_name(
-                    handler,
-                    engines,
-                    error_msg_span,
-                );
+                let name =
+                    type_engine
+                        .get(ty.type_id)
+                        .to_selector_name(handler, engines, error_msg_span);
                 name?
             }
             // TODO: (REFERENCES) No references in ABIs according to the RFC. Or we want to have them?
@@ -1183,23 +1057,23 @@ impl TypeInfo {
                 .get_enum(decl_ref)
                 .variants
                 .iter()
-                .all(|variant_type| id_uninhabited(variant_type.type_argument.type_id())),
+                .all(|variant_type| id_uninhabited(variant_type.type_argument.type_id)),
             TypeInfo::Struct(decl_ref) => decl_engine
                 .get_struct(decl_ref)
                 .fields
                 .iter()
-                .any(|field| id_uninhabited(field.type_argument.type_id())),
+                .any(|field| id_uninhabited(field.type_argument.type_id)),
             TypeInfo::Tuple(fields) => fields
                 .iter()
-                .any(|field_type| id_uninhabited(field_type.type_id())),
-            TypeInfo::Array(elem_ty, _) => id_uninhabited(elem_ty.type_id()),
-            TypeInfo::Ptr(ty) => id_uninhabited(ty.type_id()),
-            TypeInfo::Alias { name: _, ty } => id_uninhabited(ty.type_id()),
-            TypeInfo::Slice(ty) => id_uninhabited(ty.type_id()),
+                .any(|field_type| id_uninhabited(field_type.type_id)),
+            TypeInfo::Array(elem_ty, _) => id_uninhabited(elem_ty.type_id),
+            TypeInfo::Ptr(ty) => id_uninhabited(ty.type_id),
+            TypeInfo::Alias { name: _, ty } => id_uninhabited(ty.type_id),
+            TypeInfo::Slice(ty) => id_uninhabited(ty.type_id),
             TypeInfo::Ref {
                 to_mutable_value: _,
                 referenced_type,
-            } => id_uninhabited(referenced_type.type_id()),
+            } => id_uninhabited(referenced_type.type_id),
             _ => false,
         }
     }
@@ -1210,7 +1084,7 @@ impl TypeInfo {
                 let decl = decl_engine.get_enum(decl_ref);
                 let mut found_unit_variant = false;
                 for variant_type in &decl.variants {
-                    let type_info = type_engine.get(variant_type.type_argument.type_id());
+                    let type_info = type_engine.get(variant_type.type_argument.type_id);
                     if type_info.is_uninhabited(type_engine, decl_engine) {
                         continue;
                     }
@@ -1226,7 +1100,7 @@ impl TypeInfo {
                 let decl = decl_engine.get_struct(decl_ref);
                 let mut all_zero_sized = true;
                 for field in &decl.fields {
-                    let type_info = type_engine.get(field.type_argument.type_id());
+                    let type_info = type_engine.get(field.type_argument.type_id);
                     if type_info.is_uninhabited(type_engine, decl_engine) {
                         return true;
                     }
@@ -1239,7 +1113,7 @@ impl TypeInfo {
             TypeInfo::Tuple(fields) => {
                 let mut all_zero_sized = true;
                 for field in fields {
-                    let field_type = type_engine.get(field.type_id());
+                    let field_type = type_engine.get(field.type_id);
                     if field_type.is_uninhabited(type_engine, decl_engine) {
                         return true;
                     }
@@ -1257,7 +1131,7 @@ impl TypeInfo {
                     .expect("unexpected non literal length");
                 len == 0
                     || type_engine
-                        .get(elem_ty.type_id())
+                        .get(elem_ty.type_id)
                         .is_zero_sized(type_engine, decl_engine)
             }
             _ => false,
@@ -1271,7 +1145,7 @@ impl TypeInfo {
         match self {
             TypeInfo::Tuple(fields) => fields.iter().all(|type_argument| {
                 type_engine
-                    .get(type_argument.type_id())
+                    .get(type_argument.type_id)
                     .can_safely_ignore(type_engine, decl_engine)
             }),
             TypeInfo::Array(elem_ty, length) if length.expr().as_literal_val().is_some() => {
@@ -1282,7 +1156,7 @@ impl TypeInfo {
                     .expect("unexpected non literal length");
                 len == 0
                     || type_engine
-                        .get(elem_ty.type_id())
+                        .get(elem_ty.type_id)
                         .can_safely_ignore(type_engine, decl_engine)
             }
             TypeInfo::ErrorRecovery(_) => true,
@@ -1328,7 +1202,7 @@ impl TypeInfo {
         matches!(self, TypeInfo::Ref { .. })
     }
 
-    pub fn as_reference(&self) -> Option<(&bool, &GenericArgument)> {
+    pub fn as_reference(&self) -> Option<(&bool, &GenericTypeArgument)> {
         match self {
             TypeInfo::Ref {
                 to_mutable_value,
@@ -1362,7 +1236,7 @@ impl TypeInfo {
         matches!(self, TypeInfo::Slice(_))
     }
 
-    pub fn as_slice(&self) -> Option<&GenericArgument> {
+    pub fn as_slice(&self) -> Option<&GenericTypeArgument> {
         if let TypeInfo::Slice(t) = self {
             Some(t)
         } else {
@@ -1464,7 +1338,7 @@ impl TypeInfo {
             | TypeInfo::Never
             | TypeInfo::StringSlice => Ok(()),
             TypeInfo::Alias { ty, .. } => {
-                let ty = engines.te().get(ty.type_id());
+                let ty = engines.te().get(ty.type_id);
                 ty.expect_is_supported_in_match_expressions(handler, engines, span)
             }
             TypeInfo::RawUntypedPtr
@@ -1611,7 +1485,7 @@ impl TypeInfo {
         match self {
             TypeInfo::Enum(decl_ref) => Ok(*decl_ref),
             TypeInfo::Alias {
-                ty: GenericArgument::Type(GenericTypeArgument { type_id, .. }),
+                ty: GenericTypeArgument { type_id, .. },
                 ..
             } => engines
                 .te()
@@ -1652,7 +1526,7 @@ impl TypeInfo {
         match self {
             TypeInfo::Struct(decl_id) => Ok(*decl_id),
             TypeInfo::Alias {
-                ty: GenericArgument::Type(GenericTypeArgument { type_id, .. }),
+                ty: GenericTypeArgument { type_id, .. },
                 ..
             } => engines
                 .te()
@@ -1699,12 +1573,12 @@ impl TypeInfo {
             TypeInfo::Ptr(_) => AbiEncodeSizeHint::PotentiallyInfinite,
 
             TypeInfo::Alias { ty, .. } => {
-                let elem_type = engines.te().get(ty.type_id());
+                let elem_type = engines.te().get(ty.type_id);
                 elem_type.abi_encode_size_hint(engines)
             }
 
             TypeInfo::Array(elem, len) => {
-                let elem_type = engines.te().get(elem.type_id());
+                let elem_type = engines.te().get(elem.type_id);
                 let size_hint = elem_type.abi_encode_size_hint(engines);
                 match len.expr() {
                     ConstGenericExpr::Literal { val, .. } => size_hint * *val,
@@ -1725,7 +1599,7 @@ impl TypeInfo {
                 items
                     .iter()
                     .fold(AbiEncodeSizeHint::Exact(0), |old_size_hint, t| {
-                        let field_type = engines.te().get(t.type_id());
+                        let field_type = engines.te().get(t.type_id);
                         let field_size_hint = field_type.abi_encode_size_hint(engines);
                         old_size_hint + field_size_hint
                     })
@@ -1736,7 +1610,7 @@ impl TypeInfo {
                 decl.fields
                     .iter()
                     .fold(AbiEncodeSizeHint::Exact(0), |old_size_hint, f| {
-                        let field_type = engines.te().get(f.type_argument.type_id());
+                        let field_type = engines.te().get(f.type_argument.type_id);
                         let field_size_hint = field_type.abi_encode_size_hint(engines);
                         old_size_hint + field_size_hint
                     })
@@ -1748,7 +1622,7 @@ impl TypeInfo {
                     .variants
                     .iter()
                     .fold(None, |old_size_hint: Option<AbiEncodeSizeHint>, v| {
-                        let variant_type = engines.te().get(v.type_argument.type_id());
+                        let variant_type = engines.te().get(v.type_argument.type_id);
                         let current_size_hint = variant_type.abi_encode_size_hint(engines);
                         match old_size_hint {
                             Some(old_size_hint) => Some(old_size_hint.min(current_size_hint)),
@@ -1761,7 +1635,7 @@ impl TypeInfo {
                     decl.variants
                         .iter()
                         .fold(AbiEncodeSizeHint::Exact(0), |old_size_hint, v| {
-                            let variant_type = engines.te().get(v.type_argument.type_id());
+                            let variant_type = engines.te().get(v.type_argument.type_id);
                             let current_size_hint = variant_type.abi_encode_size_hint(engines);
                             old_size_hint.max(current_size_hint)
                         });
@@ -1773,16 +1647,18 @@ impl TypeInfo {
         }
     }
 
-    /// Returns a String representing the type.
-    /// When the type is monomorphized the returned String is unique.
-    /// Two monomorphized types that generate the same string can be assumed to be the same.
+    /// Returns a [String] representing the type.
+    /// When the type is monomorphized and does not contain [TypeInfo::Custom] types,
+    /// the returned string is unique.
+    /// Two monomorphized types that do not contain [TypeInfo::Custom] types,
+    /// that generate the same string can be assumed to be the same.
     pub fn get_type_str(&self, engines: &Engines) -> String {
         use TypeInfo::*;
         match self {
             Unknown => "unknown".into(),
             Never => "never".into(),
             UnknownGeneric { name, .. } => name.to_string(),
-            Placeholder(_) => "_".to_string(),
+            Placeholder(_) => "_".into(),
             TypeParam(param) => format!("typeparam({})", param.name()),
             StringSlice => "str".into(),
             StringArray(length) => {
@@ -1804,7 +1680,7 @@ impl TypeInfo {
             Tuple(fields) => {
                 let field_strs = fields
                     .iter()
-                    .map(|field| field.type_id().get_type_str(engines))
+                    .map(|field| field.type_id.get_type_str(engines))
                     .collect::<Vec<String>>();
                 format!("({})", field_strs.join(", "))
             }
@@ -1815,9 +1691,9 @@ impl TypeInfo {
             UntypedEnum(decl_id) => {
                 let decl = engines.pe().get_enum(decl_id);
                 let type_params = if decl.type_parameters.is_empty() {
-                    "".into()
+                    ""
                 } else {
-                    format!(
+                    &format!(
                         "<{}>",
                         decl.type_parameters
                             .iter()
@@ -1836,9 +1712,9 @@ impl TypeInfo {
             UntypedStruct(decl_id) => {
                 let decl = engines.pe().get_struct(decl_id);
                 let type_params = if decl.type_parameters.is_empty() {
-                    "".into()
+                    ""
                 } else {
-                    format!(
+                    &format!(
                         "<{}>",
                         decl.type_parameters
                             .iter()
@@ -1857,9 +1733,9 @@ impl TypeInfo {
             Enum(decl_ref) => {
                 let decl = engines.de().get_enum(decl_ref);
                 let type_params = if decl.generic_parameters.is_empty() {
-                    "".into()
+                    ""
                 } else {
-                    format!(
+                    &format!(
                         "<{}>",
                         decl.generic_parameters
                             .iter()
@@ -1878,9 +1754,9 @@ impl TypeInfo {
             Struct(decl_ref) => {
                 let decl = engines.de().get_struct(decl_ref);
                 let type_params = if decl.generic_parameters.is_empty() {
-                    "".into()
+                    ""
                 } else {
-                    format!(
+                    &format!(
                         "<{}>",
                         decl.generic_parameters
                             .iter()
@@ -1902,22 +1778,22 @@ impl TypeInfo {
             Array(elem_ty, length) => {
                 format!(
                     "[{}; {:?}]",
-                    elem_ty.type_id().get_type_str(engines),
+                    elem_ty.type_id.get_type_str(engines),
                     engines.help_out(length.expr())
                 )
             }
             RawUntypedPtr => "raw untyped ptr".into(),
             RawUntypedSlice => "raw untyped slice".into(),
             Ptr(ty) => {
-                format!("__ptr {}", ty.type_id().get_type_str(engines))
+                format!("__ptr {}", ty.type_id.get_type_str(engines))
             }
             Slice(ty) => {
-                format!("__slice {}", ty.type_id().get_type_str(engines))
+                format!("__slice {}", ty.type_id.get_type_str(engines))
             }
-            Alias { ty, .. } => ty.type_id().get_type_str(engines),
+            Alias { ty, .. } => ty.type_id.get_type_str(engines),
             TraitType {
                 name,
-                trait_type_id: _,
+                implemented_in: _,
             } => format!("trait type {name}"),
             Ref {
                 to_mutable_value,
@@ -1926,8 +1802,385 @@ impl TypeInfo {
                 format!(
                     "__ref {}{}",
                     if *to_mutable_value { "mut " } else { "" },
-                    referenced_type.type_id().get_type_str(engines)
+                    referenced_type.type_id.get_type_str(engines)
                 )
+            }
+        }
+    }
+}
+
+/// Provides a configurable way to display a [TypeInfo].
+///
+/// E.g.:
+/// - `std::option::Option<std::result::Result<u64, some_pkg::errors::SomeError>>`
+/// - `Option<Result<u64, SomeError>>`
+/// - `Option`
+///
+/// For type aliases, e.g., `type SomeAlias = Option<u64>;`,
+/// it can display either:
+/// - `SomeAlias`
+/// - `Option<u64>`
+#[derive(Debug, Clone, Copy)]
+pub struct TypeInfoDisplay {
+    /// E.g., when true: `std::option::Option`.
+    /// E.g., when false: `Option`.
+    pub(crate) display_call_paths: bool,
+    /// E.g., when true: `Option<T>`.
+    /// E.g., when false: `Option`.
+    pub(crate) display_type_params: bool,
+    /// E.g., for: `type SomeAlias = Option<u64>;`,
+    /// when true, alias type name: `SomeAlias`,
+    /// when false, the aliased type is displayed: `Option<u64>`.
+    pub(crate) display_alias_name: bool,
+}
+
+// TODO: Implement/improve displaying of resolved associated types.
+//       E.g., for `type AssociatedType = u8;` implemented in `Struct`,
+//       and for a function `fn f(x: Struct::AssociatedType) {}`,
+//       it currently displays `f(x: u8)` and not `x: Struct::AssociatedType`.
+
+// TODO: Implement/improve displaying of materialized const generic parameters.
+//       E.g., for `struct Struct<const N: u64> { }`,
+//       when displaying `Struct<5>`, it currently displays `Struct<N>`
+//       and not `Struct<5>`.
+
+// TODO: Add support for displaying call paths for `TypeInfo::Alias`.
+//       Currently, we are storing only the alias name.
+
+// TODO: Implement/improve displaying of generic traits in `<SelfType as GenericTrait<SomeType>>`.
+//       Currently, it displays `<SelfType as GenericTrait<T>>`,
+//       where `T` is the type parameter of the trait, and not the
+//       monomorphized type.
+//       It should display `<SelfType as GenericTrait<SomeConcreteType>>`.
+impl TypeInfoDisplay {
+    pub const fn only_name() -> Self {
+        Self {
+            display_call_paths: false,
+            display_type_params: false,
+            // Always display the aliased type by default.
+            display_alias_name: false,
+        }
+    }
+
+    pub const fn full() -> Self {
+        Self {
+            display_call_paths: true,
+            display_type_params: true,
+            // Always display the aliased type by default.
+            display_alias_name: false,
+        }
+    }
+
+    pub const fn with_call_paths(self) -> Self {
+        Self {
+            display_call_paths: true,
+            ..self
+        }
+    }
+
+    pub const fn without_call_paths(self) -> Self {
+        Self {
+            display_call_paths: false,
+            ..self
+        }
+    }
+
+    pub const fn with_type_params(self) -> Self {
+        Self {
+            display_type_params: true,
+            ..self
+        }
+    }
+
+    pub const fn without_type_params(self) -> Self {
+        Self {
+            display_type_params: false,
+            ..self
+        }
+    }
+
+    pub const fn with_alias_name(self) -> Self {
+        Self {
+            display_alias_name: true,
+            ..self
+        }
+    }
+
+    pub const fn without_alias_name(self) -> Self {
+        Self {
+            display_alias_name: false,
+            ..self
+        }
+    }
+
+    pub fn display<'a>(&self, type_info: &'a TypeInfo, engines: &Engines) -> Cow<'a, str> {
+        use TypeInfo::*;
+        match type_info {
+            Unknown => "{unknown}".into(),
+            Never => "!".into(),
+            UnknownGeneric { name, .. } => name.as_str().into(),
+            Placeholder(_) => "_".into(),
+            TypeParam(param) => param.name().as_str().into(),
+            StringSlice => "str".into(),
+            StringArray(length) => ["str[", &length.expr().get_normalized_str(), "]"]
+                .concat()
+                .into(),
+            UnsignedInteger(x) => match x {
+                IntegerBits::Eight => "u8",
+                IntegerBits::Sixteen => "u16",
+                IntegerBits::ThirtyTwo => "u32",
+                IntegerBits::SixtyFour => "u64",
+                IntegerBits::V256 => "u256",
+            }
+            .into(),
+            Boolean => "bool".into(),
+            B256 => "b256".into(),
+            Numeric => "{numeric}".into(),
+            Contract => "Contract".into(),
+            ErrorRecovery(_) => "{error}".into(),
+            RawUntypedPtr => "raw_ptr".into(),
+            RawUntypedSlice => "raw_slice".into(),
+            Alias { name, ty: _ } if self.display_alias_name => name.as_str().into(),
+            Alias { ty, name: _ } => {
+                let type_info = engines.te().get(ty.type_id);
+                self.display(&type_info, engines).to_string().into()
+            }
+            TraitType {
+                name,
+                implemented_in,
+            } => {
+                let trait_type = engines.te().get(*implemented_in);
+                [&self.display(&trait_type, engines), "::", name.as_str()]
+                    .concat()
+                    .into()
+            }
+            // Custom types do not have the `qualified_call_path`
+            // and their call path has only the suffix.
+            Custom {
+                qualified_call_path:
+                    QualifiedCallPath {
+                        call_path:
+                            CallPath {
+                                prefixes: _,
+                                suffix,
+                                callpath_type: _,
+                            },
+                        qualified_path_root: _,
+                    },
+                type_arguments: None,
+            } => suffix.as_str().into(),
+            Custom {
+                qualified_call_path:
+                    QualifiedCallPath {
+                        call_path:
+                            CallPath {
+                                prefixes: _,
+                                suffix,
+                                callpath_type: _,
+                            },
+                        qualified_path_root: _,
+                    },
+                type_arguments: Some(type_arguments),
+            } if type_arguments.is_empty() => suffix.as_str().into(),
+            Custom {
+                qualified_call_path:
+                    QualifiedCallPath {
+                        call_path:
+                            CallPath {
+                                prefixes: _,
+                                suffix,
+                                callpath_type: _,
+                            },
+                        qualified_path_root: _,
+                    },
+                type_arguments: Some(_),
+            } if !self.display_type_params => suffix.as_str().into(),
+            Custom {
+                qualified_call_path:
+                    QualifiedCallPath {
+                        call_path:
+                            CallPath {
+                                prefixes: _,
+                                suffix,
+                                callpath_type: _,
+                            },
+                        qualified_path_root: _,
+                    },
+                type_arguments: Some(type_arguments),
+            } => [
+                suffix.as_str(),
+                &self.display_non_empty_generic_args(type_arguments, engines),
+            ]
+            .concat()
+            .into(),
+            Tuple(fields) if fields.is_empty() => "()".into(),
+            Tuple(fields) => {
+                let fields = fields
+                    .iter()
+                    .map(|field| {
+                        let type_info = engines.te().get(field.type_id);
+                        self.display(&type_info, engines).to_string()
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                ["(", &fields, ")"].concat().into()
+            }
+            UntypedEnum(decl_id) if !self.display_type_params => {
+                let decl = engines.pe().get_enum(decl_id);
+                decl.name.to_string().into()
+            }
+            UntypedEnum(decl_id) => {
+                let decl = engines.pe().get_enum(decl_id);
+                if decl.type_parameters.is_empty() {
+                    decl.name.to_string().into()
+                } else {
+                    [
+                        decl.name.as_str(),
+                        &self.display_non_empty_type_params(&decl.type_parameters, engines),
+                    ]
+                    .concat()
+                    .into()
+                }
+            }
+            UntypedStruct(decl_id) if !self.display_type_params => {
+                let decl = engines.pe().get_struct(decl_id);
+                decl.name.to_string().into()
+            }
+            UntypedStruct(decl_id) => {
+                let decl = engines.pe().get_struct(decl_id);
+                if decl.type_parameters.is_empty() {
+                    decl.name.to_string().into()
+                } else {
+                    [
+                        decl.name.as_str(),
+                        &self.display_non_empty_type_params(&decl.type_parameters, engines),
+                    ]
+                    .concat()
+                    .into()
+                }
+            }
+            Enum(decl_ref) if !(self.display_call_paths || self.display_type_params) => {
+                let decl = engines.de().get_enum(decl_ref);
+                decl.call_path.suffix.to_string().into()
+            }
+            Enum(decl_ref) => {
+                let decl = engines.de().get_enum(decl_ref);
+                let path = if self.display_call_paths {
+                    &decl.call_path.to_string()
+                } else {
+                    decl.call_path.suffix.as_str()
+                };
+                let type_params = if decl.generic_parameters.is_empty() {
+                    ""
+                } else {
+                    &self.display_non_empty_type_params(&decl.generic_parameters, engines)
+                };
+                [path, type_params].concat().into()
+            }
+            Struct(decl_ref) if !(self.display_call_paths || self.display_type_params) => {
+                let decl = engines.de().get_struct(decl_ref);
+                decl.call_path.suffix.to_string().into()
+            }
+            Struct(decl_ref) => {
+                let decl = engines.de().get_struct(decl_ref);
+                let path = if self.display_call_paths {
+                    &decl.call_path.to_string()
+                } else {
+                    decl.call_path.suffix.as_str()
+                };
+                let type_params = if decl.generic_parameters.is_empty() {
+                    ""
+                } else {
+                    &self.display_non_empty_type_params(&decl.generic_parameters, engines)
+                };
+                [path, type_params].concat().into()
+            }
+            ContractCaller { abi_name, .. } => {
+                ["ContractCaller<", &self.display_abi_name(abi_name), ">"]
+                    .concat()
+                    .into()
+            }
+            Array(elem_ty, length) => {
+                let elem_ty = engines.te().get(elem_ty.type_id);
+                let elem_ty = self.display(&elem_ty, engines);
+                let length = length.expr().get_normalized_str();
+                ["[", &elem_ty, "; ", &length, "]"].concat().into()
+            }
+            Ptr(ty) => {
+                let ty = engines.te().get(ty.type_id);
+                let ty = self.display(&ty, engines);
+                ["__ptr[", &ty, "]"].concat().into()
+            }
+            Slice(ty) => {
+                let ty = engines.te().get(ty.type_id);
+                let ty = self.display(&ty, engines);
+                ["__slice[", &ty, "]"].concat().into()
+            }
+            Ref {
+                to_mutable_value,
+                referenced_type,
+            } => {
+                let referenced_type = engines.te().get(referenced_type.type_id);
+                let referenced_type = self.display(&referenced_type, engines);
+                let as_mut = if *to_mutable_value { "mut " } else { "" };
+                ["&", as_mut, &referenced_type].concat().into()
+            }
+        }
+    }
+
+    /// Returns `"<type_param1, type_param2, ...>"`.
+    /// Panics if `type_params` is empty.
+    pub(crate) fn display_non_empty_type_params(
+        &self,
+        type_params: &[TypeParameter],
+        engines: &Engines,
+    ) -> String {
+        assert!(!type_params.is_empty(), "`type_params` must not be empty");
+        let type_params = type_params
+            .iter()
+            .map(|p| match p {
+                TypeParameter::Type(p) => {
+                    let type_info = engines.te().get(p.type_id);
+                    self.display(&type_info, engines).into()
+                }
+                TypeParameter::Const(p) => p.name.to_string(),
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        ["<", &type_params, ">"].concat()
+    }
+
+    /// Returns `"<arg1, arg2, ...>"`.
+    /// Panics if `generic_args` is empty.
+    pub(crate) fn display_non_empty_generic_args(
+        &self,
+        generic_args: &[GenericArgument],
+        engines: &Engines,
+    ) -> String {
+        assert!(!generic_args.is_empty(), "`generic_args` must not be empty");
+        let generic_args = generic_args
+            .iter()
+            .map(|arg| match arg {
+                GenericArgument::Type(GenericTypeArgument { type_id, .. }) => {
+                    let type_info = engines.te().get(*type_id);
+                    self.display(&type_info, engines).to_string().into()
+                }
+                GenericArgument::Const(arg) => arg.expr.get_normalized_str(),
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        ["<", &generic_args, ">"].concat()
+    }
+
+    fn display_abi_name<'a>(&self, abi_name: &'a AbiName) -> Cow<'a, str> {
+        match abi_name {
+            AbiName::Deferred => "{unspecified ABI}".into(),
+            AbiName::Known(name) => {
+                if self.display_call_paths {
+                    name.to_string().into()
+                } else {
+                    name.suffix.as_str().into()
+                }
             }
         }
     }
@@ -2077,23 +2330,6 @@ impl std::ops::Mul<usize> for AbiEncodeSizeHint {
             AbiEncodeSizeHint::Range(min, max) => AbiEncodeSizeHint::range(min * rhs, max * rhs),
         }
     }
-}
-
-fn print_inner_types(
-    _engines: &Engines,
-    name: &str,
-    inner_parameters: impl Iterator<Item = String>,
-) -> String {
-    let inner_types = inner_parameters.collect::<Vec<_>>();
-    format!(
-        "{}{}",
-        name,
-        if inner_types.is_empty() {
-            String::new()
-        } else {
-            format!("<{}>", inner_types.join(", "))
-        }
-    )
 }
 
 fn print_inner_types_debug(

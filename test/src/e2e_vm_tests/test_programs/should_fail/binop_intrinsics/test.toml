@@ -3,42 +3,42 @@ category = "fail"
 # check: $()error
 # check: $()__add(A { a: 32 }, 32);
 # nextln: $()Mismatched types
-# nextln: $()expected: numeric
-# nextln: $()found:    A.
+# nextln: $()expected: {numeric}
+# nextln: $()found:    binop_intrinsics::A.
 # nextln: $()help: Incorrect argument type
 
 # check: $()error
 # check: $()__add("Hello", 22);
 # nextln: $()Mismatched types
-# nextln: $()expected: numeric
+# nextln: $()expected: {numeric}
 # nextln: $()found:    str.
 # nextln: $()help: Incorrect argument type
 
 # check: $()error
 # check: $()__add("Hello", "Hello")
 # nextln: $()Mismatched types
-# nextln: $()expected: numeric
+# nextln: $()expected: {numeric}
 # nextln: $()found:    str.
 # nextln: $()help: Incorrect argument type
 
 # check: $()error
 # check: $()__add("Hello", "Hello")
 # nextln: $()Mismatched types
-# nextln: $()expected: numeric
+# nextln: $()expected: {numeric}
 # nextln: $()found:    str.
 # nextln: $()help: Incorrect argument type
 
 # check: $()error
 # check: $()__add(false, true)
 # nextln: $()Mismatched types
-# nextln: $()expected: numeric
+# nextln: $()expected: {numeric}
 # nextln: $()found:    bool.
 # nextln: $()help: Incorrect argument type
 
 # check: $()error
 # check: $()__add(false, true)
 # nextln: $()Mismatched types
-# nextln: $()expected: numeric
+# nextln: $()expected: {numeric}
 # nextln: $()found:    bool.
 # nextln: $()help: Incorrect argument type
 
@@ -56,13 +56,13 @@ category = "fail"
 # check: $()error
 # check: $()__rsh("Hello", 1)
 # nextln: $()Mismatched types
-# nextln: $()expected: numeric or b256
+# nextln: $()expected: unsigned integer or b256
 # nextln: $()found:    str.
 # nextln: $()help: Incorrect argument type
 
 # check: $()error
 # check: $()__rsh(1, "Hello")
 # nextln: $()Mismatched types
-# nextln: $()expected: numeric
+# nextln: $()expected: {numeric}
 # nextln: $()found:    str.
 # nextln: $()help: Incorrect argument type

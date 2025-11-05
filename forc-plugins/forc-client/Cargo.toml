@@ -87,3 +87,6 @@ regex.workspace = true
 portpicker.workspace = true
 pretty_assertions.workspace = true
 rexpect.workspace = true
+
+[lints]
+workspace = true

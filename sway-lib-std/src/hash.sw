@@ -107,42 +107,21 @@ impl Hash for u8 {
 
 impl Hash for u16 {
     fn hash(self, ref mut state: Hasher) {
-        // TODO: Remove this workaround once `__addr_of(self)` is supported
-        //       for `u16`.
-        let temp = self;
-        let ptr = asm(ptr: &temp) {
-            ptr: raw_ptr
-        };
-        let ptr = ptr.add::<u8>(6);
-
+        let ptr = __addr_of(self).add::<u8>(6);
         state.write_raw_slice(raw_slice::from_parts::<u8>(ptr, 2));
     }
 }
 
 impl Hash for u32 {
     fn hash(self, ref mut state: Hasher) {
-        // TODO: Remove this workaround once `__addr_of(self)` is supported
-        //       for `u32`.
-        let temp = self;
-        let ptr = asm(ptr: &temp) {
-            ptr: raw_ptr
-        };
-        let ptr = ptr.add::<u8>(4);
-
+        let ptr = __addr_of(self).add::<u8>(4);
         state.write_raw_slice(raw_slice::from_parts::<u8>(ptr, 4));
     }
 }
 
 impl Hash for u64 {
     fn hash(self, ref mut state: Hasher) {
-        // TODO: Remove this workaround once `__addr_of(self)` is supported
-        //       for `u64`.
-        let temp = self;
-        let ptr = asm(ptr: &temp) {
-            ptr: raw_ptr
-        };
-
-        state.write_raw_slice(raw_slice::from_parts::<u8>(ptr, 8));
+        state.write_raw_slice(raw_slice::from_parts::<u8>(__addr_of(self), 8));
     }
 }
 
@@ -1064,6 +1043,7 @@ where
 ///     assert(result == 0xa80f942f4112036dfc2da86daf6d2ef6ede3164dd56d1000eb82fa87c992450f);
 /// }
 /// ```
+#[cfg(experimental_new_hashing = false)]
 #[inline(never)]
 pub fn sha256_str_array<S>(param: S) -> b256 {
     // TODO: Replace `capacity` with a compile-time constant once
@@ -1073,6 +1053,34 @@ pub fn sha256_str_array<S>(param: S) -> b256 {
     //       const CAPACITY: u64 = get_initial_capacity::<S>();
     let capacity = get_initial_capacity::<S>();
     let mut hasher = Hasher::with_capacity(capacity);
+    hasher.write_str_array(param);
+    hasher.sha256()
+}
+
+/// Returns the `SHA-2-256` hash of `param`.
+/// This function is specific for string arrays.
+///
+/// # Examples
+///
+/// ```sway
+/// use std::hash::*;
+///
+/// fn foo() {
+///     let result = sha256_str_array(__to_str_array("Fuel"));
+///     assert(result == 0xa80f942f4112036dfc2da86daf6d2ef6ede3164dd56d1000eb82fa87c992450f);
+/// }
+/// ```
+#[cfg(experimental_new_hashing = true)]
+#[inline(never)]
+pub fn sha256_str_array<S>(param: S) -> b256 {
+    // TODO: Replace `capacity` with a compile-time constant once
+    //       `const fn` is implemented and const evaluation is
+    //       deferred for generic functions:
+    //
+    //       const CAPACITY: u64 = get_initial_capacity::<S>();
+    let capacity = get_initial_capacity::<S>();
+    let mut hasher = Hasher::with_capacity(capacity);
+    __size_of_str_array::<S>().hash(hasher);
     hasher.write_str_array(param);
     hasher.sha256()
 }

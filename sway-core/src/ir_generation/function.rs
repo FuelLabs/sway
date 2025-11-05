@@ -11,20 +11,21 @@ use super::{
 };
 use crate::{
     engine_threading::*,
-    ir_generation::const_eval::{
-        compile_constant_expression, compile_constant_expression_to_constant,
+    ir_generation::{
+        const_eval::{compile_constant_expression, compile_constant_expression_to_constant},
+        KeyedTyFunctionDecl, PanickingFunctionCache,
     },
     language::{
         ty::{
             self, ProjectionKind, TyConfigurableDecl, TyConstantDecl, TyExpression,
-            TyExpressionVariant, TyStorageField,
+            TyExpressionVariant, TyFunctionDisplay, TyStorageField,
         },
         *,
     },
     metadata::MetadataManager,
     type_system::*,
     types::*,
-    PanicOccurrence, PanicOccurrences,
+    PanicOccurrence, PanicOccurrences, PanickingCallOccurrence, PanickingCallOccurrences,
 };
 
 use indexmap::IndexMap;
@@ -121,20 +122,17 @@ pub(crate) struct FnCompiler<'a> {
     block_to_continue_to: Option<Block>,
     current_fn_param: Option<ty::TyFunctionParameter>,
     lexical_map: LexicalMap,
-    // TODO: This field and all its uses must go once we have references properly implemented.
+    // TODO: (REFERENCES) This field and all its uses must go
+    //       once we have references properly implemented.
     pub ref_mut_args: rustc_hash::FxHashSet<String>,
-    cache: &'a mut CompiledFunctionCache,
+    compiled_fn_cache: &'a mut CompiledFunctionCache,
     /// Maps a [TypeId] of a logged type to the [LogId] of its corresponding log.
     logged_types_map: &'a HashMap<TypeId, LogId>,
     /// Maps a [TypeId] of a message data type to the [MessageId] of its corresponding SMO.
     messages_types_map: &'a HashMap<TypeId, MessageId>,
     panic_occurrences: &'a mut PanicOccurrences,
-}
-
-fn to_constant(_s: &mut FnCompiler<'_>, context: &mut Context, value: u64) -> Value {
-    let needed_size = ConstantContent::new_uint(context, 64, value);
-    let c = Constant::unique(context, needed_size);
-    Value::new_constant(context, c)
+    panicking_call_occurrences: &'a mut PanickingCallOccurrences,
+    panicking_fn_cache: &'a mut PanickingFunctionCache,
 }
 
 /// Store the in-register `value` to a new local variable and return [CompiledValue::InMemory], or return the same `value` if it is already in memory.
@@ -200,6 +198,12 @@ fn calc_addr_as_ptr(
 }
 
 impl<'a> FnCompiler<'a> {
+    pub(super) const BACKTRACE_FN_ARG_NAME: &'static str = "__backtrace";
+    const MAX_PANIC_ERROR_CODE: u64 = 255; // 2^8 - 1.
+    const MAX_PANICKING_CALL_ID: u64 = 2047; // 2^11 - 1.
+    const FN_DISPLAY_FOR_ABI_ERRORS: TyFunctionDisplay =
+        TyFunctionDisplay::full().without_signature();
+
     #[allow(clippy::too_many_arguments)]
     pub(super) fn new(
         engines: &'a Engines,
@@ -209,7 +213,9 @@ impl<'a> FnCompiler<'a> {
         logged_types_map: &'a HashMap<TypeId, LogId>,
         messages_types_map: &'a HashMap<TypeId, MessageId>,
         panic_occurrences: &'a mut PanicOccurrences,
-        cache: &'a mut CompiledFunctionCache,
+        panicking_call_occurrences: &'a mut PanickingCallOccurrences,
+        panicking_fn_cache: &'a mut PanickingFunctionCache,
+        compiled_fn_cache: &'a mut CompiledFunctionCache,
     ) -> Self {
         let lexical_map = LexicalMap::from_iter(
             function
@@ -225,12 +231,21 @@ impl<'a> FnCompiler<'a> {
             block_to_continue_to: None,
             lexical_map,
             ref_mut_args: rustc_hash::FxHashSet::default(),
-            cache,
+            compiled_fn_cache,
             current_fn_param: None,
             logged_types_map,
             messages_types_map,
             panic_occurrences,
+            panicking_call_occurrences,
+            panicking_fn_cache,
         }
+    }
+
+    /// Returns the textual representation of the function represented
+    /// by `fn_decl` in the ABI errors related context, in the "errorCodes"
+    /// and "panickingCalls" sections.
+    pub(super) fn fn_abi_errors_display(fn_decl: &ty::TyFunctionDecl, engines: &Engines) -> String {
+        Self::FN_DISPLAY_FOR_ABI_ERRORS.display(fn_decl, engines)
     }
 
     fn compile_with_new_scope<F, T, R>(&mut self, inner: F) -> Result<T, R>
@@ -351,7 +366,7 @@ impl<'a> FnCompiler<'a> {
                     unreachable!()
                 }
                 ty::TyDecl::ConstGenericDecl(_) => {
-                    todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                    unreachable!("ConstGenericDecl is not reachable from AstNode")
                 }
                 ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
                     let ted = self.engines.de().get_enum(decl_id);
@@ -365,10 +380,7 @@ impl<'a> FnCompiler<'a> {
                     .map(|_| ())?;
                     Ok(None)
                 }
-                ty::TyDecl::TypeAliasDecl { .. } => Err(CompileError::UnexpectedDeclaration {
-                    decl_type: "type alias",
-                    span: ast_node.span.clone(),
-                }),
+                ty::TyDecl::TypeAliasDecl { .. } => unexpected_decl("type alias"),
                 ty::TyDecl::ImplSelfOrTrait { .. } => {
                     // XXX What if we ignore the trait implementation???  Potentially since
                     // we currently inline everything and below we 'recreate' the functions
@@ -445,12 +457,13 @@ impl<'a> FnCompiler<'a> {
         ))
     }
 
-    fn compile_string_slice(
+    // Can be used for raw untyped slice and string slice
+    fn compile_slice(
         &mut self,
         context: &mut Context,
         span_md_idx: Option<MetadataIndex>,
-        string_data: Value,
-        string_len: u64,
+        slice_ptr: Value,
+        slice_len: u64,
     ) -> Result<TerminatorValue, CompileError> {
         let int_ty = Type::get_uint64(context);
         let ptr_ty = Type::get_ptr(context);
@@ -459,9 +472,9 @@ impl<'a> FnCompiler<'a> {
         let ptr_val = self
             .current_block
             .append(context)
-            .cast_ptr(string_data, ptr_ty)
+            .cast_ptr(slice_ptr, ptr_ty)
             .add_metadatum(context, span_md_idx);
-        let len_val = ConstantContent::get_uint(context, 64, string_len);
+        let len_val = ConstantContent::get_uint(context, 64, slice_len);
 
         // a slice is a pointer and a length
         let field_types = vec![ptr_ty, int_ty];
@@ -557,7 +570,24 @@ impl<'a> FnCompiler<'a> {
                     .append(context)
                     .get_global(string_data_ptr);
                 let string_len = s.as_str().len() as u64;
-                self.compile_string_slice(context, span_md_idx, string_ptr, string_len)
+                self.compile_slice(context, span_md_idx, string_ptr, string_len)
+            }
+            ty::TyExpressionVariant::Literal(Literal::Binary(bytes)) => {
+                let data = ConstantContent::get_untyped_slice(context, bytes.clone())
+                    .get_constant(context)
+                    .unwrap();
+                let data_ptr = self.module.new_unique_global_var(
+                    context,
+                    "__const_global".into(),
+                    data.get_content(context).ty,
+                    Some(*data),
+                    false,
+                );
+
+                let slice_ptr = self.current_block.append(context).get_global(data_ptr);
+                let slice_len = bytes.len() as u64;
+
+                self.compile_slice(context, span_md_idx, slice_ptr, slice_len)
             }
             ty::TyExpressionVariant::Literal(Literal::Numeric(n)) => {
                 let implied_lit = match &*self.engines.te().get(ast_expr.return_type) {
@@ -590,8 +620,6 @@ impl<'a> FnCompiler<'a> {
                 arguments,
                 fn_ref,
                 selector,
-                type_binding: _,
-                call_path_typeid: _,
                 ..
             } => {
                 if let Some(metadata) = selector {
@@ -781,9 +809,7 @@ impl<'a> FnCompiler<'a> {
                 ast_expr.return_type,
             ),
             ty::TyExpressionVariant::AbiName(_) => {
-                let c = ConstantContent::new_unit(context);
-                let c = Constant::unique(context, c);
-                let val = Value::new_constant(context, c);
+                let val = ConstantContent::get_unit(context);
                 Ok(TerminatorValue::new(
                     CompiledValue::InRegister(val),
                     context,
@@ -1780,15 +1806,8 @@ impl<'a> FnCompiler<'a> {
             Intrinsic::EncodeBufferEmpty => {
                 assert!(arguments.is_empty());
 
-                let uint64 = Type::get_uint64(context);
-
                 // let cap = 1024;
-                let c = ConstantContent {
-                    ty: uint64,
-                    value: ConstantValue::Uint(1024),
-                };
-                let c = Constant::unique(context, c);
-                let cap = Value::new_constant(context, c);
+                let cap = Value::new_u64_constant(context, 1024);
 
                 // let ptr = asm(cap: cap) {
                 //  aloc cap;
@@ -1813,9 +1832,7 @@ impl<'a> FnCompiler<'a> {
                     Some(Ident::new_no_span("hp".into())),
                 );
 
-                let len = ConstantContent::new_uint(context, 64, 0);
-                let len_c = Constant::unique(context, len);
-                let len = Value::new_constant(context, len_c);
+                let len = Value::new_u64_constant(context, 0);
                 let buffer = self.compile_to_encode_buffer(context, ptr, cap, len)?;
                 Ok(TerminatorValue::new(buffer, context))
             }
@@ -1847,13 +1864,7 @@ impl<'a> FnCompiler<'a> {
                 ) -> Value {
                     assert!(len.get_type(context).unwrap().is_uint64(context));
 
-                    let uint64 = Type::get_uint64(context);
-                    let step = ConstantContent {
-                        ty: uint64,
-                        value: ConstantValue::Uint(step),
-                    };
-                    let step = Constant::unique(context, step);
-                    let step = Value::new_constant(context, step);
+                    let step = Value::new_u64_constant(context, step);
                     current_block
                         .append(context)
                         .binary_op(BinaryOpKind::Add, len, step)
@@ -1876,13 +1887,7 @@ impl<'a> FnCompiler<'a> {
 
                     let _ = current_block.append(context).store(addr, item);
 
-                    let uint64 = Type::get_uint64(context);
-                    let step = ConstantContent {
-                        ty: uint64,
-                        value: ConstantValue::Uint(1),
-                    };
-                    let step = Constant::unique(context, step);
-                    let step = Value::new_constant(context, step);
+                    let step = Value::new_u64_constant(context, 1);
                     current_block
                         .append(context)
                         .binary_op(BinaryOpKind::Add, len, step)
@@ -1904,16 +1909,9 @@ impl<'a> FnCompiler<'a> {
                         .is_uint64(context));
                     assert!(item.get_type(context).unwrap().is_uint64(context));
 
-                    let uint64 = Type::get_uint64(context);
-
                     let _ = current_block.append(context).store(addr, item);
 
-                    let step = ConstantContent {
-                        ty: uint64,
-                        value: ConstantValue::Uint(8),
-                    };
-                    let step = Constant::unique(context, step);
-                    let step = Value::new_constant(context, step);
+                    let step = Value::new_u64_constant(context, 8);
                     current_block
                         .append(context)
                         .binary_op(BinaryOpKind::Add, len, step)
@@ -1931,9 +1929,7 @@ impl<'a> FnCompiler<'a> {
                     let item_ptr = store_to_memory(s, context, CompiledValue::InRegister(item))?
                         .expect_memory();
 
-                    let offset_value = ConstantContent::new_uint(context, 64, offset);
-                    let offset_value = Constant::unique(context, offset_value);
-                    let offset_value = Value::new_constant(context, offset_value);
+                    let offset_value = Value::new_u64_constant(context, offset);
                     let item_ptr = calc_addr_as_ptr(
                         &mut s.current_block,
                         context,
@@ -2023,9 +2019,7 @@ impl<'a> FnCompiler<'a> {
                     let u8 = Type::get_uint8(context);
                     let ptr_u8 = Type::new_typed_pointer(context, u8);
 
-                    let two = ConstantContent::new_uint(context, 64, 2);
-                    let two = Constant::unique(context, two);
-                    let two = Value::new_constant(context, two);
+                    let two = Value::new_u64_constant(context, 2);
                     let new_cap_part =
                         s.current_block
                             .append(context)
@@ -2096,32 +2090,32 @@ impl<'a> FnCompiler<'a> {
                 // Grow the buffer if needed
                 let (ptr, cap) = match &*item_type {
                     TypeInfo::Boolean => {
-                        let needed_size = to_constant(self, context, 1);
+                        let needed_size = Value::new_u64_constant(context, 1);
                         grow_if_needed(self, context, ptr, cap, len, needed_size)
                     }
                     TypeInfo::UnsignedInteger(IntegerBits::Eight) => {
-                        let needed_size = to_constant(self, context, 1);
+                        let needed_size = Value::new_u64_constant(context, 1);
                         grow_if_needed(self, context, ptr, cap, len, needed_size)
                     }
                     TypeInfo::UnsignedInteger(IntegerBits::Sixteen) => {
-                        let needed_size = to_constant(self, context, 2);
+                        let needed_size = Value::new_u64_constant(context, 2);
                         grow_if_needed(self, context, ptr, cap, len, needed_size)
                     }
                     TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo) => {
-                        let needed_size = to_constant(self, context, 4);
+                        let needed_size = Value::new_u64_constant(context, 4);
                         grow_if_needed(self, context, ptr, cap, len, needed_size)
                     }
                     TypeInfo::UnsignedInteger(IntegerBits::SixtyFour) => {
-                        let needed_size = to_constant(self, context, 8);
+                        let needed_size = Value::new_u64_constant(context, 8);
                         grow_if_needed(self, context, ptr, cap, len, needed_size)
                     }
                     TypeInfo::UnsignedInteger(IntegerBits::V256) | TypeInfo::B256 => {
-                        let needed_size = to_constant(self, context, 32);
+                        let needed_size = Value::new_u64_constant(context, 32);
                         grow_if_needed(self, context, ptr, cap, len, needed_size)
                     }
                     TypeInfo::StringArray(length) => {
                         let value = length.expr().as_literal_val().unwrap() as u64;
-                        let needed_size = to_constant(self, context, value);
+                        let needed_size = Value::new_u64_constant(context, value);
                         grow_if_needed(self, context, ptr, cap, len, needed_size)
                     }
                     TypeInfo::StringSlice | TypeInfo::RawUntypedSlice => {
@@ -2160,7 +2154,7 @@ impl<'a> FnCompiler<'a> {
                             1,
                         );
                         let needed_size = self.current_block.append(context).load(needed_size);
-                        let eight = to_constant(self, context, 8);
+                        let eight = Value::new_u64_constant(context, 8);
                         let needed_size = self.current_block.append(context).binary_op(
                             BinaryOpKind::Add,
                             needed_size,
@@ -2514,9 +2508,9 @@ impl<'a> FnCompiler<'a> {
         let (is_slice, elem_ty) = match &*te.get(first_argument_expr.return_type) {
             TypeInfo::Ref {
                 referenced_type, ..
-            } => match &*te.get(referenced_type.type_id()) {
-                TypeInfo::Array(elem_ty, _) => Ok((false, elem_ty.type_id())),
-                TypeInfo::Slice(elem_ty) => Ok((true, elem_ty.type_id())),
+            } => match &*te.get(referenced_type.type_id) {
+                TypeInfo::Array(elem_ty, _) => Ok((false, elem_ty.type_id)),
+                TypeInfo::Slice(elem_ty) => Ok((true, elem_ty.type_id)),
                 _ => Err(err),
             },
             _ => Err(err),
@@ -2573,7 +2567,7 @@ impl<'a> FnCompiler<'a> {
             &first_argument_expr.span.clone(),
         )?;
         let elem_ir_type_size = elem_ir_type.size(context);
-        let elem_ir_type_size = to_constant(self, context, elem_ir_type_size.in_bytes());
+        let elem_ir_type_size = Value::new_u64_constant(context, elem_ir_type_size.in_bytes());
         let elem_ir_type_size_arg = AsmArg {
             name: Ident::new_no_span("elem_ir_type_size".into()),
             initializer: Some(elem_ir_type_size),
@@ -2832,42 +2826,81 @@ impl<'a> FnCompiler<'a> {
                             .add_metadatum(context, span_md_idx);
                     }
                 };
-            } else {
-                // TODO: Consider using `__dbg` intrinsic in predicates.
             }
         }
 
         // 1.b Define the `loc` entry.
         // Set the location to the `panic` keyword.
-        panic_occurrence.loc = self.engines.se().get_source_location(
-            md_mgr
-                .md_to_span(context, span_md_idx)
-                .as_ref()
-                .unwrap_or(&ast_expr.span),
-        );
+        let panic_span = md_mgr
+            .md_to_span(context, span_md_idx)
+            .unwrap_or(ast_expr.span.clone());
+        panic_occurrence.loc = self.engines.se().get_source_location(&panic_span);
+
+        // 1.c Define the `function` entry.
+        panic_occurrence.function = self.function.get_abi_errors_display(context);
 
         // 2. Define the revert code for this particular panic occurrence.
-        // If we have encountered this `panic` before, we will reuse the revert code.
+        //    The revert code encodes this panic occurrence error code and the backtrace.
+
+        // 2.a Get encoded panic occurrence error code.
+        // If we have encountered this `panic` before, we will reuse the error code.
         // This happen, e.g., when compiling a generic function that panics on a non-generic argument.
-        let revert_code = match self.panic_occurrences.get(&panic_occurrence) {
-            Some(revert_code) => *revert_code,
+        let panic_error_code = match self.panic_occurrences.get(&panic_occurrence) {
+            Some(panic_error_code) => *panic_error_code,
             None => {
-                // If we have not encountered this `panic` before, we will assign a new revert code.
-                let revert_code = context.get_next_panic_revert_code();
-                self.panic_occurrences.insert(panic_occurrence, revert_code);
-                revert_code
+                // If we have not encountered this `panic` before, we will assign a new encoded error code.
+                let panic_error_code = context.get_unique_panic_error_code();
+                if panic_error_code > Self::MAX_PANIC_ERROR_CODE {
+                    return Err(CompileError::MaxNumOfPanicExpressionsReached {
+                        // Panic error codes are 0 based, therefore + 1.
+                        current: panic_error_code + 1,
+                        max_num: Self::MAX_PANIC_ERROR_CODE + 1,
+                        span: panic_span,
+                    });
+                }
+                self.panic_occurrences
+                    .insert(panic_occurrence, panic_error_code);
+                panic_error_code
             }
         };
+        // E.g., if the `panic_error_code` is `pppppppp`,
+        // the `encoded_error_code` will be:
+        //   `0b1_pppppppp_00000000000_00000000000_00000000000_00000000000_00000000000`
+        #[allow(clippy::unusual_byte_groupings)]
+        let encoded_error_code = (panic_error_code << 55)
+            | 0b1_00000000_00000000000_00000000000_00000000000_00000000000_00000000000;
 
-        let revert_code_const = ConstantContent::new_uint(context, 64, revert_code);
-        let revert_code_const = Constant::unique(context, revert_code_const);
-        let revert_code_val = Value::new_constant(context, revert_code_const);
+        let encoded_error_code = Value::new_u64_constant(context, encoded_error_code);
+
+        // 2.b Append backtrace to the encoded error code, if available.
+        let revert_code =
+            if let Some(backtrace) = self.function.get_arg(context, Self::BACKTRACE_FN_ARG_NAME) {
+                // Append backtrace to the encoded error code.
+                #[allow(clippy::unusual_byte_groupings)]
+                let backtrace_mask = Value::new_u64_constant(
+                    context,
+                    0b0_00000000_11111111111_11111111111_11111111111_11111111111_11111111111,
+                );
+                let backtrace = self
+                    .current_block
+                    .append(context)
+                    .binary_op(BinaryOpKind::And, backtrace, backtrace_mask)
+                    .add_metadatum(context, span_md_idx);
+
+                self.current_block
+                    .append(context)
+                    .binary_op(BinaryOpKind::Or, encoded_error_code, backtrace)
+                    .add_metadatum(context, span_md_idx)
+            } else {
+                // No backtrace. The encoded error code is the revert code.
+                encoded_error_code
+            };
 
         // 3. Emit the `revert` instruction.
         let val = self
             .current_block
             .append(context)
-            .revert(revert_code_val)
+            .revert(revert_code)
             .add_metadatum(context, span_md_idx);
 
         Ok(TerminatorValue::new(
@@ -2966,7 +2999,7 @@ impl<'a> FnCompiler<'a> {
             TypeInfo::Ref {
                 ref referenced_type,
                 ..
-            } => Ok(referenced_type.type_id()),
+            } => Ok(referenced_type.type_id),
             _ => Err(CompileError::Internal(
                 "Cannot dereference a non-reference expression.",
                 ast_expr.span.clone(),
@@ -3351,18 +3384,21 @@ impl<'a> FnCompiler<'a> {
         span_md_idx: Option<MetadataIndex>,
         call_path: &CallPath,
     ) -> Result<TerminatorValue, CompileError> {
-        let new_callee = self.cache.ty_function_decl_to_unique_function(
+        let keyed_callee = KeyedTyFunctionDecl::new(callee, self.engines);
+        let new_callee = self.compiled_fn_cache.get_compiled_function(
             self.engines,
             context,
             self.module,
             md_mgr,
-            callee,
+            &keyed_callee,
             self.logged_types_map,
             self.messages_types_map,
             self.panic_occurrences,
+            self.panicking_call_occurrences,
+            self.panicking_fn_cache,
         )?;
 
-        // Now actually call the new function.
+        // Compile the arguments.
         let mut args = Vec::with_capacity(ast_args.len());
         for ((_, expr), param) in ast_args.iter().zip(callee.parameters.iter()) {
             self.current_fn_param = Some(param.clone());
@@ -3376,6 +3412,99 @@ impl<'a> FnCompiler<'a> {
             args.push(arg);
         }
 
+        // Compile the backtrace argument if the function can panic.
+        if context.backtrace != Backtrace::None
+            && self
+                .panicking_fn_cache
+                .can_panic(&keyed_callee, self.engines)
+        {
+            let trace = callee.trace();
+            let current_backtrace = self.function.get_arg(context, Self::BACKTRACE_FN_ARG_NAME);
+            let panicking_call_id = if context.backtrace == Backtrace::All
+                || context.backtrace == Backtrace::AllExceptNever
+                    && !matches!(trace, Some(Trace::Never))
+                || context.backtrace == Backtrace::OnlyAlways
+                    && matches!(trace, Some(Trace::Always))
+            {
+                let call_span = md_mgr
+                    .md_to_span(context, span_md_idx)
+                    .unwrap_or(Span::dummy());
+
+                let loc = self.engines.se().get_source_location(&call_span);
+
+                let panicking_call = PanickingCallOccurrence {
+                    loc,
+                    caller_function: self.function.get_abi_errors_display(context),
+                    function: Self::FN_DISPLAY_FOR_ABI_ERRORS.display(callee, self.engines),
+                };
+
+                let panicking_call_id = match self.panicking_call_occurrences.get(&panicking_call) {
+                    Some(panicking_call_id) => *panicking_call_id,
+                    None => {
+                        let panicking_call_id = context.get_unique_panicking_call_id();
+                        if panicking_call_id > Self::MAX_PANICKING_CALL_ID {
+                            return Err(CompileError::MaxNumOfPanickingCallsReached {
+                                current: panicking_call_id,
+                                max_num: Self::MAX_PANICKING_CALL_ID,
+                                span: call_span,
+                            });
+                        }
+                        self.panicking_call_occurrences
+                            .insert(panicking_call, panicking_call_id);
+                        panicking_call_id
+                    }
+                };
+
+                Some(panicking_call_id)
+            } else {
+                None
+            };
+
+            let new_backtrace = match (current_backtrace, panicking_call_id) {
+                (None, None) | (None, Some(_)) => {
+                    // If the caller doesn't have a backtrace, we are starting with
+                    // a new one, passing either the panicking call ID of this call
+                    // as a starting trace, or zero if this call does not participate
+                    // in the backtrace.
+                    Value::new_u64_constant(context, panicking_call_id.unwrap_or_default())
+                }
+                (Some(current_backtrace), None) => {
+                    // There is existing backtrace and the current call does not
+                    // participate in the backtrace. Just pass the current backtrace
+                    // down the call chain.
+                    current_backtrace
+                }
+                (Some(current_backtrace), Some(panicking_call_id)) => {
+                    // There is existing backtrace and the current call participates in
+                    // the backtrace. We need to create a new backtrace that includes
+                    // both the current backtrace and the panicking call ID, by left-shifting
+                    // the current backtrace and appending the current call panicking call ID
+                    // to the end.
+                    let eleven_const = Value::new_u64_constant(context, 11);
+
+                    let shifted_current_backtrace = self
+                        .current_block
+                        .append(context)
+                        .binary_op(BinaryOpKind::Lsh, current_backtrace, eleven_const)
+                        .add_metadatum(context, span_md_idx);
+
+                    let panicking_call_id = Value::new_u64_constant(context, panicking_call_id);
+
+                    self.current_block
+                        .append(context)
+                        .binary_op(
+                            BinaryOpKind::Or,
+                            shifted_current_backtrace,
+                            panicking_call_id,
+                        )
+                        .add_metadatum(context, span_md_idx)
+                }
+            };
+
+            args.push(new_backtrace);
+        }
+
+        // Call the function.
         let call_path_span_md_idx = md_mgr.fn_call_path_span_to_md(context, call_path);
         let md_idx = combine(context, &span_md_idx, &call_path_span_md_idx);
 
@@ -4096,7 +4225,7 @@ impl<'a> FnCompiler<'a> {
                 referenced_type, ..
             } = &*self.engines.te().get_unaliased(cur_type_id)
             {
-                cur_type_id = referenced_type.type_id();
+                cur_type_id = referenced_type.type_id;
             }
             let cur_type_info_arc = self.engines.te().get_unaliased(cur_type_id);
             let cur_type_info = &*cur_type_info_arc;
@@ -4128,11 +4257,11 @@ impl<'a> FnCompiler<'a> {
                     }
                 }
                 (ProjectionKind::TupleField { index, .. }, TypeInfo::Tuple(field_tys)) => {
-                    cur_type_id = field_tys[*index].type_id();
+                    cur_type_id = field_tys[*index].type_id;
                     gep_indices.push(ConstantContent::get_uint(context, 64, *index as u64));
                 }
                 (ProjectionKind::ArrayIndex { index, .. }, TypeInfo::Array(elem_ty, _)) => {
-                    cur_type_id = elem_ty.type_id();
+                    cur_type_id = elem_ty.type_id;
                     let val = self.compile_expression_to_register(context, md_mgr, index)?;
                     if val.is_terminator {
                         return Ok((Some(val), vec![]));
@@ -4362,9 +4491,7 @@ impl<'a> FnCompiler<'a> {
             .function
             .create_block(context, Some("array_init_loop".into()));
         // The loop begins with 0.
-        let zero = ConstantContent::new_uint(context, 64, 0);
-        let zero = Constant::unique(context, zero);
-        let zero = Value::new_constant(context, zero);
+        let zero = Value::new_u64_constant(context, 0);
         // Branch to the loop block, passing the initial iteration value.
         self.current_block
             .append(context)
@@ -4387,17 +4514,13 @@ impl<'a> FnCompiler<'a> {
             .store(gep_val, init_value)
             .add_metadatum(context, span_md_idx);
         // Increment index by one.
-        let one = ConstantContent::new_uint(context, 64, 1);
-        let one = Constant::unique(context, one);
-        let one = Value::new_constant(context, one);
+        let one = Value::new_u64_constant(context, 1);
         let index_inc = self
             .current_block
             .append(context)
             .binary_op(BinaryOpKind::Add, index, one);
         // continue = index_inc < contents.len()
-        let len = ConstantContent::new_uint(context, 64, length);
-        let len = Constant::unique(context, len);
-        let len = Value::new_constant(context, len);
+        let len = Value::new_u64_constant(context, length);
         let r#continue =
             self.current_block
                 .append(context)
@@ -4661,43 +4784,44 @@ impl<'a> FnCompiler<'a> {
         // all the variants must have unit types, hence the absence of the union. Therefore, there
         // is no need for another `store` instruction here.
         let field_tys = enum_type.get_field_types(context);
-        if field_tys.len() != 1 && contents.is_some() {
-            // Insert the value too.
-            // Only store if the value does not diverge.
-            let contents_expr = contents.unwrap();
-            let contents_value = return_on_termination_or_extract!(
-                self.compile_expression_to_register(context, md_mgr, contents_expr)?
-            )
-            .expect_register();
-            let contents_type = contents_value.get_type(context).ok_or_else(|| {
-                CompileError::Internal(
-                    "Unable to get type for enum contents.",
-                    enum_decl.span.clone(),
+        if field_tys.len() != 1 {
+            if let Some(contents_expr) = contents {
+                // Insert the value too.
+                // Only store if the value does not diverge.
+                let contents_value = return_on_termination_or_extract!(
+                    self.compile_expression_to_register(context, md_mgr, contents_expr)?
                 )
-            })?;
-
-            let variant_type = field_tys[1].get_field_type(context, tag as u64).unwrap();
-            if contents_type != variant_type {
-                return Err(CompileError::Internal(
-                    format!(
-                        "Expression type \"{}\" and Variant type \"{}\" do not match",
-                        contents_type.as_string(context),
-                        variant_type.as_string(context)
+                .expect_register();
+                let contents_type = contents_value.get_type(context).ok_or_else(|| {
+                    CompileError::Internal(
+                        "Unable to get type for enum contents.",
+                        enum_decl.span.clone(),
                     )
-                    .leak(),
-                    contents_expr.span.clone(),
-                ));
-            }
+                })?;
 
-            let gep_val = self
-                .current_block
-                .append(context)
-                .get_elem_ptr_with_idcs(enum_ptr, contents_type, &[1, tag as u64])
-                .add_metadatum(context, span_md_idx);
-            self.current_block
-                .append(context)
-                .store(gep_val, contents_value)
-                .add_metadatum(context, span_md_idx);
+                let variant_type = field_tys[1].get_field_type(context, tag as u64).unwrap();
+                if contents_type != variant_type {
+                    return Err(CompileError::Internal(
+                        format!(
+                            "Expression type \"{}\" and Variant type \"{}\" do not match",
+                            contents_type.as_string(context),
+                            variant_type.as_string(context)
+                        )
+                        .leak(),
+                        contents_expr.span.clone(),
+                    ));
+                }
+
+                let gep_val = self
+                    .current_block
+                    .append(context)
+                    .get_elem_ptr_with_idcs(enum_ptr, contents_type, &[1, tag as u64])
+                    .add_metadatum(context, span_md_idx);
+                self.current_block
+                    .append(context)
+                    .store(gep_val, contents_value)
+                    .add_metadatum(context, span_md_idx);
+            }
         }
 
         // Return the pointer.

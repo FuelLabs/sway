@@ -6,8 +6,8 @@ abi Abi {
     fn directly_panicking_method();
     fn nested_panic_inlined();
     fn nested_panic_inlined_same_revert_code();
-    fn nested_panic_not_inlined();
-    fn nested_panic_not_inlined_same_revert_code();
+    fn nested_panic_non_inlined();
+    fn nested_panic_non_inlined_same_revert_code();
     fn generic_panic_with_unit();
     fn generic_panic_with_unit_same_revert_code();
     fn generic_panic_with_str();
@@ -15,6 +15,12 @@ abi Abi {
     fn generic_panic_with_error_type_enum();
     fn generic_panic_with_error_type_enum_different_variant_same_revert_code();
     fn generic_function_with_non_generic_panic();
+}
+
+impl Contract {
+    fn panicking_in_contract_self_impl() {
+        panic "panicking in contract self impl";
+    }
 }
 
 impl Abi for Contract {
@@ -30,12 +36,12 @@ impl Abi for Contract {
         call_nested_panic_inlined();
     }
 
-    fn nested_panic_not_inlined() {
-        call_nested_panic_not_inlined();
+    fn nested_panic_non_inlined() {
+        call_nested_panic_non_inlined();
     }
 
-    fn nested_panic_not_inlined_same_revert_code() {
-        call_nested_panic_not_inlined();
+    fn nested_panic_non_inlined_same_revert_code() {
+        call_nested_panic_non_inlined();
     }
 
     fn generic_panic_with_unit() {
@@ -70,6 +76,12 @@ impl Abi for Contract {
 }
 
 #[test(should_revert)]
+fn test_panicking_in_contract_self_impl() {
+    let caller = abi(PanickingContractAbi, CONTRACT_ID);
+    caller.panicking_in_contract_self_impl();
+}
+
+#[test(should_revert)]
 fn test_directly_panicking_method() {
     let caller = abi(Abi, CONTRACT_ID);
     caller.directly_panicking_method();
@@ -88,15 +100,15 @@ fn test_nested_panic_inlined_same_revert_code() {
 }
 
 #[test(should_revert)]
-fn test_nested_panic_not_inlined() {
+fn test_nested_panic_non_inlined() {
     let caller = abi(Abi, CONTRACT_ID);
-    caller.nested_panic_not_inlined();
+    caller.nested_panic_non_inlined();
 }
 
 #[test(should_revert)]
-fn test_nested_panic_not_inlined_same_revert_code() {
+fn test_nested_panic_non_inlined_same_revert_code() {
     let caller = abi(Abi, CONTRACT_ID);
-    caller.nested_panic_not_inlined();
+    caller.nested_panic_non_inlined();
 }
 
 #[test(should_revert)]

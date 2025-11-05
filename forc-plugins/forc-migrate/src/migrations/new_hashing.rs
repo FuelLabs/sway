@@ -17,7 +17,7 @@ use sway_core::{
         ty::{TyExpression, TyStorageField, TyStructDecl},
         CallPath,
     },
-    Engines, GenericArgument, TypeId, TypeInfo, TypeParameter,
+    Engines, TypeId, TypeInfo, TypeParameter,
 };
 use sway_error::formatting::{plural_s, sequence_to_str, Enclosing};
 use sway_types::Spanned;
@@ -203,10 +203,8 @@ fn review_existing_usages_of_storage_map_sha256_and_keccak256(
                     TypeInfo::Enum(decl_id) => {
                         let enum_decl = engines.de().get_enum(decl_id);
                         for variant in enum_decl.variants.iter() {
-                            if let GenericArgument::Type(ta) = &variant.type_argument {
-                                if let Some(is_affected) = is_affected_type_impl(visitor, engines, original_type_name, ta.type_id, depth + 1) {
-                                    return Some(is_affected);
-                                }
+                            if let Some(is_affected) = is_affected_type_impl(visitor, engines, original_type_name, variant.type_argument.type_id, depth + 1) {
+                                return Some(is_affected);
                             }
                         }
                         None
@@ -219,10 +217,8 @@ fn review_existing_usages_of_storage_map_sha256_and_keccak256(
                             review_affected_type(original_type_name, &engines.help_out(type_id).to_string(), depth)
                         } else {
                             for field in struct_decl.fields.iter() {
-                                if let GenericArgument::Type(ta) = &field.type_argument {
-                                    if let Some(is_affected) = is_affected_type_impl(visitor, engines, original_type_name, ta.type_id, depth + 1) {
-                                        return Some(is_affected);
-                                    }
+                                if let Some(is_affected) = is_affected_type_impl(visitor, engines, original_type_name, field.type_argument.type_id, depth + 1) {
+                                    return Some(is_affected);
                                 }
                             }
                             None
@@ -230,10 +226,8 @@ fn review_existing_usages_of_storage_map_sha256_and_keccak256(
                     },
                     TypeInfo::Tuple(generic_arguments) => {
                         for generic_argument in generic_arguments.iter() {
-                            if let GenericArgument::Type(ta) = generic_argument {
-                                if let Some(is_affected) = is_affected_type_impl(visitor, engines, original_type_name, ta.type_id, depth + 1) {
-                                    return Some(is_affected);
-                                }
+                            if let Some(is_affected) = is_affected_type_impl(visitor, engines, original_type_name, generic_argument.type_id, depth + 1) {
+                                return Some(is_affected);
                             }
                         }
                         None
@@ -246,13 +240,9 @@ fn review_existing_usages_of_storage_map_sha256_and_keccak256(
                     // Still, we will handle the type itself, to be on the safe side.
                     | TypeInfo::Slice(generic_argument)
                     | TypeInfo::Alias { ty: generic_argument, .. }
-                    | TypeInfo::Ref { referenced_type: generic_argument, .. } => match generic_argument {
-                        GenericArgument::Type(ta) => is_affected_type_impl(visitor, engines, original_type_name, ta.type_id, depth + 1),
-                        GenericArgument::Const(_) => None,
-                    },
-
+                    | TypeInfo::Ref { referenced_type: generic_argument, .. } => is_affected_type_impl(visitor, engines, original_type_name, generic_argument.type_id, depth + 1),
                     // Trait type.
-                    TypeInfo::TraitType { trait_type_id, .. } => is_affected_type_impl(visitor, engines, original_type_name, *trait_type_id, depth + 1),
+                    TypeInfo::TraitType { implemented_in, .. } => is_affected_type_impl(visitor, engines, original_type_name, *implemented_in, depth + 1),
                 }
             }
 
@@ -597,12 +587,7 @@ fn review_existing_usages_of_storage_map_sha256_and_keccak256(
             ty_storage_field: Option<&TyStorageField>,
             output: &mut Vec<Occurrence>,
         ) -> Result<InvalidateTypedElement> {
-            if let Some(ty_field_type) = ty_storage_field.and_then(|ty_storage_field| {
-                match &ty_storage_field.type_argument {
-                    GenericArgument::Type(ty) => Some(ty.type_id),
-                    GenericArgument::Const(_) => None,
-                }
-            }) {
+            if let Some(ty_field_type) = ty_storage_field.map(|x| x.type_argument.type_id) {
                 let Some(help_message) =
                     self.is_affected_storage_field_type(ctx.engines, ty_field_type)
                 else {

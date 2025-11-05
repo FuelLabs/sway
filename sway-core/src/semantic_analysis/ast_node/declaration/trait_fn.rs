@@ -69,11 +69,11 @@ impl ty::TyTraitFn {
 
             // Type check the return type.
             let mut new_return_type = return_type.clone();
-            *new_return_type.type_id_mut() = ctx
+            new_return_type.type_id = ctx
                 .resolve_type(
                     handler,
-                    return_type.type_id(),
-                    &return_type.span(),
+                    return_type.type_id,
+                    &return_type.span,
                     EnforceTypeArguments::Yes,
                     None,
                 )
@@ -98,14 +98,14 @@ impl ty::TyTraitFn {
     pub(crate) fn to_dummy_func(
         &self,
         abi_mode: AbiMode,
-        implementing_for_typeid: Option<TypeId>,
+        implementing_for: Option<TypeId>,
     ) -> ty::TyFunctionDecl {
         ty::TyFunctionDecl {
             purity: self.purity,
             name: self.name.clone(),
             body: <_>::default(),
             parameters: self.parameters.clone(),
-            implementing_type: match abi_mode.clone() {
+            implementing_type: match &abi_mode {
                 AbiMode::ImplAbiFn(_abi_name, abi_decl_id) => {
                     // ABI and their super-ABI methods cannot have the same names,
                     // so in order to provide meaningful error messages if this condition
@@ -117,7 +117,7 @@ impl ty::TyTraitFn {
                 }
                 AbiMode::NonAbi => None,
             },
-            implementing_for_typeid,
+            implementing_for,
             span: self.name.span(),
             call_path: CallPath::from(self.name.clone()),
             attributes: self.attributes.clone(),

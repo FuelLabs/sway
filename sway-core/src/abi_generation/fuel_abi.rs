@@ -1,6 +1,6 @@
 use fuel_abi_types::abi::program::{
     self as program_abi, ConcreteTypeId, ErrorDetails, ErrorPosition, MetadataTypeId,
-    TypeConcreteDeclaration,
+    PanickingCall, TypeConcreteDeclaration,
 };
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -15,7 +15,7 @@ use crate::{
     ast_elements::type_parameter::GenericTypeParameter,
     language::ty::{TyFunctionDecl, TyProgram, TyProgramKind},
     transform::Attributes,
-    Engines, PanicOccurrences, TypeId, TypeInfo,
+    Engines, PanicOccurrences, PanickingCallOccurrences, TypeId, TypeInfo,
 };
 
 use super::abi_str::AbiStrContext;
@@ -37,6 +37,7 @@ impl AbiNameDiagnosticSpan {
 pub struct AbiContext<'a> {
     pub program: &'a TyProgram,
     pub panic_occurrences: &'a PanicOccurrences,
+    pub panicking_call_occurrences: &'a PanickingCallOccurrences,
     pub abi_with_callpaths: bool,
     pub type_ids_to_full_type_str: HashMap<String, String>,
     pub unique_names: HashMap<String, AbiNameDiagnosticSpan>,
@@ -255,7 +256,7 @@ fn process_type_name(ctx: &mut AbiContext, engines: &Engines, type_id: TypeId) {
                 struct_decl.name().span(),
             );
         }
-        TypeInfo::Alias { name: _, ty } => process_type_name(ctx, engines, ty.type_id()),
+        TypeInfo::Alias { name: _, ty } => process_type_name(ctx, engines, ty.type_id),
         _ => {}
     }
 }
@@ -265,10 +266,10 @@ fn process_type_names_from_function(
     engines: &Engines,
     function: &TyFunctionDecl,
 ) {
-    process_type_name(ctx, engines, function.return_type.type_id());
+    process_type_name(ctx, engines, function.return_type.type_id);
 
     for param in &function.parameters {
-        process_type_name(ctx, engines, param.type_argument.type_id());
+        process_type_name(ctx, engines, param.type_argument.type_id);
     }
 }
 
@@ -323,6 +324,7 @@ pub fn generate_program_abi(
             let configurables =
                 generate_configurables(handler, ctx, engines, metadata_types, concrete_types)?;
             let error_codes = generate_error_codes(ctx.panic_occurrences);
+            let panicking_calls = generate_panicking_calls(ctx.panicking_call_occurrences);
             Ok(program_abi::ProgramABI {
                 program_type: "contract".to_string(),
                 spec_version,
@@ -334,6 +336,7 @@ pub fn generate_program_abi(
                 messages_types: Some(messages_types),
                 configurables: Some(configurables),
                 error_codes: Some(error_codes),
+                panicking_calls: Some(panicking_calls),
             })
         }
         TyProgramKind::Script { main_function, .. } => {
@@ -352,6 +355,7 @@ pub fn generate_program_abi(
             let configurables =
                 generate_configurables(handler, ctx, engines, metadata_types, concrete_types)?;
             let error_codes = generate_error_codes(ctx.panic_occurrences);
+            let panicking_calls = generate_panicking_calls(ctx.panicking_call_occurrences);
             Ok(program_abi::ProgramABI {
                 program_type: "script".to_string(),
                 spec_version,
@@ -363,6 +367,7 @@ pub fn generate_program_abi(
                 messages_types: Some(messages_types),
                 configurables: Some(configurables),
                 error_codes: Some(error_codes),
+                panicking_calls: Some(panicking_calls),
             })
         }
         TyProgramKind::Predicate { main_function, .. } => {
@@ -381,6 +386,7 @@ pub fn generate_program_abi(
             let configurables =
                 generate_configurables(handler, ctx, engines, metadata_types, concrete_types)?;
             let error_codes = generate_error_codes(ctx.panic_occurrences);
+            let panicking_calls = generate_panicking_calls(ctx.panicking_call_occurrences);
             Ok(program_abi::ProgramABI {
                 program_type: "predicate".to_string(),
                 spec_version,
@@ -392,6 +398,7 @@ pub fn generate_program_abi(
                 messages_types: Some(messages_types),
                 configurables: Some(configurables),
                 error_codes: Some(error_codes),
+                panicking_calls: Some(panicking_calls),
             })
         }
         TyProgramKind::Library { .. } => {
@@ -400,6 +407,7 @@ pub fn generate_program_abi(
             let messages_types =
                 generate_messages_types(handler, ctx, engines, metadata_types, concrete_types)?;
             let error_codes = generate_error_codes(ctx.panic_occurrences);
+            let panicking_calls = generate_panicking_calls(ctx.panicking_call_occurrences);
             Ok(program_abi::ProgramABI {
                 program_type: "library".to_string(),
                 spec_version,
@@ -411,6 +419,7 @@ pub fn generate_program_abi(
                 messages_types: Some(messages_types),
                 configurables: None,
                 error_codes: Some(error_codes),
+                panicking_calls: Some(panicking_calls),
             })
         }
     })?;
@@ -654,6 +663,7 @@ fn generate_concrete_type_declaration(
         concrete_type_id: concrete_type_id.clone(),
         metadata_type_id,
         type_arguments,
+        alias_of: None,
     };
 
     concrete_types.push(concrete_type_decl);
@@ -796,8 +806,8 @@ fn generate_configurables(
                     engines,
                     metadata_types,
                     concrete_types,
-                    decl.type_ascription.type_id(),
-                    decl.type_ascription.type_id(),
+                    decl.type_ascription.type_id,
+                    decl.type_ascription.type_id,
                 )?,
                 offset: 0,
                 indirect: false,
@@ -809,11 +819,12 @@ fn generate_configurables(
 fn generate_error_codes(panic_occurrences: &PanicOccurrences) -> BTreeMap<u64, ErrorDetails> {
     panic_occurrences
         .iter()
-        .map(|(panic_occurrence, revert_code)| {
+        .map(|(panic_occurrence, &panic_error_code)| {
             (
-                *revert_code,
+                panic_error_code,
                 ErrorDetails {
                     pos: ErrorPosition {
+                        function: panic_occurrence.function.clone(),
                         pkg: panic_occurrence.loc.pkg.clone(),
                         file: panic_occurrence.loc.file.clone(),
                         line: panic_occurrence.loc.loc.line as u64,
@@ -823,6 +834,29 @@ fn generate_error_codes(panic_occurrences: &PanicOccurrences) -> BTreeMap<u64, E
                         .log_id
                         .map(|log_id| log_id.hash_id.to_string()),
                     msg: panic_occurrence.msg.clone(),
+                },
+            )
+        })
+        .collect()
+}
+
+fn generate_panicking_calls(
+    panicking_call_occurrences: &PanickingCallOccurrences,
+) -> BTreeMap<u64, PanickingCall> {
+    panicking_call_occurrences
+        .iter()
+        .map(|(panicking_call_occurrence, panicking_call_id)| {
+            (
+                *panicking_call_id,
+                PanickingCall {
+                    pos: ErrorPosition {
+                        function: panicking_call_occurrence.caller_function.clone(),
+                        pkg: panicking_call_occurrence.loc.pkg.clone(),
+                        file: panicking_call_occurrence.loc.file.clone(),
+                        line: panicking_call_occurrence.loc.loc.line as u64,
+                        column: panicking_call_occurrence.loc.loc.col as u64,
+                    },
+                    function: panicking_call_occurrence.function.clone(),
                 },
             )
         })
@@ -901,8 +935,8 @@ impl TypeId {
                         engines,
                         metadata_types,
                         concrete_types,
-                        x.type_argument.initial_type_id(),
-                        x.type_argument.type_id(),
+                        x.type_argument.initial_type_id,
+                        x.type_argument.type_id,
                         &mut new_metadata_types_to_add,
                     )?;
                 }
@@ -916,21 +950,22 @@ impl TypeId {
                         Ok(program_abi::TypeApplication {
                             name: x.name.to_string(),
                             type_id: program_abi::TypeId::Metadata(MetadataTypeId(
-                                x.type_argument.initial_type_id().index(),
+                                x.type_argument.initial_type_id.index(),
                             )),
                             error_message: x.attributes.error_message().cloned(),
                             type_arguments: x
                                 .type_argument
-                                .initial_type_id()
+                                .initial_type_id
                                 .get_abi_type_arguments(
                                     handler,
                                     ctx,
                                     engines,
                                     metadata_types,
                                     concrete_types,
-                                    x.type_argument.type_id(),
+                                    x.type_argument.type_id,
                                     &mut new_metadata_types_to_add,
                                 )?,
+                            offset: None,
                         })
                     })
                     .collect::<Result<Vec<_>, _>>()?;
@@ -954,8 +989,8 @@ impl TypeId {
                         engines,
                         metadata_types,
                         concrete_types,
-                        x.type_argument.initial_type_id(),
-                        x.type_argument.type_id(),
+                        x.type_argument.initial_type_id,
+                        x.type_argument.type_id,
                         &mut new_metadata_types_to_add,
                     )?;
                 }
@@ -969,21 +1004,22 @@ impl TypeId {
                         Ok(program_abi::TypeApplication {
                             name: x.name.to_string(),
                             type_id: program_abi::TypeId::Metadata(MetadataTypeId(
-                                x.type_argument.initial_type_id().index(),
+                                x.type_argument.initial_type_id.index(),
                             )),
                             error_message: None,
                             type_arguments: x
                                 .type_argument
-                                .initial_type_id()
+                                .initial_type_id
                                 .get_abi_type_arguments(
                                     handler,
                                     ctx,
                                     engines,
                                     metadata_types,
                                     concrete_types,
-                                    x.type_argument.type_id(),
+                                    x.type_argument.type_id,
                                     &mut new_metadata_types_to_add,
                                 )?,
+                            offset: None,
                         })
                     })
                     .collect::<Result<Vec<_>, _>>()?;
@@ -1003,8 +1039,8 @@ impl TypeId {
                         engines,
                         metadata_types,
                         concrete_types,
-                        elem_ty.initial_type_id(),
-                        elem_ty.type_id(),
+                        elem_ty.initial_type_id,
+                        elem_ty.type_id,
                         metadata_types_to_add,
                     )?;
 
@@ -1013,18 +1049,19 @@ impl TypeId {
                     Some(vec![program_abi::TypeApplication {
                         name: "__array_element".to_string(),
                         type_id: program_abi::TypeId::Metadata(MetadataTypeId(
-                            elem_ty.initial_type_id().index(),
+                            elem_ty.initial_type_id.index(),
                         )),
                         error_message: None,
-                        type_arguments: elem_ty.initial_type_id().get_abi_type_arguments(
+                        type_arguments: elem_ty.initial_type_id.get_abi_type_arguments(
                             handler,
                             ctx,
                             engines,
                             metadata_types,
                             concrete_types,
-                            elem_ty.type_id(),
+                            elem_ty.type_id,
                             metadata_types_to_add,
                         )?,
+                        offset: None,
                     }])
                 } else {
                     unreachable!();
@@ -1038,8 +1075,8 @@ impl TypeId {
                         engines,
                         metadata_types,
                         concrete_types,
-                        elem_ty.initial_type_id(),
-                        elem_ty.type_id(),
+                        elem_ty.initial_type_id,
+                        elem_ty.type_id,
                         metadata_types_to_add,
                     )?;
 
@@ -1048,18 +1085,19 @@ impl TypeId {
                     Some(vec![program_abi::TypeApplication {
                         name: "__slice_element".to_string(),
                         type_id: program_abi::TypeId::Metadata(MetadataTypeId(
-                            elem_ty.initial_type_id().index(),
+                            elem_ty.initial_type_id.index(),
                         )),
                         error_message: None,
-                        type_arguments: elem_ty.initial_type_id().get_abi_type_arguments(
+                        type_arguments: elem_ty.initial_type_id.get_abi_type_arguments(
                             handler,
                             ctx,
                             engines,
                             metadata_types,
                             concrete_types,
-                            elem_ty.type_id(),
+                            elem_ty.type_id,
                             metadata_types_to_add,
                         )?,
+                        offset: None,
                     }])
                 } else {
                     unreachable!();
@@ -1076,8 +1114,8 @@ impl TypeId {
                             engines,
                             metadata_types,
                             concrete_types,
-                            x.initial_type_id(),
-                            x.type_id(),
+                            x.initial_type_id,
+                            x.type_id,
                             &mut new_metadata_types_to_add,
                         )?;
                     }
@@ -1090,18 +1128,19 @@ impl TypeId {
                             Ok(program_abi::TypeApplication {
                                 name: "__tuple_element".to_string(),
                                 type_id: program_abi::TypeId::Metadata(MetadataTypeId(
-                                    x.initial_type_id().index(),
+                                    x.initial_type_id.index(),
                                 )),
                                 error_message: None,
-                                type_arguments: x.initial_type_id().get_abi_type_arguments(
+                                type_arguments: x.initial_type_id.get_abi_type_arguments(
                                     handler,
                                     ctx,
                                     engines,
                                     metadata_types,
                                     concrete_types,
-                                    x.type_id(),
+                                    x.type_id,
                                     metadata_types_to_add,
                                 )?,
+                                offset: None,
                             })
                         })
                         .collect::<Result<Vec<_>, _>>()?;
@@ -1152,13 +1191,13 @@ impl TypeId {
             }
             TypeInfo::Alias { .. } => {
                 if let TypeInfo::Alias { ty, .. } = &*type_engine.get(resolved_type_id) {
-                    ty.initial_type_id().get_abi_type_components(
+                    ty.initial_type_id.get_abi_type_components(
                         handler,
                         ctx,
                         engines,
                         metadata_types,
                         concrete_types,
-                        ty.type_id(),
+                        ty.type_id,
                         metadata_types_to_add,
                     )?
                 } else {
@@ -1248,6 +1287,7 @@ impl TypeId {
                                     p.type_id,
                                     metadata_types_to_add,
                                 )?,
+                                offset: None,
                             })
                         })
                         .collect::<Result<Vec<_>, _>>()?
@@ -1295,6 +1335,7 @@ impl TypeId {
                                     p.type_id,
                                     &mut new_metadata_types_to_add,
                                 )?,
+                                offset: None,
                             })
                         })
                         .collect::<Result<Vec<_>, _>>()?;
@@ -1350,6 +1391,7 @@ impl TypeId {
                                     p.type_id,
                                     &mut new_metadata_types_to_add,
                                 )?,
+                                offset: None,
                             })
                         })
                         .collect::<Result<Vec<_>, _>>()?;
@@ -1475,8 +1517,8 @@ impl TyFunctionDecl {
                         engines,
                         metadata_types,
                         concrete_types,
-                        param.type_argument.initial_type_id(),
-                        param.type_argument.type_id(),
+                        param.type_argument.initial_type_id,
+                        param.type_argument.type_id,
                     )
                     .map(|concrete_type_id| {
                         program_abi::TypeConcreteParameter {
@@ -1498,8 +1540,8 @@ impl TyFunctionDecl {
                 engines,
                 metadata_types,
                 concrete_types,
-                self.return_type.initial_type_id(),
-                self.return_type.type_id(),
+                self.return_type.initial_type_id,
+                self.return_type.type_id,
             )?,
             attributes: generate_attributes(&self.attributes),
         })

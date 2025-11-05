@@ -86,8 +86,7 @@ fn replace_b256_from_bytes_with_try_from_bytes_step(
                 return Ok(InvalidateTypedElement::No);
             };
 
-            let Some(implementing_for_type_id) = ty_fn_call_info.fn_decl.implementing_for_typeid
-            else {
+            let Some(implementing_for_type_id) = ty_fn_call_info.fn_decl.implementing_for else {
                 return Ok(InvalidateTypedElement::No);
             };
 
@@ -165,7 +164,7 @@ fn replace_bytes_into_b256_with_try_into_b256_step(
             let method_return_type = ctx
                 .engines
                 .te()
-                .get(ty_method_call_info.fn_decl.return_type.type_id());
+                .get(ty_method_call_info.fn_decl.return_type.type_id);
             let method_target_is_bytes_struct = match ctx
                 .engines
                 .te()

@@ -241,8 +241,8 @@ impl TypeSubstMap {
             (TypeInfo::Tuple(type_parameters), TypeInfo::Tuple(type_arguments)) => {
                 TypeSubstMap::from_superset_and_subset_helper(
                     engines,
-                    type_parameters.iter().map(|x| x.type_id()),
-                    type_arguments.iter().map(|x| x.type_id()),
+                    type_parameters.iter().map(|x| x.type_id),
+                    type_arguments.iter().map(|x| x.type_id),
                 )
             }
             (TypeInfo::StringArray(l), TypeInfo::StringArray(r)) => {
@@ -252,16 +252,16 @@ impl TypeSubstMap {
             (TypeInfo::Array(type_parameter, l), TypeInfo::Array(type_argument, r)) => {
                 let map = TypeSubstMap::from_superset_and_subset_helper(
                     engines,
-                    [type_parameter.type_id()].into_iter(),
-                    [type_argument.type_id()].into_iter(),
+                    [type_parameter.type_id].into_iter(),
+                    [type_argument.type_id].into_iter(),
                 );
                 map_from_length(type_engine, l, r, map)
             }
             (TypeInfo::Slice(type_parameter), TypeInfo::Slice(type_argument)) => {
                 TypeSubstMap::from_superset_and_subset_helper(
                     engines,
-                    [type_parameter.type_id()].into_iter(),
-                    [type_argument.type_id()].into_iter(),
+                    [type_parameter.type_id].into_iter(),
+                    [type_argument.type_id].into_iter(),
                 )
             }
             (TypeInfo::Unknown, TypeInfo::Unknown)
@@ -385,10 +385,9 @@ impl TypeSubstMap {
                 let mut need_to_create_new = false;
 
                 for variant in &mut decl.variants {
-                    if let Some(type_id) = self.find_match(variant.type_argument.type_id(), engines)
-                    {
+                    if let Some(type_id) = self.find_match(variant.type_argument.type_id, engines) {
                         need_to_create_new = true;
-                        *variant.type_argument.type_id_mut() = type_id;
+                        variant.type_argument.type_id = type_id;
                     }
                 }
 
@@ -417,9 +416,9 @@ impl TypeSubstMap {
                 let mut decl = (*parsed_decl_engine.get_struct(&decl_id)).clone();
                 let mut need_to_create_new = false;
                 for field in &mut decl.fields {
-                    if let Some(type_id) = self.find_match(field.type_argument.type_id(), engines) {
+                    if let Some(type_id) = self.find_match(field.type_argument.type_id, engines) {
                         need_to_create_new = true;
-                        *field.type_argument.type_id_mut() = type_id;
+                        field.type_argument.type_id = type_id;
                     }
                 }
                 for type_param in &mut decl.type_parameters {
@@ -448,9 +447,9 @@ impl TypeSubstMap {
                 let mut need_to_create_new = false;
 
                 for field in &mut decl.fields {
-                    if let Some(type_id) = self.find_match(field.type_argument.type_id(), engines) {
+                    if let Some(type_id) = self.find_match(field.type_argument.type_id, engines) {
                         need_to_create_new = true;
-                        *field.type_argument.type_id_mut() = type_id;
+                        field.type_argument.type_id = type_id;
                     }
                 }
 
@@ -487,10 +486,9 @@ impl TypeSubstMap {
                 let mut need_to_create_new = false;
 
                 for variant in &mut decl.variants {
-                    if let Some(type_id) = self.find_match(variant.type_argument.type_id(), engines)
-                    {
+                    if let Some(type_id) = self.find_match(variant.type_argument.type_id, engines) {
                         need_to_create_new = true;
-                        *variant.type_argument.type_id_mut() = type_id;
+                        variant.type_argument.type_id = type_id;
                     }
                 }
 
@@ -511,27 +509,26 @@ impl TypeSubstMap {
                     None
                 }
             }
-            TypeInfo::Array(mut elem_type, length) => self
-                .find_match(elem_type.type_id(), engines)
-                .map(|type_id| {
-                    *elem_type.type_id_mut() = type_id;
+            TypeInfo::Array(mut elem_type, length) => {
+                self.find_match(elem_type.type_id, engines).map(|type_id| {
+                    elem_type.type_id = type_id;
                     type_engine.insert_array(engines, elem_type, length)
-                }),
+                })
+            }
             TypeInfo::Slice(mut elem_type) => {
-                self.find_match(elem_type.type_id(), engines)
-                    .map(|type_id| {
-                        *elem_type.type_id_mut() = type_id;
-                        type_engine.insert_slice(engines, elem_type)
-                    })
+                self.find_match(elem_type.type_id, engines).map(|type_id| {
+                    elem_type.type_id = type_id;
+                    type_engine.insert_slice(engines, elem_type)
+                })
             }
             TypeInfo::Tuple(fields) => {
                 let mut need_to_create_new = false;
                 let fields = fields
                     .into_iter()
                     .map(|mut field| {
-                        if let Some(type_id) = self.find_match(field.type_id(), engines) {
+                        if let Some(type_id) = self.find_match(field.type_id, engines) {
                             need_to_create_new = true;
-                            *field.type_id_mut() = type_id;
+                            field.type_id = type_id;
                         }
                         field.clone()
                     })
@@ -543,21 +540,21 @@ impl TypeSubstMap {
                 }
             }
             TypeInfo::Alias { name, mut ty } => {
-                self.find_match(ty.type_id(), engines).map(|type_id| {
-                    *ty.type_id_mut() = type_id;
+                self.find_match(ty.type_id, engines).map(|type_id| {
+                    ty.type_id = type_id;
                     type_engine.new_alias(engines, name, ty)
                 })
             }
-            TypeInfo::Ptr(mut ty) => self.find_match(ty.type_id(), engines).map(|type_id| {
-                *ty.type_id_mut() = type_id;
+            TypeInfo::Ptr(mut ty) => self.find_match(ty.type_id, engines).map(|type_id| {
+                ty.type_id = type_id;
                 type_engine.insert_ptr(engines, ty)
             }),
             TypeInfo::TraitType { .. } => iter_for_match(engines, self, &type_info),
             TypeInfo::Ref {
                 to_mutable_value,
                 referenced_type: mut ty,
-            } => self.find_match(ty.type_id(), engines).map(|type_id| {
-                *ty.type_id_mut() = type_id;
+            } => self.find_match(ty.type_id, engines).map(|type_id| {
+                ty.type_id = type_id;
                 type_engine.insert_ref(engines, to_mutable_value, ty)
             }),
             TypeInfo::Unknown

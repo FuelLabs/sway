@@ -103,7 +103,7 @@ pub(crate) fn type_check_method_application(
     );
 
     // In case resolve_method_name fails throw argument errors.
-    let (original_decl_ref, call_path_typeid) = if let Err(e) = method_result {
+    let (original_decl_ref, method_target) = if let Err(e) = method_result {
         for (_, arg_handler, _) in args_opt_buf.iter() {
             handler.append(arg_handler.clone());
         }
@@ -122,7 +122,7 @@ pub(crate) fn type_check_method_application(
         original_decl
             .parameters
             .iter()
-            .map(|x| x.type_argument.type_id()),
+            .map(|x| x.type_argument.type_id),
         original_decl.type_parameters.iter(),
     );
 
@@ -140,7 +140,7 @@ pub(crate) fn type_check_method_application(
     type_engine.unify_with_generic(
         handler,
         engines,
-        method.return_type.type_id(),
+        method.return_type.type_id,
         ctx.type_annotation(),
         &method_name_binding.span(),
         "Function return type does not match up with local type annotation.",
@@ -164,7 +164,7 @@ pub(crate) fn type_check_method_application(
 
         if let (Some(arg), _, false) = arg_opt {
             if let Some(param) = method.parameters.get(param_index) {
-                if coercion_check.check(arg.return_type, param.type_argument.type_id()) {
+                if coercion_check.check(arg.return_type, param.type_argument.type_id) {
                     // If argument type coerces to resolved method parameter type skip second type_check.
                     args_buf.push_back(arg);
                     continue;
@@ -182,7 +182,7 @@ pub(crate) fn type_check_method_application(
                 .with_help_text(
                     "Function application argument type must match function parameter type.",
                 )
-                .with_type_annotation(param.type_argument.type_id())
+                .with_type_annotation(param.type_argument.type_id)
         } else {
             ctx.by_ref()
                 .with_help_text("")
@@ -533,10 +533,17 @@ pub(crate) fn type_check_method_application(
             }
         }
 
-        fn string_slice_literal(ident: &BaseIdent) -> Expression {
+        fn method_name_literal(method_name: &BaseIdent) -> Expression {
+            let method_name_str = method_name.as_str();
+            let len_bytes = (method_name_str.len() as u64).to_be_bytes();
+
+            let mut blob = Vec::with_capacity(len_bytes.len() + method_name_str.len());
+            blob.extend(len_bytes);
+            blob.extend(method_name_str.as_bytes());
+
             Expression {
-                kind: ExpressionKind::Literal(Literal::String(ident.span())),
-                span: ident.span(),
+                kind: ExpressionKind::Literal(Literal::Binary(blob)),
+                span: method_name.span(),
             }
         }
 
@@ -570,7 +577,7 @@ pub(crate) fn type_check_method_application(
         // AbiDecode impl.
         for type_id in method
             .return_type
-            .type_id()
+            .type_id
             .extract_inner_types(engines, IncludeSelf::Yes)
         {
             ctx.impls_import(engines, type_id);
@@ -580,8 +587,8 @@ pub(crate) fn type_check_method_application(
         let contract_call = call_contract_call(
             &mut ctx,
             span,
-            method.return_type.type_id(),
-            string_slice_literal(&method.name),
+            method.return_type.type_id,
+            method_name_literal(&method.name),
             old_arguments.first().cloned().unwrap(),
             args,
             arguments.iter().map(|x| x.1.return_type).collect(),
@@ -611,13 +618,13 @@ pub(crate) fn type_check_method_application(
     }
 
     // Unify method type parameters with implementing type type parameters.
-    if let Some(implementing_for_typeid) = method.implementing_for_typeid {
-        if let Some(TyDecl::ImplSelfOrTrait(t)) = method.implementing_type.clone() {
+    if let Some(implementing_for) = method.implementing_for {
+        if let Some(TyDecl::ImplSelfOrTrait(t)) = &method.implementing_type {
             let t = &engines.de().get(&t.decl_id).implementing_for;
             if let TypeInfo::Custom {
                 type_arguments: Some(type_arguments),
                 ..
-            } = &*type_engine.get(t.initial_type_id())
+            } = &*type_engine.get(t.initial_type_id)
             {
                 // Method type parameters that have is_from_parent set to true use the base ident as defined in
                 // in the impl trait. The type parameter name may be different in the Struct or Enum.
@@ -633,8 +640,7 @@ pub(crate) fn type_check_method_application(
                         names_index.insert(qualified_call_path.call_path.suffix.clone(), index);
                     }
                 }
-                let implementing_type_parameters =
-                    implementing_for_typeid.get_type_parameters(engines);
+                let implementing_type_parameters = implementing_for.get_type_parameters(engines);
                 if let Some(implementing_type_parameters) = implementing_type_parameters {
                     for p in method.type_parameters.clone() {
                         let Some(p) = p.as_type_parameter() else {
@@ -670,7 +676,7 @@ pub(crate) fn type_check_method_application(
         }
     }
 
-    let mut method_return_type_id = method.return_type.type_id();
+    let mut method_return_type_id = method.return_type.type_id;
 
     let method_ident: IdentUnique = method.name.clone().into();
     let method_sig = TyFunctionSig::from_fn_decl(&method);
@@ -682,12 +688,12 @@ pub(crate) fn type_check_method_application(
     {
         fn_ref = cached_fn_ref;
     } else {
-        if let Some(TyDecl::ImplSelfOrTrait(t)) = method.implementing_type.clone() {
+        if let Some(TyDecl::ImplSelfOrTrait(t)) = &method.implementing_type {
             let t = &engines.de().get(&t.decl_id).implementing_for;
             if let TypeInfo::Custom {
                 qualified_call_path,
                 type_arguments,
-            } = &*type_engine.get(t.initial_type_id())
+            } = &*type_engine.get(t.initial_type_id)
             {
                 let mut subst_type_parameters = vec![];
                 let mut subst_type_arguments = vec![];
@@ -708,11 +714,11 @@ pub(crate) fn type_check_method_application(
                     }
                 }
 
-                // This handles the case of substituting the generic blanket type by call_path_typeid.
+                // This handles the case of substituting the generic blanket type by `method_target`.
                 for p in method.type_parameters.iter() {
                     if p.name().as_str() == qualified_call_path.call_path.suffix.as_str() {
-                        subst_type_parameters.push(t.initial_type_id());
-                        subst_type_arguments.push(call_path_typeid);
+                        subst_type_parameters.push(t.initial_type_id);
+                        subst_type_arguments.push(method_target);
                         break;
                     }
                 }
@@ -767,7 +773,7 @@ pub(crate) fn type_check_method_application(
 
         let method_sig = TyFunctionSig::from_fn_decl(&method);
 
-        method_return_type_id = method.return_type.type_id();
+        method_return_type_id = method.return_type.type_id;
         decl_engine.replace(*fn_ref.id(), method.clone());
 
         if !ctx.code_block_first_pass()
@@ -787,7 +793,7 @@ pub(crate) fn type_check_method_application(
         fn_ref,
         selector,
         type_binding: Some(method_name_binding.strip_inner()),
-        call_path_typeid: Some(call_path_typeid),
+        method_target: Some(method_target),
         contract_call_params: contract_call_params_map,
         contract_caller: None,
     };
@@ -874,14 +880,14 @@ fn unify_arguments_and_parameters(
                     handler,
                     engines,
                     arg.return_type,
-                    param.type_argument.type_id(),
+                    param.type_argument.type_id,
                     &arg.span,
                     "This argument's type is not castable to the declared parameter type.",
                     || {
                         Some(CompileError::ArgumentParameterTypeMismatch {
                             span: arg.span.clone(),
                             provided: engines.help_out(arg.return_type).to_string(),
-                            should_be: engines.help_out(param.type_argument.type_id()).to_string(),
+                            should_be: engines.help_out(param.type_argument.type_id).to_string(),
                         })
                     },
                 );

@@ -19,11 +19,10 @@ use futures::Future;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use regex::{Captures, Regex};
-use std::{fs, io::Read, path::PathBuf, str::FromStr};
+use std::{fs, io::Read, path::PathBuf};
 use sway_core::{asm_generation::ProgramABI, BuildTarget, Observer};
 
 pub const NODE_URL: &str = "http://127.0.0.1:4000";
-pub const SECRET_KEY: &str = "de97d8624a438121b86a1956544bd72ed68cd69f2c99555b08b1e8c51ffd511c";
 
 pub(crate) async fn run_and_capture_output<F, Fut, T>(func: F) -> (T, String)
 where
@@ -61,10 +60,14 @@ where
     (result, output)
 }
 
-pub(crate) async fn deploy_contract(file_name: &str, run_config: &RunConfig) -> Result<ContractId> {
-    // build the contract
-    // deploy it
+pub(crate) async fn deploy_contract(
+    file_name: &str,
+    run_config: &RunConfig,
+    signing_key: &SecretKey,
+) -> Result<ContractId> {
     println!(" Deploying {} ...", file_name.bold());
+    println!(" Signing key used: {}", signing_key.to_string().bold());
+
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
 
     let deployed_packages = deploy(DeployCommand {
@@ -76,7 +79,7 @@ pub(crate) async fn deploy_contract(file_name: &str, run_config: &RunConfig) -> 
             locked: run_config.locked,
             ..Default::default()
         },
-        signing_key: Some(SecretKey::from_str(SECRET_KEY).unwrap()),
+        signing_key: Some(*signing_key),
         default_salt: true,
         build_profile: match run_config.release {
             true => BuildProfile::RELEASE.to_string(),
@@ -106,16 +109,16 @@ pub(crate) async fn runs_on_node(
     file_name: &str,
     run_config: &RunConfig,
     contract_ids: &[fuel_tx::ContractId],
+    signing_key: &SecretKey,
 ) -> (Result<Vec<fuel_tx::Receipt>>, String) {
     run_and_capture_output(|| async {
         println!(" Running on node {} ...", file_name.bold());
         let manifest_dir = env!("CARGO_MANIFEST_DIR");
 
-        let mut contracts = Vec::<String>::with_capacity(contract_ids.len());
-        for contract_id in contract_ids {
-            let contract = format!("0x{contract_id:x}");
-            contracts.push(contract);
-        }
+        let contracts = contract_ids
+            .iter()
+            .map(|contract_id| format!("0x{contract_id:x}"))
+            .collect::<Vec<_>>();
 
         let command = RunCommand {
             pkg: forc_client::cmd::run::Pkg {
@@ -131,7 +134,7 @@ pub(crate) async fn runs_on_node(
                 ..Default::default()
             },
             contract: Some(contracts),
-            signing_key: Some(SecretKey::from_str(SECRET_KEY).unwrap()),
+            signing_key: Some(*signing_key),
             experimental: run_config.experimental.clone(),
             ..Default::default()
         };
@@ -283,6 +286,7 @@ pub(crate) async fn compile_to_bytes(
             ir: run_config.print_ir.clone(),
             reverse_order: false,
         },
+        verify_ir: run_config.verify_ir.clone(),
         pkg: forc_pkg::PkgOpts {
             path: Some(root.clone()),
             locked: run_config.locked,
@@ -291,6 +295,7 @@ pub(crate) async fn compile_to_bytes(
         },
         experimental: run_config.experimental.experimental.clone(),
         no_experimental: run_config.experimental.no_experimental.clone(),
+        no_output: !run_config.write_output,
         ..Default::default()
     };
 
@@ -351,12 +356,17 @@ pub(crate) async fn compile_and_run_unit_tests(
                     ..Default::default()
                 },
                 build_target: run_config.build_target,
+                no_output: !run_config.write_output,
                 ..Default::default()
             })
         }) {
             Ok(Ok(built_tests)) => {
                 let test_filter = None;
-                let tested = built_tests.run(forc_test::TestRunnerCount::Auto, test_filter)?;
+                let tested = built_tests.run(
+                    forc_test::TestRunnerCount::Auto,
+                    test_filter,
+                    run_config.gas_costs_values.clone(),
+                )?;
                 match tested {
                     forc_test::Tested::Package(tested_pkg) => Ok(vec![*tested_pkg]),
                     forc_test::Tested::Workspace(tested_pkgs) => Ok(tested_pkgs),
@@ -376,44 +386,40 @@ pub(crate) fn test_json_abi(
     update_output_files: bool,
     suffix: &Option<String>,
     has_experimental_field: bool,
+    is_release: bool,
 ) -> Result<()> {
-    emit_json_abi(file_name, built_package)?;
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
 
-    let oracle_path = match (has_experimental_field, experimental_new_encoding) {
-        (true, _) => {
-            format!(
-                "{}/src/e2e_vm_tests/test_programs/{}/json_abi_oracle.{}json",
-                manifest_dir,
-                file_name,
-                suffix
-                    .as_ref()
-                    .unwrap()
-                    .strip_prefix("test")
-                    .unwrap()
-                    .strip_suffix("toml")
-                    .unwrap()
-                    .trim_start_matches('.')
-            )
-        }
-        (false, true) => {
-            format!(
-                "{}/src/e2e_vm_tests/test_programs/{}/{}",
-                manifest_dir, file_name, "json_abi_oracle_new_encoding.json"
-            )
-        }
-        (false, false) => {
-            format!(
-                "{}/src/e2e_vm_tests/test_programs/{}/{}",
-                manifest_dir, file_name, "json_abi_oracle.json"
-            )
-        }
+    let experimental_suffix = match (has_experimental_field, experimental_new_encoding) {
+        (true, _) => suffix
+            .as_ref()
+            .unwrap()
+            .strip_prefix("test")
+            .unwrap()
+            .strip_suffix("toml")
+            .unwrap()
+            .trim_end_matches('.'),
+        (false, true) => "_new_encoding",
+        (false, false) => "",
     };
 
-    let output_path = format!(
-        "{}/src/e2e_vm_tests/test_programs/{}/{}",
-        manifest_dir, file_name, "json_abi_output.json"
+    let oracle_path = format!(
+        "{}/src/e2e_vm_tests/test_programs/{}/json_abi_oracle{}.{}.json",
+        manifest_dir,
+        file_name,
+        experimental_suffix,
+        if is_release { "release" } else { "debug" },
     );
+
+    let output_path = format!(
+        "{}/src/e2e_vm_tests/test_programs/{}/json_abi_output{}.{}.json",
+        manifest_dir,
+        file_name,
+        experimental_suffix,
+        if is_release { "release" } else { "debug" },
+    );
+
+    emit_json_abi(file_name, &output_path, built_package)?;
 
     // Update the oracle failing silently
     if update_output_files {
@@ -447,20 +453,19 @@ pub(crate) fn test_json_abi(
     Ok(())
 }
 
-fn emit_json_abi(file_name: &str, built_package: &BuiltPackage) -> Result<()> {
-    tracing::info!("ABI gen {} ...", file_name.bold());
+fn emit_json_abi(
+    file_name: &str,
+    json_abi_output_path: &str,
+    built_package: &BuiltPackage,
+) -> Result<()> {
+    tracing::info!("ABI JSON gen {} ...", file_name.bold());
     let json_abi = match &built_package.program_abi {
         ProgramABI::Fuel(abi) => serde_json::json!(abi),
         ProgramABI::Evm(abi) => serde_json::json!(abi),
         ProgramABI::MidenVM(_) => todo!(),
     };
-    let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    let file = std::fs::File::create(format!(
-        "{}/src/e2e_vm_tests/test_programs/{}/{}",
-        manifest_dir, file_name, "json_abi_output.json"
-    ))?;
-    let res = serde_json::to_writer_pretty(&file, &json_abi);
-    res?;
+    let file = std::fs::File::create(json_abi_output_path)?;
+    serde_json::to_writer_pretty(&file, &json_abi)?;
     Ok(())
 }
 
@@ -469,25 +474,29 @@ pub(crate) fn test_json_storage_slots(
     built_package: &BuiltPackage,
     suffix: &Option<String>,
 ) -> Result<()> {
-    emit_json_storage_slots(file_name, built_package)?;
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
+
+    let experimental_suffix = suffix
+        .as_ref()
+        .unwrap()
+        .strip_prefix("test")
+        .unwrap()
+        .strip_suffix("toml")
+        .unwrap()
+        .trim_end_matches('.');
+
     let oracle_path = format!(
-        "{}/src/e2e_vm_tests/test_programs/{}/json_storage_slots_oracle.{}json",
-        manifest_dir,
-        file_name,
-        suffix
-            .as_ref()
-            .unwrap()
-            .strip_prefix("test")
-            .unwrap()
-            .strip_suffix("toml")
-            .unwrap()
-            .trim_start_matches('.')
+        "{}/src/e2e_vm_tests/test_programs/{}/json_storage_slots_oracle{}.json",
+        manifest_dir, file_name, experimental_suffix,
     );
+
     let output_path = format!(
-        "{}/src/e2e_vm_tests/test_programs/{}/{}",
-        manifest_dir, file_name, "json_storage_slots_output.json"
+        "{}/src/e2e_vm_tests/test_programs/{}/json_storage_slots_output{}.json",
+        manifest_dir, file_name, experimental_suffix,
     );
+
+    emit_json_storage_slots(file_name, &output_path, built_package)?;
+
     if fs::metadata(oracle_path.clone()).is_err() {
         bail!("JSON storage slots oracle file does not exist for this test.\nExpected oracle path: {}", &oracle_path);
     }
@@ -509,15 +518,14 @@ pub(crate) fn test_json_storage_slots(
     Ok(())
 }
 
-fn emit_json_storage_slots(file_name: &str, built_package: &BuiltPackage) -> Result<()> {
+fn emit_json_storage_slots(
+    file_name: &str,
+    json_storage_slots_output_path: &str,
+    built_package: &BuiltPackage,
+) -> Result<()> {
     tracing::info!("Storage slots JSON gen {} ...", file_name.bold());
     let json_storage_slots = serde_json::json!(built_package.storage_slots);
-    let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    let file = std::fs::File::create(format!(
-        "{}/src/e2e_vm_tests/test_programs/{}/{}",
-        manifest_dir, file_name, "json_storage_slots_output.json"
-    ))?;
-    let res = serde_json::to_writer_pretty(&file, &json_storage_slots);
-    res?;
+    let file = std::fs::File::create(json_storage_slots_output_path)?;
+    serde_json::to_writer_pretty(&file, &json_storage_slots)?;
     Ok(())
 }

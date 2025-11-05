@@ -171,7 +171,7 @@ features! {
     "https://github.com/FuelLabs/sway/issues/5063",
     const_generics = false,
     "https://github.com/FuelLabs/sway/issues/6860",
-    new_hashing = false,
+    new_hashing = true,
     "https://github.com/FuelLabs/sway/issues/7256",
 }
 
@@ -184,6 +184,30 @@ pub struct CliFields {
     /// Comma separated list of all experimental features that will be disabled
     #[clap(long, value_delimiter = ',')]
     pub no_experimental: Vec<Feature>,
+}
+
+impl CliFields {
+    pub fn experimental_as_cli_string(&self) -> Option<String> {
+        Self::features_as_cli_string(&self.experimental)
+    }
+
+    pub fn no_experimental_as_cli_string(&self) -> Option<String> {
+        Self::features_as_cli_string(&self.no_experimental)
+    }
+
+    fn features_as_cli_string(features: &[Feature]) -> Option<String> {
+        if features.is_empty() {
+            None
+        } else {
+            Some(
+                features
+                    .iter()
+                    .map(|f| f.name())
+                    .collect::<Vec<_>>()
+                    .join(","),
+            )
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -206,6 +230,7 @@ impl std::fmt::Display for Error {
 }
 
 impl ExperimentalFeatures {
+    #[allow(clippy::iter_over_hash_type)]
     pub fn parse_from_package_manifest(
         &mut self,
         experimental: &std::collections::HashMap<String, bool>,

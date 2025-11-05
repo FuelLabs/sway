@@ -50,6 +50,7 @@ impl MarkdownDepGraph {
         Ok(MarkdownDepGraph { graph })
     }
 
+    #[allow(clippy::iter_over_hash_type)]
     fn build_recursive(
         path: &Path,
         graph: &mut HashMap<PathBuf, HashSet<PathBuf>>,
@@ -65,6 +66,7 @@ impl MarkdownDepGraph {
         Ok(())
     }
 
+    #[allow(clippy::iter_over_hash_type)]
     fn topological_sort(&self) -> Result<Vec<PathBuf>, MDPreProcessError> {
         let mut in_degree = HashMap::new();
         for (node, deps) in &self.graph {

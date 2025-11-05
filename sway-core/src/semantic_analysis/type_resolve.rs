@@ -124,12 +124,12 @@ pub fn resolve_type(
         }
         TypeInfo::Array(elem_ty, length) => {
             let mut elem_ty = elem_ty.clone();
-            *elem_ty.type_id_mut() = resolve_type(
+            elem_ty.type_id = resolve_type(
                 handler,
                 engines,
                 namespace,
                 mod_path,
-                elem_ty.type_id(),
+                elem_ty.type_id,
                 span,
                 enforce_type_arguments,
                 None,
@@ -145,12 +145,12 @@ pub fn resolve_type(
         }
         TypeInfo::Slice(elem_ty) => {
             let mut elem_ty = elem_ty.clone();
-            *elem_ty.type_id_mut() = resolve_type(
+            elem_ty.type_id = resolve_type(
                 handler,
                 engines,
                 namespace,
                 mod_path,
-                elem_ty.type_id(),
+                elem_ty.type_id,
                 span,
                 enforce_type_arguments,
                 None,
@@ -165,12 +165,12 @@ pub fn resolve_type(
         TypeInfo::Tuple(type_arguments) => {
             let mut type_arguments = type_arguments.clone();
             for type_argument in type_arguments.iter_mut() {
-                *type_argument.type_id_mut() = resolve_type(
+                type_argument.type_id = resolve_type(
                     handler,
                     engines,
                     namespace,
                     mod_path,
-                    type_argument.type_id(),
+                    type_argument.type_id,
                     span,
                     enforce_type_arguments,
                     None,
@@ -185,14 +185,14 @@ pub fn resolve_type(
         }
         TypeInfo::TraitType {
             name,
-            trait_type_id,
+            implemented_in,
         } => {
             let trait_item_ref = TraitMap::get_trait_item_for_type(
                 namespace.current_package_root_module(),
                 handler,
                 engines,
                 name,
-                *trait_type_id,
+                *implemented_in,
                 None,
             )?;
 
@@ -215,12 +215,12 @@ pub fn resolve_type(
             to_mutable_value,
         } => {
             let mut ty = referenced_type.clone();
-            *ty.type_id_mut() = resolve_type(
+            ty.type_id = resolve_type(
                 handler,
                 engines,
                 namespace,
                 mod_path,
-                ty.type_id(),
+                ty.type_id,
                 span,
                 enforce_type_arguments,
                 None,
@@ -464,7 +464,7 @@ fn resolve_symbol_and_mod_path_inner(
                 is_self_type = IsSelfType::Yes;
             }
         } else {
-            match current_module.submodule(&[ident.clone()]) {
+            match current_module.submodule(std::slice::from_ref(ident)) {
                 Some(ns) => {
                     current_module = ns;
                     current_mod_path.push(ident.clone());

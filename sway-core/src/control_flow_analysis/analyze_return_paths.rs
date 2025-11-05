@@ -12,7 +12,7 @@ use crate::{
 };
 use petgraph::prelude::NodeIndex;
 use sway_error::error::CompileError;
-use sway_types::{ident::Ident, span::Span, IdentUnique, Spanned};
+use sway_types::{ident::Ident, span::Span, IdentUnique};
 
 impl<'cfg> ControlFlowGraph<'cfg> {
     pub(crate) fn construct_return_path_graph<'eng: 'cfg>(
@@ -227,7 +227,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             Ok(Some(entry_node))
         }
         ty::TyDecl::ConstGenericDecl(_) => {
-            todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+            unreachable!("ConstGenericDecl is not reachable from AstNode")
         }
         ty::TyDecl::FunctionDecl(ty::FunctionDecl { decl_id, .. }) => {
             let fn_decl = decl_engine.get_function(decl_id);
@@ -320,7 +320,7 @@ fn connect_typed_fn_decl<'eng: 'cfg, 'cfg>(
         entry_point: entry_node,
         exit_point: fn_exit_node,
         return_type: type_engine
-            .to_typeinfo(fn_decl.return_type.type_id(), &fn_decl.return_type.span())
+            .to_typeinfo(fn_decl.return_type.type_id, &fn_decl.return_type.span)
             .unwrap_or_else(|_| TypeInfo::Tuple(Vec::new())),
     };
     graph.namespace.insert_function(fn_decl, namespace_entry);

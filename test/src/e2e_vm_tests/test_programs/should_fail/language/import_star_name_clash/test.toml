@@ -48,13 +48,13 @@ category = "fail"
 # check: $()error
 # check: $()Unknown type name "MyEnum".
 
-# check: $()error
-# check: $()No method "B(numeric)" found for type "MyEnum".
+# check: $()Associated function or method is not found
+# check: $()"B({numeric})" is not found for type "import_star_name_clash::b::MyEnum".
 
 # check: $()error
 # check: $()Mismatched types.
-# nextln: $()expected: MyEnum
-# nextln: $()found:    MyEnum.
+# nextln: $()expected: import_star_name_clash::b::MyEnum
+# nextln: $()found:    import_star_name_clash::a::MyEnum.
 
 # check: $()error
 # check: $()The following paths are all valid bindings for symbol "C": "a::C" and "b::MyOtherEnum::C".
@@ -70,7 +70,7 @@ category = "fail"
 
 # check: $()error
 # check: $()Mismatched types.
-# nextln: $()expected: MyEnumVariants
-# nextln: $()found:    MyOtherEnumVariants.
+# nextln: $()expected: import_star_name_clash::c::MyEnumVariants
+# nextln: $()found:    import_star_name_clash::d::MyOtherEnumVariants.
 
 # check: $()Aborting due to 32 errors.

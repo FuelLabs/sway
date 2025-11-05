@@ -6,7 +6,7 @@ use std::{
     sync::Arc,
 };
 use strum::{Display, EnumString};
-use sway_ir::{PassManager, PrintPassesOpts};
+use sway_ir::{PassManager, PrintPassesOpts, VerifyPassesOpts};
 
 #[derive(
     Clone,
@@ -82,6 +82,10 @@ impl PrintAsm {
         }
     }
 
+    pub fn none() -> Self {
+        Self::default()
+    }
+
     pub fn abstract_virtual() -> Self {
         Self {
             virtual_abstract: true,
@@ -114,7 +118,7 @@ impl std::ops::BitOrAssign for PrintAsm {
 
 /// Which IR states to print.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-pub struct PrintIr {
+pub struct IrCli {
     pub initial: bool,
     pub r#final: bool,
     #[serde(rename = "modified")]
@@ -122,7 +126,7 @@ pub struct PrintIr {
     pub passes: Vec<String>,
 }
 
-impl Default for PrintIr {
+impl Default for IrCli {
     fn default() -> Self {
         Self {
             initial: false,
@@ -133,7 +137,7 @@ impl Default for PrintIr {
     }
 }
 
-impl PrintIr {
+impl IrCli {
     pub fn all(modified_only: bool) -> Self {
         Self {
             initial: true,
@@ -146,6 +150,10 @@ impl PrintIr {
         }
     }
 
+    pub fn none() -> Self {
+        Self::default()
+    }
+
     pub fn r#final() -> Self {
         Self {
             r#final: true,
@@ -154,7 +162,7 @@ impl PrintIr {
     }
 }
 
-impl std::ops::BitOrAssign for PrintIr {
+impl std::ops::BitOrAssign for IrCli {
     fn bitor_assign(&mut self, rhs: Self) {
         self.initial |= rhs.initial;
         self.r#final |= rhs.r#final;
@@ -171,8 +179,19 @@ impl std::ops::BitOrAssign for PrintIr {
     }
 }
 
-impl From<&PrintIr> for PrintPassesOpts {
-    fn from(value: &PrintIr) -> Self {
+impl From<&IrCli> for PrintPassesOpts {
+    fn from(value: &IrCli) -> Self {
+        Self {
+            initial: value.initial,
+            r#final: value.r#final,
+            modified_only: value.modified_only,
+            passes: HashSet::from_iter(value.passes.iter().cloned()),
+        }
+    }
+}
+
+impl From<&IrCli> for VerifyPassesOpts {
+    fn from(value: &IrCli) -> Self {
         Self {
             initial: value.initial,
             r#final: value.r#final,
@@ -192,6 +211,17 @@ pub enum Backtrace {
     None,
 }
 
+impl From<Backtrace> for sway_ir::Backtrace {
+    fn from(value: Backtrace) -> Self {
+        match value {
+            Backtrace::All => sway_ir::Backtrace::All,
+            Backtrace::AllExceptNever => sway_ir::Backtrace::AllExceptNever,
+            Backtrace::OnlyAlways => sway_ir::Backtrace::OnlyAlways,
+            Backtrace::None => sway_ir::Backtrace::None,
+        }
+    }
+}
+
 /// Configuration for the overall build and compilation process.
 #[derive(Clone)]
 pub struct BuildConfig {
@@ -206,12 +236,10 @@ pub struct BuildConfig {
     pub(crate) print_asm: PrintAsm,
     pub(crate) print_bytecode: bool,
     pub(crate) print_bytecode_spans: bool,
-    pub(crate) print_ir: PrintIr,
+    pub(crate) print_ir: IrCli,
+    pub(crate) verify_ir: IrCli,
     pub(crate) include_tests: bool,
     pub(crate) optimization_level: OptLevel,
-    // TODO: (ABI-BACKTRACING) Remove `#[allow(dead_code)]` once the `backtrace`
-    //       option is used in IR compilation.
-    #[allow(dead_code)]
     pub(crate) backtrace: Backtrace,
     pub time_phases: bool,
     pub profile: bool,
@@ -260,7 +288,8 @@ impl BuildConfig {
             print_asm: PrintAsm::default(),
             print_bytecode: false,
             print_bytecode_spans: false,
-            print_ir: PrintIr::default(),
+            print_ir: IrCli::default(),
+            verify_ir: IrCli::default(),
             include_tests: false,
             time_phases: false,
             profile: false,
@@ -308,9 +337,16 @@ impl BuildConfig {
         }
     }
 
-    pub fn with_print_ir(self, a: PrintIr) -> Self {
+    pub fn with_print_ir(self, a: IrCli) -> Self {
         Self {
             print_ir: a,
+            ..self
+        }
+    }
+
+    pub fn with_verify_ir(self, a: IrCli) -> Self {
+        Self {
+            verify_ir: a,
             ..self
         }
     }

@@ -8,6 +8,7 @@ use crate::{
     },
 };
 use anyhow::{anyhow, bail, Context, Result};
+use forc::cli::shared::IrCliOpt;
 use forc_pkg::{self as pkg, fuel_core_not_running, DumpOpts, PackageManifestFile};
 use forc_tracing::println_warning;
 use forc_util::tx_utils::format_log_receipts;
@@ -25,8 +26,8 @@ use fuels_accounts::{provider::Provider, Account, ViewOnlyAccount};
 use pkg::BuiltPackage;
 use std::time::Duration;
 use std::{path::PathBuf, str::FromStr};
-use sway_core::language::parsed::TreeType;
 use sway_core::BuildTarget;
+use sway_core::{language::parsed::TreeType, IrCli};
 use tokio::time::timeout;
 use tracing::info;
 
@@ -102,6 +103,7 @@ pub async fn run_pkg(
 ) -> Result<RanScript> {
     let node_url = command.node.get_node_url(&manifest.network)?;
     let provider = Provider::connect(node_url.clone()).await?;
+    let consensus_params = provider.consensus_parameters().await?;
     let tx_count = 1;
     let account = select_account(
         signer_mode,
@@ -152,9 +154,13 @@ pub async fn run_pkg(
         external_contracts,
     };
     let tx_policies = tx_policies_from_cmd(command);
-    let mut tb = call
-        .transaction_builder(tx_policies, VariableOutputPolicy::EstimateMinimum, &account)
-        .await?;
+    let mut tb = call.transaction_builder(
+        tx_policies,
+        VariableOutputPolicy::EstimateMinimum,
+        &consensus_params,
+        call.inputs.clone(),
+        &account,
+    )?;
 
     account.add_witnesses(&mut tb)?;
     account.adjust_for_fee(&mut tb, 0).await?;
@@ -315,6 +321,10 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
             ir: cmd.print.ir(),
             reverse_order: cmd.print.reverse_order,
         },
+        verify_ir: cmd
+            .verify_ir
+            .as_ref()
+            .map_or(IrCli::default(), |opts| IrCliOpt::from(opts).0),
         minify: pkg::MinifyOpts {
             json_abi: cmd.minify.json_abi,
             json_storage_slots: cmd.minify.json_storage_slots,
@@ -334,5 +344,6 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
         member_filter: pkg::MemberFilter::only_scripts(),
         experimental: cmd.experimental.experimental.clone(),
         no_experimental: cmd.experimental.no_experimental.clone(),
+        no_output: false,
     }
 }

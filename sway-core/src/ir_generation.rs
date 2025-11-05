@@ -14,66 +14,78 @@ use std::{
 
 use sway_error::error::CompileError;
 use sway_features::ExperimentalFeatures;
-use sway_ir::{Context, Function, InstOp, InstructionInserter, IrError, Kind, Module, Type, Value};
+use sway_ir::{
+    Backtrace, Context, Function, InstOp, InstructionInserter, IrError, Kind, Module, Type, Value,
+};
 use sway_types::{span::Span, Ident};
 
 pub(crate) use purity::{check_function_purity, PurityEnv};
 
 use crate::{
     engine_threading::HashWithEngines,
-    language::ty,
+    ir_generation::function::FnCompiler,
+    language::ty::{self, TyCodeBlock, TyExpression, TyFunctionDecl, TyReassignmentTarget},
     metadata::MetadataManager,
     types::{LogId, MessageId},
-    Engines, PanicOccurrences, TypeId,
+    Engines, PanicOccurrences, PanickingCallOccurrences, TypeId,
 };
 
-type FnKey = u64;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) struct FnKey(u64);
+
+impl FnKey {
+    fn new(decl: &TyFunctionDecl, engines: &Engines) -> Self {
+        let mut hasher = DefaultHasher::default();
+        decl.hash(&mut hasher, engines);
+        let key = hasher.finish();
+
+        Self(key)
+    }
+}
+
+/// Groups a [TyFunctionDecl] with its [FnKey].
+pub(crate) struct KeyedTyFunctionDecl<'a> {
+    key: FnKey,
+    decl: &'a TyFunctionDecl,
+}
+
+impl<'a> KeyedTyFunctionDecl<'a> {
+    fn new(decl: &'a TyFunctionDecl, engines: &'a Engines) -> Self {
+        Self {
+            key: FnKey::new(decl, engines),
+            decl,
+        }
+    }
+}
 
 /// Every compiled function needs to go through this cache for two reasons:
-/// 1 - to have its IR name unique;
-/// 2 - to avoid being compiled twice.
+/// 1. to have its IR name unique;
+/// 2. to avoid being compiled twice.
 #[derive(Default)]
 pub(crate) struct CompiledFunctionCache {
-    recreated_fns: HashMap<FnKey, Function>,
+    cache: HashMap<FnKey, Function>,
 }
 
 impl CompiledFunctionCache {
     #[allow(clippy::too_many_arguments)]
-    fn ty_function_decl_to_unique_function(
+    fn get_compiled_function(
         &mut self,
         engines: &Engines,
         context: &mut Context,
         module: Module,
         md_mgr: &mut MetadataManager,
-        decl: &ty::TyFunctionDecl,
+        keyed_decl: &KeyedTyFunctionDecl,
         logged_types_map: &HashMap<TypeId, LogId>,
         messages_types_map: &HashMap<TypeId, MessageId>,
         panic_occurrences: &mut PanicOccurrences,
+        panicking_call_occurrences: &mut PanickingCallOccurrences,
+        panicking_fn_cache: &mut PanickingFunctionCache,
     ) -> Result<Function, CompileError> {
-        // The compiler inlines everything very lazily.  Function calls include the body of the
-        // callee (i.e., the callee_body arg above). Library functions are provided in an initial
-        // namespace from Forc and when the parser builds the AST (or is it during type checking?)
-        // these function bodies are embedded.
-        //
-        // Here we build little single-use instantiations of the callee and then call them.  Naming
-        // is not yet absolute so we must ensure the function names are unique.
-        //
-        // Eventually we need to Do It Properly and inline into the AST only when necessary, and
-        // compile the standard library to an actual module.
-        //
-        // Get the callee from the cache if we've already compiled it.  We can't insert it with
-        // .entry() since `compile_function()` returns a Result we need to handle.  The key to our
-        // cache, to uniquely identify a function instance, is the span and the type IDs of any
-        // args and type parameters.  It's using the Sway types rather than IR types, which would
-        // be more accurate but also more fiddly.
+        let fn_key = keyed_decl.key;
+        let decl = keyed_decl.decl;
 
-        let mut hasher = DefaultHasher::default();
-        decl.hash(&mut hasher, engines);
-        let fn_key = hasher.finish();
-
-        let (fn_key, item) = (Some(fn_key), self.recreated_fns.get(&fn_key).copied());
-        let new_callee = match item {
-            Some(func) => func,
+        let new_callee = match self.cache.get(&fn_key) {
+            Some(func) => *func,
             None => {
                 let name = Ident::new(Span::from_string(format!(
                     "{}_{}",
@@ -97,9 +109,12 @@ impl CompiledFunctionCache {
                     module,
                     &callee_fn_decl,
                     &decl.name,
+                    FnCompiler::fn_abi_errors_display(decl, engines),
                     logged_types_map,
                     messages_types_map,
                     panic_occurrences,
+                    panicking_call_occurrences,
+                    panicking_fn_cache,
                     is_entry,
                     is_original_entry,
                     None,
@@ -108,9 +123,7 @@ impl CompiledFunctionCache {
                 .map_err(|mut x| x.pop().unwrap())?
                 .unwrap();
 
-                if let Some(fn_key) = fn_key {
-                    self.recreated_fns.insert(fn_key, new_func);
-                }
+                self.cache.insert(fn_key, new_func);
 
                 new_func
             }
@@ -120,12 +133,202 @@ impl CompiledFunctionCache {
     }
 }
 
+#[derive(Default)]
+pub(crate) struct PanickingFunctionCache {
+    cache: HashMap<FnKey, bool>,
+}
+
+impl PanickingFunctionCache {
+    /// Returns `true` if the function represented by `keyed_decl` can panic.
+    ///
+    /// By definition, a function can panic, and have the `__backtrace` argument
+    /// added, *if it is not an entry or original entry* and if it contains a
+    /// `panic` expression, or calls functions that contain `panic` expressions,
+    /// recursively.
+    ///
+    /// Note that "can panic" is purely an IR concept that does not exist in the AST.
+    /// The reason is, because we don't have a language, frontend, concept of "can panic",
+    /// that we can check during the type checking phase. This would require an attribute
+    /// or a similar mechanism to mark functions as "can panic", which we do not want to
+    /// have.
+    ///
+    /// Because of this, we can cannot check during the type checking phase if a
+    /// generic function can panic. E.g., in the below example, `foo` needs to be
+    /// monomorphized to check if it can panic, and "can panic" can be different
+    /// for different monomorphized versions of the function:
+    ///
+    /// ```sway
+    /// fn foo<T>() where T: DoSomething {
+    ///     T::do_something();
+    /// }
+    /// ```
+    pub(crate) fn can_panic(
+        &mut self,
+        keyed_decl: &KeyedTyFunctionDecl,
+        engines: &Engines,
+    ) -> bool {
+        let fn_key = keyed_decl.key;
+        let decl = keyed_decl.decl;
+
+        // Function must not be an entry or original entry (test or main).
+        if !decl.is_default() {
+            return false;
+        }
+
+        match self.cache.get(&fn_key) {
+            Some(can_panic) => *can_panic,
+            None => {
+                let can_panic = self.can_code_block_panic(&decl.body, engines);
+                self.cache.insert(fn_key, can_panic);
+                can_panic
+            }
+        }
+    }
+
+    fn can_code_block_panic(&mut self, body: &TyCodeBlock, engines: &Engines) -> bool {
+        for node in body.contents.iter() {
+            use ty::TyAstNodeContent::*;
+            match &node.content {
+                Declaration(ty_decl) => {
+                    if let ty::TyDecl::VariableDecl(var_decl) = ty_decl {
+                        if self.can_expression_panic(&var_decl.body, engines) {
+                            return true;
+                        }
+                    }
+                }
+                Expression(expr) => {
+                    if self.can_expression_panic(expr, engines) {
+                        return true;
+                    }
+                }
+                SideEffect(_) | Error(_, _) => {}
+            }
+        }
+
+        false
+    }
+
+    fn can_expression_panic(&mut self, expr: &TyExpression, engines: &Engines) -> bool {
+        use ty::TyExpressionVariant::*;
+        match &expr.expression {
+            // `Panic` panics by definition.
+            Panic(_) => true,
+
+            // `FunctionApplication` can panic if the callee can panic.
+            FunctionApplication { fn_ref, .. } => {
+                let decl = engines.de().get_function(fn_ref.id());
+                let keyed_decl = KeyedTyFunctionDecl::new(&decl, engines);
+                // TODO: Add support for recursive functions once https://github.com/FuelLabs/sway/issues/3018 gets developed.
+                self.can_panic(&keyed_decl, engines)
+            }
+
+            // Expressions with a single expression that could panic.
+            MatchExp {
+                desugared: expr, ..
+            }
+            | StructFieldAccess { prefix: expr, .. }
+            | TupleElemAccess { prefix: expr, .. }
+            | AbiCast { address: expr, .. }
+            | EnumTag { exp: expr }
+            | UnsafeDowncast { exp: expr, .. }
+            | ForLoop { desugared: expr }
+            | ImplicitReturn(expr)
+            | Return(expr)
+            | Ref(expr)
+            | Deref(expr) => self.can_expression_panic(expr, engines),
+
+            // Expressions with multiple sub-expressions that could panic.
+            LazyOperator { lhs, rhs, .. } => {
+                self.can_expression_panic(lhs, engines) || self.can_expression_panic(rhs, engines)
+            }
+            Tuple { fields } => fields
+                .iter()
+                .any(|field| self.can_expression_panic(field, engines)),
+            ArrayExplicit { contents, .. } => contents
+                .iter()
+                .any(|elem| self.can_expression_panic(elem, engines)),
+            ArrayRepeat { value, length, .. } => {
+                self.can_expression_panic(value, engines)
+                    || self.can_expression_panic(length, engines)
+            }
+            ArrayIndex { prefix, index } => {
+                self.can_expression_panic(prefix, engines)
+                    || self.can_expression_panic(index, engines)
+            }
+            StructExpression { fields, .. } => fields
+                .iter()
+                .any(|field| self.can_expression_panic(&field.value, engines)),
+            IfExp {
+                condition,
+                then,
+                r#else,
+            } => {
+                self.can_expression_panic(condition, engines)
+                    || self.can_expression_panic(then, engines)
+                    || r#else
+                        .as_ref()
+                        .map_or(false, |r#else| self.can_expression_panic(r#else, engines))
+            }
+            AsmExpression { registers, .. } => registers.iter().any(|reg| {
+                reg.initializer
+                    .as_ref()
+                    .is_some_and(|init| self.can_expression_panic(init, engines))
+            }),
+            EnumInstantiation { contents, .. } => contents
+                .as_ref()
+                .is_some_and(|contents| self.can_expression_panic(contents, engines)),
+            WhileLoop { condition, body } => {
+                self.can_expression_panic(condition, engines)
+                    || self.can_code_block_panic(body, engines)
+            }
+            Reassignment(reassignment) => match &reassignment.lhs {
+                TyReassignmentTarget::ElementAccess { indices, .. } => {
+                    indices.iter().any(|index| match index {
+                        ty::ProjectionKind::StructField { .. }
+                        | ty::ProjectionKind::TupleField { .. } => false,
+                        ty::ProjectionKind::ArrayIndex { index, .. } => {
+                            self.can_expression_panic(index, engines)
+                        }
+                    })
+                }
+                TyReassignmentTarget::DerefAccess { exp, indices } => {
+                    self.can_expression_panic(exp, engines)
+                        || indices.iter().any(|index| match index {
+                            ty::ProjectionKind::StructField { .. }
+                            | ty::ProjectionKind::TupleField { .. } => false,
+                            ty::ProjectionKind::ArrayIndex { index, .. } => {
+                                self.can_expression_panic(index, engines)
+                            }
+                        })
+                }
+            },
+
+            CodeBlock(block) => self.can_code_block_panic(block, engines),
+
+            // Expressions that cannot panic.
+            Literal(_)
+            | ConstantExpression { .. }
+            | ConfigurableExpression { .. }
+            | ConstGenericExpression { .. }
+            | VariableExpression { .. }
+            | FunctionParameter
+            | StorageAccess(_)
+            | IntrinsicFunction(_)
+            | AbiName(_)
+            | Break
+            | Continue => false,
+        }
+    }
+}
+
 pub fn compile_program<'a>(
     program: &ty::TyProgram,
     panic_occurrences: &'a mut PanicOccurrences,
+    panicking_call_occurrences: &'a mut PanickingCallOccurrences,
     include_tests: bool,
     engines: &'a Engines,
     experimental: ExperimentalFeatures,
+    backtrace: Backtrace,
 ) -> Result<Context<'a>, Vec<CompileError>> {
     let declaration_engine = engines.de();
 
@@ -153,7 +356,7 @@ pub fn compile_program<'a>(
         .map(|(message_id, type_id)| (*type_id, *message_id))
         .collect();
 
-    let mut ctx = Context::new(engines.se(), experimental);
+    let mut ctx = Context::new(engines.se(), experimental, backtrace);
     ctx.program_kind = match kind {
         ty::TyProgramKind::Script { .. } => Kind::Script,
         ty::TyProgramKind::Predicate { .. } => Kind::Predicate,
@@ -161,7 +364,8 @@ pub fn compile_program<'a>(
         ty::TyProgramKind::Library { .. } => Kind::Library,
     };
 
-    let mut cache = CompiledFunctionCache::default();
+    let mut compiled_fn_cache = CompiledFunctionCache::default();
+    let mut panicking_fn_cache = PanickingFunctionCache::default();
 
     match kind {
         // Predicates and scripts have the same codegen, their only difference is static
@@ -174,8 +378,10 @@ pub fn compile_program<'a>(
             &logged_types,
             &messages_types,
             panic_occurrences,
+            panicking_call_occurrences,
+            &mut panicking_fn_cache,
             &test_fns,
-            &mut cache,
+            &mut compiled_fn_cache,
         ),
         ty::TyProgramKind::Predicate { entry_function, .. } => compile::compile_predicate(
             engines,
@@ -185,8 +391,10 @@ pub fn compile_program<'a>(
             &logged_types,
             &messages_types,
             panic_occurrences,
+            panicking_call_occurrences,
+            &mut panicking_fn_cache,
             &test_fns,
-            &mut cache,
+            &mut compiled_fn_cache,
         ),
         ty::TyProgramKind::Contract {
             entry_function,
@@ -200,9 +408,11 @@ pub fn compile_program<'a>(
             &logged_types,
             &messages_types,
             panic_occurrences,
+            panicking_call_occurrences,
+            &mut panicking_fn_cache,
             &test_fns,
             engines,
-            &mut cache,
+            &mut compiled_fn_cache,
         ),
         ty::TyProgramKind::Library { .. } => compile::compile_library(
             engines,
@@ -211,8 +421,10 @@ pub fn compile_program<'a>(
             &logged_types,
             &messages_types,
             panic_occurrences,
+            panicking_call_occurrences,
+            &mut panicking_fn_cache,
             &test_fns,
-            &mut cache,
+            &mut compiled_fn_cache,
         ),
     }?;
 
@@ -228,7 +440,8 @@ pub fn compile_program<'a>(
             ir_error.to_string(),
             Span::dummy(),
         )]
-    })
+    })?;
+    Ok(ctx)
 }
 
 fn type_correction(ctx: &mut Context) -> Result<(), IrError> {

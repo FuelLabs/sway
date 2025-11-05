@@ -1,0 +1,139 @@
+{
+  "concreteTypes": [
+    {
+      "concreteTypeId": "1b2815d813e5e2d01d9a1f161e912b1f43f1eb83c2410a41f5bd5e3cc384377d",
+      "metadataTypeId": 3,
+      "type": "(enum abi_with_tuples::Location, u64)"
+    },
+    {
+      "concreteTypeId": "aa3d290422f6a2c01b8a81c1d5c290096cd31190571b4f102b8e597a658ea64a",
+      "metadataTypeId": 2,
+      "type": "(struct abi_with_tuples::Person, u64)"
+    },
+    {
+      "concreteTypeId": "b826e3d5f69670efb0476cddb17428c7c01752bfbe75f0619995d2957b59e7f5",
+      "metadataTypeId": 1,
+      "type": "(struct abi_with_tuples::some_module::SomeStruct)"
+    },
+    {
+      "concreteTypeId": "b760f44fa5965c2474a3b471467a22c43185152129295af588b022ae50b50903",
+      "type": "bool"
+    }
+  ],
+  "configurables": [],
+  "encodingVersion": "1",
+  "errorCodes": {},
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [
+        {
+          "concreteTypeId": "aa3d290422f6a2c01b8a81c1d5c290096cd31190571b4f102b8e597a658ea64a",
+          "name": "_param"
+        }
+      ],
+      "name": "bug1",
+      "output": "b760f44fa5965c2474a3b471467a22c43185152129295af588b022ae50b50903"
+    },
+    {
+      "attributes": null,
+      "inputs": [
+        {
+          "concreteTypeId": "1b2815d813e5e2d01d9a1f161e912b1f43f1eb83c2410a41f5bd5e3cc384377d",
+          "name": "_param"
+        }
+      ],
+      "name": "bug2",
+      "output": "b760f44fa5965c2474a3b471467a22c43185152129295af588b022ae50b50903"
+    },
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "struct_at_return",
+      "output": "b826e3d5f69670efb0476cddb17428c7c01752bfbe75f0619995d2957b59e7f5"
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "metadataTypes": [
+    {
+      "metadataTypeId": 0,
+      "type": "()"
+    },
+    {
+      "components": [
+        {
+          "name": "__tuple_element",
+          "typeId": 6
+        }
+      ],
+      "metadataTypeId": 1,
+      "type": "(_)"
+    },
+    {
+      "components": [
+        {
+          "name": "__tuple_element",
+          "typeId": 5
+        },
+        {
+          "name": "__tuple_element",
+          "typeId": 7
+        }
+      ],
+      "metadataTypeId": 2,
+      "type": "(_, _)"
+    },
+    {
+      "components": [
+        {
+          "name": "__tuple_element",
+          "typeId": 4
+        },
+        {
+          "name": "__tuple_element",
+          "typeId": 7
+        }
+      ],
+      "metadataTypeId": 3,
+      "type": "(_, _)"
+    },
+    {
+      "components": [
+        {
+          "name": "Earth",
+          "typeId": 0
+        }
+      ],
+      "metadataTypeId": 4,
+      "type": "enum abi_with_tuples::Location"
+    },
+    {
+      "components": [
+        {
+          "name": "age",
+          "typeId": 7
+        }
+      ],
+      "metadataTypeId": 5,
+      "type": "struct abi_with_tuples::Person"
+    },
+    {
+      "components": [
+        {
+          "name": "data",
+          "typeId": 7
+        }
+      ],
+      "metadataTypeId": 6,
+      "type": "struct abi_with_tuples::some_module::SomeStruct"
+    },
+    {
+      "metadataTypeId": 7,
+      "type": "u64"
+    }
+  ],
+  "panickingCalls": {},
+  "programType": "contract",
+  "specVersion": "1.2"
+}

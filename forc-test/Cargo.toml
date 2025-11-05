@@ -17,6 +17,10 @@ fuel-tx = { workspace = true, features = ["test-helpers"] }
 fuel-vm = { workspace = true, features = ["random", "test-helpers"] }
 rand.workspace = true
 rayon.workspace = true
+serde_json.workspace = true
 sway-core.workspace = true
 sway-features.workspace = true
 sway-types.workspace = true
+
+[lints]
+workspace = true

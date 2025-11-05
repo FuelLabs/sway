@@ -32,6 +32,7 @@ pub(super) fn convert_literal_to_value(context: &mut Context, ast_literal: &Lite
         Literal::String(s) => ConstantContent::get_string(context, s.as_str().as_bytes().to_vec()),
         Literal::Boolean(b) => ConstantContent::get_bool(context, *b),
         Literal::B256(bs) => ConstantContent::get_b256(context, *bs),
+        Literal::Binary(bytes) => ConstantContent::get_untyped_slice(context, bytes.clone()),
     }
 }
 
@@ -50,6 +51,7 @@ pub(super) fn convert_literal_to_constant(
         Literal::String(s) => ConstantContent::new_string(context, s.as_str().as_bytes().to_vec()),
         Literal::Boolean(b) => ConstantContent::new_bool(context, *b),
         Literal::B256(bs) => ConstantContent::new_b256(context, *bs),
+        Literal::Binary(bytes) => ConstantContent::new_untyped_slice(context, bytes.clone()),
     };
     Constant::unique(context, c)
 }
@@ -139,7 +141,7 @@ fn convert_resolved_type_info(
                 .get_struct(decl_ref)
                 .fields
                 .iter()
-                .map(|field| field.type_argument.type_id())
+                .map(|field| field.type_argument.type_id)
                 .collect::<Vec<_>>()
                 .as_slice(),
         )?,
@@ -172,7 +174,7 @@ fn convert_resolved_type_info(
                 md_mgr,
                 module,
                 function_compiler,
-                elem_type.type_id(),
+                elem_type.type_id,
                 span,
             )?;
             Type::new_array(context, elem_type, len as u64)
@@ -185,7 +187,7 @@ fn convert_resolved_type_info(
                 // aggregate which might not make as much sense as a dedicated Unit type.
                 Type::get_unit(context)
             } else {
-                let new_fields: Vec<_> = fields.iter().map(|x| x.type_id()).collect();
+                let new_fields: Vec<_> = fields.iter().map(|x| x.type_id).collect();
                 create_tuple_aggregate(engines, context, md_mgr, module, &new_fields)?
             }
         }
@@ -198,7 +200,7 @@ fn convert_resolved_type_info(
                 md_mgr,
                 module,
                 function_compiler,
-                pointee_ty.type_id(),
+                pointee_ty.type_id,
                 span,
             )?;
             Type::new_typed_pointer(context, pointee_ty)
@@ -209,7 +211,7 @@ fn convert_resolved_type_info(
             md_mgr,
             module,
             function_compiler,
-            ty.type_id(),
+            ty.type_id,
             span,
         )?,
         // refs to slice are actually fat pointers,
@@ -217,14 +219,14 @@ fn convert_resolved_type_info(
         TypeInfo::Ref {
             referenced_type, ..
         } => {
-            if let Some(slice_elem) = engines.te().get(referenced_type.type_id()).as_slice() {
+            if let Some(slice_elem) = engines.te().get(referenced_type.type_id).as_slice() {
                 let elem_ir_type = convert_resolved_type_id(
                     engines,
                     context,
                     md_mgr,
                     module,
                     function_compiler,
-                    slice_elem.type_id(),
+                    slice_elem.type_id,
                     span,
                 )?;
                 Type::get_typed_slice(context, elem_ir_type)
@@ -235,7 +237,7 @@ fn convert_resolved_type_info(
                     md_mgr,
                     module,
                     function_compiler,
-                    referenced_type.type_id(),
+                    referenced_type.type_id,
                     span,
                 )?;
                 Type::new_typed_pointer(context, referenced_ir_type)

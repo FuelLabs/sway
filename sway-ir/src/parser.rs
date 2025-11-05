@@ -3,7 +3,7 @@
 use sway_features::ExperimentalFeatures;
 use sway_types::SourceEngine;
 
-use crate::{context::Context, error::IrError};
+use crate::{context::Context, error::IrError, Backtrace};
 
 // -------------------------------------------------------------------------------------------------
 /// Parse a string produced by [`crate::printer::to_string`] into a new [`Context`].
@@ -11,6 +11,7 @@ pub fn parse<'eng>(
     input: &str,
     source_engine: &'eng SourceEngine,
     experimental: ExperimentalFeatures,
+    backtrace: Backtrace,
 ) -> Result<Context<'eng>, IrError> {
     let irmod = ir_builder::parser::ir_descrs(input).map_err(|err| {
         let found = if input.len() - err.location.offset <= 20 {
@@ -20,7 +21,9 @@ pub fn parse<'eng>(
         };
         IrError::ParseFailure(err.to_string(), found.into())
     })?;
-    ir_builder::build_context(irmod, source_engine, experimental)?.verify()
+    let ir = ir_builder::build_context(irmod, source_engine, experimental, backtrace)?;
+    ir.verify()?;
+    Ok(ir)
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -760,8 +763,8 @@ mod ir_builder {
         module::{Kind, Module},
         value::Value,
         variable::LocalVar,
-        BinaryOpKind, BlockArgument, ConfigContent, Constant, GlobalVar, Instruction, StorageKey,
-        UnaryOpKind, B256,
+        Backtrace, BinaryOpKind, BlockArgument, ConfigContent, Constant, GlobalVar, Instruction,
+        StorageKey, UnaryOpKind, B256,
     };
 
     #[derive(Debug)]
@@ -1078,8 +1081,9 @@ mod ir_builder {
         ir_ast_mod: IrAstModule,
         source_engine: &SourceEngine,
         experimental: ExperimentalFeatures,
+        backtrace: Backtrace,
     ) -> Result<Context, IrError> {
-        let mut ctx = Context::new(source_engine, experimental);
+        let mut ctx = Context::new(source_engine, experimental, backtrace);
         let md_map = build_metadata_map(&mut ctx, ir_ast_mod.metadata);
         let module = Module::new(&mut ctx, ir_ast_mod.kind);
         let mut builder = IrBuilder {
@@ -1134,6 +1138,7 @@ mod ir_builder {
             let func = Function::new(
                 context,
                 self.module,
+                fn_decl.name.clone(),
                 fn_decl.name,
                 args,
                 ret_type,
@@ -1258,7 +1263,7 @@ mod ir_builder {
                                 },
                             )
                             .collect();
-                        let md_idx = meta_idx.map(|mdi| self.md_map.get(&mdi).unwrap()).copied();
+                        let md_idx = meta_idx.and_then(|mdi| self.md_map.get(&mdi)).copied();
                         let return_type = return_type.to_ir_type(context);
                         block
                             .append(context)

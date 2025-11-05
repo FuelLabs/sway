@@ -473,8 +473,8 @@ impl TraitMap {
                                     ..
                                 },
                             ) => {
-                                left = l_ty.type_id();
-                                right = r_ty.type_id();
+                                left = l_ty.type_id;
+                                right = r_ty.type_id;
                             }
                             _ => return true,
                         }
@@ -995,8 +995,8 @@ impl TraitMap {
             ResolvedTraitImplItem::Typed(item) => match item {
                 ty::TyTraitItem::Fn(decl_ref) => {
                     let mut decl = (*decl_engine.get(decl_ref.id())).clone();
-                    if let Some(decl_implementing_for_typeid) = decl.implementing_for_typeid {
-                        type_mapping.insert(decl_implementing_for_typeid, type_id);
+                    if let Some(decl_implementing_for) = decl.implementing_for {
+                        type_mapping.insert(decl_implementing_for, type_id);
                     }
                     decl.subst(&SubstTypesContext::new(
                         engines,
@@ -1800,11 +1800,11 @@ impl TraitMap {
             RawUntypedSlice => TypeRootFilter::RawUntypedSlice,
             Ptr(_) => TypeRootFilter::Ptr,
             Slice(_) => TypeRootFilter::Slice,
-            Alias { ty, .. } => Self::get_type_root_filter(engines, ty.type_id()),
+            Alias { ty, .. } => Self::get_type_root_filter(engines, ty.type_id),
             TraitType { name, .. } => TypeRootFilter::TraitType(name.to_string()),
             Ref {
                 referenced_type, ..
-            } => Self::get_type_root_filter(engines, referenced_type.type_id()),
+            } => Self::get_type_root_filter(engines, referenced_type.type_id),
         }
     }
 }

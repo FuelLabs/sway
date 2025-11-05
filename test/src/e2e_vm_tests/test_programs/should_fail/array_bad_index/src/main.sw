@@ -1,5 +1,5 @@
 // This test proves that https://github.com/FuelLabs/sway/issues/5922 is fixed.
-script;
+library;
 
 struct S {
     x: u64,
@@ -9,7 +9,7 @@ enum E {
     X: u64
 }
 
-fn main() { 
+pub fn main() { 
     let mut array = [1, 2, 3];
 
     array[0u8] = 0;

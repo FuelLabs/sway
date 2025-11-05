@@ -10,7 +10,6 @@ use crate::{
     type_system::*,
     types::*,
 };
-use ast_elements::type_parameter::ConstGenericExpr;
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::{self, Debug},
@@ -165,17 +164,9 @@ impl MaterializeConstGenerics for TyAstNode {
                     .materialize_const_generics(engines, handler, name, value)?;
                 decl.return_type
                     .materialize_const_generics(engines, handler, name, value)?;
-                match &mut decl.type_ascription {
-                    GenericArgument::Type(arg) => arg
-                        .type_id
-                        .materialize_const_generics(engines, handler, name, value)?,
-                    GenericArgument::Const(arg) => {
-                        if matches!(&arg.expr, ConstGenericExpr::AmbiguousVariableExpression { ident, .. } if ident.as_str() == name)
-                        {
-                            arg.expr = ConstGenericExpr::from_ty_expression(handler, value)?;
-                        }
-                    }
-                }
+                decl.type_ascription
+                    .type_id
+                    .materialize_const_generics(engines, handler, name, value)?;
                 Ok(())
             }
             TyAstNodeContent::Expression(expr) => {
@@ -274,7 +265,7 @@ impl TyAstNode {
                     }
                 }
                 TyDecl::ConstGenericDecl(_) => {
-                    todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                    unreachable!("ConstGenericDecl is not reachable from AstNode")
                 }
                 TyDecl::TraitTypeDecl(_) => {}
                 TyDecl::FunctionDecl(decl) => {
@@ -336,7 +327,7 @@ impl TyAstNode {
                     TyDecl::ConstantDecl(_decl) => {}
                     TyDecl::ConfigurableDecl(_decl) => {}
                     TyDecl::ConstGenericDecl(_decl) => {
-                        todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                        unreachable!("ConstGenericDecl is not reachable from AstNode")
                     }
                     TyDecl::TraitTypeDecl(_) => {}
                     TyDecl::FunctionDecl(decl) => {

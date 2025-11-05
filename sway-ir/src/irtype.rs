@@ -140,6 +140,10 @@ impl Type {
         Self::get_type(context, &TypeContent::Pointer).expect("create_basic_types not called")
     }
 
+    pub fn new_untyped_slice(context: &mut Context) -> Type {
+        Self::get_or_create_unique_type(context, TypeContent::Slice)
+    }
+
     /// Get string type
     pub fn new_string_array(context: &mut Context, len: u64) -> Type {
         Self::get_or_create_unique_type(context, TypeContent::StringArray(len))
@@ -725,7 +729,7 @@ mod tests {
     /// Unit tests in this module document and assert decisions on memory layout.
     mod memory_layout {
         use super::*;
-        use crate::Context;
+        use crate::{Backtrace, Context};
         use once_cell::sync::Lazy;
         use sway_features::ExperimentalFeatures;
         use sway_types::SourceEngine;
@@ -1016,7 +1020,11 @@ mod tests {
         static SOURCE_ENGINE: Lazy<SourceEngine> = Lazy::new(SourceEngine::default);
 
         fn create_context() -> Context<'static> {
-            Context::new(&SOURCE_ENGINE, ExperimentalFeatures::default())
+            Context::new(
+                &SOURCE_ENGINE,
+                ExperimentalFeatures::default(),
+                Backtrace::default(),
+            )
         }
 
         /// Creates sample types that are not aggregates and do not point to

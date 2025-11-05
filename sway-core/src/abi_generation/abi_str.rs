@@ -1,7 +1,9 @@
+use crate::{
+    ast_elements::type_argument::GenericTypeArgument, language::CallPath, transform, Engines,
+    TypeId, TypeInfo,
+};
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{integer_bits::IntegerBits, Ident, Named};
-
-use crate::{language::CallPath, transform, Engines, GenericArgument, TypeId, TypeInfo};
 
 #[derive(Clone)]
 pub struct AbiStrContext {
@@ -35,10 +37,9 @@ impl TypeId {
                 | (TypeInfo::Custom { .. }, TypeInfo::Enum { .. }) => type_engine
                     .get(resolved_type_id)
                     .abi_str(handler, ctx, engines, true),
-                (_, TypeInfo::Alias { ty, .. }) => {
-                    ty.type_id()
-                        .get_abi_type_str(handler, ctx, engines, ty.type_id())
-                }
+                (_, TypeInfo::Alias { ty, .. }) => ty
+                    .type_id
+                    .get_abi_type_str(handler, ctx, engines, ty.type_id),
                 (TypeInfo::Tuple(fields), TypeInfo::Tuple(resolved_fields)) => {
                     assert_eq!(fields.len(), resolved_fields.len());
                     let field_strs = resolved_fields
@@ -46,7 +47,7 @@ impl TypeId {
                         .map(|f| {
                             if ctx.abi_with_fully_specified_types {
                                 type_engine
-                                    .get(f.type_id())
+                                    .get(f.type_id)
                                     .abi_str(handler, ctx, engines, false)
                             } else {
                                 Ok("_".to_string())
@@ -65,7 +66,7 @@ impl TypeId {
                     );
                     let inner_type = if ctx.abi_with_fully_specified_types {
                         type_engine
-                            .get(type_arg.type_id())
+                            .get(type_arg.type_id)
                             .abi_str(handler, ctx, engines, false)?
                     } else {
                         "_".to_string()
@@ -79,7 +80,7 @@ impl TypeId {
                 (TypeInfo::Slice(type_arg), TypeInfo::Slice(_)) => {
                     let inner_type = if ctx.abi_with_fully_specified_types {
                         type_engine
-                            .get(type_arg.type_id())
+                            .get(type_arg.type_id)
                             .abi_str(handler, ctx, engines, false)?
                     } else {
                         "_".to_string()
@@ -150,14 +151,14 @@ impl TypeInfo {
                 let type_params = if (ctx.abi_root_type_without_generic_type_parameters && is_root)
                     || decl.generic_parameters.is_empty()
                 {
-                    "".into()
+                    ""
                 } else {
                     let params = decl
                         .generic_parameters
                         .iter()
                         .map(|p| p.abi_str(handler, engines, ctx, false))
                         .collect::<Result<Vec<_>, _>>()?;
-                    format!("<{}>", params.join(","))
+                    &format!("<{}>", params.join(","))
                 };
                 let abi_call_path = get_abi_call_path(handler, &decl.call_path, &decl.attributes)?;
                 Ok(format!(
@@ -206,7 +207,7 @@ impl TypeInfo {
             Alias { ty, .. } => Ok(ty.abi_str(handler, ctx, engines, false)?),
             TraitType {
                 name,
-                trait_type_id: _,
+                implemented_in: _,
             } => Ok(format!("trait type {name}")),
             Ref {
                 to_mutable_value,
@@ -255,7 +256,7 @@ fn call_path_display(ctx: &AbiStrContext, call_path: &CallPath) -> String {
     buf
 }
 
-impl GenericArgument {
+impl GenericTypeArgument {
     pub(self) fn abi_str(
         &self,
         handler: &Handler,
@@ -265,7 +266,7 @@ impl GenericArgument {
     ) -> Result<String, ErrorEmitted> {
         engines
             .te()
-            .get(self.type_id())
+            .get(self.type_id)
             .abi_str(handler, ctx, engines, is_root)
     }
 }

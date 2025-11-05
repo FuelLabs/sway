@@ -39,3 +39,6 @@ tempfile.workspace = true
 [[bench]]
 name = "bench_main"
 harness = false
+
+[lints]
+workspace = true

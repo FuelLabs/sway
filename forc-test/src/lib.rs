@@ -8,17 +8,19 @@ use crate::setup::{
 };
 use ecal::EcalSyscallHandler;
 use forc_pkg::{self as pkg, BuildOpts, DumpOpts};
-use forc_util::tx_utils::RevertInfo;
+use forc_util::tx_utils::decode_fuel_vm_log_data;
 use fuel_abi_types::abi::program::ProgramABI;
-use fuel_tx as tx;
+use fuel_abi_types::revert_info::RevertInfo;
+use fuel_tx::{self as tx, GasCostsValues};
 use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
 use fuel_vm::{self as vm};
 use pkg::TestPassCondition;
 use pkg::{Built, BuiltPackage};
 use rand::{Rng, SeedableRng};
 use rayon::prelude::*;
+use std::str::FromStr;
 use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
-use sway_core::BuildTarget;
+use sway_core::{BuildTarget, IrCli};
 use sway_types::Span;
 use tx::consensus_parameters::ConsensusParametersV1;
 use tx::{ConsensusParameters, ContractParameters, ScriptParameters, TxParameters};
@@ -135,6 +137,7 @@ pub enum PackageWithDeploymentToTest {
 pub struct TestOpts {
     pub pkg: pkg::PkgOpts,
     pub print: pkg::PrintOpts,
+    pub verify_ir: IrCli,
     pub minify: pkg::MinifyOpts,
     /// If set, outputs a binary file representing the script bytes.
     pub binary_outfile: Option<String>,
@@ -163,6 +166,8 @@ pub struct TestOpts {
     pub experimental: Vec<sway_features::Feature>,
     /// Set of disabled experimental flags
     pub no_experimental: Vec<sway_features::Feature>,
+    /// Do not output any build artifacts, e.g., bytecode, ABI JSON, etc.
+    pub no_output: bool,
 }
 
 /// The set of options provided for controlling logs printed for each test.
@@ -170,6 +175,52 @@ pub struct TestOpts {
 pub struct TestPrintOpts {
     pub pretty_print: bool,
     pub print_logs: bool,
+}
+
+#[derive(Default, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum GasCostsSource {
+    #[default]
+    BuiltIn,
+    Mainnet,
+    Testnet,
+    File(String),
+}
+
+impl GasCostsSource {
+    pub fn provide_gas_costs(&self) -> Result<GasCostsValues, anyhow::Error> {
+        match self {
+            // Values in the `gas_costs_values.json` are taken from the `chain-configuration` repository:
+            //      chain-configuration/upgradelog/ignition/consensus_parameters/6.json
+            // Update these values when there are changes to the gas costs on-chain.
+            Self::BuiltIn => Ok(serde_json::from_str(include_str!(
+                "../gas_costs_values.json"
+            ))?),
+            // TODO: (GAS-COSTS) Fetch actual gas costs from mainnet/testnet and JSON file.
+            //       See: https://github.com/FuelLabs/sway/issues/7472
+            Self::Mainnet => Err(anyhow::anyhow!(
+                "Fetching gas costs from mainnet is currently not implemented."
+            )),
+            Self::Testnet => Err(anyhow::anyhow!(
+                "Fetching gas costs from testnet is currently not implemented."
+            )),
+            Self::File(_file_path) => Err(anyhow::anyhow!(
+                "Loading gas costs from a JSON file is currently not implemented."
+            )),
+        }
+    }
+}
+
+impl FromStr for GasCostsSource {
+    type Err = anyhow::Error;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            "built-in" => Ok(Self::BuiltIn),
+            "mainnet" => Ok(Self::Mainnet),
+            "testnet" => Ok(Self::Testnet),
+            file_path => Ok(Self::File(file_path.to_string())),
+        }
+    }
 }
 
 /// A `LogData` decoded into a human readable format with its type information.
@@ -213,7 +264,10 @@ impl PackageWithDeploymentToTest {
     fn deploy(&self) -> anyhow::Result<TestSetup> {
         // Setup the interpreter for deployment.
         let gas_price = 0;
-        let params = maxed_consensus_params();
+        // We are not concerned about gas costs of contract deployments for tests,
+        // only the gas costs of test executions. So, we can simply provide the
+        // default, built-in, gas costs values here.
+        let params = maxed_consensus_params(GasCostsValues::default());
         let storage = vm::storage::MemoryStorage::default();
         let interpreter_params = InterpreterParams::new(gas_price, params.clone());
         let mut interpreter: vm::prelude::Interpreter<_, _, _, vm::interpreter::NotSupportedEcal> =
@@ -380,6 +434,7 @@ impl<'a> PackageTests {
         &self,
         test_runners: &rayon::ThreadPool,
         test_filter: Option<&TestFilter>,
+        gas_costs_values: GasCostsValues,
     ) -> anyhow::Result<TestedPackage> {
         let pkg_with_tests = self.built_pkg_with_tests();
         let tests = test_runners.install(|| {
@@ -413,6 +468,7 @@ impl<'a> PackageTests {
                         test_setup,
                         test_entry,
                         name,
+                        gas_costs_values.clone(),
                     )?
                     .execute()
                 })
@@ -451,6 +507,7 @@ impl From<TestOpts> for pkg::BuildOpts {
         pkg::BuildOpts {
             pkg: val.pkg,
             print: val.print,
+            verify_ir: val.verify_ir,
             minify: val.minify,
             dump: DumpOpts::default(),
             binary_outfile: val.binary_outfile,
@@ -467,6 +524,7 @@ impl From<TestOpts> for pkg::BuildOpts {
             member_filter: Default::default(),
             experimental: val.experimental,
             no_experimental: val.no_experimental,
+            no_output: val.no_output,
         }
     }
 }
@@ -477,6 +535,7 @@ impl TestOpts {
         pkg::BuildOpts {
             pkg: self.pkg,
             print: self.print,
+            verify_ir: self.verify_ir,
             minify: self.minify,
             dump: DumpOpts::default(),
             binary_outfile: self.binary_outfile,
@@ -493,6 +552,7 @@ impl TestOpts {
             member_filter: Default::default(),
             experimental: self.experimental,
             no_experimental: self.no_experimental,
+            no_output: self.no_output,
         }
     }
 }
@@ -524,8 +584,23 @@ impl TestResult {
         program_abi: Option<&ProgramABI>,
         logs: &[fuel_tx::Receipt],
     ) -> Option<RevertInfo> {
+        let decode_last_log_data = |log_id: &str, program_abi: &ProgramABI| {
+            logs.last()
+                .and_then(|log| {
+                    if let fuel_tx::Receipt::LogData {
+                        data: Some(data), ..
+                    } = log
+                    {
+                        decode_fuel_vm_log_data(log_id, data, program_abi).ok()
+                    } else {
+                        None
+                    }
+                })
+                .map(|decoded_log| decoded_log.value)
+        };
+
         self.revert_code()
-            .map(|revert_code| RevertInfo::new(revert_code, program_abi, logs))
+            .map(|revert_code| RevertInfo::new(revert_code, program_abi, decode_last_log_data))
     }
 
     /// Return [TestDetails] from the span of the function declaring this test.
@@ -604,6 +679,7 @@ impl BuiltTests {
         self,
         test_runner_count: TestRunnerCount,
         test_filter: Option<TestFilter>,
+        gas_costs_values: GasCostsValues,
     ) -> anyhow::Result<Tested> {
         let test_runners = match test_runner_count {
             TestRunnerCount::Manual(runner_count) => rayon::ThreadPoolBuilder::new()
@@ -611,7 +687,7 @@ impl BuiltTests {
                 .build(),
             TestRunnerCount::Auto => rayon::ThreadPoolBuilder::new().build(),
         }?;
-        run_tests(self, &test_runners, test_filter)
+        run_tests(self, &test_runners, test_filter, gas_costs_values)
     }
 }
 
@@ -625,7 +701,7 @@ pub fn build(opts: TestOpts) -> anyhow::Result<BuiltTests> {
 
 /// Returns a `ConsensusParameters` which has maximum length/size allowance for scripts, contracts,
 /// and transactions.
-pub(crate) fn maxed_consensus_params() -> ConsensusParameters {
+pub(crate) fn maxed_consensus_params(gas_costs_values: GasCostsValues) -> ConsensusParameters {
     let script_params = ScriptParameters::DEFAULT
         .with_max_script_length(u64::MAX)
         .with_max_script_data_length(u64::MAX);
@@ -637,6 +713,7 @@ pub(crate) fn maxed_consensus_params() -> ConsensusParameters {
         script_params,
         tx_params,
         contract_params,
+        gas_costs: gas_costs_values.into(),
         ..Default::default()
     })
 }
@@ -689,16 +766,20 @@ fn run_tests(
     built: BuiltTests,
     test_runners: &rayon::ThreadPool,
     test_filter: Option<TestFilter>,
+    gas_costs_values: GasCostsValues,
 ) -> anyhow::Result<Tested> {
     match built {
         BuiltTests::Package(pkg) => {
-            let tested_pkg = pkg.run_tests(test_runners, test_filter.as_ref())?;
+            let tested_pkg =
+                pkg.run_tests(test_runners, test_filter.as_ref(), gas_costs_values.clone())?;
             Ok(Tested::Package(Box::new(tested_pkg)))
         }
         BuiltTests::Workspace(workspace) => {
             let tested_pkgs = workspace
                 .into_iter()
-                .map(|pkg| pkg.run_tests(test_runners, test_filter.as_ref()))
+                .map(|pkg| {
+                    pkg.run_tests(test_runners, test_filter.as_ref(), gas_costs_values.clone())
+                })
                 .collect::<anyhow::Result<Vec<TestedPackage>>>()?;
             Ok(Tested::Workspace(tested_pkgs))
         }
@@ -708,6 +789,8 @@ fn run_tests(
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
+
+    use fuel_tx::GasCostsValues;
 
     use crate::{build, BuiltTests, TestFilter, TestOpts, TestResult};
 
@@ -747,7 +830,7 @@ mod tests {
     ) -> anyhow::Result<Vec<TestResult>> {
         let built_tests = test_package_built_tests(package_name)?;
         let test_runner_count = crate::TestRunnerCount::Auto;
-        let tested = built_tests.run(test_runner_count, test_filter)?;
+        let tested = built_tests.run(test_runner_count, test_filter, GasCostsValues::default())?;
         match tested {
             crate::Tested::Package(tested_pkg) => Ok(tested_pkg.tests),
             crate::Tested::Workspace(_) => {

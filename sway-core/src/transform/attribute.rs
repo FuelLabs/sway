@@ -815,7 +815,7 @@ impl Attribute {
             Fallback => vec!["\"fallback\" attribute can only annotate module functions in a contract module."],
             ErrorType => vec!["\"error_type\" attribute can only annotate enums."],
             Error => vec!["\"error\" attribute can only annotate enum variants of enums annotated with the \"error_type\" attribute."],
-            Trace => vec!["\"trace\" attribute can only annotate functions that can panic."],
+            Trace => vec!["\"trace\" attribute can only annotate functions."],
             AbiName => vec![
                 "\"abi_name\" attribute can only annotate structs and enums.",
             ],

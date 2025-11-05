@@ -169,6 +169,20 @@ pub struct PrintPassesOpts {
     pub passes: HashSet<String>,
 }
 
+/// Options for verifying [Pass]es in case of running them with verifying requested.
+///
+/// Note that states of IR can always be verified by injecting the module verifier pass
+/// and just running the passes. That approach however offers less control over the
+/// verification. E.g., requiring the verification to happen only if the previous passes
+/// modified the IR cannot be done by simply injecting a module verifier.
+#[derive(Debug)]
+pub struct VerifyPassesOpts {
+    pub initial: bool,
+    pub r#final: bool,
+    pub modified_only: bool,
+    pub passes: HashSet<String>,
+}
+
 #[derive(Default)]
 pub struct PassManager {
     passes: FxHashMap<&'static str, Pass>,
@@ -297,10 +311,7 @@ impl PassManager {
                 assert!(dep_t.is_analysis());
                 match dep_t.runner {
                     ScopedPass::ModulePass(_) => {
-                        panic!(
-                            "Function pass {} cannot depend on module pass {}",
-                            pass, dep
-                        )
+                        panic!("Function pass {pass} cannot depend on module pass {dep}")
                     }
                     ScopedPass::FunctionPass(_) => {
                         if !pm.analyses.is_analysis_result_available(dep, function) {
@@ -358,12 +369,13 @@ impl PassManager {
     }
 
     /// Run the `passes` and return true if the `passes` modify the initial `ir`.
-    /// The IR states are printed according to the printing options provided in `print_opts`.
-    pub fn run_with_print(
+    /// The IR states are printed and verified according to the options provided.
+    pub fn run_with_print_verify(
         &mut self,
         ir: &mut Context,
         passes: &PassGroup,
         print_opts: &PrintPassesOpts,
+        verify_opts: &VerifyPassesOpts,
     ) -> Result<bool, IrError> {
         // Empty IRs are result of compiling dependencies. We don't want to print those.
         fn ir_is_empty(ir: &Context) -> bool {
@@ -391,6 +403,10 @@ impl PassManager {
             print_initial_or_final_ir(ir, "Initial");
         }
 
+        if verify_opts.initial {
+            ir.verify()?;
+        }
+
         let mut modified = false;
         for pass in passes.flatten_pass_group() {
             let modified_in_pass = self.actually_run(ir, pass)?;
@@ -400,10 +416,18 @@ impl PassManager {
             }
 
             modified |= modified_in_pass;
+            if verify_opts.passes.contains(pass) && (!verify_opts.modified_only || modified_in_pass)
+            {
+                ir.verify()?;
+            }
         }
 
         if print_opts.r#final {
             print_initial_or_final_ir(ir, "Final");
+        }
+
+        if verify_opts.r#final {
+            ir.verify()?;
         }
 
         Ok(modified)

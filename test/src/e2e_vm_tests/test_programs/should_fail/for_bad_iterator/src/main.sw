@@ -1,21 +1,10 @@
-script;
+library;
 
-fn main() -> u64 {
-    let mut vector = Vec::new();
+struct Vec<T> {}
 
-    vector.push(0);
-    vector.push(1);
-    vector.push(2);
-    vector.push(3);
-    vector.push(4);
-
-    let mut i = 0;
+pub fn main() {
+    let vector = Vec::<u64> {};
 
     for _n in vector {
-        i += 1;
     }
-
-    assert(i == 5);
-
-    0
 }

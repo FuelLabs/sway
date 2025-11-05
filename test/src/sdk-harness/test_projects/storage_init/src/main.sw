@@ -41,9 +41,9 @@ pub enum F {
 }
 
 impl F {
-    // Getting "No method named "eq" found for type "F"." error when
-    // trying to use F eq in the eq impls of other enums and structs. 
-    // That's why extracting of the F eq logic here.
+    // Getting error that method named "eq" is not found for type "F"
+    // when trying to use "F::eq" in the "eq" impls of other enums and structs.
+    // That's why extracting of the "F::eq" logic here.
     pub fn equals(self, other: Self) -> bool {
         match (self, other) {
             (F::Int8(l), F::Int8(r)) => l == r,

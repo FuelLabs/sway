@@ -1,14 +1,5 @@
 mod function_parameter;
 
-use ast_elements::type_parameter::GenericTypeParameter;
-use hashbrown::HashMap;
-use sway_error::{
-    error::CompileError,
-    handler::{ErrorEmitted, Handler},
-    warning::{CompileWarning, Warning},
-};
-use symbol_collection_context::SymbolCollectionContext;
-
 use crate::{
     decl_engine::{
         parsed_id::ParsedDeclId, DeclEngineInsert as _, DeclId, DeclRefFunction,
@@ -23,7 +14,15 @@ use crate::{
     type_system::*,
     Engines,
 };
+use ast_elements::type_parameter::GenericTypeParameter;
+use hashbrown::HashMap;
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+    warning::{CompileWarning, Warning},
+};
 use sway_types::{style::is_snake_case, Spanned};
+use symbol_collection_context::SymbolCollectionContext;
 
 impl ty::TyFunctionDecl {
     pub(crate) fn collect(
@@ -65,7 +64,7 @@ impl ty::TyFunctionDecl {
         fn_decl: &FunctionDeclaration,
         is_method: bool,
         is_in_impl_self: bool,
-        implementing_for_typeid: Option<TypeId>,
+        implementing_for: Option<TypeId>,
     ) -> Result<Self, ErrorEmitted> {
         let mut ty_fn_decl = Self::type_check_signature(
             handler,
@@ -73,7 +72,7 @@ impl ty::TyFunctionDecl {
             fn_decl,
             is_method,
             is_in_impl_self,
-            implementing_for_typeid,
+            implementing_for,
         )?;
         Self::type_check_body(handler, ctx, fn_decl, &mut ty_fn_decl)
     }
@@ -84,7 +83,7 @@ impl ty::TyFunctionDecl {
         fn_decl: &FunctionDeclaration,
         is_method: bool,
         is_in_impl_self: bool,
-        implementing_for_typeid: Option<TypeId>,
+        implementing_for: Option<TypeId>,
     ) -> Result<Self, ErrorEmitted> {
         let FunctionDeclaration {
             name,
@@ -199,11 +198,11 @@ impl ty::TyFunctionDecl {
                 })?;
 
                 // type check the return type
-                *return_type.type_id_mut() = ctx
+                return_type.type_id = ctx
                     .resolve_type(
                         handler,
-                        return_type.type_id(),
-                        &return_type.span(),
+                        return_type.type_id,
+                        &return_type.span,
                         EnforceTypeArguments::Yes,
                         None,
                     )
@@ -230,7 +229,7 @@ impl ty::TyFunctionDecl {
                     body: <_>::default(),
                     parameters: new_parameters,
                     implementing_type: None,
-                    implementing_for_typeid,
+                    implementing_for,
                     span: span.clone(),
                     call_path,
                     attributes: attributes.clone(),
@@ -298,8 +297,8 @@ impl ty::TyFunctionDecl {
                     .with_help_text(
                         "Function body's return type does not match up with its return type annotation.",
                     )
-                    .with_type_annotation(return_type.type_id())
-                    .with_function_type_annotation(return_type.type_id());
+                    .with_type_annotation(return_type.type_id)
+                    .with_function_type_annotation(return_type.type_id);
 
                 let body = ty::TyCodeBlock::type_check(handler, ctx.by_ref(), body, true)
                     .unwrap_or_else(|_err| ty::TyCodeBlock::default());
@@ -307,10 +306,10 @@ impl ty::TyFunctionDecl {
                 ty_fn_decl.body = body;
                 ty_fn_decl.is_type_check_finalized = true;
 
-                return_type.type_id().check_type_parameter_bounds(
+                return_type.type_id.check_type_parameter_bounds(
                     handler,
                     ctx.by_ref(),
-                    &return_type.span(),
+                    &return_type.span,
                     None,
                 )?;
 
@@ -386,6 +385,7 @@ impl TypeCheckFinalization for ty::TyFunctionDecl {
 
 #[test]
 fn test_function_selector_behavior() {
+    use crate::ast_elements::type_argument::GenericTypeArgument;
     use crate::language::Visibility;
     use crate::Engines;
     use sway_types::{Ident, Span};
@@ -396,7 +396,7 @@ fn test_function_selector_behavior() {
         purity: Default::default(),
         name: Ident::dummy(),
         implementing_type: None,
-        implementing_for_typeid: None,
+        implementing_for: None,
         body: ty::TyCodeBlock::default(),
         parameters: vec![],
         span: Span::dummy(),
@@ -422,7 +422,7 @@ fn test_function_selector_behavior() {
         purity: Default::default(),
         name: Ident::new_with_override("bar".into(), Span::dummy()),
         implementing_type: None,
-        implementing_for_typeid: None,
+        implementing_for: None,
         body: ty::TyCodeBlock::default(),
         parameters: vec![
             ty::TyFunctionParameter {
@@ -440,16 +440,14 @@ fn test_function_selector_behavior() {
                 is_reference: false,
                 is_mutable: false,
                 mutability_span: Span::dummy(),
-                type_argument: GenericArgument::Type(
-                    ast_elements::type_argument::GenericTypeArgument {
-                        type_id: engines.te().id_of_u32(),
-                        initial_type_id: engines
-                            .te()
-                            .insert_string_array_without_annotations(&engines, 5),
-                        span: Span::dummy(),
-                        call_path_tree: None,
-                    },
-                ),
+                type_argument: GenericTypeArgument {
+                    type_id: engines.te().id_of_u32(),
+                    initial_type_id: engines
+                        .te()
+                        .insert_string_array_without_annotations(&engines, 5),
+                    span: Span::dummy(),
+                    call_path_tree: None,
+                },
             },
         ],
         span: Span::dummy(),

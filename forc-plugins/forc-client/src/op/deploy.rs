@@ -12,6 +12,7 @@ use crate::{
     },
 };
 use anyhow::{bail, Context, Result};
+use forc::cli::shared::IrCliOpt;
 use forc_pkg::{self as pkg, DumpOpts, PackageManifestFile};
 use forc_pkg::{manifest::GenericManifestFile, MemberFilter};
 use forc_tracing::{println_action_green, println_warning};
@@ -20,7 +21,7 @@ use forc_wallet::utils::default_wallet_path;
 use fuel_abi_types::abi::program::Configurable;
 use fuel_core_client::client::types::{ChainInfo, TransactionStatus};
 use fuel_core_client::client::FuelClient;
-use fuel_crypto::fuel_types::ChainId;
+use fuel_crypto::{fuel_types::ChainId, Hasher};
 use fuel_tx::{Salt, Transaction};
 use fuel_vm::prelude::*;
 use fuels::{
@@ -43,7 +44,7 @@ use std::{
     sync::Arc,
     time::Duration,
 };
-use sway_core::{asm_generation::ProgramABI, language::parsed::TreeType, BuildTarget};
+use sway_core::{asm_generation::ProgramABI, language::parsed::TreeType, BuildTarget, IrCli};
 
 /// Default maximum contract size allowed for a single contract. If the target
 /// contract size is bigger than this amount, forc-deploy will automatically
@@ -76,14 +77,41 @@ pub struct DeployedExecutable {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChunkInfo {
+    index: usize,
+    size: usize,
+    hash: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChunkedDeploymentInfo {
+    original_contract_size: usize,
+    max_chunk_size: usize,
+    total_chunks: usize,
+    chunks: Vec<ChunkInfo>,
+    loader_contract_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum DeploymentType {
+    Standard,
+    Chunked,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeploymentArtifact {
-    transaction_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    transaction_id: Option<String>,
     salt: String,
     network_endpoint: String,
     chain_id: ChainId,
     contract_id: String,
     deployment_size: usize,
     deployed_block_height: Option<u32>,
+    deployment_type: DeploymentType,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    chunked_deployment_info: Option<ChunkedDeploymentInfo>,
 }
 
 impl DeploymentArtifact {
@@ -186,12 +214,9 @@ async fn deploy_chunked(
     println_action_green("Deploying", &format!("contract {pkg_name} chunks"));
 
     let storage_slots = resolve_storage_slots(command, compiled)?;
-    let chain_info = provider.chain_info().await?;
-    let target = Target::from_str(&chain_info.name).unwrap_or_default();
-    let contract_url = match target.explorer_url() {
-        Some(explorer_url) => format!("{explorer_url}/contract/0x"),
-        None => "".to_string(),
-    };
+    let node_url = provider.url();
+    let client = FuelClient::new(node_url)?;
+    let chain_info = client.chain_info().await?;
 
     let blobs = compiled
         .bytecode
@@ -207,10 +232,16 @@ async fn deploy_chunked(
             .await?
             .contract_id;
 
-    println_action_green(
-        "Finished",
-        &format!("deploying loader contract for {pkg_name} {contract_url}{contract_id}"),
-    );
+    // Create deployment artifact for chunked deployment
+    create_chunked_deployment_artifact(
+        contract_id,
+        salt,
+        node_url,
+        chain_info,
+        compiled,
+        command,
+        &compiled.descriptor.manifest_file,
+    )?;
 
     Ok(contract_id)
 }
@@ -709,13 +740,15 @@ pub async fn deploy_pkg(
                 // Create a deployment artifact.
                 create_deployment_artifact(
                     DeploymentArtifact {
-                        transaction_id: format!("0x{transaction_id}"),
+                        transaction_id: Some(format!("0x{transaction_id}")),
                         salt: format!("0x{salt}"),
                         network_endpoint: node_url.to_string(),
                         chain_id,
                         contract_id: format!("0x{contract_id}"),
                         deployment_size: bytecode.len(),
                         deployed_block_height: None,
+                        deployment_type: DeploymentType::Standard,
+                        chunked_deployment_info: None,
                     },
                     command,
                     manifest,
@@ -742,13 +775,15 @@ pub async fn deploy_pkg(
                     // Create a deployment artifact.
                     create_deployment_artifact(
                         DeploymentArtifact {
-                            transaction_id: format!("0x{}", tx.id(&chain_id)),
+                            transaction_id: Some(format!("0x{}", tx.id(&chain_id))),
                             salt: format!("0x{salt}"),
                             network_endpoint: node_url.to_string(),
                             chain_id,
                             contract_id: format!("0x{contract_id}"),
                             deployment_size: bytecode.len(),
                             deployed_block_height: Some(*block_height),
+                            deployment_type: DeploymentType::Standard,
+                            chunked_deployment_info: None,
                         },
                         command,
                         manifest,
@@ -814,6 +849,10 @@ fn build_opts_from_cmd(cmd: &cmd::Deploy, member_filter: pkg::MemberFilter) -> p
             ir: cmd.print.ir(),
             reverse_order: cmd.print.reverse_order,
         },
+        verify_ir: cmd
+            .verify_ir
+            .as_ref()
+            .map_or(IrCli::default(), |opts| IrCliOpt::from(opts).0),
         dump: DumpOpts::default(),
         time_phases: cmd.print.time_phases,
         profile: cmd.print.profile,
@@ -833,6 +872,7 @@ fn build_opts_from_cmd(cmd: &cmd::Deploy, member_filter: pkg::MemberFilter) -> p
         member_filter,
         experimental: cmd.experimental.experimental.clone(),
         no_experimental: cmd.experimental.no_experimental.clone(),
+        no_output: false,
     }
 }
 
@@ -868,6 +908,79 @@ fn create_deployment_artifact(
     if let Some(block_height) = block_height {
         println_action_green("Deployed", &format!("in block {block_url}{block_height}"));
     }
+
+    let output_dir = cmd
+        .pkg
+        .output_directory
+        .as_ref()
+        .map(PathBuf::from)
+        .unwrap_or_else(|| default_output_directory(manifest.dir()))
+        .join("deployments");
+    deployment_artifact.to_file(&output_dir, pkg_name, contract_id)
+}
+
+/// Creates a deployment artifact for chunked deployments and writes it to a file.
+fn create_chunked_deployment_artifact(
+    contract_id: ContractId,
+    salt: Salt,
+    node_url: &str,
+    chain_info: ChainInfo,
+    compiled: &BuiltPackage,
+    cmd: &cmd::Deploy,
+    manifest: &PackageManifestFile,
+) -> Result<()> {
+    let pkg_name = manifest.project_name();
+    let chain_id = chain_info.consensus_parameters.chain_id();
+
+    // Calculate chunks info
+    let original_size = compiled.bytecode.bytes.len();
+    let chunks: Vec<ChunkInfo> = compiled
+        .bytecode
+        .bytes
+        .chunks(MAX_CONTRACT_SIZE)
+        .enumerate()
+        .map(|(index, chunk)| {
+            let mut hasher = Hasher::default();
+            hasher.input(chunk);
+            let hash = format!("0x{}", hasher.digest());
+            ChunkInfo {
+                index,
+                size: chunk.len(),
+                hash,
+            }
+        })
+        .collect();
+
+    let chunked_info = ChunkedDeploymentInfo {
+        original_contract_size: original_size,
+        max_chunk_size: MAX_CONTRACT_SIZE,
+        total_chunks: chunks.len(),
+        chunks,
+        loader_contract_id: format!("0x{contract_id}"),
+    };
+
+    let deployment_artifact = DeploymentArtifact {
+        transaction_id: None, // fuels SDK doesn't expose transaction details for chunked deployments
+        salt: format!("0x{salt}"),
+        network_endpoint: node_url.to_string(),
+        chain_id,
+        contract_id: format!("0x{contract_id}"),
+        deployment_size: original_size,
+        deployed_block_height: None, // Cannot get this from fuels SDK for chunked deployments
+        deployment_type: DeploymentType::Chunked,
+        chunked_deployment_info: Some(chunked_info),
+    };
+
+    let target = Target::from_str(&chain_info.name).unwrap_or_default();
+    let contract_url = match target.explorer_url() {
+        Some(explorer_url) => format!("{explorer_url}/contract/0x"),
+        None => "".to_string(),
+    };
+
+    println_action_green(
+        "Finished",
+        &format!("deploying chunked contract {pkg_name} {contract_url}{contract_id}"),
+    );
 
     let output_dir = cmd
         .pkg

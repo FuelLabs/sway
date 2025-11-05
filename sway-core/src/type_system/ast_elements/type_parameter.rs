@@ -20,6 +20,7 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 use std::{
+    borrow::Cow,
     cmp::Ordering,
     collections::{BTreeMap, HashMap},
     fmt,
@@ -196,7 +197,9 @@ impl PartialEqWithEngines for TypeParameter {
     fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         match (self, other) {
             (TypeParameter::Type(l), TypeParameter::Type(r)) => l.eq(r, ctx),
-            (TypeParameter::Const(l), TypeParameter::Const(r)) => l.eq(r, ctx),
+            (TypeParameter::Const(l), TypeParameter::Const(r)) => {
+                <ConstGenericParameter as PartialEqWithEngines>::eq(l, r, ctx)
+            }
             _ => false,
         }
     }
@@ -234,9 +237,7 @@ impl OrdWithEngines for TypeParameter {
     fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
         match (self, other) {
             (TypeParameter::Type(l), TypeParameter::Type(r)) => l.cmp(r, ctx),
-            (TypeParameter::Const(_), TypeParameter::Const(_)) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
-            }
+            (TypeParameter::Const(l), TypeParameter::Const(r)) => l.cmp(r),
             _ => todo!(),
         }
     }
@@ -1103,7 +1104,7 @@ impl ConstGenericExpr {
         }
     }
 
-    /// Creates a new literal [Length] without span annotation.
+    /// Creates a new [ConstGenericExpr::Literal] with optional span annotation.
     pub fn literal(val: usize, span: Option<Span>) -> Self {
         Self::Literal {
             val,
@@ -1121,17 +1122,57 @@ impl ConstGenericExpr {
     pub fn is_annotated(&self) -> bool {
         !self.span().is_dummy()
     }
+
+    /// For [ConstGenericExpr::Literal] returns the numeric value
+    /// as a decimal string, regardless of its original representation
+    /// in the source code. E.g., if the original value was `"0x1_F"`,
+    /// it will return `"31"`.
+    pub fn get_normalized_str(&self) -> Cow<str> {
+        match self {
+            Self::Literal { val, span: _ } => val.to_string().into(),
+            Self::AmbiguousVariableExpression { ident, decl: _ } => ident.as_str().into(),
+        }
+    }
+
+    /// For [ConstGenericExpr::Literal] returns the numeric value
+    /// as it was originally represented in the source code, if the
+    /// span exists. Otherwise, it will return the normalized value.
+    pub fn get_original_str(&self) -> Cow<str> {
+        match self {
+            Self::Literal { val, span } => {
+                if !span.is_dummy() {
+                    span.as_str().into()
+                } else {
+                    val.to_string().into()
+                }
+            }
+            Self::AmbiguousVariableExpression { ident, decl: _ } => ident.as_str().into(),
+        }
+    }
 }
 
 impl PartialOrd for ConstGenericExpr {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for ConstGenericExpr {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         match (self, other) {
-            (Self::Literal { val: l, .. }, Self::Literal { val: r, .. }) => l.partial_cmp(r),
+            (Self::Literal { val: l, .. }, Self::Literal { val: r, .. }) => l.cmp(r),
             (
                 Self::AmbiguousVariableExpression { ident: l, .. },
                 Self::AmbiguousVariableExpression { ident: r, .. },
-            ) => l.partial_cmp(r),
-            _ => None,
+            ) => l.cmp(r),
+            (
+                ConstGenericExpr::Literal { .. },
+                ConstGenericExpr::AmbiguousVariableExpression { .. },
+            ) => Ordering::Less,
+            (
+                ConstGenericExpr::AmbiguousVariableExpression { .. },
+                ConstGenericExpr::Literal { .. },
+            ) => Ordering::Greater,
         }
     }
 }
@@ -1172,12 +1213,13 @@ impl Spanned for ConstGenericExpr {
 
 impl DebugWithEngines for ConstGenericExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>, _engines: &crate::Engines) -> std::fmt::Result {
-        match self {
-            Self::Literal { val, .. } => write!(f, "{val}"),
-            Self::AmbiguousVariableExpression { ident, .. } => {
-                write!(f, "{}", ident.as_str())
-            }
-        }
+        write!(f, "{}", self.get_original_str())
+    }
+}
+
+impl DisplayWithEngines for ConstGenericExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>, _engines: &crate::Engines) -> std::fmt::Result {
+        write!(f, "{}", self.get_normalized_str())
     }
 }
 
@@ -1250,5 +1292,25 @@ impl SubstTypes for ConstGenericParameter {
 impl IsConcrete for ConstGenericParameter {
     fn is_concrete(&self, _engines: &Engines) -> bool {
         todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+    }
+}
+
+impl PartialEq for ConstGenericParameter {
+    fn eq(&self, other: &Self) -> bool {
+        self.name.as_str() == other.name.as_str()
+    }
+}
+
+impl Eq for ConstGenericParameter {}
+
+impl PartialOrd for ConstGenericParameter {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for ConstGenericParameter {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.name.as_str().cmp(other.name.as_str())
     }
 }
