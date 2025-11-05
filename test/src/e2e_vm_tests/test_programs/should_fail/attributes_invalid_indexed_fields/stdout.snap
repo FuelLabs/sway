@@ -1,0 +1,55 @@
+---
+source: test/src/snapshot/mod.rs
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_indexed_fields
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_indexed_fields
+   Compiling library std (sway-lib-std)
+   Compiling contract attributes_invalid_indexed_fields (test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_indexed_fields)
+error: Indexed fields must be in event structs
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_indexed_fields/src/lib.sw:6:3
+  |
+...
+4 | struct MyStruct {
+  |        -------- help: Consider annotating "MyStruct" struct with the `#[event]` attribute.
+5 |   #[indexed]
+6 |   a: u32
+  |   ^ Field "a" is marked as `#[indexed]`, but its struct is not an event.
+  |
+  = help: Fields can be marked as `#[indexed]` only if their parent struct is annotated with the `#[event]` attribute.
+____
+
+error: Indexed fields must be fixed-size ABI types.
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_indexed_fields/src/lib.sw:13:3
+   |
+...
+13 |   v: Vec<u64>
+   |   ^ Field "v" is marked as `#[indexed]`, but is not a fixed-size ABI type.
+   |
+   = help: Indexed fields in event structs must be fixed-size ABI types.
+   = help: Fixed-size types include: bool, u8, u16, u32, u64, u256, b256, and Address.
+____
+
+error: Indexed fields must precede non-indexed fields
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_indexed_fields/src/lib.sw:21:3
+   |
+...
+21 |   b: u32
+   |   ^ Field "b" cannot be marked as `#[indexed]` because a non-indexed field appears before it.
+   |
+   = help: Event structs must list their `#[indexed]` fields first, followed by non-indexed fields.
+____
+
+error: Indexed fields must precede non-indexed fields
+  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_indexed_fields/src/lib.sw:31:3
+   |
+...
+31 |   c: u64,
+   |   ^ Field "c" cannot be marked as `#[indexed]` because a non-indexed field appears before it.
+   |
+   = help: Event structs must list their `#[indexed]` fields first, followed by non-indexed fields.
+____
+
+  Aborting due to 4 errors.
+error: Failed to compile attributes_invalid_indexed_fields
