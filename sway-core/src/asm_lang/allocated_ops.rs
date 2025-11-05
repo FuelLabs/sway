@@ -871,7 +871,7 @@ fn realize_load(
     );
     let offset_words = offset_bytes / 8;
 
-    let imm = VirtualImmediate12::new(
+    let imm = VirtualImmediate12::try_new(
         if is_byte { offset_bytes } else { offset_words },
         Span::new(" ".into(), 0, 0, None).unwrap(),
     );
