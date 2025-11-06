@@ -145,10 +145,8 @@ impl AbstractInstructionSet {
                                     && ((offset / 8) + imm.value() as u64)
                                         < compiler_constants::TWELVE_BITS =>
                             {
-                                let new_imm = VirtualImmediate12::new_unchecked(
-                                    (offset / 8) + imm.value() as u64,
-                                    "Immediate offset too big for LW",
-                                );
+                                let new_imm =
+                                    VirtualImmediate12::new((offset / 8) + imm.value() as u64);
                                 let new_lw =
                                     VirtualOp::LW(dest.clone(), base_reg.reg.clone(), new_imm);
                                 // The register defined is no more useful for us. Forget anything from its past.
@@ -170,10 +168,8 @@ impl AbstractInstructionSet {
                                     && ((offset / 8) + imm.value() as u64)
                                         < compiler_constants::TWELVE_BITS =>
                             {
-                                let new_imm = VirtualImmediate12::new_unchecked(
-                                    (offset / 8) + imm.value() as u64,
-                                    "Immediate offset too big for SW",
-                                );
+                                let new_imm =
+                                    VirtualImmediate12::new((offset / 8) + imm.value() as u64);
                                 let new_sw =
                                     VirtualOp::SW(base_reg.reg.clone(), src.clone(), new_imm);
                                 // Replace the SW with a new one in-place.

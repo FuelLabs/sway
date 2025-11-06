@@ -234,7 +234,7 @@ impl AbstractProgram {
                     opcode: Either::Left(AllocatedInstruction::LW(
                         AllocatedRegister::Constant(ConstantRegister::DataSectionStart),
                         AllocatedRegister::Constant(ConstantRegister::Scratch),
-                        VirtualImmediate12::new_unchecked(1, "1 doesn't fit in 12 bits"),
+                        VirtualImmediate12::new(1),
                     )),
                     comment: "".into(),
                     owning_span: None,
@@ -293,10 +293,7 @@ impl AbstractProgram {
             opcode: Either::Left(AllocatedInstruction::LW(
                 INPUT_SELECTOR_REG,
                 AllocatedRegister::Constant(ConstantRegister::FramePointer),
-                VirtualImmediate12::new_unchecked(
-                    SELECTOR_WORD_OFFSET,
-                    "constant infallible value",
-                ),
+                VirtualImmediate12::new(SELECTOR_WORD_OFFSET),
             )),
             comment: "[function selection]: load input function selector".into(),
             owning_span: None,
@@ -370,10 +367,7 @@ impl AbstractProgram {
         asm.ops.push(AllocatedAbstractOp {
             opcode: Either::Left(AllocatedInstruction::MOVI(
                 AllocatedRegister::Constant(ConstantRegister::Scratch),
-                VirtualImmediate18::new_unchecked(
-                    compiler_constants::MISMATCHED_SELECTOR_REVERT_CODE.into(),
-                    "constant must fit in 18 bits",
-                ),
+                VirtualImmediate18::new(compiler_constants::MISMATCHED_SELECTOR_REVERT_CODE.into()),
             )),
             comment: "[function selection]: load revert code for mismatched function selector"
                 .into(),
@@ -391,12 +385,9 @@ impl AbstractProgram {
     fn append_globals_allocation(&self, asm: &mut AllocatedAbstractInstructionSet) {
         let len_in_bytes = self.globals_section.len_in_bytes();
         asm.ops.push(AllocatedAbstractOp {
-            opcode: Either::Left(AllocatedInstruction::CFEI(
-                VirtualImmediate24::new_unchecked(
-                    len_in_bytes,
-                    "length (bytes) must fit in 24 bits",
-                ),
-            )),
+            opcode: Either::Left(AllocatedInstruction::CFEI(VirtualImmediate24::new(
+                len_in_bytes,
+            ))),
             comment: "allocate stack space for globals".into(),
             owning_span: None,
         });
