@@ -987,7 +987,7 @@ fn single_imm_24(
         },
     };
 
-    let imm = match VirtualImmediate24::new(imm, imm_span) {
+    let imm = match VirtualImmediate24::try_new(imm, imm_span) {
         Ok(o) => o,
         Err(e) => {
             return Err(handler.emit_err(e));
@@ -1037,7 +1037,7 @@ fn single_reg_imm_18(
         },
     };
 
-    let imm = match VirtualImmediate18::new(imm, imm_span) {
+    let imm = match VirtualImmediate18::try_new(imm, imm_span) {
         Ok(o) => o,
         Err(e) => {
             return Err(handler.emit_err(e));
@@ -1087,7 +1087,7 @@ fn two_regs_imm_12(
         },
     };
 
-    let imm = match VirtualImmediate12::new(imm, imm_span) {
+    let imm = match VirtualImmediate12::try_new(imm, imm_span) {
         Ok(o) => o,
         Err(e) => {
             return Err(handler.emit_err(e));
@@ -1146,7 +1146,7 @@ fn three_regs_imm_06(
         },
     };
 
-    let imm = match VirtualImmediate06::new(imm, imm_span) {
+    let imm = match VirtualImmediate06::try_new(imm, imm_span) {
         Ok(o) => o,
         Err(e) => {
             return Err(handler.emit_err(e));

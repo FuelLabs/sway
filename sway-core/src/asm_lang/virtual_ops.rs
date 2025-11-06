@@ -1550,7 +1550,7 @@ impl VirtualOp {
         use VirtualOp::*;
         match self {
             JI(i) => Self::JI(
-                VirtualImmediate24::new(
+                VirtualImmediate24::try_new(
                     *offset_map
                         .get(&(i.value() as u64))
                         .expect("new offset should be valid"),
@@ -1561,7 +1561,7 @@ impl VirtualOp {
             JNEI(r1, r2, i) => Self::JNEI(
                 r1.clone(),
                 r2.clone(),
-                VirtualImmediate12::new(
+                VirtualImmediate12::try_new(
                     *offset_map
                         .get(&(i.value() as u64))
                         .expect("new offset should be valid"),
@@ -1571,7 +1571,7 @@ impl VirtualOp {
             ),
             JNZI(r1, i) => Self::JNZI(
                 r1.clone(),
-                VirtualImmediate18::new(
+                VirtualImmediate18::try_new(
                     *offset_map
                         .get(&(i.value() as u64))
                         .expect("new offset should be valid"),

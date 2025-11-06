@@ -123,9 +123,9 @@ impl AllocatedAbstractInstructionSet {
                 accum
             });
             (
-                VirtualImmediate24::new(mask.0, Span::dummy())
+                VirtualImmediate24::try_new(mask.0, Span::dummy())
                     .expect("mask should have fit in 24b"),
-                VirtualImmediate24::new(mask.1, Span::dummy())
+                VirtualImmediate24::try_new(mask.1, Span::dummy())
                     .expect("mask should have fit in 24b"),
             )
         }
@@ -580,7 +580,7 @@ pub(crate) fn compile_jump(
                     opcode: AllocatedInstruction::JNZB(
                         cond_nz,
                         AllocatedRegister::Constant(ConstantRegister::Zero),
-                        VirtualImmediate12::new_unchecked(0, "unreachable()"),
+                        VirtualImmediate12::new(0),
                     ),
                     owning_span,
                     comment,
@@ -589,7 +589,7 @@ pub(crate) fn compile_jump(
                 RealizedOp {
                     opcode: AllocatedInstruction::JMPB(
                         AllocatedRegister::Constant(ConstantRegister::Zero),
-                        VirtualImmediate18::new_unchecked(0, "unreachable()"),
+                        VirtualImmediate18::new(0),
                     ),
                     owning_span,
                     comment,
@@ -621,12 +621,12 @@ pub(crate) fn compile_jump(
                         AllocatedInstruction::JNZB(
                             cond_nz,
                             AllocatedRegister::Constant(ConstantRegister::Scratch),
-                            VirtualImmediate12::new_unchecked(0, "unreachable()"),
+                            VirtualImmediate12::new(0),
                         )
                     } else {
                         AllocatedInstruction::JMPB(
                             AllocatedRegister::Constant(ConstantRegister::Scratch),
-                            VirtualImmediate18::new_unchecked(0, "unreachable()"),
+                            VirtualImmediate18::new(0),
                         )
                     },
                     owning_span,
@@ -639,12 +639,12 @@ pub(crate) fn compile_jump(
                     AllocatedInstruction::JNZB(
                         cond_nz,
                         AllocatedRegister::Constant(ConstantRegister::Zero),
-                        VirtualImmediate12::new_unchecked(delta, "ensured by mark_far_jumps"),
+                        VirtualImmediate12::new(delta),
                     )
                 } else {
                     AllocatedInstruction::JMPB(
                         AllocatedRegister::Constant(ConstantRegister::Zero),
-                        VirtualImmediate18::new_unchecked(delta, "ensured by mark_far_jumps"),
+                        VirtualImmediate18::new(delta),
                     )
                 },
                 owning_span,
@@ -676,12 +676,12 @@ pub(crate) fn compile_jump(
                     AllocatedInstruction::JNZF(
                         cond_nz,
                         AllocatedRegister::Constant(ConstantRegister::Scratch),
-                        VirtualImmediate12::new_unchecked(0, "unreachable()"),
+                        VirtualImmediate12::new(0),
                     )
                 } else {
                     AllocatedInstruction::JMPF(
                         AllocatedRegister::Constant(ConstantRegister::Scratch),
-                        VirtualImmediate18::new_unchecked(0, "unreachable()"),
+                        VirtualImmediate18::new(0),
                     )
                 },
                 owning_span,
@@ -694,12 +694,12 @@ pub(crate) fn compile_jump(
                 AllocatedInstruction::JNZF(
                     cond_nz,
                     AllocatedRegister::Constant(ConstantRegister::Zero),
-                    VirtualImmediate12::new_unchecked(delta, "ensured by mark_far_jumps"),
+                    VirtualImmediate12::new(delta),
                 )
             } else {
                 AllocatedInstruction::JMPF(
                     AllocatedRegister::Constant(ConstantRegister::Zero),
-                    VirtualImmediate18::new_unchecked(delta, "ensured by mark_far_jumps"),
+                    VirtualImmediate18::new(delta),
                 )
             },
             owning_span,
@@ -722,7 +722,7 @@ pub(crate) fn compile_call_inner(
         let delta = target_offset - curr_offset;
 
         // If the offset is small enough for a single instruction, do it directly
-        if let Ok(imm) = VirtualImmediate12::new(delta, Span::dummy()) {
+        if let Ok(imm) = VirtualImmediate12::try_new(delta, Span::dummy()) {
             return vec![RealizedOp {
                 opcode: AllocatedInstruction::JAL(
                     AllocatedRegister::Constant(ConstantRegister::CallReturnAddress),
@@ -741,7 +741,7 @@ pub(crate) fn compile_call_inner(
         let delta_instr = (delta - 1) * (Instruction::SIZE as u64);
 
         // Attempt MOVI-based approach, that has larger immediate size but doesn't require data section.
-        if let Ok(imm) = VirtualImmediate18::new(delta_instr, Span::dummy()) {
+        if let Ok(imm) = VirtualImmediate18::try_new(delta_instr, Span::dummy()) {
             return vec![
                 RealizedOp {
                     opcode: AllocatedInstruction::MOVI(
@@ -764,7 +764,7 @@ pub(crate) fn compile_call_inner(
                     opcode: AllocatedInstruction::JAL(
                         AllocatedRegister::Constant(ConstantRegister::CallReturnAddress),
                         AllocatedRegister::Constant(ConstantRegister::Scratch),
-                        VirtualImmediate12::new_unchecked(0, "unreachable()"),
+                        VirtualImmediate12::new(0),
                     ),
                     owning_span,
                     comment,
@@ -801,7 +801,7 @@ pub(crate) fn compile_call_inner(
                 opcode: AllocatedInstruction::JAL(
                     AllocatedRegister::Constant(ConstantRegister::CallReturnAddress),
                     AllocatedRegister::Constant(ConstantRegister::Scratch),
-                    VirtualImmediate12::new_unchecked(0, "unreachable()"),
+                    VirtualImmediate12::new(0),
                 ),
                 owning_span,
                 comment,
@@ -815,7 +815,7 @@ pub(crate) fn compile_call_inner(
     let delta = curr_offset - target_offset;
 
     // Attempt SUBI-based approach
-    if let Ok(imm) = VirtualImmediate12::new(
+    if let Ok(imm) = VirtualImmediate12::try_new(
         delta.saturating_mul(Instruction::SIZE as u64),
         Span::dummy(),
     ) {
@@ -833,7 +833,7 @@ pub(crate) fn compile_call_inner(
                 opcode: AllocatedInstruction::JAL(
                     AllocatedRegister::Constant(ConstantRegister::CallReturnAddress),
                     AllocatedRegister::Constant(ConstantRegister::Scratch),
-                    VirtualImmediate12::new_unchecked(0, "unreachable()"),
+                    VirtualImmediate12::new(0),
                 ),
                 owning_span,
                 comment,
@@ -848,7 +848,7 @@ pub(crate) fn compile_call_inner(
     let delta_instr = (delta + 1) * (Instruction::SIZE as u64);
 
     // Attempt MOVI-based approach.
-    if let Ok(imm) = VirtualImmediate18::new(delta_instr, Span::dummy()) {
+    if let Ok(imm) = VirtualImmediate18::try_new(delta_instr, Span::dummy()) {
         return vec![
             RealizedOp {
                 opcode: AllocatedInstruction::MOVI(
@@ -871,7 +871,7 @@ pub(crate) fn compile_call_inner(
                 opcode: AllocatedInstruction::JAL(
                     AllocatedRegister::Constant(ConstantRegister::CallReturnAddress),
                     AllocatedRegister::Constant(ConstantRegister::Scratch),
-                    VirtualImmediate12::new_unchecked(0, "unreachable()"),
+                    VirtualImmediate12::new(0),
                 ),
                 owning_span,
                 comment,
@@ -908,7 +908,7 @@ pub(crate) fn compile_call_inner(
             opcode: AllocatedInstruction::JAL(
                 AllocatedRegister::Constant(ConstantRegister::CallReturnAddress),
                 AllocatedRegister::Constant(ConstantRegister::Scratch),
-                VirtualImmediate12::new_unchecked(0, "unreachable()"),
+                VirtualImmediate12::new(0),
             ),
             owning_span,
             comment,
