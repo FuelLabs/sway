@@ -712,7 +712,7 @@ pub async fn deploy_pkg(
     let contract = Contract::from(bytecode.clone());
     let root = contract.root();
     let state_root = Contract::initial_state_root(storage_slots.iter());
-    let contract_id = contract.id(&salt, &root, &state_root);
+    let contract_id = Contract::id(&salt, &root, &state_root);
     let tx_policies = tx_policies_from_cmd(command);
 
     let mut tb = CreateTransactionBuilder::prepare_contract_deployment(
