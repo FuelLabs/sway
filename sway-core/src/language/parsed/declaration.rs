@@ -123,9 +123,7 @@ impl Declaration {
             TypeAliasDeclaration(decl_id) => pe.get_type_alias(decl_id).span(),
             TraitTypeDeclaration(decl_id) => pe.get_trait_type(decl_id).span(),
             TraitFnDeclaration(decl_id) => pe.get_trait_fn(decl_id).span(),
-            ConstGenericDeclaration(_) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
-            }
+            ConstGenericDeclaration(decl_id) => pe.get_const_generic(decl_id).span(),
         }
     }
 

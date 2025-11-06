@@ -1566,6 +1566,12 @@ impl TypeInfo {
             TypeInfo::UnsignedInteger(IntegerBits::V256) => AbiEncodeSizeHint::Exact(32),
             TypeInfo::B256 => AbiEncodeSizeHint::Exact(32),
 
+            TypeInfo::Unknown | TypeInfo::UnknownGeneric { .. } => {
+                AbiEncodeSizeHint::PotentiallyInfinite
+            }
+            TypeInfo::ErrorRecovery(_) => AbiEncodeSizeHint::PotentiallyInfinite,
+            TypeInfo::Ref { .. } => AbiEncodeSizeHint::PotentiallyInfinite,
+
             TypeInfo::Slice(_) => AbiEncodeSizeHint::PotentiallyInfinite,
             TypeInfo::RawUntypedSlice => AbiEncodeSizeHint::PotentiallyInfinite,
             TypeInfo::StringSlice => AbiEncodeSizeHint::PotentiallyInfinite,

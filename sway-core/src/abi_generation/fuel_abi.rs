@@ -9,13 +9,13 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
 };
 use sway_parse::is_valid_identifier_or_path;
-use sway_types::{Named, Span, Spanned};
+use sway_types::{BaseIdent, Named, Span, Spanned};
 
 use crate::{
     ast_elements::type_parameter::GenericTypeParameter,
     language::ty::{TyFunctionDecl, TyProgram, TyProgramKind},
     transform::Attributes,
-    Engines, PanicOccurrences, PanickingCallOccurrences, TypeId, TypeInfo,
+    AbiEncodeSizeHint, Engines, PanicOccurrences, PanickingCallOccurrences, TypeId, TypeInfo,
 };
 
 use super::abi_str::AbiStrContext;
@@ -905,6 +905,43 @@ impl TypeId {
         }
     }
 
+    /// Updates the running struct offset and returns the offset for the current field if it is indexed.
+    fn update_indexed_field_offset(
+        handler: &Handler,
+        running_offset: &mut usize,
+        field_name: BaseIdent,
+        field_size: usize,
+        is_indexed: bool,
+    ) -> Result<Option<u16>, ErrorEmitted> {
+        if !is_indexed {
+            return Ok(None);
+        }
+
+        let current_offset = *running_offset;
+        *running_offset = match current_offset.checked_add(field_size) {
+            Some(offset) => offset,
+            None => {
+                return Err(handler.emit_err(CompileError::IndexedFieldOffsetTooLarge {
+                    field_name: sway_types::IdentUnique::from(field_name.clone()),
+                }));
+            }
+        };
+
+        if *running_offset > (u16::MAX as usize + 1) {
+            return Err(handler.emit_err(CompileError::IndexedFieldOffsetTooLarge {
+                field_name: sway_types::IdentUnique::from(field_name.clone()),
+            }));
+        }
+
+        if current_offset > u16::MAX as usize {
+            return Err(handler.emit_err(CompileError::IndexedFieldOffsetTooLarge {
+                field_name: sway_types::IdentUnique::from(field_name),
+            }));
+        }
+
+        Ok(Some(current_offset as u16))
+    }
+
     /// Return the components of a given (potentially generic) type while considering what it
     /// actually resolves to. These components are essentially of type of
     /// `program_abi::TypeApplication`.  The method below also updates the provided list of
@@ -928,15 +965,15 @@ impl TypeId {
 
                 let mut new_metadata_types_to_add =
                     Vec::<program_abi::TypeMetadataDeclaration>::new();
-                for x in decl.variants.iter() {
+                for variant in decl.variants.iter() {
                     generate_type_metadata_declaration(
                         handler,
                         ctx,
                         engines,
                         metadata_types,
                         concrete_types,
-                        x.type_argument.initial_type_id,
-                        x.type_argument.type_id,
+                        variant.type_argument.initial_type_id,
+                        variant.type_argument.type_id,
                         &mut new_metadata_types_to_add,
                     )?;
                 }
@@ -946,14 +983,14 @@ impl TypeId {
                 let components = decl
                     .variants
                     .iter()
-                    .map(|x| {
+                    .map(|variant| {
                         Ok(program_abi::TypeApplication {
-                            name: x.name.to_string(),
+                            name: variant.name.to_string(),
                             type_id: program_abi::TypeId::Metadata(MetadataTypeId(
-                                x.type_argument.initial_type_id.index(),
+                                variant.type_argument.initial_type_id.index(),
                             )),
-                            error_message: x.attributes.error_message().cloned(),
-                            type_arguments: x
+                            error_message: variant.attributes.error_message().cloned(),
+                            type_arguments: variant
                                 .type_argument
                                 .initial_type_id
                                 .get_abi_type_arguments(
@@ -962,7 +999,7 @@ impl TypeId {
                                     engines,
                                     metadata_types,
                                     concrete_types,
-                                    x.type_argument.type_id,
+                                    variant.type_argument.type_id,
                                     &mut new_metadata_types_to_add,
                                 )?,
                             offset: None,
@@ -982,32 +1019,56 @@ impl TypeId {
 
                 let mut new_metadata_types_to_add =
                     Vec::<program_abi::TypeMetadataDeclaration>::new();
-                for x in decl.fields.iter() {
+                for field in decl.fields.iter() {
                     generate_type_metadata_declaration(
                         handler,
                         ctx,
                         engines,
                         metadata_types,
                         concrete_types,
-                        x.type_argument.initial_type_id,
-                        x.type_argument.type_id,
+                        field.type_argument.initial_type_id,
+                        field.type_argument.type_id,
                         &mut new_metadata_types_to_add,
                     )?;
                 }
 
                 // Generate the JSON data for the struct. This is basically a list of
                 // `program_abi::TypeApplication`s
+                let mut running_offset = 0usize;
                 let components = decl
                     .fields
                     .iter()
-                    .map(|x| {
+                    .map(|field| {
+                        let hint = engines
+                            .te()
+                            .get(field.type_argument.type_id)
+                            .abi_encode_size_hint(engines);
+                        let is_indexed = field.attributes.indexed().is_some();
+
+                        let field_size = if is_indexed {
+                            match hint {
+                                AbiEncodeSizeHint::Exact(sz) => sz,
+                                _ => unreachable!("expected exact size hint for indexed field"),
+                            }
+                        } else {
+                            0
+                        };
+
+                        let offset = TypeId::update_indexed_field_offset(
+                            handler,
+                            &mut running_offset,
+                            field.name.clone(),
+                            field_size,
+                            is_indexed,
+                        )?;
+
                         Ok(program_abi::TypeApplication {
-                            name: x.name.to_string(),
+                            name: field.name.to_string(),
                             type_id: program_abi::TypeId::Metadata(MetadataTypeId(
-                                x.type_argument.initial_type_id.index(),
+                                field.type_argument.initial_type_id.index(),
                             )),
                             error_message: None,
-                            type_arguments: x
+                            type_arguments: field
                                 .type_argument
                                 .initial_type_id
                                 .get_abi_type_arguments(
@@ -1016,10 +1077,10 @@ impl TypeId {
                                     engines,
                                     metadata_types,
                                     concrete_types,
-                                    x.type_argument.type_id,
+                                    field.type_argument.type_id,
                                     &mut new_metadata_types_to_add,
                                 )?,
-                            offset: None,
+                            offset,
                         })
                     })
                     .collect::<Result<Vec<_>, _>>()?;
