@@ -10,6 +10,10 @@ pub struct IgnitionCmd {
     pub db_path: PathBuf,
     #[clap(long, default_value_t = MAINNET_BOOTSTRAP_NODE.to_string())]
     pub bootstrap_node: String,
+
+    /// Skip interactive prompts (intended for scripted/test environments).
+    #[clap(long, hide = true)]
+    pub non_interactive: bool,
 }
 
 fn default_ignition_db_path() -> PathBuf {

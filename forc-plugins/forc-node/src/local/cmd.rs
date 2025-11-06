@@ -49,6 +49,18 @@ pub struct LocalCmd {
 
     #[arg(long = "poa-instant", env)]
     pub poa_instant: bool,
+
+    /// URL of the remote node to fork from (enables state forking)
+    #[clap(long, value_name = "URL")]
+    pub fork_url: Option<String>,
+
+    /// Block number to fork from (latest if not specified)
+    #[clap(long, value_name = "BLOCK")]
+    pub fork_block_number: Option<u32>,
+
+    /// Skip interactive prompts (intended for scripted/test environments).
+    #[clap(long, hide = true)]
+    pub non_interactive: bool,
 }
 
 fn get_coins_per_account(
