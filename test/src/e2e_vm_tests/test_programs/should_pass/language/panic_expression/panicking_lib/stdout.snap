@@ -8,12 +8,12 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_lib
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
    Compiling library panicking_lib (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_lib)
-    Finished debug [unoptimized + fuel] target(s) [6.12 KB] in ???
+    Finished debug [unoptimized + fuel] target(s) [7.824 KB] in ???
      Running 18 tests, filtered 0 tests
 
 tested -- panicking_lib
 
-      test test_nested_panic_inlined ... ok (???, 1917 gas)
+      test test_nested_panic_inlined ... ok (???, 2006 gas)
            revert code: 8000000000001001
             ├─ panic message: Error E.
             ├─ panic value:   E([AsciiString { data: "to have" }, AsciiString { data: "strings" }, AsciiString { data: "in error enum variants" }])
@@ -25,7 +25,7 @@ tested -- panicking_lib
                                └─ at panicking_lib, src/lib.sw:55:5
            decoded log values:
 E([AsciiString { data: "to have" }, AsciiString { data: "strings" }, AsciiString { data: "in error enum variants" }]), log rb: 2721958641300806892
-      test test_nested_panic_inlined_same_revert_code ... ok (???, 1917 gas)
+      test test_nested_panic_inlined_same_revert_code ... ok (???, 2006 gas)
            revert code: 8000000000001801
             ├─ panic message: Error E.
             ├─ panic value:   E([AsciiString { data: "to have" }, AsciiString { data: "strings" }, AsciiString { data: "in error enum variants" }])
@@ -37,7 +37,7 @@ E([AsciiString { data: "to have" }, AsciiString { data: "strings" }, AsciiString
                                └─ at panicking_lib, src/lib.sw:60:5
            decoded log values:
 E([AsciiString { data: "to have" }, AsciiString { data: "strings" }, AsciiString { data: "in error enum variants" }]), log rb: 2721958641300806892
-      test test_nested_panic_non_inlined ... ok (???, 1965 gas)
+      test test_nested_panic_non_inlined ... ok (???, 2050 gas)
            revert code: 8080000000002804
             ├─ panic message: Error E.
             ├─ panic value:   E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { data: "the best practice" }])
@@ -49,7 +49,7 @@ E([AsciiString { data: "to have" }, AsciiString { data: "strings" }, AsciiString
                                └─ at panicking_lib, src/lib.sw:65:5
            decoded log values:
 E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { data: "the best practice" }]), log rb: 2721958641300806892
-      test test_nested_panic_non_inlined_same_revert_code ... ok (???, 1965 gas)
+      test test_nested_panic_non_inlined_same_revert_code ... ok (???, 2050 gas)
            revert code: 8080000000003004
             ├─ panic message: Error E.
             ├─ panic value:   E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { data: "the best practice" }])
@@ -61,7 +61,7 @@ E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { d
                                └─ at panicking_lib, src/lib.sw:70:5
            decoded log values:
 E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { data: "the best practice" }]), log rb: 2721958641300806892
-      test test_generic_panic_with_unit ... ok (???, 753 gas)
+      test test_generic_panic_with_unit ... ok (???, 673 gas)
            revert code: 8100000000000007
             ├─ panic value:   ()
             ├─ panicked:      in panicking_lib::generic_panic
@@ -70,7 +70,7 @@ E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { d
                                └─ at panicking_lib, src/lib.sw:83:5
            decoded log values:
 (), log rb: 3330666440490685604
-      test test_generic_panic_with_unit_same_revert_code ... ok (???, 753 gas)
+      test test_generic_panic_with_unit_same_revert_code ... ok (???, 673 gas)
            revert code: 8100000000000008
             ├─ panic value:   ()
             ├─ panicked:      in panicking_lib::generic_panic
@@ -79,7 +79,7 @@ E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { d
                                └─ at panicking_lib, src/lib.sw:88:5
            decoded log values:
 (), log rb: 3330666440490685604
-      test test_generic_panic_with_str ... ok (???, 916 gas)
+      test test_generic_panic_with_str ... ok (???, 982 gas)
            revert code: 8180000000000009
             ├─ panic message: generic panic with string
             ├─ panicked:      in panicking_lib::generic_panic
@@ -88,7 +88,7 @@ E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { d
                                └─ at panicking_lib, src/lib.sw:93:5
            decoded log values:
 AsciiString { data: "generic panic with string" }, log rb: 10098701174489624218
-      test test_generic_panic_with_different_str_same_revert_code ... ok (???, 917 gas)
+      test test_generic_panic_with_different_str_same_revert_code ... ok (???, 983 gas)
            revert code: 818000000000000a
             ├─ panic message: generic panic different string
             ├─ panicked:      in panicking_lib::generic_panic
@@ -97,7 +97,7 @@ AsciiString { data: "generic panic with string" }, log rb: 10098701174489624218
                                └─ at panicking_lib, src/lib.sw:98:5
            decoded log values:
 AsciiString { data: "generic panic different string" }, log rb: 10098701174489624218
-      test test_generic_panic_with_error_type_enum_variant ... ok (???, 955 gas)
+      test test_generic_panic_with_error_type_enum_variant ... ok (???, 1019 gas)
            revert code: 820000000000000b
             ├─ panic message: Error A.
             ├─ panic value:   A
@@ -107,7 +107,7 @@ AsciiString { data: "generic panic different string" }, log rb: 1009870117448962
                                └─ at panicking_lib, src/lib.sw:103:5
            decoded log values:
 A, log rb: 2721958641300806892
-      test test_generic_panic_with_error_type_enum_different_variant_same_revert_code ... ok (???, 955 gas)
+      test test_generic_panic_with_error_type_enum_different_variant_same_revert_code ... ok (???, 1019 gas)
            revert code: 820000000000000c
             ├─ panic message: Error A.
             ├─ panic value:   A
@@ -117,14 +117,14 @@ A, log rb: 2721958641300806892
                                └─ at panicking_lib, src/lib.sw:108:5
            decoded log values:
 A, log rb: 2721958641300806892
-      test test_panic_without_arg ... ok (???, 737 gas)
+      test test_panic_without_arg ... ok (???, 657 gas)
            revert code: 8280000000000000
             ├─ panic value:   ()
             └─ panicked:      in panicking_lib::test_panic_without_arg
                                └─ at panicking_lib, src/lib.sw:113:5
            decoded log values:
 (), log rb: 3330666440490685604
-      test test_panic_with_unit ... ok (???, 737 gas)
+      test test_panic_with_unit ... ok (???, 657 gas)
            revert code: 8300000000000000
             ├─ panic value:   ()
             └─ panicked:      in panicking_lib::test_panic_with_unit
@@ -136,7 +136,7 @@ A, log rb: 2721958641300806892
             ├─ panic message: panic with string
             └─ panicked:      in panicking_lib::test_panic_with_str
                                └─ at panicking_lib, src/lib.sw:123:5
-      test test_panic_with_error_type_enum ... ok (???, 1130 gas)
+      test test_panic_with_error_type_enum ... ok (???, 1219 gas)
            revert code: 8400000000000000
             ├─ panic message: Error C.
             ├─ panic value:   C(true)
@@ -144,28 +144,28 @@ A, log rb: 2721958641300806892
                                └─ at panicking_lib, src/lib.sw:128:5
            decoded log values:
 C(true), log rb: 2721958641300806892
-      test test_panic_with_generic_error_type_enum ... ok (???, 977 gas)
+      test test_panic_with_generic_error_type_enum ... ok (???, 1082 gas)
            revert code: 8480000000000000
             ├─ panic value:   A(42)
             └─ panicked:      in panicking_lib::test_panic_with_generic_error_type_enum
                                └─ at panicking_lib, src/lib.sw:133:5
            decoded log values:
 A(42), log rb: 12408470889216862137
-      test test_panic_with_nested_generic_error_type ... ok (???, 1500 gas)
+      test test_panic_with_nested_generic_error_type ... ok (???, 1674 gas)
            revert code: 8500000000000000
             ├─ panic value:   B(B(C(true)))
             └─ panicked:      in panicking_lib::test_panic_with_nested_generic_error_type
                                └─ at panicking_lib, src/lib.sw:138:5
            decoded log values:
 B(B(C(true))), log rb: 14988555917426256081
-      test test_panic_with_generic_error_type_enum_with_abi_encode ... ok (???, 977 gas)
+      test test_panic_with_generic_error_type_enum_with_abi_encode ... ok (???, 1082 gas)
            revert code: 8580000000000000
             ├─ panic value:   A(42)
             └─ panicked:      in panicking_lib::test_panic_with_generic_error_type_enum_with_abi_encode
                                └─ at panicking_lib, src/lib.sw:143:5
            decoded log values:
 A(42), log rb: 17388243649088655852
-      test test_panic_with_nested_generic_error_type_enum_with_abi_encode ... ok (???, 1500 gas)
+      test test_panic_with_nested_generic_error_type_enum_with_abi_encode ... ok (???, 1674 gas)
            revert code: 8600000000000000
             ├─ panic value:   B(B(C(true)))
             └─ panicked:      in panicking_lib::test_panic_with_nested_generic_error_type_enum_with_abi_encode

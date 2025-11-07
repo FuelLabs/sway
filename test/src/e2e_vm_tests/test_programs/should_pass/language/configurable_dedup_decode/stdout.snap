@@ -204,15 +204,15 @@ script {
 !1 = span !0 177 182
 !2 = span !0 136 143
 !3 = "sway-lib-std/src/codec.sw"
-!4 = span !3 71210 71213
-!5 = span !3 71224 71227
-!6 = span !3 71234 71240
-!7 = span !3 71180 71513
-!8 = fn_name_span !3 71187 71206
+!4 = span !3 71969 71972
+!5 = span !3 71983 71986
+!6 = span !3 71993 71999
+!7 = span !3 71939 72272
+!8 = fn_name_span !3 71946 71965
 !9 = inline "never"
 !10 = (!7 !8 !9)
-!11 = span !3 71298 71332
-!12 = fn_call_path_span !3 71298 71322
+!11 = span !3 72057 72091
+!12 = fn_call_path_span !3 72057 72081
 !13 = span !3 735 755
 !14 = (!11 !12 !13)
 !15 = (!11 !12)
@@ -341,11 +341,11 @@ cfei i16                      ; allocate stack space for globals
 addr $$arg0 data_Configurable_0; get pointer to configurable TUPLE default value
 addi $$arg1 $zero i8          ; get length of configurable TUPLE default value
 addi $$arg2 $ssp i0           ; get pointer to configurable TUPLE stack address
-jal  $$reta $pc i74           ; decode configurable TUPLE
+jal  $$reta $pc i12           ; decode configurable TUPLE
 addr $$arg0 data_Configurable_1; get pointer to configurable WRAPPED default value
 addi $$arg1 $zero i8          ; get length of configurable WRAPPED default value
 addi $$arg2 $ssp i8           ; get pointer to configurable WRAPPED stack address
-jal  $$reta $pc i69           ; decode configurable WRAPPED
+jal  $$reta $pc i7            ; decode configurable WRAPPED
 move $$locbase $sp            ; save locals base register for function __entry
 cfei i360                     ; allocate 360 bytes for locals and 0 slots for call arguments
 addi $r0 $$locbase i272       ; get offset to local __ptr slice

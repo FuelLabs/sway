@@ -410,7 +410,7 @@ warning
 ____
 
   Compiled script "const_generics" with 2 warnings.
-    Finished debug [unoptimized + fuel] target(s) [8.992 KB] in ???
+    Finished debug [unoptimized + fuel] target(s) [8.952 KB] in ???
      Running 1 test, filtered 0 tests
 
 tested -- const_generics
