@@ -113,6 +113,49 @@ impl ty::TyIntrinsicFunctionKind {
             Intrinsic::Dbg => {
                 unreachable!("__dbg should not exist in the typed tree")
             }
+            Intrinsic::RuntimeMemoryId => {
+                let arg = ctx
+                    .resolve_type(
+                        handler,
+                        type_arguments[0].type_id(),
+                        &type_arguments[0].span(),
+                        EnforceTypeArguments::Yes,
+                        None,
+                    )
+                    .unwrap_or_else(|err| ctx.engines.te().id_of_error_recovery(err));
+                let mut final_type_arguments = type_arguments.to_vec();
+                *final_type_arguments[0].type_id_mut() = arg;
+                
+                let intrinsic_function = ty::TyIntrinsicFunctionKind {
+                    kind,
+                    arguments: vec![],
+                    type_arguments: final_type_arguments,
+                    span: span.clone(),
+                };
+
+                Ok((intrinsic_function, ctx.engines.te().id_of_u64()))
+            }
+            Intrinsic::EncodingMemoryId => {
+                let arg = ctx
+                    .resolve_type(
+                        handler,
+                        type_arguments[0].type_id(),
+                        &type_arguments[0].span(),
+                        EnforceTypeArguments::Yes,
+                        None,
+                    )
+                    .unwrap_or_else(|err| ctx.engines.te().id_of_error_recovery(err));
+                let mut final_type_arguments = type_arguments.to_vec();
+                *final_type_arguments[0].type_id_mut() = arg;
+
+                let intrinsic_function = ty::TyIntrinsicFunctionKind {
+                    kind,
+                    arguments: vec![],
+                    type_arguments: final_type_arguments,
+                    span: span.clone(),
+                };
+                Ok((intrinsic_function, ctx.engines.te().id_of_u64()))
+            }
         }
     }
 }

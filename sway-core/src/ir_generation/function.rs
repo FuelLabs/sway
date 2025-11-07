@@ -10,6 +10,7 @@ use super::{
     CompiledFunctionCache,
 };
 use crate::{
+    decl_engine::DeclEngineGet as _,
     engine_threading::*,
     ir_generation::{
         const_eval::{compile_constant_expression, compile_constant_expression_to_constant},
@@ -41,7 +42,7 @@ use sway_types::{
     Named,
 };
 
-use std::collections::HashMap;
+use std::{collections::HashMap, hash::{DefaultHasher, Hash as _}};
 use std::convert::TryFrom;
 
 /// The result of compiling an expression can be in memory, or in an (SSA) register.
@@ -2416,6 +2417,33 @@ impl<'a> FnCompiler<'a> {
             Intrinsic::Dbg => {
                 unreachable!("__dbg should not exist in the typed tree")
             }
+            Intrinsic::RuntimeMemoryId => {
+                let arg = type_arguments[0].as_type_argument().unwrap();
+                let t = convert_resolved_type_id(
+                    self.engines,
+                    context,
+                    md_mgr,
+                    self.module,
+                    Some(self),
+                    arg.type_id,
+                    &arg.span,
+                )?;
+                let id = get_memory_id(context, t);
+                let val = ConstantContent::get_uint(context, 64, id);
+                Ok(TerminatorValue::new(
+                    CompiledValue::InRegister(val),
+                    context,
+                ))
+            },
+            Intrinsic::EncodingMemoryId => {
+                let arg = type_arguments[0].as_type_argument().unwrap();
+                let id = get_encoding_id(self.engines, arg.type_id);
+                let val = ConstantContent::get_uint(context, 64, id);
+                Ok(TerminatorValue::new(
+                    CompiledValue::InRegister(val),
+                    context,
+                ))
+            },
         }
     }
 
@@ -5294,5 +5322,264 @@ fn can_mem_clear_be_used(ctx: &mut Context<'_>, elem_type: Type, value: Value) -
             Some(true)
         }
         _ => None,
+    }
+}
+
+// Used to check if encoding and runtime have the same memory representation.
+// If they do, it is possible to trivially encode/decode some types.
+
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub enum MemoryRepresentation {
+    Padding { len_in_bytes: u64 },
+    Blob { len_in_bytes: u64 },
+    And(Vec<MemoryRepresentation>),
+    Or(Vec<MemoryRepresentation>),
+    Array(Box<MemoryRepresentation>, u64),
+}
+
+impl std::fmt::Debug for MemoryRepresentation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Padding { len_in_bytes } => f.write_fmt(format_args!("p{}", len_in_bytes)),
+            Self::Blob { len_in_bytes } => f.write_fmt(format_args!("b{}", len_in_bytes)),
+            Self::And(items) => {
+                f.write_str("{").unwrap();
+                let mut first = true;
+                for item in items {
+                    if !first {
+                        f.write_str(",").unwrap();
+                    }
+                    first = false;
+                    item.fmt(f).unwrap();
+                }
+                f.write_str("}").unwrap();
+                Ok(())
+            }
+            Self::Or(items) => {
+                f.write_str("(").unwrap();
+                let mut first = true;
+                for item in items {
+                    if !first {
+                        f.write_str("|").unwrap();
+                    }
+                    first = false;
+                    item.fmt(f).unwrap();
+                }
+                f.write_str(")").unwrap();
+                Ok(())
+            }
+            Self::Array(item, len) => {
+                f.write_str("[").unwrap();
+                item.fmt(f).unwrap();
+                f.write_fmt(format_args!(";{}]", len))
+            }
+        }
+    }
+}
+
+impl MemoryRepresentation {
+    pub fn len_in_bytes(&self) -> u64 {
+        match self {
+            MemoryRepresentation::Padding { len_in_bytes } => *len_in_bytes,
+            MemoryRepresentation::Blob { len_in_bytes } => *len_in_bytes,
+            MemoryRepresentation::And(items) => items.iter().map(|x| x.len_in_bytes()).sum(),
+            MemoryRepresentation::Or(items) => {
+                items.iter().map(|x| x.len_in_bytes()).max().unwrap()
+            }
+            MemoryRepresentation::Array(item, len) => item.len_in_bytes() * *len,
+        }
+    }
+}
+
+pub fn get_memory_representation(ctx: &Context, t: Type) -> MemoryRepresentation {
+    match t.get_content(ctx) {
+        TypeContent::Unit => MemoryRepresentation::And(vec![]),
+        TypeContent::Bool => MemoryRepresentation::Blob { len_in_bytes: 1 },
+        TypeContent::Uint(8) => MemoryRepresentation::Blob { len_in_bytes: 1 },
+        TypeContent::Uint(64) => MemoryRepresentation::Blob { len_in_bytes: 8 },
+        TypeContent::Uint(256) => MemoryRepresentation::Blob { len_in_bytes: 32 },
+        TypeContent::B256 => MemoryRepresentation::Blob { len_in_bytes: 32 },
+        TypeContent::Struct(fields) => {
+            let mut items = vec![];
+            let mut offset_in_bytes = 0;
+
+            for idx in 0..fields.len() {
+                let (position_in_bytes, t) =
+                    t.get_struct_field_offset_and_type(ctx, idx as u64).unwrap();
+                assert!(offset_in_bytes == position_in_bytes);
+
+                let field_mem_rep = get_memory_representation(ctx, t);
+                let field_len_in_bytes = field_mem_rep.len_in_bytes();
+
+                items.push(field_mem_rep);
+
+                offset_in_bytes += field_len_in_bytes;
+                if !offset_in_bytes.is_multiple_of(8) {
+                    let next = offset_in_bytes.next_multiple_of(8);
+                    items.push(MemoryRepresentation::Padding {
+                        len_in_bytes: next.checked_sub(offset_in_bytes).unwrap(),
+                    });
+                    offset_in_bytes = next;
+                }
+            }
+
+            MemoryRepresentation::And(items)
+        }
+        TypeContent::Union(variants) => {
+            let mut items = variants
+                .iter()
+                .map(|variant| get_memory_representation(ctx, *variant))
+                .collect::<Vec<_>>();
+
+            let biggest_len_in_bytes = items.iter().map(|x| x.len_in_bytes()).max().unwrap().max(8);
+            for item in items.iter_mut() {
+                let item_len_in_bytes = item.len_in_bytes();
+                if item_len_in_bytes == biggest_len_in_bytes {
+                    continue;
+                }
+                let padding = MemoryRepresentation::Padding {
+                    len_in_bytes: biggest_len_in_bytes - item_len_in_bytes,
+                };
+                if let MemoryRepresentation::And(old_items) = item {
+                    old_items.push(padding);
+                } else {
+                    *item = MemoryRepresentation::And(vec![item.clone(), padding])
+                }
+            }
+
+            MemoryRepresentation::Or(items)
+        }
+        TypeContent::StringArray(len) => {
+            let item = MemoryRepresentation::Blob { len_in_bytes: *len };
+            let item_len_as_bytes = item.len_in_bytes();
+            if !item_len_as_bytes.is_multiple_of(8) {
+                MemoryRepresentation::And(vec![
+                    item,
+                    MemoryRepresentation::Padding {
+                        len_in_bytes: item_len_as_bytes.next_multiple_of(8) - item_len_as_bytes,
+                    },
+                ])
+            } else {
+                item
+            }
+        }
+        TypeContent::Array(t, len) => {
+            let item = get_memory_representation(ctx, *t);
+            let total_len_in_bytes = item.len_in_bytes() * len;
+            if !total_len_in_bytes.is_multiple_of(8) {
+                MemoryRepresentation::And(vec![
+                    MemoryRepresentation::Array(Box::new(item), *len),
+                    MemoryRepresentation::Padding {
+                        len_in_bytes: total_len_in_bytes.next_multiple_of(8) - total_len_in_bytes,
+                    },
+                ])
+            } else {
+                MemoryRepresentation::Array(Box::new(item), *len)
+            }
+        }
+        TypeContent::Pointer => MemoryRepresentation::Blob { len_in_bytes: 8 },
+        TypeContent::Slice => MemoryRepresentation::Blob { len_in_bytes: 16 },
+        TypeContent::TypedSlice(_) => MemoryRepresentation::Blob { len_in_bytes: 16 },
+        x => todo!("{x:#?}"),
+    }
+}
+
+pub fn get_memory_id(ctx: &Context, t: Type) -> u64 {
+    let r = get_memory_representation(ctx, t);
+
+    use std::hash::Hasher;
+    let mut state = DefaultHasher::default();
+    r.hash(&mut state);
+    state.finish()
+}
+
+pub fn get_encoding_representation(engines: &Engines, type_id: TypeId) -> Option<MemoryRepresentation> {
+    match &*engines.te().get(type_id) {
+        TypeInfo::Boolean => Some(MemoryRepresentation::Blob { len_in_bytes: 1 }),
+        TypeInfo::UnsignedInteger(IntegerBits::Eight) => {
+            Some(MemoryRepresentation::Blob { len_in_bytes: 1 })
+        }
+        TypeInfo::UnsignedInteger(IntegerBits::Sixteen) => {
+            Some(MemoryRepresentation::Blob { len_in_bytes: 2 })
+        }
+        TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo) => {
+            Some(MemoryRepresentation::Blob { len_in_bytes: 4 })
+        }
+        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour) => {
+            Some(MemoryRepresentation::Blob { len_in_bytes: 8 })
+        }
+        TypeInfo::UnsignedInteger(IntegerBits::V256) => {
+            Some(MemoryRepresentation::Blob { len_in_bytes: 32 })
+        }
+        TypeInfo::B256 => Some(MemoryRepresentation::Blob { len_in_bytes: 32 }),
+        TypeInfo::Tuple(fields) => {
+            let items = fields
+                .iter()
+                .map(|field| get_encoding_representation(engines, field.type_id))
+                .collect::<Option<Vec<_>>>()?;
+            Some(MemoryRepresentation::And(items))
+        }
+        TypeInfo::Struct(id) => {
+            let decl = engines.de().get(id);
+
+            let items = decl
+                .fields
+                .iter()
+                .map(|field| get_encoding_representation(engines, field.type_argument.type_id))
+                .collect::<Option<Vec<_>>>()?;
+
+            Some(MemoryRepresentation::And(items))
+        }
+        TypeInfo::Enum(id) => {
+            let decl = engines.de().get(id);
+
+            if decl.variants.is_empty() {
+                Some(MemoryRepresentation::Blob { len_in_bytes: 8 })
+            } else {
+                let variants = decl
+                    .variants
+                    .iter()
+                    .map(|variant| {
+                        get_encoding_representation(engines, variant.type_argument.type_id)
+                    })
+                    .collect::<Option<Vec<_>>>()?;
+
+                if variants.iter().all(|x| x.len_in_bytes() == 0) {
+                    Some(MemoryRepresentation::And(vec![
+                        MemoryRepresentation::Blob { len_in_bytes: 8 },
+                    ]))
+                } else {
+                    Some(MemoryRepresentation::And(vec![
+                        MemoryRepresentation::Blob { len_in_bytes: 8 },
+                        MemoryRepresentation::Or(variants),
+                    ]))
+                }
+            }
+        }
+        TypeInfo::StringArray(len) => Some(MemoryRepresentation::Blob {
+            len_in_bytes: len.extract_literal(engines).unwrap(),
+        }),
+        TypeInfo::StringSlice => None,
+        TypeInfo::Array(item, len) => Some(MemoryRepresentation::Array(
+            Box::new(get_encoding_representation(engines, item.type_id)?),
+            len.extract_literal(engines).unwrap(),
+        )),
+        TypeInfo::RawUntypedPtr => None,
+        TypeInfo::RawUntypedSlice => None,
+        TypeInfo::Slice(_) => None,
+        TypeInfo::Ref { .. } => None,
+        TypeInfo::Alias { ty, .. } => get_encoding_representation(engines, ty.type_id),
+        x => todo!("{x:#?}"),
+    }
+}
+
+pub fn get_encoding_id(engines: &Engines, type_id: TypeId) -> u64 {
+    use std::hash::Hasher;
+    if let Some(r) = get_encoding_representation(engines, type_id) {
+        let mut state = DefaultHasher::default();
+        r.hash(&mut state);
+        state.finish()
+    } else {
+        0
     }
 }
