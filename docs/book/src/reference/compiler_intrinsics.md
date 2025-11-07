@@ -426,13 +426,12 @@ __runtime_mem_id<T>() -> u64
 __encoding_mem_id<T> -> u64
 ```
 
-**Description:** Returns an opaque number that identifies the memory representation of a type. No 
-information is conveyd by this number and should only be compared for equality.
+**Description:** Returns an opaque number that identifies the memory representation of a type. No information is conveyed by this number and should only be compared for equality.
 
 This number is not guaranteed to be stable on different compiler versions.
 
 `__runtime_mem_id` represents how the type is represented inside the VM.
 
-`__encoding_mem_id` representes how the type is encoded. It returns 0 when a type does not have encoding representation.
+`__encoding_mem_id` represents how the type is encoded. It returns 0 when a type does not have encoding representation.
 
 **Constraints:** None
