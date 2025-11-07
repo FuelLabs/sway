@@ -2421,6 +2421,9 @@ impl<'a> FnCompiler<'a> {
                 unreachable!("__dbg should not exist in the typed tree")
             }
             Intrinsic::RuntimeMemoryId => {
+                assert!(type_arguments.len() == 1);
+                assert!(arguments.len() == 0);
+
                 let arg = type_arguments[0].as_type_argument().unwrap();
                 let t = convert_resolved_type_id(
                     self.engines,
@@ -2439,6 +2442,9 @@ impl<'a> FnCompiler<'a> {
                 ))
             }
             Intrinsic::EncodingMemoryId => {
+                assert!(type_arguments.len() == 1);
+                assert!(arguments.len() == 0);
+                
                 let arg = type_arguments[0].as_type_argument().unwrap();
                 let id = get_encoding_id(self.engines, arg.type_id);
                 let val = ConstantContent::get_uint(context, 64, id);

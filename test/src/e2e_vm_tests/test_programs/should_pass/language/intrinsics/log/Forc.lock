@@ -1,8 +1,8 @@
 [[package]]
-name = "logging"
+name = "log"
 source = "member"
 dependencies = ["std"]
 
 [[package]]
 name = "std"
-source = "path+from-root-B183794502AF314F"
+source = "path+from-root-440D69547A9DAB0F"

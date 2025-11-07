@@ -1696,6 +1696,9 @@ fn const_eval_intrinsic(
             unreachable!("__dbg should not exist in the typed tree")
         }
         Intrinsic::RuntimeMemoryId => {
+            assert!(intrinsic.type_arguments.len() == 1);
+            assert!(intrinsic.arguments.len() == 0);
+
             let t = &intrinsic.type_arguments[0];
             let t = convert_resolved_type_id(
                 lookup.engines,
@@ -1717,6 +1720,9 @@ fn const_eval_intrinsic(
             Ok(Some(Constant::unique(lookup.context, c)))
         }
         Intrinsic::EncodingMemoryId => {
+            assert!(intrinsic.type_arguments.len() == 1);
+            assert!(intrinsic.arguments.len() == 0);
+
             let t = intrinsic.type_arguments[0].as_type_argument().unwrap();
 
             let r = get_encoding_representation(lookup.engines, t.type_id);
