@@ -42,8 +42,11 @@ use sway_types::{
     Named,
 };
 
-use std::{collections::HashMap, hash::{DefaultHasher, Hash as _}};
 use std::convert::TryFrom;
+use std::{
+    collections::HashMap,
+    hash::{DefaultHasher, Hash as _},
+};
 
 /// The result of compiling an expression can be in memory, or in an (SSA) register.
 #[derive(Debug, Clone, Copy)]
@@ -2434,7 +2437,7 @@ impl<'a> FnCompiler<'a> {
                     CompiledValue::InRegister(val),
                     context,
                 ))
-            },
+            }
             Intrinsic::EncodingMemoryId => {
                 let arg = type_arguments[0].as_type_argument().unwrap();
                 let id = get_encoding_id(self.engines, arg.type_id);
@@ -2443,7 +2446,7 @@ impl<'a> FnCompiler<'a> {
                     CompiledValue::InRegister(val),
                     context,
                 ))
-            },
+            }
         }
     }
 
@@ -5493,7 +5496,10 @@ pub fn get_memory_id(ctx: &Context, t: Type) -> u64 {
     state.finish()
 }
 
-pub fn get_encoding_representation(engines: &Engines, type_id: TypeId) -> Option<MemoryRepresentation> {
+pub fn get_encoding_representation(
+    engines: &Engines,
+    type_id: TypeId,
+) -> Option<MemoryRepresentation> {
     match &*engines.te().get(type_id) {
         TypeInfo::Boolean => Some(MemoryRepresentation::Blob { len_in_bytes: 1 }),
         TypeInfo::UnsignedInteger(IntegerBits::Eight) => {

@@ -125,7 +125,7 @@ impl ty::TyIntrinsicFunctionKind {
                     .unwrap_or_else(|err| ctx.engines.te().id_of_error_recovery(err));
                 let mut final_type_arguments = type_arguments.to_vec();
                 *final_type_arguments[0].type_id_mut() = arg;
-                
+
                 let intrinsic_function = ty::TyIntrinsicFunctionKind {
                     kind,
                     arguments: vec![],

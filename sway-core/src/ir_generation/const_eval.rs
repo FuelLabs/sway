@@ -1,11 +1,19 @@
 use std::{
-    hash::{DefaultHasher, Hash}, io::Read, ops::{BitAnd, BitOr, BitXor, Not, Rem}
+    hash::{DefaultHasher, Hash},
+    io::Read,
+    ops::{BitAnd, BitOr, BitXor, Not, Rem},
 };
 
 use crate::{
-    TypeInfo, UnifyCheck, engine_threading::*, ir_generation::function::{get_encoding_representation, get_memory_id}, language::{
-        CallPath, Literal, ty::{self, TyConstantDecl, TyIntrinsicFunctionKind}
-    }, metadata::MetadataManager, semantic_analysis::*
+    engine_threading::*,
+    ir_generation::function::{get_encoding_representation, get_memory_id},
+    language::{
+        ty::{self, TyConstantDecl, TyIntrinsicFunctionKind},
+        CallPath, Literal,
+    },
+    metadata::MetadataManager,
+    semantic_analysis::*,
+    TypeInfo, UnifyCheck,
 };
 
 use super::{
@@ -1707,7 +1715,7 @@ fn const_eval_intrinsic(
             };
 
             Ok(Some(Constant::unique(lookup.context, c)))
-        },
+        }
         Intrinsic::EncodingMemoryId => {
             let t = intrinsic.type_arguments[0].as_type_argument().unwrap();
 
@@ -1724,7 +1732,7 @@ fn const_eval_intrinsic(
             };
 
             Ok(Some(Constant::unique(lookup.context, c)))
-        },
+        }
     }
 }
 
