@@ -1042,7 +1042,7 @@ mod ir_builder {
         Struct(Vec<IrAstTy>),
         TypedPtr(Box<IrAstTy>),
         Ptr,
-        Never
+        Never,
     }
 
     impl IrAstTy {
