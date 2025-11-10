@@ -58,8 +58,8 @@ use sway_ir::{
     create_o1_pass_group, register_known_passes, Context, Kind, Module, PassGroup, PassManager,
     PrintPassesOpts, VerifyPassesOpts, ARG_DEMOTION_NAME, ARG_POINTEE_MUTABILITY_TAGGER_NAME,
     CONST_DEMOTION_NAME, DCE_NAME, FN_DEDUP_DEBUG_PROFILE_NAME, FN_INLINE_NAME, GLOBALS_DCE_NAME,
-    MEM2REG_NAME, MEMCPYOPT_NAME, MISC_DEMOTION_NAME, RET_DEMOTION_NAME, SIMPLIFY_CFG_NAME,
-    SROA_NAME,
+    MEM2REG_NAME, MEMCPYOPT_NAME, MEMCPYPROP_REVERSE_NAME, MISC_DEMOTION_NAME, RET_DEMOTION_NAME,
+    SIMPLIFY_CFG_NAME, SROA_NAME,
 };
 use sway_types::span::Source;
 use sway_types::{SourceEngine, SourceLocation, Span};
@@ -1322,6 +1322,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
 
         match build_config.optimization_level {
             OptLevel::Opt1 => {
+                pass_group.append_pass(MEMCPYPROP_REVERSE_NAME);
                 pass_group.append_pass(SROA_NAME);
                 pass_group.append_pass(MEM2REG_NAME);
                 pass_group.append_pass(DCE_NAME);
