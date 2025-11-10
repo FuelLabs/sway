@@ -33,7 +33,7 @@ pub struct VirtualImmediate06 {
 }
 
 impl VirtualImmediate06 {
-    pub(crate) fn new(raw: u64, err_msg_span: Span) -> Result<Self, CompileError> {
+    pub(crate) fn try_new(raw: u64, err_msg_span: Span) -> Result<Self, CompileError> {
         if raw > compiler_constants::SIX_BITS {
             Err(CompileError::Immediate06TooLarge {
                 val: raw,
@@ -46,15 +46,8 @@ impl VirtualImmediate06 {
         }
     }
 
-    /// This method should only be used if the size of the raw value has already been manually
-    /// checked.
-    /// This is valuable when you don't necessarily have exact [Span] info and want to handle the
-    /// error at a higher level, probably via an internal compiler error or similar.
-    /// A panic message is still required, just in case the programmer has made an error.
-    pub(crate) fn new_unchecked(raw: u64, msg: impl Into<String>) -> Self {
-        Self {
-            value: raw.try_into().unwrap_or_else(|_| panic!("{}", msg.into())),
-        }
+    pub(crate) fn new(raw: u64) -> Self {
+        Self::try_new(raw, Span::dummy()).unwrap_or_else(|_| panic!("{} cannot fit in 6 bits", raw))
     }
 
     pub fn wide_op(op: WideOperations, rhs_indirect: bool) -> VirtualImmediate06 {
@@ -98,7 +91,7 @@ pub struct VirtualImmediate12 {
 }
 
 impl VirtualImmediate12 {
-    pub(crate) fn new(raw: u64, err_msg_span: Span) -> Result<Self, CompileError> {
+    pub(crate) fn try_new(raw: u64, err_msg_span: Span) -> Result<Self, CompileError> {
         if raw > compiler_constants::TWELVE_BITS {
             Err(CompileError::Immediate12TooLarge {
                 val: raw,
@@ -110,15 +103,10 @@ impl VirtualImmediate12 {
             })
         }
     }
-    /// This method should only be used if the size of the raw value has already been manually
-    /// checked.
-    /// This is valuable when you don't necessarily have exact [Span] info and want to handle the
-    /// error at a higher level, probably via an internal compiler error or similar.
-    /// A panic message is still required, just in case the programmer has made an error.
-    pub(crate) fn new_unchecked(raw: u64, msg: impl Into<String>) -> Self {
-        Self {
-            value: raw.try_into().unwrap_or_else(|_| panic!("{}", msg.into())),
-        }
+
+    pub(crate) fn new(raw: u64) -> Self {
+        Self::try_new(raw, Span::dummy())
+            .unwrap_or_else(|_| panic!("{} cannot fit in 12 bits", raw))
     }
 
     pub fn value(&self) -> u16 {
@@ -138,7 +126,7 @@ pub struct VirtualImmediate18 {
     value: u32,
 }
 impl VirtualImmediate18 {
-    pub(crate) fn new(raw: u64, err_msg_span: Span) -> Result<Self, CompileError> {
+    pub(crate) fn try_new(raw: u64, err_msg_span: Span) -> Result<Self, CompileError> {
         if raw > compiler_constants::EIGHTEEN_BITS {
             Err(CompileError::Immediate18TooLarge {
                 val: raw,
@@ -150,15 +138,10 @@ impl VirtualImmediate18 {
             })
         }
     }
-    /// This method should only be used if the size of the raw value has already been manually
-    /// checked.
-    /// This is valuable when you don't necessarily have exact [Span] info and want to handle the
-    /// error at a higher level, probably via an internal compiler error or similar.
-    /// A panic message is still required, just in case the programmer has made an error.
-    pub(crate) fn new_unchecked(raw: u64, msg: impl Into<String>) -> Self {
-        Self {
-            value: raw.try_into().unwrap_or_else(|_| panic!("{}", msg.into())),
-        }
+
+    pub(crate) fn new(raw: u64) -> Self {
+        Self::try_new(raw, Span::dummy())
+            .unwrap_or_else(|_| panic!("{} cannot fit in 18 bits", raw))
     }
 
     pub fn value(&self) -> u32 {
@@ -182,7 +165,7 @@ pub struct VirtualImmediate24 {
     value: u32,
 }
 impl VirtualImmediate24 {
-    pub(crate) fn new(raw: u64, err_msg_span: Span) -> Result<Self, CompileError> {
+    pub(crate) fn try_new(raw: u64, err_msg_span: Span) -> Result<Self, CompileError> {
         if raw > compiler_constants::TWENTY_FOUR_BITS {
             Err(CompileError::Immediate24TooLarge {
                 val: raw,
@@ -194,15 +177,10 @@ impl VirtualImmediate24 {
             })
         }
     }
-    /// This method should only be used if the size of the raw value has already been manually
-    /// checked.
-    /// This is valuable when you don't necessarily have exact [Span] info and want to handle the
-    /// error at a higher level, probably via an internal compiler error or similar.
-    /// A panic message is still required, just in case the programmer has made an error.
-    pub(crate) fn new_unchecked(raw: u64, msg: impl Into<String>) -> Self {
-        Self {
-            value: raw.try_into().unwrap_or_else(|_| panic!("{}", &msg.into())),
-        }
+
+    pub(crate) fn new(raw: u64) -> Self {
+        Self::try_new(raw, Span::dummy())
+            .unwrap_or_else(|_| panic!("{} cannot fit in 24 bits", raw))
     }
 
     pub fn value(&self) -> u32 {

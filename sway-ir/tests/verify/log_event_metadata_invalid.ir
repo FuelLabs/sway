@@ -1,0 +1,11 @@
+// error: Verification failed: invalid log event metadata (log metadata must describe an event).
+script {
+    fn main() -> () {
+        entry():
+        v0 = const u64 0
+        v1 = const u64 1
+        log u64 v0, v1 log_data(version: 0, is_event: false, is_indexed: true, event_type_size: 8, num_elements: 1)
+        v2 = const unit ()
+        ret () v2
+    }
+}

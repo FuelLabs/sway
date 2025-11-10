@@ -125,6 +125,11 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
+name = "events"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
 name = "evm"
 source = "member"
 dependencies = [

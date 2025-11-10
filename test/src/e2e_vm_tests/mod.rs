@@ -16,7 +16,6 @@ use forc_pkg::BuildProfile;
 use forc_test::ecal::Syscall;
 use forc_util::tx_utils::decode_log_data;
 use fuel_vm::fuel_tx;
-use fuel_vm::fuel_types::canonical::Input;
 use fuel_vm::prelude::*;
 use git2::Repository;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
@@ -245,15 +244,18 @@ fn print_receipts(output: &mut String, receipts: &[Receipt]) {
                 if *ra == u64::MAX {
                     match rb {
                         0 => {
-                            let mut data = data.as_deref().unwrap();
-                            data.skip(8).unwrap();
-                            let s = std::str::from_utf8(data).unwrap();
+                            let data = data.as_ref().unwrap();
+                            let payload = data
+                                .as_ref()
+                                .get(8..)
+                                .expect("log data shorter than 8 byte header");
+                            let s = std::str::from_utf8(payload).unwrap();
 
                             text_log.push_str(s);
                         }
                         1 => {
-                            let data = data.as_deref().unwrap();
-                            let s = u64::from_be_bytes(data.try_into().unwrap());
+                            let data = data.as_ref().unwrap();
+                            let s = u64::from_be_bytes(data.as_ref().try_into().unwrap());
 
                             text_log.push_str(&format!("{s}"));
                         }
@@ -754,7 +756,7 @@ impl TestContext {
                 }) {
                     println!();
                     for cid in contract_ids {
-                        println!("Deployed contract: 0x{cid}");
+                        println!("Deployed contract: {}", format!("{:#x}", cid).bold(),);
                     }
 
                     return Err(anyhow::Error::msg("Receipts contain reverts or panics"));
@@ -788,7 +790,8 @@ impl TestContext {
                     },
                     Receipt::ReturnData { data, .. } => match expected_result.as_ref().unwrap() {
                         TestResult::ReturnData(v) => {
-                            if v != data.as_ref().unwrap() {
+                            let actual = data.as_ref().map(|bytes| bytes.as_ref()).unwrap();
+                            if v.as_slice() != actual {
                                 return Err(anyhow::Error::msg(format!(
                                     "return value does not match expected: {v:?}, {data:?}"
                                 )));

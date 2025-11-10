@@ -149,5 +149,14 @@ error: Attribute argument must have a value
   |
 ____
 
-  Aborting due to 12 errors.
+error: Number of attribute arguments is invalid
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_expect_values/src/event_indexed_attr.sw:3:9
+  |
+...
+3 | #[event(arg)]
+  |         ^^^ "event" attribute must not have any arguments, but has one.
+  |
+____
+
+  Aborting due to 13 errors.
 error: Failed to compile attributes_invalid_args_expect_values

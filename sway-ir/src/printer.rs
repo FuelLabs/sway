@@ -780,17 +780,39 @@ fn instruction_to_doc<'a>(
                     log_val,
                     log_ty,
                     log_id,
-                } => maybe_constant_to_doc(context, md_namer, namer, log_val)
-                    .append(maybe_constant_to_doc(context, md_namer, namer, log_id))
-                    .append(Doc::line(
-                        Doc::text(format!(
-                            "log {} {}, {}",
-                            log_ty.as_string(context),
-                            namer.name(context, log_val),
-                            namer.name(context, log_id),
-                        ))
-                        .append(md_namer.md_idx_to_doc(context, metadata)),
-                    )),
+                    log_data,
+                } => {
+                    let log_val_doc = maybe_constant_to_doc(context, md_namer, namer, log_val);
+                    let log_id_doc = maybe_constant_to_doc(context, md_namer, namer, log_id);
+
+                    let log_val_name = namer.name(context, log_val);
+                    let log_id_name = namer.name(context, log_id);
+
+                    let base_doc = Doc::text(format!(
+                        "log {} {}, {}",
+                        log_ty.as_string(context),
+                        log_val_name,
+                        log_id_name,
+                    ));
+                    let log_doc = if let Some(data) = log_data {
+                        base_doc
+                            .append(Doc::Space)
+                            .append(Doc::text(format!(
+                            "log_data(version: {}, is_event: {}, is_indexed: {}, event_type_size: {}, num_elements: {})",
+                            data.version(),
+                            data.is_event(),
+                            data.is_indexed(),
+                            data.event_type_size(),
+                            data.num_elements(),
+                        )))
+                    } else {
+                        base_doc
+                    };
+
+                    log_val_doc.append(log_id_doc).append(Doc::line(
+                        log_doc.append(md_namer.md_idx_to_doc(context, metadata)),
+                    ))
+                }
                 FuelVmInstruction::ReadRegister(reg) => Doc::line(
                     Doc::text(format!(
                         "{} = read_register {}",

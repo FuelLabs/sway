@@ -768,10 +768,7 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
             spilled.push(Op {
                 opcode: Either::Left(VirtualOp::CFEI(
                     VirtualRegister::Constant(ConstantRegister::StackPointer),
-                    VirtualImmediate24::new_unchecked(
-                        new_locals_byte_size.into(),
-                        "new_locals_byte_size must fit in 24 bits",
-                    ),
+                    VirtualImmediate24::new(new_locals_byte_size.into()),
                 )),
                 comment: op.comment.clone() + &format!(" and {spills_size} bytes for spills"),
                 owning_span: op.owning_span.clone(),
@@ -781,10 +778,7 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
             spilled.push(Op {
                 opcode: Either::Left(VirtualOp::CFSI(
                     VirtualRegister::Constant(ConstantRegister::StackPointer),
-                    VirtualImmediate24::new_unchecked(
-                        new_locals_byte_size.into(),
-                        "new_locals_byte_size must fit in 24 bits",
-                    ),
+                    VirtualImmediate24::new(new_locals_byte_size.into()),
                 )),
                 comment: op.comment.clone() + &format!(" and {spills_size} bytes for spills"),
                 owning_span: op.owning_span.clone(),
@@ -806,10 +800,7 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
                     let offset_mov_instr = Op {
                         opcode: Either::Left(VirtualOp::MOVI(
                             VirtualRegister::Constant(ConstantRegister::Scratch),
-                            VirtualImmediate18::new_unchecked(
-                                offset_bytes.into(),
-                                "offset_bytes must fit in 18 bits",
-                            ),
+                            VirtualImmediate18::new(offset_bytes.into()),
                         )),
                         comment: "[spill/refill]: set offset".to_string(),
                         owning_span: None,
@@ -827,7 +818,7 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
                     inst_list.push(offset_add_instr);
                     (
                         VirtualRegister::Constant(ConstantRegister::Scratch),
-                        VirtualImmediate12::new_unchecked(0, "zero must fit in 12 bits"),
+                        VirtualImmediate12::new(0),
                     )
                 } else {
                     assert!(offset_bytes <= compiler_constants::TWENTY_FOUR_BITS as u32);
@@ -843,10 +834,7 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
                     let offset_upper_mov_instr = Op {
                         opcode: Either::Left(VirtualOp::MOVI(
                             VirtualRegister::Constant(ConstantRegister::Scratch),
-                            VirtualImmediate18::new_unchecked(
-                                offset_upper_12.into(),
-                                "Upper part of offset must fit in 18 bits",
-                            ),
+                            VirtualImmediate18::new(offset_upper_12.into()),
                         )),
                         comment: "[spill/refill]: compute offset".to_string(),
                         owning_span: None,
@@ -856,7 +844,7 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
                         opcode: Either::Left(VirtualOp::SLLI(
                             VirtualRegister::Constant(ConstantRegister::Scratch),
                             VirtualRegister::Constant(ConstantRegister::Scratch),
-                            VirtualImmediate12::new_unchecked(12, "twelve must fit in 12 bits"),
+                            VirtualImmediate12::new(12),
                         )),
                         comment: "[spill/refill]: compute offset".to_string(),
                         owning_span: None,
@@ -875,10 +863,7 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
                     (
                         VirtualRegister::Constant(ConstantRegister::Scratch),
                         // This will be multiplied by 8 by the VM
-                        VirtualImmediate12::new_unchecked(
-                            (offset_lower_12 / 8).into(),
-                            "Lower part of offset must fit in 12 bits",
-                        ),
+                        VirtualImmediate12::new((offset_lower_12 / 8).into()),
                     )
                 }
             }
@@ -894,10 +879,7 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
                             spilled_use.clone(),
                             VirtualRegister::Constant(ConstantRegister::LocalsBase),
                             // This will be multiplied by 8 by the VM
-                            VirtualImmediate12::new_unchecked(
-                                (offset_bytes / 8).into(),
-                                "offset_bytes must fit in 12 bits",
-                            ),
+                            VirtualImmediate12::new((offset_bytes / 8).into()),
                         )),
                         comment: "[spill/refill]: refill from spill".to_string(),
                         owning_span: None,
@@ -933,10 +915,7 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
                             VirtualRegister::Constant(ConstantRegister::LocalsBase),
                             spilled_def.clone(),
                             // This will be multiplied by 8 by the VM
-                            VirtualImmediate12::new_unchecked(
-                                (offset_bytes / 8).into(),
-                                "offset_bytes must fit in 12 bits",
-                            ),
+                            VirtualImmediate12::new((offset_bytes / 8).into()),
                         )),
                         comment: "[spill/refill]: spill".to_string(),
                         owning_span: None,

@@ -1,0 +1,83 @@
+{
+  "concreteTypes": [
+    {
+      "concreteTypeId": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d",
+      "type": "()"
+    },
+    {
+      "concreteTypeId": "6a25aee1b2483fd8a5d939540761fbbdb28619cdd8d36e065a1fce2461981415",
+      "metadataTypeId": 1,
+      "type": "struct TestEventStruct"
+    },
+    {
+      "concreteTypeId": "f819575e01e4e1d3fa41e98ffd6768e39c8c33cf261757af36b2f74795c45513",
+      "metadataTypeId": 2,
+      "type": "struct TestIndexedEventStruct"
+    }
+  ],
+  "configurables": [],
+  "encodingVersion": "1",
+  "errorCodes": {},
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "main",
+      "output": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
+    }
+  ],
+  "loggedTypes": [
+    {
+      "concreteTypeId": "6a25aee1b2483fd8a5d939540761fbbdb28619cdd8d36e065a1fce2461981415",
+      "logId": "7648711826540609496"
+    },
+    {
+      "concreteTypeId": "f819575e01e4e1d3fa41e98ffd6768e39c8c33cf261757af36b2f74795c45513",
+      "logId": "17877416257094214099"
+    }
+  ],
+  "messagesTypes": [],
+  "metadataTypes": [
+    {
+      "metadataTypeId": 0,
+      "type": "bool"
+    },
+    {
+      "components": [
+        {
+          "name": "field_0",
+          "typeId": 0
+        },
+        {
+          "name": "field_1",
+          "typeId": 3
+        }
+      ],
+      "metadataTypeId": 1,
+      "type": "struct TestEventStruct"
+    },
+    {
+      "components": [
+        {
+          "name": "field_0",
+          "offset": 0,
+          "typeId": 0
+        },
+        {
+          "name": "field_1",
+          "offset": 1,
+          "typeId": 0
+        }
+      ],
+      "metadataTypeId": 2,
+      "type": "struct TestIndexedEventStruct"
+    },
+    {
+      "metadataTypeId": 3,
+      "type": "u64"
+    }
+  ],
+  "panickingCalls": {},
+  "programType": "script",
+  "specVersion": "1.2"
+}
