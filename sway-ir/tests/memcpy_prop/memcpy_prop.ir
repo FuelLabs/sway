@@ -1,0 +1,93 @@
+script {
+    pub entry fn __entry() -> __ptr slice, !3 {
+        local mut slice __aggr_memcpy_0
+        local { u64, u64 } __anon_0
+        local slice __ret_value
+
+        entry():
+        v0 = get_local __ptr slice, __ret_value
+        v1 = call main_0(), !6
+        v2 = get_local __ptr { u64, u64 }, __anon_0, !7
+        v3 = const u64 0
+        v4 = get_elem_ptr v2, __ptr u64, v3, !7
+        v5 = const u64 0, !8
+        store v5 to v4, !7
+        v6 = const u64 1
+        v7 = get_elem_ptr v2, __ptr u64, v6, !7
+        v8 = const u64 0, !9
+        store v8 to v7, !7
+        v9 = asm(s: v2) -> __ptr slice s {
+        }
+        v10 = get_local __ptr slice, __aggr_memcpy_0
+        mem_copy_val v10, v9
+        mem_copy_val v0, v10
+        ret __ptr slice v0
+    }
+
+    entry_orig fn main_0() -> (), !13 {
+        local { b256 } __ret_val
+
+        entry():
+        v0 = get_local __ptr { b256 }, __ret_val
+        v1 = call wrapper_1(v0)
+        v2 = const unit ()
+        ret () v2
+    }
+
+    fn wrapper_1(__ret_value: __ptr { b256 }) -> (), !17 {
+        local { u64, ( () | { b256 } ) } __matched_value_4
+        local { u64, ( () | { b256 } ) } __ret_val
+        local { u64, ( () | { b256 } ) } self_
+
+        entry(__ret_value: __ptr { b256 }):
+        v0 = get_local __ptr { u64, ( () | { b256 } ) }, __ret_val
+        v1 = call return_option_5(v0)
+        v2 = get_local __ptr { u64, ( () | { b256 } ) }, self_, !20
+        mem_copy_val v2, v0                                                       // This must be eliminated
+        v3 = get_local __ptr { u64, ( () | { b256 } ) }, self_, !23
+        v4 = get_local __ptr { u64, ( () | { b256 } ) }, __matched_value_4, !25
+        mem_copy_val v4, v3                                                       // This must be eliminated
+        v5 = get_local __ptr { u64, ( () | { b256 } ) }, self_
+        v6 = const u64 0
+        v7 = get_elem_ptr v5, __ptr u64, v6
+        v8 = load v7, !20
+        v9 = const u64 1, !22
+        v10 = cmp eq v8 v9, !28
+        cbr v10, unwrap_2_block0(), unwrap_2_block1(), !29
+
+        unwrap_2_block0():
+        v11 = get_local __ptr { u64, ( () | { b256 } ) }, __matched_value_4, !30
+        v12 = const u64 1
+        v13 = const u64 1
+        v14 = get_elem_ptr v11, __ptr { b256 }, v12, v13, !20
+        mem_copy_val __ret_value, v14
+        v15 = const unit ()
+        ret () v15
+
+        unwrap_2_block1():
+        v16 = const u64 0, !31
+        revert v16, !36
+    }
+
+    fn return_option_5(__ret_value: __ptr { u64, ( () | { b256 } ) }) -> (), !39 {
+        local { u64, ( () | { b256 } ) } __anon_0
+
+        entry(__ret_value: __ptr { u64, ( () | { b256 } ) }):
+        v0 = get_local __ptr { u64, ( () | { b256 } ) }, __anon_0, !40
+        v1 = const u64 0
+        v2 = get_elem_ptr v0, __ptr u64, v1, !40
+        v3 = const u64 0, !40
+        store v3 to v2, !40
+        mem_copy_val __ret_value, v0                                                       // This must be eliminated
+        v4 = const unit ()
+        ret () v4
+    }
+}
+
+// check: fn wrapper_1
+// check: entry
+// check-not: mem_copy_val
+// check: cbr
+// check: unwrap_2_block0
+// check: fn return_option_5
+// check-not: mem_copy_val
