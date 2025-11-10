@@ -74,7 +74,7 @@ impl BlockArgument {
         None
     }
 
-    /// Get that Value that this argument represents.
+    /// Get the [Value] that this argument represents.
     pub fn as_value(&self, context: &Context) -> Value {
         self.block.get_arg(context, self.idx).unwrap()
     }

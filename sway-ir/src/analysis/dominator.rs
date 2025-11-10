@@ -223,7 +223,7 @@ impl DomTree {
         self.0[&node].children.get(i).cloned()
     }
 
-    /// Does `dominator` `dominate` `dominatee`?
+    /// Does `dominator` dominate `dominatee`?
     pub fn dominates_instr(&self, context: &Context, dominator: Value, dominatee: Value) -> bool {
         let dominator_inst = dominator.get_instruction(context).unwrap();
         let dominatee_inst = dominatee.get_instruction(context).unwrap();

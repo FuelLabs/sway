@@ -826,9 +826,10 @@ enum CandidateKind {
     NonClobbered(Candidate),
 }
 
-/// Starting backwards from end_inst, till we reach start_inst or the entry block,
-/// is scrutiny_ptr (or an alias of it) stored to (i.e., clobbered)?/
-/// Also checks that there is no overlap (common symbols) b/w no_overlap_ptr and scrutiny_ptr.
+/// Starting backwards from `end_inst`, till we reach `start_inst` or the entry block,
+/// is `scrutiny_ptr` (or an alias of it) stored to (i.e., clobbered)?
+/// Also checks that there is no overlap (common symbols) between
+/// `no_overlap_ptr` and `scrutiny_ptr`.
 fn is_clobbered(
     context: &Context,
     start_inst: &Value,
@@ -837,7 +838,7 @@ fn is_clobbered(
     scrutiny_ptr: &Value,
 ) -> bool {
     let end_block = end_inst.get_instruction(context).unwrap().parent;
-    let function = end_block.get_function(context);
+    let entry_block = end_block.get_function(context).get_entry_block(context);
 
     let mut iter = end_block
         .instruction_iter(context)
@@ -888,7 +889,7 @@ fn is_clobbered(
             }
         }
 
-        if function.get_entry_block(context) == block {
+        if entry_block == block {
             // We've reached the entry block. If any of the scrutiny_symbols
             // is an argument, then we consider it clobbered.
             if scrutiny_symbols
@@ -1059,7 +1060,7 @@ pub const MEMCPYPROP_REVERSE_NAME: &str = "memcpyprop_reverse";
 pub fn create_memcpyprop_reverse_pass() -> Pass {
     Pass {
         name: MEMCPYPROP_REVERSE_NAME,
-        descr: "Memcpyprop Reverse: Copy propagation of memcpy instructions",
+        descr: "Copy propagation of MemCpy instructions",
         deps: vec![],
         runner: ScopedPass::FunctionPass(PassMutability::Transform(copy_prop_reverse)),
     }
