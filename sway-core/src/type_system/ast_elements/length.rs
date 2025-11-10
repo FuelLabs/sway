@@ -27,17 +27,15 @@ impl Length {
     pub fn extract_literal(&self, engines: &Engines) -> Option<u64> {
         match &self.0 {
             ConstGenericExpr::Literal { val, .. } => Some(*val as u64),
-            ConstGenericExpr::AmbiguousVariableExpression { decl, .. } => {
-                match decl.as_ref()? {
-                    ConstGenericExprTyDecl::ConstGenericDecl(decl) => {
-                        let decl = engines.de().get(&decl.decl_id);
-                        let expr = decl.value.as_ref()?;
-                        let expr = expr.expression.as_literal()?;
-                        expr.cast_value_to_u64()
-                    }
-                    ConstGenericExprTyDecl::ConstantDecl(_) => None,
+            ConstGenericExpr::AmbiguousVariableExpression { decl, .. } => match decl.as_ref()? {
+                ConstGenericExprTyDecl::ConstGenericDecl(decl) => {
+                    let decl = engines.de().get(&decl.decl_id);
+                    let expr = decl.value.as_ref()?;
+                    let expr = expr.expression.as_literal()?;
+                    expr.cast_value_to_u64()
                 }
-            }
+                ConstGenericExprTyDecl::ConstantDecl(_) => None,
+            },
         }
     }
 }

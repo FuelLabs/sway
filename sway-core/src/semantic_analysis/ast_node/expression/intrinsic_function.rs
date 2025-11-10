@@ -131,7 +131,7 @@ fn type_check_encoding_memory_id(
     span: Span,
     ctx: TypeCheckContext,
 ) -> Result<(TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
-    if arguments.len() != 0 {
+    if !arguments.is_empty() {
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
             expected: 0,
@@ -177,7 +177,7 @@ fn type_check_runtime_memory_id(
     span: Span,
     ctx: TypeCheckContext,
 ) -> Result<(TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
-    if arguments.len() != 0 {
+    if !arguments.is_empty() {
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
             expected: 0,
@@ -194,7 +194,8 @@ fn type_check_runtime_memory_id(
     }
 
     let targ = &type_arguments[0];
-    let arg = ctx.resolve_type(
+    let arg = ctx
+        .resolve_type(
             handler,
             targ.type_id(),
             &targ.span(),

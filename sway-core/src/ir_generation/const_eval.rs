@@ -1697,7 +1697,7 @@ fn const_eval_intrinsic(
         }
         Intrinsic::RuntimeMemoryId => {
             assert!(intrinsic.type_arguments.len() == 1);
-            assert!(intrinsic.arguments.len() == 0);
+            assert!(intrinsic.arguments.is_empty());
 
             let t = &intrinsic.type_arguments[0];
             let t = convert_resolved_type_id(
@@ -1721,7 +1721,7 @@ fn const_eval_intrinsic(
         }
         Intrinsic::EncodingMemoryId => {
             assert!(intrinsic.type_arguments.len() == 1);
-            assert!(intrinsic.arguments.len() == 0);
+            assert!(intrinsic.arguments.is_empty());
 
             let t = intrinsic.type_arguments[0].as_type_argument().unwrap();
 
