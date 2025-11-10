@@ -1175,13 +1175,15 @@ fn copy_prop_reverse(
     for (inst, dst_sym, src_sym) in candidates {
         match src_sym {
             Symbol::Arg(_) => {
-                // TODO: Handle args (and remove this filter)
-                // They just require handling more instructions where they can be used.
+                // Args are mostly copied to locals before actually being used.
+                // So we don't handle them for now. Handling them would require
+                // handling more instructions where they can be used, which probably
+                // isn't worth it.
                 continue;
             }
             Symbol::Local(local) => {
                 if local.get_initializer(context).is_some() {
-                    // TODO: If the source is a local and it has an initializer, we run into trouble
+                    // If the source is a local and it has an initializer, we run into trouble
                     // 1. If the destination (after transitive closure below) is not a local,
                     //    we cannot initialize it with the source's initializer.
                     // 2. If the destination is a local, but it already has an initializer (by itself
@@ -1242,7 +1244,7 @@ fn copy_prop_reverse(
             }
             _ => {
                 // Any access to a local begins with a GetLocal, we can ignore the rest
-                // until we support Symbol::Arg.
+                // (unless we support Symbol::Arg above).
             }
         }
     }
