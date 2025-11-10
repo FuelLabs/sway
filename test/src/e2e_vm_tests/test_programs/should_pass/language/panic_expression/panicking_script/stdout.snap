@@ -1,6 +1,5 @@
 ---
 source: test/src/snapshot/mod.rs
-assertion_line: 101
 ---
 > forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_script --test-threads 1 --logs --reverts
 exit status: 0
@@ -138,7 +137,7 @@ output:
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
    Compiling library panicking_lib (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_lib)
    Compiling script panicking_script (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_script)
-    Finished release [optimized + fuel] target(s) [3.24 KB] in ???
+    Finished release [optimized + fuel] target(s) [3.216 KB] in ???
      Running 11 tests, filtered 0 tests
 
 tested -- panicking_script
@@ -183,14 +182,14 @@ E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { d
                                └─ at panicking_lib, src/lib.sw:41:9
            decoded log values:
 E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { data: "the best practice" }]), log rb: 5503570629422409978
-      test test_generic_panic_with_unit ... ok (???, 687 gas)
+      test test_generic_panic_with_unit ... ok (???, 591 gas)
            revert code: 8180000000000000
             ├─ panic value:   ()
             └─ panicked:      in panicking_lib::generic_panic
                                └─ at panicking_lib, src/lib.sw:74:5
            decoded log values:
 (), log rb: 3330666440490685604
-      test test_generic_panic_with_unit_same_revert_code ... ok (???, 687 gas)
+      test test_generic_panic_with_unit_same_revert_code ... ok (???, 591 gas)
            revert code: 8180000000000000
             ├─ panic value:   ()
             └─ panicked:      in panicking_lib::generic_panic
