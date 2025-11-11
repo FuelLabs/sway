@@ -134,17 +134,17 @@ impl TypeId {
         engines: &Engines,
         resolved_type_id: TypeId,
     ) -> Result<(String, ConcreteTypeId), ErrorEmitted> {
-        let type_str = self.get_abi_type_str(
-            handler,
-            &AbiStrContext {
-                program_name: ctx.program.namespace.current_package_name().to_string(),
-                abi_with_callpaths: true,
-                abi_with_fully_specified_types: true,
-                abi_root_type_without_generic_type_parameters: false,
-            },
-            engines,
-            resolved_type_id,
-        )?;
+        let display_ctx = AbiStrContext {
+            program_name: ctx.program.namespace.current_package_name().to_string(),
+            abi_with_callpaths: true,
+            abi_with_fully_specified_types: true,
+            abi_root_type_without_generic_type_parameters: false,
+        };
+        let type_str = self.get_abi_type_str(handler, &display_ctx, engines, resolved_type_id)?;
+
+        let mut hash_ctx = display_ctx.clone();
+        hash_ctx.abi_with_fully_specified_types = true;
+        let hash_type_str = self.get_abi_type_str(handler, &hash_ctx, engines, resolved_type_id)?;
 
         let mut err: Option<ErrorEmitted> = None;
 
@@ -205,21 +205,21 @@ impl TypeId {
         }
 
         let mut hasher = Sha256::new();
-        hasher.update(type_str.clone());
+        hasher.update(hash_type_str.clone());
         let result = hasher.finalize();
         let type_id = format!("{result:x}");
 
         if let Some(old_type_str) = ctx
             .type_ids_to_full_type_str
-            .insert(type_id.clone(), type_str.clone())
+            .insert(type_id.clone(), hash_type_str.clone())
         {
-            if old_type_str != type_str {
+            if old_type_str != hash_type_str {
                 err = Some(
                     handler.emit_err(sway_error::error::CompileError::ABIHashCollision {
                         span: Span::dummy(),
                         hash: type_id.clone(),
                         first_type: old_type_str,
-                        second_type: type_str.clone(),
+                        second_type: hash_type_str.clone(),
                     }),
                 );
             }
@@ -440,7 +440,7 @@ fn standardize_json_abi_types(json_abi_program: &mut program_abi::ProgramABI) {
 
         // A vector containing unique `program_abi::TypeMetadataDeclaration`s.
         //
-        // Two `program_abi::TypeMetadataDeclaration` are deemed the same if the have the same
+        // Two `program_abi::TypeMetadataDeclaration` are deemed the same if they have the same
         // `type_field`, `components`, and `type_parameters` (even if their `type_id`s are
         // different).
         let mut deduped_types: Vec<program_abi::TypeMetadataDeclaration> = Vec::new();
@@ -602,6 +602,7 @@ fn generate_concrete_type_declaration(
     resolved_type_id: TypeId,
 ) -> Result<ConcreteTypeId, ErrorEmitted> {
     let mut metadata_types_to_add = Vec::<program_abi::TypeMetadataDeclaration>::new();
+
     let type_metadata_decl = generate_type_metadata_declaration(
         handler,
         ctx,
@@ -613,6 +614,8 @@ fn generate_concrete_type_declaration(
         &mut metadata_types_to_add,
     )?;
 
+    metadata_types.extend(metadata_types_to_add);
+
     let metadata_type_id = if type_metadata_decl.type_parameters.is_some()
         || type_metadata_decl.components.is_some()
     {
@@ -620,6 +623,7 @@ fn generate_concrete_type_declaration(
     } else {
         None
     };
+
     let type_arguments = handler.scope(|handler| {
         let type_arguments = if type_metadata_decl.type_parameters.is_some() {
             type_id.get_abi_type_arguments_as_concrete_type_ids(
@@ -636,10 +640,9 @@ fn generate_concrete_type_declaration(
         Ok(type_arguments)
     })?;
 
-    metadata_types.extend(metadata_types_to_add);
-
     let (type_field, concrete_type_id) =
         type_id.get_abi_type_field_and_concrete_id(handler, ctx, engines, resolved_type_id)?;
+
     let concrete_type_decl = TypeConcreteDeclaration {
         type_field,
         concrete_type_id: concrete_type_id.clone(),
@@ -665,6 +668,7 @@ fn generate_type_metadata_declaration(
     metadata_types_to_add: &mut Vec<program_abi::TypeMetadataDeclaration>,
 ) -> Result<program_abi::TypeMetadataDeclaration, ErrorEmitted> {
     let mut new_metadata_types_to_add = Vec::<program_abi::TypeMetadataDeclaration>::new();
+
     let components = type_id.get_abi_type_components(
         handler,
         ctx,
@@ -683,14 +687,13 @@ fn generate_type_metadata_declaration(
         resolved_type_id,
         &mut new_metadata_types_to_add,
     )?;
+
+    let type_field =
+        type_id.get_abi_type_str(handler, &ctx.to_str_context(), engines, resolved_type_id)?;
+
     let type_metadata_decl = program_abi::TypeMetadataDeclaration {
         metadata_type_id: MetadataTypeId(type_id.index()),
-        type_field: type_id.get_abi_type_str(
-            handler,
-            &ctx.to_str_context(),
-            engines,
-            resolved_type_id,
-        )?,
+        type_field,
         components,
         type_parameters,
         alias_of: None,
@@ -948,8 +951,9 @@ impl TypeId {
 
                 let mut new_metadata_types_to_add =
                     Vec::<program_abi::TypeMetadataDeclaration>::new();
+                let mut variant_metadata_ids = Vec::with_capacity(decl.variants.len());
                 for variant in decl.variants.iter() {
-                    generate_type_metadata_declaration(
+                    let decl = generate_type_metadata_declaration(
                         handler,
                         ctx,
                         engines,
@@ -959,6 +963,7 @@ impl TypeId {
                         variant.type_argument.type_id,
                         &mut new_metadata_types_to_add,
                     )?;
+                    variant_metadata_ids.push(decl.metadata_type_id.clone());
                 }
 
                 // Generate the JSON data for the enum. This is basically a list of
@@ -966,12 +971,11 @@ impl TypeId {
                 let components = decl
                     .variants
                     .iter()
-                    .map(|variant| {
+                    .zip(variant_metadata_ids.iter())
+                    .map(|(variant, metadata_id)| {
                         Ok(program_abi::TypeApplication {
                             name: variant.name.to_string(),
-                            type_id: program_abi::TypeId::Metadata(MetadataTypeId(
-                                variant.type_argument.initial_type_id.index(),
-                            )),
+                            type_id: program_abi::TypeId::Metadata(metadata_id.clone()),
                             error_message: variant.attributes.error_message().cloned(),
                             type_arguments: variant
                                 .type_argument
@@ -1002,8 +1006,9 @@ impl TypeId {
 
                 let mut new_metadata_types_to_add =
                     Vec::<program_abi::TypeMetadataDeclaration>::new();
+                let mut field_metadata_ids = Vec::with_capacity(decl.fields.len());
                 for field in decl.fields.iter() {
-                    generate_type_metadata_declaration(
+                    let decl = generate_type_metadata_declaration(
                         handler,
                         ctx,
                         engines,
@@ -1013,6 +1018,7 @@ impl TypeId {
                         field.type_argument.type_id,
                         &mut new_metadata_types_to_add,
                     )?;
+                    field_metadata_ids.push(decl.metadata_type_id.clone());
                 }
 
                 // Generate the JSON data for the struct. This is basically a list of
@@ -1021,7 +1027,8 @@ impl TypeId {
                 let components = decl
                     .fields
                     .iter()
-                    .map(|field| {
+                    .zip(field_metadata_ids.iter())
+                    .map(|(field, metadata_id)| {
                         let hint = engines
                             .te()
                             .get(field.type_argument.type_id)
@@ -1047,9 +1054,7 @@ impl TypeId {
 
                         Ok(program_abi::TypeApplication {
                             name: field.name.to_string(),
-                            type_id: program_abi::TypeId::Metadata(MetadataTypeId(
-                                field.type_argument.initial_type_id.index(),
-                            )),
+                            type_id: program_abi::TypeId::Metadata(metadata_id.clone()),
                             error_message: None,
                             type_arguments: field
                                 .type_argument
@@ -1151,8 +1156,9 @@ impl TypeId {
                 if let TypeInfo::Tuple(fields) = &*type_engine.get(resolved_type_id) {
                     let mut new_metadata_types_to_add =
                         Vec::<program_abi::TypeMetadataDeclaration>::new();
+                    let mut field_metadata_ids = Vec::with_capacity(fields.len());
                     for x in fields.iter() {
-                        generate_type_metadata_declaration(
+                        let decl = generate_type_metadata_declaration(
                             handler,
                             ctx,
                             engines,
@@ -1162,18 +1168,18 @@ impl TypeId {
                             x.type_id,
                             &mut new_metadata_types_to_add,
                         )?;
+                        field_metadata_ids.push(decl.metadata_type_id.clone());
                     }
 
                     // Generate the JSON data for the tuple. This is basically a list of
                     // `program_abi::TypeApplication`s
                     let components = fields
                         .iter()
-                        .map(|x| {
+                        .zip(field_metadata_ids.iter())
+                        .map(|(x, metadata_id)| {
                             Ok(program_abi::TypeApplication {
                                 name: "__tuple_element".to_string(),
-                                type_id: program_abi::TypeId::Metadata(MetadataTypeId(
-                                    x.initial_type_id.index(),
-                                )),
+                                type_id: program_abi::TypeId::Metadata(metadata_id.clone()),
                                 error_message: None,
                                 type_arguments: x.initial_type_id.get_abi_type_arguments(
                                     handler,
@@ -1621,23 +1627,27 @@ impl GenericTypeParameter {
         metadata_types_to_add: &mut Vec<program_abi::TypeMetadataDeclaration>,
     ) -> Result<MetadataTypeId, ErrorEmitted> {
         let type_id = MetadataTypeId(self.initial_type_id.index());
+
+        let type_field = self.initial_type_id.get_abi_type_str(
+            handler,
+            &ctx.to_str_context(),
+            engines,
+            self.type_id,
+        )?;
+        let components = self.initial_type_id.get_abi_type_components(
+            handler,
+            ctx,
+            engines,
+            metadata_types,
+            concrete_types,
+            self.type_id,
+            metadata_types_to_add,
+        )?;
+
         let type_parameter = program_abi::TypeMetadataDeclaration {
             metadata_type_id: type_id.clone(),
-            type_field: self.initial_type_id.get_abi_type_str(
-                handler,
-                &ctx.to_str_context(),
-                engines,
-                self.type_id,
-            )?,
-            components: self.initial_type_id.get_abi_type_components(
-                handler,
-                ctx,
-                engines,
-                metadata_types,
-                concrete_types,
-                self.type_id,
-                metadata_types_to_add,
-            )?,
+            type_field,
+            components,
             type_parameters: None,
             alias_of: None,
         };
