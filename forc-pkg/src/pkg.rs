@@ -1813,7 +1813,7 @@ pub fn compile(
                         unique_names: HashMap::new(),
                         metadata_declaration_cache: HashMap::new(),
                         concrete_declaration_cache: HashMap::new(),
-                        type_cache_enabled: false,
+                        type_cache_enabled: experimental.abi_type_aliases,
                         experimental,
                     },
                     engines,

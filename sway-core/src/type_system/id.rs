@@ -295,7 +295,13 @@ impl TypeId {
                     ..
                 },
                 TypeInfo::Alias { name, .. },
-            ) => call_path.call_path.suffix != name.clone(),
+            ) => {
+                if abi_type_aliases_enabled {
+                    false
+                } else {
+                    call_path.call_path.suffix != name.clone()
+                }
+            }
             (TypeInfo::Custom { .. }, _) => true,
             _ => false,
         }
