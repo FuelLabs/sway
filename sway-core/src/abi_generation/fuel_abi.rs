@@ -711,6 +711,7 @@ fn generate_type_metadata_declaration(
         )?,
         components,
         type_parameters,
+        alias_of: None,
     };
 
     metadata_types_to_add.push(type_metadata_decl.clone());
@@ -1656,6 +1657,7 @@ impl GenericTypeParameter {
                 metadata_types_to_add,
             )?,
             type_parameters: None,
+            alias_of: None,
         };
         metadata_types_to_add.push(type_parameter);
         Ok(type_id)
