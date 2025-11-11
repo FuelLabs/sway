@@ -22,12 +22,13 @@ fn main() -> u64 {
 // check: $ID($(int_val=$VAL):
 // check: $(a__var=$VAL) = get_local __ptr u64, a_
 // check: store $int_val to $a__var
-
+// check: $(a_ptr=$VAL) = get_local __ptr u64, a_
+// check: $(a_loaded=$VAL) = load $a_ptr
 // check: $(struct_undef=$VAL) = get_local __ptr { u64 }, $ID
 
 // check: $(idx_val=$VAL) = const u64 0
 // check: $(a_ptr=$VAL) = get_elem_ptr $struct_undef, __ptr u64, $idx_val
-// check: store v9 to $a_ptr
+// check: store $a_loaded to $a_ptr
 // check: $(struct_set=$VAL) = load $struct_undef
 
 // check: $(a___var=$VAL) = get_local __ptr { u64 }, a__

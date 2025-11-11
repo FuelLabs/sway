@@ -6,6 +6,7 @@
 
 use std::collections::{BTreeMap, HashMap};
 
+use slotmap::Key;
 use sway_types::SourceEngine;
 
 use crate::{
@@ -1401,7 +1402,7 @@ impl Namer {
 
     fn default_name(&mut self, value: &Value) -> String {
         self.names.get(value).cloned().unwrap_or_else(|| {
-            let new_name = format!("v{}", self.next_value_idx);
+            let new_name = format!("v{:?}", value.0.data());
             self.next_value_idx += 1;
             self.names.insert(*value, new_name.clone());
             new_name
