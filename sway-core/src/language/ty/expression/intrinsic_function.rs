@@ -96,6 +96,7 @@ impl CollectTypesMetadata for TyIntrinsicFunctionKind {
                     ctx.engines,
                     logged_type_id,
                     ctx.program_name.clone(),
+                    ctx.experimental.abi_type_aliases,
                 )?;
                 types_metadata.push(logged_type);
             }

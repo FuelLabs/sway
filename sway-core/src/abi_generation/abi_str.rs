@@ -11,6 +11,7 @@ pub struct AbiStrContext {
     pub abi_with_callpaths: bool,
     pub abi_with_fully_specified_types: bool,
     pub abi_root_type_without_generic_type_parameters: bool,
+    pub abi_type_aliases: bool,
 }
 
 impl TypeId {
@@ -26,7 +27,7 @@ impl TypeId {
         let self_abi_str = type_engine
             .get(*self)
             .abi_str(handler, ctx, engines, true)?;
-        if self.is_generic_parameter(engines, resolved_type_id) {
+        if self.is_generic_parameter(engines, resolved_type_id, ctx.abi_type_aliases) {
             Ok(format!("generic {self_abi_str}"))
         } else {
             match (
