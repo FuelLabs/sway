@@ -3,7 +3,10 @@ use fuel_abi_types::abi::program::{
     PanickingCall, TypeConcreteDeclaration,
 };
 use sha2::{Digest, Sha256};
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::{
+    collections::{hash_map::DefaultHasher, BTreeMap, HashMap, HashSet},
+    hash::{Hash, Hasher},
+};
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -13,6 +16,7 @@ use sway_types::{BaseIdent, Named, Span, Spanned};
 
 use crate::{
     ast_elements::type_parameter::GenericTypeParameter,
+    engine_threading::HashWithEngines,
     language::ty::{TyFunctionDecl, TyProgram, TyProgramKind},
     transform::Attributes,
     AbiEncodeSizeHint, Engines, PanicOccurrences, PanickingCallOccurrences, TypeId, TypeInfo,
@@ -41,6 +45,9 @@ pub struct AbiContext<'a> {
     pub abi_with_callpaths: bool,
     pub type_ids_to_full_type_str: HashMap<String, String>,
     pub unique_names: HashMap<String, AbiNameDiagnosticSpan>,
+    pub metadata_declaration_cache: HashMap<TypeCacheKey, program_abi::TypeMetadataDeclaration>,
+    pub concrete_declaration_cache: HashMap<TypeCacheKey, program_abi::TypeConcreteDeclaration>,
+    pub type_cache_enabled: bool,
 }
 
 impl AbiContext<'_> {
@@ -51,6 +58,23 @@ impl AbiContext<'_> {
             abi_with_fully_specified_types: false,
             abi_root_type_without_generic_type_parameters: true,
         }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct TypeCacheKey(u64);
+
+impl TypeCacheKey {
+    fn from_type_id(engines: &Engines, type_id: TypeId) -> Self {
+        let type_engine = engines.te();
+        let type_info = &*type_engine.get(type_id);
+        Self::from_type_info(type_info, engines)
+    }
+
+    fn from_type_info(type_info: &TypeInfo, engines: &Engines) -> Self {
+        let mut hasher = DefaultHasher::new();
+        type_info.hash(&mut hasher, engines);
+        TypeCacheKey(hasher.finish())
     }
 }
 
@@ -601,6 +625,13 @@ fn generate_concrete_type_declaration(
     type_id: TypeId,
     resolved_type_id: TypeId,
 ) -> Result<ConcreteTypeId, ErrorEmitted> {
+    let cache_key = TypeCacheKey::from_type_id(engines, resolved_type_id);
+    if ctx.type_cache_enabled {
+        if let Some(cached_decl) = ctx.concrete_declaration_cache.get(&cache_key) {
+            return Ok(cached_decl.concrete_type_id.clone());
+        }
+    }
+
     let mut metadata_types_to_add = Vec::<program_abi::TypeMetadataDeclaration>::new();
 
     let type_metadata_decl = generate_type_metadata_declaration(
@@ -651,6 +682,8 @@ fn generate_concrete_type_declaration(
         alias_of: None,
     };
 
+    ctx.concrete_declaration_cache
+        .insert(cache_key, concrete_type_decl.clone());
     concrete_types.push(concrete_type_decl);
 
     Ok(concrete_type_id)
@@ -667,6 +700,13 @@ fn generate_type_metadata_declaration(
     resolved_type_id: TypeId,
     metadata_types_to_add: &mut Vec<program_abi::TypeMetadataDeclaration>,
 ) -> Result<program_abi::TypeMetadataDeclaration, ErrorEmitted> {
+    let cache_key = TypeCacheKey::from_type_id(engines, resolved_type_id);
+    if ctx.type_cache_enabled {
+        if let Some(cached_decl) = ctx.metadata_declaration_cache.get(&cache_key) {
+            return Ok(cached_decl.clone());
+        }
+    }
+
     let mut new_metadata_types_to_add = Vec::<program_abi::TypeMetadataDeclaration>::new();
 
     let components = type_id.get_abi_type_components(
@@ -699,6 +739,8 @@ fn generate_type_metadata_declaration(
         alias_of: None,
     };
 
+    ctx.metadata_declaration_cache
+        .insert(cache_key, type_metadata_decl.clone());
     metadata_types_to_add.push(type_metadata_decl.clone());
     metadata_types_to_add.extend(new_metadata_types_to_add);
 
@@ -1626,6 +1668,13 @@ impl GenericTypeParameter {
         concrete_types: &mut Vec<program_abi::TypeConcreteDeclaration>,
         metadata_types_to_add: &mut Vec<program_abi::TypeMetadataDeclaration>,
     ) -> Result<MetadataTypeId, ErrorEmitted> {
+        let cache_key = TypeCacheKey::from_type_id(engines, self.initial_type_id);
+        if ctx.type_cache_enabled {
+            if let Some(cached) = ctx.metadata_declaration_cache.get(&cache_key) {
+                return Ok(cached.metadata_type_id.clone());
+            }
+        }
+
         let type_id = MetadataTypeId(self.initial_type_id.index());
 
         let type_field = self.initial_type_id.get_abi_type_str(
@@ -1651,6 +1700,9 @@ impl GenericTypeParameter {
             type_parameters: None,
             alias_of: None,
         };
+
+        ctx.metadata_declaration_cache
+            .insert(cache_key, type_parameter.clone());
         metadata_types_to_add.push(type_parameter);
         Ok(type_id)
     }
