@@ -57,7 +57,7 @@ impl AbiContext<'_> {
         AbiStrContext {
             program_name: self.program.namespace.current_package_name().to_string(),
             abi_with_callpaths: self.abi_with_callpaths,
-            abi_with_fully_specified_types: false,
+            abi_with_fully_specified_types: self.experimental.abi_type_aliases,
             abi_root_type_without_generic_type_parameters: true,
             abi_type_aliases: self.experimental.abi_type_aliases,
         }
@@ -68,13 +68,31 @@ impl AbiContext<'_> {
 pub struct TypeCacheKey(u64);
 
 impl TypeCacheKey {
-    fn from_type_id(engines: &Engines, type_id: TypeId) -> Self {
+    fn from_type_id(engines: &Engines, abi_type_aliases_enabled: bool, type_id: TypeId) -> Self {
         let type_engine = engines.te();
         let type_info = &*type_engine.get(type_id);
-        Self::from_type_info(type_info, engines)
+        Self::from_type_info(type_info, engines, abi_type_aliases_enabled)
     }
 
-    fn from_type_info(type_info: &TypeInfo, engines: &Engines) -> Self {
+    fn from_type_info(
+        type_info: &TypeInfo,
+        engines: &Engines,
+        abi_type_aliases_enabled: bool,
+    ) -> Self {
+        if abi_type_aliases_enabled {
+            if let TypeInfo::Alias { name, ty } = type_info {
+                let mut hasher = DefaultHasher::new();
+                name.hash(&mut hasher);
+
+                let target_type_id = engines.te().get_unaliased_type_id(ty.type_id);
+                let target_key =
+                    TypeCacheKey::from_type_id(engines, abi_type_aliases_enabled, target_type_id);
+                target_key.0.hash(&mut hasher);
+
+                return TypeCacheKey(hasher.finish());
+            }
+        }
+
         let mut hasher = DefaultHasher::new();
         type_info.hash(&mut hasher, engines);
         TypeCacheKey(hasher.finish())
@@ -481,6 +499,7 @@ fn standardize_json_abi_types(json_abi_program: &mut program_abi::ProgramABI) {
                 d.type_field == decl.type_field
                     && decl.components.is_none()
                     && decl.type_parameters.is_none()
+                    && decl.alias_of.is_none()
             }) {
                 old_to_new_id.insert(
                     decl.metadata_type_id.clone(),
@@ -492,6 +511,7 @@ fn standardize_json_abi_types(json_abi_program: &mut program_abi::ProgramABI) {
                     d.type_field == decl.type_field
                         && d.components == decl.components
                         && d.type_parameters == decl.type_parameters
+                        && d.alias_of == decl.alias_of
                 }) {
                     old_to_new_id.insert(
                         decl.metadata_type_id.clone(),
@@ -603,6 +623,14 @@ fn update_json_type_metadata_declaration(
             update_json_type_application(component, old_to_new_id);
         }
     }
+
+    if let Some(alias_of) = &mut type_declaration.alias_of {
+        if let Some(fuel_abi_types::abi::program::TypeId::Metadata(new_id)) =
+            old_to_new_id.get(alias_of)
+        {
+            *alias_of = new_id.clone();
+        }
+    }
 }
 
 /// Updates the metadata type IDs used in a `program_abi::TypeConcreteDeclaration` given a HashMap from
@@ -629,7 +657,8 @@ fn generate_concrete_type_declaration(
     type_id: TypeId,
     resolved_type_id: TypeId,
 ) -> Result<ConcreteTypeId, ErrorEmitted> {
-    let cache_key = TypeCacheKey::from_type_id(engines, resolved_type_id);
+    let cache_key =
+        TypeCacheKey::from_type_id(engines, ctx.experimental.abi_type_aliases, resolved_type_id);
     if ctx.type_cache_enabled {
         if let Some(cached_decl) = ctx.concrete_declaration_cache.get(&cache_key) {
             return Ok(cached_decl.concrete_type_id.clone());
@@ -653,6 +682,7 @@ fn generate_concrete_type_declaration(
 
     let metadata_type_id = if type_metadata_decl.type_parameters.is_some()
         || type_metadata_decl.components.is_some()
+        || type_metadata_decl.alias_of.is_some()
     {
         Some(type_metadata_decl.metadata_type_id.clone())
     } else {
@@ -704,12 +734,38 @@ fn generate_type_metadata_declaration(
     resolved_type_id: TypeId,
     metadata_types_to_add: &mut Vec<program_abi::TypeMetadataDeclaration>,
 ) -> Result<program_abi::TypeMetadataDeclaration, ErrorEmitted> {
-    let cache_key = TypeCacheKey::from_type_id(engines, resolved_type_id);
+    let cache_key =
+        TypeCacheKey::from_type_id(engines, ctx.experimental.abi_type_aliases, resolved_type_id);
     if ctx.type_cache_enabled {
         if let Some(cached_decl) = ctx.metadata_declaration_cache.get(&cache_key) {
             return Ok(cached_decl.clone());
         }
     }
+
+    let mut alias_metadata_types_to_add = Vec::<program_abi::TypeMetadataDeclaration>::new();
+
+    let type_engine = engines.te();
+    let alias_of_metadata_decl = if ctx.experimental.abi_type_aliases {
+        match &*type_engine.get(resolved_type_id) {
+            TypeInfo::Alias { ty, .. } => {
+                let dealiased_ty = fully_dealias_type_id(engines, ty.type_id);
+                let dealiased_metadata_decl = generate_type_metadata_declaration(
+                    handler,
+                    ctx,
+                    engines,
+                    metadata_types,
+                    concrete_types,
+                    dealiased_ty,
+                    dealiased_ty,
+                    &mut alias_metadata_types_to_add,
+                )?;
+                Some(dealiased_metadata_decl)
+            }
+            _ => None,
+        }
+    } else {
+        None
+    };
 
     let mut new_metadata_types_to_add = Vec::<program_abi::TypeMetadataDeclaration>::new();
 
@@ -735,20 +791,85 @@ fn generate_type_metadata_declaration(
     let type_field =
         type_id.get_abi_type_str(handler, &ctx.to_str_context(), engines, resolved_type_id)?;
 
+    let alias_of = alias_of_metadata_decl
+        .as_ref()
+        .map(|decl| decl.metadata_type_id.clone());
+
     let type_metadata_decl = program_abi::TypeMetadataDeclaration {
         metadata_type_id: MetadataTypeId(type_id.index()),
         type_field,
         components,
         type_parameters,
-        alias_of: None,
+        alias_of,
     };
 
     ctx.metadata_declaration_cache
         .insert(cache_key, type_metadata_decl.clone());
     metadata_types_to_add.push(type_metadata_decl.clone());
     metadata_types_to_add.extend(new_metadata_types_to_add);
+    metadata_types_to_add.extend(alias_metadata_types_to_add);
 
     Ok(type_metadata_decl)
+}
+
+fn fully_dealias_type_id(engines: &Engines, type_id: TypeId) -> TypeId {
+    fn inner(engines: &Engines, type_id: TypeId, visited: &mut HashSet<TypeId>) -> TypeId {
+        if !visited.insert(type_id) {
+            return type_id;
+        }
+
+        let type_engine = engines.te();
+        match &*type_engine.get(type_id) {
+            TypeInfo::Alias { ty, .. } => inner(engines, ty.type_id, visited),
+            TypeInfo::Tuple(fields) => type_engine.insert_tuple(
+                engines,
+                fields
+                    .iter()
+                    .map(|field| {
+                        let mut field_clone = field.clone();
+                        let dealiased = inner(engines, field_clone.type_id, visited);
+                        field_clone.type_id = dealiased;
+                        field_clone.initial_type_id = dealiased;
+                        field_clone
+                    })
+                    .collect(),
+            ),
+            TypeInfo::Array(elem_ty, length) => {
+                let mut elem_clone = elem_ty.clone();
+                let dealiased = inner(engines, elem_clone.type_id, visited);
+                elem_clone.type_id = dealiased;
+                elem_clone.initial_type_id = dealiased;
+                type_engine.insert_array(engines, elem_clone, length.clone())
+            }
+            TypeInfo::Slice(elem_ty) => {
+                let mut elem_clone = elem_ty.clone();
+                let dealiased = inner(engines, elem_clone.type_id, visited);
+                elem_clone.type_id = dealiased;
+                elem_clone.initial_type_id = dealiased;
+                type_engine.insert_slice(engines, elem_clone)
+            }
+            TypeInfo::Ptr(elem_ty) => {
+                let mut elem_clone = elem_ty.clone();
+                let dealiased = inner(engines, elem_clone.type_id, visited);
+                elem_clone.type_id = dealiased;
+                elem_clone.initial_type_id = dealiased;
+                type_engine.insert_ptr(engines, elem_clone)
+            }
+            TypeInfo::Ref {
+                to_mutable_value,
+                referenced_type,
+            } => {
+                let mut referenced_clone = referenced_type.clone();
+                let dealiased = inner(engines, referenced_clone.type_id, visited);
+                referenced_clone.type_id = dealiased;
+                referenced_clone.initial_type_id = dealiased;
+                type_engine.insert_ref(engines, *to_mutable_value, referenced_clone)
+            }
+            _ => type_id,
+        }
+    }
+
+    inner(engines, type_id, &mut HashSet::new())
 }
 
 fn generate_logged_types(
@@ -1680,7 +1801,11 @@ impl GenericTypeParameter {
         concrete_types: &mut Vec<program_abi::TypeConcreteDeclaration>,
         metadata_types_to_add: &mut Vec<program_abi::TypeMetadataDeclaration>,
     ) -> Result<MetadataTypeId, ErrorEmitted> {
-        let cache_key = TypeCacheKey::from_type_id(engines, self.initial_type_id);
+        let cache_key = TypeCacheKey::from_type_id(
+            engines,
+            ctx.experimental.abi_type_aliases,
+            self.initial_type_id,
+        );
         if ctx.type_cache_enabled {
             if let Some(cached) = ctx.metadata_declaration_cache.get(&cache_key) {
                 return Ok(cached.metadata_type_id.clone());

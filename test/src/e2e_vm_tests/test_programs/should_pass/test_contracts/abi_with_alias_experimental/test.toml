@@ -1,0 +1,4 @@
+category = "compile"
+validate_abi = true
+expected_warnings = 1
+experimental = { abi_type_aliases = true }
