@@ -23,6 +23,7 @@ use crate::{
 };
 
 use super::abi_str::AbiStrContext;
+use sway_features::ExperimentalFeatures;
 
 #[derive(Clone, Debug)]
 pub enum AbiNameDiagnosticSpan {
@@ -48,6 +49,7 @@ pub struct AbiContext<'a> {
     pub metadata_declaration_cache: HashMap<TypeCacheKey, program_abi::TypeMetadataDeclaration>,
     pub concrete_declaration_cache: HashMap<TypeCacheKey, program_abi::TypeConcreteDeclaration>,
     pub type_cache_enabled: bool,
+    pub experimental: ExperimentalFeatures,
 }
 
 impl AbiContext<'_> {
@@ -57,6 +59,7 @@ impl AbiContext<'_> {
             abi_with_callpaths: self.abi_with_callpaths,
             abi_with_fully_specified_types: false,
             abi_root_type_without_generic_type_parameters: true,
+            abi_type_aliases: self.experimental.abi_type_aliases,
         }
     }
 }
@@ -163,6 +166,7 @@ impl TypeId {
             abi_with_callpaths: true,
             abi_with_fully_specified_types: true,
             abi_root_type_without_generic_type_parameters: false,
+            abi_type_aliases: ctx.experimental.abi_type_aliases,
         };
         let type_str = self.get_abi_type_str(handler, &display_ctx, engines, resolved_type_id)?;
 
@@ -908,7 +912,11 @@ impl TypeId {
         resolved_type_id: TypeId,
         metadata_types_to_add: &mut Vec<program_abi::TypeMetadataDeclaration>,
     ) -> Result<Option<Vec<MetadataTypeId>>, ErrorEmitted> {
-        match self.is_generic_parameter(engines, resolved_type_id) {
+        match self.is_generic_parameter(
+            engines,
+            resolved_type_id,
+            ctx.experimental.abi_type_aliases,
+        ) {
             true => Ok(None),
             false => resolved_type_id
                 .get_type_parameters(engines)
@@ -1247,7 +1255,11 @@ impl TypeId {
                 }
             }
             TypeInfo::Custom { type_arguments, .. } => {
-                if !self.is_generic_parameter(engines, resolved_type_id) {
+                if !self.is_generic_parameter(
+                    engines,
+                    resolved_type_id,
+                    ctx.experimental.abi_type_aliases,
+                ) {
                     for (v, p) in type_arguments.clone().unwrap_or_default().iter().zip(
                         resolved_type_id
                             .get_type_parameters(engines)

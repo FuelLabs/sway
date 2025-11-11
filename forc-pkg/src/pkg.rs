@@ -1814,6 +1814,7 @@ pub fn compile(
                         metadata_declaration_cache: HashMap::new(),
                         concrete_declaration_cache: HashMap::new(),
                         type_cache_enabled: false,
+                        experimental,
                     },
                     engines,
                     if experimental.new_encoding {

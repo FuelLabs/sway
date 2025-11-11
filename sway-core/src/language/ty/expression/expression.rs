@@ -384,6 +384,7 @@ impl CollectTypesMetadata for TyExpression {
                     ctx.engines,
                     logged_type_id,
                     ctx.program_name.clone(),
+                    ctx.experimental.abi_type_aliases,
                 )?);
 
                 // We still need to dive into the expression because it can have additional types to collect.
