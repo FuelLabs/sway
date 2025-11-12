@@ -8,7 +8,7 @@ The `ContractId` type is a struct containing a value of a `b256` type.
 {{#include ../../../code/operations/namespace/src/lib.sw:contract_id}}
 ```
 
-Casting between an `ContractId` and `b256` can be done in the following way:
+Casting between a `ContractId` and `b256` can be done in the following way:
 
 ```sway
 {{#include ../../../code/operations/namespace/src/lib.sw:contract_id_cast}}
