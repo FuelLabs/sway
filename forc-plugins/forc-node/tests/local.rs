@@ -500,7 +500,7 @@ async fn update_transitive_contract_state() {
 
 #[tokio::test]
 async fn start_local_node_check_health() {
-    let port = portpicker::pick_unused_port().expect("pick port");
+    let port = portpicker::pick_unused_port().expect("No ports free");
     let local_cmd = LocalCmd {
         chain_config: None,
         port: Some(port),
