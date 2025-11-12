@@ -42,6 +42,30 @@ impl<const N: u64> A for CrazyEnum<N> {
     }
 }
 
+abi NoConstGenericsOnArgs {
+    fn f(a: CrazyStruct<1>);
+}
+
+abi NoConstGenericsOnReturn {
+    fn f() -> CrazyEnum<1>;
+}
+
+struct StructWithConstGenericInside {
+    a: CrazyStruct<1>,
+}
+
+abi NoConstGenericsIndirectStruct {
+    fn f() -> StructWithConstGenericInside;
+}
+
+enum EnumWithConstGenericInside {
+    A: CrazyStruct<1>,
+}
+
+abi NoConstGenericsIndirectEnum {
+    fn f() -> EnumWithConstGenericInside;
+}
+
 fn main() {
     let _: CrazyStruct<UNKNOWN> = CrazyStruct { };
     let _: CrazyEnum<UNKNOWN> = CrazyEnum::A;
