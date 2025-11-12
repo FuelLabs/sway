@@ -366,7 +366,7 @@ mod tests {
     use crate::{optimize::tests::*, CONST_FOLDING_NAME};
 
     fn assert_operator(t: &str, opcode: &str, l: &str, r: Option<&str>, result: Option<&str>) {
-        let expected = result.map(|result| format!("v0 = const {t} {result}"));
+        let expected = result.map(|result| format!("const {t} {result}"));
         let expected = expected.as_ref().map(|x| vec![x.as_str()]);
         let body = format!(
             "
@@ -495,9 +495,9 @@ mod tests {
                 ret u64 result6, !0
          }",
             Some([
-                "v0 = get_local __ptr u64, LOCAL",
-                "v1 = load v0",
-                "ret u64 v1",
+                "v3v1 = get_local __ptr u64, LOCAL",
+                "v4v1 = load v3v1",
+                "ret u64 v4v1",
             ]),
         );
     }

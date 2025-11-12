@@ -1,3 +1,5 @@
+// regex: VAL=v\d+v\d+
+
 script {
     entry fn main() -> u256 {
         local u256 x
@@ -17,4 +19,4 @@ script {
     }
 }
 
-// check: v3 = load v2
+// check: load
