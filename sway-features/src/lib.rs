@@ -173,6 +173,8 @@ features! {
     "https://github.com/FuelLabs/sway/issues/6860",
     new_hashing = true,
     "https://github.com/FuelLabs/sway/issues/7256",
+    abi_type_aliases = false,
+    "https://github.com/FuelLabs/sway/issues/7486",
 }
 
 #[derive(Clone, Debug, Default, Parser)]

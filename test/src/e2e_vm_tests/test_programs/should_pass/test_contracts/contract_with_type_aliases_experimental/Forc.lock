@@ -1,0 +1,16 @@
+[[package]]
+name = "contract_with_type_aliases_abi"
+source = "path+from-root-ACB1098C77544082"
+dependencies = ["std"]
+
+[[package]]
+name = "contract_with_type_aliases_experimental"
+source = "member"
+dependencies = [
+    "contract_with_type_aliases_abi",
+    "std",
+]
+
+[[package]]
+name = "std"
+source = "path+from-root-ACB1098C77544082"
