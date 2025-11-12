@@ -444,14 +444,6 @@ async fn update_transitive_contract_state() {
         .expect("increment contract counter");
 
     // update the contract A state on the forked node by calling the contract B
-    // let contract_instance = fork_caller::Contract::new(contract_b_id.clone(), fork_wallet);
-    // contract_instance
-    //     .methods()
-    //     .call_increment_count(contract_a_id.clone(), fork_caller::Adder { vals: increment_amount_fork })
-    //     .with_contract_ids(&[contract_a_id.clone()])
-    //     .call()
-    //     .await
-    //     .expect("fork-caller: update contract A state via contract B");
 
     // verify that the contract A state was updated on the forked node
     let fork_result = forc_call_result(
