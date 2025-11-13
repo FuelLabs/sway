@@ -1,6 +1,5 @@
 use super::{TyDeclParsedType, TyTraitInterfaceItem, TyTraitItem};
 use crate::{
-    ast_elements::type_parameter::ConstGenericExpr,
     decl_engine::DeclEngineGet as _,
     engine_threading::*,
     language::parsed::{self, AbiDeclaration},

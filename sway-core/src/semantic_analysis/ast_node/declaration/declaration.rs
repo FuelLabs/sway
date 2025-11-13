@@ -123,7 +123,7 @@ impl TyDecl {
                         Ok(config_decl) => {
                             config_decl.forbid_const_generics(handler, engines)?;
                             ty::TyDecl::from(decl_engine.insert(config_decl, Some(&decl_id)))
-                        },
+                        }
                         Err(err) => ty::TyDecl::ErrorRecovery(span, err),
                     };
                 ctx.insert_symbol(handler, name, typed_const_decl.clone())?;
