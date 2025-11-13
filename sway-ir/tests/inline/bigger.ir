@@ -19,7 +19,7 @@
 //     x
 // }
 
-// regex: VAR=v\d+
+// regex: VAR=v\d+v\d+
 // regex: ID=[[:alpha:]0-9_]+
 
 script {

@@ -6,9 +6,9 @@ fn main() {
     );
 }
 
-// check: v0 = get_local __ptr b256, key_for_storage,
-// check: v1 = const b256 0x0000000000000000000000000000000000000000000000000000000000000001,
-// check: store v1 to v0,
-// check: v2 = state_load_word key v0,
-// check: v3 = get_local __ptr u64, _,
-// check: store v2 to v3,
+// check: $(v0=$VAL) = get_local __ptr b256, key_for_storage,
+// check: $(v1=$VAL) = const b256 0x0000000000000000000000000000000000000000000000000000000000000001,
+// check: store $v1 to $v0,
+// check: $(v2=$VAL) = state_load_word key $v0,
+// check: $(v3=$VAL) = get_local __ptr u64, _,
+// check: store $v2 to $v3,

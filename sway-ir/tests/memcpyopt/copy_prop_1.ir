@@ -16,7 +16,7 @@ script {
     }
 }
 
-// regex: VAL=v\d+
+// regex: VAL=v\d+v\d+
 
 // check: mem_copy_val $(mem_cpy_dest=$VAL), $(mem_cpy_src=$VAL)
 // The optimization should replace the load's source to be the memcpy's source.

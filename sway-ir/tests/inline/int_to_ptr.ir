@@ -1,6 +1,6 @@
 // all
 //
-// regex: VAR=v\d+
+// regex: VAR=v\d+v\d+
 // regex: LABEL=[[:alpha:]0-9_]+
 
 script {

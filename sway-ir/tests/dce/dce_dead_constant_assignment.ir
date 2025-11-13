@@ -35,8 +35,10 @@ script {
     }
 }
 
+// regex: VAL=v\d+v\d+
+
 // check: entry fn main() -> () {
 // nextln: entry():
-// nextln: v0 = const unit ()
-// nextln: ret () v0
+// nextln: $(v0=$VAL) = const unit ()
+// nextln: ret () $v0
 // nextln: }

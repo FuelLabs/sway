@@ -7,7 +7,7 @@ script {
     }
 }
 
-// regex: VAL=v\d+
+// regex: VAL=v\d+v\d+
 // regex: ID=[[:alpha:]0-9_]+
 
 // check: $(tmp_ptr=$VAL) = get_local __ptr b256, $ID
