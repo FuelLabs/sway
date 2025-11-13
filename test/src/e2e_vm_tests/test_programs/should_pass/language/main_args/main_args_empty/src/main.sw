@@ -1,9 +1,5 @@
 script;
 
-<<<<<<< Updated upstream
-fn main() -> u64 {
-    1337
-=======
 #[inline(never)]
 fn f3() -> raw_slice {
     let ptr = asm(size: 0) {
@@ -15,5 +11,4 @@ fn f3() -> raw_slice {
 
 fn main() {
     f3();
->>>>>>> Stashed changes
 }
