@@ -6,4 +6,4 @@ license = "Apache-2.0"
 name = "logging"
 
 [dependencies]
-std = { path = "../../../../../reduced_std_libs/sway-lib-std-vec" }
+std = { path = "../../../../reduced_std_libs/sway-lib-std-vec" }
