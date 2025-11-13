@@ -188,6 +188,18 @@ impl ty::TyConfigurableDecl {
             visibility,
         })
     }
+
+     pub(crate) fn forbid_const_generics(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+    ) -> Result<(), ErrorEmitted> {
+        if self.type_ascription.type_id.has_const_generics(engines) {
+            Err(handler.emit_err(CompileError::ConstGenericNotSupportedHere { span: self.type_ascription.span.clone() }))
+        } else {
+            Ok(())
+        }
+    }
 }
 
 impl TypeCheckAnalysis for TyConfigurableDecl {

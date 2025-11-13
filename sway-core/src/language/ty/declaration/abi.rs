@@ -29,70 +29,6 @@ pub struct TyAbiDecl {
     pub attributes: transform::Attributes,
 }
 
-fn has_const_generics(type_id: TypeId, engines: &Engines) -> bool {
-    let types = type_id.extract_any_including_self(engines, &|_| true, vec![], 0);
-
-    for (t, _) in types {
-        let t = engines.te().get(t);
-        match &*t {
-            TypeInfo::StringArray(length) => match length.expr() {
-                ConstGenericExpr::Literal { .. } => {}
-                ConstGenericExpr::AmbiguousVariableExpression { .. } => return true,
-            },
-            TypeInfo::Enum(decl_id) => {
-                let decl = engines.de().get(decl_id);
-                let any_const_generics = decl
-                    .generic_parameters
-                    .iter()
-                    .any(|x| x.as_const_parameter().is_some());
-                if any_const_generics {
-                    return true;
-                }
-            }
-            TypeInfo::Struct(decl_id) => {
-                let decl = engines.de().get(decl_id);
-                let any_const_generics = decl
-                    .generic_parameters
-                    .iter()
-                    .any(|x| x.as_const_parameter().is_some());
-                if any_const_generics {
-                    return true;
-                }
-
-                for field in decl.fields.iter() {
-                    let any_const_generics =
-                        has_const_generics(field.type_argument.type_id, engines);
-                    if any_const_generics {
-                        return true;
-                    }
-                }
-            }
-            TypeInfo::Tuple(items) => {
-                for item in items {
-                    let any_const_generics = has_const_generics(item.type_id, engines);
-                    if any_const_generics {
-                        return true;
-                    }
-                }
-            }
-            TypeInfo::Array(item, length) => {
-                let any_const_generics = has_const_generics(item.type_id, engines);
-                if any_const_generics {
-                    return true;
-                }
-
-                match length.expr() {
-                    ConstGenericExpr::Literal { .. } => {}
-                    ConstGenericExpr::AmbiguousVariableExpression { .. } => return true,
-                }
-            }
-            _ => {}
-        }
-    }
-
-    false
-}
-
 impl TyAbiDecl {
     pub(crate) fn forbid_const_generics(
         &self,
@@ -104,7 +40,7 @@ impl TyAbiDecl {
                 TyTraitInterfaceItem::TraitFn(decl_ref) => {
                     let decl = engines.de().get(decl_ref.id());
 
-                    if has_const_generics(decl.return_type.type_id, engines) {
+                    if decl.return_type.type_id.has_const_generics(engines) {
                         let err = handler.emit_err(CompileError::ConstGenericNotSupportedHere {
                             span: decl.return_type.span(),
                         });
@@ -112,7 +48,7 @@ impl TyAbiDecl {
                     }
 
                     for arg in decl.parameters.iter() {
-                        if has_const_generics(arg.type_argument.type_id, engines) {
+                        if arg.type_argument.type_id.has_const_generics(engines) {
                             let err =
                                 handler.emit_err(CompileError::ConstGenericNotSupportedHere {
                                     span: arg.type_argument.span.clone(),
@@ -130,7 +66,7 @@ impl TyAbiDecl {
             match item {
                 TyTraitItem::Fn(decl_ref) => {
                     let decl = engines.de().get(decl_ref.id());
-                    if has_const_generics(decl.return_type.type_id, engines) {
+                    if decl.return_type.type_id.has_const_generics(engines) {
                         let err = handler.emit_err(CompileError::ConstGenericNotSupportedHere {
                             span: decl.return_type.span(),
                         });
@@ -138,7 +74,7 @@ impl TyAbiDecl {
                     }
 
                     for arg in decl.parameters.iter() {
-                        if has_const_generics(arg.type_argument.type_id, engines) {
+                        if arg.type_argument.type_id.has_const_generics(engines) {
                             let err =
                                 handler.emit_err(CompileError::ConstGenericNotSupportedHere {
                                     span: arg.type_argument.span.clone(),
