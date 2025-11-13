@@ -7,11 +7,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use sway_types::{FxIndexMap, FxIndexSet};
 
 use crate::{
-    get_gep_symbol, get_loaded_symbols, get_referred_symbol, get_referred_symbols,
-    get_stored_symbols, memory_utils, AnalysisResults, Block, Context, EscapedSymbols,
-    FuelVmInstruction, Function, InstOp, Instruction, InstructionInserter, IrError, LocalVar, Pass,
-    PassMutability, ReferredSymbols, ScopedPass, Symbol, Type, Value, ValueDatum,
-    ESCAPED_SYMBOLS_NAME,
+    AnalysisResults, Block, Context, DebugWithContext, ESCAPED_SYMBOLS_NAME, EscapedSymbols, FuelVmInstruction, Function, InstOp, Instruction, InstructionInserter, IrError, LocalVar, Pass, PassMutability, ReferredSymbols, ScopedPass, Symbol, Type, Value, ValueContent, ValueDatum, get_gep_symbol, get_loaded_symbols, get_referred_symbol, get_referred_symbols, get_stored_symbols, memory_utils
 };
 
 pub const MEMCPYOPT_NAME: &str = "memcpyopt";
@@ -1121,9 +1117,11 @@ fn copy_prop_reverse(
             _ => continue,
         };
 
-        if dst_sym.get_type(context) != src_sym.get_type(context) {
-            continue;
-        }
+        // if types are different, insert a cast_ptr
+        // if dst_sym.get_type(context) != src_sym.get_type(context) {
+        //     eprintln!("MEMCPY: {:?} <- {:?}", dst_sym.get_type(context).with_context(context), src_sym.get_type(context).with_context(context));
+        //     continue;
+        // }
 
         // We don't deal with partial memcpys
         if dst_sym
@@ -1230,16 +1228,36 @@ fn copy_prop_reverse(
         }
     }
 
-    // Gather the get_local instructions that need to be replaced.
     let mut repl_locals = vec![];
+    let mut value_replacements = FxHashMap::default();
+
+    // Gather the get_local instructions that need to be replaced.
     for (_block, inst) in function.instruction_iter(context) {
-        match inst.get_instruction(context).unwrap() {
+        match inst.get_instruction(context).cloned().unwrap() {
             Instruction {
                 op: InstOp::GetLocal(sym),
+                parent,
                 ..
             } => {
-                if let Some(dst) = src_to_dst.get(&Symbol::Local(*sym)) {
-                    repl_locals.push((inst, *dst));
+                if let Some(dst) = src_to_dst.get(&Symbol::Local(sym)) {
+                    let sym_type = sym.get_type(context);
+                    let dst_type = dst.get_type(context);
+
+                    if sym_type.eq(context, &dst_type) {
+                        repl_locals.push((inst, *dst));
+                    } else {
+                        eprintln!("MEMCPY: {:?} <- {:?}", dst_type.with_context(context), sym_type.with_context(context));
+
+                        let original_ptr = match dst {
+                            Symbol::Local(..) => todo!(),
+                            Symbol::Arg(block_argument) => {
+                                block_argument.as_value(context)
+                            },
+                        };
+
+                        let cast_ptr = InstOp::CastPtr(original_ptr, sym_type);
+                        value_replacements.insert(inst, (parent, cast_ptr));
+                    }
                 }
             }
             _ => {
@@ -1249,12 +1267,27 @@ fn copy_prop_reverse(
         }
     }
 
-    if repl_locals.is_empty() {
+    if repl_locals.is_empty() && value_replacements.is_empty() {
         return Ok(modified);
     }
+
     modified = true;
 
-    let mut value_replacements = FxHashMap::default();
+    let mut value_replacements = value_replacements.into_iter()
+        .map(|(old, (block, instruction))| {
+            let v = Value::new_instruction(context, block, instruction);
+            
+            let mut inserter = InstructionInserter::new(
+                context,
+                block,
+                crate::InsertionPosition::Before(old),
+            );
+            inserter.insert(v);
+            
+            (old, v)
+        })
+        .collect::<FxHashMap<Value, Value>>();
+
     for (to_repl, repl_with) in repl_locals {
         let Instruction {
             op: InstOp::GetLocal(sym),
