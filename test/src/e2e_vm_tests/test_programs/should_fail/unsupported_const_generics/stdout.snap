@@ -1,14 +1,26 @@
 ---
 source: test/src/snapshot/mod.rs
 ---
-> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/const_generics --experimental const_generics
+> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/unsupported_const_generics --experimental const_generics
 exit status: 1
 output:
-    Building test/src/e2e_vm_tests/test_programs/should_fail/const_generics
+    Building test/src/e2e_vm_tests/test_programs/should_fail/unsupported_const_generics
    Compiling library std (sway-lib-std)
-   Compiling script const_generics (test/src/e2e_vm_tests/test_programs/should_fail/const_generics)
+   Compiling script unsupported_const_generics (test/src/e2e_vm_tests/test_programs/should_fail/unsupported_const_generics)
 warning
-  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:24:5
+  --> test/src/e2e_vm_tests/test_programs/should_fail/unsupported_const_generics/src/main.sw:62:5
+   |
+60 | 
+61 | enum EnumWithConstGenericInside {
+62 |     A: CrazyStruct<1>,
+   |     - Enum variant A is never constructed.
+63 | }
+64 | 
+   |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_fail/unsupported_const_generics/src/main.sw:24:5
    |
 22 |   
 23 |   impl<const N: u64> A for CrazyStruct<N> {
@@ -22,7 +34,7 @@ warning
 ____
 
 warning
-  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:41:5
+  --> test/src/e2e_vm_tests/test_programs/should_fail/unsupported_const_generics/src/main.sw:41:5
    |
 39 |   
 40 |   impl<const N: u64> A for CrazyEnum<N> {
@@ -35,8 +47,44 @@ warning
    |
 ____
 
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_fail/unsupported_const_generics/src/main.sw:53:8
+   |
+51 | }
+52 | 
+53 | struct StructWithConstGenericInside {
+   |        ---------------------------- This struct is never used.
+54 |     a: CrazyStruct<1>,
+55 | }
+   |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_fail/unsupported_const_generics/src/main.sw:54:5
+   |
+52 | 
+53 | struct StructWithConstGenericInside {
+54 |     a: CrazyStruct<1>,
+   |     - This struct field is never accessed.
+55 | }
+56 | 
+   |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_fail/unsupported_const_generics/src/main.sw:61:6
+   |
+59 | }
+60 | 
+61 | enum EnumWithConstGenericInside {
+   |      -------------------------- This enum is never used.
+62 |     A: CrazyStruct<1>,
+63 | }
+   |
+____
+
 error: Multiple definitions of constant
- --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:6:63
+ --> test/src/e2e_vm_tests/test_programs/should_fail/unsupported_const_generics/src/main.sw:6:63
   |
 ...
 6 | struct RepeatedConstGenericsNameInStructs<const N: u64, const N: u64> { }
@@ -46,7 +94,7 @@ error: Multiple definitions of constant
 ____
 
 error: Multiple definitions of constant
- --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:7:59
+ --> test/src/e2e_vm_tests/test_programs/should_fail/unsupported_const_generics/src/main.sw:7:59
   |
 ...
 7 | enum RepeatedConstGenericsNameInEnums<const N: u64, const N: u64> { }
@@ -56,7 +104,7 @@ error: Multiple definitions of constant
 ____
 
 error: Multiple definitions of constant
- --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:8:61
+ --> test/src/e2e_vm_tests/test_programs/should_fail/unsupported_const_generics/src/main.sw:8:61
   |
 ...
 8 | trait RepeatedConstGenericsNameInTraits<const N: u64, const N: u64> { }
@@ -66,7 +114,7 @@ error: Multiple definitions of constant
 ____
 
 error: Multiple definitions of constant
-  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:10:53
+  --> test/src/e2e_vm_tests/test_programs/should_fail/unsupported_const_generics/src/main.sw:10:53
    |
 ...
 10 | fn repeated_const_generics_name<const N: u64, const N: u64>() {
@@ -76,7 +124,7 @@ error: Multiple definitions of constant
 ____
 
 error: Multiple definitions of constant
-  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:15:26
+  --> test/src/e2e_vm_tests/test_programs/should_fail/unsupported_const_generics/src/main.sw:15:26
    |
 ...
 15 | impl<const N: u64, const N: u64> CrazyStruct<N> {
@@ -86,7 +134,7 @@ error: Multiple definitions of constant
 ____
 
 error: Multiple definitions of constant
-  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:19:71
+  --> test/src/e2e_vm_tests/test_programs/should_fail/unsupported_const_generics/src/main.sw:19:71
    |
 ...
 19 |     fn repeated_const_generics_name<const N: u64, const A: u64, const A: u64>() {
@@ -96,7 +144,7 @@ error: Multiple definitions of constant
 ____
 
 error: Multiple definitions of constant
-  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:19:43
+  --> test/src/e2e_vm_tests/test_programs/should_fail/unsupported_const_generics/src/main.sw:19:43
    |
 ...
 18 | impl<const N: u64> CrazyStruct<N> {
@@ -107,7 +155,7 @@ error: Multiple definitions of constant
 ____
 
 error: Multiple definitions of constant
-  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:24:73
+  --> test/src/e2e_vm_tests/test_programs/should_fail/unsupported_const_generics/src/main.sw:24:73
    |
 ...
 24 |     fn repeated_const_generics_name_2<const N: u64, const A: u64, const A: u64>() {
@@ -117,7 +165,7 @@ error: Multiple definitions of constant
 ____
 
 error: Multiple definitions of constant
-  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:24:45
+  --> test/src/e2e_vm_tests/test_programs/should_fail/unsupported_const_generics/src/main.sw:24:45
    |
 ...
 23 | impl<const N: u64> A for CrazyStruct<N> {
@@ -128,7 +176,7 @@ error: Multiple definitions of constant
 ____
 
 error: Multiple definitions of constant
-  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:32:26
+  --> test/src/e2e_vm_tests/test_programs/should_fail/unsupported_const_generics/src/main.sw:32:26
    |
 ...
 32 | impl<const N: u64, const N: u64> CrazyEnum<N> {
@@ -138,7 +186,7 @@ error: Multiple definitions of constant
 ____
 
 error: Multiple definitions of constant
-  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:36:71
+  --> test/src/e2e_vm_tests/test_programs/should_fail/unsupported_const_generics/src/main.sw:36:71
    |
 ...
 36 |     fn repeated_const_generics_name<const N: u64, const A: u64, const A: u64>() {
@@ -148,7 +196,7 @@ error: Multiple definitions of constant
 ____
 
 error: Multiple definitions of constant
-  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:36:43
+  --> test/src/e2e_vm_tests/test_programs/should_fail/unsupported_const_generics/src/main.sw:36:43
    |
 ...
 35 | impl<const N: u64> CrazyEnum<N> {
@@ -159,7 +207,7 @@ error: Multiple definitions of constant
 ____
 
 error: Multiple definitions of constant
-  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:41:73
+  --> test/src/e2e_vm_tests/test_programs/should_fail/unsupported_const_generics/src/main.sw:41:73
    |
 ...
 41 |     fn repeated_const_generics_name_2<const N: u64, const A: u64, const A: u64>() {
@@ -169,7 +217,7 @@ error: Multiple definitions of constant
 ____
 
 error: Multiple definitions of constant
-  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:41:45
+  --> test/src/e2e_vm_tests/test_programs/should_fail/unsupported_const_generics/src/main.sw:41:45
    |
 ...
 40 | impl<const N: u64> A for CrazyEnum<N> {
@@ -180,51 +228,99 @@ error: Multiple definitions of constant
 ____
 
 error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:46:24
+  --> test/src/e2e_vm_tests/test_programs/should_fail/unsupported_const_generics/src/main.sw:46:13
    |
 44 | 
-45 | fn main() {
-46 |     let _: CrazyStruct<UNKNOWN> = CrazyStruct { };
+45 | abi NoConstGenericsOnArgs {
+46 |     fn f(a: CrazyStruct<1>);
+   |             ^^^^^^^^^^^^^^ "const generics" are not supported here.
+47 | }
+48 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/unsupported_const_generics/src/main.sw:50:15
+   |
+48 | 
+49 | abi NoConstGenericsOnReturn {
+50 |     fn f() -> CrazyEnum<1>;
+   |               ^^^^^^^^^^^^ "const generics" are not supported here.
+51 | }
+52 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/unsupported_const_generics/src/main.sw:58:15
+   |
+56 | 
+57 | abi NoConstGenericsIndirectStruct {
+58 |     fn f() -> StructWithConstGenericInside;
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ "const generics" are not supported here.
+59 | }
+60 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/unsupported_const_generics/src/main.sw:66:15
+   |
+64 | 
+65 | abi NoConstGenericsIndirectEnum {
+66 |     fn f() -> EnumWithConstGenericInside;
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^ "const generics" are not supported here.
+67 | }
+68 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/unsupported_const_generics/src/main.sw:70:24
+   |
+68 | 
+69 | fn main() {
+70 |     let _: CrazyStruct<UNKNOWN> = CrazyStruct { };
    |                        ^^^^^^^ Could not find symbol "UNKNOWN" in this scope.
-47 |     let _: CrazyEnum<UNKNOWN> = CrazyEnum::A;
-48 |     let _: [u8; UNKNOWN] = [1u8];
+71 |     let _: CrazyEnum<UNKNOWN> = CrazyEnum::A;
+72 |     let _: [u8; UNKNOWN] = [1u8];
    |
 ____
 
 error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:47:22
+  --> test/src/e2e_vm_tests/test_programs/should_fail/unsupported_const_generics/src/main.sw:71:22
    |
-45 | fn main() {
-46 |     let _: CrazyStruct<UNKNOWN> = CrazyStruct { };
-47 |     let _: CrazyEnum<UNKNOWN> = CrazyEnum::A;
+69 | fn main() {
+70 |     let _: CrazyStruct<UNKNOWN> = CrazyStruct { };
+71 |     let _: CrazyEnum<UNKNOWN> = CrazyEnum::A;
    |                      ^^^^^^^ Could not find symbol "UNKNOWN" in this scope.
-48 |     let _: [u8; UNKNOWN] = [1u8];
-49 |     let _: str[UNKNOWN] = __to_str_array("abc");
+72 |     let _: [u8; UNKNOWN] = [1u8];
+73 |     let _: str[UNKNOWN] = __to_str_array("abc");
    |
 ____
 
 error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:48:17
+  --> test/src/e2e_vm_tests/test_programs/should_fail/unsupported_const_generics/src/main.sw:72:17
    |
-46 |     let _: CrazyStruct<UNKNOWN> = CrazyStruct { };
-47 |     let _: CrazyEnum<UNKNOWN> = CrazyEnum::A;
-48 |     let _: [u8; UNKNOWN] = [1u8];
+70 |     let _: CrazyStruct<UNKNOWN> = CrazyStruct { };
+71 |     let _: CrazyEnum<UNKNOWN> = CrazyEnum::A;
+72 |     let _: [u8; UNKNOWN] = [1u8];
    |                 ^^^^^^^ Could not find symbol "UNKNOWN" in this scope.
-49 |     let _: str[UNKNOWN] = __to_str_array("abc");
-50 | }
+73 |     let _: str[UNKNOWN] = __to_str_array("abc");
+74 | }
    |
 ____
 
 error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/const_generics/src/main.sw:49:16
+  --> test/src/e2e_vm_tests/test_programs/should_fail/unsupported_const_generics/src/main.sw:73:16
    |
-47 |     let _: CrazyEnum<UNKNOWN> = CrazyEnum::A;
-48 |     let _: [u8; UNKNOWN] = [1u8];
-49 |     let _: str[UNKNOWN] = __to_str_array("abc");
+71 |     let _: CrazyEnum<UNKNOWN> = CrazyEnum::A;
+72 |     let _: [u8; UNKNOWN] = [1u8];
+73 |     let _: str[UNKNOWN] = __to_str_array("abc");
    |                ^^^^^^^ Could not find symbol "UNKNOWN" in this scope.
-50 | }
+74 | }
    |
 ____
 
-  Aborting due to 18 errors.
-error: Failed to compile const_generics
+  Aborting due to 22 errors.
+error: Failed to compile unsupported_const_generics
