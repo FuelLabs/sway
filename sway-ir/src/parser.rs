@@ -652,6 +652,7 @@ mod ir_builder {
                 / union_ty()
                 / "__ptr" _ ty:ast_ty() _ { IrAstTy::TypedPtr(Box::new(ty)) }
                 / "ptr" _ { IrAstTy::Ptr }
+                / "never" _ { IrAstTy::Never }
 
             rule array_ty() -> IrAstTy
                 = "[" _ ty:ast_ty() ";" _ c:decimal() "]" _ {
@@ -1041,6 +1042,7 @@ mod ir_builder {
         Struct(Vec<IrAstTy>),
         TypedPtr(Box<IrAstTy>),
         Ptr,
+        Never,
     }
 
     impl IrAstTy {
@@ -1075,6 +1077,7 @@ mod ir_builder {
                     Type::new_typed_pointer(context, inner_ty)
                 }
                 IrAstTy::Ptr => Type::get_ptr(context),
+                IrAstTy::Never => Type::get_never(context),
             }
         }
     }

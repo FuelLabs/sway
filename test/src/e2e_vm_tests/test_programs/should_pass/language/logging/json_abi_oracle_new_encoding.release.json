@@ -40,6 +40,10 @@
   ],
   "loggedTypes": [
     {
+      "concreteTypeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0",
+      "logId": "1515152261580153489"
+    },
+    {
       "concreteTypeId": "3f8dc98862e8f3a9b179125e425353ebec6c0f5fc639afce8ed40456c21d3c62",
       "logId": "4579537983717831593"
     },

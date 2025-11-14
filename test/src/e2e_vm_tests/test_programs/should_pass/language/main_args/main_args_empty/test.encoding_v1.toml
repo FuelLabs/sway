@@ -1,4 +1,4 @@
-script_data = "0000000000000538 0000000000000001"
-expected_result = { action = "return_data", value = "0000000000000539" }
+script_data = ""
+expected_result = { action = "return_data", value = "" }
 
 experimental = { new_encoding = true }
