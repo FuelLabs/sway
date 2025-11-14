@@ -19,6 +19,7 @@ use pkg::{Built, BuiltPackage};
 use rand::{Rng, SeedableRng};
 use rayon::prelude::*;
 use std::str::FromStr;
+use std::u64;
 use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
 use sway_core::{BuildTarget, IrCli};
 use sway_types::Span;
@@ -705,7 +706,9 @@ pub(crate) fn maxed_consensus_params(gas_costs_values: GasCostsValues) -> Consen
     let script_params = ScriptParameters::DEFAULT
         .with_max_script_length(u64::MAX)
         .with_max_script_data_length(u64::MAX);
-    let tx_params = TxParameters::DEFAULT.with_max_size(u64::MAX);
+    let tx_params = TxParameters::DEFAULT
+        .with_max_size(u64::MAX)
+        .with_max_gas_per_tx(u64::MAX);
     let contract_params = ContractParameters::DEFAULT
         .with_contract_max_size(u64::MAX)
         .with_max_storage_slots(u64::MAX);
@@ -714,6 +717,7 @@ pub(crate) fn maxed_consensus_params(gas_costs_values: GasCostsValues) -> Consen
         tx_params,
         contract_params,
         gas_costs: gas_costs_values.into(),
+        block_gas_limit: u64::MAX,
         ..Default::default()
     })
 }
