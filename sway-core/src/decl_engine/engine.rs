@@ -58,6 +58,8 @@ pub struct DeclEngine {
     abi_parsed_decl_id_map: RwLock<HashMap<DeclId<TyAbiDecl>, ParsedDeclId<AbiDeclaration>>>,
     constant_parsed_decl_id_map:
         RwLock<HashMap<DeclId<TyConstantDecl>, ParsedDeclId<ConstantDeclaration>>>,
+    const_generic_parsed_decl_id_map:
+        RwLock<HashMap<DeclId<TyConstGenericDecl>, ParsedDeclId<ConstGenericDeclaration>>>,
     configurable_parsed_decl_id_map:
         RwLock<HashMap<DeclId<TyConfigurableDecl>, ParsedDeclId<ConfigurableDeclaration>>>,
     const_generics_parsed_decl_id_map:
@@ -103,6 +105,9 @@ impl Clone for DeclEngine {
             abi_parsed_decl_id_map: RwLock::new(self.abi_parsed_decl_id_map.read().clone()),
             constant_parsed_decl_id_map: RwLock::new(
                 self.constant_parsed_decl_id_map.read().clone(),
+            ),
+            const_generic_parsed_decl_id_map: RwLock::new(
+                self.const_generic_parsed_decl_id_map.read().clone(),
             ),
             configurable_parsed_decl_id_map: RwLock::new(
                 self.configurable_parsed_decl_id_map.read().clone(),
@@ -314,6 +319,7 @@ decl_engine_parsed_decl_id!(struct_parsed_decl_id_map, ty::TyStructDecl);
 decl_engine_parsed_decl_id!(storage_parsed_decl_id_map, ty::TyStorageDecl);
 decl_engine_parsed_decl_id!(abi_parsed_decl_id_map, ty::TyAbiDecl);
 decl_engine_parsed_decl_id!(constant_parsed_decl_id_map, ty::TyConstantDecl);
+decl_engine_parsed_decl_id!(const_generic_parsed_decl_id_map, ty::TyConstGenericDecl);
 decl_engine_parsed_decl_id!(configurable_parsed_decl_id_map, ty::TyConfigurableDecl);
 decl_engine_parsed_decl_id!(enum_parsed_decl_id_map, ty::TyEnumDecl);
 decl_engine_parsed_decl_id!(type_alias_parsed_decl_id_map, ty::TyTypeAliasDecl);
@@ -377,6 +383,11 @@ decl_engine_parsed_decl!(
     constant_parsed_decl_id_map,
     ty::TyConstantDecl,
     Declaration::ConstantDeclaration
+);
+decl_engine_parsed_decl!(
+    const_generic_parsed_decl_id_map,
+    ty::TyConstGenericDecl,
+    Declaration::ConstGenericDeclaration
 );
 decl_engine_parsed_decl!(
     configurable_parsed_decl_id_map,

@@ -1,0 +1,83 @@
+---
+source: test/src/snapshot/mod.rs
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/non_payable_non_script_call_with_non_zero_coins --experimental const_generics
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_fail/non_payable_non_script_call_with_non_zero_coins
+   Compiling library std (sway-lib-std)
+   Compiling contract non_payable_non_script_call_with_non_zero_coins (test/src/e2e_vm_tests/test_programs/should_fail/non_payable_non_script_call_with_non_zero_coins)
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_fail/non_payable_non_script_call_with_non_zero_coins/src/main.sw:25:13
+   |
+23 |     fn withdraw(external_contract_id: ContractId) {
+24 |         let sender = msg_sender().unwrap();
+25 |         let bal = storage.balances.get(sender);
+   |             --- This declaration is never used.
+26 | 
+27 |         assert(bal > 0);
+   |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_fail/non_payable_non_script_call_with_non_zero_coins/src/main.sw:30:13
+   |
+28 | 
+29 |         // External call
+30 |         let caller = abi(OtherContract, external_contract_id.into());
+   |             ------ This declaration is never used.
+31 |         caller.non_payable_method { coins: bal }();
+32 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/non_payable_non_script_call_with_non_zero_coins/src/main.sw:18:13
+   |
+16 | fn call_using_const_generics_as_coins<const N: u64>(external_contract_id: ContractId) {
+17 |     let caller = abi(OtherContract, external_contract_id.into());
+18 |     let _ = caller.non_payable_method { coins: N }();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Possibly non-zero amount of coins transferred to non-payable contract method "non_payable_method".
+19 | }
+20 | 
+   |
+____
+
+error: Associated function or method is not found
+  --> test/src/e2e_vm_tests/test_programs/should_fail/non_payable_non_script_call_with_non_zero_coins/src/main.sw:27:20
+   |
+...
+27 |         assert(bal > 0);
+   |                    ^ "gt(std::storage::storage_key::StorageKey<u64>, {numeric}) -> bool" is not found for type "std::storage::storage_key::StorageKey<u64>".
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/non_payable_non_script_call_with_non_zero_coins/src/main.sw:31:44
+   |
+29 |         // External call
+30 |         let caller = abi(OtherContract, external_contract_id.into());
+31 |         caller.non_payable_method { coins: bal }();
+   |                                            ^^^ Mismatched types.
+expected: u64
+found:    std::storage::storage_key::StorageKey<u64>.
+
+32 | 
+33 |         // External call using const generics
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/non_payable_non_script_call_with_non_zero_coins/src/main.sw:31:9
+   |
+29 |         // External call
+30 |         let caller = abi(OtherContract, external_contract_id.into());
+31 |         caller.non_payable_method { coins: bal }();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Possibly non-zero amount of coins transferred to non-payable contract method "non_payable_method".
+32 | 
+33 |         // External call using const generics
+   |
+____
+
+  Aborting due to 4 errors.
+error: Failed to compile non_payable_non_script_call_with_non_zero_coins

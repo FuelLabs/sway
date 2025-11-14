@@ -18,6 +18,8 @@ enum E {
 #[fallback(invalid)]
 #[error_type(invalid)]
 #[error(invalid)]
+#[event]
+#[indexed]
 impl T for E {
     #[storage(invalid)]
     #[inline(invalid)]
@@ -28,5 +30,7 @@ impl T for E {
     #[fallback(invalid)]
     #[error_type(invalid)]
     #[error(invalid)]
+    #[event]
+    #[indexed]
     type Type = u8;
 }

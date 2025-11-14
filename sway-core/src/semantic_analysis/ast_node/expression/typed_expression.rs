@@ -3198,12 +3198,19 @@ fn check_asm_block_validity(
     for err in opcodes.iter().filter_map(|op| {
         if matches!(
             op.0,
-            VirtualOp::JMP(_)
-                | VirtualOp::JI(_)
+            VirtualOp::JMP(..)
+                | VirtualOp::JI(..)
                 | VirtualOp::JNE(..)
                 | VirtualOp::JNEI(..)
                 | VirtualOp::JNZI(..)
-                | VirtualOp::RET(_)
+                | VirtualOp::JMPB(..)
+                | VirtualOp::JMPF(..)
+                | VirtualOp::JNZB(..)
+                | VirtualOp::JNZF(..)
+                | VirtualOp::JNEB(..)
+                | VirtualOp::JNEF(..)
+                | VirtualOp::JAL(..)
+                | VirtualOp::RET(..)
                 | VirtualOp::RETD(..)
                 | VirtualOp::RVRT(..)
         ) {

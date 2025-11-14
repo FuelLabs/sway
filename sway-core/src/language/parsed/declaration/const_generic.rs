@@ -7,3 +7,9 @@ pub struct ConstGenericDeclaration {
     pub ty: TypeId,
     pub span: Span,
 }
+
+impl ConstGenericDeclaration {
+    pub fn span(&self) -> Span {
+        self.span.clone()
+    }
+}

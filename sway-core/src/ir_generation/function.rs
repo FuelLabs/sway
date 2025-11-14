@@ -42,6 +42,7 @@ use sway_types::{
 };
 
 use std::collections::HashMap;
+use std::convert::TryFrom;
 
 /// The result of compiling an expression can be in memory, or in an (SSA) register.
 #[derive(Debug, Clone, Copy)]
@@ -1442,14 +1443,17 @@ impl<'a> FnCompiler<'a> {
                     });
                 }
 
+                let logged_expression = TypeMetadata::get_logged_expression(
+                    &arguments[0],
+                    context.experimental.new_encoding,
+                )?;
+                let log_event_data =
+                    self.build_log_event_metadata(context, md_mgr, logged_expression)?;
                 let log_val = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, &arguments[0])?
                 )
                 .expect_register();
-                let logged_type_id = TypeMetadata::get_logged_type_id(
-                    &arguments[0],
-                    context.experimental.new_encoding,
-                )?;
+                let logged_type_id = logged_expression.return_type;
                 let log_id = match self.logged_types_map.get(&logged_type_id) {
                     None => {
                         return Err(CompileError::Internal(
@@ -1474,7 +1478,7 @@ impl<'a> FnCompiler<'a> {
                         let val = self
                             .current_block
                             .append(context)
-                            .log(log_val, log_ty, log_id)
+                            .log(log_val, log_ty, log_id, log_event_data)
                             .add_metadatum(context, span_md_idx);
                         Ok(TerminatorValue::new(
                             CompiledValue::InRegister(val),
@@ -2745,6 +2749,114 @@ impl<'a> FnCompiler<'a> {
             })
     }
 
+    fn build_log_event_metadata(
+        &mut self,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        logged_expression: &ty::TyExpression,
+    ) -> Result<Option<sway_ir::LogEventData>, CompileError> {
+        self.collect_event_metadata_for_type(
+            context,
+            md_mgr,
+            logged_expression.return_type,
+            &logged_expression.span,
+        )
+    }
+
+    fn collect_event_metadata_for_type(
+        &mut self,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        type_id: TypeId,
+        span: &Span,
+    ) -> Result<Option<sway_ir::LogEventData>, CompileError> {
+        let type_engine = self.engines.te();
+        let decl_engine = self.engines.de();
+        let type_info = type_engine.get(type_id);
+        Ok(match type_info.as_ref() {
+            TypeInfo::Alias {
+                ty: GenericTypeArgument { type_id, .. },
+                ..
+            } => self.collect_event_metadata_for_type(context, md_mgr, *type_id, span)?,
+            TypeInfo::Struct(decl_ref) => {
+                let decl = decl_engine.get_struct(decl_ref);
+                if decl.attributes.event().is_none() {
+                    None
+                } else {
+                    let indexed_fields: Vec<_> = decl
+                        .fields
+                        .iter()
+                        .take_while(|field| field.attributes.indexed().is_some())
+                        .collect();
+
+                    let indexed_count = indexed_fields.len();
+                    let field_size = if let Some(first_field) = indexed_fields.first() {
+                        let size =
+                            self.indexed_field_size_in_bytes(context, md_mgr, first_field)?;
+                        for field in indexed_fields.iter().skip(1) {
+                            let current_size =
+                                self.indexed_field_size_in_bytes(context, md_mgr, field)?;
+                            if current_size != size {
+                                return Err(CompileError::Internal(
+                                    "Indexed event fields must have matching sizes.",
+                                    field.span.clone(),
+                                ));
+                            }
+                        }
+                        Some(size)
+                    } else {
+                        None
+                    };
+
+                    let count = u16::try_from(indexed_count).map_err(|_| {
+                        CompileError::Internal(
+                            "Too many indexed fields on event for current metadata format.",
+                            span.clone(),
+                        )
+                    })?;
+
+                    Some(sway_ir::LogEventData::for_event(field_size, count))
+                }
+            }
+            TypeInfo::Enum(decl_ref) => {
+                if decl_engine.get_enum(decl_ref).attributes.event().is_some() {
+                    Some(sway_ir::LogEventData::for_event(None, 0))
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        })
+    }
+
+    fn indexed_field_size_in_bytes(
+        &mut self,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        field: &ty::TyStructField,
+    ) -> Result<u8, CompileError> {
+        let ir_ty = convert_resolved_type_id(
+            self.engines,
+            context,
+            md_mgr,
+            self.module,
+            Some(self),
+            field.type_argument.type_id,
+            &field.span,
+        )?;
+        let size = ir_ty.size(context).in_bytes();
+        u8::try_from(size).map_err(|_| {
+            CompileError::InternalOwned(
+                format!(
+                    "Indexed event field size ({} bytes) exceeds maximum supported size ({} bytes).",
+                    size,
+                    u8::MAX
+                ),
+                field.span.clone(),
+            )
+        })
+    }
+
     fn compile_panic(
         &mut self,
         context: &mut Context,
@@ -2796,6 +2908,8 @@ impl<'a> FnCompiler<'a> {
                 )
                 .expect_register();
                 let logged_type_id = logged_expression.return_type;
+                let log_event_data =
+                    self.build_log_event_metadata(context, md_mgr, logged_expression)?;
                 let log_id = match self.logged_types_map.get(&logged_type_id) {
                     None => {
                         return Err(CompileError::Internal(
@@ -2822,7 +2936,7 @@ impl<'a> FnCompiler<'a> {
                         // Emit the `log` instruction.
                         self.current_block
                             .append(context)
-                            .log(panic_val, log_ty, log_id)
+                            .log(panic_val, log_ty, log_id, log_event_data)
                             .add_metadatum(context, span_md_idx);
                     }
                 };

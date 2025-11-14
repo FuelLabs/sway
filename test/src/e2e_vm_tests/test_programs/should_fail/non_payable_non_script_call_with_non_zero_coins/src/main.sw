@@ -13,6 +13,11 @@ storage {
     balances: StorageMap<Identity, u64> = StorageMap {},
 }
 
+fn call_using_const_generics_as_coins<const N: u64>(external_contract_id: ContractId) {
+    let caller = abi(OtherContract, external_contract_id.into());
+    let _ = caller.non_payable_method { coins: N }();
+}
+
 impl MyContract for Contract {
     #[storage(read, write)]
     fn withdraw(external_contract_id: ContractId) {
@@ -24,6 +29,9 @@ impl MyContract for Contract {
         // External call
         let caller = abi(OtherContract, external_contract_id.into());
         caller.non_payable_method { coins: bal }();
+
+        // External call using const generics
+        call_using_const_generics_as_coins::<0>(external_contract_id);
 
         // Storage update _after_ external call
         storage.balances.insert(sender, 0);

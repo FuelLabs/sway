@@ -9,7 +9,7 @@ use fuel_core::{
     },
 };
 use fuel_core_chain_config::{
-    coin_config_helpers::CoinConfigGenerator, ChainConfig, CoinConfig, SnapshotMetadata,
+    coin_config_helpers::CoinConfigGenerator, ChainConfig, CoinConfig, Owner, SnapshotMetadata,
     TESTNET_INITIAL_BALANCE,
 };
 use fuel_core_types::{
@@ -108,7 +108,7 @@ fn get_coins_per_account(
         };
         let coin = CoinConfig {
             amount,
-            owner,
+            owner: owner.into(),
             asset_id,
             output_index: (current_coin_idx + coins.len()) as u16,
             ..coin_generator.generate()
@@ -160,9 +160,13 @@ impl From<LocalCmd> for Config {
             if !coins.is_empty() {
                 tracing::info!("Additional accounts");
                 for coin in &coins {
+                    let owner_hex = match &coin.owner {
+                        Owner::Address(address) => format!("{address:#x}"),
+                        Owner::SecretKey(secret_key) => format!("{secret_key:#x}"),
+                    };
                     tracing::info!(
-                        "Address({:#x}), Asset ID({:#x}), Balance({})",
-                        coin.owner,
+                        "Address({}), Asset ID({:#x}), Balance({})",
+                        owner_hex,
                         coin.asset_id,
                         coin.amount
                     );
@@ -227,7 +231,8 @@ mod tests {
         assert_eq!(coins.len(), 1);
 
         let coin = &coins[0];
-        assert_eq!(coin.owner, Address::from_str(account_id).unwrap());
+        let expected_owner = Owner::Address(Address::from_str(account_id).unwrap());
+        assert_eq!(coin.owner, expected_owner);
         assert_eq!(coin.asset_id, base_asset_id);
         assert_eq!(coin.amount, TESTNET_INITIAL_BALANCE);
         assert_eq!(coin.output_index, 0);
@@ -247,7 +252,8 @@ mod tests {
         assert_eq!(coins.len(), 1);
 
         let coin = &coins[0];
-        assert_eq!(coin.owner, Address::from_str(account_id).unwrap());
+        let expected_owner = Owner::Address(Address::from_str(account_id).unwrap());
+        assert_eq!(coin.owner, expected_owner);
         assert_eq!(coin.asset_id, AssetId::from_str(asset_id).unwrap());
         assert_eq!(coin.amount, TESTNET_INITIAL_BALANCE);
         assert_eq!(coin.output_index, 0);
@@ -268,7 +274,8 @@ mod tests {
         assert_eq!(coins.len(), 1);
 
         let coin = &coins[0];
-        assert_eq!(coin.owner, Address::from_str(account_id).unwrap());
+        let expected_owner = Owner::Address(Address::from_str(account_id).unwrap());
+        assert_eq!(coin.owner, expected_owner);
         assert_eq!(coin.asset_id, AssetId::from_str(asset_id).unwrap());
         assert_eq!(coin.amount, amount);
         assert_eq!(coin.output_index, 0);
@@ -288,11 +295,13 @@ mod tests {
         assert_eq!(coins.len(), 2);
 
         let coin1 = &coins[0];
-        assert_eq!(coin1.owner, Address::from_str(account1).unwrap());
+        let expected_owner1 = Owner::Address(Address::from_str(account1).unwrap());
+        assert_eq!(coin1.owner, expected_owner1);
         assert_eq!(coin1.output_index, 5);
 
         let coin2 = &coins[1];
-        assert_eq!(coin2.owner, Address::from_str(account2).unwrap());
+        let expected_owner2 = Owner::Address(Address::from_str(account2).unwrap());
+        assert_eq!(coin2.owner, expected_owner2);
         assert_eq!(coin2.output_index, 6);
     }
 
