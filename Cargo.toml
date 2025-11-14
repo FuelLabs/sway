@@ -260,10 +260,10 @@ walkdir = "2.3"
 whoami = "1.5"
 wiremock = "0.6"
 
-# https://github.com/FuelLabs/fuel-core/compare/v0.46.0...update/pub-data-source-attr
-[patch.crates-io]
-fuel-core = { git = "https://github.com/FuelLabs/fuel-core", branch = "update/pub-data-source-attr" }
-fuel-core-chain-config = { git = "https://github.com/FuelLabs/fuel-core", branch = "update/pub-data-source-attr" }
-fuel-core-client = { git = "https://github.com/FuelLabs/fuel-core", branch = "update/pub-data-source-attr" }
-fuel-core-storage = { git = "https://github.com/FuelLabs/fuel-core", branch = "update/pub-data-source-attr" }
-fuel-core-types = { git = "https://github.com/FuelLabs/fuel-core", branch = "update/pub-data-source-attr" }
+# # https://github.com/FuelLabs/fuel-core/compare/v0.46.0...update/pub-data-source-attr
+# [patch.crates-io]
+# fuel-core = { git = "https://github.com/FuelLabs/fuel-core", branch = "update/pub-data-source-attr" }
+# fuel-core-chain-config = { git = "https://github.com/FuelLabs/fuel-core", branch = "update/pub-data-source-attr" }
+# fuel-core-client = { git = "https://github.com/FuelLabs/fuel-core", branch = "update/pub-data-source-attr" }
+# fuel-core-storage = { git = "https://github.com/FuelLabs/fuel-core", branch = "update/pub-data-source-attr" }
+# fuel-core-types = { git = "https://github.com/FuelLabs/fuel-core", branch = "update/pub-data-source-attr" }
