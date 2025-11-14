@@ -19,7 +19,6 @@ use pkg::{Built, BuiltPackage};
 use rand::{Rng, SeedableRng};
 use rayon::prelude::*;
 use std::str::FromStr;
-use std::u64;
 use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
 use sway_core::{BuildTarget, IrCli};
 use sway_types::Span;
