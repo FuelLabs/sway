@@ -341,6 +341,21 @@ impl Type {
         self.is_struct(context) || self.is_union(context) || self.is_array(context)
     }
 
+    /// Is copy type, i.e., fits in registers and can be bitwise copied.
+    // TODO: This is a copy of `sway_core::asm_generation::fuel::fuel_asm_builder::FuelAsmBuilder::is_copy_type`.
+    //       There is also a counterpart in `sway_core::type_system::TypeInfo::is_copy_type`.
+    //       It is all FuelVM specific and needs to be refactored to properly support other VM backends.
+    pub fn is_copy_type(&self, context: &Context) -> bool {
+        self.is_unit(context)
+            || self.is_never(context)
+            || self.is_bool(context)
+            || self.is_ptr(context)
+            || self
+                .get_uint_width(context)
+                .map(|x| x < 256)
+                .unwrap_or(false)
+    }
+
     /// Returns true if `self` is a slice type.
     pub fn is_slice(&self, context: &Context) -> bool {
         matches!(*self.get_content(context), TypeContent::Slice)

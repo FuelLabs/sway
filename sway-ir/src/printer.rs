@@ -20,7 +20,7 @@ use crate::{
     module::{Kind, ModuleContent},
     value::{Value, ValueContent, ValueDatum},
     AnalysisResult, AnalysisResultT, AnalysisResults, BinaryOpKind, BlockArgument, ConfigContent,
-    IrError, Module, Pass, PassMutability, ScopedPass, UnaryOpKind,
+    InitAggr, IrError, Module, Pass, PassMutability, ScopedPass, UnaryOpKind,
 };
 
 #[derive(Debug)]
@@ -38,6 +38,7 @@ pub(crate) enum Doc {
     ListSep(Vec<Doc>, Box<Doc>),
 
     Parens(Box<Doc>),
+    Brackets(Box<Doc>),
 
     Indent(i64, Box<Doc>),
 }
@@ -65,6 +66,14 @@ impl Doc {
 
     fn in_parens_comma_sep(docs: Vec<Doc>) -> Doc {
         Doc::Parens(Box::new(Doc::list_sep(docs, Doc::Comma)))
+    }
+
+    fn in_brackets_comma_sep(docs: Vec<Doc>) -> Doc {
+        Doc::Brackets(Box::new(Doc::list_sep(docs, Doc::Comma)))
+    }
+
+    fn in_brackets(docs: Vec<Doc>) -> Doc {
+        Doc::Brackets(Box::new(Doc::List(docs)))
     }
 
     pub(crate) fn append(self, doc: Doc) -> Doc {
@@ -1208,6 +1217,38 @@ fn instruction_to_doc<'a>(
                 ))
                 .append(md_namer.md_idx_to_doc(context, metadata)),
             )),
+            InstOp::InitAggr(
+                init_aggr @ InitAggr {
+                    aggr_ptr,
+                    initializers,
+                },
+            ) => Doc::List(
+                initializers
+                    .iter()
+                    .map(|init_val| maybe_constant_to_doc(context, md_namer, namer, init_val))
+                    .collect(),
+            )
+            .append(Doc::line(
+                Doc::text(format!(
+                    "{} = init_aggr {} ",
+                    namer.name(context, ins_value),
+                    namer.name(context, aggr_ptr),
+                ))
+                .append(match init_aggr.as_repeat_array(context) {
+                    Some((elem_val, count)) => Doc::in_brackets(vec![
+                        Doc::text(namer.name(context, &elem_val)),
+                        Doc::text(" x "),
+                        Doc::text(count.to_string()),
+                    ]),
+                    None => Doc::in_brackets_comma_sep(
+                        initializers
+                            .iter()
+                            .map(|init_val| Doc::text(namer.name(context, init_val)))
+                            .collect(),
+                    ),
+                })
+                .append(md_namer.md_idx_to_doc(context, metadata)),
+            )),
         }
     } else {
         unreachable!("Unexpected non instruction for block contents.")
@@ -1600,6 +1641,7 @@ fn build_doc(doc: Doc, indent: i64) -> String {
             .join(&build_doc(*s, indent)),
 
         Doc::Parens(d) => format!("({})", build_doc(*d, indent)),
+        Doc::Brackets(d) => format!("[{}]", build_doc(*d, indent)),
 
         Doc::Indent(n, d) => build_doc(*d, indent + n),
     }

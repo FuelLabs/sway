@@ -16,8 +16,8 @@ use crate::{
     value::{Value, ValueDatum},
     variable::LocalVar,
     AnalysisResult, AnalysisResultT, AnalysisResults, BinaryOpKind, Block, BlockArgument,
-    BranchToWithArgs, Doc, GlobalVar, LogEventData, Module, Pass, PassMutability, ScopedPass,
-    StorageKey, TypeOption, UnaryOpKind,
+    BranchToWithArgs, Doc, GlobalVar, InitAggr, LogEventData, Module, Pass, PassMutability,
+    ScopedPass, StorageKey, TypeContent, TypeOption, UnaryOpKind,
 };
 
 pub struct ModuleVerifierResult;
@@ -374,6 +374,10 @@ impl InstructionVerifier<'_, '_> {
                     dst_val_ptr,
                     stored_val,
                 } => self.verify_store(&ins, dst_val_ptr, stored_val)?,
+                InstOp::InitAggr(InitAggr {
+                    aggr_ptr,
+                    initializers,
+                }) => self.verify_init_aggr(aggr_ptr, initializers)?,
             };
 
             // Verify the instruction metadata too.
@@ -1217,5 +1221,60 @@ impl InstructionVerifier<'_, '_> {
         } else {
             None
         }
+    }
+
+    fn verify_init_aggr(&self, aggr_ptr: &Value, initializers: &[Value]) -> Result<(), IrError> {
+        match aggr_ptr
+            .match_ptr_type(self.context)
+            .map(|pointee_type| pointee_type.get_content(self.context))
+        {
+            Some(TypeContent::Array(elem_ty, length)) => {
+                let length = *length as usize;
+                if length != initializers.len() {
+                    return Err(IrError::VerifyInitAggrMismatchedArrayInitializerCount(
+                        length,
+                        initializers.len(),
+                    ));
+                }
+                for (idx, init_val) in initializers.iter().enumerate() {
+                    let init_ty = init_val
+                        .get_type(self.context)
+                        .ok_or(IrError::VerifyInitAggrUnknownInitializerType(idx))?;
+                    if !elem_ty.eq(self.context, &init_ty) {
+                        return Err(IrError::VerifyInitAggrMismatchedArrayElementType(
+                            idx,
+                            elem_ty.as_string(self.context),
+                            init_ty.as_string(self.context),
+                        ));
+                    }
+                }
+            }
+            Some(TypeContent::Struct(field_types)) => {
+                if field_types.len() != initializers.len() {
+                    return Err(IrError::VerifyInitAggrMismatchedStructInitializerCount(
+                        field_types.len(),
+                        initializers.len(),
+                    ));
+                }
+                for (idx, (field_ty, init_val)) in
+                    field_types.iter().zip(initializers.iter()).enumerate()
+                {
+                    let init_ty = init_val
+                        .get_type(self.context)
+                        .ok_or(IrError::VerifyInitAggrUnknownInitializerType(idx))?;
+                    if !field_ty.eq(self.context, &init_ty) {
+                        return Err(IrError::VerifyInitAggrMismatchedStructFieldType(
+                            idx,
+                            field_ty.as_string(self.context),
+                            init_ty.as_string(self.context),
+                        ));
+                    }
+                }
+            }
+            _ => {
+                return Err(IrError::VerifyInitAggrAggrPointerMismatch);
+            }
+        }
+        Ok(())
     }
 }

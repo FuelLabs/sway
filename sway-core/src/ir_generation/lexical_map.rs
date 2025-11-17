@@ -70,11 +70,17 @@ impl LexicalMap {
         local_symbol
     }
 
-    // Generate and reserve a unique 'anonymous' symbol.  Is in the form `__anon_X` where `X` is a
+    // Generate and reserve a unique 'anonymous' symbol. Is in the form `__anon_X` where `X` is a
     // unique number.
     pub(super) fn insert_anon(&mut self) -> String {
+        self.insert_named_anon("anon")
+    }
+
+    // Generate and reserve a unique named 'anonymous' symbol. Is in the form `__<name>_X` where `X` is a
+    // unique number.
+    pub(super) fn insert_named_anon(&mut self, name: &str) -> String {
         let anon_symbol = (0..)
-            .map(|n| format!("__anon_{n}"))
+            .map(|n| format!("__{name}_{n}"))
             .find(|candidate| !self.reserved_symbols.contains(candidate))
             .unwrap();
         self.symbol_map

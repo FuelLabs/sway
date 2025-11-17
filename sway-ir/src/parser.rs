@@ -284,6 +284,8 @@ mod ir_builder {
                 / op_state_store_word()
                 / op_store()
                 / op_alloc()
+                / op_init_aggr_array_repeat()
+                / op_init_aggr()
 
             rule op_asm() -> IrAstOperation
                 = "asm" _ "(" _ args:(asm_arg() ** comma()) ")" _ ret:asm_ret() meta_idx:comma_metadata_idx()? "{" _
@@ -525,6 +527,16 @@ mod ir_builder {
             rule op_store() -> IrAstOperation
                 = "store" _ val:id() "to" _ dst:id() {
                     IrAstOperation::Store(val, dst)
+                }
+
+            rule op_init_aggr_array_repeat() -> IrAstOperation
+                = "init_aggr" _ aggr_ptr:id() "[" _ repeated_value:id() _ "x" _ length:decimal() _ "]" _ {
+                    IrAstOperation::InitAggr(aggr_ptr, std::iter::repeat_n(repeated_value, length as usize).collect())
+                }
+
+            rule op_init_aggr() -> IrAstOperation
+                = "init_aggr" _ aggr_ptr:id() "[" _ initializers:(id() ** comma()) "]" _ {
+                    IrAstOperation::InitAggr(aggr_ptr, initializers)
                 }
 
             rule cmp_pred() -> Predicate
@@ -904,6 +916,7 @@ mod ir_builder {
         WideModularOp(BinaryOpKind, String, String, String, String),
         Retd(String, String),
         Alloc(IrAstTy, String),
+        InitAggr(String, Vec<String>),
     }
 
     #[derive(Debug)]
@@ -1632,6 +1645,17 @@ mod ir_builder {
                         block
                             .append(context)
                             .store(dst_val_ptr, stored_val)
+                            .add_metadatum(context, opt_metadata)
+                    }
+                    IrAstOperation::InitAggr(aggr_ptr, initializers) => {
+                        let aggr_ptr_val = *val_map.get(&aggr_ptr).unwrap();
+                        let init_vals: Vec<Value> = initializers
+                            .iter()
+                            .map(|init_name| *val_map.get(init_name).unwrap())
+                            .collect();
+                        block
+                            .append(context)
+                            .init_aggr(aggr_ptr_val, init_vals)
                             .add_metadatum(context, opt_metadata)
                     }
                 };

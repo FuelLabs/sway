@@ -511,6 +511,12 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     dst_val_ptr,
                     stored_val,
                 } => self.compile_store(instr_val, dst_val_ptr, stored_val),
+                InstOp::InitAggr(_) => Err(CompileError::Internal(
+                    "`InstOp::InitAggr` was not lowered in the IR.",
+                    self.md_mgr
+                        .val_to_span(self.context, *instr_val)
+                        .unwrap_or_else(Span::dummy),
+                )),
             }
             .map_err(|e| handler.emit_err(e))
         }

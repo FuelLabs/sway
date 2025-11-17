@@ -30,6 +30,7 @@ use crate::{
 };
 
 use indexmap::IndexMap;
+use itertools::Itertools;
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::error::CompileError;
 use sway_ir::{Context, *};
@@ -70,10 +71,6 @@ impl CompiledValue {
 
     fn get_type(&self, context: &Context) -> Option<Type> {
         self.value().get_type(context)
-    }
-
-    fn get_constant(&self, context: &Context) -> Option<Constant> {
-        self.value().get_constant(context).cloned()
     }
 
     fn expect_memory(self) -> Value {
@@ -695,7 +692,7 @@ impl<'a> FnCompiler<'a> {
                 self.compile_array_index(context, md_mgr, prefix, index, span_md_idx)
             }
             ty::TyExpressionVariant::StructExpression { fields, .. } => {
-                self.compile_struct_expr(context, md_mgr, fields, span_md_idx)
+                self.compile_struct_expr(context, md_mgr, ast_expr, fields, span_md_idx)
             }
             ty::TyExpressionVariant::CodeBlock(cb) => {
                 //TODO return all errors
@@ -764,7 +761,7 @@ impl<'a> FnCompiler<'a> {
                 self.compile_enum_expr(context, md_mgr, &enum_decl, *tag, contents.as_deref())
             }
             ty::TyExpressionVariant::Tuple { fields } => {
-                self.compile_tuple_expr(context, md_mgr, fields, span_md_idx)
+                self.compile_tuple_expr(context, md_mgr, ast_expr, fields, span_md_idx)
             }
             ty::TyExpressionVariant::TupleElemAccess {
                 prefix,
@@ -4485,55 +4482,95 @@ impl<'a> FnCompiler<'a> {
             Some(self),
             length_expr,
         )?;
-        // SAFETY: Safe by the type-checking, that only allows u64 as the array length
-        let length_as_u64 = length_as_u64.get_content(context).as_uint().unwrap();
+        let length_as_u64 = length_as_u64
+            .get_content(context)
+            .as_uint()
+            .expect("safe by type-checking, that only allows `u64` as an array length");
+
         let array_type = Type::new_array(context, elem_type, length_as_u64);
 
-        let temp_name = self.lexical_map.insert_anon();
+        let temp_name = self.lexical_map.insert_named_anon("array_init");
         let array_local_var = self
             .function
             .new_local_var(context, temp_name, array_type, None, false)
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
-        let whole_array_value = self
+        let array_val = self
             .current_block
             .append(context)
             .get_local(array_local_var)
             .add_metadatum(context, span_md_idx);
 
-        let repeated_item_value = return_on_termination_or_extract!(
-            self.compile_expression_to_register(context, md_mgr, value_expr)?
-        )
-        .expect_register();
+        // Note that even for empty arrays, we must always compile the initializer
+        // because of potential side effects.
+        //
+        // E.g.:
+        //     let _ = [side_effects(mut_var); 0];
 
-        if let Some(true) = can_mem_clear_be_used(context, elem_type, repeated_item_value) {
-            self.current_block
-                .append(context)
-                .mem_clear_val(whole_array_value);
-        } else if length_as_u64 > 5 {
-            self.compile_array_init_loop(
-                context,
-                whole_array_value,
-                elem_type,
-                repeated_item_value,
-                length_as_u64,
-                span_md_idx,
-            );
-        } else {
-            for i in 0..length_as_u64 {
-                let gep_val = self.current_block.append(context).get_elem_ptr_with_idx(
-                    whole_array_value,
-                    elem_type,
-                    i,
-                );
-                self.current_block
-                    .append(context)
-                    .store(gep_val, repeated_item_value)
-                    .add_metadatum(context, span_md_idx);
-            }
+        enum InitializationKind {
+            ZeroedConst,
+            InRegisterValue(Value),
         }
 
+        let init_kind = if Self::is_single_store_initializeable(context, array_type) {
+            InitializationKind::InRegisterValue(
+                return_on_termination_or_extract!(
+                    self.compile_expression_to_register(context, md_mgr, value_expr)?
+                )
+                .expect_register(),
+            )
+        } else {
+            // We are always const evaluating the repeated value, because we want to cover
+            // very typical cases, like, e.g., `[b256::zero(); N]`.
+            match compile_constant_expression_to_constant(
+                self.engines,
+                context,
+                md_mgr,
+                self.module,
+                None,
+                Some(self),
+                value_expr,
+            ) {
+                Ok(constant) if constant.is_runtime_zeroed(context) => {
+                    InitializationKind::ZeroedConst
+                }
+                // If the constant fits in register, use it. Otherwise, let's compile the value
+                // and have the initialization logic pick the optimal way to initialize it.
+                // E.g., if it is an aggregate, the `init_aggr` will be lowered to optimal initialization.
+                Ok(constant) if constant.is_copy_type(context) => {
+                    InitializationKind::InRegisterValue(Value::new_constant(context, constant))
+                }
+                _ => InitializationKind::InRegisterValue(
+                    return_on_termination_or_extract!(
+                        self.compile_expression_to_register(context, md_mgr, value_expr)?
+                    )
+                    .expect_register(),
+                ),
+            }
+        };
+
+        let array_val = match init_kind {
+            InitializationKind::ZeroedConst => {
+                self.current_block
+                    .append(context)
+                    .mem_clear_val(array_val)
+                    .add_metadatum(context, span_md_idx);
+                array_val
+            }
+            InitializationKind::InRegisterValue(repeated_item_value) => {
+                let init_aggr = self
+                    .current_block
+                    .append(context)
+                    .init_aggr(
+                        array_val,
+                        std::iter::repeat_n(repeated_item_value, length_as_u64 as usize).collect(),
+                    )
+                    .add_metadatum(context, span_md_idx);
+                init_aggr
+            }
+        };
+
         Ok(TerminatorValue::new(
-            CompiledValue::InMemory(whole_array_value),
+            CompiledValue::InMemory(array_val),
             context,
         ))
     }
@@ -4557,162 +4594,121 @@ impl<'a> FnCompiler<'a> {
 
         let array_type = Type::new_array(context, elem_type, contents.len() as u64);
 
-        let temp_name = self.lexical_map.insert_anon();
+        let temp_name = self.lexical_map.insert_named_anon("array_init");
         let array_var = self
             .function
             .new_local_var(context, temp_name, array_type, None, false)
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
-
-        let array_value = self
+        let array_val = self
             .current_block
             .append(context)
             .get_local(array_var)
             .add_metadatum(context, span_md_idx);
 
-        // If all elements are the same constant, then we can initialize the array
-        // in a loop, reducing code size. But to check for that we've to compile
-        // the expressions first, to compare. If it turns out that they're not all
-        // constants, then we end up with all expressions compiled first, and then
-        // all of them stored to the array. This could potentially be bad for register
-        // pressure. So we do this in steps, at the cost of some compile time.
-        let all_consts = contents
-            .iter()
-            .all(|elm| matches!(elm.expression, TyExpressionVariant::Literal(..)));
-
-        // We only do the optimization for sufficiently large arrays, so that
-        // overhead due to the loop doesn't make it worse than the unrolled version.
-        if all_consts && contents.len() > 5 {
-            // We can compile all elements ahead of time without affecting register pressure.
-            let compiled_elems = contents
-                .iter()
-                .map(|e| {
-                    Ok::<_, CompileError>(
-                        self.compile_expression_to_register(context, md_mgr, e)?
-                            .value,
-                    )
-                })
-                .collect::<Result<Vec<_>, _>>()?;
-            let mut compiled_elems_iter = compiled_elems.iter();
-            let first = compiled_elems_iter.next();
-            let const_initialiser_opt = first.filter(|c| {
-                compiled_elems_iter.all(|elem| {
-                    elem.get_constant(context)
-                        .expect("Constant expression must evaluate to a constant IR value")
-                        == c.get_constant(context)
-                            .expect("Constant expression must evaluate to a constant IR value")
-                })
-            });
-            if let Some(const_initializer) = const_initialiser_opt {
-                self.compile_array_init_loop(
-                    context,
-                    array_value,
-                    elem_type,
-                    const_initializer.expect_register(),
-                    contents.len() as u64,
-                    span_md_idx,
-                );
-            } else {
-                // Insert each element separately.
-                for (idx, elem_value) in compiled_elems.iter().enumerate() {
-                    let gep_val = self.current_block.append(context).get_elem_ptr_with_idx(
-                        array_value,
-                        elem_type,
-                        idx as u64,
-                    );
-                    self.current_block
-                        .append(context)
-                        .store(gep_val, elem_value.expect_register())
-                        .add_metadatum(context, span_md_idx);
-                }
-            }
+        // If there is no content (empty array), no need to initialize anything.
+        if contents.is_empty() {
             return Ok(TerminatorValue::new(
-                CompiledValue::InMemory(array_value),
+                CompiledValue::InMemory(array_val),
                 context,
             ));
         }
 
-        // Compile each element and insert it immediately.
-        for (idx, elem_expr) in contents.iter().enumerate() {
-            let elem_value = return_on_termination_or_extract!(
-                self.compile_expression_to_register(context, md_mgr, elem_expr)?
-            )
-            .expect_register();
-            let gep_val = self.current_block.append(context).get_elem_ptr_with_idx(
-                array_value,
-                elem_type,
-                idx as u64,
-            );
-            self.current_block
-                .append(context)
-                .store(gep_val, elem_value)
-                .add_metadatum(context, span_md_idx);
+        fn all_elements_are_same_literal(contents: &[ty::TyExpression]) -> Option<&Literal> {
+            // If all elements are literals of the same value, we can simulate a repeat array initialization.
+            // E.g., `[1000, 1_000, 1000, 1_0_0_0]` can be treated as `[1000; 4]`.
+            // Note that unlike the repeat array initialization, where we always const eval the single repeated value,
+            // we don't want to const eval all of the expressions here.
+            // In practice, having all elements be the same non-literal const is rare and
+            // not worth the additional compile time cost.
+            let first_literal_opt = match &contents.first()?.expression {
+                TyExpressionVariant::Literal(lit) => Some(lit),
+                _ => None,
+            };
+            if let Some(first_literal) = first_literal_opt {
+                if contents.iter().skip(1).all(|elm| {
+                    matches!(
+                        &elm.expression,
+                        TyExpressionVariant::Literal(lit) if lit == first_literal
+                    )
+                }) {
+                    return Some(first_literal);
+                }
+            }
+            None
         }
+
+        enum InitializationKind {
+            ZeroedConst,
+            InRegisterValue(Value),
+            ElemByElem,
+        }
+
+        let init_kind = if Self::is_single_store_initializeable(context, array_type) {
+            InitializationKind::ElemByElem
+        } else {
+            match all_elements_are_same_literal(contents) {
+                Some(literal) if literal.is_runtime_zeroed() => InitializationKind::ZeroedConst,
+                // All elements are the same literal constant that is not zero.
+                // We can compile only the first element, and use it to initialize the array.
+                Some(_) => InitializationKind::InRegisterValue(
+                    return_on_termination_or_extract!(self.compile_expression_to_register(
+                        context,
+                        md_mgr,
+                        &contents[0]
+                    )?)
+                    .expect_register(),
+                ),
+                _ => InitializationKind::ElemByElem,
+            }
+        };
+
+        let array_val = match init_kind {
+            InitializationKind::ZeroedConst => {
+                self.current_block
+                    .append(context)
+                    .mem_clear_val(array_val)
+                    .add_metadatum(context, span_md_idx);
+                array_val
+            }
+            InitializationKind::InRegisterValue(repeated_item_value) => {
+                let init_aggr = self
+                    .current_block
+                    .append(context)
+                    .init_aggr(
+                        array_val,
+                        std::iter::repeat_n(repeated_item_value, contents.len()).collect(),
+                    )
+                    .add_metadatum(context, span_md_idx);
+                init_aggr
+            }
+            InitializationKind::ElemByElem => {
+                let mut elem_values = Vec::with_capacity(contents.len());
+                for elem in contents.iter() {
+                    let elem_val = return_on_termination_or_extract!(
+                        self.compile_expression_to_register(context, md_mgr, elem)?
+                    );
+                    elem_values.push(elem_val);
+                }
+
+                let init_aggr = self
+                    .current_block
+                    .append(context)
+                    .init_aggr(
+                        array_val,
+                        elem_values
+                            .into_iter()
+                            .map(|val| val.expect_register())
+                            .collect(),
+                    )
+                    .add_metadatum(context, span_md_idx);
+                init_aggr
+            }
+        };
+
         Ok(TerminatorValue::new(
-            CompiledValue::InMemory(array_value),
+            CompiledValue::InMemory(array_val),
             context,
         ))
-    }
-
-    // initialize an array with all elements equals to "init_value",
-    // which should be "Copy", concept that sway still don´t have.
-    fn compile_array_init_loop(
-        &mut self,
-        context: &mut Context,
-        array_value: Value,
-        elem_type: Type,
-        init_value: Value,
-        length: u64,
-        span_md_idx: Option<MetadataIndex>,
-    ) {
-        // Create a loop to insert const_initializer to all array elements.
-        let loop_block = self
-            .function
-            .create_block(context, Some("array_init_loop".into()));
-        // The loop begins with 0.
-        let zero = Value::new_u64_constant(context, 0);
-        // Branch to the loop block, passing the initial iteration value.
-        self.current_block
-            .append(context)
-            .branch(loop_block, vec![zero]);
-        // Add a block argument (for the IV) to the loop block.
-        let index_var_index = loop_block.new_arg(context, Type::get_uint64(context));
-        let index = loop_block.get_arg(context, index_var_index).unwrap();
-        // Create an exit block.
-        let exit_block = self
-            .function
-            .create_block(context, Some("array_init_exit".into()));
-        // Start building the loop block.
-        self.current_block = loop_block;
-        let gep_val =
-            self.current_block
-                .append(context)
-                .get_elem_ptr(array_value, elem_type, vec![index]);
-        self.current_block
-            .append(context)
-            .store(gep_val, init_value)
-            .add_metadatum(context, span_md_idx);
-        // Increment index by one.
-        let one = Value::new_u64_constant(context, 1);
-        let index_inc = self
-            .current_block
-            .append(context)
-            .binary_op(BinaryOpKind::Add, index, one);
-        // continue = index_inc < contents.len()
-        let len = Value::new_u64_constant(context, length);
-        let r#continue =
-            self.current_block
-                .append(context)
-                .cmp(Predicate::LessThan, index_inc, len);
-        // if continue then loop_block else exit_block.
-        self.current_block.append(context).conditional_branch(
-            r#continue,
-            loop_block,
-            exit_block,
-            vec![index_inc],
-            vec![],
-        );
-        // Continue compilation in the exit block.
-        self.current_block = exit_block;
     }
 
     fn compile_array_index(
@@ -4791,72 +4787,18 @@ impl<'a> FnCompiler<'a> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
+        struct_init_exp: &TyExpression,
         fields: &[ty::TyStructExpressionField],
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
-        // NOTE: This is a struct instantiation with initialisers for each field of a named struct.
-        // We don't know the actual type of the struct, but the AST guarantees that the fields are
-        // in the declared order (regardless of how they are initialised in source) so we can
-        // create a struct with the field types.
-
-        // Compile each of the values for field initialisers, calculate their indices and also
-        // gather their types with which to make an aggregate.
-
-        let mut insert_values = Vec::with_capacity(fields.len());
-        let mut field_types = Vec::with_capacity(fields.len());
-        for struct_field in fields.iter() {
-            let insert_val = return_on_termination_or_extract!(
-                self.compile_expression_to_register(context, md_mgr, &struct_field.value)?
-            );
-            insert_values.push(insert_val);
-
-            let field_type = convert_resolved_typeid_no_span(
-                self.engines,
-                context,
-                md_mgr,
-                self.module,
-                Some(self),
-                struct_field.value.return_type,
-            )?;
-            field_types.push(field_type);
-        }
-
-        // Create the struct.
-        let struct_type = Type::new_struct(context, field_types.clone());
-        let temp_name = self.lexical_map.insert_anon();
-        let struct_var = self
-            .function
-            .new_local_var(context, temp_name, struct_type, None, false)
-            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
-        let struct_val = self
-            .current_block
-            .append(context)
-            .get_local(struct_var)
-            .add_metadatum(context, span_md_idx);
-
-        // Fill it in.
-        insert_values
-            .into_iter()
-            .zip(field_types)
-            .enumerate()
-            .for_each(|(insert_idx, (insert_val, field_type))| {
-                let gep_val = self.current_block.append(context).get_elem_ptr_with_idx(
-                    struct_val,
-                    field_type,
-                    insert_idx as u64,
-                );
-
-                self.current_block
-                    .append(context)
-                    .store(gep_val, insert_val.expect_register())
-                    .add_metadatum(context, span_md_idx);
-            });
-
-        // Return the pointer.
-        Ok(TerminatorValue::new(
-            CompiledValue::InMemory(struct_val),
+        self.compile_product_type_initialization(
+            "struct_init",
             context,
-        ))
+            md_mgr,
+            struct_init_exp,
+            fields.iter().map(|f| &f.value).collect_vec().as_slice(),
+            span_md_idx,
+        )
     }
 
     fn compile_struct_field_expr(
@@ -5055,45 +4997,27 @@ impl<'a> FnCompiler<'a> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
+        tuple_init_exp: &TyExpression,
         fields: &[ty::TyExpression],
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
+        // If the tuple is unit.
         if fields.is_empty() {
-            // This is a Unit.  We're still debating whether Unit should just be an empty tuple in
-            // the IR or not... it is a special case for now.
             let val = ConstantContent::get_unit(context).add_metadatum(context, span_md_idx);
-            Ok(TerminatorValue::new(
+            return Ok(TerminatorValue::new(
                 CompiledValue::InRegister(val),
                 context,
-            ))
-        } else {
-            let mut init_values = Vec::with_capacity(fields.len());
-            let mut init_types = Vec::with_capacity(fields.len());
-
-            for field_expr in fields {
-                let init_value = return_on_termination_or_extract!(
-                    self.compile_expression_to_register(context, md_mgr, field_expr)?
-                )
-                .expect_register();
-                let init_type = convert_resolved_typeid_no_span(
-                    self.engines,
-                    context,
-                    md_mgr,
-                    self.module,
-                    Some(self),
-                    field_expr.return_type,
-                )?;
-                init_values.push(init_value);
-                init_types.push(init_type);
-            }
-
-            let value =
-                self.compile_tuple_from_values(context, init_values, init_types, span_md_idx)?;
-            Ok(TerminatorValue::new(
-                CompiledValue::InMemory(value),
-                context,
-            ))
+            ));
         }
+
+        self.compile_product_type_initialization(
+            "tuple_init",
+            context,
+            md_mgr,
+            tuple_init_exp,
+            fields.iter().collect_vec().as_slice(),
+            span_md_idx,
+        )
     }
 
     fn compile_tuple_elem_expr(
@@ -5133,6 +5057,193 @@ impl<'a> FnCompiler<'a> {
                 span,
             ))?;
         Ok(TerminatorValue::new(CompiledValue::InMemory(val), context))
+    }
+
+    /// Compiles a product type (tuple or struct) initialization expression.
+    fn compile_product_type_initialization(
+        &mut self,
+        anon_name: &str,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        init_exp: &TyExpression,
+        fields: &[&ty::TyExpression],
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Result<TerminatorValue, CompileError> {
+        // Get the field types.
+        let mut field_types = Vec::with_capacity(fields.len());
+        for field in fields.iter() {
+            let field_type = convert_resolved_typeid_no_span(
+                self.engines,
+                context,
+                md_mgr,
+                self.module,
+                Some(self),
+                field.return_type,
+            )?;
+            field_types.push(field_type);
+        }
+
+        // Create the struct.
+        let struct_type = Type::new_struct(context, field_types.clone());
+        let temp_name = self.lexical_map.insert_named_anon(anon_name);
+        let struct_var = self
+            .function
+            .new_local_var(context, temp_name, struct_type, None, false)
+            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
+        let struct_val = self
+            .current_block
+            .append(context)
+            .get_local(struct_var)
+            .add_metadatum(context, span_md_idx);
+
+        // If there are no fields (empty aggregate), no need to initialize anything.
+        //
+        // Note that in general, we can have non-empty but still zero-sized aggregates.
+        // E.g.:
+        //     struct EmptyStructContainer { e: EmptyStruct }
+        //
+        // Those we **must** initialize, because of potential side effects of the initializers.
+        // E.g.:
+        //     let _ = EmptyStructContainer { e: get_empty_struct_with_side_effects() };
+        if field_types.is_empty() {
+            return Ok(TerminatorValue::new(
+                CompiledValue::InMemory(struct_val),
+                context,
+            ));
+        }
+
+        enum InitializationKind {
+            ZeroedConst,
+            Const(Constant),
+            FieldByField,
+        }
+
+        let init_kind = if Self::is_single_store_initializeable(context, struct_type) {
+            InitializationKind::FieldByField
+        } else {
+            match compile_constant_expression_to_constant(
+                self.engines,
+                context,
+                md_mgr,
+                self.module,
+                None,
+                Some(self),
+                init_exp,
+            ) {
+                Ok(constant) if constant.is_runtime_zeroed(context) => {
+                    InitializationKind::ZeroedConst
+                }
+                Ok(constant)
+                    if Self::is_suitable_const_for_memcpy_aggregate_init(context, constant) =>
+                {
+                    InitializationKind::Const(constant)
+                }
+                _ => InitializationKind::FieldByField,
+            }
+        };
+
+        // Initialize the struct according to the selected initialization kind.
+        let struct_val = match init_kind {
+            InitializationKind::ZeroedConst => {
+                // The initializer is a zeroed constant. We just memclear the struct.
+                self.current_block
+                    .append(context)
+                    .mem_clear_val(struct_val)
+                    .add_metadatum(context, span_md_idx);
+                struct_val
+            }
+            InitializationKind::Const(_constant) => {
+                // The initializer is a constant suitable for memcpy.
+                todo!("Implement constant product type aggregate initialization via `memcpy`.");
+            }
+            InitializationKind::FieldByField => {
+                // If we cannot compile to a constant, or a constant is not zeroed or suitable for memcpy initialization,
+                // we proceed with field-by-field initialization. For this we use `init_aggr`.
+
+                // This is a struct or tuple instantiation with initializers for each field.
+                // We don't know the actual type of the struct or tuple, but the AST guarantees that the fields are
+                // in the declared order (regardless of how they are initialized in source, in case of structs) so we can
+                // create an IR struct with the field types.
+                let mut field_values = Vec::with_capacity(fields.len());
+                for field in fields.iter() {
+                    let field_val = return_on_termination_or_extract!(
+                        self.compile_expression_to_register(context, md_mgr, field)?
+                    );
+                    field_values.push(field_val);
+                }
+
+                let init_aggr = self
+                    .current_block
+                    .append(context)
+                    .init_aggr(
+                        struct_val,
+                        field_values
+                            .into_iter()
+                            .map(|val| val.expect_register())
+                            .collect(),
+                    )
+                    .add_metadatum(context, span_md_idx);
+                init_aggr
+            }
+        };
+
+        Ok(TerminatorValue::new(
+            CompiledValue::InMemory(struct_val),
+            context,
+        ))
+    }
+
+    /// Returns true if the given constant is suitable for aggregate initialization
+    /// via a single `memcpy` instruction.
+    fn is_suitable_const_for_memcpy_aggregate_init(
+        _context: &Context,
+        _constant: Constant,
+    ) -> bool {
+        // TODO: (INIT-AGGR) Implement heuristics for suitability.
+        //       We want to balance here between several factors.
+        //       E.g., bytecode size: how much data we will use in the data
+        //       section compared to number of stores saved.
+        //       If the aggregate is mostly zeroed, is it better to lower
+        //       it to a single `mem_clear_val` and a few stores?
+        //       One interesting case is, if the target aggregate is only
+        //       read from, then it will be optimized away fully and only
+        //       the data section access will be used.
+        //       It might even be that for non-large aggregates (arrays)
+        //       we will always want to use `memcpy` initialization,
+        //       and simply return true here.
+        false
+    }
+
+    /// Returns true if the given type can be initialized via a single `store` instruction.
+    ///
+    /// Such types we want to initialize via a single `store` and not, e.g., via `mem_clear_val`
+    /// even if they are zeroed, because using `store` will enable SROA which can be beneficial
+    /// in case of single field aggregates.
+    ///
+    /// Note that `u256` and `b256` are excluded here, because they require `mem_copy` for initialization.
+    fn is_single_store_initializeable(context: &Context, r#type: Type) -> bool {
+        match r#type.get_content(context) {
+            TypeContent::Never => false,
+            TypeContent::Unit => true,
+            TypeContent::Bool => true,
+            TypeContent::Uint(size) => *size <= 64,
+            TypeContent::B256 => false,
+            TypeContent::StringSlice => false,
+            TypeContent::StringArray(length) => *length == 1,
+            TypeContent::Array(elem_ty, length) => {
+                *length == 1 && Self::is_single_store_initializeable(context, *elem_ty)
+            }
+            TypeContent::Union(variants) => {
+                variants.len() == 1 && Self::is_single_store_initializeable(context, variants[0])
+            }
+            TypeContent::Struct(fields) => {
+                fields.len() == 1 && Self::is_single_store_initializeable(context, fields[0])
+            }
+            TypeContent::Slice => false,
+            TypeContent::Pointer => true,
+            TypeContent::TypedPointer(_) => true,
+            TypeContent::TypedSlice(_) => false,
+        }
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -5333,37 +5444,8 @@ impl<'a> FnCompiler<'a> {
     }
 }
 
-fn can_mem_clear_be_used(ctx: &mut Context<'_>, elem_type: Type, value: Value) -> Option<bool> {
-    match elem_type.get_content(ctx) {
-        TypeContent::Bool if !(value.get_constant(ctx)?.get_content(ctx).as_bool()?) => Some(true),
-        TypeContent::Uint(256)
-            if value
-                .get_constant(ctx)?
-                .get_content(ctx)
-                .as_u256()?
-                .is_zero() =>
-        {
-            Some(true)
-        }
-        TypeContent::Uint(_) if value.get_constant(ctx)?.get_content(ctx).as_uint()? == 0 => {
-            Some(true)
-        }
-        TypeContent::B256
-            if value
-                .get_constant(ctx)?
-                .get_content(ctx)
-                .as_b256()?
-                .is_zero() =>
-        {
-            Some(true)
-        }
-        _ => None,
-    }
-}
-
-// Used to check if encoding and runtime have the same memory representation.
-// If they do, it is possible to trivially encode/decode some types.
-
+/// Used to check if encoding and runtime have the same memory representation.
+/// If they do, it is possible to trivially encode/decode some types.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum MemoryRepresentation {
     Padding { len_in_bytes: u64 },
