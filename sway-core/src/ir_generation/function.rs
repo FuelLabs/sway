@@ -5392,9 +5392,11 @@ impl MemoryRepresentation {
             MemoryRepresentation::Padding { len_in_bytes } => *len_in_bytes,
             MemoryRepresentation::Blob { len_in_bytes } => *len_in_bytes,
             MemoryRepresentation::And(items) => items.iter().map(|x| x.len_in_bytes()).sum(),
-            MemoryRepresentation::Or(items) => {
-                items.iter().map(|x| x.len_in_bytes()).max().unwrap()
-            }
+            MemoryRepresentation::Or(items) => items
+                .iter()
+                .map(|x| x.len_in_bytes())
+                .max()
+                .unwrap_or_default(),
             MemoryRepresentation::Array(item, len) => item.len_in_bytes() * *len,
         }
     }
@@ -5440,7 +5442,12 @@ pub fn get_memory_representation(ctx: &Context, t: Type) -> MemoryRepresentation
                 .map(|variant| get_memory_representation(ctx, *variant))
                 .collect::<Vec<_>>();
 
-            let biggest_len_in_bytes = items.iter().map(|x| x.len_in_bytes()).max().unwrap().max(8);
+            let biggest_len_in_bytes = items
+                .iter()
+                .map(|x| x.len_in_bytes())
+                .max()
+                .unwrap_or_default()
+                .max(8);
             for item in items.iter_mut() {
                 let item_len_in_bytes = item.len_in_bytes();
                 if item_len_in_bytes == biggest_len_in_bytes {

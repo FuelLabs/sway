@@ -423,7 +423,7 @@ __transmute<A, B>(src: A) -> B
 
 ```sway
 __runtime_mem_id<T>() -> u64
-__encoding_mem_id<T> -> u64
+__encoding_mem_id<T>() -> u64
 ```
 
 **Description:** Returns an opaque number that identifies the memory representation of a type. No information is conveyed by this number and should only be compared for equality.
