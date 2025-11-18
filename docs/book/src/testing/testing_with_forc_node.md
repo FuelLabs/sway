@@ -20,7 +20,7 @@ forc-call \
 
 Sample output (truncated):
 
-```
+```text
 …
 result: Initialized(Address(std::address::Address { bits: Bits256([31, 131, 36, 111, 177, 67, 191, 23, 136, 60, 86, 168, 69, 88, 194, 77, 47, 157, 117, 51, 25, 181, 34, 234, 129, 216, 182, 250, 160, 158, 176, 83]) }))
 ```
@@ -69,7 +69,7 @@ forc-call \
 The first call hydrates the contract bytecode and storage into the RocksDB database defined earlier; subsequent reads are served locally.  
 You should see the same owner address as before:
 
-```
+```text
 …
 result: Initialized(Address(std::address::Address { bits: Bits256([31, 131, 36, 111, 177, 67, 191, 23, 136, 60, 86, 168, 69, 88, 194, 77, 47, 157, 117, 51, 25, 181, 34, 234, 129, 216, 182, 250, 160, 158, 176, 83]) }))
 ```
