@@ -2686,6 +2686,23 @@ where
     }
 }
 
+pub fn encode_may_alias<T>(item: &T) -> raw_slice
+where
+    T: AbiEncode,
+{
+    let RMI: u64 = __runtime_mem_id::<T>();
+    let EMI: u64 = __encoding_mem_id::<T>();
+
+    if RMI == EMI {
+        let len = __size_of::<T>();
+        __transmute::<(&T, u64), raw_slice>((item, len))
+    } else {
+        let item: T = *item;
+        let buffer = item.abi_encode(Buffer::new());
+        buffer.as_raw_slice()
+    }
+}
+
 pub fn encode_and_return<T>(item: T) -> !
 where
     T: AbiEncode,

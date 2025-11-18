@@ -394,37 +394,30 @@ script {
     }
 
     pub fn log_42(value !189: u8) -> (), !192 {
-        local mut slice __aggr_memcpy_0
-        local { ptr, u64 } __anon_0
+        local { __ptr u8, u64 } __anon_1
         local slice __log_arg
-        local u8 item_
+        local u8 value_
 
         entry(value: u8):
-        v0 = get_local __ptr u8, item_, !193
-        store value to v0, !193
-        v1 = get_local __ptr u8, item_, !195
-        v2 = const u64 1
-        v3 = asm(size: v2, src: v1) -> ptr hp, !197 {
-            aloc   size, !198
-            mcp    hp src size, !199
-        }
-        v4 = get_local __ptr { ptr, u64 }, __anon_0, !201
-        v5 = const u64 0
-        v6 = get_elem_ptr v4, __ptr ptr, v5, !202
-        store v3 to v6, !203
+        v0 = get_local __ptr u8, value_
+        store value to v0
+        v1 = get_local __ptr u8, value_, !193
+        v2 = get_local __ptr { __ptr u8, u64 }, __anon_1, !195
+        v3 = const u64 0
+        v4 = get_elem_ptr v2, __ptr __ptr u8, v3, !196
+        store v1 to v4, !197
+        v5 = const u64 1
+        v6 = get_elem_ptr v2, __ptr u64, v5, !198
         v7 = const u64 1
-        v8 = get_elem_ptr v4, __ptr u64, v7, !204
-        store v2 to v8, !205
-        v9 = asm(s: v4) -> __ptr slice s {
-        }
-        v10 = get_local __ptr slice, __aggr_memcpy_0
+        store v7 to v6, !199
+        v8 = get_local __ptr { __ptr u8, u64 }, __anon_1, !193
+        v9 = cast_ptr v8 to __ptr slice, !193
+        v10 = get_local __ptr slice, __log_arg
         mem_copy_val v10, v9
-        v11 = get_local __ptr slice, __log_arg
-        mem_copy_val v11, v10
-        v12 = const u64 14454674236531057292
-        log __ptr slice v11, v12
-        v13 = const unit ()
-        ret () v13
+        v11 = const u64 14454674236531057292
+        log __ptr slice v10, v11
+        v12 = const unit ()
+        ret () v12
     }
 }
 
@@ -547,12 +540,12 @@ script {
 !116 = span !109 1257 1262
 !117 = (!107 !108 !110 !111 !116)
 !118 = "test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert/src/codec.sw"
-!119 = span !118 71747 71920
-!120 = fn_name_span !118 71754 71764
+!119 = span !118 72160 72333
+!120 = fn_name_span !118 72167 72177
 !121 = (!119 !120 !48)
-!122 = span !118 71862 71866
-!123 = span !118 71862 71872
-!124 = fn_call_path_span !118 71867 71870
+!122 = span !118 72275 72279
+!123 = span !118 72275 72285
+!124 = fn_call_path_span !118 72280 72283
 !125 = (!123 !124)
 !126 = span !109 2922 2926
 !127 = (!123 !124 !126)
@@ -563,9 +556,9 @@ script {
 !132 = (!123 !124 !128 !129 !131)
 !133 = span !109 2928 2929
 !134 = (!123 !124 !133)
-!135 = span !118 71874 71878
-!136 = span !118 71874 71890
-!137 = fn_call_path_span !118 71879 71882
+!135 = span !118 72287 72291
+!136 = span !118 72287 72303
+!137 = fn_call_path_span !118 72292 72295
 !138 = (!136 !137)
 !139 = span !109 3420 3424
 !140 = (!136 !137 !139)
@@ -573,32 +566,32 @@ script {
 !142 = fn_call_path_span !109 3409 3419
 !143 = (!136 !137 !141 !142)
 !144 = (!136 !137 !141 !142 !131)
-!145 = span !118 71837 71891
-!146 = fn_call_path_span !118 71837 71861
+!145 = span !118 72250 72304
+!146 = fn_call_path_span !118 72250 72274
 !147 = span !118 735 755
 !148 = (!145 !146 !147)
 !149 = (!145 !146)
-!150 = span !118 71820 71892
-!151 = span !118 71911 71917
-!152 = span !118 71897 71918
-!153 = fn_call_path_span !118 71897 71910
-!154 = span !118 90639 90652
+!150 = span !118 72233 72305
+!151 = span !118 72324 72330
+!152 = span !118 72310 72331
+!153 = fn_call_path_span !118 72310 72323
+!154 = span !118 91052 91065
 !155 = (!152 !153 !154)
 !156 = (!152 !153)
-!157 = span !118 90623 90653
+!157 = span !118 91036 91066
 !158 = (!152 !153 !157)
-!159 = span !118 90738 90743
+!159 = span !118 91151 91156
 !160 = (!152 !153 !159)
-!161 = span !118 90767 90768
-!162 = span !118 90785 90790
-!163 = fn_call_path_span !118 90787 90788
+!161 = span !118 91180 91181
+!162 = span !118 91198 91203
+!163 = fn_call_path_span !118 91200 91201
 !164 = (!152 !153 !162 !163)
-!165 = span !118 90865 90885
-!166 = fn_call_path_span !118 90872 90878
+!165 = span !118 91278 91298
+!166 = fn_call_path_span !118 91285 91291
 !167 = span !118 3959 3978
 !168 = fn_call_path_span !118 3959 3972
-!169 = span !118 73537 73556
-!170 = fn_call_path_span !118 73544 73548
+!169 = span !118 73950 73969
+!170 = fn_call_path_span !118 73957 73961
 !171 = span !118 625 637
 !172 = (!152 !153 !165 !166 !167 !168 !169 !170 !171)
 !173 = (!152 !153 !165 !166 !167 !168 !169 !170)
@@ -610,11 +603,11 @@ script {
 !179 = (!152 !153 !165 !166 !167 !168 !169 !170)
 !180 = span !118 3747 3786
 !181 = (!152 !153 !165 !166 !167 !168 !169 !170 !180)
-!182 = span !118 90857 90885
+!182 = span !118 91270 91298
 !183 = (!152 !153 !182)
-!184 = span !118 90904 90905
-!185 = span !118 90899 90905
-!186 = fn_call_path_span !118 90901 90903
+!184 = span !118 91317 91318
+!185 = span !118 91312 91318
+!186 = fn_call_path_span !118 91314 91316
 !187 = (!152 !153 !185 !186)
 !188 = "test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert/src/logging.sw"
 !189 = span !188 591 596
@@ -622,18 +615,12 @@ script {
 !191 = fn_name_span !188 584 587
 !192 = (!190 !191)
 !193 = span !188 642 647
-!194 = span !118 71080 71084
+!194 = span !118 71611 71622
 !195 = (!193 !194)
-!196 = span !118 71058 71173
-!197 = (!193 !196)
-!198 = span !118 71100 71109
-!199 = span !118 71123 71138
-!200 = span !118 71190 71201
-!201 = (!193 !200)
-!202 = (!193 !200)
-!203 = (!193 !200)
-!204 = (!193 !200)
-!205 = (!193 !200)
+!196 = (!193 !194)
+!197 = (!193 !194)
+!198 = (!193 !194)
+!199 = (!193 !194)
 
 ;; ASM: Final program
 ;; Program kind: Script
@@ -1018,25 +1005,20 @@ jal  $zero $$reta i0          ; return from call
 pshl i15                      ; save registers 16..40
 pshh i524288                  ; save registers 40..64
 move $$locbase $sp            ; save locals base register for function log_42
-cfei i56                      ; allocate 56 bytes for locals and 0 slots for call arguments
+cfei i40                      ; allocate 40 bytes for locals and 0 slots for call arguments
 move $r0 $$reta               ; save return address
-addi $r1 $$locbase i48        ; get offset to local __ptr u8
+addi $r1 $$locbase i32        ; get offset to local __ptr u8
 sb   $r1 $$arg0 i0            ; store byte
-addi $r1 $$locbase i48        ; get offset to local __ptr u8
-move $r2 $one                 ; copy ASM block argument's constant initial value to register
-aloc $one                     ; aloc size
-mcp  $hp $r1 $r2              ; mcp hp src size
-addi $r1 $$locbase i16        ; get offset to local __ptr { ptr, u64 }
-sw   $$locbase $hp i2         ; store word
-sw   $$locbase $one i3        ; store word
-mcpi $$locbase $r1 i16        ; copy memory
-addi $r1 $$locbase i32        ; get offset to local __ptr slice
+addi $r1 $$locbase i32        ; get offset to local __ptr u8
+sw   $$locbase $r1 i0         ; store word
+sw   $$locbase $one i1        ; store word
+addi $r1 $$locbase i16        ; get offset to local __ptr slice
 mcpi $r1 $$locbase i16        ; copy memory
 load $r1 data_NonConfigurable_2; load constant from data section
-lw   $r2 $$locbase i4         ; load slice pointer for logging data
-lw   $r3 $$locbase i5         ; load slice size for logging data
+lw   $r2 $$locbase i2         ; load slice pointer for logging data
+lw   $r3 $$locbase i3         ; load slice size for logging data
 logd $zero $r1 $r2 $r3        ; log slice
-cfsi i56                      ; free 56 bytes for locals and 0 slots for extra call arguments
+cfsi i40                      ; free 40 bytes for locals and 0 slots for extra call arguments
 move $$reta $r0               ; restore return address
 poph i524288                  ; restore registers 40..64
 popl i15                      ; restore registers 16..40
@@ -1051,7 +1033,7 @@ data_NonConfigurable_2 .word 14454674236531057292
 
 0x00000000 MOVE R60 $pc                                    ;; [26, 240, 48, 0]
 0x00000004 JMPF $zero 0x4                                  ;; [116, 0, 0, 4]
-0x00000008                                                 ;; [0, 0, 0, 0, 0, 0, 6, 72]
+0x00000008                                                 ;; [0, 0, 0, 0, 0, 0, 6, 56]
 0x00000010                                                 ;; [0, 0, 0, 0, 0, 0, 0, 0]
 0x00000018 LW R63 R60 0x1                                  ;; [93, 255, 192, 1]
 0x0000001c ADD R63 R63 R60                                 ;; [16, 255, 255, 0]
@@ -1426,33 +1408,29 @@ data_NonConfigurable_2 .word 14454674236531057292
 0x000005e0 PSHL 0xf                                        ;; [149, 0, 0, 15]
 0x000005e4 PSHH 0x80000                                    ;; [150, 8, 0, 0]
 0x000005e8 MOVE R59 $sp                                    ;; [26, 236, 80, 0]
-0x000005ec CFEI 0x38                                       ;; [145, 0, 0, 56]
+0x000005ec CFEI 0x28                                       ;; [145, 0, 0, 40]
 0x000005f0 MOVE $writable R62                              ;; [26, 67, 224, 0]
-0x000005f4 ADDI R17 R59 0x30                               ;; [80, 71, 176, 48]
+0x000005f4 ADDI R17 R59 0x20                               ;; [80, 71, 176, 32]
 0x000005f8 SB R17 R58 0x0                                  ;; [94, 71, 160, 0]
-0x000005fc ADDI R17 R59 0x30                               ;; [80, 71, 176, 48]
-0x00000600 MOVE R18 $one                                   ;; [26, 72, 16, 0]
-0x00000604 ALOC $one                                       ;; [38, 4, 0, 0]
-0x00000608 MCP $hp R17 R18                                 ;; [40, 29, 20, 128]
-0x0000060c ADDI R17 R59 0x10                               ;; [80, 71, 176, 16]
-0x00000610 SW R59 $hp 0x2                                  ;; [95, 236, 112, 2]
-0x00000614 SW R59 $one 0x3                                 ;; [95, 236, 16, 3]
-0x00000618 MCPI R59 R17 0x10                               ;; [96, 237, 16, 16]
-0x0000061c ADDI R17 R59 0x20                               ;; [80, 71, 176, 32]
-0x00000620 MCPI R17 R59 0x10                               ;; [96, 71, 176, 16]
-0x00000624 LW R17 R63 0x2                                  ;; [93, 71, 240, 2]
-0x00000628 LW R18 R59 0x4                                  ;; [93, 75, 176, 4]
-0x0000062c LW R19 R59 0x5                                  ;; [93, 79, 176, 5]
-0x00000630 LOGD $zero R17 R18 R19                          ;; [52, 1, 20, 147]
-0x00000634 CFSI 0x38                                       ;; [146, 0, 0, 56]
-0x00000638 MOVE R62 $writable                              ;; [26, 249, 0, 0]
-0x0000063c POPH 0x80000                                    ;; [152, 8, 0, 0]
-0x00000640 POPL 0xf                                        ;; [151, 0, 0, 15]
-0x00000644 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x000005fc ADDI R17 R59 0x20                               ;; [80, 71, 176, 32]
+0x00000600 SW R59 R17 0x0                                  ;; [95, 237, 16, 0]
+0x00000604 SW R59 $one 0x1                                 ;; [95, 236, 16, 1]
+0x00000608 ADDI R17 R59 0x10                               ;; [80, 71, 176, 16]
+0x0000060c MCPI R17 R59 0x10                               ;; [96, 71, 176, 16]
+0x00000610 LW R17 R63 0x2                                  ;; [93, 71, 240, 2]
+0x00000614 LW R18 R59 0x2                                  ;; [93, 75, 176, 2]
+0x00000618 LW R19 R59 0x3                                  ;; [93, 79, 176, 3]
+0x0000061c LOGD $zero R17 R18 R19                          ;; [52, 1, 20, 147]
+0x00000620 CFSI 0x28                                       ;; [146, 0, 0, 40]
+0x00000624 MOVE R62 $writable                              ;; [26, 249, 0, 0]
+0x00000628 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x0000062c POPL 0xf                                        ;; [151, 0, 0, 15]
+0x00000630 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x00000634 NOOP                                            ;; [71, 0, 0, 0]
 .data_section:
-0x00000648 .word i18446744073709486083, as hex be bytes ([FF, FF, FF, FF, FF, FF, 00, 03])
-0x00000650 .word i262145, as hex be bytes ([00, 00, 00, 00, 00, 04, 00, 01])
-0x00000658 .word i14454674236531057292, as hex be bytes ([C8, 99, 51, A2, 4C, 6C, A2, 8C])
+0x00000638 .word i18446744073709486083, as hex be bytes ([FF, FF, FF, FF, FF, FF, 00, 03])
+0x00000640 .word i262145, as hex be bytes ([00, 00, 00, 00, 00, 04, 00, 01])
+0x00000648 .word i14454674236531057292, as hex be bytes ([C8, 99, 51, A2, 4C, 6C, A2, 8C])
 ;; --- END OF TARGET BYTECODE ---
 
 warning
@@ -1552,7 +1530,7 @@ warning
 ____
 
   Compiled script "array_repeat" with 8 warnings.
-    Finished release [optimized + fuel] target(s) [1.632 KB] in ???
+    Finished release [optimized + fuel] target(s) [1.616 KB] in ???
 
 > forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat --experimental const_generics --verbose --release
 exit status: 0
@@ -1560,10 +1538,10 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert)
    Compiling script array_repeat (test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat)
-    Finished release [optimized + fuel] target(s) [2.864 KB] in ???
+    Finished release [optimized + fuel] target(s) [2.84 KB] in ???
     script array_repeat
-      Bytecode size: 2864 bytes (2.864 KB)
-      Bytecode hash: 0xdc2e29e1f37d24b165bc4b534388fc87ecb1148464b75c6268eb8499f2c9f6df
+      Bytecode size: 2840 bytes (2.84 KB)
+      Bytecode hash: 0x54d22df9e96d796b90b4b0fd0559dca5f43bedc7bcb9965c84e119adde33818d
      Running 1 test, filtered 0 tests
 
 tested -- array_repeat
