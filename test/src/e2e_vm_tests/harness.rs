@@ -19,6 +19,15 @@ use futures::Future;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use regex::{Captures, Regex};
+use revm::{
+    context::{
+        result::{ExecutionResult as RevmExecutionResult, Output as RevmOutput},
+        Context, TxEnv,
+    },
+    database::InMemoryDB,
+    handler::{ExecuteCommitEvm, MainBuilder, MainContext},
+    primitives::TxKind,
+};
 use std::{fs, io::Read, path::PathBuf};
 use sway_core::{asm_generation::ProgramABI, BuildTarget, Observer};
 
@@ -150,7 +159,7 @@ pub(crate) async fn runs_on_node(
 
 pub(crate) enum VMExecutionResult {
     Fuel(ProgramState, Vec<Receipt>, Box<EcalSyscallHandler>),
-    Evm(revm::primitives::result::ExecutionResult),
+    Evm(RevmExecutionResult),
 }
 
 /// Very basic check that code does indeed run in the VM.
@@ -224,37 +233,41 @@ pub(crate) fn runs_in_vm(
             ))
         }
         BuildTarget::EVM => {
-            let mut evm = revm::EvmBuilder::default()
-                .with_db(revm::InMemoryDB::default())
-                .with_clear_env()
-                .build();
+            let mut evm = Context::mainnet()
+                .with_db(InMemoryDB::default())
+                .build_mainnet();
 
             // Transaction to create the smart contract
+            let create_tx = TxEnv {
+                kind: TxKind::Create,
+                data: script.bytecode.bytes.clone().into(),
+                ..Default::default()
+            };
+
             let result = evm
-                .transact_commit()
+                .transact_commit(create_tx)
                 .map_err(|e| anyhow::anyhow!("Could not create smart contract on EVM: {e:?}"))?;
 
             match result {
-                revm::primitives::ExecutionResult::Revert { .. }
-                | revm::primitives::ExecutionResult::Halt { .. } => todo!(),
-                revm::primitives::ExecutionResult::Success { ref output, .. } => match output {
-                    revm::primitives::result::Output::Call(_) => todo!(),
-                    revm::primitives::result::Output::Create(_bytes, address_opt) => {
-                        match address_opt {
-                            None => todo!(),
-                            Some(address) => {
-                                evm.tx_mut().data = script.bytecode.bytes.into();
-                                evm.tx_mut().transact_to =
-                                    revm::interpreter::primitives::TransactTo::Call(*address);
+                RevmExecutionResult::Revert { .. } | RevmExecutionResult::Halt { .. } => todo!(),
+                RevmExecutionResult::Success { ref output, .. } => match output {
+                    RevmOutput::Call(_) => todo!(),
+                    RevmOutput::Create(_bytes, address_opt) => match address_opt {
+                        None => todo!(),
+                        Some(address) => {
+                            let call_tx = TxEnv {
+                                data: script.bytecode.bytes.clone().into(),
+                                kind: TxKind::Call(*address),
+                                ..Default::default()
+                            };
 
-                                let result = evm
-                                    .transact_commit()
-                                    .map_err(|e| anyhow::anyhow!("Failed call on EVM: {e:?}"))?;
+                            let result = evm
+                                .transact_commit(call_tx)
+                                .map_err(|e| anyhow::anyhow!("Failed call on EVM: {e:?}"))?;
 
-                                Ok(VMExecutionResult::Evm(result))
-                            }
+                            Ok(VMExecutionResult::Evm(result))
                         }
-                    }
+                    },
                 },
             }
         }
