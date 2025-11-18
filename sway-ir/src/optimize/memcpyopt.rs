@@ -7,11 +7,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use sway_types::{FxIndexMap, FxIndexSet};
 
 use crate::{
-    get_gep_symbol, get_loaded_symbols, get_referred_symbol, get_referred_symbols,
-    get_stored_symbols, memory_utils, AnalysisResults, Block, Context, EscapedSymbols,
-    FuelVmInstruction, Function, InstOp, Instruction, InstructionInserter, IrError, LocalVar, Pass,
-    PassMutability, ReferredSymbols, ScopedPass, Symbol, Type, Value, ValueDatum,
-    ESCAPED_SYMBOLS_NAME,
+    AnalysisResults, Block, Context, ESCAPED_SYMBOLS_NAME, EscapedSymbols, FuelVmInstruction, Function, InstOp, Instruction, InstructionInserter, IrError, LocalVar, Pass, PassMutability, ReferredSymbols, ScopedPass, Symbol, Type, Value, ValueDatum, get_gep_symbol, get_loaded_symbols, get_referred_symbol, get_referred_symbols, get_stored_symbols, memory_utils
 };
 
 pub const MEMCPYOPT_NAME: &str = "memcpyopt";
@@ -1121,6 +1117,7 @@ fn copy_prop_reverse(
             _ => continue,
         };
 
+
         // We don't deal with partial memcpys
         if dst_sym
             .get_type(context)
@@ -1196,8 +1193,7 @@ fn copy_prop_reverse(
                             continue;
                         }
                     }
-                }
-                to_delete.insert(inst);
+                }      
             }
         }
     }
@@ -1226,11 +1222,11 @@ fn copy_prop_reverse(
         }
     }
 
-    let mut repl_locals = vec![];
+    let mut repl_locals: Vec<(Value, Symbol)> = vec![];
     let mut value_replacements = FxHashMap::default();
 
     // Gather the get_local instructions that need to be replaced.
-    for (_block, inst) in function.instruction_iter(context) {
+    for (block, inst) in function.instruction_iter(context).collect::<Vec<_>>() {
         match inst.get_instruction(context).cloned().unwrap() {
             Instruction {
                 op: InstOp::GetLocal(sym),
@@ -1241,11 +1237,17 @@ fn copy_prop_reverse(
                     let sym_type = sym.get_type(context);
                     let dst_type = dst.get_type(context);
 
-                    if sym_type.eq(context, &dst_type) {
+                    // TODO we are comparings strings here
+                    let sym_type_str = sym_type.as_string(context);
+                    let dst_type_str = dst_type.as_string(context);
+                    if sym_type_str == dst_type_str {
                         repl_locals.push((inst, *dst));
+                        //to_delete.insert(inst); // TODO what to do with this?
                     } else {
                         let original_ptr = match dst {
-                            Symbol::Local(..) => todo!(),
+                            Symbol::Local(_) => {
+                                continue;
+                            },
                             Symbol::Arg(block_argument) => block_argument.as_value(context),
                         };
 
