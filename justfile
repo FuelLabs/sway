@@ -44,7 +44,7 @@ alias pe2e := perf-e2e
 # collect gas usages and bytecode sizes from E2E tests
 [group('performance')]
 perf-e2e filter='':
-    cargo r -r -p test -- --release --kind e2e --perf-only --perf {{filter}}
+    cargo r -r -p test -- --release --kind e2e --perf-only --perf {{filter}} --update-output-files
 
 alias pil := perf-in-lang
 # collect gas usages from in-language tests

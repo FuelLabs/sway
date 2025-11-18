@@ -40,13 +40,20 @@ struct NotAutoEncodable {
     p: raw_ptr
 }
 
+#[inline(never)]
+fn local_log<T>(item: T) where T: AbiEncode {
+    __log(item);
+}
+
 fn main() -> u64 {
+    local_log(0u64);
+
     let mut e = Vec::new();
     e.push(1);
     e.push(2);
     e.push(3);
 
-    __log(S{
+    local_log(S{
         a: 1,
         b: 2,
         c: 3,
@@ -55,14 +62,19 @@ fn main() -> u64 {
         f: "sway",
         g: u256::max()
     });
-    __log(SS{
+    local_log(SS{
         ss: 1u64
     });
-    __log(E::A(SS{
+    local_log(E::A(SS{
         ss: 1u64
     }));
-    __log(E::B);
-    __log(CustomAbiEncode {});
+    local_log(E::B);
+    local_log(CustomAbiEncode {});
 
     1
+}
+
+#[test]
+fn call_main() {
+    main();
 }

@@ -103,14 +103,18 @@ impl TypeMetadata {
                     call_path,
                     arguments,
                     ..
-                } if call_path.suffix.as_str() == "encode" => {
+                } if call_path.suffix.as_str() == "encode_may_alias" => {
                     if arguments.len() != 1 {
                         Err(CompileError::InternalOwned(
-                            format!("The \"encode\" function must have exactly one argument but it had {}.", formatting::num_to_str(arguments.len())), 
+                            format!("The \"encode_may_alias\" function must have exactly one argument but it had {}.", formatting::num_to_str(arguments.len())), 
                             logged_expr.span.clone(),
                         ))
                     } else {
-                        Ok(&arguments[0].1)
+                        let expr = &arguments[0].1;
+                        match &expr.expression {
+                            TyExpressionVariant::Ref(expr) => Ok(&*expr),
+                            _ => unreachable!(),
+                        }
                     }
                 }
                 _ => Err(CompileError::Internal(

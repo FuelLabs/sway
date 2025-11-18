@@ -3119,20 +3119,26 @@ fn type_check_panic(
         .unwrap_or_else(|err| ty::TyExpression::error(err, expr_span.clone(), engines));
 
     let expr_type_id = if ctx.experimental.new_encoding {
-        // The type checked expression is either an `encode` call or an error.
+        // The type checked expression is either an `encode_may_alias` call or an error.
         match &expr.expression {
             ty::TyExpressionVariant::FunctionApplication {
                 call_path,
                 arguments,
                 ..
             } => {
-                if !(call_path.suffix.as_str() == "encode" && arguments.len() == 1) {
+                if !(call_path.suffix.as_str() == "encode_may_alias" && arguments.len() == 1) {
                     return Err(handler.emit_err(CompileError::Internal(
-                        "In case of the new encoding, the `panic` expression argument must be a call to an \"encode\" function.",
+                        "In case of the new encoding, the `panic` expression argument must be a call to an \"encode_may_alias\" function.",
                         expr_span
                     )));
                 } else {
-                    arguments[0].1.return_type
+                    match &arguments[0].1.expression {
+                        TyExpressionVariant::Ref(ty_expression) => ty_expression.return_type,
+                        _ => return Err(handler.emit_err(CompileError::Internal(
+                            "In case of the new encoding, the `panic` expression argument must be a call to an \"encode_may_alias\" function.",
+                            expr_span
+                        )))
+                    }
                 }
             }
             _ => expr.return_type, // Error. We just pass the type id through.
