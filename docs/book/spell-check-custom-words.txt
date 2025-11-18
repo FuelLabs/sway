@@ -111,6 +111,7 @@ relayer
 relayers
 repo
 repos
+RocksDB
 runnable
 stateful
 struct
