@@ -207,7 +207,7 @@ rayon-cond = "0.3"
 regex = "1.10"
 reqwest = "0.12"
 rexpect = "0.6"
-revm = "14.0"
+revm = { version = "33.1", default-features = false, features = ["std", "secp256k1", "portable", "blst"] }
 rmcp = "0.2"
 ropey = "1.5"
 rpassword = "7.2"
@@ -259,3 +259,10 @@ vte = "0.13"
 walkdir = "2.3"
 whoami = "1.5"
 wiremock = "0.6"
+
+[patch.crates-io]
+fuel-core = { git = "https://github.com/FuelLabs/fuel-core", branch = "master" }
+fuel-core-chain-config = { git = "https://github.com/FuelLabs/fuel-core", branch = "master" }
+fuel-core-client = { git = "https://github.com/FuelLabs/fuel-core", branch = "master" }
+fuel-core-storage = { git = "https://github.com/FuelLabs/fuel-core", branch = "master" }
+fuel-core-types = { git = "https://github.com/FuelLabs/fuel-core", branch = "master" }
