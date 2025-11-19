@@ -485,9 +485,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 }
                 InstOp::IntToPtr(val, _) => self.compile_no_op_move(instr_val, val),
                 InstOp::Load(src_val) => self.compile_load(instr_val, src_val),
-                InstOp::Alloc { ptr_to_ty, count } => {
-                    self.compile_alloc(instr_val, ptr_to_ty, count)
-                }
+                InstOp::Alloc { ty, count } => self.compile_alloc(instr_val, ty, count),
                 InstOp::MemCopyBytes {
                     dst_val_ptr,
                     src_val_ptr,
@@ -1473,21 +1471,12 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
     fn compile_alloc(
         &mut self,
         instr_val: &Value,
-        ptr_to_ty: &Type,
+        ty: &Type,
         count: &Value,
     ) -> Result<(), CompileError> {
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
 
-        let ty_size = ptr_to_ty
-            .get_pointee_type(self.context)
-            .ok_or_else(|| {
-                CompileError::Internal(
-                    "alloc target type must be a pointer.",
-                    owning_span.clone().unwrap_or_else(Span::dummy),
-                )
-            })?
-            .size(self.context)
-            .in_bytes();
+        let ty_size = ty.size(self.context).in_bytes();
 
         let statically_known_count = count.get_constant(self.context).and_then(|count| {
             if let ConstantValue::Uint(count_uint) = count.get_content(self.context).value {

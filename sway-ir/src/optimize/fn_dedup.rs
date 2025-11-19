@@ -281,9 +281,9 @@ fn hash_fn(
                 crate::InstOp::Ret(_, ty) => ty.hash(state),
                 crate::InstOp::Store { .. } => (),
                 crate::InstOp::Alloc {
-                    ptr_to_ty,
+                    ty,
                     count: _,
-                } => ptr_to_ty.hash(state),
+                } => ty.hash(state),
             }
         }
     }

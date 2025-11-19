@@ -1310,10 +1310,9 @@ mod ir_builder {
                     }
                     IrAstOperation::Alloc(ty, name) => {
                         let ir_ty = ty.to_ir_type(context);
-                        let ptr_to_ty = Type::new_typed_pointer(context, ir_ty);
                         block
                             .append(context)
-                            .alloc(ptr_to_ty, *val_map.get(&name).unwrap())
+                            .alloc(ir_ty, *val_map.get(&name).unwrap())
                             .add_metadatum(context, opt_metadata)
                     }
                     IrAstOperation::UnaryOp(op, arg) => block

@@ -1504,11 +1504,10 @@ impl<'a> FnCompiler<'a> {
                 )
                 .expect_register();
                 let span_md_idx = md_mgr.span_to_md(context, &span);
-                let ptr_to_ty = Type::new_typed_pointer(context, ir_type);
                 let val = self
                     .current_block
                     .append(context)
-                    .alloc(ptr_to_ty, count_value)
+                    .alloc(ir_type, count_value)
                     .add_metadatum(context, span_md_idx);
                 Ok(TerminatorValue::new(
                     CompiledValue::InRegister(val),

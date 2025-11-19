@@ -594,20 +594,16 @@ fn instruction_to_doc<'a>(
                     ))
                     .append(md_namer.md_idx_to_doc(context, metadata)),
                 )),
-            InstOp::Alloc { ptr_to_ty, count } => {
-                maybe_constant_to_doc(context, md_namer, namer, count).append(Doc::line(
+            InstOp::Alloc { ty, count } => maybe_constant_to_doc(context, md_namer, namer, count)
+                .append(Doc::line(
                     Doc::text(format!(
                         "{} = alloc {} x {}",
                         namer.name(context, ins_value),
                         namer.name(context, count),
-                        ptr_to_ty
-                            .get_pointee_type(context)
-                            .unwrap()
-                            .as_string(context),
+                        ty.as_string(context),
                     ))
                     .append(md_namer.md_idx_to_doc(context, metadata)),
-                ))
-            }
+                )),
             InstOp::UnaryOp { op, arg } => {
                 let op_str = match op {
                     UnaryOpKind::Not => "not",
