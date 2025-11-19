@@ -1,5 +1,7 @@
 use super::{TyDeclParsedType, TyTraitInterfaceItem, TyTraitItem};
 use crate::{
+    ast_elements::type_parameter::ConstGenericExpr,
+    decl_engine::DeclEngineGet as _,
     engine_threading::*,
     language::parsed::{self, AbiDeclaration},
     transform,
@@ -7,6 +9,10 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
 use sway_types::{Ident, Named, Span, Spanned};
 
 /// A [TyAbiDecl] contains the type-checked version of the parse tree's
@@ -21,6 +27,133 @@ pub struct TyAbiDecl {
     pub items: Vec<TyTraitItem>,
     pub span: Span,
     pub attributes: transform::Attributes,
+}
+
+fn has_const_generics(type_id: TypeId, engines: &Engines) -> bool {
+    let types = type_id.extract_any_including_self(engines, &|_| true, vec![], 0);
+
+    for (t, _) in types {
+        let t = engines.te().get(t);
+        match &*t {
+            TypeInfo::StringArray(length) => match length.expr() {
+                ConstGenericExpr::Literal { .. } => {}
+                ConstGenericExpr::AmbiguousVariableExpression { .. } => return true,
+            },
+            TypeInfo::Enum(decl_id) => {
+                let decl = engines.de().get(decl_id);
+                let any_const_generics = decl
+                    .generic_parameters
+                    .iter()
+                    .any(|x| x.as_const_parameter().is_some());
+                if any_const_generics {
+                    return true;
+                }
+            }
+            TypeInfo::Struct(decl_id) => {
+                let decl = engines.de().get(decl_id);
+                let any_const_generics = decl
+                    .generic_parameters
+                    .iter()
+                    .any(|x| x.as_const_parameter().is_some());
+                if any_const_generics {
+                    return true;
+                }
+
+                for field in decl.fields.iter() {
+                    let any_const_generics =
+                        has_const_generics(field.type_argument.type_id, engines);
+                    if any_const_generics {
+                        return true;
+                    }
+                }
+            }
+            TypeInfo::Tuple(items) => {
+                for item in items {
+                    let any_const_generics = has_const_generics(item.type_id, engines);
+                    if any_const_generics {
+                        return true;
+                    }
+                }
+            }
+            TypeInfo::Array(item, length) => {
+                let any_const_generics = has_const_generics(item.type_id, engines);
+                if any_const_generics {
+                    return true;
+                }
+
+                match length.expr() {
+                    ConstGenericExpr::Literal { .. } => {}
+                    ConstGenericExpr::AmbiguousVariableExpression { .. } => return true,
+                }
+            }
+            _ => {}
+        }
+    }
+
+    false
+}
+
+impl TyAbiDecl {
+    pub(crate) fn forbid_const_generics(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+    ) -> Result<(), ErrorEmitted> {
+        for item in self.interface_surface.iter() {
+            match item {
+                TyTraitInterfaceItem::TraitFn(decl_ref) => {
+                    let decl = engines.de().get(decl_ref.id());
+
+                    if has_const_generics(decl.return_type.type_id, engines) {
+                        let err = handler.emit_err(CompileError::ConstGenericNotSupportedHere {
+                            span: decl.return_type.span(),
+                        });
+                        return Err(err);
+                    }
+
+                    for arg in decl.parameters.iter() {
+                        if has_const_generics(arg.type_argument.type_id, engines) {
+                            let err =
+                                handler.emit_err(CompileError::ConstGenericNotSupportedHere {
+                                    span: arg.type_argument.span.clone(),
+                                });
+                            return Err(err);
+                        }
+                    }
+                }
+                TyTraitInterfaceItem::Constant(_) => {}
+                TyTraitInterfaceItem::Type(_) => {}
+            }
+        }
+
+        for item in self.items.iter() {
+            match item {
+                TyTraitItem::Fn(decl_ref) => {
+                    let decl = engines.de().get(decl_ref.id());
+                    if has_const_generics(decl.return_type.type_id, engines) {
+                        let err = handler.emit_err(CompileError::ConstGenericNotSupportedHere {
+                            span: decl.return_type.span(),
+                        });
+                        return Err(err);
+                    }
+
+                    for arg in decl.parameters.iter() {
+                        if has_const_generics(arg.type_argument.type_id, engines) {
+                            let err =
+                                handler.emit_err(CompileError::ConstGenericNotSupportedHere {
+                                    span: arg.type_argument.span.clone(),
+                                });
+                            return Err(err);
+                        }
+                    }
+                }
+                TyTraitItem::Constant(_) => {}
+                TyTraitItem::Type(_) => {}
+            }
+        }
+
+        Ok(())
+    }
 }
 
 impl TyDeclParsedType for TyAbiDecl {
