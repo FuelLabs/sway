@@ -1,0 +1,85 @@
+{
+  "concreteTypes": [
+    {
+      "concreteTypeId": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d",
+      "type": "()"
+    },
+    {
+      "concreteTypeId": "41bd1a98f0a59642d8f824c805b798a5f268d1f7d05808eb05c4189c493f1be0",
+      "metadataTypeId": 0,
+      "type": "(u64, u64)"
+    },
+    {
+      "concreteTypeId": "0c549b98c3db49207607c6f5f063b081b1a724bc479a2a1b353ff2c60f3f1d49",
+      "metadataTypeId": 1,
+      "type": "AliasedTuple"
+    }
+  ],
+  "configurables": [],
+  "encodingVersion": "1",
+  "errorCodes": {},
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [
+        {
+          "concreteTypeId": "0c549b98c3db49207607c6f5f063b081b1a724bc479a2a1b353ff2c60f3f1d49",
+          "name": "arg1"
+        }
+      ],
+      "name": "aliased_tuple",
+      "output": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
+    },
+    {
+      "attributes": null,
+      "inputs": [
+        {
+          "concreteTypeId": "41bd1a98f0a59642d8f824c805b798a5f268d1f7d05808eb05c4189c493f1be0",
+          "name": "_arg1"
+        }
+      ],
+      "name": "tuple",
+      "output": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "metadataTypes": [
+    {
+      "components": [
+        {
+          "name": "__tuple_element",
+          "typeId": 2
+        },
+        {
+          "name": "__tuple_element",
+          "typeId": 2
+        }
+      ],
+      "metadataTypeId": 0,
+      "type": "(u64, u64)"
+    },
+    {
+      "aliasOf": 0,
+      "components": [
+        {
+          "name": "__tuple_element",
+          "typeId": 2
+        },
+        {
+          "name": "__tuple_element",
+          "typeId": 2
+        }
+      ],
+      "metadataTypeId": 1,
+      "type": "AliasedTuple"
+    },
+    {
+      "metadataTypeId": 2,
+      "type": "u64"
+    }
+  ],
+  "panickingCalls": {},
+  "programType": "contract",
+  "specVersion": "1.2"
+}
