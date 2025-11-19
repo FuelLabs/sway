@@ -1,10 +1,12 @@
 use std::{
+    hash::{DefaultHasher, Hash},
     io::Read,
     ops::{BitAnd, BitOr, BitXor, Not, Rem},
 };
 
 use crate::{
     engine_threading::*,
+    ir_generation::function::{get_encoding_representation, get_memory_id},
     language::{
         ty::{self, TyConstantDecl, TyIntrinsicFunctionKind},
         CallPath, Literal,
@@ -1693,6 +1695,50 @@ fn const_eval_intrinsic(
         }
         Intrinsic::Dbg => {
             unreachable!("__dbg should not exist in the typed tree")
+        }
+        Intrinsic::RuntimeMemoryId => {
+            assert!(intrinsic.type_arguments.len() == 1);
+            assert!(intrinsic.arguments.is_empty());
+
+            let t = &intrinsic.type_arguments[0];
+            let t = convert_resolved_type_id(
+                lookup.engines,
+                lookup.context,
+                lookup.md_mgr,
+                lookup.module,
+                lookup.function_compiler,
+                t.type_id(),
+                &t.span(),
+            )
+            .unwrap();
+
+            let id = get_memory_id(lookup.context, t);
+            let c = ConstantContent {
+                ty: Type::get_uint64(lookup.context),
+                value: ConstantValue::Uint(id),
+            };
+
+            Ok(Some(Constant::unique(lookup.context, c)))
+        }
+        Intrinsic::EncodingMemoryId => {
+            assert!(intrinsic.type_arguments.len() == 1);
+            assert!(intrinsic.arguments.is_empty());
+
+            let t = intrinsic.type_arguments[0].as_type_argument().unwrap();
+
+            let r = get_encoding_representation(lookup.engines, t.type_id);
+
+            use std::hash::Hasher;
+            let mut state = DefaultHasher::default();
+            r.hash(&mut state);
+            let id = state.finish();
+
+            let c = ConstantContent {
+                ty: Type::get_uint64(lookup.context),
+                value: ConstantValue::Uint(id),
+            };
+
+            Ok(Some(Constant::unique(lookup.context, c)))
         }
     }
 }
