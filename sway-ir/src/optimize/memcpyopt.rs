@@ -7,10 +7,11 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use sway_types::{FxIndexMap, FxIndexSet};
 
 use crate::{
-    get_gep_symbol, get_referred_symbol, get_referred_symbols, get_stored_symbols, memory_utils,
-    AnalysisResults, Block, Context, EscapedSymbols, FuelVmInstruction, Function, InstOp,
-    Instruction, InstructionInserter, IrError, LocalVar, Pass, PassMutability, ReferredSymbols,
-    ScopedPass, Symbol, Type, Value, ValueDatum, ESCAPED_SYMBOLS_NAME,
+    get_gep_symbol, get_loaded_symbols, get_referred_symbol, get_referred_symbols,
+    get_stored_symbols, memory_utils, AnalysisResults, Block, Context, EscapedSymbols,
+    FuelVmInstruction, Function, InstOp, Instruction, InstructionInserter, IrError, LocalVar, Pass,
+    PassMutability, ReferredSymbols, ScopedPass, Symbol, Type, Value, ValueDatum,
+    ESCAPED_SYMBOLS_NAME,
 };
 
 pub const MEMCPYOPT_NAME: &str = "memcpyopt";
@@ -259,6 +260,34 @@ fn local_copy_prop_prememcpy(
     Ok(true)
 }
 
+// Deconstruct a memcpy into (dst_val_ptr, src_val_ptr, copy_len).
+fn deconstruct_memcpy(context: &Context, inst: Value) -> Option<(Value, Value, u64)> {
+    match inst.get_instruction(context).unwrap() {
+        Instruction {
+            op:
+                InstOp::MemCopyBytes {
+                    dst_val_ptr,
+                    src_val_ptr,
+                    byte_len,
+                },
+            ..
+        } => Some((*dst_val_ptr, *src_val_ptr, *byte_len)),
+        Instruction {
+            op:
+                InstOp::MemCopyVal {
+                    dst_val_ptr,
+                    src_val_ptr,
+                },
+            ..
+        } => Some((
+            *dst_val_ptr,
+            *src_val_ptr,
+            memory_utils::pointee_size(context, *dst_val_ptr),
+        )),
+        _ => None,
+    }
+}
+
 /// Copy propagation of `memcpy`s within a block.
 fn local_copy_prop(
     context: &mut Context,
@@ -297,7 +326,8 @@ fn local_copy_prop(
                 for sym in rs {
                     if let Some(copies) = src_to_copies.get_mut(&sym) {
                         for copy in &*copies {
-                            let (_, src_ptr, copy_size) = deconstruct_memcpy(context, *copy);
+                            let (_, src_ptr, copy_size) = deconstruct_memcpy(context, *copy)
+                                .expect("Expected copy instruction");
                             if memory_utils::may_alias(context, value, len, src_ptr, copy_size) {
                                 available_copies.remove(copy);
                             }
@@ -388,34 +418,6 @@ fn local_copy_prop(
         }
     }
 
-    // Deconstruct a memcpy into (dst_val_ptr, src_val_ptr, copy_len).
-    fn deconstruct_memcpy(context: &Context, inst: Value) -> (Value, Value, u64) {
-        match inst.get_instruction(context).unwrap() {
-            Instruction {
-                op:
-                    InstOp::MemCopyBytes {
-                        dst_val_ptr,
-                        src_val_ptr,
-                        byte_len,
-                    },
-                ..
-            } => (*dst_val_ptr, *src_val_ptr, *byte_len),
-            Instruction {
-                op:
-                    InstOp::MemCopyVal {
-                        dst_val_ptr,
-                        src_val_ptr,
-                    },
-                ..
-            } => (
-                *dst_val_ptr,
-                *src_val_ptr,
-                memory_utils::pointee_size(context, *dst_val_ptr),
-            ),
-            _ => unreachable!("Only memcpy instructions handled"),
-        }
-    }
-
     struct ReplGep {
         base: Symbol,
         elem_ptr_ty: Type,
@@ -446,7 +448,7 @@ fn local_copy_prop(
                 .flat_map(|set| set.iter())
             {
                 let (dst_ptr_memcpy, src_ptr_memcpy, copy_len) =
-                    deconstruct_memcpy(context, *memcpy);
+                    deconstruct_memcpy(context, *memcpy).expect("Expected copy instruction");
                 // If the location where we're loading from exactly matches the destination of
                 // the memcpy, just load from the source pointer of the memcpy.
                 // TODO: In both the arms below, we check that the pointer type
@@ -638,7 +640,7 @@ fn local_copy_prop(
                         ..
                     } => {
                         let (dst_val_ptr, src_val_ptr, copy_len) =
-                            deconstruct_memcpy(context, inst);
+                            deconstruct_memcpy(context, inst).expect("Expected copy instruction");
                         kill_defined_symbol(
                             context,
                             dst_val_ptr,
@@ -824,59 +826,80 @@ enum CandidateKind {
     NonClobbered(Candidate),
 }
 
-// Is (an alias of) src_ptr clobbered on any path from load_val to store_val?
+/// Starting backwards from `end_inst`, till we reach `start_inst` or the entry block,
+/// is `scrutiny_ptr` (or an alias of it) stored to (i.e., clobbered)?
+/// Also checks that there is no overlap (common symbols) between
+/// `no_overlap_ptr` and `scrutiny_ptr`.
 fn is_clobbered(
     context: &Context,
-    Candidate {
-        load_val,
-        store_val,
-        dst_ptr,
-        src_ptr,
-    }: &Candidate,
+    start_inst: &Value,
+    end_inst: &Value,
+    no_overlap_ptr: &Value,
+    scrutiny_ptr: &Value,
 ) -> bool {
-    let store_block = store_val.get_instruction(context).unwrap().parent;
+    let end_block = end_inst.get_instruction(context).unwrap().parent;
+    let entry_block = end_block.get_function(context).get_entry_block(context);
 
-    let mut iter = store_block
+    let mut iter = end_block
         .instruction_iter(context)
         .rev()
-        .skip_while(|i| i != store_val);
-    assert!(iter.next().unwrap() == *store_val);
+        .skip_while(|i| i != end_inst);
+    assert!(iter.next().unwrap() == *end_inst);
 
-    let ReferredSymbols::Complete(src_symbols) = get_referred_symbols(context, *src_ptr) else {
+    let ReferredSymbols::Complete(scrutiny_symbols) = get_referred_symbols(context, *scrutiny_ptr)
+    else {
         return true;
     };
 
-    let ReferredSymbols::Complete(dst_symbols) = get_referred_symbols(context, *dst_ptr) else {
+    let ReferredSymbols::Complete(no_overlap_symbols) =
+        get_referred_symbols(context, *no_overlap_ptr)
+    else {
         return true;
     };
 
-    // If the source and destination may have an overlap, we'll end up generating a mcp
+    // If the two pointers may have an overlap, we'll end up generating a mcp
     // with overlapping source/destination which is not allowed.
-    if src_symbols.intersection(&dst_symbols).next().is_some() {
+    if scrutiny_symbols
+        .intersection(&no_overlap_symbols)
+        .next()
+        .is_some()
+    {
         return true;
     }
 
-    // Scan backwards till we encounter load_val, checking if
-    // any store aliases with src_ptr.
+    // Scan backwards till we encounter start_val, checking if
+    // any store aliases with scrutiny_ptr.
     let mut worklist: Vec<(Block, Box<dyn Iterator<Item = Value>>)> =
-        vec![(store_block, Box::new(iter))];
+        vec![(end_block, Box::new(iter))];
     let mut visited = FxHashSet::default();
     'next_job: while let Some((block, iter)) = worklist.pop() {
         visited.insert(block);
         for inst in iter {
-            if inst == *load_val || inst == *store_val {
-                // We don't need to go beyond either the source load or the candidate store.
+            if inst == *start_inst || inst == *end_inst {
+                // We don't need to go beyond either start_inst or end_inst.
                 continue 'next_job;
             }
             let stored_syms = get_stored_symbols(context, inst);
             if let ReferredSymbols::Complete(syms) = stored_syms {
-                if syms.iter().any(|sym| src_symbols.contains(sym)) {
+                if syms.iter().any(|sym| scrutiny_symbols.contains(sym)) {
                     return true;
                 }
             } else {
                 return true;
             }
         }
+
+        if entry_block == block {
+            // We've reached the entry block. If any of the scrutiny_symbols
+            // is an argument, then we consider it clobbered.
+            if scrutiny_symbols
+                .iter()
+                .any(|sym| matches!(sym, Symbol::Arg(_)))
+            {
+                return true;
+            }
+        }
+
         for pred in block.pred_iter(context) {
             if !visited.contains(pred) {
                 worklist.push((
@@ -944,7 +967,13 @@ fn load_store_to_memcopy(context: &mut Context, function: Function) -> Result<bo
                 })
                 .and_then(|candidate @ Candidate { dst_ptr, .. }| {
                     // Check that there's no path from load_val to store_val that might overwrite src_ptr.
-                    if !is_clobbered(context, &candidate) {
+                    if !is_clobbered(
+                        context,
+                        &candidate.load_val,
+                        &candidate.store_val,
+                        &candidate.dst_ptr,
+                        &candidate.src_ptr,
+                    ) {
                         Some(CandidateKind::NonClobbered(candidate))
                     } else if !is_copy_type(&dst_ptr.match_ptr_type(context).unwrap(), context) {
                         Some(CandidateKind::ClobberedNoncopyType(candidate))
@@ -1024,4 +1053,258 @@ fn load_store_to_memcopy(context: &mut Context, function: Function) -> Result<bo
     }
 
     Ok(true)
+}
+
+pub const MEMCPYPROP_REVERSE_NAME: &str = "memcpyprop_reverse";
+
+pub fn create_memcpyprop_reverse_pass() -> Pass {
+    Pass {
+        name: MEMCPYPROP_REVERSE_NAME,
+        descr: "Copy propagation of MemCpy instructions",
+        deps: vec![],
+        runner: ScopedPass::FunctionPass(PassMutability::Transform(copy_prop_reverse)),
+    }
+}
+
+/// Copy propagation of `memcpy`s, replacing source with destination.
+fn copy_prop_reverse(
+    context: &mut Context,
+    _analyses: &AnalysisResults,
+    function: Function,
+) -> Result<bool, IrError> {
+    let mut modified = false;
+
+    // let's first compute the definitions and uses of every symbol.
+    let mut stores_map: FxHashMap<Symbol, Vec<Value>> = FxHashMap::default();
+    let mut loads_map: FxHashMap<Symbol, Vec<Value>> = FxHashMap::default();
+    for (_block, instr_val) in function.instruction_iter(context) {
+        let stored_syms = get_stored_symbols(context, instr_val);
+        let stored_syms = match stored_syms {
+            ReferredSymbols::Complete(syms) => syms,
+            ReferredSymbols::Incomplete(_) => return Ok(false),
+        };
+        let loaded_syms = get_loaded_symbols(context, instr_val);
+        let loaded_syms = match loaded_syms {
+            ReferredSymbols::Complete(syms) => syms,
+            ReferredSymbols::Incomplete(_) => return Ok(false),
+        };
+        for sym in stored_syms {
+            stores_map.entry(sym).or_default().push(instr_val);
+        }
+        for sym in loaded_syms {
+            loads_map.entry(sym).or_default().push(instr_val);
+        }
+    }
+
+    let mut candidates = vec![];
+
+    for (_block, inst) in function.instruction_iter(context) {
+        let Some((dst_ptr, src_ptr, byte_len)) = deconstruct_memcpy(context, inst) else {
+            continue;
+        };
+
+        if dst_ptr.get_type(context) != src_ptr.get_type(context) {
+            continue;
+        }
+
+        // We can replace the source of this memcpy with the destination
+        // if:
+        // 1. All uses of the destination symbol are dominated by this memcpy.
+        // 2. All uses of the source symbol are dominated by this memcpy.
+
+        let dst_sym = match get_referred_symbols(context, dst_ptr) {
+            ReferredSymbols::Complete(syms) if syms.len() == 1 => syms.into_iter().next().unwrap(),
+            _ => continue,
+        };
+        let src_sym = match get_referred_symbols(context, src_ptr) {
+            ReferredSymbols::Complete(syms) if syms.len() == 1 => syms.into_iter().next().unwrap(),
+            _ => continue,
+        };
+
+        if dst_sym.get_type(context) != src_sym.get_type(context) {
+            continue;
+        }
+
+        // We don't deal with partial memcpys
+        if dst_sym
+            .get_type(context)
+            .get_pointee_type(context)
+            .expect("All symbols must be pointer types")
+            .size(context)
+            .in_bytes()
+            != byte_len
+        {
+            continue;
+        }
+
+        // For every use of the source symbol:
+        //   starting from the use, walk backwards till we reach this memcpy,
+        //   checking if there's a store to an alias of the destination symbol in that path.
+        let source_uses_not_clobbered = loads_map
+            .get(&src_sym)
+            .map(|uses| {
+                uses.iter().all(|use_val: &Value| {
+                    *use_val == inst || !is_clobbered(context, &inst, use_val, &src_ptr, &dst_ptr)
+                })
+            })
+            .unwrap_or(true);
+
+        // For every use of the destination symbol:
+        //   starting from the use, walk backwards till we reach this memcpy,
+        //   checking if there's a store to an alias of the source symbol in that path.
+        let destination_uses_not_clobbered = loads_map
+            .get(&dst_sym)
+            .map(|uses| {
+                uses.iter()
+                    .all(|use_val| !is_clobbered(context, &inst, use_val, &dst_ptr, &src_ptr))
+            })
+            .unwrap_or(true);
+
+        if source_uses_not_clobbered && destination_uses_not_clobbered {
+            candidates.push((inst, dst_sym, src_sym));
+        }
+    }
+
+    if candidates.is_empty() {
+        return Ok(false);
+    }
+
+    let mut to_delete: FxHashSet<Value> = FxHashSet::default();
+    let mut src_to_dst: FxHashMap<Symbol, Symbol> = FxHashMap::default();
+
+    for (inst, dst_sym, src_sym) in candidates {
+        match src_sym {
+            Symbol::Arg(_) => {
+                // Args are mostly copied to locals before actually being used.
+                // So we don't handle them for now. Handling them would require
+                // handling more instructions where they can be used, which probably
+                // isn't worth it.
+                continue;
+            }
+            Symbol::Local(local) => {
+                if local.get_initializer(context).is_some() {
+                    // If the source is a local and it has an initializer, we run into trouble
+                    // 1. If the destination (after transitive closure below) is not a local,
+                    //    we cannot initialize it with the source's initializer.
+                    // 2. If the destination is a local, but it already has an initializer (by itself
+                    //    or by another source in the chain), we cannot initialize it with this initializer.
+                    continue;
+                }
+                match src_to_dst.entry(src_sym) {
+                    std::collections::hash_map::Entry::Vacant(e) => {
+                        e.insert(dst_sym);
+                    }
+                    std::collections::hash_map::Entry::Occupied(e) => {
+                        if *e.get() != dst_sym {
+                            // src_sym is copied to two different dst_syms. We cannot optimize this.
+                            continue;
+                        }
+                    }
+                }
+                to_delete.insert(inst);
+            }
+        }
+    }
+
+    // Take a transitive closure of src_to_dst.
+    {
+        let mut changed = true;
+        let mut cycle_detected = false;
+        while changed {
+            changed = false;
+            src_to_dst.clone().iter().for_each(|(src, dst)| {
+                if let Some(next_dst) = src_to_dst.get(dst) {
+                    // Cycle detection
+                    if *next_dst == *src {
+                        cycle_detected = true;
+                        return;
+                    }
+                    src_to_dst.insert(*src, *next_dst);
+                    changed = true;
+                }
+            });
+        }
+        if cycle_detected {
+            // We cannot optimize in presence of cycles.
+            return Ok(modified);
+        }
+    }
+
+    // Gather the get_local instructions that need to be replaced.
+    let mut repl_locals = vec![];
+    for (_block, inst) in function.instruction_iter(context) {
+        match inst.get_instruction(context).unwrap() {
+            Instruction {
+                op: InstOp::GetLocal(sym),
+                ..
+            } => {
+                if let Some(dst) = src_to_dst.get(&Symbol::Local(*sym)) {
+                    repl_locals.push((inst, *dst));
+                }
+            }
+            _ => {
+                // Any access to a local begins with a GetLocal, we can ignore the rest
+                // (unless we support Symbol::Arg above).
+            }
+        }
+    }
+
+    if repl_locals.is_empty() {
+        return Ok(modified);
+    }
+    modified = true;
+
+    let mut value_replacements = FxHashMap::default();
+    for (to_repl, repl_with) in repl_locals {
+        let Instruction {
+            op: InstOp::GetLocal(sym),
+            ..
+        } = to_repl.get_instruction_mut(context).unwrap()
+        else {
+            panic!("Expected GetLocal instruction");
+        };
+        match repl_with {
+            Symbol::Local(dst_local) => {
+                // We just modify this GetLocal in-place.
+                *sym = dst_local;
+            }
+            Symbol::Arg(arg) => {
+                // The get_local needs to be replaced with the right argument Value.
+                value_replacements.insert(to_repl, arg.as_value(context));
+            }
+        }
+    }
+
+    // Replace get_locals with the right values.
+    function.replace_values(context, &value_replacements, None);
+
+    // In instances such as
+    //        (1) b <- a
+    //        /         \
+    // (2) x <- b    (3):  x <- a
+    // when we decide to eliminate (1) and (2), i.e., both `b` and `a` end up
+    // being replaced by `x`, (3) will end up becoming `x <- x`. We need to
+    // clean these up.
+    for (_, inst) in function.instruction_iter(context) {
+        let Some((dst_ptr, src_ptr, _byte_len)) = deconstruct_memcpy(context, inst) else {
+            continue;
+        };
+
+        let dst_sym = match get_referred_symbols(context, dst_ptr) {
+            ReferredSymbols::Complete(syms) if syms.len() == 1 => syms.into_iter().next().unwrap(),
+            _ => continue,
+        };
+        let src_sym = match get_referred_symbols(context, src_ptr) {
+            ReferredSymbols::Complete(syms) if syms.len() == 1 => syms.into_iter().next().unwrap(),
+            _ => continue,
+        };
+
+        if dst_sym == src_sym {
+            to_delete.insert(inst);
+        }
+    }
+
+    function.remove_instructions(context, |v| to_delete.contains(&v));
+
+    Ok(modified)
 }

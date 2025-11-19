@@ -4,13 +4,13 @@ use crate::{
     create_dom_fronts_pass, create_dominators_pass, create_escaped_symbols_pass,
     create_fn_dedup_debug_profile_pass, create_fn_dedup_release_profile_pass,
     create_fn_inline_pass, create_globals_dce_pass, create_mem2reg_pass, create_memcpyopt_pass,
-    create_misc_demotion_pass, create_module_printer_pass, create_module_verifier_pass,
-    create_postorder_pass, create_ret_demotion_pass, create_simplify_cfg_pass, create_sroa_pass,
-    Context, Function, IrError, Module, ARG_DEMOTION_NAME, ARG_POINTEE_MUTABILITY_TAGGER_NAME,
-    CCP_NAME, CONST_DEMOTION_NAME, CONST_FOLDING_NAME, CSE_NAME, DCE_NAME,
-    FN_DEDUP_DEBUG_PROFILE_NAME, FN_DEDUP_RELEASE_PROFILE_NAME, FN_INLINE_NAME, GLOBALS_DCE_NAME,
-    MEM2REG_NAME, MEMCPYOPT_NAME, MISC_DEMOTION_NAME, RET_DEMOTION_NAME, SIMPLIFY_CFG_NAME,
-    SROA_NAME,
+    create_memcpyprop_reverse_pass, create_misc_demotion_pass, create_module_printer_pass,
+    create_module_verifier_pass, create_postorder_pass, create_ret_demotion_pass,
+    create_simplify_cfg_pass, create_sroa_pass, Context, Function, IrError, Module,
+    ARG_DEMOTION_NAME, ARG_POINTEE_MUTABILITY_TAGGER_NAME, CCP_NAME, CONST_DEMOTION_NAME,
+    CONST_FOLDING_NAME, CSE_NAME, DCE_NAME, FN_DEDUP_DEBUG_PROFILE_NAME,
+    FN_DEDUP_RELEASE_PROFILE_NAME, FN_INLINE_NAME, GLOBALS_DCE_NAME, MEM2REG_NAME, MEMCPYOPT_NAME,
+    MEMCPYPROP_REVERSE_NAME, MISC_DEMOTION_NAME, RET_DEMOTION_NAME, SIMPLIFY_CFG_NAME, SROA_NAME,
 };
 use downcast_rs::{impl_downcast, Downcast};
 use rustc_hash::FxHashMap;
@@ -190,7 +190,7 @@ pub struct PassManager {
 }
 
 impl PassManager {
-    pub const OPTIMIZATION_PASSES: [&'static str; 14] = [
+    pub const OPTIMIZATION_PASSES: [&'static str; 15] = [
         FN_INLINE_NAME,
         SIMPLIFY_CFG_NAME,
         SROA_NAME,
@@ -200,6 +200,7 @@ impl PassManager {
         FN_DEDUP_DEBUG_PROFILE_NAME,
         MEM2REG_NAME,
         MEMCPYOPT_NAME,
+        MEMCPYPROP_REVERSE_NAME,
         CONST_FOLDING_NAME,
         ARG_DEMOTION_NAME,
         CONST_DEMOTION_NAME,
@@ -515,6 +516,7 @@ pub fn register_known_passes(pm: &mut PassManager) {
     pm.register(create_ret_demotion_pass());
     pm.register(create_misc_demotion_pass());
     pm.register(create_memcpyopt_pass());
+    pm.register(create_memcpyprop_reverse_pass());
 }
 
 pub fn create_o1_pass_group() -> PassGroup {

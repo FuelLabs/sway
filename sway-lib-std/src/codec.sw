@@ -156,6 +156,10 @@ impl BufferReader {
     {
         T::abi_decode(self)
     }
+
+    pub fn ptr(self) -> raw_ptr {
+        self.ptr
+    }
 }
 
 // Encode
@@ -2663,8 +2667,39 @@ pub fn encode<T>(item: T) -> raw_slice
 where
     T: AbiEncode,
 {
-    let buffer = item.abi_encode(Buffer::new());
-    buffer.as_raw_slice()
+    let RMI: u64 = __runtime_mem_id::<T>();
+    let EMI: u64 = __encoding_mem_id::<T>();
+
+    if RMI == EMI {
+        let size = __size_of::<T>();
+        let ptr = asm(size: size, src: &item) {
+            aloc size;
+            mcp hp src size;
+            hp: raw_ptr
+        };
+        asm(s: (ptr, size)) {
+            s: raw_slice
+        }
+    } else {
+        let buffer = item.abi_encode(Buffer::new());
+        buffer.as_raw_slice()
+    }
+}
+
+pub fn encode_and_return<T>(item: T) -> !
+where
+    T: AbiEncode,
+{
+    let RMI: u64 = __runtime_mem_id::<T>();
+    let EMI: u64 = __encoding_mem_id::<T>();
+
+    if RMI == EMI {
+        let size = __size_of::<T>();
+        __contract_ret(&item, size);
+    } else {
+        let buffer = item.abi_encode(Buffer::new());
+        __contract_ret(buffer.buffer.0, buffer.buffer.2);
+    }
 }
 
 #[inline(never)]

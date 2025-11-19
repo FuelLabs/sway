@@ -376,7 +376,7 @@ ____
   Aborting due to 31 errors.
 error: Failed to compile const_generics
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics --experimental const_generics --test-threads 1 --dbgs --reverts
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics --experimental const_generics --test-threads 1 --dbgs --reverts --release
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics
@@ -410,29 +410,12 @@ warning
 ____
 
   Compiled script "const_generics" with 2 warnings.
-    Finished debug [unoptimized + fuel] target(s) [8.992 KB] in ???
+    Finished release [optimized + fuel] target(s) [888 B] in ???
      Running 1 test, filtered 0 tests
 
 tested -- const_generics
 
-      test run_main ... ok (???, 18821 gas)
-           debug output:
-[src/main.sw:111:13] a = [1, 2]
-[src/main.sw:115:13] [C {}].len() = 1
-[src/main.sw:120:13] [C {}, C {}].len() = 2
-[src/main.sw:124:13] s.len_xxx() = 3
-[src/main.sw:130:13] e = OneVariant([1, 2, 3])
-[src/main.sw:135:13] e = Nothing
-[src/main.sw:153:13] return_n::<3>() = 3
-[src/main.sw:155:13] return_n::<5>() = 5
-[src/main.sw:161:13] a.len() = 3
-[src/main.sw:162:13] a = "ABC"
-[src/main.sw:166:13] a.len() = 5
-[src/main.sw:167:13] a = "ABCDE"
-[src/main.sw:171:13] a.len() = 70
-[src/main.sw:172:13] a = "1234567890123456789012345678901234567890123456789012345678901234567890"
-[src/main.sw:107:13] A = 2
-[src/main.sw:107:13] A = 6
+      test run_main ... ok (???, 474 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 

@@ -39,3 +39,10 @@ impl Incrementor for Contract {
 fn fallback() -> u64 {
     444444444
 }
+
+#[test]
+fn collect_incrementor_contract_gas_usages() {
+    let caller = abi(Incrementor, CONTRACT_ID);
+    let _ = caller.get();
+    let _ = caller.increment(0);
+}

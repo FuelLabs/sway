@@ -253,3 +253,9 @@ fn check_lt_slot(expected_u8: u8, expected_tuple: (u64, u64, u64, u64, u64)) -> 
         }
     }
 }
+
+#[test]
+fn collect_storage_enum_contract_gas_usages() {
+    let caller = abi(StorageEnum, CONTRACT_ID);
+    let _ = caller.read_write_enums();
+}

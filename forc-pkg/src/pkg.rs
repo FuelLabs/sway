@@ -2351,7 +2351,7 @@ pub fn contract_id(
     let contract = Contract::from(bytecode);
     storage_slots.sort();
     let state_root = Contract::initial_state_root(storage_slots.iter());
-    contract.id(salt, &contract.root(), &state_root)
+    Contract::id(salt, &contract.root(), &state_root)
 }
 
 /// Checks if there are conflicting `Salt` declarations for the contract dependencies in the graph.

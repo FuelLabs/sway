@@ -75,6 +75,13 @@ define_op_codes!(
     (Jne, JneOpcode, "jne", (lhs, rhs, offset)),
     (Jnei, JneiOpcode, "jnei", (lhs, rhs, offset)),
     (Jnzi, JnziOpcode, "jnzi", (arg, offset)),
+    (Jmpb, JmpbOpcode, "jmpb", (offset_reg, offset)),
+    (Jmpf, JmpfOpcode, "jmpf", (offset_reg, offset)),
+    (Jnzb, JnzbOpcode, "jnzb", (arg, offset_reg, offset)),
+    (Jnzf, JnzfOpcode, "jnzf", (arg, offset_reg, offset)),
+    (Jneb, JnebOpcode, "jneb", (lhs, rhs, offset_reg, offset)),
+    (Jnef, JnefOpcode, "jnef", (lhs, rhs, offset_reg, offset)),
+    (Jal, JalOpcode, "jal", (addr, offset_reg, offset)),
     (Ret, RetOpcode, "ret", (value)),
     /* Memory Instructions */
     (Aloc, AlocOpcode, "aloc", (size)),

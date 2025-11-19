@@ -198,18 +198,18 @@ impl TypeSubstMap {
             (TypeInfo::Enum(decl_ref_params), TypeInfo::Enum(decl_ref_args)) => {
                 let decl_params = decl_engine.get_enum(decl_ref_params);
                 let decl_args = decl_engine.get_enum(decl_ref_args);
-                let type_parameters = decl_params.generic_parameters.iter().map(|x| {
-                    let x = x
-                        .as_type_parameter()
-                        .expect("will only work with type parameters");
-                    x.type_id
-                });
-                let type_arguments = decl_args.generic_parameters.iter().map(|x| {
-                    let x = x
-                        .as_type_parameter()
-                        .expect("will only work with type parameters");
-                    x.type_id
-                });
+
+                let type_parameters = decl_params
+                    .generic_parameters
+                    .iter()
+                    .filter_map(|x| x.as_type_parameter())
+                    .map(|x| x.type_id);
+                let type_arguments = decl_args
+                    .generic_parameters
+                    .iter()
+                    .filter_map(|x| x.as_type_parameter())
+                    .map(|x| x.type_id);
+
                 TypeSubstMap::from_superset_and_subset_helper(
                     engines,
                     type_parameters,
@@ -220,18 +220,17 @@ impl TypeSubstMap {
                 let decl_params = decl_engine.get_struct(decl_ref_params);
                 let decl_args = decl_engine.get_struct(decl_ref_args);
 
-                let type_parameters = decl_params.generic_parameters.iter().map(|x| {
-                    let x = x
-                        .as_type_parameter()
-                        .expect("only works with type parameters");
-                    x.type_id
-                });
-                let type_arguments = decl_args.generic_parameters.iter().map(|x| {
-                    let x = x
-                        .as_type_parameter()
-                        .expect("only works with type parameters");
-                    x.type_id
-                });
+                let type_parameters = decl_params
+                    .generic_parameters
+                    .iter()
+                    .filter_map(|x| x.as_type_parameter())
+                    .map(|x| x.type_id);
+                let type_arguments = decl_args
+                    .generic_parameters
+                    .iter()
+                    .filter_map(|x| x.as_type_parameter())
+                    .map(|x| x.type_id);
+
                 TypeSubstMap::from_superset_and_subset_helper(
                     engines,
                     type_parameters,

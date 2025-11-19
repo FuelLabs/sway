@@ -1,0 +1,18 @@
+script {
+    fn main() -> () {
+        entry():
+        v0 = const u64 0
+        v1 = const u64 1
+        // check: log u64 v0, v1
+        log u64 v0, v1
+
+        v2 = const u64 2
+        v3 = const u64 3
+        // check: log u64 v2, v3 log_data(version: 0, is_event: true, is_indexed: true, event_type_size: 8, num_elements: 2)
+        log u64 v2, v3 log_data(version: 0, is_event: true, is_indexed: true, event_type_size: 8, num_elements: 2)
+
+        v4 = const unit ()
+        // check: ret () v4
+        ret () v4
+    }
+}

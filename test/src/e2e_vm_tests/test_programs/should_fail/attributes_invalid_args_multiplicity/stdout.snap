@@ -229,5 +229,14 @@ error: Number of attribute arguments is invalid
   |
 ____
 
-  Aborting due to 19 errors.
+error: Number of attribute arguments is invalid
+ --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_args_multiplicity/src/event_indexed_attr.sw:9:9
+  |
+...
+9 | #[event(arg = "")]
+  |         ^^^^^^^^ "event" attribute must not have any arguments, but has one.
+  |
+____
+
+  Aborting due to 20 errors.
 error: Failed to compile attributes_invalid_args_multiplicity
