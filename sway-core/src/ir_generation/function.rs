@@ -1487,6 +1487,34 @@ impl<'a> FnCompiler<'a> {
                     }
                 }
             }
+            Intrinsic::Alloc => {
+                let targ = type_arguments[0].clone();
+                let ir_type = convert_resolved_type_id(
+                    self.engines,
+                    context,
+                    md_mgr,
+                    self.module,
+                    Some(self),
+                    targ.type_id(),
+                    &targ.span(),
+                )?;
+                let count_exp = &arguments[0];
+                let count_value = return_on_termination_or_extract!(
+                    self.compile_expression_to_register(context, md_mgr, count_exp)?
+                )
+                .expect_register();
+                let span_md_idx = md_mgr.span_to_md(context, &span);
+                let ptr_to_ty = Type::new_typed_pointer(context, ir_type);
+                let val = self
+                    .current_block
+                    .append(context)
+                    .alloc(ptr_to_ty, count_value)
+                    .add_metadatum(context, span_md_idx);
+                Ok(TerminatorValue::new(
+                    CompiledValue::InRegister(val),
+                    context,
+                ))
+            }
             Intrinsic::Add
             | Intrinsic::Sub
             | Intrinsic::Mul

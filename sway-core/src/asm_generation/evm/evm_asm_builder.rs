@@ -347,6 +347,9 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
                 }
                 InstOp::IntToPtr(val, _) => self.compile_int_to_ptr(instr_val, val),
                 InstOp::Load(src_val) => self.compile_load(handler, instr_val, src_val)?,
+                InstOp::Alloc { ptr_to_ty, count } => {
+                    self.compile_alloc(instr_val, ptr_to_ty, count)
+                }
                 InstOp::MemCopyBytes {
                     dst_val_ptr,
                     src_val_ptr,
@@ -498,6 +501,10 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
         instr_val: &Value,
         src_val: &Value,
     ) -> Result<(), ErrorEmitted> {
+        todo!();
+    }
+
+    fn compile_alloc(&mut self, instr_val: &Value, ptr_to_ty: &Type, count: &Value) {
         todo!();
     }
 

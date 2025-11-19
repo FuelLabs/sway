@@ -48,6 +48,7 @@ pub enum IrError {
     VerifyIntToPtrUnknownSourceType,
     VerifyInvalidGtfIndexType,
     VerifyLoadFromNonPointer(String),
+    VerifyAllocToNonPointer(String),
     VerifyLocalMissingInitializer(String, String),
     VerifyLogId,
     VerifyLogMismatchedTypes,
@@ -284,6 +285,13 @@ impl fmt::Display for IrError {
                 write!(
                     f,
                     "Verification failed: Load cannot be from a non-pointer {ty}."
+                )
+            }
+            IrError::VerifyAllocToNonPointer(ty) => {
+                write!(
+                    f,
+                    "Verification failed: Alloc must store a pointer to the type being allocated, \
+                     but it contains {ty}."
                 )
             }
             IrError::VerifyMemcopyNonPointer(ty) => {

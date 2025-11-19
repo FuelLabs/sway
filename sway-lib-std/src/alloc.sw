@@ -51,11 +51,12 @@ use ::raw_ptr::*;
 /// }
 /// ```
 pub fn alloc<T>(count: u64) -> raw_ptr {
-    asm(size: __size_of::<T>() * count, ptr) {
-        aloc size;
-        move ptr hp;
-        ptr: raw_ptr
-    }
+    __alloc::<T>(count)
+    // asm(size: __size_of::<T>() * count, ptr) {
+    //     aloc size;
+    //     move ptr hp;
+    //     ptr: raw_ptr
+    // }
 }
 
 /// Reallocates the given area of memory.

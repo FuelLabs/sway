@@ -485,6 +485,9 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 }
                 InstOp::IntToPtr(val, _) => self.compile_no_op_move(instr_val, val),
                 InstOp::Load(src_val) => self.compile_load(instr_val, src_val),
+                InstOp::Alloc { ptr_to_ty, count } => {
+                    self.compile_alloc(instr_val, ptr_to_ty, count)
+                }
                 InstOp::MemCopyBytes {
                     dst_val_ptr,
                     src_val_ptr,
@@ -1463,6 +1466,73 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             comment: "get transaction field".into(),
             owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
         });
+        self.reg_map.insert(*instr_val, instr_reg);
+        Ok(())
+    }
+
+    fn compile_alloc(
+        &mut self,
+        instr_val: &Value,
+        ptr_to_ty: &Type,
+        count: &Value,
+    ) -> Result<(), CompileError> {
+        let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
+
+        let ty_size = ptr_to_ty
+            .get_pointee_type(self.context)
+            .ok_or_else(|| {
+                CompileError::Internal(
+                    "alloc target type must be a pointer.",
+                    owning_span.clone().unwrap_or_else(Span::dummy),
+                )
+            })?
+            .size(self.context)
+            .in_bytes();
+
+        let statically_known_count = count.get_constant(self.context).and_then(|count| {
+            if let ConstantValue::Uint(count_uint) = count.get_content(self.context).value {
+                Some(count_uint)
+            } else {
+                None
+            }
+        });
+
+        let size_reg = self.reg_seqr.next();
+        if let Some(statically_known_count) = statically_known_count {
+            self.immediate_to_reg(
+                ty_size * statically_known_count,
+                size_reg.clone(),
+                None,
+                "get size of allocation element type",
+                owning_span.clone(),
+            );
+            let count_reg = self.value_to_register(count)?;
+            self.cur_bytecode.push(Op {
+                opcode: Either::Left(VirtualOp::MUL(
+                    size_reg.clone(),
+                    size_reg.clone(),
+                    count_reg,
+                )),
+                comment: "get total allocation size in bytes".into(),
+                owning_span: owning_span.clone(),
+            });
+        } else {
+            self.immediate_to_reg(
+                ty_size,
+                size_reg.clone(),
+                None,
+                "get size of allocation element type",
+                owning_span.clone(),
+            );
+        }
+
+        let instr_reg = self.reg_seqr.next();
+        self.cur_bytecode.push(Op {
+            opcode: Either::Left(VirtualOp::ALOC(instr_reg.clone(), size_reg)),
+            comment: "allocate memory".into(),
+            owning_span,
+        });
+
         self.reg_map.insert(*instr_val, instr_reg);
         Ok(())
     }

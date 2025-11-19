@@ -408,3 +408,13 @@ on real nodes and it only increases gas usage.
 **Constraints:**
 
 - `T` must implement Debug
+
+---
+
+```sway
+__alloc<T>(count: u64) -> raw_ptr
+```
+
+**Description:** Allocate `count` contiguous elements of `T` on the heap and return a pointer to the newly allocated memory.
+
+**Constraints** None

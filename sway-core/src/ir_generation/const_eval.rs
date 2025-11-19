@@ -1316,6 +1316,7 @@ fn const_eval_intrinsic(
             }
         },
         Intrinsic::AddrOf
+        | Intrinsic::Alloc
         | Intrinsic::PtrAdd
         | Intrinsic::PtrSub
         | Intrinsic::IsReferenceType
