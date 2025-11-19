@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 env:
-  RUST_VERSION: 1.86.0
+  RUST_VERSION: 1.90.0
 
 permissions:
   contents: write
