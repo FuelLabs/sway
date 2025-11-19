@@ -280,10 +280,7 @@ fn hash_fn(
                 crate::InstOp::PtrToInt(_, ty) => ty.hash(state),
                 crate::InstOp::Ret(_, ty) => ty.hash(state),
                 crate::InstOp::Store { .. } => (),
-                crate::InstOp::Alloc {
-                    ty,
-                    count: _,
-                } => ty.hash(state),
+                crate::InstOp::Alloc { ty, count: _ } => ty.hash(state),
             }
         }
     }

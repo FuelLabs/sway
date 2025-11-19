@@ -427,10 +427,7 @@ impl InstOp {
                 crate::ConfigContent::V1 { ptr_ty, .. } => *ptr_ty,
             }),
             InstOp::GetStorageKey(storage_key) => Some(storage_key.get_type(context)),
-            InstOp::Alloc {
-                ty: _,
-                count: _,
-            } => Some(Type::get_ptr(context)),
+            InstOp::Alloc { ty: _, count: _ } => Some(Type::get_ptr(context)),
 
             // Use for casting between pointers and pointer-width integers.
             InstOp::IntToPtr(_, ptr_ty) => Some(*ptr_ty),
@@ -531,10 +528,7 @@ impl InstOp {
                 // `GetStorageKey` returns an SSA `Value` but does not take any as an operand.
                 vec![]
             }
-            InstOp::Alloc {
-                ty: _,
-                count,
-            } => vec![*count],
+            InstOp::Alloc { ty: _, count } => vec![*count],
             InstOp::IntToPtr(v, _) => vec![*v],
             InstOp::Load(v) => vec![*v],
             InstOp::MemCopyBytes {
@@ -751,10 +745,7 @@ impl InstOp {
                 // `GetStorageKey` returns an SSA `Value` but does not take any as an operand.
                 panic!("Invalid index for GetStorageKey");
             }
-            InstOp::Alloc {
-                ty: _,
-                count,
-            } => {
+            InstOp::Alloc { ty: _, count } => {
                 if idx == 0 {
                     *count = replacement;
                 } else {
@@ -1072,10 +1063,7 @@ impl InstOp {
                 replace(base);
                 indices.iter_mut().for_each(replace);
             }
-            InstOp::Alloc {
-                ty: _,
-                count,
-            } => replace(count),
+            InstOp::Alloc { ty: _, count } => replace(count),
             InstOp::IntToPtr(value, _) => replace(value),
             InstOp::Load(ptr) => replace(ptr),
             InstOp::MemCopyBytes {
