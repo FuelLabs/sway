@@ -639,21 +639,21 @@ where
         };
 
         let return_encode = if return_type == "()" {
-            "asm(s: (0, 0)) { s: raw_slice }".to_string()
+            "__contract_ret(0, 0)".to_string()
         } else {
-            format!("encode::<{return_type}>(_result)")
+            format!("encode_and_return::<{return_type}>(_result)")
         };
 
         let code = if args_types == "()" {
             format!(
-                "pub fn __entry() -> raw_slice {{
+                "pub fn __entry() -> ! {{
                 let _result: {return_type} = main();
                 {return_encode}
             }}"
             )
         } else {
             format!(
-                "pub fn __entry() -> raw_slice {{
+                "pub fn __entry() -> ! {{
                 let args: {args_types} = decode_script_data::<{args_types}>();
                 let _result: {return_type} = main({expanded_args});
                 {return_encode}
