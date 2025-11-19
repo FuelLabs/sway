@@ -492,7 +492,7 @@ pub(super) async fn run(
                 let parsed_ir_output_2 = sway_ir::printer::to_string(&parsed_ir_2);
                 if parsed_ir_output_2 != parsed_ir_output {
                     println!("Deserialized IR:");
-                    tracing::error!("{}", prettydiff::diff_lines(&ir_output, &parsed_ir_output));
+                    tracing::error!("{}", prettydiff::diff_lines(&parsed_ir_output, &parsed_ir_output_2));
                     panic!("{} failed IR (de)serialization.", path.display());
                 }
 
