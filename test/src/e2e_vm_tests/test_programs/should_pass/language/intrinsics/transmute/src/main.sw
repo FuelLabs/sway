@@ -49,6 +49,16 @@ fn const_transmute() {
     let _ = transmute_by_reference();
 }
 
+
+#[inline(never)]
+fn transmute_optimisation() -> raw_slice {
+    let ptr = asm(size: 0) {
+        aloc size;
+        hp: raw_ptr
+    };
+    __transmute::<(raw_ptr, u64), raw_slice>((ptr, 0))
+}
+
 fn main() {
     const_transmute();
 
@@ -129,4 +139,6 @@ fn main() {
     let some_struct = __transmute::<SomeEnum, SomeStruct>(some_enum);
     assert(some_struct.tag == 1);
     assert(some_struct.value == 1);
+
+    let _ = transmute_optimisation();
 }
