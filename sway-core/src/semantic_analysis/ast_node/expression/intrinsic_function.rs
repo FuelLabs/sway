@@ -277,7 +277,6 @@ fn type_check_alloc(
     ))
 }
 
-
 fn type_check_transmute(
     arguments: &[Expression],
     handler: &Handler,
