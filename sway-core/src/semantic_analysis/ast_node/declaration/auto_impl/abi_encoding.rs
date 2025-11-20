@@ -421,9 +421,7 @@ where
             if return_type == "()" {
                 code.push_str("__contract_ret(asm() { zero: raw_ptr }, 0);");
             } else {
-                code.push_str(&format!(
-                    "encode_and_return::<{return_type}>(&_result);"
-                ));
+                code.push_str(&format!("encode_and_return::<{return_type}>(&_result);"));
             }
 
             code.push_str("\n}\n");
