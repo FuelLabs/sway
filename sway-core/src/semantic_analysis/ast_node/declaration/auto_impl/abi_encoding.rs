@@ -483,10 +483,11 @@ where
             let _method_names_ptr = _method_names.as_ptr();
 
             let mut _buffer_ptr = BufferReader::from_second_parameter();
-            let mut _first_param_buffer = BufferReader {{ ptr: _buffer_ptr }};
-            
+
             let _method_name_ptr = BufferReader::from_first_parameter();
-            let _method_len = _first_param_buffer.read::<u64>();
+            let mut _method_name = BufferReader {{ ptr: _method_name_ptr }};
+            let _method_len = _method_name.read::<u64>();
+            let _method_name_ptr = _method_name.ptr();
 
             {code}
             {fallback}
