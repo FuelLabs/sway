@@ -413,7 +413,7 @@ where
                 ));
             } else {
                 code.push_str(&format!(
-                    "let args: {args_types} = _buffer.decode::<{args_types}>();
+                    "let args: {args_types} = decode_from_raw_ptr::<{args_types}>(_buffer_ptr);
                     let _result: {return_type} = __contract_entry_{method_name}({expanded_args});\n"
                 ));
             }
@@ -422,8 +422,7 @@ where
                 code.push_str("__contract_ret(asm() { zero: raw_ptr }, 0);");
             } else {
                 code.push_str(&format!(
-                    "let _result: raw_slice = encode::<{return_type}>(_result);
-                    __contract_ret(_result.ptr(), _result.len::<u8>());"
+                    "encode_and_return::<{return_type}>(&_result);"
                 ));
             }
 
@@ -483,12 +482,14 @@ where
         let code = format!(
             "{att} pub fn __entry() {{
             let _method_names = \"{method_names}\";
-            let mut _buffer = BufferReader::from_second_parameter();
-            
-            let mut _first_param_buffer = BufferReader::from_first_parameter();
-            let _method_len = _first_param_buffer.read::<u64>();
-            let _method_name_ptr = _first_param_buffer.ptr();
             let _method_names_ptr = _method_names.as_ptr();
+
+            let mut _buffer_ptr = BufferReader::from_second_parameter();
+            let mut _first_param_buffer = BufferReader {{ ptr: _buffer_ptr }};
+            
+            let _method_name_ptr = BufferReader::from_first_parameter();
+            let _method_len = _first_param_buffer.read::<u64>();
+
             {code}
             {fallback}
         }}"
@@ -649,7 +650,7 @@ where
         let return_encode = if return_type == "()" {
             "__contract_ret(0, 0)".to_string()
         } else {
-            format!("encode_and_return::<{return_type}>(_result)")
+            format!("encode_and_return::<{return_type}>(&_result)")
         };
 
         let code = if args_types == "()" {
