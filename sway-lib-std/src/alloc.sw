@@ -52,11 +52,6 @@ use ::raw_ptr::*;
 /// ```
 pub fn alloc<T>(count: u64) -> raw_ptr {
     __alloc::<T>(count)
-    // asm(size: __size_of::<T>() * count, ptr) {
-    //     aloc size;
-    //     move ptr hp;
-    //     ptr: raw_ptr
-    // }
 }
 
 /// Reallocates the given area of memory.
@@ -116,10 +111,7 @@ pub fn realloc<T>(ptr: raw_ptr, count: u64, new_count: u64) -> raw_ptr {
 /// }
 /// ```
 pub fn alloc_bytes(count: u64) -> raw_ptr {
-    asm(size: count) {
-        aloc size;
-        hp: raw_ptr
-    }
+    __alloc::<u8>(count)
 }
 
 /// Reallocates the given area of memory in individual bytes.
