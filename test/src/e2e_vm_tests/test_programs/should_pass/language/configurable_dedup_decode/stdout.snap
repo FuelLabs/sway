@@ -14,14 +14,15 @@ library {
    Compiling script configurable_dedup_decode (test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode)
 // IR: Final
 script {
-    TUPLE = config { u64 }, abi_decode_in_place_0, 0x0000000000000002, !1
-    WRAPPED = config { u64 }, abi_decode_in_place_0, 0x0000000000000001, !2
+    TUPLE = config { u64 }, abi_decode_in_place_7, 0x0000000000000002, !1
+    WRAPPED = config { u64 }, abi_decode_in_place_7, 0x0000000000000001, !2
 
-    pub fn abi_decode_in_place_0(ptr !4: ptr, len !5: u64, target !6: ptr) -> (), !10 {
+    pub fn abi_decode_in_place_7(ptr !4: ptr, len !5: u64, target !6: ptr) -> (), !10 {
         local mut { ptr } buffer
         local { u64 } temp
 
         entry(ptr: ptr, len: u64, target: ptr):
+<<<<<<< HEAD
         v416v1 = get_local __ptr { ptr }, buffer, !14
         v114v1 = const u64 0
         v417v1 = get_elem_ptr v416v1, __ptr ptr, v114v1, !15
@@ -46,25 +47,61 @@ script {
         v180v1 = const u64 8
         v181v1 = asm(target: target, temp: v179v1, size: v180v1) -> (), !41 {
             mcp    target temp size, !42
+=======
+        v0 = get_local __ptr { ptr }, buffer, !14
+        v1 = const u64 0
+        v2 = get_elem_ptr v0, __ptr ptr, v1, !15
+        store ptr to v2, !16
+        v3 = get_local __ptr { ptr }, buffer, !17
+        v4 = const u64 0
+        v5 = get_elem_ptr v3, __ptr ptr, v4, !28
+        v6 = load v5, !29
+        v7 = asm(ptr: v6, val) -> u64 val, !31 {
+            lw     val ptr i0, !32
+        }
+        v8 = load v5, !33
+        v9 = const u64 8, !34
+        v10 = add v8, v9, !35
+        store v10 to v5, !37
+        v11 = get_local __ptr { u64 }, temp, !39
+        v12 = const u64 0
+        v13 = get_elem_ptr v11, __ptr u64, v12, !40
+        store v7 to v13, !41
+        v14 = get_local __ptr { u64 }, temp, !42
+        v15 = cast_ptr v14 to ptr, !43
+        v16 = const u64 8
+        v17 = asm(target: target, temp: v15, size: v16) -> (), !44 {
+            mcp    target temp size, !45
+>>>>>>> 2b4c2d140 (update snapshot tests)
         }
         v182v1 = const unit ()
         ret () v182v1
     }
 
-    pub entry fn __entry() -> __ptr never, !46 {
-        local u64 item_
+    pub entry fn __entry() -> __ptr never, !48 {
+        local u64 _result
 
         entry():
+<<<<<<< HEAD
         v254v1 = call main_8(), !49
         v527v1 = get_local __ptr u64, item_, !52
         store v254v1 to v527v1, !52
         v609v1 = get_local __ptr u64, item_, !54
         v283v1 = const u64 8
         retd v609v1 v283v1, !56
+=======
+        v0 = call main_12(), !51
+        v1 = get_local __ptr u64, _result, !52
+        store v0 to v1, !52
+        v2 = get_local __ptr u64, _result, !53
+        v3 = const u64 8
+        retd v2 v3, !57
+>>>>>>> 2b4c2d140 (update snapshot tests)
     }
 
-    entry_orig fn main_8() -> u64, !59 {
+    entry_orig fn main_12() -> u64, !60 {
         entry():
+<<<<<<< HEAD
         v244v1 = get_config __ptr { u64 }, WRAPPED, !60
         v245v1 = const u64 0
         v246v1 = get_elem_ptr v244v1, __ptr u64, v245v1, !61
@@ -75,6 +112,18 @@ script {
         v251v1 = load v250v1
         v457v1 = add v247v1, v251v1, !66
         ret u64 v457v1
+=======
+        v0 = get_config __ptr { u64 }, WRAPPED, !61
+        v1 = const u64 0
+        v2 = get_elem_ptr v0, __ptr u64, v1, !62
+        v3 = load v2
+        v4 = get_config __ptr { u64 }, TUPLE, !63
+        v5 = const u64 0
+        v6 = get_elem_ptr v4, __ptr u64, v5, !64
+        v7 = load v6
+        v8 = add v3, v7, !67
+        ret u64 v8
+>>>>>>> 2b4c2d140 (update snapshot tests)
     }
 }
 
@@ -82,69 +131,70 @@ script {
 !1 = span !0 177 182
 !2 = span !0 136 143
 !3 = "sway-lib-std/src/codec.sw"
-!4 = span !3 81785 81788
-!5 = span !3 81799 81802
-!6 = span !3 81809 81815
-!7 = span !3 81755 82088
-!8 = fn_name_span !3 81762 81781
+!4 = span !3 82242 82245
+!5 = span !3 82256 82259
+!6 = span !3 82266 82272
+!7 = span !3 82212 82726
+!8 = fn_name_span !3 82219 82238
 !9 = inline "never"
 !10 = (!7 !8 !9)
-!11 = span !3 81873 81907
-!12 = fn_call_path_span !3 81873 81897
-!13 = span !3 735 755
+!11 = span !3 82473 82507
+!12 = fn_call_path_span !3 82473 82497
+!13 = span !3 739 759
 !14 = (!11 !12 !13)
 !15 = (!11 !12)
 !16 = (!11 !12 !13)
-!17 = span !3 81938 81944
-!18 = span !3 81924 81945
-!19 = fn_call_path_span !3 81924 81937
-!20 = span !3 134145 134166
-!21 = fn_call_path_span !3 134145 134158
-!22 = span !3 82744 82772
-!23 = fn_call_path_span !3 82751 82763
-!24 = span !3 625 637
-!25 = (!18 !19 !20 !21 !22 !23 !24)
-!26 = (!18 !19 !20 !21 !22 !23)
-!27 = span !3 2766 2847
-!28 = (!18 !19 !20 !21 !22 !23 !27)
-!29 = span !3 2804 2817
-!30 = (!18 !19 !20 !21 !22 !23)
-!31 = (!18 !19 !20 !21 !22 !23)
-!32 = (!18 !19 !20 !21 !22 !23)
-!33 = span !3 2857 2896
-!34 = (!18 !19 !20 !21 !22 !23 !33)
-!35 = span !3 134144 134169
-!36 = (!18 !19 !35)
-!37 = (!18 !19 !35)
-!38 = (!18 !19 !35)
-!39 = span !3 82004 82008
-!40 = span !3 81994 82009
-!41 = span !3 81951 82086
-!42 = span !3 82059 82079
-!43 = "test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode/src/main.<autogenerated>.sw"
-!44 = span !43 0 130
-!45 = fn_name_span !43 7 14
-!46 = (!44 !45)
-!47 = span !43 59 65
-!48 = fn_call_path_span !43 59 63
-!49 = (!47 !48)
-!50 = span !43 83 116
-!51 = fn_call_path_span !43 83 100
-!52 = (!50 !51)
-!53 = span !3 81400 81404
-!54 = (!50 !51 !53)
-!55 = span !3 81384 81411
-!56 = (!50 !51 !55)
-!57 = span !0 202 246
-!58 = fn_name_span !0 205 209
-!59 = (!57 !58)
-!60 = span !0 225 232
-!61 = span !0 30 36
-!62 = span !0 237 242
-!63 = span !0 243 244
-!64 = span !0 225 244
-!65 = fn_call_path_span !0 235 236
-!66 = (!64 !65)
+!17 = span !3 82542 82548
+!18 = span !3 82528 82549
+!19 = fn_call_path_span !3 82528 82541
+!20 = "test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode/src/main.<autogenerated>.sw"
+!21 = span !20 318 340
+!22 = fn_call_path_span !20 325 331
+!23 = span !3 4120 4139
+!24 = fn_call_path_span !3 4120 4133
+!25 = span !3 83379 83407
+!26 = fn_call_path_span !3 83386 83398
+!27 = span !3 625 641
+!28 = (!18 !19 !21 !22 !23 !24 !25 !26 !27)
+!29 = (!18 !19 !21 !22 !23 !24 !25 !26)
+!30 = span !3 2927 3008
+!31 = (!18 !19 !21 !22 !23 !24 !25 !26 !30)
+!32 = span !3 2965 2978
+!33 = (!18 !19 !21 !22 !23 !24 !25 !26)
+!34 = (!18 !19 !21 !22 !23 !24 !25 !26)
+!35 = (!18 !19 !21 !22 !23 !24 !25 !26)
+!36 = span !3 3018 3057
+!37 = (!18 !19 !21 !22 !23 !24 !25 !26 !36)
+!38 = span !20 308 343
+!39 = (!18 !19 !38)
+!40 = (!18 !19)
+!41 = (!18 !19 !38)
+!42 = span !3 82620 82624
+!43 = span !3 82610 82625
+!44 = span !3 82559 82718
+!45 = span !3 82687 82707
+!46 = span !20 0 131
+!47 = fn_name_span !20 7 14
+!48 = (!46 !47)
+!49 = span !20 59 65
+!50 = fn_call_path_span !20 59 63
+!51 = (!49 !50)
+!52 = span !20 40 66
+!53 = span !20 109 116
+!54 = span !20 83 117
+!55 = fn_call_path_span !20 83 100
+!56 = span !3 81408 81434
+!57 = (!54 !55 !56)
+!58 = span !0 202 246
+!59 = fn_name_span !0 205 209
+!60 = (!58 !59)
+!61 = span !0 225 232
+!62 = span !0 30 36
+!63 = span !0 237 242
+!64 = span !0 243 244
+!65 = span !0 225 244
+!66 = fn_call_path_span !0 235 236
+!67 = (!65 !66)
 
 ;; ASM: Final program
 ;; Program kind: Script
@@ -168,13 +218,13 @@ addi $$arg2 $ssp i8           ; get pointer to configurable WRAPPED stack addres
 jal  $$reta $pc i7            ; decode configurable WRAPPED
 move $$locbase $sp            ; save locals base register for function __entry
 cfei i8                       ; allocate 8 bytes for locals and 0 slots for call arguments
-jal  $$reta $pc i26           ; [call]: call main_8
+jal  $$reta $pc i26           ; [call]: call main_12
 sw   $$locbase $$retv i0      ; store word
 movi $r0 i8                   ; initialize constant into register
 retd  $$locbase $r0
 pshl i31                      ; save registers 16..40
 pshh i524288                  ; save registers 40..64
-move $$locbase $sp            ; save locals base register for function abi_decode_in_place_0
+move $$locbase $sp            ; save locals base register for function abi_decode_in_place_7
 cfei i16                      ; allocate 16 bytes for locals and 0 slots for call arguments
 move $r2 $$arg2               ; save argument 2 (target)
 move $r3 $$reta               ; save return address
@@ -196,7 +246,7 @@ popl i31                      ; restore registers 16..40
 jal  $zero $$reta i0          ; return from call
 pshl i3                       ; save registers 16..40
 pshh i524288                  ; save registers 40..64
-move $$locbase $sp            ; save locals base register for function main_8
+move $$locbase $sp            ; save locals base register for function main_12
 lw   $r0 $ssp i1              ; load word
 lw   $r1 $ssp i0              ; load word
 add  $r0 $r0 $r1
