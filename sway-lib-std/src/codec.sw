@@ -34,7 +34,7 @@ impl AsRawSlice for Buffer {
 }
 
 pub struct BufferReader {
-    ptr: raw_ptr,
+    pub ptr: raw_ptr,
 }
 
 impl BufferReader {
@@ -3208,17 +3208,26 @@ where
     }
 }
 
-pub fn encode_and_return<T>(item: T) -> !
+pub fn encode_and_return<T>(item: &T) -> !
 where
     T: AbiEncode,
 {
     if is_encode_trivial::<T>() {
         let size = __size_of::<T>();
-        __contract_ret(&item, size);
+        __contract_ret(item, size);
     } else {
+        let item = *item;
         let buffer = item.abi_encode(Buffer::new());
         __contract_ret(buffer.buffer.0, buffer.buffer.2);
     }
+}
+
+pub fn encode_configurable<T>(item: T) -> raw_slice
+where
+    T: AbiEncode,
+{
+    let buffer = item.abi_encode(Buffer::new());
+    buffer.as_raw_slice()
 }
 
 #[inline(never)]
@@ -6456,7 +6465,7 @@ where
 }
 
 #[inline(always)]
-fn decode_from_raw_ptr<T>(ptr: raw_ptr) -> T
+pub fn decode_from_raw_ptr<T>(ptr: raw_ptr) -> T
 where
     T: AbiDecode,
 {
