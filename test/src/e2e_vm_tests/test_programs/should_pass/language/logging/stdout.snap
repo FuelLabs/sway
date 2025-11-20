@@ -1,5 +1,6 @@
 ---
 source: test/src/snapshot/mod.rs
+snapshot_kind: text
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/logging --release --ir final
 exit status: 0
@@ -1077,17 +1078,17 @@ script {
 !8 = fn_call_path_span !0 83 100
 !9 = (!7 !8)
 !10 = "test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-vec/src/codec.sw"
-!11 = span !10 71584 71588
+!11 = span !10 81400 81404
 !12 = (!7 !8 !11)
-!13 = span !10 71568 71595
+!13 = span !10 81384 81411
 !14 = (!7 !8 !13)
 !15 = "test/src/e2e_vm_tests/test_programs/should_pass/language/logging/src/main.sw"
-!16 = span !15 549 954
-!17 = fn_name_span !15 552 556
+!16 = span !15 594 999
+!17 = fn_name_span !15 597 601
 !18 = (!16 !17)
-!19 = span !15 582 586
-!20 = span !15 572 587
-!21 = fn_call_path_span !15 572 581
+!19 = span !15 627 631
+!20 = span !15 617 632
+!21 = fn_call_path_span !15 617 626
 !22 = (!20 !21)
 !23 = "test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-vec/src/vec.sw"
 !24 = span !23 785 786
@@ -1614,45 +1615,57 @@ warning
 ____
 
 warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/logging/src/main.sw:35:5
+   |
+33 |   impl AbiEncode for CustomAbiEncode {
+34 |       fn is_encode_trivial() -> bool { false }
+35 |       fn abi_encode(self, buffer: Buffer) -> Buffer {
+   |  _____-
+36 | |         77u64.abi_encode(buffer)
+37 | |     }
+   | |_____- This method is never called.
+38 |   }
+39 |   
+   |
+____
+
+warning
   --> test/src/e2e_vm_tests/test_programs/should_pass/language/logging/src/main.sw:34:5
    |
-32 |   
-33 |   impl AbiEncode for CustomAbiEncode {
-34 |       fn abi_encode(self, buffer: Buffer) -> Buffer {
-   |  _____-
-35 | |         77u64.abi_encode(buffer)
-36 | |     }
-   | |_____- This method is never called.
-37 |   }
-38 |   
+32 | 
+33 | impl AbiEncode for CustomAbiEncode {
+34 |     fn is_encode_trivial() -> bool { false }
+   |     ---------------------------------------- This method is never called.
+35 |     fn abi_encode(self, buffer: Buffer) -> Buffer {
+36 |         77u64.abi_encode(buffer)
    |
 ____
 
 warning
-  --> test/src/e2e_vm_tests/test_programs/should_pass/language/logging/src/main.sw:39:8
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/logging/src/main.sw:40:8
    |
-37 | }
-38 | 
-39 | struct NotAutoEncodable {
+38 | }
+39 | 
+40 | struct NotAutoEncodable {
    |        ---------------- This struct is never used.
-40 |     p: raw_ptr
-41 | }
+41 |     p: raw_ptr
+42 | }
    |
 ____
 
 warning
-  --> test/src/e2e_vm_tests/test_programs/should_pass/language/logging/src/main.sw:40:5
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/logging/src/main.sw:41:5
    |
-38 | 
-39 | struct NotAutoEncodable {
-40 |     p: raw_ptr
+39 | 
+40 | struct NotAutoEncodable {
+41 |     p: raw_ptr
    |     - This struct field is never accessed.
-41 | }
-42 | 
+42 | }
+43 | 
    |
 ____
 
-  Compiled script "logging" with 5 warnings.
+  Compiled script "logging" with 6 warnings.
     Finished release [optimized + fuel] target(s) [2.896 KB] in ???
 
 > forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/logging --release
@@ -1662,10 +1675,10 @@ output:
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-vec)
    Compiling script logging (test/src/e2e_vm_tests/test_programs/should_pass/language/logging)
 warning: Returned value is ignored
-  --> test/src/e2e_vm_tests/test_programs/should_pass/language/logging/src/main.sw:79:5
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/logging/src/main.sw:80:5
    |
 ...
-79 |     main();
+80 |     main();
    |     ------ This returns a value which is not assigned to anything and is ignored.
    |     ------ help: The returned value has type "u64".
    |
@@ -1698,45 +1711,57 @@ warning
 ____
 
 warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/logging/src/main.sw:35:5
+   |
+33 |   impl AbiEncode for CustomAbiEncode {
+34 |       fn is_encode_trivial() -> bool { false }
+35 |       fn abi_encode(self, buffer: Buffer) -> Buffer {
+   |  _____-
+36 | |         77u64.abi_encode(buffer)
+37 | |     }
+   | |_____- This method is never called.
+38 |   }
+39 |   
+   |
+____
+
+warning
   --> test/src/e2e_vm_tests/test_programs/should_pass/language/logging/src/main.sw:34:5
    |
-32 |   
-33 |   impl AbiEncode for CustomAbiEncode {
-34 |       fn abi_encode(self, buffer: Buffer) -> Buffer {
-   |  _____-
-35 | |         77u64.abi_encode(buffer)
-36 | |     }
-   | |_____- This method is never called.
-37 |   }
-38 |   
+32 | 
+33 | impl AbiEncode for CustomAbiEncode {
+34 |     fn is_encode_trivial() -> bool { false }
+   |     ---------------------------------------- This method is never called.
+35 |     fn abi_encode(self, buffer: Buffer) -> Buffer {
+36 |         77u64.abi_encode(buffer)
    |
 ____
 
 warning
-  --> test/src/e2e_vm_tests/test_programs/should_pass/language/logging/src/main.sw:39:8
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/logging/src/main.sw:40:8
    |
-37 | }
-38 | 
-39 | struct NotAutoEncodable {
+38 | }
+39 | 
+40 | struct NotAutoEncodable {
    |        ---------------- This struct is never used.
-40 |     p: raw_ptr
-41 | }
+41 |     p: raw_ptr
+42 | }
    |
 ____
 
 warning
-  --> test/src/e2e_vm_tests/test_programs/should_pass/language/logging/src/main.sw:40:5
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/logging/src/main.sw:41:5
    |
-38 | 
-39 | struct NotAutoEncodable {
-40 |     p: raw_ptr
+39 | 
+40 | struct NotAutoEncodable {
+41 |     p: raw_ptr
    |     - This struct field is never accessed.
-41 | }
-42 | 
+42 | }
+43 | 
    |
 ____
 
-  Compiled script "logging" with 6 warnings.
+  Compiled script "logging" with 7 warnings.
     Finished release [optimized + fuel] target(s) [2.912 KB] in ???
      Running 1 test, filtered 0 tests
 
