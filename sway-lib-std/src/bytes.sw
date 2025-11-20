@@ -1240,14 +1240,18 @@ impl Clone for Bytes {
 }
 
 impl AbiEncode for Bytes {
-    fn is_encode_trivial() -> bool { false }
+    fn is_encode_trivial() -> bool {
+        false
+    }
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         self.as_raw_slice().abi_encode(buffer)
     }
 }
 
 impl AbiDecode for Bytes {
-    fn is_decode_trivial() -> bool { false }
+    fn is_decode_trivial() -> bool {
+        false
+    }
     fn abi_decode(ref mut buffer: BufferReader) -> Bytes {
         raw_slice::abi_decode(buffer).into()
     }
