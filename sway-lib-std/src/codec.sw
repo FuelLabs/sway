@@ -16,7 +16,11 @@ impl Buffer {
     }
 
     fn with_capacity(cap: u64) -> Self {
-        let ptr = __alloc::<u8>(cap);
+        let ptr = asm(cap: cap) {
+            aloc cap;
+            hp: raw_ptr
+        };
+
         Buffer {
             buffer: (ptr, cap, 0),
         }
@@ -5564,7 +5568,10 @@ where
     T: AbiEncode,
 {
     // This red zone should not be overwritten
-    let red_zone1 = __alloc::<u8>(1024);
+    let red_zone1 = asm(size: 1024) {
+        aloc size;
+        hp: raw_ptr
+    };
     red_zone1.write(0xFFFFFFFFFFFFFFFF);
 
     // Create encoding buffer with capacity for one item
@@ -5578,7 +5585,10 @@ where
     assert_eq(buffer.buffer.2, size_of_t, 3); // buffer has one item
 
     // This red zone should not be overwritten
-    let red_zone2 = __alloc::<u8>(1024);
+    let red_zone2 = asm(size: 1024) {
+        aloc size;
+        hp: raw_ptr
+    };
     red_zone2.write(0xFFFFFFFFFFFFFFFF);
 
     // Append another item
