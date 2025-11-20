@@ -6456,7 +6456,10 @@ where
 }
 
 #[inline(always)]
-fn decode_from_raw_ptr<T>(ptr: raw_ptr) -> T where T: AbiDecode {
+fn decode_from_raw_ptr<T>(ptr: raw_ptr) -> T
+where
+    T: AbiDecode,
+{
     if is_decode_trivial::<T>() {
         let ptr: &T = __transmute::<raw_ptr, &T>(ptr);
         *ptr
@@ -6484,7 +6487,7 @@ pub fn decode_predicate_data_by_index<T>(index: u64) -> T
 where
     T: AbiDecode,
 {
-    decode_from_raw_ptr::<T>( BufferReader::from_predicate_data_by_index(index))
+    decode_from_raw_ptr::<T>(BufferReader::from_predicate_data_by_index(index))
 }
 
 pub fn decode_first_param<T>() -> T
