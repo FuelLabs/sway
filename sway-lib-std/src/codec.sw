@@ -42,7 +42,8 @@ impl BufferReader {
         BufferReader { ptr }
     }
 
-    pub fn from_first_parameter() -> BufferReader {
+    #[inline(always)]
+    pub fn from_first_parameter() -> raw_ptr {
         const FIRST_PARAMETER_OFFSET: u64 = 73;
 
         let ptr = asm() {
@@ -51,14 +52,13 @@ impl BufferReader {
         let ptr = ptr.add::<u64>(FIRST_PARAMETER_OFFSET);
         let ptr = ptr.read::<u64>();
 
-        BufferReader {
-            ptr: asm(ptr: ptr) {
-                ptr: raw_ptr
-            },
+        asm(ptr: ptr) {
+            ptr: raw_ptr
         }
     }
 
-    pub fn from_second_parameter() -> BufferReader {
+    #[inline(always)]
+    pub fn from_second_parameter() -> raw_ptr {
         const SECOND_PARAMETER_OFFSET: u64 = 74;
 
         let ptr = asm() {
@@ -67,20 +67,21 @@ impl BufferReader {
         let ptr = ptr.add::<u64>(SECOND_PARAMETER_OFFSET);
         let ptr = ptr.read::<u64>();
 
-        BufferReader {
-            ptr: asm(ptr: ptr) {
-                ptr: raw_ptr
-            },
+        asm(ptr: ptr) {
+            ptr: raw_ptr
         }
     }
 
-    pub fn from_script_data() -> BufferReader {
-        let ptr = __gtf::<raw_ptr>(0, 0xA); // SCRIPT_DATA
-        let _len = __gtf::<u64>(0, 0x4); // SCRIPT_DATA_LEN
-        BufferReader { ptr }
+    #[inline(always)]
+    pub fn from_script_data() -> raw_ptr {
+        // let ptr = __gtf::<raw_ptr>(0, 0xA); // SCRIPT_DATA
+        // let _len = __gtf::<u64>(0, 0x4); // SCRIPT_DATA_LEN
+        // BufferReader { ptr }
+        __gtf::<raw_ptr>(0, 0xA)
     }
 
-    pub fn from_predicate_data() -> BufferReader {
+    #[inline(always)]
+    pub fn from_predicate_data() -> raw_ptr {
         let predicate_index = asm(r1) {
             gm r1 i3; // GET_VERIFYING_PREDICATE
             r1: u64
@@ -88,17 +89,20 @@ impl BufferReader {
         Self::from_predicate_data_by_index(predicate_index)
     }
 
-    pub fn from_predicate_data_by_index(predicate_index: u64) -> BufferReader {
+    #[inline(always)]
+    pub fn from_predicate_data_by_index(predicate_index: u64) -> raw_ptr {
         match __gtf::<u8>(predicate_index, 0x200) { // GTF_INPUT_TYPE
             0u8 => {
-                let ptr = __gtf::<raw_ptr>(predicate_index, 0x20C); // INPUT_COIN_PREDICATE_DATA
-                let _len = __gtf::<u64>(predicate_index, 0x20A); // INPUT_COIN_PREDICATE_DATA_LENGTH
-                BufferReader { ptr }
+                // let ptr = __gtf::<raw_ptr>(predicate_index, 0x20C); // INPUT_COIN_PREDICATE_DATA
+                // let _len = __gtf::<u64>(predicate_index, 0x20A); // INPUT_COIN_PREDICATE_DATA_LENGTH
+                // BufferReader { ptr }
+                __gtf::<raw_ptr>(predicate_index, 0x20C)
             },
             2u8 => {
-                let ptr = __gtf::<raw_ptr>(predicate_index, 0x24A); // INPUT_MESSAGE_PREDICATE_DATA
-                let _len = __gtf::<u64>(predicate_index, 0x247); // INPUT_MESSAGE_PREDICATE_DATA_LENGTH
-                BufferReader { ptr }
+                // let ptr = __gtf::<raw_ptr>(predicate_index, 0x24A); // INPUT_MESSAGE_PREDICATE_DATA
+                // let _len = __gtf::<u64>(predicate_index, 0x247); // INPUT_MESSAGE_PREDICATE_DATA_LENGTH
+                // BufferReader { ptr }
+                __gtf::<raw_ptr>(predicate_index, 0x24A)
             },
             _ => __revert(0),
         }
@@ -187,7 +191,7 @@ pub trait AbiEncode {
 
 impl AbiEncode for bool {
     fn is_encode_trivial() -> bool {
-        false
+        true
     }
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -200,7 +204,7 @@ impl AbiEncode for bool {
 
 impl AbiEncode for b256 {
     fn is_encode_trivial() -> bool {
-        false
+        true
     }
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -211,7 +215,7 @@ impl AbiEncode for b256 {
 
 impl AbiEncode for u256 {
     fn is_encode_trivial() -> bool {
-        false
+        true
     }
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -222,7 +226,7 @@ impl AbiEncode for u256 {
 
 impl AbiEncode for u64 {
     fn is_encode_trivial() -> bool {
-        false
+        true
     }
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -255,7 +259,7 @@ impl AbiEncode for u16 {
 
 impl AbiEncode for u8 {
     fn is_encode_trivial() -> bool {
-        false
+        true
     }
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -1025,7 +1029,7 @@ where
     T: AbiEncode,
 {
     fn is_encode_trivial() -> bool {
-        false
+        is_encode_trivial::<T>()
     }
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
@@ -3188,10 +3192,7 @@ pub fn encode<T>(item: T) -> raw_slice
 where
     T: AbiEncode,
 {
-    let RMI: u64 = __runtime_mem_id::<T>();
-    let EMI: u64 = __encoding_mem_id::<T>();
-
-    if RMI == EMI {
+    if is_encode_trivial::<T>() {
         let size = __size_of::<T>();
         let ptr = asm(size: size, src: &item) {
             aloc size;
@@ -3211,10 +3212,7 @@ pub fn encode_and_return<T>(item: T) -> !
 where
     T: AbiEncode,
 {
-    let RMI: u64 = __runtime_mem_id::<T>();
-    let EMI: u64 = __encoding_mem_id::<T>();
-
-    if RMI == EMI {
+    if is_encode_trivial::<T>() {
         let size = __size_of::<T>();
         __contract_ret(&item, size);
     } else {
@@ -3228,8 +3226,13 @@ pub fn abi_decode<T>(data: raw_slice) -> T
 where
     T: AbiDecode,
 {
-    let mut buffer = BufferReader::from_parts(data.ptr(), data.len::<u8>());
-    T::abi_decode(buffer)
+    if is_decode_trivial::<T>() {
+        let ptr: &T = __transmute::<raw_ptr, &T>(data.ptr());
+        *ptr
+    } else {
+        let mut buffer = BufferReader::from_parts(data.ptr(), data.len::<u8>());
+        T::abi_decode(buffer)
+    }
 }
 
 #[inline(never)]
@@ -3237,14 +3240,20 @@ pub fn abi_decode_in_place<T>(ptr: raw_ptr, len: u64, target: raw_ptr)
 where
     T: AbiDecode,
 {
-    let mut buffer = BufferReader::from_parts(ptr, len);
-    let temp = T::abi_decode(buffer);
-    asm(
-        target: target,
-        temp: __addr_of(temp),
-        size: __size_of::<T>(),
-    ) {
-        mcp target temp size;
+    if is_decode_trivial::<T>() {
+        asm(ptr: ptr, target: target, len: len) {
+            mcp target ptr len;
+        }
+    } else {
+        let mut buffer = BufferReader::from_parts(ptr, len);
+        let temp = T::abi_decode(buffer);
+        asm(
+            target: target,
+            temp: __addr_of(temp),
+            size: __size_of::<T>(),
+        ) {
+            mcp target temp size;
+        }
     }
 }
 
@@ -3257,7 +3266,7 @@ pub trait AbiDecode {
 
 impl AbiDecode for b256 {
     fn is_decode_trivial() -> bool {
-        false
+        true
     }
     fn abi_decode(ref mut buffer: BufferReader) -> b256 {
         buffer.read_32_bytes::<b256>()
@@ -3266,7 +3275,7 @@ impl AbiDecode for b256 {
 
 impl AbiDecode for u256 {
     fn is_decode_trivial() -> bool {
-        false
+        true
     }
     fn abi_decode(ref mut buffer: BufferReader) -> u256 {
         buffer.read_32_bytes::<u256>()
@@ -3275,7 +3284,7 @@ impl AbiDecode for u256 {
 
 impl AbiDecode for u64 {
     fn is_decode_trivial() -> bool {
-        false
+        true
     }
     fn abi_decode(ref mut buffer: BufferReader) -> u64 {
         buffer.read_8_bytes::<u64>()
@@ -3320,7 +3329,7 @@ impl AbiDecode for u16 {
 
 impl AbiDecode for u8 {
     fn is_decode_trivial() -> bool {
-        false
+        true
     }
     fn abi_decode(ref mut buffer: BufferReader) -> u8 {
         buffer.read::<u8>()
@@ -4163,7 +4172,7 @@ where
     T: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        false
+        is_decode_trivial::<T>()
     }
     fn abi_decode(ref mut buffer: BufferReader) -> [T; N] {
         const LENGTH: u64 = __size_of::<T>() * N;
@@ -6437,52 +6446,62 @@ where
         retl: u64
     };
 
-    let mut buffer = BufferReader::from_parts(ptr, len);
-    T::abi_decode(buffer)
+    if is_decode_trivial::<T>() {
+        let ptr: &T = __transmute::<raw_ptr, &T>(ptr);
+        *ptr
+    } else {
+        let mut buffer = BufferReader::from_parts(ptr, len);
+        T::abi_decode(buffer)
+    }
+}
+
+#[inline(always)]
+fn decode_from_raw_ptr<T>(ptr: raw_ptr) -> T where T: AbiDecode {
+    if is_decode_trivial::<T>() {
+        let ptr: &T = __transmute::<raw_ptr, &T>(ptr);
+        *ptr
+    } else {
+        let mut buffer = BufferReader { ptr };
+        T::abi_decode(buffer)
+    }
 }
 
 pub fn decode_script_data<T>() -> T
 where
     T: AbiDecode,
 {
-    let mut buffer = BufferReader::from_script_data();
-    T::abi_decode(buffer)
+    decode_from_raw_ptr::<T>(BufferReader::from_script_data())
 }
 
 pub fn decode_predicate_data<T>() -> T
 where
     T: AbiDecode,
 {
-    let mut buffer = BufferReader::from_predicate_data();
-    T::abi_decode(buffer)
+    decode_from_raw_ptr::<T>(BufferReader::from_predicate_data())
 }
 
 pub fn decode_predicate_data_by_index<T>(index: u64) -> T
 where
     T: AbiDecode,
 {
-    let mut buffer = BufferReader::from_predicate_data_by_index(index);
-    T::abi_decode(buffer)
+    decode_from_raw_ptr::<T>( BufferReader::from_predicate_data_by_index(index))
 }
 
 pub fn decode_first_param<T>() -> T
 where
     T: AbiDecode,
 {
-    let mut buffer = BufferReader::from_first_parameter();
-    T::abi_decode(buffer)
+    decode_from_raw_ptr::<T>(BufferReader::from_first_parameter())
 }
 
 pub fn decode_second_param<T>() -> T
 where
     T: AbiDecode,
 {
-    let mut buffer = BufferReader::from_second_parameter();
-    T::abi_decode(buffer)
+    decode_from_raw_ptr::<T>(BufferReader::from_second_parameter())
 }
 
 // Tests
-
 
 fn assert_encoding<T, SLICE>(value: T, expected: SLICE)
 where
