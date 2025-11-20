@@ -3236,8 +3236,13 @@ where
     T: AbiDecode,
 {
     if is_decode_trivial::<T>() {
-        let ptr: &T = __transmute::<raw_ptr, &T>(data.ptr());
-        *ptr
+        let size = __size_of::<T>();
+        let item: &T = asm(size: size, src: data.ptr()) {
+            aloc size;
+            mcp hp src size;
+            hp: &T
+        };
+        *item
     } else {
         let mut buffer = BufferReader::from_parts(data.ptr(), data.len::<u8>());
         T::abi_decode(buffer)
@@ -3250,8 +3255,8 @@ where
     T: AbiDecode,
 {
     if is_decode_trivial::<T>() {
-        asm(ptr: ptr, target: target, len: len) {
-            mcp target ptr len;
+        asm(src: ptr, target: target, len: len) {
+            mcp target src len;
         }
     } else {
         let mut buffer = BufferReader::from_parts(ptr, len);
@@ -6451,17 +6456,8 @@ where
     let ptr = asm() {
         ret: raw_ptr
     };
-    let len = asm() {
-        retl: u64
-    };
 
-    if is_decode_trivial::<T>() {
-        let ptr: &T = __transmute::<raw_ptr, &T>(ptr);
-        *ptr
-    } else {
-        let mut buffer = BufferReader::from_parts(ptr, len);
-        T::abi_decode(buffer)
-    }
+    decode_from_raw_ptr::<T>(ptr)
 }
 
 #[inline(always)]
