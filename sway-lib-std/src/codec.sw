@@ -3377,6 +3377,7 @@ impl AbiDecode for str {
 
 #[cfg(experimental_const_generics = true)]
 impl<const N: u64> AbiDecode for str[N] {
+    // see comments on `is_encode_trivial` for str[N] above
     fn is_decode_trivial() -> bool {
         false
     }
@@ -5441,7 +5442,7 @@ where
     A: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>()
+        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>() && is_decode_trivial::<A>()
     }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (A::abi_decode(buffer), )
@@ -5453,7 +5454,7 @@ where
     B: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>()
+        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>() && is_decode_trivial::<A>() && is_decode_trivial::<B>()
     }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (A::abi_decode(buffer), B::abi_decode(buffer))
@@ -5466,7 +5467,7 @@ where
     C: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>()
+        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>() && is_decode_trivial::<A>() && is_decode_trivial::<B>() && is_decode_trivial::<C>()
     }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (A::abi_decode(buffer), B::abi_decode(buffer), C::abi_decode(buffer))
@@ -5480,7 +5481,7 @@ where
     D: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>()
+        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>() && is_decode_trivial::<A>() && is_decode_trivial::<B>() && is_decode_trivial::<C>() && is_decode_trivial::<D>()
     }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
@@ -5500,7 +5501,7 @@ where
     E: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>()
+        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>() && is_decode_trivial::<A>() && is_decode_trivial::<B>() && is_decode_trivial::<C>() && is_decode_trivial::<D>() && is_decode_trivial::<E>()
     }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
@@ -5522,7 +5523,7 @@ where
     F: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>()
+        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>() && is_decode_trivial::<A>() && is_decode_trivial::<B>() && is_decode_trivial::<C>() && is_decode_trivial::<D>() && is_decode_trivial::<E>() && is_decode_trivial::<F>()
     }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
@@ -5546,7 +5547,7 @@ where
     G: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>()
+        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>() && is_decode_trivial::<A>() && is_decode_trivial::<B>() && is_decode_trivial::<C>() && is_decode_trivial::<D>() && is_decode_trivial::<E>() && is_decode_trivial::<F>() && is_decode_trivial::<G>()
     }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
@@ -5572,7 +5573,7 @@ where
     H: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>()
+        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>() && is_decode_trivial::<A>() && is_decode_trivial::<B>() && is_decode_trivial::<C>() && is_decode_trivial::<D>() && is_decode_trivial::<E>() && is_decode_trivial::<F>() && is_decode_trivial::<G>() && is_decode_trivial::<H>()
     }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
@@ -5600,7 +5601,7 @@ where
     I: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>()
+        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>() && is_decode_trivial::<A>() && is_decode_trivial::<B>() && is_decode_trivial::<C>() && is_decode_trivial::<D>() && is_decode_trivial::<E>() && is_decode_trivial::<F>() && is_decode_trivial::<G>() && is_decode_trivial::<H>() && is_decode_trivial::<I>()
     }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
@@ -5630,7 +5631,7 @@ where
     J: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>()
+        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>() && is_decode_trivial::<A>() && is_decode_trivial::<B>() && is_decode_trivial::<C>() && is_decode_trivial::<D>() && is_decode_trivial::<E>() && is_decode_trivial::<F>() && is_decode_trivial::<G>() && is_decode_trivial::<H>() && is_decode_trivial::<I>() && is_decode_trivial::<J>()
     }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
@@ -5662,7 +5663,7 @@ where
     K: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>()
+        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>() && is_decode_trivial::<A>() && is_decode_trivial::<B>() && is_decode_trivial::<C>() && is_decode_trivial::<D>() && is_decode_trivial::<E>() && is_decode_trivial::<F>() && is_decode_trivial::<G>() && is_decode_trivial::<H>() && is_decode_trivial::<I>() && is_decode_trivial::<J>() && is_decode_trivial::<K>()
     }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
@@ -5696,7 +5697,7 @@ where
     L: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>()
+        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>() && is_decode_trivial::<A>() && is_decode_trivial::<B>() && is_decode_trivial::<C>() && is_decode_trivial::<D>() && is_decode_trivial::<E>() && is_decode_trivial::<F>() && is_decode_trivial::<G>() && is_decode_trivial::<H>() && is_decode_trivial::<I>() && is_decode_trivial::<J>() && is_decode_trivial::<K>() && is_decode_trivial::<L>()
     }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
@@ -5732,7 +5733,7 @@ where
     M: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>()
+        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>() && is_decode_trivial::<A>() && is_decode_trivial::<B>() && is_decode_trivial::<C>() && is_decode_trivial::<D>() && is_decode_trivial::<E>() && is_decode_trivial::<F>() && is_decode_trivial::<G>() && is_decode_trivial::<H>() && is_decode_trivial::<I>() && is_decode_trivial::<J>() && is_decode_trivial::<K>() && is_decode_trivial::<L>() && is_decode_trivial::<M>()
     }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
@@ -5770,7 +5771,7 @@ where
     N: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>()
+        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>() && is_decode_trivial::<A>() && is_decode_trivial::<B>() && is_decode_trivial::<C>() && is_decode_trivial::<D>() && is_decode_trivial::<E>() && is_decode_trivial::<F>() && is_decode_trivial::<G>() && is_decode_trivial::<H>() && is_decode_trivial::<I>() && is_decode_trivial::<J>() && is_decode_trivial::<K>() && is_decode_trivial::<L>() && is_decode_trivial::<M>() && is_decode_trivial::<N>()
     }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
@@ -5810,7 +5811,7 @@ where
     O: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>()
+        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>() && is_decode_trivial::<A>() && is_decode_trivial::<B>() && is_decode_trivial::<C>() && is_decode_trivial::<D>() && is_decode_trivial::<E>() && is_decode_trivial::<F>() && is_decode_trivial::<G>() && is_decode_trivial::<H>() && is_decode_trivial::<I>() && is_decode_trivial::<J>() && is_decode_trivial::<K>() && is_decode_trivial::<L>() && is_decode_trivial::<M>() && is_decode_trivial::<N>() && is_decode_trivial::<O>()
     }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
@@ -5852,7 +5853,7 @@ where
     P: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>()
+        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>() && is_decode_trivial::<A>() && is_decode_trivial::<B>() && is_decode_trivial::<C>() && is_decode_trivial::<D>() && is_decode_trivial::<E>() && is_decode_trivial::<F>() && is_decode_trivial::<G>() && is_decode_trivial::<H>() && is_decode_trivial::<I>() && is_decode_trivial::<J>() && is_decode_trivial::<K>() && is_decode_trivial::<L>() && is_decode_trivial::<M>() && is_decode_trivial::<N>() && is_decode_trivial::<O>() && is_decode_trivial::<P>()
     }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
@@ -5896,7 +5897,7 @@ where
     Q: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>()
+        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>() && is_decode_trivial::<A>() && is_decode_trivial::<B>() && is_decode_trivial::<C>() && is_decode_trivial::<D>() && is_decode_trivial::<E>() && is_decode_trivial::<F>() && is_decode_trivial::<G>() && is_decode_trivial::<H>() && is_decode_trivial::<I>() && is_decode_trivial::<J>() && is_decode_trivial::<K>() && is_decode_trivial::<L>() && is_decode_trivial::<M>() && is_decode_trivial::<N>() && is_decode_trivial::<O>() && is_decode_trivial::<P>() && is_decode_trivial::<Q>()
     }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
@@ -5942,7 +5943,7 @@ where
     R: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>()
+        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>() && is_decode_trivial::<A>() && is_decode_trivial::<B>() && is_decode_trivial::<C>() && is_decode_trivial::<D>() && is_decode_trivial::<E>() && is_decode_trivial::<F>() && is_decode_trivial::<G>() && is_decode_trivial::<H>() && is_decode_trivial::<I>() && is_decode_trivial::<J>() && is_decode_trivial::<K>() && is_decode_trivial::<L>() && is_decode_trivial::<M>() && is_decode_trivial::<N>() && is_decode_trivial::<O>() && is_decode_trivial::<P>() && is_decode_trivial::<Q>() && is_decode_trivial::<R>()
     }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
@@ -5990,7 +5991,7 @@ where
     S: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>()
+        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>() && is_decode_trivial::<A>() && is_decode_trivial::<B>() && is_decode_trivial::<C>() && is_decode_trivial::<D>() && is_decode_trivial::<E>() && is_decode_trivial::<F>() && is_decode_trivial::<G>() && is_decode_trivial::<H>() && is_decode_trivial::<I>() && is_decode_trivial::<J>() && is_decode_trivial::<K>() && is_decode_trivial::<L>() && is_decode_trivial::<M>() && is_decode_trivial::<N>() && is_decode_trivial::<O>() && is_decode_trivial::<P>() && is_decode_trivial::<Q>() && is_decode_trivial::<R>() && is_decode_trivial::<S>()
     }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
@@ -6040,7 +6041,7 @@ where
     T: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>()
+        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>() && is_decode_trivial::<A>() && is_decode_trivial::<B>() && is_decode_trivial::<C>() && is_decode_trivial::<D>() && is_decode_trivial::<E>() && is_decode_trivial::<F>() && is_decode_trivial::<G>() && is_decode_trivial::<H>() && is_decode_trivial::<I>() && is_decode_trivial::<J>() && is_decode_trivial::<K>() && is_decode_trivial::<L>() && is_decode_trivial::<M>() && is_decode_trivial::<N>() && is_decode_trivial::<O>() && is_decode_trivial::<P>() && is_decode_trivial::<Q>() && is_decode_trivial::<R>() && is_decode_trivial::<S>() && is_decode_trivial::<T>()
     }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
@@ -6092,7 +6093,7 @@ where
     U: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>()
+        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>() && is_decode_trivial::<A>() && is_decode_trivial::<B>() && is_decode_trivial::<C>() && is_decode_trivial::<D>() && is_decode_trivial::<E>() && is_decode_trivial::<F>() && is_decode_trivial::<G>() && is_decode_trivial::<H>() && is_decode_trivial::<I>() && is_decode_trivial::<J>() && is_decode_trivial::<K>() && is_decode_trivial::<L>() && is_decode_trivial::<M>() && is_decode_trivial::<N>() && is_decode_trivial::<O>() && is_decode_trivial::<P>() && is_decode_trivial::<Q>() && is_decode_trivial::<R>() && is_decode_trivial::<S>() && is_decode_trivial::<T>() && is_decode_trivial::<U>()
     }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
@@ -6146,7 +6147,7 @@ where
     V: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>()
+        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>() && is_decode_trivial::<A>() && is_decode_trivial::<B>() && is_decode_trivial::<C>() && is_decode_trivial::<D>() && is_decode_trivial::<E>() && is_decode_trivial::<F>() && is_decode_trivial::<G>() && is_decode_trivial::<H>() && is_decode_trivial::<I>() && is_decode_trivial::<J>() && is_decode_trivial::<K>() && is_decode_trivial::<L>() && is_decode_trivial::<M>() && is_decode_trivial::<N>() && is_decode_trivial::<O>() && is_decode_trivial::<P>() && is_decode_trivial::<Q>() && is_decode_trivial::<R>() && is_decode_trivial::<S>() && is_decode_trivial::<T>() && is_decode_trivial::<U>() && is_decode_trivial::<V>()
     }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
@@ -6202,7 +6203,7 @@ where
     W: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>()
+        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>() && is_decode_trivial::<A>() && is_decode_trivial::<B>() && is_decode_trivial::<C>() && is_decode_trivial::<D>() && is_decode_trivial::<E>() && is_decode_trivial::<F>() && is_decode_trivial::<G>() && is_decode_trivial::<H>() && is_decode_trivial::<I>() && is_decode_trivial::<J>() && is_decode_trivial::<K>() && is_decode_trivial::<L>() && is_decode_trivial::<M>() && is_decode_trivial::<N>() && is_decode_trivial::<O>() && is_decode_trivial::<P>() && is_decode_trivial::<Q>() && is_decode_trivial::<R>() && is_decode_trivial::<S>() && is_decode_trivial::<T>() && is_decode_trivial::<U>() && is_decode_trivial::<V>() && is_decode_trivial::<W>()
     }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
@@ -6260,7 +6261,7 @@ where
     X: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>()
+        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>() && is_decode_trivial::<A>() && is_decode_trivial::<B>() && is_decode_trivial::<C>() && is_decode_trivial::<D>() && is_decode_trivial::<E>() && is_decode_trivial::<F>() && is_decode_trivial::<G>() && is_decode_trivial::<H>() && is_decode_trivial::<I>() && is_decode_trivial::<J>() && is_decode_trivial::<K>() && is_decode_trivial::<L>() && is_decode_trivial::<M>() && is_decode_trivial::<N>() && is_decode_trivial::<O>() && is_decode_trivial::<P>() && is_decode_trivial::<Q>() && is_decode_trivial::<R>() && is_decode_trivial::<S>() && is_decode_trivial::<T>() && is_decode_trivial::<U>() && is_decode_trivial::<V>() && is_decode_trivial::<W>() && is_decode_trivial::<X>()
     }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
@@ -6320,7 +6321,7 @@ where
     Y: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>()
+        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>() && is_decode_trivial::<A>() && is_decode_trivial::<B>() && is_decode_trivial::<C>() && is_decode_trivial::<D>() && is_decode_trivial::<E>() && is_decode_trivial::<F>() && is_decode_trivial::<G>() && is_decode_trivial::<H>() && is_decode_trivial::<I>() && is_decode_trivial::<J>() && is_decode_trivial::<K>() && is_decode_trivial::<L>() && is_decode_trivial::<M>() && is_decode_trivial::<N>() && is_decode_trivial::<O>() && is_decode_trivial::<P>() && is_decode_trivial::<Q>() && is_decode_trivial::<R>() && is_decode_trivial::<S>() && is_decode_trivial::<T>() && is_decode_trivial::<U>() && is_decode_trivial::<V>() && is_decode_trivial::<W>() && is_decode_trivial::<X>() && is_decode_trivial::<Y>()
     }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
@@ -6382,7 +6383,7 @@ where
     Z: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>()
+        __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>() && is_decode_trivial::<A>() && is_decode_trivial::<B>() && is_decode_trivial::<C>() && is_decode_trivial::<D>() && is_decode_trivial::<E>() && is_decode_trivial::<F>() && is_decode_trivial::<G>() && is_decode_trivial::<H>() && is_decode_trivial::<I>() && is_decode_trivial::<J>() && is_decode_trivial::<K>() && is_decode_trivial::<L>() && is_decode_trivial::<M>() && is_decode_trivial::<N>() && is_decode_trivial::<O>() && is_decode_trivial::<P>() && is_decode_trivial::<Q>() && is_decode_trivial::<R>() && is_decode_trivial::<S>() && is_decode_trivial::<T>() && is_decode_trivial::<U>() && is_decode_trivial::<V>() && is_decode_trivial::<W>() && is_decode_trivial::<X>() && is_decode_trivial::<Y>() && is_decode_trivial::<Z>()
     }
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         (
