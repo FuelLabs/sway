@@ -67,9 +67,8 @@ generate_tuple_encode() {
     ISTRIVIAL=""
     for element in ${elements[@]}
     do
-        ISTRIVIAL="$ISTRIVIAL \&\& is_encode_trivial::<$element>()\n"
+        ISTRIVIAL="$ISTRIVIAL \&\& is_encode_trivial::<$element>()"
     done
-    ISTRIVIAL=$(echo $ISTRIVIAL | sort -nu) 
 
     CODE="$CODE{ fn is_encode_trivial() -> bool { __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>() $ISTRIVIAL } fn abi_encode(self, buffer: Buffer) -> Buffer { "
 
@@ -136,7 +135,13 @@ generate_tuple_decode() {
         CODE="$CODE $element: AbiDecode, "
     done
 
-    CODE="$CODE{ fn is_decode_trivial() -> bool { false } fn abi_decode(ref mut buffer: BufferReader) -> Self { ("
+    ISTRIVIAL=""
+    for element in ${elements[@]}
+    do
+        ISTRIVIAL="$ISTRIVIAL \&\& is_decode_trivial::<$element>()"
+    done
+
+    CODE="$CODE{ fn is_decode_trivial() -> bool { __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>() $ISTRIVIA } fn abi_decode(ref mut buffer: BufferReader) -> Self { ("
 
     for element in ${elements[@]}
     do
