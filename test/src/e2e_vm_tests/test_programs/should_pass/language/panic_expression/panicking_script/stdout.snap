@@ -11,6 +11,7 @@ output:
    Compiling script panicking_script (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_script)
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     Finished debug [unoptimized + fuel] target(s) [4.192 KB] in ???
 =======
     Finished debug [unoptimized + fuel] target(s) [3.84 KB] in ???
@@ -18,6 +19,9 @@ output:
 =======
     Finished debug [unoptimized + fuel] target(s) [4.008 KB] in ???
 >>>>>>> e41698a5e (update tests)
+=======
+    Finished debug [unoptimized + fuel] target(s) [4.064 KB] in ???
+>>>>>>> 0bd13365d (update tests)
      Running 11 tests, filtered 0 tests
 
 tested -- panicking_script

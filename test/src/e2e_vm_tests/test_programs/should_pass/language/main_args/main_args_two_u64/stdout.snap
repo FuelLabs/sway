@@ -26,9 +26,9 @@ library {
 // IR: Final
 script {
     pub entry fn __entry() -> __ptr never, !3 {
+        local mut { u64, u64 } __aggr_memcpy_0
         local u64 _result
         local { u64, u64 } args
-        local mut { ptr } buffer
 
         entry():
 <<<<<<< HEAD
@@ -83,12 +83,14 @@ script {
         v0 = const u64 0, !5
         v1 = gtf v0, 10, !11
         v2 = bitcast v1 to ptr, !12
-        v3 = get_local __ptr { ptr }, buffer, !16
-        v4 = const u64 0
-        v5 = get_elem_ptr v3, __ptr ptr, v4, !17
-        store v2 to v5, !18
-        v6 = get_local __ptr { ptr }, buffer, !20
+        v3 = cast_ptr v2 to __ptr { u64, u64 }, !15
+        v4 = get_local __ptr { u64, u64 }, __aggr_memcpy_0
+        mem_copy_val v4, v3
+        v5 = get_local __ptr { u64, u64 }, args, !16
+        mem_copy_val v5, v4
+        v6 = get_local __ptr { u64, u64 }, args, !17
         v7 = const u64 0
+<<<<<<< HEAD
         v8 = get_elem_ptr v6, __ptr ptr, v7, !28
         v9 = load v8, !29
         v10 = asm(ptr: v9, val) -> u64 val, !31 {
@@ -128,15 +130,33 @@ script {
         v35 = const u64 8
         retd v34 v35, !64
 >>>>>>> 2b4c2d140 (update snapshot tests)
+=======
+        v8 = get_elem_ptr v6, __ptr u64, v7, !18
+        v9 = load v8
+        v10 = get_local __ptr { u64, u64 }, args, !19
+        v11 = const u64 1
+        v12 = get_elem_ptr v10, __ptr u64, v11, !20
+        v13 = load v12
+        v14 = call main_9(v9, v13), !23
+        v15 = get_local __ptr u64, _result, !24
+        store v14 to v15, !24
+        v16 = get_local __ptr u64, _result, !25
+        v17 = const u64 8
+        retd v16 v17, !29
+>>>>>>> ed22272e6 (update tests)
     }
 
-    entry_orig fn main_8(baba !66: u64, keke !67: u64) -> u64, !70 {
+    entry_orig fn main_9(baba !31: u64, keke !32: u64) -> u64, !35 {
         entry(baba: u64, keke: u64):
+<<<<<<< HEAD
 <<<<<<< HEAD
         v306v1 = add baba, keke, !72
         ret u64 v306v1
 =======
         v0 = add baba, keke, !73
+=======
+        v0 = add baba, keke, !38
+>>>>>>> ed22272e6 (update tests)
         ret u64 v0
 >>>>>>> 2b4c2d140 (update snapshot tests)
     }
@@ -147,75 +167,40 @@ script {
 !2 = fn_name_span !0 7 14
 !3 = (!1 !2)
 !4 = "test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw"
-!5 = span !4 1699 1700
+!5 = span !4 1542 1543
 !6 = span !0 64 99
 !7 = fn_call_path_span !0 64 82
-!8 = span !4 160666 160698
-!9 = fn_call_path_span !4 160666 160696
-!10 = span !4 1682 1706
+!8 = span !4 175056 175088
+!9 = fn_call_path_span !4 175056 175086
+!10 = span !4 1525 1549
 !11 = (!6 !7 !8 !9 !10)
 !12 = (!6 !7 !8 !9 !10)
-!13 = span !4 160641 160699
-!14 = fn_call_path_span !4 160641 160660
-!15 = span !4 160514 160534
-!16 = (!6 !7 !13 !14 !15)
-!17 = (!6 !7 !13 !14)
-!18 = (!6 !7 !13 !14 !15)
-!19 = span !4 160558 160564
-!20 = (!6 !7 !13 !14 !19)
-!21 = span !4 160544 160565
-!22 = fn_call_path_span !4 160544 160557
-!23 = span !4 135031 135052
-!24 = fn_call_path_span !4 135031 135044
-!25 = span !4 83379 83407
-!26 = fn_call_path_span !4 83386 83398
-!27 = span !4 625 641
-!28 = (!6 !7 !13 !14 !21 !22 !23 !24 !25 !26 !27)
-!29 = (!6 !7 !13 !14 !21 !22 !23 !24 !25 !26)
-!30 = span !4 2927 3008
-!31 = (!6 !7 !13 !14 !21 !22 !23 !24 !25 !26 !30)
-!32 = span !4 2965 2978
-!33 = (!6 !7 !13 !14 !21 !22 !23 !24 !25 !26)
-!34 = (!6 !7 !13 !14 !21 !22 !23 !24 !25 !26)
-!35 = (!6 !7 !13 !14 !21 !22 !23 !24 !25 !26)
-!36 = span !4 3018 3057
-!37 = (!6 !7 !13 !14 !21 !22 !23 !24 !25 !26 !36)
-!38 = span !4 135054 135075
-!39 = fn_call_path_span !4 135054 135067
-!40 = (!6 !7 !13 !14 !21 !22 !38 !39 !25 !26)
-!41 = (!6 !7 !13 !14 !21 !22 !38 !39 !25 !26 !30)
-!42 = (!6 !7 !13 !14 !21 !22 !38 !39 !25 !26)
-!43 = (!6 !7 !13 !14 !21 !22 !38 !39 !25 !26)
-!44 = (!6 !7 !13 !14 !21 !22 !38 !39 !25 !26)
-!45 = (!6 !7 !13 !14 !21 !22 !38 !39 !25 !26 !36)
-!46 = span !4 135030 135076
-!47 = (!6 !7 !13 !14 !21 !22 !46)
-!48 = (!6 !7 !13 !14 !21 !22 !46)
-!49 = (!6 !7 !13 !14 !21 !22 !46)
-!50 = (!6 !7 !13 !14 !21 !22 !46)
-!51 = (!6 !7 !13 !14 !21 !22 !46)
-!52 = span !0 141 145
-!53 = span !0 146 147
-!54 = span !0 149 153
-!55 = span !0 154 155
-!56 = span !0 136 156
-!57 = fn_call_path_span !0 136 140
-!58 = (!56 !57)
-!59 = span !0 117 157
-!60 = span !0 200 207
-!61 = span !0 174 208
-!62 = fn_call_path_span !0 174 191
-!63 = span !4 81408 81434
-!64 = (!61 !62 !63)
-!65 = "test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_two_u64/src/main.sw"
-!66 = span !65 17 21
-!67 = span !65 28 32
-!68 = span !65 9 65
-!69 = fn_name_span !65 12 16
-!70 = (!68 !69)
-!71 = span !65 52 63
-!72 = fn_call_path_span !65 57 58
-!73 = (!71 !72)
+!13 = span !4 175031 175089
+!14 = fn_call_path_span !4 175031 175050
+!15 = (!6 !7 !13 !14)
+!16 = span !0 40 100
+!17 = span !0 141 145
+!18 = span !0 146 147
+!19 = span !0 149 153
+!20 = span !0 154 155
+!21 = span !0 136 156
+!22 = fn_call_path_span !0 136 140
+!23 = (!21 !22)
+!24 = span !0 117 157
+!25 = span !0 200 207
+!26 = span !0 174 208
+!27 = fn_call_path_span !0 174 191
+!28 = span !4 93230 93256
+!29 = (!26 !27 !28)
+!30 = "test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_two_u64/src/main.sw"
+!31 = span !30 17 21
+!32 = span !30 28 32
+!33 = span !30 9 65
+!34 = fn_name_span !30 12 16
+!35 = (!33 !34)
+!36 = span !30 52 63
+!37 = fn_call_path_span !30 57 58
+!38 = (!36 !37)
 
 ;; ASM: Final program
 ;; Program kind: Script
@@ -230,34 +215,23 @@ lw   $$ds $$tmp i1
 add  $$ds $$ds $$tmp
 cfei i0                       ; allocate stack space for globals
 move $$locbase $sp            ; save locals base register for function __entry
-cfei i32                      ; allocate 32 bytes for locals and 0 slots for call arguments
+cfei i40                      ; allocate 40 bytes for locals and 0 slots for call arguments
 gtf  $r0 $zero i10            ; get transaction field
-sw   $$locbase $r0 i3         ; store word
+mcpi $$locbase $r0 i16        ; copy memory
+addi $r0 $$locbase i24        ; get offset to local __ptr { u64, u64 }
+mcpi $r0 $$locbase i16        ; copy memory
 lw   $r0 $$locbase i3         ; load word
-lw   $r3 $r0 i0               ; lw val ptr i0
-lw   $r0 $$locbase i3         ; load word
-movi $r1 i8                   ; initialize constant into register
-add  $r0 $r0 $r1
-sw   $$locbase $r0 i3         ; store word
-lw   $r0 $$locbase i3         ; load word
-lw   $r0 $r0 i0               ; lw val ptr i0
-lw   $r1 $$locbase i3         ; load word
-movi $r2 i8                   ; initialize constant into register
-add  $r1 $r1 $r2
-sw   $$locbase $r1 i3         ; store word
-sw   $$locbase $r3 i1         ; store word
-sw   $$locbase $r0 i2         ; store word
-lw   $r0 $$locbase i1         ; load word
-lw   $r1 $$locbase i2         ; load word
+lw   $r1 $$locbase i4         ; load word
 move $$arg0 $r0               ; [call]: pass argument 0
 move $$arg1 $r1               ; [call]: pass argument 1
-jal  $$reta $pc i4            ; [call]: call main_8
-sw   $$locbase $$retv i0      ; store word
-movi $r0 i8                   ; initialize constant into register
-retd  $$locbase $r0
+jal  $$reta $pc i5            ; [call]: call main_9
+sw   $$locbase $$retv i2      ; store word
+addi $r0 $$locbase i16        ; get offset to local __ptr u64
+movi $r1 i8                   ; initialize constant into register
+retd  $r0 $r1
 pshl i1                       ; save registers 16..40
 pshh i524288                  ; save registers 40..64
-move $$locbase $sp            ; save locals base register for function main_8
+move $$locbase $sp            ; save locals base register for function main_9
 add  $r0 $$arg0 $$arg1
 move $$retv $r0               ; set return value
 poph i524288                  ; restore registers 40..64
@@ -270,45 +244,35 @@ jal  $zero $$reta i0          ; return from call
 
 0x00000000 MOVE R60 $pc                                    ;; [26, 240, 48, 0]
 0x00000004 JMPF $zero 0x4                                  ;; [116, 0, 0, 4]
-0x00000008                                                 ;; [0, 0, 0, 0, 0, 0, 0, 168]
+0x00000008                                                 ;; [0, 0, 0, 0, 0, 0, 0, 128]
 0x00000010                                                 ;; [0, 0, 0, 0, 0, 0, 0, 0]
 0x00000018 LW R63 R60 0x1                                  ;; [93, 255, 192, 1]
 0x0000001c ADD R63 R63 R60                                 ;; [16, 255, 255, 0]
 0x00000020 MOVE R59 $sp                                    ;; [26, 236, 80, 0]
-0x00000024 CFEI 0x20                                       ;; [145, 0, 0, 32]
+0x00000024 CFEI 0x28                                       ;; [145, 0, 0, 40]
 0x00000028 GTF $writable $zero 0xa                         ;; [97, 64, 0, 10]
-0x0000002c SW R59 $writable 0x3                            ;; [95, 237, 0, 3]
-0x00000030 LW $writable R59 0x3                            ;; [93, 67, 176, 3]
-0x00000034 LW R19 $writable 0x0                            ;; [93, 77, 0, 0]
+0x0000002c MCPI R59 $writable 0x10                         ;; [96, 237, 0, 16]
+0x00000030 ADDI $writable R59 0x18                         ;; [80, 67, 176, 24]
+0x00000034 MCPI $writable R59 0x10                         ;; [96, 67, 176, 16]
 0x00000038 LW $writable R59 0x3                            ;; [93, 67, 176, 3]
-0x0000003c MOVI R17 0x8                                    ;; [114, 68, 0, 8]
-0x00000040 ADD $writable $writable R17                     ;; [16, 65, 4, 64]
-0x00000044 SW R59 $writable 0x3                            ;; [95, 237, 0, 3]
-0x00000048 LW $writable R59 0x3                            ;; [93, 67, 176, 3]
-0x0000004c LW $writable $writable 0x0                      ;; [93, 65, 0, 0]
-0x00000050 LW R17 R59 0x3                                  ;; [93, 71, 176, 3]
-0x00000054 MOVI R18 0x8                                    ;; [114, 72, 0, 8]
-0x00000058 ADD R17 R17 R18                                 ;; [16, 69, 20, 128]
-0x0000005c SW R59 R17 0x3                                  ;; [95, 237, 16, 3]
-0x00000060 SW R59 R19 0x1                                  ;; [95, 237, 48, 1]
-0x00000064 SW R59 $writable 0x2                            ;; [95, 237, 0, 2]
-0x00000068 LW $writable R59 0x1                            ;; [93, 67, 176, 1]
-0x0000006c LW R17 R59 0x2                                  ;; [93, 71, 176, 2]
-0x00000070 MOVE R58 $writable                              ;; [26, 233, 0, 0]
-0x00000074 MOVE R57 R17                                    ;; [26, 229, 16, 0]
-0x00000078 JAL R62 $pc 0x4                                 ;; [153, 248, 48, 4]
-0x0000007c SW R59 R61 0x0                                  ;; [95, 239, 208, 0]
-0x00000080 MOVI $writable 0x8                              ;; [114, 64, 0, 8]
-0x00000084 RETD R59 $writable                              ;; [37, 237, 0, 0]
-0x00000088 PSHL 0x1                                        ;; [149, 0, 0, 1]
-0x0000008c PSHH 0x80000                                    ;; [150, 8, 0, 0]
-0x00000090 MOVE R59 $sp                                    ;; [26, 236, 80, 0]
-0x00000094 ADD $writable R58 R57                           ;; [16, 67, 174, 64]
-0x00000098 MOVE R61 $writable                              ;; [26, 245, 0, 0]
-0x0000009c POPH 0x80000                                    ;; [152, 8, 0, 0]
-0x000000a0 POPL 0x1                                        ;; [151, 0, 0, 1]
-0x000000a4 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x0000003c LW R17 R59 0x4                                  ;; [93, 71, 176, 4]
+0x00000040 MOVE R58 $writable                              ;; [26, 233, 0, 0]
+0x00000044 MOVE R57 R17                                    ;; [26, 229, 16, 0]
+0x00000048 JAL R62 $pc 0x5                                 ;; [153, 248, 48, 5]
+0x0000004c SW R59 R61 0x2                                  ;; [95, 239, 208, 2]
+0x00000050 ADDI $writable R59 0x10                         ;; [80, 67, 176, 16]
+0x00000054 MOVI R17 0x8                                    ;; [114, 68, 0, 8]
+0x00000058 RETD $writable R17                              ;; [37, 65, 16, 0]
+0x0000005c PSHL 0x1                                        ;; [149, 0, 0, 1]
+0x00000060 PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x00000064 MOVE R59 $sp                                    ;; [26, 236, 80, 0]
+0x00000068 ADD $writable R58 R57                           ;; [16, 67, 174, 64]
+0x0000006c MOVE R61 $writable                              ;; [26, 245, 0, 0]
+0x00000070 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x00000074 POPL 0x1                                        ;; [151, 0, 0, 1]
+0x00000078 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x0000007c NOOP                                            ;; [71, 0, 0, 0]
 .data_section:
 ;; --- END OF TARGET BYTECODE ---
 
-    Finished release [optimized + fuel] target(s) [168 B] in ???
+    Finished release [optimized + fuel] target(s) [128 B] in ???
