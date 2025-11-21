@@ -74,9 +74,6 @@ impl BufferReader {
 
     #[inline(always)]
     pub fn from_script_data() -> raw_ptr {
-        // let ptr = __gtf::<raw_ptr>(0, 0xA); // SCRIPT_DATA
-        // let _len = __gtf::<u64>(0, 0x4); // SCRIPT_DATA_LEN
-        // BufferReader { ptr }
         __gtf::<raw_ptr>(0, 0xA)
     }
 
@@ -92,18 +89,8 @@ impl BufferReader {
     #[inline(always)]
     pub fn from_predicate_data_by_index(predicate_index: u64) -> raw_ptr {
         match __gtf::<u8>(predicate_index, 0x200) { // GTF_INPUT_TYPE
-            0u8 => {
-                // let ptr = __gtf::<raw_ptr>(predicate_index, 0x20C); // INPUT_COIN_PREDICATE_DATA
-                // let _len = __gtf::<u64>(predicate_index, 0x20A); // INPUT_COIN_PREDICATE_DATA_LENGTH
-                // BufferReader { ptr }
-                __gtf::<raw_ptr>(predicate_index, 0x20C)
-            },
-            2u8 => {
-                // let ptr = __gtf::<raw_ptr>(predicate_index, 0x24A); // INPUT_MESSAGE_PREDICATE_DATA
-                // let _len = __gtf::<u64>(predicate_index, 0x247); // INPUT_MESSAGE_PREDICATE_DATA_LENGTH
-                // BufferReader { ptr }
-                __gtf::<raw_ptr>(predicate_index, 0x24A)
-            },
+            0u8 => __gtf::<raw_ptr>(predicate_index, 0x20C),
+            2u8 => __gtf::<raw_ptr>(predicate_index, 0x24A),
             _ => __revert(0),
         }
     }
@@ -283,6 +270,8 @@ impl AbiEncode for str {
 
 #[cfg(experimental_const_generics = true)]
 impl<const N: u64> AbiEncode for str[N] {
+    // str[N] have alignments and paddings that make them not trivial
+    // for more information see comments on a test named: string_array
     fn is_encode_trivial() -> bool {
         false
     }
