@@ -103,7 +103,7 @@ script {
         store v2 to v5, !18
         v6 = get_local __ptr { ptr }, buffer, !20
         v7 = get_local __ptr { { string<3> }, { u64, ( u64 | u64 ) } }, first
-        v8 = call decode_7(v6, v7)
+        v8 = call decode_17(v6, v7)
         v9 = get_local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2], array, !26
         v10 = get_local __ptr { { string<3> }, { u64, ( u64 | u64 ) } }, first, !28
         v11 = const u64 0
@@ -113,24 +113,24 @@ script {
         v14 = get_elem_ptr v9, __ptr { { string<3> }, { u64, ( u64 | u64 ) } }, v13, !30
         mem_copy_val v14, v10
         v15 = const u64 1, !31
-        br decode_script_data_0_decode_from_raw_ptr_1_abi_decode_5_abi_decode_6_while(v15), !32
+        br decode_script_data_0_decode_from_raw_ptr_1_abi_decode_15_abi_decode_16_while(v15), !32
 
-        decode_script_data_0_decode_from_raw_ptr_1_abi_decode_5_abi_decode_6_while(v16: u64):
+        decode_script_data_0_decode_from_raw_ptr_1_abi_decode_15_abi_decode_16_while(v16: u64):
         v17 = const u64 2, !33
         v18 = cmp lt v16 v17, !36
-        cbr v18, decode_script_data_0_decode_from_raw_ptr_1_abi_decode_5_abi_decode_6_while_body(), decode_script_data_0_decode_from_raw_ptr_1_abi_decode_5_abi_decode_6_end_while(), !37
+        cbr v18, decode_script_data_0_decode_from_raw_ptr_1_abi_decode_15_abi_decode_16_while_body(), decode_script_data_0_decode_from_raw_ptr_1_abi_decode_15_abi_decode_16_end_while(), !37
 
-        decode_script_data_0_decode_from_raw_ptr_1_abi_decode_5_abi_decode_6_while_body():
+        decode_script_data_0_decode_from_raw_ptr_1_abi_decode_15_abi_decode_16_while_body():
         v19 = get_local __ptr { { string<3> }, { u64, ( u64 | u64 ) } }, __ret_val0
-        v20 = call decode_7(v6, v19)
+        v20 = call decode_17(v6, v19)
         v21 = get_local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2], array, !39
         v22 = get_elem_ptr v21, __ptr { { string<3> }, { u64, ( u64 | u64 ) } }, v16, !40
         mem_copy_val v22, v19
         v23 = const u64 1, !41
         v24 = add v16, v23, !44
-        br decode_script_data_0_decode_from_raw_ptr_1_abi_decode_5_abi_decode_6_while(v24), !45
+        br decode_script_data_0_decode_from_raw_ptr_1_abi_decode_15_abi_decode_16_while(v24), !45
 
-        decode_script_data_0_decode_from_raw_ptr_1_abi_decode_5_abi_decode_6_end_while():
+        decode_script_data_0_decode_from_raw_ptr_1_abi_decode_15_abi_decode_16_end_while():
         v25 = get_local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2], array, !47
         v26 = get_local __ptr { [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2] }, args, !49
         v27 = const u64 0
@@ -142,6 +142,7 @@ script {
         v32 = get_local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2], __tmp_arg
         mem_copy_val v32, v31
         v33 = get_local __ptr { u64 }, _result
+<<<<<<< HEAD
         v34 = call main_22(v32, v33)
 <<<<<<< HEAD
         v35 = get_local __ptr { { ptr, u64, u64 } }, __tmp_arg0
@@ -168,12 +169,16 @@ script {
         retd v49 v55, !77
 >>>>>>> 2b4c2d140 (update snapshot tests)
 =======
+=======
+        v34 = call main_32(v32, v33)
+>>>>>>> 31354594f (update tests)
         v35 = get_local __ptr { u64 }, _result, !53
         v36 = const u64 8
         retd v35 v36, !57
 >>>>>>> c47472c5f (update tests)
     }
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
     pub fn decode_6(self !78: __ptr { ptr }, __ret_value: __ptr { { string<3> }, { u64, ( u64 | u64 ) } }) -> (), !81 {
@@ -184,6 +189,9 @@ script {
 =======
     pub fn decode_7(self !58: __ptr { ptr }, __ret_value: __ptr { { string<3> }, { u64, ( u64 | u64 ) } }) -> (), !61 {
 >>>>>>> bf70d813e (update tests)
+=======
+    pub fn decode_17(self !58: __ptr { ptr }, __ret_value: __ptr { { string<3> }, { u64, ( u64 | u64 ) } }) -> (), !61 {
+>>>>>>> 5352cc341 (update tests)
         local mut slice __aggr_memcpy_0
         local mut { ptr, u64 } __aggr_memcpy_00
         local mut string<3> __aggr_memcpy_01
@@ -524,9 +532,9 @@ script {
         store v36 to v1, !123
         v37 = const u64 0, !124
         v38 = cmp eq v33 v37, !127
-        cbr v38, abi_decode_8_abi_decode_15_block0(), abi_decode_8_abi_decode_15_block1(), !128
+        cbr v38, abi_decode_18_abi_decode_25_block0(), abi_decode_18_abi_decode_25_block1(), !128
 
-        abi_decode_8_abi_decode_15_block0():
+        abi_decode_18_abi_decode_25_block0():
         v39 = get_local __ptr { u64, ( u64 | u64 ) }, __anon_01, !131
         v40 = const u64 0
         v41 = get_elem_ptr v39, __ptr u64, v40, !132
@@ -546,14 +554,14 @@ script {
         store v44 to v50, !143
         v51 = get_local __ptr { u64, ( u64 | u64 ) }, __tmp_block_arg
         mem_copy_val v51, v39
-        br abi_decode_8_abi_decode_15_block5(v51), !144
+        br abi_decode_18_abi_decode_25_block5(v51), !144
 
-        abi_decode_8_abi_decode_15_block1():
+        abi_decode_18_abi_decode_25_block1():
         v52 = const u64 1, !145
         v53 = cmp eq v33 v52, !148
-        cbr v53, abi_decode_8_abi_decode_15_block2(), abi_decode_8_abi_decode_15_block3(), !149
+        cbr v53, abi_decode_18_abi_decode_25_block2(), abi_decode_18_abi_decode_25_block3(), !149
 
-        abi_decode_8_abi_decode_15_block2():
+        abi_decode_18_abi_decode_25_block2():
         v54 = get_local __ptr { u64, ( u64 | u64 ) }, __anon_1, !150
         v55 = const u64 0
         v56 = get_elem_ptr v54, __ptr u64, v55, !151
@@ -573,13 +581,13 @@ script {
         store v59 to v65, !162
         v66 = get_local __ptr { u64, ( u64 | u64 ) }, __tmp_block_arg
         mem_copy_val v66, v54
-        br abi_decode_8_abi_decode_15_block5(v66), !163
+        br abi_decode_18_abi_decode_25_block5(v66), !163
 
-        abi_decode_8_abi_decode_15_block3():
+        abi_decode_18_abi_decode_25_block3():
         v67 = const u64 0, !164
         revert v67, !166
 
-        abi_decode_8_abi_decode_15_block5(v68: __ptr { u64, ( u64 | u64 ) }):
+        abi_decode_18_abi_decode_25_block5(v68: __ptr { u64, ( u64 | u64 ) }):
         v69 = get_local __ptr { { string<3> }, { u64, ( u64 | u64 ) } }, __anon_0, !168
         v70 = const u64 0
         v71 = get_elem_ptr v69, __ptr { string<3> }, v70, !169
@@ -594,7 +602,7 @@ script {
 >>>>>>> 57f7a5160 (update snapshot tests)
     }
 
-    entry_orig fn main_22(ops: __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2], __ret_value: __ptr { u64 }) -> (), !173 {
+    entry_orig fn main_32(ops: __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2], __ret_value: __ptr { u64 }) -> (), !173 {
         local mut slice __aggr_memcpy_0
         local mut { ptr, u64, u64 } __aggr_memcpy_00
         local mut { ptr, u64, u64 } __aggr_memcpy_01
@@ -1073,9 +1081,9 @@ script {
         v2 = get_local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2], item_, !174
         mem_copy_val v2, v1
         v3 = const bool false, !183
-        cbr v3, encode_23_block0(), encode_23_block1(), !184
+        cbr v3, encode_33_block0(), encode_33_block1(), !184
 
-        encode_23_block0():
+        encode_33_block0():
         v4 = get_local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2], item_, !186
         v5 = const u64 48
         v6 = asm(size: v5, src: v4) -> ptr hp, !188 {
@@ -1095,12 +1103,12 @@ script {
         mem_copy_val v13, v12
         v14 = get_local __ptr slice, __tmp_block_arg0
         mem_copy_val v14, v13
-        br encode_23_block2(v14), !174
+        br encode_33_block2(v14), !174
 
-        encode_23_block1():
+        encode_33_block1():
         v15 = get_local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2], item_, !198
         v16 = get_local __ptr { { ptr, u64, u64 } }, __ret_val3
-        v17 = call new_42(v16)
+        v17 = call new_52(v16)
         v18 = get_local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2], self_2, !201
         mem_copy_val v18, v15
         v19 = get_local __ptr { { ptr, u64, u64 } }, buffer_, !202
@@ -1109,14 +1117,14 @@ script {
         v21 = get_local __ptr { { ptr, u64, u64 } }, buffer__, !206
         mem_copy_val v21, v20
         v22 = const u64 0, !207
-        br encode_23_abi_encode_36_while(v22), !208
+        br encode_33_abi_encode_46_while(v22), !208
 
-        encode_23_abi_encode_36_while(v23: u64):
+        encode_33_abi_encode_46_while(v23: u64):
         v24 = const u64 2, !209
         v25 = cmp lt v23 v24, !212
-        cbr v25, encode_23_abi_encode_36_while_body(), encode_23_abi_encode_36_end_while(), !213
+        cbr v25, encode_33_abi_encode_46_while_body(), encode_33_abi_encode_46_end_while(), !213
 
-        encode_23_abi_encode_36_while_body():
+        encode_33_abi_encode_46_while_body():
         v26 = get_local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2], self_2, !215
         v27 = get_elem_ptr v26, __ptr { { string<3> }, { u64, ( u64 | u64 ) } }, v23, !217
         v28 = get_local __ptr { { ptr, u64, u64 } }, buffer__, !219
@@ -1162,9 +1170,9 @@ script {
         v59 = const u64 3
         v60 = add v57, v59, !257
         v61 = cmp gt v60 v54, !258
-        cbr v61, encode_23_abi_encode_36_abi_encode_37_abi_encode_38_abi_encode_39_block1(), encode_23_abi_encode_36_abi_encode_37_abi_encode_38_abi_encode_39_block0(v51, v54), !259
+        cbr v61, encode_33_abi_encode_46_abi_encode_47_abi_encode_48_abi_encode_49_block1(), encode_33_abi_encode_46_abi_encode_47_abi_encode_48_abi_encode_49_block0(v51, v54), !259
 
-        encode_23_abi_encode_36_abi_encode_37_abi_encode_38_abi_encode_39_block0(v62: ptr, v63: u64):
+        encode_33_abi_encode_46_abi_encode_47_abi_encode_48_abi_encode_49_block0(v62: ptr, v63: u64):
         v64 = get_local __ptr string<3>, __anon_10, !260
         mem_copy_val v64, v58
         v65 = add v62, v57, !261
@@ -1210,9 +1218,9 @@ script {
         v93 = load v92, !296
         v94 = const u64 0, !290
         v95 = cmp eq v93 v94, !299
-        cbr v95, encode_23_abi_encode_36_abi_encode_37_abi_encode_40_block0(), encode_23_abi_encode_36_abi_encode_37_abi_encode_40_block1(), !300
+        cbr v95, encode_33_abi_encode_46_abi_encode_47_abi_encode_50_block0(), encode_33_abi_encode_46_abi_encode_47_abi_encode_50_block1(), !300
 
-        encode_23_abi_encode_36_abi_encode_37_abi_encode_38_abi_encode_39_block1():
+        encode_33_abi_encode_46_abi_encode_47_abi_encode_48_abi_encode_49_block1():
         v96 = const u64 2
         v97 = mul v54, v96, !301
         v98 = add v97, v59, !302
@@ -1220,9 +1228,9 @@ script {
             aloc   new_cap
             mcp    hp old_ptr len
         }
-        br encode_23_abi_encode_36_abi_encode_37_abi_encode_38_abi_encode_39_block0(v99, v98), !304
+        br encode_33_abi_encode_46_abi_encode_47_abi_encode_48_abi_encode_49_block0(v99, v98), !304
 
-        encode_23_abi_encode_36_abi_encode_37_abi_encode_40_block0():
+        encode_33_abi_encode_46_abi_encode_47_abi_encode_50_block0():
         v100 = get_local __ptr { u64, ( u64 | u64 ) }, __matched_value_10, !305
         v101 = const u64 1
         v102 = const u64 0
@@ -1233,31 +1241,31 @@ script {
         mem_copy_val v106, v105
         v107 = get_local __ptr { { ptr, u64, u64 } }, __ret_val
         v108 = const u64 0, !310
-        v109 = call abi_encode_41(v108, v106, v107)
+        v109 = call abi_encode_51(v108, v106, v107)
         v110 = get_local __ptr { { ptr, u64, u64 } }, buffer__1, !312
         mem_copy_val v110, v107
         v111 = get_local __ptr { { ptr, u64, u64 } }, buffer__1, !314
         v112 = get_local __ptr { { ptr, u64, u64 } }, __tmp_arg0
         mem_copy_val v112, v111
         v113 = get_local __ptr { { ptr, u64, u64 } }, __ret_val0
-        v114 = call abi_encode_41(v104, v112, v113)
+        v114 = call abi_encode_51(v104, v112, v113)
         v115 = get_local __ptr { { ptr, u64, u64 } }, buffer___0, !316
         mem_copy_val v115, v113
         v116 = get_local __ptr { { ptr, u64, u64 } }, buffer___0, !318
         v117 = get_local __ptr { { ptr, u64, u64 } }, __tmp_block_arg
         mem_copy_val v117, v116
-        br encode_23_abi_encode_36_abi_encode_37_abi_encode_40_block5(v117), !319
+        br encode_33_abi_encode_46_abi_encode_47_abi_encode_50_block5(v117), !319
 
-        encode_23_abi_encode_36_abi_encode_37_abi_encode_40_block1():
+        encode_33_abi_encode_46_abi_encode_47_abi_encode_50_block1():
         v118 = get_local __ptr { u64, ( u64 | u64 ) }, __matched_value_10, !320
         v119 = const u64 0
         v120 = get_elem_ptr v118, __ptr u64, v119, !321
         v121 = load v120, !322
         v122 = const u64 1, !290
         v123 = cmp eq v121 v122, !325
-        cbr v123, encode_23_abi_encode_36_abi_encode_37_abi_encode_40_block2(), encode_23_abi_encode_36_abi_encode_37_abi_encode_40_block3(), !326
+        cbr v123, encode_33_abi_encode_46_abi_encode_47_abi_encode_50_block2(), encode_33_abi_encode_46_abi_encode_47_abi_encode_50_block3(), !326
 
-        encode_23_abi_encode_36_abi_encode_37_abi_encode_40_block2():
+        encode_33_abi_encode_46_abi_encode_47_abi_encode_50_block2():
         v124 = get_local __ptr { u64, ( u64 | u64 ) }, __matched_value_10, !327
         v125 = const u64 1
         v126 = const u64 1
@@ -1268,26 +1276,26 @@ script {
         mem_copy_val v130, v129
         v131 = get_local __ptr { { ptr, u64, u64 } }, __ret_val1
         v132 = const u64 1, !332
-        v133 = call abi_encode_41(v132, v130, v131)
+        v133 = call abi_encode_51(v132, v130, v131)
         v134 = get_local __ptr { { ptr, u64, u64 } }, buffer____, !334
         mem_copy_val v134, v131
         v135 = get_local __ptr { { ptr, u64, u64 } }, buffer____, !336
         v136 = get_local __ptr { { ptr, u64, u64 } }, __tmp_arg2
         mem_copy_val v136, v135
         v137 = get_local __ptr { { ptr, u64, u64 } }, __ret_val2
-        v138 = call abi_encode_41(v128, v136, v137)
+        v138 = call abi_encode_51(v128, v136, v137)
         v139 = get_local __ptr { { ptr, u64, u64 } }, buffer_____, !338
         mem_copy_val v139, v137
         v140 = get_local __ptr { { ptr, u64, u64 } }, buffer_____, !340
         v141 = get_local __ptr { { ptr, u64, u64 } }, __tmp_block_arg
         mem_copy_val v141, v140
-        br encode_23_abi_encode_36_abi_encode_37_abi_encode_40_block5(v141), !341
+        br encode_33_abi_encode_46_abi_encode_47_abi_encode_50_block5(v141), !341
 
-        encode_23_abi_encode_36_abi_encode_37_abi_encode_40_block3():
+        encode_33_abi_encode_46_abi_encode_47_abi_encode_50_block3():
         v142 = const u64 14757395258967588866, !292
         revert v142, !342
 
-        encode_23_abi_encode_36_abi_encode_37_abi_encode_40_block5(v143: __ptr { { ptr, u64, u64 } }):
+        encode_33_abi_encode_46_abi_encode_47_abi_encode_50_block5(v143: __ptr { { ptr, u64, u64 } }):
         v144 = get_local __ptr { { ptr, u64, u64 } }, buffer______, !344
         mem_copy_val v144, v143
         v145 = get_local __ptr { { ptr, u64, u64 } }, buffer______, !346
@@ -1298,9 +1306,9 @@ script {
         mem_copy_val v148, v147
         v149 = const u64 1, !353
         v150 = add v23, v149, !356
-        br encode_23_abi_encode_36_while(v150), !357
+        br encode_33_abi_encode_46_while(v150), !357
 
-        encode_23_abi_encode_36_end_while():
+        encode_33_abi_encode_46_end_while():
         v151 = get_local __ptr { { ptr, u64, u64 } }, buffer__, !359
         v152 = get_local __ptr { { ptr, u64, u64 } }, buffer, !361
         mem_copy_val v152, v151
@@ -1333,9 +1341,9 @@ script {
         mem_copy_val v171, v170
         v172 = get_local __ptr slice, __tmp_block_arg0
         mem_copy_val v172, v171
-        br encode_23_block2(v172), !174
+        br encode_33_block2(v172), !174
 
-        encode_23_block2(v173: __ptr slice):
+        encode_33_block2(v173: __ptr slice):
         v174 = get_local __ptr slice, __log_arg
         mem_copy_val v174, v173
         v175 = const u64 3647243719605075626
@@ -1363,16 +1371,16 @@ script {
         mem_copy_val v192, v182
         v193 = get_local __ptr slice, __tmp_arg4
         mem_copy_val v193, v191
-        v194 = call eq_str_3_47(v192, v193)
+        v194 = call eq_str_3_57(v192, v193)
         v195 = const bool false, !382
         v196 = cmp eq v194 v195, !388
-        cbr v196, assert_44_block0(), assert_44_block1(), !389
+        cbr v196, assert_54_block0(), assert_54_block1(), !389
 
-        assert_44_block0():
+        assert_54_block0():
         v197 = const u64 18446744073709486084
         revert v197, !394
 
-        assert_44_block1():
+        assert_54_block1():
         v198 = get_local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2], ops_, !395
         v199 = const u64 0, !396
         v200 = get_elem_ptr v198, __ptr { { string<3> }, { u64, ( u64 | u64 ) } }, v199, !397
@@ -1397,12 +1405,12 @@ script {
         v215 = const u64 1338, !404
         v216 = cmp eq v214 v215, !407
         v217 = cmp eq v216 v195, !410
-        cbr v217, assert_44_block015(), assert_44_block116(), !411
+        cbr v217, assert_54_block015(), assert_54_block116(), !411
 
-        assert_44_block015():
+        assert_54_block015():
         revert v197, !412
 
-        assert_44_block116():
+        assert_54_block116():
         v218 = get_local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2], ops_, !413
         v219 = const u64 1, !414
         v220 = get_elem_ptr v218, __ptr { { string<3> }, { u64, ( u64 | u64 ) } }, v219, !415
@@ -1426,14 +1434,14 @@ script {
         mem_copy_val v234, v224
         v235 = get_local __ptr slice, __tmp_arg6
         mem_copy_val v235, v233
-        v236 = call eq_str_3_47(v234, v235)
+        v236 = call eq_str_3_57(v234, v235)
         v237 = cmp eq v236 v195, !420
-        cbr v237, assert_44_block018(), assert_44_block119(), !421
+        cbr v237, assert_54_block018(), assert_54_block119(), !421
 
-        assert_44_block018():
+        assert_54_block018():
         revert v197, !422
 
-        assert_44_block119():
+        assert_54_block119():
         v238 = get_local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2], ops_, !423
         v239 = const u64 1, !424
         v240 = get_elem_ptr v238, __ptr { { string<3> }, { u64, ( u64 | u64 ) } }, v239, !425
@@ -1462,12 +1470,12 @@ script {
         v256 = const u64 1, !436
         v257 = cmp eq v255 v256, !439
         v258 = cmp eq v257 v195, !442
-        cbr v258, assert_44_block021(), assert_44_block122(), !443
+        cbr v258, assert_54_block021(), assert_54_block122(), !443
 
-        assert_44_block021():
+        assert_54_block021():
         revert v197, !444
 
-        assert_44_block122():
+        assert_54_block122():
         v259 = get_local __ptr { u64 }, __anon_4, !445
         v260 = const u64 0
         v261 = get_elem_ptr v259, __ptr u64, v260
@@ -1495,6 +1503,7 @@ script {
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     pub fn abi_encode_31(self !448: u64, buffer: __ptr { { ptr, u64, u64 } }, __ret_value: __ptr { { ptr, u64, u64 } }) -> (), !451 {
 >>>>>>> 57f7a5160 (update snapshot tests)
 =======
@@ -1503,6 +1512,9 @@ script {
 =======
     pub fn abi_encode_41(self !451: u64, buffer: __ptr { { ptr, u64, u64 } }, __ret_value: __ptr { { ptr, u64, u64 } }) -> (), !454 {
 >>>>>>> bf70d813e (update tests)
+=======
+    pub fn abi_encode_51(self !451: u64, buffer: __ptr { { ptr, u64, u64 } }, __ret_value: __ptr { { ptr, u64, u64 } }) -> (), !454 {
+>>>>>>> 5352cc341 (update tests)
         local mut { ptr, u64, u64 } __aggr_memcpy_0
         local mut { ptr, u64, u64 } __aggr_memcpy_00
         local { ptr, u64, u64 } __anon_0
@@ -1618,6 +1630,7 @@ script {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     pub fn new_27(__ret_value: __ptr { { ptr, u64, u64 } }) -> (), !435 {
 =======
     pub fn new_32(__ret_value: __ptr { { ptr, u64, u64 } }) -> (), !456 {
@@ -1628,6 +1641,9 @@ script {
 =======
     pub fn new_42(__ret_value: __ptr { { ptr, u64, u64 } }) -> (), !459 {
 >>>>>>> bf70d813e (update tests)
+=======
+    pub fn new_52(__ret_value: __ptr { { ptr, u64, u64 } }) -> (), !459 {
+>>>>>>> 5352cc341 (update tests)
         local mut { ptr, u64, u64 } __aggr_memcpy_0
         local { ptr, u64, u64 } __anon_0
         local { { ptr, u64, u64 } } __anon_1
@@ -1689,6 +1705,7 @@ script {
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     fn eq_str_3_37(a: __ptr string<3>, b: __ptr slice) -> bool, !460 {
 >>>>>>> 57f7a5160 (update snapshot tests)
 =======
@@ -1697,6 +1714,9 @@ script {
 =======
     fn eq_str_3_47(a: __ptr string<3>, b: __ptr slice) -> bool, !463 {
 >>>>>>> bf70d813e (update tests)
+=======
+    fn eq_str_3_57(a: __ptr string<3>, b: __ptr slice) -> bool, !463 {
+>>>>>>> 5352cc341 (update tests)
         local { ptr, u64 } __tuple_1_
         local string<3> a_
         local slice self_
@@ -1829,11 +1849,12 @@ script {
 !5 = span !4 1542 1543
 !6 = span !0 80 131
 !7 = fn_call_path_span !0 80 98
-!8 = span !4 175056 175088
-!9 = fn_call_path_span !4 175056 175086
+!8 = span !4 184944 184976
+!9 = fn_call_path_span !4 184944 184974
 !10 = span !4 1525 1549
 !11 = (!6 !7 !8 !9 !10)
 !12 = (!6 !7 !8 !9 !10)
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 !13 = span !4 1691 1711
@@ -2725,39 +2746,44 @@ script {
 !14 = fn_call_path_span !4 175031 175050
 !15 = span !4 174904 174924
 >>>>>>> bf70d813e (update tests)
+=======
+!13 = span !4 184919 184977
+!14 = fn_call_path_span !4 184919 184938
+!15 = span !4 184792 184812
+>>>>>>> 5352cc341 (update tests)
 !16 = (!6 !7 !13 !14 !15)
 !17 = (!6 !7 !13 !14)
 !18 = (!6 !7 !13 !14 !15)
-!19 = span !4 174948 174954
+!19 = span !4 184836 184842
 !20 = (!6 !7 !13 !14 !19)
-!21 = span !4 174934 174955
-!22 = fn_call_path_span !4 174934 174947
-!23 = span !4 147888 147909
-!24 = fn_call_path_span !4 147888 147901
-!25 = span !4 118623 118633
+!21 = span !4 184822 184843
+!22 = fn_call_path_span !4 184822 184835
+!23 = span !4 147976 147997
+!24 = fn_call_path_span !4 147976 147989
+!25 = span !4 118683 118693
 !26 = (!6 !7 !13 !14 !21 !22 !23 !24 !25)
-!27 = span !4 118624 118629
+!27 = span !4 118684 118689
 !28 = (!6 !7 !13 !14 !21 !22 !23 !24 !27)
 !29 = (!6 !7 !13 !14 !21 !22 !23 !24)
 !30 = (!6 !7 !13 !14 !21 !22 !23 !24)
-!31 = span !4 118655 118656
+!31 = span !4 118715 118716
 !32 = (!6 !7 !13 !14 !21 !22 !23 !24)
-!33 = span !4 118676 118677
-!34 = span !4 118672 118677
-!35 = fn_call_path_span !4 118674 118675
+!33 = span !4 118736 118737
+!34 = span !4 118732 118737
+!35 = fn_call_path_span !4 118734 118735
 !36 = (!6 !7 !13 !14 !21 !22 !23 !24 !34 !35)
 !37 = (!6 !7 !13 !14 !21 !22 !23 !24)
-!38 = span !4 118692 118723
+!38 = span !4 118752 118783
 !39 = (!6 !7 !13 !14 !21 !22 !23 !24 !38)
 !40 = (!6 !7 !13 !14 !21 !22 !23 !24 !38)
-!41 = span !4 118742 118743
-!42 = span !4 118737 118743
-!43 = fn_call_path_span !4 118739 118741
+!41 = span !4 118802 118803
+!42 = span !4 118797 118803
+!43 = fn_call_path_span !4 118799 118801
 !44 = (!6 !7 !13 !14 !21 !22 !23 !24 !42 !43)
 !45 = (!6 !7 !13 !14 !21 !22 !23 !24)
-!46 = span !4 118764 118769
+!46 = span !4 118824 118829
 !47 = (!6 !7 !13 !14 !21 !22 !23 !24 !46)
-!48 = span !4 147887 147912
+!48 = span !4 147975 148000
 !49 = (!6 !7 !13 !14 !21 !22 !48)
 !50 = (!6 !7 !13 !14 !21 !22 !48)
 !51 = span !0 178 182
@@ -3198,19 +3224,19 @@ script {
 !61 = (!59 !60)
 !62 = span !4 3405 3424
 !63 = fn_call_path_span !4 3405 3418
-!64 = span !4 148173 148194
-!65 = fn_call_path_span !4 148173 148186
+!64 = span !4 148317 148338
+!65 = fn_call_path_span !4 148317 148330
 !66 = span !0 404 429
 !67 = fn_call_path_span !0 411 417
-!68 = span !4 98402 98422
-!69 = fn_call_path_span !4 98409 98419
+!68 = span !4 98462 98482
+!69 = fn_call_path_span !4 98469 98479
 !70 = span !4 625 641
 !71 = (!62 !63 !64 !65 !66 !67 !62 !63 !68 !69 !70)
 !72 = span !4 2636 2653
 !73 = (!62 !63 !64 !65 !66 !67 !62 !63 !68 !69 !72)
 !74 = (!62 !63 !64 !65 !66 !67 !62 !63 !68 !69 !72)
 !75 = (!62 !63 !64 !65 !66 !67 !62 !63 !68 !69 !72)
-!76 = span !4 98420 98421
+!76 = span !4 98480 98481
 !77 = (!62 !63 !64 !65 !66 !67 !62 !63 !68 !69 !72)
 !78 = span !4 2615 2694
 !79 = (!62 !63 !64 !65 !66 !67 !62 !63 !68 !69 !78)
@@ -3221,12 +3247,12 @@ script {
 !84 = (!62 !63 !64 !65 !66 !67 !62 !63 !68 !69 !83)
 !85 = span !4 2756 2761
 !86 = (!62 !63 !64 !65 !66 !67 !62 !63 !68 !69 !85)
-!87 = span !4 98391 98423
+!87 = span !4 98451 98483
 !88 = (!62 !63 !64 !65 !66 !67 !62 !63 !87)
-!89 = span !4 98439 98443
+!89 = span !4 98499 98503
 !90 = (!62 !63 !64 !65 !66 !67 !62 !63 !89)
-!91 = span !4 98439 98449
-!92 = fn_call_path_span !4 98444 98447
+!91 = span !4 98499 98509
+!92 = fn_call_path_span !4 98504 98507
 !93 = (!62 !63 !64 !65 !66 !67 !62 !63 !91 !92)
 !94 = "sway-lib-std/src/raw_slice.sw"
 !95 = span !94 2922 2926
@@ -3243,8 +3269,8 @@ script {
 !106 = span !0 392 432
 !107 = (!62 !63 !64 !65 !106)
 !108 = (!62 !63 !64 !65)
-!109 = span !4 148196 148217
-!110 = fn_call_path_span !4 148196 148209
+!109 = span !4 148340 148361
+!110 = fn_call_path_span !4 148340 148353
 !111 = span !0 329 351
 !112 = fn_call_path_span !0 336 342
 !113 = span !4 95201 95229
@@ -3301,7 +3327,7 @@ script {
 !164 = span !0 486 487
 !165 = span !0 477 488
 !166 = (!62 !63 !109 !110 !165)
-!167 = span !4 148172 148218
+!167 = span !4 148316 148362
 !168 = (!62 !63 !167)
 !169 = (!62 !63 !167)
 !170 = (!62 !63 !167)
@@ -3964,7 +3990,7 @@ addi $r3 $$locbase i176       ; get offset to local __ptr { ptr }
 addi $r0 $$locbase i184       ; get offset to local __ptr { { string<3> }, { u64, ( u64 | u64 ) } }
 move $$arg0 $r3               ; [call]: pass argument 0
 move $$arg1 $r0               ; [call]: pass argument 1
-jal  $$reta $pc i38           ; [call]: call decode_7
+jal  $$reta $pc i38           ; [call]: call decode_17
 addi $r1 $$locbase i128       ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
 addi $r2 $$locbase i184       ; get offset to local __ptr { { string<3> }, { u64, ( u64 | u64 ) } }
 movi $r0 i24                  ; get array element size
@@ -3988,13 +4014,13 @@ mcpi $r1 $r0 i48              ; copy memory
 addi $r0 $$locbase i72        ; get offset to local __ptr { u64 }
 move $$arg0 $r1               ; [call]: pass argument 0
 move $$arg1 $r0               ; [call]: pass argument 1
-jal  $$reta $pc i95           ; [call]: call main_22
+jal  $$reta $pc i95           ; [call]: call main_32
 addi $r0 $$locbase i72        ; get offset to local __ptr { u64 }
 movi $r1 i8                   ; initialize constant into register
 retd  $r0 $r1
 move $$arg0 $r3               ; [call]: pass argument 0
 move $$arg1 $$locbase         ; [call]: pass argument 1
-jal  $$reta $pc i8            ; [call]: call decode_7
+jal  $$reta $pc i8            ; [call]: call decode_17
 addi $r0 $$locbase i128       ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
 movi $r1 i24                  ; get array element size
 mul  $r1 $r2 $r1              ; get offset to array element
@@ -4004,7 +4030,7 @@ add  $r2 $r2 $one
 jmpb $zero i24
 pshl i255                     ; save registers 16..40
 pshh i524288                  ; save registers 40..64
-move $$locbase $sp            ; save locals base register for function decode_7
+move $$locbase $sp            ; save locals base register for function decode_17
 cfei i216                     ; allocate 216 bytes for locals and 0 slots for call arguments
 move $r7 $$arg0               ; save argument 0 (self)
 move $r6 $$arg1               ; save argument 1 (__ret_value)
@@ -4085,7 +4111,7 @@ add  $r2 $r2 $one
 jmpb $zero i96
 pshl i511                     ; save registers 16..40
 pshh i524288                  ; save registers 40..64
-move $$locbase $sp            ; save locals base register for function main_22
+move $$locbase $sp            ; save locals base register for function main_32
 cfei i1264                    ; allocate 1264 bytes for locals and 0 slots for call arguments
 move $r4 $$arg1               ; save argument 1 (__ret_value)
 move $r3 $$reta               ; save return address
@@ -4097,7 +4123,7 @@ mcpi $r1 $r0 i48              ; copy memory
 addi $r0 $$locbase i1040      ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
 addi $r1 $$locbase i472       ; get offset to local __ptr { { ptr, u64, u64 } }
 move $$arg0 $r1               ; [call]: pass argument 0
-jal  $$reta $pc i310          ; [call]: call new_42
+jal  $$reta $pc i310          ; [call]: call new_52
 addi $r2 $$locbase i1192      ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
 mcpi $r2 $r0 i48              ; copy memory
 addi $r0 $$locbase i704       ; get offset to local __ptr { { ptr, u64, u64 } }
@@ -4215,7 +4241,7 @@ addi $r1 $$locbase i424       ; get offset to local __ptr { { ptr, u64, u64 } }
 move $$arg0 $one              ; [call]: pass argument 0
 move $$arg1 $r2               ; [call]: pass argument 1
 move $$arg2 $r1               ; [call]: pass argument 2
-jal  $$reta $pc i148          ; [call]: call abi_encode_41
+jal  $$reta $pc i148          ; [call]: call abi_encode_51
 addi $r2 $$locbase i968       ; get offset to local __ptr { { ptr, u64, u64 } }
 mcpi $r2 $r1 i24              ; copy memory
 addi $r1 $$locbase i968       ; get offset to local __ptr { { ptr, u64, u64 } }
@@ -4225,7 +4251,7 @@ addi $r1 $$locbase i448       ; get offset to local __ptr { { ptr, u64, u64 } }
 move $$arg0 $r0               ; [call]: pass argument 0
 move $$arg1 $r2               ; [call]: pass argument 1
 move $$arg2 $r1               ; [call]: pass argument 2
-jal  $$reta $pc i138          ; [call]: call abi_encode_41
+jal  $$reta $pc i138          ; [call]: call abi_encode_51
 addi $r0 $$locbase i992       ; get offset to local __ptr { { ptr, u64, u64 } }
 mcpi $r0 $r1 i24              ; copy memory
 addi $r0 $$locbase i992       ; get offset to local __ptr { { ptr, u64, u64 } }
@@ -4240,7 +4266,7 @@ addi $r1 $$locbase i376       ; get offset to local __ptr { { ptr, u64, u64 } }
 move $$arg0 $zero             ; [call]: pass argument 0
 move $$arg1 $r2               ; [call]: pass argument 1
 move $$arg2 $r1               ; [call]: pass argument 2
-jal  $$reta $pc i123          ; [call]: call abi_encode_41
+jal  $$reta $pc i123          ; [call]: call abi_encode_51
 addi $r2 $$locbase i896       ; get offset to local __ptr { { ptr, u64, u64 } }
 mcpi $r2 $r1 i24              ; copy memory
 addi $r1 $$locbase i896       ; get offset to local __ptr { { ptr, u64, u64 } }
@@ -4250,7 +4276,7 @@ addi $r1 $$locbase i400       ; get offset to local __ptr { { ptr, u64, u64 } }
 move $$arg0 $r0               ; [call]: pass argument 0
 move $$arg1 $r2               ; [call]: pass argument 1
 move $$arg2 $r1               ; [call]: pass argument 2
-jal  $$reta $pc i113          ; [call]: call abi_encode_41
+jal  $$reta $pc i113          ; [call]: call abi_encode_51
 addi $r0 $$locbase i944       ; get offset to local __ptr { { ptr, u64, u64 } }
 mcpi $r0 $r1 i24              ; copy memory
 addi $r0 $$locbase i944       ; get offset to local __ptr { { ptr, u64, u64 } }
@@ -4289,7 +4315,7 @@ addi $r1 $$locbase i600       ; get offset to local __ptr slice
 mcpi $r1 $r0 i16              ; copy memory
 move $$arg0 $r2               ; [call]: pass argument 0
 move $$arg1 $r1               ; [call]: pass argument 1
-jal  $$reta $pc i139          ; [call]: call eq_str_3_47
+jal  $$reta $pc i139          ; [call]: call eq_str_3_57
 eq   $r0 $$retv $zero
 jnzf $r0 $zero i63
 addi $r0 $$locbase i1088      ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
@@ -4325,7 +4351,7 @@ addi $r1 $$locbase i624       ; get offset to local __ptr slice
 mcpi $r1 $r0 i16              ; copy memory
 move $$arg0 $r2               ; [call]: pass argument 0
 move $$arg1 $r1               ; [call]: pass argument 1
-jal  $$reta $pc i102          ; [call]: call eq_str_3_47
+jal  $$reta $pc i102          ; [call]: call eq_str_3_57
 eq   $r0 $$retv $zero
 jnzf $r0 $zero i22
 addi $r0 $$locbase i1088      ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
@@ -4363,7 +4389,7 @@ popl i511                     ; restore registers 16..40
 jal  $zero $$reta i0          ; return from call
 pshl i255                     ; save registers 16..40
 pshh i524288                  ; save registers 40..64
-move $$locbase $sp            ; save locals base register for function abi_encode_41
+move $$locbase $sp            ; save locals base register for function abi_encode_51
 cfei i144                     ; allocate 144 bytes for locals and 0 slots for call arguments
 move $r0 $$arg0               ; save argument 0 (self)
 move $r1 $$arg2               ; save argument 2 (__ret_value)
@@ -4407,7 +4433,7 @@ popl i255                     ; restore registers 16..40
 jal  $zero $$reta i0          ; return from call
 pshl i15                      ; save registers 16..40
 pshh i524288                  ; save registers 40..64
-move $$locbase $sp            ; save locals base register for function new_42
+move $$locbase $sp            ; save locals base register for function new_52
 cfei i72                      ; allocate 72 bytes for locals and 0 slots for call arguments
 move $r0 $$arg0               ; save argument 0 (__ret_value)
 move $r1 $$reta               ; save return address
@@ -4429,7 +4455,7 @@ popl i15                      ; restore registers 16..40
 jal  $zero $$reta i0          ; return from call
 pshl i15                      ; save registers 16..40
 pshh i524288                  ; save registers 40..64
-move $$locbase $sp            ; save locals base register for function eq_str_3_47
+move $$locbase $sp            ; save locals base register for function eq_str_3_57
 cfei i40                      ; allocate 40 bytes for locals and 0 slots for call arguments
 move $r0 $$arg1               ; save argument 1 (b)
 move $r1 $$reta               ; save return address

@@ -103,7 +103,7 @@ script {
 =======
         v8 = get_elem_ptr v6, __ptr u64, v7, !18
         v9 = load v8
-        v10 = call main_9(v9), !21
+        v10 = call main_11(v9), !21
         v11 = get_local __ptr u64, _result, !22
         store v10 to v11, !22
         v12 = get_local __ptr u64, _result, !23
@@ -112,7 +112,7 @@ script {
 >>>>>>> ed22272e6 (update tests)
     }
 
-    entry_orig fn main_9(baba !29: u64) -> u64, !32 {
+    entry_orig fn main_11(baba !29: u64) -> u64, !32 {
         entry(baba: u64):
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -139,13 +139,13 @@ script {
 !5 = span !4 1542 1543
 !6 = span !0 59 89
 !7 = fn_call_path_span !0 59 77
-!8 = span !4 175056 175088
-!9 = fn_call_path_span !4 175056 175086
+!8 = span !4 184944 184976
+!9 = fn_call_path_span !4 184944 184974
 !10 = span !4 1525 1549
 !11 = (!6 !7 !8 !9 !10)
 !12 = (!6 !7 !8 !9 !10)
-!13 = span !4 175031 175089
-!14 = fn_call_path_span !4 175031 175050
+!13 = span !4 184919 184977
+!14 = fn_call_path_span !4 184919 184938
 !15 = (!6 !7 !13 !14)
 !16 = span !0 40 90
 !17 = span !0 131 135
@@ -189,14 +189,14 @@ addi $r0 $$locbase i16        ; get offset to local __ptr { u64 }
 mcpi $r0 $$locbase i8         ; copy memory
 lw   $r0 $$locbase i2         ; load word
 move $$arg0 $r0               ; [call]: pass argument 0
-jal  $$reta $pc i5            ; [call]: call main_9
+jal  $$reta $pc i5            ; [call]: call main_11
 sw   $$locbase $$retv i1      ; store word
 addi $r0 $$locbase i8         ; get offset to local __ptr u64
 movi $r1 i8                   ; initialize constant into register
 retd  $r0 $r1
 pshl i1                       ; save registers 16..40
 pshh i524288                  ; save registers 40..64
-move $$locbase $sp            ; save locals base register for function main_9
+move $$locbase $sp            ; save locals base register for function main_11
 add  $r0 $$arg0 $one
 move $$retv $r0               ; set return value
 poph i524288                  ; restore registers 40..64

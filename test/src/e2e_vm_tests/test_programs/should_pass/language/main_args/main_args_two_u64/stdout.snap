@@ -27,8 +27,12 @@ library {
 script {
     pub entry fn __entry() -> __ptr never, !3 {
         local mut { u64, u64 } __aggr_memcpy_0
+        local { ptr } __anon_0
+        local { u64, u64 } __anon_00
+        local { u64, u64 } __tmp_block_arg
         local u64 _result
         local { u64, u64 } args
+        local mut { ptr } buffer
 
         entry():
 <<<<<<< HEAD
@@ -83,11 +87,14 @@ script {
         v0 = const u64 0, !5
         v1 = gtf v0, 10, !11
         v2 = bitcast v1 to ptr, !12
-        v3 = cast_ptr v2 to __ptr { u64, u64 }, !15
-        v4 = get_local __ptr { u64, u64 }, __aggr_memcpy_0
-        mem_copy_val v4, v3
-        v5 = get_local __ptr { u64, u64 }, args, !16
+        v3 = const bool true, !13
+        cbr v3, decode_script_data_0_decode_from_raw_ptr_1_block0(), decode_script_data_0_decode_from_raw_ptr_1_block1(), !17
+
+        decode_script_data_0_decode_from_raw_ptr_1_block0():
+        v4 = cast_ptr v2 to __ptr { u64, u64 }, !18
+        v5 = get_local __ptr { u64, u64 }, __aggr_memcpy_0
         mem_copy_val v5, v4
+<<<<<<< HEAD
         v6 = get_local __ptr { u64, u64 }, args, !17
         v7 = const u64 0
 <<<<<<< HEAD
@@ -144,10 +151,71 @@ script {
         v17 = const u64 8
         retd v16 v17, !29
 >>>>>>> ed22272e6 (update tests)
+=======
+        v6 = get_local __ptr { u64, u64 }, __tmp_block_arg
+        mem_copy_val v6, v5
+        br decode_script_data_0_decode_from_raw_ptr_1_block2(v6), !19
+
+        decode_script_data_0_decode_from_raw_ptr_1_block1():
+        v7 = get_local __ptr { ptr }, __anon_0, !21
+        v8 = const u64 0
+        v9 = get_elem_ptr v7, __ptr ptr, v8, !22
+        store v2 to v9, !23
+        v10 = get_local __ptr { ptr }, buffer, !25
+        mem_copy_val v10, v7
+        v11 = get_local __ptr { ptr }, buffer, !27
+        v12 = const u64 0
+        v13 = get_elem_ptr v11, __ptr ptr, v12, !35
+        v14 = load v13, !36
+        v15 = asm(ptr: v14, val) -> u64 val, !38 {
+            lw     val ptr i0, !39
+        }
+        v16 = load v13, !40
+        v17 = const u64 8, !41
+        v18 = add v16, v17, !42
+        store v18 to v13, !44
+        v19 = load v13, !47
+        v20 = asm(ptr: v19, val) -> u64 val, !48 {
+            lw     val ptr i0, !39
+        }
+        v21 = load v13, !49
+        v22 = const u64 8, !50
+        v23 = add v21, v22, !51
+        store v23 to v13, !52
+        v24 = get_local __ptr { u64, u64 }, __anon_00, !54
+        v25 = const u64 0
+        v26 = get_elem_ptr v24, __ptr u64, v25, !55
+        store v15 to v26, !56
+        v27 = const u64 1
+        v28 = get_elem_ptr v24, __ptr u64, v27, !57
+        store v20 to v28, !58
+        v29 = get_local __ptr { u64, u64 }, __tmp_block_arg
+        mem_copy_val v29, v24
+        br decode_script_data_0_decode_from_raw_ptr_1_block2(v29), !59
+
+        decode_script_data_0_decode_from_raw_ptr_1_block2(v30: __ptr { u64, u64 }):
+        v31 = get_local __ptr { u64, u64 }, args, !60
+        mem_copy_val v31, v30
+        v32 = get_local __ptr { u64, u64 }, args, !61
+        v33 = const u64 0
+        v34 = get_elem_ptr v32, __ptr u64, v33, !62
+        v35 = load v34
+        v36 = get_local __ptr { u64, u64 }, args, !63
+        v37 = const u64 1
+        v38 = get_elem_ptr v36, __ptr u64, v37, !64
+        v39 = load v38
+        v40 = call main_11(v35, v39), !67
+        v41 = get_local __ptr u64, _result, !68
+        store v40 to v41, !68
+        v42 = get_local __ptr u64, _result, !69
+        v43 = const u64 8
+        retd v42 v43, !73
+>>>>>>> 31354594f (update tests)
     }
 
-    entry_orig fn main_9(baba !31: u64, keke !32: u64) -> u64, !35 {
+    entry_orig fn main_11(baba !75: u64, keke !76: u64) -> u64, !79 {
         entry(baba: u64, keke: u64):
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
         v306v1 = add baba, keke, !72
@@ -157,6 +225,9 @@ script {
 =======
         v0 = add baba, keke, !38
 >>>>>>> ed22272e6 (update tests)
+=======
+        v0 = add baba, keke, !82
+>>>>>>> 31354594f (update tests)
         ret u64 v0
 >>>>>>> 2b4c2d140 (update snapshot tests)
     }
@@ -170,37 +241,81 @@ script {
 !5 = span !4 1542 1543
 !6 = span !0 64 99
 !7 = fn_call_path_span !0 64 82
-!8 = span !4 175056 175088
-!9 = fn_call_path_span !4 175056 175086
+!8 = span !4 184944 184976
+!9 = fn_call_path_span !4 184944 184974
 !10 = span !4 1525 1549
 !11 = (!6 !7 !8 !9 !10)
 !12 = (!6 !7 !8 !9 !10)
-!13 = span !4 175031 175089
-!14 = fn_call_path_span !4 175031 175050
-!15 = (!6 !7 !13 !14)
-!16 = span !0 40 100
-!17 = span !0 141 145
-!18 = span !0 146 147
-!19 = span !0 149 153
-!20 = span !0 154 155
-!21 = span !0 136 156
-!22 = fn_call_path_span !0 136 140
-!23 = (!21 !22)
-!24 = span !0 117 157
-!25 = span !0 200 207
-!26 = span !0 174 208
-!27 = fn_call_path_span !0 174 191
-!28 = span !4 93230 93256
-!29 = (!26 !27 !28)
-!30 = "test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_two_u64/src/main.sw"
-!31 = span !30 17 21
-!32 = span !30 28 32
-!33 = span !30 9 65
-!34 = fn_name_span !30 12 16
-!35 = (!33 !34)
-!36 = span !30 52 63
-!37 = fn_call_path_span !30 57 58
-!38 = (!36 !37)
+!13 = span !4 95125 95129
+!14 = span !4 184919 184977
+!15 = fn_call_path_span !4 184919 184938
+!16 = span !4 184659 184683
+!17 = (!6 !7 !14 !15 !16)
+!18 = (!6 !7 !14 !15)
+!19 = (!6 !7 !14 !15)
+!20 = span !4 184792 184812
+!21 = (!6 !7 !14 !15 !20)
+!22 = (!6 !7 !14 !15)
+!23 = (!6 !7 !14 !15 !20)
+!24 = span !4 184775 184813
+!25 = (!6 !7 !14 !15 !24)
+!26 = span !4 184836 184842
+!27 = (!6 !7 !14 !15 !26)
+!28 = span !4 184822 184843
+!29 = fn_call_path_span !4 184822 184835
+!30 = span !4 148317 148338
+!31 = fn_call_path_span !4 148317 148330
+!32 = span !4 95201 95229
+!33 = fn_call_path_span !4 95208 95220
+!34 = span !4 625 641
+!35 = (!6 !7 !14 !15 !28 !29 !30 !31 !32 !33 !34)
+!36 = (!6 !7 !14 !15 !28 !29 !30 !31 !32 !33)
+!37 = span !4 2212 2293
+!38 = (!6 !7 !14 !15 !28 !29 !30 !31 !32 !33 !37)
+!39 = span !4 2250 2263
+!40 = (!6 !7 !14 !15 !28 !29 !30 !31 !32 !33)
+!41 = (!6 !7 !14 !15 !28 !29 !30 !31 !32 !33)
+!42 = (!6 !7 !14 !15 !28 !29 !30 !31 !32 !33)
+!43 = span !4 2303 2342
+!44 = (!6 !7 !14 !15 !28 !29 !30 !31 !32 !33 !43)
+!45 = span !4 148340 148361
+!46 = fn_call_path_span !4 148340 148353
+!47 = (!6 !7 !14 !15 !28 !29 !45 !46 !32 !33)
+!48 = (!6 !7 !14 !15 !28 !29 !45 !46 !32 !33 !37)
+!49 = (!6 !7 !14 !15 !28 !29 !45 !46 !32 !33)
+!50 = (!6 !7 !14 !15 !28 !29 !45 !46 !32 !33)
+!51 = (!6 !7 !14 !15 !28 !29 !45 !46 !32 !33)
+!52 = (!6 !7 !14 !15 !28 !29 !45 !46 !32 !33 !43)
+!53 = span !4 148316 148362
+!54 = (!6 !7 !14 !15 !28 !29 !53)
+!55 = (!6 !7 !14 !15 !28 !29 !53)
+!56 = (!6 !7 !14 !15 !28 !29 !53)
+!57 = (!6 !7 !14 !15 !28 !29 !53)
+!58 = (!6 !7 !14 !15 !28 !29 !53)
+!59 = (!6 !7 !14 !15)
+!60 = span !0 40 100
+!61 = span !0 141 145
+!62 = span !0 146 147
+!63 = span !0 149 153
+!64 = span !0 154 155
+!65 = span !0 136 156
+!66 = fn_call_path_span !0 136 140
+!67 = (!65 !66)
+!68 = span !0 117 157
+!69 = span !0 200 207
+!70 = span !0 174 208
+!71 = fn_call_path_span !0 174 191
+!72 = span !4 93230 93256
+!73 = (!70 !71 !72)
+!74 = "test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_two_u64/src/main.sw"
+!75 = span !74 17 21
+!76 = span !74 28 32
+!77 = span !74 9 65
+!78 = fn_name_span !74 12 16
+!79 = (!77 !78)
+!80 = span !74 52 63
+!81 = fn_call_path_span !74 57 58
+!82 = (!80 !81)
 
 ;; ASM: Final program
 ;; Program kind: Script
@@ -215,23 +330,25 @@ lw   $$ds $$tmp i1
 add  $$ds $$ds $$tmp
 cfei i0                       ; allocate stack space for globals
 move $$locbase $sp            ; save locals base register for function __entry
-cfei i40                      ; allocate 40 bytes for locals and 0 slots for call arguments
+cfei i88                      ; allocate 88 bytes for locals and 0 slots for call arguments
 gtf  $r0 $zero i10            ; get transaction field
 mcpi $$locbase $r0 i16        ; copy memory
-addi $r0 $$locbase i24        ; get offset to local __ptr { u64, u64 }
+addi $r0 $$locbase i40        ; get offset to local __ptr { u64, u64 }
 mcpi $r0 $$locbase i16        ; copy memory
-lw   $r0 $$locbase i3         ; load word
-lw   $r1 $$locbase i4         ; load word
+addi $r1 $$locbase i64        ; get offset to local __ptr { u64, u64 }
+mcpi $r1 $r0 i16              ; copy memory
+lw   $r0 $$locbase i8         ; load word
+lw   $r1 $$locbase i9         ; load word
 move $$arg0 $r0               ; [call]: pass argument 0
 move $$arg1 $r1               ; [call]: pass argument 1
-jal  $$reta $pc i5            ; [call]: call main_9
-sw   $$locbase $$retv i2      ; store word
-addi $r0 $$locbase i16        ; get offset to local __ptr u64
+jal  $$reta $pc i5            ; [call]: call main_11
+sw   $$locbase $$retv i7      ; store word
+addi $r0 $$locbase i56        ; get offset to local __ptr u64
 movi $r1 i8                   ; initialize constant into register
 retd  $r0 $r1
 pshl i1                       ; save registers 16..40
 pshh i524288                  ; save registers 40..64
-move $$locbase $sp            ; save locals base register for function main_9
+move $$locbase $sp            ; save locals base register for function main_11
 add  $r0 $$arg0 $$arg1
 move $$retv $r0               ; set return value
 poph i524288                  ; restore registers 40..64
@@ -244,35 +361,37 @@ jal  $zero $$reta i0          ; return from call
 
 0x00000000 MOVE R60 $pc                                    ;; [26, 240, 48, 0]
 0x00000004 JMPF $zero 0x4                                  ;; [116, 0, 0, 4]
-0x00000008                                                 ;; [0, 0, 0, 0, 0, 0, 0, 128]
+0x00000008                                                 ;; [0, 0, 0, 0, 0, 0, 0, 136]
 0x00000010                                                 ;; [0, 0, 0, 0, 0, 0, 0, 0]
 0x00000018 LW R63 R60 0x1                                  ;; [93, 255, 192, 1]
 0x0000001c ADD R63 R63 R60                                 ;; [16, 255, 255, 0]
 0x00000020 MOVE R59 $sp                                    ;; [26, 236, 80, 0]
-0x00000024 CFEI 0x28                                       ;; [145, 0, 0, 40]
+0x00000024 CFEI 0x58                                       ;; [145, 0, 0, 88]
 0x00000028 GTF $writable $zero 0xa                         ;; [97, 64, 0, 10]
 0x0000002c MCPI R59 $writable 0x10                         ;; [96, 237, 0, 16]
-0x00000030 ADDI $writable R59 0x18                         ;; [80, 67, 176, 24]
+0x00000030 ADDI $writable R59 0x28                         ;; [80, 67, 176, 40]
 0x00000034 MCPI $writable R59 0x10                         ;; [96, 67, 176, 16]
-0x00000038 LW $writable R59 0x3                            ;; [93, 67, 176, 3]
-0x0000003c LW R17 R59 0x4                                  ;; [93, 71, 176, 4]
-0x00000040 MOVE R58 $writable                              ;; [26, 233, 0, 0]
-0x00000044 MOVE R57 R17                                    ;; [26, 229, 16, 0]
-0x00000048 JAL R62 $pc 0x5                                 ;; [153, 248, 48, 5]
-0x0000004c SW R59 R61 0x2                                  ;; [95, 239, 208, 2]
-0x00000050 ADDI $writable R59 0x10                         ;; [80, 67, 176, 16]
-0x00000054 MOVI R17 0x8                                    ;; [114, 68, 0, 8]
-0x00000058 RETD $writable R17                              ;; [37, 65, 16, 0]
-0x0000005c PSHL 0x1                                        ;; [149, 0, 0, 1]
-0x00000060 PSHH 0x80000                                    ;; [150, 8, 0, 0]
-0x00000064 MOVE R59 $sp                                    ;; [26, 236, 80, 0]
-0x00000068 ADD $writable R58 R57                           ;; [16, 67, 174, 64]
-0x0000006c MOVE R61 $writable                              ;; [26, 245, 0, 0]
-0x00000070 POPH 0x80000                                    ;; [152, 8, 0, 0]
-0x00000074 POPL 0x1                                        ;; [151, 0, 0, 1]
-0x00000078 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
-0x0000007c NOOP                                            ;; [71, 0, 0, 0]
+0x00000038 ADDI R17 R59 0x40                               ;; [80, 71, 176, 64]
+0x0000003c MCPI R17 $writable 0x10                         ;; [96, 69, 0, 16]
+0x00000040 LW $writable R59 0x8                            ;; [93, 67, 176, 8]
+0x00000044 LW R17 R59 0x9                                  ;; [93, 71, 176, 9]
+0x00000048 MOVE R58 $writable                              ;; [26, 233, 0, 0]
+0x0000004c MOVE R57 R17                                    ;; [26, 229, 16, 0]
+0x00000050 JAL R62 $pc 0x5                                 ;; [153, 248, 48, 5]
+0x00000054 SW R59 R61 0x7                                  ;; [95, 239, 208, 7]
+0x00000058 ADDI $writable R59 0x38                         ;; [80, 67, 176, 56]
+0x0000005c MOVI R17 0x8                                    ;; [114, 68, 0, 8]
+0x00000060 RETD $writable R17                              ;; [37, 65, 16, 0]
+0x00000064 PSHL 0x1                                        ;; [149, 0, 0, 1]
+0x00000068 PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x0000006c MOVE R59 $sp                                    ;; [26, 236, 80, 0]
+0x00000070 ADD $writable R58 R57                           ;; [16, 67, 174, 64]
+0x00000074 MOVE R61 $writable                              ;; [26, 245, 0, 0]
+0x00000078 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x0000007c POPL 0x1                                        ;; [151, 0, 0, 1]
+0x00000080 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x00000084 NOOP                                            ;; [71, 0, 0, 0]
 .data_section:
 ;; --- END OF TARGET BYTECODE ---
 
-    Finished release [optimized + fuel] target(s) [128 B] in ???
+    Finished release [optimized + fuel] target(s) [136 B] in ???
