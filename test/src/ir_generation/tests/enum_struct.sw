@@ -26,7 +26,7 @@ fn main() {
 // check: $(idx_0=$VAL) = const u64 0
 // check: $(tag_ptr=$VAL) = get_elem_ptr $temp_ptr_0, __ptr u64, $idx_0
 // check: $(tag_1=$VAL) = const u64 1
-// check: store v3 to $tag_ptr
+// check: store $tag_1 to $tag_ptr
 
 // check: $(temp_ptr_1=$VAL) = get_local __ptr { b256, bool, u64 }, $(=__anon_\d+)
 // check: $(idx_0=$VAL) = const u64 0

@@ -1,51 +1,56 @@
+// regex: VAR=v\d+v\d+
+
 script {
     fn main() -> () {
         local u256 a
         entry():
+// check: $(v0=$VAR) = get_local __ptr u256, a
         v0 = get_local __ptr u256, a
-        v1 = const u64 2
 
         wide add v0, v0 to v0
-// check: wide add v0, v0 to v0
+// check: wide add $v0, $v0 to $v0
 
         wide sub v0, v0 to v0
-// check: wide sub v0, v0 to v0
+// check: wide sub $v0, $v0 to $v0
 
         wide mul v0, v0 to v0
-// check: wide mul v0, v0 to v0
+// check: wide mul $v0, $v0 to $v0
 
         wide div v0, v0 to v0
-// check: wide div v0, v0 to v0
+// check: wide div $v0, $v0 to $v0
 
         wide mod v0, v0 to v0
-// check: wide mod v0, v0 to v0
+// check: wide mod $v0, $v0 to $v0
+
+// check: $(v1=$VAR) = const u64 2
+        v1 = const u64 2
 
         wide lsh v0, v1 to v0
-// check: wide lsh v0, v1 to v0
+// check: wide lsh $v0, $v1 to $v0
 
         wide rsh v0, v1 to v0
-// check: wide rsh v0, v1 to v0
+// check: wide rsh $v0, $v1 to $v0
 
         wide not v0 to v0
-// check: wide not v0 to v0
+// check: wide not $v0 to $v0
 
         wide and v0, v0 to v0
-// check: wide and v0, v0 to v0
+// check: wide and $v0, $v0 to $v0
 
         wide or v0, v0 to v0
-// check: wide or v0, v0 to v0
+// check: wide or $v0, $v0 to $v0
 
         wide xor v0, v0 to v0
-// check: wide xor v0, v0 to v0
+// check: wide xor $v0, $v0 to $v0
 
         v2 = wide cmp eq v0 v0
-// check: v2 = wide cmp eq v0 v0
+// check: $(v2=$VAR) = wide cmp eq $v0 $v0
 
         v3 = wide cmp lt v0 v0
-// check: v3 = wide cmp lt v0 v0
+// check: $(v3=$VAR) = wide cmp lt $v0 $v0
 
         v4 = wide cmp gt v0 v0
-// check: v4 = wide cmp gt v0 v0
+// check: $(v4=$VAR) = wide cmp gt $v0 $v0
 
         v5 = const unit ()
         ret () v5

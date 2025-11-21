@@ -25,9 +25,11 @@ script {
 
 // The `store` instruction must not be optimized away.
 
-// check: v0 = get_local __ptr u64, x
-// check: v1 = get_local __ptr u64, y
-// check: v2 = load v0
-// check: v3 = call escape(v0)
-// check: store v2 to v1
-// check: v4 = load v1
+// regex: VAL=v\d+v\d+
+
+// check: $(v0=$VAL) = get_local __ptr u64, x
+// check: $(v1=$VAL) = get_local __ptr u64, y
+// check: $(v2=$VAL) = load $v0
+// check: $(v3=$VAL) = call escape($v0)
+// check: store $v2 to $v1
+// check: $(v4=$VAL) = load $v1

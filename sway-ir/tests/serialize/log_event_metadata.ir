@@ -1,18 +1,25 @@
+// regex: VAR=v\d+v\d+
+
 script {
     fn main() -> () {
         entry():
+        // check: $(v0=$VAR) = const
         v0 = const u64 0
+        // check: $(v1=$VAR) = const
         v1 = const u64 1
-        // check: log u64 v0, v1
+        // check: log u64 $v0, $v1
         log u64 v0, v1
 
+        // check: $(v2=$VAR) = const
         v2 = const u64 2
+        // check: $(v3=$VAR) = const
         v3 = const u64 3
-        // check: log u64 v2, v3 log_data(version: 0, is_event: true, is_indexed: true, event_type_size: 8, num_elements: 2)
+        // check: log u64 $v2, $v3 log_data(version: 0, is_event: true, is_indexed: true, event_type_size: 8, num_elements: 2)
         log u64 v2, v3 log_data(version: 0, is_event: true, is_indexed: true, event_type_size: 8, num_elements: 2)
 
+        // check: $(v4=$VAR) = const unit
         v4 = const unit ()
-        // check: ret () v4
+        // check: ret () $v4
         ret () v4
     }
 }

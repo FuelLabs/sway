@@ -1,3 +1,3 @@
 cmds = [
-    "forc build --path {root} --ir initial | regex '        (v1 = call call|v0 = const|v1 = const|v2 = const|v3 = const|v2 = and|v4 = or|revert)'"
+    "forc build --path {root} --ir initial | regex '        (v[0-9a-zA-Z_]+ = call call|v[0-9a-zA-Z_]+ = const|v[0-9a-zA-Z_]+ = and|v[0-9a-zA-Z_]+ = or|revert)'"
 ]

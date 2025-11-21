@@ -14,7 +14,7 @@ script {
     }
 }
 
-// regex: VAL=v\d+
+// regex: VAL=v\d+v\d+
 
 // check: mem_copy_val $VAL, $VAL
 // The optimization should introduce a GEP into __anon_0

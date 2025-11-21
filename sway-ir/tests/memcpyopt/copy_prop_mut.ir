@@ -38,7 +38,7 @@ script {
     }
 }
 
-// regex: VAL=v\d+
+// regex: VAL=v\d+v\d+
 
 // For the single propagation since `b` was mutable it must now make `a` mutable.
 

@@ -9,7 +9,7 @@ script {
     }
 }
 
-// regex: VAL=v\d+
+// regex: VAL=v\d+v\d+
 // regex: ID=[[:alpha:]0-9_]+
 
 // check: local b256 $(loc_name=$ID)
