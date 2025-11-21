@@ -9,7 +9,7 @@ use crate::{
     Engines, TypeInfo, TypeParameter,
 };
 use itertools::Itertools;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -31,6 +31,7 @@ where
         name: &BaseIdent,
         type_parameters: &[TypeParameter],
         body: String,
+        is_trivial_body: &str,
     ) -> String {
         let type_parameters_declaration_expanded =
             self.generate_type_parameters_declaration_code(type_parameters, true);
@@ -44,7 +45,7 @@ where
         if body.is_empty() {
             format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration_expanded} AbiEncode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
                 #[allow(dead_code, deprecated)]
-                fn is_encode_trivial() -> bool {{ false }}
+                fn is_encode_trivial() -> bool {{ {is_trivial_body} }}
                 #[allow(dead_code, deprecated)]
                 fn abi_encode(self, buffer: Buffer) -> Buffer {{
                     buffer
@@ -53,7 +54,7 @@ where
         } else {
             format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration_expanded} AbiEncode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
                 #[allow(dead_code, deprecated)]
-                fn is_encode_trivial() -> bool {{ false }}
+                fn is_encode_trivial() -> bool {{ {is_trivial_body} }}
                 #[allow(dead_code, deprecated)]
                 fn abi_encode(self, buffer: Buffer) -> Buffer {{
                     {body}
@@ -68,6 +69,7 @@ where
         name: &BaseIdent,
         type_parameters: &[TypeParameter],
         body: String,
+        is_trivial_body: &str,
     ) -> String {
         let type_parameters_declaration_expanded =
             self.generate_type_parameters_declaration_code(type_parameters, true);
@@ -81,7 +83,7 @@ where
         if body == "Self {  }" {
             format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration_expanded} AbiDecode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
                 #[allow(dead_code, deprecated)]
-                fn is_decode_trivial() -> bool {{ false }}
+                fn is_decode_trivial() -> bool {{ {is_trivial_body} }}
                 #[allow(dead_code, deprecated)]
                 fn abi_decode(ref mut _buffer: BufferReader) -> Self {{
                     {body}
@@ -90,7 +92,7 @@ where
         } else {
             format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration_expanded} AbiDecode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
                 #[allow(dead_code, deprecated)]
-                fn is_decode_trivial() -> bool {{ false }}
+                fn is_decode_trivial() -> bool {{ {is_trivial_body} }}
                 #[allow(dead_code, deprecated)]
                 fn abi_decode(ref mut buffer: BufferReader) -> Self {{
                     {body}
@@ -122,7 +124,7 @@ where
             code.push_str(&format!(
                 "{field_name}: buffer.decode::<{field_type_name}>(),",
                 field_name = f.name.as_raw_ident_str(),
-                field_type_name = Self::generate_type(engines, &f.type_argument)?,
+                field_type_name = Self::generate_type(engines, &f.type_argument),
             ));
         }
 
@@ -144,7 +146,7 @@ where
                         format!("{} => {}::{}, \n", x.tag, enum_name, name)
                     },
                     _ => {
-                        let variant_type_name = Self::generate_type(engines, &x.type_argument)?;
+                        let variant_type_name = Self::generate_type(engines, &x.type_argument);
                         format!("{tag_value} => {enum_name}::{variant_name}(buffer.decode::<{variant_type}>()), \n",
                             tag_value = x.tag,
                             enum_name = enum_name,
@@ -221,11 +223,21 @@ where
         let implementing_for_decl_id = decl.to_struct_decl(&Handler::default(), engines).unwrap();
         let struct_decl = self.ctx.engines().de().get(&implementing_for_decl_id);
 
+        let fields_types = struct_decl.fields.iter()
+            .map(|x| Self::generate_type(engines, &x.type_argument))
+            .collect::<BTreeSet<String>>();
+        let mut is_encode_trivial = "__runtime_mem_id::<Self>() == __encoding_mem_id::<Self>()".to_string();
+        for field_type in fields_types {
+            is_encode_trivial.push_str(" && ");
+            is_encode_trivial.push_str(&format!("is_encode_trivial::<{}>()", field_type));
+        }
+
         let abi_encode_body = self.generate_abi_encode_struct_body(engines, &struct_decl);
         let abi_encode_code = self.generate_abi_encode_code(
             struct_decl.name(),
             &struct_decl.generic_parameters,
             abi_encode_body,
+            &is_encode_trivial,
         );
         let abi_encode_node = self.parse_impl_trait_to_ty_ast_node(
             engines,
@@ -234,11 +246,21 @@ where
             crate::build_config::DbgGeneration::None,
         );
 
+        let fields_types = struct_decl.fields.iter()
+            .map(|x| Self::generate_type(engines, &x.type_argument))
+            .collect::<BTreeSet<String>>();
+        let mut is_decode_trivial = "__runtime_mem_id::<Self>() == __encoding_mem_id::<Self>()".to_string();
+        for field_type in fields_types {
+            is_decode_trivial.push_str(" && ");
+            is_decode_trivial.push_str(&format!("is_decode_trivial::<{}>()", field_type));
+        }
+
         let abi_decode_body = self.generate_abi_decode_struct_body(engines, &struct_decl);
         let abi_decode_code = self.generate_abi_decode_code(
             struct_decl.name(),
             &struct_decl.generic_parameters,
             abi_decode_body?,
+            &is_decode_trivial,
         );
         let abi_decode_node = self.parse_impl_trait_to_ty_ast_node(
             engines,
@@ -268,11 +290,21 @@ where
         let enum_decl_id = decl.to_enum_id(&Handler::default(), engines).unwrap();
         let enum_decl = self.ctx.engines().de().get(&enum_decl_id);
 
+        let fields_types = enum_decl.variants.iter()
+            .map(|x| Self::generate_type(engines, &x.type_argument))
+            .collect::<BTreeSet<String>>();
+        let mut is_encode_trivial = "__runtime_mem_id::<Self>() == __encoding_mem_id::<Self>()".to_string();
+        for field_type in fields_types {
+            is_encode_trivial.push_str(" && ");
+            is_encode_trivial.push_str(&format!("is_encode_trivial::<{}>()", field_type));
+        }
+
         let abi_encode_body = self.generate_abi_encode_enum_body(engines, &enum_decl);
         let abi_encode_code = self.generate_abi_encode_code(
             enum_decl.name(),
             &enum_decl.generic_parameters,
             abi_encode_body,
+            &is_encode_trivial,
         );
         let abi_encode_node = self.parse_impl_trait_to_ty_ast_node(
             engines,
@@ -286,6 +318,7 @@ where
             enum_decl.name(),
             &enum_decl.generic_parameters,
             abi_decode_body?,
+            "false",
         );
         let abi_decode_node = self.parse_impl_trait_to_ty_ast_node(
             engines,
@@ -356,17 +389,10 @@ where
                 }
             }
 
-            let Some(args_types) = decl
+            let args_types = decl
                 .parameters
                 .iter()
-                .map(|x| Self::generate_type(engines, &x.type_argument))
-                .collect::<Option<Vec<String>>>()
-            else {
-                let err = handler.emit_err(CompileError::UnknownType {
-                    span: Span::dummy(),
-                });
-                return Err(err);
-            };
+                .map(|x| Self::generate_type(engines, &x.type_argument));
             let args_types = itertools::intersperse(args_types, ", ".into()).collect::<String>();
 
             let args_types = if args_types.is_empty() {
@@ -384,12 +410,7 @@ where
             )
             .collect::<String>();
 
-            let Some(return_type) = Self::generate_type(engines, &decl.return_type) else {
-                let err = handler.emit_err(CompileError::UnknownType {
-                    span: Span::dummy(),
-                });
-                return Err(err);
-            };
+            let return_type = Self::generate_type(engines, &decl.return_type);
 
             let method_name = decl.name.as_str();
             let offset = if let Some(offset) = method_names.find(method_name) {
@@ -444,12 +465,7 @@ where
 
         let fallback = if let Some(fallback_fn) = fallback_fn {
             let fallback_fn = engines.de().get(&fallback_fn);
-            let Some(return_type) = Self::generate_type(engines, &fallback_fn.return_type) else {
-                let err = handler.emit_err(CompileError::UnknownType {
-                    span: Span::dummy(),
-                });
-                return Err(err);
-            };
+            let return_type = Self::generate_type(engines, &fallback_fn.return_type);
             let method_name = fallback_fn.name.as_raw_ident_str();
             match fallback_fn.purity {
                 Purity::Pure => {}
@@ -520,17 +536,10 @@ where
         decl: &TyFunctionDecl,
         handler: &Handler,
     ) -> Result<TyAstNode, ErrorEmitted> {
-        let Some(args_types) = decl
+        let args_types = decl
             .parameters
             .iter()
-            .map(|x| Self::generate_type(engines, &x.type_argument))
-            .collect::<Option<Vec<String>>>()
-        else {
-            let err = handler.emit_err(CompileError::UnknownType {
-                span: Span::dummy(),
-            });
-            return Err(err);
-        };
+            .map(|x| Self::generate_type(engines, &x.type_argument));
         let args_types = itertools::intersperse(args_types, ", ".into()).collect::<String>();
 
         let expanded_args = itertools::intersperse(
@@ -612,17 +621,10 @@ where
         decl: &TyFunctionDecl,
         handler: &Handler,
     ) -> Result<TyAstNode, ErrorEmitted> {
-        let Some(args_types) = decl
+        let args_types = decl
             .parameters
             .iter()
-            .map(|x| Self::generate_type(engines, &x.type_argument))
-            .collect::<Option<Vec<String>>>()
-        else {
-            let err = handler.emit_err(CompileError::UnknownType {
-                span: Span::dummy(),
-            });
-            return Err(err);
-        };
+            .map(|x| Self::generate_type(engines, &x.type_argument));
         let args_types = itertools::intersperse(args_types, ", ".into()).collect::<String>();
         let args_types = if args_types.is_empty() {
             "()".into()
@@ -639,12 +641,7 @@ where
         )
         .collect::<String>();
 
-        let Some(return_type) = Self::generate_type(engines, &decl.return_type) else {
-            let err = handler.emit_err(CompileError::UnknownType {
-                span: Span::dummy(),
-            });
-            return Err(err);
-        };
+        let return_type = Self::generate_type(engines, &decl.return_type);
 
         let return_encode = if return_type == "()" {
             "__contract_ret(0, 0)".to_string()
