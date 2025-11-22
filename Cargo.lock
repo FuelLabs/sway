@@ -7773,15 +7773,14 @@ checksum = "f5e54036fe321fd421e10d732f155734c4e4afd610dd556d9a82833ab3ee0bed"
 
 [[package]]
 name = "llvm-sys"
-version = "181.3.0"
+version = "160.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e24aad69cbdb0c6ebe777262e9e6314dceba0d6e6a2a63e47563ccd293a2eda8"
+checksum = "e73861901245d32e1c3d8b35b639cf100859b4cd0c9da56fe0273040acbb3ea4"
 dependencies = [
- "anyhow",
  "cc",
  "lazy_static",
  "libc",
- "regex-lite",
+ "regex",
  "semver 1.0.27",
 ]
 
@@ -11808,6 +11807,7 @@ version = "0.69.1"
 dependencies = [
  "inkwell",
  "sway-ir",
+ "sway-types",
  "thiserror 1.0.69",
 ]
 

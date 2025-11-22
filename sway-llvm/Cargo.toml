@@ -7,6 +7,7 @@ description = "LLVM code generation backend for Sway IR using Inkwell"
 license = "Apache-2.0"
 
 [dependencies]
-inkwell = { version = "0.7.1", features = ["llvm18-1-prefer-dynamic"] }
+inkwell = { version = "0.7.1", features = ["llvm16-0-prefer-dynamic"] }
 sway-ir = { workspace = true }
+sway-types = { workspace = true }
 thiserror = "1.0"

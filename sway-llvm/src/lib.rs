@@ -5,21 +5,33 @@
 //! instruction lowering in tiers.
 
 use std::collections::HashMap;
+use std::convert::TryInto;
 
 use inkwell::{
-    builder::Builder,
+    basic_block::BasicBlock,
+    builder::{Builder, BuilderError},
     context::Context as LlvmContext,
     module::Module as LlvmModule,
     targets::TargetTriple,
     types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum},
-    AddressSpace,
+    values::{
+        BasicMetadataValueEnum, BasicValue, BasicValueEnum, FunctionValue, IntValue, PointerValue,
+        ValueKind,
+    },
+    AddressSpace, IntPredicate,
 };
 use sway_ir::{
+    block::Block,
+    constant::{Constant, ConstantContent, ConstantValue},
     function::Function,
+    instruction::{BinaryOpKind, InstOp, Predicate},
     irtype::{Type, TypeContent},
     module::Module,
+    value::Value,
+    variable::LocalVar,
 };
 use thiserror::Error;
+use sway_types::u256::U256;
 
 /// Options that influence LLVM module emission.
 #[derive(Debug, Clone, Default)]
@@ -59,10 +71,13 @@ struct ModuleLowerer<'ctx, 'ir, 'eng> {
     ir: &'ir sway_ir::Context<'eng>,
     ir_module: Module,
     llvm_module: LlvmModule<'ctx>,
-    _builder: Builder<'ctx>,
+    builder: Builder<'ctx>,
     _opts: BackendOptions,
     type_cache: HashMap<Type, LoweredType<'ctx>>,
     func_map: HashMap<Function, inkwell::values::FunctionValue<'ctx>>,
+    value_map: HashMap<Value, BasicValueEnum<'ctx>>,
+    block_map: HashMap<Block, BasicBlock<'ctx>>,
+    local_allocas: HashMap<LocalVar, PointerValue<'ctx>>,
 }
 
 impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
@@ -83,10 +98,13 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
             ir,
             ir_module,
             llvm_module,
-            _builder: llvm.create_builder(),
+            builder: llvm.create_builder(),
             _opts: opts,
             type_cache: HashMap::new(),
             func_map: HashMap::new(),
+            value_map: HashMap::new(),
+            block_map: HashMap::new(),
+            local_allocas: HashMap::new(),
         })
     }
 
@@ -94,9 +112,11 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
     fn lower_module_decls(&mut self) -> Result<()> {
         for func in self.ir_module.function_iter(self.ir) {
             let fn_val = self.declare_function(func)?;
+            self.map_function_arguments(func, fn_val)?;
+            self.map_function_blocks(func, fn_val)?;
             self.func_map.insert(func, fn_val);
         }
-        Ok(())
+        self.lower_function_bodies()
     }
 
     fn declare_function(&mut self, func: Function) -> Result<inkwell::values::FunctionValue<'ctx>> {
@@ -119,6 +139,299 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
         Ok(self
             .llvm_module
             .add_function(func.get_name(self.ir), fn_type, None))
+    }
+
+    fn map_function_arguments(
+        &mut self,
+        func: Function,
+        fn_val: FunctionValue<'ctx>,
+    ) -> Result<()> {
+        for (idx, (_, arg_val)) in func.args_iter(self.ir).enumerate() {
+            let param = fn_val
+                .get_nth_param(idx as u32)
+                .ok_or_else(|| LlvmError::Lowering("missing function parameter".into()))?;
+            self.value_map.insert(*arg_val, param);
+        }
+        Ok(())
+    }
+
+    fn map_function_blocks(
+        &mut self,
+        func: Function,
+        fn_val: FunctionValue<'ctx>,
+    ) -> Result<()> {
+        for block in func.block_iter(self.ir) {
+            let label = block.get_label(self.ir);
+            let bb = self.llvm.append_basic_block(fn_val, &label);
+            self.block_map.insert(block, bb);
+        }
+        Ok(())
+    }
+
+    fn lower_function_bodies(&mut self) -> Result<()> {
+        for func in self.ir_module.function_iter(self.ir) {
+            self.create_local_allocas(func)?;
+            for block in func.block_iter(self.ir) {
+                let bb = *self
+                    .block_map
+                    .get(&block)
+                    .ok_or_else(|| LlvmError::Lowering("missing block mapping".into()))?;
+                self.builder.position_at_end(bb);
+                for inst_value in block.instruction_iter(self.ir) {
+                    self.lower_instruction(inst_value)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn create_local_allocas(&mut self, func: Function) -> Result<()> {
+        let entry_block = func.get_entry_block(self.ir);
+        let entry_bb = *self
+            .block_map
+            .get(&entry_block)
+            .ok_or_else(|| LlvmError::Lowering("missing entry block".into()))?;
+        self.builder.position_at_end(entry_bb);
+        for (name, local_var) in func.locals_iter(self.ir) {
+            let inner_ty = local_var.get_inner_type(self.ir);
+            let lowered = self.lower_type(inner_ty)?.as_basic()?;
+            let alloca = self.handle_builder_result(self.builder.build_alloca(lowered, name))?;
+            if let Some(initializer) = local_var.get_initializer(self.ir) {
+                let init_val = self.lower_constant(*initializer)?;
+                self.handle_builder_result(self.builder.build_store(alloca, init_val))?;
+            }
+            self.local_allocas.insert(*local_var, alloca);
+        }
+        Ok(())
+    }
+
+    fn lower_instruction(&mut self, inst_value: Value) -> Result<()> {
+        let instruction = inst_value
+            .get_instruction(self.ir)
+            .ok_or_else(|| LlvmError::Lowering("value has no instruction".into()))?;
+        match &instruction.op {
+            InstOp::Nop => Ok(()),
+            InstOp::GetLocal(local_var) => {
+                let ptr = *self
+                    .local_allocas
+                    .get(local_var)
+                    .ok_or_else(|| LlvmError::Lowering("missing local pointer".into()))?;
+                self.value_map
+                    .insert(inst_value, ptr.as_basic_value_enum());
+                Ok(())
+            }
+            InstOp::Load(ptr_val) => {
+                let ptr_val_basic = self.get_basic_value(*ptr_val)?;
+                let ptr = self.to_pointer_value(ptr_val_basic)?;
+                let load = self.handle_builder_result(self.builder.build_load(ptr.get_type(), ptr, "load"))?;
+                self.value_map.insert(inst_value, load);
+                Ok(())
+            }
+            InstOp::Store {
+                dst_val_ptr,
+                stored_val,
+            } => {
+                let ptr_val_basic = self.get_basic_value(*dst_val_ptr)?;
+                let ptr = self.to_pointer_value(ptr_val_basic)?;
+                let val = self.get_basic_value(*stored_val)?;
+                self.handle_builder_result(self.builder.build_store(ptr, val))?;
+                Ok(())
+            }
+            InstOp::GetElemPtr { base, indices, .. } => {
+                let base_basic = self.get_basic_value(*base)?;
+                let ptr = self.to_pointer_value(base_basic)?;
+                let index_vals = indices
+                    .iter()
+                    .map(|idx| {
+                        let idx_basic = self.get_basic_value(*idx)?;
+                        self.to_int_value(idx_basic)
+                    })
+                    .collect::<Result<Vec<_>>>()?;
+                let gep = self.handle_builder_result(unsafe {
+                    self.builder.build_gep(ptr.get_type(), ptr, &index_vals, "gep")
+                })?;
+                self.value_map
+                    .insert(inst_value, gep.as_basic_value_enum());
+                Ok(())
+            }
+            InstOp::BinaryOp { op, arg1, arg2 } => {
+                let lhs_basic = self.get_basic_value(*arg1)?;
+                let lhs = self.to_int_value(lhs_basic)?;
+                let rhs_basic = self.get_basic_value(*arg2)?;
+                let rhs = self.to_int_value(rhs_basic)?;
+                let res = match op {
+                    BinaryOpKind::Add => {
+                        self.handle_builder_result(self.builder.build_int_add(lhs, rhs, "add"))?
+                    }
+                    BinaryOpKind::Sub => {
+                        self.handle_builder_result(self.builder.build_int_sub(lhs, rhs, "sub"))?
+                    }
+                    BinaryOpKind::Mul => {
+                        self.handle_builder_result(self.builder.build_int_mul(lhs, rhs, "mul"))?
+                    }
+                    BinaryOpKind::Div => self.handle_builder_result(
+                        self.builder.build_int_unsigned_div(lhs, rhs, "div"),
+                    )?,
+                    BinaryOpKind::Mod => self.handle_builder_result(
+                        self.builder.build_int_unsigned_rem(lhs, rhs, "mod"),
+                    )?,
+                    BinaryOpKind::And => {
+                        self.handle_builder_result(self.builder.build_and(lhs, rhs, "and"))?
+                    }
+                    BinaryOpKind::Or => {
+                        self.handle_builder_result(self.builder.build_or(lhs, rhs, "or"))?
+                    }
+                    BinaryOpKind::Xor => {
+                        self.handle_builder_result(self.builder.build_xor(lhs, rhs, "xor"))?
+                    }
+                    BinaryOpKind::Lsh => self.handle_builder_result(
+                        self.builder.build_left_shift(lhs, rhs, "lsh"),
+                    )?,
+                    BinaryOpKind::Rsh => self.handle_builder_result(
+                        self.builder.build_right_shift(lhs, rhs, true, "rsh"),
+                    )?,
+                };
+                self.value_map
+                    .insert(inst_value, res.as_basic_value_enum());
+                Ok(())
+            }
+            InstOp::Cmp(predicate, lhs, rhs) => {
+                let lhs_val_basic = self.get_basic_value(*lhs)?;
+                let lhs_val = self.to_int_value(lhs_val_basic)?;
+                let rhs_val_basic = self.get_basic_value(*rhs)?;
+                let rhs_val = self.to_int_value(rhs_val_basic)?;
+                let pred = match predicate {
+                    Predicate::Equal => IntPredicate::EQ,
+                    Predicate::LessThan => IntPredicate::ULT,
+                    Predicate::GreaterThan => IntPredicate::UGT,
+                };
+                let cmp = self.handle_builder_result(self.builder.build_int_compare(
+                    pred,
+                    lhs_val,
+                    rhs_val,
+                    "cmp",
+                ))?;
+                self.value_map.insert(inst_value, cmp.as_basic_value_enum());
+                Ok(())
+            }
+            InstOp::Branch(target) => {
+                let bb = *self
+                    .block_map
+                    .get(&target.block)
+                    .ok_or_else(|| LlvmError::Lowering("missing branch block".into()))?;
+                self.handle_builder_result(self.builder.build_unconditional_branch(bb))?;
+                Ok(())
+            }
+            InstOp::ConditionalBranch {
+                cond_value,
+                true_block,
+                false_block,
+            } => {
+                let cond_basic = self.get_basic_value(*cond_value)?;
+                let cond = self.to_int_value(cond_basic)?;
+                let true_bb = *self.block_map.get(&true_block.block).ok_or_else(|| {
+                    LlvmError::Lowering("missing true block for conditional branch".into())
+                })?;
+                let false_bb = *self.block_map.get(&false_block.block).ok_or_else(|| {
+                    LlvmError::Lowering("missing false block for conditional branch".into())
+                })?;
+                self.handle_builder_result(
+                    self.builder
+                        .build_conditional_branch(cond, true_bb, false_bb),
+                )?;
+                Ok(())
+            }
+            InstOp::Ret(ret_val, ty) => {
+                if ty.is_unit(self.ir) {
+                    self.handle_builder_result(self.builder.build_return(None))?;
+                } else {
+                    let val = self.get_basic_value(*ret_val)?;
+                    self.handle_builder_result(self.builder.build_return(Some(&val)))?;
+                }
+                Ok(())
+            }
+            InstOp::MemCopyVal {
+                dst_val_ptr,
+                src_val_ptr,
+            } => {
+                let dst_basic = self.get_basic_value(*dst_val_ptr)?;
+                let dst_ptr = self.to_pointer_value(dst_basic)?;
+                let src_basic = self.get_basic_value(*src_val_ptr)?;
+                let src_ptr = self.to_pointer_value(src_basic)?;
+                let byte_len = self.get_pointee_size(*dst_val_ptr)?;
+                let size_ty = self.llvm.ptr_sized_int_type(AddressSpace::default());
+                let size_const = size_ty.const_int(byte_len, false);
+                self.handle_builder_result(self.builder.build_memcpy(
+                    dst_ptr,
+                    8,
+                    src_ptr,
+                    8,
+                    size_const,
+                ))?;
+                Ok(())
+            }
+            InstOp::Call(target_fn, args) => {
+                let function = *self.func_map.get(target_fn).ok_or_else(|| {
+                    LlvmError::Lowering("call target function not declared".into())
+                })?;
+                let metadata_args = args
+                    .iter()
+                    .map(|arg| {
+                        let val = self.get_basic_value(*arg)?;
+                        Ok(BasicMetadataValueEnum::from(val))
+                    })
+                    .collect::<Result<Vec<_>>>()?;
+                let call_site = self.handle_builder_result(
+                    self.builder
+                        .build_call(function, &metadata_args, "call"),
+                )?;
+                match call_site.try_as_basic_value() {
+                    ValueKind::Basic(result) => {
+                        self.value_map.insert(inst_value, result);
+                    }
+                    _ => {}
+                }
+                Ok(())
+            }
+            op => {
+                eprintln!("LLVM backend unsupported instruction: {:?}", op);
+                Err(LlvmError::UnsupportedInstruction("instruction not implemented"))
+            }
+        }
+    }
+
+    fn get_basic_value(&mut self, value: Value) -> Result<BasicValueEnum<'ctx>> {
+        if let Some(val) = self.value_map.get(&value) {
+            return Ok(*val);
+        }
+        if let Some(constant) = value.get_constant(self.ir) {
+            let lowered = self.lower_constant(*constant)?;
+            self.value_map.insert(value, lowered);
+            return Ok(lowered);
+        }
+        Err(LlvmError::Lowering("value not yet lowered".into()))
+    }
+
+    fn to_pointer_value(&self, value: BasicValueEnum<'ctx>) -> Result<PointerValue<'ctx>> {
+        Ok(value.into_pointer_value())
+    }
+
+    fn to_int_value(&self, value: BasicValueEnum<'ctx>) -> Result<IntValue<'ctx>> {
+        Ok(value.into_int_value())
+    }
+
+    fn handle_builder_result<T>(&self, result: std::result::Result<T, BuilderError>) -> Result<T> {
+        result.map_err(|err| LlvmError::Lowering(format!("builder error: {}", err)))
+    }
+
+    fn get_pointee_size(&self, ptr_value: Value) -> Result<u64> {
+        let ty = ptr_value
+            .get_type(self.ir)
+            .ok_or_else(|| LlvmError::Lowering("value missing type".into()))?;
+        let pointee = ty
+            .get_pointee_type(self.ir)
+            .ok_or_else(|| LlvmError::Lowering("value is not a pointer".into()))?;
+        Ok(pointee.size(self.ir).in_bytes())
     }
 
     fn lower_basic_metadata_type(&mut self, ty: Type) -> Result<BasicMetadataTypeEnum<'ctx>> {
@@ -167,6 +480,37 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
                     .ptr_type(AddressSpace::default())
                     .as_basic_type_enum(),
             ),
+            TypeContent::Slice => {
+                let ptr_ty = self.llvm.ptr_type(AddressSpace::default());
+                let len_ty = self.llvm.custom_width_int_type(64);
+                let slice_struct = self
+                    .llvm
+                    .struct_type(
+                        &[
+                            ptr_ty.as_basic_type_enum(),
+                            len_ty.as_basic_type_enum(),
+                        ],
+                        false,
+                    )
+                    .into();
+                LoweredType::Basic(slice_struct)
+            }
+            TypeContent::TypedSlice(item_ty) => {
+                let _ = self.lower_type(*item_ty)?;
+                let ptr_ty = self.llvm.ptr_type(AddressSpace::default());
+                let len_ty = self.llvm.custom_width_int_type(64);
+                let slice_struct = self
+                    .llvm
+                    .struct_type(
+                        &[
+                            ptr_ty.as_basic_type_enum(),
+                            len_ty.as_basic_type_enum(),
+                        ],
+                        false,
+                    )
+                    .into();
+                LoweredType::Basic(slice_struct)
+            }
             other => {
                 return Err(LlvmError::UnsupportedType(format!(
                     "lowering for type {:?} not implemented",
@@ -177,6 +521,57 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
 
         self.type_cache.insert(ty, lowered);
         Ok(lowered)
+    }
+
+    fn lower_constant(&mut self, constant: Constant) -> Result<BasicValueEnum<'ctx>> {
+        let content = constant.get_content(self.ir);
+        self.lower_constant_content(content)
+    }
+
+    fn lower_constant_content(
+        &mut self,
+        content: &ConstantContent,
+    ) -> Result<BasicValueEnum<'ctx>> {
+        let lowered = self.lower_type(content.ty)?;
+        let basic_ty = lowered.as_basic()?;
+        match &content.value {
+            ConstantValue::Undef => Ok(basic_ty.const_zero()),
+            ConstantValue::Unit => Ok(
+                self.llvm
+                    .bool_type()
+                    .const_zero()
+                    .as_basic_value_enum(),
+            ),
+            ConstantValue::Bool(val) => Ok(
+                self.llvm
+                    .bool_type()
+                    .const_int(*val as u64, false)
+                    .as_basic_value_enum(),
+            ),
+            ConstantValue::Uint(val) => {
+                let width = content
+                    .ty
+                    .get_uint_width(self.ir)
+                    .ok_or_else(|| LlvmError::Lowering("uint constant has no width".into()))?;
+                let int_ty = self.llvm.custom_width_int_type(width.into());
+                Ok(int_ty.const_int(*val, false).as_basic_value_enum())
+            }
+            ConstantValue::U256(val) | ConstantValue::B256(val) => {
+                let words = u256_to_words(val);
+                let int_ty = self.llvm.custom_width_int_type(256);
+                Ok(int_ty
+                    .const_int_arbitrary_precision(&words)
+                    .as_basic_value_enum())
+            }
+            ConstantValue::Array(_) => Ok(basic_ty.const_zero()),
+            ConstantValue::Struct(_) => Ok(basic_ty.const_zero()),
+            ConstantValue::Slice(_) | ConstantValue::RawUntypedSlice(_) => Ok(basic_ty.const_zero()),
+            ConstantValue::Reference(_) => {
+                let ptr_ty = self.llvm.ptr_type(AddressSpace::default());
+                Ok(ptr_ty.const_null().as_basic_value_enum())
+            }
+            _ => Ok(basic_ty.const_zero()),
+        }
     }
 }
 
@@ -195,4 +590,16 @@ impl<'ctx> LoweredType<'ctx> {
             LoweredType::Basic(b) => Ok(b),
         }
     }
+}
+
+fn u256_to_words(value: &U256) -> Vec<u64> {
+    let mut bytes = value.to_be_bytes();
+    bytes.reverse();
+    bytes
+        .chunks_exact(8)
+        .map(|chunk| {
+            let arr: [u8; 8] = chunk.try_into().unwrap();
+            u64::from_le_bytes(arr)
+        })
+        .collect()
 }
