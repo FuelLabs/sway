@@ -61,6 +61,8 @@ use sway_ir::{
     MEM2REG_NAME, MEMCPYOPT_NAME, MEMCPYPROP_REVERSE_NAME, MISC_DEMOTION_NAME, RET_DEMOTION_NAME,
     SIMPLIFY_CFG_NAME, SROA_NAME,
 };
+#[cfg(feature = "llvm-backend")]
+use sway_llvm::{lower_module_to_string, BackendOptions};
 use sway_types::span::Source;
 use sway_types::{SourceEngine, SourceLocation, Span};
 use sway_utils::{time_expr, PerformanceData, PerformanceMetric};
@@ -1348,6 +1350,35 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         Ok(())
     };
     res?;
+
+    // Optional: lower the first module to LLVM IR for experimentation when the feature is enabled.
+    #[cfg(feature = "llvm-backend")]
+    {
+        if let Some(dump_dest) = std::env::var_os("SWAY_LLVM_DUMP") {
+            if let Some(module) = ir.module_iter().next() {
+                match lower_module_to_string(&ir, module, &BackendOptions::default()) {
+                    Ok(llvm_ir) => {
+                        if dump_dest.is_empty() || dump_dest == "stdout" {
+                            println!("{llvm_ir}");
+                        } else if let Err(e) = std::fs::write(&dump_dest, llvm_ir) {
+                            let err = handler.emit_err(CompileError::InternalOwned(
+                                format!("failed to write LLVM IR to {:?}: {e}", dump_dest),
+                                span::Span::dummy(),
+                            ));
+                            return Err(err);
+                        }
+                    }
+                    Err(e) => {
+                        let err = handler.emit_err(CompileError::InternalOwned(
+                            format!("LLVM backend lowering failed: {e}"),
+                            span::Span::dummy(),
+                        ));
+                        return Err(err);
+                    }
+                }
+            }
+        }
+    }
 
     compile_ir_context_to_finalized_asm(handler, &ir, Some(build_config))
 }

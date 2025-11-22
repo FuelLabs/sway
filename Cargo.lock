@@ -11735,6 +11735,7 @@ dependencies = [
  "sway-error",
  "sway-features",
  "sway-ir",
+ "sway-llvm",
  "sway-parse",
  "sway-types",
  "sway-utils",
