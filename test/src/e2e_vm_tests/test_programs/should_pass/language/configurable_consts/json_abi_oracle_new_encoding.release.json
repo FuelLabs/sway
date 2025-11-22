@@ -66,6 +66,7 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
       "offset": 4616
 =======
       "offset": 4472
@@ -76,11 +77,15 @@
 =======
       "offset": 4408
 >>>>>>> b5b612fcb (update tests)
+=======
+      "offset": 4272
+>>>>>>> e97c5cafe (update tests)
     },
     {
       "concreteTypeId": "c89951a24c6ca28c13fd1cfdc646b2b656d69e61a92b91023be7eb58eb914b6b",
       "indirect": false,
       "name": "U8",
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -94,11 +99,15 @@
 =======
       "offset": 4600
 >>>>>>> b5b612fcb (update tests)
+=======
+      "offset": 4464
+>>>>>>> e97c5cafe (update tests)
     },
     {
       "concreteTypeId": "c89951a24c6ca28c13fd1cfdc646b2b656d69e61a92b91023be7eb58eb914b6b",
       "indirect": false,
       "name": "ANOTHER_U8",
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -112,11 +121,15 @@
 =======
       "offset": 4336
 >>>>>>> b5b612fcb (update tests)
+=======
+      "offset": 4200
+>>>>>>> e97c5cafe (update tests)
     },
     {
       "concreteTypeId": "29881aad8730c5ab11d275376323d8e4ff4179aae8ccb6c13fe4902137e162ef",
       "indirect": false,
       "name": "U16",
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -130,11 +143,15 @@
 =======
       "offset": 4544
 >>>>>>> b5b612fcb (update tests)
+=======
+      "offset": 4408
+>>>>>>> e97c5cafe (update tests)
     },
     {
       "concreteTypeId": "d7649d428b9ff33d188ecbf38a7e4d8fd167fa01b2e10fe9a8f9308e52f1d7cc",
       "indirect": false,
       "name": "U32",
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -148,11 +165,15 @@
 =======
       "offset": 4584
 >>>>>>> b5b612fcb (update tests)
+=======
+      "offset": 4448
+>>>>>>> e97c5cafe (update tests)
     },
     {
       "concreteTypeId": "d7649d428b9ff33d188ecbf38a7e4d8fd167fa01b2e10fe9a8f9308e52f1d7cc",
       "indirect": false,
       "name": "U64",
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -166,11 +187,15 @@
 =======
       "offset": 4592
 >>>>>>> b5b612fcb (update tests)
+=======
+      "offset": 4456
+>>>>>>> e97c5cafe (update tests)
     },
     {
       "concreteTypeId": "1b5759d94094368cfd443019e7ca5ec4074300e544e5ea993a979f5da627261e",
       "indirect": false,
       "name": "U256",
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -184,11 +209,15 @@
 =======
       "offset": 4552
 >>>>>>> b5b612fcb (update tests)
+=======
+      "offset": 4416
+>>>>>>> e97c5cafe (update tests)
     },
     {
       "concreteTypeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b",
       "indirect": false,
       "name": "B256",
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -202,11 +231,15 @@
 =======
       "offset": 4376
 >>>>>>> b5b612fcb (update tests)
+=======
+      "offset": 4240
+>>>>>>> e97c5cafe (update tests)
     },
     {
       "concreteTypeId": "81fc10c4681a3271cf2d66b2ec6fbc8ed007a442652930844fcf11818c295bff",
       "indirect": false,
       "name": "CONFIGURABLE_STRUCT",
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -220,11 +253,15 @@
 =======
       "offset": 4496
 >>>>>>> b5b612fcb (update tests)
+=======
+      "offset": 4360
+>>>>>>> e97c5cafe (update tests)
     },
     {
       "concreteTypeId": "a2922861f03be8a650595dd76455b95383a61b46dd418f02607fa2e00dc39d5c",
       "indirect": false,
       "name": "CONFIGURABLE_ENUM_A",
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -238,11 +275,15 @@
 =======
       "offset": 4416
 >>>>>>> b5b612fcb (update tests)
+=======
+      "offset": 4280
+>>>>>>> e97c5cafe (update tests)
     },
     {
       "concreteTypeId": "a2922861f03be8a650595dd76455b95383a61b46dd418f02607fa2e00dc39d5c",
       "indirect": false,
       "name": "CONFIGURABLE_ENUM_B",
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -256,11 +297,15 @@
 =======
       "offset": 4456
 >>>>>>> b5b612fcb (update tests)
+=======
+      "offset": 4320
+>>>>>>> e97c5cafe (update tests)
     },
     {
       "concreteTypeId": "4926d35d1a5157936b0a29bc126b8aace6d911209a5c130e9b716b0c73643ea6",
       "indirect": false,
       "name": "ARRAY_BOOL",
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -274,11 +319,15 @@
 =======
       "offset": 4344
 >>>>>>> b5b612fcb (update tests)
+=======
+      "offset": 4208
+>>>>>>> e97c5cafe (update tests)
     },
     {
       "concreteTypeId": "776fb5a3824169d6736138565fdc20aad684d9111266a5ff6d5c675280b7e199",
       "indirect": false,
       "name": "ARRAY_U64",
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -292,11 +341,15 @@
 =======
       "offset": 4352
 >>>>>>> b5b612fcb (update tests)
+=======
+      "offset": 4216
+>>>>>>> e97c5cafe (update tests)
     },
     {
       "concreteTypeId": "c998ca9a5f221fe7b5c66ae70c8a9562b86d964408b00d17f883c906bc1fe4be",
       "indirect": false,
       "name": "TUPLE_BOOL_U64",
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -310,11 +363,15 @@
 =======
       "offset": 4528
 >>>>>>> b5b612fcb (update tests)
+=======
+      "offset": 4392
+>>>>>>> e97c5cafe (update tests)
     },
     {
       "concreteTypeId": "94f0fa95c830be5e4f711963e83259fe7e8bc723278ab6ec34449e791a99b53a",
       "indirect": false,
       "name": "STR_4",
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -328,11 +385,15 @@
 =======
       "offset": 4520
 >>>>>>> b5b612fcb (update tests)
+=======
+      "offset": 4384
+>>>>>>> e97c5cafe (update tests)
     },
     {
       "concreteTypeId": "c89951a24c6ca28c13fd1cfdc646b2b656d69e61a92b91023be7eb58eb914b6b",
       "indirect": false,
       "name": "NOT_USED",
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -346,6 +407,9 @@
 =======
       "offset": 4512
 >>>>>>> b5b612fcb (update tests)
+=======
+      "offset": 4376
+>>>>>>> e97c5cafe (update tests)
     }
   ],
   "encodingVersion": "1",
