@@ -12,6 +12,7 @@ enum Error {
 }
 
 impl AbiEncode for Error {
+    fn is_encode_trivial() -> bool { false }
     fn abi_encode(self, buffer: Buffer) -> Buffer { buffer }
 }
 
