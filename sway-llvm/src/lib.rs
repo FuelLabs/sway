@@ -24,7 +24,7 @@ use sway_ir::{
     block::Block,
     constant::{Constant, ConstantContent, ConstantValue},
     function::Function,
-    instruction::{BinaryOpKind, InstOp, Predicate},
+    instruction::{BinaryOpKind, BranchToWithArgs, InstOp, Predicate},
     irtype::{Type, TypeContent},
     module::Module,
     value::Value,
@@ -244,7 +244,7 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
                     .iter()
                     .map(|idx| {
                         let idx_basic = self.get_basic_value(*idx)?;
-                        self.to_int_value(idx_basic)
+                        self.ensure_int_value(idx_basic)
                     })
                     .collect::<Result<Vec<_>>>()?;
                 let gep = self.handle_builder_result(unsafe {
@@ -256,9 +256,9 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
             }
             InstOp::BinaryOp { op, arg1, arg2 } => {
                 let lhs_basic = self.get_basic_value(*arg1)?;
-                let lhs = self.to_int_value(lhs_basic)?;
+                let lhs = self.ensure_int_value(lhs_basic)?;
                 let rhs_basic = self.get_basic_value(*arg2)?;
-                let rhs = self.to_int_value(rhs_basic)?;
+                let rhs = self.ensure_int_value(rhs_basic)?;
                 let res = match op {
                     BinaryOpKind::Add => {
                         self.handle_builder_result(self.builder.build_int_add(lhs, rhs, "add"))?
@@ -297,9 +297,9 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
             }
             InstOp::Cmp(predicate, lhs, rhs) => {
                 let lhs_val_basic = self.get_basic_value(*lhs)?;
-                let lhs_val = self.to_int_value(lhs_val_basic)?;
+                let lhs_val = self.ensure_int_value(lhs_val_basic)?;
                 let rhs_val_basic = self.get_basic_value(*rhs)?;
-                let rhs_val = self.to_int_value(rhs_val_basic)?;
+                let rhs_val = self.ensure_int_value(rhs_val_basic)?;
                 let pred = match predicate {
                     Predicate::Equal => IntPredicate::EQ,
                     Predicate::LessThan => IntPredicate::ULT,
@@ -319,6 +319,7 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
                     .block_map
                     .get(&target.block)
                     .ok_or_else(|| LlvmError::Lowering("missing branch block".into()))?;
+                self.assign_branch_args(target)?;
                 self.handle_builder_result(self.builder.build_unconditional_branch(bb))?;
                 Ok(())
             }
@@ -328,13 +329,15 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
                 false_block,
             } => {
                 let cond_basic = self.get_basic_value(*cond_value)?;
-                let cond = self.to_int_value(cond_basic)?;
+                let cond = self.ensure_int_value(cond_basic)?;
                 let true_bb = *self.block_map.get(&true_block.block).ok_or_else(|| {
                     LlvmError::Lowering("missing true block for conditional branch".into())
                 })?;
                 let false_bb = *self.block_map.get(&false_block.block).ok_or_else(|| {
                     LlvmError::Lowering("missing false block for conditional branch".into())
                 })?;
+                self.assign_branch_args(true_block)?;
+                self.assign_branch_args(false_block)?;
                 self.handle_builder_result(
                     self.builder
                         .build_conditional_branch(cond, true_bb, false_bb),
@@ -359,7 +362,7 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
                 let src_basic = self.get_basic_value(*src_val_ptr)?;
                 let src_ptr = self.to_pointer_value(src_basic)?;
                 let byte_len = self.get_pointee_size(*dst_val_ptr)?;
-                let size_ty = self.llvm.ptr_sized_int_type(AddressSpace::default());
+                let size_ty = self.llvm.custom_width_int_type(64);
                 let size_const = size_ty.const_int(byte_len, false);
                 self.handle_builder_result(self.builder.build_memcpy(
                     dst_ptr,
@@ -368,6 +371,25 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
                     8,
                     size_const,
                 ))?;
+                Ok(())
+            }
+            InstOp::AsmBlock(asm_block, _) => {
+                if let LoweredType::Basic(basic) = self.lower_type(asm_block.return_type)? {
+                    let zero = basic.const_zero().as_basic_value_enum();
+                    self.value_map.insert(inst_value, zero);
+                }
+                Ok(())
+            }
+            InstOp::CastPtr(value, ty) => {
+                let basic_val = self.get_basic_value(*value)?;
+                let dest_type = self.lower_type(*ty)?;
+                let dest_basic = dest_type.as_basic()?;
+                let cast = self.handle_builder_result(self.builder.build_bit_cast(
+                    basic_val,
+                    dest_basic,
+                    "castptr",
+                ))?;
+                self.value_map.insert(inst_value, cast);
                 Ok(())
             }
             InstOp::Call(target_fn, args) => {
@@ -416,12 +438,38 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
         Ok(value.into_pointer_value())
     }
 
-    fn to_int_value(&self, value: BasicValueEnum<'ctx>) -> Result<IntValue<'ctx>> {
-        Ok(value.into_int_value())
+    fn ensure_int_value(&mut self, value: BasicValueEnum<'ctx>) -> Result<IntValue<'ctx>> {
+        if value.is_int_value() {
+            Ok(value.into_int_value())
+        } else if value.is_pointer_value() {
+            let ptr = value.into_pointer_value();
+            let int_ty = self.llvm.custom_width_int_type(64);
+            self.handle_builder_result(self.builder.build_ptr_to_int(ptr, int_ty, "ptrtoint"))
+        } else {
+            Err(LlvmError::Lowering("value is not integer or pointer".into()))
+        }
     }
 
     fn handle_builder_result<T>(&self, result: std::result::Result<T, BuilderError>) -> Result<T> {
         result.map_err(|err| LlvmError::Lowering(format!("builder error: {}", err)))
+    }
+
+    fn assign_branch_args(&mut self, branch: &BranchToWithArgs) -> Result<()> {
+        let mut arg_iter = branch.block.arg_iter(self.ir);
+        for incoming in &branch.args {
+            let arg_value = arg_iter
+                .next()
+                .copied()
+                .ok_or_else(|| LlvmError::Lowering("branch argument mismatch".into()))?;
+            let val = self.get_basic_value(*incoming)?;
+            self.value_map.insert(arg_value, val);
+        }
+        if arg_iter.next().is_some() {
+            return Err(LlvmError::Lowering(
+                "branch argument count mismatch".into(),
+            ));
+        }
+        Ok(())
     }
 
     fn get_pointee_size(&self, ptr_value: Value) -> Result<u64> {
