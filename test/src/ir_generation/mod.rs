@@ -10,7 +10,8 @@ use sway_core::{
     compile_ir_context_to_finalized_asm, compile_to_ast,
     ir_generation::compile_program,
     namespace::{self, Package},
-    BuildConfig, BuildTarget, Engines, OptLevel, PanicOccurrences, PanickingCallOccurrences,
+    BuildBackend, BuildConfig, BuildTarget, Engines, OptLevel, PanicOccurrences,
+    PanickingCallOccurrences,
 };
 use sway_error::handler::Handler;
 
@@ -549,6 +550,7 @@ fn compile_std(
 
     let check_cmd = forc::cli::CheckCommand {
         build_target,
+        backend: BuildBackend::default(),
         path: Some(libstd_root_dir),
         offline_mode: true,
         terse_mode: true,

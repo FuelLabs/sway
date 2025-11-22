@@ -2,7 +2,7 @@ use crate::cli::{shared::IrCliOpt, ContractIdCommand};
 use anyhow::{bail, Result};
 use forc_pkg::{self as pkg, build_with_options, DumpOpts};
 use forc_tracing::println_green;
-use sway_core::{fuel_prelude::fuel_tx, BuildTarget, IrCli};
+use sway_core::{fuel_prelude::fuel_tx, BuildBackend, BuildTarget, IrCli};
 use tracing::info;
 
 pub fn contract_id(command: ContractIdCommand) -> Result<()> {
@@ -82,6 +82,7 @@ fn build_opts_from_cmd(cmd: &ContractIdCommand) -> pkg::BuildOpts {
         debug_outfile: cmd.build_output.debug_file.clone(),
         hex_outfile: cmd.build_output.hex_file.clone(),
         build_target: BuildTarget::default(),
+        backend: BuildBackend::Fuel,
         tests: false,
         member_filter: pkg::MemberFilter::only_contracts(),
         experimental: cmd.experimental.experimental.clone(),

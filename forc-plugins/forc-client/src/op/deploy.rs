@@ -44,7 +44,9 @@ use std::{
     sync::Arc,
     time::Duration,
 };
-use sway_core::{asm_generation::ProgramABI, language::parsed::TreeType, BuildTarget, IrCli};
+use sway_core::{
+    asm_generation::ProgramABI, language::parsed::TreeType, BuildBackend, BuildTarget, IrCli,
+};
 
 /// Default maximum contract size allowed for a single contract. If the target
 /// contract size is bigger than this amount, forc-deploy will automatically
@@ -868,6 +870,7 @@ fn build_opts_from_cmd(cmd: &cmd::Deploy, member_filter: pkg::MemberFilter) -> p
         debug_outfile: cmd.build_output.debug_file.clone(),
         hex_outfile: cmd.build_output.hex_file.clone(),
         build_target: BuildTarget::default(),
+        backend: BuildBackend::Fuel,
         tests: false,
         member_filter,
         experimental: cmd.experimental.experimental.clone(),

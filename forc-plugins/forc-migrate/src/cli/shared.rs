@@ -8,7 +8,7 @@ use forc_pkg::{
     source::IPFSNode,
 };
 use forc_tracing::println_action_green;
-use sway_core::{BuildTarget, Engines};
+use sway_core::{BuildBackend, BuildTarget, Engines};
 use sway_error::diagnostic::*;
 use sway_features::{ExperimentalFeatures, Feature};
 use sway_types::SourceEngine;
@@ -119,6 +119,7 @@ pub(crate) fn compile_package<'a>(
     let mut compile_results = pkg::check(
         &plan,
         BuildTarget::default(),
+        BuildBackend::default(),
         build_instructions.silent,
         None,
         include_tests,

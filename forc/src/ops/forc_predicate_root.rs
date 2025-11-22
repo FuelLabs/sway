@@ -1,7 +1,7 @@
 use crate::cli::{shared::IrCliOpt, PredicateRootCommand};
 use anyhow::Result;
 use forc_pkg::{self as pkg, build_with_options, DumpOpts};
-use sway_core::{BuildTarget, IrCli};
+use sway_core::{BuildBackend, BuildTarget, IrCli};
 
 pub fn predicate_root(command: PredicateRootCommand) -> Result<()> {
     let build_options = build_opts_from_cmd(command);
@@ -51,6 +51,7 @@ fn build_opts_from_cmd(cmd: PredicateRootCommand) -> pkg::BuildOpts {
         debug_outfile: cmd.build_output.debug_file,
         hex_outfile: cmd.build_output.hex_file.clone(),
         build_target: BuildTarget::default(),
+        backend: BuildBackend::Fuel,
         tests: false,
         member_filter: pkg::MemberFilter::only_predicates(),
         experimental: cmd.experimental.experimental,

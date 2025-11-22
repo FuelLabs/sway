@@ -13,6 +13,7 @@ pub fn check(
 ) -> Result<(Option<Arc<ty::TyProgram>>, Handler)> {
     let CheckCommand {
         build_target,
+        backend,
         path,
         offline_mode: offline,
         terse_mode,
@@ -43,6 +44,7 @@ pub fn check(
     let mut v = pkg::check(
         &plan,
         build_target,
+        backend,
         terse_mode,
         None,
         tests_enabled,

@@ -2,7 +2,7 @@ use crate::ops::forc_check;
 use clap::Parser;
 use forc_pkg::source::IPFSNode;
 use forc_util::{forc_result_bail, ForcResult};
-use sway_core::{BuildTarget, Engines};
+use sway_core::{BuildBackend, BuildTarget, Engines};
 
 forc_util::cli_examples! {
     crate::cli::Opt {
@@ -22,6 +22,9 @@ pub struct Command {
     /// Build target to use for code generation.
     #[clap(value_enum, default_value_t=BuildTarget::default(), alias="target")]
     pub build_target: BuildTarget,
+    /// Backend to use for code generation output.
+    #[clap(long, value_enum, default_value_t = BuildBackend::default())]
+    pub backend: BuildBackend,
     /// Path to the project, if not specified, current working directory will be used.
     #[clap(short, long)]
     pub path: Option<String>,

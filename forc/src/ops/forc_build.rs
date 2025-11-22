@@ -52,6 +52,7 @@ fn opts_from_cmd(cmd: BuildCommand) -> pkg::BuildOpts {
         debug_outfile: cmd.build.output.debug_file,
         hex_outfile: cmd.build.output.hex_file,
         build_target: cmd.build.build_target,
+        backend: cmd.build.backend,
         tests: cmd.tests,
         member_filter: MemberFilter::default(),
         experimental: cmd.experimental.experimental,

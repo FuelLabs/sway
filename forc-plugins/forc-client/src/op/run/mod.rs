@@ -26,8 +26,8 @@ use fuels_accounts::{provider::Provider, Account, ViewOnlyAccount};
 use pkg::BuiltPackage;
 use std::time::Duration;
 use std::{path::PathBuf, str::FromStr};
-use sway_core::BuildTarget;
 use sway_core::{language::parsed::TreeType, IrCli};
+use sway_core::{BuildBackend, BuildTarget};
 use tokio::time::timeout;
 use tracing::info;
 
@@ -340,6 +340,7 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
         binary_outfile: cmd.build_output.bin_file.clone(),
         debug_outfile: cmd.build_output.debug_file.clone(),
         hex_outfile: cmd.build_output.hex_file.clone(),
+        backend: BuildBackend::Fuel,
         tests: false,
         member_filter: pkg::MemberFilter::only_scripts(),
         experimental: cmd.experimental.experimental.clone(),

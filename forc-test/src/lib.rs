@@ -20,7 +20,7 @@ use rand::{Rng, SeedableRng};
 use rayon::prelude::*;
 use std::str::FromStr;
 use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
-use sway_core::{BuildTarget, IrCli};
+use sway_core::{BuildBackend, BuildTarget, IrCli};
 use sway_types::Span;
 use tx::consensus_parameters::ConsensusParametersV1;
 use tx::{ConsensusParameters, ContractParameters, ScriptParameters, TxParameters};
@@ -149,6 +149,8 @@ pub struct TestOpts {
     pub hex_outfile: Option<String>,
     /// Build target to use.
     pub build_target: BuildTarget,
+    /// Backend to use for code generation.
+    pub backend: BuildBackend,
     /// Name of the build profile to use.
     pub build_profile: String,
     /// Use the release build profile.
@@ -514,6 +516,7 @@ impl From<TestOpts> for pkg::BuildOpts {
             debug_outfile: val.debug_outfile,
             hex_outfile: val.hex_outfile,
             build_target: val.build_target,
+            backend: val.backend,
             build_profile: val.build_profile,
             release: val.release,
             error_on_warnings: val.error_on_warnings,
@@ -542,6 +545,7 @@ impl TestOpts {
             debug_outfile: self.debug_outfile,
             hex_outfile: self.hex_outfile,
             build_target: self.build_target,
+            backend: self.backend,
             build_profile: self.build_profile,
             release: self.release,
             error_on_warnings: self.error_on_warnings,

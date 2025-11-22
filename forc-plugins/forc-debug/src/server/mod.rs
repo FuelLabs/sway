@@ -29,7 +29,7 @@ use std::{
     process,
     sync::Arc,
 };
-use sway_core::BuildTarget;
+use sway_core::{BuildBackend, BuildTarget};
 
 pub const THREAD_ID: i64 = 0;
 pub const REGISTERS_VARIABLE_REF: i64 = 1;
@@ -316,6 +316,7 @@ impl DapServer {
         let built_packages = forc_pkg::build(
             &build_plan,
             BuildTarget::default(),
+            BuildBackend::Fuel,
             &BuildProfile {
                 optimization_level: sway_core::OptLevel::Opt0,
                 include_tests: true,

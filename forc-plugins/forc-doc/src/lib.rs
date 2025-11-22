@@ -23,7 +23,7 @@ use std::{
 };
 use sway_core::{
     language::ty::{TyProgram, TyProgramKind},
-    BuildTarget, Engines,
+    BuildBackend, BuildTarget, Engines,
 };
 use sway_features::ExperimentalFeatures;
 
@@ -226,6 +226,7 @@ pub fn compile(ctx: &DocContext, opts: &Command) -> Result<impl Iterator<Item = 
     pkg::check(
         &ctx.build_plan,
         BuildTarget::default(),
+        BuildBackend::default(),
         opts.silent,
         None,
         tests_enabled,

@@ -38,6 +38,36 @@ impl BuildTarget {
     pub const CFG: &'static [&'static str] = &["evm", "fuel"];
 }
 
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Display,
+    Default,
+    Eq,
+    PartialEq,
+    Hash,
+    Serialize,
+    Deserialize,
+    clap::ValueEnum,
+    EnumString,
+)]
+pub enum BuildBackend {
+    #[default]
+    #[serde(rename = "fuel")]
+    #[clap(name = "fuel")]
+    #[strum(serialize = "fuel")]
+    Fuel,
+    #[serde(rename = "llvm")]
+    #[clap(name = "llvm")]
+    #[strum(serialize = "llvm")]
+    LLVM,
+}
+
+impl BuildBackend {
+    pub const CFG: &'static [&'static str] = &["fuel", "llvm"];
+}
+
 #[derive(Default, Clone, Copy)]
 pub enum DbgGeneration {
     Full,
@@ -227,6 +257,7 @@ impl From<Backtrace> for sway_ir::Backtrace {
 pub struct BuildConfig {
     // Build target for code generation.
     pub(crate) build_target: BuildTarget,
+    pub(crate) build_backend: BuildBackend,
     pub(crate) dbg_generation: DbgGeneration,
     // The canonical file path to the root module.
     // E.g. `/home/user/project/src/main.sw`.
@@ -281,6 +312,7 @@ impl BuildConfig {
         };
         Self {
             build_target,
+            build_backend: BuildBackend::default(),
             dbg_generation,
             canonical_root_module: Arc::new(canonical_root_module),
             print_dca_graph: None,
@@ -309,6 +341,7 @@ impl BuildConfig {
             BuildTarget::default(),
             DbgGeneration::None,
         )
+        .with_backend(BuildBackend::default())
     }
 
     pub fn with_print_dca_graph(self, a: Option<String>) -> Self {
@@ -333,6 +366,13 @@ impl BuildConfig {
         Self {
             print_bytecode: bytecode,
             print_bytecode_spans: bytecode_spans,
+            ..self
+        }
+    }
+
+    pub fn with_backend(self, backend: BuildBackend) -> Self {
+        Self {
+            build_backend: backend,
             ..self
         }
     }

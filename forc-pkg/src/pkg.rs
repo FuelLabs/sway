@@ -47,7 +47,7 @@ use sway_core::{
     write_dwarf, BuildTarget, Engines, FinalizedEntry, LspConfig,
 };
 use sway_core::{namespace::Package, Observer};
-use sway_core::{set_bytecode_configurables_offset, DbgGeneration, IrCli, PrintAsm};
+use sway_core::{set_bytecode_configurables_offset, BuildBackend, DbgGeneration, IrCli, PrintAsm};
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_features::ExperimentalFeatures;
 use sway_types::{Ident, ProgramId, Span, Spanned};
@@ -115,6 +115,7 @@ pub struct BuiltPackage {
     ///
     /// For non-contract members, this is always `None`.
     pub bytecode_without_tests: Option<BuiltPackageBytecode>,
+    pub llvm_ir: Option<String>,
 }
 
 /// The package descriptors that a `BuiltPackage` holds so that the source used for building the
@@ -125,6 +126,7 @@ pub struct PackageDescriptor {
     pub target: BuildTarget,
     pub manifest_file: PackageManifestFile,
     pub pinned: Pinned,
+    pub backend: BuildBackend,
 }
 
 /// The bytecode associated with a built package along with its entry points.
@@ -184,6 +186,7 @@ pub struct CompiledPackage {
     pub namespace: namespace::Package,
     pub warnings: Vec<CompileWarning>,
     pub metrics: PerformanceData,
+    pub llvm_ir: Option<String>,
 }
 
 /// Compiled contract dependency parts relevant to calculating a contract's ID.
@@ -293,6 +296,7 @@ pub struct BuildOpts {
     pub verify_ir: IrCli,
     pub minify: MinifyOpts,
     pub dump: DumpOpts,
+    pub backend: BuildBackend,
     /// If set, generates a JSON file containing the hex-encoded script binary.
     pub hex_outfile: Option<String>,
     /// If set, outputs a binary file representing the script bytes.
@@ -1563,6 +1567,7 @@ pub fn sway_build_config(
     manifest_dir: &Path,
     entry_path: &Path,
     build_target: BuildTarget,
+    backend: BuildBackend,
     build_profile: &BuildProfile,
     dbg_generation: sway_core::DbgGeneration,
 ) -> Result<sway_core::BuildConfig> {
@@ -1589,6 +1594,7 @@ pub fn sway_build_config(
     .with_metrics(build_profile.metrics_outfile.clone())
     .with_optimization_level(build_profile.optimization_level)
     .with_backtrace(build_profile.backtrace);
+    let build_config = build_config.with_backend(backend);
     Ok(build_config)
 }
 
@@ -1703,6 +1709,7 @@ pub fn compile(
         pkg.manifest_file.dir(),
         &entry_path,
         pkg.target,
+        pkg.backend,
         profile,
         dbg_generation,
     )?;
@@ -1792,9 +1799,59 @@ pub fn compile(
         Ok(asm) => asm,
     };
 
+    if pkg.backend == BuildBackend::LLVM {
+        let llvm_ir = match &asm {
+            sway_core::CompiledAsm::LLVM { llvm_ir } => llvm_ir.clone(),
+            _ => unreachable!("LLVM backend expected LLVM compiled asm"),
+        };
+        metrics.bytecode_size = 0;
+        let bytecode = BuiltPackageBytecode {
+            bytes: vec![],
+            entries: vec![],
+        };
+        let program_abi = ProgramABI::Fuel(fuel_abi_types::abi::program::ProgramABI {
+            program_type: "".to_owned(),
+            spec_version: "".into(),
+            encoding_version: "".into(),
+            concrete_types: vec![],
+            metadata_types: vec![],
+            functions: vec![],
+            configurables: None,
+            logged_types: None,
+            messages_types: None,
+            error_codes: None,
+            panicking_calls: None,
+        });
+        let (_, warnings, _infos) = handler.consume();
+        let compiled_package = CompiledPackage {
+            source_map: source_map.clone(),
+            program_abi,
+            storage_slots,
+            tree_type,
+            bytecode,
+            namespace: typed_program.namespace.current_package_ref().clone(),
+            warnings,
+            metrics,
+            llvm_ir: Some(llvm_ir),
+        };
+        if sway_build_config.profile {
+            // LLVM backend does not produce fuel asm, so we skip reporting assembly info.
+        }
+        return Ok(compiled_package);
+    }
+
     const ENCODING_V0: &str = "0";
     const ENCODING_V1: &str = "1";
     const SPEC_VERSION: &str = "1.2";
+
+    let (finalized_asm, panic_occurrences, panicking_call_occurrences) = match &asm {
+        sway_core::CompiledAsm::Fuel {
+            finalized_asm,
+            panic_occurrences,
+            panicking_call_occurrences,
+        } => (finalized_asm, panic_occurrences, panicking_call_occurrences),
+        _ => unreachable!("unexpected backend variant when compiling with Fuel backend"),
+    };
 
     let mut program_abi = match pkg.target {
         BuildTarget::Fuel => {
@@ -1806,8 +1863,8 @@ pub fn compile(
                     &handler,
                     &mut AbiContext {
                         program: typed_program,
-                        panic_occurrences: &asm.panic_occurrences,
-                        panicking_call_occurrences: &asm.panicking_call_occurrences,
+                        panic_occurrences,
+                        panicking_call_occurrences,
                         abi_with_callpaths: true,
                         type_ids_to_full_type_str: HashMap::<String, String>::new(),
                         unique_names: HashMap::new(),
@@ -1832,7 +1889,7 @@ pub fn compile(
         BuildTarget::EVM => {
             // Merge the ABI output of ASM gen with ABI gen to handle internal constructors
             // generated by the ASM backend.
-            let mut ops = match &asm.finalized_asm.abi {
+            let mut ops = match &finalized_asm.abi {
                 Some(ProgramABI::Evm(ops)) => ops.clone(),
                 _ => vec![],
             };
@@ -1852,8 +1909,7 @@ pub fn compile(
         }
     };
 
-    let entries = asm
-        .finalized_asm
+    let entries = finalized_asm
         .entries
         .iter()
         .map(|finalized_entry| PkgEntry::from_finalized_entry(finalized_entry, engines))
@@ -1932,6 +1988,7 @@ pub fn compile(
         namespace: typed_program.namespace.current_package_ref().clone(),
         warnings,
         metrics,
+        llvm_ir: None,
     };
     if sway_build_config.profile {
         report_assembly_information(&asm, &compiled_package);
@@ -1945,6 +2002,11 @@ fn report_assembly_information(
     compiled_asm: &sway_core::CompiledAsm,
     compiled_package: &CompiledPackage,
 ) {
+    let finalized_asm = match compiled_asm {
+        sway_core::CompiledAsm::Fuel { finalized_asm, .. } => finalized_asm,
+        sway_core::CompiledAsm::LLVM { .. } => return,
+    };
+
     // Get the bytes of the compiled package.
     let mut bytes = compiled_package.bytecode.bytes.clone();
 
@@ -1993,17 +2055,12 @@ fn report_assembly_information(
         bytecode_size: bytes.len() as _,
         data_section: sway_core::asm_generation::DataSectionInformation {
             size: data_section_size,
-            used: compiled_asm
-                .finalized_asm
+            used: finalized_asm
                 .data_section
                 .iter_all_entries()
                 .map(|entry| calculate_entry_size(&entry))
                 .sum(),
-            value_pairs: compiled_asm
-                .finalized_asm
-                .data_section
-                .iter_all_entries()
-                .collect(),
+            value_pairs: finalized_asm.data_section.iter_all_entries().collect(),
         },
     };
 
@@ -2260,6 +2317,7 @@ pub fn build_with_options(
     let built_packages = build(
         &build_plan,
         *build_target,
+        build_options.backend,
         &build_profile,
         &outputs,
         experimental,
@@ -2291,25 +2349,37 @@ pub fn build_with_options(
             default_output_directory(pkg_manifest.dir()).join(&build_profile.name)
         });
         // Output artifacts for the built package
-        if let Some(outfile) = &binary_outfile {
-            built_package.write_bytecode(outfile.as_ref())?;
-        }
-        // Generate debug symbols if explicitly requested via -g flag or if in debug build
-        if debug_outfile.is_some() || build_profile.name == BuildProfile::DEBUG {
-            let debug_path = debug_outfile
-                .as_ref()
-                .map(|p| output_dir.join(p))
-                .unwrap_or_else(|| output_dir.join("debug_symbols.obj"));
-            built_package.write_debug_info(&debug_path)?;
-        }
+        if built_package.descriptor.backend == BuildBackend::LLVM {
+            if let Some(llvm_ir) = &built_package.llvm_ir {
+                if !output_dir.exists() {
+                    fs::create_dir_all(&output_dir)?;
+                }
+                let llvm_path = output_dir
+                    .join(&pkg_manifest.project.name)
+                    .with_extension("ll");
+                fs::write(llvm_path, llvm_ir)?;
+            }
+        } else {
+            if let Some(outfile) = &binary_outfile {
+                built_package.write_bytecode(outfile.as_ref())?;
+            }
+            // Generate debug symbols if explicitly requested via -g flag or if in debug build
+            if debug_outfile.is_some() || build_profile.name == BuildProfile::DEBUG {
+                let debug_path = debug_outfile
+                    .as_ref()
+                    .map(|p| output_dir.join(p))
+                    .unwrap_or_else(|| output_dir.join("debug_symbols.obj"));
+                built_package.write_debug_info(&debug_path)?;
+            }
 
-        if let Some(hex_path) = hex_outfile {
-            let hexfile_path = output_dir.join(hex_path);
-            built_package.write_hexcode(&hexfile_path)?;
-        }
+            if let Some(hex_path) = hex_outfile {
+                let hexfile_path = output_dir.join(hex_path);
+                built_package.write_hexcode(&hexfile_path)?;
+            }
 
-        if !no_output {
-            built_package.write_output(minify, &pkg_manifest.project.name, &output_dir)?;
+            if !no_output {
+                built_package.write_output(minify, &pkg_manifest.project.name, &output_dir)?;
+            }
         }
 
         built_workspace.push(Arc::new(built_package));
@@ -2384,9 +2454,11 @@ fn validate_contract_deps(graph: &Graph) -> Result<()> {
 /// This compiles all packages (including dependencies) in the order specified by the `BuildPlan`.
 ///
 /// Also returns the resulting `sway_core::SourceMap` which may be useful for debugging purposes.
+#[allow(clippy::too_many_arguments)]
 pub fn build(
     plan: &BuildPlan,
     target: BuildTarget,
+    backend: BuildBackend,
     profile: &BuildProfile,
     outputs: &HashSet<NodeIx>,
     experimental: &[sway_features::Feature],
@@ -2446,6 +2518,7 @@ pub fn build(
             target,
             pinned: pkg.clone(),
             manifest_file: manifest.clone(),
+            backend,
         };
 
         let fail = |infos, warnings, errors| {
@@ -2612,6 +2685,7 @@ pub fn build(
             bytecode: compiled.bytecode,
             warnings: compiled.warnings,
             bytecode_without_tests,
+            llvm_ir: compiled.llvm_ir.clone(),
         };
 
         if outputs.contains(&node) {
@@ -2629,6 +2703,7 @@ pub fn build(
 pub fn check(
     plan: &BuildPlan,
     build_target: BuildTarget,
+    backend: BuildBackend,
     terse_mode: bool,
     lsp_mode: Option<LspConfig>,
     include_tests: bool,
@@ -2698,6 +2773,7 @@ pub fn check(
             manifest.dir(),
             &manifest.entry_path(),
             build_target,
+            backend,
             &profile,
             dbg_generation,
         )?
@@ -2894,6 +2970,7 @@ mod test {
                     name: "built_test".to_owned(),
                     source: source::Pinned::MEMBER,
                 },
+                backend: BuildBackend::Fuel,
                 manifest_file: PackageManifestFile::from_dir(manifest_dir)?,
             },
             program_abi: ProgramABI::Fuel(fuel_abi_types::abi::program::ProgramABI {
@@ -2918,6 +2995,7 @@ mod test {
                 entries: vec![],
             },
             bytecode_without_tests: None,
+            llvm_ir: None,
         };
 
         // Write the hexcode

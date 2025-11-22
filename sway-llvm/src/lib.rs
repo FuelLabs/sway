@@ -30,8 +30,8 @@ use sway_ir::{
     value::Value,
     variable::LocalVar,
 };
-use thiserror::Error;
 use sway_types::u256::U256;
+use thiserror::Error;
 
 /// Options that influence LLVM module emission.
 #[derive(Debug, Clone, Default)]
@@ -155,11 +155,7 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
         Ok(())
     }
 
-    fn map_function_blocks(
-        &mut self,
-        func: Function,
-        fn_val: FunctionValue<'ctx>,
-    ) -> Result<()> {
+    fn map_function_blocks(&mut self, func: Function, fn_val: FunctionValue<'ctx>) -> Result<()> {
         for block in func.block_iter(self.ir) {
             let label = block.get_label(self.ir);
             let bb = self.llvm.append_basic_block(fn_val, &label);
@@ -216,14 +212,17 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
                     .local_allocas
                     .get(local_var)
                     .ok_or_else(|| LlvmError::Lowering("missing local pointer".into()))?;
-                self.value_map
-                    .insert(inst_value, ptr.as_basic_value_enum());
+                self.value_map.insert(inst_value, ptr.as_basic_value_enum());
                 Ok(())
             }
             InstOp::Load(ptr_val) => {
                 let ptr_val_basic = self.get_basic_value(*ptr_val)?;
                 let ptr = self.to_pointer_value(ptr_val_basic)?;
-                let load = self.handle_builder_result(self.builder.build_load(ptr.get_type(), ptr, "load"))?;
+                let load = self.handle_builder_result(self.builder.build_load(
+                    ptr.get_type(),
+                    ptr,
+                    "load",
+                ))?;
                 self.value_map.insert(inst_value, load);
                 Ok(())
             }
@@ -248,10 +247,10 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
                     })
                     .collect::<Result<Vec<_>>>()?;
                 let gep = self.handle_builder_result(unsafe {
-                    self.builder.build_gep(ptr.get_type(), ptr, &index_vals, "gep")
+                    self.builder
+                        .build_gep(ptr.get_type(), ptr, &index_vals, "gep")
                 })?;
-                self.value_map
-                    .insert(inst_value, gep.as_basic_value_enum());
+                self.value_map.insert(inst_value, gep.as_basic_value_enum());
                 Ok(())
             }
             InstOp::BinaryOp { op, arg1, arg2 } => {
@@ -284,15 +283,14 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
                     BinaryOpKind::Xor => {
                         self.handle_builder_result(self.builder.build_xor(lhs, rhs, "xor"))?
                     }
-                    BinaryOpKind::Lsh => self.handle_builder_result(
-                        self.builder.build_left_shift(lhs, rhs, "lsh"),
-                    )?,
+                    BinaryOpKind::Lsh => {
+                        self.handle_builder_result(self.builder.build_left_shift(lhs, rhs, "lsh"))?
+                    }
                     BinaryOpKind::Rsh => self.handle_builder_result(
                         self.builder.build_right_shift(lhs, rhs, true, "rsh"),
                     )?,
                 };
-                self.value_map
-                    .insert(inst_value, res.as_basic_value_enum());
+                self.value_map.insert(inst_value, res.as_basic_value_enum());
                 Ok(())
             }
             InstOp::Cmp(predicate, lhs, rhs) => {
@@ -305,12 +303,10 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
                     Predicate::LessThan => IntPredicate::ULT,
                     Predicate::GreaterThan => IntPredicate::UGT,
                 };
-                let cmp = self.handle_builder_result(self.builder.build_int_compare(
-                    pred,
-                    lhs_val,
-                    rhs_val,
-                    "cmp",
-                ))?;
+                let cmp = self.handle_builder_result(
+                    self.builder
+                        .build_int_compare(pred, lhs_val, rhs_val, "cmp"),
+                )?;
                 self.value_map.insert(inst_value, cmp.as_basic_value_enum());
                 Ok(())
             }
@@ -364,13 +360,10 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
                 let byte_len = self.get_pointee_size(*dst_val_ptr)?;
                 let size_ty = self.llvm.custom_width_int_type(64);
                 let size_const = size_ty.const_int(byte_len, false);
-                self.handle_builder_result(self.builder.build_memcpy(
-                    dst_ptr,
-                    8,
-                    src_ptr,
-                    8,
-                    size_const,
-                ))?;
+                self.handle_builder_result(
+                    self.builder
+                        .build_memcpy(dst_ptr, 8, src_ptr, 8, size_const),
+                )?;
                 Ok(())
             }
             InstOp::AsmBlock(asm_block, _) => {
@@ -384,11 +377,10 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
                 let basic_val = self.get_basic_value(*value)?;
                 let dest_type = self.lower_type(*ty)?;
                 let dest_basic = dest_type.as_basic()?;
-                let cast = self.handle_builder_result(self.builder.build_bit_cast(
-                    basic_val,
-                    dest_basic,
-                    "castptr",
-                ))?;
+                let cast = self.handle_builder_result(
+                    self.builder
+                        .build_bit_cast(basic_val, dest_basic, "castptr"),
+                )?;
                 self.value_map.insert(inst_value, cast);
                 Ok(())
             }
@@ -403,21 +395,21 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
                         Ok(BasicMetadataValueEnum::from(val))
                     })
                     .collect::<Result<Vec<_>>>()?;
-                let call_site = self.handle_builder_result(
-                    self.builder
-                        .build_call(function, &metadata_args, "call"),
-                )?;
-                match call_site.try_as_basic_value() {
-                    ValueKind::Basic(result) => {
-                        self.value_map.insert(inst_value, result);
-                    }
-                    _ => {}
+                let call_site = self.handle_builder_result(self.builder.build_call(
+                    function,
+                    &metadata_args,
+                    "call",
+                ))?;
+                if let ValueKind::Basic(result) = call_site.try_as_basic_value() {
+                    self.value_map.insert(inst_value, result);
                 }
                 Ok(())
             }
             op => {
                 eprintln!("LLVM backend unsupported instruction: {:?}", op);
-                Err(LlvmError::UnsupportedInstruction("instruction not implemented"))
+                Err(LlvmError::UnsupportedInstruction(
+                    "instruction not implemented",
+                ))
             }
         }
     }
@@ -446,7 +438,9 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
             let int_ty = self.llvm.custom_width_int_type(64);
             self.handle_builder_result(self.builder.build_ptr_to_int(ptr, int_ty, "ptrtoint"))
         } else {
-            Err(LlvmError::Lowering("value is not integer or pointer".into()))
+            Err(LlvmError::Lowering(
+                "value is not integer or pointer".into(),
+            ))
         }
     }
 
@@ -465,9 +459,7 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
             self.value_map.insert(arg_value, val);
         }
         if arg_iter.next().is_some() {
-            return Err(LlvmError::Lowering(
-                "branch argument count mismatch".into(),
-            ));
+            return Err(LlvmError::Lowering("branch argument count mismatch".into()));
         }
         Ok(())
     }
@@ -534,10 +526,7 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
                 let slice_struct = self
                     .llvm
                     .struct_type(
-                        &[
-                            ptr_ty.as_basic_type_enum(),
-                            len_ty.as_basic_type_enum(),
-                        ],
+                        &[ptr_ty.as_basic_type_enum(), len_ty.as_basic_type_enum()],
                         false,
                     )
                     .into();
@@ -550,10 +539,7 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
                 let slice_struct = self
                     .llvm
                     .struct_type(
-                        &[
-                            ptr_ty.as_basic_type_enum(),
-                            len_ty.as_basic_type_enum(),
-                        ],
+                        &[ptr_ty.as_basic_type_enum(), len_ty.as_basic_type_enum()],
                         false,
                     )
                     .into();
@@ -584,18 +570,12 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
         let basic_ty = lowered.as_basic()?;
         match &content.value {
             ConstantValue::Undef => Ok(basic_ty.const_zero()),
-            ConstantValue::Unit => Ok(
-                self.llvm
-                    .bool_type()
-                    .const_zero()
-                    .as_basic_value_enum(),
-            ),
-            ConstantValue::Bool(val) => Ok(
-                self.llvm
-                    .bool_type()
-                    .const_int(*val as u64, false)
-                    .as_basic_value_enum(),
-            ),
+            ConstantValue::Unit => Ok(self.llvm.bool_type().const_zero().as_basic_value_enum()),
+            ConstantValue::Bool(val) => Ok(self
+                .llvm
+                .bool_type()
+                .const_int(*val as u64, false)
+                .as_basic_value_enum()),
             ConstantValue::Uint(val) => {
                 let width = content
                     .ty
@@ -613,7 +593,9 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
             }
             ConstantValue::Array(_) => Ok(basic_ty.const_zero()),
             ConstantValue::Struct(_) => Ok(basic_ty.const_zero()),
-            ConstantValue::Slice(_) | ConstantValue::RawUntypedSlice(_) => Ok(basic_ty.const_zero()),
+            ConstantValue::Slice(_) | ConstantValue::RawUntypedSlice(_) => {
+                Ok(basic_ty.const_zero())
+            }
             ConstantValue::Reference(_) => {
                 let ptr_ty = self.llvm.ptr_type(AddressSpace::default());
                 Ok(ptr_ty.const_null().as_basic_value_enum())

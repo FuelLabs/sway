@@ -42,7 +42,7 @@ use sway_core::{
         ty::{self},
         HasSubmodules,
     },
-    BuildTarget, Engines, LspConfig, Programs,
+    BuildBackend, BuildTarget, Engines, LspConfig, Programs,
 };
 use sway_error::{
     error::CompileError,
@@ -247,6 +247,7 @@ pub fn compile(
     pkg::check(
         build_plan,
         BuildTarget::default(),
+        BuildBackend::default(),
         true,
         lsp_mode.cloned(),
         true,

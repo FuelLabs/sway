@@ -36,7 +36,9 @@ pub use asm_generation::from_ir::compile_ir_context_to_finalized_asm;
 use asm_generation::FinalizedAsm;
 pub use asm_generation::{CompiledBytecode, FinalizedEntry};
 pub use build_config::DbgGeneration;
-pub use build_config::{Backtrace, BuildConfig, BuildTarget, IrCli, LspConfig, OptLevel, PrintAsm};
+pub use build_config::{
+    Backtrace, BuildBackend, BuildConfig, BuildTarget, IrCli, LspConfig, OptLevel, PrintAsm,
+};
 use control_flow_analysis::ControlFlowGraph;
 pub use debug_generation::write_dwarf;
 use itertools::Itertools;
@@ -838,10 +840,15 @@ pub type PanicOccurrences = HashMap<PanicOccurrence, u64>;
 /// [PanickingCallOccurrence]s mapped to their corresponding panicking call codes.
 pub type PanickingCallOccurrences = HashMap<PanickingCallOccurrence, u64>;
 
-pub struct CompiledAsm {
-    pub finalized_asm: FinalizedAsm,
-    pub panic_occurrences: PanicOccurrences,
-    pub panicking_call_occurrences: PanickingCallOccurrences,
+pub enum CompiledAsm {
+    Fuel {
+        finalized_asm: Box<FinalizedAsm>,
+        panic_occurrences: PanicOccurrences,
+        panicking_call_occurrences: PanickingCallOccurrences,
+    },
+    LLVM {
+        llvm_ir: String,
+    },
 }
 
 #[allow(clippy::result_large_err)]
@@ -1202,7 +1209,7 @@ pub fn ast_to_asm(
     let mut panic_occurrences = PanicOccurrences::default();
     let mut panicking_call_occurrences = PanickingCallOccurrences::default();
 
-    let asm = match compile_ast_to_ir_to_asm(
+    match compile_ast_to_ir_to_asm(
         handler,
         engines,
         typed_program,
@@ -1211,18 +1218,12 @@ pub fn ast_to_asm(
         build_config,
         experimental,
     ) {
-        Ok(res) => res,
+        Ok(res) => Ok(res),
         Err(err) => {
             handler.dedup();
-            return Err(err);
+            Err(err)
         }
-    };
-
-    Ok(CompiledAsm {
-        finalized_asm: asm,
-        panic_occurrences,
-        panicking_call_occurrences,
-    })
+    }
 }
 
 pub(crate) fn compile_ast_to_ir_to_asm(
@@ -1233,7 +1234,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     panicking_call_occurrences: &mut PanickingCallOccurrences,
     build_config: &BuildConfig,
     experimental: ExperimentalFeatures,
-) -> Result<FinalizedAsm, ErrorEmitted> {
+) -> Result<CompiledAsm, ErrorEmitted> {
     // The IR pipeline relies on type information being fully resolved.
     // If type information is found to still be generic or unresolved inside of
     // IR, this is considered an internal compiler error. To resolve this situation,
@@ -1351,36 +1352,82 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     };
     res?;
 
-    // Optional: lower the first module to LLVM IR for experimentation when the feature is enabled.
     #[cfg(feature = "llvm-backend")]
     {
-        if let Some(dump_dest) = std::env::var_os("SWAY_LLVM_DUMP") {
-            if let Some(module) = ir.module_iter().next() {
-                match lower_module_to_string(&ir, module, &BackendOptions::default()) {
-                    Ok(llvm_ir) => {
-                        if dump_dest.is_empty() || dump_dest == "stdout" {
-                            println!("{llvm_ir}");
-                        } else if let Err(e) = std::fs::write(&dump_dest, llvm_ir) {
+        if build_config.build_backend == BuildBackend::Fuel {
+            if let Some(dump_dest) = std::env::var_os("SWAY_LLVM_DUMP") {
+                if let Some(module) = ir.module_iter().next() {
+                    match lower_module_to_string(&ir, module, &BackendOptions::default()) {
+                        Ok(llvm_ir) => {
+                            if dump_dest.is_empty() || dump_dest == "stdout" {
+                                println!("{llvm_ir}");
+                            } else if let Err(e) = std::fs::write(&dump_dest, llvm_ir) {
+                                let err = handler.emit_err(CompileError::InternalOwned(
+                                    format!("failed to write LLVM IR to {:?}: {e}", dump_dest),
+                                    span::Span::dummy(),
+                                ));
+                                return Err(err);
+                            }
+                        }
+                        Err(e) => {
                             let err = handler.emit_err(CompileError::InternalOwned(
-                                format!("failed to write LLVM IR to {:?}: {e}", dump_dest),
+                                format!("LLVM backend lowering failed: {e}"),
                                 span::Span::dummy(),
                             ));
                             return Err(err);
                         }
-                    }
-                    Err(e) => {
-                        let err = handler.emit_err(CompileError::InternalOwned(
-                            format!("LLVM backend lowering failed: {e}"),
-                            span::Span::dummy(),
-                        ));
-                        return Err(err);
                     }
                 }
             }
         }
     }
 
-    compile_ir_context_to_finalized_asm(handler, &ir, Some(build_config))
+    let compiled_result = match build_config.build_backend {
+        BuildBackend::Fuel => {
+            let finalized_asm =
+                compile_ir_context_to_finalized_asm(handler, &ir, Some(build_config))?;
+            let fuel_panic_occurrences = std::mem::take(panic_occurrences);
+            let fuel_panicking_call_occurrences = std::mem::take(panicking_call_occurrences);
+            CompiledAsm::Fuel {
+                finalized_asm: Box::new(finalized_asm),
+                panic_occurrences: fuel_panic_occurrences,
+                panicking_call_occurrences: fuel_panicking_call_occurrences,
+            }
+        }
+        BuildBackend::LLVM => {
+            #[cfg(feature = "llvm-backend")]
+            {
+                if let Some(module) = ir.module_iter().next() {
+                    match lower_module_to_string(&ir, module, &BackendOptions::default()) {
+                        Ok(llvm_ir) => CompiledAsm::LLVM { llvm_ir },
+                        Err(err) => {
+                            let err = handler.emit_err(CompileError::InternalOwned(
+                                format!("LLVM backend lowering failed: {err}"),
+                                span::Span::dummy(),
+                            ));
+                            return Err(err);
+                        }
+                    }
+                } else {
+                    let err = handler.emit_err(CompileError::InternalOwned(
+                        "LLVM backend lowering requires at least one module to lower".to_string(),
+                        span::Span::dummy(),
+                    ));
+                    return Err(err);
+                }
+            }
+            #[cfg(not(feature = "llvm-backend"))]
+            {
+                let err = handler.emit_err(CompileError::InternalOwned(
+                    "LLVM backend requires the `llvm-backend` feature to be enabled".to_string(),
+                    span::Span::dummy(),
+                ));
+                return Err(err);
+            }
+        }
+    };
+
+    Ok(compiled_result)
 }
 
 /// Given input Sway source code, compile to [CompiledBytecode], containing the asm in bytecode form.
@@ -1443,9 +1490,17 @@ pub fn asm_to_bytecode(
     source_engine: &SourceEngine,
     build_config: &BuildConfig,
 ) -> Result<CompiledBytecode, ErrorEmitted> {
-    let compiled_bytecode =
-        asm.finalized_asm
-            .to_bytecode_mut(handler, source_map, source_engine, build_config)?;
+    let compiled_bytecode = match asm {
+        CompiledAsm::Fuel { finalized_asm, .. } => {
+            finalized_asm.to_bytecode_mut(handler, source_map, source_engine, build_config)?
+        }
+        CompiledAsm::LLVM { .. } => {
+            return Err(handler.emit_err(CompileError::InternalOwned(
+                "LLVM backend does not emit Fuel bytecode".to_string(),
+                span::Span::dummy(),
+            )))
+        }
+    };
     Ok(compiled_bytecode)
 }
 

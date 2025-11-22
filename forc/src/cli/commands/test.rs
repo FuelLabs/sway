@@ -388,6 +388,7 @@ fn opts_from_cmd(cmd: Command) -> forc_test::TestOpts {
         debug_outfile: cmd.build.output.debug_file,
         hex_outfile: cmd.build.output.hex_file,
         build_target: cmd.build.build_target,
+        backend: cmd.build.backend,
         experimental: cmd.experimental.experimental,
         no_experimental: cmd.experimental.no_experimental,
         no_output: false,

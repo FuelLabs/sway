@@ -1,7 +1,7 @@
 //! Sets of arguments that are shared between commands.
 use clap::{ArgGroup, Args, Parser};
 use forc_pkg::source::IPFSNode;
-use sway_core::{BuildTarget, IrCli, PrintAsm};
+use sway_core::{BuildBackend, BuildTarget, IrCli, PrintAsm};
 use sway_ir::PassManager;
 
 #[derive(Debug, Args)]
@@ -101,6 +101,9 @@ pub struct Build {
     /// Build target to use for code generation.
     #[clap(long, value_enum, default_value_t = BuildTarget::default(), alias="target")]
     pub build_target: BuildTarget,
+    /// Backend to use for code generation output.
+    #[clap(long, value_enum, default_value_t = BuildBackend::default())]
+    pub backend: BuildBackend,
     #[clap(flatten)]
     pub dump: Dump,
 }
