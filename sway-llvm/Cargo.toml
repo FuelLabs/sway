@@ -1,0 +1,12 @@
+[package]
+name = "sway-llvm"
+version = "0.69.1"
+edition = "2021"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+description = "LLVM code generation backend for Sway IR using Inkwell"
+license = "Apache-2.0"
+
+[dependencies]
+inkwell = { version = "0.7.1", features = ["llvm18-1-prefer-dynamic"] }
+sway-ir = { workspace = true }
+thiserror = "1.0"

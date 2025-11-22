@@ -14,6 +14,7 @@ members = [
     "sway-features",
     "sway-ir",
     "sway-ir/sway-ir-macros",
+    "sway-llvm",
     "sway-lsp",
     "sway-parse",
     "sway-types",
