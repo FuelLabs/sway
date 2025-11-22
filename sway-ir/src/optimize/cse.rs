@@ -122,6 +122,7 @@ fn instr_to_expr(context: &Context, vntable: &VNTable, instr: Value) -> Option<E
             *ty,
         )),
         InstOp::Load(_) => None,
+        InstOp::Alloc { .. } => None,
         InstOp::MemCopyBytes { .. } => None,
         InstOp::MemCopyVal { .. } => None,
         InstOp::MemClearVal { .. } => None,

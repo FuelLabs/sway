@@ -133,6 +133,11 @@ pub enum InstOp {
         dst_val_ptr: Value,
         stored_val: Value,
     },
+    /// Allocate `count` objects of type `ty` on the heap.
+    Alloc {
+        ty: Type,
+        count: Value,
+    },
 }
 
 /// Metadata describing a logged event.
@@ -422,6 +427,7 @@ impl InstOp {
                 crate::ConfigContent::V1 { ptr_ty, .. } => *ptr_ty,
             }),
             InstOp::GetStorageKey(storage_key) => Some(storage_key.get_type(context)),
+            InstOp::Alloc { ty: _, count: _ } => Some(Type::get_ptr(context)),
 
             // Use for casting between pointers and pointer-width integers.
             InstOp::IntToPtr(_, ptr_ty) => Some(*ptr_ty),
@@ -522,6 +528,7 @@ impl InstOp {
                 // `GetStorageKey` returns an SSA `Value` but does not take any as an operand.
                 vec![]
             }
+            InstOp::Alloc { ty: _, count } => vec![*count],
             InstOp::IntToPtr(v, _) => vec![*v],
             InstOp::Load(v) => vec![*v],
             InstOp::MemCopyBytes {
@@ -737,6 +744,13 @@ impl InstOp {
             InstOp::GetStorageKey(_) => {
                 // `GetStorageKey` returns an SSA `Value` but does not take any as an operand.
                 panic!("Invalid index for GetStorageKey");
+            }
+            InstOp::Alloc { ty: _, count } => {
+                if idx == 0 {
+                    *count = replacement;
+                } else {
+                    panic!("Invalid index for Alloc");
+                }
             }
             InstOp::IntToPtr(v, _) => {
                 if idx == 0 {
@@ -1049,6 +1063,7 @@ impl InstOp {
                 replace(base);
                 indices.iter_mut().for_each(replace);
             }
+            InstOp::Alloc { ty: _, count } => replace(count),
             InstOp::IntToPtr(value, _) => replace(value),
             InstOp::Load(ptr) => replace(ptr),
             InstOp::MemCopyBytes {
@@ -1212,6 +1227,12 @@ impl InstOp {
             | InstOp::Load(_)
             | InstOp::Nop
             | InstOp::PtrToInt(..) => false,
+
+            // Although `Alloc` is a side-effecting operation in the general sense (it changes
+            // program state by allocating memory), it does not have observable side effects that
+            // would affect program behavior in a way that matters for optimizations like
+            // dead code elimination. Therefore, we treat it as not having side effects here.
+            InstOp::Alloc { .. } => false,
         }
     }
 
@@ -1571,6 +1592,10 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
 
     pub fn get_config(self, module: Module, name: String) -> Value {
         insert_instruction!(self, InstOp::GetConfig(module, name))
+    }
+
+    pub fn alloc(self, ty: Type, count: Value) -> Value {
+        insert_instruction!(self, InstOp::Alloc { ty, count })
     }
 
     pub fn get_storage_key(self, storage_key: StorageKey) -> Value {
