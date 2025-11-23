@@ -1,0 +1,8 @@
+[workspace]
+
+[package]
+name = "rust_trial_prime"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
