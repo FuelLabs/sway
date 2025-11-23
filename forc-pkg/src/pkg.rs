@@ -25,6 +25,7 @@ use std::{
     hash::{Hash, Hasher},
     io::Write,
     path::{Path, PathBuf},
+    process::Command,
     str::FromStr,
     sync::{atomic::AtomicBool, Arc},
 };
@@ -116,6 +117,7 @@ pub struct BuiltPackage {
     /// For non-contract members, this is always `None`.
     pub bytecode_without_tests: Option<BuiltPackageBytecode>,
     pub llvm_ir: Option<String>,
+    pub llvm_native_artifact: Option<PathBuf>,
 }
 
 /// The package descriptors that a `BuiltPackage` holds so that the source used for building the
@@ -187,6 +189,7 @@ pub struct CompiledPackage {
     pub warnings: Vec<CompileWarning>,
     pub metrics: PerformanceData,
     pub llvm_ir: Option<String>,
+    pub llvm_native_artifact: Option<PathBuf>,
 }
 
 /// Compiled contract dependency parts relevant to calculating a contract's ID.
@@ -1833,6 +1836,7 @@ pub fn compile(
             warnings,
             metrics,
             llvm_ir: Some(llvm_ir),
+            llvm_native_artifact: None,
         };
         if sway_build_config.profile {
             // LLVM backend does not produce fuel asm, so we skip reporting assembly info.
@@ -1989,6 +1993,7 @@ pub fn compile(
         warnings,
         metrics,
         llvm_ir: None,
+        llvm_native_artifact: None,
     };
     if sway_build_config.profile {
         report_assembly_information(&asm, &compiled_package);
@@ -2348,6 +2353,7 @@ pub fn build_with_options(
         let output_dir = output_dir.clone().unwrap_or_else(|| {
             default_output_directory(pkg_manifest.dir()).join(&build_profile.name)
         });
+        let mut built_package = built_package;
         // Output artifacts for the built package
         if built_package.descriptor.backend == BuildBackend::LLVM {
             if let Some(llvm_ir) = &built_package.llvm_ir {
@@ -2357,7 +2363,17 @@ pub fn build_with_options(
                 let llvm_path = output_dir
                     .join(&pkg_manifest.project.name)
                     .with_extension("ll");
-                fs::write(llvm_path, llvm_ir)?;
+                fs::write(&llvm_path, llvm_ir)?;
+                let native_artifact = emit_native_binary_from_llvm(
+                    &llvm_path,
+                    &output_dir,
+                    &pkg_manifest.project.name,
+                )?;
+                built_package.llvm_native_artifact = Some(native_artifact.clone());
+                println!(
+                    "LLVM backend produced native executable at {}",
+                    native_artifact.display()
+                );
             }
         } else {
             if let Some(outfile) = &binary_outfile {
@@ -2686,6 +2702,7 @@ pub fn build(
             warnings: compiled.warnings,
             bytecode_without_tests,
             llvm_ir: compiled.llvm_ir.clone(),
+            llvm_native_artifact: compiled.llvm_native_artifact.clone(),
         };
 
         if outputs.contains(&node) {
@@ -2694,6 +2711,53 @@ pub fn build(
     }
 
     Ok(built_packages)
+}
+
+fn emit_native_binary_from_llvm(
+    llvm_path: &Path,
+    output_dir: &Path,
+    pkg_name: &str,
+) -> Result<PathBuf> {
+    let obj_path = output_dir.join(pkg_name).with_extension("o");
+    let exe_suffix = std::env::consts::EXE_SUFFIX;
+    let exe_name = if exe_suffix.is_empty() {
+        pkg_name.to_string()
+    } else {
+        format!("{pkg_name}{exe_suffix}")
+    };
+    let exe_path = output_dir.join(exe_name);
+
+    let llc = std::env::var("LLVM_LLC").unwrap_or_else(|_| "llc".into());
+    let clang = std::env::var("LLVM_CLANG").unwrap_or_else(|_| "clang".into());
+
+    let llc_status = Command::new(&llc)
+        .arg("-filetype=obj")
+        .arg("-o")
+        .arg(&obj_path)
+        .arg(llvm_path)
+        .status()
+        .with_context(|| format!("failed to execute {llc}"))?;
+    if !llc_status.success() {
+        return Err(anyhow!(
+            "{llc} failed with status {}",
+            llc_status.code().unwrap_or(-1)
+        ));
+    }
+
+    let clang_status = Command::new(&clang)
+        .arg(&obj_path)
+        .arg("-o")
+        .arg(&exe_path)
+        .status()
+        .with_context(|| format!("failed to execute {clang}"))?;
+    if !clang_status.success() {
+        return Err(anyhow!(
+            "{clang} failed with status {}",
+            clang_status.code().unwrap_or(-1)
+        ));
+    }
+
+    Ok(exe_path)
 }
 
 /// Compile the entire forc package and return the lexed, parsed and typed programs
@@ -2996,6 +3060,7 @@ mod test {
             },
             bytecode_without_tests: None,
             llvm_ir: None,
+            llvm_native_artifact: None,
         };
 
         // Write the hexcode
