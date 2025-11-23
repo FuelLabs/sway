@@ -267,19 +267,19 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
         let main_fn = self.llvm_module.add_function("main", main_type, None);
         let bb = self.llvm.append_basic_block(main_fn, "entry");
         self.builder.position_at_end(bb);
-        let call_site = self
-            .handle_builder_result(self.builder.build_call(entry_val, &[], "call_entry"))?;
+        let call_site =
+            self.handle_builder_result(self.builder.build_call(entry_val, &[], "call_entry"))?;
         let zero = main_ret.const_zero();
         if let ValueKind::Basic(result) = call_site.try_as_basic_value() {
             let int_val = self.ensure_int_value(result)?;
-            let truncated = self.handle_builder_result(self.builder.build_int_truncate(
-                int_val,
-                main_ret,
-                "main_ret",
-            ))?;
-            self.handle_builder_result(self.builder.build_return(Some(
-                &truncated.as_basic_value_enum(),
-            )))?;
+            let truncated = self.handle_builder_result(
+                self.builder
+                    .build_int_truncate(int_val, main_ret, "main_ret"),
+            )?;
+            self.handle_builder_result(
+                self.builder
+                    .build_return(Some(&truncated.as_basic_value_enum())),
+            )?;
         } else {
             self.handle_builder_result(self.builder.build_return(Some(&zero)))?;
         }
@@ -535,8 +535,7 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
                 if src_ptr.is_null() {
                     let zero_val = self.llvm.i8_type().const_zero();
                     self.handle_builder_result(
-                        self.builder
-                            .build_memset(dst_ptr, 8, zero_val, size_const),
+                        self.builder.build_memset(dst_ptr, 8, zero_val, size_const),
                     )?;
                 } else {
                     self.handle_builder_result(
@@ -554,6 +553,27 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
                     "AsmBlock lowering not implemented for non-unit return types",
                 ))
             }
+            InstOp::BitCast(value, ty) => {
+                let src_val = self.get_basic_value(*value)?;
+                let dest_type = self.lower_type(*ty)?;
+                let dest_basic = dest_type.as_basic()?;
+                let cast = self.handle_builder_result(
+                    self.builder.build_bit_cast(src_val, dest_basic, "bitcast"),
+                )?;
+                self.value_map.insert(inst_value, cast);
+                Ok(())
+            }
+            InstOp::UnaryOp { op, arg } => match op {
+                sway_ir::instruction::UnaryOpKind::Not => {
+                    let arg_val = self.get_basic_value(*arg)?;
+                    let int_val = self.ensure_int_value(arg_val)?;
+                    let not_val = self
+                        .handle_builder_result(self.builder.build_not(int_val, "not"))?
+                        .as_basic_value_enum();
+                    self.value_map.insert(inst_value, not_val);
+                    Ok(())
+                }
+            },
             InstOp::CastPtr(value, ty) => {
                 let basic_val = self.get_basic_value(*value)?;
                 let dest_type = self.lower_type(*ty)?;
@@ -638,9 +658,9 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
         if value.is_int_value() {
             Ok(value.into_int_value())
         } else if value.is_pointer_value() {
-        let ptr = value.into_pointer_value();
-        let int_ty = self.llvm.ptr_sized_int_type(&self.target_data, None);
-        self.handle_builder_result(self.builder.build_ptr_to_int(ptr, int_ty, "ptrtoint"))
+            let ptr = value.into_pointer_value();
+            let int_ty = self.llvm.ptr_sized_int_type(&self.target_data, None);
+            self.handle_builder_result(self.builder.build_ptr_to_int(ptr, int_ty, "ptrtoint"))
         } else {
             Err(LlvmError::Lowering(
                 "value is not integer or pointer".into(),
@@ -663,9 +683,10 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
         }
 
         for (idx, _) in branch.block.arg_iter(self.ir).enumerate() {
-            let incoming = branch.args.get(idx).ok_or_else(|| {
-                LlvmError::Lowering("branch argument mismatch".into())
-            })?;
+            let incoming = branch
+                .args
+                .get(idx)
+                .ok_or_else(|| LlvmError::Lowering("branch argument mismatch".into()))?;
             let val = self.get_basic_value(*incoming)?;
             let phi = self
                 .block_arg_phis
@@ -705,30 +726,27 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
             return Ok(None);
         }
 
-        let lhs = self.ensure_int_value(self.get_basic_value(args[0])?)?;
-        let rhs = self.ensure_int_value(self.get_basic_value(args[1])?)?;
-        let cmp_lt = self.handle_builder_result(
-            self.builder
-                .build_int_compare(IntPredicate::ULT, lhs, rhs, "le_lt"),
-        )?;
-        let cmp_eq = self.handle_builder_result(
-            self.builder
-                .build_int_compare(IntPredicate::EQ, lhs, rhs, "le_eq"),
-        )?;
-        let cmp_or = self.handle_builder_result(
-            self.builder
-                .build_or(cmp_lt, cmp_eq, "le_or")
-                .as_int_value(),
-        )?;
+        let lhs_basic = self.get_basic_value(args[0])?;
+        let rhs_basic = self.get_basic_value(args[1])?;
+        let lhs = self.ensure_int_value(lhs_basic)?;
+        let rhs = self.ensure_int_value(rhs_basic)?;
+        let cmp_lt = self.handle_builder_result(self.builder.build_int_compare(
+            IntPredicate::ULT,
+            lhs,
+            rhs,
+            "le_lt",
+        ))?;
+        let cmp_eq = self.handle_builder_result(self.builder.build_int_compare(
+            IntPredicate::EQ,
+            lhs,
+            rhs,
+            "le_eq",
+        ))?;
+        let cmp_or = self.handle_builder_result(self.builder.build_or(cmp_lt, cmp_eq, "le_or"))?;
         Ok(Some(cmp_or.as_basic_value_enum()))
     }
 
-    fn lower_gep(
-        &mut self,
-        inst_value: Value,
-        base: Value,
-        indices: &[Value],
-    ) -> Result<()> {
+    fn lower_gep(&mut self, inst_value: Value, base: Value, indices: &[Value]) -> Result<()> {
         let base_basic = self.get_basic_value(base)?;
         let ptr = self.to_pointer_value(base_basic)?;
         let base_ty = base
@@ -952,9 +970,7 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
             }
             ConstantValue::Reference(target) => {
                 let global = self.get_or_create_global_constant(target)?;
-                Ok(global
-                    .as_pointer_value()
-                    .as_basic_value_enum())
+                Ok(global.as_pointer_value().as_basic_value_enum())
             }
             _ => Ok(basic_ty.const_zero()),
         }
@@ -970,9 +986,7 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
 
         let lowered = self.lower_constant_content(content)?;
         let const_ty = lowered.get_type().as_basic_type_enum();
-        let global = self
-            .llvm_module
-            .add_global(const_ty, None, "sway_const");
+        let global = self.llvm_module.add_global(const_ty, None, "sway_const");
         global.set_initializer(&lowered);
         global.set_constant(true);
         global.set_linkage(Linkage::Private);
