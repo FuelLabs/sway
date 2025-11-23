@@ -407,7 +407,10 @@ impl InstructionVerifier<'_, '_> {
             .ok_or(IrError::VerifyUnaryOpIncorrectArgType)?;
         match op {
             UnaryOpKind::Not => {
-                if !arg_ty.is_uint(self.context) && !arg_ty.is_b256(self.context) {
+                if !arg_ty.is_uint(self.context)
+                    && !arg_ty.is_bool(self.context)
+                    && !arg_ty.is_b256(self.context)
+                {
                     return Err(IrError::VerifyUnaryOpIncorrectArgType);
                 }
             }
