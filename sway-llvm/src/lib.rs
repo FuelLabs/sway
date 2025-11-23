@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use std::convert::TryInto;
 
 use inkwell::{
+    attributes::{Attribute, AttributeLoc},
     basic_block::BasicBlock,
     builder::{Builder, BuilderError},
     context::Context as LlvmContext,
@@ -158,9 +159,46 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
             LoweredType::Basic(ret) => ret.fn_type(arg_tys.as_slice(), false),
         };
 
-        Ok(self
+        let fn_val = self
             .llvm_module
-            .add_function(func.get_name(self.ir), fn_type, None))
+            .add_function(func.get_name(self.ir), fn_type, None);
+
+        if self.should_force_inline(func) {
+            let kind_id = Attribute::get_named_enum_kind_id("alwaysinline");
+            let attr = self.llvm.create_enum_attribute(kind_id, 0);
+            fn_val.add_attribute(AttributeLoc::Function, attr);
+        }
+
+        Ok(fn_val)
+    }
+
+    fn should_force_inline(&self, func: Function) -> bool {
+        // Heuristic: tiny helpers should be inlined.
+        let name = func.get_name(self.ir);
+        if name.starts_with("le_") {
+            return true;
+        }
+
+        let block_count = func.num_blocks(self.ir);
+        if block_count > 4 {
+            return false;
+        }
+
+        let mut inst_count = 0;
+        for block in func.block_iter(self.ir) {
+            for inst_value in block.instruction_iter(self.ir) {
+                inst_count += 1;
+                if inst_count > 32 {
+                    return false;
+                }
+                if let Some(inst) = inst_value.get_instruction(self.ir) {
+                    if matches!(inst.op, InstOp::AsmBlock(_, _)) {
+                        return false;
+                    }
+                }
+            }
+        }
+        inst_count > 0
     }
 
     fn map_function_arguments(
@@ -546,6 +584,11 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
                 Ok(())
             }
             InstOp::Call(target_fn, args) => {
+                if let Some(inline) = self.lower_builtin_le(*target_fn, args)? {
+                    self.value_map.insert(inst_value, inline);
+                    return Ok(());
+                }
+
                 let function = *self.func_map.get(target_fn).ok_or_else(|| {
                     LlvmError::Lowering("call target function not declared".into())
                 })?;
@@ -632,6 +675,52 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
         }
 
         Ok(())
+    }
+
+    fn lower_builtin_le(
+        &mut self,
+        target_fn: Function,
+        args: &[Value],
+    ) -> Result<Option<BasicValueEnum<'ctx>>> {
+        if args.len() != 2 {
+            return Ok(None);
+        }
+        let name = target_fn.get_name(self.ir);
+        if !name.starts_with("le_") {
+            return Ok(None);
+        }
+
+        let lhs_ty = args[0]
+            .get_type(self.ir)
+            .ok_or_else(|| LlvmError::Lowering("le argument missing type".into()))?;
+        let rhs_ty = args[1]
+            .get_type(self.ir)
+            .ok_or_else(|| LlvmError::Lowering("le argument missing type".into()))?;
+
+        let is_primitive_int = |ty: Type| match ty.get_content(self.ir) {
+            TypeContent::Uint(_) | TypeContent::Bool => true,
+            _ => false,
+        };
+        if !is_primitive_int(lhs_ty) || !is_primitive_int(rhs_ty) {
+            return Ok(None);
+        }
+
+        let lhs = self.ensure_int_value(self.get_basic_value(args[0])?)?;
+        let rhs = self.ensure_int_value(self.get_basic_value(args[1])?)?;
+        let cmp_lt = self.handle_builder_result(
+            self.builder
+                .build_int_compare(IntPredicate::ULT, lhs, rhs, "le_lt"),
+        )?;
+        let cmp_eq = self.handle_builder_result(
+            self.builder
+                .build_int_compare(IntPredicate::EQ, lhs, rhs, "le_eq"),
+        )?;
+        let cmp_or = self.handle_builder_result(
+            self.builder
+                .build_or(cmp_lt, cmp_eq, "le_or")
+                .as_int_value(),
+        )?;
+        Ok(Some(cmp_or.as_basic_value_enum()))
     }
 
     fn lower_gep(
