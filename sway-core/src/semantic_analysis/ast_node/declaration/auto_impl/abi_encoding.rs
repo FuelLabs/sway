@@ -296,16 +296,16 @@ where
         let enum_decl_id = decl.to_enum_id(&Handler::default(), engines).unwrap();
         let enum_decl = self.ctx.engines().de().get(&enum_decl_id);
 
-        let fields_types = enum_decl
+        let variant_types = enum_decl
             .variants
             .iter()
             .map(|x| Self::generate_type(engines, &x.type_argument))
             .collect::<BTreeSet<String>>();
         let mut is_encode_trivial =
             "__runtime_mem_id::<Self>() == __encoding_mem_id::<Self>()".to_string();
-        for field_type in fields_types {
+        for variant_type in variant_types {
             is_encode_trivial.push_str(" && ");
-            is_encode_trivial.push_str(&format!("is_encode_trivial::<{}>()", field_type));
+            is_encode_trivial.push_str(&format!("is_encode_trivial::<{}>()", variant_type));
         }
 
         let abi_encode_body = self.generate_abi_encode_enum_body(engines, &enum_decl);
