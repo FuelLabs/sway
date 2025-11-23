@@ -43,7 +43,7 @@ impl Constant {
 }
 
 /// A [`Type`] and constant value, including [`ConstantValue::Undef`] for uninitialized constants.
-#[derive(Debug, Clone, DebugWithContext, Hash)]
+#[derive(Debug, Clone, DebugWithContext, Hash, PartialEq, Eq)]
 pub struct ConstantContent {
     pub ty: Type,
     pub value: ConstantValue,
@@ -52,7 +52,7 @@ pub struct ConstantContent {
 pub type B256 = U256;
 
 /// A constant representation of each of the supported [`Type`]s.
-#[derive(Debug, Clone, DebugWithContext, Hash)]
+#[derive(Debug, Clone, DebugWithContext, Hash, PartialEq, Eq)]
 pub enum ConstantValue {
     Undef,
     Unit,

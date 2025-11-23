@@ -11,12 +11,12 @@ use inkwell::{
     basic_block::BasicBlock,
     builder::{Builder, BuilderError},
     context::Context as LlvmContext,
-    module::Module as LlvmModule,
-    targets::TargetTriple,
-    types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum},
+    module::{Linkage, Module as LlvmModule},
+    targets::{TargetData, TargetTriple},
+    types::{AsTypeRef, BasicMetadataTypeEnum, BasicType, BasicTypeEnum},
     values::{
-        BasicMetadataValueEnum, BasicValue, BasicValueEnum, FunctionValue, IntValue, PointerValue,
-        ValueKind,
+        ArrayValue, AsValueRef, BasicMetadataValueEnum, BasicValue, BasicValueEnum, FunctionValue,
+        GlobalValue, IntValue, PointerValue, ValueKind,
     },
     AddressSpace, IntPredicate,
 };
@@ -79,7 +79,9 @@ struct ModuleLowerer<'ctx, 'ir, 'eng> {
     block_map: HashMap<Block, BasicBlock<'ctx>>,
     local_allocas: HashMap<LocalVar, PointerValue<'ctx>>,
     block_arg_phis: HashMap<(Block, usize), inkwell::values::PhiValue<'ctx>>,
+    global_consts: HashMap<ConstantContent, GlobalValue<'ctx>>,
     current_block: Option<BasicBlock<'ctx>>,
+    target_data: TargetData,
 }
 
 impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
@@ -94,6 +96,18 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
             let target_triple = TargetTriple::create(triple);
             llvm_module.set_triple(&target_triple);
         }
+        let target_data = if let Some(layout) = &opts.data_layout {
+            let td = TargetData::create(layout);
+            llvm_module.set_data_layout(&td.get_data_layout());
+            td
+        } else {
+            let data_layout = llvm_module.get_data_layout();
+            let layout_str = data_layout
+                .as_str()
+                .to_str()
+                .map_err(|_| LlvmError::Lowering("invalid module data layout".into()))?;
+            TargetData::create(layout_str)
+        };
 
         Ok(Self {
             llvm,
@@ -109,6 +123,8 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
             local_allocas: HashMap::new(),
             block_arg_phis: HashMap::new(),
             current_block: None,
+            target_data,
+            global_consts: HashMap::new(),
         })
     }
 
@@ -213,9 +229,22 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
         let main_fn = self.llvm_module.add_function("main", main_type, None);
         let bb = self.llvm.append_basic_block(main_fn, "entry");
         self.builder.position_at_end(bb);
-        self.handle_builder_result(self.builder.build_call(entry_val, &[], "call_entry"))?;
+        let call_site = self
+            .handle_builder_result(self.builder.build_call(entry_val, &[], "call_entry"))?;
         let zero = main_ret.const_zero();
-        self.handle_builder_result(self.builder.build_return(Some(&zero)))?;
+        if let ValueKind::Basic(result) = call_site.try_as_basic_value() {
+            let int_val = self.ensure_int_value(result)?;
+            let truncated = self.handle_builder_result(self.builder.build_int_truncate(
+                int_val,
+                main_ret,
+                "main_ret",
+            ))?;
+            self.handle_builder_result(self.builder.build_return(Some(
+                &truncated.as_basic_value_enum(),
+            )))?;
+        } else {
+            self.handle_builder_result(self.builder.build_return(Some(&zero)))?;
+        }
         Ok(())
     }
 
@@ -247,13 +276,16 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
             .get(&block)
             .ok_or_else(|| LlvmError::Lowering("missing block mapping for phi creation".into()))?;
 
+        let pred_count = block.num_predecessors(self.ir);
+        if pred_count == 0 {
+            return Ok(());
+        }
+
         if let Some(first_inst) = bb.get_first_instruction() {
             self.builder.position_before(&first_inst);
         } else {
             self.builder.position_at_end(bb);
         }
-
-        let pred_count = block.num_predecessors(self.ir);
         for (idx, arg_val) in block.arg_iter(self.ir).enumerate() {
             let arg_ty = arg_val
                 .get_type(self.ir)
@@ -477,11 +509,12 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
                 Ok(())
             }
             InstOp::AsmBlock(asm_block, _) => {
-                if let LoweredType::Basic(basic) = self.lower_type(asm_block.return_type)? {
-                    let zero = basic.const_zero().as_basic_value_enum();
-                    self.value_map.insert(inst_value, zero);
+                if asm_block.return_type.is_unit(self.ir) {
+                    return Ok(());
                 }
-                Ok(())
+                Err(LlvmError::UnsupportedInstruction(
+                    "AsmBlock lowering not implemented for non-unit return types",
+                ))
             }
             InstOp::CastPtr(value, ty) => {
                 let basic_val = self.get_basic_value(*value)?;
@@ -562,9 +595,9 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
         if value.is_int_value() {
             Ok(value.into_int_value())
         } else if value.is_pointer_value() {
-            let ptr = value.into_pointer_value();
-            let int_ty = self.llvm.custom_width_int_type(64);
-            self.handle_builder_result(self.builder.build_ptr_to_int(ptr, int_ty, "ptrtoint"))
+        let ptr = value.into_pointer_value();
+        let int_ty = self.llvm.ptr_sized_int_type(&self.target_data, None);
+        self.handle_builder_result(self.builder.build_ptr_to_int(ptr, int_ty, "ptrtoint"))
         } else {
             Err(LlvmError::Lowering(
                 "value is not integer or pointer".into(),
@@ -784,18 +817,78 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
                     .const_int_arbitrary_precision(&words)
                     .as_basic_value_enum())
             }
-            ConstantValue::Array(_) => Ok(basic_ty.const_zero()),
-            ConstantValue::Struct(_) => Ok(basic_ty.const_zero()),
+            ConstantValue::Array(elems) => {
+                let array_ty = match basic_ty {
+                    BasicTypeEnum::ArrayType(arr) => arr,
+                    _ => {
+                        return Err(LlvmError::Lowering(
+                            "expected array type for ConstantValue::Array".into(),
+                        ))
+                    }
+                };
+
+                let element_vals = elems
+                    .iter()
+                    .map(|elem| self.lower_constant_content(elem))
+                    .collect::<Result<Vec<_>>>()?;
+
+                let element_refs: Vec<_> =
+                    element_vals.iter().map(|val| val.as_value_ref()).collect();
+                let array_val = unsafe {
+                    ArrayValue::new_raw_const_array(array_ty.as_type_ref(), &element_refs)
+                };
+                Ok(array_val.as_basic_value_enum())
+            }
+            ConstantValue::Struct(fields) => {
+                let struct_ty = match basic_ty {
+                    BasicTypeEnum::StructType(st) => st,
+                    _ => {
+                        return Err(LlvmError::Lowering(
+                            "expected struct type for ConstantValue::Struct".into(),
+                        ))
+                    }
+                };
+
+                let field_vals = fields
+                    .iter()
+                    .map(|field| self.lower_constant_content(field))
+                    .collect::<Result<Vec<_>>>()?;
+
+                Ok(struct_ty
+                    .const_named_struct(&field_vals)
+                    .as_basic_value_enum())
+            }
             ConstantValue::Slice(_) | ConstantValue::RawUntypedSlice(_) => {
                 Ok(basic_ty.const_zero())
             }
-            ConstantValue::Reference(_) => {
-                Err(LlvmError::UnsupportedType(
-                    "constant references are not supported yet".into(),
-                ))
+            ConstantValue::Reference(target) => {
+                let global = self.get_or_create_global_constant(target)?;
+                Ok(global
+                    .as_pointer_value()
+                    .as_basic_value_enum())
             }
             _ => Ok(basic_ty.const_zero()),
         }
+    }
+
+    fn get_or_create_global_constant(
+        &mut self,
+        content: &ConstantContent,
+    ) -> Result<GlobalValue<'ctx>> {
+        if let Some(gv) = self.global_consts.get(content) {
+            return Ok(*gv);
+        }
+
+        let lowered = self.lower_constant_content(content)?;
+        let const_ty = lowered.get_type().as_basic_type_enum();
+        let global = self
+            .llvm_module
+            .add_global(const_ty, None, "sway_const");
+        global.set_initializer(&lowered);
+        global.set_constant(true);
+        global.set_linkage(Linkage::Private);
+        self.global_consts.insert(content.clone(), global);
+        Ok(global)
     }
 }
 
