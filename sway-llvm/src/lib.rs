@@ -196,14 +196,17 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
     }
 
     fn create_main_shim(&mut self) -> Result<()> {
-        let entry_func = match self.find_entry_function() {
-            Some(func) => func,
-            None => return Ok(()),
+        let entry_val = if let Some(func_val) = self.llvm_module.get_function("__entry") {
+            func_val
+        } else {
+            let entry_func = match self.find_entry_function() {
+                Some(func) => func,
+                None => return Ok(()),
+            };
+            *self.func_map.get(&entry_func).ok_or_else(|| {
+                LlvmError::Lowering("missing LLVM function for entry point".into())
+            })?
         };
-
-        let entry_val = *self.func_map.get(&entry_func).ok_or_else(|| {
-            LlvmError::Lowering("missing LLVM function for entry point".into())
-        })?;
 
         let main_ret = self.llvm.i32_type();
         let main_type = main_ret.fn_type(&[], false);
@@ -217,10 +220,22 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
     }
 
     fn find_entry_function(&self) -> Option<Function> {
-        let mut iter = self.ir_module.function_iter(self.ir);
-        if let Some(func) = iter.find(|func| func.is_original_entry(self.ir)) {
+        if let Some(func) = self
+            .ir_module
+            .function_iter(self.ir)
+            .find(|func| func.get_name(self.ir) == "__entry")
+        {
             return Some(func);
         }
+
+        if let Some(func) = self
+            .ir_module
+            .function_iter(self.ir)
+            .find(|func| func.is_original_entry(self.ir))
+        {
+            return Some(func);
+        }
+
         self.ir_module
             .function_iter(self.ir)
             .find(|func| func.is_entry(self.ir))
