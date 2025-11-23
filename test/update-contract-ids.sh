@@ -72,7 +72,7 @@ $grep --include \*.sw -Hno "// AUTO-CONTRACT-ID" . -R | while read line ; do
         echo -e "${BOLD_WHITE}$PROJ${NC}"
 
         pushd "$FOLDER/.." >> /dev/null
-        CONTRACT_ID=$(/home/xunilrj/sway/target/release/forc contract-id --path $CONTRACT_ARGS 2> /dev/null | $grep -oP '0x[a-zA-Z0-9]{64}')
+        CONTRACT_ID=$(cargo r -p forc --release -- contract-id --path $CONTRACT_ARGS 2> /dev/null | $grep -oP '0x[a-zA-Z0-9]{64}')
 
         if [[ $CONTRACT_ID ]]; then 
             popd >> /dev/null
@@ -105,7 +105,7 @@ $grep --include \*.sw -Hno "// AUTO-CONTRACT-ID" . -R | while read line ; do
             fi
         else
             echo -e "    ${BOLD_RED}error${NC}"
-            /home/xunilrj/sway/target/release/forc contract-id --release
+            cargo r -p forc --release -- contract-id --release
             popd >> /dev/null
         fi
     fi
