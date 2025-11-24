@@ -1,5 +1,5 @@
 //
-// regex: VAR=v\d+
+// regex: VAR=v\d+v\d+
 // regex: LABEL=[[:alpha:]0-9_]+
 // regex: PING=(ping|id_from_ping)
 // regex: PONG=(pong|id_from_pong)

@@ -18,7 +18,7 @@ script {
     }
 }
 
-// regex: VAL=v\d+
+// regex: VAL=v\d+v\d+
 // regex: ID=[[:alpha:]0-9_]+
 
 // check: fn main($(ret_value=$ID): __ptr { u64, u64 }) -> __ptr { u64, u64 }

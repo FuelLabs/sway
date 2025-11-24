@@ -1,15 +1,15 @@
 ---
 source: test/src/snapshot/mod.rs
 ---
-> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_const_eval_string_slices_not_in_bytecode --ir initial | regex '        (v1 = call call|v0 = const|v1 = const|v2 = const|v3 = const|v2 = and|v4 = or|revert)'
-        v2 = const u64 0, !8
-        v3 = const u64 0, !9
-        v0 = const u64 1
-        v1 = call call_return_const_str_0_1(v0), !17
-        v2 = const u64 9259400833873739776
-        revert v2, !18
-        v1 = const u64 36028797018963967
-        v2 = and __backtrace, v1, !22
-        v3 = const u64 9223372036854775808
-        v4 = or v3, v2, !22
-        revert v4, !22
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_const_eval_string_slices_not_in_bytecode --ir initial | regex '        (v[0-9a-zA-Z_]+ = call call|v[0-9a-zA-Z_]+ = const|v[0-9a-zA-Z_]+ = and|v[0-9a-zA-Z_]+ = or|revert)'
+        v32v1 = const u64 0, !8
+        v33v1 = const u64 0, !9
+        v24v1 = const u64 1
+        v25v1 = call call_return_const_str_0_1(v24v1), !17
+        v26v1 = const u64 9259400833873739776
+        revert v26v1, !18
+        v19v1 = const u64 36028797018963967
+        v20v1 = and __backtrace, v19v1, !22
+        v18v1 = const u64 9223372036854775808
+        v21v1 = or v18v1, v20v1, !22
+        revert v21v1, !22
