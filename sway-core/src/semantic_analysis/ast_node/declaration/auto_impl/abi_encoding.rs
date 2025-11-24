@@ -9,7 +9,7 @@ use crate::{
     Engines, TypeInfo, TypeParameter,
 };
 use itertools::Itertools;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -226,8 +226,7 @@ where
         let fields_types = struct_decl
             .fields
             .iter()
-            .map(|x| Self::generate_type(engines, &x.type_argument))
-            .collect::<BTreeSet<String>>();
+            .map(|x| Self::generate_type(engines, &x.type_argument));
         let mut is_encode_trivial =
             "__runtime_mem_id::<Self>() == __encoding_mem_id::<Self>()".to_string();
         for field_type in fields_types {
@@ -252,8 +251,7 @@ where
         let fields_types = struct_decl
             .fields
             .iter()
-            .map(|x| Self::generate_type(engines, &x.type_argument))
-            .collect::<BTreeSet<String>>();
+            .map(|x| Self::generate_type(engines, &x.type_argument));
         let mut is_decode_trivial =
             "__runtime_mem_id::<Self>() == __encoding_mem_id::<Self>()".to_string();
         for field_type in fields_types {
@@ -299,8 +297,7 @@ where
         let variant_types = enum_decl
             .variants
             .iter()
-            .map(|x| Self::generate_type(engines, &x.type_argument))
-            .collect::<BTreeSet<String>>();
+            .map(|x| Self::generate_type(engines, &x.type_argument));
         let mut is_encode_trivial =
             "__runtime_mem_id::<Self>() == __encoding_mem_id::<Self>()".to_string();
         for variant_type in variant_types {
