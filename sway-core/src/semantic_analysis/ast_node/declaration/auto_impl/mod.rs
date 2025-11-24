@@ -319,13 +319,13 @@ where
     /// The safest way would be to return a canonical fully qualified type path.
     /// We do not have a way to do this at the moment, so the best way is to use
     /// exactly what was typed by the user, to accommodate aliased imports.
-    fn generate_type(engines: &Engines, ta: &GenericTypeArgument) -> Option<String> {
+    fn generate_type(engines: &Engines, ta: &GenericTypeArgument) -> String {
         match &*engines.te().get(ta.type_id) {
             // A special case for function return type.
             // When a function does not define a return type, the span points to the whole signature.
-            TypeInfo::Tuple(v) if v.is_empty() => Some("()".into()),
+            TypeInfo::Tuple(v) if v.is_empty() => "()".into(),
             // Otherwise, take the type from the span.
-            _ => Some(ta.span.as_str().to_string()),
+            _ => ta.span.as_str().to_string(),
         }
     }
 }
