@@ -20,7 +20,7 @@ use petgraph::{
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{hash_map, BTreeSet, HashMap, HashSet},
-    fmt,
+    env, fmt,
     fs::{self, File},
     hash::{Hash, Hasher},
     io::Write,
@@ -2368,11 +2368,43 @@ pub fn build_with_options(
                     &llvm_path,
                     &output_dir,
                     &pkg_manifest.project.name,
+                    &[],
+                    &[],
                 )?;
                 built_package.llvm_native_artifact = Some(native_artifact.clone());
                 println!(
                     "LLVM backend produced native executable at {}",
                     native_artifact.display()
+                );
+                let opt = env::var("LLVM_OPT").unwrap_or_else(|_| "opt".into());
+                let opt_ll_path = output_dir
+                    .join(format!("{}-opt", pkg_manifest.project.name))
+                    .with_extension("ll");
+                let opt_status = Command::new(&opt)
+                    .arg("-O3")
+                    .arg("-S")
+                    .arg(&llvm_path)
+                    .arg("-o")
+                    .arg(&opt_ll_path)
+                    .status()
+                    .with_context(|| format!("failed to execute {opt}"))?;
+                if !opt_status.success() {
+                    bail!(
+                        "{opt} failed with status {}",
+                        opt_status.code().unwrap_or(-1)
+                    );
+                }
+                let optimized_name = format!("{}-opt", pkg_manifest.project.name);
+                let optimized_native = emit_native_binary_from_llvm(
+                    &opt_ll_path,
+                    &output_dir,
+                    &optimized_name,
+                    &["-O3"],
+                    &["-O3"],
+                )?;
+                println!(
+                    "LLVM backend produced optimized native executable at {}",
+                    optimized_native.display()
                 );
             }
         } else {
@@ -2717,6 +2749,8 @@ fn emit_native_binary_from_llvm(
     llvm_path: &Path,
     output_dir: &Path,
     pkg_name: &str,
+    llc_extra_args: &[&str],
+    clang_extra_args: &[&str],
 ) -> Result<PathBuf> {
     let obj_path = output_dir.join(pkg_name).with_extension("o");
     let exe_suffix = std::env::consts::EXE_SUFFIX;
@@ -2730,11 +2764,13 @@ fn emit_native_binary_from_llvm(
     let llc = std::env::var("LLVM_LLC").unwrap_or_else(|_| "llc".into());
     let clang = std::env::var("LLVM_CLANG").unwrap_or_else(|_| "clang".into());
 
-    let llc_status = Command::new(&llc)
-        .arg("-filetype=obj")
-        .arg("-o")
-        .arg(&obj_path)
-        .arg(llvm_path)
+    let mut llc_cmd = Command::new(&llc);
+    llc_cmd.arg("-filetype=obj");
+    llc_cmd.args(llc_extra_args);
+    llc_cmd.arg("-o");
+    llc_cmd.arg(&obj_path);
+    llc_cmd.arg(llvm_path);
+    let llc_status = llc_cmd
         .status()
         .with_context(|| format!("failed to execute {llc}"))?;
     if !llc_status.success() {
@@ -2744,10 +2780,12 @@ fn emit_native_binary_from_llvm(
         ));
     }
 
-    let clang_status = Command::new(&clang)
-        .arg(&obj_path)
-        .arg("-o")
-        .arg(&exe_path)
+    let mut clang_cmd = Command::new(&clang);
+    clang_cmd.args(clang_extra_args);
+    clang_cmd.arg(&obj_path);
+    clang_cmd.arg("-o");
+    clang_cmd.arg(&exe_path);
+    let clang_status = clang_cmd
         .status()
         .with_context(|| format!("failed to execute {clang}"))?;
     if !clang_status.success() {

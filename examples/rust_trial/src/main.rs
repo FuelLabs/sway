@@ -13,7 +13,7 @@ fn is_prime(candidate: u64) -> bool {
 }
 
 fn main() {
-    let max = 50_000;
+    let max = 5000_000;
     let mut count = 0;
     for n in 2..=max {
         if is_prime(n) {
