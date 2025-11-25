@@ -17,7 +17,7 @@
 
 // regex: ID=[[:alpha:]0-9_]+
 // regex: LABEL=[[:alpha:]0-9_]+\(.*\):
-// regex: VAR=v\d+
+// regex: VAR=v\d+v\d+
 
 script {
     fn not(v: bool) -> bool {

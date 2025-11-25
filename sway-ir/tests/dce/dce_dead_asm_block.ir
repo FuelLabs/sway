@@ -40,7 +40,7 @@
 //     let f = asm(arg: function()) { arg };
 // }
 
-// regex: VAL=v\d+
+// regex: VAL=v\d+v\d+
 
 script {
     entry fn main() -> () {

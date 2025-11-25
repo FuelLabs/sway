@@ -1,3 +1,5 @@
+// regex: VAR=v\d+v\d+
+
 contract {
     // check: storage_key storage.a = 0xeb7ceb95f655d60faa3ae0cd0de1ff1af784e38a3b25a88f2be480f15478907f
     storage_key storage.a = 0xeb7ceb95f655d60faa3ae0cd0de1ff1af784e38a3b25a88f2be480f15478907f
@@ -23,31 +25,31 @@ contract {
 
         entry():
 
-        // check: v0 = get_storage_key __ptr { b256, u64, b256 }, storage.a
+        // check: $VAR = get_storage_key __ptr { b256, u64, b256 }, storage.a
         v0 = get_storage_key __ptr { b256, u64, b256 }, storage.a
         v1 = get_local __ptr { b256, u64, b256 }, __tmp_arg
         mem_copy_val v1, v0
         v2 = call poke_0(v1)
 
-        // check: v3 = get_storage_key __ptr { b256, u64, b256 }, storage.a.b
+        // check: $VAR = get_storage_key __ptr { b256, u64, b256 }, storage.a.b
         v3 = get_storage_key __ptr { b256, u64, b256 }, storage.a.b
         v4 = get_local __ptr { b256, u64, b256 }, __tmp_arg0
         mem_copy_val v4, v3
         v5 = call poke_0(v4)
 
-        // check: v6 = get_storage_key __ptr { b256, u64, b256 }, storage::n1.a
+        // check: $VAR = get_storage_key __ptr { b256, u64, b256 }, storage::n1.a
         v6 = get_storage_key __ptr { b256, u64, b256 }, storage::n1.a
         v7 = get_local __ptr { b256, u64, b256 }, __tmp_arg1
         mem_copy_val v7, v6
         v8 = call poke_0(v7)
 
-        // check: v9 = get_storage_key __ptr { b256, u64, b256 }, storage::n1::n2.a
+        // check: $VAR = get_storage_key __ptr { b256, u64, b256 }, storage::n1::n2.a
         v9 = get_storage_key __ptr { b256, u64, b256 }, storage::n1::n2.a
         v10 = get_local __ptr { b256, u64, b256 }, __tmp_arg2
         mem_copy_val v10, v9
         v11 = call poke_0(v10)
 
-        // check: v12 = get_storage_key __ptr { b256, u64, b256 }, storage::n1::n2.a.b.c
+        // check: $VAR = get_storage_key __ptr { b256, u64, b256 }, storage::n1::n2.a.b.c
         v12 = get_storage_key __ptr { b256, u64, b256 }, storage::n1::n2.a.b.c
         v13 = get_local __ptr { b256, u64, b256 }, __tmp_arg3
         mem_copy_val v13, v12
