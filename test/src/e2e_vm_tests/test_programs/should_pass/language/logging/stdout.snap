@@ -45,7 +45,7 @@ script {
         v193v1 = const u64 0, !19
         v194v1 = call local_log_1(v193v1), !22
         v202v1 = const u64 0, !24
-        v3356v1 = alloc v202v1 x u64, !33
+        v3356v1 = alloc u64 x v202v1, !33
         v3358v1 = get_local __ptr { ptr, u64 }, __anon_000, !35
         v206v1 = const u64 0
         v3359v1 = get_elem_ptr v3358v1, __ptr ptr, v206v1, !36
@@ -357,7 +357,7 @@ script {
         cbr v1719v1, grow_11_realloc_13_block0(), grow_11_realloc_13_block5(v1705v1), !138
 
         grow_11_realloc_13_block0():
-        v1727v1 = alloc v1671v1 x u64, !141
+        v1727v1 = alloc u64 x v1671v1, !141
         v312v1 = const u64 0, !142
         v1735v1 = cmp gt v1708v1 v312v1, !145
         cbr v1735v1, grow_11_realloc_13_block1(), grow_11_realloc_13_block5(v1727v1), !146
