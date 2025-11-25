@@ -413,7 +413,7 @@ mod ir_builder {
                 }
 
             rule op_alloc() -> IrAstOperation
-                = "alloc" _ count:id() "x" _ ty:ast_ty()  {
+                = "alloc" _ ty:ast_ty() "x" _ count:id() {
                     IrAstOperation::Alloc(ty, count)
                 }
 

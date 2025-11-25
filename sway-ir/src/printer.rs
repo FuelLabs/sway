@@ -600,8 +600,8 @@ fn instruction_to_doc<'a>(
                     Doc::text(format!(
                         "{} = alloc {} x {}",
                         namer.name(context, ins_value),
-                        namer.name(context, count),
                         ty.as_string(context),
+                        namer.name(context, count),
                     ))
                     .append(md_namer.md_idx_to_doc(context, metadata)),
                 )),

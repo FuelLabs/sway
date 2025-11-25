@@ -921,8 +921,12 @@ impl InstructionVerifier<'_, '_> {
             .map(|_| ())
     }
 
-    fn verify_alloc(&self, _ty: &Type, _count: &Value) -> Result<(), IrError> {
-        Ok(())
+    fn verify_alloc(&self, _ty: &Type, count: &Value) -> Result<(), IrError> {
+        if matches!(count.get_type(self.context), Some(ty) if ty.is_uint64(self.context)) {
+            Ok(())
+        } else {
+            Err(IrError::VerifyAllocCountNotUint64)
+        }
     }
 
     fn verify_log(
