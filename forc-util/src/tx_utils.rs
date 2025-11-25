@@ -105,16 +105,21 @@ pub fn decode_fuel_vm_log_data(
 }
 
 /// Build [`RevertInfo`] from VM receipts and an optional program ABI.
-/// This extracts the latest revert code from receipts and decodes panic
-/// metadata (message/value/backtrace) using the ABI metadata if available.
+/// This extracts the latest revert code from receipts (or a provided hint) and
+/// decodes panic metadata (message/value/backtrace) using the ABI metadata if available.
 pub fn revert_info_from_receipts(
     receipts: &[fuel_tx::Receipt],
     program_abi: Option<&fuel_abi_types::abi::program::ProgramABI>,
+    revert_code_hint: Option<u64>,
 ) -> Option<RevertInfo> {
-    let revert_code = receipts.iter().rev().find_map(|receipt| match receipt {
-        fuel_tx::Receipt::Revert { ra, .. } => Some(*ra),
-        _ => None,
-    })?;
+    let revert_code = receipts
+        .iter()
+        .rev()
+        .find_map(|receipt| match receipt {
+            fuel_tx::Receipt::Revert { ra, .. } => Some(*ra),
+            _ => None,
+        })
+        .or(revert_code_hint)?;
 
     let decode_last_log_data =
         |log_id: &str, program_abi: &fuel_abi_types::abi::program::ProgramABI| {

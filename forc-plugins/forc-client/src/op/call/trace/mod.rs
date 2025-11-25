@@ -342,7 +342,8 @@ fn decode_revert_info(
     revert_code: u64,
 ) -> Option<RevertInfoSummary> {
     let program_abi = abis.get(&contract_id).map(|abi| &abi.program);
-    let info = forc_util::tx_utils::revert_info_from_receipts(receipts, program_abi)?;
+    let info =
+        forc_util::tx_utils::revert_info_from_receipts(receipts, program_abi, Some(revert_code))?;
     if info.revert_code != revert_code {
         return None;
     }

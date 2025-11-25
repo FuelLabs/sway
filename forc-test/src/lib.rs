@@ -576,8 +576,12 @@ impl TestResult {
         logs: &[fuel_tx::Receipt],
     ) -> Option<RevertInfo> {
         if let vm::state::ProgramState::Revert(revert_code) = self.state {
-            return forc_util::tx_utils::revert_info_from_receipts(logs, program_abi)
-                .filter(|info| info.revert_code == revert_code);
+            return forc_util::tx_utils::revert_info_from_receipts(
+                logs,
+                program_abi,
+                Some(revert_code),
+            )
+            .filter(|info| info.revert_code == revert_code);
         }
         None
     }
