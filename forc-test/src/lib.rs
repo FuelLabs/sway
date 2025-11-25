@@ -8,8 +8,6 @@ use crate::setup::{
 };
 use ecal::EcalSyscallHandler;
 use forc_pkg::{self as pkg, BuildOpts, DumpOpts};
-use forc_util::tx_utils::decode_fuel_vm_log_data;
-use fuel_abi_types::abi::program::ProgramABI;
 use fuel_abi_types::revert_info::RevertInfo;
 use fuel_tx::{self as tx, GasCostsValues};
 use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
@@ -571,36 +569,17 @@ impl TestResult {
         }
     }
 
-    /// Return the revert code for this [TestResult] if the test is reverted.
-    pub fn revert_code(&self) -> Option<u64> {
-        match self.state {
-            vm::state::ProgramState::Revert(revert_code) => Some(revert_code),
-            _ => None,
-        }
-    }
-
+    /// Return the revert info for this [TestResult] if the test is reverted.
     pub fn revert_info(
         &self,
-        program_abi: Option<&ProgramABI>,
+        program_abi: Option<&fuel_abi_types::abi::program::ProgramABI>,
         logs: &[fuel_tx::Receipt],
     ) -> Option<RevertInfo> {
-        let decode_last_log_data = |log_id: &str, program_abi: &ProgramABI| {
-            logs.last()
-                .and_then(|log| {
-                    if let fuel_tx::Receipt::LogData {
-                        data: Some(data), ..
-                    } = log
-                    {
-                        decode_fuel_vm_log_data(log_id, data, program_abi).ok()
-                    } else {
-                        None
-                    }
-                })
-                .map(|decoded_log| decoded_log.value)
-        };
-
-        self.revert_code()
-            .map(|revert_code| RevertInfo::new(revert_code, program_abi, decode_last_log_data))
+        if let vm::state::ProgramState::Revert(revert_code) = self.state {
+            return forc_util::tx_utils::revert_info_from_receipts(logs, program_abi)
+                .filter(|info| info.revert_code == revert_code);
+        }
+        None
     }
 
     /// Return [TestDetails] from the span of the function declaring this test.

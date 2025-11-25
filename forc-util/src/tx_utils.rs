@@ -1,5 +1,6 @@
 use anyhow::Result;
 use clap::Args;
+use fuel_abi_types::revert_info::RevertInfo;
 use fuels_core::{codec::ABIDecoder, types::param_types::ParamType};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -101,4 +102,35 @@ pub fn decode_fuel_vm_log_data(
     let decoded_log = DecodedLog { value: decoded_str };
 
     Ok(decoded_log)
+}
+
+/// Build [`RevertInfo`] from VM receipts and an optional program ABI.
+/// This extracts the latest revert code from receipts and decodes panic
+/// metadata (message/value/backtrace) using the ABI metadata if available.
+pub fn revert_info_from_receipts(
+    receipts: &[fuel_tx::Receipt],
+    program_abi: Option<&fuel_abi_types::abi::program::ProgramABI>,
+) -> Option<RevertInfo> {
+    let revert_code = receipts.iter().rev().find_map(|receipt| match receipt {
+        fuel_tx::Receipt::Revert { ra, .. } => Some(*ra),
+        _ => None,
+    })?;
+
+    let decode_last_log_data =
+        |log_id: &str, program_abi: &fuel_abi_types::abi::program::ProgramABI| {
+            receipts.iter().rev().find_map(|receipt| match receipt {
+                fuel_tx::Receipt::LogData {
+                    data: Some(data), ..
+                } => decode_fuel_vm_log_data(log_id, data, program_abi)
+                    .ok()
+                    .map(|decoded| decoded.value),
+                _ => None,
+            })
+        };
+
+    Some(RevertInfo::new(
+        revert_code,
+        program_abi,
+        decode_last_log_data,
+    ))
 }
