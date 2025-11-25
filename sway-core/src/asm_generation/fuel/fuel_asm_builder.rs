@@ -1494,7 +1494,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 ty_size * statically_known_count,
                 size_reg.clone(),
                 None,
-                "get size of allocation element type",
+                "get total allocation size in bytes",
                 owning_span.clone(),
             );
         } else {
