@@ -1484,4 +1484,68 @@ impl TypeId {
     pub fn get_type_str(&self, engines: &Engines) -> String {
         engines.te().get(*self).get_type_str(engines)
     }
+
+    pub fn has_const_generics(&self, engines: &Engines) -> bool {
+        let types = self.extract_any_including_self(engines, &|_| true, vec![], 0);
+
+        for (t, _) in types {
+            let t = engines.te().get(t);
+            match &*t {
+                TypeInfo::StringArray(length) => match length.expr() {
+                    ConstGenericExpr::Literal { .. } => {}
+                    ConstGenericExpr::AmbiguousVariableExpression { .. } => return true,
+                },
+                TypeInfo::Enum(decl_id) => {
+                    let decl = engines.de().get(decl_id);
+                    let any_const_generics = decl
+                        .generic_parameters
+                        .iter()
+                        .any(|x| x.as_const_parameter().is_some());
+                    if any_const_generics {
+                        return true;
+                    }
+                }
+                TypeInfo::Struct(decl_id) => {
+                    let decl = engines.de().get(decl_id);
+                    let any_const_generics = decl
+                        .generic_parameters
+                        .iter()
+                        .any(|x| x.as_const_parameter().is_some());
+                    if any_const_generics {
+                        return true;
+                    }
+
+                    for field in decl.fields.iter() {
+                        let any_const_generics =
+                            field.type_argument.type_id.has_const_generics(engines);
+                        if any_const_generics {
+                            return true;
+                        }
+                    }
+                }
+                TypeInfo::Tuple(items) => {
+                    for item in items {
+                        let any_const_generics = item.type_id.has_const_generics(engines);
+                        if any_const_generics {
+                            return true;
+                        }
+                    }
+                }
+                TypeInfo::Array(item, length) => {
+                    let any_const_generics = item.type_id.has_const_generics(engines);
+                    if any_const_generics {
+                        return true;
+                    }
+
+                    match length.expr() {
+                        ConstGenericExpr::Literal { .. } => {}
+                        ConstGenericExpr::AmbiguousVariableExpression { .. } => return true,
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        false
+    }
 }
