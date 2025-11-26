@@ -46,6 +46,9 @@ pub enum Intrinsic {
     ElemAt, // let elem: &T = __elem_at::<T: array or ref_to_slice>(item: T, index)
     Transmute, // let dst: B = __transmute::<A, B>(src)
     Dbg,   // __dbg(value)
+    Alloc, // __alloc<T>(size: u64) -> raw_ptr
+    RuntimeMemoryId, // __runtime_mem_id::<T>() -> u64
+    EncodingMemoryId, // __encoding_mem_id::<T>() -> u64
 }
 
 impl fmt::Display for Intrinsic {
@@ -94,6 +97,9 @@ impl fmt::Display for Intrinsic {
             Intrinsic::ElemAt => "elem_at",
             Intrinsic::Transmute => "transmute",
             Intrinsic::Dbg => "dbg",
+            Intrinsic::Alloc => "alloc",
+            Intrinsic::RuntimeMemoryId => "runtime_mem_id",
+            Intrinsic::EncodingMemoryId => "encoding_mem_id",
         };
         write!(f, "{s}")
     }
@@ -146,6 +152,9 @@ impl Intrinsic {
             "__elem_at" => ElemAt,
             "__transmute" => Transmute,
             "__dbg" => Dbg,
+            "__alloc" => Alloc,
+            "__runtime_mem_id" => RuntimeMemoryId,
+            "__encoding_mem_id" => EncodingMemoryId,
             _ => return None,
         })
     }

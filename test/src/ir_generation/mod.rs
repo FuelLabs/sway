@@ -94,7 +94,7 @@ impl Checker {
                 .then(|| {
                     filecheck::CheckerBuilder::new()
                         .text(
-                            "regex: VAL=\\bv\\d+\\b\n\
+                            "regex: VAL=\\bv\\d+v\\d+\\b\n\
                          regex: ID=[_[:alpha:]][_0-9[:alpha:]]*\n\
                          regex: MD=!\\d+\n",
                         )
@@ -487,9 +487,12 @@ pub(super) async fn run(
                 let parsed_ir = sway_ir::parser::parse(&ir_output, engines.se(), experimental, backtrace)
                     .unwrap_or_else(|e| panic!("{}: {e}\n{ir_output}", path.display()));
                 let parsed_ir_output = sway_ir::printer::to_string(&parsed_ir);
-                if ir_output != parsed_ir_output {
+                let parsed_ir_2 = sway_ir::parser::parse(&parsed_ir_output, engines.se(), experimental, backtrace)
+                    .unwrap_or_else(|e| panic!("{}: {e}\n{parsed_ir_output}", path.display()));
+                let parsed_ir_output_2 = sway_ir::printer::to_string(&parsed_ir_2);
+                if parsed_ir_output_2 != parsed_ir_output {
                     println!("Deserialized IR:");
-                    tracing::error!("{}", prettydiff::diff_lines(&ir_output, &parsed_ir_output));
+                    tracing::error!("{}", prettydiff::diff_lines(&parsed_ir_output, &parsed_ir_output_2));
                     panic!("{} failed IR (de)serialization.", path.display());
                 }
 

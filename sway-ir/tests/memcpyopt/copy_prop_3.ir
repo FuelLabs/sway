@@ -15,11 +15,11 @@ script {
     }
 }
 
-// regex: VAL=v\d+
+// regex: VAL=v\d+v\d+
 
 // check: mem_copy_val $VAL, $VAL
 // The optimization should introduce a GEP into __anon_0
-// check: $(idx=$VAL) = add $VAL, $VAL
+// check: $(idx=$VAL) = add v101, $VAL
 // check: $(local=$VAL) = get_local __ptr [u64; 8], __anon_0
 // check: $(gep=$VAL) = get_elem_ptr $local, __ptr u64, $idx
 // check: $VAL = load $gep

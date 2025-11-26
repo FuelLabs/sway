@@ -1,3 +1,5 @@
+// regex: ID=[[:alpha:]_0-9]+
+
 script {
     fn main() -> bool {
         entry():
@@ -5,7 +7,7 @@ script {
         v1 = const u256 0x0000000000000000000000000000000000000000000000000000000000000001
 
         v10 = cmp eq v0 v0
-//check: v0 = const bool true
+//check: $ID = const bool true
         ret bool v10
     }
 }

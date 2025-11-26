@@ -113,8 +113,168 @@ impl ty::TyIntrinsicFunctionKind {
             Intrinsic::Dbg => {
                 unreachable!("__dbg should not exist in the typed tree")
             }
+            Intrinsic::RuntimeMemoryId => {
+                type_check_runtime_memory_id(arguments, handler, kind, type_arguments, span, ctx)
+            }
+            Intrinsic::EncodingMemoryId => {
+                type_check_encoding_memory_id(arguments, handler, kind, type_arguments, span, ctx)
+            }
+            Intrinsic::Alloc => {
+                type_check_alloc(handler, ctx, kind, arguments, type_arguments, span)
+            }
         }
     }
+}
+
+fn type_check_encoding_memory_id(
+    arguments: &[Expression],
+    handler: &Handler,
+    kind: Intrinsic,
+    type_arguments: &[GenericArgument],
+    span: Span,
+    ctx: TypeCheckContext,
+) -> Result<(TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
+    if !arguments.is_empty() {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+            name: kind.to_string(),
+            expected: 0,
+            span,
+        }));
+    }
+
+    if type_arguments.len() != 1 {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
+            name: kind.to_string(),
+            expected: 1,
+            span,
+        }));
+    }
+
+    let targ = &type_arguments[0];
+    let arg = ctx
+        .resolve_type(
+            handler,
+            targ.type_id(),
+            &targ.span(),
+            EnforceTypeArguments::Yes,
+            None,
+        )
+        .unwrap_or_else(|err| ctx.engines.te().id_of_error_recovery(err));
+    let mut final_type_arguments = type_arguments.to_vec();
+    *final_type_arguments[0].type_id_mut() = arg;
+
+    let intrinsic_function = ty::TyIntrinsicFunctionKind {
+        kind,
+        arguments: vec![],
+        type_arguments: final_type_arguments,
+        span: span.clone(),
+    };
+    Ok((intrinsic_function, ctx.engines.te().id_of_u64()))
+}
+
+fn type_check_runtime_memory_id(
+    arguments: &[Expression],
+    handler: &Handler,
+    kind: Intrinsic,
+    type_arguments: &[GenericArgument],
+    span: Span,
+    ctx: TypeCheckContext,
+) -> Result<(TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
+    if !arguments.is_empty() {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+            name: kind.to_string(),
+            expected: 0,
+            span,
+        }));
+    }
+
+    if type_arguments.len() != 1 {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
+            name: kind.to_string(),
+            expected: 1,
+            span,
+        }));
+    }
+
+    let targ = &type_arguments[0];
+    let arg = ctx
+        .resolve_type(
+            handler,
+            targ.type_id(),
+            &targ.span(),
+            EnforceTypeArguments::Yes,
+            None,
+        )
+        .unwrap_or_else(|err| ctx.engines.te().id_of_error_recovery(err));
+    let mut final_type_arguments = type_arguments.to_vec();
+    *final_type_arguments[0].type_id_mut() = arg;
+
+    let intrinsic_function = ty::TyIntrinsicFunctionKind {
+        kind,
+        arguments: vec![],
+        type_arguments: final_type_arguments,
+        span: span.clone(),
+    };
+    Ok((intrinsic_function, ctx.engines.te().id_of_u64()))
+}
+
+fn type_check_alloc(
+    handler: &Handler,
+    mut ctx: TypeCheckContext,
+    kind: Intrinsic,
+    arguments: &[Expression],
+    type_arguments: &[GenericArgument],
+    span: Span,
+) -> Result<(TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
+    if arguments.len() != 1 {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+            name: kind.to_string(),
+            expected: 1,
+            span,
+        }));
+    }
+
+    let engines = ctx.engines();
+
+    // Type argument needs to be explicitly defined
+    if type_arguments.len() != 1 {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
+            name: kind.to_string(),
+            expected: 1,
+            span,
+        }));
+    }
+
+    let alloc_type = ctx
+        .resolve_type(
+            handler,
+            type_arguments[0].type_id(),
+            &type_arguments[0].span(),
+            EnforceTypeArguments::Yes,
+            None,
+        )
+        .unwrap_or_else(|err| engines.te().id_of_error_recovery(err));
+
+    // type check first argument, ensure that it is u64
+    let first_argument_typed_expr = {
+        let ctx = ctx
+            .by_ref()
+            .with_help_text("")
+            .with_type_annotation(engines.te().id_of_u64());
+        ty::TyExpression::type_check(handler, ctx, &arguments[0])?
+    };
+
+    let mut final_type_arguments = type_arguments.to_vec();
+    *final_type_arguments[0].type_id_mut() = alloc_type;
+    Ok((
+        TyIntrinsicFunctionKind {
+            kind,
+            arguments: vec![first_argument_typed_expr],
+            type_arguments: final_type_arguments,
+            span,
+        },
+        engines.te().id_of_raw_ptr(),
+    ))
 }
 
 fn type_check_transmute(

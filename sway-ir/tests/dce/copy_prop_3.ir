@@ -17,6 +17,6 @@ script {
     }
 }
 
-// regex: VAL=v\d+
+// regex: VAL=v\d+v\d+
 
 // not: mem_copy_val $VAL, $VAL

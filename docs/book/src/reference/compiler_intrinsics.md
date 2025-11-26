@@ -408,3 +408,40 @@ on real nodes and it only increases gas usage.
 **Constraints:**
 
 - `T` must implement Debug
+
+---
+
+```sway
+__transmute<A, B>(src: A) -> B
+```
+
+**Description:** Reinterprets the bits of a value of one type as another type.
+
+**Constraints:** A and B must have the exactly same size.
+
+---
+
+```sway
+__runtime_mem_id<T>() -> u64
+__encoding_mem_id<T>() -> u64
+```
+
+**Description:** Returns an opaque number that identifies the memory representation of a type. No information is conveyed by this number and should only be compared for equality.
+
+This number is not guaranteed to be stable on different compiler versions.
+
+`__runtime_mem_id` represents how the type is represented inside the VM.
+
+`__encoding_mem_id` represents how the type is encoded. It returns 0 when a type does not have encoding representation.
+
+**Constraints:** None
+
+---
+
+```sway
+__alloc<T>(count: u64) -> raw_ptr
+```
+
+**Description:** Allocate `count` contiguous elements of `T` on the heap and return a pointer to the newly allocated memory.
+
+**Constraints** None

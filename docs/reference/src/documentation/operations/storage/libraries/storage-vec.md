@@ -30,7 +30,7 @@ In this example we look at how we can retrieve a single value `balance` and how 
 
 Writing to storage is similar to [reading](#reading-from-storage). The difference is that we use a different method `.push(value)` and we use the `read` keyword because the implementation reads the length of the vector to determine where to store the value.
 
-In this example we insert a [tuple](../../../language/built-ins/tuples.md) containing an the [`Identity`](../../namespace/identity.md) of the caller and some `id` into the vector.
+In this example we insert a [tuple](../../../language/built-ins/tuples.md) containing the [`Identity`](../../namespace/identity.md) of the caller and some `id` into the vector.
 
 ```sway
 {{#include ../../../../code/operations/storage/storage_vec/src/main.sw:writing_to_storage}}

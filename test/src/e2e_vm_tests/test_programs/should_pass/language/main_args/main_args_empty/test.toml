@@ -1,8 +1,7 @@
 category = "run"
 
-# (1336, 1)
-script_data = "0000000000000538 0000000000000001"
-expected_result = { action = "return", value = 1337 }
+script_data = ""
+expected_result = { action = "return", value = 0 }
 
 validate_abi = true
 

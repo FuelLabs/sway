@@ -10,14 +10,14 @@ script {
     }
 }
 
-// regex: ID=[[:alpha:]0-9_]+
+// regex: VAL=v\d+v\d+
 
-// check: v0 = get_local __ptr u256, __wide_lhs
-// check: v1 = const u256 0x0000000000000000000000000000000000000000000000000000000000000001
-// check: store v1 to v0
-// check: v2 = get_local __ptr u256, __wide_rhs
-// check: v3 = const u256 0x0000000000000000000000000000000000000000000000000000000000000002
-// check: store v3 to v2
-// check: v4 = get_local __ptr u256, __wide_result
-// check: wide add v0, v2 to v4
-// check: v5 = load v4
+// check: $(v0=$VAL) = get_local __ptr u256, __wide_lhs
+// check: $(v1=$VAL) = const u256 0x0000000000000000000000000000000000000000000000000000000000000001
+// check: store $v1 to $v0
+// check: $(v2=$VAL) = get_local __ptr u256, __wide_rhs
+// check: $(v3=$VAL) = const u256 0x0000000000000000000000000000000000000000000000000000000000000002
+// check: store $v3 to $v2
+// check: $(v4=$VAL) = get_local __ptr u256, __wide_result
+// check: wide add $v0, $v2 to $v4
+// check: $(v5=$VAL) = load $v4
