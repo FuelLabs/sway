@@ -20,6 +20,7 @@ use fuel_vm::prelude::*;
 use git2::Repository;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use regex::Regex;
+use revm::context::result::{ExecutionResult as RevmExecutionResult, SuccessReason};
 use std::borrow::Cow;
 use std::collections::{BTreeMap, HashSet};
 use std::fs::File;
@@ -584,14 +585,13 @@ impl TestContext {
                         }
                     }
                     harness::VMExecutionResult::Evm(state) => match state {
-                        revm::primitives::ExecutionResult::Success { reason, .. } => match reason {
-                            revm::primitives::SuccessReason::Stop => TestResult::Result(0),
-                            revm::primitives::SuccessReason::Return => todo!(),
-                            revm::primitives::SuccessReason::SelfDestruct => todo!(),
-                            revm::primitives::SuccessReason::EofReturnContract => todo!(),
+                        RevmExecutionResult::Success { reason, .. } => match reason {
+                            SuccessReason::Stop => TestResult::Result(0),
+                            SuccessReason::Return => todo!(),
+                            SuccessReason::SelfDestruct => todo!(),
                         },
-                        revm::primitives::ExecutionResult::Revert { .. } => TestResult::Result(0),
-                        revm::primitives::ExecutionResult::Halt { reason, .. } => {
+                        RevmExecutionResult::Revert { .. } => TestResult::Result(0),
+                        RevmExecutionResult::Halt { reason, .. } => {
                             panic!("EVM exited with unhandled reason: {reason:?}");
                         }
                     },
