@@ -595,6 +595,16 @@ fn instruction_to_doc<'a>(
                     ))
                     .append(md_namer.md_idx_to_doc(context, metadata)),
                 )),
+            InstOp::Alloc { ty, count } => maybe_constant_to_doc(context, md_namer, namer, count)
+                .append(Doc::line(
+                    Doc::text(format!(
+                        "{} = alloc {} x {}",
+                        namer.name(context, ins_value),
+                        ty.as_string(context),
+                        namer.name(context, count),
+                    ))
+                    .append(md_namer.md_idx_to_doc(context, metadata)),
+                )),
             InstOp::UnaryOp { op, arg } => {
                 let op_str = match op {
                     UnaryOpKind::Not => "not",

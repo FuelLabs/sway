@@ -453,6 +453,7 @@ fn compute_escaped_symbols(context: &Context, function: &Function) -> EscapedSym
             InstOp::Store { stored_val, .. } => {
                 add_from_val(&mut result, stored_val, &mut is_complete)
             }
+            InstOp::Alloc { .. } => (),
         }
     }
 
@@ -519,6 +520,7 @@ pub fn get_loaded_ptr_values(context: &Context, inst: Value) -> Vec<Value> {
             ..
         }) => vec![*memopd1, *memopd2],
         InstOp::Store { dst_val_ptr: _, .. } => vec![],
+        InstOp::Alloc { .. } => vec![],
         InstOp::FuelVm(FuelVmInstruction::Gtf { .. })
         | InstOp::FuelVm(FuelVmInstruction::ReadRegister(_))
         | InstOp::FuelVm(FuelVmInstruction::Revert(_) | FuelVmInstruction::JmpMem) => vec![],
@@ -578,6 +580,7 @@ pub fn get_stored_ptr_values(context: &Context, inst: Value) -> Vec<Value> {
         | InstOp::MemClearVal { dst_val_ptr }
         | InstOp::Store { dst_val_ptr, .. } => vec![*dst_val_ptr],
         InstOp::Load(_) => vec![],
+        InstOp::Alloc { .. } => vec![],
         InstOp::FuelVm(vmop) => match vmop {
             FuelVmInstruction::Gtf { .. }
             | FuelVmInstruction::Log { .. }

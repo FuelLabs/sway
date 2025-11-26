@@ -356,6 +356,7 @@ impl InstructionVerifier<'_, '_> {
                 InstOp::GetStorageKey(storage_key) => self.verify_get_storage_key(storage_key)?,
                 InstOp::IntToPtr(value, ty) => self.verify_int_to_ptr(value, ty)?,
                 InstOp::Load(ptr) => self.verify_load(ptr)?,
+                InstOp::Alloc { ty, count } => self.verify_alloc(ty, count)?,
                 InstOp::MemCopyBytes {
                     dst_val_ptr,
                     src_val_ptr,
@@ -918,6 +919,14 @@ impl InstructionVerifier<'_, '_> {
         // Just confirm `src_val` is a pointer.
         self.get_ptr_type(src_val, IrError::VerifyLoadFromNonPointer)
             .map(|_| ())
+    }
+
+    fn verify_alloc(&self, _ty: &Type, count: &Value) -> Result<(), IrError> {
+        if matches!(count.get_type(self.context), Some(ty) if ty.is_uint64(self.context)) {
+            Ok(())
+        } else {
+            Err(IrError::VerifyAllocCountNotUint64)
+        }
     }
 
     fn verify_log(
