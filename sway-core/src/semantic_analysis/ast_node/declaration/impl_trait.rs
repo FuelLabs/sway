@@ -836,11 +836,14 @@ fn type_check_trait_implementation(
         })?;
 
     for (type_arg, type_param) in trait_type_arguments.iter().zip(trait_type_parameters) {
+        let TypeParameter::Type(type_param) = type_param else {
+            continue;
+        };
         type_arg.type_id().check_type_parameter_bounds(
             handler,
             ctx.by_ref(),
             &type_arg.span(),
-            Some(type_param.clone()),
+            Some(type_param),
         )?;
     }
 
