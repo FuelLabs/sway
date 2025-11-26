@@ -1,6 +1,6 @@
 # Mint to Contract
 
-We can [`mint`](mint.md) and [`transfer`](../transfer/index.md) the asset to an [`Contract`](../../namespace/contract-id.md).
+We can [`mint`](mint.md) and [`transfer`](../transfer/index.md) the asset to a [`Contract`](../../namespace/contract-id.md).
 
 To use the function we must import it.
 

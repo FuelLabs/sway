@@ -676,7 +676,10 @@ fn effects_of_intrinsic(intr: &sway_ast::Intrinsic) -> HashSet<Effect> {
         | Slice
         | ElemAt
         | Transmute
-        | Dbg => HashSet::new(),
+        | Dbg
+        | Alloc
+        | RuntimeMemoryId
+        | EncodingMemoryId => HashSet::new(),
     }
 }
 

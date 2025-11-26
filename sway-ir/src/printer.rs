@@ -6,6 +6,7 @@
 
 use std::collections::{BTreeMap, HashMap};
 
+use slotmap::Key;
 use sway_types::SourceEngine;
 
 use crate::{
@@ -591,6 +592,16 @@ fn instruction_to_doc<'a>(
                         namer.name(context, ins_value),
                         namer.name(context, value),
                         ty.as_string(context),
+                    ))
+                    .append(md_namer.md_idx_to_doc(context, metadata)),
+                )),
+            InstOp::Alloc { ty, count } => maybe_constant_to_doc(context, md_namer, namer, count)
+                .append(Doc::line(
+                    Doc::text(format!(
+                        "{} = alloc {} x {}",
+                        namer.name(context, ins_value),
+                        ty.as_string(context),
+                        namer.name(context, count),
                     ))
                     .append(md_namer.md_idx_to_doc(context, metadata)),
                 )),
@@ -1401,7 +1412,7 @@ impl Namer {
 
     fn default_name(&mut self, value: &Value) -> String {
         self.names.get(value).cloned().unwrap_or_else(|| {
-            let new_name = format!("v{}", self.next_value_idx);
+            let new_name = format!("v{:?}", value.0.data());
             self.next_value_idx += 1;
             self.names.insert(*value, new_name.clone());
             new_name

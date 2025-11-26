@@ -284,29 +284,11 @@ pub async fn call_function(
     let fuel_tx::Transaction::Script(script) = &tx else {
         bail!("Transaction is not a script");
     };
-
-    // Parse the result based on output format
-    let mut receipt_parser =
-        ReceiptParser::new(tx_execution.result.receipts(), DecoderConfig::default());
-    let result = match output {
-        cmd::call::OutputFormat::Default | cmd::call::OutputFormat::Json => {
-            let data = receipt_parser
-                .extract_contract_call_data(contract_id)
-                .ok_or(anyhow!("Failed to extract contract call data"))?;
-            ABIDecoder::default()
-                .decode_as_debug_str(&output_param, data.as_slice())
-                .map_err(|e| anyhow!("Failed to decode as debug string: {e}"))?
-        }
-        cmd::call::OutputFormat::Raw => {
-            let token = receipt_parser
-                .parse_call(contract_id, &output_param)
-                .map_err(|e| anyhow!("Failed to parse call data: {e}"))?;
-            token_to_string(&token)
-                .map_err(|e| anyhow!("Failed to convert token to string: {e}"))?
-        }
-    };
+    let receipts = tx_execution.result.receipts();
 
     // Generate execution trace events by stepping through VM interpreter
+    #[cfg(test)]
+    let trace_events: Vec<crate::op::call::trace::TraceEvent> = vec![];
     #[cfg(not(test))]
     let trace_events = {
         use crate::op::call::trace::interpret_execution_trace;
@@ -315,16 +297,13 @@ pub async fn call_function(
             &mode,
             &consensus_params,
             script,
-            tx_execution.result.receipts(),
+            receipts,
             storage_reads,
             &abi_map,
         )
         .await
         .map_err(|e| anyhow!("Failed to generate execution trace: {e}"))?
     };
-
-    #[cfg(test)]
-    let trace_events = vec![];
 
     // display detailed call info if verbosity is set
     if cmd.verbosity > 0 {
@@ -345,6 +324,36 @@ pub async fn call_function(
             &labels,
         )?;
     }
+
+    // If the call reverted, exit early; return an error with the revert details
+    if let Some((contract_id, revert_info)) =
+        crate::op::call::trace::first_revert_info(&trace_events)
+    {
+        return Err(anyhow!(
+            "Contract 0x{contract_id} reverted with code 0x{:x}",
+            revert_info.revert_code
+        ));
+    }
+
+    // Parse the result based on output format
+    let mut receipt_parser = ReceiptParser::new(receipts, DecoderConfig::default());
+    let result = match output {
+        cmd::call::OutputFormat::Default | cmd::call::OutputFormat::Json => {
+            let data = receipt_parser
+                .extract_contract_call_data(contract_id)
+                .ok_or(anyhow!("Failed to extract contract call data"))?;
+            ABIDecoder::default()
+                .decode_as_debug_str(&output_param, data.as_slice())
+                .map_err(|e| anyhow!("Failed to decode as debug string: {e}"))?
+        }
+        cmd::call::OutputFormat::Raw => {
+            let token = receipt_parser
+                .parse_call(contract_id, &output_param)
+                .map_err(|e| anyhow!("Failed to parse call data: {e}"))?;
+            token_to_string(&token)
+                .map_err(|e| anyhow!("Failed to convert token to string: {e}"))?
+        }
+    };
 
     // display tx info
     super::display_tx_info(

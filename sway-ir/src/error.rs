@@ -46,6 +46,7 @@ pub enum IrError {
     VerifyIntToPtrFromNonIntegerType(String),
     VerifyIntToPtrToNonPointer(String),
     VerifyIntToPtrUnknownSourceType,
+    VerifyAllocCountNotUint64,
     VerifyInvalidGtfIndexType,
     VerifyLoadFromNonPointer(String),
     VerifyLocalMissingInitializer(String, String),
@@ -280,6 +281,12 @@ impl fmt::Display for IrError {
                 f,
                 "Verification failed: int_to_ptr unable to determine source type."
             ),
+            IrError::VerifyAllocCountNotUint64 => {
+                write!(
+                    f,
+                    "Verification failed: alloc instruction count must be a u64 integer."
+                )
+            }
             IrError::VerifyLoadFromNonPointer(ty) => {
                 write!(
                     f,
