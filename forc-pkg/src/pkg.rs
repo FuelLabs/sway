@@ -1858,7 +1858,7 @@ pub fn compile(
     };
 
     let mut program_abi = match pkg.target {
-        BuildTarget::Fuel => {
+        BuildTarget::Fuel | BuildTarget::Native | BuildTarget::Polkavm => {
             let program_abi_res = time_expr!(
                 pkg.name,
                 "generate JSON ABI program",
@@ -2364,48 +2364,67 @@ pub fn build_with_options(
                     .join(&pkg_manifest.project.name)
                     .with_extension("ll");
                 fs::write(&llvm_path, llvm_ir)?;
-                let native_artifact = emit_native_binary_from_llvm(
-                    &llvm_path,
-                    &output_dir,
-                    &pkg_manifest.project.name,
-                    &[],
-                    &[],
-                )?;
-                built_package.llvm_native_artifact = Some(native_artifact.clone());
-                println!(
-                    "LLVM backend produced native executable at {}",
-                    native_artifact.display()
-                );
-                let opt = env::var("LLVM_OPT").unwrap_or_else(|_| "opt".into());
-                let opt_ll_path = output_dir
-                    .join(format!("{}-opt", pkg_manifest.project.name))
-                    .with_extension("ll");
-                let opt_status = Command::new(&opt)
-                    .arg("-O3")
-                    .arg("-S")
-                    .arg(&llvm_path)
-                    .arg("-o")
-                    .arg(&opt_ll_path)
-                    .status()
-                    .with_context(|| format!("failed to execute {opt}"))?;
-                if !opt_status.success() {
-                    bail!(
-                        "{opt} failed with status {}",
-                        opt_status.code().unwrap_or(-1)
-                    );
+                match built_package.descriptor.target {
+                    BuildTarget::Polkavm => {
+                        let elf_path = emit_polkavm_binary_from_llvm(
+                            &llvm_path,
+                            &output_dir,
+                            &pkg_manifest.project.name,
+                        )?;
+                        built_package.llvm_native_artifact = Some(elf_path.clone());
+                        println!(
+                            "LLVM backend produced polkavm RV32EM executable at {}",
+                            elf_path.display()
+                        );
+                    }
+                    BuildTarget::Fuel | BuildTarget::EVM => {
+                        bail!("LLVM backend is not supported for this build target");
+                    }
+                    BuildTarget::Native => {
+                        let native_artifact = emit_native_binary_from_llvm(
+                            &llvm_path,
+                            &output_dir,
+                            &pkg_manifest.project.name,
+                            &[],
+                            &[],
+                        )?;
+                        built_package.llvm_native_artifact = Some(native_artifact.clone());
+                        println!(
+                            "LLVM backend produced native executable at {}",
+                            native_artifact.display()
+                        );
+                        let opt = env::var("LLVM_OPT").unwrap_or_else(|_| "opt".into());
+                        let opt_ll_path = output_dir
+                            .join(format!("{}-opt", pkg_manifest.project.name))
+                            .with_extension("ll");
+                        let opt_status = Command::new(&opt)
+                            .arg("-O3")
+                            .arg("-S")
+                            .arg(&llvm_path)
+                            .arg("-o")
+                            .arg(&opt_ll_path)
+                            .status()
+                            .with_context(|| format!("failed to execute {opt}"))?;
+                        if !opt_status.success() {
+                            bail!(
+                                "{opt} failed with status {}",
+                                opt_status.code().unwrap_or(-1)
+                            );
+                        }
+                        let optimized_name = format!("{}-opt", pkg_manifest.project.name);
+                        let optimized_native = emit_native_binary_from_llvm(
+                            &opt_ll_path,
+                            &output_dir,
+                            &optimized_name,
+                            &["-O3"],
+                            &["-O3"],
+                        )?;
+                        println!(
+                            "LLVM backend produced optimized native executable at {}",
+                            optimized_native.display()
+                        );
+                    }
                 }
-                let optimized_name = format!("{}-opt", pkg_manifest.project.name);
-                let optimized_native = emit_native_binary_from_llvm(
-                    &opt_ll_path,
-                    &output_dir,
-                    &optimized_name,
-                    &["-O3"],
-                    &["-O3"],
-                )?;
-                println!(
-                    "LLVM backend produced optimized native executable at {}",
-                    optimized_native.display()
-                );
             }
         } else {
             if let Some(outfile) = &binary_outfile {
@@ -2513,6 +2532,10 @@ pub fn build(
     no_experimental: &[sway_features::Feature],
     callback_handler: Option<Box<dyn Observer>>,
 ) -> anyhow::Result<Vec<(NodeIx, BuiltPackage)>> {
+    if backend == BuildBackend::LLVM && target == BuildTarget::Fuel {
+        bail!("LLVM backend is not supported for fuel build target");
+    }
+
     let mut built_packages = Vec::new();
 
     let required: HashSet<NodeIx> = outputs
@@ -2796,6 +2819,192 @@ fn emit_native_binary_from_llvm(
     }
 
     Ok(exe_path)
+}
+
+fn emit_polkavm_binary_from_llvm(
+    llvm_path: &Path,
+    output_dir: &Path,
+    pkg_name: &str,
+) -> Result<PathBuf> {
+    let polka_mode = std::env::var("POLKAVM_MODE").unwrap_or_else(|_| "rv32".into());
+    // Align the codegen flags with polkavm's target json expectations:
+    //  - PIC/PIE with relocations kept (polkatool applies its own relocation handling)
+    //  - Feature set includes +a,+c,+zbb etc.
+    let (llc_march, llc_mattr, llc_abi, gcc_march, gcc_abi, suffix, lld_emulation) =
+        match polka_mode.as_str() {
+            // 32-bit default: RV32E + M + A + C + Zbb
+            "rv32" => (
+                "riscv32",
+                "+e,+m,+a,+c,+zbb,+auipc-addi-fusion,+ld-add-fusion,+lui-addi-fusion,+xtheadcondmov",
+                "ilp32e",
+                "rv32emac_zbb",
+                "ilp32e",
+                "rv32",
+                "elf32lriscv",
+            ),
+            // 64-bit mode: RV64IMAC + Zbb (rv64e unsupported in most toolchains)
+            "rv64" => (
+                "riscv64",
+                "+m,+a,+c,+zbb,+auipc-addi-fusion,+ld-add-fusion,+lui-addi-fusion,+xtheadcondmov",
+                "lp64",
+                "rv64imac_zbb",
+                "lp64",
+                "rv64",
+                "elf64lriscv",
+            ),
+            other => {
+                bail!(
+                    "Unsupported POLKAVM_MODE '{}'. Use 'rv32' or 'rv64'.",
+                    other
+                );
+            }
+        };
+
+    let obj_path = output_dir
+        .join(format!("{pkg_name}-{suffix}"))
+        .with_extension("o");
+    let elf_path = output_dir
+        .join(format!("{pkg_name}-{suffix}"))
+        .with_extension("elf");
+    let polkavm_path = output_dir
+        .join(format!("{pkg_name}-{suffix}"))
+        .with_extension("polkavm");
+
+    let llc = std::env::var("LLVM_LLC").unwrap_or_else(|_| "llc".into());
+    let gcc = std::env::var("RISCV_GCC").unwrap_or_else(|_| "riscv64-unknown-elf-gcc".into());
+    let lld = std::env::var("RISCV_LLD").unwrap_or_else(|_| "ld.lld".into());
+    let polkatool = std::env::var("POLKATOOL").unwrap_or_else(|_| "polkatool".into());
+    let log_commands = std::env::var("POLKAVM_LOG_COMMANDS")
+        .map(|val| val != "0" && !val.eq_ignore_ascii_case("false"))
+        .unwrap_or(false);
+
+    let mut llc_cmd = Command::new(&llc);
+    llc_cmd
+        .arg(format!("-march={llc_march}"))
+        .arg(format!("-mattr={llc_mattr}"))
+        .arg(format!("-target-abi={llc_abi}"))
+        .arg("-relocation-model=pic")
+        .arg("-code-model=small")
+        .arg("-filetype=obj")
+        .arg("-o")
+        .arg(&obj_path)
+        .arg(llvm_path);
+    if log_commands {
+        println!("llc command: {:?}", llc_cmd);
+    }
+    let llc_status = llc_cmd
+        .status()
+        .with_context(|| format!("failed to execute {llc}"))?;
+    if !llc_status.success() {
+        bail!(
+            "{llc} failed with status {}",
+            llc_status.code().unwrap_or(-1)
+        );
+    }
+
+    // Locate libgcc for builtin helpers (e.g., __udivdi3).
+    let libgcc_path = Command::new(&gcc)
+        .arg(format!("-march={gcc_march}"))
+        .arg(format!("-mabi={gcc_abi}"))
+        .arg("-print-libgcc-file-name")
+        .output()
+        .with_context(|| format!("failed to execute {gcc} -print-libgcc-file-name"))?;
+    if !libgcc_path.status.success() {
+        bail!(
+            "{gcc} -print-libgcc-file-name failed with status {}",
+            libgcc_path.status.code().unwrap_or(-1)
+        );
+    }
+    let libgcc = String::from_utf8(libgcc_path.stdout)
+        .map_err(|e| anyhow!("invalid utf8 from libgcc path: {e}"))?
+        .trim()
+        .to_string();
+
+    // Use lld directly; the bare-metal GCC linker doesn't support -pie/-shared for rv32e.
+    let enable_libgcc = std::env::var("POLKAVM_ENABLE_LIBGCC")
+        .map(|val| val != "0" && !val.eq_ignore_ascii_case("false"))
+        .unwrap_or(true);
+
+    let mut lld_cmd = Command::new(&lld);
+    lld_cmd
+        .arg("--emit-relocs")
+        .arg("--apply-dynamic-relocs")
+        .arg("--unique")
+        .arg("--no-allow-shlib-undefined")
+        .arg("-Bsymbolic")
+        .arg("-shared")
+        .arg("--export-dynamic")
+        .arg(format!("-m{lld_emulation}"))
+        .arg(format!("--entry=main.1"))
+        .arg(&obj_path);
+    if enable_libgcc {
+        lld_cmd.arg(&libgcc);
+    }
+    lld_cmd.arg("-o").arg(&elf_path);
+    if log_commands {
+        println!("ld.lld command: {:?}", lld_cmd);
+    }
+    let lld_status = lld_cmd
+        .status()
+        .with_context(|| format!("failed to execute {lld}"))?;
+    if !lld_status.success() {
+        bail!(
+            "{lld} failed with status {}",
+            lld_status.code().unwrap_or(-1)
+        );
+    }
+
+    let enable_strip = std::env::var("POLKAVM_LLVM_STRIP")
+        .map(|val| val != "0" && !val.eq_ignore_ascii_case("false"))
+        .unwrap_or(false);
+    let link_input = if enable_strip {
+        let stripped_path = output_dir
+            .join(format!("{pkg_name}-{suffix}"))
+            .with_extension("stripped.elf");
+        let strip = std::env::var("LLVM_STRIP").unwrap_or_else(|_| "llvm-strip".into());
+    let mut strip_cmd = Command::new(&strip);
+    strip_cmd
+        .arg("--strip-debug")
+        .arg(&elf_path)
+        .arg("-o")
+        .arg(&stripped_path);
+    if log_commands {
+        println!("llvm-strip command: {:?}", strip_cmd);
+    }
+    let strip_status = strip_cmd
+        .status()
+        .with_context(|| format!("failed to execute {strip}"))?;
+        if !strip_status.success() {
+            bail!(
+                "{strip} failed with status {}",
+                strip_status.code().unwrap_or(-1)
+            );
+        }
+        stripped_path
+    } else {
+        elf_path.clone()
+    };
+
+    let mut polkatool_cmd = Command::new(&polkatool);
+    polkatool_cmd
+        .arg("link")
+        .arg(&link_input)
+        .arg("--output")
+        .arg(&polkavm_path);
+    if log_commands {
+        println!("polkatool command: {:?}", polkatool_cmd);
+    }
+    let polkatool_status = polkatool_cmd
+        .status()
+        .with_context(|| format!("failed to execute {polkatool}"))?;
+    if !polkatool_status.success() {
+        bail!(
+            "{polkatool} failed with status {}",
+            polkatool_status.code().unwrap_or(-1)
+        );
+    }
+
+    Ok(polkavm_path)
 }
 
 /// Compile the entire forc package and return the lexed, parsed and typed programs

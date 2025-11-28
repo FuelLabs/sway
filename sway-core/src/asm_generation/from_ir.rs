@@ -42,7 +42,7 @@ pub fn compile_ir_context_to_finalized_asm(
     };
 
     let finalized_asm = match build_target {
-        BuildTarget::Fuel => compile(
+        BuildTarget::Fuel | BuildTarget::Native => compile(
             handler,
             ir,
             module,
@@ -55,6 +55,13 @@ pub fn compile_ir_context_to_finalized_asm(
             module,
             build_config,
             EvmAsmBuilder::new(kind, ir),
+        ),
+        BuildTarget::Polkavm => compile(
+            handler,
+            ir,
+            module,
+            build_config,
+            FuelAsmBuilder::new(kind, DataSection::default(), reg_seqr, ir),
         ),
     }?;
 

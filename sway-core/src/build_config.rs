@@ -28,14 +28,22 @@ pub enum BuildTarget {
     #[clap(name = "fuel")]
     #[strum(serialize = "fuel")]
     Fuel,
+    #[serde(rename = "native")]
+    #[clap(name = "native")]
+    #[strum(serialize = "native")]
+    Native,
     #[serde(rename = "evm")]
     #[clap(name = "evm")]
     #[strum(serialize = "evm")]
     EVM,
+    #[serde(rename = "polkavm")]
+    #[clap(name = "polkavm")]
+    #[strum(serialize = "polkavm")]
+    Polkavm,
 }
 
 impl BuildTarget {
-    pub const CFG: &'static [&'static str] = &["evm", "fuel"];
+    pub const CFG: &'static [&'static str] = &["evm", "fuel", "native", "polkavm"];
 }
 
 #[derive(

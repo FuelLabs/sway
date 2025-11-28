@@ -1397,6 +1397,13 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         BuildBackend::LLVM => {
             #[cfg(feature = "llvm-backend")]
             {
+                if build_config.build_target == BuildTarget::Fuel {
+                    let err = handler.emit_err(CompileError::InternalOwned(
+                        "LLVM backend is not supported for fuel build target yet".to_string(),
+                        span::Span::dummy(),
+                    ));
+                    return Err(err);
+                }
                 if let Some(module) = ir.module_iter().next() {
                     match lower_module_to_string(&ir, module, &BackendOptions::default()) {
                         Ok(llvm_ir) => CompiledAsm::LLVM { llvm_ir },

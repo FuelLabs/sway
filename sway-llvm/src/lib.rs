@@ -83,6 +83,7 @@ struct ModuleLowerer<'ctx, 'ir, 'eng> {
     global_consts: HashMap<ConstantContent, GlobalValue<'ctx>>,
     current_block: Option<BasicBlock<'ctx>>,
     target_data: TargetData,
+    export_target: Option<FunctionValue<'ctx>>,
 }
 
 impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
@@ -126,6 +127,7 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
             current_block: None,
             target_data,
             global_consts: HashMap::new(),
+            export_target: None,
         })
     }
 
@@ -139,6 +141,7 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
         }
         self.lower_function_bodies()?;
         self.create_main_shim()?;
+        //self.emit_polkavm_export_if_requested()?;
         Ok(())
     }
 
@@ -283,6 +286,112 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
         } else {
             self.handle_builder_result(self.builder.build_return(Some(&zero)))?;
         }
+        self.export_target = Some(main_fn);
+        Ok(())
+    }
+
+    fn emit_polkavm_export_if_requested(&mut self) -> Result<()> {
+        let target_fn = match self.export_target {
+            Some(f) => f,
+            None => return Ok(()),
+        };
+
+        let i8 = self.llvm.i8_type();
+        let i32 = self.llvm.i32_type();
+        let ptr_ty = self.llvm.ptr_type(AddressSpace::default());
+
+        let name = target_fn.get_name().to_str().unwrap_or("main");
+        let name_bytes = format!("{name}\0");
+        let name_array_ty = i8.array_type(name_bytes.len() as u32);
+        let name_global = self
+            .llvm_module
+            .add_global(name_array_ty, None, "polkavm_export_name");
+        let name_inits: Vec<_> = name_bytes
+            .as_bytes()
+            .iter()
+            .map(|b| i8.const_int(*b as u64, false))
+            .collect();
+        name_global.set_initializer(&i8.const_array(&name_inits));
+        name_global.set_constant(true);
+        name_global.set_unnamed_address(inkwell::values::UnnamedAddress::Global);
+
+        // Metadata struct: { u8 version, u32 flags, u32 name_len, ptr name, u8 in_regs, u8 out_regs }
+        let metadata_ty = self.llvm.struct_type(
+            &[
+                i8.into(),
+                i32.into(),
+                i32.into(),
+                ptr_ty.as_basic_type_enum(),
+                i8.into(),
+                i8.into(),
+            ],
+            false,
+        );
+        let name_ptr = name_global.as_pointer_value();
+        let cast_name = self
+            .builder
+            .build_bit_cast(name_ptr, ptr_ty, "polkavm_cast_name")
+            .map_err(|e| LlvmError::Lowering(format!("builder error: {e}")))?;
+        let metadata_vals: Vec<BasicValueEnum> = vec![
+            i8.const_int(1, false).into(),
+            i32.const_zero().into(),
+            i32
+                .const_int((name_bytes.len() - 1) as u64, false)
+                .into(),
+            cast_name.into(),
+            i8.const_zero().into(),
+            i8.const_zero().into(),
+        ];
+        let metadata_global = self
+            .llvm_module
+            .add_global(metadata_ty, None, "polkavm_export_metadata");
+        metadata_global.set_initializer(&metadata_ty.const_named_struct(&metadata_vals));
+        metadata_global.set_constant(true);
+        metadata_global.set_section(Some(".polkavm_metadata"));
+        metadata_global.set_unnamed_address(inkwell::values::UnnamedAddress::Global);
+
+        // Export entry: { u8 version, ptr metadata, ptr function }
+        let export_ty = self.llvm.struct_type(
+            &[
+                i8.into(),
+                ptr_ty.as_basic_type_enum(),
+                ptr_ty.as_basic_type_enum(),
+            ],
+            false,
+        );
+        let fn_ptr = target_fn.as_global_value().as_pointer_value();
+        let cast_meta = metadata_global.as_pointer_value();
+        let export_vals: Vec<BasicValueEnum> = vec![
+            i8.const_int(1, false).into(),
+            self.builder
+                .build_bit_cast(cast_meta, ptr_ty, "polkavm_cast_meta")
+                .map_err(|e| LlvmError::Lowering(format!("builder error: {e}")))?
+                .into(),
+            self.builder
+                .build_bit_cast(fn_ptr, ptr_ty, "polkavm_cast_fn")
+                .map_err(|e| LlvmError::Lowering(format!("builder error: {e}")))?
+                .into(),
+        ];
+        let export_global = self
+            .llvm_module
+            .add_global(export_ty, None, "polkavm_export");
+        export_global.set_initializer(&export_ty.const_named_struct(&export_vals));
+        export_global.set_constant(true);
+        export_global.set_section(Some(".polkavm_exports"));
+        export_global.set_unnamed_address(inkwell::values::UnnamedAddress::Global);
+
+        // Also emit a tiny inline-asm export entry to force absolute relocations the way
+        // polkavm expects (matches polkavm_guest.h).
+        let asm = format!(
+            ".section .polkavm_exports,\"a\"\n\
+             .byte 1\n\
+             .word polkavm_export_metadata\n\
+             .word {func}\n\
+             .previous\n",
+            func = name
+        );
+        self.llvm_module.set_inline_assembly(&asm);
+
         Ok(())
     }
 
