@@ -9,7 +9,6 @@ use sway_types::{Ident, Named, Span, Spanned};
 use crate::{
     ast_elements::type_argument::GenericTypeArgument,
     engine_threading::*,
-    has_changes,
     language::{parsed::TraitFn, ty::*, Purity},
     transform,
     type_system::*,
@@ -124,10 +123,11 @@ impl HashWithEngines for TyTraitFn {
 
 impl SubstTypes for TyTraitFn {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-        has_changes! {
-            self.parameters.subst(ctx);
-            self.return_type.subst(ctx);
-        }
+        todo!()
+        // has_changes! {
+        //     self.parameters.subst(ctx);
+        //     self.return_type.subst(ctx);
+        // }
     }
 }
 

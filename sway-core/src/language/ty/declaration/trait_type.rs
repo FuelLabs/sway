@@ -1,5 +1,5 @@
 use crate::{
-    engine_threading::*, has_changes, language::parsed::TraitTypeDeclaration,
+    engine_threading::*, language::parsed::TraitTypeDeclaration,
     language::ty::TyDeclParsedType, transform, type_system::*,
 };
 use serde::{Deserialize, Serialize};
@@ -72,10 +72,11 @@ impl HashWithEngines for TyTraitType {
 
 impl SubstTypes for TyTraitType {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-        has_changes! {
-            self.ty.subst(ctx);
-            self.implementing_type.subst(ctx);
-        }
+        todo!()
+        // has_changes! {
+        //     self.ty.subst(ctx);
+        //     self.implementing_type.subst(ctx);
+        // }
     }
 }
 

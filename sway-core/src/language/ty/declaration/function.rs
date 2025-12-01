@@ -2,7 +2,6 @@ use crate::{
     ast_elements::type_argument::GenericTypeArgument,
     decl_engine::*,
     engine_threading::*,
-    has_changes,
     language::{
         parsed::{self, FunctionDeclaration, FunctionDeclarationKind},
         ty::*,
@@ -18,10 +17,9 @@ use either::Either;
 use monomorphization::MonomorphizeHelper;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use sway_macros::Visit;
 use std::{
-    collections::BTreeMap,
-    fmt,
-    hash::{Hash, Hasher},
+    borrow::Cow, collections::BTreeMap, fmt, hash::{Hash, Hasher}
 };
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Ident, Named, Span, Spanned};
@@ -34,7 +32,7 @@ pub enum TyFunctionDeclKind {
     Test,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Visit)]
 pub struct TyFunctionDecl {
     pub name: Ident,
     pub body: TyCodeBlock,
@@ -79,7 +77,9 @@ pub struct TyFunctionDecl {
     /// [CallPath::suffix] is the function name.
     pub call_path: CallPath,
     pub attributes: transform::Attributes,
+    #[visit(iter_visit, do_not_call_visitor)]
     pub type_parameters: Vec<TypeParameter>,
+    #[visit(call_visit)]
     pub return_type: GenericTypeArgument,
     pub visibility: Visibility,
     /// Whether this function exists in another contract and requires a call to it or not.
@@ -513,32 +513,36 @@ impl HashWithEngines for TyFunctionDecl {
 
 impl SubstTypes for TyFunctionDecl {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-        let changes = if ctx.subst_function_body {
-            has_changes! {
-                self.type_parameters.subst(ctx);
-                self.parameters.subst(ctx);
-                self.return_type.subst(ctx);
-                self.body.subst(ctx);
-                self.implementing_for.subst(ctx);
-            }
-        } else {
-            has_changes! {
-                self.type_parameters.subst(ctx);
-                self.parameters.subst(ctx);
-                self.return_type.subst(ctx);
-                self.implementing_for.subst(ctx);
-            }
-        };
+        let mut visitor = ReplaceTypesVisitor { ctx: ctx };
+        let mut s = Cow::Borrowed(self);
+        TyFunctionDecl::visit(&mut s, &mut visitor);
+        HasChanges::Yes
+        // let changes = if ctx.subst_function_body {
+        //     has_changes! {
+        //         self.type_parameters.subst(ctx);
+        //         self.parameters.subst(ctx);
+        //         self.return_type.subst(ctx);
+        //         self.body.subst(ctx);
+        //         self.implementing_for.subst(ctx);
+        //     }
+        // } else {
+        //     has_changes! {
+        //         self.type_parameters.subst(ctx);
+        //         self.parameters.subst(ctx);
+        //         self.return_type.subst(ctx);
+        //         self.implementing_for.subst(ctx);
+        //     }
+        // };
 
-        if let Some(map) = ctx.type_subst_map.as_ref() {
-            let handler = Handler::default();
-            for (name, value) in &map.const_generics_materialization {
-                let _ = self.materialize_const_generics(ctx.engines, &handler, name, value);
-            }
-            HasChanges::Yes
-        } else {
-            changes
-        }
+        // if let Some(map) = ctx.type_subst_map.as_ref() {
+        //     let handler = Handler::default();
+        //     for (name, value) in &map.const_generics_materialization {
+        //         let _ = self.materialize_const_generics(ctx.engines, &handler, name, value);
+        //     }
+        //     HasChanges::Yes
+        // } else {
+        //     changes
+        // }
     }
 }
 
@@ -848,11 +852,11 @@ impl HashWithEngines for TyFunctionParameter {
     }
 }
 
-impl SubstTypes for TyFunctionParameter {
-    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-        self.type_argument.type_id.subst(ctx)
-    }
-}
+// impl SubstTypes for TyFunctionParameter {
+//     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+//         self.type_argument.type_id.subst(ctx)
+//     }
+// }
 
 impl TyFunctionParameter {
     pub fn is_self(&self) -> bool {

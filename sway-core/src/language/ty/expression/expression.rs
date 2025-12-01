@@ -1,7 +1,6 @@
 use crate::{
     decl_engine::*,
     engine_threading::*,
-    has_changes,
     language::{ty::*, Literal},
     semantic_analysis::{
         TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext, TypeCheckFinalization,
@@ -54,14 +53,14 @@ impl HashWithEngines for TyExpression {
     }
 }
 
-impl SubstTypes for TyExpression {
-    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-        has_changes! {
-            self.return_type.subst(ctx);
-            self.expression.subst(ctx);
-        }
-    }
-}
+// impl SubstTypes for TyExpression {
+//     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+//         has_changes! {
+//             self.return_type.subst(ctx);
+//             self.expression.subst(ctx);
+//         }
+//     }
+// }
 
 impl ReplaceDecls for TyExpression {
     fn replace_decls_inner(

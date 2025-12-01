@@ -2,7 +2,6 @@ use super::{TyAbiDecl, TyDeclParsedType, TyTraitDecl, TyTraitItem};
 use crate::{
     decl_engine::{DeclId, DeclRefMixedInterface, InterfaceDeclId},
     engine_threading::*,
-    has_changes,
     language::{parsed::ImplSelfOrTrait, CallPath},
     type_system::*,
 };
@@ -129,15 +128,15 @@ impl HashWithEngines for TyImplSelfOrTrait {
     }
 }
 
-impl SubstTypes for TyImplSelfOrTrait {
-    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-        has_changes! {
-            self.impl_type_parameters.subst(ctx);
-            self.implementing_for.subst_inner(ctx);
-            self.items.subst(ctx);
-        }
-    }
-}
+// impl SubstTypes for TyImplSelfOrTrait {
+//     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+//         has_changes! {
+//             self.impl_type_parameters.subst(ctx);
+//             self.implementing_for.subst_inner(ctx);
+//             self.items.subst(ctx);
+//         }
+//     }
+// }
 
 impl DebugWithEngines for TyImplSelfOrTrait {
     fn fmt(&self, f: &mut Formatter<'_>, engines: &Engines) -> std::fmt::Result {

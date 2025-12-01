@@ -4,7 +4,6 @@ use crate::{
         MaterializeConstGenerics, ReplaceFunctionImplementingType,
     },
     engine_threading::*,
-    has_changes,
     language::{
         parsed::{self, TraitDeclaration},
         ty::{TyDecl, TyDeclParsedType},
@@ -288,90 +287,91 @@ impl Spanned for TyTraitItem {
 
 impl SubstTypes for TyTraitDecl {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-        has_changes! {
-            self.type_parameters.subst(ctx);
-            self.interface_surface
-                .iter_mut()
-                .fold(HasChanges::No, |has_changes, item| match item {
-                    TyTraitInterfaceItem::TraitFn(item_ref) => {
-                        if let Some(new_item_ref) = item_ref
-                            .clone()
-                            .subst_types_and_insert_new_with_parent(ctx) {
-                            item_ref.replace_id(*new_item_ref.id());
-                            HasChanges::Yes
-                        } else {
-                            HasChanges::No
-                        }
-                    }
-                    TyTraitInterfaceItem::Constant(decl_ref) => {
-                        if let Some(new_decl_ref) = decl_ref
-                            .clone()
-                            .subst_types_and_insert_new(ctx) {
-                            decl_ref.replace_id(*new_decl_ref.id());
-                            HasChanges::Yes
-                        } else{
-                            HasChanges::No
-                        }
-                    }
-                    TyTraitInterfaceItem::Type(decl_ref) => {
-                        if let Some(new_decl_ref) = decl_ref
-                            .clone()
-                            .subst_types_and_insert_new(ctx) {
-                            decl_ref.replace_id(*new_decl_ref.id());
-                            HasChanges::Yes
-                        } else{
-                            HasChanges::No
-                        }
-                    }
-                } | has_changes);
-            self.items.iter_mut().fold(HasChanges::No, |has_changes, item| match item {
-                TyTraitItem::Fn(item_ref) => {
-                    if let Some(new_item_ref) = item_ref
-                        .clone()
-                        .subst_types_and_insert_new_with_parent(ctx)
-                    {
-                        item_ref.replace_id(*new_item_ref.id());
-                        HasChanges::Yes
-                    } else {
-                        HasChanges::No
-                    }
-                }
-                TyTraitItem::Constant(item_ref) => {
-                    if let Some(new_decl_ref) = item_ref
-                        .clone()
-                        .subst_types_and_insert_new_with_parent(ctx)
-                    {
-                        item_ref.replace_id(*new_decl_ref.id());
-                        HasChanges::Yes
-                    } else {
-                        HasChanges::No
-                    }
-                }
-                TyTraitItem::Type(item_ref) => {
-                    if let Some(new_decl_ref) = item_ref
-                        .clone()
-                        .subst_types_and_insert_new_with_parent(ctx)
-                    {
-                        item_ref.replace_id(*new_decl_ref.id());
-                        HasChanges::Yes
-                    } else {
-                        HasChanges::No
-                    }
-                }
-            } | has_changes);
-        }
+        todo!()
+        // has_changes! {
+        //     self.type_parameters.subst(ctx);
+        //     self.interface_surface
+        //         .iter_mut()
+        //         .fold(HasChanges::No, |has_changes, item| match item {
+        //             TyTraitInterfaceItem::TraitFn(item_ref) => {
+        //                 if let Some(new_item_ref) = item_ref
+        //                     .clone()
+        //                     .subst_types_and_insert_new_with_parent(ctx) {
+        //                     item_ref.replace_id(*new_item_ref.id());
+        //                     HasChanges::Yes
+        //                 } else {
+        //                     HasChanges::No
+        //                 }
+        //             }
+        //             TyTraitInterfaceItem::Constant(decl_ref) => {
+        //                 if let Some(new_decl_ref) = decl_ref
+        //                     .clone()
+        //                     .subst_types_and_insert_new(ctx) {
+        //                     decl_ref.replace_id(*new_decl_ref.id());
+        //                     HasChanges::Yes
+        //                 } else{
+        //                     HasChanges::No
+        //                 }
+        //             }
+        //             TyTraitInterfaceItem::Type(decl_ref) => {
+        //                 if let Some(new_decl_ref) = decl_ref
+        //                     .clone()
+        //                     .subst_types_and_insert_new(ctx) {
+        //                     decl_ref.replace_id(*new_decl_ref.id());
+        //                     HasChanges::Yes
+        //                 } else{
+        //                     HasChanges::No
+        //                 }
+        //             }
+        //         } | has_changes);
+        //     self.items.iter_mut().fold(HasChanges::No, |has_changes, item| match item {
+        //         TyTraitItem::Fn(item_ref) => {
+        //             if let Some(new_item_ref) = item_ref
+        //                 .clone()
+        //                 .subst_types_and_insert_new_with_parent(ctx)
+        //             {
+        //                 item_ref.replace_id(*new_item_ref.id());
+        //                 HasChanges::Yes
+        //             } else {
+        //                 HasChanges::No
+        //             }
+        //         }
+        //         TyTraitItem::Constant(item_ref) => {
+        //             if let Some(new_decl_ref) = item_ref
+        //                 .clone()
+        //                 .subst_types_and_insert_new_with_parent(ctx)
+        //             {
+        //                 item_ref.replace_id(*new_decl_ref.id());
+        //                 HasChanges::Yes
+        //             } else {
+        //                 HasChanges::No
+        //             }
+        //         }
+        //         TyTraitItem::Type(item_ref) => {
+        //             if let Some(new_decl_ref) = item_ref
+        //                 .clone()
+        //                 .subst_types_and_insert_new_with_parent(ctx)
+        //             {
+        //                 item_ref.replace_id(*new_decl_ref.id());
+        //                 HasChanges::Yes
+        //             } else {
+        //                 HasChanges::No
+        //             }
+        //         }
+        //     } | has_changes);
+        // }
     }
 }
 
-impl SubstTypes for TyTraitItem {
-    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-        match self {
-            TyTraitItem::Fn(fn_decl) => fn_decl.subst(ctx),
-            TyTraitItem::Constant(const_decl) => const_decl.subst(ctx),
-            TyTraitItem::Type(type_decl) => type_decl.subst(ctx),
-        }
-    }
-}
+// impl SubstTypes for TyTraitItem {
+//     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+//         match self {
+//             TyTraitItem::Fn(fn_decl) => fn_decl.subst(ctx),
+//             TyTraitItem::Constant(const_decl) => const_decl.subst(ctx),
+//             TyTraitItem::Type(type_decl) => type_decl.subst(ctx),
+//         }
+//     }
+// }
 
 impl ReplaceFunctionImplementingType for TyTraitItem {
     fn replace_implementing_type(&mut self, engines: &Engines, implementing_type: TyDecl) {

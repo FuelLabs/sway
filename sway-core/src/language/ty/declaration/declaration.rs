@@ -258,45 +258,45 @@ impl HashWithEngines for TyDecl {
     }
 }
 
-impl SubstTypes for TyDecl {
-    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-        match self {
-            TyDecl::VariableDecl(ref mut var_decl) => var_decl.subst(ctx),
-            TyDecl::FunctionDecl(FunctionDecl {
-                ref mut decl_id, ..
-            }) => decl_id.subst(ctx),
-            TyDecl::TraitDecl(TraitDecl {
-                ref mut decl_id, ..
-            }) => decl_id.subst(ctx),
-            TyDecl::StructDecl(StructDecl {
-                ref mut decl_id, ..
-            }) => decl_id.subst(ctx),
-            TyDecl::EnumDecl(EnumDecl {
-                ref mut decl_id, ..
-            }) => decl_id.subst(ctx),
-            TyDecl::EnumVariantDecl(EnumVariantDecl {
-                ref mut enum_ref, ..
-            }) => enum_ref.subst(ctx),
-            TyDecl::ImplSelfOrTrait(ImplSelfOrTrait {
-                ref mut decl_id, ..
-            }) => decl_id.subst(ctx),
-            TyDecl::TypeAliasDecl(TypeAliasDecl {
-                ref mut decl_id, ..
-            }) => decl_id.subst(ctx),
-            TyDecl::TraitTypeDecl(TraitTypeDecl {
-                ref mut decl_id, ..
-            }) => decl_id.subst(ctx),
-            TyDecl::ConstantDecl(ConstantDecl { decl_id }) => decl_id.subst(ctx),
-            // generics in an ABI is unsupported by design
-            TyDecl::AbiDecl(_)
-            | TyDecl::ConfigurableDecl(_)
-            | TyDecl::StorageDecl(_)
-            | TyDecl::GenericTypeForFunctionScope(_)
-            | TyDecl::ErrorRecovery(..) => HasChanges::No,
-            TyDecl::ConstGenericDecl(_) => HasChanges::No,
-        }
-    }
-}
+// impl SubstTypes for TyDecl {
+//     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+//         match self {
+//             TyDecl::VariableDecl(ref mut var_decl) => var_decl.subst(ctx),
+//             TyDecl::FunctionDecl(FunctionDecl {
+//                 ref mut decl_id, ..
+//             }) => decl_id.subst(ctx),
+//             TyDecl::TraitDecl(TraitDecl {
+//                 ref mut decl_id, ..
+//             }) => decl_id.subst(ctx),
+//             TyDecl::StructDecl(StructDecl {
+//                 ref mut decl_id, ..
+//             }) => decl_id.subst(ctx),
+//             TyDecl::EnumDecl(EnumDecl {
+//                 ref mut decl_id, ..
+//             }) => decl_id.subst(ctx),
+//             TyDecl::EnumVariantDecl(EnumVariantDecl {
+//                 ref mut enum_ref, ..
+//             }) => enum_ref.subst(ctx),
+//             TyDecl::ImplSelfOrTrait(ImplSelfOrTrait {
+//                 ref mut decl_id, ..
+//             }) => decl_id.subst(ctx),
+//             TyDecl::TypeAliasDecl(TypeAliasDecl {
+//                 ref mut decl_id, ..
+//             }) => decl_id.subst(ctx),
+//             TyDecl::TraitTypeDecl(TraitTypeDecl {
+//                 ref mut decl_id, ..
+//             }) => decl_id.subst(ctx),
+//             TyDecl::ConstantDecl(ConstantDecl { decl_id }) => decl_id.subst(ctx),
+//             // generics in an ABI is unsupported by design
+//             TyDecl::AbiDecl(_)
+//             | TyDecl::ConfigurableDecl(_)
+//             | TyDecl::StorageDecl(_)
+//             | TyDecl::GenericTypeForFunctionScope(_)
+//             | TyDecl::ErrorRecovery(..) => HasChanges::No,
+//             TyDecl::ConstGenericDecl(_) => HasChanges::No,
+//         }
+//     }
+// }
 
 impl SpannedWithEngines for TyDecl {
     fn span(&self, engines: &Engines) -> Span {

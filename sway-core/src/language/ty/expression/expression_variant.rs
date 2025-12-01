@@ -1,7 +1,6 @@
 use crate::{
     decl_engine::*,
     engine_threading::*,
-    has_changes,
     language::{ty::*, *},
     semantic_analysis::{
         TyNodeDepGraphEdge, TyNodeDepGraphEdgeInfo, TypeCheckAnalysis, TypeCheckAnalysisContext,
@@ -20,9 +19,10 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
+use sway_macros::Visit;
 use sway_types::{Ident, Named, Span, Spanned};
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Visit)]
 pub enum TyExpressionVariant {
     Literal(Literal),
     FunctionApplication {
@@ -679,155 +679,155 @@ impl HashWithEngines for TyExpressionVariant {
     }
 }
 
-impl SubstTypes for TyExpressionVariant {
-    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-        use TyExpressionVariant::*;
-        match self {
-            Literal(..) => HasChanges::No,
-            FunctionApplication {
-                arguments,
-                ref mut fn_ref,
-                ref mut method_target,
-                ..
-            } => has_changes! {
-                arguments.subst(ctx);
-                if let Some(new_decl_ref) = fn_ref
-                    .clone()
-                    .subst_types_and_insert_new_with_parent(ctx)
-                {
-                    fn_ref.replace_id(*new_decl_ref.id());
-                    HasChanges::Yes
-                } else {
-                    HasChanges::No
-                };
-                method_target.subst(ctx);
-            },
-            LazyOperator { lhs, rhs, .. } => has_changes! {
-                lhs.subst(ctx);
-                rhs.subst(ctx);
-            },
-            ConstantExpression { decl, .. } => decl.subst(ctx),
-            ConfigurableExpression { decl, .. } => decl.subst(ctx),
-            ConstGenericExpression { decl, .. } => decl.subst(ctx),
-            VariableExpression { .. } => HasChanges::No,
-            Tuple { fields } => fields.subst(ctx),
-            ArrayExplicit {
-                ref mut elem_type,
-                contents,
-            } => has_changes! {
-                elem_type.subst(ctx);
-                contents.subst(ctx);
-            },
-            ArrayRepeat {
-                ref mut elem_type,
-                value,
-                length,
-            } => has_changes! {
-                elem_type.subst(ctx);
-                value.subst(ctx);
-                length.subst(ctx);
-            },
-            ArrayIndex { prefix, index } => has_changes! {
-                prefix.subst(ctx);
-                index.subst(ctx);
-            },
-            StructExpression {
-                struct_id,
-                fields,
-                instantiation_span: _,
-                call_path_binding: _,
-            } => has_changes! {
-                if let Some(new_struct_ref) = struct_id
-                    .clone()
-                    .subst_types_and_insert_new(ctx) {
-                    struct_id.replace_id(*new_struct_ref.id());
-                    HasChanges::Yes
-                } else {
-                    HasChanges::No
-                };
-                fields.subst(ctx);
-            },
-            CodeBlock(block) => block.subst(ctx),
-            FunctionParameter => HasChanges::No,
-            MatchExp { desugared, .. } => desugared.subst(ctx),
-            IfExp {
-                condition,
-                then,
-                r#else,
-            } => has_changes! {
-                condition.subst(ctx);
-                then.subst(ctx);
-                r#else.subst(ctx);
-            },
-            AsmExpression {
-                registers, //: Vec<TyAsmRegisterDeclaration>,
-                ..
-            } => registers.subst(ctx),
-            // like a variable expression but it has multiple parts,
-            // like looking up a field in a struct
-            StructFieldAccess {
-                prefix,
-                field_to_access,
-                ref mut resolved_type_of_parent,
-                ..
-            } => has_changes! {
-                resolved_type_of_parent.subst(ctx);
-                field_to_access.subst(ctx);
-                prefix.subst(ctx);
-            },
-            TupleElemAccess {
-                prefix,
-                ref mut resolved_type_of_parent,
-                ..
-            } => has_changes! {
-                resolved_type_of_parent.subst(ctx);
-                prefix.subst(ctx);
-            },
-            EnumInstantiation {
-                enum_ref, contents, ..
-            } => has_changes! {
-                if let Some(new_enum_ref) = enum_ref
-                    .clone()
-                    .subst_types_and_insert_new(ctx)
-                {
-                    enum_ref.replace_id(*new_enum_ref.id());
-                    HasChanges::Yes
-                } else {
-                    HasChanges::No
-                };
-                contents.subst(ctx);
-            },
-            AbiCast { address, .. } => address.subst(ctx),
-            // storage is never generic and cannot be monomorphized
-            StorageAccess { .. } => HasChanges::No,
-            IntrinsicFunction(kind) => kind.subst(ctx),
-            EnumTag { exp } => exp.subst(ctx),
-            UnsafeDowncast {
-                exp,
-                variant,
-                call_path_decl: _,
-            } => has_changes! {
-                exp.subst(ctx);
-                variant.subst(ctx);
-            },
-            AbiName(_) => HasChanges::No,
-            WhileLoop {
-                ref mut condition,
-                ref mut body,
-            } => {
-                condition.subst(ctx);
-                body.subst(ctx)
-            }
-            ForLoop { ref mut desugared } => desugared.subst(ctx),
-            Break => HasChanges::No,
-            Continue => HasChanges::No,
-            Reassignment(reassignment) => reassignment.subst(ctx),
-            ImplicitReturn(expr) | Return(expr) => expr.subst(ctx),
-            Panic(expr) => expr.subst(ctx),
-            Ref(exp) | Deref(exp) => exp.subst(ctx),
-        }
-    }
-}
+// impl SubstTypes for TyExpressionVariant {
+//     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+//         use TyExpressionVariant::*;
+//         match self {
+//             Literal(..) => HasChanges::No,
+//             FunctionApplication {
+//                 arguments,
+//                 ref mut fn_ref,
+//                 ref mut method_target,
+//                 ..
+//             } => has_changes! {
+//                 arguments.subst(ctx);
+//                 if let Some(new_decl_ref) = fn_ref
+//                     .clone()
+//                     .subst_types_and_insert_new_with_parent(ctx)
+//                 {
+//                     fn_ref.replace_id(*new_decl_ref.id());
+//                     HasChanges::Yes
+//                 } else {
+//                     HasChanges::No
+//                 };
+//                 method_target.subst(ctx);
+//             },
+//             LazyOperator { lhs, rhs, .. } => has_changes! {
+//                 lhs.subst(ctx);
+//                 rhs.subst(ctx);
+//             },
+//             ConstantExpression { decl, .. } => decl.subst(ctx),
+//             ConfigurableExpression { decl, .. } => decl.subst(ctx),
+//             ConstGenericExpression { decl, .. } => decl.subst(ctx),
+//             VariableExpression { .. } => HasChanges::No,
+//             Tuple { fields } => fields.subst(ctx),
+//             ArrayExplicit {
+//                 ref mut elem_type,
+//                 contents,
+//             } => has_changes! {
+//                 elem_type.subst(ctx);
+//                 contents.subst(ctx);
+//             },
+//             ArrayRepeat {
+//                 ref mut elem_type,
+//                 value,
+//                 length,
+//             } => has_changes! {
+//                 elem_type.subst(ctx);
+//                 value.subst(ctx);
+//                 length.subst(ctx);
+//             },
+//             ArrayIndex { prefix, index } => has_changes! {
+//                 prefix.subst(ctx);
+//                 index.subst(ctx);
+//             },
+//             StructExpression {
+//                 struct_id,
+//                 fields,
+//                 instantiation_span: _,
+//                 call_path_binding: _,
+//             } => has_changes! {
+//                 if let Some(new_struct_ref) = struct_id
+//                     .clone()
+//                     .subst_types_and_insert_new(ctx) {
+//                     struct_id.replace_id(*new_struct_ref.id());
+//                     HasChanges::Yes
+//                 } else {
+//                     HasChanges::No
+//                 };
+//                 fields.subst(ctx);
+//             },
+//             CodeBlock(block) => block.subst(ctx),
+//             FunctionParameter => HasChanges::No,
+//             MatchExp { desugared, .. } => desugared.subst(ctx),
+//             IfExp {
+//                 condition,
+//                 then,
+//                 r#else,
+//             } => has_changes! {
+//                 condition.subst(ctx);
+//                 then.subst(ctx);
+//                 r#else.subst(ctx);
+//             },
+//             AsmExpression {
+//                 registers, //: Vec<TyAsmRegisterDeclaration>,
+//                 ..
+//             } => registers.subst(ctx),
+//             // like a variable expression but it has multiple parts,
+//             // like looking up a field in a struct
+//             StructFieldAccess {
+//                 prefix,
+//                 field_to_access,
+//                 ref mut resolved_type_of_parent,
+//                 ..
+//             } => has_changes! {
+//                 resolved_type_of_parent.subst(ctx);
+//                 field_to_access.subst(ctx);
+//                 prefix.subst(ctx);
+//             },
+//             TupleElemAccess {
+//                 prefix,
+//                 ref mut resolved_type_of_parent,
+//                 ..
+//             } => has_changes! {
+//                 resolved_type_of_parent.subst(ctx);
+//                 prefix.subst(ctx);
+//             },
+//             EnumInstantiation {
+//                 enum_ref, contents, ..
+//             } => has_changes! {
+//                 if let Some(new_enum_ref) = enum_ref
+//                     .clone()
+//                     .subst_types_and_insert_new(ctx)
+//                 {
+//                     enum_ref.replace_id(*new_enum_ref.id());
+//                     HasChanges::Yes
+//                 } else {
+//                     HasChanges::No
+//                 };
+//                 contents.subst(ctx);
+//             },
+//             AbiCast { address, .. } => address.subst(ctx),
+//             // storage is never generic and cannot be monomorphized
+//             StorageAccess { .. } => HasChanges::No,
+//             IntrinsicFunction(kind) => kind.subst(ctx),
+//             EnumTag { exp } => exp.subst(ctx),
+//             UnsafeDowncast {
+//                 exp,
+//                 variant,
+//                 call_path_decl: _,
+//             } => has_changes! {
+//                 exp.subst(ctx);
+//                 variant.subst(ctx);
+//             },
+//             AbiName(_) => HasChanges::No,
+//             WhileLoop {
+//                 ref mut condition,
+//                 ref mut body,
+//             } => {
+//                 condition.subst(ctx);
+//                 body.subst(ctx)
+//             }
+//             ForLoop { ref mut desugared } => desugared.subst(ctx),
+//             Break => HasChanges::No,
+//             Continue => HasChanges::No,
+//             Reassignment(reassignment) => reassignment.subst(ctx),
+//             ImplicitReturn(expr) | Return(expr) => expr.subst(ctx),
+//             Panic(expr) => expr.subst(ctx),
+//             Ref(exp) | Deref(exp) => exp.subst(ctx),
+//         }
+//     }
+// }
 
 impl ReplaceDecls for TyExpressionVariant {
     fn replace_decls_inner(

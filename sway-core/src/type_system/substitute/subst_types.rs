@@ -1,4 +1,10 @@
-use crate::{engine_threading::Engines, type_system::priv_prelude::*};
+use std::borrow::Cow;
+
+use crate::{
+    engine_threading::Engines,
+    semantic_analysis::Visitor,
+    type_system::priv_prelude::*,
+};
 use sway_types::Ident;
 
 #[derive(Default)]
@@ -56,6 +62,30 @@ impl<'eng, 'tsm> SubstTypesContext<'eng, 'tsm> {
         self.type_subst_map
             .as_ref()
             .and_then(|map| map.const_generics_renaming.get(name))
+    }
+}
+
+pub struct ReplaceTypesVisitor<'ctx, 'eng, 'tsm> {
+    pub ctx: &'ctx SubstTypesContext<'eng, 'tsm>,
+}
+
+impl<'ctx, 'eng, 'tsm> Visitor for ReplaceTypesVisitor<'ctx, 'eng, 'tsm> {
+    const VISIT_GENERIC_TYPE_ARGUMENT_INITIAL_TYPE_ID: bool = false;
+
+    fn visit_type_id<'a>(&mut self, type_id: &'a TypeId) -> Cow<'a, TypeId> {
+        let type_engine = self.ctx.engines.te();
+        if let Some(matching_id) = self
+            .ctx
+            .type_subst_map
+            .and_then(|tsm| tsm.find_match(*type_id, self.ctx.engines))
+        {
+            // TODO cheaper to never include ErrorRecovery in TypeSubstMap
+            if !matches!(&*type_engine.get(matching_id), TypeInfo::ErrorRecovery(_)) {
+                return Cow::Owned(matching_id);
+            }
+        }
+
+        Cow::Borrowed(type_id)
     }
 }
 

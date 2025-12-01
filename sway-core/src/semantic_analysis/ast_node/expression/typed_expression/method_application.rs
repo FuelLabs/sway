@@ -1,24 +1,30 @@
 use crate::{
+    ast_elements::{
+        type_argument::GenericTypeArgument,
+        type_parameter::{ConstGenericExpr, GenericTypeParameter},
+    },
     decl_engine::{
         engine::{DeclEngineGet, DeclEngineGetParsedDeclId, DeclEngineReplace},
         DeclEngineInsert, DeclRefFunction, ReplaceDecls, UpdateConstantExpression,
     },
     language::{
         parsed::*,
-        ty::{self, TyDecl, TyExpression, TyFunctionSig},
+        ty::{self, TyDecl, TyExpression, TyFunctionDecl, TyFunctionSig},
         *,
     },
     semantic_analysis::*,
-    type_system::*,
-};
-use ast_elements::{
-    type_argument::GenericTypeArgument,
-    type_parameter::{ConstGenericExpr, GenericTypeParameter},
+    type_system::{
+        EnforceTypeArguments, GenericArgument, IncludeSelf, Length,
+        SubstTypes, SubstTypesContext, TypeArgs, TypeBinding, TypeId, TypeInfo, TypeParameter,
+        TypeSubstMap, UnifyCheck,
+    },
 };
 use ast_node::typed_expression::check_function_arguments_arity;
 use indexmap::IndexMap;
 use itertools::izip;
-use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::{
+    collections::{BTreeMap, HashMap, VecDeque},
+};
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -1015,7 +1021,7 @@ pub(crate) fn monomorphize_method(
 ) -> Result<DeclRefFunction, ErrorEmitted> {
     let engines = ctx.engines();
     let decl_engine = engines.de();
-    let mut func_decl = (*decl_engine.get_function(&decl_ref)).clone();
+    let mut func_decl = TyFunctionDecl::clone(&*decl_engine.get_function(&decl_ref));
 
     // monomorphize the function declaration
     ctx.monomorphize(
@@ -1026,6 +1032,9 @@ pub(crate) fn monomorphize_method(
         EnforceTypeArguments::No,
         &decl_ref.span(),
     )?;
+
+    // assert!(matches!(func_decl, Cow::Owned(_)));
+    // let mut func_decl = func_decl.into_owned();
 
     if let Some(implementing_type) = &func_decl.implementing_type {
         func_decl

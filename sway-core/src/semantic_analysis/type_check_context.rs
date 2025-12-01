@@ -1,5 +1,5 @@
 #![allow(clippy::mutable_key_type)]
-use std::collections::BTreeMap;
+use std::{borrow::Cow, collections::BTreeMap};
 
 use crate::{
     decl_engine::{DeclEngineGet, MaterializeConstGenerics},
@@ -9,7 +9,7 @@ use crate::{
         ty::{self, TyDecl, TyExpression},
         CallPath, QualifiedCallPath, Visibility,
     },
-    monomorphization::{monomorphize_with_modpath, MonomorphizeHelper},
+    monomorphization::{monomorphize_with_modpath, monomorphize_with_modpath2, MonomorphizeHelper},
     namespace::{
         IsExtendingExistingImpl, IsImplSelf, ModulePath, ResolvedDeclaration,
         ResolvedTraitImplItem, TraitMap,
@@ -538,6 +538,34 @@ impl<'a> TypeCheckContext<'a> {
     {
         let mod_path = self.namespace().current_mod_path().clone();
         monomorphize_with_modpath(
+            handler,
+            self.engines(),
+            self.namespace(),
+            value,
+            type_arguments,
+            const_generics,
+            enforce_type_arguments,
+            call_site_span,
+            &mod_path,
+            self.self_type(),
+            &self.subst_ctx(),
+        )
+    }
+
+    pub(crate) fn monomorphize2<T: Clone>(
+        &mut self,
+        handler: &Handler,
+        value: &mut Cow<T>,
+        type_arguments: &mut [GenericArgument],
+        const_generics: BTreeMap<String, TyExpression>,
+        enforce_type_arguments: EnforceTypeArguments,
+        call_site_span: &Span,
+    ) -> Result<(), ErrorEmitted>
+    where
+        T: MonomorphizeHelper + SubstTypes + MaterializeConstGenerics,
+    {
+        let mod_path = self.namespace().current_mod_path().clone();
+        monomorphize_with_modpath2(
             handler,
             self.engines(),
             self.namespace(),

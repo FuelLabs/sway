@@ -1,10 +1,9 @@
 use crate::{
     decl_engine::MaterializeConstGenerics,
     engine_threading::HashWithEngines,
-    has_changes,
     language::{parsed::ConstGenericDeclaration, ty::TyExpression, CallPath},
     semantic_analysis::{TypeCheckAnalysis, TypeCheckAnalysisContext},
-    Engines, HasChanges, SubstTypes, TypeId,
+    Engines, TypeId,
 };
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash as _, Hasher};
@@ -35,19 +34,19 @@ impl HashWithEngines for TyConstGenericDecl {
     }
 }
 
-impl SubstTypes for TyConstGenericDecl {
-    fn subst_inner(&mut self, ctx: &crate::SubstTypesContext) -> crate::HasChanges {
-        has_changes! {
-            self.return_type.subst(ctx);
-            if let Some(v) = ctx.get_renamed_const_generic(&self.call_path.suffix) {
-                self.call_path.suffix = v.clone();
-                HasChanges::Yes
-            } else {
-                HasChanges::No
-            };
-        }
-    }
-}
+// impl SubstTypes for TyConstGenericDecl {
+//     fn subst_inner(&mut self, ctx: &crate::SubstTypesContext) -> crate::HasChanges {
+//         has_changes! {
+//             self.return_type.subst(ctx);
+//             if let Some(v) = ctx.get_renamed_const_generic(&self.call_path.suffix) {
+//                 self.call_path.suffix = v.clone();
+//                 HasChanges::Yes
+//             } else {
+//                 HasChanges::No
+//             };
+//         }
+//     }
+// }
 
 impl MaterializeConstGenerics for TyConstGenericDecl {
     fn materialize_const_generics(

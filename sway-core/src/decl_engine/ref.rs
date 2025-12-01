@@ -254,22 +254,22 @@ impl<I> Spanned for DeclRef<I> {
     }
 }
 
-impl<T> SubstTypes for DeclRef<DeclId<T>>
-where
-    DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned + SubstTypes + Clone,
-{
-    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-        let decl_engine = ctx.engines.de();
-        let mut decl = (*decl_engine.get(&self.id)).clone();
-        if decl.subst(ctx).has_changes() {
-            decl_engine.replace(self.id, decl);
-            HasChanges::Yes
-        } else {
-            HasChanges::No
-        }
-    }
-}
+// impl<T> SubstTypes for DeclRef<DeclId<T>>
+// where
+//     DeclEngine: DeclEngineIndex<T>,
+//     T: Named + Spanned + SubstTypes + Clone,
+// {
+//     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+//         let decl_engine = ctx.engines.de();
+//         let mut decl = (*decl_engine.get(&self.id)).clone();
+//         if decl.subst(ctx).has_changes() {
+//             decl_engine.replace(self.id, decl);
+//             HasChanges::Yes
+//         } else {
+//             HasChanges::No
+//         }
+//     }
+// }
 
 impl ReplaceDecls for DeclRefFunction {
     fn replace_decls_inner(

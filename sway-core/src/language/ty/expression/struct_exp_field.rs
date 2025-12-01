@@ -3,7 +3,6 @@ use crate::{
     engine_threading::*,
     language::ty::*,
     semantic_analysis::{TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext},
-    type_system::*,
 };
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
@@ -31,11 +30,11 @@ impl HashWithEngines for TyStructExpressionField {
     }
 }
 
-impl SubstTypes for TyStructExpressionField {
-    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-        self.value.subst(ctx)
-    }
-}
+// impl SubstTypes for TyStructExpressionField {
+//     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+//         self.value.subst(ctx)
+//     }
+// }
 
 impl ReplaceDecls for TyStructExpressionField {
     fn replace_decls_inner(

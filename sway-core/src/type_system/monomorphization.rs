@@ -7,10 +7,10 @@ use crate::{
     namespace::{ModulePath, ResolvedDeclaration},
     semantic_analysis::type_resolve::{resolve_type, VisibilityCheck},
     type_system::ast_elements::create_type_id::CreateTypeId,
-    EnforceTypeArguments, Engines, GenericArgument, Namespace, SubstTypes, SubstTypesContext,
-    TypeId, TypeParameter, TypeSubstMap,
+    EnforceTypeArguments, Engines, GenericArgument, Namespace, SubstTypes,
+    SubstTypesContext, TypeId, TypeParameter, TypeSubstMap,
 };
-use std::collections::BTreeMap;
+use std::{borrow::Cow, collections::BTreeMap};
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -263,7 +263,7 @@ pub(crate) fn monomorphize_with_modpath<T>(
 where
     T: MonomorphizeHelper + SubstTypes + MaterializeConstGenerics,
 {
-    let type_mapping = prepare_type_subst_map_for_monomorphize(
+    let type_subst_map = prepare_type_subst_map_for_monomorphize(
         handler,
         engines,
         namespace,
@@ -275,6 +275,51 @@ where
         self_type,
         subst_ctx,
     )?;
+
+    value.subst(&SubstTypesContext::new(engines, &type_subst_map, true));
+
+    for (name, expr) in const_generics.iter() {
+        let _ = value.materialize_const_generics(engines, handler, name, expr);
+    }
+
+    for (name, expr) in type_subst_map.const_generics_materialization.iter() {
+        let _ = value.materialize_const_generics(engines, handler, name, expr);
+    }
+
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn monomorphize_with_modpath2<'a, T: Clone>(
+    handler: &Handler,
+    engines: &Engines,
+    namespace: &Namespace,
+    value: &mut Cow<'a, T>,
+    type_arguments: &mut [GenericArgument],
+    const_generics: BTreeMap<String, TyExpression>,
+    enforce_type_arguments: EnforceTypeArguments,
+    call_site_span: &Span,
+    mod_path: &ModulePath,
+    self_type: Option<TypeId>,
+    subst_ctx: &SubstTypesContext,
+) -> Result<(), ErrorEmitted>
+where
+    T: MonomorphizeHelper + SubstTypes + MaterializeConstGenerics,
+{
+    let type_mapping = prepare_type_subst_map_for_monomorphize(
+        handler,
+        engines,
+        namespace,
+        value.as_ref(),
+        type_arguments,
+        enforce_type_arguments,
+        call_site_span,
+        mod_path,
+        self_type,
+        subst_ctx,
+    )?;
+
+    let value = value.to_mut();
     value.subst(&SubstTypesContext::new(engines, &type_mapping, true));
 
     for (name, expr) in const_generics.iter() {

@@ -1,7 +1,6 @@
 use crate::{
     decl_engine::{DeclMapping, MaterializeConstGenerics, ReplaceDecls},
     engine_threading::*,
-    has_changes,
     language::{parsed::ConstantDeclaration, ty::*, CallPath, Visibility},
     semantic_analysis::TypeCheckContext,
     transform,
@@ -93,11 +92,12 @@ impl IsConcrete for TyConstantDecl {
 
 impl SubstTypes for TyConstantDecl {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-        has_changes! {
-            self.return_type.subst(ctx);
-            self.type_ascription.subst(ctx);
-            self.value.subst(ctx);
-        }
+        todo!()
+        // has_changes! {
+        //     self.return_type.subst(ctx);
+        //     self.type_ascription.subst(ctx);
+        //     self.value.subst(ctx);
+        // }
     }
 }
 

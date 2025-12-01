@@ -4,6 +4,7 @@ use crate::{
     type_system::priv_prelude::*,
 };
 use serde::{Deserialize, Serialize};
+use sway_macros::Visit;
 use std::{
     cmp::Ordering,
     fmt,
@@ -22,12 +23,13 @@ use sway_types::{Span, Spanned};
 ///
 /// The annotations are ignored when calculating the [GenericTypeArgument]'s hash
 /// (with engines) and equality (with engines).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Visit)]
 pub struct GenericTypeArgument {
     /// The [TypeId] of the "referenced" [TypeInfo].
     pub type_id: TypeId,
     /// Denotes the initial type that was referenced before the type
     /// unification, monomorphization, or replacement of [TypeInfo::Custom]s.
+    #[visit(skip)]
     pub initial_type_id: TypeId,
     /// The [Span] related in code to the [TypeInfo] represented by this
     /// [TypeArgument]. This information is mostly used by the LSP and it
@@ -46,7 +48,9 @@ pub struct GenericTypeArgument {
     /// two instances `[0, 0]`, and `[1, 1]` will have neither the array
     /// type span set, nor the length span, which means they will not be
     /// annotated.
+    #[visit(skip)]
     pub span: Span,
+    #[visit(skip)]
     pub call_path_tree: Option<CallPathTree>,
 }
 
@@ -286,14 +290,14 @@ impl From<&TypeParameter> for GenericArgument {
     }
 }
 
-impl SubstTypes for GenericArgument {
-    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-        match self {
-            GenericArgument::Type(a) => a.subst(ctx),
-            GenericArgument::Const(_) => HasChanges::No,
-        }
-    }
-}
+// impl SubstTypes for GenericArgument {
+//     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+//         match self {
+//             GenericArgument::Type(a) => a.subst(ctx),
+//             GenericArgument::Const(_) => HasChanges::No,
+//         }
+//     }
+// }
 
 impl MaterializeConstGenerics for GenericArgument {
     fn materialize_const_generics(
@@ -341,11 +345,11 @@ impl Spanned for GenericTypeArgument {
     }
 }
 
-impl SubstTypes for GenericTypeArgument {
-    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-        self.type_id.subst(ctx)
-    }
-}
+// impl SubstTypes for GenericTypeArgument {
+//     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+//         self.type_id.subst(ctx)
+//     }
+// }
 
 impl PartialEqWithEngines for GenericTypeArgument {
     fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {

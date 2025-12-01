@@ -1,7 +1,6 @@
 use crate::{
     decl_engine::{DeclId, DeclMapping, DeclRef, ReplaceDecls},
     engine_threading::*,
-    has_changes,
     language::{parsed::ConfigurableDeclaration, ty::*, CallPath, Visibility},
     semantic_analysis::TypeCheckContext,
     transform,
@@ -87,15 +86,15 @@ impl Spanned for TyConfigurableDecl {
     }
 }
 
-impl SubstTypes for TyConfigurableDecl {
-    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-        has_changes! {
-            self.return_type.subst(ctx);
-            self.type_ascription.subst(ctx);
-            self.value.subst(ctx);
-        }
-    }
-}
+// impl SubstTypes for TyConfigurableDecl {
+//     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+//         has_changes! {
+//             self.return_type.subst(ctx);
+//             self.type_ascription.subst(ctx);
+//             self.value.subst(ctx);
+//         }
+//     }
+// }
 
 impl ReplaceDecls for TyConfigurableDecl {
     fn replace_decls_inner(

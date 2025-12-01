@@ -1,6 +1,6 @@
 use crate::{
     decl_engine::*, engine_threading::*, language::ty::*, semantic_analysis::TypeCheckContext,
-    transform::AllowDeprecatedState, type_system::*,
+    transform::AllowDeprecatedState,
 };
 use serde::{Deserialize, Serialize};
 use std::hash::Hasher;
@@ -49,11 +49,11 @@ impl HashWithEngines for TyCodeBlock {
     }
 }
 
-impl SubstTypes for TyCodeBlock {
-    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-        self.contents.subst(ctx)
-    }
-}
+// impl SubstTypes for TyCodeBlock {
+//     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+//         self.contents.subst(ctx)
+//     }
+// }
 
 impl ReplaceDecls for TyCodeBlock {
     fn replace_decls_inner(

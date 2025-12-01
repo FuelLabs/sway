@@ -11697,6 +11697,7 @@ dependencies = [
  "sway-error",
  "sway-features",
  "sway-ir",
+ "sway-macros",
  "sway-parse",
  "sway-types",
  "sway-utils",
@@ -11823,6 +11824,15 @@ dependencies = [
  "tokio",
  "tower 0.5.2",
  "tower-lsp",
+]
+
+[[package]]
+name = "sway-macros"
+version = "0.70.2"
+dependencies = [
+ "quote",
+ "sway-types",
+ "syn 2.0.106",
 ]
 
 [[package]]

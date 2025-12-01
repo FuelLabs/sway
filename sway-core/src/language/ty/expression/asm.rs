@@ -1,4 +1,4 @@
-use crate::{engine_threading::*, language::ty::*, type_system::*};
+use crate::{engine_threading::*, language::ty::*};
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 use sway_types::Ident;
@@ -30,8 +30,8 @@ impl HashWithEngines for TyAsmRegisterDeclaration {
     }
 }
 
-impl SubstTypes for TyAsmRegisterDeclaration {
-    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-        self.initializer.subst(ctx)
-    }
-}
+// impl SubstTypes for TyAsmRegisterDeclaration {
+//     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+//         self.initializer.subst(ctx)
+//     }
+// }

@@ -1,4 +1,4 @@
-use crate::{engine_threading::*, has_changes, language::ty::*, type_system::*, types::*};
+use crate::{engine_threading::*, language::ty::*, type_system::*, types::*};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -42,14 +42,14 @@ impl HashWithEngines for TyIntrinsicFunctionKind {
     }
 }
 
-impl SubstTypes for TyIntrinsicFunctionKind {
-    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-        has_changes! {
-            self.arguments.subst(ctx);
-            self.type_arguments.subst(ctx);
-        }
-    }
-}
+// impl SubstTypes for TyIntrinsicFunctionKind {
+//     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+//         has_changes! {
+//             self.arguments.subst(ctx);
+//             self.type_arguments.subst(ctx);
+//         }
+//     }
+// }
 
 impl DebugWithEngines for TyIntrinsicFunctionKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {

@@ -1,7 +1,6 @@
 use crate::{
     decl_engine::*,
     engine_threading::*,
-    has_changes,
     language::ty::*,
     semantic_analysis::{
         TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext, TypeCheckFinalization,
@@ -134,35 +133,35 @@ impl HashWithEngines for TyReassignment {
     }
 }
 
-impl SubstTypes for TyReassignmentTarget {
-    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-        has_changes! {
-            match self {
-                TyReassignmentTarget::DerefAccess{exp, indices} => {
-                    has_changes! {
-                        exp.subst(ctx);
-                        indices.subst(ctx);
-                    }
-                },
-                TyReassignmentTarget::ElementAccess { base_type, indices, .. } => {
-                    has_changes! {
-                        base_type.subst(ctx);
-                        indices.subst(ctx);
-                    }
-                }
-            };
-        }
-    }
-}
+// impl SubstTypes for TyReassignmentTarget {
+//     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+//         has_changes! {
+//             match self {
+//                 TyReassignmentTarget::DerefAccess{exp, indices} => {
+//                     has_changes! {
+//                         exp.subst(ctx);
+//                         indices.subst(ctx);
+//                     }
+//                 },
+//                 TyReassignmentTarget::ElementAccess { base_type, indices, .. } => {
+//                     has_changes! {
+//                         base_type.subst(ctx);
+//                         indices.subst(ctx);
+//                     }
+//                 }
+//             };
+//         }
+//     }
+// }
 
-impl SubstTypes for TyReassignment {
-    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-        has_changes! {
-            self.lhs.subst(ctx);
-            self.rhs.subst(ctx);
-        }
-    }
-}
+// impl SubstTypes for TyReassignment {
+//     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+//         has_changes! {
+//             self.lhs.subst(ctx);
+//             self.rhs.subst(ctx);
+//         }
+//     }
+// }
 
 impl ReplaceDecls for TyReassignmentTarget {
     fn replace_decls_inner(
@@ -391,15 +390,15 @@ impl HashWithEngines for ProjectionKind {
     }
 }
 
-impl SubstTypes for ProjectionKind {
-    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-        use ProjectionKind::*;
-        match self {
-            ArrayIndex { index, .. } => index.subst(ctx),
-            _ => HasChanges::No,
-        }
-    }
-}
+// impl SubstTypes for ProjectionKind {
+//     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+//         use ProjectionKind::*;
+//         match self {
+//             ArrayIndex { index, .. } => index.subst(ctx),
+//             _ => HasChanges::No,
+//         }
+//     }
+// }
 
 impl ReplaceDecls for ProjectionKind {
     fn replace_decls_inner(

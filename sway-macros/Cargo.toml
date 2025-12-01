@@ -1,0 +1,19 @@
+[package]
+name = "sway-macros"
+edition.workspace = true
+version.workspace = true
+authors.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn.workspace = true
+quote.workspace = true
+sway-types.workspace = true
+
+[lints]
+workspace = true

@@ -10,7 +10,7 @@ pub(crate) mod unify;
 #[allow(unused)]
 use std::ops::Deref;
 
-pub use substitute::subst_types::SubstTypesContext;
+pub use substitute::subst_types::{ReplaceTypesVisitor, SubstTypesContext};
 
 #[cfg(test)]
 use crate::language::{CallPath, CallPathType};

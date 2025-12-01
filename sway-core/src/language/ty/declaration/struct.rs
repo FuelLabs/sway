@@ -3,7 +3,6 @@ use crate::{
     decl_engine::MaterializeConstGenerics,
     engine_threading::*,
     error::module_can_be_changed,
-    has_changes,
     language::{
         parsed::StructDeclaration, ty::TyDeclParsedType, CallPath, CallPathType, Visibility,
     },
@@ -72,10 +71,11 @@ impl HashWithEngines for TyStructDecl {
 
 impl SubstTypes for TyStructDecl {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-        has_changes! {
-            self.fields.subst(ctx);
-            self.generic_parameters.subst(ctx);
-        }
+        todo!()
+        // has_changes! {
+        //     self.fields.subst(ctx);
+        //     self.generic_parameters.subst(ctx);
+        // }
     }
 }
 
@@ -309,8 +309,8 @@ impl OrdWithEngines for TyStructField {
     }
 }
 
-impl SubstTypes for TyStructField {
-    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-        self.type_argument.subst_inner(ctx)
-    }
-}
+// impl SubstTypes for TyStructField {
+//     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+//         self.type_argument.subst_inner(ctx)
+//     }
+// }
