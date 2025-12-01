@@ -20,7 +20,7 @@ use forc_pkg::{
 use forc_test::{
     execute::{DebugResult, TestExecutor},
     setup::TestSetup,
-    BuiltTests,
+    BuiltTests, TestGasLimit,
 };
 use fuel_tx::GasCostsValues;
 use serde::{Deserialize, Serialize};
@@ -252,6 +252,7 @@ impl DapServer {
                     // TODO: (GAS-COSTS) Provide gas costs values here, similar like in `forc test`.
                     //       See: https://github.com/FuelLabs/sway/issues/7472
                     GasCostsValues::default(),
+                    TestGasLimit::default(),
                 )
                 .ok()
             })
