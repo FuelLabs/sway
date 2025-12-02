@@ -12,6 +12,7 @@ extend-ignore-identifiers-re = [
     "ALOC",
     "Aloc",
     "aloc",
+    "SHW",
 ]
 
 extend-ignore-re = [

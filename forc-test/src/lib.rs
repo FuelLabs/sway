@@ -81,6 +81,14 @@ pub struct TestResult {
     pub ecal: Box<EcalSyscallHandler>,
 }
 
+#[derive(Default, Debug, Clone, Copy)]
+pub enum TestGasLimit {
+    #[default]
+    Default,
+    Unlimited,
+    Limited(u64),
+}
+
 const TEST_METADATA_SEED: u64 = 0x7E57u64;
 /// A mapping from each member package of a build plan to its compiled contract dependencies.
 type ContractDependencyMap = HashMap<pkg::Pinned, Vec<Arc<pkg::BuiltPackage>>>;
@@ -265,7 +273,7 @@ impl PackageWithDeploymentToTest {
         // We are not concerned about gas costs of contract deployments for tests,
         // only the gas costs of test executions. So, we can simply provide the
         // default, built-in, gas costs values here.
-        let params = maxed_consensus_params(GasCostsValues::default());
+        let params = maxed_consensus_params(GasCostsValues::default(), TestGasLimit::default());
         let storage = vm::storage::MemoryStorage::default();
         let interpreter_params = InterpreterParams::new(gas_price, params.clone());
         let mut interpreter: vm::prelude::Interpreter<_, _, _, vm::interpreter::NotSupportedEcal> =
@@ -433,6 +441,7 @@ impl<'a> PackageTests {
         test_runners: &rayon::ThreadPool,
         test_filter: Option<&TestFilter>,
         gas_costs_values: GasCostsValues,
+        gas_limit: TestGasLimit,
     ) -> anyhow::Result<TestedPackage> {
         let pkg_with_tests = self.built_pkg_with_tests();
         let tests = test_runners.install(|| {
@@ -467,6 +476,7 @@ impl<'a> PackageTests {
                         test_entry,
                         name,
                         gas_costs_values.clone(),
+                        gas_limit,
                     )?
                     .execute()
                 })
@@ -663,6 +673,7 @@ impl BuiltTests {
         test_runner_count: TestRunnerCount,
         test_filter: Option<TestFilter>,
         gas_costs_values: GasCostsValues,
+        gas_limit: TestGasLimit,
     ) -> anyhow::Result<Tested> {
         let test_runners = match test_runner_count {
             TestRunnerCount::Manual(runner_count) => rayon::ThreadPoolBuilder::new()
@@ -670,7 +681,13 @@ impl BuiltTests {
                 .build(),
             TestRunnerCount::Auto => rayon::ThreadPoolBuilder::new().build(),
         }?;
-        run_tests(self, &test_runners, test_filter, gas_costs_values)
+        run_tests(
+            self,
+            &test_runners,
+            test_filter,
+            gas_costs_values,
+            gas_limit,
+        )
     }
 }
 
@@ -684,11 +701,19 @@ pub fn build(opts: TestOpts) -> anyhow::Result<BuiltTests> {
 
 /// Returns a `ConsensusParameters` which has maximum length/size allowance for scripts, contracts,
 /// and transactions.
-pub(crate) fn maxed_consensus_params(gas_costs_values: GasCostsValues) -> ConsensusParameters {
+pub(crate) fn maxed_consensus_params(
+    gas_costs_values: GasCostsValues,
+    gas_limit: TestGasLimit,
+) -> ConsensusParameters {
     let script_params = ScriptParameters::DEFAULT
         .with_max_script_length(u64::MAX)
         .with_max_script_data_length(u64::MAX);
-    let tx_params = TxParameters::DEFAULT.with_max_size(u64::MAX);
+    let tx_params = match gas_limit {
+        TestGasLimit::Default => TxParameters::DEFAULT,
+        TestGasLimit::Unlimited => TxParameters::DEFAULT.with_max_gas_per_tx(u64::MAX),
+        TestGasLimit::Limited(limit) => TxParameters::DEFAULT.with_max_gas_per_tx(limit),
+    }
+    .with_max_size(u64::MAX);
     let contract_params = ContractParameters::DEFAULT
         .with_contract_max_size(u64::MAX)
         .with_max_storage_slots(u64::MAX);
@@ -697,6 +722,7 @@ pub(crate) fn maxed_consensus_params(gas_costs_values: GasCostsValues) -> Consen
         tx_params,
         contract_params,
         gas_costs: gas_costs_values.into(),
+        block_gas_limit: u64::MAX,
         ..Default::default()
     })
 }
@@ -750,18 +776,28 @@ fn run_tests(
     test_runners: &rayon::ThreadPool,
     test_filter: Option<TestFilter>,
     gas_costs_values: GasCostsValues,
+    gas_limit: TestGasLimit,
 ) -> anyhow::Result<Tested> {
     match built {
         BuiltTests::Package(pkg) => {
-            let tested_pkg =
-                pkg.run_tests(test_runners, test_filter.as_ref(), gas_costs_values.clone())?;
+            let tested_pkg = pkg.run_tests(
+                test_runners,
+                test_filter.as_ref(),
+                gas_costs_values.clone(),
+                gas_limit,
+            )?;
             Ok(Tested::Package(Box::new(tested_pkg)))
         }
         BuiltTests::Workspace(workspace) => {
             let tested_pkgs = workspace
                 .into_iter()
                 .map(|pkg| {
-                    pkg.run_tests(test_runners, test_filter.as_ref(), gas_costs_values.clone())
+                    pkg.run_tests(
+                        test_runners,
+                        test_filter.as_ref(),
+                        gas_costs_values.clone(),
+                        gas_limit,
+                    )
                 })
                 .collect::<anyhow::Result<Vec<TestedPackage>>>()?;
             Ok(Tested::Workspace(tested_pkgs))
@@ -775,7 +811,7 @@ mod tests {
 
     use fuel_tx::GasCostsValues;
 
-    use crate::{build, BuiltTests, TestFilter, TestOpts, TestResult};
+    use crate::{build, BuiltTests, TestFilter, TestGasLimit, TestOpts, TestResult};
 
     /// Name of the folder containing required data for tests to run, such as an example forc
     /// project.
@@ -813,7 +849,12 @@ mod tests {
     ) -> anyhow::Result<Vec<TestResult>> {
         let built_tests = test_package_built_tests(package_name)?;
         let test_runner_count = crate::TestRunnerCount::Auto;
-        let tested = built_tests.run(test_runner_count, test_filter, GasCostsValues::default())?;
+        let tested = built_tests.run(
+            test_runner_count,
+            test_filter,
+            GasCostsValues::default(),
+            TestGasLimit::default(),
+        )?;
         match tested {
             crate::Tested::Package(tested_pkg) => Ok(tested_pkg.tests),
             crate::Tested::Workspace(_) => {
