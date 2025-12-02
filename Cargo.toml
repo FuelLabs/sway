@@ -10,6 +10,7 @@ members = [
     "scripts/mdbook-forc-documenter",
     "sway-ast",
     "sway-core",
+    "sway-doc",
     "sway-error",
     "sway-features",
     "sway-ir",

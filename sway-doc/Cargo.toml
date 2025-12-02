@@ -1,0 +1,45 @@
+[package]
+name = "sway-doc"
+version.workspace = true
+description = "Build the documentation for the local package and all dependencies. The output is placed in `out/doc` in the same format as the project."
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+clap = { workspace = true, features = ["derive"] }
+comrak.workspace = true
+forc-pkg.workspace = true
+forc-tracing.workspace = true
+forc-util.workspace = true
+horrorshow.workspace = true
+include_dir.workspace = true
+minifier.workspace = true
+opener.workspace = true
+rayon.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sway-ast.workspace = true
+sway-core.workspace = true
+sway-features.workspace = true
+sway-lsp.workspace = true
+sway-types.workspace = true
+swayfmt.workspace = true
+
+[dev-dependencies]
+codspeed-criterion-compat.workspace = true
+dir_indexer.workspace = true
+expect-test.workspace = true
+
+[[bench]]
+name = "bench_main"
+harness = false
+
+[lib]
+bench = false
+
+[lints]
+workspace = true

@@ -1,0 +1,8 @@
+[[package]]
+name = "impl_traits_generic"
+source = "member"
+dependencies = ["ops"]
+
+[[package]]
+name = "ops"
+source = "path+from-root-BD391496AC0FBC33"

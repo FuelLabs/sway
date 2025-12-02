@@ -11710,6 +11710,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "sway-doc"
+version = "0.70.1"
+dependencies = [
+ "anyhow",
+ "clap",
+ "codspeed-criterion-compat",
+ "comrak",
+ "dir_indexer",
+ "expect-test",
+ "forc-pkg",
+ "forc-tracing 0.70.1",
+ "forc-util",
+ "horrorshow",
+ "include_dir",
+ "minifier",
+ "opener 0.7.2",
+ "rayon",
+ "serde",
+ "serde_json",
+ "sway-ast",
+ "sway-core",
+ "sway-features",
+ "sway-lsp",
+ "sway-types",
+ "swayfmt",
+]
+
+[[package]]
 name = "sway-error"
 version = "0.70.1"
 dependencies = [

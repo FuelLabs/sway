@@ -1,0 +1,9 @@
+[project]
+name = "lib_b"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "lib.sw"
+license = "Apache-2.0"
+
+[dependencies]
+std = { path = "../../../../../../sway-lib-std" }
+lib_a = { path = "../lib_a" }

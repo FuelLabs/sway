@@ -1,0 +1,15 @@
+[[package]]
+name = "lib_a"
+source = "member"
+
+[[package]]
+name = "lib_b"
+source = "member"
+dependencies = [
+    "lib_a",
+    "std",
+]
+
+[[package]]
+name = "std"
+source = "path+from-root-0CDB23161116D3A1"
