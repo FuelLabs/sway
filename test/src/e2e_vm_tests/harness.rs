@@ -9,7 +9,7 @@ use forc_client::{
     NodeTarget,
 };
 use forc_pkg::{BuildProfile, Built, BuiltPackage, PrintOpts};
-use forc_test::ecal::EcalSyscallHandler;
+use forc_test::{ecal::EcalSyscallHandler, TestGasLimit};
 use fuel_tx::TransactionBuilder;
 use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
 use fuel_vm::fuel_tx::{self, consensus_parameters::ConsensusParametersV1};
@@ -379,6 +379,7 @@ pub(crate) async fn compile_and_run_unit_tests(
                     forc_test::TestRunnerCount::Auto,
                     test_filter,
                     run_config.gas_costs_values.clone(),
+                    TestGasLimit::default(),
                 )?;
                 match tested {
                     forc_test::Tested::Package(tested_pkg) => Ok(vec![*tested_pkg]),

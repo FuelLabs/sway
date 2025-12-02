@@ -2,7 +2,9 @@ use crate::cli::{self, shared::IrCliOpt};
 use ansiterm::Colour;
 use clap::Parser;
 use forc_pkg as pkg;
-use forc_test::{GasCostsSource, TestFilter, TestResult, TestRunnerCount, TestedPackage};
+use forc_test::{
+    GasCostsSource, TestFilter, TestGasLimit, TestResult, TestRunnerCount, TestedPackage,
+};
 use forc_tracing::println_action_green;
 use forc_util::{
     tx_utils::{decode_fuel_vm_log_data, format_log_receipts},
@@ -68,6 +70,9 @@ pub struct Command {
     /// [possible values: built-in, mainnet, testnet, <FILE_PATH>]
     #[clap(long)]
     pub gas_costs: Option<GasCostsSource>,
+    /// Remove gas limit for test executions.
+    #[clap(long)]
+    pub no_gas_limit: bool,
 }
 
 /// The set of options provided for controlling output of a test.
@@ -107,6 +112,11 @@ pub(crate) fn exec(cmd: Command) -> ForcResult<()> {
         .as_ref()
         .unwrap_or(&GasCostsSource::BuiltIn)
         .provide_gas_costs()?;
+    let gas_limit = if cmd.no_gas_limit {
+        TestGasLimit::Unlimited
+    } else {
+        TestGasLimit::Default
+    };
     let opts = opts_from_cmd(cmd);
     let built_tests = forc_test::build(opts)?;
     let start = std::time::Instant::now();
@@ -123,7 +133,7 @@ pub(crate) fn exec(cmd: Command) -> ForcResult<()> {
             formatted_test_count_string(num_tests_ignored)
         ),
     );
-    let tested = built_tests.run(test_runner_count, test_filter, gas_costs_values)?;
+    let tested = built_tests.run(test_runner_count, test_filter, gas_costs_values, gas_limit)?;
     let duration = start.elapsed();
 
     // Eventually we'll print this in a fancy manner, but this will do for testing.
