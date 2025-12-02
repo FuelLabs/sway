@@ -1,7 +1,10 @@
 use anyhow::Context;
 use forc_pkg::source::reg::block_on_any_runtime;
 use fuel_core::{
-    database::{database_description::on_chain::OnChain, Database},
+    database::{
+        database_description::{off_chain::OffChain, on_chain::OnChain},
+        Database,
+    },
     state::{
         data_source::DataSourceType, iterable_key_value_view::IterableKeyValueViewWrapper,
         key_value_view::KeyValueViewWrapper, ColumnType, IterableKeyValueView, KeyValueView,
@@ -70,13 +73,14 @@ impl ForkClient {
         }
     }
 
-    pub fn fetch_contract_state_blocking(
+    pub fn fetch_contract_state_blocking_at_height(
         &self,
         contract_id: &ContractId,
         key: &Bytes32,
+        request_block_height: Option<BlockHeight>,
     ) -> anyhow::Result<Option<Vec<u8>>> {
         let client = self.client.clone();
-        let block_height = self.block_height;
+        let block_height = request_block_height.or(self.block_height);
         let contract_id = *contract_id;
         let key = *key;
         match block_on_any_runtime(async move {
@@ -116,19 +120,28 @@ impl ForkingOnChainStorage {
         view: IterableKeyValueView<ColumnType<OnChain>, BlockHeight>,
     ) -> IterableKeyValueView<ColumnType<OnChain>, BlockHeight> {
         let (storage, metadata) = view.into_inner();
-        let forked_store =
-            ForkedView::new(storage, self.data_source.clone(), self.fork_client.clone());
+        let forked_store = ForkedView::new(
+            storage,
+            self.data_source.clone(),
+            self.fork_client.clone(),
+            None,
+        );
         let wrapped = IterableKeyValueViewWrapper::new(forked_store);
         IterableKeyValueView::from_storage_and_metadata(wrapped, metadata)
     }
 
-    pub fn wrap_key_value_view(
+    pub fn wrap_key_value_view_at_height(
         &self,
         view: KeyValueView<ColumnType<OnChain>, BlockHeight>,
+        request_block_height: Option<BlockHeight>,
     ) -> KeyValueView<ColumnType<OnChain>, BlockHeight> {
         let (storage, metadata) = view.into_inner();
-        let forked_store =
-            ForkedView::new(storage, self.data_source.clone(), self.fork_client.clone());
+        let forked_store = ForkedView::new(
+            storage,
+            self.data_source.clone(),
+            self.fork_client.clone(),
+            request_block_height,
+        );
         let wrapped = KeyValueViewWrapper::new(forked_store);
         KeyValueView::from_storage_and_metadata(wrapped, metadata)
     }
@@ -141,7 +154,7 @@ impl IterableStore for ForkingOnChainStorage {
         prefix: Option<&[u8]>,
         start: Option<&[u8]>,
         direction: IterDirection,
-    ) -> BoxedIter<KVItem> {
+    ) -> BoxedIter<'_, KVItem> {
         self.data_source
             .iter_store(column, prefix, start, direction)
     }
@@ -152,7 +165,7 @@ impl IterableStore for ForkingOnChainStorage {
         prefix: Option<&[u8]>,
         start: Option<&[u8]>,
         direction: IterDirection,
-    ) -> BoxedIter<KeyItem> {
+    ) -> BoxedIter<'_, KeyItem> {
         self.data_source
             .iter_store_keys(column, prefix, start, direction)
     }
@@ -197,8 +210,43 @@ impl TransactableStorage<BlockHeight> for ForkingOnChainStorage {
         &self,
         height: &BlockHeight,
     ) -> StorageResult<KeyValueView<ColumnType<OnChain>, BlockHeight>> {
-        let view = self.data_source.view_at_height(height)?;
-        Ok(self.wrap_key_value_view(view))
+        // Try to get the view at the requested height first
+        match self.data_source.view_at_height(height) {
+            Ok(view) => {
+                // Local history exists at this height - wrap it with forking capability
+                Ok(self.wrap_key_value_view_at_height(view, Some(*height)))
+            }
+            Err(fuel_core_storage::Error::DatabaseError(err)) => {
+                // Check if this is a NoHistoryForRequestedHeight error by examining the debug output
+                let err_debug = format!("{:?}", err);
+                if err_debug.contains("NoHistoryForRequestedHeight") {
+                    tracing::info!(
+                        "No local history at height {}, using latest view with fork fallback",
+                        height
+                    );
+                    // Get the latest view (which should exist) and wrap it with the requested height
+                    // The ForkedView will fetch missing data from the fork at the requested height
+                    let iterable_view = self.data_source.latest_view()?;
+                    let (storage, _) = iterable_view.into_inner();
+                    // Create a KeyValueView from the IterableKeyValueView's storage
+                    // We need to create a proper KeyValueView that supports the forking
+                    let forked_store = ForkedView::new(
+                        storage,
+                        self.data_source.clone(),
+                        self.fork_client.clone(),
+                        Some(*height),
+                    );
+                    let wrapped = KeyValueViewWrapper::new(forked_store);
+                    return Ok(KeyValueView::from_storage_and_metadata(
+                        wrapped,
+                        Some(*height),
+                    ));
+                }
+                // Not a NoHistoryForRequestedHeight error, propagate it
+                Err(fuel_core_storage::Error::DatabaseError(err))
+            }
+            Err(e) => Err(e),
+        }
     }
 
     fn latest_view(&self) -> StorageResult<IterableKeyValueView<ColumnType<OnChain>, BlockHeight>> {
@@ -215,19 +263,153 @@ impl TransactableStorage<BlockHeight> for ForkingOnChainStorage {
     }
 }
 
+// =============================================================================
+// ForkingOffChainStorage
+// =============================================================================
+
+/// A wrapper around the off-chain database that handles `NoHistoryForRequestedHeight` error
+/// by falling back to the latest view. This is used in fork mode where the forked node
+/// may not have local history at the requested height.
+#[derive(Clone, Debug)]
+pub struct ForkingOffChainStorage {
+    data_source: DataSourceType<OffChain>,
+}
+
+impl ForkingOffChainStorage {
+    pub fn new(off_chain: Database<OffChain>) -> Self {
+        let data_source = off_chain.inner_storage().data.clone();
+        Self { data_source }
+    }
+}
+
+impl IterableStore for ForkingOffChainStorage {
+    fn iter_store(
+        &self,
+        column: Self::Column,
+        prefix: Option<&[u8]>,
+        start: Option<&[u8]>,
+        direction: IterDirection,
+    ) -> BoxedIter<'_, KVItem> {
+        self.data_source
+            .iter_store(column, prefix, start, direction)
+    }
+
+    fn iter_store_keys(
+        &self,
+        column: Self::Column,
+        prefix: Option<&[u8]>,
+        start: Option<&[u8]>,
+        direction: IterDirection,
+    ) -> BoxedIter<'_, KeyItem> {
+        self.data_source
+            .iter_store_keys(column, prefix, start, direction)
+    }
+}
+
+impl KeyValueInspect for ForkingOffChainStorage {
+    type Column = ColumnType<OffChain>;
+
+    fn exists(&self, key: &[u8], column: Self::Column) -> StorageResult<bool> {
+        self.data_source.exists(key, column)
+    }
+
+    fn size_of_value(&self, key: &[u8], column: Self::Column) -> StorageResult<Option<usize>> {
+        self.data_source.size_of_value(key, column)
+    }
+
+    fn get(&self, key: &[u8], column: Self::Column) -> StorageResult<Option<Value>> {
+        self.data_source.get(key, column)
+    }
+
+    fn read(
+        &self,
+        key: &[u8],
+        column: Self::Column,
+        offset: usize,
+        buf: &mut [u8],
+    ) -> StorageResult<bool> {
+        self.data_source.read(key, column, offset, buf)
+    }
+}
+
+impl TransactableStorage<BlockHeight> for ForkingOffChainStorage {
+    fn commit_changes(
+        &self,
+        height: Option<BlockHeight>,
+        changes: StorageChanges,
+    ) -> StorageResult<()> {
+        self.data_source.commit_changes(height, changes)
+    }
+
+    fn view_at_height(
+        &self,
+        height: &BlockHeight,
+    ) -> StorageResult<KeyValueView<ColumnType<OffChain>, BlockHeight>> {
+        // Try to get the view at the requested height first
+        match self.data_source.view_at_height(height) {
+            Ok(view) => Ok(view),
+            Err(fuel_core_storage::Error::DatabaseError(err)) => {
+                // Check if this is a NoHistoryForRequestedHeight error
+                let err_debug = format!("{:?}", err);
+                if err_debug.contains("NoHistoryForRequestedHeight") {
+                    tracing::debug!(
+                        "Off-chain: No local history at height {}, using latest view",
+                        height
+                    );
+                    // Fall back to latest view - off-chain data is not critical for fork queries
+                    let iterable_view = self.data_source.latest_view()?;
+                    let (storage, _) = iterable_view.into_inner();
+                    let key_value_wrapper = KeyValueViewWrapper::new(storage);
+                    return Ok(KeyValueView::from_storage_and_metadata(
+                        key_value_wrapper,
+                        Some(*height),
+                    ));
+                }
+                Err(fuel_core_storage::Error::DatabaseError(err))
+            }
+            Err(e) => Err(e),
+        }
+    }
+
+    fn latest_view(
+        &self,
+    ) -> StorageResult<IterableKeyValueView<ColumnType<OffChain>, BlockHeight>> {
+        self.data_source.latest_view()
+    }
+
+    fn rollback_block_to(&self, height: &BlockHeight) -> StorageResult<()> {
+        self.data_source.rollback_block_to(height)
+    }
+
+    fn shutdown(&self) {
+        self.data_source.shutdown();
+    }
+}
+
 struct ForkedView<V> {
     inner: V,
     storage: DataSourceType<OnChain>,
     fork_client: Arc<ForkClient>,
+    /// The block height from the RPC request - used to fetch state at a specific height from fork
+    request_block_height: Option<BlockHeight>,
 }
 
 impl<V> ForkedView<V> {
-    fn new(inner: V, storage: DataSourceType<OnChain>, fork_client: Arc<ForkClient>) -> Self {
-        tracing::debug!("Creating ForkedView");
+    fn new(
+        inner: V,
+        storage: DataSourceType<OnChain>,
+        fork_client: Arc<ForkClient>,
+        request_block_height: Option<BlockHeight>,
+    ) -> Self {
+        tracing::debug!(
+            "Creating ForkedView with request_block_height: {:?}",
+            request_block_height
+        );
         Self {
             inner,
             storage,
             fork_client,
+            request_block_height,
         }
     }
 
@@ -284,7 +466,11 @@ where
                             if let Ok(state_key) = key[32..64].try_into() {
                                 let exists = self
                                     .fork_client
-                                    .fetch_contract_state_blocking(&contract_id, &state_key)
+                                    .fetch_contract_state_blocking_at_height(
+                                        &contract_id,
+                                        &state_key,
+                                        self.request_block_height,
+                                    )
                                     .map(|opt| opt.is_some())
                                     .unwrap_or(false);
                                 Ok(exists)
@@ -325,7 +511,11 @@ where
                     if let Ok(state_key) = key[32..64].try_into() {
                         let size = self
                             .fork_client
-                            .fetch_contract_state_blocking(&contract_id, &state_key)
+                            .fetch_contract_state_blocking_at_height(
+                                &contract_id,
+                                &state_key,
+                                self.request_block_height,
+                            )
                             .map(|opt| opt.map(|state| state.len()))
                             .unwrap_or(None);
                         Ok(size)
@@ -399,10 +589,11 @@ where
             Column::ContractsState if key.len() == 64 => {
                 if let Ok(contract_id) = key[..32].try_into() {
                     if let Ok(state_key) = key[32..64].try_into() {
-                        match self
-                            .fork_client
-                            .fetch_contract_state_blocking(&contract_id, &state_key)
-                        {
+                        match self.fork_client.fetch_contract_state_blocking_at_height(
+                            &contract_id,
+                            &state_key,
+                            self.request_block_height,
+                        ) {
                             Ok(Some(state_data)) => {
                                 let mut storage_key = Vec::with_capacity(
                                     contract_id.as_ref().len() + state_key.as_ref().len(),
@@ -482,10 +673,11 @@ where
             Column::ContractsState if key.len() == 64 => {
                 if let Ok(contract_id) = key[..32].try_into() {
                     if let Ok(state_key) = key[32..64].try_into() {
-                        match self
-                            .fork_client
-                            .fetch_contract_state_blocking(&contract_id, &state_key)
-                        {
+                        match self.fork_client.fetch_contract_state_blocking_at_height(
+                            &contract_id,
+                            &state_key,
+                            self.request_block_height,
+                        ) {
                             Ok(Some(state_data)) => {
                                 if offset >= state_data.len() {
                                     return Ok(false);

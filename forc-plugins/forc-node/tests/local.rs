@@ -48,7 +48,10 @@ mod fork_caller {
     ));
 }
 
-async fn run_node(fork_url: Option<String>) -> (FuelService, String) {
+async fn run_node_with_block_height(
+    fork_url: Option<String>,
+    fork_block_number: Option<u32>,
+) -> (FuelService, String) {
     let port = portpicker::pick_unused_port().expect("pick port");
 
     let db_path = tempfile::tempdir()
@@ -70,7 +73,7 @@ async fn run_node(fork_url: Option<String>) -> (FuelService, String) {
         historical_execution: true,
         poa_instant: true,
         fork_url,
-        fork_block_number: None,
+        fork_block_number,
         non_interactive: true,
     };
     let service = run(local_cmd, false).await.unwrap().unwrap();
@@ -165,7 +168,7 @@ async fn fork_contract_bytecode() {
         "bytecode missing on original node"
     );
 
-    let (_fork_service, fork_url) = run_node(Some(graphql_endpoint)).await;
+    let (_fork_service, fork_url) = run_node_with_block_height(Some(graphql_endpoint), None).await;
     let graphql_query = format!("{{ contract(id: \"{contract_id_hex}\") {{ bytecode }} }}");
     let response = reqwest::Client::new()
         .post(&fork_url)
@@ -207,7 +210,7 @@ async fn fork_contract_state_with_forc_call() {
     let signer = PrivateKeySigner::new(secret_key);
 
     // deploy a contract on the original node
-    let (_original_service, original_url) = run_node(None).await;
+    let (_original_service, original_url) = run_node_with_block_height(None, None).await;
     let wallet = Wallet::new(
         signer.clone(),
         Provider::connect(&original_url)
@@ -238,7 +241,8 @@ async fn fork_contract_state_with_forc_call() {
     );
 
     // fork the original node
-    let (_fork_service, fork_url) = run_node(Some(original_url.clone())).await;
+    let (_fork_service, fork_url) =
+        run_node_with_block_height(Some(original_url.clone()), None).await;
 
     // verify that the forked node returns the original contract state (remains unchanged)
     let fork_result = forc_call_result(
@@ -350,7 +354,7 @@ async fn update_transitive_contract_state() {
     let signer = PrivateKeySigner::new(secret_key);
 
     // deploy contract A on the original node
-    let (_original_service, original_url) = run_node(None).await;
+    let (_original_service, original_url) = run_node_with_block_height(None, None).await;
     let wallet = Wallet::new(
         signer.clone(),
         Provider::connect(&original_url)
@@ -407,7 +411,8 @@ async fn update_transitive_contract_state() {
     );
 
     // fork the original node
-    let (_fork_service, fork_url) = run_node(Some(original_url.clone())).await;
+    let (_fork_service, fork_url) =
+        run_node_with_block_height(Some(original_url.clone()), None).await;
 
     // verify that the forked node returns the original contract state (remains unchanged)
     let fork_result = forc_call_result(
@@ -527,4 +532,156 @@ async fn start_local_node_check_health() {
     let body: serde_json::Value = response.json().await.expect("Failed to parse response");
 
     assert_eq!(body["data"]["health"], true);
+}
+
+#[tokio::test]
+async fn fork_contract_state_at_specific_block_height_is_cached() {
+    let secret_key = SecretKey::from_str(DEFAULT_PRIVATE_KEY).expect("parse private key");
+    let signer = PrivateKeySigner::new(secret_key);
+
+    // Deploy a contract on the original node
+    let (_original_service, original_url) = run_node_with_block_height(None, None).await;
+    let provider = Provider::connect(&original_url)
+        .await
+        .expect("connect provider to original node");
+    let wallet = Wallet::new(signer.clone(), provider.clone());
+
+    let deployment =
+        Contract::load_from(Path::new(fork::CONTRACT_BIN), LoadConfiguration::default())
+            .expect("load contract bytecode")
+            .deploy(&wallet, TxPolicies::default())
+            .await
+            .expect("deploy contract to original node");
+    let contract_id = deployment.contract_id;
+
+    // Verify initial state is 0
+    let initial_count = forc_call_result(
+        &contract_id,
+        fork::CONTRACT_ABI,
+        &original_url,
+        "get_count",
+        vec![],
+    )
+    .await;
+    assert_eq!(initial_count, "0", "unexpected initial contract state");
+
+    // First transaction: increment the counter
+    let first_increment = (1u64, 2u64);
+    let contract_instance = fork::Contract::new(contract_id, wallet.clone());
+    contract_instance
+        .methods()
+        .increment_count(fork::Adder {
+            vals: first_increment,
+        })
+        .call()
+        .await
+        .expect("first increment");
+
+    // Get block height after first transaction
+    let block_height_after_first_tx = provider
+        .latest_block_height()
+        .await
+        .expect("get block height after first tx");
+
+    // Verify count after first transaction
+    let count_after_first = forc_call_result(
+        &contract_id,
+        fork::CONTRACT_ABI,
+        &original_url,
+        "get_count",
+        vec![],
+    )
+    .await;
+    let expected_after_first = first_increment.0 + first_increment.1;
+    assert_eq!(
+        count_after_first,
+        format!("{expected_after_first}"),
+        "unexpected state after first transaction"
+    );
+
+    // Second transaction: increment the counter again
+    let second_increment = (10u64, 20u64);
+    contract_instance
+        .methods()
+        .increment_count(fork::Adder {
+            vals: second_increment,
+        })
+        .call()
+        .await
+        .expect("second increment");
+
+    // Verify count after second transaction on original node
+    let count_after_second = forc_call_result(
+        &contract_id,
+        fork::CONTRACT_ABI,
+        &original_url,
+        "get_count",
+        vec![],
+    )
+    .await;
+    let expected_after_second = expected_after_first + second_increment.0 + second_increment.1;
+    assert_eq!(
+        count_after_second,
+        format!("{expected_after_second}"),
+        "unexpected state after second transaction on original node"
+    );
+
+    // Fork the original node at the block height AFTER the first transaction
+    // This means the forked node should have the state after the first increment,
+    // but before the second increment
+    let (_fork_service, fork_url) = run_node_with_block_height(
+        Some(original_url.clone()),
+        Some(block_height_after_first_tx),
+    )
+    .await;
+
+    // Query the forked node - should return state after first transaction
+    let fork_count = forc_call_result(
+        &contract_id,
+        fork::CONTRACT_ABI,
+        &fork_url,
+        "get_count",
+        vec![],
+    )
+    .await;
+    assert_eq!(
+        fork_count,
+        format!("{expected_after_first}"),
+        "forked node should return state at fork block height (after first tx, before second tx)"
+    );
+
+    // Verify original node still returns the latest state (after both transactions)
+    let original_latest = forc_call_result(
+        &contract_id,
+        fork::CONTRACT_ABI,
+        &original_url,
+        "get_count",
+        vec![],
+    )
+    .await;
+    assert_eq!(
+        original_latest,
+        format!("{expected_after_second}"),
+        "original node should return latest state"
+    );
+
+    // Fork the original node at latest height (no block number specified)
+    // This should return the latest state of the contract
+    let (_fork_latest_service, fork_latest_url) =
+        run_node_with_block_height(Some(original_url.clone()), None).await;
+
+    // Query the forked-at-latest node - should return latest state
+    let fork_latest_count = forc_call_result(
+        &contract_id,
+        fork::CONTRACT_ABI,
+        &fork_latest_url,
+        "get_count",
+        vec![],
+    )
+    .await;
+    assert_eq!(
+        fork_latest_count,
+        format!("{expected_after_second}"),
+        "forked node at latest height should return latest state"
+    );
 }

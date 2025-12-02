@@ -6,10 +6,13 @@ use crate::{
     util::HumanReadableConfig,
 };
 use forc_tracing::println_green;
-use fork::{ForkClient, ForkSettings, ForkingOnChainStorage};
+use fork::{ForkClient, ForkSettings, ForkingOffChainStorage, ForkingOnChainStorage};
 use fuel_core::{
     combined_database::CombinedDatabase,
-    database::{database_description::on_chain::OnChain, Database, RegularStage},
+    database::{
+        database_description::{off_chain::OffChain, on_chain::OnChain},
+        Database, RegularStage,
+    },
     service::FuelService,
     state::data_source::DataSource,
 };
@@ -56,7 +59,6 @@ pub async fn run(cmd: cmd::LocalCmd, dry_run: bool) -> anyhow::Result<Option<Fue
 
             // extract all attributes from combined database (as they are all private); reconstruct them in a new combined database with forked storage
             let combined_database = {
-                let off_chain = combined_database.off_chain().to_owned();
                 let relayer = combined_database.relayer().to_owned();
                 let gas_price = combined_database.gas_price().to_owned();
                 let compression = combined_database.compression().to_owned();
@@ -68,6 +70,18 @@ pub async fn run(cmd: cmd::LocalCmd, dry_run: bool) -> anyhow::Result<Option<Fue
                     let data_source = DataSource::new(
                         Arc::new(ForkingOnChainStorage::new(on_chain, fork_client)),
                         RegularStage::<OnChain>::default(),
+                    );
+                    Database::from_storage_and_metadata(data_source, metadata)
+                };
+
+                // Wrap off-chain database with ForkingOffChainStorage to handle
+                // NoHistoryForRequestedHeight error by falling back to latest view
+                let off_chain = {
+                    let off_chain = combined_database.off_chain().clone();
+                    let (_, metadata) = off_chain.clone().into_inner();
+                    let data_source = DataSource::new(
+                        Arc::new(ForkingOffChainStorage::new(off_chain)),
+                        RegularStage::<OffChain>::default(),
                     );
                     Database::from_storage_and_metadata(data_source, metadata)
                 };
