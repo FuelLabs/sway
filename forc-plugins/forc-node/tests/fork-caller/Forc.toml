@@ -1,0 +1,7 @@
+[project]
+authors = ["z"]
+entry = "main.sw"
+license = "Apache-2.0"
+name = "fork-caller"
+
+[dependencies]

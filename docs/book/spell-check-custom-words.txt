@@ -1,5 +1,6 @@
 ABI
 ABIs
+AMM
 ASM
 IDE
 IDEs
@@ -110,6 +111,7 @@ relayer
 relayers
 repo
 repos
+RocksDB
 runnable
 stateful
 struct

@@ -1,0 +1,9 @@
+[[package]]
+name = "fork-caller"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+version = "0.70.1"
+source = "registry+std?0.70.1#QmU7w9Aqa6jvQcj72HS8uqfFk3ieiC74WsZGaRfUrW1u41!"

@@ -70,21 +70,27 @@ pub struct ConfigFetcher {
     client: reqwest::Client,
     base_url: String,
     config_vault: PathBuf,
+    non_interactive: bool,
 }
 
 impl Default for ConfigFetcher {
     /// Creates a new fetcher to interact with github.
     /// By default user's chain configuration vault is at: `~/.forc/chainspecs`
     fn default() -> Self {
-        Self {
-            client: reqwest::Client::new(),
-            base_url: "https://api.github.com".to_string(),
-            config_vault: user_forc_directory().join(CONFIG_FOLDER),
-        }
+        Self::new(false)
     }
 }
 
 impl ConfigFetcher {
+    pub fn new(non_interactive: bool) -> Self {
+        Self {
+            client: reqwest::Client::new(),
+            base_url: "https://api.github.com".to_string(),
+            config_vault: user_forc_directory().join(CONFIG_FOLDER),
+            non_interactive,
+        }
+    }
+
     #[cfg(test)]
     /// Override the base url, to be used in tests.
     pub fn with_base_url(base_url: String) -> Self {
@@ -92,6 +98,7 @@ impl ConfigFetcher {
             client: reqwest::Client::new(),
             base_url,
             config_vault: user_forc_directory().join(CONFIG_FOLDER),
+            non_interactive: false,
         }
     }
 
@@ -101,7 +108,12 @@ impl ConfigFetcher {
             client: reqwest::Client::new(),
             base_url,
             config_vault,
+            non_interactive: false,
         }
+    }
+
+    fn non_interactive(&self) -> bool {
+        self.non_interactive
     }
 
     fn get_base_url(&self) -> &str {
@@ -293,9 +305,19 @@ async fn validate_local_chainconfig(fetcher: &ConfigFetcher) -> anyhow::Result<(
             "Local node configuration files are missing at {}",
             local_conf_dir.display()
         ));
-        // Ask user if they want to update the chain config.
-        let update = ask_user_yes_no_question("Would you like to download network configuration?")?;
-        if update {
+        let non_interactive = fetcher.non_interactive();
+        if non_interactive {
+            println_action_green(
+                "Downloading",
+                "local network configuration (non-interactive mode).",
+            );
+        }
+        let should_download = if non_interactive {
+            true
+        } else {
+            ask_user_yes_no_question("Would you like to download network configuration?")?
+        };
+        if should_download {
             fetcher.download_config(&ChainConfig::Local).await?;
         } else {
             bail!(
@@ -324,10 +346,22 @@ async fn validate_remote_chainconfig(
         println_warning(&format!(
             "A network configuration update detected for {conf}, this might create problems while syncing with rest of the network"
         ));
-        // Ask user if they want to update the chain config.
-        let update = ask_user_yes_no_question("Would you like to update network configuration?")?;
-        if update {
-            println_action_green("Updating", &format!("configuration files for {conf}",));
+        let non_interactive = fetcher.non_interactive();
+        if non_interactive {
+            println_action_green(
+                "Updating",
+                &format!("configuration files for {conf} (non-interactive mode)",),
+            );
+        }
+        let should_update = if non_interactive {
+            true
+        } else {
+            ask_user_yes_no_question("Would you like to update network configuration?")?
+        };
+        if should_update {
+            if !non_interactive {
+                println_action_green("Updating", &format!("configuration files for {conf}",));
+            }
             fetcher.download_config(conf).await?;
             println_action_green(
                 "Finished",
@@ -343,8 +377,11 @@ async fn validate_remote_chainconfig(
 /// Check local state of the configuration file in the vault (if they exists)
 /// and compare them to the remote one in github. If a change is detected asks
 /// user if they want to update, and does the update for them.
-pub async fn check_and_update_chain_config(conf: ChainConfig) -> anyhow::Result<()> {
-    let fetcher = ConfigFetcher::default();
+pub async fn check_and_update_chain_config(
+    conf: ChainConfig,
+    non_interactive: bool,
+) -> anyhow::Result<()> {
+    let fetcher = ConfigFetcher::new(non_interactive);
     match conf {
         ChainConfig::Local => validate_local_chainconfig(&fetcher).await?,
         remote_config => validate_remote_chainconfig(&fetcher, &remote_config).await?,
