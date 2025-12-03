@@ -110,7 +110,7 @@ impl TypeMetadata {
                             logged_expr.span.clone(),
                         ))
                     } else {
-                        Ok(&arguments[0].1)
+                        Ok(&arguments[0].expr)
                     }
                 }
                 _ => Err(CompileError::Internal(

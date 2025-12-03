@@ -99,11 +99,11 @@ impl Spanned for TraitConstraint {
     }
 }
 
-// impl SubstTypes for TraitConstraint {
-//     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-//         self.type_arguments.subst(ctx)
-//     }
-// }
+impl SubstTypes for TraitConstraint {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        self.type_arguments.subst(ctx)
+    }
+}
 
 impl From<&Supertrait> for TraitConstraint {
     fn from(supertrait: &Supertrait) -> Self {

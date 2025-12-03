@@ -5,6 +5,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
+use sway_macros::Visit;
 use sway_types::{BaseIdent, Named, Span, Spanned};
 
 use crate::{
@@ -40,7 +41,10 @@ pub enum TreatNumericAs {
 }
 
 /// A identifier to uniquely refer to our type terms
-#[derive(PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd, Debug, Deserialize, Serialize)]
+#[derive(
+    PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd, Debug, Deserialize, Serialize, Visit,
+)]
+#[visit(leaf)]
 pub struct TypeId(usize);
 
 impl DisplayWithEngines for TypeId {

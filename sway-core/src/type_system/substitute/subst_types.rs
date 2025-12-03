@@ -1,10 +1,4 @@
-use std::borrow::Cow;
-
-use crate::{
-    engine_threading::Engines,
-    semantic_analysis::Visitor,
-    type_system::priv_prelude::*,
-};
+use crate::{engine_threading::Engines, type_system::priv_prelude::*};
 use sway_types::Ident;
 
 #[derive(Default)]
@@ -65,29 +59,29 @@ impl<'eng, 'tsm> SubstTypesContext<'eng, 'tsm> {
     }
 }
 
-pub struct ReplaceTypesVisitor<'ctx, 'eng, 'tsm> {
-    pub ctx: &'ctx SubstTypesContext<'eng, 'tsm>,
-}
+// pub struct ReplaceTypesVisitor<'ctx, 'eng, 'tsm> {
+//     pub ctx: &'ctx SubstTypesContext<'eng, 'tsm>,
+// }
 
-impl<'ctx, 'eng, 'tsm> Visitor for ReplaceTypesVisitor<'ctx, 'eng, 'tsm> {
-    const VISIT_GENERIC_TYPE_ARGUMENT_INITIAL_TYPE_ID: bool = false;
+// impl<'ctx, 'eng, 'tsm> Visitor for ReplaceTypesVisitor<'ctx, 'eng, 'tsm> {
+//     const VISIT_GENERIC_TYPE_ARGUMENT_INITIAL_TYPE_ID: bool = false;
 
-    fn visit_type_id<'a>(&mut self, type_id: &'a TypeId) -> Cow<'a, TypeId> {
-        let type_engine = self.ctx.engines.te();
-        if let Some(matching_id) = self
-            .ctx
-            .type_subst_map
-            .and_then(|tsm| tsm.find_match(*type_id, self.ctx.engines))
-        {
-            // TODO cheaper to never include ErrorRecovery in TypeSubstMap
-            if !matches!(&*type_engine.get(matching_id), TypeInfo::ErrorRecovery(_)) {
-                return Cow::Owned(matching_id);
-            }
-        }
+//     fn visit_type_id<'a>(&mut self, type_id: &'a TypeId) -> Cow<'a, TypeId> {
+//         let type_engine = self.ctx.engines.te();
+//         if let Some(matching_id) = self
+//             .ctx
+//             .type_subst_map
+//             .and_then(|tsm| tsm.find_match(*type_id, self.ctx.engines))
+//         {
+//             // TODO cheaper to never include ErrorRecovery in TypeSubstMap
+//             if !matches!(&*type_engine.get(matching_id), TypeInfo::ErrorRecovery(_)) {
+//                 return Cow::Owned(matching_id);
+//             }
+//         }
 
-        Cow::Borrowed(type_id)
-    }
-}
+//         Cow::Borrowed(type_id)
+//     }
+// }
 
 pub trait SubstTypes {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges;

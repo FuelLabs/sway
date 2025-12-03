@@ -502,7 +502,7 @@ impl ty::TyModule {
     fn get_all_impls(
         ctx: TypeCheckContext<'_>,
         nodes: &[AstNode],
-        predicate: fn(&ImplSelfOrTrait) -> bool,
+        predicate: fn(&crate::parsed::ImplSelfOrTrait) -> bool,
     ) -> HashMap<BaseIdent, HashSet<CallPath>> {
         let engines = ctx.engines();
         let mut impls = HashMap::<BaseIdent, HashSet<CallPath>>::new();

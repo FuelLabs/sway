@@ -18,8 +18,8 @@ use crate::{
     },
     language::{
         ty::{
-            self, ProjectionKind, TyConfigurableDecl, TyConstantDecl, TyExpression,
-            TyExpressionVariant, TyFunctionDisplay, TyStorageField,
+            self, FunctionApplicationArgument, ProjectionKind, TyConfigurableDecl, TyConstantDecl,
+            TyExpression, TyExpressionVariant, TyFunctionDisplay, TyStorageField,
         },
         *,
     },
@@ -3256,7 +3256,7 @@ impl<'a> FnCompiler<'a> {
         call_params: &ty::ContractCallParams,
         contract_call_parameters: &IndexMap<String, ty::TyExpression>,
         ast_name: &str,
-        ast_args: &[(Ident, ty::TyExpression)],
+        ast_args: &[FunctionApplicationArgument],
         ast_return_type: TypeId,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
@@ -3265,9 +3265,9 @@ impl<'a> FnCompiler<'a> {
 
         // Compile each user argument
         let mut compiled_args = Vec::<Value>::new();
-        for (_, arg) in ast_args.iter() {
+        for arg in ast_args.iter() {
             let val = return_on_termination_or_extract!(
-                self.compile_expression_to_register(context, md_mgr, arg)?
+                self.compile_expression_to_register(context, md_mgr, &arg.expr)?
             )
             .expect_register();
             compiled_args.push(val)
@@ -3280,7 +3280,10 @@ impl<'a> FnCompiler<'a> {
             1 => {
                 // The single arg doesn't need to be put into a struct.
                 let arg0 = compiled_args[0];
-                let arg0_type = self.engines.te().get_unaliased(ast_args[0].1.return_type);
+                let arg0_type = self
+                    .engines
+                    .te()
+                    .get_unaliased(ast_args[0].expr.return_type);
 
                 match arg0_type {
                     _ if arg0_type.is_copy_type() => self
@@ -3557,7 +3560,7 @@ impl<'a> FnCompiler<'a> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        ast_args: &[(Ident, ty::TyExpression)],
+        ast_args: &[FunctionApplicationArgument],
         callee: &ty::TyFunctionDecl,
         span_md_idx: Option<MetadataIndex>,
         call_path: &CallPath,
@@ -3578,11 +3581,11 @@ impl<'a> FnCompiler<'a> {
 
         // Compile the arguments.
         let mut args = Vec::with_capacity(ast_args.len());
-        for ((_, expr), param) in ast_args.iter().zip(callee.parameters.iter()) {
+        for (arg, param) in ast_args.iter().zip(callee.parameters.iter()) {
             self.current_fn_param = Some(param.clone());
 
             let arg = return_on_termination_or_extract!(
-                self.compile_expression_to_register(context, md_mgr, expr)?
+                self.compile_expression_to_register(context, md_mgr, &arg.expr)?
             )
             .expect_register();
 

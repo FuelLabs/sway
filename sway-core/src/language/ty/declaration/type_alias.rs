@@ -54,11 +54,11 @@ impl HashWithEngines for TyTypeAliasDecl {
     }
 }
 
-// impl SubstTypes for TyTypeAliasDecl {
-//     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-//         self.ty.subst(ctx)
-//     }
-// }
+impl SubstTypes for TyTypeAliasDecl {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        self.ty.subst(ctx)
+    }
+}
 
 impl CreateTypeId for TyTypeAliasDecl {
     fn create_type_id(&self, engines: &Engines) -> TypeId {

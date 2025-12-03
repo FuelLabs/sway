@@ -259,13 +259,13 @@ fn analyze_expression(
             // we run CEI violation analysis as if the arguments form a code block
             let args_effs = analyze_expressions(
                 engines,
-                arguments.iter().map(|(_, e)| e),
+                arguments.iter().map(|arg| &arg.expr),
                 block_name,
                 warnings,
             );
             if args_effs.contains(&Effect::Interaction) {
                 // TODO: interaction span has to be more precise and point to an argument which performs interaction
-                let last_arg_span = &arguments.last().unwrap().1.span;
+                let last_arg_span = &arguments.last().unwrap().expr.span;
                 warn_after_interaction(
                     &fn_effs,
                     &call_path.span(),
@@ -614,7 +614,8 @@ fn effects_of_expression(engines: &Engines, expr: &ty::TyExpression) -> HashSet<
         } => {
             let fn_body = &decl_engine.get_function(fn_ref).body;
             let mut effs = effects_of_codeblock(engines, fn_body);
-            let args_effs = map_hashsets_union(arguments, |e| effects_of_expression(engines, &e.1));
+            let args_effs =
+                map_hashsets_union(arguments, |e| effects_of_expression(engines, &e.expr));
             effs.extend(args_effs);
             if selector.is_some() {
                 // external contract call (a.k.a. interaction)

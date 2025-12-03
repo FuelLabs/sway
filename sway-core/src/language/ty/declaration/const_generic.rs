@@ -1,21 +1,25 @@
 use crate::{
     decl_engine::MaterializeConstGenerics,
     engine_threading::HashWithEngines,
+    has_changes,
     language::{parsed::ConstGenericDeclaration, ty::TyExpression, CallPath},
     semantic_analysis::{TypeCheckAnalysis, TypeCheckAnalysisContext},
-    Engines, TypeId,
+    Engines, HasChanges, SubstTypes, TypeId,
 };
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash as _, Hasher};
 use sway_error::handler::{ErrorEmitted, Handler};
+use sway_macros::Visit;
 use sway_types::{Ident, Named, Span, Spanned};
 
 use super::TyDeclParsedType;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Visit)]
 pub struct TyConstGenericDecl {
+    #[visit(skip)]
     pub call_path: CallPath,
     pub return_type: TypeId,
+    #[visit(skip)]
     pub span: Span,
     pub value: Option<TyExpression>,
 }
@@ -34,19 +38,19 @@ impl HashWithEngines for TyConstGenericDecl {
     }
 }
 
-// impl SubstTypes for TyConstGenericDecl {
-//     fn subst_inner(&mut self, ctx: &crate::SubstTypesContext) -> crate::HasChanges {
-//         has_changes! {
-//             self.return_type.subst(ctx);
-//             if let Some(v) = ctx.get_renamed_const_generic(&self.call_path.suffix) {
-//                 self.call_path.suffix = v.clone();
-//                 HasChanges::Yes
-//             } else {
-//                 HasChanges::No
-//             };
-//         }
-//     }
-// }
+impl SubstTypes for TyConstGenericDecl {
+    fn subst_inner(&mut self, ctx: &crate::SubstTypesContext) -> crate::HasChanges {
+        has_changes! {
+            self.return_type.subst(ctx);
+            if let Some(v) = ctx.get_renamed_const_generic(&self.call_path.suffix) {
+                self.call_path.suffix = v.clone();
+                HasChanges::Yes
+            } else {
+                HasChanges::No
+            };
+        }
+    }
+}
 
 impl MaterializeConstGenerics for TyConstGenericDecl {
     fn materialize_const_generics(

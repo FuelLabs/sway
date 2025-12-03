@@ -5,26 +5,26 @@ use crate::{
     },
     decl_engine::{
         engine::{DeclEngineGet, DeclEngineGetParsedDeclId, DeclEngineReplace},
-        DeclEngineInsert, DeclRefFunction, ReplaceDecls, UpdateConstantExpression,
+        DeclEngineInsert, DeclRefFunction, ReplaceDecls,
     },
     language::{
         parsed::*,
-        ty::{self, TyDecl, TyExpression, TyFunctionDecl, TyFunctionSig},
+        ty::{
+            self, FunctionApplicationArgument, TyCodeBlock, TyDecl, TyExpression, TyFunctionDecl,
+            TyFunctionSig,
+        },
         *,
     },
     semantic_analysis::*,
     type_system::{
-        EnforceTypeArguments, GenericArgument, IncludeSelf, Length,
-        SubstTypes, SubstTypesContext, TypeArgs, TypeBinding, TypeId, TypeInfo, TypeParameter,
-        TypeSubstMap, UnifyCheck,
+        EnforceTypeArguments, GenericArgument, IncludeSelf, Length, SubstTypes, SubstTypesContext,
+        TypeArgs, TypeBinding, TypeId, TypeInfo, TypeParameter, TypeSubstMap, UnifyCheck,
     },
 };
 use ast_node::typed_expression::check_function_arguments_arity;
 use indexmap::IndexMap;
 use itertools::izip;
-use std::{
-    collections::{BTreeMap, HashMap, VecDeque},
-};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -597,7 +597,7 @@ pub(crate) fn type_check_method_application(
             method_name_literal(&method.name),
             old_arguments.first().cloned().unwrap(),
             args,
-            arguments.iter().map(|x| x.1.return_type).collect(),
+            arguments.iter().map(|x| x.expr.return_type).collect(),
             coins_expr,
             asset_id_expr,
             gas_expr,
@@ -614,7 +614,7 @@ pub(crate) fn type_check_method_application(
                 ..
             } => {
                 let selector = selector.unwrap();
-                arguments[0].1 = (*selector.contract_address).clone();
+                arguments[0].expr = (*selector.contract_address).clone();
                 *contract_caller = Some(selector.contract_caller);
             }
             _ => unreachable!(),
@@ -873,7 +873,7 @@ fn unify_arguments_and_parameters(
     ctx: TypeCheckContext,
     arguments: &[(BaseIdent, ty::TyExpression)],
     parameters: &[ty::TyFunctionParameter],
-) -> Result<Vec<(Ident, ty::TyExpression)>, ErrorEmitted> {
+) -> Result<Vec<FunctionApplicationArgument>, ErrorEmitted> {
     let type_engine = ctx.engines.te();
     let engines = ctx.engines();
     let mut typed_arguments_and_names = vec![];
@@ -903,7 +903,10 @@ fn unify_arguments_and_parameters(
                 continue;
             }
 
-            typed_arguments_and_names.push((param.name.clone(), arg.clone()));
+            typed_arguments_and_names.push(FunctionApplicationArgument {
+                name: param.name.clone(),
+                expr: arg.clone(),
+            });
         }
         Ok(typed_arguments_and_names)
     })
@@ -1033,13 +1036,16 @@ pub(crate) fn monomorphize_method(
         &decl_ref.span(),
     )?;
 
-    // assert!(matches!(func_decl, Cow::Owned(_)));
-    // let mut func_decl = func_decl.into_owned();
-
     if let Some(implementing_type) = &func_decl.implementing_type {
-        func_decl
-            .body
-            .update_constant_expression(engines, implementing_type);
+        let mut visitor = crate::decl_engine::UpdateConstantExpressionVisitor {
+            engines,
+            implementing_type,
+        };
+        let mut body = std::borrow::Cow::Borrowed(&func_decl.body);
+        TyCodeBlock::visit(&mut body, &mut visitor);
+        if let std::borrow::Cow::Owned(v) = body {
+            func_decl.body = v;
+        }
     }
 
     let decl_ref = decl_engine

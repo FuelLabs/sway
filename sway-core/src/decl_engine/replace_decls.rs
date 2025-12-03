@@ -1,10 +1,11 @@
-use sway_error::handler::{ErrorEmitted, Handler};
+use std::borrow::Cow;
 
 use crate::{
     engine_threading::Engines,
     language::ty::{self, TyDecl, TyExpression},
-    semantic_analysis::TypeCheckContext,
+    semantic_analysis::{TypeCheckContext, Visitor},
 };
+use sway_error::handler::{ErrorEmitted, Handler};
 
 use super::DeclMapping;
 
@@ -52,21 +53,40 @@ pub(crate) trait ReplaceFunctionImplementingType {
     fn replace_implementing_type(&mut self, engines: &Engines, implementing_type: ty::TyDecl);
 }
 
-pub(crate) trait UpdateConstantExpression {
-    fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl);
+pub struct UpdateConstantExpressionVisitor<'a> {
+    pub engines: &'a Engines,
+    pub implementing_type: &'a TyDecl,
 }
 
-impl<T: UpdateConstantExpression + Clone> UpdateConstantExpression for std::sync::Arc<T> {
-    fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
-        if let Some(item) = std::sync::Arc::get_mut(self) {
-            item.update_constant_expression(engines, implementing_type);
+impl<'a> Visitor for UpdateConstantExpressionVisitor<'a> {
+    fn visit_ty_constant_decl(
+        &mut self,
+        item: &mut std::borrow::Cow<ty::TyConstantDecl>,
+    ) {
+        if let Some(impl_const) =
+            ty::find_const_decl_from_impl(self.implementing_type, self.engines.de(), item)
+        {
+            *item = Cow::Owned(impl_const);
         } else {
-            let mut item = self.as_ref().clone();
-            item.update_constant_expression(engines, implementing_type);
-            *self = std::sync::Arc::new(item);
         }
     }
 }
+
+// pub(crate) trait UpdateConstantExpression {
+//     fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl);
+// }
+
+// impl<T: UpdateConstantExpression + Clone> UpdateConstantExpression for std::sync::Arc<T> {
+//     fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
+//         if let Some(item) = std::sync::Arc::get_mut(self) {
+//             item.update_constant_expression(engines, implementing_type);
+//         } else {
+//             let mut item = self.as_ref().clone();
+//             item.update_constant_expression(engines, implementing_type);
+//             *self = std::sync::Arc::new(item);
+//         }
+//     }
+// }
 
 // Iterate the tree searching for references to a const generic,
 // and initialize its value with the passed value

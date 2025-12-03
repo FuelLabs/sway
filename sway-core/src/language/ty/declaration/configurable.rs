@@ -1,6 +1,7 @@
 use crate::{
     decl_engine::{DeclId, DeclMapping, DeclRef, ReplaceDecls},
     engine_threading::*,
+    has_changes,
     language::{parsed::ConfigurableDeclaration, ty::*, CallPath, Visibility},
     semantic_analysis::TypeCheckContext,
     transform,
@@ -12,18 +13,24 @@ use std::{
     hash::{Hash, Hasher},
 };
 use sway_error::handler::{ErrorEmitted, Handler};
+use sway_macros::Visit;
 use sway_types::{Ident, Named, Span, Spanned};
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Visit)]
 pub struct TyConfigurableDecl {
+    #[visit(skip)]
     pub call_path: CallPath,
     pub value: Option<TyExpression>,
+    #[visit(skip)]
     pub visibility: Visibility,
+    #[visit(skip)]
     pub attributes: transform::Attributes,
     pub return_type: TypeId,
     pub type_ascription: GenericTypeArgument,
+    #[visit(skip)]
     pub span: Span,
     // Only encoding v1 has a decode_fn
+    #[visit(skip)]
     pub decode_fn: Option<DeclRef<DeclId<TyFunctionDecl>>>,
 }
 
@@ -86,15 +93,15 @@ impl Spanned for TyConfigurableDecl {
     }
 }
 
-// impl SubstTypes for TyConfigurableDecl {
-//     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-//         has_changes! {
-//             self.return_type.subst(ctx);
-//             self.type_ascription.subst(ctx);
-//             self.value.subst(ctx);
-//         }
-//     }
-// }
+impl SubstTypes for TyConfigurableDecl {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        has_changes! {
+            self.return_type.subst(ctx);
+            self.type_ascription.subst(ctx);
+            self.value.subst(ctx);
+        }
+    }
+}
 
 impl ReplaceDecls for TyConfigurableDecl {
     fn replace_decls_inner(

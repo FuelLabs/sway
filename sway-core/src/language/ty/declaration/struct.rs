@@ -3,6 +3,7 @@ use crate::{
     decl_engine::MaterializeConstGenerics,
     engine_threading::*,
     error::module_can_be_changed,
+    has_changes,
     language::{
         parsed::StructDeclaration, ty::TyDeclParsedType, CallPath, CallPathType, Visibility,
     },
@@ -18,6 +19,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 use sway_error::handler::{ErrorEmitted, Handler};
+use sway_macros::Visit;
 use sway_types::{Ident, Named, Span, Spanned};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -71,11 +73,10 @@ impl HashWithEngines for TyStructDecl {
 
 impl SubstTypes for TyStructDecl {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-        todo!()
-        // has_changes! {
-        //     self.fields.subst(ctx);
-        //     self.generic_parameters.subst(ctx);
-        // }
+        has_changes! {
+            self.fields.subst(ctx);
+            self.generic_parameters.subst(ctx);
+        }
     }
 }
 
@@ -213,12 +214,16 @@ impl From<StructAccessInfo> for (bool, bool) {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Visit)]
 pub struct TyStructField {
+    #[visit(skip)]
     pub visibility: Visibility,
+    #[visit(skip)]
     pub name: Ident,
+    #[visit(skip)]
     pub span: Span,
     pub type_argument: GenericTypeArgument,
+    #[visit(skip)]
     pub attributes: transform::Attributes,
 }
 
@@ -309,8 +314,8 @@ impl OrdWithEngines for TyStructField {
     }
 }
 
-// impl SubstTypes for TyStructField {
-//     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-//         self.type_argument.subst_inner(ctx)
-//     }
-// }
+impl SubstTypes for TyStructField {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        self.type_argument.subst_inner(ctx)
+    }
+}

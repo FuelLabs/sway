@@ -1,6 +1,7 @@
 use crate::{
     decl_engine::{DeclMapping, MaterializeConstGenerics, ReplaceDecls},
     engine_threading::*,
+    has_changes,
     language::{parsed::ConstantDeclaration, ty::*, CallPath, Visibility},
     semantic_analysis::TypeCheckContext,
     transform,
@@ -12,16 +13,21 @@ use std::{
     hash::{Hash, Hasher},
 };
 use sway_error::handler::{ErrorEmitted, Handler};
+use sway_macros::Visit;
 use sway_types::{Ident, Named, Span, Spanned};
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Visit)]
 pub struct TyConstantDecl {
+    #[visit(skip)]
     pub call_path: CallPath,
     pub value: Option<TyExpression>,
+    #[visit(skip)]
     pub visibility: Visibility,
+    #[visit(skip)]
     pub attributes: transform::Attributes,
     pub return_type: TypeId,
     pub type_ascription: GenericTypeArgument,
+    #[visit(skip)]
     pub span: Span,
 }
 
@@ -92,12 +98,11 @@ impl IsConcrete for TyConstantDecl {
 
 impl SubstTypes for TyConstantDecl {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-        todo!()
-        // has_changes! {
-        //     self.return_type.subst(ctx);
-        //     self.type_ascription.subst(ctx);
-        //     self.value.subst(ctx);
-        // }
+        has_changes! {
+            self.return_type.subst(ctx);
+            self.type_ascription.subst(ctx);
+            self.value.subst(ctx);
+        }
     }
 }
 

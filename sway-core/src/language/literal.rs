@@ -6,9 +6,11 @@ use std::{
     num::{IntErrorKind, ParseIntError},
 };
 use sway_error::error::CompileError;
+use sway_macros::Visit;
 use sway_types::{integer_bits::IntegerBits, span, u256::U256};
 
-#[derive(Debug, Clone, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, Serialize, Deserialize, Visit)]
+#[visit(leaf)]
 pub enum Literal {
     U8(u8),
     U16(u16),

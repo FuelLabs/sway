@@ -33,6 +33,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 use sway_error::handler::{ErrorEmitted, Handler};
+use sway_macros::Visit;
 use sway_types::{Ident, Named, Span, Spanned};
 
 pub type DeclRefFunction = DeclRef<DeclId<TyFunctionDecl>>;
@@ -64,6 +65,15 @@ pub struct DeclRef<I> {
     /// The [Span] of the entire declaration.
     decl_span: Span,
 }
+
+// impl<T: Clone> DeclRef<T> {
+//     pub fn visit<V: crate::semantic_analysis::Visitor>(
+//         s: &mut std::borrow::Cow<Self>,
+//         visitor: &mut V,
+//     ) {
+//         todo!()
+//     }
+// }
 
 impl<I> DeclRef<I> {
     pub(crate) fn new(name: Ident, id: I, decl_span: Span) -> Self {
@@ -254,22 +264,22 @@ impl<I> Spanned for DeclRef<I> {
     }
 }
 
-// impl<T> SubstTypes for DeclRef<DeclId<T>>
-// where
-//     DeclEngine: DeclEngineIndex<T>,
-//     T: Named + Spanned + SubstTypes + Clone,
-// {
-//     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-//         let decl_engine = ctx.engines.de();
-//         let mut decl = (*decl_engine.get(&self.id)).clone();
-//         if decl.subst(ctx).has_changes() {
-//             decl_engine.replace(self.id, decl);
-//             HasChanges::Yes
-//         } else {
-//             HasChanges::No
-//         }
-//     }
-// }
+impl<T> SubstTypes for DeclRef<DeclId<T>>
+where
+    DeclEngine: DeclEngineIndex<T>,
+    T: Named + Spanned + SubstTypes + Clone,
+{
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        let decl_engine = ctx.engines.de();
+        let mut decl = (*decl_engine.get(&self.id)).clone();
+        if decl.subst(ctx).has_changes() {
+            decl_engine.replace(self.id, decl);
+            HasChanges::Yes
+        } else {
+            HasChanges::No
+        }
+    }
+}
 
 impl ReplaceDecls for DeclRefFunction {
     fn replace_decls_inner(

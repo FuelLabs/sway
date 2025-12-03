@@ -1,6 +1,7 @@
 use crate::{
     decl_engine::*,
     engine_threading::*,
+    has_changes,
     language::{ty::*, Literal},
     semantic_analysis::{
         TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext, TypeCheckFinalization,
@@ -18,12 +19,14 @@ use sway_error::{
     type_error::TypeError,
     warning::{CompileWarning, DeprecatedElement, Warning},
 };
+use sway_macros::Visit;
 use sway_types::{Span, Spanned};
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Visit)]
 pub struct TyExpression {
     pub expression: TyExpressionVariant,
     pub return_type: TypeId,
+    #[visit(skip)]
     pub span: Span,
 }
 
@@ -53,14 +56,14 @@ impl HashWithEngines for TyExpression {
     }
 }
 
-// impl SubstTypes for TyExpression {
-//     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-//         has_changes! {
-//             self.return_type.subst(ctx);
-//             self.expression.subst(ctx);
-//         }
-//     }
-// }
+impl SubstTypes for TyExpression {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        has_changes! {
+            self.return_type.subst(ctx);
+            self.expression.subst(ctx);
+        }
+    }
+}
 
 impl ReplaceDecls for TyExpression {
     fn replace_decls_inner(
@@ -73,12 +76,12 @@ impl ReplaceDecls for TyExpression {
     }
 }
 
-impl UpdateConstantExpression for TyExpression {
-    fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
-        self.expression
-            .update_constant_expression(engines, implementing_type)
-    }
-}
+// impl UpdateConstantExpression for TyExpression {
+//     fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
+//         self.expression
+//             .update_constant_expression(engines, implementing_type)
+//     }
+// }
 
 impl DisplayWithEngines for TyExpression {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
@@ -163,7 +166,7 @@ impl CollectTypesMetadata for TyExpression {
                 ..
             } => {
                 for arg in arguments.iter() {
-                    res.append(&mut arg.1.collect_types_metadata(handler, ctx)?);
+                    res.append(&mut arg.expr.collect_types_metadata(handler, ctx)?);
                 }
                 let function_decl = decl_engine.get_function(fn_ref);
 
@@ -467,9 +470,11 @@ impl MaterializeConstGenerics for TyExpression {
                         .materialize_const_generics(engines, handler, name, value)?;
                 }
 
-                for (_, expr) in arguments {
-                    expr.materialize_const_generics(engines, handler, name, value)?;
+                for arg in arguments {
+                    arg.expr
+                        .materialize_const_generics(engines, handler, name, value)?;
                 }
+
                 Ok(())
             }
             TyExpressionVariant::IntrinsicFunction(TyIntrinsicFunctionKind {
@@ -686,8 +691,9 @@ impl TyExpression {
                 arguments,
                 ..
             } => {
-                for (_, expr) in arguments {
-                    expr.check_deprecated(engines, handler, allow_deprecated);
+                for arg in arguments {
+                    arg.expr
+                        .check_deprecated(engines, handler, allow_deprecated);
                 }
 
                 let fn_ty = engines.de().get(fn_ref);

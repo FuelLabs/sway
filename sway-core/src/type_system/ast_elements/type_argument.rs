@@ -4,12 +4,12 @@ use crate::{
     type_system::priv_prelude::*,
 };
 use serde::{Deserialize, Serialize};
-use sway_macros::Visit;
 use std::{
     cmp::Ordering,
     fmt,
     hash::{Hash as _, Hasher},
 };
+use sway_macros::Visit;
 use sway_types::{Span, Spanned};
 
 /// [GenericTypeArgument] can be seen as an "annotated reference" to a [TypeInfo].
@@ -120,12 +120,12 @@ impl GenericTypeArgument {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Visit)]
 pub struct GenericConstArgument {
     pub expr: ConstGenericExpr,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Visit)]
 pub enum GenericArgument {
     Type(GenericTypeArgument),
     Const(GenericConstArgument),
@@ -290,14 +290,14 @@ impl From<&TypeParameter> for GenericArgument {
     }
 }
 
-// impl SubstTypes for GenericArgument {
-//     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-//         match self {
-//             GenericArgument::Type(a) => a.subst(ctx),
-//             GenericArgument::Const(_) => HasChanges::No,
-//         }
-//     }
-// }
+impl SubstTypes for GenericArgument {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        match self {
+            GenericArgument::Type(a) => a.subst(ctx),
+            GenericArgument::Const(_) => HasChanges::No,
+        }
+    }
+}
 
 impl MaterializeConstGenerics for GenericArgument {
     fn materialize_const_generics(
@@ -345,11 +345,11 @@ impl Spanned for GenericTypeArgument {
     }
 }
 
-// impl SubstTypes for GenericTypeArgument {
-//     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-//         self.type_id.subst(ctx)
-//     }
-// }
+impl SubstTypes for GenericTypeArgument {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        self.type_id.subst(ctx)
+    }
+}
 
 impl PartialEqWithEngines for GenericTypeArgument {
     fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {

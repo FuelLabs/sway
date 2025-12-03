@@ -1257,9 +1257,9 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             }
 
             let mut args_diverge = false;
-            for (_name, arg) in arguments {
+            for arg in arguments {
                 if type_engine
-                    .get(arg.return_type)
+                    .get(arg.expr.return_type)
                     .is_uninhabited(engines.te(), engines.de())
                 {
                     args_diverge = true;
@@ -1384,11 +1384,11 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             }
 
             // we evaluate every one of the function arguments
-            for (_name, arg) in arguments {
-                let span = arg.span.clone();
+            for arg in arguments {
+                let span = arg.expr.span.clone();
                 current_leaf = connect_expression(
                     engines,
-                    &arg.expression,
+                    &arg.expr.expression,
                     graph,
                     &param_leaves,
                     exit_node,
@@ -1399,7 +1399,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 )?;
 
                 if type_engine
-                    .get(arg.return_type)
+                    .get(arg.expr.return_type)
                     .is_uninhabited(engines.te(), engines.de())
                 {
                     param_leaves = vec![];

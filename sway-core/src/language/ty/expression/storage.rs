@@ -2,15 +2,20 @@ use super::TyExpression;
 use crate::{engine_threading::*, type_system::TypeId};
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
+use sway_macros::Visit;
 use sway_types::{Ident, Span, Spanned};
 
 /// Describes the full storage access including all the subfields
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Visit)]
 pub struct TyStorageAccess {
+    #[visit(skip)]
     pub fields: Vec<TyStorageAccessDescriptor>,
+    #[visit(skip)]
     pub storage_field_names: Vec<String>,
+    #[visit(skip)]
     pub struct_field_names: Vec<String>,
     pub key_expression: Option<Box<TyExpression>>,
+    #[visit(skip)]
     pub storage_keyword_span: Span,
 }
 

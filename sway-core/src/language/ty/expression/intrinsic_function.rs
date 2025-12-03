@@ -1,4 +1,4 @@
-use crate::{engine_threading::*, language::ty::*, type_system::*, types::*};
+use crate::{engine_threading::*, has_changes, language::ty::*, type_system::*, types::*};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -7,13 +7,16 @@ use std::{
 };
 use sway_ast::Intrinsic;
 use sway_error::handler::{ErrorEmitted, Handler};
+use sway_macros::Visit;
 use sway_types::{Span, Spanned};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Visit)]
 pub struct TyIntrinsicFunctionKind {
+    #[visit(skip)]
     pub kind: Intrinsic,
     pub arguments: Vec<TyExpression>,
     pub type_arguments: Vec<GenericArgument>,
+    #[visit(skip)]
     pub span: Span,
 }
 
@@ -42,14 +45,14 @@ impl HashWithEngines for TyIntrinsicFunctionKind {
     }
 }
 
-// impl SubstTypes for TyIntrinsicFunctionKind {
-//     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-//         has_changes! {
-//             self.arguments.subst(ctx);
-//             self.type_arguments.subst(ctx);
-//         }
-//     }
-// }
+impl SubstTypes for TyIntrinsicFunctionKind {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        has_changes! {
+            self.arguments.subst(ctx);
+            self.type_arguments.subst(ctx);
+        }
+    }
+}
 
 impl DebugWithEngines for TyIntrinsicFunctionKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {

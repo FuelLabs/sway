@@ -7,8 +7,8 @@ use crate::{
     namespace::{ModulePath, ResolvedDeclaration},
     semantic_analysis::type_resolve::{resolve_type, VisibilityCheck},
     type_system::ast_elements::create_type_id::CreateTypeId,
-    EnforceTypeArguments, Engines, GenericArgument, Namespace, SubstTypes,
-    SubstTypesContext, TypeId, TypeParameter, TypeSubstMap,
+    EnforceTypeArguments, Engines, GenericArgument, Namespace, SubstTypes, SubstTypesContext,
+    TypeId, TypeParameter, TypeSubstMap,
 };
 use std::{borrow::Cow, collections::BTreeMap};
 use sway_error::{

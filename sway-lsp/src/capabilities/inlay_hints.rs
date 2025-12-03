@@ -7,7 +7,7 @@ use crate::{
 };
 use lsp_types::{self, Range, Url};
 use sway_core::{
-    language::ty::{TyDecl, TyExpression, TyExpressionVariant},
+    language::ty::{FunctionApplicationArgument, TyDecl, TyExpression, TyExpressionVariant},
     type_system::TypeInfo,
     Engines,
 };
@@ -95,14 +95,14 @@ pub fn inlay_hints(
 }
 
 fn handle_function_parameters(
-    arguments: &[(Ident, TyExpression)],
+    arguments: &[FunctionApplicationArgument],
     config: &InlayHintsConfig,
 ) -> Vec<lsp_types::InlayHint> {
     arguments
         .iter()
-        .flat_map(|(name, exp)| {
+        .flat_map(|arg| {
             let mut hints = Vec::new();
-            let (should_create_hint, span) = match &exp.expression {
+            let (should_create_hint, span) = match &arg.expr.expression {
                 TyExpressionVariant::Literal(_)
                 | TyExpressionVariant::ConstantExpression { .. }
                 | TyExpressionVariant::Tuple { .. }
@@ -110,16 +110,16 @@ fn handle_function_parameters(
                 | TyExpressionVariant::ArrayIndex { .. }
                 | TyExpressionVariant::FunctionApplication { .. }
                 | TyExpressionVariant::StructFieldAccess { .. }
-                | TyExpressionVariant::TupleElemAccess { .. } => (true, &exp.span),
+                | TyExpressionVariant::TupleElemAccess { .. } => (true, &arg.expr.span),
                 TyExpressionVariant::EnumInstantiation {
                     call_path_binding, ..
                 } => (true, &call_path_binding.span),
-                _ => (false, &exp.span),
+                _ => (false, &arg.expr.span),
             };
             if should_create_hint {
                 let range = get_range_from_span(span);
                 let kind = InlayKind::Parameter;
-                let label = name.as_str().to_string();
+                let label = arg.name.as_str().to_string();
                 let inlay_hint = InlayHint { range, kind, label };
                 hints.push(self::inlay_hint(config, inlay_hint));
             }
@@ -127,7 +127,7 @@ fn handle_function_parameters(
             if let TyExpressionVariant::FunctionApplication {
                 arguments: nested_args,
                 ..
-            } = &exp.expression
+            } = &arg.expr.expression
             {
                 hints.extend(handle_function_parameters(nested_args, config));
             }

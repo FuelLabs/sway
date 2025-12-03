@@ -23,8 +23,9 @@ use crate::{
     language::{
         parsed::*,
         ty::{
-            self, GetDeclIdent, StructAccessInfo, TyCodeBlock, TyDecl, TyExpression,
-            TyExpressionVariant, TyImplItem, TyReassignmentTarget, VariableMutability,
+            self, FunctionApplicationArgument, GetDeclIdent, StructAccessInfo, TyCodeBlock, TyDecl,
+            TyExpression, TyExpressionVariant, TyImplItem, TyReassignmentTarget,
+            VariableMutability,
         },
         *,
     },
@@ -128,8 +129,11 @@ impl ty::TyExpression {
             .parameters
             .iter()
             .zip(arguments)
-            .map(|(param, arg)| (param.name.clone(), arg))
-            .collect::<Vec<(_, _)>>();
+            .map(|(param, expr)| FunctionApplicationArgument {
+                name: param.name.clone(),
+                expr,
+            })
+            .collect::<Vec<_>>();
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::FunctionApplication {
                 call_path,
@@ -3132,7 +3136,7 @@ fn type_check_panic(
                         expr_span
                     )));
                 } else {
-                    arguments[0].1.return_type
+                    arguments[0].expr.return_type
                 }
             }
             _ => expr.return_type, // Error. We just pass the type id through.

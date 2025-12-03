@@ -3,14 +3,17 @@ use crate::{
     engine_threading::*,
     language::ty::*,
     semantic_analysis::{TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext},
+    type_system::*,
 };
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 use sway_error::handler::{ErrorEmitted, Handler};
+use sway_macros::Visit;
 use sway_types::Ident;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Visit)]
 pub struct TyStructExpressionField {
+    #[visit(skip)]
     pub name: Ident,
     pub value: TyExpression,
 }
@@ -30,11 +33,11 @@ impl HashWithEngines for TyStructExpressionField {
     }
 }
 
-// impl SubstTypes for TyStructExpressionField {
-//     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-//         self.value.subst(ctx)
-//     }
-// }
+impl SubstTypes for TyStructExpressionField {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        self.value.subst(ctx)
+    }
+}
 
 impl ReplaceDecls for TyStructExpressionField {
     fn replace_decls_inner(

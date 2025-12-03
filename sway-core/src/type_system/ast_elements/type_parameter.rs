@@ -5,6 +5,7 @@ use crate::{
         InterfaceItemMap, ItemMap, MaterializeConstGenerics, ParsedDeclEngineGet as _,
     },
     engine_threading::*,
+    has_changes,
     language::{
         parsed::ConstGenericDeclaration,
         ty::{
@@ -18,7 +19,6 @@ use crate::{
     type_system::priv_prelude::*,
 };
 use serde::{Deserialize, Serialize};
-use sway_macros::Visit;
 use std::{
     borrow::Cow,
     cmp::Ordering,
@@ -30,11 +30,11 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
+use sway_macros::Visit;
 use sway_types::{ident::Ident, span::Span, BaseIdent, Named, Spanned};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Visit)]
 pub enum TypeParameter {
-    #[visit(call_visit)]
     Type(GenericTypeParameter),
     Const(ConstGenericParameter),
 }
@@ -216,14 +216,14 @@ impl HashWithEngines for TypeParameter {
     }
 }
 
-// impl SubstTypes for TypeParameter {
-//     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-//         match self {
-//             TypeParameter::Type(p) => p.subst_inner(ctx),
-//             TypeParameter::Const(p) => p.subst_inner(ctx),
-//         }
-//     }
-// }
+impl SubstTypes for TypeParameter {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        match self {
+            TypeParameter::Type(p) => p.subst_inner(ctx),
+            TypeParameter::Const(p) => p.subst_inner(ctx),
+        }
+    }
+}
 
 impl IsConcrete for TypeParameter {
     fn is_concrete(&self, engines: &Engines) -> bool {
@@ -346,15 +346,20 @@ impl TypeParameter {
 ///
 /// The annotations are ignored when calculating the [GenericTypeParameter]'s hash
 /// (with engines) and equality (with engines).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Visit)]
 pub struct GenericTypeParameter {
     pub type_id: TypeId,
     /// Denotes the initial type represented by the [GenericTypeParameter], before
     /// unification, monomorphization, or replacement of [TypeInfo::Custom]s.
+    #[visit(skip)]
     pub(crate) initial_type_id: TypeId,
+    #[visit(skip)]
     pub name: Ident,
+    #[visit(skip)]
     pub(crate) trait_constraints: Vec<TraitConstraint>,
+    #[visit(skip)]
     pub(crate) trait_constraints_span: Span,
+    #[visit(skip)]
     pub(crate) is_from_parent: bool,
 }
 
@@ -432,14 +437,14 @@ impl OrdWithEngines for GenericTypeParameter {
     }
 }
 
-// impl SubstTypes for GenericTypeParameter {
-//     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-//         has_changes! {
-//             self.type_id.subst(ctx);
-//             self.trait_constraints.subst(ctx);
-//         }
-//     }
-// }
+impl SubstTypes for GenericTypeParameter {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        has_changes! {
+            self.type_id.subst(ctx);
+            self.trait_constraints.subst(ctx);
+        }
+    }
+}
 
 impl Spanned for GenericTypeParameter {
     fn span(&self) -> Span {
@@ -1004,14 +1009,18 @@ impl MaterializeConstGenerics for ConstGenericExprTyDecl {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Visit)]
 pub enum ConstGenericExpr {
     Literal {
+        #[visit(skip)]
         val: usize,
+        #[visit(skip)]
         span: Span,
     },
     AmbiguousVariableExpression {
+        #[visit(skip)]
         ident: Ident,
+        #[visit(skip)]
         decl: Option<ConstGenericExprTyDecl>,
     },
 }
@@ -1224,13 +1233,18 @@ impl DisplayWithEngines for ConstGenericExpr {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Visit)]
 pub struct ConstGenericParameter {
+    #[visit(skip)]
     pub name: Ident,
     pub ty: TypeId,
+    #[visit(skip)]
     pub is_from_parent: bool,
+    #[visit(skip)]
     pub span: Span,
+    #[visit(skip)]
     pub id: Option<ParsedDeclId<ConstGenericDeclaration>>,
+    #[visit(skip)]
     pub expr: Option<ConstGenericExpr>,
 }
 
@@ -1267,27 +1281,26 @@ impl PartialEqWithEngines for ConstGenericParameter {
 
 impl SubstTypes for ConstGenericParameter {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-        todo!()
-        // let mut has_changes = HasChanges::No;
+        let mut has_changes = HasChanges::No;
 
-        // let Some(map) = ctx.type_subst_map else {
-        //     return HasChanges::No;
-        // };
+        let Some(map) = ctx.type_subst_map else {
+            return HasChanges::No;
+        };
 
-        // // Check if it needs to be renamed
-        // if let Some(new_name) = map.const_generics_renaming.get(&self.name) {
-        //     self.name = new_name.clone();
-        //     has_changes = HasChanges::Yes;
-        // }
+        // Check if it needs to be renamed
+        if let Some(new_name) = map.const_generics_renaming.get(&self.name) {
+            self.name = new_name.clone();
+            has_changes = HasChanges::Yes;
+        }
 
-        // // Check if it needs to be materialized
-        // if let Some(v) = map.const_generics_materialization.get(self.name.as_str()) {
-        //     let handler = sway_error::handler::Handler::default();
-        //     self.expr = Some(ConstGenericExpr::from_ty_expression(&handler, v).unwrap());
-        //     has_changes = HasChanges::Yes;
-        // }
+        // Check if it needs to be materialized
+        if let Some(v) = map.const_generics_materialization.get(self.name.as_str()) {
+            let handler = sway_error::handler::Handler::default();
+            self.expr = Some(ConstGenericExpr::from_ty_expression(&handler, v).unwrap());
+            has_changes = HasChanges::Yes;
+        }
 
-        // has_changes
+        has_changes
     }
 }
 

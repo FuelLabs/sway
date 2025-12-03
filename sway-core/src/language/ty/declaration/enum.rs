@@ -2,6 +2,7 @@ use crate::{
     ast_elements::type_argument::GenericTypeArgument,
     decl_engine::MaterializeConstGenerics,
     engine_threading::*,
+    has_changes,
     language::{parsed::EnumDeclaration, ty::TyDeclParsedType, CallPath, Visibility},
     transform,
     type_system::*,
@@ -17,6 +18,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
+use sway_macros::Visit;
 use sway_types::{Ident, Named, Span, Spanned};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -70,11 +72,10 @@ impl HashWithEngines for TyEnumDecl {
 
 impl SubstTypes for TyEnumDecl {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-        todo!()
-        // has_changes! {
-        //     self.variants.subst(ctx);
-        //     self.generic_parameters.subst(ctx);
-        // }
+        has_changes! {
+            self.variants.subst(ctx);
+            self.generic_parameters.subst(ctx);
+        }
     }
 }
 
@@ -165,12 +166,16 @@ impl Spanned for TyEnumVariant {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Visit)]
 pub struct TyEnumVariant {
+    #[visit(skip)]
     pub name: Ident,
     pub type_argument: GenericTypeArgument,
+    #[visit(skip)]
     pub(crate) tag: usize,
+    #[visit(skip)]
     pub span: Span,
+    #[visit(skip)]
     pub attributes: transform::Attributes,
 }
 
@@ -217,8 +222,8 @@ impl OrdWithEngines for TyEnumVariant {
     }
 }
 
-// impl SubstTypes for TyEnumVariant {
-//     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-//         self.type_argument.subst_inner(ctx)
-//     }
-// }
+impl SubstTypes for TyEnumVariant {
+    fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        self.type_argument.subst_inner(ctx)
+    }
+}
