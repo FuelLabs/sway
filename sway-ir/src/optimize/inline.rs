@@ -18,7 +18,8 @@ use crate::{
     metadata::{combine, MetadataIndex},
     value::{Value, ValueContent, ValueDatum},
     variable::LocalVar,
-    AnalysisResults, BlockArgument, Instruction, Module, Pass, PassMutability, ScopedPass,
+    AnalysisResults, BlockArgument, BranchToWithArgs, Instruction, Module, Pass, PassMutability,
+    ScopedPass,
 };
 
 pub const FN_INLINE_NAME: &str = "inline";
@@ -485,6 +486,29 @@ fn inline_instruction(
                 map_block(false_block.block),
                 true_block.args.iter().map(|v| map_value(*v)).collect(),
                 false_block.args.iter().map(|v| map_value(*v)).collect(),
+            ),
+            InstOp::Switch {
+                discriminant,
+                cases,
+                default,
+            } => new_block.append(context).switch(
+                map_value(discriminant),
+                BranchToWithArgs {
+                    block: map_block(default.block),
+                    args: default.args.iter().map(|v| map_value(*v)).collect(),
+                },
+                cases
+                    .iter()
+                    .map(|(val, branch)| {
+                        (
+                            *val,
+                            BranchToWithArgs {
+                                block: map_block(branch.block),
+                                args: branch.args.iter().map(|v| map_value(*v)).collect(),
+                            },
+                        )
+                    })
+                    .collect(),
             ),
             InstOp::ContractCall {
                 return_type,

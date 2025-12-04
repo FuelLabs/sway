@@ -752,6 +752,58 @@ fn instruction_to_doc<'a>(
                     ),
                 ))
             }
+            InstOp::Switch {
+                discriminant,
+                cases,
+                default,
+            } => {
+                // Handle possibly constant values
+                let doc = maybe_constant_to_doc(context, md_namer, namer, discriminant);
+                let doc = std::iter::once(default)
+                    .chain(cases.iter().map(|(_val, branch)| branch))
+                    .fold(doc, |doc, branch| {
+                        branch.args.iter().fold(doc, |doc, param| {
+                            doc.append(maybe_constant_to_doc(context, md_namer, namer, param))
+                        })
+                    });
+
+                let default_label = &context.blocks[default.block.0].label;
+                let default_args = Doc::in_parens_comma_sep(
+                    default
+                        .args
+                        .iter()
+                        .map(|arg_val| Doc::text(namer.name(context, arg_val)))
+                        .collect(),
+                );
+                let case_labels = cases
+                    .iter()
+                    .map(|(val, branch)| {
+                        let label = &context.blocks[branch.block.0].label;
+                        let args_doc = Doc::in_parens_comma_sep(
+                            branch
+                                .args
+                                .iter()
+                                .map(|arg_val| Doc::text(namer.name(context, arg_val)))
+                                .collect(),
+                        );
+                        Doc::text(format!("{val}: {label}")).append(args_doc)
+                    })
+                    .collect::<Vec<Doc>>();
+
+                doc.append(
+                    Doc::line(
+                        Doc::text(format!(
+                            "switch {}, default: {default_label}",
+                            namer.name(context, discriminant),
+                        ))
+                        .append(default_args)
+                        .append(Doc::text(", ["))
+                        .append(Doc::list_sep(case_labels, Doc::text(", ")))
+                        .append(Doc::text("]")),
+                    )
+                    .append(md_namer.md_idx_to_doc(context, metadata)),
+                )
+            }
             InstOp::ContractCall {
                 return_type,
                 name,
