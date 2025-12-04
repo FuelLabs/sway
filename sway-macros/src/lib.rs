@@ -26,38 +26,35 @@ fn parse_attributes(attrs: &[Attribute]) -> ParsedAttributes {
     let mut leaf = false;
 
     for att in attrs.iter() {
-        match &att.meta {
-            syn::Meta::List(meta_list) => {
-                let a = meta_list.path.segments.first().unwrap();
-                if a.ident == "visit" {
-                    for token in meta_list.tokens.to_token_stream() {
-                        if token.to_string() == "," {
-                            continue;
-                        }
+        if let syn::Meta::List(meta_list) = &att.meta {
+            let a = meta_list.path.segments.first().unwrap();
+            if a.ident == "visit" {
+                for token in meta_list.tokens.to_token_stream() {
+                    if token.to_string() == "," {
+                        continue;
+                    }
 
-                        if token.to_string() == " " {
-                            continue;
-                        }
+                    if token.to_string() == " " {
+                        continue;
+                    }
 
-                        if token.to_string() == "skip" {
-                            skip = true;
-                        } else if token.to_string() == "call_visit" {
-                            call_visit = CallStrategy::SimpleCall;
-                        } else if token.to_string() == "do_not_call_visit" {
-                            call_visit = CallStrategy::DoNotCall;
-                        } else if token.to_string() == "call_visitor" {
-                            call_visitor = true;
-                        } else if token.to_string() == "do_not_call_visitor" {
-                            call_visitor = false;
-                        } else if token.to_string() == "leaf" {
-                            leaf = true;
-                        } else {
-                            panic!("Unknown attribute: {}", token.to_string())
-                        }
+                    if token.to_string() == "skip" {
+                        skip = true;
+                    } else if token.to_string() == "call_visit" {
+                        call_visit = CallStrategy::SimpleCall;
+                    } else if token.to_string() == "do_not_call_visit" {
+                        call_visit = CallStrategy::DoNotCall;
+                    } else if token.to_string() == "call_visitor" {
+                        call_visitor = true;
+                    } else if token.to_string() == "do_not_call_visitor" {
+                        call_visitor = false;
+                    } else if token.to_string() == "leaf" {
+                        leaf = true;
+                    } else {
+                        panic!("Unknown attribute: {}", token)
                     }
                 }
             }
-            _ => {}
         }
     }
 
@@ -199,7 +196,7 @@ pub fn derive_visit(input: TokenStream) -> TokenStream {
                                                 get_first_generic_argument(&variant_field.ty)
                                                     .unwrap();
                                             let inner_ty =
-                                                get_first_generic_argument(&inner_ty).unwrap();
+                                                get_first_generic_argument(inner_ty).unwrap();
 
                                             let sanitized_type_name =
                                                 sanitize_type_name(&get_type_as_string(inner_ty));
@@ -289,6 +286,7 @@ pub fn derive_visit(input: TokenStream) -> TokenStream {
                                 #dbg_tokens
 
                                 #[inline(never)]
+                                #[allow(too_many_arguments)]
                                 fn _inner<V: crate::semantic_analysis::Visitor>(visitor: &mut V, #arm_fields_pattern_with_type) -> Option<#enum_name> {
                                     #[allow(unused_variables)]
                                     let mut has_changes: bool = false;
@@ -439,26 +437,20 @@ fn get_known_type(ty: &syn::Type) -> String {
             let mut full_type = type_segment.ident.to_string();
 
             if full_type.as_str() == "Option" {
-                let inner_ty = get_first_generic_argument(&ty).unwrap();
-                match inner_ty {
-                    Type::Path(type_path) => {
-                        let inner_segment = type_path.path.segments.last().unwrap();
-                        if inner_segment.ident.to_string() == "Box" {
-                            full_type = "Option_Box".to_string()
-                        }
+                let inner_ty = get_first_generic_argument(ty).unwrap();
+                if let Type::Path(type_path) = inner_ty {
+                    let inner_segment = type_path.path.segments.last().unwrap();
+                    if inner_segment.ident == "Box" {
+                        full_type = "Option_Box".to_string()
                     }
-                    _ => {}
                 }
             } else if full_type.as_str() == "Box" {
-                let inner_ty = get_first_generic_argument(&ty).unwrap();
-                match inner_ty {
-                    Type::Path(type_path) => {
-                        let first_segment = type_path.path.segments.first().unwrap();
-                        if first_segment.ident.to_string() == "Option" {
-                            full_type = "Box_Option".to_string()
-                        }
+                let inner_ty = get_first_generic_argument(ty).unwrap();
+                if let Type::Path(type_path) = inner_ty {
+                    let first_segment = type_path.path.segments.first().unwrap();
+                    if first_segment.ident == "Option" {
+                        full_type = "Box_Option".to_string()
                     }
-                    _ => {}
                 }
             }
 
@@ -481,7 +473,7 @@ fn generate_call_visit(
             let full_type = get_known_type(ty);
             match full_type.as_str() {
                 "Vec" => {
-                    let inner_ty = get_first_generic_argument(&ty);
+                    let inner_ty = get_first_generic_argument(ty);
                     quote! {
                         for idx in 0..#field_ident.len() {
                             let mut item = std::borrow::Cow::Borrowed(&#field_ident[idx]);
@@ -494,7 +486,7 @@ fn generate_call_visit(
                     }
                 }
                 "Option" => {
-                    let inner_ty = get_first_generic_argument(&ty);
+                    let inner_ty = get_first_generic_argument(ty);
                     quote! {
                         if let Some(v) = #field_ident.as_ref() {
                             let mut item = std::borrow::Cow::Borrowed(v);
@@ -507,8 +499,8 @@ fn generate_call_visit(
                     }
                 }
                 "Option_Box" => {
-                    let inner_ty = get_first_generic_argument(&ty).unwrap();
-                    let inner_ty = get_first_generic_argument(&inner_ty).unwrap();
+                    let inner_ty = get_first_generic_argument(ty).unwrap();
+                    let inner_ty = get_first_generic_argument(inner_ty).unwrap();
                     quote! {
                         if let Some(v) = #field_ident.as_ref() {
                             let mut item = std::borrow::Cow::Borrowed(Box::as_ref(&v));
@@ -521,7 +513,7 @@ fn generate_call_visit(
                     }
                 }
                 "Box" => {
-                    let inner_ty = get_first_generic_argument(&ty).unwrap();
+                    let inner_ty = get_first_generic_argument(ty).unwrap();
                     quote! {
                         let mut item = std::borrow::Cow::Borrowed(Box::as_ref(&#field_ident));
                         <#inner_ty>::visit(&mut item, visitor);
@@ -573,7 +565,7 @@ impl syn::parse::Parse for VisitorGenerator {
         let mut g = VisitorGenerator::default();
 
         while !input.is_empty() {
-            if let Ok(_) = input.parse::<Token![const]>() {
+            if input.parse::<Token![const]>().is_ok() {
                 let ident = input.parse::<Ident>().unwrap();
                 let _ = input.parse::<Token![:]>().unwrap();
                 let _ = input.parse::<Type>().unwrap();
@@ -590,7 +582,7 @@ impl syn::parse::Parse for VisitorGenerator {
                 continue;
             }
 
-            panic!("Unsupported item. Failed at: {}", input.to_string());
+            panic!("Unsupported item. Failed at: {}", input);
         }
 
         Ok(g)
@@ -712,7 +704,7 @@ fn get_type_as_string(t: &Type) -> String {
         Type::Tuple(type_tuple) => {
             let mut s = String::new();
             for elem in type_tuple.elems.iter() {
-                s.push_str("_");
+                s.push('_');
                 s.push_str(&get_type_as_string(elem));
             }
             s

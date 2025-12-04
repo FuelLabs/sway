@@ -532,7 +532,7 @@ fn review_existing_usages_of_storage_map_sha256_and_keccak256(
                     return Ok(InvalidateTypedElement::No);
                 }
 
-                let Some((_arg_name, arg_value)) = ty_fn_call_info.arguments.first() else {
+                let Some(arg) = ty_fn_call_info.arguments.first() else {
                     // This should never happen. There must be exactly one argument to hash functions.
                     // But if it happens, we mark the whole call for review.
                     output.push(Occurrence::new(
@@ -546,13 +546,13 @@ fn review_existing_usages_of_storage_map_sha256_and_keccak256(
                 };
 
                 let Some((_type_name, help_message)) =
-                    self.is_affected_type(ctx.engines, arg_value.return_type)
+                    self.is_affected_type(ctx.engines, arg.expr.return_type)
                 else {
                     return Ok(InvalidateTypedElement::No);
                 };
 
                 // We have found a call to a hash function with an affected type.
-                output.push(Occurrence::new(arg_value.span.clone(), help_message));
+                output.push(Occurrence::new(arg.expr.span.clone(), help_message));
             } else {
                 // If we don't have the typed call info, we can only check the called function name.
                 // If it is one of the hash functions, we mark the call for review.

@@ -7,11 +7,11 @@ use crate::{
 };
 use lsp_types::{self, Range, Url};
 use sway_core::{
-    language::ty::{FunctionApplicationArgument, TyDecl, TyExpression, TyExpressionVariant},
+    language::ty::{FunctionApplicationArgument, TyDecl, TyExpressionVariant},
     type_system::TypeInfo,
     Engines,
 };
-use sway_types::{Ident, Spanned};
+use sway_types::Spanned;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum InlayKind {

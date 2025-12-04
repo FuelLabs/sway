@@ -6,6 +6,10 @@ use anyhow::{bail, Ok, Result};
 use itertools::Itertools;
 use std::sync::Arc;
 
+use crate::{
+    internal_error,
+    migrations::{DryRun, MutProgramInfo, ProgramInfo},
+};
 use duplicate::duplicate_item;
 use sway_ast::{
     assignable::ElementAccess,
@@ -21,21 +25,17 @@ use sway_core::{
     language::{
         lexed::LexedModule,
         ty::{
-            TyAbiDecl, TyAstNodeContent, TyCodeBlock, TyDecl, TyExpression, TyExpressionVariant,
-            TyFunctionDecl, TyImplSelfOrTrait, TyIntrinsicFunctionKind, TyModule,
-            TyReassignmentTarget, TySideEffect, TySideEffectVariant, TyStorageDecl, TyStorageField,
-            TyStructDecl, TyTraitDecl, TyTraitItem, TyUseStatement, TyVariableDecl,
+            FunctionApplicationArgument, TyAbiDecl, TyAstNodeContent, TyCodeBlock, TyDecl,
+            TyExpression, TyExpressionVariant, TyFunctionDecl, TyImplSelfOrTrait,
+            TyIntrinsicFunctionKind, TyModule, TyReassignmentTarget, TySideEffect,
+            TySideEffectVariant, TyStorageDecl, TyStorageField, TyStructDecl, TyTraitDecl,
+            TyTraitItem, TyUseStatement, TyVariableDecl,
         },
         CallPath,
     },
     Engines, TypeId,
 };
-use sway_types::{Ident, Spanned};
-
-use crate::{
-    internal_error,
-    migrations::{DryRun, MutProgramInfo, ProgramInfo},
-};
+use sway_types::Spanned;
 
 pub(crate) struct VisitingContext<'a> {
     /// The name of the current package being migrated.
@@ -1157,7 +1157,7 @@ impl __ProgramVisitor {
                                 if arguments.len() != 1 {
                                     bail!(internal_error(format!("`TyExpressionVariant::Panic`'s argument is an `encode` function call but with {} arguments.", arguments.len())));
                                 }
-                                Ok(&arguments[0].1)
+                                Ok(&arguments[0].expr)
                             }
                             _ => bail!(invalid_ty_expression_variant("Panic", "Panic")),
                         })
@@ -1916,7 +1916,7 @@ impl __ProgramVisitor {
         let ty_args_and_is_contract_call = ty_expr.map(|ty_expr|
             match &ty_expr.expression {
                 TyExpressionVariant::FunctionApplication { arguments, contract_caller, selector, .. } =>
-                    Ok((arguments.iter().map(|(_ident, ty_arg)| ty_arg).collect::<Vec<_>>(),
+                    Ok((arguments.iter().map(|ty_arg| &ty_arg.expr).collect::<Vec<_>>(),
                         contract_caller.is_some() || selector.is_some())),
                 TyExpressionVariant::IntrinsicFunction(TyIntrinsicFunctionKind { kind: Intrinsic::Log, arguments, .. }) => {
                     // We assume that migrations are always run on real-world programs
@@ -1935,7 +1935,7 @@ impl __ProgramVisitor {
                     if arguments.len() != 1 {
                         bail!(internal_error(format!("`Intrinsic::Log`'s argument is an `encode` function call but with {} arguments.", arguments.len())));
                     }
-                    Ok((vec![&arguments[0].1], false))
+                    Ok((vec![&arguments[0].expr], false))
                 }
                 TyExpressionVariant::IntrinsicFunction(TyIntrinsicFunctionKind { arguments, .. }) =>
                     Ok((arguments.iter().collect::<Vec<_>>(), false)),
@@ -2059,7 +2059,7 @@ impl<'a> __LexedFnCallInfo<'a> {
 
 pub(crate) struct TyFnCallInfo<'a> {
     pub call_path: &'a CallPath,
-    pub arguments: &'a Vec<(Ident, TyExpression)>,
+    pub arguments: &'a Vec<FunctionApplicationArgument>,
     pub fn_decl: Arc<TyFunctionDecl>,
 }
 
@@ -2130,7 +2130,7 @@ impl<'a> __LexedMethodCallInfo<'a> {
 
 pub(crate) struct TyMethodCallInfo<'a> {
     pub call_path: &'a CallPath,
-    pub arguments: &'a Vec<(Ident, TyExpression)>,
+    pub arguments: &'a Vec<FunctionApplicationArgument>,
     pub fn_decl: Arc<TyFunctionDecl>,
     pub parent_type_id: TypeId,
 }
