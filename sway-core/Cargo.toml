@@ -43,10 +43,10 @@ sway-ast.workspace = true
 sway-error.workspace = true
 sway-features.workspace = true
 sway-ir.workspace = true
+sway-macros.workspace = true
 sway-parse.workspace = true
 sway-types.workspace = true
 sway-utils.workspace = true
-sway-macros.workspace = true
 swayfmt.workspace = true
 thiserror.workspace = true
 toml = { workspace = true, features = ["parse"] }

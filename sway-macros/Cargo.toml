@@ -11,10 +11,10 @@ repository.workspace = true
 proc-macro = true
 
 [dependencies]
-syn.workspace = true
+proc-macro2.workspace = true
 quote.workspace = true
 sway-types.workspace = true
-proc-macro2 = "1.0.103"
+syn.workspace = true
 
 [lints]
 workspace = true
