@@ -33,7 +33,6 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_macros::Visit;
 use sway_types::{Ident, Named, Span, Spanned};
 
 pub type DeclRefFunction = DeclRef<DeclId<TyFunctionDecl>>;
@@ -65,15 +64,6 @@ pub struct DeclRef<I> {
     /// The [Span] of the entire declaration.
     decl_span: Span,
 }
-
-// impl<T: Clone> DeclRef<T> {
-//     pub fn visit<V: crate::semantic_analysis::Visitor>(
-//         s: &mut std::borrow::Cow<Self>,
-//         visitor: &mut V,
-//     ) {
-//         todo!()
-//     }
-// }
 
 impl<I> DeclRef<I> {
     pub(crate) fn new(name: Ident, id: I, decl_span: Span) -> Self {

@@ -16,7 +16,6 @@ struct ParsedAttributes {
     call_visit: CallStrategy,
     call_visitor: bool,
     skip: bool,
-    optional: bool,
     leaf: bool,
 }
 
@@ -24,7 +23,6 @@ fn parse_attributes(attrs: &[Attribute]) -> ParsedAttributes {
     let mut call_visit = CallStrategy::SimpleCall;
     let mut call_visitor = false;
     let mut skip = false;
-    let mut optional = false;
     let mut leaf = false;
 
     for att in attrs.iter() {
@@ -43,8 +41,6 @@ fn parse_attributes(attrs: &[Attribute]) -> ParsedAttributes {
 
                         if token.to_string() == "skip" {
                             skip = true;
-                        } else if token.to_string() == "optional" {
-                            optional = true;
                         } else if token.to_string() == "call_visit" {
                             call_visit = CallStrategy::SimpleCall;
                         } else if token.to_string() == "do_not_call_visit" {
@@ -69,7 +65,6 @@ fn parse_attributes(attrs: &[Attribute]) -> ParsedAttributes {
         call_visit,
         call_visitor,
         skip,
-        optional,
         leaf,
     }
 }
@@ -86,6 +81,11 @@ pub fn derive_visit(input: TokenStream) -> TokenStream {
     match input {
         Item::Enum(e) => {
             let attrs = parse_attributes(&e.attrs);
+
+            if attrs.skip {
+                return q.into();
+            }
+
             let enum_name = format_ident!("{}", e.ident);
 
             if attrs.leaf {
@@ -114,6 +114,7 @@ pub fn derive_visit(input: TokenStream) -> TokenStream {
                     let variant_name = format_ident!("{}", variant.ident);
 
                     let mut arm_fields_pattern = quote! {};
+                    let mut arm_fields_pattern_with_type = quote! {};
                     let mut arm_fields_into_owned = quote! {};
                     let mut arm_body = quote! {};
 
@@ -129,7 +130,11 @@ pub fn derive_visit(input: TokenStream) -> TokenStream {
                                 &mut has_name,
                                 variant_field,
                             );
+                            let field_type = &variant_field.ty;
                             arm_fields_pattern.extend(quote! {#field_ident,});
+                            arm_fields_pattern_with_type.extend(quote! {
+                                #field_ident: &#field_type,
+                            });
 
                             if has_name {
                                 arm_fields_into_owned
@@ -149,7 +154,8 @@ pub fn derive_visit(input: TokenStream) -> TokenStream {
                                     match full_type.as_str() {
                                         "Vec" => {
                                             let inner_ty =
-                                                get_first_generic_argument(&variant_field.ty).unwrap();
+                                                get_first_generic_argument(&variant_field.ty)
+                                                    .unwrap();
                                             let sanitized_type_name =
                                                 sanitize_type_name(&get_type_as_string(inner_ty));
                                             let field_type_as_snake =
@@ -169,7 +175,8 @@ pub fn derive_visit(input: TokenStream) -> TokenStream {
                                         }
                                         "Option" => {
                                             let inner_ty =
-                                                get_first_generic_argument(&variant_field.ty).unwrap();
+                                                get_first_generic_argument(&variant_field.ty)
+                                                    .unwrap();
                                             let sanitized_type_name =
                                                 sanitize_type_name(&get_type_as_string(inner_ty));
                                             let field_type_as_snake =
@@ -189,7 +196,8 @@ pub fn derive_visit(input: TokenStream) -> TokenStream {
                                         }
                                         "Option_Box" => {
                                             let inner_ty =
-                                                get_first_generic_argument(&variant_field.ty).unwrap();
+                                                get_first_generic_argument(&variant_field.ty)
+                                                    .unwrap();
                                             let inner_ty =
                                                 get_first_generic_argument(&inner_ty).unwrap();
 
@@ -212,7 +220,9 @@ pub fn derive_visit(input: TokenStream) -> TokenStream {
                                             });
                                         }
                                         "Box" => {
-                                            let inner_ty = get_first_generic_argument(&variant_field.ty).unwrap();
+                                            let inner_ty =
+                                                get_first_generic_argument(&variant_field.ty)
+                                                    .unwrap();
 
                                             let sanitized_type_name =
                                                 sanitize_type_name(&get_type_as_string(inner_ty));
@@ -234,8 +244,9 @@ pub fn derive_visit(input: TokenStream) -> TokenStream {
                                             todo!("Box_Option")
                                         }
                                         _ => {
-                                            let sanitized_type_name =
-                                                sanitize_type_name(&get_type_as_string(&variant_field.ty));
+                                            let sanitized_type_name = sanitize_type_name(
+                                                &get_type_as_string(&variant_field.ty),
+                                            );
                                             let field_type_as_snake =
                                                 to_snake_case(&sanitized_type_name);
                                             let visit_fn =
@@ -277,13 +288,21 @@ pub fn derive_visit(input: TokenStream) -> TokenStream {
                             Self::#variant_name #fields_pattern => {
                                 #dbg_tokens
 
-                                #[allow(unused_variables)]
-                                let mut has_changes: bool = false;
+                                #[inline(never)]
+                                fn _inner<V: crate::semantic_analysis::Visitor>(visitor: &mut V, #arm_fields_pattern_with_type) -> Option<#enum_name> {
+                                    #[allow(unused_variables)]
+                                    let mut has_changes: bool = false;
 
-                                #arm_body
+                                    #arm_body
 
-                                if has_changes {
-                                    *cow = std::borrow::Cow::Owned(Self::#variant_name #arm_fields_into_owned);
+                                    if has_changes {
+                                        Some(#enum_name::#variant_name #arm_fields_into_owned)
+                                    } else {
+                                        None
+                                    }
+                                }
+                                if let Some(v) = _inner::<V>(visitor, #arm_fields_pattern) {
+                                    *cow = std::borrow::Cow::Owned(v)
                                 }
                             }
                         });
@@ -324,6 +343,10 @@ pub fn derive_visit(input: TokenStream) -> TokenStream {
         Item::Struct(s) => {
             let attrs = parse_attributes(&s.attrs);
             let struct_name = format_ident!("{}", s.ident);
+
+            if attrs.skip {
+                return q.into();
+            }
 
             if attrs.leaf {
                 let field_type_as_snake = to_snake_case(&s.ident.to_string());
@@ -438,7 +461,7 @@ fn get_known_type(ty: &syn::Type) -> String {
                     _ => {}
                 }
             }
-        
+
             full_type
         }
         _ => {

@@ -59,10 +59,7 @@ pub struct UpdateConstantExpressionVisitor<'a> {
 }
 
 impl<'a> Visitor for UpdateConstantExpressionVisitor<'a> {
-    fn visit_ty_constant_decl(
-        &mut self,
-        item: &mut std::borrow::Cow<ty::TyConstantDecl>,
-    ) {
+    fn visit_ty_constant_decl(&mut self, item: &mut std::borrow::Cow<ty::TyConstantDecl>) {
         if let Some(impl_const) =
             ty::find_const_decl_from_impl(self.implementing_type, self.engines.de(), item)
         {

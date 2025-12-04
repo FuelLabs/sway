@@ -14,26 +14,12 @@ use std::{
     hash::{Hash, Hasher},
     marker::PhantomData,
 };
-use sway_macros::Visit;
 use sway_types::{Named, Spanned};
 
 pub type DeclIdIndexType = usize;
 
 /// An ID used to refer to an item in the [DeclEngine](super::decl_engine::DeclEngine)
 pub struct DeclId<T>(DeclIdIndexType, PhantomData<T>);
-
-// Recursive expansion of Visit macro
-// ===================================
-
-// impl<T: Clone> DeclId<T> {
-//     pub fn visit<V: crate::semantic_analysis::Visitor>(
-//         s: &mut std::borrow::Cow<Self>,
-//         visitor: &mut V,
-//     ) {
-//         //visitor.visit_decl_id(s);
-//         todo!()
-//     }
-// }
 
 impl<T> fmt::Debug for DeclId<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
