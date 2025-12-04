@@ -31,6 +31,7 @@ pub enum IrError {
     VerifyCmpTypeMismatch(String, String),
     VerifyCmpUnknownTypes,
     VerifyConditionExprNotABool,
+    VerifySwitchDiscriminantNotU64,
     VerifyContractCallBadTypes(String),
     VerifyGepElementTypeNonPointer,
     VerifyGepFromNonPointer(String, Option<Value>),
@@ -202,6 +203,12 @@ impl fmt::Display for IrError {
                 write!(
                     f,
                     "Verification failed: Expression used for conditional is not a boolean."
+                )
+            }
+            IrError::VerifySwitchDiscriminantNotU64 => {
+                write!(
+                    f,
+                    "Verification failed: Switch discriminant is not a u64 integer."
                 )
             }
             IrError::VerifyContractCallBadTypes(arg_name) => {

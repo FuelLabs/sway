@@ -384,6 +384,11 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     true_block,
                     false_block,
                 } => self.compile_conditional_branch(cond_value, true_block, false_block),
+                InstOp::Switch {
+                    discriminant,
+                    cases,
+                    default,
+                } => self.compile_switch(instr_val, discriminant, cases, default),
                 InstOp::ContractCall {
                     params,
                     coins,
@@ -1040,6 +1045,16 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         self.cur_bytecode.push(Op::jump_to_label(false_label));
 
         Ok(())
+    }
+
+    fn compile_switch(
+        &mut self,
+        _instr_val: &Value,
+        _discriminant: &Value,
+        _cases: &[(u64, BranchToWithArgs)],
+        _default: &BranchToWithArgs,
+    ) -> Result<(), CompileError> {
+        todo!()
     }
 
     fn compile_branch_to_phi_value(

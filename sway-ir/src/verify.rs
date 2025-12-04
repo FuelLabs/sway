@@ -278,6 +278,11 @@ impl InstructionVerifier<'_, '_> {
                     true_block,
                     false_block,
                 } => self.verify_cbr(cond_value, true_block, false_block)?,
+                InstOp::Switch {
+                    discriminant,
+                    cases,
+                    default,
+                } => self.verify_switch(discriminant, cases, default)?,
                 InstOp::ContractCall {
                     params,
                     coins,
@@ -709,6 +714,35 @@ impl InstructionVerifier<'_, '_> {
             self.verify_dest_args(true_block)
                 .and_then(|()| self.verify_dest_args(false_block))
         }
+    }
+
+    fn verify_switch(
+        &self,
+        descriminant: &Value,
+        cases: &[(u64, BranchToWithArgs)],
+        default: &BranchToWithArgs,
+    ) -> Result<(), IrError> {
+        if !descriminant
+            .get_type(self.context)
+            .is(Type::is_uint64, self.context)
+        {
+            return Err(IrError::VerifySwitchDiscriminantNotU64);
+        }
+
+        for dest_block in std::iter::once(default).chain(cases.iter().map(|(_, branch)| branch)) {
+            if !self
+                .cur_function
+                .block_iter(self.context)
+                .contains(&dest_block.block)
+            {
+                return Err(IrError::VerifyBranchToMissingBlock(
+                    self.context.blocks[dest_block.block.0].label.clone(),
+                ));
+            }
+            self.verify_dest_args(dest_block)?;
+        }
+
+        Ok(())
     }
 
     fn verify_cmp(
