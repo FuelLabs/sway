@@ -1,6 +1,5 @@
 ---
 source: test/src/snapshot/mod.rs
-snapshot_kind: text
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg --asm final | sub ecal
 ecal $r1 $r0 $zero $zero      ; ecal id fd zero zero
@@ -73,6 +72,7 @@ output:
    Compiling library std (sway-lib-std)
    Compiling script dbg (test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg)
 <<<<<<< HEAD
+<<<<<<< HEAD
     Finished debug [unoptimized + fuel] target(s) [37.744 KB] in ???
 =======
 <<<<<<< HEAD
@@ -81,6 +81,9 @@ output:
     Finished debug [unoptimized + fuel] target(s) [37.56 KB] in ???
 >>>>>>> 2b4c2d140 (update snapshot tests)
 >>>>>>> f733fc9e5 (update snapshot tests)
+=======
+    Finished debug [unoptimized + fuel] target(s) [37.512 KB] in ???
+>>>>>>> d97e2892c (update tests)
      Running 1 test, filtered 0 tests
 
 tested -- dbg

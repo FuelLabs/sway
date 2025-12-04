@@ -1,6 +1,5 @@
 ---
 source: test/src/snapshot/mod.rs
-snapshot_kind: text
 ---
 > forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests --logs --raw-logs --dbgs --reverts passing_
 exit status: 0
@@ -21,6 +20,7 @@ ____
   Compiled script "panic_handling_in_unit_tests" with 1 warning.
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     Finished debug [unoptimized + fuel] target(s) [8.696 KB] in ???
 =======
     Finished debug [unoptimized + fuel] target(s) [8.168 KB] in ???
@@ -28,6 +28,9 @@ ____
 =======
     Finished debug [unoptimized + fuel] target(s) [8.312 KB] in ???
 >>>>>>> e41698a5e (update tests)
+=======
+    Finished debug [unoptimized + fuel] target(s) [8.32 KB] in ???
+>>>>>>> d97e2892c (update tests)
      Running 2 tests, filtered 18 tests
 
 tested -- panic_handling_in_unit_tests
@@ -66,6 +69,7 @@ ____
   Compiled script "panic_handling_in_unit_tests" with 1 warning.
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     Finished debug [unoptimized + fuel] target(s) [8.696 KB] in ???
 =======
     Finished debug [unoptimized + fuel] target(s) [8.168 KB] in ???
@@ -73,6 +77,9 @@ ____
 =======
     Finished debug [unoptimized + fuel] target(s) [8.312 KB] in ???
 >>>>>>> e41698a5e (update tests)
+=======
+    Finished debug [unoptimized + fuel] target(s) [8.32 KB] in ???
+>>>>>>> d97e2892c (update tests)
      Running 20 tests, filtered 0 tests
 
 tested -- panic_handling_in_unit_tests
@@ -93,7 +100,7 @@ tested -- panic_handling_in_unit_tests
       test failing_error_signal_assert_eq ... FAILED (???, 3010 gas)
       test failing_error_signal_assert_ne ... FAILED (???, 3000 gas)
       test failing_error_signal_require_str_error ... FAILED (???, 976 gas)
-      test failing_error_signal_require_enum_error ... FAILED (???, 1131 gas)
+      test failing_error_signal_require_enum_error ... FAILED (???, 1135 gas)
       test failing_panic_no_arg ... FAILED (???, 771 gas)
       test failing_panic_unit_arg ... FAILED (???, 771 gas)
 >>>>>>> f733fc9e5 (update snapshot tests)
@@ -103,9 +110,9 @@ tested -- panic_handling_in_unit_tests
       test failing_panic_non_const_eval_str_arg ... FAILED (???, 957 gas)
       test failing_panic_non_const_eval_str_empty_arg ... FAILED (???, 939 gas)
       test failing_panic_non_const_eval_str_whitespace_arg ... FAILED (???, 943 gas)
-      test failing_panic_error_enum_arg ... FAILED (???, 1101 gas)
-      test failing_panic_error_enum_arg_with_empty_msg ... FAILED (???, 1258 gas)
-      test failing_panic_error_enum_arg_with_whitespace_msg ... FAILED (???, 1287 gas)
+      test failing_panic_error_enum_arg ... FAILED (???, 1105 gas)
+      test failing_panic_error_enum_arg_with_empty_msg ... FAILED (???, 1262 gas)
+      test failing_panic_error_enum_arg_with_whitespace_msg ... FAILED (???, 1291 gas)
 
    failures:
       test failing_revert_intrinsic, "test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests/src/main.sw":34

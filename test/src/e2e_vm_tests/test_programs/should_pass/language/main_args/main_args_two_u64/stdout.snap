@@ -1,6 +1,5 @@
 ---
 source: test/src/snapshot/mod.rs
-snapshot_kind: text
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_two_u64 --release --ir final --asm final --bytecode
 exit status: 0
@@ -35,201 +34,80 @@ script {
         local mut { ptr } buffer
 
         entry():
-<<<<<<< HEAD
-        v8v1 = const u64 0, !5
-        v373v1 = gtf v8v1, 10, !11
-        v374v1 = bitcast v373v1 to ptr, !12
-        v380v1 = get_local __ptr { ptr }, buffer, !14
-        v21v1 = const u64 0
-        v381v1 = get_elem_ptr v380v1, __ptr ptr, v21v1, !15
-        store v374v1 to v381v1, !16
-        v387v1 = get_local __ptr { ptr }, buffer, !18
-        v39v1 = const u64 0
-        v391v3 = get_elem_ptr v387v1, __ptr ptr, v39v1, !26
-        v493v1 = load v391v3, !27
-        v494v1 = asm(ptr: v493v1, val) -> u64 val, !29 {
-            lw     val ptr i0, !30
-        }
-        v496v1 = load v391v3, !31
-        v497v1 = const u64 8, !32
-        v498v1 = add v496v1, v497v1, !33
-        store v498v1 to v391v3, !35
-        v503v1 = load v391v3, !38
-        v504v1 = asm(ptr: v503v1, val) -> u64 val, !39 {
-            lw     val ptr i0, !30
-        }
-        v506v1 = load v391v3, !40
-        v507v1 = const u64 8, !41
-        v508v1 = add v506v1, v507v1, !42
-        store v508v1 to v391v3, !43
-        v394v1 = get_local __ptr { u64, u64 }, args, !45
-        v72v1 = const u64 0
-        v395v1 = get_elem_ptr v394v1, __ptr u64, v72v1, !46
-        store v494v1 to v395v1, !47
-        v75v1 = const u64 1
-        v397v1 = get_elem_ptr v394v1, __ptr u64, v75v1, !48
-        store v504v1 to v397v1, !49
-        v111v1 = get_local __ptr { u64, u64 }, args, !50
-        v112v1 = const u64 0
-        v113v1 = get_elem_ptr v111v1, __ptr u64, v112v1, !51
-        v114v1 = load v113v1
-        v115v1 = get_local __ptr { u64, u64 }, args, !52
-        v116v1 = const u64 1
-        v117v1 = get_elem_ptr v115v1, __ptr u64, v116v1, !53
-        v118v1 = load v117v1
-        v119v1 = call main_5(v114v1, v118v1), !56
-        v407v1 = get_local __ptr u64, item_, !59
-        store v119v1 to v407v1, !59
-        v489v1 = get_local __ptr u64, item_, !61
-        v148v1 = const u64 8
-        retd v489v1 v148v1, !63
-=======
-        v0 = const u64 0, !5
-        v1 = gtf v0, 10, !11
-        v2 = bitcast v1 to ptr, !12
-        v3 = const bool true, !13
-        cbr v3, decode_script_data_0_decode_from_raw_ptr_1_block0(), decode_script_data_0_decode_from_raw_ptr_1_block1(), !17
+        v118v1 = const u64 0, !5
+        v517v1 = gtf v118v1, 10, !11
+        v518v1 = bitcast v517v1 to ptr, !12
+        v28v1 = const bool true, !13
+        cbr v28v1, decode_script_data_0_decode_from_raw_ptr_1_block0(), decode_script_data_0_decode_from_raw_ptr_1_block1(), !17
 
         decode_script_data_0_decode_from_raw_ptr_1_block0():
-        v4 = cast_ptr v2 to __ptr { u64, u64 }, !18
-        v5 = get_local __ptr { u64, u64 }, __aggr_memcpy_0
-        mem_copy_val v5, v4
-<<<<<<< HEAD
-        v6 = get_local __ptr { u64, u64 }, args, !17
-        v7 = const u64 0
-<<<<<<< HEAD
-        v8 = get_elem_ptr v6, __ptr ptr, v7, !28
-        v9 = load v8, !29
-        v10 = asm(ptr: v9, val) -> u64 val, !31 {
-            lw     val ptr i0, !32
-        }
-        v11 = load v8, !33
-        v12 = const u64 8, !34
-        v13 = add v11, v12, !35
-        store v13 to v8, !37
-        v14 = load v8, !40
-        v15 = asm(ptr: v14, val) -> u64 val, !41 {
-            lw     val ptr i0, !32
-        }
-        v16 = load v8, !42
-        v17 = const u64 8, !43
-        v18 = add v16, v17, !44
-        store v18 to v8, !45
-        v19 = get_local __ptr { u64, u64 }, args, !47
-        v20 = const u64 0
-        v21 = get_elem_ptr v19, __ptr u64, v20, !48
-        store v10 to v21, !49
-        v22 = const u64 1
-        v23 = get_elem_ptr v19, __ptr u64, v22, !50
-        store v15 to v23, !51
-        v24 = get_local __ptr { u64, u64 }, args, !52
-        v25 = const u64 0
-        v26 = get_elem_ptr v24, __ptr u64, v25, !53
-        v27 = load v26
-        v28 = get_local __ptr { u64, u64 }, args, !54
-        v29 = const u64 1
-        v30 = get_elem_ptr v28, __ptr u64, v29, !55
-        v31 = load v30
-        v32 = call main_8(v27, v31), !58
-        v33 = get_local __ptr u64, _result, !59
-        store v32 to v33, !59
-        v34 = get_local __ptr u64, _result, !60
-        v35 = const u64 8
-        retd v34 v35, !64
->>>>>>> 2b4c2d140 (update snapshot tests)
-=======
-        v8 = get_elem_ptr v6, __ptr u64, v7, !18
-        v9 = load v8
-        v10 = get_local __ptr { u64, u64 }, args, !19
-        v11 = const u64 1
-        v12 = get_elem_ptr v10, __ptr u64, v11, !20
-        v13 = load v12
-        v14 = call main_9(v9, v13), !23
-        v15 = get_local __ptr u64, _result, !24
-        store v14 to v15, !24
-        v16 = get_local __ptr u64, _result, !25
-        v17 = const u64 8
-        retd v16 v17, !29
->>>>>>> ed22272e6 (update tests)
-=======
-        v6 = get_local __ptr { u64, u64 }, __tmp_block_arg
-        mem_copy_val v6, v5
-        br decode_script_data_0_decode_from_raw_ptr_1_block2(v6), !19
+        v561v1 = cast_ptr v518v1 to __ptr { u64, u64 }, !18
+        v679v1 = get_local __ptr { u64, u64 }, __aggr_memcpy_0
+        mem_copy_val v679v1, v561v1
+        v674v1 = get_local __ptr { u64, u64 }, __tmp_block_arg
+        mem_copy_val v674v1, v679v1
+        br decode_script_data_0_decode_from_raw_ptr_1_block2(v674v1), !19
 
         decode_script_data_0_decode_from_raw_ptr_1_block1():
-        v7 = get_local __ptr { ptr }, __anon_0, !21
-        v8 = const u64 0
-        v9 = get_elem_ptr v7, __ptr ptr, v8, !22
-        store v2 to v9, !23
-        v10 = get_local __ptr { ptr }, buffer, !25
-        mem_copy_val v10, v7
-        v11 = get_local __ptr { ptr }, buffer, !27
-        v12 = const u64 0
-        v13 = get_elem_ptr v11, __ptr ptr, v12, !35
-        v14 = load v13, !36
-        v15 = asm(ptr: v14, val) -> u64 val, !38 {
+        v539v1 = get_local __ptr { ptr }, __anon_0, !21
+        v53v1 = const u64 0
+        v540v1 = get_elem_ptr v539v1, __ptr ptr, v53v1, !22
+        store v518v1 to v540v1, !23
+        v543v1 = get_local __ptr { ptr }, buffer, !25
+        mem_copy_val v543v1, v539v1
+        v545v1 = get_local __ptr { ptr }, buffer, !27
+        v69v1 = const u64 0
+        v549v3 = get_elem_ptr v545v1, __ptr ptr, v69v1, !35
+        v653v1 = load v549v3, !36
+        v654v1 = asm(ptr: v653v1, val) -> u64 val, !38 {
             lw     val ptr i0, !39
         }
-        v16 = load v13, !40
-        v17 = const u64 8, !41
-        v18 = add v16, v17, !42
-        store v18 to v13, !44
-        v19 = load v13, !47
-        v20 = asm(ptr: v19, val) -> u64 val, !48 {
+        v656v1 = load v549v3, !40
+        v657v1 = const u64 8, !41
+        v658v1 = add v656v1, v657v1, !42
+        store v658v1 to v549v3, !44
+        v663v1 = load v549v3, !47
+        v664v1 = asm(ptr: v663v1, val) -> u64 val, !48 {
             lw     val ptr i0, !39
         }
-        v21 = load v13, !49
-        v22 = const u64 8, !50
-        v23 = add v21, v22, !51
-        store v23 to v13, !52
-        v24 = get_local __ptr { u64, u64 }, __anon_00, !54
-        v25 = const u64 0
-        v26 = get_elem_ptr v24, __ptr u64, v25, !55
-        store v15 to v26, !56
-        v27 = const u64 1
-        v28 = get_elem_ptr v24, __ptr u64, v27, !57
-        store v20 to v28, !58
-        v29 = get_local __ptr { u64, u64 }, __tmp_block_arg
-        mem_copy_val v29, v24
-        br decode_script_data_0_decode_from_raw_ptr_1_block2(v29), !59
+        v666v1 = load v549v3, !49
+        v667v1 = const u64 8, !50
+        v668v1 = add v666v1, v667v1, !51
+        store v668v1 to v549v3, !52
+        v552v1 = get_local __ptr { u64, u64 }, __anon_00, !54
+        v102v1 = const u64 0
+        v553v1 = get_elem_ptr v552v1, __ptr u64, v102v1, !55
+        store v654v1 to v553v1, !56
+        v105v1 = const u64 1
+        v555v1 = get_elem_ptr v552v1, __ptr u64, v105v1, !57
+        store v664v1 to v555v1, !58
+        v676v1 = get_local __ptr { u64, u64 }, __tmp_block_arg
+        mem_copy_val v676v1, v552v1
+        br decode_script_data_0_decode_from_raw_ptr_1_block2(v676v1), !59
 
-        decode_script_data_0_decode_from_raw_ptr_1_block2(v30: __ptr { u64, u64 }):
-        v31 = get_local __ptr { u64, u64 }, args, !60
-        mem_copy_val v31, v30
-        v32 = get_local __ptr { u64, u64 }, args, !61
-        v33 = const u64 0
-        v34 = get_elem_ptr v32, __ptr u64, v33, !62
-        v35 = load v34
-        v36 = get_local __ptr { u64, u64 }, args, !63
-        v37 = const u64 1
-        v38 = get_elem_ptr v36, __ptr u64, v37, !64
-        v39 = load v38
-        v40 = call main_11(v35, v39), !67
-        v41 = get_local __ptr u64, _result, !68
-        store v40 to v41, !68
-        v42 = get_local __ptr u64, _result, !69
-        v43 = const u64 8
-        retd v42 v43, !73
->>>>>>> 31354594f (update tests)
+        decode_script_data_0_decode_from_raw_ptr_1_block2(v672v1: __ptr { u64, u64 }):
+        v126v1 = get_local __ptr { u64, u64 }, args, !60
+        mem_copy_val v126v1, v672v1
+        v152v1 = get_local __ptr { u64, u64 }, args, !61
+        v153v1 = const u64 0
+        v154v1 = get_elem_ptr v152v1, __ptr u64, v153v1, !62
+        v155v1 = load v154v1
+        v156v1 = get_local __ptr { u64, u64 }, args, !63
+        v157v1 = const u64 1
+        v158v1 = get_elem_ptr v156v1, __ptr u64, v157v1, !64
+        v159v1 = load v158v1
+        v160v1 = call main_11(v155v1, v159v1), !67
+        v161v1 = get_local __ptr u64, _result, !68
+        store v160v1 to v161v1, !68
+        v284v1 = get_local __ptr u64, _result, !69
+        v171v1 = const u64 8
+        retd v284v1 v171v1, !73
     }
 
     entry_orig fn main_11(baba !75: u64, keke !76: u64) -> u64, !79 {
         entry(baba: u64, keke: u64):
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-        v306v1 = add baba, keke, !72
-        ret u64 v306v1
-=======
-        v0 = add baba, keke, !73
-=======
-        v0 = add baba, keke, !38
->>>>>>> ed22272e6 (update tests)
-=======
-        v0 = add baba, keke, !82
->>>>>>> 31354594f (update tests)
-        ret u64 v0
->>>>>>> 2b4c2d140 (update snapshot tests)
+        v442v1 = add baba, keke, !82
+        ret u64 v442v1
     }
 }
 

@@ -1,6 +1,5 @@
 ---
 source: test/src/snapshot/mod.rs
-snapshot_kind: text
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_one_u64 --release --ir final --asm final --bytecode
 exit status: 0
@@ -31,103 +30,31 @@ script {
         local { u64 } args
 
         entry():
-<<<<<<< HEAD
-        v8v1 = const u64 0, !5
-        v397v1 = gtf v8v1, 10, !11
-        v398v1 = bitcast v397v1 to ptr, !12
-        v404v1 = get_local __ptr { ptr }, buffer, !14
-        v21v1 = const u64 0
-        v405v1 = get_elem_ptr v404v1, __ptr ptr, v21v1, !15
-        store v398v1 to v405v1, !16
-        v411v1 = get_local __ptr { ptr }, buffer, !18
-        v39v1 = const u64 0
-        v419v1 = get_elem_ptr v411v1, __ptr ptr, v39v1, !26
-        v420v1 = load v419v1, !27
-        v421v1 = asm(ptr: v420v1, val) -> u64 val, !29 {
-            lw     val ptr i0, !30
-        }
-        v425v1 = load v419v1, !31
-        v426v1 = const u64 8, !32
-        v427v1 = add v425v1, v426v1, !33
-        store v427v1 to v419v1, !35
-        v434v1 = get_local __ptr { u64 }, args, !37
-        v69v1 = const u64 0
-        v435v1 = get_elem_ptr v434v1, __ptr u64, v69v1, !38
-        store v421v1 to v435v1, !39
-        v101v1 = get_local __ptr { u64 }, args, !40
-        v102v1 = const u64 0
-        v103v1 = get_elem_ptr v101v1, __ptr u64, v102v1, !41
-        v104v1 = load v103v1
-        v105v1 = call main_5(v104v1), !44
-        v445v1 = get_local __ptr u64, item_, !47
-        store v105v1 to v445v1, !47
-        v527v1 = get_local __ptr u64, item_, !49
-        v134v1 = const u64 8
-        retd v527v1 v134v1, !51
-=======
-        v0 = const u64 0, !5
-        v1 = gtf v0, 10, !11
-        v2 = bitcast v1 to ptr, !12
-        v3 = cast_ptr v2 to __ptr { u64 }, !15
-        v4 = get_local __ptr { u64 }, __aggr_memcpy_0
-        mem_copy_val v4, v3
-        v5 = get_local __ptr { u64 }, args, !16
-        mem_copy_val v5, v4
-        v6 = get_local __ptr { u64 }, args, !17
-        v7 = const u64 0
-<<<<<<< HEAD
-        v8 = get_elem_ptr v6, __ptr ptr, v7, !28
-        v9 = load v8, !29
-        v10 = asm(ptr: v9, val) -> u64 val, !31 {
-            lw     val ptr i0, !32
-        }
-        v11 = load v8, !33
-        v12 = const u64 8, !34
-        v13 = add v11, v12, !35
-        store v13 to v8, !37
-        v14 = get_local __ptr { u64 }, args, !39
-        v15 = const u64 0
-        v16 = get_elem_ptr v14, __ptr u64, v15, !40
-        store v10 to v16, !41
-        v17 = get_local __ptr { u64 }, args, !42
-        v18 = const u64 0
-        v19 = get_elem_ptr v17, __ptr u64, v18, !43
-        v20 = load v19
-        v21 = call main_8(v20), !46
-        v22 = get_local __ptr u64, _result, !47
-        store v21 to v22, !47
-        v23 = get_local __ptr u64, _result, !48
-        v24 = const u64 8
-        retd v23 v24, !52
->>>>>>> 2b4c2d140 (update snapshot tests)
-=======
-        v8 = get_elem_ptr v6, __ptr u64, v7, !18
-        v9 = load v8
-        v10 = call main_11(v9), !21
-        v11 = get_local __ptr u64, _result, !22
-        store v10 to v11, !22
-        v12 = get_local __ptr u64, _result, !23
-        v13 = const u64 8
-        retd v12 v13, !27
->>>>>>> ed22272e6 (update tests)
+        v108v1 = const u64 0, !5
+        v526v1 = gtf v108v1, 10, !11
+        v527v1 = bitcast v526v1 to ptr, !12
+        v580v1 = cast_ptr v527v1 to __ptr { u64 }, !15
+        v672v1 = get_local __ptr { u64 }, __aggr_memcpy_0
+        mem_copy_val v672v1, v580v1
+        v116v1 = get_local __ptr { u64 }, args, !16
+        mem_copy_val v116v1, v672v1
+        v138v1 = get_local __ptr { u64 }, args, !17
+        v139v1 = const u64 0
+        v140v1 = get_elem_ptr v138v1, __ptr u64, v139v1, !18
+        v141v1 = load v140v1
+        v142v1 = call main_11(v141v1), !21
+        v143v1 = get_local __ptr u64, _result, !22
+        store v142v1 to v143v1, !22
+        v266v1 = get_local __ptr u64, _result, !23
+        v153v1 = const u64 8
+        retd v266v1 v153v1, !27
     }
 
     entry_orig fn main_11(baba !29: u64) -> u64, !32 {
         entry(baba: u64):
-<<<<<<< HEAD
-<<<<<<< HEAD
-        v98v1 = const u64 1, !57
-        v328v1 = add baba, v98v1, !60
-        ret u64 v328v1
-=======
-        v0 = const u64 1, !58
-        v1 = add baba, v0, !61
-=======
-        v0 = const u64 1, !33
-        v1 = add baba, v0, !36
->>>>>>> ed22272e6 (update tests)
-        ret u64 v1
->>>>>>> 2b4c2d140 (update snapshot tests)
+        v135v1 = const u64 1, !33
+        v452v1 = add baba, v135v1, !36
+        ret u64 v452v1
     }
 }
 

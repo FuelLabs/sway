@@ -1,6 +1,5 @@
 ---
 source: test/src/snapshot/mod.rs
-snapshot_kind: text
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode --release --ir final --asm final
 exit status: 0
@@ -19,153 +18,37 @@ script {
 
     pub fn abi_decode_in_place_0(ptr !4: ptr, len !5: u64, target !6: ptr) -> (), !10 {
         entry(ptr: ptr, len: u64, target: ptr):
-<<<<<<< HEAD
-<<<<<<< HEAD
-        v416v1 = get_local __ptr { ptr }, buffer, !14
-        v114v1 = const u64 0
-        v417v1 = get_elem_ptr v416v1, __ptr ptr, v114v1, !15
-        store ptr to v417v1, !16
-        v171v1 = get_local __ptr { ptr }, buffer, !17
-        v136v1 = const u64 0
-        v423v3 = get_elem_ptr v171v1, __ptr ptr, v136v1, !25
-        v613v1 = load v423v3, !26
-        v614v1 = asm(ptr: v613v1, val) -> u64 val, !28 {
-            lw     val ptr i0, !29
-        }
-        v616v1 = load v423v3, !30
-        v617v1 = const u64 8, !31
-        v618v1 = add v616v1, v617v1, !32
-        store v618v1 to v423v3, !34
-        v424v1 = get_local __ptr { u64 }, temp, !36
-        v166v1 = const u64 0
-        v425v1 = get_elem_ptr v424v1, __ptr u64, v166v1, !37
-        store v614v1 to v425v1, !38
-        v178v1 = get_local __ptr { u64 }, temp, !39
-        v179v1 = cast_ptr v178v1 to ptr, !40
-        v180v1 = const u64 8
-        v181v1 = asm(target: target, temp: v179v1, size: v180v1) -> (), !41 {
-            mcp    target temp size, !42
-=======
-        v0 = get_local __ptr { ptr }, buffer, !14
-        v1 = const u64 0
-        v2 = get_elem_ptr v0, __ptr ptr, v1, !15
-        store ptr to v2, !16
-        v3 = get_local __ptr { ptr }, buffer, !17
-        v4 = const u64 0
-        v5 = get_elem_ptr v3, __ptr ptr, v4, !25
-        v6 = load v5, !26
-        v7 = asm(ptr: v6, val) -> u64 val, !28 {
-            lw     val ptr i0, !29
-        }
-        v8 = load v5, !30
-        v9 = const u64 8, !31
-        v10 = add v8, v9, !32
-        store v10 to v5, !34
-        v11 = get_local __ptr { u64 }, temp, !36
-        v12 = const u64 0
-        v13 = get_elem_ptr v11, __ptr u64, v12, !37
-        store v7 to v13, !38
-        v14 = get_local __ptr { u64 }, temp, !39
-        v15 = cast_ptr v14 to ptr, !40
-        v16 = const u64 8
-<<<<<<< HEAD
-        v17 = asm(target: target, temp: v15, size: v16) -> (), !44 {
-            mcp    target temp size, !45
->>>>>>> 2b4c2d140 (update snapshot tests)
-=======
-        v17 = asm(target: target, temp: v15, size: v16) -> (), !41 {
-            mcp    target temp size, !42
->>>>>>> c47472c5f (update tests)
-        }
-        v182v1 = const unit ()
-        ret () v182v1
-    }
-
-    pub fn abi_decode_in_place_7(ptr !4: ptr, len !5: u64, target !6: ptr) -> (), !43 {
-        entry(ptr: ptr, len: u64, target: ptr):
-        v0 = asm(src: ptr, target: target, len: len) -> (), !44 {
-            mcp    target src len, !45
-=======
-        v0 = asm(src: ptr, target: target, len: len) -> (), !11 {
+        v138v1 = asm(src: ptr, target: target, len: len) -> (), !11 {
             mcp    target src len, !12
->>>>>>> ed22272e6 (update tests)
         }
-        v1 = const unit ()
-        ret () v1
+        v220v1 = const unit ()
+        ret () v220v1
     }
 
     pub entry fn __entry() -> __ptr never, !16 {
         local u64 _result
 
         entry():
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-        v254v1 = call main_8(), !49
-        v527v1 = get_local __ptr u64, item_, !52
-        store v254v1 to v527v1, !52
-        v609v1 = get_local __ptr u64, item_, !54
-        v283v1 = const u64 8
-        retd v609v1 v283v1, !56
-=======
-        v0 = call main_12(), !51
-        v1 = get_local __ptr u64, _result, !52
-        store v0 to v1, !52
-        v2 = get_local __ptr u64, _result, !53
-        v3 = const u64 8
-        retd v2 v3, !57
->>>>>>> 2b4c2d140 (update snapshot tests)
-=======
-        v0 = call main_15(), !52
-        v1 = get_local __ptr u64, _result, !53
-        store v0 to v1, !53
-        v2 = get_local __ptr u64, _result, !54
-        v3 = const u64 8
-        retd v2 v3, !58
->>>>>>> c47472c5f (update tests)
-=======
-        v0 = call main_15(), !19
-        v1 = get_local __ptr u64, _result, !20
-        store v0 to v1, !20
-        v2 = get_local __ptr u64, _result, !21
-        v3 = const u64 8
-        retd v2 v3, !25
->>>>>>> ed22272e6 (update tests)
+        v314v1 = call main_15(), !19
+        v315v1 = get_local __ptr u64, _result, !20
+        store v314v1 to v315v1, !20
+        v438v1 = get_local __ptr u64, _result, !21
+        v325v1 = const u64 8
+        retd v438v1 v325v1, !25
     }
 
     entry_orig fn main_15() -> u64, !28 {
         entry():
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-        v244v1 = get_config __ptr { u64 }, WRAPPED, !60
-        v245v1 = const u64 0
-        v246v1 = get_elem_ptr v244v1, __ptr u64, v245v1, !61
-        v247v1 = load v246v1
-        v248v1 = get_config __ptr { u64 }, TUPLE, !62
-        v249v1 = const u64 0
-        v250v1 = get_elem_ptr v248v1, __ptr u64, v249v1, !63
-        v251v1 = load v250v1
-        v457v1 = add v247v1, v251v1, !66
-        ret u64 v457v1
-=======
-        v0 = get_config __ptr { u64 }, WRAPPED, !61
-=======
-        v0 = get_config __ptr { u64 }, WRAPPED, !62
->>>>>>> c47472c5f (update tests)
-=======
-        v0 = get_config __ptr { u64 }, WRAPPED, !29
->>>>>>> ed22272e6 (update tests)
-        v1 = const u64 0
-        v2 = get_elem_ptr v0, __ptr u64, v1, !30
-        v3 = load v2
-        v4 = get_config __ptr { u64 }, TUPLE, !31
-        v5 = const u64 0
-        v6 = get_elem_ptr v4, __ptr u64, v5, !32
-        v7 = load v6
-        v8 = add v3, v7, !35
-        ret u64 v8
->>>>>>> 2b4c2d140 (update snapshot tests)
+        v304v1 = get_config __ptr { u64 }, WRAPPED, !29
+        v305v1 = const u64 0
+        v306v1 = get_elem_ptr v304v1, __ptr u64, v305v1, !30
+        v307v1 = load v306v1
+        v308v1 = get_config __ptr { u64 }, TUPLE, !31
+        v309v1 = const u64 0
+        v310v1 = get_elem_ptr v308v1, __ptr u64, v309v1, !32
+        v311v1 = load v310v1
+        v563v1 = add v307v1, v311v1, !35
+        ret u64 v563v1
     }
 }
 
