@@ -1,11 +1,12 @@
 use crate::manifest::GenericManifestFile;
 use crate::{
     manifest::{self, PackageManifestFile},
+    path_utils::path_lock,
     source,
 };
 use anyhow::Result;
 use flate2::read::GzDecoder;
-use forc_tracing::println_action_green;
+use forc_diagnostic::println_action_green;
 use futures::TryStreamExt;
 use ipfs_api::IpfsApi;
 use ipfs_api_backend_hyper as ipfs_api;
@@ -64,7 +65,7 @@ impl source::Fetch for Pinned {
             anyhow::bail!("offline fetching for IPFS sources is not supported")
         }
 
-        let mut lock = forc_util::path_lock(repo_path)?;
+        let mut lock = path_lock(repo_path)?;
         // TODO: Here we assume that if the local path already exists, that it contains the
         // full and correct source for that registry entry and hasn't been tampered with. This is
         // probably fine for most cases as users should never be touching these
@@ -117,7 +118,7 @@ impl source::DepPath for Pinned {
     fn dep_path(&self, name: &str) -> anyhow::Result<source::DependencyPath> {
         let repo_path = pkg_cache_dir(&self.0);
         // Co-ordinate access to the ipfs checkout directory using an advisory file lock.
-        let lock = forc_util::path_lock(&repo_path)?;
+        let lock = path_lock(&repo_path)?;
         let _guard = lock.read()?;
         let path = manifest::find_within(&repo_path, name)
             .ok_or_else(|| anyhow::anyhow!("failed to find package `{}` in {}", name, self))?;

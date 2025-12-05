@@ -4,6 +4,7 @@ pub mod index_file;
 use super::IPFSNode;
 use crate::{
     manifest::{self, GenericManifestFile, PackageManifestFile},
+    path_utils::path_lock,
     source::{
         self,
         ipfs::{ipfs_client, Cid},
@@ -12,7 +13,7 @@ use crate::{
 use anyhow::{anyhow, bail, Context};
 use file_location::{location_from_root, Namespace};
 use flate2::read::GzDecoder;
-use forc_tracing::println_action_green;
+use forc_diagnostic::println_action_green;
 use index_file::IndexFile;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -375,7 +376,7 @@ impl source::Pin for Source {
 impl source::Fetch for Pinned {
     fn fetch(&self, ctx: source::PinCtx, path: &Path) -> anyhow::Result<PackageManifestFile> {
         // Co-ordinate access to the registry checkout directory using an advisory file lock.
-        let mut lock = forc_util::path_lock(path)?;
+        let mut lock = path_lock(path)?;
         // TODO: Here we assume that if the local path already exists, that it contains the
         // full and correct source for that registry entry and hasn't been tampered with. This is
         // probably fine for most cases as users should never be touching these
