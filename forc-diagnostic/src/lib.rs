@@ -1,4 +1,8 @@
-//! Utility items shared between forc crates.
+//! Diagnostic and tracing utilities shared between forc crates.
+
+mod formatting;
+
+pub use formatting::{create_diagnostics_renderer, format_diagnostic};
 
 use ansiterm::Colour;
 use std::str;

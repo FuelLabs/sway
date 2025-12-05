@@ -1,7 +1,7 @@
 [package]
-name = "forc-tracing"
+name = "forc-diagnostic"
 version.workspace = true
-description = "Tracing utility shared between forc crates."
+description = "Diagnostic and tracing utilities shared between forc crates."
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true
@@ -9,8 +9,11 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+annotate-snippets.workspace = true
 ansiterm.workspace = true
 regex.workspace = true
+sway-error.workspace = true
+sway-types.workspace = true
 tracing.workspace = true
 tracing-subscriber = { workspace = true, features = ["ansi", "env-filter", "json"] }
 
