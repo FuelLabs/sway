@@ -8,7 +8,7 @@ use anyhow::Result;
 use clap::Parser;
 use forc::cli::shared::{IrCliOpt, PrintAsmCliOpt};
 use forc_test::GasCostsSource;
-use forc_tracing::init_tracing_subscriber;
+use forc_diagnostic::init_tracing_subscriber;
 use fuel_vm::prelude::GasCostsValues;
 use std::str::FromStr;
 use sway_core::{BuildTarget, IrCli, PrintAsm};

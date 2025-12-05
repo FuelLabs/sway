@@ -6,7 +6,7 @@ use crate::{
     util::ask_user_yes_no_question,
 };
 use anyhow::{bail, Result};
-use forc_tracing::{println_action_green, println_warning};
+use forc_diagnostic::{println_action_green, println_warning};
 use forc_util::user_forc_directory;
 use serde::{Deserialize, Serialize};
 use sha1::{Digest, Sha1};

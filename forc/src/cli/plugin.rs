@@ -1,7 +1,7 @@
 //! Items related to plugin support for `forc`.
 
 use anyhow::{bail, Result};
-use forc_tracing::println_warning_verbose;
+use forc_diagnostic::println_warning_verbose;
 use std::{
     env, fs,
     path::{Path, PathBuf},

@@ -13,7 +13,8 @@ anyhow.workspace = true
 clap = { workspace = true, features = ["derive"] }
 duplicate.workspace = true
 forc-pkg.workspace = true
-forc-tracing.workspace = true
+forc-diagnostic.workspace = true
+forc-types.workspace = true
 forc-util.workspace = true
 itertools.workspace = true
 num-bigint.workspace = true

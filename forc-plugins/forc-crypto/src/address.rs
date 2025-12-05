@@ -3,7 +3,7 @@ use fuel_crypto::fuel_types::Address;
 use serde_json::json;
 use std::str::{from_utf8, FromStr};
 
-forc_util::cli_examples! {
+forc_types::cli_examples! {
     crate::Command {
         [ Convert an address to another format => "forc crypto address fuel12e0xwx34nfp7jrzvn9mp5qkac3yvp7h8fx37ghl7klf82vv2wkys6wd523" ]
     }

@@ -3,7 +3,7 @@ use forc_publish::credentials::get_auth_token;
 use forc_publish::error::Result;
 use forc_publish::forc_pub_client::ForcPubClient;
 use forc_publish::tarball::create_tarball_from_current_dir;
-use forc_tracing::{
+use forc_diagnostic::{
     init_tracing_subscriber, println_action_green, println_error, TracingSubscriberOptions,
 };
 use tempfile::tempdir;

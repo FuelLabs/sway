@@ -3,9 +3,10 @@ use crate::{
     ops::forc_contract_id,
 };
 use clap::Parser;
-use forc_util::{tx_utils::Salt, ForcResult};
+use forc_types::ForcResult;
+use forc_util::tx_utils::Salt;
 
-forc_util::cli_examples! {
+forc_types::cli_examples! {
     crate::cli::Opt {
         [Get contract id => "forc contract-id"]
         [Get contract id from a different path => "forc contract-id --path <PATH>"]

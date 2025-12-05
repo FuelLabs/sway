@@ -1,6 +1,6 @@
 use crate::cli::{shared::IrCliOpt, BuildCommand};
 use forc_pkg as pkg;
-use forc_util::ForcResult;
+use forc_types::ForcResult;
 use pkg::MemberFilter;
 use sway_core::IrCli;
 

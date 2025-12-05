@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use thiserror::Error;
 
-forc_util::cli_examples! {
+forc_types::cli_examples! {
     {
         // This parser has a custom parser
         super::Command::try_parse_from_args

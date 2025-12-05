@@ -1,5 +1,5 @@
 use clap::Parser;
-use forc_tracing::{init_tracing_subscriber, println_error};
+use forc_diagnostic::{init_tracing_subscriber, println_error};
 
 #[tokio::main]
 async fn main() {

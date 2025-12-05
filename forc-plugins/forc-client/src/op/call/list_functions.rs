@@ -123,7 +123,7 @@ fn list_functions_for_single_contract<W: Write>(
                 )
             })?;
 
-        let painted_name = forc_util::ansiterm::Colour::Blue.paint(func.name.clone());
+        let painted_name = ansiterm::Colour::Blue.paint(func.name.clone());
         writeln!(writer, "{painted_name}({func_args_types}) -> {return_type}")?;
         writeln!(
             writer,

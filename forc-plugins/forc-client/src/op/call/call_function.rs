@@ -138,7 +138,7 @@ pub async fn call_function(
         }
         None => {
             // Automatically retrieve missing contract addresses from the call
-            forc_tracing::println_warning(
+            forc_diagnostic::println_warning(
                 "Automatically retrieving missing contract addresses for the call",
             );
             let external_contracts = determine_missing_contracts(
@@ -152,11 +152,11 @@ pub async fn call_function(
             )
             .await?;
             if !external_contracts.is_empty() {
-                forc_tracing::println_warning(
+                forc_diagnostic::println_warning(
                     "Automatically provided external contract addresses with call (max 10):",
                 );
                 external_contracts.iter().for_each(|addr| {
-                    forc_tracing::println_warning(&format!("- 0x{addr}"));
+                    forc_diagnostic::println_warning(&format!("- 0x{addr}"));
                 });
             }
             external_contracts
@@ -214,7 +214,7 @@ pub async fn call_function(
             (tx, tx_exec, storage_reads)
         }
         cmd::call::ExecutionMode::Live => {
-            forc_tracing::println_action_green(
+            forc_diagnostic::println_action_green(
                 "Sending transaction with wallet",
                 &format!("0x{}", wallet.address()),
             );

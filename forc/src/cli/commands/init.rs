@@ -1,8 +1,8 @@
 use crate::ops::forc_init;
 use clap::Parser;
-use forc_util::ForcResult;
+use forc_types::ForcResult;
 
-forc_util::cli_examples! {
+forc_types::cli_examples! {
     crate::cli::Opt {
         [Initialize a new Forc project => "forc init --path <PATH>"]
         [Initialize a new Forc project as workspace => "forc init --path <PATH> --workspace"]

@@ -6,7 +6,7 @@ use forc_pkg::{
     manifest::{GenericManifestFile, ManifestFile},
     WorkspaceManifestFile,
 };
-use forc_tracing::{init_tracing_subscriber, println_error, println_green, println_red};
+use forc_diagnostic::{init_tracing_subscriber, println_error, println_green, println_red};
 use forc_util::fs_locking::is_file_dirty;
 use prettydiff::{basic::DiffOp, diff_lines};
 use std::{
@@ -21,7 +21,7 @@ use swayfmt::Formatter;
 use taplo::formatter as taplo_fmt;
 use tracing::{debug, info};
 
-forc_util::cli_examples! {
+forc_types::cli_examples! {
     crate::App {
         [ Run the formatter in check mode on the current directory => "forc fmt --check"]
         [ Run the formatter in check mode on the current directory with short format => "forc fmt -c"]

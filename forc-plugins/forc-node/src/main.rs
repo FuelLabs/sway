@@ -7,8 +7,8 @@ use forc_node::{
     ignition, local, testnet,
     util::{check_open_fds_limit, get_fuel_core_version},
 };
-use forc_tracing::init_tracing_subscriber;
-use forc_util::forc_result_bail;
+use forc_diagnostic::init_tracing_subscriber;
+use forc_types::forc_result_bail;
 use semver::Version;
 use std::{env, process::Child, str::FromStr};
 use tracing_subscriber::{filter::EnvFilter, layer::SubscriberExt, registry, Layer};

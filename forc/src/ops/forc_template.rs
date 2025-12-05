@@ -4,8 +4,8 @@ use forc_pkg::{
     manifest::{self, PackageManifest},
     source::{self, git::Url},
 };
-use forc_tracing::println_action_green;
-use forc_util::validate_project_name;
+use forc_diagnostic::println_action_green;
+use forc_pkg::validation::validate_project_name;
 use fs_extra::dir::{copy, CopyOptions};
 use std::fs::File;
 use std::io::{Read, Write};

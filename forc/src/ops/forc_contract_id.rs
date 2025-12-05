@@ -1,7 +1,7 @@
 use crate::cli::{shared::IrCliOpt, ContractIdCommand};
 use anyhow::{bail, Result};
 use forc_pkg::{self as pkg, build_with_options, DumpOpts};
-use forc_tracing::println_green;
+use forc_diagnostic::println_green;
 use sway_core::{fuel_prelude::fuel_tx, BuildTarget, IrCli};
 use tracing::info;
 

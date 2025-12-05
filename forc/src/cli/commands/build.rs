@@ -1,8 +1,8 @@
 use crate::{cli, ops::forc_build};
 use clap::Parser;
-use forc_util::ForcResult;
+use forc_types::ForcResult;
 
-forc_util::cli_examples! {
+forc_types::cli_examples! {
    crate::cli::Opt {
         [ Compile the current projectx => "forc build" ]
         [ Compile the current project from a different path => "forc build --path <PATH>" ]

@@ -1,10 +1,10 @@
 use clap::Parser;
-use forc_util::ForcResult;
+use forc_types::ForcResult;
 
 pub use crate::cli::shared::{BuildOutput, BuildProfile, Minify, Pkg, Print};
 use crate::{cli::shared::IrCliOpt, ops::forc_predicate_root};
 
-forc_util::cli_examples! {
+forc_types::cli_examples! {
     crate::cli::Opt {
         [Get predicate root => "forc predicate-root"]
     }

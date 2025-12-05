@@ -3,7 +3,7 @@ use crate::md_pre_process::flatten_markdown;
 use crate::validate::validate_dir;
 use flate2::write::GzEncoder;
 use flate2::Compression;
-use forc_tracing::println_warning;
+use forc_diagnostic::println_warning;
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use tar::Builder;

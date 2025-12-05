@@ -1,5 +1,5 @@
 use clap::Parser;
-use forc_tracing::{init_tracing_subscriber, println_error, TracingSubscriberOptions};
+use forc_diagnostic::{init_tracing_subscriber, println_error, TracingSubscriberOptions};
 
 #[tokio::main]
 async fn main() {
@@ -9,7 +9,7 @@ async fn main() {
     init_tracing_subscriber(TracingSubscriberOptions {
         verbosity: Some(command.verbosity),
         writer_mode: Some(command.output.clone().into()),
-        regex_filter: Some("forc_tracing".to_string()),
+        regex_filter: Some("forc_diagnostic".to_string()),
         ..Default::default()
     });
 

@@ -10,7 +10,7 @@ use crate::{
     util::{ask_user_keypair, ask_user_string, HumanReadableCommand, KeyPair},
 };
 use anyhow::Context;
-use forc_tracing::println_green;
+use forc_diagnostic::println_green;
 use std::{
     net::IpAddr,
     path::PathBuf,

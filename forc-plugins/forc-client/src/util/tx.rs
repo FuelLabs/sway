@@ -4,7 +4,7 @@ use crate::{
 };
 use anyhow::Result;
 use dialoguer::{theme::ColorfulTheme, Confirm, Password, Select};
-use forc_tracing::{println_action_green, println_warning};
+use forc_diagnostic::{println_action_green, println_warning};
 use forc_wallet::{
     account::{derive_secret_key, new_at_index_cli},
     balance::{collect_accounts_with_verification, AccountBalances, AccountVerification},

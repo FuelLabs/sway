@@ -1,10 +1,11 @@
 use crate::{cli::init::Command as InitCommand, ops::forc_init::init};
 use anyhow::anyhow;
 use clap::Parser;
-use forc_util::{forc_result_bail, validate_project_name, ForcResult};
+use forc_pkg::validation::validate_project_name;
+use forc_types::{forc_result_bail, ForcResult};
 use std::path::{Path, PathBuf};
 
-forc_util::cli_examples! {
+forc_types::cli_examples! {
     crate::cli::Opt {
         [Create a new project => "forc new --contract --name my_project <PATH>"]
         [Create a new workspace => "forc new --workspace --name my_workspace <PATH>"]

@@ -15,7 +15,7 @@ use anyhow::{bail, Context, Result};
 use forc::cli::shared::IrCliOpt;
 use forc_pkg::{self as pkg, DumpOpts, PackageManifestFile};
 use forc_pkg::{manifest::GenericManifestFile, MemberFilter};
-use forc_tracing::{println_action_green, println_warning};
+use forc_diagnostic::{println_action_green, println_warning};
 use forc_util::default_output_directory;
 use forc_wallet::utils::default_wallet_path;
 use fuel_abi_types::abi::program::Configurable;

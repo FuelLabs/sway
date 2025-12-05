@@ -1,11 +1,11 @@
+use crate::utils::bytecode::parse_bytecode_to_instructions;
 use clap::Parser;
-use forc_util::bytecode::parse_bytecode_to_instructions;
-use forc_util::ForcResult;
+use forc_types::ForcResult;
 use term_table::row::Row;
 use term_table::table_cell::{Alignment, TableCell};
 use tracing::info;
 
-forc_util::cli_examples! {
+forc_types::cli_examples! {
     crate::cli::Opt {
         [Parse bytecode => "forc parse-bytecode <PATH>"]
     }

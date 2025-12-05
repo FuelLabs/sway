@@ -1,8 +1,8 @@
 use crate::ops::forc_clean;
 use clap::Parser;
-use forc_util::ForcResult;
+use forc_types::ForcResult;
 
-forc_util::cli_examples! {
+forc_types::cli_examples! {
     crate::cli::Opt {
         [Clean project => "forc clean"]
         [Clean project with a custom path => "forc clean --path <PATH>"]

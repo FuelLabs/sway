@@ -12,7 +12,7 @@ use std::{
 };
 use tokio::runtime::Runtime;
 
-forc_util::cli_examples! {
+forc_types::cli_examples! {
     crate::Command {
         [ Generate a checksummed vanity address with a given prefix => "forc crypto vanity --starts-with \"aaa\"" ]
         [ Generate a checksummed vanity address with a given suffix => "forc crypto vanity --ends-with \"aaa\"" ]

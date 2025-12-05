@@ -10,7 +10,7 @@ use crate::{
 use anyhow::{anyhow, bail, Context, Result};
 use forc::cli::shared::IrCliOpt;
 use forc_pkg::{self as pkg, fuel_core_not_running, DumpOpts, PackageManifestFile};
-use forc_tracing::println_warning;
+use forc_diagnostic::println_warning;
 use forc_util::tx_utils::format_log_receipts;
 use fuel_abi_types::abi::program::ProgramABI;
 use fuel_core_client::client::FuelClient;

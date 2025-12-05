@@ -31,7 +31,8 @@ clap_complete.workspace = true
 clap_complete_fig.workspace = true
 forc-pkg.workspace = true
 forc-test.workspace = true
-forc-tracing.workspace = true
+forc-diagnostic.workspace = true
+forc-types.workspace = true
 forc-util = { workspace = true, features = ["tx"] }
 fs_extra.workspace = true
 fuel-abi-types.workspace = true
@@ -39,6 +40,7 @@ fuel-asm.workspace = true
 hex.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
+sha2.workspace = true
 sway-core.workspace = true
 sway-error.workspace = true
 sway-features.workspace = true

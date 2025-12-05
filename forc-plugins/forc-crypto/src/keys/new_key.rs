@@ -11,7 +11,7 @@ use libp2p_identity::{secp256k1, Keypair, PeerId};
 use serde_json::json;
 use std::ops::Deref;
 
-forc_util::cli_examples! {
+forc_types::cli_examples! {
     crate::Command {
         [ Creates a new key default for block production => "forc crypto new-key" ]
         [ Creates a new key for peering => "forc crypto new-key -k peering" ]

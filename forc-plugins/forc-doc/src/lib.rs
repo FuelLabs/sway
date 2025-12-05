@@ -11,7 +11,7 @@ use forc_pkg::{
     source::IPFSNode,
     PackageManifestFile, Programs,
 };
-use forc_tracing::println_action_green;
+use forc_diagnostic::println_action_green;
 use forc_util::default_output_directory;
 use render::{
     index::{LibraryInfo, WorkspaceIndex},
@@ -30,7 +30,7 @@ use sway_features::ExperimentalFeatures;
 pub const DOC_DIR_NAME: &str = "doc";
 pub const ASSETS_DIR_NAME: &str = "static.files";
 
-forc_util::cli_examples! {
+forc_types::cli_examples! {
     crate::Command {
         [ Build the docs for a project or workspace in the current path => "forc doc"]
         [ Build the docs for a project or workspace in the current path and open it in the browser => "forc doc --open" ]

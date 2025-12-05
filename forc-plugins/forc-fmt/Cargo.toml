@@ -12,7 +12,8 @@ repository.workspace = true
 anyhow.workspace = true
 clap = { workspace = true, features = ["derive"] }
 forc-pkg.workspace = true
-forc-tracing.workspace = true
+forc-diagnostic.workspace = true
+forc-types.workspace = true
 forc-util.workspace = true
 prettydiff.workspace = true
 sway-core.workspace = true

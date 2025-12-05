@@ -3,7 +3,7 @@
 use anyhow::Result;
 use clap::Parser;
 use forc_crypto::{address, keccak256, keys, sha256, Command};
-use forc_tracing::{init_tracing_subscriber, println_error};
+use forc_diagnostic::{init_tracing_subscriber, println_error};
 use std::{
     default::Default,
     io::{stdin, stdout, IsTerminal, Read, Write},

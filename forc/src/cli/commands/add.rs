@@ -4,9 +4,9 @@ use forc_pkg::{
     manifest::dep_modifier::{self, Action, ModifyOpts},
     source::IPFSNode,
 };
-use forc_util::ForcResult;
+use forc_types::ForcResult;
 
-forc_util::cli_examples! {
+forc_types::cli_examples! {
   crate::cli::Opt {
       [Add a dependencies => "forc add <DEP>[@<VERSION>] "]
       [Add a contract dependency => "forc add <DEP>[@<VERSION>] --contract-dep"]

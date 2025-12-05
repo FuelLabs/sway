@@ -2,7 +2,7 @@ use crate::NodeTarget;
 use devault::Devault;
 use std::path::PathBuf;
 
-forc_util::cli_examples! {
+forc_types::cli_examples! {
     super::Command {
         [ Submit a transaction from a json file => "forc submit {path}/mint.json" ]
         [ Submit a transaction from a json file and wait for confirmation => "forc submit {path}/mint.json --await true" ]

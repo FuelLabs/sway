@@ -7,7 +7,7 @@ use forc_pkg::{
     manifest::{GenericManifestFile, ManifestFile},
     source::IPFSNode,
 };
-use forc_tracing::println_action_green;
+use forc_diagnostic::println_action_green;
 use sway_core::{BuildTarget, Engines};
 use sway_error::diagnostic::*;
 use sway_features::{ExperimentalFeatures, Feature};

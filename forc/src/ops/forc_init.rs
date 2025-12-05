@@ -1,7 +1,8 @@
 use crate::cli::InitCommand;
 use crate::utils::{defaults, program_type::ProgramType};
 use anyhow::Context;
-use forc_util::{forc_result_bail, validate_project_name, ForcResult};
+use forc_pkg::validation::validate_project_name;
+use forc_types::{forc_result_bail, ForcResult};
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};

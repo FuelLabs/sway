@@ -1,6 +1,6 @@
 use crate::{pkg, source, DepKind, Edge};
 use anyhow::{anyhow, Result};
-use forc_tracing::{println_action_green, println_action_red};
+use forc_diagnostic::{println_action_green, println_action_red};
 use petgraph::{visit::EdgeRef, Direction};
 use serde::{Deserialize, Serialize};
 use std::{

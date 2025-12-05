@@ -41,8 +41,9 @@ either.workspace = true
 forc.workspace = true
 forc-debug.workspace = true
 forc-pkg.workspace = true
-forc-tracing.workspace = true
+forc-diagnostic.workspace = true
 forc-tx.workspace = true
+forc-types.workspace = true
 forc-util = { workspace = true, features = ["tx"] }
 forc-wallet.workspace = true
 fuel-abi-types.workspace = true

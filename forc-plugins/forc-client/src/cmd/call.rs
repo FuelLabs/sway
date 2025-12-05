@@ -78,11 +78,11 @@ impl Write for OutputFormat {
     }
 }
 
-impl From<OutputFormat> for forc_tracing::TracingWriter {
+impl From<OutputFormat> for forc_diagnostic::TracingWriter {
     fn from(format: OutputFormat) -> Self {
         match format {
-            OutputFormat::Json => forc_tracing::TracingWriter::Json,
-            _ => forc_tracing::TracingWriter::Stdio,
+            OutputFormat::Json => forc_diagnostic::TracingWriter::Json,
+            _ => forc_diagnostic::TracingWriter::Stdio,
         }
     }
 }

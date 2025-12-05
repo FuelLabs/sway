@@ -125,7 +125,7 @@ pub async fn interpret_execution_trace(
     if vm.receipts() != receipts {
         match mode {
             cmd::call::ExecutionMode::Live => return Err(anyhow!("Receipts mismatch")),
-            _ => forc_tracing::println_warning(
+            _ => forc_diagnostic::println_warning(
                 "Receipts mismatch; this is expected for non-live mode",
             ),
         }

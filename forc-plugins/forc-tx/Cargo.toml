@@ -19,6 +19,7 @@ path = "src/main.rs"
 anyhow.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
 devault.workspace = true
+forc-types.workspace = true
 forc-util = { workspace = true, features = ["tx"] }
 fuel-tx = { workspace = true, features = ["random", "test-helpers"] }
 fuel-types = { workspace = true, features = ["serde"] }

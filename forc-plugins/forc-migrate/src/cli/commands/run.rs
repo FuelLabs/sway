@@ -5,8 +5,9 @@ use std::{
 
 use anyhow::{bail, Ok, Result};
 use clap::Parser;
-use forc_tracing::{println_action_green, println_action_yellow, println_yellow_bold};
-use forc_util::{format_diagnostic, fs_locking::is_file_dirty};
+use forc_diagnostic::{println_action_green, println_action_yellow, println_yellow_bold};
+use forc_diagnostic::format_diagnostic;
+use forc_util::fs_locking::is_file_dirty;
 use itertools::Itertools;
 use sway_ast::Module;
 use sway_core::{
@@ -33,7 +34,7 @@ use crate::{
     },
 };
 
-forc_util::cli_examples! {
+forc_types::cli_examples! {
     crate::cli::Opt {
         [ Migrate the project in the current path => "forc migrate run"]
         [ Migrate the project located in another path => "forc migrate run --path {path}" ]

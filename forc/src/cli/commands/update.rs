@@ -1,9 +1,9 @@
 use crate::ops::forc_update;
 use clap::Parser;
 use forc_pkg::source::IPFSNode;
-use forc_util::ForcResult;
+use forc_types::ForcResult;
 
-forc_util::cli_examples! {
+forc_types::cli_examples! {
     crate::cli::Opt {
         [Update dependencies => "forc update"]
         [Update a specific dependency => "forc update -d std"]

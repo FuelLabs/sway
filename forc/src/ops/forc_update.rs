@@ -2,9 +2,9 @@ use crate::cli::UpdateCommand;
 use anyhow::{anyhow, Result};
 use forc_pkg::manifest::GenericManifestFile;
 use forc_pkg::{self as pkg, lock, Lock};
-use forc_util::lock_path;
 use pkg::manifest::ManifestFile;
 use std::{fs, path::PathBuf};
+use sway_utils::constants;
 use tracing::info;
 
 /// Running `forc update` will check for updates for the entire dependency graph and commit new
@@ -35,7 +35,7 @@ pub fn update(command: UpdateCommand) -> Result<()> {
     };
 
     let manifest = ManifestFile::from_dir(this_dir)?;
-    let lock_path = lock_path(manifest.dir());
+    let lock_path = manifest.dir().join(constants::LOCK_FILE_NAME);
     let old_lock = Lock::from_path(&lock_path).ok().unwrap_or_default();
     let offline = false;
     let member_manifests = manifest.member_manifests()?;

@@ -164,7 +164,7 @@ async fn get_wallet(
             let secret_key = SecretKey::from_str(DEFAULT_PRIVATE_KEY).unwrap();
             let signer = PrivateKeySigner::new(secret_key);
             let wallet = Wallet::new(signer, provider);
-            forc_tracing::println_warning(&format!(
+            forc_diagnostic::println_warning(&format!(
                 "No signing key or wallet flag provided. Using default signer: 0x{}",
                 wallet.address()
             ));
@@ -173,7 +173,7 @@ async fn get_wallet(
         (Some(secret_key), false) => {
             let signer = PrivateKeySigner::new(secret_key);
             let wallet = Wallet::new(signer, provider);
-            forc_tracing::println_warning(&format!(
+            forc_diagnostic::println_warning(&format!(
                 "Using account {} derived from signing key...",
                 wallet.address()
             ));
@@ -185,7 +185,7 @@ async fn get_wallet(
             Ok(wallet)
         }
         (Some(secret_key), true) => {
-            forc_tracing::println_warning(
+            forc_diagnostic::println_warning(
                 "Signing key is provided while requesting to use forc-wallet. Using signing key...",
             );
             let signer = PrivateKeySigner::new(secret_key);
@@ -246,15 +246,15 @@ pub(crate) fn display_tx_info(
     node: &crate::NodeTarget,
 ) {
     // print tx hash and result
-    forc_tracing::println_label_green("tx hash:", &tx_hash);
+    forc_diagnostic::println_label_green("tx hash:", &tx_hash);
     if let Some(ref result) = result {
-        forc_tracing::println_label_green("result:", result);
+        forc_diagnostic::println_label_green("result:", result);
     }
 
     // display transaction url if live mode
     if *mode == cmd::call::ExecutionMode::Live {
         if let Some(explorer_url) = node.get_explorer_url() {
-            forc_tracing::println_label_green(
+            forc_diagnostic::println_label_green(
                 "\nView transaction:",
                 &format!("{explorer_url}/tx/0x{tx_hash}\n"),
             );
@@ -273,7 +273,7 @@ pub(crate) fn display_detailed_call_info(
     labels: &HashMap<ContractId, String>,
 ) -> Result<()> {
     if verbosity >= 4 {
-        forc_tracing::println_label_green(
+        forc_diagnostic::println_label_green(
             "transaction script:\n",
             &serde_json::to_string_pretty(script).unwrap(),
         );
@@ -282,7 +282,7 @@ pub(crate) fn display_detailed_call_info(
         let formatted_receipts =
             forc_util::tx_utils::format_log_receipts(tx.result.receipts(), true)
                 .map_err(|e| anyhow!("Failed to format receipts: {}", e))?;
-        forc_tracing::println_label_green("receipts:", &formatted_receipts);
+        forc_diagnostic::println_label_green("receipts:", &formatted_receipts);
     }
     if verbosity >= 2 {
         trace::display_transaction_trace(*tx.result.total_gas(), trace_events, labels, writer)
@@ -315,7 +315,7 @@ pub(crate) fn display_detailed_call_info(
 
         // print logs if there are any
         if !logs.is_empty() {
-            forc_tracing::println_green_bold("logs:");
+            forc_diagnostic::println_green_bold("logs:");
             for log in logs.iter() {
                 writeln!(writer, "  {log:#}")?;
             }
@@ -347,19 +347,19 @@ pub async fn create_abi_map(
                 Ok(abi_str) => match Abi::from_str(&abi_str) {
                     Ok(additional_abi) => {
                         abi_map.insert(contract_id, additional_abi.with_source(abi_path.clone()));
-                        forc_tracing::println_action_green(
+                        forc_diagnostic::println_action_green(
                             "Loaded additional ABI for contract",
                             &format!("0x{contract_id}"),
                         );
                     }
                     Err(e) => {
-                        forc_tracing::println_warning(&format!(
+                        forc_diagnostic::println_warning(&format!(
                             "Failed to parse ABI for contract 0x{contract_id}: {e}"
                         ));
                     }
                 },
                 Err(e) => {
-                    forc_tracing::println_warning(&format!(
+                    forc_diagnostic::println_warning(&format!(
                         "Failed to load ABI for contract 0x{contract_id}: {e}"
                     ));
                 }

@@ -4,7 +4,7 @@ mod shared;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use forc_tracing::{init_tracing_subscriber, LevelFilter, TracingSubscriberOptions};
+use forc_diagnostic::{init_tracing_subscriber, LevelFilter, TracingSubscriberOptions};
 
 use self::commands::{check, run, show};
 

@@ -12,7 +12,8 @@ repository.workspace = true
 anyhow.workspace = true
 async-trait.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
-forc-tracing.workspace = true
+forc-diagnostic.workspace = true
+forc-types.workspace = true
 forc-util.workspace = true
 fuel-core-types.workspace = true
 fuel-crypto = { workspace = true, features = ["random"] }

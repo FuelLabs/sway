@@ -1,14 +1,16 @@
+use annotate_snippets::{
+    renderer::{AnsiColor, Style},
+    AnnotationType, Renderer, Slice, Snippet, SourceAnnotation,
+};
 use anyhow::anyhow;
 use clap::Parser;
-use forc_util::{create_diagnostics_renderer, ForcResult};
+use forc_types::ForcResult;
 use std::collections::VecDeque;
 use std::fs::{self, File};
 use std::io::{self, prelude::*, BufReader};
 use std::path::{Path, PathBuf};
 use sway_types::LineCol;
 use tracing::info;
-
-use annotate_snippets::{AnnotationType, Slice, Snippet, SourceAnnotation};
 
 use sway_core::source_map::{LocationRange, SourceMap};
 
@@ -66,7 +68,17 @@ pub(crate) fn exec(command: Command) -> ForcResult<()> {
             }],
         };
 
-        let renderer = create_diagnostics_renderer();
+        let renderer = Renderer::styled()
+            .warning(
+                Style::new()
+                    .bold()
+                    .fg_color(Some(AnsiColor::BrightYellow.into())),
+            )
+            .error(
+                Style::new()
+                    .bold()
+                    .fg_color(Some(AnsiColor::BrightRed.into())),
+            );
         info!("{}", renderer.render(snippet));
 
         Ok(())

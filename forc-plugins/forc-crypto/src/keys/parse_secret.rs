@@ -5,7 +5,7 @@ use libp2p_identity::{secp256k1, Keypair, PeerId};
 use serde_json::json;
 use std::{ops::Deref, str::FromStr};
 
-forc_util::cli_examples! {
+forc_types::cli_examples! {
     crate::Command {
         [ Parses the secret of a block production  => "forc crypto parse-secret \"f5204427d0ab9a311266c96a377f7c329cb8a41b9088225b6fcf40eefb423e28\"" ]
         [ Parses the secret of a peering  => "forc crypto parse-secret -k peering \"f5204427d0ab9a311266c96a377f7c329cb8a41b9088225b6fcf40eefb423e28\"" ]

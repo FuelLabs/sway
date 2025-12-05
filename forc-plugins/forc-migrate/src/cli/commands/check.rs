@@ -11,11 +11,11 @@ use crate::{
     migrations::{DryRun, MigrationStepKind},
 };
 use anyhow::{Ok, Result};
-use forc_util::format_diagnostic;
+use forc_diagnostic::format_diagnostic;
 use itertools::Itertools;
 use sway_core::Engines;
 
-forc_util::cli_examples! {
+forc_types::cli_examples! {
     crate::cli::Opt {
         [ Check the project in the current path => "forc migrate check"]
         [ Check the project located in another path => "forc migrate check --path {path}" ]

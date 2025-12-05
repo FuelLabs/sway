@@ -6,7 +6,7 @@ use std::{
     path::Path,
 };
 
-forc_util::cli_examples! {
+forc_types::cli_examples! {
     crate::Command {
        [ Hashes an argument with SHA256 => "forc crypto sha256 test" ]
        [ Hashes an argument with Keccak256 => "forc crypto keccak256 test" ]

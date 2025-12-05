@@ -3,8 +3,8 @@ pub mod dep_modifier;
 
 use crate::pkg::{manifest_file_missing, parsing_failed, wrong_program_type};
 use anyhow::{anyhow, bail, Context, Result};
-use forc_tracing::println_warning;
-use forc_util::{validate_name, validate_project_name};
+use forc_diagnostic::println_warning;
+use crate::validation::{validate_name, validate_project_name};
 use semver::Version;
 use serde::{de, Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};

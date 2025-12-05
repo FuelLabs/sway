@@ -1,15 +1,15 @@
 use crate::cli::PluginsCommand;
 use anyhow::anyhow;
 use clap::Parser;
-use forc_tracing::println_warning;
-use forc_util::ForcResult;
+use forc_diagnostic::println_warning;
+use forc_types::ForcResult;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
 };
 use tracing::info;
 
-forc_util::cli_examples! {
+forc_types::cli_examples! {
     crate::cli::Opt {
         [ List all plugins => "forc plugins" ]
         [ List all plugins with their paths => "forc plugins --paths" ]

@@ -1,8 +1,8 @@
 use crate::ops::forc_template;
 use clap::Parser;
-use forc_util::ForcResult;
+use forc_types::ForcResult;
 
-forc_util::cli_examples! {
+forc_types::cli_examples! {
     crate::cli::Opt {
         [Create a new Forc project from an option template => "forc template new-path --template-name option"]
     }

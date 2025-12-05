@@ -5,16 +5,14 @@ use forc_pkg as pkg;
 use forc_test::{
     GasCostsSource, TestFilter, TestGasLimit, TestResult, TestRunnerCount, TestedPackage,
 };
-use forc_tracing::println_action_green;
-use forc_util::{
-    tx_utils::{decode_fuel_vm_log_data, format_log_receipts},
-    ForcError, ForcResult,
-};
+use forc_diagnostic::println_action_green;
+use forc_types::{ForcError, ForcResult};
+use forc_util::tx_utils::{decode_fuel_vm_log_data, format_log_receipts};
 use fuel_abi_types::{abi::program::PanickingCall, revert_info::RevertKind};
 use sway_core::{asm_generation::ProgramABI, fuel_prelude::fuel_tx::Receipt, IrCli};
 use tracing::info;
 
-forc_util::cli_examples! {
+forc_types::cli_examples! {
     crate::cli::Opt {
         [ Run test => "forc test" ]
         [ Run test with a filter => "forc test $filter" ]

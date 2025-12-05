@@ -1,4 +1,4 @@
-use forc_tracing::{println_green, println_red};
+use forc_diagnostic::{println_green, println_red};
 use paste::paste;
 use prettydiff::{basic::DiffOp, diff_lines};
 use test_macros::fmt_test_item;

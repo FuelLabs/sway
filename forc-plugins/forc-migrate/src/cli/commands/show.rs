@@ -8,7 +8,7 @@ use clap::Parser;
 use itertools::Itertools;
 use sway_error::formatting::{sequence_to_list, sequence_to_str, Enclosing, Indent};
 
-forc_util::cli_examples! {
+forc_types::cli_examples! {
     crate::cli::Opt {
         [ Show the upcoming breaking change features and their migration steps => "forc migrate show"]
     }

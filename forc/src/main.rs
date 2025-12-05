@@ -1,4 +1,4 @@
-use forc_util::ForcCliResult;
+use forc_types::ForcCliResult;
 
 #[tokio::main]
 async fn main() -> ForcCliResult<()> {

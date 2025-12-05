@@ -8,7 +8,7 @@ use crate::{
     server_state::ServerState,
     utils::debug,
 };
-use forc_tracing::{tracing_subscriber, FmtSpan, TracingWriter};
+use forc_diagnostic::{tracing_subscriber, FmtSpan, TracingWriter};
 use lsp_types::{
     CodeLens, CompletionResponse, DocumentFormattingParams, DocumentSymbolResponse,
     InitializeResult, InlayHint, InlayHintParams, PrepareRenameResponse, RenameParams,

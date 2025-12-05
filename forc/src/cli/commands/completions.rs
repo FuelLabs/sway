@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use clap::{Command as ClapCommand, CommandFactory, Parser};
 use clap_complete::{generate, Generator, Shell};
-use forc_util::ForcResult;
+use forc_types::ForcResult;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, clap::ValueEnum)]
 enum Target {

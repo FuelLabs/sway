@@ -10,7 +10,7 @@ repository.workspace = true
 
 [dependencies]
 anyhow.workspace = true
-forc-tracing.workspace = true
+forc-diagnostic.workspace = true
 indoc.workspace = true
 ropey.workspace = true
 serde = { workspace = true, features = ["derive"] }

@@ -4,7 +4,7 @@ use crate::{
     chain_config::{check_and_update_chain_config, ChainConfig},
     util::HumanReadableConfig,
 };
-use forc_tracing::println_green;
+use forc_diagnostic::println_green;
 use fuel_core::service::FuelService;
 
 /// Local is a local node suited for local development.
