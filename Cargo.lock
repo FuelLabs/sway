@@ -3846,9 +3846,10 @@ dependencies = [
  "clap_complete",
  "clap_complete_fig",
  "completest-pty",
+ "forc-diagnostic",
  "forc-pkg",
  "forc-test",
- "forc-tracing 0.70.2",
+ "forc-types",
  "forc-util",
  "fs_extra",
  "fuel-abi-types 0.15.3",
@@ -3857,6 +3858,7 @@ dependencies = [
  "rexpect",
  "serde",
  "serde_json",
+ "sha2 0.10.9",
  "sway-core",
  "sway-error",
  "sway-features",
@@ -3889,9 +3891,10 @@ dependencies = [
  "either",
  "forc",
  "forc-debug",
+ "forc-diagnostic",
  "forc-pkg",
- "forc-tracing 0.70.2",
  "forc-tx",
+ "forc-types",
  "forc-util",
  "forc-wallet",
  "fuel-abi-types 0.15.3",
@@ -3937,7 +3940,8 @@ dependencies = [
  "async-trait",
  "clap",
  "criterion",
- "forc-tracing 0.70.2",
+ "forc-diagnostic",
+ "forc-types",
  "forc-util",
  "fuel-core-types 0.47.1",
  "fuel-crypto 0.65.0",
@@ -3968,9 +3972,9 @@ dependencies = [
  "dap",
  "dirs 5.0.1",
  "escargot",
+ "forc-diagnostic",
  "forc-pkg",
  "forc-test",
- "forc-tracing 0.70.2",
  "forc-util",
  "fuel-abi-types 0.15.3",
  "fuel-core-client 0.47.1",
@@ -3993,6 +3997,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "forc-diagnostic"
+version = "0.70.2"
+dependencies = [
+ "annotate-snippets",
+ "ansiterm",
+ "regex",
+ "sway-error",
+ "sway-types",
+ "tracing",
+ "tracing-subscriber",
+ "tracing-test",
+]
+
+[[package]]
 name = "forc-doc"
 version = "0.70.2"
 dependencies = [
@@ -4002,8 +4020,9 @@ dependencies = [
  "comrak",
  "dir_indexer",
  "expect-test",
+ "forc-diagnostic",
  "forc-pkg",
- "forc-tracing 0.70.2",
+ "forc-types",
  "forc-util",
  "horrorshow",
  "include_dir",
@@ -4026,8 +4045,9 @@ version = "0.70.2"
 dependencies = [
  "anyhow",
  "clap",
+ "forc-diagnostic",
  "forc-pkg",
- "forc-tracing 0.70.2",
+ "forc-types",
  "forc-util",
  "prettydiff",
  "sway-core",
@@ -4084,8 +4104,9 @@ dependencies = [
  "anyhow",
  "clap",
  "duplicate",
+ "forc-diagnostic",
  "forc-pkg",
- "forc-tracing 0.70.2",
+ "forc-types",
  "forc-util",
  "itertools 0.13.0",
  "num-bigint",
@@ -4105,7 +4126,8 @@ dependencies = [
  "anyhow",
  "clap",
  "dialoguer",
- "forc-tracing 0.70.2",
+ "forc-diagnostic",
+ "forc-types",
  "forc-util",
  "fuel-core",
  "fuel-core-chain-config 0.47.1",
@@ -4135,8 +4157,9 @@ dependencies = [
  "anyhow",
  "byte-unit",
  "cid",
+ "fd-lock",
  "flate2",
- "forc-tracing 0.70.2",
+ "forc-diagnostic",
  "forc-util",
  "fuel-abi-types 0.15.3",
  "futures",
@@ -4166,6 +4189,7 @@ dependencies = [
  "toml 0.8.23",
  "toml_edit 0.22.27",
  "tracing",
+ "unicode-xid",
  "url",
  "vec1",
  "walkdir",
@@ -4178,8 +4202,8 @@ dependencies = [
  "anyhow",
  "clap",
  "flate2",
+ "forc-diagnostic",
  "forc-pkg",
- "forc-tracing 0.70.2",
  "forc-util",
  "futures-util",
  "regex",
@@ -4231,23 +4255,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "forc-tracing"
-version = "0.70.2"
-dependencies = [
- "ansiterm",
- "regex",
- "tracing",
- "tracing-subscriber",
- "tracing-test",
-]
-
-[[package]]
 name = "forc-tx"
 version = "0.70.2"
 dependencies = [
  "anyhow",
  "clap",
  "devault",
+ "forc-types",
  "forc-util",
  "fuel-tx 0.65.0",
  "fuel-types 0.65.0",
@@ -4258,34 +4272,32 @@ dependencies = [
 ]
 
 [[package]]
-name = "forc-util"
+name = "forc-types"
 version = "0.70.2"
 dependencies = [
- "annotate-snippets",
  "ansiterm",
  "anyhow",
  "clap",
+ "forc-diagnostic",
+ "paste",
+]
+
+[[package]]
+name = "forc-util"
+version = "0.70.2"
+dependencies = [
+ "anyhow",
+ "clap",
  "dirs 5.0.1",
- "fd-lock",
- "forc-tracing 0.70.2",
  "fuel-abi-types 0.15.3",
- "fuel-asm 0.65.0",
  "fuel-tx 0.65.0",
  "fuels-core 0.76.0",
  "hex",
  "mark-flaky-tests",
- "paste",
- "regex",
  "serde",
  "serde_json",
- "sha2 0.10.9",
  "sway-core",
- "sway-error",
- "sway-types",
  "sway-utils",
- "tracing",
- "tracing-subscriber",
- "unicode-xid",
 ]
 
 [[package]]
@@ -4297,7 +4309,7 @@ dependencies = [
  "anyhow",
  "clap",
  "eth-keystore",
- "forc-tracing 0.68.9",
+ "forc-tracing",
  "fuels 0.74.0",
  "futures",
  "hex",
@@ -11774,8 +11786,8 @@ dependencies = [
  "dashmap 6.1.0",
  "dirs 5.0.1",
  "fd-lock",
+ "forc-diagnostic",
  "forc-pkg",
- "forc-tracing 0.70.2",
  "forc-util",
  "futures",
  "lsp-types",
@@ -11876,7 +11888,7 @@ name = "swayfmt"
 version = "0.70.2"
 dependencies = [
  "anyhow",
- "forc-tracing 0.70.2",
+ "forc-diagnostic",
  "indoc",
  "paste",
  "prettydiff",
@@ -12303,9 +12315,9 @@ dependencies = [
  "filecheck",
  "forc",
  "forc-client",
+ "forc-diagnostic",
  "forc-pkg",
  "forc-test",
- "forc-tracing 0.70.2",
  "forc-util",
  "fuel-vm 0.65.0",
  "futures",
