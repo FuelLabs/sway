@@ -9,37 +9,20 @@ license.workspace = true
 repository.workspace = true
 
 [features]
-tx = ["dep:fuel-tx", "dep:fuel-abi-types", "dep:fuels-core"]
+tx = ["dep:fuel-tx", "dep:fuel-abi-types", "dep:fuels-core", "dep:sway-core", "dep:clap"]
 
 [dependencies]
-annotate-snippets.workspace = true
-ansiterm.workspace = true
 anyhow.workspace = true
-clap = { workspace = true, features = ["cargo", "derive", "env"] }
+clap = { workspace = true, features = ["derive"], optional = true }
 dirs.workspace = true
-fd-lock.workspace = true
-forc-tracing.workspace = true
 fuel-abi-types = { workspace = true, optional = true }
-fuel-asm.workspace = true
 fuel-tx = { workspace = true, optional = true }
 fuels-core = { workspace = true, optional = true }
 hex.workspace = true
-paste.workspace = true
-regex.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
-sha2.workspace = true
-sway-core.workspace = true
-sway-error.workspace = true
-sway-types.workspace = true
+sway-core = { workspace = true, optional = true }
 sway-utils.workspace = true
-tracing.workspace = true
-tracing-subscriber = { workspace = true, features = [
-    "ansi",
-    "env-filter",
-    "json",
-] }
-unicode-xid.workspace = true
 
 [dev-dependencies]
 mark-flaky-tests.workspace = true

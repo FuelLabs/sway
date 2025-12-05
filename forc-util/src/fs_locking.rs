@@ -1,9 +1,24 @@
-use crate::{hash_path, user_forc_directory};
+use crate::user_forc_directory;
 use std::{
+    collections::hash_map,
     fs::{create_dir_all, read_dir, remove_file, File},
+    hash::{Hash, Hasher},
     io::{self, Read, Write},
     path::{Path, PathBuf},
 };
+
+/// Hash the path to produce a file-system friendly file name.
+/// Append the file stem for improved readability.
+fn hash_path<X: AsRef<Path>>(path: X) -> String {
+    let path = path.as_ref();
+    let mut hasher = hash_map::DefaultHasher::default();
+    path.hash(&mut hasher);
+    let hash = hasher.finish();
+    match path.file_stem().and_then(|s| s.to_str()) {
+        None => format!("{hash:X}"),
+        Some(stem) => format!("{hash:X}-{stem}"),
+    }
+}
 
 /// Very simple AdvisoryPathMutex class
 ///
