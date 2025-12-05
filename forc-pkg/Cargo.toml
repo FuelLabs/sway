@@ -16,8 +16,9 @@ ansiterm.workspace = true
 anyhow.workspace = true
 byte-unit.workspace = true
 cid.workspace = true
+fd-lock.workspace = true
 flate2.workspace = true
-forc-tracing.workspace = true
+forc-diagnostic.workspace = true
 forc-util = { workspace = true }
 fuel-abi-types.workspace = true
 futures.workspace = true
@@ -27,6 +28,7 @@ hex.workspace = true
 ipfs-api-backend-hyper = { workspace = true, features = ["with-builder", "with-send-sync"] }
 once_cell.workspace = true
 petgraph = { workspace = true, features = ["serde-1"] }
+regex.workspace = true
 reqwest.workspace = true
 scopeguard.workspace = true
 semver = { workspace = true, features = ["serde"] }
@@ -44,6 +46,7 @@ tokio.workspace = true
 toml = { workspace = true, features = ["parse"] }
 toml_edit.workspace = true
 tracing.workspace = true
+unicode-xid.workspace = true
 url = { workspace = true, features = ["serde"] }
 vec1.workspace = true
 walkdir.workspace = true

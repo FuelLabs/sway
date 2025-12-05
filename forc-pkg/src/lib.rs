@@ -6,8 +6,11 @@
 
 pub mod lock;
 pub mod manifest;
+mod path_utils;
 mod pkg;
+mod print;
 pub mod source;
+pub mod validation;
 
 pub use lock::Lock;
 pub use manifest::{

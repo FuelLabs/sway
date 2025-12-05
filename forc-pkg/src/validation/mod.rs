@@ -107,6 +107,55 @@ pub fn is_valid_project_name_format(name: &str) -> Result<()> {
     Ok(())
 }
 
+pub fn validate_project_name(name: &str) -> Result<()> {
+    is_valid_project_name_format(name)?;
+    validate_name(name, "project name")
+}
+
+// Using (https://github.com/rust-lang/cargo/blob/489b66f2e458404a10d7824194d3ded94bc1f4e4/src/cargo/util/toml/mod.rs +
+// https://github.com/rust-lang/cargo/blob/489b66f2e458404a10d7824194d3ded94bc1f4e4/src/cargo/ops/cargo_new.rs) for reference
+
+pub fn validate_name(name: &str, use_case: &str) -> Result<()> {
+    // if true returns formatted error
+    contains_invalid_char(name, use_case)?;
+
+    if is_keyword(name) {
+        bail!("the name `{name}` cannot be used as a {use_case}, it is a Sway keyword");
+    }
+    if is_conflicting_artifact_name(name) {
+        bail!(
+            "the name `{name}` cannot be used as a {use_case}, \
+            it conflicts with Forc's build directory names"
+        );
+    }
+    if name.to_lowercase() == "test" {
+        bail!(
+            "the name `test` cannot be used as a {use_case}, \
+            it conflicts with Sway's built-in test library"
+        );
+    }
+    if is_conflicting_suffix(name) {
+        bail!(
+            "the name `{name}` is part of Sway's standard library\n\
+            It is recommended to use a different name to avoid problems."
+        );
+    }
+    if is_windows_reserved(name) {
+        if cfg!(windows) {
+            bail!("cannot use name `{name}`, it is a reserved Windows filename");
+        } else {
+            bail!(
+                "the name `{name}` is a reserved Windows filename\n\
+                This package will not work on Windows platforms."
+            );
+        }
+    }
+    if is_non_ascii_name(name) {
+        bail!("the name `{name}` contains non-ASCII characters which are unsupported");
+    }
+    Ok(())
+}
+
 #[test]
 fn test_invalid_char() {
     assert_eq!(
