@@ -7,11 +7,10 @@ use crate::{
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
 use byte_unit::{Byte, UnitType};
-use forc_tracing::{println_action_green, println_warning};
-use forc_util::{
-    default_output_directory, find_file_name, kebab_to_snake_case, print_compiling, print_infos,
-    print_on_failure, print_warnings,
-};
+use crate::path_utils::{find_file_name, kebab_to_snake_case};
+use crate::print::{print_compiling, print_infos, print_on_failure, print_warnings, program_type_str};
+use forc_diagnostic::{println_action_green, println_warning};
+use forc_util::default_output_directory;
 use petgraph::{
     self, dot,
     visit::{Bfs, Dfs, EdgeRef, Walker},
@@ -2328,7 +2327,7 @@ pub fn build_with_options(
 }
 
 fn print_pkg_summary_header(built_pkg: &BuiltPackage) {
-    let prog_ty_str = forc_util::program_type_str(&built_pkg.tree_type);
+    let prog_ty_str = program_type_str(&built_pkg.tree_type);
     // The ansiterm formatters ignore the `std::fmt` right-align
     // formatter, so we manually calculate the padding to align the program
     // type and name around the 10th column ourselves.
