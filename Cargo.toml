@@ -5,7 +5,8 @@ members = [
     "forc-pkg",
     "forc-plugins/*",
     "forc-test",
-    "forc-tracing",
+    "forc-diagnostic",
+    "forc-types",
     "forc-util",
     "scripts/mdbook-forc-documenter",
     "sway-ast",
@@ -45,7 +46,8 @@ iter_over_hash_type = "deny"
 forc = { path = "forc/", version = "0.70.2" }
 forc-pkg = { path = "forc-pkg/", version = "0.70.2" }
 forc-test = { path = "forc-test/", version = "0.70.2" }
-forc-tracing = { path = "forc-tracing/", version = "0.70.2" }
+forc-diagnostic = { path = "forc-diagnostic/", version = "0.70.2" }
+forc-types = { path = "forc-types/", version = "0.70.2" }
 forc-util = { path = "forc-util/", version = "0.70.2" }
 
 # Forc plugins

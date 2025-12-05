@@ -1,0 +1,19 @@
+[package]
+name = "forc-types"
+version.workspace = true
+description = "Common types shared between forc crates."
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+ansiterm.workspace = true
+anyhow.workspace = true
+clap = { workspace = true, features = ["cargo", "derive", "env"] }
+forc-diagnostic.workspace = true
+paste.workspace = true
+
+[lints]
+workspace = true
