@@ -970,7 +970,7 @@ fn handle_trait(
     })
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Visit)]
 pub enum ConstGenericExprTyDecl {
     ConstGenericDecl(ConstGenericDecl),
     ConstantDecl(ConstantDecl),
@@ -1020,7 +1020,6 @@ pub enum ConstGenericExpr {
     AmbiguousVariableExpression {
         #[visit(skip)]
         ident: Ident,
-        #[visit(skip)]
         decl: Option<ConstGenericExprTyDecl>,
     },
 }
@@ -1244,7 +1243,6 @@ pub struct ConstGenericParameter {
     pub span: Span,
     #[visit(skip)]
     pub id: Option<ParsedDeclId<ConstGenericDeclaration>>,
-    #[visit(skip)]
     pub expr: Option<ConstGenericExpr>,
 }
 

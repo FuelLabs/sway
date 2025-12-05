@@ -143,4 +143,14 @@ impl MonomorphizeHelper for TyTraitFn {
     fn has_self_type_param(&self) -> bool {
         false
     }
+
+    fn materialize_const_generics2(
+        &mut self,
+        engines: &Engines,
+        handler: &sway_error::handler::Handler,
+        name: &str,
+        value: &TyExpression,
+    ) -> Result<(), sway_error::handler::ErrorEmitted> {
+        todo!()
+    }
 }

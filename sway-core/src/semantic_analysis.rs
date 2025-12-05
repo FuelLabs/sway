@@ -25,16 +25,11 @@ pub(crate) use type_check_finalization::*;
 // Visitor
 
 use crate::{
-    language::{
-        ty::{
-            AbiDecl, ConfigurableDecl, ConstGenericDecl, ConstantDecl, EnumDecl, EnumVariantDecl,
-            FunctionDecl, ImplSelfOrTrait, StorageDecl, StructDecl, TraitDecl, TraitTypeDecl,
-            TypeAliasDecl,
-        },
-        Literal,
-    },
-    ty::TyConstantDecl,
-    TypeId,
+    TypeBinding, TypeId, ast_elements::binding::EmptyTypeBinding, decl_engine::{DeclId, DeclRefEnum, DeclRefFunction}, language::{
+        CallPath, Literal, ty::{
+            AbiDecl, ConfigurableDecl, ConstGenericDecl, ConstantDecl, EnumDecl, EnumVariantDecl, FunctionDecl, ImplSelfOrTrait, StorageDecl, StructDecl, TraitDecl, TraitTypeDecl, TyConstGenericDecl, TyStructDecl, TypeAliasDecl
+        }
+    }, ty::TyConstantDecl
 };
 
 generate_visitor! {
@@ -42,8 +37,12 @@ generate_visitor! {
     ConfigurableDecl,
     ConstantDecl,
     ConstGenericDecl,
+    DeclRefEnum,
+    DeclRefFunction,
+    DeclId<TyStructDecl>,
     EnumDecl,
     EnumVariantDecl,
+    EmptyTypeBinding,
     FunctionDecl,
     ImplSelfOrTrait,
     Literal,
@@ -51,7 +50,9 @@ generate_visitor! {
     StructDecl,
     TraitDecl,
     TraitTypeDecl,
+    TypeBinding<CallPath>,
     TyConstantDecl,
+    TyConstGenericDecl,
     TypeAliasDecl,
     TypeId,
 }

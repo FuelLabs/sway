@@ -401,4 +401,14 @@ impl MonomorphizeHelper for TyTraitDecl {
     fn has_self_type_param(&self) -> bool {
         true
     }
+
+    fn materialize_const_generics2(
+        &mut self,
+        engines: &Engines,
+        handler: &Handler,
+        name: &str,
+        value: &crate::language::ty::TyExpression,
+    ) -> Result<(), ErrorEmitted> {
+        todo!()
+    }
 }

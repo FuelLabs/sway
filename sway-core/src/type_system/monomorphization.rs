@@ -1,5 +1,8 @@
 use crate::{
-    decl_engine::{engine::DeclEngineGetParsedDeclId, DeclEngineInsert, MaterializeConstGenerics},
+    decl_engine::{
+        engine::DeclEngineGetParsedDeclId, DeclEngineInsert, MaterializeConstGenerics,
+        MaterializeConstGenericsVisitor,
+    },
     language::{
         ty::{self, TyExpression},
         CallPath,
@@ -21,6 +24,14 @@ pub(crate) trait MonomorphizeHelper {
     fn name(&self) -> &Ident;
     fn type_parameters(&self) -> &[TypeParameter];
     fn has_self_type_param(&self) -> bool;
+
+    fn materialize_const_generics2(
+        &mut self,
+        engines: &Engines,
+        handler: &Handler,
+        name: &str,
+        value: &TyExpression,
+    ) -> Result<(), ErrorEmitted>;
 }
 
 /// Given a `value` of type `T` that is able to be monomorphized and a set
@@ -261,7 +272,7 @@ pub(crate) fn monomorphize_with_modpath<T>(
     subst_ctx: &SubstTypesContext,
 ) -> Result<(), ErrorEmitted>
 where
-    T: MonomorphizeHelper + SubstTypes + MaterializeConstGenerics,
+    T: MonomorphizeHelper + SubstTypes,
 {
     let type_subst_map = prepare_type_subst_map_for_monomorphize(
         handler,
@@ -279,11 +290,11 @@ where
     value.subst(&SubstTypesContext::new(engines, &type_subst_map, true));
 
     for (name, expr) in const_generics.iter() {
-        let _ = value.materialize_const_generics(engines, handler, name, expr);
+        let _ = value.materialize_const_generics2(engines, handler, name, expr);
     }
 
     for (name, expr) in type_subst_map.const_generics_materialization.iter() {
-        let _ = value.materialize_const_generics(engines, handler, name, expr);
+        let _ = value.materialize_const_generics2(engines, handler, name, expr);
     }
 
     Ok(())

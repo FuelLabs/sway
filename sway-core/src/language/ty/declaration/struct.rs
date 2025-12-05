@@ -22,13 +22,17 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_macros::Visit;
 use sway_types::{Ident, Named, Span, Spanned};
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Visit)]
 pub struct TyStructDecl {
+    #[visit(skip)]
     pub call_path: CallPath,
     pub fields: Vec<TyStructField>,
     pub generic_parameters: Vec<TypeParameter>,
+    #[visit(skip)]
     pub visibility: Visibility,
+    #[visit(skip)]
     pub span: Span,
+    #[visit(skip)]
     pub attributes: transform::Attributes,
 }
 
@@ -97,6 +101,16 @@ impl MonomorphizeHelper for TyStructDecl {
 
     fn has_self_type_param(&self) -> bool {
         false
+    }
+
+    fn materialize_const_generics2(
+        &mut self,
+        engines: &Engines,
+        handler: &Handler,
+        name: &str,
+        value: &crate::language::ty::TyExpression,
+    ) -> Result<(), ErrorEmitted> {
+        todo!()
     }
 }
 

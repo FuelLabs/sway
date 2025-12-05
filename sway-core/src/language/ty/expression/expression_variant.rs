@@ -1,13 +1,8 @@
 use crate::{
-    decl_engine::*,
-    engine_threading::*,
-    has_changes,
-    language::{ty::*, *},
-    semantic_analysis::{
+    ast_elements::binding::EmptyTypeBinding, decl_engine::*, engine_threading::*, has_changes, language::{ty::*, *}, semantic_analysis::{
         TyNodeDepGraphEdge, TyNodeDepGraphEdgeInfo, TypeCheckAnalysis, TypeCheckAnalysisContext,
         TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext,
-    },
-    type_system::*,
+    }, type_system::*
 };
 use ast_elements::type_parameter::GenericTypeParameter;
 use indexmap::IndexMap;
@@ -43,13 +38,13 @@ pub enum TyExpressionVariant {
         #[visit(skip)]
         call_path: CallPath,
         arguments: Vec<FunctionApplicationArgument>,
-        #[visit(skip)]
+        #[visit(skip, call_visitor)]
         fn_ref: DeclRefFunction,
         #[visit(skip)]
         selector: Option<ContractCallParams>,
         /// Optional binding information for the LSP.
-        #[visit(skip)]
-        type_binding: Option<TypeBinding<()>>,
+        #[visit(skip, call_visitor)]
+        type_binding: Option<EmptyTypeBinding>,
         /// In case of a method call, a [TypeId] of the method target (self).
         /// E.g., `method_target.some_method()`.
         #[visit(skip)]
@@ -83,6 +78,7 @@ pub enum TyExpressionVariant {
     ConstGenericExpression {
         #[visit(skip)]
         span: Span,
+        #[visit(call_visitor)]
         decl: Box<TyConstGenericDecl>,
         #[visit(skip)]
         call_path: CallPath,
@@ -114,12 +110,12 @@ pub enum TyExpressionVariant {
         index: Box<TyExpression>,
     },
     StructExpression {
-        #[visit(skip)]
+        #[visit(skip, call_visitor)]
         struct_id: DeclId<TyStructDecl>,
         fields: Vec<TyStructExpressionField>,
         #[visit(skip)]
         instantiation_span: Span,
-        #[visit(skip)]
+        #[visit(skip, call_visitor)]
         call_path_binding: TypeBinding<CallPath>,
     },
     CodeBlock(TyCodeBlock),
@@ -176,8 +172,8 @@ pub enum TyExpressionVariant {
         elem_to_access_span: Span,
     },
     EnumInstantiation {
-        #[visit(skip)]
-        enum_ref: DeclRef<DeclId<TyEnumDecl>>,
+        #[visit(skip, call_visitor)]
+        enum_ref: DeclRefEnum,
         /// for printing
         #[visit(skip)]
         variant_name: Ident,
@@ -189,7 +185,7 @@ pub enum TyExpressionVariant {
         /// They are also used in the language server.
         #[visit(skip)]
         variant_instantiation_span: Span,
-        #[visit(skip)]
+        #[visit(skip, call_visitor)]
         call_path_binding: TypeBinding<CallPath>,
         /// The enum type, can be a type alias.
         #[visit(skip)]

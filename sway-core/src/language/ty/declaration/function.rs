@@ -585,6 +585,29 @@ impl MonomorphizeHelper for TyFunctionDecl {
     fn has_self_type_param(&self) -> bool {
         false
     }
+
+    fn materialize_const_generics2(
+        &mut self,
+        engines: &Engines,
+        handler: &Handler,
+        name: &str,
+        value: &TyExpression,
+    ) -> Result<(), ErrorEmitted> {
+        // dbg!(&self);
+        let mut cow = std::borrow::Cow::Borrowed(self);
+        let mut visitor = MaterializeConstGenericsVisitor {
+            engines,
+            handler,
+            name,
+            value,
+        };
+        TyFunctionDecl::visit(&mut cow, &mut visitor);
+        if let std::borrow::Cow::Owned(new_fn) = cow {
+            *self = new_fn
+        }
+        // dbg!(&self);
+        Ok(())
+    }
 }
 
 impl CollectTypesMetadata for TyFunctionDecl {
@@ -833,7 +856,6 @@ pub struct TyFunctionParameter {
     pub is_mutable: bool,
     #[visit(skip)]
     pub mutability_span: Span,
-    #[visit(skip)]
     pub type_argument: GenericTypeArgument,
 }
 

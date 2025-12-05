@@ -5,7 +5,8 @@ use crate::{
     },
     decl_engine::{
         engine::{DeclEngineGet, DeclEngineGetParsedDeclId, DeclEngineReplace},
-        DeclEngineInsert, DeclRefFunction, ReplaceDecls,
+        update_constant_expression_visitor_on_block, DeclEngineInsert, DeclRefFunction,
+        ReplaceDecls, UpdateConstantExpressionVisitor,
     },
     language::{
         parsed::*,
@@ -1037,15 +1038,11 @@ pub(crate) fn monomorphize_method(
     )?;
 
     if let Some(implementing_type) = &func_decl.implementing_type {
-        let mut visitor = crate::decl_engine::UpdateConstantExpressionVisitor {
+        update_constant_expression_visitor_on_block(
             engines,
             implementing_type,
-        };
-        let mut body = std::borrow::Cow::Borrowed(&func_decl.body);
-        TyCodeBlock::visit(&mut body, &mut visitor);
-        if let std::borrow::Cow::Owned(v) = body {
-            func_decl.body = v;
-        }
+            &mut func_decl.body,
+        );
     }
 
     let decl_ref = decl_engine
