@@ -2205,7 +2205,7 @@ where
 
 impl AbiEncode for () {
     fn is_encode_trivial() -> bool {
-        false
+        true
     }
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         buffer
@@ -5429,7 +5429,7 @@ where
 
 impl AbiDecode for () {
     fn is_decode_trivial() -> bool {
-        false
+        true
     }
     fn abi_decode(ref mut _buffer: BufferReader) -> () {
         ()

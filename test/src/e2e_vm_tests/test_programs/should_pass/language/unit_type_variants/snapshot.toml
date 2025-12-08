@@ -1,0 +1,4 @@
+cmds = [
+    "echo This test expects `enum_varitants_unit_1` parameter to be a simple { u64 }, given it receives an enum with all variants as unit",
+    "forc build --path {root} --release --ir final | filter-fn {name} enum_varitants_unit_1",
+]

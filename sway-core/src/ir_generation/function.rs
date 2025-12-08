@@ -5531,6 +5531,9 @@ pub fn get_runtime_representation(ctx: &Context, t: Type) -> MemoryRepresentatio
 
 pub fn get_memory_id(ctx: &Context, t: Type) -> u64 {
     let r = get_runtime_representation(ctx, t);
+    
+    // Uncomment here to debug the runtime memory representation
+    // eprintln!("Runtime Repr: {:?} {:?}", t.with_context(ctx), &r);
 
     use std::hash::Hasher;
     let mut state = DefaultHasher::default();
@@ -5634,6 +5637,9 @@ pub fn get_encoding_representation(
 pub fn get_encoding_id(engines: &Engines, type_id: TypeId) -> u64 {
     use std::hash::Hasher;
     if let Some(r) = get_encoding_representation_by_id(engines, type_id) {
+        // Uncomment here to debug the encoding memory representation
+        // eprintln!("Encoding Repr: {:?} {:?}", engines.help_out(type_id), &r);
+
         let mut state = DefaultHasher::default();
         r.hash(&mut state);
         state.finish()

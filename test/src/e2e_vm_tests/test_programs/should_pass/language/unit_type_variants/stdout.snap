@@ -1,0 +1,114 @@
+---
+source: test/src/snapshot/mod.rs
+---
+This test expects `enum_varitants_unit_1` parameter to be a simple { u64 }, given
+it receives an enum with all variants as unit
+
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/unit_type_variants --release --ir final | filter-fn unit_type_variants enum_varitants_unit_1
+
+fn enum_varitants_unit_1(e: __ptr { u64 }) -> () {
+    local mut slice __aggr_memcpy_0
+    local mut { ptr, u64, u64 } __aggr_memcpy_00
+    local mut slice __aggr_memcpy_01
+    local { ptr, u64 } __anon_0
+    local { ptr, u64, u64 } __anon_00
+    local { ptr, u64 } __anon_1
+    local slice __log_arg
+    local { { ptr, u64, u64 } } __ret_val
+    local { { ptr, u64, u64 } } __ret_val0
+    local { u64 } __tmp_arg
+    local { { ptr, u64, u64 } } __tmp_arg0
+    local slice __tmp_block_arg
+    local { { ptr, u64, u64 } } buffer
+    local { u64 } e_
+    local { u64 } item_
+    local { { ptr, u64, u64 } } self_
+
+    entry(e: __ptr { u64 }):
+    v46v1 = get_local __ptr { u64 }, e_
+    mem_copy_val v46v1, e
+    v48v1 = get_local __ptr { u64 }, e_
+    v49v1 = get_local __ptr { u64 }, item_
+    mem_copy_val v49v1, v48v1
+    v51v1 = const bool true
+    cbr v51v1, is_encode_trivial_3_is_encode_trivial_4_block4(), is_encode_trivial_3_is_encode_trivial_4_block5(v51v1)
+
+    is_encode_trivial_3_is_encode_trivial_4_block4():
+    br is_encode_trivial_3_is_encode_trivial_4_block5(v51v1)
+
+    is_encode_trivial_3_is_encode_trivial_4_block5(v44v1: bool):
+    cbr v44v1, encode_2_block0(), encode_2_block1()
+
+    encode_2_block0():
+    v55v1 = get_local __ptr { u64 }, item_
+    v56v1 = const u64 8
+    v57v1 = asm(size: v56v1, src: v55v1) -> ptr hp {
+        aloc   size
+        mcp    hp src size
+    }
+    v58v1 = get_local __ptr { ptr, u64 }, __anon_0
+    v59v1 = const u64 0
+    v60v1 = get_elem_ptr v58v1, __ptr ptr, v59v1
+    store v57v1 to v60v1
+    v62v1 = const u64 1
+    v63v1 = get_elem_ptr v58v1, __ptr u64, v62v1
+    store v56v1 to v63v1
+    v65v1 = asm(s: v58v1) -> __ptr slice s {
+    }
+    v66v1 = get_local __ptr slice, __aggr_memcpy_0
+    mem_copy_val v66v1, v65v1
+    v68v1 = get_local __ptr slice, __tmp_block_arg
+    mem_copy_val v68v1, v66v1
+    br encode_2_block2(v68v1)
+
+    encode_2_block1():
+    v71v1 = get_local __ptr { u64 }, item_
+    v72v1 = get_local __ptr { { ptr, u64, u64 } }, __ret_val0
+    v73v1 = call new_10(v72v1)
+    v74v1 = get_local __ptr { u64 }, __tmp_arg
+    mem_copy_val v74v1, v71v1
+    v76v1 = get_local __ptr { { ptr, u64, u64 } }, __tmp_arg0
+    mem_copy_val v76v1, v72v1
+    v78v1 = get_local __ptr { { ptr, u64, u64 } }, __ret_val
+    v79v1 = call abi_encode_8(v74v1, v76v1, v78v1)
+    v80v1 = get_local __ptr { { ptr, u64, u64 } }, buffer
+    mem_copy_val v80v1, v78v1
+    v82v1 = get_local __ptr { { ptr, u64, u64 } }, buffer
+    v83v1 = get_local __ptr { { ptr, u64, u64 } }, self_
+    mem_copy_val v83v1, v82v1
+    v85v1 = get_local __ptr { { ptr, u64, u64 } }, self_
+    v86v1 = const u64 0
+    v87v1 = get_elem_ptr v85v1, __ptr { ptr, u64, u64 }, v86v1
+    v88v1 = asm(buffer: v87v1) -> __ptr { ptr, u64, u64 } buffer {
+    }
+    v89v1 = get_local __ptr { ptr, u64, u64 }, __aggr_memcpy_00
+    mem_copy_val v89v1, v88v1
+    v91v1 = get_local __ptr { ptr, u64, u64 }, __anon_00
+    mem_copy_val v91v1, v89v1
+    v93v1 = const u64 0
+    v94v1 = get_elem_ptr v91v1, __ptr ptr, v93v1
+    v95v1 = const u64 2
+    v96v1 = get_elem_ptr v91v1, __ptr u64, v95v1
+    v97v1 = get_local __ptr { ptr, u64 }, __anon_1
+    v98v1 = const u64 0
+    v99v1 = get_elem_ptr v97v1, __ptr ptr, v98v1
+    mem_copy_val v99v1, v94v1
+    v101v1 = const u64 1
+    v102v1 = get_elem_ptr v97v1, __ptr u64, v101v1
+    mem_copy_val v102v1, v96v1
+    v104v1 = asm(s: v97v1) -> __ptr slice s {
+    }
+    v105v1 = get_local __ptr slice, __aggr_memcpy_01
+    mem_copy_val v105v1, v104v1
+    v107v1 = get_local __ptr slice, __tmp_block_arg
+    mem_copy_val v107v1, v105v1
+    br encode_2_block2(v107v1)
+
+    encode_2_block2(v45v1: __ptr slice):
+    v110v1 = get_local __ptr slice, __log_arg
+    mem_copy_val v110v1, v45v1
+    v112v1 = const u64 5087777005172090899
+    log __ptr slice v110v1, v112v1
+    v114v1 = const unit ()
+    ret () v114v1
+}
