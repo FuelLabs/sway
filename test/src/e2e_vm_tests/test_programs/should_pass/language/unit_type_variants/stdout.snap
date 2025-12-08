@@ -4,7 +4,7 @@ source: test/src/snapshot/mod.rs
 This test expects `enum_varitants_unit_1` parameter to be a simple { u64 }, given
 it receives an enum with all variants as unit
 
-> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/unit_type_variants --release --ir final | filter-fn unit_type_variants enum_varitants_unit_1
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/unit_type_variants --release --ir final --asm final | filter-fn unit_type_variants enum_varitants_unit_1
 
 fn enum_varitants_unit_1(e: __ptr { u64 }) -> () {
     local mut slice __aggr_memcpy_0
@@ -112,3 +112,37 @@ fn enum_varitants_unit_1(e: __ptr { u64 }) -> () {
     v114v1 = const unit ()
     ret () v114v1
 }
+
+
+pshl i15                      ; save registers 16..40
+pshh i524288                  ; save registers 40..64
+move $$locbase $sp            ; save locals base register for function enum_varitants_unit_1
+cfei i288                     ; allocate 288 bytes for locals and 0 slots for call arguments
+move $r0 $$reta               ; save return address
+addi $r1 $$locbase i248       ; get offset to local __ptr { u64 }
+mcpi $r1 $$arg0 i8            ; copy memory
+addi $r1 $$locbase i248       ; get offset to local __ptr { u64 }
+addi $r2 $$locbase i256       ; get offset to local __ptr { u64 }
+mcpi $r2 $r1 i8               ; copy memory
+addi $r1 $$locbase i256       ; get offset to local __ptr { u64 }
+movi $r2 i8                   ; initialize constant into register
+aloc $r2                      ; aloc size
+mcp  $hp $r1 $r2              ; mcp hp src size
+addi $r1 $$locbase i56        ; get offset to local __ptr { ptr, u64 }
+sw   $$locbase $hp i7         ; store word
+movi $r2 i8                   ; initialize constant into register
+sw   $$locbase $r2 i8         ; store word
+mcpi $$locbase $r1 i16        ; copy memory
+addi $r1 $$locbase i208       ; get offset to local __ptr slice
+mcpi $r1 $$locbase i16        ; copy memory
+addi $r2 $$locbase i112       ; get offset to local __ptr slice
+mcpi $r2 $r1 i16              ; copy memory
+load $r1 data_NonConfigurable_0; load constant from data section
+lw   $r2 $$locbase i14        ; load slice pointer for logging data
+lw   $r3 $$locbase i15        ; load slice size for logging data
+logd $zero $r1 $r2 $r3        ; log slice
+cfsi i288                     ; free 288 bytes for locals and 0 slots for extra call arguments
+move $$reta $r0               ; restore return address
+poph i524288                  ; restore registers 40..64
+popl i15                      ; restore registers 16..40
+jal  $zero $$reta i0          ; return from call
