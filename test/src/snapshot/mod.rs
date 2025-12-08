@@ -325,7 +325,7 @@ fn run_cmds(
                         continue;
                     } else if let Some(args) = cmd.strip_prefix("echo ") {
                         let mut chars = args.chars();
-                        'nextline: loop {                            
+                        'nextline: loop {
                             for _ in 0..80 {
                                 if let Some(c) = chars.next() {
                                     snapshot.push(c);
@@ -334,11 +334,8 @@ fn run_cmds(
                                 }
                             }
 
-                            while let Some(c) = chars.next() {
-                                if c == ' ' {
-                                    snapshot.push('\n');
-                                    continue 'nextline;
-                                } else if c == '\n' {
+                            for c in chars.by_ref() {
+                                if c == ' ' || c == '\n' {
                                     snapshot.push('\n');
                                     continue 'nextline;
                                 } else {
@@ -375,7 +372,7 @@ fn run_cmds(
                         std::str::from_utf8(&o.stdout).unwrap(),
                     )));
                 }
-                
+
                 let _ = writeln!(snapshot, "{}", last_output.unwrap_or_default());
             }
             toml::Value::Table(map) => {
