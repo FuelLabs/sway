@@ -474,8 +474,8 @@ script {
         cbr v2850v1, encode_22_is_encode_trivial_23_is_encode_trivial_24_block4(), encode_22_is_encode_trivial_23_is_encode_trivial_24_block5(v2850v1), !181
 
         encode_22_is_encode_trivial_23_is_encode_trivial_24_block4():
-        v1399v1 = const bool false, !182
-        br encode_22_is_encode_trivial_23_is_encode_trivial_24_block5(v1399v1), !183
+        v542v1 = const bool false, !182
+        br encode_22_is_encode_trivial_23_is_encode_trivial_24_block5(v542v1), !183
 
         encode_22_is_encode_trivial_23_is_encode_trivial_24_block5(v2802v1: bool):
         cbr v2802v1, encode_22_is_encode_trivial_23_is_encode_trivial_24_block6(), encode_22_is_encode_trivial_23_is_encode_trivial_24_block7(v2802v1), !185
@@ -488,13 +488,13 @@ script {
         cbr v2805v1, encode_22_is_encode_trivial_23_is_encode_trivial_24_block8(), encode_22_is_encode_trivial_23_is_encode_trivial_24_block9(v2805v1), !189
 
         encode_22_is_encode_trivial_23_is_encode_trivial_24_block8():
-        br encode_22_is_encode_trivial_23_is_encode_trivial_24_block9(v1399v1), !190
+        br encode_22_is_encode_trivial_23_is_encode_trivial_24_block9(v542v1), !190
 
         encode_22_is_encode_trivial_23_is_encode_trivial_24_block9(v2808v1: bool):
         cbr v2808v1, encode_22_is_encode_trivial_23_is_encode_trivial_24_block10(), encode_22_is_encode_trivial_23_is_encode_trivial_24_block11(v2808v1), !192
 
         encode_22_is_encode_trivial_23_is_encode_trivial_24_block10():
-        br encode_22_is_encode_trivial_23_is_encode_trivial_24_block11(v1399v1), !193
+        br encode_22_is_encode_trivial_23_is_encode_trivial_24_block11(v542v1), !193
 
         encode_22_is_encode_trivial_23_is_encode_trivial_24_block11(v2811v1: bool):
         cbr v2811v1, encode_22_is_encode_trivial_23_is_encode_trivial_24_block12(), encode_22_is_encode_trivial_23_is_encode_trivial_24_block13(v2811v1), !195
@@ -1218,7 +1218,7 @@ script {
 !9 = span !0 83 117
 !10 = fn_call_path_span !0 83 100
 !11 = "test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-vec/src/codec.sw"
-!12 = span !11 93230 93256
+!12 = span !11 93229 93255
 !13 = (!9 !10 !12)
 !14 = "test/src/e2e_vm_tests/test_programs/should_pass/language/logging/src/main.sw"
 !15 = span !14 594 999
@@ -1285,13 +1285,13 @@ script {
 !76 = inline "never"
 !77 = (!74 !75 !76)
 !78 = span !14 584 588
-!79 = span !11 92817 92821
+!79 = span !11 92816 92820
 !80 = (!78 !79)
-!81 = span !11 92795 92910
+!81 = span !11 92794 92909
 !82 = (!78 !81)
-!83 = span !11 92837 92846
-!84 = span !11 92860 92875
-!85 = span !11 92927 92938
+!83 = span !11 92836 92845
+!84 = span !11 92859 92874
+!85 = span !11 92926 92937
 !86 = (!78 !85)
 !87 = (!78 !85)
 !88 = (!78 !85)
@@ -1379,8 +1379,8 @@ script {
 !170 = fn_call_path_span !22 6194 6196
 !171 = (!169 !170)
 !172 = (!74 !75 !76)
-!173 = span !11 92713 92737
-!174 = fn_call_path_span !11 92713 92730
+!173 = span !11 92712 92736
+!174 = fn_call_path_span !11 92712 92729
 !175 = span !11 3576 3598
 !176 = fn_call_path_span !11 3576 3596
 !177 = span !0 156 213
@@ -1388,7 +1388,7 @@ script {
 !179 = (!78 !173 !174 !175 !176 !177 !178)
 !180 = span !0 156 303
 !181 = (!78 !173 !174 !175 !176 !180)
-!182 = span !14 365 370
+!182 = span !22 21271 21276
 !183 = (!78 !173 !174 !175 !176 !180)
 !184 = span !0 156 332
 !185 = (!78 !173 !174 !175 !176 !184)
@@ -1411,10 +1411,10 @@ script {
 !202 = (!78 !85)
 !203 = (!78 !85)
 !204 = (!78 !85)
-!205 = span !11 93011 93015
+!205 = span !11 93010 93014
 !206 = (!78 !205)
-!207 = span !11 93011 93041
-!208 = fn_call_path_span !11 93016 93026
+!207 = span !11 93010 93040
+!208 = fn_call_path_span !11 93015 93025
 !209 = (!78 !207 !208)
 !210 = (!78 !207 !208)
 !211 = span !0 576 580
@@ -1704,9 +1704,9 @@ script {
 !495 = (!78 !207 !208 !494)
 !496 = span !0 864 870
 !497 = (!78 !207 !208 !496)
-!498 = span !11 92998 93042
+!498 = span !11 92997 93041
 !499 = (!78 !498)
-!500 = span !11 93051 93057
+!500 = span !11 93050 93056
 !501 = (!78 !500)
 !502 = (!78 !207 !208 !457 !458)
 !503 = (!78 !207 !208 !457 !458)

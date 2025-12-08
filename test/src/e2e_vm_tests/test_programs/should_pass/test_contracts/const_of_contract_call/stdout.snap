@@ -1,6 +1,5 @@
 ---
 source: test/src/snapshot/mod.rs
-snapshot_kind: text
 ---
 > forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
 exit status: 0
@@ -8,6 +7,7 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
    Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -25,10 +25,14 @@ output:
 =======
     Finished release [optimized + fuel] target(s) [20.784 KB] in ???
 >>>>>>> 143e5eb28 (update tests)
+=======
+    Finished release [optimized + fuel] target(s) [20.696 KB] in ???
+>>>>>>> 3a228f704 (update tests)
      Running 29 tests, filtered 0 tests
 
 tested -- const_of_contract_call
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -186,6 +190,37 @@ tested -- const_of_contract_call
       test in_enum_u64_u64 ... ok (???, 11162 gas)
       test in_enum_u64_u64_u64 ... ok (???, 11178 gas)
 >>>>>>> 143e5eb28 (update tests)
+=======
+      test cost_of_in_bool ... ok (???, 11302 gas)
+      test cost_of_in_u8 ... ok (???, 11117 gas)
+      test cost_of_in_u16 ... ok (???, 11522 gas)
+      test cost_of_in_u32 ... ok (???, 11775 gas)
+      test cost_of_in_u64 ... ok (???, 10951 gas)
+      test cost_of_in_u256 ... ok (???, 10998 gas)
+      test cost_of_in_b256 ... ok (???, 10980 gas)
+      test cost_of_in_str_0 ... ok (???, 11510 gas)
+      test cost_of_in_str_1 ... ok (???, 11689 gas)
+      test cost_of_in_str_8 ... ok (???, 11708 gas)
+      test cost_of_in_str_16 ... ok (???, 11701 gas)
+      test cost_of_in_str_32 ... ok (???, 11715 gas)
+      test cost_of_in_array_0 ... ok (???, 10915 gas)
+      test cost_of_in_array_1 ... ok (???, 11010 gas)
+      test cost_of_in_array_8 ... ok (???, 11683 gas)
+      test cost_of_in_array_16 ... ok (???, 11301 gas)
+      test cost_of_in_array_32 ... ok (???, 11610 gas)
+      test cost_of_in_array_64 ... ok (???, 12219 gas)
+      test cost_of_in_tuple_0 ... ok (???, 10972 gas)
+      test cost_of_in_tuple_1 ... ok (???, 11025 gas)
+      test cost_of_in_tuple_2 ... ok (???, 11108 gas)
+      test cost_of_in_tuple_3 ... ok (???, 11123 gas)
+      test cost_of_in_tuple_4 ... ok (???, 11093 gas)
+      test in_struct_u64 ... ok (???, 11054 gas)
+      test in_struct_u64_u64 ... ok (???, 11095 gas)
+      test in_struct_u64_u64_u64 ... ok (???, 11117 gas)
+      test in_enum_u64 ... ok (???, 11156 gas)
+      test in_enum_u64_u64 ... ok (???, 11160 gas)
+      test in_enum_u64_u64_u64 ... ok (???, 11176 gas)
+>>>>>>> 3a228f704 (update tests)
 
 test result: OK. 29 passed; 0 failed; finished in ???
 
@@ -599,6 +634,7 @@ output:
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     Finished release [optimized + fuel] target(s) [664 B] in ???
 =======
     Finished release [optimized + fuel] target(s) [832 B] in ???
@@ -609,10 +645,14 @@ output:
 =======
     Finished release [optimized + fuel] target(s) [832 B] in ???
 >>>>>>> 143e5eb28 (update tests)
+=======
+    Finished release [optimized + fuel] target(s) [680 B] in ???
+>>>>>>> 3a228f704 (update tests)
      Running 1 test, filtered 0 tests
 
 tested -- const_of_contract_call
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -626,6 +666,9 @@ tested -- const_of_contract_call
 =======
       test isolated_cost_of_in_tuple_0 ... ok (???, 10321 gas)
 >>>>>>> 143e5eb28 (update tests)
+=======
+      test isolated_cost_of_in_tuple_0 ... ok (???, 10217 gas)
+>>>>>>> 3a228f704 (update tests)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 

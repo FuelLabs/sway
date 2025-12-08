@@ -21,6 +21,7 @@ ____
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     Finished debug [unoptimized + fuel] target(s) [8.696 KB] in ???
 =======
     Finished debug [unoptimized + fuel] target(s) [8.168 KB] in ???
@@ -31,6 +32,9 @@ ____
 =======
     Finished debug [unoptimized + fuel] target(s) [8.32 KB] in ???
 >>>>>>> d97e2892c (update tests)
+=======
+    Finished debug [unoptimized + fuel] target(s) [8.288 KB] in ???
+>>>>>>> 3a228f704 (update tests)
      Running 2 tests, filtered 18 tests
 
 tested -- panic_handling_in_unit_tests
@@ -70,6 +74,7 @@ ____
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     Finished debug [unoptimized + fuel] target(s) [8.696 KB] in ???
 =======
     Finished debug [unoptimized + fuel] target(s) [8.168 KB] in ???
@@ -80,6 +85,9 @@ ____
 =======
     Finished debug [unoptimized + fuel] target(s) [8.32 KB] in ???
 >>>>>>> d97e2892c (update tests)
+=======
+    Finished debug [unoptimized + fuel] target(s) [8.288 KB] in ???
+>>>>>>> 3a228f704 (update tests)
      Running 20 tests, filtered 0 tests
 
 tested -- panic_handling_in_unit_tests
@@ -101,9 +109,14 @@ tested -- panic_handling_in_unit_tests
       test failing_error_signal_assert_ne ... FAILED (???, 3000 gas)
       test failing_error_signal_require_str_error ... FAILED (???, 976 gas)
       test failing_error_signal_require_enum_error ... FAILED (???, 1135 gas)
+<<<<<<< HEAD
       test failing_panic_no_arg ... FAILED (???, 771 gas)
       test failing_panic_unit_arg ... FAILED (???, 771 gas)
 >>>>>>> f733fc9e5 (update snapshot tests)
+=======
+      test failing_panic_no_arg ... FAILED (???, 625 gas)
+      test failing_panic_unit_arg ... FAILED (???, 625 gas)
+>>>>>>> 3a228f704 (update tests)
       test failing_panic_const_eval_str_arg ... FAILED (???, 79 gas)
       test failing_panic_const_eval_empty_str_arg ... FAILED (???, 79 gas)
       test failing_panic_const_eval_whitespace_str_arg ... FAILED (???, 79 gas)
@@ -314,17 +327,21 @@ B(true), log rb: 8516346929033386016
 [
   {
     "LogData": {
-      "data": "",
-      "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "data": "00",
+      "digest": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
       "id": "0000000000000000000000000000000000000000000000000000000000000000",
       "is": 10368,
-      "len": 0,
+      "len": 1,
       "pc": 13204,
+<<<<<<< HEAD
 <<<<<<< HEAD
       "ptr": 67108864,
 =======
       "ptr": 67107840,
 >>>>>>> f733fc9e5 (update snapshot tests)
+=======
+      "ptr": 67108863,
+>>>>>>> 3a228f704 (update tests)
       "ra": 0,
       "rb": 3330666440490685604
     }
@@ -343,17 +360,21 @@ B(true), log rb: 8516346929033386016
 [
   {
     "LogData": {
-      "data": "",
-      "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "data": "00",
+      "digest": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
       "id": "0000000000000000000000000000000000000000000000000000000000000000",
       "is": 10368,
-      "len": 0,
+      "len": 1,
       "pc": 13256,
+<<<<<<< HEAD
 <<<<<<< HEAD
       "ptr": 67108864,
 =======
       "ptr": 67107840,
 >>>>>>> f733fc9e5 (update snapshot tests)
+=======
+      "ptr": 67108863,
+>>>>>>> 3a228f704 (update tests)
       "ra": 0,
       "rb": 3330666440490685604
     }

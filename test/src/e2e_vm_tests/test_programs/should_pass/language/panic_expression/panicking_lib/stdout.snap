@@ -1,6 +1,5 @@
 ---
 source: test/src/snapshot/mod.rs
-snapshot_kind: text
 ---
 > forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_lib --test-threads 1 --logs --reverts
 exit status: 0
@@ -8,6 +7,7 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_lib
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
    Compiling library panicking_lib (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_lib)
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -21,6 +21,9 @@ output:
 =======
     Finished debug [unoptimized + fuel] target(s) [7.816 KB] in ???
 >>>>>>> 0bd13365d (update tests)
+=======
+    Finished debug [unoptimized + fuel] target(s) [7.776 KB] in ???
+>>>>>>> 3a228f704 (update tests)
      Running 18 tests, filtered 0 tests
 
 tested -- panicking_lib
@@ -74,10 +77,14 @@ E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { d
            decoded log values:
 E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { data: "the best practice" }]), log rb: 2721958641300806892
 <<<<<<< HEAD
+<<<<<<< HEAD
       test test_generic_panic_with_unit ... ok (???, 661 gas)
 =======
       test test_generic_panic_with_unit ... ok (???, 787 gas)
 >>>>>>> f733fc9e5 (update snapshot tests)
+=======
+      test test_generic_panic_with_unit ... ok (???, 641 gas)
+>>>>>>> 3a228f704 (update tests)
            revert code: 8100000000000007
             ├─ panic value:   ()
             ├─ panicked:      in panicking_lib::generic_panic
@@ -87,10 +94,14 @@ E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { d
            decoded log values:
 (), log rb: 3330666440490685604
 <<<<<<< HEAD
+<<<<<<< HEAD
       test test_generic_panic_with_unit_same_revert_code ... ok (???, 661 gas)
 =======
       test test_generic_panic_with_unit_same_revert_code ... ok (???, 787 gas)
 >>>>>>> f733fc9e5 (update snapshot tests)
+=======
+      test test_generic_panic_with_unit_same_revert_code ... ok (???, 641 gas)
+>>>>>>> 3a228f704 (update tests)
            revert code: 8100000000000008
             ├─ panic value:   ()
             ├─ panicked:      in panicking_lib::generic_panic
@@ -138,10 +149,14 @@ A, log rb: 2721958641300806892
            decoded log values:
 A, log rb: 2721958641300806892
 <<<<<<< HEAD
+<<<<<<< HEAD
       test test_panic_without_arg ... ok (???, 653 gas)
 =======
       test test_panic_without_arg ... ok (???, 771 gas)
 >>>>>>> f733fc9e5 (update snapshot tests)
+=======
+      test test_panic_without_arg ... ok (???, 625 gas)
+>>>>>>> 3a228f704 (update tests)
            revert code: 8280000000000000
             ├─ panic value:   ()
             └─ panicked:      in panicking_lib::test_panic_without_arg
@@ -149,10 +164,14 @@ A, log rb: 2721958641300806892
            decoded log values:
 (), log rb: 3330666440490685604
 <<<<<<< HEAD
+<<<<<<< HEAD
       test test_panic_with_unit ... ok (???, 653 gas)
 =======
       test test_panic_with_unit ... ok (???, 771 gas)
 >>>>>>> f733fc9e5 (update snapshot tests)
+=======
+      test test_panic_with_unit ... ok (???, 625 gas)
+>>>>>>> 3a228f704 (update tests)
            revert code: 8300000000000000
             ├─ panic value:   ()
             └─ panicked:      in panicking_lib::test_panic_with_unit
@@ -257,10 +276,14 @@ E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { d
            decoded log values:
 E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { data: "the best practice" }]), log rb: 2721958641300806892
 <<<<<<< HEAD
+<<<<<<< HEAD
       test test_generic_panic_with_unit ... ok (???, 595 gas)
 =======
       test test_generic_panic_with_unit ... ok (???, 701 gas)
 >>>>>>> f733fc9e5 (update snapshot tests)
+=======
+      test test_generic_panic_with_unit ... ok (???, 599 gas)
+>>>>>>> 3a228f704 (update tests)
            revert code: 8100000000000000
             ├─ panic value:   ()
             └─ panicked:      in panicking_lib::generic_panic
@@ -268,10 +291,14 @@ E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { d
            decoded log values:
 (), log rb: 3330666440490685604
 <<<<<<< HEAD
+<<<<<<< HEAD
       test test_generic_panic_with_unit_same_revert_code ... ok (???, 595 gas)
 =======
       test test_generic_panic_with_unit_same_revert_code ... ok (???, 701 gas)
 >>>>>>> f733fc9e5 (update snapshot tests)
+=======
+      test test_generic_panic_with_unit_same_revert_code ... ok (???, 599 gas)
+>>>>>>> 3a228f704 (update tests)
            revert code: 8100000000000000
             ├─ panic value:   ()
             └─ panicked:      in panicking_lib::generic_panic
@@ -309,10 +336,14 @@ A, log rb: 2721958641300806892
            decoded log values:
 A, log rb: 2721958641300806892
 <<<<<<< HEAD
+<<<<<<< HEAD
       test test_panic_without_arg ... ok (???, 595 gas)
 =======
       test test_panic_without_arg ... ok (???, 701 gas)
 >>>>>>> f733fc9e5 (update snapshot tests)
+=======
+      test test_panic_without_arg ... ok (???, 599 gas)
+>>>>>>> 3a228f704 (update tests)
            revert code: 8280000000000000
             ├─ panic value:   ()
             └─ panicked:      in panicking_lib::test_panic_without_arg
@@ -320,10 +351,14 @@ A, log rb: 2721958641300806892
            decoded log values:
 (), log rb: 3330666440490685604
 <<<<<<< HEAD
+<<<<<<< HEAD
       test test_panic_with_unit ... ok (???, 595 gas)
 =======
       test test_panic_with_unit ... ok (???, 701 gas)
 >>>>>>> f733fc9e5 (update snapshot tests)
+=======
+      test test_panic_with_unit ... ok (???, 599 gas)
+>>>>>>> 3a228f704 (update tests)
            revert code: 8300000000000000
             ├─ panic value:   ()
             └─ panicked:      in panicking_lib::test_panic_with_unit
