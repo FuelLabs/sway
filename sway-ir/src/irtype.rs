@@ -744,13 +744,13 @@ mod tests {
         }
 
         #[test]
-        /// Unit, when not embedded in aggregates, has a size of 1 byte.
+        /// Unit, when not embedded in aggregates, has a size of 0 byte.
         fn unit() {
             let context = create_context();
 
             let s_unit = Type::get_unit(&context).size(&context);
 
-            assert_eq!(s_unit.in_bytes(), 1);
+            assert_eq!(s_unit.in_bytes(), 0);
         }
 
         #[test]
