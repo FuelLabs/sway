@@ -44,7 +44,7 @@ iter_over_hash_type = "deny"
 forc = { path = "forc/", version = "0.70.2" }
 forc-pkg = { path = "forc-pkg/", version = "0.70.2" }
 forc-test = { path = "forc-test/", version = "0.70.2" }
-forc-tracing = "0.70"
+forc-tracing = "0.71"
 forc-util = { path = "forc-util/", version = "0.70.2" }
 
 # Forc plugins
