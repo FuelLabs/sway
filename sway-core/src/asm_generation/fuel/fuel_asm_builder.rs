@@ -1558,6 +1558,16 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         let instr_reg = self.reg_seqr.next();
 
         match byte_len {
+            0 => {
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::MOVI(
+                        instr_reg.clone(),
+                        VirtualImmediate18::new(0),
+                    )),
+                    comment: "zero zst (originally load byte)".into(),
+                    owning_span,
+                });
+            }
             1 => {
                 self.cur_bytecode.push(Op {
                     opcode: Either::Left(VirtualOp::LB(
@@ -1581,8 +1591,9 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 });
             }
             _ => {
+                let msg = format!("Attempt to load {byte_len} bytes sized value.");
                 return Err(CompileError::Internal(
-                    "Attempt to load {byte_len} bytes sized value.",
+                    msg.leak::<'static>(),
                     owning_span.unwrap_or_else(Span::dummy),
                 ));
             }
@@ -2236,6 +2247,9 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             let val_reg = self.value_to_register(stored_val)?;
 
             match byte_len {
+                0 => {
+
+                }
                 1 => {
                     self.cur_bytecode.push(Op {
                         opcode: Either::Left(VirtualOp::SB(
@@ -2259,8 +2273,16 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     });
                 }
                 _ => {
+                    self.context.verify().unwrap();
+                    eprintln!("stored_ty: {:?}", stored_ty.with_context(self.context));
+                    eprintln!("byte_len: {:?}", byte_len);
+                    eprintln!("dst_reg: {:?}", dst_reg);
+                    eprintln!("val_reg: {:?}", val_reg);
+                    eprint!("{}", self.context.to_string());
+                    panic!("{}", std::backtrace::Backtrace::force_capture());
+                    let msg = format!("Attempt to load {byte_len} bytes sized value.");
                     return Err(CompileError::Internal(
-                        "Attempt to load {byte_len} bytes sized value.",
+                        msg.leak::<'static>(),
                         owning_span.unwrap_or_else(Span::dummy),
                     ));
                 }
