@@ -2363,32 +2363,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "criterion"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2b12d017a929603d80db1831cd3a24082f8137ce19c69e6447f54f5fc8d692f"
-dependencies = [
- "anes",
- "cast",
- "ciborium",
- "clap",
- "criterion-plot",
- "is-terminal",
- "itertools 0.10.5",
- "num-traits",
- "once_cell",
- "oorandom",
- "plotters",
- "rayon",
- "regex",
- "serde",
- "serde_derive",
- "serde_json",
- "tinytemplate",
- "walkdir",
-]
-
-[[package]]
 name = "criterion-plot"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3930,36 +3904,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "forc-crypto"
-version = "0.70.2"
-dependencies = [
- "anyhow",
- "async-trait",
- "clap",
- "criterion",
- "forc-tracing 0.70.2",
- "forc-util",
- "fuel-core-types 0.47.1",
- "fuel-crypto 0.65.0",
- "fuels-accounts 0.76.0",
- "fuels-core 0.76.0",
- "futures",
- "hex",
- "libp2p-identity",
- "rand 0.8.5",
- "rayon",
- "regex",
- "serde",
- "serde_json",
- "serde_yaml",
- "sha3",
- "tempfile",
- "termion",
- "tokio",
- "tracing",
-]
-
-[[package]]
 name = "forc-debug"
 version = "0.70.2"
 dependencies = [
@@ -4233,12 +4177,13 @@ dependencies = [
 [[package]]
 name = "forc-tracing"
 version = "0.70.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "366dda3a5c16608a9d8a2c6a37eb27a242e822ad45053711bd643914a2638534"
 dependencies = [
  "ansiterm",
  "regex",
  "tracing",
  "tracing-subscriber",
- "tracing-test",
 ]
 
 [[package]]
@@ -11149,19 +11094,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "serde_yaml"
-version = "0.9.34+deprecated"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6a8b1a1a2ebf674015cc02edccce75287f1a0130d394307b36743c2f5d504b47"
-dependencies = [
- "indexmap 2.11.4",
- "itoa",
- "ryu",
- "serde",
- "unsafe-libyaml",
-]
-
-[[package]]
 name = "serial_test"
 version = "3.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -13012,27 +12944,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tracing-test"
-version = "0.2.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "557b891436fe0d5e0e363427fc7f217abf9ccd510d5136549847bdcbcd011d68"
-dependencies = [
- "tracing-core",
- "tracing-subscriber",
- "tracing-test-macro",
-]
-
-[[package]]
-name = "tracing-test-macro"
-version = "0.2.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04659ddb06c87d233c566112c1c9c5b9e98256d9af50ec3bc9c8327f873a7568"
-dependencies = [
- "quote",
- "syn 2.0.106",
-]
-
-[[package]]
 name = "try-lock"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -13187,12 +13098,6 @@ dependencies = [
  "crypto-common",
  "subtle",
 ]
-
-[[package]]
-name = "unsafe-libyaml"
-version = "0.2.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "673aac59facbab8a9007c7f6108d11f63b603f7cabff99fabf650fea5c32b861"
 
 [[package]]
 name = "unsigned-varint"
