@@ -64,7 +64,7 @@ use sway_ir::{
     SIMPLIFY_CFG_NAME, SROA_NAME,
 };
 #[cfg(feature = "llvm-backend")]
-use sway_llvm::{lower_module_to_string, BackendOptions};
+use sway_llvm::{lower_module_to_string, BackendOptions, TargetVm};
 use sway_types::span::Source;
 use sway_types::{SourceEngine, SourceLocation, Span};
 use sway_utils::{time_expr, PerformanceData, PerformanceMetric};
@@ -1357,7 +1357,12 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         if build_config.build_backend == BuildBackend::Fuel {
             if let Some(dump_dest) = std::env::var_os("SWAY_LLVM_DUMP") {
                 if let Some(module) = ir.module_iter().next() {
-                    match lower_module_to_string(&ir, module, &BackendOptions::default()) {
+                    let mut opts = BackendOptions::default();
+                    opts.target_vm = match build_config.build_target {
+                        BuildTarget::Polkavm => TargetVm::PolkaVm,
+                        _ => TargetVm::FuelVm,
+                    };
+                    match lower_module_to_string(&ir, module, &opts) {
                         Ok(llvm_ir) => {
                             if dump_dest.is_empty() || dump_dest == "stdout" {
                                 println!("{llvm_ir}");
@@ -1405,7 +1410,12 @@ pub(crate) fn compile_ast_to_ir_to_asm(
                     return Err(err);
                 }
                 if let Some(module) = ir.module_iter().next() {
-                    match lower_module_to_string(&ir, module, &BackendOptions::default()) {
+                    let mut opts = BackendOptions::default();
+                    opts.target_vm = match build_config.build_target {
+                        BuildTarget::Polkavm => TargetVm::PolkaVm,
+                        _ => TargetVm::FuelVm,
+                    };
+                    match lower_module_to_string(&ir, module, &opts) {
                         Ok(llvm_ir) => CompiledAsm::LLVM { llvm_ir },
                         Err(err) => {
                             let err = handler.emit_err(CompileError::InternalOwned(

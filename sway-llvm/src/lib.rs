@@ -35,10 +35,44 @@ use sway_types::u256::U256;
 use thiserror::Error;
 
 /// Options that influence LLVM module emission.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct BackendOptions {
     pub target_triple: Option<String>,
     pub data_layout: Option<String>,
+    /// Target VM semantics; affects validation.
+    pub target_vm: TargetVm,
+}
+
+impl BackendOptions {
+    pub fn fuelvm() -> Self {
+        Self {
+            target_triple: None,
+            data_layout: None,
+            target_vm: TargetVm::FuelVm,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TargetVm {
+    FuelVm,
+    PolkaVm,
+}
+
+impl Default for TargetVm {
+    fn default() -> Self {
+        TargetVm::FuelVm
+    }
+}
+
+impl Default for BackendOptions {
+    fn default() -> Self {
+        Self {
+            target_triple: None,
+            data_layout: None,
+            target_vm: TargetVm::FuelVm,
+        }
+    }
 }
 
 #[derive(Debug, Error)]
@@ -73,7 +107,7 @@ struct ModuleLowerer<'ctx, 'ir, 'eng> {
     ir_module: Module,
     llvm_module: LlvmModule<'ctx>,
     builder: Builder<'ctx>,
-    _opts: BackendOptions,
+    opts: BackendOptions,
     type_cache: HashMap<Type, LoweredType<'ctx>>,
     func_map: HashMap<Function, inkwell::values::FunctionValue<'ctx>>,
     value_map: HashMap<Value, BasicValueEnum<'ctx>>,
@@ -117,7 +151,7 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
             ir_module,
             llvm_module,
             builder: llvm.create_builder(),
-            _opts: opts,
+            opts,
             type_cache: HashMap::new(),
             func_map: HashMap::new(),
             value_map: HashMap::new(),

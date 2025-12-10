@@ -10,7 +10,7 @@ use crate::{
         namespace::{self, Package},
         TypeCheckContext,
     },
-    BuildConfig, Engines,
+    BuildConfig, BuildTarget, Engines,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_features::ExperimentalFeatures;
@@ -65,6 +65,10 @@ impl TyProgram {
         let mut ctx =
             TypeCheckContext::from_root(&mut namespace, collection_ctx, engines, experimental)
                 .with_kind(parsed.kind);
+        let build_target = build_config
+            .map(|cfg| cfg.build_target)
+            .unwrap_or(BuildTarget::Fuel);
+        ctx = ctx.with_build_target(build_target);
 
         let ParseProgram { root, kind } = parsed;
 

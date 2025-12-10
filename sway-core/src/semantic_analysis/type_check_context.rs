@@ -2,6 +2,7 @@
 use std::collections::BTreeMap;
 
 use crate::{
+    build_config::BuildTarget,
     decl_engine::{DeclEngineGet, MaterializeConstGenerics},
     engine_threading::*,
     language::{
@@ -108,6 +109,8 @@ pub struct TypeCheckContext<'a> {
     // In some nested places of the first pass we want to disable the first pass optimizations
     // To disable those optimizations we can set this to false.
     code_block_first_pass: bool,
+    /// The build target being type-checked (Fuel, Polkavm, etc.)
+    build_target: BuildTarget,
 }
 
 impl<'a> TypeCheckContext<'a> {
@@ -137,6 +140,7 @@ impl<'a> TypeCheckContext<'a> {
             experimental,
             collecting_unifications: false,
             code_block_first_pass: false,
+            build_target: BuildTarget::Fuel,
         }
     }
 
@@ -181,6 +185,7 @@ impl<'a> TypeCheckContext<'a> {
             experimental,
             collecting_unifications: false,
             code_block_first_pass: false,
+            build_target: BuildTarget::Fuel,
         }
     }
 
@@ -212,7 +217,19 @@ impl<'a> TypeCheckContext<'a> {
             experimental: self.experimental,
             collecting_unifications: self.collecting_unifications,
             code_block_first_pass: self.code_block_first_pass,
+            build_target: self.build_target,
         }
+    }
+
+    /// Returns the build target currently in use.
+    pub fn build_target(&self) -> BuildTarget {
+        self.build_target
+    }
+
+    /// Map this `TypeCheckContext` instance to a new one with the given build target.
+    pub(crate) fn with_build_target(mut self, build_target: BuildTarget) -> Self {
+        self.build_target = build_target;
+        self
     }
 
     /// Scope the `TypeCheckContext` with a new lexical scope, and set up the collection context
@@ -262,6 +279,7 @@ impl<'a> TypeCheckContext<'a> {
                             experimental: ctx.experimental,
                             collecting_unifications: ctx.collecting_unifications,
                             code_block_first_pass: ctx.code_block_first_pass,
+                            build_target: ctx.build_target,
                         };
                         with_scoped_ctx(&mut ctx)
                     },
@@ -327,7 +345,8 @@ impl<'a> TypeCheckContext<'a> {
                     submod_collection_ctx,
                     engines,
                     experimental,
-                );
+                )
+                .with_build_target(self.build_target);
                 let ret = with_submod_ctx(submod_ctx);
                 self.namespace.pop_submodule();
                 ret
