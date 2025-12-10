@@ -2962,18 +2962,18 @@ fn emit_polkavm_binary_from_llvm(
             .join(format!("{pkg_name}-{suffix}"))
             .with_extension("stripped.elf");
         let strip = std::env::var("LLVM_STRIP").unwrap_or_else(|_| "llvm-strip".into());
-    let mut strip_cmd = Command::new(&strip);
-    strip_cmd
-        .arg("--strip-debug")
-        .arg(&elf_path)
-        .arg("-o")
-        .arg(&stripped_path);
-    if log_commands {
-        println!("llvm-strip command: {:?}", strip_cmd);
-    }
-    let strip_status = strip_cmd
-        .status()
-        .with_context(|| format!("failed to execute {strip}"))?;
+        let mut strip_cmd = Command::new(&strip);
+        strip_cmd
+            .arg("--strip-debug")
+            .arg(&elf_path)
+            .arg("-o")
+            .arg(&stripped_path);
+        if log_commands {
+            println!("llvm-strip command: {:?}", strip_cmd);
+        }
+        let strip_status = strip_cmd
+            .status()
+            .with_context(|| format!("failed to execute {strip}"))?;
         if !strip_status.success() {
             bail!(
                 "{strip} failed with status {}",
