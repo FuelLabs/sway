@@ -20,6 +20,7 @@ use sway_ir::{
 use sway_types::{span::Span, Ident};
 
 pub(crate) use purity::{check_function_purity, PurityEnv};
+pub use function::{get_runtime_representation, get_encoding_representation, MemoryRepresentation};
 
 use crate::{
     engine_threading::HashWithEngines,

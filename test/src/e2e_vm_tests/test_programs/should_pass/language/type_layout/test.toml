@@ -1,0 +1,11 @@
+category = "run"
+expected_result = { action = "return", value = 10 }
+expected_result_new_encoding = { action = "return_data", value = "000000000000000A" }
+validate_abi = true
+expected_warnings = 1
+logs = """
+unique_print(`type_info|ir_type|runtime_mem_repr|encoding_mem_repr|is_trivial|type_size\n`);
+if event == "on_after_ir_type_resolution" {
+    unique_print(`${type_info}|${ir_type}|${runtime_mem_repr}|${encoding_mem_repr}|${is_trivial}|${type_size}\n`);
+}
+"""

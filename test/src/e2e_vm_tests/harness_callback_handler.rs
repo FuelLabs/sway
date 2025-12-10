@@ -1,11 +1,12 @@
 use normalize_path::NormalizePath as _;
+use sway_ir::Type;
 use std::{
     collections::HashMap,
     path::PathBuf,
     str::FromStr as _,
     sync::{Arc, Mutex},
 };
-use sway_core::Observer;
+use sway_core::{Engines, Observer, TypeInfo, ir_generation::{get_encoding_representation, get_runtime_representation}};
 
 fn stdout_logs(root: &str, snapshot: &str) {
     let root = PathBuf::from_str(root).unwrap();
@@ -22,17 +23,11 @@ fn stdout_logs(root: &str, snapshot: &str) {
     drop(scope);
 }
 
-enum Cmds {
-    PrintArgs,
-    Trace(bool),
-}
-
 struct Inner {
     eng: rhai::Engine,
     ast: rhai::AST,
     pkg_name_cache: HashMap<PathBuf, String>,
-    cmds: Arc<Mutex<Vec<Cmds>>>,
-    snapshot: String,
+    snapshot: Arc<Mutex<String>>,
     root: String,
 }
 
@@ -70,20 +65,6 @@ impl Inner {
         }
     }
 
-    fn run_cmds(&mut self, ctx: &sway_core::semantic_analysis::TypeCheckContext<'_>, args: String) {
-        let cmds = self.cmds.lock().unwrap();
-        for cmd in cmds.iter() {
-            match cmd {
-                Cmds::PrintArgs => {
-                    self.snapshot.push_str(&format!("{args}\n"));
-                }
-                Cmds::Trace(enable) => {
-                    ctx.engines.obs().enable_trace(*enable);
-                }
-            }
-        }
-    }
-
     fn on_before_method_resolution(
         &mut self,
         ctx: &sway_core::semantic_analysis::TypeCheckContext<'_>,
@@ -105,17 +86,16 @@ impl Inner {
             .push_constant("event", "on_before_method_resolution")
             .push_constant("method", method_name.inner.easy_name().as_str().to_string());
 
-        self.cmds.lock().unwrap().clear();
         let _ = self.eng.eval_ast_with_scope::<()>(&mut scope, &self.ast);
 
-        let args = format!(
-            "on_before_method_resolution: {:?}; {:?}; {:?}",
-            method_name.inner,
-            method_name.type_arguments,
-            ctx.engines.help_out(args_types.to_vec())
-        );
+        // let args = format!(
+        //     "on_before_method_resolution: {:?}; {:?}; {:?}",
+        //     method_name.inner,
+        //     method_name.type_arguments,
+        //     ctx.engines.help_out(args_types.to_vec())
+        // );
 
-        self.run_cmds(ctx, args);
+        // self.run_cmds(ctx.engines, args);
     }
 
     fn on_after_method_resolution(
@@ -141,26 +121,57 @@ impl Inner {
             .push_constant("event", "on_after_method_resolution")
             .push_constant("method", method_name.inner.easy_name().as_str().to_string());
 
-        self.cmds.lock().unwrap().clear();
         let _ = self.eng.eval_ast_with_scope::<()>(&mut scope, &self.ast);
 
-        let args = format!(
-            "on_after_method_resolution: {:?}; {:?}; {:?}; {:?}; {:?}",
-            method_name.inner,
-            method_name.type_arguments,
-            ctx.engines.help_out(args_types.to_vec()),
-            ctx.engines.help_out(new_ref.id()),
-            ctx.engines.help_out(new_type_id),
-        );
+        // let args = format!(
+        //     "on_after_method_resolution: {:?}; {:?}; {:?}; {:?}; {:?}",
+        //     method_name.inner,
+        //     method_name.type_arguments,
+        //     ctx.engines.help_out(args_types.to_vec()),
+        //     ctx.engines.help_out(new_ref.id()),
+        //     ctx.engines.help_out(new_type_id),
+        // );
 
-        self.run_cmds(ctx, args);
+        // self.run_cmds(ctx.engines, args);
+    }
+
+    fn on_after_ir_type_resolution(&mut self, engines: &Engines, ctx: &sway_ir::Context, type_info: &TypeInfo, ir_type: &Type) {
+        let mut scope = rhai::Scope::new();
+
+        let runtime_mem_repr = get_runtime_representation(ctx, *ir_type);
+        let encoding_mem_repr = get_encoding_representation(engines, type_info);
+        let is_trivial = if let Some(encoding_mem_repr) = encoding_mem_repr.as_ref() {
+            runtime_mem_repr == *encoding_mem_repr
+        } else {
+            false
+        };
+
+        let type_size = ir_type.size(ctx);
+
+        scope
+            .push_constant("event", "on_after_ir_type_resolution")
+            .push_constant("type_info", engines.help_out(type_info).to_string())
+            .push_constant("ir_type", ir_type.as_string(ctx))
+            .push_constant("runtime_mem_repr", format!("{runtime_mem_repr:?}"))
+            .push_constant("encoding_mem_repr", format!("{encoding_mem_repr:?}"))
+            .push_constant("is_trivial", is_trivial)
+            .push_constant("type_size", type_size.in_bytes());
+
+        let _ = self.eng.eval_ast_with_scope::<()>(&mut scope, &self.ast);
+
+        // let args = format!(
+        //     "on_after_ir_type_resolution",
+        // );
+
+        // self.run_cmds(engines, args);
     }
 }
 
 impl Drop for Inner {
     fn drop(&mut self) {
-        if !self.snapshot.is_empty() {
-            stdout_logs(&self.root, &self.snapshot);
+        let snapshot = self.snapshot.lock().unwrap();
+        if !snapshot.is_empty() {
+            stdout_logs(&self.root, &snapshot);
         }
     }
 }
@@ -171,20 +182,35 @@ pub struct HarnessCallbackHandler {
 
 impl HarnessCallbackHandler {
     pub fn new(root: &str, script: &str) -> Self {
-        let cmds = Arc::new(Mutex::new(vec![]));
+        let snapshot = Arc::new(Mutex::new(String::new()));
 
         let mut eng = rhai::Engine::new();
-        eng.register_fn("print_args", {
-            let cmds = cmds.clone();
-            move || {
-                cmds.lock().unwrap().push(Cmds::PrintArgs);
+        eng.on_print({
+            let snapshot = snapshot.clone();
+            move |s| {
+                let mut snapshot = snapshot.lock().unwrap();
+                snapshot.push_str(s);
             }
         });
-        eng.register_fn("trace", {
-            let cmds = cmds.clone();
-            move |b| {
-                cmds.lock().unwrap().push(Cmds::Trace(b));
+        eng.register_fn("unique_print", {
+            let snapshot = snapshot.clone();
+            move |s: &str| {
+                let mut snapshot = snapshot.lock().unwrap();
+                if !snapshot.contains(s) {
+                    snapshot.push_str(s);
+                }
             }
+        });
+        eng.register_fn("println", {
+            let snapshot = snapshot.clone();
+            move |s: &str| {
+                let mut snapshot = snapshot.lock().unwrap();
+                snapshot.push_str(s);
+                snapshot.push('\n');
+            }
+        });
+        eng.register_fn("trace", |enabled: bool| {
+            todo!()
         });
 
         let scope = rhai::Scope::new();
@@ -195,8 +221,7 @@ impl HarnessCallbackHandler {
                 eng,
                 ast,
                 pkg_name_cache: HashMap::default(),
-                cmds,
-                snapshot: String::new(),
+                snapshot,
                 root: root.to_string(),
             }),
         }
@@ -205,9 +230,10 @@ impl HarnessCallbackHandler {
 
 impl Observer for HarnessCallbackHandler {
     fn on_trace(&self, msg: &str) {
-        let mut inner = self.inner.lock().unwrap();
-        inner.snapshot.push_str(msg);
-        inner.snapshot.push('\n');
+        let inner = self.inner.lock().unwrap();
+        let mut snapshot = inner.snapshot.lock().unwrap();
+        snapshot.push_str(msg);
+        snapshot.push('\n');
     }
 
     fn on_before_method_resolution(
@@ -234,5 +260,16 @@ impl Observer for HarnessCallbackHandler {
     ) {
         let mut inner = self.inner.lock().unwrap();
         inner.on_after_method_resolution(ctx, method_name, args_types, new_ref, new_type_id);
+    }
+
+    fn on_after_ir_type_resolution(
+        &self,
+        engines: &Engines,
+        ctx: &sway_ir::Context,
+        type_info: &TypeInfo,
+        ir_type: &Type,
+    ) {
+        let mut inner = self.inner.lock().unwrap();
+        inner.on_after_ir_type_resolution(engines, ctx, type_info, ir_type);
     }
 }

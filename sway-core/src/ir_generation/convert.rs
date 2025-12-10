@@ -117,7 +117,7 @@ fn convert_resolved_type_info(
         }};
     }
 
-    Ok(match ast_type {
+    let t = match ast_type {
         // See comment in convert_literal_to_value() above.
         TypeInfo::UnsignedInteger(IntegerBits::V256) => Type::get_uint256(context),
         TypeInfo::UnsignedInteger(IntegerBits::Eight) => Type::get_uint8(context),
@@ -154,7 +154,7 @@ fn convert_resolved_type_info(
         )?,
         TypeInfo::Array(elem_type, length) => {
             let const_expr = length.expr().to_ty_expression(engines);
-
+    
             let constant_evaluated =
                 crate::ir_generation::const_eval::compile_constant_expression_to_constant(
                     engines,
@@ -167,7 +167,7 @@ fn convert_resolved_type_info(
                 )
                 .unwrap();
             let len = constant_evaluated.get_content(context).as_uint().unwrap();
-
+    
             let elem_type = convert_resolved_type_id(
                 engines,
                 context,
@@ -179,7 +179,7 @@ fn convert_resolved_type_info(
             )?;
             Type::new_array(context, elem_type, len as u64)
         }
-
+    
         TypeInfo::Tuple(fields) => {
             if fields.is_empty() {
                 // XXX We've removed Unit from the core compiler, replaced with an empty Tuple.
@@ -244,10 +244,10 @@ fn convert_resolved_type_info(
             }
         }
         TypeInfo::Never => Type::get_never(context),
-
+    
         // Unsized types
         TypeInfo::Slice(_) => reject_type!("unsized"),
-
+    
         // Unsupported types which shouldn't exist in the AST after type checking and
         // monomorphisation.
         TypeInfo::Custom { .. } => reject_type!("Custom"),
@@ -262,5 +262,9 @@ fn convert_resolved_type_info(
         TypeInfo::ErrorRecovery(_) => reject_type!("Error recovery"),
         TypeInfo::TraitType { .. } => reject_type!("TraitType"),
         TypeInfo::StringArray(..) => reject_type!("String Array with non literal length"),
-    })
+    };
+
+    engines.obs().raise_on_after_ir_type_resolution(engines, context, ast_type, &t);
+
+    Ok(t)
 }
