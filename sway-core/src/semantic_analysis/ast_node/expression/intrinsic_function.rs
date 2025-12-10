@@ -16,6 +16,7 @@ use crate::{
     },
     semantic_analysis::TypeCheckContext,
     type_system::*,
+    BuildTarget,
 };
 
 impl ty::TyIntrinsicFunctionKind {
@@ -32,6 +33,7 @@ impl ty::TyIntrinsicFunctionKind {
             ..
         } = kind_binding;
         let type_arguments = type_arguments.as_slice();
+        //ensure_intrinsic_supported(handler, &ctx, kind, span.clone())?;
         match kind {
             Intrinsic::SizeOfVal => {
                 type_check_size_of_val(handler, ctx, kind, arguments, type_arguments, span)
@@ -115,6 +117,38 @@ impl ty::TyIntrinsicFunctionKind {
             }
         }
     }
+}
+
+fn ensure_intrinsic_supported(
+    handler: &Handler,
+    ctx: &TypeCheckContext,
+    kind: Intrinsic,
+    span: Span,
+) -> Result<(), ErrorEmitted> {
+    if ctx.build_target() == BuildTarget::Polkavm && is_fuel_intrinsic(kind) {
+        return Err(handler.emit_err(CompileError::FuelIntrinsicNotSupported {
+            intrinsic: kind.to_string(),
+            target: ctx.build_target().to_string(),
+            span,
+        }));
+    }
+    Ok(())
+}
+
+fn is_fuel_intrinsic(kind: Intrinsic) -> bool {
+    matches!(
+        kind,
+        Intrinsic::Gtf
+            | Intrinsic::StateClear
+            | Intrinsic::StateLoadWord
+            | Intrinsic::StateStoreWord
+            | Intrinsic::StateLoadQuad
+            | Intrinsic::StateStoreQuad
+            | Intrinsic::Log
+            | Intrinsic::Revert
+            | Intrinsic::JmpMem
+            | Intrinsic::Smo
+    )
 }
 
 fn type_check_transmute(

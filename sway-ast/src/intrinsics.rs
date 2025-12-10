@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-#[derive(Eq, PartialEq, Debug, Clone, Hash, Serialize, Deserialize)]
+#[derive(Eq, PartialEq, Debug, Clone, Copy, Hash, Serialize, Deserialize)]
 pub enum Intrinsic {
     IsReferenceType,
     SizeOfType,

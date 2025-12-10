@@ -64,6 +64,12 @@ pub enum CompileError {
         url: String,
         span: Span,
     },
+    #[error("FuelVM intrinsic \"{intrinsic}\" is not supported for target \"{target}\".")]
+    FuelIntrinsicNotSupported {
+        intrinsic: String,
+        target: String,
+        span: Span,
+    },
     #[error(
         "There was an error while evaluating the evaluation order for the module dependency graph."
     )]
@@ -1137,6 +1143,7 @@ impl Spanned for CompileError {
             ConstGenericNotSupportedHere { span } => span.clone(),
             LengthExpressionNotSupported { span } => span.clone(),
             FeatureIsDisabled { span, .. } => span.clone(),
+            FuelIntrinsicNotSupported { span, .. } => span.clone(),
             ModuleDepGraphEvaluationError { .. } => Span::dummy(),
             ModuleDepGraphCyclicReference { .. } => Span::dummy(),
             UnknownVariable { span, .. } => span.clone(),
@@ -1382,6 +1389,27 @@ impl ToDiagnostic for CompileError {
         let code = Code::semantic_analysis;
         use CompileError::*;
         match self {
+            FuelIntrinsicNotSupported {
+                intrinsic,
+                target,
+                span,
+            } => Diagnostic {
+                reason: Some(Reason::new(
+                    code(1),
+                    format!(
+                        "FuelVM intrinsic \"{intrinsic}\" is not supported when targeting \"{target}\"."
+                    ),
+                )),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!(
+                        "FuelVM intrinsic \"{intrinsic}\" is not supported when targeting \"{target}\"."
+                    ),
+                ),
+                hints: vec![],
+                help: vec![],
+            },
             ConstantsCannotBeShadowed { shadowing_source, name, constant_span, constant_decl_span, is_alias } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Constants cannot be shadowed".to_string())),
                 issue: Issue::error(
