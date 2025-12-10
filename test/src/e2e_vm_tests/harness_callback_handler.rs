@@ -1,12 +1,15 @@
 use normalize_path::NormalizePath as _;
-use sway_ir::Type;
 use std::{
     collections::HashMap,
     path::PathBuf,
     str::FromStr as _,
     sync::{Arc, Mutex},
 };
-use sway_core::{Engines, Observer, TypeInfo, ir_generation::{get_encoding_representation, get_runtime_representation}};
+use sway_core::{
+    ir_generation::{get_encoding_representation, get_runtime_representation},
+    Engines, Observer, TypeInfo,
+};
+use sway_ir::Type;
 
 fn stdout_logs(root: &str, snapshot: &str) {
     let root = PathBuf::from_str(root).unwrap();
@@ -28,10 +31,18 @@ struct Inner {
     ast: rhai::AST,
     pkg_name_cache: HashMap<PathBuf, String>,
     snapshot: Arc<Mutex<String>>,
+    trace: Arc<Mutex<Option<bool>>>,
     root: String,
 }
 
 impl Inner {
+    fn apply(&mut self, engines: &Engines) {
+        let mut trace = self.trace.lock().unwrap();
+        if let Some(enable) = trace.take() {
+            engines.obs().enable_trace(enable);
+        }
+    }
+
     fn get_package_name(
         &mut self,
         span: &sway_types::Span,
@@ -80,22 +91,22 @@ impl Inner {
             return;
         }
 
+        let args = format!(
+            "on_before_method_resolution: {:?}; {:?}; {:?}",
+            method_name.inner,
+            method_name.type_arguments,
+            ctx.engines.help_out(args_types.to_vec())
+        );
+
         let mut scope = rhai::Scope::new();
         scope
+            .push_constant("args", args)
             .push_constant("pkg", pkg_name.clone())
             .push_constant("event", "on_before_method_resolution")
             .push_constant("method", method_name.inner.easy_name().as_str().to_string());
 
-        let _ = self.eng.eval_ast_with_scope::<()>(&mut scope, &self.ast);
-
-        // let args = format!(
-        //     "on_before_method_resolution: {:?}; {:?}; {:?}",
-        //     method_name.inner,
-        //     method_name.type_arguments,
-        //     ctx.engines.help_out(args_types.to_vec())
-        // );
-
-        // self.run_cmds(ctx.engines, args);
+        self.eng.eval_ast_with_scope::<()>(&mut scope, &self.ast).unwrap();
+        self.apply(ctx.engines);
     }
 
     fn on_after_method_resolution(
@@ -115,27 +126,33 @@ impl Inner {
             return;
         }
 
+        let args = format!(
+            "on_after_method_resolution: {:?}; {:?}; {:?}; {:?}; {:?}",
+            method_name.inner,
+            method_name.type_arguments,
+            ctx.engines.help_out(args_types.to_vec()),
+            ctx.engines.help_out(new_ref.id()),
+            ctx.engines.help_out(new_type_id),
+        );
+
         let mut scope = rhai::Scope::new();
         scope
             .push_constant("pkg", pkg_name.clone())
             .push_constant("event", "on_after_method_resolution")
-            .push_constant("method", method_name.inner.easy_name().as_str().to_string());
+            .push_constant("method", method_name.inner.easy_name().as_str().to_string())
+            .push_constant("args", args);
 
-        let _ = self.eng.eval_ast_with_scope::<()>(&mut scope, &self.ast);
-
-        // let args = format!(
-        //     "on_after_method_resolution: {:?}; {:?}; {:?}; {:?}; {:?}",
-        //     method_name.inner,
-        //     method_name.type_arguments,
-        //     ctx.engines.help_out(args_types.to_vec()),
-        //     ctx.engines.help_out(new_ref.id()),
-        //     ctx.engines.help_out(new_type_id),
-        // );
-
-        // self.run_cmds(ctx.engines, args);
+        self.eng.eval_ast_with_scope::<()>(&mut scope, &self.ast).unwrap();
+        self.apply(ctx.engines);
     }
 
-    fn on_after_ir_type_resolution(&mut self, engines: &Engines, ctx: &sway_ir::Context, type_info: &TypeInfo, ir_type: &Type) {
+    fn on_after_ir_type_resolution(
+        &mut self,
+        engines: &Engines,
+        ctx: &sway_ir::Context,
+        type_info: &TypeInfo,
+        ir_type: &Type,
+    ) {
         let mut scope = rhai::Scope::new();
 
         let runtime_mem_repr = get_runtime_representation(ctx, *ir_type);
@@ -149,6 +166,7 @@ impl Inner {
         let type_size = ir_type.size(ctx);
 
         scope
+            .push_constant("pkg", "")
             .push_constant("event", "on_after_ir_type_resolution")
             .push_constant("type_info", engines.help_out(type_info).to_string())
             .push_constant("ir_type", ir_type.as_string(ctx))
@@ -157,13 +175,8 @@ impl Inner {
             .push_constant("is_trivial", is_trivial)
             .push_constant("type_size", type_size.in_bytes());
 
-        let _ = self.eng.eval_ast_with_scope::<()>(&mut scope, &self.ast);
-
-        // let args = format!(
-        //     "on_after_ir_type_resolution",
-        // );
-
-        // self.run_cmds(engines, args);
+        self.eng.eval_ast_with_scope::<()>(&mut scope, &self.ast).unwrap();
+        self.apply(engines);
     }
 }
 
@@ -183,6 +196,7 @@ pub struct HarnessCallbackHandler {
 impl HarnessCallbackHandler {
     pub fn new(root: &str, script: &str) -> Self {
         let snapshot = Arc::new(Mutex::new(String::new()));
+        let trace = Arc::new(Mutex::new(None));
 
         let mut eng = rhai::Engine::new();
         eng.on_print({
@@ -209,8 +223,12 @@ impl HarnessCallbackHandler {
                 snapshot.push('\n');
             }
         });
-        eng.register_fn("trace", |enabled: bool| {
-            todo!()
+        
+        eng.register_fn("trace", {
+            let trace = trace.clone();
+            move |enable: bool| {
+                *trace.lock().unwrap() = Some(enable);
+            }
         });
 
         let scope = rhai::Scope::new();
@@ -222,6 +240,7 @@ impl HarnessCallbackHandler {
                 ast,
                 pkg_name_cache: HashMap::default(),
                 snapshot,
+                trace,
                 root: root.to_string(),
             }),
         }
@@ -246,6 +265,7 @@ impl Observer for HarnessCallbackHandler {
     ) {
         let mut inner = self.inner.lock().unwrap();
         inner.on_before_method_resolution(ctx, method_name, args_types);
+        inner.apply(ctx.engines);        
     }
 
     fn on_after_method_resolution(

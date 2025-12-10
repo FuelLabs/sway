@@ -5520,7 +5520,7 @@ pub fn get_runtime_representation(ctx: &Context, t: Type) -> MemoryRepresentatio
                 MemoryRepresentation::Array(Box::new(item), *len)
             }
         }
-        TypeContent::Pointer => MemoryRepresentation::Blob { len_in_bytes: 8 },
+        TypeContent::Pointer | TypeContent::TypedPointer(_) => MemoryRepresentation::Blob { len_in_bytes: 8 },
         TypeContent::Slice => MemoryRepresentation::Blob { len_in_bytes: 16 },
         TypeContent::TypedSlice(_) => MemoryRepresentation::Blob { len_in_bytes: 16 },
         x => todo!("{x:#?}"),
@@ -5536,17 +5536,16 @@ pub fn get_memory_id(ctx: &Context, t: Type) -> u64 {
     state.finish()
 }
 
-
 pub fn get_encoding_representation_by_id(
     engines: &Engines,
     type_id: TypeId,
 ) -> Option<MemoryRepresentation> {
-    get_encoding_representation(engines, &*engines.te().get(type_id))
+    get_encoding_representation(engines, &engines.te().get(type_id))
 }
 
 pub fn get_encoding_representation(
     engines: &Engines,
-    type_info: &TypeInfo
+    type_info: &TypeInfo,
 ) -> Option<MemoryRepresentation> {
     match type_info {
         TypeInfo::Never => None,
@@ -5580,7 +5579,9 @@ pub fn get_encoding_representation(
             let items = decl
                 .fields
                 .iter()
-                .map(|field| get_encoding_representation_by_id(engines, field.type_argument.type_id))
+                .map(|field| {
+                    get_encoding_representation_by_id(engines, field.type_argument.type_id)
+                })
                 .collect::<Option<Vec<_>>>()?;
 
             Some(MemoryRepresentation::And(items))
@@ -5617,7 +5618,7 @@ pub fn get_encoding_representation(
         TypeInfo::StringSlice => None,
         TypeInfo::Array(item, len) => Some(MemoryRepresentation::Array(
             Box::new(get_encoding_representation_by_id(engines, item.type_id)?),
-            len.extract_literal(engines).unwrap(),
+            len.extract_literal(engines)?,
         )),
         TypeInfo::RawUntypedPtr => None,
         TypeInfo::RawUntypedSlice => None,

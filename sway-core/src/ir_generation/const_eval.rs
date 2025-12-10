@@ -5,9 +5,15 @@ use std::{
 };
 
 use crate::{
-    TypeInfo, UnifyCheck, engine_threading::*, ir_generation::function::{get_encoding_representation, get_encoding_representation_by_id, get_memory_id}, language::{
-        CallPath, Literal, ty::{self, TyConstantDecl, TyIntrinsicFunctionKind}
-    }, metadata::MetadataManager, semantic_analysis::*
+    engine_threading::*,
+    ir_generation::function::{get_encoding_representation_by_id, get_memory_id},
+    language::{
+        ty::{self, TyConstantDecl, TyIntrinsicFunctionKind},
+        CallPath, Literal,
+    },
+    metadata::MetadataManager,
+    semantic_analysis::*,
+    TypeInfo, UnifyCheck,
 };
 
 use super::{

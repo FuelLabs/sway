@@ -48,6 +48,10 @@ impl Engines {
         &self.obs_engine
     }
 
+    pub fn obs_arc(&self) -> &Arc<ObservabilityEngine> {
+        &self.obs_engine
+    }
+
     /// Removes all data associated with `program_id` from the engines.
     /// It is intended to be used during garbage collection to remove any data that is no longer needed.
     pub fn clear_program(&mut self, program_id: &sway_types::ProgramId) {

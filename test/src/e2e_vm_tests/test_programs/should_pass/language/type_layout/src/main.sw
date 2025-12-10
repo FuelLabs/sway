@@ -1,19 +1,19 @@
 script;
 
 #[inline(never)]
-fn unit(a: ()) {
+fn unit(_a: ()) {
 }
 
 #[inline(never)]
-fn str_0(a: str[0]) {
+fn str_0(_a: str[0]) {
 }
 
 #[inline(never)]
-fn array_0(a: [u64; 0]) {
+fn array_0(_a: [u64; 0]) {
 }
 
 #[inline(never)]
-fn array_1<T>(a: [T; 1]) {
+fn array_1<T>(_a: [T; 1]) {
 }
 
 struct S1<A> { a: A }
@@ -21,26 +21,26 @@ struct S2<A, B> { a: A, b: B }
 struct S3<A, B, C> { a: A, b: B, c: C }
 
 #[inline(never)]
-fn struct_s_1<A>(a: S1<A>) {
+fn struct_s_1<A>(_a: S1<A>) {
 }
 
 #[inline(never)]
-fn struct_s_2<A, B>(a: S2<A, B>) {
+fn struct_s_2<A, B>(_a: S2<A, B>) {
 }
 
 #[inline(never)]
-fn struct_s_3<A, B, C>(a: S3<A, B, C>) {
+fn struct_s_3<A, B, C>(_a: S3<A, B, C>) {
 }
 
 enum E1<A> { A: A }
 enum E2<A, B> { A: A, B: B }
 
 #[inline(never)]
-fn enum_e_1<A>(a: E1<A>) {
+fn enum_e_1<A>(_a: E1<A>) {
 }
 
 #[inline(never)]
-fn enum_e_2<A, B>(a: E2<A, B>) {
+fn enum_e_2<A, B>(_a: E2<A, B>) {
 }
 
 fn main() {
