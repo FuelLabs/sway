@@ -1037,6 +1037,21 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
                     .into();
                 LoweredType::Basic(slice_struct)
             }
+            TypeContent::Union(fields) => {
+                // Unions occupy the size of their largest variant. Lower to an opaque i8 array of
+                // that size so we can store/load without needing per-variant layouts here.
+                let mut max_bytes = 0u64;
+                for field in fields {
+                    // Validate that each variant type is lowerable.
+                    let _ = self.lower_type(*field)?;
+                    max_bytes = max_bytes.max(field.size(self.ir).in_bytes());
+                }
+                let size_bytes = std::cmp::max(1, max_bytes);
+                let len = u32::try_from(size_bytes)
+                    .map_err(|_| LlvmError::Lowering("union size exceeds u32".into()))?;
+                let i8_arr = self.llvm.i8_type().array_type(len);
+                LoweredType::Basic(i8_arr.into())
+            }
             other => {
                 return Err(LlvmError::UnsupportedType(format!(
                     "lowering for type {:?} not implemented",
