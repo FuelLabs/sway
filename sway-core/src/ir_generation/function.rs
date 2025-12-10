@@ -5520,7 +5520,9 @@ pub fn get_runtime_representation(ctx: &Context, t: Type) -> MemoryRepresentatio
                 MemoryRepresentation::Array(Box::new(item), *len)
             }
         }
-        TypeContent::Pointer | TypeContent::TypedPointer(_) => MemoryRepresentation::Blob { len_in_bytes: 8 },
+        TypeContent::Pointer | TypeContent::TypedPointer(_) => {
+            MemoryRepresentation::Blob { len_in_bytes: 8 }
+        }
         TypeContent::Slice => MemoryRepresentation::Blob { len_in_bytes: 16 },
         TypeContent::TypedSlice(_) => MemoryRepresentation::Blob { len_in_bytes: 16 },
         x => todo!("{x:#?}"),

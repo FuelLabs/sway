@@ -105,7 +105,9 @@ impl Inner {
             .push_constant("event", "on_before_method_resolution")
             .push_constant("method", method_name.inner.easy_name().as_str().to_string());
 
-        self.eng.eval_ast_with_scope::<()>(&mut scope, &self.ast).unwrap();
+        self.eng
+            .eval_ast_with_scope::<()>(&mut scope, &self.ast)
+            .unwrap();
         self.apply(ctx.engines);
     }
 
@@ -142,7 +144,9 @@ impl Inner {
             .push_constant("method", method_name.inner.easy_name().as_str().to_string())
             .push_constant("args", args);
 
-        self.eng.eval_ast_with_scope::<()>(&mut scope, &self.ast).unwrap();
+        self.eng
+            .eval_ast_with_scope::<()>(&mut scope, &self.ast)
+            .unwrap();
         self.apply(ctx.engines);
     }
 
@@ -175,7 +179,9 @@ impl Inner {
             .push_constant("is_trivial", is_trivial)
             .push_constant("type_size", type_size.in_bytes());
 
-        self.eng.eval_ast_with_scope::<()>(&mut scope, &self.ast).unwrap();
+        self.eng
+            .eval_ast_with_scope::<()>(&mut scope, &self.ast)
+            .unwrap();
         self.apply(engines);
     }
 }
@@ -223,7 +229,7 @@ impl HarnessCallbackHandler {
                 snapshot.push('\n');
             }
         });
-        
+
         eng.register_fn("trace", {
             let trace = trace.clone();
             move |enable: bool| {
@@ -265,7 +271,7 @@ impl Observer for HarnessCallbackHandler {
     ) {
         let mut inner = self.inner.lock().unwrap();
         inner.on_before_method_resolution(ctx, method_name, args_types);
-        inner.apply(ctx.engines);        
+        inner.apply(ctx.engines);
     }
 
     fn on_after_method_resolution(
