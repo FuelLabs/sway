@@ -1,4 +1,4 @@
-// regex: VAR=v\d+
+// regex: VAR=v\d+v\d+
 
 script {
 // check: fn main

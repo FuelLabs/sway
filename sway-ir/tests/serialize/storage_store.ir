@@ -1,4 +1,4 @@
-// regex: VAR=v\d+
+// regex: VAR=v\d+v\d+
 
 contract {
 // check: fn set_x

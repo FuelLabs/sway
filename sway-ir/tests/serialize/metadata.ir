@@ -1,16 +1,18 @@
+// regex: VAR=v\d+v\d+
+
 script {
     // check: fn main() -> bool, !1 {
     fn main() -> bool, !1 {
         entry():
-        // check: v0 = const bool true, !2
+        // check: $(v0=$VAR) = const bool true, !2
         v0 = const bool true, !2
-        // check: cbr v0, block1(v0), block0(v0), !3
+        // check: cbr $v0, block1($v0), block0($v0), !3
         cbr v0, block1(v0), block0(v0), !3
 
         block0(v1: bool):
-        // check: v2 = call f(), !4
+        // check: $(v2=$VAR) = call f(), !4
         v2 = call f(), !4
-        // check: br block1(v2), !3
+        // check: br block1($v2), !3
         br block1(v2), !3
 
         block1(v3: bool):

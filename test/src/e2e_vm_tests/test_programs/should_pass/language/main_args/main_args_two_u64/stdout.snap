@@ -30,59 +30,59 @@ script {
         local u64 item_
 
         entry():
-        v0 = const u64 0, !5
-        v1 = gtf v0, 10, !11
-        v2 = bitcast v1 to ptr, !12
-        v3 = get_local __ptr { ptr }, buffer, !14
-        v4 = const u64 0
-        v5 = get_elem_ptr v3, __ptr ptr, v4, !15
-        store v2 to v5, !16
-        v6 = get_local __ptr { ptr }, buffer, !18
-        v7 = const u64 0
-        v8 = get_elem_ptr v6, __ptr ptr, v7, !26
-        v9 = load v8, !27
-        v10 = asm(ptr: v9, val) -> u64 val, !29 {
+        v8v1 = const u64 0, !5
+        v373v1 = gtf v8v1, 10, !11
+        v374v1 = bitcast v373v1 to ptr, !12
+        v380v1 = get_local __ptr { ptr }, buffer, !14
+        v21v1 = const u64 0
+        v381v1 = get_elem_ptr v380v1, __ptr ptr, v21v1, !15
+        store v374v1 to v381v1, !16
+        v387v1 = get_local __ptr { ptr }, buffer, !18
+        v39v1 = const u64 0
+        v391v3 = get_elem_ptr v387v1, __ptr ptr, v39v1, !26
+        v493v1 = load v391v3, !27
+        v494v1 = asm(ptr: v493v1, val) -> u64 val, !29 {
             lw     val ptr i0, !30
         }
-        v11 = load v8, !31
-        v12 = const u64 8, !32
-        v13 = add v11, v12, !33
-        store v13 to v8, !35
-        v14 = load v8, !38
-        v15 = asm(ptr: v14, val) -> u64 val, !39 {
+        v496v1 = load v391v3, !31
+        v497v1 = const u64 8, !32
+        v498v1 = add v496v1, v497v1, !33
+        store v498v1 to v391v3, !35
+        v503v1 = load v391v3, !38
+        v504v1 = asm(ptr: v503v1, val) -> u64 val, !39 {
             lw     val ptr i0, !30
         }
-        v16 = load v8, !40
-        v17 = const u64 8, !41
-        v18 = add v16, v17, !42
-        store v18 to v8, !43
-        v19 = get_local __ptr { u64, u64 }, args, !45
-        v20 = const u64 0
-        v21 = get_elem_ptr v19, __ptr u64, v20, !46
-        store v10 to v21, !47
-        v22 = const u64 1
-        v23 = get_elem_ptr v19, __ptr u64, v22, !48
-        store v15 to v23, !49
-        v24 = get_local __ptr { u64, u64 }, args, !50
-        v25 = const u64 0
-        v26 = get_elem_ptr v24, __ptr u64, v25, !51
-        v27 = load v26
-        v28 = get_local __ptr { u64, u64 }, args, !52
-        v29 = const u64 1
-        v30 = get_elem_ptr v28, __ptr u64, v29, !53
-        v31 = load v30
-        v32 = call main_5(v27, v31), !56
-        v33 = get_local __ptr u64, item_, !59
-        store v32 to v33, !59
-        v34 = get_local __ptr u64, item_, !61
-        v35 = const u64 8
-        retd v34 v35, !63
+        v506v1 = load v391v3, !40
+        v507v1 = const u64 8, !41
+        v508v1 = add v506v1, v507v1, !42
+        store v508v1 to v391v3, !43
+        v394v1 = get_local __ptr { u64, u64 }, args, !45
+        v72v1 = const u64 0
+        v395v1 = get_elem_ptr v394v1, __ptr u64, v72v1, !46
+        store v494v1 to v395v1, !47
+        v75v1 = const u64 1
+        v397v1 = get_elem_ptr v394v1, __ptr u64, v75v1, !48
+        store v504v1 to v397v1, !49
+        v111v1 = get_local __ptr { u64, u64 }, args, !50
+        v112v1 = const u64 0
+        v113v1 = get_elem_ptr v111v1, __ptr u64, v112v1, !51
+        v114v1 = load v113v1
+        v115v1 = get_local __ptr { u64, u64 }, args, !52
+        v116v1 = const u64 1
+        v117v1 = get_elem_ptr v115v1, __ptr u64, v116v1, !53
+        v118v1 = load v117v1
+        v119v1 = call main_5(v114v1, v118v1), !56
+        v407v1 = get_local __ptr u64, item_, !59
+        store v119v1 to v407v1, !59
+        v489v1 = get_local __ptr u64, item_, !61
+        v148v1 = const u64 8
+        retd v489v1 v148v1, !63
     }
 
     entry_orig fn main_5(baba !65: u64, keke !66: u64) -> u64, !69 {
         entry(baba: u64, keke: u64):
-        v0 = add baba, keke, !72
-        ret u64 v0
+        v306v1 = add baba, keke, !72
+        ret u64 v306v1
     }
 }
 

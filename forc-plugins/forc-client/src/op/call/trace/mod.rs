@@ -1,7 +1,12 @@
 pub mod storage;
 
 use crate::{cmd, op::call::Abi};
+use ansiterm::Color;
 use anyhow::{anyhow, Result};
+use fuel_abi_types::{
+    abi::program::PanickingCall,
+    revert_info::{RevertInfo, RevertKind},
+};
 use fuel_core_types::tai64::Tai64;
 use fuel_tx::Receipt;
 use fuel_vm::{
@@ -175,6 +180,7 @@ pub enum TraceEvent {
         id: ContractId,
         /// Revert value
         ra: u64,
+        revert_info: Option<RevertInfoSummary>,
     },
     Log {
         index: usize,
@@ -248,6 +254,102 @@ pub enum TraceEvent {
     },
 }
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct PanicLocation {
+    pub function: String,
+    pub pkg: String,
+    pub file: String,
+    pub line: u64,
+    pub column: u64,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct RevertInfoSummary {
+    pub revert_code: u64,
+    pub message: Option<String>,
+    pub value: Option<String>,
+    pub location: Option<PanicLocation>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub backtrace: Vec<PanickingCall>,
+    pub is_known_error: bool,
+    pub is_raw: bool,
+}
+
+impl From<RevertInfo> for RevertInfoSummary {
+    fn from(info: RevertInfo) -> Self {
+        match info.kind {
+            RevertKind::RawRevert => Self {
+                revert_code: info.revert_code,
+                message: None,
+                value: None,
+                location: None,
+                backtrace: vec![],
+                is_known_error: false,
+                is_raw: true,
+            },
+            RevertKind::KnownErrorSignal { err_msg } => Self {
+                revert_code: info.revert_code,
+                message: Some(err_msg),
+                value: None,
+                location: None,
+                backtrace: vec![],
+                is_known_error: true,
+                is_raw: false,
+            },
+            RevertKind::Panic {
+                err_msg,
+                err_val,
+                pos,
+                backtrace,
+            } => Self {
+                revert_code: info.revert_code,
+                message: err_msg,
+                value: err_val,
+                location: Some(PanicLocation {
+                    function: pos.function,
+                    pkg: pos.pkg,
+                    file: pos.file,
+                    line: pos.line,
+                    column: pos.column,
+                }),
+                backtrace,
+                is_known_error: false,
+                is_raw: false,
+            },
+        }
+    }
+}
+
+pub fn first_revert_info(events: &[TraceEvent]) -> Option<(ContractId, RevertInfoSummary)> {
+    events.iter().find_map(|e| {
+        if let TraceEvent::Revert {
+            id,
+            revert_info: Some(info),
+            ..
+        } = e
+        {
+            Some((*id, info.clone()))
+        } else {
+            None
+        }
+    })
+}
+
+fn decode_revert_info(
+    receipts: &[Receipt],
+    abis: &HashMap<ContractId, Abi>,
+    contract_id: ContractId,
+    revert_code: u64,
+) -> Option<RevertInfoSummary> {
+    let program_abi = abis.get(&contract_id).map(|abi| &abi.program);
+    let info =
+        forc_util::tx_utils::revert_info_from_receipts(receipts, program_abi, Some(revert_code))?;
+    if info.revert_code != revert_code {
+        return None;
+    }
+    Some(RevertInfoSummary::from(info))
+}
+
 /// Format transaction trace events into a hierarchical trace visualization.
 /// This function processes trace events sequentially and displays them with proper indentation
 /// based on call depth, similar to the original format_transaction_trace function.
@@ -257,7 +359,6 @@ pub fn display_transaction_trace<W: std::io::Write>(
     labels: &HashMap<ContractId, String>,
     writer: &mut W,
 ) -> Result<()> {
-    use ansiterm::Color;
     let format_contract_with_label =
         |contract_id: ContractId, labels: &HashMap<ContractId, String>| -> String {
             if let Some(label) = labels.get(&contract_id) {
@@ -322,7 +423,7 @@ pub fn display_transaction_trace<W: std::io::Write>(
                     writeln!(writer, "{indent}    ├─ emit ()")?;
                 }
             }
-            TraceEvent::Revert { .. } => {
+            TraceEvent::Revert { revert_info, .. } => {
                 writeln!(
                     writer,
                     "{}    └─ ← {}",
@@ -330,6 +431,9 @@ pub fn display_transaction_trace<W: std::io::Write>(
                     Color::Red.paint("[Revert]")
                 )?;
                 depth = depth.saturating_sub(1);
+                if let Some(details) = revert_info {
+                    write_revert_trace_details(writer, &indent, details)?;
+                }
             }
             TraceEvent::Panic { reason, .. } => {
                 writeln!(
@@ -408,6 +512,124 @@ pub fn display_transaction_trace<W: std::io::Write>(
         }
     }
     writeln!(writer, "Gas used: {total_gas}")?;
+    Ok(())
+}
+
+fn write_revert_trace_details<W: std::io::Write>(
+    writer: &mut W,
+    indent: &str,
+    details: &RevertInfoSummary,
+) -> Result<()> {
+    let detail_prefix = format!("{indent}       ");
+    let write_detail_line = |writer: &mut W, symbol: &str, text: String| -> Result<()> {
+        writeln!(
+            writer,
+            "{}{}",
+            detail_prefix,
+            Color::Red.paint(format!("{symbol} {text}"))
+        )
+        .map_err(Into::into)
+    };
+
+    let has_more_details = !details.is_raw;
+    write_detail_line(
+        writer,
+        if has_more_details { "├─" } else { "└─" },
+        format!("revert code: {:x}", details.revert_code),
+    )?;
+
+    if details.is_known_error {
+        if let Some(msg) = &details.message {
+            write_detail_line(writer, "└─", format!("error message: {msg}"))?;
+        }
+    } else if !details.is_raw {
+        if let Some(err_msg) = &details.message {
+            write_detail_line(writer, "├─", format!("panic message: {err_msg}"))?;
+        }
+        if let Some(err_val) = &details.value {
+            write_detail_line(writer, "├─", format!("panic value:   {err_val}"))?;
+        }
+
+        if let Some(location) = &details.location {
+            let filtered_backtrace: Vec<_> = details
+                .backtrace
+                .iter()
+                .filter(|call| {
+                    !call.pos.function.ends_with("::__entry") && call.pos.function != "__entry"
+                })
+                .collect();
+
+            let branch_symbol = if filtered_backtrace.is_empty() {
+                "└─"
+            } else {
+                "├─"
+            };
+            let location_prefix = if filtered_backtrace.is_empty() {
+                format!("{indent}                     ")
+            } else {
+                format!("{indent}       {}                 ", Color::Red.paint("│"))
+            };
+
+            write_detail_line(
+                writer,
+                branch_symbol,
+                format!("panicked:      in {}", location.function),
+            )?;
+            let loc_line = Color::Red.paint(format!(
+                " └─ at {}, {}:{}:{}",
+                location.pkg, location.file, location.line, location.column
+            ));
+            writeln!(writer, "{}{}", location_prefix, loc_line)?;
+
+            if let Some((first, rest)) = filtered_backtrace.split_first() {
+                let line_prefix = format!("{indent}       ");
+                write_backtrace_call(writer, &line_prefix, first, true)?;
+                for call in rest {
+                    write_backtrace_call(writer, &line_prefix, call, false)?;
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+fn write_backtrace_call<W: std::io::Write>(
+    writer: &mut W,
+    indent_detail: &str,
+    call: &PanickingCall,
+    is_first: bool,
+) -> Result<()> {
+    // Backtrace lines share the same indent; only the first includes the header.
+    let header_prefix = format!("{indent_detail}{}", Color::Red.paint("└─ backtrace:     "));
+    if is_first {
+        writeln!(
+            writer,
+            "{header_prefix}{}",
+            Color::Red.paint(format!("called in {}", call.pos.function))
+        )?;
+        writeln!(
+            writer,
+            "{indent_detail}                   {}",
+            Color::Red.paint(format!(
+                "└─ at {}, {}:{}:{}",
+                call.pos.pkg, call.pos.file, call.pos.line, call.pos.column
+            ))
+        )?;
+    } else {
+        writeln!(
+            writer,
+            "{indent_detail}                  {}",
+            Color::Red.paint(format!("called in {}", call.pos.function))
+        )?;
+        writeln!(
+            writer,
+            "{indent_detail}                   {}",
+            Color::Red.paint(format!(
+                "└─ at {}, {}:{}:{}",
+                call.pos.pkg, call.pos.file, call.pos.line, call.pos.column
+            ))
+        )?;
+    };
     Ok(())
 }
 
@@ -535,6 +757,7 @@ impl<'a> CallRetTracer<'a> {
                     index,
                     id: *id,
                     ra: *ra,
+                    revert_info: decode_revert_info(vm.receipts(), self.abis, *id, *ra),
                 },
 
                 Receipt::Log {
@@ -699,6 +922,99 @@ mod tests {
     }
 
     #[test]
+    fn writes_revert_details_without_backtrace() {
+        let summary = RevertInfoSummary {
+            revert_code: 0xbeef,
+            message: Some("boom".to_string()),
+            value: Some("Value".to_string()),
+            location: Some(PanicLocation {
+                function: "ctx::fn".to_string(),
+                pkg: "pkg".to_string(),
+                file: "file.sw".to_string(),
+                line: 1,
+                column: 1,
+            }),
+            backtrace: vec![],
+            is_known_error: false,
+            is_raw: false,
+        };
+
+        let mut buf = Vec::new();
+        write_revert_trace_details(&mut buf, "", &summary).unwrap();
+        let out = normalize(&String::from_utf8(buf).unwrap());
+
+        let expected = normalize(
+            r#"
+├─ revert code: beef
+├─ panic message: boom
+├─ panic value:   Value
+└─ panicked:      in ctx::fn
+                   └─ at pkg, file.sw:1:1
+"#,
+        );
+
+        assert_eq!(out, expected);
+    }
+
+    #[test]
+    fn writes_revert_details_with_backtrace() {
+        let summary = RevertInfoSummary {
+            revert_code: 0xdead,
+            message: None,
+            value: None,
+            location: Some(PanicLocation {
+                function: "ctx::fn".to_string(),
+                pkg: "pkg".to_string(),
+                file: "file.sw".to_string(),
+                line: 1,
+                column: 1,
+            }),
+            backtrace: vec![
+                PanickingCall {
+                    pos: fuel_abi_types::abi::program::ErrorPosition {
+                        pkg: "pkg".to_string(),
+                        file: "file.sw".to_string(),
+                        line: 2,
+                        column: 3,
+                        function: "caller_fn".to_string(),
+                    },
+                    function: "caller_fn".to_string(),
+                },
+                PanickingCall {
+                    pos: fuel_abi_types::abi::program::ErrorPosition {
+                        pkg: "pkg".to_string(),
+                        file: "file.sw".to_string(),
+                        line: 4,
+                        column: 5,
+                        function: "root_fn".to_string(),
+                    },
+                    function: "root_fn".to_string(),
+                },
+            ],
+            is_known_error: false,
+            is_raw: false,
+        };
+
+        let mut buf = Vec::new();
+        write_revert_trace_details(&mut buf, "│   ", &summary).unwrap();
+        let out = normalize(&String::from_utf8(buf).unwrap());
+
+        let expected = normalize(
+            r#"
+│   ├─ revert code: dead
+│   ├─ panicked:      in ctx::fn
+│   │                  └─ at pkg, file.sw:1:1
+│   └─ backtrace:     called in caller_fn
+│                      └─ at pkg, file.sw:2:3
+│                      called in root_fn
+│                      └─ at pkg, file.sw:4:5
+"#,
+        );
+
+        assert_eq!(out, expected);
+    }
+
+    #[test]
     fn test_display_transaction_trace_revert() {
         let contract1_id = ContractId::from_str(
             "4211b7b7a0c3104e6b9450b7a9e1b7f61912c57c3b319a956d5d7f95b480eb8e",
@@ -736,6 +1052,7 @@ mod tests {
                 index: 3,
                 id: contract2_id,
                 ra: 0,
+                revert_info: None,
             },
             TraceEvent::ScriptResult {
                 index: 4,
@@ -1214,6 +1531,7 @@ mod tests {
                 index: 3,
                 id: contract2_id,
                 ra: 0,
+                revert_info: None,
             },
             TraceEvent::ScriptResult {
                 index: 4,
@@ -1234,6 +1552,106 @@ mod tests {
             │    ├─ [34124] 0xb56b9921112e2fed854ac85357a4914dab561eed98fed0cbe35c1871971dc129::unknown()
             │    │    ├─ emit 0x00000000000000000000000000000001
             │    │    └─ ← [Revert]
+          [ScriptResult] result: Revert, gas_used: 37531
+
+        Transaction failed.
+        Gas used: 0
+        "#;
+
+        assert_eq!(
+            normalize(&trace_output),
+            normalize(expected_output),
+            "\nExpected:\n{expected_output}\n\nActual:\n{trace_output}\n"
+        );
+    }
+
+    #[test]
+    fn test_display_transaction_trace_nested_call_log_revert_with_info() {
+        let contract1_id = ContractId::from_str(
+            "9a7195648cc46c832e490e9bc15ed929fa82801cc0316d1c8e0965bb5e0260a3",
+        )
+        .unwrap();
+        let contract2_id = ContractId::from_str(
+            "b56b9921112e2fed854ac85357a4914dab561eed98fed0cbe35c1871971dc129",
+        )
+        .unwrap();
+
+        let trace_events = vec![
+            TraceEvent::Call {
+                index: 0,
+                method: "unknown".to_string(),
+                arguments: None,
+                to: contract1_id,
+                amount: 0,
+                gas: 46590,
+            },
+            TraceEvent::Call {
+                index: 1,
+                method: "unknown".to_string(),
+                arguments: None,
+                to: contract2_id,
+                amount: 0,
+                gas: 34124,
+            },
+            TraceEvent::LogData {
+                index: 2,
+                id: contract2_id,
+                value: Some("0x00000000000000000000000000000001".to_string()),
+                len: 8,
+            },
+            TraceEvent::Revert {
+                index: 3,
+                id: contract2_id,
+                ra: 0,
+                revert_info: Some(RevertInfoSummary {
+                    revert_code: 0xdeadbeef,
+                    message: Some("boom".to_string()),
+                    value: None,
+                    location: Some(super::PanicLocation {
+                        function: "panic_fn".to_string(),
+                        pkg: "pkg".to_string(),
+                        file: "file.sw".to_string(),
+                        line: 10,
+                        column: 5,
+                    }),
+                    backtrace: vec![super::PanickingCall {
+                        pos: fuel_abi_types::abi::program::ErrorPosition {
+                            pkg: "pkg".to_string(),
+                            file: "file.sw".to_string(),
+                            line: 20,
+                            column: 7,
+                            function: "caller_fn".to_string(),
+                        },
+                        function: "caller_fn".to_string(),
+                    }],
+                    is_known_error: false,
+                    is_raw: false,
+                }),
+            },
+            TraceEvent::ScriptResult {
+                index: 4,
+                result: ScriptExecutionResult::Revert,
+                gas_used: 37531,
+            },
+        ];
+
+        let mut output = Vec::new();
+        display_transaction_trace(0, &trace_events, &HashMap::new(), &mut output).unwrap();
+        let trace_output = String::from_utf8(output).unwrap();
+
+        let expected_output = r#"
+        Traces:
+          [Script]
+            ├─ [46590] 0x9a7195648cc46c832e490e9bc15ed929fa82801cc0316d1c8e0965bb5e0260a3::unknown()
+            │    ├─ [34124] 0xb56b9921112e2fed854ac85357a4914dab561eed98fed0cbe35c1871971dc129::unknown()
+            │    │    ├─ emit 0x00000000000000000000000000000001
+            │    │    └─ ← [Revert]
+            │    │       ├─ revert code: deadbeef
+            │    │       ├─ panic message: boom
+            │    │       ├─ panicked:      in panic_fn
+            │    │       │                  └─ at pkg, file.sw:10:5
+            │    │       └─ backtrace:     called in caller_fn
+            │    │                          └─ at pkg, file.sw:20:7
           [ScriptResult] result: Revert, gas_used: 37531
 
         Transaction failed.

@@ -10,8 +10,7 @@ use crate::{
     cmd,
     constants::DEFAULT_PRIVATE_KEY,
     op::call::{
-        call_function::call_function, list_functions::list_contract_functions,
-        trace::display_transaction_trace, transfer::transfer,
+        call_function::call_function, list_functions::list_contract_functions, transfer::transfer,
     },
     util::tx::{prompt_forc_wallet_password, select_local_wallet_account},
 };
@@ -286,7 +285,7 @@ pub(crate) fn display_detailed_call_info(
         forc_tracing::println_label_green("receipts:", &formatted_receipts);
     }
     if verbosity >= 2 {
-        display_transaction_trace(*tx.result.total_gas(), trace_events, labels, writer)
+        trace::display_transaction_trace(*tx.result.total_gas(), trace_events, labels, writer)
             .map_err(|e| anyhow!("Failed to display transaction trace: {e}"))?;
     }
     if verbosity >= 1 {

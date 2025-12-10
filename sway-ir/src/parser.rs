@@ -283,6 +283,7 @@ mod ir_builder {
                 / op_state_store_quad_word()
                 / op_state_store_word()
                 / op_store()
+                / op_alloc()
 
             rule op_asm() -> IrAstOperation
                 = "asm" _ "(" _ args:(asm_arg() ** comma()) ")" _ ret:asm_ret() meta_idx:comma_metadata_idx()? "{" _
@@ -409,6 +410,11 @@ mod ir_builder {
             rule op_int_to_ptr() -> IrAstOperation
                 = "int_to_ptr" _ val:id() "to" _ ty:ast_ty() {
                     IrAstOperation::IntToPtr(val, ty)
+                }
+
+            rule op_alloc() -> IrAstOperation
+                = "alloc" _ ty:ast_ty() "x" _ count:id() {
+                    IrAstOperation::Alloc(ty, count)
                 }
 
             rule op_load() -> IrAstOperation
@@ -897,6 +903,7 @@ mod ir_builder {
         WideCmp(Predicate, String, String),
         WideModularOp(BinaryOpKind, String, String, String, String),
         Retd(String, String),
+        Alloc(IrAstTy, String),
     }
 
     #[derive(Debug)]
@@ -1302,6 +1309,13 @@ mod ir_builder {
                         block
                             .append(context)
                             .bitcast(*val_map.get(&val).unwrap(), to_ty)
+                            .add_metadatum(context, opt_metadata)
+                    }
+                    IrAstOperation::Alloc(ty, name) => {
+                        let ir_ty = ty.to_ir_type(context);
+                        block
+                            .append(context)
+                            .alloc(ir_ty, *val_map.get(&name).unwrap())
                             .add_metadatum(context, opt_metadata)
                     }
                     IrAstOperation::UnaryOp(op, arg) => block

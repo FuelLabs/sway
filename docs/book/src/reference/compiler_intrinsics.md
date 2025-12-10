@@ -435,3 +435,13 @@ This number is not guaranteed to be stable on different compiler versions.
 `__encoding_mem_id` represents how the type is encoded. It returns 0 when a type does not have encoding representation.
 
 **Constraints:** None
+
+---
+
+```sway
+__alloc<T>(count: u64) -> raw_ptr
+```
+
+**Description:** Allocate `count` contiguous elements of `T` on the heap and return a pointer to the newly allocated memory.
+
+**Constraints** None
