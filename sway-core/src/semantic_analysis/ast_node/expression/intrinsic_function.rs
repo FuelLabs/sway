@@ -1506,7 +1506,7 @@ fn type_check_log(
         ty::TyExpression::type_check(handler, ctx, &arguments[0])?
     };
 
-    // Forbit types with const generics on __log
+    // Forbid types with const generics on __log
     let logged_expr = TypeMetadata::get_logged_expression(&exp, ctx.experimental.new_encoding)
         .map_err(|err| handler.emit_err(err))?;
     if logged_expr.return_type.has_const_generics(ctx.engines) {
