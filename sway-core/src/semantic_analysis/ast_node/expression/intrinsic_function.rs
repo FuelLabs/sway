@@ -10,10 +10,13 @@ use sway_types::{integer_bits::IntegerBits, Spanned};
 use crate::{
     engine_threading::*,
     language::{
-        Literal, parsed::{Expression, ExpressionKind}, ty::{self, TyIntrinsicFunctionKind}
+        parsed::{Expression, ExpressionKind},
+        ty::{self, TyIntrinsicFunctionKind},
+        Literal,
     },
     semantic_analysis::TypeCheckContext,
-    type_system::*, types::TypeMetadata,
+    type_system::*,
+    types::TypeMetadata,
 };
 
 impl ty::TyIntrinsicFunctionKind {
@@ -1494,7 +1497,7 @@ fn type_check_log(
             span,
         }));
     }
-    
+
     let exp = {
         let ctx = ctx
             .by_ref()
@@ -1505,16 +1508,14 @@ fn type_check_log(
 
     // Forbit types with const generics on __log
     let logged_expr = TypeMetadata::get_logged_expression(&exp, ctx.experimental.new_encoding)
-        .map_err(|err| {
-            handler.emit_err(err)
-        })?;
+        .map_err(|err| handler.emit_err(err))?;
     if logged_expr.return_type.has_const_generics(ctx.engines) {
         let err = handler.emit_err(CompileError::ConstGenericNotSupportedHere {
-            span: logged_expr.span.clone()
+            span: logged_expr.span.clone(),
         });
         return Err(err);
     }
-    
+
     let intrinsic_function = ty::TyIntrinsicFunctionKind {
         kind,
         arguments: vec![exp],

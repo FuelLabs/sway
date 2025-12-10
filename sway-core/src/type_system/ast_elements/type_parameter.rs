@@ -293,7 +293,10 @@ impl TypeParameter {
                 .get(p.type_id)
                 .abi_str(handler, ctx, engines, is_root),
             TypeParameter::Const(_) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860 {}", std::backtrace::Backtrace::force_capture())
+                todo!(
+                    "Will be implemented by https://github.com/FuelLabs/sway/issues/6860 {}",
+                    std::backtrace::Backtrace::force_capture()
+                )
             }
         }
     }
