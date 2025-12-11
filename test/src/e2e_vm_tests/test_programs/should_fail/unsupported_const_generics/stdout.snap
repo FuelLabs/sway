@@ -319,7 +319,7 @@ error
 80 |     let _: [u8; UNKNOWN] = [1u8];
    |                 ^^^^^^^ Could not find symbol "UNKNOWN" in this scope.
 81 |     let _: str[UNKNOWN] = __to_str_array("abc");
-82 | }
+82 | 
    |
 ____
 
@@ -330,9 +330,21 @@ error
 80 |     let _: [u8; UNKNOWN] = [1u8];
 81 |     let _: str[UNKNOWN] = __to_str_array("abc");
    |                ^^^^^^^ Could not find symbol "UNKNOWN" in this scope.
-82 | }
+82 | 
+83 |     __log(CrazyStruct::<1>{});
    |
 ____
 
-  Aborting due to 23 errors.
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/unsupported_const_generics/src/main.sw:83:11
+   |
+81 |     let _: str[UNKNOWN] = __to_str_array("abc");
+82 | 
+83 |     __log(CrazyStruct::<1>{});
+   |           ^^^^^^^^^^^^^^^^^^ "const generics" are not supported here.
+84 | }
+   |
+____
+
+  Aborting due to 24 errors.
 error: Failed to compile unsupported_const_generics
