@@ -1708,6 +1708,10 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
         let len_in_bytes = dst_val_ptr_pointee_ty.size(self.context).in_bytes();
 
+        if len_in_bytes == 0 {
+            return Ok(());
+        }
+
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
         let dst_reg = self.value_to_register(dst_val_ptr).unwrap();
 
