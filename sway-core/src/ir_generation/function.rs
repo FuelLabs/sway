@@ -1451,14 +1451,13 @@ impl<'a> FnCompiler<'a> {
                     &arguments[0],
                     context.experimental.new_encoding,
                 )?;
-                let logged_type_id = logged_expression.return_type;
-
                 let log_event_data =
                     self.build_log_event_metadata(context, md_mgr, logged_expression)?;
                 let log_val = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, &arguments[0])?
                 )
                 .expect_register();
+                let logged_type_id = logged_expression.return_type;
                 let log_id = match self.logged_types_map.get(&logged_type_id) {
                     None => {
                         return Err(CompileError::Internal(
