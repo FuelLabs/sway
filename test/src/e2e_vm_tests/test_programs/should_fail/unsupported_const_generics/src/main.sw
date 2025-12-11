@@ -79,4 +79,6 @@ fn main() {
     let _: CrazyEnum<UNKNOWN> = CrazyEnum::A;
     let _: [u8; UNKNOWN] = [1u8];
     let _: str[UNKNOWN] = __to_str_array("abc");
+
+    __log(CrazyStruct::<1>{});
 }
