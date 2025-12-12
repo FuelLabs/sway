@@ -744,7 +744,7 @@ mod tests {
         }
 
         #[test]
-        /// Unit, when not embedded in aggregates, has a size of 0 byte.
+        /// Unit, when not embedded in aggregates, has a size of 0 bytes.
         fn unit() {
             let context = create_context();
 

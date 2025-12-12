@@ -1564,7 +1564,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         instr_reg.clone(),
                         VirtualImmediate18::new(0),
                     )),
-                    comment: "zero zst (originally load byte)".into(),
+                    comment: "initialize zero-sized type".into(),
                     owning_span,
                 });
             }
@@ -1592,8 +1592,8 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             }
             _ => {
                 let msg = format!("Attempt to load {byte_len} bytes sized value.");
-                return Err(CompileError::Internal(
-                    msg.leak::<'static>(),
+                return Err(CompileError::InternalOwned(
+                    msg,
                     owning_span.unwrap_or_else(Span::dummy),
                 ));
             }
@@ -2276,8 +2276,8 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 }
                 _ => {
                     let msg = format!("Attempt to load {byte_len} bytes sized value.");
-                    return Err(CompileError::Internal(
-                        msg.leak::<'static>(),
+                    return Err(CompileError::InternalOwned(
+                        msg,
                         owning_span.unwrap_or_else(Span::dummy),
                     ));
                 }
