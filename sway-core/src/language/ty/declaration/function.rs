@@ -226,6 +226,7 @@ impl MaterializeConstGenerics for TyFunctionDecl {
 /// Rename const generics when the name inside the struct/enum declaration  does not match
 /// the name in the impl.
 fn rename_const_generics_on_function(
+    handler: &Handler,
     engines: &Engines,
     impl_self_or_trait: &TyImplSelfOrTrait,
     function: &mut TyFunctionDecl,
@@ -246,6 +247,7 @@ fn rename_const_generics_on_function(
         ) => {
             let decl = engines.de().get(s);
             rename_const_generics_on_function_inner(
+                handler,
                 engines,
                 function,
                 type_arguments,
@@ -261,6 +263,7 @@ fn rename_const_generics_on_function(
         ) => {
             let decl = engines.de().get(s);
             rename_const_generics_on_function_inner(
+                handler,
                 engines,
                 function,
                 type_arguments,
@@ -272,6 +275,7 @@ fn rename_const_generics_on_function(
 }
 
 fn rename_const_generics_on_function_inner(
+    handler: &Handler,
     engines: &Engines,
     function: &mut TyFunctionDecl,
     type_arguments: &[GenericArgument],
@@ -293,6 +297,7 @@ fn rename_const_generics_on_function_inner(
                     b.name.clone(),
                 );
                 function.subst_inner(&SubstTypesContext {
+                    handler,
                     engines,
                     type_subst_map: Some(&type_subst_map),
                     subst_function_body: true,
@@ -313,7 +318,7 @@ impl DeclRefFunction {
     /// This avoids altering the type_id already in the type map.
     /// Without this it is possible to retrieve a method from the type map unify its types and
     /// the second time it won't be possible to retrieve the same method.
-    pub fn get_method_safe_to_unify(&self, engines: &Engines, type_id: TypeId) -> Self {
+    pub fn get_method_safe_to_unify(&self, handler: &Handler, engines: &Engines, type_id: TypeId) -> Self {
         engines.obs().trace(|| {
             format!(
                 "    before get_method_safe_to_unify: {:?} {:?}",
@@ -332,11 +337,12 @@ impl DeclRefFunction {
 
             if let Some(TyDecl::ImplSelfOrTrait(t)) = method.implementing_type.clone() {
                 let impl_self_or_trait = &*engines.de().get(&t.decl_id);
-                rename_const_generics_on_function(engines, impl_self_or_trait, &mut method);
+                rename_const_generics_on_function(handler, engines, impl_self_or_trait, &mut method);
 
                 let mut type_id_type_parameters = vec![];
                 let mut const_generic_parameters = BTreeMap::default();
                 type_id.extract_type_parameters(
+                    handler,
                     engines,
                     0,
                     &mut type_id_type_parameters,
@@ -391,6 +397,7 @@ impl DeclRefFunction {
             method_type_subst_map.insert(method_implementing_for, type_id);
 
             method.subst(&SubstTypesContext::new(
+                handler,
                 engines,
                 &method_type_subst_map,
                 true,
@@ -434,10 +441,10 @@ impl Named for TyFunctionDecl {
 }
 
 impl IsConcrete for TyFunctionDecl {
-    fn is_concrete(&self, engines: &Engines) -> bool {
+    fn is_concrete(&self, handler: &Handler, engines: &Engines) -> bool {
         self.type_parameters
             .iter()
-            .all(|tp| tp.is_concrete(engines))
+            .all(|tp| tp.is_concrete(handler, engines))
             && self
                 .return_type
                 .type_id

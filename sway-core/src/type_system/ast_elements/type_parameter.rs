@@ -225,10 +225,10 @@ impl SubstTypes for TypeParameter {
 }
 
 impl IsConcrete for TypeParameter {
-    fn is_concrete(&self, engines: &Engines) -> bool {
+    fn is_concrete(&self, handler: &Handler, engines: &Engines) -> bool {
         match self {
-            TypeParameter::Type(p) => p.is_concrete(engines),
-            TypeParameter::Const(p) => p.is_concrete(engines),
+            TypeParameter::Type(p) => p.is_concrete(handler, engines),
+            TypeParameter::Const(p) => p.is_concrete(handler, engines),
         }
     }
 }
@@ -293,7 +293,13 @@ impl TypeParameter {
                 .get(p.type_id)
                 .abi_str(handler, ctx, engines, is_root),
             TypeParameter::Const(_) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                Err(handler.emit_err(CompileError::Internal(
+                    "Unexpected error on const generics",
+                    match self {
+                        TypeParameter::Type(p) => p.name.span(),
+                        TypeParameter::Const(p) => p.span.clone(),
+                    }
+                )))
             }
         }
     }
@@ -447,7 +453,7 @@ impl Spanned for GenericTypeParameter {
 }
 
 impl IsConcrete for GenericTypeParameter {
-    fn is_concrete(&self, engines: &Engines) -> bool {
+    fn is_concrete(&self, _: &Handler, engines: &Engines) -> bool {
         self.type_id.is_concrete(engines, TreatNumericAs::Concrete)
     }
 }
@@ -896,6 +902,7 @@ fn handle_trait(
 
                 let (trait_interface_item_refs, trait_item_refs, trait_impld_item_refs) =
                     trait_decl.retrieve_interface_surface_and_items_and_implemented_items_for_type(
+                        handler,
                         ctx,
                         type_id,
                         trait_name,
@@ -1290,8 +1297,12 @@ impl SubstTypes for ConstGenericParameter {
 }
 
 impl IsConcrete for ConstGenericParameter {
-    fn is_concrete(&self, _engines: &Engines) -> bool {
-        todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+    fn is_concrete(&self, handler: &Handler, _: &Engines) -> bool {
+        handler.emit_err(CompileError::Internal(
+            "Unexpected error on const generics",
+            self.span.clone()
+        ));
+        false
     }
 }
 

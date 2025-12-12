@@ -1,4 +1,4 @@
-use sway_error::handler::Handler;
+use sway_error::{error::CompileError, handler::Handler};
 
 use crate::{
     ast_elements::{binding::SymbolResolveTypeBinding, type_argument::GenericTypeArgument},
@@ -88,7 +88,10 @@ impl ResolveSymbols for Declaration {
             Declaration::TraitFnDeclaration(decl_id) => decl_id.resolve_symbols(handler, ctx),
             Declaration::ConfigurableDeclaration(decl_id) => decl_id.resolve_symbols(handler, ctx),
             Declaration::ConstGenericDeclaration(_) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                handler.emit_err(CompileError::Internal(
+                    "Unexpected error on const generics",
+                    self.span(ctx.engines),
+                ));
             }
         }
     }

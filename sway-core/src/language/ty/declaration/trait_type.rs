@@ -3,6 +3,7 @@ use crate::{
     language::ty::TyDeclParsedType, transform, type_system::*,
 };
 use serde::{Deserialize, Serialize};
+use sway_error::handler::Handler;
 use std::{
     fmt,
     hash::{Hash, Hasher},
@@ -35,7 +36,7 @@ impl Named for TyTraitType {
 }
 
 impl IsConcrete for TyTraitType {
-    fn is_concrete(&self, engines: &Engines) -> bool {
+    fn is_concrete(&self, _: &Handler, engines: &Engines) -> bool {
         if let Some(ty) = &self.ty {
             ty.type_id().is_concrete(engines, TreatNumericAs::Concrete)
         } else {

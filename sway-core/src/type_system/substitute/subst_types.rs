@@ -1,4 +1,5 @@
 use crate::{engine_threading::Engines, type_system::priv_prelude::*};
+use sway_error::handler::Handler;
 use sway_types::Ident;
 
 #[derive(Default)]
@@ -26,6 +27,7 @@ impl std::ops::BitOr for HasChanges {
 }
 
 pub struct SubstTypesContext<'eng, 'tsm> {
+    pub handler: &'eng Handler,
     pub engines: &'eng Engines,
     pub type_subst_map: Option<&'tsm TypeSubstMap>,
     pub subst_function_body: bool,
@@ -33,19 +35,22 @@ pub struct SubstTypesContext<'eng, 'tsm> {
 
 impl<'eng, 'tsm> SubstTypesContext<'eng, 'tsm> {
     pub fn new(
+        handler: &'eng Handler,
         engines: &'eng Engines,
         type_subst_map: &'tsm TypeSubstMap,
         subst_function_body: bool,
     ) -> SubstTypesContext<'eng, 'tsm> {
         SubstTypesContext {
+            handler,
             engines,
             type_subst_map: Some(type_subst_map),
             subst_function_body,
         }
     }
 
-    pub fn dummy(engines: &'eng Engines) -> SubstTypesContext<'eng, 'tsm> {
+    pub fn dummy(handler: &'eng Handler, engines: &'eng Engines) -> SubstTypesContext<'eng, 'tsm> {
         SubstTypesContext {
+            handler,
             engines,
             type_subst_map: None,
             subst_function_body: false,

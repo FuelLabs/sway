@@ -8,10 +8,9 @@ use crate::{
     type_system::{engine::Unification, priv_prelude::*},
 };
 use sway_error::{
-    handler::{ErrorEmitted, Handler},
-    type_error::TypeError,
+    error::CompileError, handler::{ErrorEmitted, Handler}, type_error::TypeError
 };
-use sway_types::Span;
+use sway_types::{Span, Spanned};
 
 use super::occurs_check::OccursCheck;
 
@@ -172,7 +171,10 @@ impl<'a> Unifier<'a> {
                         ConstGenericExpr::AmbiguousVariableExpression { .. },
                         ConstGenericExpr::Literal { .. },
                     ) => {
-                        todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                        handler.emit_err(CompileError::Internal(
+                            "Unexpected error on const generics",
+                            rc.expr().span()
+                        ));
                     }
                     (
                         ConstGenericExpr::AmbiguousVariableExpression { ident: r_ident, .. },
@@ -396,7 +398,12 @@ impl<'a> Unifier<'a> {
             (
                 ConstGenericExpr::AmbiguousVariableExpression { .. },
                 ConstGenericExpr::Literal { .. },
-            ) => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+            ) => {
+                handler.emit_err(CompileError::Internal(
+                    "Unexpected error on const generics",
+                    r.expr().span()
+                ));
+            },
             (
                 ConstGenericExpr::AmbiguousVariableExpression { ident: r_ident, .. },
                 ConstGenericExpr::AmbiguousVariableExpression { ident: e_ident, .. },
@@ -472,7 +479,12 @@ impl<'a> Unifier<'a> {
                             (Some(r), Some(e)) => {
                                 match (r.as_literal_val(), e.as_literal_val()) {
                                     (Some(r), Some(e)) if r == e => {},
-                                    _ => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+                                    _ => {
+                                        handler.emit_err(CompileError::Internal(
+                                            "Unexpected error on const generics",
+                                            r.span()
+                                        ));
+                                    },
                                 }
                             }
                             (Some(_), None) => {
@@ -493,7 +505,13 @@ impl<'a> Unifier<'a> {
                         }
                     }
                     _ => {
-                        todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                        handler.emit_err(CompileError::Internal(
+                            "Unexpected error on const generics",
+                            match received_parameter {
+                                TypeParameter::Type(p) => p.name.span(),
+                                TypeParameter::Const(p) => p.span.clone(),
+                            }
+                        ));
                     }
                 }
             }
@@ -556,7 +574,12 @@ impl<'a> Unifier<'a> {
                             (Some(r), Some(e)) => {
                                 match (r.as_literal_val(), e.as_literal_val()) {
                                     (Some(r), Some(e)) if r == e => {},
-                                    _ => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+                                    _ => {
+                                        handler.emit_err(CompileError::Internal(
+                                            "Unexpected error on const generics",
+                                            r.span(),
+                                        ));
+                                    },
                                 }
                             }
                             (Some(_), None) => {
@@ -576,13 +599,22 @@ impl<'a> Unifier<'a> {
                             (None, None) => {
                                 if received_parameter.name == expected_parameter.name {
                                 } else {
-                                    todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                                    handler.emit_err(CompileError::Internal(
+                                        "Unexpected error on const generics",
+                                        received_parameter.name.span(),
+                                    ));
                                 }
                             },
                         }
                     }
                     _ => {
-                        todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                        handler.emit_err(CompileError::Internal(
+                            "Unexpected error on const generics",
+                            match received_parameter{
+                                TypeParameter::Type(p) => p.name.span(),
+                                TypeParameter::Const(p) => p.span.clone(),
+                            }
+                        ));
                     }
                 }
             }

@@ -483,8 +483,9 @@ impl<'a> TypeCheckContext<'a> {
         self.self_type
     }
 
-    pub(crate) fn subst_ctx(&self) -> SubstTypesContext {
+    pub(crate) fn subst_ctx(&self, handler: &'a Handler) -> SubstTypesContext {
         SubstTypesContext::new(
+            handler,
             self.engines(),
             &self.type_subst,
             !self.code_block_first_pass(),
@@ -548,7 +549,7 @@ impl<'a> TypeCheckContext<'a> {
             call_site_span,
             &mod_path,
             self.self_type(),
-            &self.subst_ctx(),
+            &self.subst_ctx(handler),
         )
     }
 
@@ -623,7 +624,7 @@ impl<'a> TypeCheckContext<'a> {
             enforce_type_arguments,
             type_info_prefix,
             self.self_type(),
-            &self.subst_ctx(),
+            &self.subst_ctx(handler),
             VisibilityCheck::Yes,
         )
     }
@@ -640,7 +641,7 @@ impl<'a> TypeCheckContext<'a> {
             &self.namespace().current_mod_path().clone(),
             qualified_call_path,
             self.self_type(),
-            &self.subst_ctx(),
+            &self.subst_ctx(handler),
             VisibilityCheck::Yes,
         )
         .map(|d| d.expect_typed())
@@ -881,14 +882,16 @@ impl<'a> TypeCheckContext<'a> {
 
     pub(crate) fn get_items_for_type_and_trait_name(
         &self,
+        handler: &Handler,
         type_id: TypeId,
         trait_name: &CallPath,
     ) -> Vec<ty::TyTraitItem> {
-        self.get_items_for_type_and_trait_name_and_trait_type_arguments(type_id, trait_name, &[])
+        self.get_items_for_type_and_trait_name_and_trait_type_arguments(handler, type_id, trait_name, &[])
     }
 
     pub(crate) fn get_items_for_type_and_trait_name_and_trait_type_arguments(
         &self,
+        handler: &Handler,
         type_id: TypeId,
         trait_name: &CallPath,
         trait_type_args: &[GenericArgument],
@@ -899,6 +902,7 @@ impl<'a> TypeCheckContext<'a> {
         let canonical_trait_path = trait_name.to_canonical_path(self.engines(), self.namespace());
 
         TraitMap::get_items_for_type_and_trait_name_and_trait_type_arguments_typed(
+            handler,
             self.namespace().current_module(),
             self.engines,
             type_id,

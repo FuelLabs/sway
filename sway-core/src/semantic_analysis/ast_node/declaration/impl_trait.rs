@@ -974,6 +974,7 @@ fn type_check_trait_implementation(
                 });
 
                 type_decl.subst(&SubstTypesContext::new(
+                    handler,
                     engines,
                     &trait_type_mapping,
                     !ctx.code_block_first_pass(),
@@ -1038,6 +1039,7 @@ fn type_check_trait_implementation(
                 .unwrap_or_else(|_| ty::TyConstantDecl::error(ctx.engines(), const_decl.clone()));
 
                 const_decl.subst(&SubstTypesContext::new(
+                    handler,
                     engines,
                     &trait_type_mapping,
                     !ctx.code_block_first_pass(),
@@ -1087,6 +1089,7 @@ fn type_check_trait_implementation(
                 .unwrap_or_else(|_| ty::TyFunctionDecl::error(&impl_method));
 
                 impl_method.subst(&SubstTypesContext::new(
+                    handler,
                     engines,
                     &trait_type_mapping,
                     !ctx.code_block_first_pass(),
@@ -1118,7 +1121,7 @@ fn type_check_trait_implementation(
             };
 
             let mut const_decl = (*decl_engine.get_constant(interface_decl_ref)).clone();
-            let decl_ref = if const_decl.subst(&ctx.subst_ctx()).has_changes() {
+            let decl_ref = if const_decl.subst(&ctx.subst_ctx(handler)).has_changes() {
                 decl_engine.insert(
                     const_decl,
                     decl_engine
@@ -1208,6 +1211,7 @@ fn type_check_trait_implementation(
                 method.implementing_for = Some(implementing_for);
                 method.replace_decls(&decl_mapping, handler, &mut ctx)?;
                 method.subst(&SubstTypesContext::new(
+                    handler,
                     engines,
                     &trait_type_mapping,
                     !ctx.code_block_first_pass(),
@@ -1225,6 +1229,7 @@ fn type_check_trait_implementation(
                 let mut const_decl = (*decl_engine.get_constant(decl_ref)).clone();
                 const_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
                 const_decl.subst(&SubstTypesContext::new(
+                    handler,
                     engines,
                     &trait_type_mapping,
                     !ctx.code_block_first_pass(),
@@ -1237,6 +1242,7 @@ fn type_check_trait_implementation(
             TyImplItem::Type(decl_ref) => {
                 let mut type_decl = (*decl_engine.get_type(decl_ref)).clone();
                 type_decl.subst(&SubstTypesContext::new(
+                    handler,
                     engines,
                     &trait_type_mapping,
                     !ctx.code_block_first_pass(),
@@ -1415,11 +1421,11 @@ fn type_check_impl_method(
 
             // this subst is required to replace associated types, namely TypeInfo::TraitType.
             let mut impl_method_param_type_id = impl_method_param.type_argument.type_id;
-            impl_method_param_type_id.subst(&ctx.subst_ctx());
+            impl_method_param_type_id.subst(&ctx.subst_ctx(handler));
 
             let mut impl_method_signature_param_type_id =
                 impl_method_signature_param.type_argument.type_id;
-            impl_method_signature_param_type_id.subst(&ctx.subst_ctx());
+            impl_method_signature_param_type_id.subst(&ctx.subst_ctx(handler));
 
             if !UnifyCheck::non_dynamic_equality(engines).check(
                 impl_method_param_type_id,
@@ -1490,11 +1496,11 @@ fn type_check_impl_method(
 
         // this subst is required to replace associated types, namely TypeInfo::TraitType.
         let mut impl_method_return_type_id = impl_method.return_type.type_id;
-        impl_method_return_type_id.subst(&ctx.subst_ctx());
+        impl_method_return_type_id.subst(&ctx.subst_ctx(handler));
 
         let mut impl_method_signature_return_type_type_id =
             impl_method_signature.return_type.type_id;
-        impl_method_signature_return_type_type_id.subst(&ctx.subst_ctx());
+        impl_method_signature_return_type_type_id.subst(&ctx.subst_ctx(handler));
 
         if !UnifyCheck::non_dynamic_equality(engines).check(
             impl_method_return_type_id,
@@ -1657,10 +1663,10 @@ fn type_check_const_decl(
 
     // this subst is required to replace associated types, namely TypeInfo::TraitType.
     let mut const_decl_type_id = const_decl.type_ascription.type_id;
-    const_decl_type_id.subst(&ctx.subst_ctx());
+    const_decl_type_id.subst(&ctx.subst_ctx(handler));
 
     let mut const_decl_signature_type_id = const_decl_signature.type_ascription.type_id;
-    const_decl_signature_type_id.subst(&ctx.subst_ctx());
+    const_decl_signature_type_id.subst(&ctx.subst_ctx(handler));
 
     // unify the types from the constant with the constant signature
     if !UnifyCheck::non_dynamic_equality(engines)
@@ -1877,6 +1883,7 @@ fn handle_supertraits(
                     // this trait.
                     let (trait_interface_surface_items_ids, trait_impld_item_refs) = trait_decl
                         .retrieve_interface_surface_and_implemented_items_for_type(
+                            handler,
                             ctx.by_ref(),
                             self_type,
                             &supertrait.name,

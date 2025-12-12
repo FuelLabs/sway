@@ -284,6 +284,7 @@ impl TyTraitDecl {
     /// Retrieves the interface surface and implemented items for this trait.
     pub(crate) fn retrieve_interface_surface_and_implemented_items_for_type(
         &self,
+        handler: &Handler,
         ctx: TypeCheckContext,
         type_id: TypeId,
         call_path: &CallPath,
@@ -315,7 +316,7 @@ impl TyTraitDecl {
 
         // Retrieve the implemented items for this type.
         for item in ctx
-            .get_items_for_type_and_trait_name(type_id, call_path)
+            .get_items_for_type_and_trait_name(handler, type_id, call_path)
             .into_iter()
         {
             match &item {
@@ -338,6 +339,7 @@ impl TyTraitDecl {
     /// this trait.
     pub(crate) fn retrieve_interface_surface_and_items_and_implemented_items_for_type(
         &self,
+        handler: &Handler,
         ctx: &TypeCheckContext,
         type_id: TypeId,
         call_path: &CallPath,
@@ -403,6 +405,7 @@ impl TyTraitDecl {
 
         for item in ctx
             .get_items_for_type_and_trait_name_and_trait_type_arguments(
+                handler,
                 type_id,
                 call_path,
                 generic_args,
@@ -415,6 +418,7 @@ impl TyTraitDecl {
                     let name = method.name.clone();
                     let r = if method
                         .subst(&SubstTypesContext::new(
+                            handler,
                             engines,
                             &type_mapping,
                             !ctx.code_block_first_pass(),
@@ -438,6 +442,7 @@ impl TyTraitDecl {
                     let name = const_decl.call_path.suffix.clone();
                     let r = if const_decl
                         .subst(&SubstTypesContext::new(
+                            handler,
                             engines,
                             &type_mapping,
                             !ctx.code_block_first_pass(),
@@ -458,6 +463,7 @@ impl TyTraitDecl {
                     let name = t.name.clone();
                     let r = if t
                         .subst(&SubstTypesContext::new(
+                            handler,
                             engines,
                             &type_mapping,
                             !ctx.code_block_first_pass(),
@@ -517,6 +523,7 @@ impl TyTraitDecl {
                 ty::TyTraitInterfaceItem::TraitFn(decl_ref) => {
                     let mut method = (*decl_engine.get_trait_fn(decl_ref)).clone();
                     method.subst(&SubstTypesContext::new(
+                        handler,
                         engines,
                         &type_mapping,
                         !ctx.code_block_first_pass(),
@@ -548,6 +555,7 @@ impl TyTraitDecl {
                 ty::TyTraitItem::Fn(decl_ref) => {
                     let mut method = (*decl_engine.get_function(decl_ref)).clone();
                     method.subst(&SubstTypesContext::new(
+                        handler,
                         engines,
                         &type_mapping,
                         !ctx.code_block_first_pass(),
@@ -565,6 +573,7 @@ impl TyTraitDecl {
                 ty::TyTraitItem::Constant(decl_ref) => {
                     let mut const_decl = (*decl_engine.get_constant(decl_ref)).clone();
                     const_decl.subst(&SubstTypesContext::new(
+                        handler,
                         engines,
                         &type_mapping,
                         !ctx.code_block_first_pass(),
@@ -591,6 +600,7 @@ impl TyTraitDecl {
                 ty::TyTraitItem::Type(decl_ref) => {
                     let mut type_decl = (*decl_engine.get_type(decl_ref)).clone();
                     type_decl.subst(&SubstTypesContext::new(
+                        handler,
                         engines,
                         &type_mapping,
                         !ctx.code_block_first_pass(),

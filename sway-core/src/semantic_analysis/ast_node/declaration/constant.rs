@@ -64,7 +64,7 @@ impl ty::TyConstantDecl {
             .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
         // this subst is required to replace associated types, namely TypeInfo::TraitType.
-        type_ascription.type_id.subst(&ctx.subst_ctx());
+        type_ascription.type_id.subst(&ctx.subst_ctx(handler));
 
         if !is_screaming_snake_case(name.as_str()) {
             handler.emit_warn(CompileWarning {
