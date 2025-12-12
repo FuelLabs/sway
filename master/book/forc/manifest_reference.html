@@ -1,0 +1,501 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Manifest Reference - The Sway Programming Language</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">The Sway Programming Language</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/FuelLabs/sway" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="manifest-reference"><a class="header" href="#manifest-reference">Manifest Reference</a></h1>
+<p>The <code>Forc.toml</code> (the <em>manifest</em> file) is a compulsory file for each package and it is written in [TOML] format. <code>Forc.toml</code> consists of the following fields:</p>
+<ul>
+<li>
+<p><a href="#the-project-section"><code>[project]</code></a> — Defines a sway project.</p>
+<ul>
+<li><code>name</code> — The name of the project.</li>
+<li><code>version</code> — The version of the project.</li>
+<li><code>description</code> — A description of the project.</li>
+<li><code>authors</code> — The authors of the project.</li>
+<li><code>organization</code> — The organization of the project.</li>
+<li><code>license</code> — The project license.</li>
+<li><code>homepage</code> — URL of the project homepage.</li>
+<li><code>repository</code> — URL of the project source repository.</li>
+<li><code>documentation</code> — URL of the project documentation.</li>
+<li><code>categories</code> —  Categories of the project.</li>
+<li><code>keywords</code> —  Keywords the project.</li>
+<li><code>entry</code> — The entry point for the compiler to start parsing from.
+<ul>
+<li>For the recommended way of selecting an entry point of large libraries please take a look at: <a href="./../sway-program-types/libraries.html">Libraries</a></li>
+</ul>
+</li>
+<li><code>implicit-std</code> -  Controls whether provided <code>std</code> version (with the current <code>forc</code> version) will get added as a dependency <em>implicitly</em>. <em>Unless you know what you are doing, leave this as default.</em></li>
+<li><code>forc-version</code> - The minimum forc version required for this project to work properly.</li>
+<li><code>metadata</code> - Metadata for the project; can be used by tools which would like to store package configuration in <code>Forc.toml</code>.</li>
+<li><code>experimental</code> - <a href="../reference/experimental_features.html">Experimental features</a> enabled or disabled during the compilation.</li>
+</ul>
+</li>
+<li>
+<p><a href="#the-dependencies-section"><code>[dependencies]</code></a> — Defines the dependencies.</p>
+</li>
+<li>
+<p><code>[network]</code> — Defines a network for forc to interact with.</p>
+<ul>
+<li><code>url</code> — URL of the network.</li>
+</ul>
+</li>
+<li>
+<p><a href="#the-build-profile-section"><code>[build-profile]</code></a> - Defines the build profiles.</p>
+</li>
+<li>
+<p><a href="#the-patch-section"><code>[patch]</code></a> - Defines the patches.</p>
+</li>
+<li>
+<p><a href="#the-contract-dependencies-section"><code>[contract-dependencies]</code></a> - Defines the contract dependencies.</p>
+</li>
+</ul>
+<h2 id="the-project-section"><a class="header" href="#the-project-section">The <code>[project]</code> Section</a></h2>
+<p>An example <code>Forc.toml</code> is shown below. Under <code>[project]</code> the following fields are optional:</p>
+<ul>
+<li><code>authors</code></li>
+<li><code>organization</code></li>
+<li><code>version</code></li>
+<li><code>description</code></li>
+<li><code>homepage</code></li>
+<li><code>repository</code></li>
+<li><code>documentation</code></li>
+<li><code>categories</code></li>
+<li><code>keywords</code></li>
+<li><code>experimental</code></li>
+</ul>
+<p>Also for the following fields, a default value is provided so omitting them is allowed:</p>
+<ul>
+<li><code>entry</code> - (default : <code>main.sw</code> )</li>
+<li><code>implicit-std</code> - (default : <code>true</code> )</li>
+</ul>
+<pre><code class="language-toml">[project]
+authors = ["user"]
+entry = "main.sw"
+description = "Wallet contract"
+version = "1.0.0"
+homepage = "https://example.com/"
+repository = "https://example.com/"
+documentation = "https://example.com/"
+organization = "Fuel_Labs"
+license = "Apache-2.0"
+name = "wallet_contract"
+categories = ["example"]
+keywords = ["example"]
+experimental = { some_feature = true, some_other_feature = false }
+
+[project.metadata]
+indexing = { namespace = "counter-contract", schema_path = "out/release/counter-contract-abi.json" }
+</code></pre>
+<h3 id="metadata-section-in-forctoml"><a class="header" href="#metadata-section-in-forctoml">Metadata Section in <code>Forc.toml</code></a></h3>
+<p>The <code>[project.metadata]</code> section provides a dedicated space for external tools and plugins to store their configuration in <code>Forc.toml</code>. The metadata key names are arbitrary and do not need to match the tool's name.</p>
+<h4 id="workspace-vs-project-metadata"><a class="header" href="#workspace-vs-project-metadata">Workspace vs Project Metadata</a></h4>
+<p>Metadata can be defined at two levels:</p>
+<p>Workspace level - defined in the workspace's root <code>Forc.toml</code>:</p>
+<pre><code class="language-toml">[workspace.metadata]
+my_tool = { shared_setting = "value" }
+</code></pre>
+<p>Project level - defined in individual project's <code>Forc.toml</code>:</p>
+<pre><code class="language-toml">[project.metadata.any_name_here]
+option1 = "value"
+option2 = "value"
+
+[project.metadata.my_custom_config]
+setting1 = "value"
+setting2 = "value"
+</code></pre>
+<p>Example for an indexing tool:</p>
+<pre><code class="language-toml">[project.metadata.indexing]
+namespace = "counter-contract"
+schema_path = "out/release/counter-contract-abi.json"
+</code></pre>
+<p>When both workspace and project metadata exist:</p>
+<ul>
+<li>Project-level metadata should take precedence over workspace metadata</li>
+<li>Tools can choose to merge workspace and project settings</li>
+<li>Consider documenting your tool's metadata inheritance behavior</li>
+</ul>
+<h4 id="guidelines-for-plugin-developers"><a class="header" href="#guidelines-for-plugin-developers">Guidelines for Plugin Developers</a></h4>
+<p>Best Practices</p>
+<ul>
+<li>Choose clear, descriptive metadata key names</li>
+<li>Document the exact metadata key name your tool expects</li>
+<li>Don't require <code>Forc.toml</code> if tool can function without it</li>
+<li>Consider using TOML format for dedicated config files</li>
+<li>Specify how your tool handles workspace vs project metadata</li>
+</ul>
+<p>Implementation Notes</p>
+<ul>
+<li>The metadata section is optional</li>
+<li>Forc does not parse metadata contents</li>
+<li>Plugin developers handle their own configuration parsing</li>
+<li>Choose unique metadata keys to avoid conflicts with other tools</li>
+</ul>
+<h4 id="example-use-cases"><a class="header" href="#example-use-cases">Example Use Cases</a></h4>
+<ul>
+<li>Documentation generation settings</li>
+<li>Formatter configurations</li>
+<li>Debugger options</li>
+<li>Wallet integration</li>
+<li>Contract indexing</li>
+<li>Testing frameworks</li>
+</ul>
+<p>This allows for a streamlined developer experience while maintaining clear separation between core Forc functionality and third-party tools.</p>
+<h4 id="external-tooling-examples"><a class="header" href="#external-tooling-examples">External Tooling Examples</a></h4>
+<ul>
+<li><a href="https://github.com/FuelLabs/example-forc-plugins/tree/master/forc-index-ts">forc-index-ts</a>: A TypeScript CLI tool for parsing <code>Forc.toml</code> metadata to read contract ABI JSON file.</li>
+<li><a href="https://github.com/FuelLabs/example-forc-plugins/tree/master/forc-index-rs">forc-index-rs</a>: A Rust CLI tool for parsing <code>Forc.toml</code> metadata to read contract ABI JSON file.</li>
+</ul>
+<h2 id="the-dependencies-section"><a class="header" href="#the-dependencies-section">The <code>[dependencies]</code> Section</a></h2>
+<p>The following fields can be provided with a dependency:</p>
+<ul>
+<li><code>version</code> - Desired version of the dependency</li>
+<li><code>namespace</code> - If the specified registry source (by its version) also has a namespace associated with it (optional)</li>
+<li><code>path</code> - The path of the dependency (if it is local)</li>
+<li><code>git</code> - The URL of the git repo hosting the dependency</li>
+<li><code>branch</code> - The desired branch to fetch from the git repo</li>
+<li><code>tag</code> - The desired tag to fetch from the git repo</li>
+<li><code>rev</code> - The desired rev (i.e. commit hash) reference</li>
+</ul>
+<p>Please see <a href="./dependencies.html">dependencies</a> for details</p>
+<h2 id="the-network-section"><a class="header" href="#the-network-section">The <code>[network]</code> Section</a></h2>
+<p>For the following fields, a default value is provided so omitting them is allowed:</p>
+<ul>
+<li><code>URL</code> - (default: <em><a href="http://127.0.0.1:4000">http://127.0.0.1:4000</a></em>)</li>
+</ul>
+<h2 id="the-build-profile-section"><a class="header" href="#the-build-profile-section">The <code>[build-profile.*]</code> Section</a></h2>
+<p>The <code>[build-profile]</code> tables provide a way to customize compiler settings such as debug options.</p>
+<p>The following fields can be provided for a build-profile:</p>
+<ul>
+<li><code>print-ast</code> - Whether to print out the generated AST or not, defaults to false.</li>
+<li><code>print-dca-graph</code> - Whether to print out the computed Dead Code Analysis (DCA) graph (in GraphViz DOT format), defaults to false.</li>
+<li><code>print-dca-graph-url-format</code> - The URL format to be used in the generated DOT file, an example for VS Code would be: <code>vscode://file/{path}:{line}:{col}</code>.</li>
+<li><code>print-ir</code> - Whether to print out the generated Sway IR (Intermediate Representation) or not, defaults to false.</li>
+<li><code>print-asm</code> - Whether to print out the generated ASM (assembler), defaults to false.</li>
+<li><code>terse</code> - Terse mode. Limited warning and error output, defaults to false.</li>
+<li><code>time_phases</code> - Whether to output the time elapsed over each part of the compilation process, defaults to false.</li>
+<li><code>include_tests</code> -  Whether or not to include test functions in parsing, type-checking, and code generation. This is set to true by invocations like <code>forc test</code>, but defaults to false.</li>
+<li><code>error_on_warnings</code> - Whether to treat errors as warnings, defaults to false.</li>
+<li><code>backtrace</code> - Defines which panicking functions to include in a <code>panic</code> backtrace. Possible values are <code>all</code>, <code>all_except_never</code>, <code>only_always</code>, and <code>none</code>. Defaults to <code>all_except_never</code> and <code>only_always</code> in the default <code>debug</code> and <code>release</code> profiles, respectively. For more information on backtracing see the chapter <a href="../basics/error_handling.html#irrecoverable-errors">Irrecoverable Errors</a>.</li>
+</ul>
+<p>There are two default <code>[build-profile]</code> available with every manifest file. These are <code>debug</code> and <code>release</code> profiles. If you want to override these profiles, you can provide them explicitly in the manifest file like the following example:</p>
+<pre><code class="language-toml">[project]
+authors = ["user"]
+entry = "main.sw"
+organization = "Fuel_Labs"
+license = "Apache-2.0"
+name = "wallet_contract"
+
+[build-profile.debug]
+print-asm = { virtual = false, allocated = false, final = true }
+print-ir = { initial = false, final = true, modified = false, passes = []}
+terse = false
+
+[build-profile.release]
+print-asm = { virtual = true, allocated = false, final = true }
+print-ir = { initial = true, final = false, modified = true, passes = ["dce", "sroa"]}
+terse = true
+</code></pre>
+<p>Since <code>release</code> and <code>debug</code> are implicitly included in every manifest file, you can use them by just passing <code>--release</code> or by not passing anything (<code>debug</code> is default). For using a user defined build profile there is <code>--build-profile &lt;profile name&gt;</code> option available to the relevant commands. (For an example see <a href="../forc/commands/forc_build.html">forc-build</a>)</p>
+<p>Note that providing the corresponding CLI options (like <code>--asm</code>) will override the selected build profile. For example if you pass both <code>--release</code> and <code>--asm all</code>, <code>release</code> build profile is overridden and resulting build profile would have a structure like the following:</p>
+<pre><code class="language-toml">print-ast = false
+print-ir = { initial = false, final = false, modified = false, passes = []}
+print-asm = { virtual = true, allocated = true, final = true }
+terse = false
+time-phases = false
+include-tests = false
+error-on-warnings = false
+experimental-private-modules = false
+</code></pre>
+<h2 id="the-patch-section"><a class="header" href="#the-patch-section">The <code>[patch]</code> Section</a></h2>
+<p>The <code>[patch]</code> section of <code>Forc.toml</code> can be used to override dependencies with other copies. This is useful for testing local changes, using unreleased features, or debugging dependencies.</p>
+<h3 id="patching-git-dependencies"><a class="header" href="#patching-git-dependencies">Patching Git Dependencies</a></h3>
+<p>The example provided below patches <code>https://github.com/fuellabs/sway</code> with the <code>test</code> branch of the same repo.</p>
+<pre><code class="language-toml">[project]
+authors = ["user"]
+entry = "main.sw"
+organization = "Fuel_Labs"
+license = "Apache-2.0"
+name = "wallet_contract"
+
+[dependencies]
+
+[patch.'https://github.com/fuellabs/sway']
+std = { git = "https://github.com/fuellabs/sway", branch = "test" }
+</code></pre>
+<p>In the example above, <code>std</code> is patched with the <code>test</code> branch from <code>std</code> repo. You can also patch git dependencies with dependencies defined with a path.</p>
+<pre><code class="language-toml">[patch.'https://github.com/fuellabs/sway']
+std = { path = "/path/to/local_std_version" }
+</code></pre>
+<p>Just like <code>std</code> you can also patch dependencies you declared with a git repo.</p>
+<pre><code class="language-toml">[project]
+authors = ["user"]
+entry = "main.sw"
+organization = "Fuel_Labs"
+license = "Apache-2.0"
+name = "wallet_contract"
+
+[dependencies]
+foo = { git = "https://github.com/foo/foo", branch = "master" }
+
+[patch.'https://github.com/foo']
+foo = { git = "https://github.com/foo/foo", branch = "test" }
+</code></pre>
+<h3 id="patching-registry-dependencies"><a class="header" href="#patching-registry-dependencies">Patching Registry Dependencies</a></h3>
+<p>You can also patch dependencies from the registry (forc.pub) in the same way. This is particularly useful for testing local changes to <code>std</code> or other registry packages.</p>
+<pre><code class="language-toml">[project]
+authors = ["user"]
+entry = "main.sw"
+license = "Apache-2.0"
+name = "my_contract"
+
+[dependencies]
+std = "0.70.1"
+
+[patch.'forc.pub']
+std = { path = "../sway/sway-lib-std" }
+</code></pre>
+<p>In the example above, even though <code>std</code> version <code>0.70.1</code> would normally be fetched from the registry, the local path version is used instead.</p>
+<p>You can also patch registry dependencies with a git repository:</p>
+<pre><code class="language-toml">[dependencies]
+std = "0.70.1"
+
+[patch.'forc.pub']
+std = { git = "https://github.com/fuellabs/sway", branch = "my-feature" }
+</code></pre>
+<h3 id="important-notes"><a class="header" href="#important-notes">Important Notes</a></h3>
+<ul>
+<li><strong>Quotes are required</strong>: Each key after <code>[patch]</code> must be in quotes (e.g., <code>[patch.'forc.pub']</code>) because they contain special characters. Without quotes, TOML will interpret dots as nested tables.</li>
+<li><strong>Source matching</strong>: Git patches match Git dependencies, and registry patches match registry dependencies.</li>
+</ul>
+<h2 id="the-contract-dependencies-section"><a class="header" href="#the-contract-dependencies-section">The <code>[contract-dependencies]</code> section</a></h2>
+<p>The <code>[contract-dependencies]</code> table can be used to declare contract dependencies for a Sway contract or script. Contract dependencies are the set of contracts that our contract or script may interact with. Declaring <code>[contract-dependencies]</code> makes it easier to refer to contracts in your Sway source code without having to manually update IDs each time a new version is deployed. Instead, we can use forc to pin and update contract dependencies just like we do for regular library dependencies.</p>
+<p>Contracts declared under <code>[contract-dependencies]</code> are built and pinned just like regular <code>[dependencies]</code> however rather than importing each contract dependency's entire public namespace we instead import their respective contract IDs as <code>CONTRACT_ID</code> constants available via each contract dependency's namespace root. This means you can use a contract dependency's ID as if it were declared as a <code>pub const</code> in the root of the contract dependency package as demonstrated in the example below.</p>
+<p>Entries under <code>[contract-dependencies]</code> can be declared in the same way that <code>[dependencies]</code> can be declared. That is, they can refer to the <code>path</code> or <code>git</code> source of another contract. Note that entries under <code>[contract-dependencies]</code> must refer to contracts and will otherwise produce an error.</p>
+<p>Example <code>Forc.toml</code>:</p>
+<pre><code class="language-toml">[project]
+authors = ["user"]
+entry = "main.sw"
+organization = "Fuel_Labs"
+license = "Apache-2.0"
+name = "wallet_contract"
+
+[contract-dependencies]
+foo = { path = "../foo" }
+</code></pre>
+<p>Example usage:</p>
+<pre><code class="language-sway">script;
+
+fn main() {
+  let foo_id = foo::CONTRACT_ID;
+}
+</code></pre>
+<p>Because the ID of a contract is computed deterministically, rebuilding the same contract would always result in the same contract ID. Since two contracts with the same contract ID cannot be deployed on the blockchain, a "salt" factor is needed to modify the contract ID. For each contract dependency declared under <code>[contract-dependencies]</code>, <code>salt</code> can be specified. An example is shown below:</p>
+<pre><code class="language-toml">[contract-dependencies]
+foo = { path = "../foo", salt = "0x1000000000000000000000000000000000000000000000000000000000000000" }
+</code></pre>
+<p>For contract dependencies that do not specify any value for <code>salt</code>, a default of all zeros for <code>salt</code> is implicitly applied.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../forc/index.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../forc/workspaces.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../forc/index.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../forc/workspaces.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
