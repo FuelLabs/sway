@@ -117,7 +117,7 @@ fn convert_resolved_type_info(
         }};
     }
 
-    Ok(match ast_type {
+    let t = match ast_type {
         // See comment in convert_literal_to_value() above.
         TypeInfo::UnsignedInteger(IntegerBits::V256) => Type::get_uint256(context),
         TypeInfo::UnsignedInteger(IntegerBits::Eight) => Type::get_uint8(context),
@@ -262,5 +262,11 @@ fn convert_resolved_type_info(
         TypeInfo::ErrorRecovery(_) => reject_type!("Error recovery"),
         TypeInfo::TraitType { .. } => reject_type!("TraitType"),
         TypeInfo::StringArray(..) => reject_type!("String Array with non literal length"),
-    })
+    };
+
+    engines
+        .obs()
+        .raise_on_after_ir_type_resolution(engines, context, ast_type, &t);
+
+    Ok(t)
 }

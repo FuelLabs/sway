@@ -802,7 +802,7 @@ impl FuelAsmBuilder<'_, '_> {
                     .unwrap()
                     .size(self.context)
                     .in_words()
-                    == 1));
+                    <= 1));
             }
         }
 

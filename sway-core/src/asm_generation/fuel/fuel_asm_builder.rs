@@ -1558,6 +1558,16 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         let instr_reg = self.reg_seqr.next();
 
         match byte_len {
+            0 => {
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::MOVI(
+                        instr_reg.clone(),
+                        VirtualImmediate18::new(0),
+                    )),
+                    comment: "initialize zero-sized type".into(),
+                    owning_span,
+                });
+            }
             1 => {
                 self.cur_bytecode.push(Op {
                     opcode: Either::Left(VirtualOp::LB(
@@ -1581,8 +1591,9 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 });
             }
             _ => {
-                return Err(CompileError::Internal(
-                    "Attempt to load {byte_len} bytes sized value.",
+                let msg = format!("Attempt to load {byte_len} bytes sized value.");
+                return Err(CompileError::InternalOwned(
+                    msg,
                     owning_span.unwrap_or_else(Span::dummy),
                 ));
             }
@@ -1696,6 +1707,10 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             .expect("already verified to be a pointer");
 
         let len_in_bytes = dst_val_ptr_pointee_ty.size(self.context).in_bytes();
+
+        if len_in_bytes == 0 {
+            return Ok(());
+        }
 
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
         let dst_reg = self.value_to_register(dst_val_ptr).unwrap();
@@ -2236,6 +2251,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             let val_reg = self.value_to_register(stored_val)?;
 
             match byte_len {
+                0 => {}
                 1 => {
                     self.cur_bytecode.push(Op {
                         opcode: Either::Left(VirtualOp::SB(
@@ -2259,8 +2275,9 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     });
                 }
                 _ => {
-                    return Err(CompileError::Internal(
-                        "Attempt to load {byte_len} bytes sized value.",
+                    let msg = format!("Attempt to load {byte_len} bytes sized value.");
+                    return Err(CompileError::InternalOwned(
+                        msg,
                         owning_span.unwrap_or_else(Span::dummy),
                     ));
                 }
