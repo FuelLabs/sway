@@ -42,26 +42,15 @@ where
 
         let name = name.as_raw_ident_str();
 
-        if body.is_empty() {
-            format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration_expanded} AbiEncode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
-                #[allow(dead_code, deprecated)]
-                fn is_encode_trivial() -> bool {{ {is_trivial_body} }}
-                #[allow(dead_code, deprecated)]
-                fn abi_encode(self, buffer: Buffer) -> Buffer {{
-                    buffer
-                }}
-            }}")
-        } else {
-            format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration_expanded} AbiEncode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
-                #[allow(dead_code, deprecated)]
-                fn is_encode_trivial() -> bool {{ {is_trivial_body} }}
-                #[allow(dead_code, deprecated)]
-                fn abi_encode(self, buffer: Buffer) -> Buffer {{
-                    {body}
-                    buffer
-                }}
-            }}")
-        }
+        format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration_expanded} AbiEncode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
+            #[allow(dead_code, deprecated)]
+            fn is_encode_trivial() -> bool {{ {is_trivial_body} }}
+            #[allow(dead_code, deprecated)]
+            fn abi_encode(self, buffer: Buffer) -> Buffer {{
+                {body}
+                buffer
+            }}
+        }}")
     }
 
     fn generate_abi_decode_code(
@@ -80,25 +69,20 @@ where
 
         let name = name.as_raw_ident_str();
 
-        if body == "Self {  }" {
-            format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration_expanded} AbiDecode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
-                #[allow(dead_code, deprecated)]
-                fn is_decode_trivial() -> bool {{ {is_trivial_body} }}
-                #[allow(dead_code, deprecated)]
-                fn abi_decode(ref mut _buffer: BufferReader) -> Self {{
-                    {body}
-                }}
-            }}")
+        let buffer_arg = if body == "Self {  }" {
+            "_buffer"
         } else {
-            format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration_expanded} AbiDecode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
-                #[allow(dead_code, deprecated)]
-                fn is_decode_trivial() -> bool {{ {is_trivial_body} }}
-                #[allow(dead_code, deprecated)]
-                fn abi_decode(ref mut buffer: BufferReader) -> Self {{
-                    {body}
-                }}
-            }}")
-        }
+            "buffer"
+        };
+
+        format!("#[allow(dead_code, deprecated)] impl{type_parameters_declaration_expanded} AbiDecode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
+            #[allow(dead_code, deprecated)]
+            fn is_decode_trivial() -> bool {{ {is_trivial_body} }}
+            #[allow(dead_code, deprecated)]
+            fn abi_decode(ref mut {buffer_arg}: BufferReader) -> Self {{
+                {body}
+            }}
+        }}")
     }
 
     fn generate_abi_encode_struct_body(&self, _engines: &Engines, decl: &TyStructDecl) -> String {
