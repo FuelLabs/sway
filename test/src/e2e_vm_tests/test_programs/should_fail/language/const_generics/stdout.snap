@@ -1,7 +1,7 @@
 ---
 source: test/src/snapshot/mod.rs
 ---
-> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/language/const_generics
+> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/language/const_generics --no-experimental const_generics
 exit status: 1
 output:
     Building test/src/e2e_vm_tests/test_programs/should_fail/language/const_generics
@@ -22,7 +22,7 @@ ____
   Aborting due to 1 error.
 error: Failed to compile const_generics
 
-> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/language/const_generics --experimental const_generics
+> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/language/const_generics
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_fail/language/const_generics
