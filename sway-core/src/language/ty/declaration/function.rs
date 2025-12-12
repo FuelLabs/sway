@@ -318,7 +318,12 @@ impl DeclRefFunction {
     /// This avoids altering the type_id already in the type map.
     /// Without this it is possible to retrieve a method from the type map unify its types and
     /// the second time it won't be possible to retrieve the same method.
-    pub fn get_method_safe_to_unify(&self, handler: &Handler, engines: &Engines, type_id: TypeId) -> Self {
+    pub fn get_method_safe_to_unify(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        type_id: TypeId,
+    ) -> Self {
         engines.obs().trace(|| {
             format!(
                 "    before get_method_safe_to_unify: {:?} {:?}",
@@ -337,7 +342,12 @@ impl DeclRefFunction {
 
             if let Some(TyDecl::ImplSelfOrTrait(t)) = method.implementing_type.clone() {
                 let impl_self_or_trait = &*engines.de().get(&t.decl_id);
-                rename_const_generics_on_function(handler, engines, impl_self_or_trait, &mut method);
+                rename_const_generics_on_function(
+                    handler,
+                    engines,
+                    impl_self_or_trait,
+                    &mut method,
+                );
 
                 let mut type_id_type_parameters = vec![];
                 let mut const_generic_parameters = BTreeMap::default();

@@ -886,7 +886,12 @@ impl<'a> TypeCheckContext<'a> {
         type_id: TypeId,
         trait_name: &CallPath,
     ) -> Vec<ty::TyTraitItem> {
-        self.get_items_for_type_and_trait_name_and_trait_type_arguments(handler, type_id, trait_name, &[])
+        self.get_items_for_type_and_trait_name_and_trait_type_arguments(
+            handler,
+            type_id,
+            trait_name,
+            &[],
+        )
     }
 
     pub(crate) fn get_items_for_type_and_trait_name_and_trait_type_arguments(

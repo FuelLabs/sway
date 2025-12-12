@@ -3,11 +3,11 @@ use crate::{
     language::ty::TyDeclParsedType, transform, type_system::*,
 };
 use serde::{Deserialize, Serialize};
-use sway_error::handler::Handler;
 use std::{
     fmt,
     hash::{Hash, Hasher},
 };
+use sway_error::handler::Handler;
 use sway_types::{Ident, Named, Span, Spanned};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

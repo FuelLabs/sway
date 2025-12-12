@@ -246,7 +246,13 @@ fn insert_into_ordered_nodes(
 ) -> Vec<AstNode> {
     for idx in 0..ordered_nodes.len() {
         // If we find a node which depends on the new node, insert it in front.
-        if depends_on(handler, engines, decl_dependencies, &ordered_nodes[idx], &node) {
+        if depends_on(
+            handler,
+            engines,
+            decl_dependencies,
+            &ordered_nodes[idx],
+            &node,
+        ) {
             ordered_nodes.insert(idx, node);
             return ordered_nodes;
         }
@@ -283,7 +289,10 @@ fn depends_on(
         (AstNodeContent::IncludeStatement(_), AstNodeContent::Declaration(_)) => false,
         (AstNodeContent::UseStatement(_), AstNodeContent::Declaration(_)) => false,
         (AstNodeContent::Declaration(dependant), AstNodeContent::Declaration(dependee)) => {
-            match (decl_name(handler, engines, dependant), decl_name(handler, engines, dependee)) {
+            match (
+                decl_name(handler, engines, dependant),
+                decl_name(handler, engines, dependee),
+            ) {
                 (Some(dependant_name), Some(dependee_name)) => decl_dependencies
                     .get(&dependant_name)
                     .map(|deps_set| {
@@ -1050,7 +1059,7 @@ fn decl_name(handler: &Handler, engines: &Engines, decl: &Declaration) -> Option
         Declaration::ConstGenericDeclaration(_) => {
             handler.emit_err(CompileError::Internal(
                 "Unexpected error on const generics",
-                decl.span(engines)
+                decl.span(engines),
             ));
             None
         }

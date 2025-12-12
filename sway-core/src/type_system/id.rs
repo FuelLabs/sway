@@ -140,7 +140,7 @@ impl MaterializeConstGenerics for TypeId {
                         _ => {
                             return Err(handler.emit_err(CompileError::Internal(
                                 "Unexpected error on const generics",
-                                value.span.clone()
+                                value.span.clone(),
                             )));
                         }
                     };
@@ -209,7 +209,7 @@ impl MaterializeConstGenerics for TypeId {
                     _ => {
                         return Err(handler.emit_err(CompileError::Internal(
                             "Unexpected error on const generics",
-                            value.span.clone()
+                            value.span.clone(),
                         )));
                     }
                 };
@@ -472,9 +472,9 @@ impl TypeId {
                             _ => {
                                 handler.emit_err(CompileError::Internal(
                                     "Unexpected error on const generics",
-                                    orig_type_param.span.clone()
+                                    orig_type_param.span.clone(),
                                 ));
-                            },
+                            }
                         },
                         _ => {}
                     }
@@ -517,9 +517,9 @@ impl TypeId {
                             _ => {
                                 handler.emit_err(CompileError::Internal(
                                     "Unexpected error on const generics",
-                                    orig_type_param.span.clone()
+                                    orig_type_param.span.clone(),
                                 ));
-                            },
+                            }
                         },
                         _ => {}
                     }
@@ -1380,7 +1380,7 @@ impl TypeId {
                         match type_param {
                             TypeParameter::Type(p) => p.name.span(),
                             TypeParameter::Const(p) => p.span.clone(),
-                        }
+                        },
                     ));
                 }
             }

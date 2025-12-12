@@ -370,7 +370,12 @@ impl TypeSubstMap {
     ///   finds a match in a recursive call to `find_match`.
     ///
     /// A match cannot be found in any other circumstance.
-    pub(crate) fn find_match(&self, type_id: TypeId, handler: &Handler, engines: &Engines) -> Option<TypeId> {
+    pub(crate) fn find_match(
+        &self,
+        type_id: TypeId,
+        handler: &Handler,
+        engines: &Engines,
+    ) -> Option<TypeId> {
         let type_engine = engines.te();
         let decl_engine = engines.de();
         let parsed_decl_engine = engines.pe();
@@ -385,7 +390,9 @@ impl TypeSubstMap {
                 let mut need_to_create_new = false;
 
                 for variant in &mut decl.variants {
-                    if let Some(type_id) = self.find_match(variant.type_argument.type_id, handler, engines) {
+                    if let Some(type_id) =
+                        self.find_match(variant.type_argument.type_id, handler, engines)
+                    {
                         need_to_create_new = true;
                         variant.type_argument.type_id = type_id;
                     }
@@ -416,7 +423,9 @@ impl TypeSubstMap {
                 let mut decl = (*parsed_decl_engine.get_struct(&decl_id)).clone();
                 let mut need_to_create_new = false;
                 for field in &mut decl.fields {
-                    if let Some(type_id) = self.find_match(field.type_argument.type_id, handler, engines) {
+                    if let Some(type_id) =
+                        self.find_match(field.type_argument.type_id, handler, engines)
+                    {
                         need_to_create_new = true;
                         field.type_argument.type_id = type_id;
                     }
@@ -447,7 +456,9 @@ impl TypeSubstMap {
                 let mut need_to_create_new = false;
 
                 for field in &mut decl.fields {
-                    if let Some(type_id) = self.find_match(field.type_argument.type_id, handler, engines) {
+                    if let Some(type_id) =
+                        self.find_match(field.type_argument.type_id, handler, engines)
+                    {
                         need_to_create_new = true;
                         field.type_argument.type_id = type_id;
                     }
@@ -487,7 +498,9 @@ impl TypeSubstMap {
                 let mut need_to_create_new = false;
 
                 for variant in &mut decl.variants {
-                    if let Some(type_id) = self.find_match(variant.type_argument.type_id, handler, engines) {
+                    if let Some(type_id) =
+                        self.find_match(variant.type_argument.type_id, handler, engines)
+                    {
                         need_to_create_new = true;
                         variant.type_argument.type_id = type_id;
                     }
@@ -510,18 +523,18 @@ impl TypeSubstMap {
                     None
                 }
             }
-            TypeInfo::Array(mut elem_type, length) => {
-                self.find_match(elem_type.type_id, handler, engines).map(|type_id| {
+            TypeInfo::Array(mut elem_type, length) => self
+                .find_match(elem_type.type_id, handler, engines)
+                .map(|type_id| {
                     elem_type.type_id = type_id;
                     type_engine.insert_array(engines, elem_type, length)
-                })
-            }
-            TypeInfo::Slice(mut elem_type) => {
-                self.find_match(elem_type.type_id, handler, engines).map(|type_id| {
+                }),
+            TypeInfo::Slice(mut elem_type) => self
+                .find_match(elem_type.type_id, handler, engines)
+                .map(|type_id| {
                     elem_type.type_id = type_id;
                     type_engine.insert_slice(engines, elem_type)
-                })
-            }
+                }),
             TypeInfo::Tuple(fields) => {
                 let mut need_to_create_new = false;
                 let fields = fields
@@ -541,23 +554,28 @@ impl TypeSubstMap {
                 }
             }
             TypeInfo::Alias { name, mut ty } => {
-                self.find_match(ty.type_id, handler, engines).map(|type_id| {
-                    ty.type_id = type_id;
-                    type_engine.new_alias(engines, name, ty)
-                })
+                self.find_match(ty.type_id, handler, engines)
+                    .map(|type_id| {
+                        ty.type_id = type_id;
+                        type_engine.new_alias(engines, name, ty)
+                    })
             }
-            TypeInfo::Ptr(mut ty) => self.find_match(ty.type_id, handler, engines).map(|type_id| {
-                ty.type_id = type_id;
-                type_engine.insert_ptr(engines, ty)
-            }),
+            TypeInfo::Ptr(mut ty) => self
+                .find_match(ty.type_id, handler, engines)
+                .map(|type_id| {
+                    ty.type_id = type_id;
+                    type_engine.insert_ptr(engines, ty)
+                }),
             TypeInfo::TraitType { .. } => iter_for_match(engines, self, &type_info),
             TypeInfo::Ref {
                 to_mutable_value,
                 referenced_type: mut ty,
-            } => self.find_match(ty.type_id, handler, engines).map(|type_id| {
-                ty.type_id = type_id;
-                type_engine.insert_ref(engines, to_mutable_value, ty)
-            }),
+            } => self
+                .find_match(ty.type_id, handler, engines)
+                .map(|type_id| {
+                    ty.type_id = type_id;
+                    type_engine.insert_ref(engines, to_mutable_value, ty)
+                }),
             TypeInfo::Unknown
             | TypeInfo::Never
             | TypeInfo::StringArray(..)

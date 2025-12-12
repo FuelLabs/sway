@@ -292,15 +292,13 @@ impl TypeParameter {
                 .te()
                 .get(p.type_id)
                 .abi_str(handler, ctx, engines, is_root),
-            TypeParameter::Const(_) => {
-                Err(handler.emit_err(CompileError::Internal(
-                    "Unexpected error on const generics",
-                    match self {
-                        TypeParameter::Type(p) => p.name.span(),
-                        TypeParameter::Const(p) => p.span.clone(),
-                    }
-                )))
-            }
+            TypeParameter::Const(_) => Err(handler.emit_err(CompileError::Internal(
+                "Unexpected error on const generics",
+                match self {
+                    TypeParameter::Type(p) => p.name.span(),
+                    TypeParameter::Const(p) => p.span.clone(),
+                },
+            ))),
         }
     }
 
@@ -1300,7 +1298,7 @@ impl IsConcrete for ConstGenericParameter {
     fn is_concrete(&self, handler: &Handler, _: &Engines) -> bool {
         handler.emit_err(CompileError::Internal(
             "Unexpected error on const generics",
-            self.span.clone()
+            self.span.clone(),
         ));
         false
     }
