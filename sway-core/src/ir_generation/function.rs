@@ -5531,7 +5531,7 @@ pub fn get_runtime_representation(ctx: &Context, t: Type) -> MemoryRepresentatio
 
 pub fn get_memory_id(ctx: &Context, t: Type) -> u64 {
     let r = get_runtime_representation(ctx, t);
-    
+
     // Uncomment here to debug the runtime memory representation
     // eprintln!("Runtime Repr: {:?} {:?}", t.with_context(ctx), &r);
 
