@@ -222,16 +222,7 @@ fn did_open_all_members_in_examples() {
                 let tmp_uri = sync.workspace_to_temp_url(&uri).unwrap();
                 let num_tokens_for_file =
                     service.inner().token_map.tokens_for_file(&tmp_uri).count();
-                assert!(
-                    num_tokens_for_file > 0,
-                    "{tmp_uri:?} {:?}",
-                    service
-                        .inner()
-                        .sessions
-                        .get(&dir.to_path_buf())
-                        .unwrap()
-                        .diagnostics
-                );
+                assert!(num_tokens_for_file > 0);
 
                 // Make sure that semantic tokens are successfully returned for the file
                 let semantic_tokens = lsp::get_semantic_tokens_full(service.inner(), &uri).await;
