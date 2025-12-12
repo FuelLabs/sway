@@ -11,7 +11,14 @@ pub struct IdentityAliasWrapper {
 pub type Array = [IdentityAlias; 2];
 pub type Tuple = (SubId, SubId);
 pub type StringTy = str[9];
+
 pub type IdentityAliasWrapperAlias = IdentityAliasWrapper;
+impl PartialEq for IdentityAliasWrapperAlias {
+    fn eq(self, other: Self) -> bool {
+        self.i == other.i
+    }
+}
+impl Eq for IdentityAliasWrapperAlias {}
 
 pub struct Generic<T> {
     pub f: T,
