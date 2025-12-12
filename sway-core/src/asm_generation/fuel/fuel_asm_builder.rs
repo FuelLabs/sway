@@ -1049,12 +1049,67 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
     fn compile_switch(
         &mut self,
-        _instr_val: &Value,
-        _discriminant: &Value,
-        _cases: &[(u64, BranchToWithArgs)],
-        _default: &BranchToWithArgs,
+        instr_val: &Value,
+        discriminant: &Value,
+        cases: &[(u64, BranchToWithArgs)],
+        default: &BranchToWithArgs,
     ) -> Result<(), CompileError> {
-        todo!()
+        for dest_block in cases
+            .iter()
+            .map(|(_, bb)| bb)
+            .chain(std::iter::once(default))
+        {
+            self.compile_branch_to_phi_value(dest_block)?;
+        }
+
+        let default_label = self.block_to_label(&default.block);
+        if cases.len() == 0 {
+            // No cases, just jump to default.
+            self.cur_bytecode.push(Op::jump_to_label(default_label));
+            return Ok(());
+        }
+
+        // TODO: Decide on a better limit for number of cases.
+        assert!(cases.len() < 20, "Too many switch cases to compile");
+
+        // Sort the cases by their values to make range checking easier.
+        let mut sorted_cases = cases.to_vec();
+        sorted_cases.sort_by_key(|(val, _)| *val);
+
+        // If the lowest case value isn't 0, we subtract the descriminant and each
+        // case value by that amount to make the lowest case 0.
+        let min_case_value = sorted_cases.first().unwrap().0;
+        let discrim_reg = self.value_to_register(discriminant)?;
+        if min_case_value > 0 {
+            self.cur_bytecode.push(Op {
+                opcode: Either::Left(VirtualOp::SUBI(
+                    discrim_reg.clone(),
+                    discrim_reg.clone(),
+                    VirtualImmediate12::new(min_case_value),
+                )),
+                comment: format!(
+                    "adjust switch discriminant by subtracting min case value {}",
+                    min_case_value
+                ),
+                owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+            });
+            sorted_cases
+                .iter_mut()
+                .for_each(|(val, _)| *val -= min_case_value);
+        }
+
+        let cases = cases
+            .into_iter()
+            .map(|(val, BranchToWithArgs { block, args: _ })| (*val, self.block_to_label(block)))
+            .collect();
+        self.cur_bytecode.push(Op::switch_comment(
+            discrim_reg,
+            cases,
+            default_label,
+            format!("switch with {} cases", sorted_cases.len()),
+        ));
+
+        Ok(())
     }
 
     fn compile_branch_to_phi_value(

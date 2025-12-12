@@ -281,6 +281,29 @@ impl Op {
         }
     }
 
+    /// Switch
+    pub(crate) fn switch(on: VirtualRegister, cases: Vec<(u64, Label)>, default: Label) -> Self {
+        Op {
+            opcode: Either::Right(OrganizationalOp::Switch { discriminant: on, cases, default }),
+            comment: String::new(),
+            owning_span: None,
+        }
+    }
+
+    /// Switch with comment
+    pub(crate) fn switch_comment(
+        discriminant: VirtualRegister,
+        cases: Vec<(u64, Label)>,
+        default: Label,
+        comment: impl Into<String>,
+    ) -> Self {
+        Op {
+            opcode: Either::Right(OrganizationalOp::Switch { discriminant, cases, default }),
+            comment: comment.into(),
+            owning_span: None,
+        }
+    }
+
     pub(crate) fn parse_opcode(
         handler: &Handler,
         name: &Ident,
@@ -1321,6 +1344,14 @@ pub(crate) enum ControlFlowOp<Reg> {
         to: Label,
         /// Jump type
         type_: JumpType<Reg>,
+    },
+    Switch {
+        /// The register to switch on
+        discriminant: Reg,
+        /// Mapping of values to labels
+        cases: Vec<(u64, Label)>,
+        /// Default label if no cases match
+        default: Label,
     },
     // Placeholder for the offset into the configurables section.
     ConfigurablesOffsetPlaceholder,
