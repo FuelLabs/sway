@@ -26,20 +26,20 @@ impl std::ops::BitOr for HasChanges {
     }
 }
 
-pub struct SubstTypesContext<'eng, 'tsm> {
-    pub handler: &'eng Handler,
-    pub engines: &'eng Engines,
-    pub type_subst_map: Option<&'tsm TypeSubstMap>,
+pub struct SubstTypesContext<'a> {
+    pub handler: &'a Handler,
+    pub engines: &'a Engines,
+    pub type_subst_map: Option<&'a TypeSubstMap>,
     pub subst_function_body: bool,
 }
 
-impl<'eng, 'tsm> SubstTypesContext<'eng, 'tsm> {
+impl<'a> SubstTypesContext<'a> {
     pub fn new(
-        handler: &'eng Handler,
-        engines: &'eng Engines,
-        type_subst_map: &'tsm TypeSubstMap,
+        handler: &'a Handler,
+        engines: &'a Engines,
+        type_subst_map: &'a TypeSubstMap,
         subst_function_body: bool,
-    ) -> SubstTypesContext<'eng, 'tsm> {
+    ) -> SubstTypesContext<'a> {
         SubstTypesContext {
             handler,
             engines,
@@ -48,7 +48,7 @@ impl<'eng, 'tsm> SubstTypesContext<'eng, 'tsm> {
         }
     }
 
-    pub fn dummy(handler: &'eng Handler, engines: &'eng Engines) -> SubstTypesContext<'eng, 'tsm> {
+    pub fn dummy(handler: &'a Handler, engines: &'a Engines) -> SubstTypesContext<'a> {
         SubstTypesContext {
             handler,
             engines,
