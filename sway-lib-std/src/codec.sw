@@ -89,8 +89,8 @@ impl BufferReader {
     #[inline(always)]
     pub fn from_predicate_data_by_index(predicate_index: u64) -> raw_ptr {
         match __gtf::<u8>(predicate_index, 0x200) { // GTF_INPUT_TYPE
-            0u8 => __gtf::<raw_ptr>(predicate_index, 0x20C),
-            2u8 => __gtf::<raw_ptr>(predicate_index, 0x24A),
+            0u8 => __gtf::<raw_ptr>(predicate_index, 0x20C), // INPUT_COIN_PREDICATE_DATA
+            2u8 => __gtf::<raw_ptr>(predicate_index, 0x24A), // INPUT_MESSAGE_PREDICATE_DATA
             _ => __revert(0),
         }
     }
