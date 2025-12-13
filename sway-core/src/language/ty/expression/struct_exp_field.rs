@@ -8,10 +8,12 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 use sway_error::handler::{ErrorEmitted, Handler};
+use sway_macros::Visit;
 use sway_types::Ident;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Visit)]
 pub struct TyStructExpressionField {
+    #[visit(skip)]
     pub name: Ident,
     pub value: TyExpression,
 }

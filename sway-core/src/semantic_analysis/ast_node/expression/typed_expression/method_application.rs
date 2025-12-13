@@ -1,19 +1,26 @@
 use crate::{
+    ast_elements::{
+        type_argument::GenericTypeArgument,
+        type_parameter::{ConstGenericExpr, GenericTypeParameter},
+    },
     decl_engine::{
         engine::{DeclEngineGet, DeclEngineGetParsedDeclId, DeclEngineReplace},
-        DeclEngineInsert, DeclRefFunction, ReplaceDecls, UpdateConstantExpression,
+        update_constant_expression_visitor_on_block, DeclEngineInsert, DeclRefFunction,
+        ReplaceDecls, UpdateConstantExpressionVisitor,
     },
     language::{
         parsed::*,
-        ty::{self, TyDecl, TyExpression, TyFunctionSig},
+        ty::{
+            self, FunctionApplicationArgument, TyCodeBlock, TyDecl, TyExpression, TyFunctionDecl,
+            TyFunctionSig,
+        },
         *,
     },
     semantic_analysis::*,
-    type_system::*,
-};
-use ast_elements::{
-    type_argument::GenericTypeArgument,
-    type_parameter::{ConstGenericExpr, GenericTypeParameter},
+    type_system::{
+        EnforceTypeArguments, GenericArgument, IncludeSelf, Length, SubstTypes, SubstTypesContext,
+        TypeArgs, TypeBinding, TypeId, TypeInfo, TypeParameter, TypeSubstMap, UnifyCheck,
+    },
 };
 use ast_node::typed_expression::check_function_arguments_arity;
 use indexmap::IndexMap;
@@ -591,7 +598,7 @@ pub(crate) fn type_check_method_application(
             method_name_literal(&method.name),
             old_arguments.first().cloned().unwrap(),
             args,
-            arguments.iter().map(|x| x.1.return_type).collect(),
+            arguments.iter().map(|x| x.expr.return_type).collect(),
             coins_expr,
             asset_id_expr,
             gas_expr,
@@ -608,7 +615,7 @@ pub(crate) fn type_check_method_application(
                 ..
             } => {
                 let selector = selector.unwrap();
-                arguments[0].1 = (*selector.contract_address).clone();
+                arguments[0].expr = (*selector.contract_address).clone();
                 *contract_caller = Some(selector.contract_caller);
             }
             _ => unreachable!(),
@@ -867,7 +874,7 @@ fn unify_arguments_and_parameters(
     ctx: TypeCheckContext,
     arguments: &[(BaseIdent, ty::TyExpression)],
     parameters: &[ty::TyFunctionParameter],
-) -> Result<Vec<(Ident, ty::TyExpression)>, ErrorEmitted> {
+) -> Result<Vec<FunctionApplicationArgument>, ErrorEmitted> {
     let type_engine = ctx.engines.te();
     let engines = ctx.engines();
     let mut typed_arguments_and_names = vec![];
@@ -897,7 +904,10 @@ fn unify_arguments_and_parameters(
                 continue;
             }
 
-            typed_arguments_and_names.push((param.name.clone(), arg.clone()));
+            typed_arguments_and_names.push(FunctionApplicationArgument {
+                name: param.name.clone(),
+                expr: arg.clone(),
+            });
         }
         Ok(typed_arguments_and_names)
     })
@@ -1015,7 +1025,7 @@ pub(crate) fn monomorphize_method(
 ) -> Result<DeclRefFunction, ErrorEmitted> {
     let engines = ctx.engines();
     let decl_engine = engines.de();
-    let mut func_decl = (*decl_engine.get_function(&decl_ref)).clone();
+    let mut func_decl = TyFunctionDecl::clone(&*decl_engine.get_function(&decl_ref));
 
     // monomorphize the function declaration
     ctx.monomorphize(
@@ -1028,9 +1038,11 @@ pub(crate) fn monomorphize_method(
     )?;
 
     if let Some(implementing_type) = &func_decl.implementing_type {
-        func_decl
-            .body
-            .update_constant_expression(engines, implementing_type);
+        update_constant_expression_visitor_on_block(
+            engines,
+            implementing_type,
+            &mut func_decl.body,
+        );
     }
 
     let decl_ref = decl_engine

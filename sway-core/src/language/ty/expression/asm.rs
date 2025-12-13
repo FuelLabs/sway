@@ -1,11 +1,13 @@
 use crate::{engine_threading::*, language::ty::*, type_system::*};
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
+use sway_macros::Visit;
 use sway_types::Ident;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Visit)]
 pub struct TyAsmRegisterDeclaration {
     pub initializer: Option<TyExpression>,
+    #[visit(skip)]
     pub(crate) name: Ident,
 }
 

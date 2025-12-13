@@ -9,6 +9,7 @@ use std::{
     fmt,
     hash::{Hash as _, Hasher},
 };
+use sway_macros::Visit;
 use sway_types::{Span, Spanned};
 
 /// [GenericTypeArgument] can be seen as an "annotated reference" to a [TypeInfo].
@@ -22,12 +23,13 @@ use sway_types::{Span, Spanned};
 ///
 /// The annotations are ignored when calculating the [GenericTypeArgument]'s hash
 /// (with engines) and equality (with engines).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Visit)]
 pub struct GenericTypeArgument {
     /// The [TypeId] of the "referenced" [TypeInfo].
     pub type_id: TypeId,
     /// Denotes the initial type that was referenced before the type
     /// unification, monomorphization, or replacement of [TypeInfo::Custom]s.
+    #[visit(skip)]
     pub initial_type_id: TypeId,
     /// The [Span] related in code to the [TypeInfo] represented by this
     /// [TypeArgument]. This information is mostly used by the LSP and it
@@ -46,7 +48,9 @@ pub struct GenericTypeArgument {
     /// two instances `[0, 0]`, and `[1, 1]` will have neither the array
     /// type span set, nor the length span, which means they will not be
     /// annotated.
+    #[visit(skip)]
     pub span: Span,
+    #[visit(skip)]
     pub call_path_tree: Option<CallPathTree>,
 }
 
@@ -116,12 +120,12 @@ impl GenericTypeArgument {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Visit)]
 pub struct GenericConstArgument {
     pub expr: ConstGenericExpr,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Visit)]
 pub enum GenericArgument {
     Type(GenericTypeArgument),
     Const(GenericConstArgument),

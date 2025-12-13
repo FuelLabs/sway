@@ -30,9 +30,10 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
+use sway_macros::Visit;
 use sway_types::{ident::Ident, span::Span, BaseIdent, Named, Spanned};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Visit)]
 pub enum TypeParameter {
     Type(GenericTypeParameter),
     Const(ConstGenericParameter),
@@ -345,15 +346,20 @@ impl TypeParameter {
 ///
 /// The annotations are ignored when calculating the [GenericTypeParameter]'s hash
 /// (with engines) and equality (with engines).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Visit)]
 pub struct GenericTypeParameter {
     pub type_id: TypeId,
     /// Denotes the initial type represented by the [GenericTypeParameter], before
     /// unification, monomorphization, or replacement of [TypeInfo::Custom]s.
+    #[visit(skip)]
     pub(crate) initial_type_id: TypeId,
+    #[visit(skip)]
     pub name: Ident,
+    #[visit(skip)]
     pub(crate) trait_constraints: Vec<TraitConstraint>,
+    #[visit(skip)]
     pub(crate) trait_constraints_span: Span,
+    #[visit(skip)]
     pub(crate) is_from_parent: bool,
 }
 
@@ -964,7 +970,7 @@ fn handle_trait(
     })
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Visit)]
 pub enum ConstGenericExprTyDecl {
     ConstGenericDecl(ConstGenericDecl),
     ConstantDecl(ConstantDecl),
@@ -1003,13 +1009,16 @@ impl MaterializeConstGenerics for ConstGenericExprTyDecl {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Visit)]
 pub enum ConstGenericExpr {
     Literal {
+        #[visit(skip)]
         val: usize,
+        #[visit(skip)]
         span: Span,
     },
     AmbiguousVariableExpression {
+        #[visit(skip)]
         ident: Ident,
         decl: Option<ConstGenericExprTyDecl>,
     },
@@ -1223,12 +1232,16 @@ impl DisplayWithEngines for ConstGenericExpr {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Visit)]
 pub struct ConstGenericParameter {
+    #[visit(skip)]
     pub name: Ident,
     pub ty: TypeId,
+    #[visit(skip)]
     pub is_from_parent: bool,
+    #[visit(skip)]
     pub span: Span,
+    #[visit(skip)]
     pub id: Option<ParsedDeclId<ConstGenericDeclaration>>,
     pub expr: Option<ConstGenericExpr>,
 }

@@ -9,14 +9,17 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash as _, Hasher};
 use sway_error::handler::{ErrorEmitted, Handler};
+use sway_macros::Visit;
 use sway_types::{Ident, Named, Span, Spanned};
 
 use super::TyDeclParsedType;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Visit)]
 pub struct TyConstGenericDecl {
+    #[visit(skip)]
     pub call_path: CallPath,
     pub return_type: TypeId,
+    #[visit(skip)]
     pub span: Span,
     pub value: Option<TyExpression>,
 }

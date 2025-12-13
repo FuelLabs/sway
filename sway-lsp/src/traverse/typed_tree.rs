@@ -276,11 +276,14 @@ impl Parse for ty::TyExpression {
                     token.type_def = Some(TypeDefinition::Ident(function_decl.name.clone()));
                 }
                 contract_call_params.values().for_each(|exp| exp.parse(ctx));
-                adaptive_iter(arguments, |(ident, exp)| {
-                    if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(ident)) {
-                        token.ast_node = TokenAstNode::Typed(TypedAstToken::Ident(ident.clone()));
+                adaptive_iter(arguments, |arg| {
+                    if let Some(mut token) =
+                        ctx.tokens.try_get_mut_with_retry(&ctx.ident(&arg.name))
+                    {
+                        token.ast_node =
+                            TokenAstNode::Typed(TypedAstToken::Ident(arg.name.clone()));
                     }
-                    exp.parse(ctx);
+                    arg.expr.parse(ctx);
                 });
                 let function_decl = ctx.engines.de().get_function(fn_ref);
                 adaptive_iter(&function_decl.body.contents, |node| node.parse(ctx));

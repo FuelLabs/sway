@@ -16,15 +16,17 @@ use std::{
     hash::{Hash, Hasher},
 };
 use sway_error::handler::{ErrorEmitted, Handler};
+use sway_macros::Visit;
 use sway_types::{Ident, Span};
 
 pub trait GetDeclIdent {
     fn get_decl_ident(&self, engines: &Engines) -> Option<Ident>;
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Visit)]
 pub struct TyAstNode {
     pub content: TyAstNodeContent,
+    #[visit(skip)]
     pub span: Span,
 }
 
@@ -90,18 +92,18 @@ impl ReplaceDecls for TyAstNode {
     }
 }
 
-impl UpdateConstantExpression for TyAstNode {
-    fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
-        match self.content {
-            TyAstNodeContent::Declaration(_) => {}
-            TyAstNodeContent::Expression(ref mut expr) => {
-                expr.update_constant_expression(engines, implementing_type)
-            }
-            TyAstNodeContent::SideEffect(_) => (),
-            TyAstNodeContent::Error(_, _) => (),
-        }
-    }
-}
+// impl UpdateConstantExpression for TyAstNode {
+//     fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
+//         match self.content {
+//             TyAstNodeContent::Declaration(_) => {}
+//             TyAstNodeContent::Expression(ref mut expr) => {
+//                 expr.update_constant_expression(engines, implementing_type)
+//             }
+//             TyAstNodeContent::SideEffect(_) => (),
+//             TyAstNodeContent::Error(_, _) => (),
+//         }
+//     }
+// }
 
 impl TypeCheckAnalysis for TyAstNode {
     fn type_check_analyze(
@@ -396,13 +398,15 @@ impl TyAstNode {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Visit)]
 #[allow(clippy::large_enum_variant)]
 pub enum TyAstNodeContent {
     Declaration(TyDecl),
     Expression(TyExpression),
     // a no-op node used for something that just issues a side effect, like an import statement.
+    #[visit(skip)]
     SideEffect(TySideEffect),
+    #[visit(skip)]
     Error(Box<[Span]>, #[serde(skip)] ErrorEmitted),
 }
 

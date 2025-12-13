@@ -24,6 +24,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 use sway_error::handler::{ErrorEmitted, Handler};
+use sway_macros::Visit;
 use sway_types::{Ident, Named, Span, Spanned};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -34,8 +35,9 @@ pub enum TyFunctionDeclKind {
     Test,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Visit)]
 pub struct TyFunctionDecl {
+    #[visit(skip)]
     pub name: Ident,
     pub body: TyCodeBlock,
     pub parameters: Vec<TyFunctionParameter>,
@@ -71,22 +73,31 @@ pub struct TyFunctionDecl {
     ///
     /// `None` for module functions.
     pub implementing_for: Option<TypeId>,
+    #[visit(skip)]
     pub span: Span,
     /// For module functions, this is the full call path of the function.
     ///
     /// Otherwise, the [CallPath::prefixes] are the prefixes of the module
     /// in which the defining [TyFunctionDecl] is located, and the
     /// [CallPath::suffix] is the function name.
+    #[visit(skip)]
     pub call_path: CallPath,
+    #[visit(skip)]
     pub attributes: transform::Attributes,
     pub type_parameters: Vec<TypeParameter>,
     pub return_type: GenericTypeArgument,
+    #[visit(skip)]
     pub visibility: Visibility,
     /// Whether this function exists in another contract and requires a call to it or not.
+    #[visit(skip)]
     pub is_contract_call: bool,
+    #[visit(skip)]
     pub purity: Purity,
+    #[visit(skip)]
     pub where_clause: Vec<(Ident, Vec<TraitConstraint>)>,
+    #[visit(skip)]
     pub is_trait_method_dummy: bool,
+    #[visit(skip)]
     pub is_type_check_finalized: bool,
     /// !!! WARNING !!!
     /// This field is currently not reliable.
@@ -94,6 +105,7 @@ pub struct TyFunctionDecl {
     /// Instead, use the [Self::is_default], [Self::is_entry], [Self::is_main], and [Self::is_test] methods.
     /// TODO: See: https://github.com/FuelLabs/sway/issues/7371
     /// !!! WARNING !!!
+    #[visit(skip)]
     pub kind: TyFunctionDeclKind,
 }
 
@@ -573,6 +585,29 @@ impl MonomorphizeHelper for TyFunctionDecl {
     fn has_self_type_param(&self) -> bool {
         false
     }
+
+    fn materialize_const_generics2(
+        &mut self,
+        engines: &Engines,
+        handler: &Handler,
+        name: &str,
+        value: &TyExpression,
+    ) -> Result<(), ErrorEmitted> {
+        // dbg!(&self);
+        let mut cow = std::borrow::Cow::Borrowed(self);
+        let mut visitor = MaterializeConstGenericsVisitor {
+            engines,
+            handler,
+            name,
+            value,
+        };
+        TyFunctionDecl::visit(&mut cow, &mut visitor);
+        if let std::borrow::Cow::Owned(new_fn) = cow {
+            *self = new_fn
+        }
+        // dbg!(&self);
+        Ok(())
+    }
 }
 
 impl CollectTypesMetadata for TyFunctionDecl {
@@ -811,11 +846,15 @@ impl TyFunctionDecl {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Visit)]
 pub struct TyFunctionParameter {
+    #[visit(skip)]
     pub name: Ident,
+    #[visit(skip)]
     pub is_reference: bool,
+    #[visit(skip)]
     pub is_mutable: bool,
+    #[visit(skip)]
     pub mutability_span: Span,
     pub type_argument: GenericTypeArgument,
 }

@@ -5,6 +5,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
+use sway_macros::Visit;
 use sway_types::{BaseIdent, Named, Span, Spanned};
 
 use crate::{
@@ -40,7 +41,10 @@ pub enum TreatNumericAs {
 }
 
 /// A identifier to uniquely refer to our type terms
-#[derive(PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd, Debug, Deserialize, Serialize)]
+#[derive(
+    PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd, Debug, Deserialize, Serialize, Visit,
+)]
+#[visit(leaf)]
 pub struct TypeId(usize);
 
 impl DisplayWithEngines for TypeId {
@@ -498,7 +502,12 @@ impl TypeId {
                                     expr.to_ty_expression(engines),
                                 );
                             }
-                            _ => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+                            _ => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860 {:?}@{:?} {:?}@{:?}",
+                                orig_type_param.span.start_line_col_one_index(),
+                                orig_type_param.span.source_id().map(|x| engines.se().get_file_name(x)),
+                                type_param.span.start_line_col_one_index(),
+                                type_param.span.source_id().map(|x| engines.se().get_file_name(x)),
+                            ),
                         },
                         _ => {}
                     }

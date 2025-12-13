@@ -19,6 +19,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use sway_ast::Intrinsic;
 use sway_error::handler::{ErrorEmitted, Handler};
+use sway_macros::Visit;
 use sway_types::{Span, Spanned};
 
 /// A `TypeBinding` is the result of using turbofish to bind types to
@@ -87,6 +88,8 @@ pub struct TypeBinding<T> {
     pub span: Span,
 }
 
+pub type EmptyTypeBinding = TypeBinding<()>;
+
 /// A [TypeArgs] contains a `Vec<TypeArgument>` either in the variant `Regular`
 /// or in the variant `Prefix`.
 ///
@@ -105,7 +108,7 @@ pub struct TypeBinding<T> {
 /// ```
 /// So we can have type parameters in the `Prefix` or `Regular` variant but not
 /// in both.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Visit)]
 pub enum TypeArgs {
     /// `Regular` variant indicates the type arguments are located after the suffix.
     Regular(Vec<GenericArgument>),

@@ -6,12 +6,15 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
+use sway_macros::Visit;
 use sway_types::{Ident, Named, Spanned};
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Visit)]
 pub struct TyVariableDecl {
+    #[visit(skip)]
     pub name: Ident,
     pub body: TyExpression,
+    #[visit(skip)]
     pub mutability: VariableMutability,
     pub return_type: TypeId,
     pub type_ascription: GenericTypeArgument,

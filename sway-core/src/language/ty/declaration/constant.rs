@@ -13,16 +13,21 @@ use std::{
     hash::{Hash, Hasher},
 };
 use sway_error::handler::{ErrorEmitted, Handler};
+use sway_macros::Visit;
 use sway_types::{Ident, Named, Span, Spanned};
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Visit)]
 pub struct TyConstantDecl {
+    #[visit(skip)]
     pub call_path: CallPath,
     pub value: Option<TyExpression>,
+    #[visit(skip)]
     pub visibility: Visibility,
+    #[visit(skip)]
     pub attributes: transform::Attributes,
     pub return_type: TypeId,
     pub type_ascription: GenericTypeArgument,
+    #[visit(skip)]
     pub span: Span,
 }
 

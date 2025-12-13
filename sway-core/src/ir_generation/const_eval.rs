@@ -331,10 +331,9 @@ fn const_eval_typed_expr(
             let mut actuals_const: Vec<_> = vec![];
 
             for arg in arguments {
-                let (name, sub_expr) = arg;
-                let eval_expr_opt = const_eval_typed_expr(lookup, known_consts, sub_expr)?;
+                let eval_expr_opt = const_eval_typed_expr(lookup, known_consts, &arg.expr)?;
                 if let Some(sub_const) = eval_expr_opt {
-                    actuals_const.push((name, sub_const));
+                    actuals_const.push((arg.name.clone(), sub_const));
                 } else {
                     // If all actual arguments don't evaluate a constant, bail out.
                     // TODO: Explore if we could continue here and if it'll be useful.
@@ -353,8 +352,8 @@ fn const_eval_typed_expr(
             let function_decl = lookup.engines.de().get_function(fn_ref);
             let res = const_eval_codeblock(lookup, known_consts, &function_decl.body);
 
-            for (name, _) in arguments {
-                known_consts.pop(name);
+            for arg in arguments {
+                known_consts.pop(&arg.name);
             }
 
             res?

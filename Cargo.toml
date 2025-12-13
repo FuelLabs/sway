@@ -7,13 +7,14 @@ members = [
     "forc-test",
     "forc-util",
     "scripts/mdbook-forc-documenter",
+    "sway-macros",
     "sway-ast",
     "sway-core",
     "sway-error",
     "sway-features",
     "sway-ir",
     "sway-ir/sway-ir-macros",
-    "sway-lsp",
+    "sway-lsp", "sway-macros",
     "sway-parse",
     "sway-types",
     "sway-utils",
@@ -59,6 +60,7 @@ forc-migrate = { path = "forc-plugins/forc-migrate/", version = "0.70.2" }
 forc-publish = { path = "forc-plugins/forc-publish/", version = "0.70.2" }
 forc-tx = { path = "forc-plugins/forc-tx/", version = "0.70.2" }
 
+sway-macros = { path = "sway-macros/", version = "0.70.2" }
 sway-ast = { path = "sway-ast/", version = "0.70.2" }
 sway-core = { path = "sway-core/", version = "0.70.2" }
 sway-error = { path = "sway-error/", version = "0.70.2" }

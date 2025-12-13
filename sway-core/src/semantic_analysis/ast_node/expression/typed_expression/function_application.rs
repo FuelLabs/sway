@@ -1,14 +1,15 @@
 use crate::{
+    ast_elements::type_parameter::GenericTypeParameter,
     decl_engine::{
         engine::DeclEngineGetParsedDeclId, DeclEngineInsert, DeclRefFunction, ReplaceDecls,
     },
     language::{
-        ty::{self, TyFunctionDecl, TyFunctionSig},
+        ty::{self, FunctionApplicationArgument, TyFunctionDecl, TyFunctionSig},
         *,
     },
     semantic_analysis::{ast_node::*, TypeCheckContext},
+    TypeBinding,
 };
-use ast_elements::type_parameter::GenericTypeParameter;
 use indexmap::IndexMap;
 use sway_error::error::CompileError;
 use sway_types::{IdentUnique, Spanned};
@@ -189,7 +190,7 @@ fn unify_arguments_and_parameters(
     ctx: TypeCheckContext,
     typed_arguments: Vec<ty::TyExpression>,
     parameters: &[ty::TyFunctionParameter],
-) -> Result<Vec<(Ident, ty::TyExpression)>, ErrorEmitted> {
+) -> Result<Vec<FunctionApplicationArgument>, ErrorEmitted> {
     let type_engine = ctx.engines.te();
     let engines = ctx.engines();
     let mut typed_arguments_and_names = vec![];
@@ -223,7 +224,10 @@ fn unify_arguments_and_parameters(
                 });
             }
 
-            typed_arguments_and_names.push((param.name.clone(), arg));
+            typed_arguments_and_names.push(FunctionApplicationArgument {
+                name: param.name.clone(),
+                expr: arg,
+            });
         }
 
         Ok(typed_arguments_and_names)

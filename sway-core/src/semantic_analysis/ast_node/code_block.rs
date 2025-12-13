@@ -1,7 +1,10 @@
 use super::*;
-use crate::language::{
-    parsed::CodeBlock,
-    ty::{self, TyAstNodeContent, TyCodeBlock},
+use crate::{
+    language::{
+        parsed::CodeBlock,
+        ty::{self, TyAstNodeContent, TyCodeBlock},
+    },
+    TypeInfo,
 };
 
 impl ty::TyCodeBlock {

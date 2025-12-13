@@ -7,13 +7,16 @@ use std::{
 };
 use sway_ast::Intrinsic;
 use sway_error::handler::{ErrorEmitted, Handler};
+use sway_macros::Visit;
 use sway_types::{Span, Spanned};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Visit)]
 pub struct TyIntrinsicFunctionKind {
+    #[visit(skip)]
     pub kind: Intrinsic,
     pub arguments: Vec<TyExpression>,
     pub type_arguments: Vec<GenericArgument>,
+    #[visit(skip)]
     pub span: Span,
 }
 

@@ -5,11 +5,13 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use std::hash::Hasher;
 use sway_error::handler::{ErrorEmitted, Handler};
+use sway_macros::Visit;
 use sway_types::Span;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Visit)]
 pub struct TyCodeBlock {
     pub contents: Vec<TyAstNode>,
+    #[visit(skip)]
     pub(crate) whole_block_span: Span,
 }
 
@@ -74,13 +76,13 @@ impl ReplaceDecls for TyCodeBlock {
     }
 }
 
-impl UpdateConstantExpression for TyCodeBlock {
-    fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
-        self.contents
-            .iter_mut()
-            .for_each(|x| x.update_constant_expression(engines, implementing_type));
-    }
-}
+// impl UpdateConstantExpression for TyCodeBlock {
+//     fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
+//         self.contents
+//             .iter_mut()
+//             .for_each(|x| x.update_constant_expression(engines, implementing_type));
+//     }
+// }
 
 impl MaterializeConstGenerics for TyCodeBlock {
     fn materialize_const_generics(

@@ -282,32 +282,32 @@ impl TypeCheckFinalization for TyReassignment {
     }
 }
 
-impl UpdateConstantExpression for TyReassignmentTarget {
-    fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
-        match self {
-            TyReassignmentTarget::DerefAccess { exp, indices } => {
-                exp.update_constant_expression(engines, implementing_type);
-                indices
-                    .iter_mut()
-                    .for_each(|i| i.update_constant_expression(engines, implementing_type));
-            }
-            TyReassignmentTarget::ElementAccess { indices, .. } => {
-                indices
-                    .iter_mut()
-                    .for_each(|i| i.update_constant_expression(engines, implementing_type));
-            }
-        };
-    }
-}
+// impl UpdateConstantExpression for TyReassignmentTarget {
+//     fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
+//         match self {
+//             TyReassignmentTarget::DerefAccess { exp, indices } => {
+//                 exp.update_constant_expression(engines, implementing_type);
+//                 indices
+//                     .iter_mut()
+//                     .for_each(|i| i.update_constant_expression(engines, implementing_type));
+//             }
+//             TyReassignmentTarget::ElementAccess { indices, .. } => {
+//                 indices
+//                     .iter_mut()
+//                     .for_each(|i| i.update_constant_expression(engines, implementing_type));
+//             }
+//         };
+//     }
+// }
 
-impl UpdateConstantExpression for TyReassignment {
-    fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
-        self.lhs
-            .update_constant_expression(engines, implementing_type);
-        self.rhs
-            .update_constant_expression(engines, implementing_type);
-    }
-}
+// impl UpdateConstantExpression for TyReassignment {
+//     fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
+//         self.lhs
+//             .update_constant_expression(engines, implementing_type);
+//         self.rhs
+//             .update_constant_expression(engines, implementing_type);
+//     }
+// }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum ProjectionKind {
@@ -444,19 +444,19 @@ impl TypeCheckFinalization for ProjectionKind {
     }
 }
 
-impl UpdateConstantExpression for ProjectionKind {
-    fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
-        use ProjectionKind::*;
-        #[allow(clippy::single_match)]
-        // To keep it consistent and same looking as the above implementations.
-        match self {
-            ArrayIndex { index, .. } => {
-                index.update_constant_expression(engines, implementing_type)
-            }
-            _ => (),
-        }
-    }
-}
+// impl UpdateConstantExpression for ProjectionKind {
+//     fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
+//         use ProjectionKind::*;
+//         #[allow(clippy::single_match)]
+//         // To keep it consistent and same looking as the above implementations.
+//         match self {
+//             ArrayIndex { index, .. } => {
+//                 index.update_constant_expression(engines, implementing_type)
+//             }
+//             _ => (),
+//         }
+//     }
+// }
 
 impl Spanned for ProjectionKind {
     fn span(&self) -> Span {

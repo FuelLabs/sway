@@ -9,8 +9,7 @@ pub(crate) use modes::*;
 use crate::{
     language::{parsed::*, ty},
     semantic_analysis::*,
-    type_system::*,
-    Engines, Ident,
+    Engines,
 };
 
 use sway_error::{
