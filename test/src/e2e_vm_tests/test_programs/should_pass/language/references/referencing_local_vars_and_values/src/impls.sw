@@ -7,6 +7,8 @@ pub trait New {
 pub trait ZeroSize {
 }
 
+impl ZeroSize for () {}
+
 impl New for bool {
     fn new() -> Self {
         true

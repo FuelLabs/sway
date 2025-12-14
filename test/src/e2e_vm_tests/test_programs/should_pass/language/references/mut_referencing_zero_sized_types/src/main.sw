@@ -4,6 +4,12 @@ pub trait New {
     fn new() -> Self;
 }
 
+impl New for () {
+    fn new() -> Self {
+        ()
+    }
+}
+
 impl New for [u64; 0] {
     fn new() -> Self {
         []
@@ -61,8 +67,11 @@ where
 }
 
 fn main() -> u64 {
+    reference_zero_sized_local_var_and_value_not_inlined::<()>();
     reference_zero_sized_local_var_and_value_not_inlined::<EmptyStruct>();
     reference_zero_sized_local_var_and_value_not_inlined::<[u64; 0]>();
+
+    reference_zero_sized_local_var_and_value::<()>();
     reference_zero_sized_local_var_and_value::<EmptyStruct>();
     reference_zero_sized_local_var_and_value::<[u64; 0]>();
 

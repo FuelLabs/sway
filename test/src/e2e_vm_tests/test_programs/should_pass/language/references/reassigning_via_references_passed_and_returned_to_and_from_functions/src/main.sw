@@ -137,7 +137,7 @@ fn reference_to_generic() {
     reference_to_generic_test::<Enum>();
     reference_to_generic_test::<(u8, u32)>();
     reference_to_generic_test::<b256>();
-    reference_to_generic_test::<raw_ptr>();
+    reference_to_generic_test::<RawPtrNewtype>();
     reference_to_generic_test::<raw_slice>();
 }
 

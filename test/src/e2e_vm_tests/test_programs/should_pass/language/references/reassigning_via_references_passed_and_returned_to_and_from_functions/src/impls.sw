@@ -190,23 +190,6 @@ impl TestInstance for b256 {
     }
 }
 
-impl TestInstance for raw_ptr {
-    fn new() -> Self {
-        let null_ptr = asm() {
-            zero: raw_ptr
-        };
-
-        null_ptr.add::<u64>(42)
-    }
-    fn different() -> Self {
-        let null_ptr = asm() {
-            zero: raw_ptr
-        };
-
-        null_ptr.add::<u64>(42 * 2)
-    }
-}
-
 impl TestInstance for raw_slice {
     fn new() -> Self {
         let null_ptr = asm() {
@@ -248,3 +231,44 @@ impl PartialEq for [u64; 0] {
     }
 }
 impl Eq for [u64; 0] {}
+
+pub struct RawPtrNewtype {
+    ptr: raw_ptr,
+}
+
+impl TestInstance for RawPtrNewtype {
+    fn new() -> Self {
+        let null_ptr = asm() {
+            zero: raw_ptr
+        };
+
+        Self {
+            ptr: null_ptr.add::<u64>(42),
+        }
+    }
+    fn different() -> Self {
+        let null_ptr = asm() {
+            zero: raw_ptr
+        };
+
+        Self {
+            ptr: null_ptr.add::<u64>(42 * 2),
+        }
+    }
+}
+
+impl AbiEncode for RawPtrNewtype {
+    fn abi_encode(self, buffer: Buffer) -> Buffer {
+        let ptr_as_u64 = asm(p: self.ptr) {
+            p: u64
+        };
+        ptr_as_u64.abi_encode(buffer)
+    }
+}
+
+impl PartialEq for RawPtrNewtype {
+    fn eq(self, other: Self) -> bool {
+        self.ptr == other.ptr
+    }
+}
+impl Eq for RawPtrNewtype {}
