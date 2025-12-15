@@ -7,23 +7,7 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_lib
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
    Compiling library panicking_lib (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_lib)
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-    Finished debug [unoptimized + fuel] target(s) [7.776 KB] in ???
-=======
-    Finished debug [unoptimized + fuel] target(s) [6.928 KB] in ???
->>>>>>> f733fc9e5 (update snapshot tests)
-=======
-    Finished debug [unoptimized + fuel] target(s) [7.76 KB] in ???
->>>>>>> e41698a5e (update tests)
-=======
-    Finished debug [unoptimized + fuel] target(s) [7.816 KB] in ???
->>>>>>> 0bd13365d (update tests)
-=======
-    Finished debug [unoptimized + fuel] target(s) [7.776 KB] in ???
->>>>>>> 3a228f704 (update tests)
+    Finished debug [unoptimized + fuel] target(s) [7.736 KB] in ???
      Running 18 tests, filtered 0 tests
 
 tested -- panicking_lib
@@ -76,15 +60,7 @@ E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { d
                                └─ at panicking_lib, src/lib.sw:70:5
            decoded log values:
 E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { data: "the best practice" }]), log rb: 2721958641300806892
-<<<<<<< HEAD
-<<<<<<< HEAD
-      test test_generic_panic_with_unit ... ok (???, 661 gas)
-=======
-      test test_generic_panic_with_unit ... ok (???, 787 gas)
->>>>>>> f733fc9e5 (update snapshot tests)
-=======
-      test test_generic_panic_with_unit ... ok (???, 641 gas)
->>>>>>> 3a228f704 (update tests)
+      test test_generic_panic_with_unit ... ok (???, 629 gas)
            revert code: 8100000000000007
             ├─ panic value:   ()
             ├─ panicked:      in panicking_lib::generic_panic
@@ -93,15 +69,7 @@ E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { d
                                └─ at panicking_lib, src/lib.sw:83:5
            decoded log values:
 (), log rb: 3330666440490685604
-<<<<<<< HEAD
-<<<<<<< HEAD
-      test test_generic_panic_with_unit_same_revert_code ... ok (???, 661 gas)
-=======
-      test test_generic_panic_with_unit_same_revert_code ... ok (???, 787 gas)
->>>>>>> f733fc9e5 (update snapshot tests)
-=======
-      test test_generic_panic_with_unit_same_revert_code ... ok (???, 641 gas)
->>>>>>> 3a228f704 (update tests)
+      test test_generic_panic_with_unit_same_revert_code ... ok (???, 629 gas)
            revert code: 8100000000000008
             ├─ panic value:   ()
             ├─ panicked:      in panicking_lib::generic_panic
@@ -148,30 +116,14 @@ A, log rb: 2721958641300806892
                                └─ at panicking_lib, src/lib.sw:108:5
            decoded log values:
 A, log rb: 2721958641300806892
-<<<<<<< HEAD
-<<<<<<< HEAD
-      test test_panic_without_arg ... ok (???, 653 gas)
-=======
-      test test_panic_without_arg ... ok (???, 771 gas)
->>>>>>> f733fc9e5 (update snapshot tests)
-=======
-      test test_panic_without_arg ... ok (???, 625 gas)
->>>>>>> 3a228f704 (update tests)
+      test test_panic_without_arg ... ok (???, 621 gas)
            revert code: 8280000000000000
             ├─ panic value:   ()
             └─ panicked:      in panicking_lib::test_panic_without_arg
                                └─ at panicking_lib, src/lib.sw:113:5
            decoded log values:
 (), log rb: 3330666440490685604
-<<<<<<< HEAD
-<<<<<<< HEAD
-      test test_panic_with_unit ... ok (???, 653 gas)
-=======
-      test test_panic_with_unit ... ok (???, 771 gas)
->>>>>>> f733fc9e5 (update snapshot tests)
-=======
-      test test_panic_with_unit ... ok (???, 625 gas)
->>>>>>> 3a228f704 (update tests)
+      test test_panic_with_unit ... ok (???, 621 gas)
            revert code: 8300000000000000
             ├─ panic value:   ()
             └─ panicked:      in panicking_lib::test_panic_with_unit
@@ -230,15 +182,7 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_lib
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
    Compiling library panicking_lib (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_lib)
-<<<<<<< HEAD
-<<<<<<< HEAD
-    Finished release [optimized + fuel] target(s) [4.472 KB] in ???
-=======
-    Finished release [optimized + fuel] target(s) [4.984 KB] in ???
->>>>>>> e41698a5e (update tests)
-=======
-    Finished release [optimized + fuel] target(s) [5.064 KB] in ???
->>>>>>> 0bd13365d (update tests)
+    Finished release [optimized + fuel] target(s) [5.056 KB] in ???
      Running 18 tests, filtered 0 tests
 
 tested -- panicking_lib
@@ -275,30 +219,14 @@ E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { d
                                └─ at panicking_lib, src/lib.sw:41:9
            decoded log values:
 E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { data: "the best practice" }]), log rb: 2721958641300806892
-<<<<<<< HEAD
-<<<<<<< HEAD
       test test_generic_panic_with_unit ... ok (???, 595 gas)
-=======
-      test test_generic_panic_with_unit ... ok (???, 701 gas)
->>>>>>> f733fc9e5 (update snapshot tests)
-=======
-      test test_generic_panic_with_unit ... ok (???, 599 gas)
->>>>>>> 3a228f704 (update tests)
            revert code: 8100000000000000
             ├─ panic value:   ()
             └─ panicked:      in panicking_lib::generic_panic
                                └─ at panicking_lib, src/lib.sw:74:5
            decoded log values:
 (), log rb: 3330666440490685604
-<<<<<<< HEAD
-<<<<<<< HEAD
       test test_generic_panic_with_unit_same_revert_code ... ok (???, 595 gas)
-=======
-      test test_generic_panic_with_unit_same_revert_code ... ok (???, 701 gas)
->>>>>>> f733fc9e5 (update snapshot tests)
-=======
-      test test_generic_panic_with_unit_same_revert_code ... ok (???, 599 gas)
->>>>>>> 3a228f704 (update tests)
            revert code: 8100000000000000
             ├─ panic value:   ()
             └─ panicked:      in panicking_lib::generic_panic
@@ -335,30 +263,14 @@ A, log rb: 2721958641300806892
                                └─ at panicking_lib, src/lib.sw:74:5
            decoded log values:
 A, log rb: 2721958641300806892
-<<<<<<< HEAD
-<<<<<<< HEAD
       test test_panic_without_arg ... ok (???, 595 gas)
-=======
-      test test_panic_without_arg ... ok (???, 701 gas)
->>>>>>> f733fc9e5 (update snapshot tests)
-=======
-      test test_panic_without_arg ... ok (???, 599 gas)
->>>>>>> 3a228f704 (update tests)
            revert code: 8280000000000000
             ├─ panic value:   ()
             └─ panicked:      in panicking_lib::test_panic_without_arg
                                └─ at panicking_lib, src/lib.sw:113:5
            decoded log values:
 (), log rb: 3330666440490685604
-<<<<<<< HEAD
-<<<<<<< HEAD
       test test_panic_with_unit ... ok (???, 595 gas)
-=======
-      test test_panic_with_unit ... ok (???, 701 gas)
->>>>>>> f733fc9e5 (update snapshot tests)
-=======
-      test test_panic_with_unit ... ok (???, 599 gas)
->>>>>>> 3a228f704 (update tests)
            revert code: 8300000000000000
             ├─ panic value:   ()
             └─ panicked:      in panicking_lib::test_panic_with_unit
