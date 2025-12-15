@@ -275,7 +275,12 @@ where
         self_type,
         subst_ctx,
     )?;
-    value.subst(&SubstTypesContext::new(engines, &type_mapping, true));
+    value.subst(&SubstTypesContext::new(
+        handler,
+        engines,
+        &type_mapping,
+        true,
+    ));
 
     for (name, expr) in const_generics.iter() {
         let _ = value.materialize_const_generics(engines, handler, name, expr);

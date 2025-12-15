@@ -85,7 +85,7 @@ impl Spanned for TyConstantDecl {
 }
 
 impl IsConcrete for TyConstantDecl {
-    fn is_concrete(&self, engines: &Engines) -> bool {
+    fn is_concrete(&self, _: &Handler, engines: &Engines) -> bool {
         self.return_type
             .is_concrete(engines, TreatNumericAs::Concrete)
     }
