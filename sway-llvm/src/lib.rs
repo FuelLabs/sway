@@ -887,22 +887,25 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
                 }
                 Ok(())
             }
-            InstOp::FuelVm(vm_instr) => {
-                if let FuelVmInstruction::Log {
+            InstOp::FuelVm(vm_instr) => match vm_instr {
+                FuelVmInstruction::Log {
                     log_val,
                     log_ty,
                     log_id,
                     log_data,
-                } = vm_instr
-                {
+                } => {
                     self.lower_polkavm_log(*log_val, *log_ty, *log_id, *log_data)?;
-                    return Ok(());
+                    Ok(())
                 }
-                Err(LlvmError::Lowering(format!(
+                FuelVmInstruction::Revert(val) => {
+                    self.lower_polkavm_revert(*val)?;
+                    Ok(())
+                }
+                _ => Err(LlvmError::Lowering(format!(
                     "FuelVM intrinsic {:?} is not supported for target {:?}",
                     vm_instr, self.opts.target_vm
-                )))
-            }
+                ))),
+            },
             op => {
                 eprintln!("LLVM backend unsupported instruction: {:?}", op);
                 Err(LlvmError::UnsupportedInstruction(

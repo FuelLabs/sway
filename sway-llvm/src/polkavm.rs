@@ -146,6 +146,26 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
         self.lower_polkavm_log_data_ptr_with_len(data_ptr, len_field)
     }
 
+    pub(super) fn lower_polkavm_revert(&mut self, val: Value) -> Result<()> {
+        if self.opts.target_vm != TargetVm::PolkaVm {
+            return Err(super::LlvmError::Lowering(
+                "FuelVM revert intrinsic is not supported for this backend".into(),
+            ));
+        }
+        let i64_ty = self.llvm.custom_width_int_type(64);
+        let arg_val = {
+            let basic = self.get_basic_value(val)?;
+            self.ensure_int_value(basic)?
+        };
+        let func = self.ensure_polkavm_import("revert", None, &[i64_ty.into()])?;
+        self.handle_builder_result(self.builder.build_call(
+            func,
+            &[arg_val.into()],
+            "call_revert",
+        ))?;
+        Ok(())
+    }
+
     fn metadata_to_any_type(ty: BasicMetadataTypeEnum<'ctx>) -> AnyTypeEnum<'ctx> {
         match ty {
             BasicMetadataTypeEnum::ArrayType(t) => t.as_any_type_enum(),
