@@ -1,6 +1,6 @@
-use super::{ModuleLowerer, Result, TargetVm};
+use super::{LlvmError, ModuleLowerer, Result, TargetVm};
 use inkwell::{
-    types::BasicType,
+    types::{AnyType, AnyTypeEnum, BasicMetadataTypeEnum, BasicType},
     values::{BasicMetadataValueEnum, BasicValue, BasicValueEnum, PointerValue},
     AddressSpace,
 };
@@ -43,7 +43,11 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
             .into_iter()
             .map(BasicMetadataValueEnum::from)
             .collect::<Vec<_>>();
-            let function = self.ensure_polkavm_import("logd")?;
+            let function = self.ensure_polkavm_import(
+                "logd",
+                None,
+                &[i64_ty.into(), i64_ty.into(), i64_ty.into(), i64_ty.into()],
+            )?;
             self.handle_builder_result(self.builder.build_call(function, &args, "call_logd"))?;
         } else if is_slice_ty {
             let (ptr_val, len_val) = self.lower_polkavm_log_slice_value(log_basic)?;
@@ -56,7 +60,11 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
             .into_iter()
             .map(BasicMetadataValueEnum::from)
             .collect::<Vec<_>>();
-            let function = self.ensure_polkavm_import("logd")?;
+            let function = self.ensure_polkavm_import(
+                "logd",
+                None,
+                &[i64_ty.into(), i64_ty.into(), i64_ty.into(), i64_ty.into()],
+            )?;
             self.handle_builder_result(self.builder.build_call(function, &args, "call_logd"))?;
         } else {
             let value = self.ensure_int_value(log_basic)?;
@@ -70,7 +78,11 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
             .into_iter()
             .map(BasicMetadataValueEnum::from)
             .collect::<Vec<_>>();
-            let function = self.ensure_polkavm_import("log")?;
+            let function = self.ensure_polkavm_import(
+                "log",
+                None,
+                &[i64_ty.into(), i64_ty.into(), i64_ty.into(), i64_ty.into()],
+            )?;
             self.handle_builder_result(self.builder.build_call(function, &args, "call_log"))?;
         }
 
@@ -134,21 +146,60 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
         self.lower_polkavm_log_data_ptr_with_len(data_ptr, len_field)
     }
 
+    fn metadata_to_any_type(ty: BasicMetadataTypeEnum<'ctx>) -> AnyTypeEnum<'ctx> {
+        match ty {
+            BasicMetadataTypeEnum::ArrayType(t) => t.as_any_type_enum(),
+            BasicMetadataTypeEnum::FloatType(t) => t.as_any_type_enum(),
+            BasicMetadataTypeEnum::IntType(t) => t.as_any_type_enum(),
+            BasicMetadataTypeEnum::PointerType(t) => t.as_any_type_enum(),
+            BasicMetadataTypeEnum::StructType(t) => t.as_any_type_enum(),
+            BasicMetadataTypeEnum::VectorType(t) => t.as_any_type_enum(),
+            BasicMetadataTypeEnum::ScalableVectorType(t) => t.as_any_type_enum(),
+            BasicMetadataTypeEnum::MetadataType(_) => {
+                panic!("metadata type is not supported for polkavm imports")
+            }
+        }
+    }
+
     pub(super) fn ensure_polkavm_import(
         &mut self,
         name: &str,
+        ret: Option<inkwell::types::BasicTypeEnum<'ctx>>,
+        args: &[BasicMetadataTypeEnum<'ctx>],
     ) -> Result<inkwell::values::FunctionValue<'ctx>> {
         if let Some(func) = self.polkavm_imports.get(name) {
+            let fn_ty = func.get_type();
+            let expected_ret = ret.map(|t| t.as_any_type_enum());
+            let actual_ret = fn_ty.get_return_type().map(|t| t.as_any_type_enum());
+            let actual_params = fn_ty.get_param_types();
+            let actual_any: Vec<_> = actual_params
+                .iter()
+                .map(|t| Self::metadata_to_any_type(*t))
+                .collect();
+            let expected_any: Vec<_> = args
+                .iter()
+                .map(|t| Self::metadata_to_any_type(*t))
+                .collect();
+            if expected_ret != actual_ret
+                || actual_any.len() != expected_any.len()
+                || actual_any
+                    .iter()
+                    .zip(expected_any.iter())
+                    .any(|(a, b)| a != b)
+            {
+                return Err(LlvmError::Lowering(format!(
+                    "polkavm import `{name}` requested with conflicting signature"
+                )));
+            }
             return Ok(*func);
         }
 
-        let i64_ty = self.llvm.custom_width_int_type(64);
-        let import_ty = self.llvm.void_type().fn_type(
-            &[i64_ty.into(), i64_ty.into(), i64_ty.into(), i64_ty.into()],
-            false,
-        );
+        let import_ty = match ret {
+            Some(ret_ty) => ret_ty.fn_type(args, false),
+            None => self.llvm.void_type().fn_type(args, false),
+        };
         let function = self.llvm_module.add_function(name, import_ty, None);
-        let metadata_symbol = self.emit_polkavm_import_metadata(name, 4, 0)?;
+        let metadata_symbol = self.emit_polkavm_import_metadata(name, args.len() as u8, 0)?;
 
         let asm = format!(
             ".section .text.polkavm_import,\"ax\"\n\
