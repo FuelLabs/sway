@@ -746,6 +746,7 @@ pub(crate) fn type_check_method_application(
                 );
 
                 method.subst(&SubstTypesContext::new(
+                    handler,
                     engines,
                     &type_subst,
                     !ctx.code_block_first_pass(),

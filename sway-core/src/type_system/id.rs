@@ -102,7 +102,7 @@ impl SubstTypes for TypeId {
         let type_engine = ctx.engines.te();
         if let Some(matching_id) = ctx
             .type_subst_map
-            .and_then(|tsm| tsm.find_match(*self, ctx.engines))
+            .and_then(|tsm| tsm.find_match(*self, ctx.handler, ctx.engines))
         {
             if !matches!(&*type_engine.get(matching_id), TypeInfo::ErrorRecovery(_)) {
                 *self = matching_id;
@@ -138,7 +138,10 @@ impl MaterializeConstGenerics for TypeId {
                             literal.cast_value_to_u64().unwrap()
                         }
                         _ => {
-                            todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                            return Err(handler.emit_err(CompileError::Internal(
+                                "Unexpected error on const generics",
+                                value.span.clone(),
+                            )));
                         }
                     };
 
@@ -204,7 +207,10 @@ impl MaterializeConstGenerics for TypeId {
                         literal.cast_value_to_u64().unwrap()
                     }
                     _ => {
-                        todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                        return Err(handler.emit_err(CompileError::Internal(
+                            "Unexpected error on const generics",
+                            value.span.clone(),
+                        )));
                     }
                 };
 
@@ -343,6 +349,7 @@ impl TypeId {
     /// type parameters such as tuples, arrays and others...
     pub(crate) fn extract_type_parameters(
         self,
+        handler: &Handler,
         engines: &Engines,
         depth: usize,
         type_parameters: &mut Vec<(TypeId, TypeId)>,
@@ -390,6 +397,7 @@ impl TypeId {
                         .expect("only works with type parameters");
                     type_parameters.push((type_param.type_id, orig_type_param.type_id));
                     type_param.type_id.extract_type_parameters(
+                        handler,
                         engines,
                         depth + 1,
                         type_parameters,
@@ -418,6 +426,7 @@ impl TypeId {
                         .expect("only works with type parameters");
                     type_parameters.push((type_param.type_id, orig_type_param.type_id));
                     type_param.type_id.extract_type_parameters(
+                        handler,
                         engines,
                         depth + 1,
                         type_parameters,
@@ -442,6 +451,7 @@ impl TypeId {
                         (TypeParameter::Type(orig_type_param), TypeParameter::Type(type_param)) => {
                             type_parameters.push((type_param.type_id, orig_type_param.type_id));
                             type_param.type_id.extract_type_parameters(
+                                handler,
                                 engines,
                                 depth + 1,
                                 type_parameters,
@@ -459,7 +469,12 @@ impl TypeId {
                                     expr.to_ty_expression(engines),
                                 );
                             }
-                            _ => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+                            _ => {
+                                handler.emit_err(CompileError::Internal(
+                                    "Unexpected error on const generics",
+                                    orig_type_param.span.clone(),
+                                ));
+                            }
                         },
                         _ => {}
                     }
@@ -481,6 +496,7 @@ impl TypeId {
                         (TypeParameter::Type(orig_type_param), TypeParameter::Type(type_param)) => {
                             type_parameters.push((type_param.type_id, orig_type_param.type_id));
                             type_param.type_id.extract_type_parameters(
+                                handler,
                                 engines,
                                 depth + 1,
                                 type_parameters,
@@ -498,7 +514,12 @@ impl TypeId {
                                     expr.to_ty_expression(engines),
                                 );
                             }
-                            _ => todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860"),
+                            _ => {
+                                handler.emit_err(CompileError::Internal(
+                                    "Unexpected error on const generics",
+                                    orig_type_param.span.clone(),
+                                ));
+                            }
                         },
                         _ => {}
                     }
@@ -510,6 +531,7 @@ impl TypeId {
                 for (elem, orig_elem) in elems.iter().zip(orig_elems.iter()) {
                     type_parameters.push((elem.type_id, orig_elem.type_id));
                     elem.type_id.extract_type_parameters(
+                        handler,
                         engines,
                         depth + 1,
                         type_parameters,
@@ -530,6 +552,7 @@ impl TypeId {
             ) => {
                 if let Some(address) = address {
                     address.return_type.extract_type_parameters(
+                        handler,
                         engines,
                         depth + 1,
                         type_parameters,
@@ -554,6 +577,7 @@ impl TypeId {
                         .zip(orig_type_arguments.clone().unwrap().iter())
                     {
                         type_arg.type_id().extract_type_parameters(
+                            handler,
                             engines,
                             depth + 1,
                             type_parameters,
@@ -567,6 +591,7 @@ impl TypeId {
             (TypeInfo::Array(ty, _), TypeInfo::Array(orig_ty, _)) => {
                 type_parameters.push((ty.type_id, orig_ty.type_id));
                 ty.type_id.extract_type_parameters(
+                    handler,
                     engines,
                     depth + 1,
                     type_parameters,
@@ -576,6 +601,7 @@ impl TypeId {
             }
             (TypeInfo::Alias { name: _, ty }, _) => {
                 ty.type_id.extract_type_parameters(
+                    handler,
                     engines,
                     depth + 1,
                     type_parameters,
@@ -585,6 +611,7 @@ impl TypeId {
             }
             (_, TypeInfo::Alias { name: _, ty }) => {
                 self.extract_type_parameters(
+                    handler,
                     engines,
                     depth + 1,
                     type_parameters,
@@ -597,6 +624,7 @@ impl TypeId {
             (TypeInfo::Ptr(ty), TypeInfo::Ptr(orig_ty)) => {
                 type_parameters.push((ty.type_id, orig_ty.type_id));
                 ty.type_id.extract_type_parameters(
+                    handler,
                     engines,
                     depth + 1,
                     type_parameters,
@@ -608,6 +636,7 @@ impl TypeId {
             (TypeInfo::Slice(ty), TypeInfo::Slice(orig_ty)) => {
                 type_parameters.push((ty.type_id, orig_ty.type_id));
                 ty.type_id.extract_type_parameters(
+                    handler,
                     engines,
                     depth + 1,
                     type_parameters,
@@ -627,6 +656,7 @@ impl TypeId {
             ) => {
                 type_parameters.push((referenced_type.type_id, orig_referenced_type.type_id));
                 referenced_type.type_id.extract_type_parameters(
+                    handler,
                     engines,
                     depth + 1,
                     type_parameters,
@@ -1345,7 +1375,13 @@ impl TypeId {
                     structure_generics.insert(self, p.trait_constraints);
                 }
                 TypeParameter::Const(_) => {
-                    todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                    handler.emit_err(CompileError::Internal(
+                        "Unexpected error on const generics",
+                        match type_param {
+                            TypeParameter::Type(p) => p.name.span(),
+                            TypeParameter::Const(p) => p.span.clone(),
+                        },
+                    ));
                 }
             }
         }
