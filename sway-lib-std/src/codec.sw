@@ -3258,8 +3258,6 @@ where
     }
 }
 
-
-
 // Decode
 
 pub trait AbiDecode {
