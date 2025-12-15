@@ -3219,7 +3219,6 @@ where
     buffer.as_raw_slice()
 }
 
-#[inline(never)]
 pub fn abi_decode<T>(data: raw_slice) -> T
 where
     T: AbiDecode,
@@ -3238,7 +3237,6 @@ where
     }
 }
 
-#[inline(never)]
 pub fn abi_decode_in_place<T>(ptr: raw_ptr, len: u64, target: raw_ptr)
 where
     T: AbiDecode,
@@ -3259,6 +3257,8 @@ where
         }
     }
 }
+
+
 
 // Decode
 
