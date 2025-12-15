@@ -2,83 +2,69 @@
 source: test/src/snapshot/mod.rs
 ---
 > forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
-exit status: 101
+exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
    Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
-    Finished release [optimized + fuel] target(s) [25.064 KB] in ???
+    Finished release [optimized + fuel] target(s) [25.008 KB] in ???
      Running 29 tests, filtered 0 tests
 
 tested -- const_of_contract_call
 
-      test cost_of_in_bool ... ok (???, 11883 gas)
-      test cost_of_in_u8 ... ok (???, 11848 gas)
-      test cost_of_in_u16 ... ok (???, 12160 gas)
-      test cost_of_in_u32 ... ok (???, 12413 gas)
-      test cost_of_in_u64 ... ok (???, 11619 gas)
-      test cost_of_in_u256 ... ok (???, 11700 gas)
-      test cost_of_in_b256 ... ok (???, 11682 gas)
-      test cost_of_in_str_0 ... ok (???, 11736 gas)
-      test cost_of_in_str_1 ... ok (???, 12331 gas)
-      test cost_of_in_str_8 ... ok (???, 11871 gas)
-      test cost_of_in_str_16 ... ok (???, 11864 gas)
-      test cost_of_in_str_32 ... ok (???, 11878 gas)
-      test cost_of_in_array_0 ... FAILED (???, 11499 gas)
-      test cost_of_in_array_1 ... ok (???, 11764 gas)
-      test cost_of_in_array_8 ... ok (???, 12953 gas)
-      test cost_of_in_array_16 ... ok (???, 12963 gas)
-      test cost_of_in_array_32 ... ok (???, 14232 gas)
-      test cost_of_in_array_64 ... ok (???, 16762 gas)
-      test cost_of_in_tuple_0 ... ok (???, 11454 gas)
-      test cost_of_in_tuple_1 ... ok (???, 11760 gas)
-      test cost_of_in_tuple_2 ... ok (???, 11835 gas)
-      test cost_of_in_tuple_3 ... ok (???, 11877 gas)
-      test cost_of_in_tuple_4 ... ok (???, 11833 gas)
-      test in_struct_u64 ... ok (???, 11771 gas)
-      test in_struct_u64_u64 ... ok (???, 11822 gas)
-      test in_struct_u64_u64_u64 ... ok (???, 11871 gas)
-      test in_enum_u64 ... ok (???, 11751 gas)
-      test in_enum_u64_u64 ... ok (???, 11748 gas)
-      test in_enum_u64_u64_u64 ... ok (???, 11764 gas)
+      test cost_of_in_bool ... ok (???, 11880 gas)
+      test cost_of_in_u8 ... ok (???, 11845 gas)
+      test cost_of_in_u16 ... ok (???, 12157 gas)
+      test cost_of_in_u32 ... ok (???, 12410 gas)
+      test cost_of_in_u64 ... ok (???, 11616 gas)
+      test cost_of_in_u256 ... ok (???, 11697 gas)
+      test cost_of_in_b256 ... ok (???, 11679 gas)
+      test cost_of_in_str_0 ... ok (???, 11733 gas)
+      test cost_of_in_str_1 ... ok (???, 12326 gas)
+      test cost_of_in_str_8 ... ok (???, 11868 gas)
+      test cost_of_in_str_16 ... ok (???, 11861 gas)
+      test cost_of_in_str_32 ... ok (???, 11875 gas)
+      test cost_of_in_array_0 ... ok (???, 11572 gas)
+      test cost_of_in_array_1 ... ok (???, 11761 gas)
+      test cost_of_in_array_8 ... ok (???, 12950 gas)
+      test cost_of_in_array_16 ... ok (???, 12960 gas)
+      test cost_of_in_array_32 ... ok (???, 14229 gas)
+      test cost_of_in_array_64 ... ok (???, 16759 gas)
+      test cost_of_in_tuple_0 ... ok (???, 11419 gas)
+      test cost_of_in_tuple_1 ... ok (???, 11757 gas)
+      test cost_of_in_tuple_2 ... ok (???, 11832 gas)
+      test cost_of_in_tuple_3 ... ok (???, 11874 gas)
+      test cost_of_in_tuple_4 ... ok (???, 11830 gas)
+      test in_struct_u64 ... ok (???, 11768 gas)
+      test in_struct_u64_u64 ... ok (???, 11819 gas)
+      test in_struct_u64_u64_u64 ... ok (???, 11868 gas)
+      test in_enum_u64 ... ok (???, 11748 gas)
+      test in_enum_u64_u64 ... ok (???, 11745 gas)
+      test in_enum_u64_u64_u64 ... ok (???, 11761 gas)
 
-   failures:
-      test cost_of_in_array_0, "test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call/src/main.sw":347
-           revert code: 0
-
-
-
-test result: FAILED. 28 passed; 1 failed; finished in ???
+test result: OK. 29 passed; 0 failed; finished in ???
 
     Finished in ???
-error: Some tests failed.
 
 > Block: ARRAY0
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
 
 > forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
-exit status: 101
+exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
    Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
-    Finished release [optimized + fuel] target(s) [952 B] in ???
+    Finished release [optimized + fuel] target(s) [944 B] in ???
      Running 1 test, filtered 0 tests
 
 tested -- const_of_contract_call
 
-      test isolated_cost_of_in_array_0 ... FAILED (???, 10293 gas)
+      test isolated_cost_of_in_array_0 ... ok (???, 10369 gas)
 
-   failures:
-      test isolated_cost_of_in_array_0, "test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call/src/main.sw":175
-           revert code: 0
-
-
-
-test result: FAILED. 0 passed; 1 failed; finished in ???
+test result: OK. 1 passed; 0 failed; finished in ???
 
     Finished in ???
-error: Some tests failed.
 
 > Block: ARRAY1
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
@@ -449,12 +435,12 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
    Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
-    Finished release [optimized + fuel] target(s) [712 B] in ???
+    Finished release [optimized + fuel] target(s) [664 B] in ???
      Running 1 test, filtered 0 tests
 
 tested -- const_of_contract_call
 
-      test isolated_cost_of_in_tuple_0 ... ok (???, 10236 gas)
+      test isolated_cost_of_in_tuple_0 ... ok (???, 10205 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 

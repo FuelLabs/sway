@@ -18,7 +18,7 @@ warning: Error message is empty
 ____
 
   Compiled script "panic_handling_in_unit_tests" with 1 warning.
-    Finished debug [unoptimized + fuel] target(s) [8.72 KB] in ???
+    Finished debug [unoptimized + fuel] target(s) [8.696 KB] in ???
      Running 2 tests, filtered 18 tests
 
 tested -- panic_handling_in_unit_tests
@@ -55,7 +55,7 @@ warning: Error message is empty
 ____
 
   Compiled script "panic_handling_in_unit_tests" with 1 warning.
-    Finished debug [unoptimized + fuel] target(s) [8.72 KB] in ???
+    Finished debug [unoptimized + fuel] target(s) [8.696 KB] in ???
      Running 20 tests, filtered 0 tests
 
 tested -- panic_handling_in_unit_tests
@@ -69,8 +69,8 @@ tested -- panic_handling_in_unit_tests
       test failing_error_signal_assert_ne ... FAILED (???, 3094 gas)
       test failing_error_signal_require_str_error ... FAILED (???, 1006 gas)
       test failing_error_signal_require_enum_error ... FAILED (???, 1133 gas)
-      test failing_panic_no_arg ... FAILED (???, 657 gas)
-      test failing_panic_unit_arg ... FAILED (???, 657 gas)
+      test failing_panic_no_arg ... FAILED (???, 653 gas)
+      test failing_panic_unit_arg ... FAILED (???, 653 gas)
       test failing_panic_const_eval_str_arg ... FAILED (???, 79 gas)
       test failing_panic_const_eval_empty_str_arg ... FAILED (???, 79 gas)
       test failing_panic_const_eval_whitespace_str_arg ... FAILED (???, 79 gas)
@@ -281,13 +281,13 @@ B(true), log rb: 8516346929033386016
 [
   {
     "LogData": {
-      "data": "00",
-      "digest": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+      "data": "",
+      "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "id": "0000000000000000000000000000000000000000000000000000000000000000",
       "is": 10368,
-      "len": 1,
+      "len": 0,
       "pc": 13204,
-      "ptr": 67108863,
+      "ptr": 67108864,
       "ra": 0,
       "rb": 3330666440490685604
     }
@@ -306,13 +306,13 @@ B(true), log rb: 8516346929033386016
 [
   {
     "LogData": {
-      "data": "00",
-      "digest": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+      "data": "",
+      "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "id": "0000000000000000000000000000000000000000000000000000000000000000",
       "is": 10368,
-      "len": 1,
+      "len": 0,
       "pc": 13256,
-      "ptr": 67108863,
+      "ptr": 67108864,
       "ra": 0,
       "rb": 3330666440490685604
     }

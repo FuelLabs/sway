@@ -19,6 +19,7 @@ use sway_ir::{
 };
 use sway_types::{span::Span, Ident};
 
+pub use function::{get_encoding_representation, get_runtime_representation, MemoryRepresentation};
 pub(crate) use purity::{check_function_purity, PurityEnv};
 
 use crate::{
