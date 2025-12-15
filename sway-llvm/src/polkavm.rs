@@ -163,6 +163,9 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
             &[arg_val.into()],
             "call_revert",
         ))?;
+        // Revert never returns; terminate the block to keep the IR well-formed.
+        let _ = self.builder.build_unreachable();
+        self.current_block = None;
         Ok(())
     }
 
