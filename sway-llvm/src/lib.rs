@@ -207,10 +207,15 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
                         if self.opts.target_vm == TargetVm::PolkaVm
                             && matches!(
                                 vm_op,
-                        FuelVmInstruction::Log { .. }
-                            | FuelVmInstruction::Revert(_)
-                            | FuelVmInstruction::ReadRegister(_)
-                        )
+                                FuelVmInstruction::Log { .. }
+                                    | FuelVmInstruction::Revert(_)
+                                    | FuelVmInstruction::ReadRegister(_)
+                                    | FuelVmInstruction::StateLoadWord { .. }
+                                    | FuelVmInstruction::StateStoreWord { .. }
+                                    | FuelVmInstruction::StateLoadQuadWord { .. }
+                                    | FuelVmInstruction::StateStoreQuadWord { .. }
+                                    | FuelVmInstruction::StateClear { .. }
+                            )
                         {
                             continue;
                         }
@@ -908,6 +913,37 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
                 }
                 FuelVmInstruction::ReadRegister(reg) => {
                     self.lower_polkavm_read_register(*reg, inst_value)?;
+                    Ok(())
+                }
+                FuelVmInstruction::StateLoadWord(key) => {
+                    self.lower_polkavm_state_load_word(*key, inst_value)?;
+                    Ok(())
+                }
+                FuelVmInstruction::StateStoreWord { stored_val, key } => {
+                    self.lower_polkavm_state_store_word(*stored_val, *key)?;
+                    Ok(())
+                }
+                FuelVmInstruction::StateLoadQuadWord {
+                    load_val,
+                    key,
+                    number_of_slots,
+                } => {
+                    self.lower_polkavm_state_load_quad(*load_val, *key, *number_of_slots)?;
+                    Ok(())
+                }
+                FuelVmInstruction::StateStoreQuadWord {
+                    stored_val,
+                    key,
+                    number_of_slots,
+                } => {
+                    self.lower_polkavm_state_store_quad(*stored_val, *key, *number_of_slots)?;
+                    Ok(())
+                }
+                FuelVmInstruction::StateClear {
+                    key,
+                    number_of_slots,
+                } => {
+                    self.lower_polkavm_state_clear(*key, *number_of_slots)?;
                     Ok(())
                 }
                 _ => Err(LlvmError::Lowering(format!(

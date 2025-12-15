@@ -216,6 +216,218 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
         Ok(())
     }
 
+    pub(super) fn lower_polkavm_state_load_word(
+        &mut self,
+        key: Value,
+        inst_value: Value,
+    ) -> Result<()> {
+        // storage_read(key_ptr, dst_ptr, offset=0, len=8); then load u64 from dst_ptr.
+        let i64_ty = self.llvm.custom_width_int_type(64);
+        let key_basic = self.get_basic_value(key)?;
+        let key_ptr = self.to_pointer_value(key_basic)?;
+        let tmp =
+            self.handle_builder_result(self.builder.build_alloca(i64_ty, "state_word_tmp"))?;
+        let offset = i64_ty.const_zero();
+        let len = i64_ty.const_int(8, false);
+        let func = self.ensure_polkavm_import(
+            "storage_read",
+            None,
+            &[
+                self.llvm.ptr_type(AddressSpace::default()).into(),
+                self.llvm.ptr_type(AddressSpace::default()).into(),
+                i64_ty.into(),
+                i64_ty.into(),
+            ],
+        )?;
+        self.handle_builder_result(self.builder.build_call(
+            func,
+            &[
+                key_ptr.into(),
+                tmp.as_basic_value_enum().into(),
+                offset.into(),
+                len.into(),
+            ],
+            "call_storage_read_word",
+        ))?;
+        let loaded =
+            self.handle_builder_result(self.builder.build_load(i64_ty, tmp, "state_word_load"))?;
+        self.value_map.insert(inst_value, loaded);
+        Ok(())
+    }
+
+    pub(super) fn lower_polkavm_state_store_word(
+        &mut self,
+        stored_val: Value,
+        key: Value,
+    ) -> Result<()> {
+        let i64_ty = self.llvm.custom_width_int_type(64);
+        let key_basic = self.get_basic_value(key)?;
+        let key_ptr = self.to_pointer_value(key_basic)?;
+        let src_basic = self.get_basic_value(stored_val)?;
+        let src_ptr = self.to_pointer_value(src_basic)?;
+        let len = i64_ty.const_int(8, false);
+        let func = self.ensure_polkavm_import(
+            "storage_set",
+            None,
+            &[
+                self.llvm.ptr_type(AddressSpace::default()).into(),
+                self.llvm.ptr_type(AddressSpace::default()).into(),
+                i64_ty.into(),
+            ],
+        )?;
+        self.handle_builder_result(self.builder.build_call(
+            func,
+            &[key_ptr.into(), src_ptr.into(), len.into()],
+            "call_storage_set_word",
+        ))?;
+        Ok(())
+    }
+
+    pub(super) fn lower_polkavm_state_load_quad(
+        &mut self,
+        load_val: Value,
+        key: Value,
+        number_of_slots: Value,
+    ) -> Result<()> {
+        let i64_ty = self.llvm.custom_width_int_type(64);
+        let key_basic = self.get_basic_value(key)?;
+        let key_ptr = self.to_pointer_value(key_basic)?;
+        let dst_basic = self.get_basic_value(load_val)?;
+        let dst_ptr = self.to_pointer_value(dst_basic)?;
+        let slots = {
+            let slots_basic = self.get_basic_value(number_of_slots)?;
+            self.ensure_int_value(slots_basic)?
+        };
+        let thirty_two = i64_ty.const_int(32, false);
+        let len =
+            self.handle_builder_result(self.builder.build_int_mul(slots, thirty_two, "quad_len"))?;
+        let zero = i64_ty.const_zero();
+        let func = self.ensure_polkavm_import(
+            "storage_read",
+            None,
+            &[
+                self.llvm.ptr_type(AddressSpace::default()).into(),
+                self.llvm.ptr_type(AddressSpace::default()).into(),
+                i64_ty.into(),
+                i64_ty.into(),
+            ],
+        )?;
+        self.handle_builder_result(self.builder.build_call(
+            func,
+            &[key_ptr.into(), dst_ptr.into(), zero.into(), len.into()],
+            "call_storage_read_quad",
+        ))?;
+        Ok(())
+    }
+
+    pub(super) fn lower_polkavm_state_store_quad(
+        &mut self,
+        stored_val: Value,
+        key: Value,
+        number_of_slots: Value,
+    ) -> Result<()> {
+        let i64_ty = self.llvm.custom_width_int_type(64);
+        let key_basic = self.get_basic_value(key)?;
+        let key_ptr = self.to_pointer_value(key_basic)?;
+        let src_basic = self.get_basic_value(stored_val)?;
+        let src_ptr = self.to_pointer_value(src_basic)?;
+        let slots = {
+            let slots_basic = self.get_basic_value(number_of_slots)?;
+            self.ensure_int_value(slots_basic)?
+        };
+        let thirty_two = i64_ty.const_int(32, false);
+        let len =
+            self.handle_builder_result(self.builder.build_int_mul(slots, thirty_two, "quad_len"))?;
+        let func = self.ensure_polkavm_import(
+            "storage_set",
+            None,
+            &[
+                self.llvm.ptr_type(AddressSpace::default()).into(),
+                self.llvm.ptr_type(AddressSpace::default()).into(),
+                i64_ty.into(),
+            ],
+        )?;
+        self.handle_builder_result(self.builder.build_call(
+            func,
+            &[key_ptr.into(), src_ptr.into(), len.into()],
+            "call_storage_set_quad",
+        ))?;
+        Ok(())
+    }
+
+    pub(super) fn lower_polkavm_state_clear(
+        &mut self,
+        key: Value,
+        number_of_slots: Value,
+    ) -> Result<()> {
+        // TODO: optimize by adding a bulk-clear hostcall; for now loop.
+        let i64_ty = self.llvm.custom_width_int_type(64);
+        let one = i64_ty.const_int(1, false);
+        let slots = {
+            let slots_basic = self.get_basic_value(number_of_slots)?;
+            self.ensure_int_value(slots_basic)?
+        };
+        let key_basic = self.get_basic_value(key)?;
+        let key_ptr = self.to_pointer_value(key_basic)?;
+        let func = self.ensure_polkavm_import(
+            "storage_clear",
+            None,
+            &[self.llvm.ptr_type(AddressSpace::default()).into()],
+        )?;
+
+        // Simple loop: while slots_left > 0 { storage_clear(key_ptr); slots_left -= 1; }
+        let slots_alloca = self.builder.build_alloca(i64_ty, "slots_left").unwrap();
+        self.builder.build_store(slots_alloca, slots).unwrap();
+        let parent = self
+            .current_block
+            .ok_or_else(|| super::LlvmError::Lowering("no current block".into()))?
+            .get_parent()
+            .ok_or_else(|| super::LlvmError::Lowering("no parent function".into()))?;
+        let loop_bb = self.llvm.append_basic_block(parent, "clear_loop");
+        let body_bb = self.llvm.append_basic_block(parent, "clear_body");
+        let after_bb = self.llvm.append_basic_block(parent, "clear_after");
+
+        self.builder
+            .build_unconditional_branch(loop_bb)
+            .map_err(|e| super::LlvmError::Lowering(format!("{e}")))?;
+        self.builder.position_at_end(loop_bb);
+        let cur_slots = self
+            .builder
+            .build_load(i64_ty, slots_alloca, "cur_slots")
+            .unwrap()
+            .into_int_value();
+        let cmp = self
+            .builder
+            .build_int_compare(
+                inkwell::IntPredicate::EQ,
+                cur_slots,
+                i64_ty.const_zero(),
+                "cmp_zero",
+            )
+            .unwrap();
+        self.builder
+            .build_conditional_branch(cmp, after_bb, body_bb)
+            .unwrap();
+
+        self.builder.position_at_end(body_bb);
+        self.handle_builder_result(self.builder.build_call(
+            func,
+            &[key_ptr.into()],
+            "call_storage_clear",
+        ))?;
+        let next = self
+            .builder
+            .build_int_sub(cur_slots, one, "slots_dec")
+            .unwrap();
+        self.builder.build_store(slots_alloca, next).unwrap();
+        self.builder
+            .build_unconditional_branch(loop_bb)
+            .map_err(|e| super::LlvmError::Lowering(format!("{e}")))?;
+
+        self.builder.position_at_end(after_bb);
+        Ok(())
+    }
+
     fn metadata_to_any_type(ty: BasicMetadataTypeEnum<'ctx>) -> AnyTypeEnum<'ctx> {
         match ty {
             BasicMetadataTypeEnum::ArrayType(t) => t.as_any_type_enum(),
