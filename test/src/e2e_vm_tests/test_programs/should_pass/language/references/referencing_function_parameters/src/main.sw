@@ -43,13 +43,6 @@ fn u8_parameter_not_inlined(p: u8) {
    u8_parameter(p)
 }
 
-impl PartialEq for [u64; 2] {
-    fn eq(self, other: Self) -> bool {
-        self[0] == other[0] && self[1] == other[1]
-    }
-}
-impl Eq for [u64; 2] {}
-
 #[inline(always)]
 fn array_parameter(p: [u64; 2]) {
     let r_p_1 = &p;
