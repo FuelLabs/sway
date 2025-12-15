@@ -1,7 +1,7 @@
 use super::{LlvmError, ModuleLowerer, Result, TargetVm};
 use inkwell::{
     types::{AnyType, AnyTypeEnum, BasicMetadataTypeEnum, BasicType},
-    values::{BasicMetadataValueEnum, BasicValue, BasicValueEnum, PointerValue},
+    values::{BasicMetadataValueEnum, BasicValue, BasicValueEnum, PointerValue, ValueKind},
     AddressSpace,
 };
 use sway_ir::{irtype::TypeContent, value::Value};
@@ -163,6 +163,53 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
             &[arg_val.into()],
             "call_revert",
         ))?;
+        Ok(())
+    }
+
+    pub(super) fn lower_polkavm_read_register(
+        &mut self,
+        reg: sway_ir::instruction::Register,
+        inst_value: Value,
+    ) -> Result<()> {
+        if self.opts.target_vm != TargetVm::PolkaVm {
+            return Err(super::LlvmError::Lowering(
+                "FuelVM read_register intrinsic is not supported for this backend".into(),
+            ));
+        }
+        let i64_ty = self.llvm.custom_width_int_type(64);
+        let reg_id = match reg {
+            sway_ir::instruction::Register::Of => 0u64,
+            sway_ir::instruction::Register::Pc => 1,
+            sway_ir::instruction::Register::Ssp => 2,
+            sway_ir::instruction::Register::Sp => 3,
+            sway_ir::instruction::Register::Fp => 4,
+            sway_ir::instruction::Register::Hp => 5,
+            sway_ir::instruction::Register::Error => 6,
+            sway_ir::instruction::Register::Ggas => 7,
+            sway_ir::instruction::Register::Cgas => 8,
+            sway_ir::instruction::Register::Bal => 9,
+            sway_ir::instruction::Register::Is => 10,
+            sway_ir::instruction::Register::Ret => 11,
+            sway_ir::instruction::Register::Retl => 12,
+            sway_ir::instruction::Register::Flag => 13,
+        };
+        let reg_val = i64_ty.const_int(reg_id, false);
+        let func =
+            self.ensure_polkavm_import("read_register", Some(i64_ty.into()), &[i64_ty.into()])?;
+        let call = self.handle_builder_result(self.builder.build_call(
+            func,
+            &[reg_val.into()],
+            "call_rr",
+        ))?;
+        let ret = match call.try_as_basic_value() {
+            ValueKind::Basic(val) => val,
+            _ => {
+                return Err(super::LlvmError::Lowering(
+                    "read_register did not return value".into(),
+                ))
+            }
+        };
+        self.value_map.insert(inst_value, ret);
         Ok(())
     }
 

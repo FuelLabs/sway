@@ -204,10 +204,15 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
             for (_block, inst_val) in func.instruction_iter(self.ir) {
                 if let Some(instruction) = inst_val.get_instruction(self.ir) {
                     if let InstOp::FuelVm(vm_op) = &instruction.op {
-                        if self.opts.target_vm == TargetVm::PolkaVm {
-                            if matches!(vm_op, FuelVmInstruction::Log { .. }) {
-                                continue;
-                            }
+                        if self.opts.target_vm == TargetVm::PolkaVm
+                            && matches!(
+                                vm_op,
+                        FuelVmInstruction::Log { .. }
+                            | FuelVmInstruction::Revert(_)
+                            | FuelVmInstruction::ReadRegister(_)
+                        )
+                        {
+                            continue;
                         }
                         return Err(LlvmError::Lowering(format!(
                             "FuelVM intrinsic {:?} is not supported for target {:?}",
@@ -899,6 +904,10 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
                 }
                 FuelVmInstruction::Revert(val) => {
                     self.lower_polkavm_revert(*val)?;
+                    Ok(())
+                }
+                FuelVmInstruction::ReadRegister(reg) => {
+                    self.lower_polkavm_read_register(*reg, inst_value)?;
                     Ok(())
                 }
                 _ => Err(LlvmError::Lowering(format!(
