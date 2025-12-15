@@ -2949,8 +2949,9 @@ fn emit_polkavm_binary_from_llvm(
         .with_context(|| format!("failed to execute {lld}"))?;
     if !lld_status.success() {
         bail!(
-            "{lld} failed with status {}",
-            lld_status.code().unwrap_or(-1)
+            "{lld} failed with status {} (command: {:?})",
+            lld_status.code().unwrap_or(-1),
+            lld_cmd
         );
     }
 

@@ -4,8 +4,7 @@
 //! grow this incrementally: start with type lowering and function declarations, then add
 //! instruction lowering in tiers.
 
-use std::collections::HashMap;
-use std::convert::TryInto;
+use std::{collections::HashMap, convert::TryInto, fs, path::PathBuf};
 
 use inkwell::{
     attributes::{Attribute, AttributeLoc},
@@ -25,14 +24,19 @@ use sway_ir::{
     block::Block,
     constant::{Constant, ConstantContent, ConstantValue},
     function::Function,
-    instruction::{BinaryOpKind, BranchToWithArgs, InstOp, Predicate},
+    instruction::{BinaryOpKind, BranchToWithArgs, FuelVmInstruction, InstOp, Predicate},
     irtype::{Type, TypeContent},
+    metadata::{MetadataIndex, Metadatum},
     module::Module,
     value::Value,
     variable::LocalVar,
+    Context,
 };
+use sway_types::span::{Source, Span};
 use sway_types::u256::U256;
 use thiserror::Error;
+
+mod polkavm;
 
 /// Options that influence LLVM module emission.
 #[derive(Debug, Clone)]
@@ -97,6 +101,7 @@ pub fn lower_module_to_string<'eng>(
     let llvm = LlvmContext::create();
     let mut lowerer = ModuleLowerer::new(&llvm, ir, module, opts.clone())?;
     lowerer.lower_module_decls()?;
+    lowerer.finalize_inline_asm();
 
     Ok(lowerer.llvm_module.print_to_string().to_string())
 }
@@ -118,6 +123,14 @@ struct ModuleLowerer<'ctx, 'ir, 'eng> {
     current_block: Option<BasicBlock<'ctx>>,
     target_data: TargetData,
     export_target: Option<FunctionValue<'ctx>>,
+    polkavm_imports: HashMap<String, FunctionValue<'ctx>>,
+    module_inline_asm: String,
+}
+
+struct SourceLocation {
+    path: PathBuf,
+    line: usize,
+    column: usize,
 }
 
 impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
@@ -162,11 +175,14 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
             target_data,
             global_consts: HashMap::new(),
             export_target: None,
+            polkavm_imports: HashMap::new(),
+            module_inline_asm: String::new(),
         })
     }
 
     /// For now we only emit function declarations. Bodies and instruction lowering will follow.
     fn lower_module_decls(&mut self) -> Result<()> {
+        self.validate_vm_instructions()?;
         for func in self.ir_module.function_iter(self.ir) {
             let fn_val = self.declare_function(func)?;
             self.map_function_arguments(func, fn_val)?;
@@ -177,6 +193,106 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
         self.create_main_shim()?;
         //self.emit_polkavm_export_if_requested()?;
         Ok(())
+    }
+
+    fn validate_vm_instructions(&self) -> Result<()> {
+        if self.opts.target_vm == TargetVm::FuelVm {
+            return Ok(());
+        }
+
+        for func in self.ir_module.function_iter(self.ir) {
+            for (_block, inst_val) in func.instruction_iter(self.ir) {
+                if let Some(instruction) = inst_val.get_instruction(self.ir) {
+                    if let InstOp::FuelVm(vm_op) = &instruction.op {
+                        if self.opts.target_vm == TargetVm::PolkaVm {
+                            if matches!(vm_op, FuelVmInstruction::Log { .. }) {
+                                continue;
+                            }
+                        }
+                        return Err(LlvmError::Lowering(format!(
+                            "FuelVM intrinsic {:?} is not supported for target {:?}",
+                            vm_op, self.opts.target_vm
+                        )));
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn append_module_inline_asm(&mut self, asm: &str) {
+        if !self.module_inline_asm.is_empty() && !self.module_inline_asm.ends_with('\n') {
+            self.module_inline_asm.push('\n');
+        }
+        self.module_inline_asm.push_str(asm);
+        if !self.module_inline_asm.ends_with('\n') {
+            self.module_inline_asm.push('\n');
+        }
+    }
+
+    fn location_for_value(&self, value: Value) -> Option<SourceLocation> {
+        self.metadata_to_span(value.get_metadata(self.ir))
+            .map(|(path, span)| {
+                let line_col = span.start_line_col_one_index();
+                SourceLocation {
+                    path,
+                    line: line_col.line,
+                    column: line_col.col,
+                }
+            })
+    }
+
+    fn metadata_to_span(&self, md_idx: Option<MetadataIndex>) -> Option<(PathBuf, Span)> {
+        Self::for_each_metadata(self.ir, md_idx, |md_idx| self.span_from_metadata(md_idx))
+    }
+
+    fn span_from_metadata(&self, md_idx: MetadataIndex) -> Option<(PathBuf, Span)> {
+        let fields = md_idx.get_content(self.ir).unwrap_struct("span", 3)?;
+        let (path, source) = Self::md_to_file_location(self.ir, &fields[0])?;
+        let start = fields[1].unwrap_integer()? as usize;
+        let end = fields[2].unwrap_integer()? as usize;
+        let source_id = self.ir.source_engine().get_source_id(&path);
+        let span = Span::new(source, start, end, Some(source_id))?;
+        Some((path, span))
+    }
+
+    fn md_to_file_location(context: &Context<'eng>, md: &Metadatum) -> Option<(PathBuf, Source)> {
+        let idx = md.unwrap_index()?;
+        let source_id = idx.get_content(context).unwrap_source_id()?;
+        let path = context.source_engine().get_path(source_id);
+        let text = fs::read_to_string(&path).ok()?;
+        let source = Source::from(text.as_str());
+        Some((path, source))
+    }
+
+    fn for_each_metadata<T, F>(
+        context: &Context<'eng>,
+        md_idx: Option<MetadataIndex>,
+        mut f: F,
+    ) -> Option<T>
+    where
+        F: FnMut(MetadataIndex) -> Option<T>,
+    {
+        md_idx.and_then(|md_idx| {
+            if let Some(md_list) = md_idx.get_content(context).unwrap_list() {
+                for idx in md_list {
+                    if let Some(item) = f(*idx) {
+                        return Some(item);
+                    }
+                }
+                None
+            } else {
+                f(md_idx)
+            }
+        })
+    }
+
+    fn finalize_inline_asm(&mut self) {
+        if !self.module_inline_asm.is_empty() {
+            self.llvm_module
+                .set_inline_assembly(&self.module_inline_asm);
+        }
     }
 
     fn declare_function(&mut self, func: Function) -> Result<inkwell::values::FunctionValue<'ctx>> {
@@ -362,23 +478,18 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
             false,
         );
         let name_ptr = name_global.as_pointer_value();
-        let cast_name = self
-            .builder
-            .build_bit_cast(name_ptr, ptr_ty, "polkavm_cast_name")
-            .map_err(|e| LlvmError::Lowering(format!("builder error: {e}")))?;
+        let cast_name = name_ptr.const_cast(ptr_ty);
         let metadata_vals: Vec<BasicValueEnum> = vec![
             i8.const_int(1, false).into(),
             i32.const_zero().into(),
-            i32
-                .const_int((name_bytes.len() - 1) as u64, false)
-                .into(),
+            i32.const_int((name_bytes.len() - 1) as u64, false).into(),
             cast_name.into(),
             i8.const_zero().into(),
             i8.const_zero().into(),
         ];
-        let metadata_global = self
-            .llvm_module
-            .add_global(metadata_ty, None, "polkavm_export_metadata");
+        let metadata_global =
+            self.llvm_module
+                .add_global(metadata_ty, None, "polkavm_export_metadata");
         metadata_global.set_initializer(&metadata_ty.const_named_struct(&metadata_vals));
         metadata_global.set_constant(true);
         metadata_global.set_section(Some(".polkavm_metadata"));
@@ -692,9 +803,13 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
                 if asm_block.return_type.is_unit(self.ir) {
                     return Ok(());
                 }
-                Err(LlvmError::UnsupportedInstruction(
-                    "AsmBlock lowering not implemented for non-unit return types",
-                ))
+                let location_msg = self
+                    .location_for_value(inst_value)
+                    .map(|loc| format!(" at {}:{}:{}", loc.path.display(), loc.line, loc.column))
+                    .unwrap_or_default();
+                Err(LlvmError::Lowering(format!(
+                    "AsmBlock lowering not implemented for non-unit return types{location_msg}",
+                )))
             }
             InstOp::BitCast(value, ty) => {
                 let src_val = self.get_basic_value(*value)?;
