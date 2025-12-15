@@ -16,13 +16,6 @@ impl New for [u64; 0] {
     }
 }
 
-impl PartialEq for [u64; 0] {
-    fn eq(self, other: Self) -> bool {
-        true
-    }
-}
-impl Eq for [u64; 0] {}
-
 struct EmptyStruct {}
 
 impl New for EmptyStruct {
