@@ -11,13 +11,6 @@ impl PartialEq for Struct {
 }
 impl Eq for Struct {}
 
-impl PartialEq for [Struct; 3] {
-    fn eq(self, other: Self) -> bool {
-        self[0] == other[0] && self[1] == other[1] && self[2] == other[2]
-    }
-}
-impl Eq for [Struct; 3] {}
-
 // TODO: (REFERENCES) Add tests for other expressions.
 
 #[inline(always)]

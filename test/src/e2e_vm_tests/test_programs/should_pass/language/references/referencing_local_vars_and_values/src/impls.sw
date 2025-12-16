@@ -7,6 +7,8 @@ pub trait New {
 pub trait ZeroSize {
 }
 
+impl ZeroSize for () {}
+
 impl New for bool {
     fn new() -> Self {
         true
@@ -55,37 +57,11 @@ impl New for str {
     }
 }
 
-impl PartialEq for str[6] {
-    fn eq(self, other: Self) -> bool {
-        let mut i = 0;
-        while i < 6 {
-            let ptr_self = __addr_of(self).add::<u8>(i);
-            let ptr_other = __addr_of(other).add::<u8>(i);
-
-            if ptr_self.read::<u8>() != ptr_other.read::<u8>() {
-                return false;
-            }
-
-            i = i + 1;
-        };
-
-        true
-    }
-}
-impl Eq for str[6] {}
-
 impl New for str[6] {
     fn new() -> Self {
         __to_str_array("1a2B3c")
     }
 }
-
-impl PartialEq for [u64; 2] {
-    fn eq(self, other: Self) -> bool {
-        self[0] == other[0] && self[1] == other[1]
-    }
-}
-impl Eq for [u64; 2] {}
 
 impl New for [u64; 2] {
     fn new() -> Self {
@@ -195,13 +171,6 @@ impl New for [u64; 0] {
         []
     }
 }
-
-impl PartialEq for [u64; 0] {
-    fn eq(self, other: Self) -> bool {
-        true
-    }
-}
-impl Eq for [u64; 0] {}
 
 impl ZeroSize for [u64; 0] {}
 

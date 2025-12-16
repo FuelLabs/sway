@@ -33,17 +33,3 @@ impl PartialEq for MyEnum {
     }
 }
 impl Eq for MyEnum {}
-
-impl PartialEq for [u64; 3] {
-    fn eq(self, other: Self) -> bool {
-        self[0] == other[0] && self[1] == other[1] && self[2] == other[2]
-    }
-}
-impl Eq for [u64; 3] {}
-
-impl PartialEq for str[4] {
-    fn eq(self, other: Self) -> bool {
-        sha256_str_array(self) == sha256_str_array(other)
-    }
-}
-impl Eq for str[4] {}

@@ -139,7 +139,7 @@ fn test_all_inlined(to_use: u8) {
     test_if_expr::<Enum>(to_use);
     test_if_expr::<(u8, u32)>(to_use);
     test_if_expr::<b256>(to_use);
-    test_if_expr::<raw_ptr>(to_use);
+    test_if_expr::<RawPtrNewtype>(to_use);
     test_if_expr::<raw_slice>(to_use);
 
     test_function_call::<()>(to_use);
@@ -158,7 +158,7 @@ fn test_all_inlined(to_use: u8) {
     test_function_call::<Enum>(to_use);
     test_function_call::<(u8, u32)>(to_use);
     test_function_call::<b256>(to_use);
-    test_function_call::<raw_ptr>(to_use);
+    test_function_call::<RawPtrNewtype>(to_use);
     test_function_call::<raw_slice>(to_use);
 }
 
@@ -180,7 +180,7 @@ fn test_not_inlined(to_use: u8) {
     test_if_expr_not_inlined::<Enum>(to_use);
     test_if_expr_not_inlined::<(u8, u32)>(to_use);
     test_if_expr_not_inlined::<b256>(to_use);
-    test_if_expr_not_inlined::<raw_ptr>(to_use);
+    test_if_expr_not_inlined::<RawPtrNewtype>(to_use);
     test_if_expr_not_inlined::<raw_slice>(to_use);
 
     test_function_call_not_inlined::<()>(to_use);
@@ -199,7 +199,7 @@ fn test_not_inlined(to_use: u8) {
     test_function_call_not_inlined::<Enum>(to_use);
     test_function_call_not_inlined::<(u8, u32)>(to_use);
     test_function_call_not_inlined::<b256>(to_use);
-    test_function_call_not_inlined::<raw_ptr>(to_use);
+    test_function_call_not_inlined::<RawPtrNewtype>(to_use);
     test_function_call_not_inlined::<raw_slice>(to_use);
 }
 
