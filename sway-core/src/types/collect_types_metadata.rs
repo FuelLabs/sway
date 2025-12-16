@@ -9,7 +9,12 @@ use std::{
 };
 
 use crate::{
-    Engines, abi_generation::abi_str::AbiStrContext, language::{parsed::ExpressionKind, ty::{TyExpression, TyExpressionVariant}}, type_system::TypeId
+    abi_generation::abi_str::AbiStrContext,
+    language::{
+        ty::{TyExpression, TyExpressionVariant},
+    },
+    type_system::TypeId,
+    Engines,
 };
 use sha2::{Digest, Sha256};
 use sway_error::{
@@ -109,7 +114,7 @@ impl TypeMetadata {
                     } else {
                         match &arguments[0].1.expression {
                             TyExpressionVariant::Ref(r) => {
-                                Ok(&*r)
+                                Ok(r.as_ref())
                             }
                             _ => todo!(),
                         }
