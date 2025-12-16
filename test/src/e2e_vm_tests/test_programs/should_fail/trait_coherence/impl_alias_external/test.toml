@@ -1,0 +1,6 @@
+# TODO update this once the inherent impl warning becomes a hard error.
+category = "compile"
+expected_warnings = 2
+
+# check: $()coherence violation: inherent implementations must be defined in the type's defining package
+# check: $()cannot define inherent implementation for `ExternalAlias`

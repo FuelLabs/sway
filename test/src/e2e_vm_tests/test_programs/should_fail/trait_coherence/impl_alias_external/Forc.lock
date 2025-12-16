@@ -1,0 +1,8 @@
+[[package]]
+name = "impl_alias_external"
+source = "member"
+dependencies = ["impl_self_overlap_lib"]
+
+[[package]]
+name = "impl_self_overlap_lib"
+source = "path+from-root-8CF3CC33267F1B7E"
