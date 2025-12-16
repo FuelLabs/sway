@@ -228,6 +228,10 @@ impl TestInstance for RawPtrNewtype {
 }
 
 impl AbiEncode for RawPtrNewtype {
+    fn is_encode_trivial() -> bool {
+        false
+    }
+    
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let ptr_as_u64 = asm(p: self.ptr) {
             p: u64

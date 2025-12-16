@@ -654,7 +654,7 @@ pub struct TypeSize {
 }
 
 impl TypeSize {
-    pub(crate) fn new(size_in_bytes: u64) -> Self {
+    pub fn new(size_in_bytes: u64) -> Self {
         Self { size_in_bytes }
     }
 
