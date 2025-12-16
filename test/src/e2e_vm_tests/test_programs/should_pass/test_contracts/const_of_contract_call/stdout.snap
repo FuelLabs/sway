@@ -7,11 +7,16 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
    Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
+<<<<<<< HEAD
     Finished release [optimized + fuel] target(s) [20.64 KB] in ???
+=======
+    Finished release [optimized + fuel] target(s) [24.912 KB] in ???
+>>>>>>> b178371dd (encode_allow_alias for log)
      Running 29 tests, filtered 0 tests
 
 tested -- const_of_contract_call
 
+<<<<<<< HEAD
       test cost_of_in_bool ... ok (???, 11300 gas)
       test cost_of_in_u8 ... ok (???, 11115 gas)
       test cost_of_in_u16 ... ok (???, 11520 gas)
@@ -41,6 +46,37 @@ tested -- const_of_contract_call
       test in_enum_u64 ... ok (???, 11154 gas)
       test in_enum_u64_u64 ... ok (???, 11158 gas)
       test in_enum_u64_u64_u64 ... ok (???, 11174 gas)
+=======
+      test cost_of_in_bool ... ok (???, 11874 gas)
+      test cost_of_in_u8 ... ok (???, 11839 gas)
+      test cost_of_in_u16 ... ok (???, 12151 gas)
+      test cost_of_in_u32 ... ok (???, 12404 gas)
+      test cost_of_in_u64 ... ok (???, 11610 gas)
+      test cost_of_in_u256 ... ok (???, 11691 gas)
+      test cost_of_in_b256 ... ok (???, 11673 gas)
+      test cost_of_in_str_0 ... ok (???, 11731 gas)
+      test cost_of_in_str_1 ... ok (???, 12324 gas)
+      test cost_of_in_str_8 ... ok (???, 11862 gas)
+      test cost_of_in_str_16 ... ok (???, 11855 gas)
+      test cost_of_in_str_32 ... ok (???, 11869 gas)
+      test cost_of_in_array_0 ... ok (???, 11566 gas)
+      test cost_of_in_array_1 ... ok (???, 11755 gas)
+      test cost_of_in_array_8 ... ok (???, 12838 gas)
+      test cost_of_in_array_16 ... ok (???, 12954 gas)
+      test cost_of_in_array_32 ... ok (???, 14223 gas)
+      test cost_of_in_array_64 ... ok (???, 16753 gas)
+      test cost_of_in_tuple_0 ... ok (???, 11413 gas)
+      test cost_of_in_tuple_1 ... ok (???, 11751 gas)
+      test cost_of_in_tuple_2 ... ok (???, 11826 gas)
+      test cost_of_in_tuple_3 ... ok (???, 11868 gas)
+      test cost_of_in_tuple_4 ... ok (???, 11824 gas)
+      test in_struct_u64 ... ok (???, 11762 gas)
+      test in_struct_u64_u64 ... ok (???, 11813 gas)
+      test in_struct_u64_u64_u64 ... ok (???, 11862 gas)
+      test in_enum_u64 ... ok (???, 11742 gas)
+      test in_enum_u64_u64 ... ok (???, 11739 gas)
+      test in_enum_u64_u64_u64 ... ok (???, 11755 gas)
+>>>>>>> b178371dd (encode_allow_alias for log)
 
 test result: OK. 29 passed; 0 failed; finished in ???
 
@@ -155,12 +191,20 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
    Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
+<<<<<<< HEAD
     Finished release [optimized + fuel] target(s) [856 B] in ???
+=======
+    Finished release [optimized + fuel] target(s) [1.176 KB] in ???
+>>>>>>> b178371dd (encode_allow_alias for log)
      Running 1 test, filtered 0 tests
 
 tested -- const_of_contract_call
 
+<<<<<<< HEAD
       test isolated_cost_of_in_array_8 ... ok (???, 10932 gas)
+=======
+      test isolated_cost_of_in_array_8 ... ok (???, 11617 gas)
+>>>>>>> b178371dd (encode_allow_alias for log)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
