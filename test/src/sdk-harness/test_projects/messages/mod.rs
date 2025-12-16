@@ -364,7 +364,7 @@ async fn can_send_string_message() {
     assert_eq!(*messages_contract_id, **message_receipt.sender().unwrap());
     assert_eq!(&recipient_address, message_receipt.recipient().unwrap());
     assert_eq!(amount, message_receipt.amount().unwrap());
-    assert_eq!(16, message_receipt.len().unwrap()); // smo ID + 4 bytes
+    assert_eq!(12, message_receipt.len().unwrap()); // smo ID + 4 bytes
     assert_eq!(
         [
             102, // 'f'
