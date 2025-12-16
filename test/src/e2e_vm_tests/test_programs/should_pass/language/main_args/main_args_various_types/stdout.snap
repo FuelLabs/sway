@@ -1386,7 +1386,7 @@ addi $r0 $$locbase i216       ; get offset to local __ptr { ptr, u64 }
 mcpi $r0 $r1 i16              ; copy memory
 lw   $r0 $$locbase i27        ; load word
 addi $r1 $$locbase i32        ; get offset to local __ptr string<3>
-mcpi $r1 $r0 i8               ; copy memory
+mcpi $r1 $r0 i3               ; copy memory
 addi $r0 $$locbase i192       ; get offset to local __ptr { string<3> }
 mcpi $r0 $r1 i8               ; copy memory
 lw   $r1 $r5 i0               ; load word
@@ -1779,7 +1779,7 @@ cfei i40                      ; allocate 40 bytes for locals and 0 slots for cal
 move $r0 $$arg1               ; save argument 1 (b)
 move $r1 $$reta               ; save return address
 addi $r2 $$locbase i16        ; get offset to local __ptr string<3>
-mcpi $r2 $$arg0 i8            ; copy memory
+mcpi $r2 $$arg0 i3            ; copy memory
 addi $r2 $$locbase i24        ; get offset to local __ptr slice
 mcpi $r2 $r0 i16              ; copy memory
 lw   $r0 $$locbase i3         ; load word
