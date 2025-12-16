@@ -3133,10 +3133,8 @@ fn type_check_panic(
                     )));
                 } else {
                     match &arguments[0].1.expression {
-                        TyExpressionVariant::Ref(r) => {
-                            r.return_type
-                        }
-                        _ => todo!()
+                        TyExpressionVariant::Ref(r) => r.return_type,
+                        _ => todo!(),
                     }
                 }
             }

@@ -3119,15 +3119,13 @@ fn wrap_logged_expr_into_encode_call(logged_expr: Expression) -> Expression {
                 span: expression_span.clone(),
             },
             resolved_call_path_binding: None,
-            arguments: vec![
-                Expression {
-                    kind:ExpressionKind::Ref(RefExpression{
-                        to_mutable_value:false,
-                        value: Box::new(logged_expr),
-                    }), 
-                    span: expression_span.clone()
-                }
-            ],
+            arguments: vec![Expression {
+                kind: ExpressionKind::Ref(RefExpression {
+                    to_mutable_value: false,
+                    value: Box::new(logged_expr),
+                }),
+                span: expression_span.clone(),
+            }],
         })),
         span: expression_span,
     }
