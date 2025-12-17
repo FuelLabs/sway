@@ -1406,7 +1406,7 @@ lw   $r0 $$locbase i27        ; load word
 addi $r1 $$locbase i32        ; get offset to local __ptr string<3>
 mcpi $r1 $r0 i3               ; copy memory
 addi $r0 $$locbase i192       ; get offset to local __ptr { string<3> }
-mcpi $r0 $r1 i8               ; copy memory
+mcpi $r0 $r1 i3               ; copy memory
 lw   $r1 $r5 i0               ; load word
 lw   $r1 $r1 i0               ; lw val ptr i0
 lw   $r2 $r5 i0               ; load word
@@ -1515,7 +1515,7 @@ mcpi $r0 $r1 i24              ; copy memory
 addi $r0 $$locbase i1136      ; get offset to local __ptr { string<3> }
 addi $r1 $$locbase i752       ; get offset to local __ptr { { ptr, u64, u64 } }
 addi $r2 $$locbase i1144      ; get offset to local __ptr string<3>
-mcpi $r2 $r0 i8               ; copy memory
+mcpi $r2 $r0 i3               ; copy memory
 addi $r0 $$locbase i776       ; get offset to local __ptr { { ptr, u64, u64 } }
 mcpi $r0 $r1 i24              ; copy memory
 addi $r0 $$locbase i776       ; get offset to local __ptr { { ptr, u64, u64 } }
@@ -1540,7 +1540,7 @@ aloc $r7
 mcp  $hp $r0 $r1
 move $r0 $hp                  ; move parameter from branch to block argument
 addi $r6 $$locbase i200       ; get offset to local __ptr string<3>
-mcpi $r6 $r2 i8               ; copy memory
+mcpi $r6 $r2 i3               ; copy memory
 add  $r1 $r0 $r1
 mcpi $r1 $r6 i3               ; copy memory
 addi $r1 $$locbase i240       ; get offset to local __ptr { ptr, u64, u64 }
@@ -1651,7 +1651,7 @@ sw   $$locbase $r0 i14        ; store word
 addi $r0 $$locbase i184       ; get offset to local __ptr slice
 mcpi $r0 $r2 i16              ; copy memory
 addi $r2 $$locbase i592       ; get offset to local __ptr string<3>
-mcpi $r2 $r1 i8               ; copy memory
+mcpi $r2 $r1 i3               ; copy memory
 addi $r1 $$locbase i600       ; get offset to local __ptr slice
 mcpi $r1 $r0 i16              ; copy memory
 move $$arg0 $r2               ; [call]: pass argument 0
@@ -1687,7 +1687,7 @@ sw   $$locbase $r0 i29        ; store word
 addi $r0 $$locbase i264       ; get offset to local __ptr slice
 mcpi $r0 $r2 i16              ; copy memory
 addi $r2 $$locbase i616       ; get offset to local __ptr string<3>
-mcpi $r2 $r1 i8               ; copy memory
+mcpi $r2 $r1 i3               ; copy memory
 addi $r1 $$locbase i624       ; get offset to local __ptr slice
 mcpi $r1 $r0 i16              ; copy memory
 move $$arg0 $r2               ; [call]: pass argument 0
@@ -1897,9 +1897,9 @@ data_NonConfigurable_4 .word 18446744073709486084
 0x00000110 MCPI $writable R17 0x10                         ;; [96, 65, 16, 16]
 0x00000114 LW $writable R59 0x1b                           ;; [93, 67, 176, 27]
 0x00000118 ADDI R17 R59 0x20                               ;; [80, 71, 176, 32]
-0x0000011c MCPI R17 $writable 0x8                          ;; [96, 69, 0, 8]
+0x0000011c MCPI R17 $writable 0x3                          ;; [96, 69, 0, 3]
 0x00000120 ADDI $writable R59 0xc0                         ;; [80, 67, 176, 192]
-0x00000124 MCPI $writable R17 0x8                          ;; [96, 65, 16, 8]
+0x00000124 MCPI $writable R17 0x3                          ;; [96, 65, 16, 3]
 0x00000128 LW R17 R21 0x0                                  ;; [93, 69, 80, 0]
 0x0000012c LW R17 R17 0x0                                  ;; [93, 69, 16, 0]
 0x00000130 LW R18 R21 0x0                                  ;; [93, 73, 80, 0]
@@ -2008,7 +2008,7 @@ data_NonConfigurable_4 .word 18446744073709486084
 0x000002cc ADDI $writable R59 0x470                        ;; [80, 67, 180, 112]
 0x000002d0 ADDI R17 R59 0x2f0                              ;; [80, 71, 178, 240]
 0x000002d4 ADDI R18 R59 0x478                              ;; [80, 75, 180, 120]
-0x000002d8 MCPI R18 $writable 0x8                          ;; [96, 73, 0, 8]
+0x000002d8 MCPI R18 $writable 0x3                          ;; [96, 73, 0, 3]
 0x000002dc ADDI $writable R59 0x308                        ;; [80, 67, 179, 8]
 0x000002e0 MCPI $writable R17 0x18                         ;; [96, 65, 16, 24]
 0x000002e4 ADDI $writable R59 0x308                        ;; [80, 67, 179, 8]
@@ -2033,7 +2033,7 @@ data_NonConfigurable_4 .word 18446744073709486084
 0x00000330 MCP $hp $writable R17                           ;; [40, 29, 4, 64]
 0x00000334 MOVE $writable $hp                              ;; [26, 64, 112, 0]
 0x00000338 ADDI R22 R59 0xc8                               ;; [80, 91, 176, 200]
-0x0000033c MCPI R22 R18 0x8                                ;; [96, 89, 32, 8]
+0x0000033c MCPI R22 R18 0x3                                ;; [96, 89, 32, 3]
 0x00000340 ADD R17 $writable R17                           ;; [16, 69, 4, 64]
 0x00000344 MCPI R17 R22 0x3                                ;; [96, 69, 96, 3]
 0x00000348 ADDI R17 R59 0xf0                               ;; [80, 71, 176, 240]
@@ -2145,7 +2145,7 @@ data_NonConfigurable_4 .word 18446744073709486084
 0x000004f0 ADDI $writable R59 0xb8                         ;; [80, 67, 176, 184]
 0x000004f4 MCPI $writable R18 0x10                         ;; [96, 65, 32, 16]
 0x000004f8 ADDI R18 R59 0x250                              ;; [80, 75, 178, 80]
-0x000004fc MCPI R18 R17 0x8                                ;; [96, 73, 16, 8]
+0x000004fc MCPI R18 R17 0x3                                ;; [96, 73, 16, 3]
 0x00000500 ADDI R17 R59 0x258                              ;; [80, 71, 178, 88]
 0x00000504 MCPI R17 $writable 0x10                         ;; [96, 69, 0, 16]
 0x00000508 MOVE R58 R18                                    ;; [26, 233, 32, 0]
@@ -2182,7 +2182,7 @@ data_NonConfigurable_4 .word 18446744073709486084
 0x00000584 ADDI $writable R59 0x108                        ;; [80, 67, 177, 8]
 0x00000588 MCPI $writable R18 0x10                         ;; [96, 65, 32, 16]
 0x0000058c ADDI R18 R59 0x268                              ;; [80, 75, 178, 104]
-0x00000590 MCPI R18 R17 0x8                                ;; [96, 73, 16, 8]
+0x00000590 MCPI R18 R17 0x3                                ;; [96, 73, 16, 3]
 0x00000594 ADDI R17 R59 0x270                              ;; [80, 71, 178, 112]
 0x00000598 MCPI R17 $writable 0x10                         ;; [96, 69, 0, 16]
 0x0000059c MOVE R58 R18                                    ;; [26, 233, 32, 0]
@@ -2296,7 +2296,7 @@ data_NonConfigurable_4 .word 18446744073709486084
 0x0000074c MOVE $writable R57                              ;; [26, 67, 144, 0]
 0x00000750 MOVE R17 R62                                    ;; [26, 71, 224, 0]
 0x00000754 ADDI R18 R59 0x10                               ;; [80, 75, 176, 16]
-0x00000758 MCPI R18 R58 0x8                                ;; [96, 75, 160, 8]
+0x00000758 MCPI R18 R58 0x3                                ;; [96, 75, 160, 3]
 0x0000075c ADDI R18 R59 0x18                               ;; [80, 75, 176, 24]
 0x00000760 MCPI R18 $writable 0x10                         ;; [96, 73, 0, 16]
 0x00000764 LW $writable R59 0x3                            ;; [93, 67, 176, 3]
