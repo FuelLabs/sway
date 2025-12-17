@@ -405,6 +405,11 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
                 for inst_value in block.instruction_iter(self.ir) {
                     self.lower_instruction(inst_value)?;
                 }
+                // If lowering produced no terminator (e.g., unreachable empty blocks),
+                // make the IR structurally valid by injecting an explicit unreachable.
+                if bb.get_terminator().is_none() {
+                    let _ = self.builder.build_unreachable();
+                }
             }
 
             self.current_block = None;
