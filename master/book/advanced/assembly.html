@@ -1,0 +1,263 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Assembly - The Sway Programming Language</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">The Sway Programming Language</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/FuelLabs/sway" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="inline-assembly-in-sway"><a class="header" href="#inline-assembly-in-sway">Inline Assembly in Sway</a></h1>
+<p>While many users will never have to touch assembly language while writing Sway code, it is a powerful tool that enables many advanced use-cases (e.g., optimizations, building libraries, etc).</p>
+<h2 id="asm-block"><a class="header" href="#asm-block">ASM Block</a></h2>
+<p>In Sway, the way we use assembly inline is to declare an <code>asm</code> block like this:</p>
+<pre><code class="language-sway">asm() {...}
+</code></pre>
+<p>Declaring an <code>asm</code> block is similar to declaring a function.
+We can specify register names to operate on as arguments, we can perform assembly instructions within the block, and we can return a value by specifying a return register.
+Here's an example showing what this might look like:</p>
+<pre><code class="language-sway">pub fn add_1(num: u32) -&gt; u32 {
+    asm(r1: num, r2) {
+        add r2 r1 one;
+        r2: u32
+    }
+}
+</code></pre>
+<p>The return register is specified at the end of the <code>asm</code> block, after all the assembly instructions. It consists of the register name and an optional return type. In the above example, the return register name is <code>r2</code> and the return type is <code>u32</code>.
+If the return type is omitted, it is <code>u64</code> by default.</p>
+<p>The return register itself is optional. If it is not specified, similar to functions, the returned value from the <code>asm</code> block will be <a href="../basics/built_in_types.html#unit-type">unit</a>, <code>()</code>.</p>
+<p>An <code>asm</code> block can only return a single register. If you really need to return more than one value, you can modify a tuple. Here's an example showing how you can implement this for <code>(u64, u64)</code>:</p>
+<pre><code class="language-sway">script;
+
+fn adder(a: u64, b: u64, c: u64) -&gt; (u64, u64) {
+    let empty_tuple = (0u64, 0u64);
+    asm(output: empty_tuple, r1: a, r2: b, r3: c, r4, r5) {
+        add r4 r1 r2; // add a &amp; b and put the result in r4
+        add r5 r2 r3; // add b &amp; c and put the result in r5
+        sw output r4 i0; // store the word in r4 in output + 0 words
+        sw output r5 i1; // store the word in r5 in output + 1 word
+        output: (u64, u64) // return both values
+    }
+}
+
+fn main() -&gt; bool {
+    let (first, second) = adder(1, 2, 3);
+    assert(first == 3);
+    assert(second == 5);
+    true
+}
+</code></pre>
+<p>Note that this is contrived example meant to demonstrate the syntax; there's absolutely no need to use assembly to add integers!</p>
+<p>Note that in the above example:</p>
+<ul>
+<li>we initialized the register <code>r1</code> with the value of <code>num</code>.</li>
+<li>we declared a second register <code>r2</code> (you may choose any register names you want).</li>
+<li>we use the <code>add</code> opcode to add <code>one</code> to the value of <code>r1</code> and store it in <code>r2</code>.</li>
+<li><code>one</code> is an example of a "reserved register", of which there are 16 in total. Further reading on this is linked below under "Semantics".</li>
+<li>we return <code>r2</code> and specify the return type as being <code>u32</code>.</li>
+</ul>
+<p>An important note is that the <code>ji</code> and <code>jnei</code> opcodes are not available within an <code>asm</code> block. For those looking to introduce control flow to <code>asm</code> blocks, it is recommended to surround smaller chunks of <code>asm</code> with control flow (<code>if</code>, <code>else</code>, and <code>while</code>).</p>
+<h2 id="helpful-links"><a class="header" href="#helpful-links">Helpful Links</a></h2>
+<p>For examples of assembly in action, check out the <a href="https://github.com/FuelLabs/sway/tree/master/sway-lib-std">Sway standard library</a>.</p>
+<p>For a complete list of all instructions supported in the FuelVM: <a href="https://fuellabs.github.io/fuel-specs/master/vm/instruction_set">Instructions</a>.</p>
+<p>And to learn more about the FuelVM semantics: <a href="https://fuellabs.github.io/fuel-specs/master/vm#semantics">Semantics</a>.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../advanced/generics_and_trait_constraints.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../advanced/never_type.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../advanced/generics_and_trait_constraints.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../advanced/never_type.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
