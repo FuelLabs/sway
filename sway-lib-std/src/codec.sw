@@ -270,10 +270,8 @@ impl AbiEncode for str {
 
 #[cfg(experimental_const_generics = true)]
 impl<const N: u64> AbiEncode for str[N] {
-    // str[N] have alignments and paddings that make them not trivial
-    // for more information see comments on a test named: string_array
     fn is_encode_trivial() -> bool {
-        false
+        true
     }
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
@@ -3388,7 +3386,6 @@ impl AbiDecode for str {
 
 #[cfg(experimental_const_generics = true)]
 impl<const N: u64> AbiDecode for str[N] {
-    // see comments on `is_encode_trivial` for str[N] above
     fn is_decode_trivial() -> bool {
         false
     }
