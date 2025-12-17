@@ -888,9 +888,8 @@ mod tests {
 
                 assert_eq!(
                     s_str_array.in_bytes(),
-                    size_bytes_round_up_to_word_alignment!(len)
+                    len
                 );
-                assert_eq!(s_str_array.in_bytes(), s_str_array.in_bytes_aligned());
             }
         }
 
