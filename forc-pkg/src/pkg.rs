@@ -2372,8 +2372,10 @@ pub fn build_with_options(
                             &pkg_manifest.project.name,
                         )?;
                         built_package.llvm_native_artifact = Some(elf_path.clone());
+                        let polka_mode =
+                            std::env::var("POLKAVM_MODE").unwrap_or_else(|_| "rv64".into());
                         println!(
-                            "LLVM backend produced polkavm RV32EM executable at {}",
+                            "LLVM backend produced polkavm {polka_mode} executable at {}",
                             elf_path.display()
                         );
                     }
@@ -2826,13 +2828,13 @@ fn emit_polkavm_binary_from_llvm(
     output_dir: &Path,
     pkg_name: &str,
 ) -> Result<PathBuf> {
-    let polka_mode = std::env::var("POLKAVM_MODE").unwrap_or_else(|_| "rv32".into());
+    let polka_mode = std::env::var("POLKAVM_MODE").unwrap_or_else(|_| "rv64".into());
     // Align the codegen flags with polkavm's target json expectations:
     //  - PIC/PIE with relocations kept (polkatool applies its own relocation handling)
     //  - Feature set includes +a,+c,+zbb etc.
     let (llc_march, llc_mattr, llc_abi, gcc_march, gcc_abi, suffix, lld_emulation) =
         match polka_mode.as_str() {
-            // 32-bit default: RV32E + M + A + C + Zbb
+            // 32-bit mode: RV32E + M + A + C + Zbb
             "rv32" => (
                 "riscv32",
                 "+e,+m,+a,+c,+zbb,+auipc-addi-fusion,+ld-add-fusion,+lui-addi-fusion,+xtheadcondmov",
@@ -2845,10 +2847,10 @@ fn emit_polkavm_binary_from_llvm(
             // 64-bit mode: RV64IMAC + Zbb (rv64e unsupported in most toolchains)
             "rv64" => (
                 "riscv64",
-                "+m,+a,+c,+zbb,+auipc-addi-fusion,+ld-add-fusion,+lui-addi-fusion,+xtheadcondmov",
-                "lp64",
+                "+e,+m,+a,+c,+zbb,+auipc-addi-fusion,+ld-add-fusion,+lui-addi-fusion,+xtheadcondmov",
+                "lp64e",
                 "rv64imac_zbb",
-                "lp64",
+                "lp64e",
                 "rv64",
                 "elf64lriscv",
             ),

@@ -491,6 +491,7 @@ impl<'ctx, 'ir, 'eng> ModuleLowerer<'ctx, 'ir, 'eng> {
              {name}:\n\
              .insn r 0xb, 0, 0, zero, zero, zero\n\
              auipc zero, %pcrel_hi({metadata_sym})\n\
+             .4byte 0\n\
              ret\n",
             name = name,
             metadata_sym = metadata_symbol,
