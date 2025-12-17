@@ -886,10 +886,7 @@ mod tests {
 
                 assert_eq!(str_array_ty.get_string_len(&context).unwrap(), len);
 
-                assert_eq!(
-                    s_str_array.in_bytes(),
-                    len
-                );
+                assert_eq!(s_str_array.in_bytes(), len);
             }
         }
 
