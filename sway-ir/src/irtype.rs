@@ -865,17 +865,6 @@ mod tests {
         }
 
         #[test]
-        /// String array, when not embedded in aggregates, has a size in bytes of its length, aligned to the word boundary.
-        /// Note that this differs from other arrays, which are packed but not, in addition, aligned to the word boundary.
-        /// The reason we have the alignment/padding in case of string arrays, is because of the current ABI encoding.
-        /// The output receipt returned by a contract call can be a string array, and the way the output is encoded
-        /// (at least for small strings) is by literally putting the ASCII bytes in the return value register.
-        /// For string arrays smaller than 8 bytes this poses a problem, because we have to fill the register with something
-        /// or start reading memory that isn't ours. And the workaround was to simply pad all string arrays with zeroes so
-        /// they're all at least 8 bytes long.
-        /// Thus, changing this behavior would be a breaking change in ABI compatibility.
-        /// Note that we do want to change this behavior in the future, as a part of either refactoring the ABI encoding
-        /// or proper support for slices.
         fn string_array() {
             let mut context = create_context();
 

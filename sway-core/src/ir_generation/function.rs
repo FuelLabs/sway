@@ -5575,18 +5575,7 @@ pub fn get_runtime_representation(ctx: &Context, t: Type) -> MemoryRepresentatio
             MemoryRepresentation::Or(items)
         }
         TypeContent::StringArray(len) => {
-            let item = MemoryRepresentation::Blob { len_in_bytes: *len };
-            let item_len_as_bytes = item.len_in_bytes();
-            if !item_len_as_bytes.is_multiple_of(8) {
-                MemoryRepresentation::And(vec![
-                    item,
-                    MemoryRepresentation::Padding {
-                        len_in_bytes: item_len_as_bytes.next_multiple_of(8) - item_len_as_bytes,
-                    },
-                ])
-            } else {
-                item
-            }
+            MemoryRepresentation::Blob { len_in_bytes: *len }
         }
         TypeContent::Array(t, len) => {
             let item = get_runtime_representation(ctx, *t);

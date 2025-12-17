@@ -43,6 +43,10 @@ fn enum_e_1<A>(_a: E1<A>) {
 fn enum_e_2<A, B>(_a: E2<A, B>) {
 }
 
+#[inline(never)]
+fn str_array_1(_a: str[1]) {
+}
+
 fn main() {
     unit(());
     str_0(__to_str_array(""));
@@ -80,4 +84,6 @@ fn main() {
     enum_e_2::<(), u8>(E2::A(()));
     enum_e_2::<u8, ()>(E2::A(0));
     enum_e_2::<u8, u8>(E2::A(0));
+
+    str_array_1(__to_str_array("a"));
 }
