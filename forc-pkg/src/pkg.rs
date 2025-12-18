@@ -2910,24 +2910,6 @@ fn emit_polkavm_binary_from_llvm(
         );
     }
 
-    // Locate libgcc for builtin helpers (e.g., __udivdi3).
-    let libgcc_path = Command::new(&gcc)
-        .arg(format!("-march={gcc_march}"))
-        .arg(format!("-mabi={gcc_abi}"))
-        .arg("-print-libgcc-file-name")
-        .output()
-        .with_context(|| format!("failed to execute {gcc} -print-libgcc-file-name"))?;
-    if !libgcc_path.status.success() {
-        bail!(
-            "{gcc} -print-libgcc-file-name failed with status {}",
-            libgcc_path.status.code().unwrap_or(-1)
-        );
-    }
-    let libgcc = String::from_utf8(libgcc_path.stdout)
-        .map_err(|e| anyhow!("invalid utf8 from libgcc path: {e}"))?
-        .trim()
-        .to_string();
-
     // Use lld directly; the bare-metal GCC linker doesn't support -pie/-shared for rv32e.
     let enable_libgcc = std::env::var("POLKAVM_ENABLE_LIBGCC")
         .map(|val| val != "0" && !val.eq_ignore_ascii_case("false"))
@@ -2936,6 +2918,30 @@ fn emit_polkavm_binary_from_llvm(
         false
     } else {
         enable_libgcc
+    };
+
+    // Locate libgcc for builtin helpers (e.g., __udivdi3) unless disabled.
+    let libgcc = if enable_libgcc {
+        let libgcc_path = Command::new(&gcc)
+            .arg(format!("-march={gcc_march}"))
+            .arg(format!("-mabi={gcc_abi}"))
+            .arg("-print-libgcc-file-name")
+            .output()
+            .with_context(|| format!("failed to execute {gcc} -print-libgcc-file-name"))?;
+        if !libgcc_path.status.success() {
+            bail!(
+                "{gcc} -print-libgcc-file-name failed with status {}",
+                libgcc_path.status.code().unwrap_or(-1)
+            );
+        }
+        Some(
+            String::from_utf8(libgcc_path.stdout)
+                .map_err(|e| anyhow!("invalid utf8 from libgcc path: {e}"))?
+                .trim()
+                .to_string(),
+        )
+    } else {
+        None
     };
 
     let mut lld_cmd = Command::new(&lld);
@@ -2950,8 +2956,8 @@ fn emit_polkavm_binary_from_llvm(
         .arg(format!("-m{lld_emulation}"))
         .arg(format!("--entry=main.1"))
         .arg(&obj_path);
-    if enable_libgcc {
-        lld_cmd.arg(&libgcc);
+    if let Some(libgcc) = libgcc.as_ref() {
+        lld_cmd.arg(libgcc);
     }
     lld_cmd.arg("-o").arg(&elf_path);
     if log_commands {
