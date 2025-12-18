@@ -2932,6 +2932,11 @@ fn emit_polkavm_binary_from_llvm(
     let enable_libgcc = std::env::var("POLKAVM_ENABLE_LIBGCC")
         .map(|val| val != "0" && !val.eq_ignore_ascii_case("false"))
         .unwrap_or(true);
+    let enable_libgcc = if polka_mode == "rv64" {
+        false
+    } else {
+        enable_libgcc
+    };
 
     let mut lld_cmd = Command::new(&lld);
     lld_cmd
