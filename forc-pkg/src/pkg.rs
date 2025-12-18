@@ -2395,6 +2395,12 @@ pub fn build_with_options(
                             "LLVM backend produced native executable at {}",
                             native_artifact.display()
                         );
+                        let skip_llvm_opt = env::var("SWAY_LLVM_NO_OPT")
+                            .map(|val| val != "0" && !val.eq_ignore_ascii_case("false"))
+                            .unwrap_or(false);
+                        if skip_llvm_opt {
+                            continue;
+                        }
                         let opt = env::var("LLVM_OPT").unwrap_or_else(|_| "opt".into());
                         let opt_ll_path = output_dir
                             .join(format!("{}-opt", pkg_manifest.project.name))
