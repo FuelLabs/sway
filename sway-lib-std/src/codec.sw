@@ -3212,7 +3212,7 @@ where
     }
 }
 
-pub fn encode_and_return<T>(item: T) -> !
+pub fn encode_and_return<T>(item: &T) -> !
 where
     T: AbiEncode,
 {
