@@ -10,9 +10,7 @@ use std::{
 
 use crate::{
     abi_generation::abi_str::AbiStrContext,
-    language::{
-        ty::{TyExpression, TyExpressionVariant},
-    },
+    language::ty::{TyExpression, TyExpressionVariant},
     type_system::TypeId,
     Engines,
 };
