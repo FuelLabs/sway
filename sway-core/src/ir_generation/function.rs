@@ -198,67 +198,12 @@ fn calc_addr_as_ptr(
         .add_metadatum(context, None)
 }
 
-fn is_std_ops_le_call(call_path: &CallPath) -> bool {
-    call_path.suffix.as_str() == "le"
-        && call_path.prefixes.len() >= 2
-        && match (
-            call_path.prefixes.get(0).map(|id| id.as_str()),
-            call_path.prefixes.get(1).map(|id| id.as_str()),
-        ) {
-            (Some(prefix0), Some(prefix1)) => {
-                (prefix0 == "std" || prefix0 == "core") && prefix1 == "ops"
-            }
-            _ => false,
-        }
-}
-
 impl<'a> FnCompiler<'a> {
     pub(super) const BACKTRACE_FN_ARG_NAME: &'static str = "__backtrace";
     const MAX_PANIC_ERROR_CODE: u64 = 255; // 2^8 - 1.
     const MAX_PANICKING_CALL_ID: u64 = 2047; // 2^11 - 1.
     const FN_DISPLAY_FOR_ABI_ERRORS: TyFunctionDisplay =
         TyFunctionDisplay::full().without_signature();
-
-    fn try_emit_builtin_le(
-        &mut self,
-        context: &mut Context,
-        md_mgr: &mut MetadataManager,
-        call_path: &CallPath,
-        arguments: &[(Ident, ty::TyExpression)],
-        span_md_idx: Option<MetadataIndex>,
-    ) -> Result<Option<TerminatorValue>, CompileError> {
-        if !is_std_ops_le_call(call_path) || arguments.len() != 2 {
-            return Ok(None);
-        }
-
-        let lhs_val = self.compile_expression_to_register(context, md_mgr, &arguments[0].1)?;
-        if lhs_val.is_terminator {
-            return Ok(Some(lhs_val));
-        }
-        let lhs = lhs_val.value.expect_register();
-
-        let rhs_val = self.compile_expression_to_register(context, md_mgr, &arguments[1].1)?;
-        if rhs_val.is_terminator {
-            return Ok(Some(rhs_val));
-        }
-        let rhs = rhs_val.value.expect_register();
-
-        let gt = self
-            .current_block
-            .append(context)
-            .cmp(Predicate::GreaterThan, lhs, rhs);
-        let not_gt = self
-            .current_block
-            .append(context)
-            .unary_op(UnaryOpKind::Not, gt)
-            .add_metadatum(context, span_md_idx);
-        let le_val = not_gt;
-
-        Ok(Some(TerminatorValue::new(
-            CompiledValue::InRegister(le_val),
-            context,
-        )))
-    }
 
     #[allow(clippy::too_many_arguments)]
     pub(super) fn new(
@@ -691,12 +636,6 @@ impl<'a> FnCompiler<'a> {
                     )
                 } else {
                     let function_decl = self.engines.de().get_function(fn_ref);
-
-                    if let Some(builtin) =
-                        self.try_emit_builtin_le(context, md_mgr, name, arguments, span_md_idx)?
-                    {
-                        return Ok(builtin);
-                    }
 
                     self.compile_fn_call(
                         context,
