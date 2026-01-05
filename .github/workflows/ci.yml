@@ -239,6 +239,8 @@ jobs:
           for dir in ./forc-plugins/*/; do
                 cargo install --locked --path "$dir"
           done
+          cargo install --locked --debug forc-crypto
+          cargo install --locked --debug forc-wallet
       - name: Install mdbook-forc-documenter
         run: cargo install --locked --path ./scripts/mdbook-forc-documenter
 
