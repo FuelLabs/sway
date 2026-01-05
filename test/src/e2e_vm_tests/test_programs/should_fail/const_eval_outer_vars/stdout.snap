@@ -8,249 +8,277 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_fail/const_eval_outer_vars
    Compiling library const_eval_outer_vars (test/src/e2e_vm_tests/test_programs/should_fail/const_eval_outer_vars)
 error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/const_eval_outer_vars/src/main.sw:19:33
+  --> test/src/e2e_vm_tests/test_programs/should_fail/const_eval_outer_vars/src/main.sw:24:33
    |
-17 |     const OK_USES_LOCAL_CONST: u64 = LOCAL_CONST;
-18 | 
-19 |     const ERR_USES_OUTER: u64 = outer;
+22 |     const OK_USES_LOCAL_CONST: u64 = LOCAL_CONST;
+23 | 
+24 |     const ERR_USES_OUTER: u64 = outer;
    |                                 ^^^^^ Could not evaluate initializer to a const declaration.
-20 | 
-21 |     const ERR_USES_MUT_OUTER: u64 = mut_outer;
+25 | 
+26 |     const ERR_USES_MUT_OUTER: u64 = mut_outer;
    |
 ____
 
 error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/const_eval_outer_vars/src/main.sw:21:37
+  --> test/src/e2e_vm_tests/test_programs/should_fail/const_eval_outer_vars/src/main.sw:26:37
    |
-19 |     const ERR_USES_OUTER: u64 = outer;
-20 | 
-21 |     const ERR_USES_MUT_OUTER: u64 = mut_outer;
+24 |     const ERR_USES_OUTER: u64 = outer;
+25 | 
+26 |     const ERR_USES_MUT_OUTER: u64 = mut_outer;
    |                                     ^^^^^^^^^ Could not evaluate initializer to a const declaration.
-22 | 
-23 |     const ERR_USES_OUTER_IN_BLOCK: u64 = {
+27 | 
+28 |     const ERR_USES_MUT_STRUCT_FIELD: u64 = s.x;
    |
 ____
 
 error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/const_eval_outer_vars/src/main.sw:23:42
+  --> test/src/e2e_vm_tests/test_programs/should_fail/const_eval_outer_vars/src/main.sw:28:44
    |
-21 |       const ERR_USES_MUT_OUTER: u64 = mut_outer;
-22 |   
-23 |       const ERR_USES_OUTER_IN_BLOCK: u64 = {
+26 |     const ERR_USES_MUT_OUTER: u64 = mut_outer;
+27 | 
+28 |     const ERR_USES_MUT_STRUCT_FIELD: u64 = s.x;
+   |                                            ^^^ Could not evaluate initializer to a const declaration.
+29 | 
+30 |     const ERR_USES_OUTER_IN_BLOCK: u64 = {
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/const_eval_outer_vars/src/main.sw:30:42
+   |
+28 |       const ERR_USES_MUT_STRUCT_FIELD: u64 = s.x;
+29 |   
+30 |       const ERR_USES_OUTER_IN_BLOCK: u64 = {
    |  __________________________________________^
-24 | |         outer
-25 | |     };
+31 | |         outer
+32 | |     };
    | |_____^ Could not evaluate initializer to a const declaration.
-26 |   
-27 |       const OK_USES_LOCAL_OUTER_IN_BLOCK: u64 = {
+33 |   
+34 |       const OK_USES_LOCAL_OUTER_IN_BLOCK: u64 = {
    |
 ____
 
 error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/const_eval_outer_vars/src/main.sw:32:59
+  --> test/src/e2e_vm_tests/test_programs/should_fail/const_eval_outer_vars/src/main.sw:39:59
    |
-30 |       };
-31 |   
-32 |       const ERR_USES_OUTER_IN_BLOCK_WITH_LOCAL_OUTER: u64 = {
+37 |       };
+38 |   
+39 |       const ERR_USES_OUTER_IN_BLOCK_WITH_LOCAL_OUTER: u64 = {
    |  ___________________________________________________________^
-33 | |         {
-34 | |             let outer = 10u64;
-35 | |             let _ = outer;
-36 | |         }
-37 | |         outer
-38 | |     };
+40 | |         {
+41 | |             let outer = 10u64;
+42 | |             let _ = outer;
+43 | |         }
+44 | |         outer
+45 | |     };
    | |_____^ Could not evaluate initializer to a const declaration.
-39 |   
-40 |       const ERR_USES_MUT_OUTER_IN_REASSIGNMENT: u64 = {
+46 |   
+47 |       const ERR_USES_MUT_OUTER_IN_REASSIGNMENT: u64 = {
    |
 ____
 
 error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/const_eval_outer_vars/src/main.sw:40:53
+  --> test/src/e2e_vm_tests/test_programs/should_fail/const_eval_outer_vars/src/main.sw:47:53
    |
-38 |       };
-39 |   
-40 |       const ERR_USES_MUT_OUTER_IN_REASSIGNMENT: u64 = {
+45 |       };
+46 |   
+47 |       const ERR_USES_MUT_OUTER_IN_REASSIGNMENT: u64 = {
    |  _____________________________________________________^
-41 | |         mut_outer = 200u64;
-42 | |         0u64
-43 | |     };
+48 | |         mut_outer = 200u64;
+49 | |         0u64
+50 | |     };
    | |_____^ Could not evaluate initializer to a const declaration.
-44 |   
-45 |       const ERR_USES_OUTER_IN_REASSIGNMENT_RHS: u64 = {
+51 |   
+52 |       const ERR_USES_OUTER_IN_REASSIGNMENT_RHS: u64 = {
    |
 ____
 
 error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/const_eval_outer_vars/src/main.sw:45:53
+  --> test/src/e2e_vm_tests/test_programs/should_fail/const_eval_outer_vars/src/main.sw:52:53
    |
-43 |       };
-44 |   
-45 |       const ERR_USES_OUTER_IN_REASSIGNMENT_RHS: u64 = {
+50 |       };
+51 |   
+52 |       const ERR_USES_OUTER_IN_REASSIGNMENT_RHS: u64 = {
    |  _____________________________________________________^
-46 | |         let mut array = [1u64, 2u64, 3u64];
-47 | |         array[outer]
-48 | |     };
+53 | |         let mut array = [1u64, 2u64, 3u64];
+54 | |         array[outer]
+55 | |     };
    | |_____^ Could not evaluate initializer to a const declaration.
-49 |   
-50 |       const ERR_USES_OUTER_IN_NESTED_CONSTS: u64 = {
+56 |   
+57 |       const ERR_USES_OUTER_PROJECTION_ACCESS_IN_REASSIGNMENT_RHS: u64 = {
    |
 ____
 
 error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/const_eval_outer_vars/src/main.sw:50:50
+  --> test/src/e2e_vm_tests/test_programs/should_fail/const_eval_outer_vars/src/main.sw:57:71
    |
-48 |       };
-49 |   
-50 |       const ERR_USES_OUTER_IN_NESTED_CONSTS: u64 = {
+55 |       };
+56 |   
+57 |       const ERR_USES_OUTER_PROJECTION_ACCESS_IN_REASSIGNMENT_RHS: u64 = {
+   |  _______________________________________________________________________^
+58 | |         s.x = 1;
+59 | |         0u64
+60 | |     };
+   | |_____^ Could not evaluate initializer to a const declaration.
+61 |   
+62 |       const ERR_USES_OUTER_IN_NESTED_CONSTS: u64 = {
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/const_eval_outer_vars/src/main.sw:62:50
+   |
+60 |       };
+61 |   
+62 |       const ERR_USES_OUTER_IN_NESTED_CONSTS: u64 = {
    |  __________________________________________________^
-51 | |         const NESTED_CONST: u64 = outer;
-52 | |         NESTED_CONST
-53 | |     };
+63 | |         const NESTED_CONST: u64 = outer;
+64 | |         NESTED_CONST
+65 | |     };
    | |_____^ Could not evaluate initializer to a const declaration.
-54 |   
-55 |       const ERR_USES_NESTED_OUTER_IN_NESTED_CONSTS: u64 = {
+66 |   
+67 |       const ERR_USES_NESTED_OUTER_IN_NESTED_CONSTS: u64 = {
    |
 ____
 
 error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/const_eval_outer_vars/src/main.sw:55:57
+  --> test/src/e2e_vm_tests/test_programs/should_fail/const_eval_outer_vars/src/main.sw:67:57
    |
-53 |       };
-54 |   
-55 |       const ERR_USES_NESTED_OUTER_IN_NESTED_CONSTS: u64 = {
+65 |       };
+66 |   
+67 |       const ERR_USES_NESTED_OUTER_IN_NESTED_CONSTS: u64 = {
    |  _________________________________________________________^
-56 | |         let outer = 55u64;
-57 | |         const NESTED_CONST: u64 = outer;
-58 | |         NESTED_CONST
-59 | |     };
+68 | |         let outer = 55u64;
+69 | |         const NESTED_CONST: u64 = outer;
+70 | |         NESTED_CONST
+71 | |     };
    | |_____^ Could not evaluate initializer to a const declaration.
-60 |   
-61 |       const OK_USES_NESTED_CONST_IN_NESTED_CONSTS: u64 = {
+72 |   
+73 |       const OK_USES_NESTED_CONST_IN_NESTED_CONSTS: u64 = {
    |
 ____
 
 error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/const_eval_outer_vars/src/main.sw:84:33
+  --> test/src/e2e_vm_tests/test_programs/should_fail/const_eval_outer_vars/src/main.sw:96:33
    |
-82 | 
-83 | fn fn_args_1(outer: u64, ref mut _mut_outer: u64) {
-84 |     const ERR_USES_OUTER: u64 = outer;
+94 | 
+95 | fn fn_args_1(outer: u64, ref mut _mut_outer: u64) {
+96 |     const ERR_USES_OUTER: u64 = outer;
    |                                 ^^^^^ Could not evaluate initializer to a const declaration.
-85 | }
-86 | 
+97 | }
+98 | 
    |
 ____
 
 error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/const_eval_outer_vars/src/main.sw:88:37
-   |
-86 | 
-87 | fn fn_args_2(_outer: u64, ref mut mut_outer: u64) {
-88 |     const ERR_USES_MUT_OUTER: u64 = mut_outer;
-   |                                     ^^^^^^^^^ Could not evaluate initializer to a const declaration.
-89 | }
-90 | 
-   |
-____
-
-error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/const_eval_outer_vars/src/main.sw:92:42
-   |
-90 |   
-91 |   fn fn_args_3(outer: u64, ref mut _mut_outer: u64) {
-92 |       const ERR_USES_OUTER_IN_BLOCK: u64 = {
-   |  __________________________________________^
-93 | |         outer
-94 | |     };
-   | |_____^ Could not evaluate initializer to a const declaration.
-95 |   }
-96 |   
-   |
-____
-
-error
-   --> test/src/e2e_vm_tests/test_programs/should_fail/const_eval_outer_vars/src/main.sw:98:59
+   --> test/src/e2e_vm_tests/test_programs/should_fail/const_eval_outer_vars/src/main.sw:100:37
     |
- 96 |   
- 97 |   fn fn_args_4(outer: u64, ref mut _mut_outer: u64) {
- 98 |       const ERR_USES_OUTER_IN_BLOCK_WITH_LOCAL_OUTER: u64 = {
+ 98 | 
+ 99 | fn fn_args_2(_outer: u64, ref mut mut_outer: u64) {
+100 |     const ERR_USES_MUT_OUTER: u64 = mut_outer;
+    |                                     ^^^^^^^^^ Could not evaluate initializer to a const declaration.
+101 | }
+102 | 
+    |
+____
+
+error
+   --> test/src/e2e_vm_tests/test_programs/should_fail/const_eval_outer_vars/src/main.sw:104:42
+    |
+102 |   
+103 |   fn fn_args_3(outer: u64, ref mut _mut_outer: u64) {
+104 |       const ERR_USES_OUTER_IN_BLOCK: u64 = {
+    |  __________________________________________^
+105 | |         outer
+106 | |     };
+    | |_____^ Could not evaluate initializer to a const declaration.
+107 |   }
+108 |   
+    |
+____
+
+error
+   --> test/src/e2e_vm_tests/test_programs/should_fail/const_eval_outer_vars/src/main.sw:110:59
+    |
+108 |   
+109 |   fn fn_args_4(outer: u64, ref mut _mut_outer: u64) {
+110 |       const ERR_USES_OUTER_IN_BLOCK_WITH_LOCAL_OUTER: u64 = {
     |  ___________________________________________________________^
- 99 | |         {
-100 | |             let outer = 10u64;
-101 | |             let _ = outer;
-102 | |         }
-103 | |         outer
-104 | |     };
+111 | |         {
+112 | |             let outer = 10u64;
+113 | |             let _ = outer;
+114 | |         }
+115 | |         outer
+116 | |     };
     | |_____^ Could not evaluate initializer to a const declaration.
-105 |   }
-106 |   
+117 |   }
+118 |   
     |
 ____
 
 error
-   --> test/src/e2e_vm_tests/test_programs/should_fail/const_eval_outer_vars/src/main.sw:108:53
+   --> test/src/e2e_vm_tests/test_programs/should_fail/const_eval_outer_vars/src/main.sw:120:53
     |
-106 |   
-107 |   fn fn_args_5(_outer: u64, ref mut mut_outer: u64) {
-108 |       const ERR_USES_MUT_OUTER_IN_REASSIGNMENT: u64 = {
+118 |   
+119 |   fn fn_args_5(_outer: u64, ref mut mut_outer: u64) {
+120 |       const ERR_USES_MUT_OUTER_IN_REASSIGNMENT: u64 = {
     |  _____________________________________________________^
-109 | |         mut_outer = 200u64;
-110 | |         0u64
-111 | |     };
+121 | |         mut_outer = 200u64;
+122 | |         0u64
+123 | |     };
     | |_____^ Could not evaluate initializer to a const declaration.
-112 |   }
-113 |   
+124 |   }
+125 |   
     |
 ____
 
 error
-   --> test/src/e2e_vm_tests/test_programs/should_fail/const_eval_outer_vars/src/main.sw:115:53
+   --> test/src/e2e_vm_tests/test_programs/should_fail/const_eval_outer_vars/src/main.sw:127:53
     |
-113 |   
-114 |   fn fn_args_6(outer: u64, ref mut _mut_outer: u64) {
-115 |       const ERR_USES_OUTER_IN_REASSIGNMENT_RHS: u64 = {
+125 |   
+126 |   fn fn_args_6(outer: u64, ref mut _mut_outer: u64) {
+127 |       const ERR_USES_OUTER_IN_REASSIGNMENT_RHS: u64 = {
     |  _____________________________________________________^
-116 | |         let mut array = [1u64, 2u64, 3u64];
-117 | |         array[outer]
-118 | |     };
+128 | |         let mut array = [1u64, 2u64, 3u64];
+129 | |         array[outer]
+130 | |     };
     | |_____^ Could not evaluate initializer to a const declaration.
-119 |   }
-120 |   
+131 |   }
+132 |   
     |
 ____
 
 error
-   --> test/src/e2e_vm_tests/test_programs/should_fail/const_eval_outer_vars/src/main.sw:122:50
+   --> test/src/e2e_vm_tests/test_programs/should_fail/const_eval_outer_vars/src/main.sw:134:50
     |
-120 |   
-121 |   fn fn_args_7(outer: u64, ref mut _mut_outer: u64) {
-122 |       const ERR_USES_OUTER_IN_NESTED_CONSTS: u64 = {
+132 |   
+133 |   fn fn_args_7(outer: u64, ref mut _mut_outer: u64) {
+134 |       const ERR_USES_OUTER_IN_NESTED_CONSTS: u64 = {
     |  __________________________________________________^
-123 | |         const NESTED_CONST: u64 = outer;
-124 | |         NESTED_CONST
-125 | |     };
+135 | |         const NESTED_CONST: u64 = outer;
+136 | |         NESTED_CONST
+137 | |     };
     | |_____^ Could not evaluate initializer to a const declaration.
-126 |   }
-127 |   
+138 |   }
+139 |   
     |
 ____
 
 error
-   --> test/src/e2e_vm_tests/test_programs/should_fail/const_eval_outer_vars/src/main.sw:129:57
+   --> test/src/e2e_vm_tests/test_programs/should_fail/const_eval_outer_vars/src/main.sw:141:57
     |
-127 |   
-128 |   fn fn_args_8(_outer: u64, ref mut _mut_outer: u64) {
-129 |       const ERR_USES_NESTED_OUTER_IN_NESTED_CONSTS: u64 = {
+139 |   
+140 |   fn fn_args_8(_outer: u64, ref mut _mut_outer: u64) {
+141 |       const ERR_USES_NESTED_OUTER_IN_NESTED_CONSTS: u64 = {
     |  _________________________________________________________^
-130 | |         let outer = 55u64;
-131 | |         const NESTED_CONST: u64 = outer;
-132 | |         NESTED_CONST
-133 | |     };
+142 | |         let outer = 55u64;
+143 | |         const NESTED_CONST: u64 = outer;
+144 | |         NESTED_CONST
+145 | |     };
     | |_____^ Could not evaluate initializer to a const declaration.
-134 |   }
+146 |   }
     |
 ____
 
-  Aborting due to 16 errors.
+  Aborting due to 18 errors.
 error: Failed to compile const_eval_outer_vars
