@@ -451,6 +451,7 @@ impl MaterializeConstGenerics for TyExpression {
 
                     let mut new_decl = TyFunctionDecl::clone(&*new_decl);
                     let r = new_decl.subst_inner(&SubstTypesContext {
+                        handler,
                         engines,
                         type_subst_map: Some(&type_subst_map),
                         subst_function_body: true,

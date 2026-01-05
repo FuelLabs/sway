@@ -71,7 +71,7 @@ impl ty::TyConfigurableDecl {
             .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
         // this subst is required to replace associated types, namely TypeInfo::TraitType.
-        type_ascription.type_id.subst(&ctx.subst_ctx());
+        type_ascription.type_id.subst(&ctx.subst_ctx(handler));
 
         if !is_screaming_snake_case(name.as_str()) {
             handler.emit_warn(CompileWarning {
@@ -187,6 +187,22 @@ impl ty::TyConfigurableDecl {
             decode_fn,
             visibility,
         })
+    }
+
+    pub(crate) fn forbid_const_generics(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+    ) -> Result<(), ErrorEmitted> {
+        if self.type_ascription.type_id.has_const_generics(engines) {
+            Err(
+                handler.emit_err(CompileError::ConstGenericNotSupportedHere {
+                    span: self.type_ascription.span.clone(),
+                }),
+            )
+        } else {
+            Ok(())
+        }
     }
 }
 

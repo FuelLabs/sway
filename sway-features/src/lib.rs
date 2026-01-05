@@ -169,7 +169,7 @@ features! {
     "https://github.com/FuelLabs/sway/issues/5727",
     references = true,
     "https://github.com/FuelLabs/sway/issues/5063",
-    const_generics = false,
+    const_generics = true,
     "https://github.com/FuelLabs/sway/issues/6860",
     new_hashing = true,
     "https://github.com/FuelLabs/sway/issues/7256",

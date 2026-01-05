@@ -71,12 +71,12 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg
    Compiling library std (sway-lib-std)
    Compiling script dbg (test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg)
-    Finished debug [unoptimized + fuel] target(s) [37.808 KB] in ???
+    Finished debug [unoptimized + fuel] target(s) [37.448 KB] in ???
      Running 1 test, filtered 0 tests
 
 tested -- dbg
 
-      test call_main ... ok (???, 217541 gas)
+      test call_main ... ok (???, 217499 gas)
            debug output:
 [src/main.sw:13:13] () = ()
 [src/main.sw:15:13] true = true

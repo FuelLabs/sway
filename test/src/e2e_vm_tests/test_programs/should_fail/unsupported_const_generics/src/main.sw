@@ -42,6 +42,8 @@ impl<const N: u64> A for CrazyEnum<N> {
     }
 }
 
+// abi cannot have const generics
+
 abi NoConstGenericsOnArgs {
     fn f(a: CrazyStruct<1>);
 }
@@ -66,9 +68,17 @@ abi NoConstGenericsIndirectEnum {
     fn f() -> EnumWithConstGenericInside;
 }
 
+// configurable cannot have const generics
+
+configurable {
+    A: CrazyStruct<1> = CrazyStruct { },
+}
+
 fn main() {
     let _: CrazyStruct<UNKNOWN> = CrazyStruct { };
     let _: CrazyEnum<UNKNOWN> = CrazyEnum::A;
     let _: [u8; UNKNOWN] = [1u8];
     let _: str[UNKNOWN] = __to_str_array("abc");
+
+    __log(CrazyStruct::<1>{});
 }

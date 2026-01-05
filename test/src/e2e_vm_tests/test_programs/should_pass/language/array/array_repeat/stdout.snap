@@ -26,10 +26,10 @@ library {
 script {
     pub entry fn __entry() -> __ptr never, !3 {
         entry():
-        v829v1 = call main_0(), !6
-        v832v1 = const u64 0, !7
-        v833v1 = const u64 0, !8
-        retd v832v1 v833v1, !9
+        v850v1 = call main_0(), !6
+        v853v1 = const u64 0, !7
+        v854v1 = const u64 0, !8
+        retd v853v1 v854v1, !9
     }
 
     entry_orig fn main_0() -> (), !13 {
@@ -53,132 +53,132 @@ script {
         local [u8; 1] array
 
         entry():
-        v1594v1 = get_local __ptr [u8; 5], __ret_val
-        v1595v1 = call array_repeat_zero_small_u8_1(v1594v1)
-        v1601v1 = get_local __ptr [u64; 5], __ret_val0
-        v1602v1 = call array_repeat_zero_small_u16_2(v1601v1)
-        v1604v1 = get_local __ptr [u64; 5], __ret_val1
-        v1605v1 = call array_repeat_zero_small_u16_2(v1604v1)
-        v1607v1 = get_local __ptr [u64; 5], __ret_val2
-        v1608v1 = call array_repeat_zero_small_u16_2(v1607v1)
-        v1614v1 = get_local __ptr [u256; 5], __ret_val3
-        v1615v1 = call array_repeat_zero_small_u256_5(v1614v1)
-        v1621v1 = get_local __ptr [b256; 5], __ret_val4
-        v1622v1 = call array_repeat_zero_small_b256_6(v1621v1)
-        v1628v1 = get_local __ptr [bool; 5], __ret_val5
-        v1629v1 = call array_repeat_zero_small_bool_7(v1628v1)
-        v1635v1 = get_local __ptr [u8; 25], __ret_val6
-        v1636v1 = call array_repeat_zero_big_u8_8(v1635v1)
-        v1642v1 = get_local __ptr [u64; 25], __ret_val7
-        v1643v1 = call array_repeat_zero_big_u32_10(v1642v1)
-        v1645v1 = get_local __ptr [u64; 25], __ret_val8
-        v1646v1 = call array_repeat_zero_big_u32_10(v1645v1)
-        v1648v1 = get_local __ptr [u64; 25], __ret_val9
-        v1649v1 = call array_repeat_zero_big_u32_10(v1648v1)
-        v1655v1 = get_local __ptr [u256; 25], __ret_val10
-        v1656v1 = call array_repeat_zero_big_u256_12(v1655v1)
-        v1662v1 = get_local __ptr [b256; 25], __ret_val11
-        v1663v1 = call array_repeat_zero_big_b256_13(v1662v1)
-        v1669v1 = get_local __ptr [bool; 25], __ret_val12
-        v1670v1 = call array_repeat_zero_big_bool_14(v1669v1)
-        v1676v1 = get_local __ptr [bool; 5], __ret_val13
-        v1677v1 = call small_array_repeat_15(v1676v1)
-        v1683v1 = get_local __ptr [bool; 25], __ret_val14
-        v1684v1 = call big_array_repeat_16(v1683v1)
-        v1690v1 = get_local __ptr [u8; 262145], __ret_val15
-        v1691v1 = call u8_array_bigger_than_18_bits_17(v1690v1)
+        v1810v1 = get_local __ptr [u8; 5], __ret_val
+        v1811v1 = call array_repeat_zero_small_u8_1(v1810v1)
+        v1817v1 = get_local __ptr [u64; 5], __ret_val0
+        v1818v1 = call array_repeat_zero_small_u16_2(v1817v1)
+        v1820v1 = get_local __ptr [u64; 5], __ret_val1
+        v1821v1 = call array_repeat_zero_small_u16_2(v1820v1)
+        v1823v1 = get_local __ptr [u64; 5], __ret_val2
+        v1824v1 = call array_repeat_zero_small_u16_2(v1823v1)
+        v1830v1 = get_local __ptr [u256; 5], __ret_val3
+        v1831v1 = call array_repeat_zero_small_u256_5(v1830v1)
+        v1837v1 = get_local __ptr [b256; 5], __ret_val4
+        v1838v1 = call array_repeat_zero_small_b256_6(v1837v1)
+        v1844v1 = get_local __ptr [bool; 5], __ret_val5
+        v1845v1 = call array_repeat_zero_small_bool_7(v1844v1)
+        v1851v1 = get_local __ptr [u8; 25], __ret_val6
+        v1852v1 = call array_repeat_zero_big_u8_8(v1851v1)
+        v1858v1 = get_local __ptr [u64; 25], __ret_val7
+        v1859v1 = call array_repeat_zero_big_u32_10(v1858v1)
+        v1861v1 = get_local __ptr [u64; 25], __ret_val8
+        v1862v1 = call array_repeat_zero_big_u32_10(v1861v1)
+        v1864v1 = get_local __ptr [u64; 25], __ret_val9
+        v1865v1 = call array_repeat_zero_big_u32_10(v1864v1)
+        v1871v1 = get_local __ptr [u256; 25], __ret_val10
+        v1872v1 = call array_repeat_zero_big_u256_12(v1871v1)
+        v1878v1 = get_local __ptr [b256; 25], __ret_val11
+        v1879v1 = call array_repeat_zero_big_b256_13(v1878v1)
+        v1885v1 = get_local __ptr [bool; 25], __ret_val12
+        v1886v1 = call array_repeat_zero_big_bool_14(v1885v1)
+        v1892v1 = get_local __ptr [bool; 5], __ret_val13
+        v1893v1 = call small_array_repeat_15(v1892v1)
+        v1899v1 = get_local __ptr [bool; 25], __ret_val14
+        v1900v1 = call big_array_repeat_16(v1899v1)
+        v1906v1 = get_local __ptr [u8; 262145], __ret_val15
+        v1907v1 = call u8_array_bigger_than_18_bits_17(v1906v1)
         v236v1 = call arrays_with_const_length_18(), !16
-        v1697v1 = get_local __ptr [u8; 1], array
-        v1698v1 = call decode_array_19(v1697v1)
-        v820v1 = get_local __ptr [u8; 1], array, !17
-        v821v1 = const u64 0, !18
-        v822v1 = get_elem_ptr v820v1, __ptr u8, v821v1, !19
-        v823v1 = load v822v1
-        v824v1 = const u8 255, !20
-        v1560v1 = cmp eq v823v1 v824v1, !29
-        v601v1 = const bool false, !30
-        v1564v1 = cmp eq v1560v1 v601v1, !33
-        cbr v1564v1, assert_eq_38_block0(), assert_eq_38_block1(), !34
+        v1913v1 = get_local __ptr [u8; 1], array
+        v1914v1 = call decode_array_19(v1913v1)
+        v841v1 = get_local __ptr [u8; 1], array, !17
+        v842v1 = const u64 0, !18
+        v843v1 = get_elem_ptr v841v1, __ptr u8, v842v1, !19
+        v844v1 = load v843v1
+        v845v1 = const u8 255, !20
+        v1755v1 = cmp eq v844v1 v845v1, !29
+        v628v1 = const bool false, !30
+        v1759v1 = cmp eq v1755v1 v628v1, !33
+        cbr v1759v1, assert_eq_42_block0(), assert_eq_42_block1(), !34
 
-        assert_eq_38_block0():
-        v1571v1 = call log_42(v823v1), !37
-        v1573v1 = call log_42(v824v1), !40
-        v846v1 = const u64 18446744073709486083
-        revert v846v1, !45
+        assert_eq_42_block0():
+        v1766v1 = call log_46(v844v1), !37
+        v1768v1 = call log_46(v845v1), !40
+        v867v1 = const u64 18446744073709486083
+        revert v867v1, !45
 
-        assert_eq_38_block1():
-        v827v1 = const unit ()
-        ret () v827v1
+        assert_eq_42_block1():
+        v848v1 = const unit ()
+        ret () v848v1
     }
 
     fn array_repeat_zero_small_u8_1(__ret_value: __ptr [u8; 5]) -> (), !49 {
         entry(__ret_value: __ptr [u8; 5]):
         mem_clear_val __ret_value
-        v1592v1 = const unit ()
-        ret () v1592v1
+        v1808v1 = const unit ()
+        ret () v1808v1
     }
 
     fn array_repeat_zero_small_u16_2(__ret_value: __ptr [u64; 5]) -> (), !52 {
         entry(__ret_value: __ptr [u64; 5]):
         mem_clear_val __ret_value
-        v1599v1 = const unit ()
-        ret () v1599v1
+        v1815v1 = const unit ()
+        ret () v1815v1
     }
 
     fn array_repeat_zero_small_u256_5(__ret_value: __ptr [u256; 5]) -> (), !55 {
         entry(__ret_value: __ptr [u256; 5]):
         mem_clear_val __ret_value
-        v1612v1 = const unit ()
-        ret () v1612v1
+        v1828v1 = const unit ()
+        ret () v1828v1
     }
 
     fn array_repeat_zero_small_b256_6(__ret_value: __ptr [b256; 5]) -> (), !58 {
         entry(__ret_value: __ptr [b256; 5]):
         mem_clear_val __ret_value
-        v1619v1 = const unit ()
-        ret () v1619v1
+        v1835v1 = const unit ()
+        ret () v1835v1
     }
 
     fn array_repeat_zero_small_bool_7(__ret_value: __ptr [bool; 5]) -> (), !61 {
         entry(__ret_value: __ptr [bool; 5]):
         mem_clear_val __ret_value
-        v1626v1 = const unit ()
-        ret () v1626v1
+        v1842v1 = const unit ()
+        ret () v1842v1
     }
 
     fn array_repeat_zero_big_u8_8(__ret_value: __ptr [u8; 25]) -> (), !64 {
         entry(__ret_value: __ptr [u8; 25]):
         mem_clear_val __ret_value
-        v1633v1 = const unit ()
-        ret () v1633v1
+        v1849v1 = const unit ()
+        ret () v1849v1
     }
 
     fn array_repeat_zero_big_u32_10(__ret_value: __ptr [u64; 25]) -> (), !67 {
         entry(__ret_value: __ptr [u64; 25]):
         mem_clear_val __ret_value
-        v1640v1 = const unit ()
-        ret () v1640v1
+        v1856v1 = const unit ()
+        ret () v1856v1
     }
 
     fn array_repeat_zero_big_u256_12(__ret_value: __ptr [u256; 25]) -> (), !70 {
         entry(__ret_value: __ptr [u256; 25]):
         mem_clear_val __ret_value
-        v1653v1 = const unit ()
-        ret () v1653v1
+        v1869v1 = const unit ()
+        ret () v1869v1
     }
 
     fn array_repeat_zero_big_b256_13(__ret_value: __ptr [b256; 25]) -> (), !73 {
         entry(__ret_value: __ptr [b256; 25]):
         mem_clear_val __ret_value
-        v1660v1 = const unit ()
-        ret () v1660v1
+        v1876v1 = const unit ()
+        ret () v1876v1
     }
 
     fn array_repeat_zero_big_bool_14(__ret_value: __ptr [bool; 25]) -> (), !76 {
         entry(__ret_value: __ptr [bool; 25]):
         mem_clear_val __ret_value
-        v1667v1 = const unit ()
-        ret () v1667v1
+        v1883v1 = const unit ()
+        ret () v1883v1
     }
 
     fn small_array_repeat_15(__ret_value: __ptr [bool; 5]) -> (), !79 {
@@ -199,8 +199,8 @@ script {
         v141v1 = const u64 4
         v142v1 = get_elem_ptr __ret_value, __ptr bool, v141v1
         store v128v1 to v142v1, !81
-        v1674v1 = const unit ()
-        ret () v1674v1
+        v1890v1 = const unit ()
+        ret () v1890v1
     }
 
     fn big_array_repeat_16(__ret_value: __ptr [bool; 25]) -> (), !84 {
@@ -219,15 +219,15 @@ script {
         cbr v159v1, array_init_loop(v157v1), array_init_exit()
 
         array_init_exit():
-        v1681v1 = const unit ()
-        ret () v1681v1
+        v1897v1 = const unit ()
+        ret () v1897v1
     }
 
     fn u8_array_bigger_than_18_bits_17(__ret_value: __ptr [u8; 262145]) -> (), !89 {
         entry(__ret_value: __ptr [u8; 262145]):
         mem_clear_val __ret_value
-        v1688v1 = const unit ()
-        ret () v1688v1
+        v1904v1 = const unit ()
+        ret () v1904v1
     }
 
     fn arrays_with_const_length_18() -> (), !92 {
@@ -251,8 +251,10 @@ script {
 
     fn decode_array_19(__ret_value: __ptr [u8; 1]) -> (), !99 {
         local [u8; 1] __anon_0
-        local [u8; 1] __ret_val0
+        local { ptr, u64 } __anon_02
+        local slice __ret_val
         local slice s
+        local slice slice_0
 
         entry(__ret_value: __ptr [u8; 1]):
         v292v1 = get_local __ptr [u8; 1], __anon_0, !100
@@ -260,18 +262,49 @@ script {
         v295v1 = get_elem_ptr v292v1, __ptr u8, v294v1
         v293v1 = const u8 255, !101
         store v293v1 to v295v1, !100
-        v1581v1 = get_local __ptr [u8; 1], __anon_0
-        v1704v1 = get_local __ptr slice, s
-        v1705v1 = call to_slice_20(v1581v1, v1704v1)
-        v1586v1 = get_local __ptr slice, s
-        v1711v1 = get_local __ptr [u8; 1], __ret_val0
-        v1712v1 = call abi_decode_24(v1586v1, v1711v1)
-        mem_copy_val __ret_value, v1711v1
-        v1695v1 = const unit ()
-        ret () v1695v1
+        v1802v1 = get_local __ptr [u8; 1], __anon_0
+        v1920v1 = get_local __ptr slice, __ret_val
+        v1921v1 = call to_slice_20(v1802v1, v1920v1)
+        v299v1 = get_local __ptr slice, s, !102
+        mem_copy_val v299v1, v1920v1
+        v1776v1 = get_local __ptr slice, s, !110
+        v1778v1 = get_local __ptr slice, slice_0, !113
+        mem_copy_val v1778v1, v1776v1
+        v1780v1 = get_local __ptr slice, slice_0, !115
+        v1923v1 = asm(ptr: v1780v1) -> __ptr { ptr, u64 } ptr {
+        }
+        v1962v1 = const u64 0
+        v1963v1 = get_elem_ptr v1923v1, __ptr ptr, v1962v1
+        v1964v1 = load v1963v1
+        v1965v1 = const u64 1
+        v1966v1 = get_elem_ptr v1923v1, __ptr u64, v1965v1
+        v1967v1 = load v1966v1
+        v1782v1 = get_local __ptr { ptr, u64 }, __anon_02, !116
+        v1976v1 = const u64 0
+        v1977v1 = get_elem_ptr v1782v1, __ptr ptr, v1976v1
+        store v1964v1 to v1977v1
+        v1979v1 = const u64 1
+        v1980v1 = get_elem_ptr v1782v1, __ptr u64, v1979v1
+        store v1967v1 to v1980v1
+        v333v1 = const u64 0
+        v1784v1 = get_elem_ptr v1782v1, __ptr ptr, v333v1, !118
+        v1785v1 = load v1784v1, !116
+        v313v1 = const u64 1
+        v1509v1 = asm(size: v313v1, src: v1785v1) -> __ptr [u8; 1] hp, !120 {
+            aloc   size, !121
+            mcp    hp src size, !122
+        }
+        v1982v1 = const u64 0
+        v1983v1 = get_elem_ptr v1509v1, __ptr u8, v1982v1
+        v1984v1 = load v1983v1
+        v1989v1 = const u64 0
+        v1990v1 = get_elem_ptr __ret_value, __ptr u8, v1989v1
+        store v1984v1 to v1990v1
+        v1911v1 = const unit ()
+        ret () v1911v1
     }
 
-    fn to_slice_20(array: __ptr [u8; 1], __ret_value: __ptr slice) -> (), !104 {
+    fn to_slice_20(array: __ptr [u8; 1], __ret_value: __ptr slice) -> (), !125 {
         local mut slice __aggr_memcpy_0
         local [u8; 1] array_
         local { ptr, u64 } parts_
@@ -279,152 +312,58 @@ script {
         entry(array: __ptr [u8; 1], __ret_value: __ptr slice):
         v240v1 = get_local __ptr [u8; 1], array_
         mem_copy_val v240v1, array
-        v286v1 = get_local __ptr [u8; 1], array_, !105
-        v287v1 = cast_ptr v286v1 to ptr, !106
-        v877v1 = get_local __ptr { ptr, u64 }, parts_, !112
-        v1770v1 = const u64 0
-        v1771v1 = get_elem_ptr v877v1, __ptr ptr, v1770v1
-        store v287v1 to v1771v1
-        v1773v1 = const u64 1
-        v1774v1 = get_elem_ptr v877v1, __ptr u64, v1773v1
-        v869v1 = const u64 1, !115
-        store v869v1 to v1774v1
-        v879v1 = get_local __ptr { ptr, u64 }, parts_, !117
-        v1714v1 = asm(ptr: v879v1) -> __ptr slice ptr {
+        v286v1 = get_local __ptr [u8; 1], array_, !126
+        v287v1 = cast_ptr v286v1 to ptr, !127
+        v898v1 = get_local __ptr { ptr, u64 }, parts_, !132
+        v1998v1 = const u64 0
+        v1999v1 = get_elem_ptr v898v1, __ptr ptr, v1998v1
+        store v287v1 to v1999v1
+        v2001v1 = const u64 1
+        v2002v1 = get_elem_ptr v898v1, __ptr u64, v2001v1
+        v890v1 = const u64 1, !135
+        store v890v1 to v2002v1
+        v900v1 = get_local __ptr { ptr, u64 }, parts_, !137
+        v1925v1 = asm(ptr: v900v1) -> __ptr slice ptr {
         }
-        v1743v1 = get_local __ptr slice, __aggr_memcpy_0
-        mem_copy_val v1743v1, v1714v1
-        mem_copy_val __ret_value, v1743v1
-        v1702v1 = const unit ()
-        ret () v1702v1
+        v1956v1 = get_local __ptr slice, __aggr_memcpy_0
+        mem_copy_val v1956v1, v1925v1
+        mem_copy_val __ret_value, v1956v1
+        v1918v1 = const unit ()
+        ret () v1918v1
     }
 
-    pub fn abi_decode_24(data: __ptr slice, __ret_value: __ptr [u8; 1]) -> (), !121 {
-        local mut { ptr, u64 } __aggr_memcpy_0
-        local mut { ptr, u64 } __aggr_memcpy_00
-        local { ptr, u64 } __anon_0
-        local { ptr, u64 } __anon_00
-        local { ptr } __anon_01
-        local [u8; 1] __anon_02
-        local mut [u8; 1] array
-        local mut { ptr } buffer
-        local slice data_
-        local slice self_
-        local slice self_0
-        local slice slice_
-        local slice slice_0
-
-        entry(data: __ptr slice, __ret_value: __ptr [u8; 1]):
-        v302v1 = get_local __ptr slice, data_
-        mem_copy_val v302v1, data
-        v337v1 = get_local __ptr slice, data_, !122
-        v1147v1 = get_local __ptr slice, self_, !125
-        mem_copy_val v1147v1, v337v1
-        v1149v1 = get_local __ptr slice, self_, !127
-        v1151v1 = get_local __ptr slice, slice_, !130
-        mem_copy_val v1151v1, v1149v1
-        v1153v1 = get_local __ptr slice, slice_, !132
-        v1716v1 = asm(ptr: v1153v1) -> __ptr { ptr, u64 } ptr {
-        }
-        v1749v1 = get_local __ptr { ptr, u64 }, __aggr_memcpy_0
-        mem_copy_val v1749v1, v1716v1
-        v1157v1 = get_local __ptr { ptr, u64 }, __anon_0, !125
-        mem_copy_val v1157v1, v1749v1
-        v333v1 = const u64 0
-        v1159v1 = get_elem_ptr v1157v1, __ptr ptr, v333v1, !134
-        v366v1 = get_local __ptr slice, data_, !135
-        v1164v1 = get_local __ptr slice, self_0, !138
-        mem_copy_val v1164v1, v366v1
-        v1166v1 = get_local __ptr slice, self_0, !140
-        v1168v1 = get_local __ptr slice, slice_0, !143
-        mem_copy_val v1168v1, v1166v1
-        v1170v1 = get_local __ptr slice, slice_0, !144
-        v1718v1 = asm(ptr: v1170v1) -> __ptr { ptr, u64 } ptr {
-        }
-        v1754v1 = get_local __ptr { ptr, u64 }, __aggr_memcpy_00
-        mem_copy_val v1754v1, v1718v1
-        v1174v1 = get_local __ptr { ptr, u64 }, __anon_00, !138
-        mem_copy_val v1174v1, v1754v1
-        v1188v1 = get_local __ptr { ptr }, __anon_01, !148
-        v313v1 = const u64 0
-        v1189v1 = get_elem_ptr v1188v1, __ptr ptr, v313v1, !149
-        mem_copy_val v1189v1, v1159v1
-        v370v1 = get_local __ptr { ptr }, buffer, !150
-        mem_copy_val v370v1, v1188v1
-        v573v1 = get_local __ptr { ptr }, buffer, !151
-        v1205v1 = get_local __ptr [u8; 1], __anon_02, !155
-        mem_clear_val v1205v1, !156
-        v1208v1 = get_local __ptr [u8; 1], array, !158
-        mem_copy_val v1208v1, v1205v1
-        v1210v1 = get_local __ptr [u8; 1], array, !160
-        v1211v1 = cast_ptr v1210v1 to __ptr [u8; 1], !156
-        v390v1 = const u64 0, !161
-        br abi_decode_30_while(v390v1), !156
-
-        abi_decode_30_while(v575v3: u64):
-        v408v1 = const u64 1
-        v1220v1 = cmp lt v575v3 v408v1, !164
-        cbr v1220v1, abi_decode_30_while_body(), abi_decode_30_end_while(), !156
-
-        abi_decode_30_while_body():
-        v414v1 = const u64 1
-        v1228v1 = asm(idx: v575v3, elem_ir_type_size: v414v1, ptr: v1211v1, offset_temp, ptr_out) -> __ptr u8 ptr_out, !156 {
-            mul    offset_temp idx elem_ir_type_size
-            add    ptr_out ptr offset_temp
-        }
-        v471v1 = const u64 0
-        v1265v1 = get_elem_ptr v573v1, __ptr ptr, v471v1, !172
-        v1266v1 = load v1265v1, !173
-        v1267v1 = asm(ptr: v1266v1, val) -> u8 val, !175 {
-            lb     val ptr i0, !176
-        }
-        v1271v1 = load v1265v1, !177
-        v1272v1 = const u64 1, !178
-        v1273v1 = add v1271v1, v1272v1, !179
-        store v1273v1 to v1265v1, !181
-        store v1267v1 to v1228v1, !183
-        v559v1 = const u64 1, !184
-        v1306v1 = add v575v3, v559v1, !187
-        br abi_decode_30_while(v1306v1), !156
-
-        abi_decode_30_end_while():
-        mem_copy_val __ret_value, v1211v1
-        v1709v1 = const unit ()
-        ret () v1709v1
-    }
-
-    pub fn log_42(value !189: u8) -> (), !192 {
+    pub fn log_46(value !139: u8) -> (), !142 {
         local mut slice __aggr_memcpy_0
         local { ptr, u64 } __anon_0
         local slice __log_arg
         local u8 item_
 
         entry(value: u8):
-        v1411v1 = get_local __ptr u8, item_, !193
-        store value to v1411v1, !193
-        v1509v1 = get_local __ptr u8, item_, !195
-        v645v1 = const u64 1
-        v1510v1 = asm(size: v645v1, src: v1509v1) -> ptr hp, !197 {
-            aloc   size, !198
-            mcp    hp src size, !199
+        v1614v1 = get_local __ptr u8, item_, !143
+        store value to v1614v1, !143
+        v1704v1 = get_local __ptr u8, item_, !145
+        v666v1 = const u64 1
+        v1705v1 = asm(size: v666v1, src: v1704v1) -> ptr hp, !147 {
+            aloc   size, !148
+            mcp    hp src size, !149
         }
-        v1514v1 = get_local __ptr { ptr, u64 }, __anon_0, !201
-        v659v1 = const u64 0
-        v1515v1 = get_elem_ptr v1514v1, __ptr ptr, v659v1, !202
-        store v1510v1 to v1515v1, !203
-        v662v1 = const u64 1
-        v1517v1 = get_elem_ptr v1514v1, __ptr u64, v662v1, !204
-        store v645v1 to v1517v1, !205
-        v1723v1 = asm(s: v1514v1) -> __ptr slice s {
+        v1709v1 = get_local __ptr { ptr, u64 }, __anon_0, !151
+        v680v1 = const u64 0
+        v1710v1 = get_elem_ptr v1709v1, __ptr ptr, v680v1, !152
+        store v1705v1 to v1710v1, !153
+        v683v1 = const u64 1
+        v1712v1 = get_elem_ptr v1709v1, __ptr u64, v683v1, !154
+        store v666v1 to v1712v1, !155
+        v1930v1 = asm(s: v1709v1) -> __ptr slice s {
         }
-        v1761v1 = get_local __ptr slice, __aggr_memcpy_0
-        mem_copy_val v1761v1, v1723v1
-        v1720v1 = get_local __ptr slice, __log_arg
-        mem_copy_val v1720v1, v1761v1
-        v790v1 = const u64 14454674236531057292
-        log __ptr slice v1720v1, v790v1
-        v793v1 = const unit ()
-        ret () v793v1
+        v1959v1 = get_local __ptr slice, __aggr_memcpy_0
+        mem_copy_val v1959v1, v1930v1
+        v1927v1 = get_local __ptr slice, __log_arg
+        mem_copy_val v1927v1, v1959v1
+        v811v1 = const u64 14454674236531057292
+        log __ptr slice v1927v1, v811v1
+        v814v1 = const unit ()
+        ret () v814v1
     }
 }
 
@@ -530,110 +469,60 @@ script {
 !99 = (!97 !98 !48)
 !100 = span !10 3133 3140
 !101 = span !10 3134 3139
-!102 = span !10 3192 3320
-!103 = fn_name_span !10 3195 3203
-!104 = (!102 !103 !48)
-!105 = span !10 3306 3311
-!106 = span !10 3296 3312
-!107 = span !10 3268 3318
-!108 = fn_call_path_span !10 3268 3289
-!109 = "test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert/src/raw_slice.sw"
-!110 = span !109 2351 2394
-!111 = fn_call_path_span !109 2351 2361
-!112 = (!107 !108 !110 !111)
-!113 = span !109 2368 2392
-!114 = fn_call_path_span !109 2374 2375
-!115 = (!107 !108 !113 !114)
-!116 = span !109 1257 1262
-!117 = (!107 !108 !110 !111 !116)
-!118 = "test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert/src/codec.sw"
-!119 = span !118 71747 71920
-!120 = fn_name_span !118 71754 71764
-!121 = (!119 !120 !48)
-!122 = span !118 71862 71866
-!123 = span !118 71862 71872
-!124 = fn_call_path_span !118 71867 71870
-!125 = (!123 !124)
-!126 = span !109 2922 2926
-!127 = (!123 !124 !126)
-!128 = span !109 2911 2927
-!129 = fn_call_path_span !109 2911 2921
-!130 = (!123 !124 !128 !129)
-!131 = span !109 1633 1638
-!132 = (!123 !124 !128 !129 !131)
-!133 = span !109 2928 2929
-!134 = (!123 !124 !133)
-!135 = span !118 71874 71878
-!136 = span !118 71874 71890
-!137 = fn_call_path_span !118 71879 71882
-!138 = (!136 !137)
-!139 = span !109 3420 3424
-!140 = (!136 !137 !139)
-!141 = span !109 3409 3425
-!142 = fn_call_path_span !109 3409 3419
-!143 = (!136 !137 !141 !142)
-!144 = (!136 !137 !141 !142 !131)
-!145 = span !118 71837 71891
-!146 = fn_call_path_span !118 71837 71861
-!147 = span !118 735 755
-!148 = (!145 !146 !147)
-!149 = (!145 !146)
-!150 = span !118 71820 71892
-!151 = span !118 71911 71917
-!152 = span !118 71897 71918
-!153 = fn_call_path_span !118 71897 71910
-!154 = span !118 90639 90652
-!155 = (!152 !153 !154)
-!156 = (!152 !153)
-!157 = span !118 90623 90653
-!158 = (!152 !153 !157)
-!159 = span !118 90738 90743
-!160 = (!152 !153 !159)
-!161 = span !118 90767 90768
-!162 = span !118 90785 90790
-!163 = fn_call_path_span !118 90787 90788
-!164 = (!152 !153 !162 !163)
-!165 = span !118 90865 90885
-!166 = fn_call_path_span !118 90872 90878
-!167 = span !118 3959 3978
-!168 = fn_call_path_span !118 3959 3972
-!169 = span !118 73537 73556
-!170 = fn_call_path_span !118 73544 73548
-!171 = span !118 625 637
-!172 = (!152 !153 !165 !166 !167 !168 !169 !170 !171)
-!173 = (!152 !153 !165 !166 !167 !168 !169 !170)
-!174 = span !118 3640 3733
-!175 = (!152 !153 !165 !166 !167 !168 !169 !170 !174)
-!176 = span !118 3682 3695
-!177 = (!152 !153 !165 !166 !167 !168 !169 !170)
-!178 = (!152 !153 !165 !166 !167 !168 !169 !170)
-!179 = (!152 !153 !165 !166 !167 !168 !169 !170)
-!180 = span !118 3747 3786
-!181 = (!152 !153 !165 !166 !167 !168 !169 !170 !180)
-!182 = span !118 90857 90885
-!183 = (!152 !153 !182)
-!184 = span !118 90904 90905
-!185 = span !118 90899 90905
-!186 = fn_call_path_span !118 90901 90903
-!187 = (!152 !153 !185 !186)
-!188 = "test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert/src/logging.sw"
-!189 = span !188 591 596
-!190 = span !188 577 651
-!191 = fn_name_span !188 584 587
-!192 = (!190 !191)
-!193 = span !188 642 647
-!194 = span !118 71080 71084
-!195 = (!193 !194)
-!196 = span !118 71058 71173
-!197 = (!193 !196)
-!198 = span !118 71100 71109
-!199 = span !118 71123 71138
-!200 = span !118 71190 71201
-!201 = (!193 !200)
-!202 = (!193 !200)
-!203 = (!193 !200)
-!204 = (!193 !200)
-!205 = (!193 !200)
+!102 = span !10 3105 3142
+!103 = span !10 3147 3171
+!104 = fn_call_path_span !10 3147 3157
+!105 = "test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert/src/codec.sw"
+!106 = span !105 93817 93827
+!107 = fn_call_path_span !105 93822 93825
+!108 = "test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert/src/raw_slice.sw"
+!109 = span !108 2922 2926
+!110 = (!103 !104 !106 !107 !109)
+!111 = span !108 2911 2927
+!112 = fn_call_path_span !108 2911 2921
+!113 = (!103 !104 !106 !107 !111 !112)
+!114 = span !108 1633 1638
+!115 = (!103 !104 !106 !107 !111 !112 !114)
+!116 = (!103 !104 !106 !107)
+!117 = span !108 2928 2929
+!118 = (!103 !104 !106 !107 !117)
+!119 = span !105 93796 93911
+!120 = (!103 !104 !119)
+!121 = span !105 93843 93852
+!122 = span !105 93866 93881
+!123 = span !10 3192 3320
+!124 = fn_name_span !10 3195 3203
+!125 = (!123 !124 !48)
+!126 = span !10 3306 3311
+!127 = span !10 3296 3312
+!128 = span !10 3268 3318
+!129 = fn_call_path_span !10 3268 3289
+!130 = span !108 2351 2394
+!131 = fn_call_path_span !108 2351 2361
+!132 = (!128 !129 !130 !131)
+!133 = span !108 2368 2392
+!134 = fn_call_path_span !108 2374 2375
+!135 = (!128 !129 !133 !134)
+!136 = span !108 1257 1262
+!137 = (!128 !129 !130 !131 !136)
+!138 = "test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert/src/logging.sw"
+!139 = span !138 591 596
+!140 = span !138 577 651
+!141 = fn_name_span !138 584 587
+!142 = (!140 !141)
+!143 = span !138 642 647
+!144 = span !105 92877 92881
+!145 = (!143 !144)
+!146 = span !105 92855 92970
+!147 = (!143 !146)
+!148 = span !105 92897 92906
+!149 = span !105 92920 92935
+!150 = span !105 92987 92998
+!151 = (!143 !150)
+!152 = (!143 !150)
+!153 = (!143 !150)
+!154 = (!143 !150)
+!155 = (!143 !150)
 
 ;; ASM: Final program
 ;; Program kind: Script
@@ -739,10 +628,10 @@ eq   $r2 $r2 $zero
 jnzf $r2 $zero i1
 jmpf $zero i7
 move $$arg0 $r0               ; [call]: pass argument 0
-jal  $$reta $pc i276          ; [call]: call log_42
+jal  $$reta $pc i230          ; [call]: call log_46
 movi $r0 i255                 ; initialize constant into register
 move $$arg0 $r0               ; [call]: pass argument 0
-jal  $$reta $pc i273          ; [call]: call log_42
+jal  $$reta $pc i227          ; [call]: call log_46
 load $r0 data_NonConfigurable_0; load constant from data section
 rvrt $r0
 cfsi i264920                  ; free 264920 bytes for locals and 0 slots for extra call arguments
@@ -915,24 +804,37 @@ jal  $zero $$reta i0          ; return from call
 pshl i15                      ; save registers 16..40
 pshh i524288                  ; save registers 40..64
 move $$locbase $sp            ; save locals base register for function decode_array_19
-cfei i32                      ; allocate 32 bytes for locals and 0 slots for call arguments
+cfei i72                      ; allocate 72 bytes for locals and 0 slots for call arguments
 move $r0 $$arg0               ; save argument 0 (__ret_value)
 move $r1 $$reta               ; save return address
 mul  $r2 $zero $one           ; get offset to array element
 add  $r2 $$locbase $r2        ; add array element offset to array base
 movi $r3 i255                 ; initialize constant into register
 sb   $r2 $r3 i0               ; store byte
-addi $r2 $$locbase i16        ; get offset to local __ptr slice
+addi $r2 $$locbase i24        ; get offset to local __ptr slice
 move $$arg0 $$locbase         ; [call]: pass argument 0
 move $$arg1 $r2               ; [call]: pass argument 1
-jal  $$reta $pc i12           ; [call]: call to_slice_20
-addi $r2 $$locbase i16        ; get offset to local __ptr slice
-addi $r3 $$locbase i8         ; get offset to local __ptr [u8; 1]
-move $$arg0 $r2               ; [call]: pass argument 0
-move $$arg1 $r3               ; [call]: pass argument 1
-jal  $$reta $pc i26           ; [call]: call abi_decode_24
-mcpi $r0 $r3 i1               ; copy memory
-cfsi i32                      ; free 32 bytes for locals and 0 slots for extra call arguments
+jal  $$reta $pc i25           ; [call]: call to_slice_20
+addi $r3 $$locbase i40        ; get offset to local __ptr slice
+mcpi $r3 $r2 i16              ; copy memory
+addi $r2 $$locbase i40        ; get offset to local __ptr slice
+addi $r3 $$locbase i56        ; get offset to local __ptr slice
+mcpi $r3 $r2 i16              ; copy memory
+lw   $r2 $$locbase i7         ; load word
+lw   $r3 $$locbase i8         ; load word
+sw   $$locbase $r2 i1         ; store word
+sw   $$locbase $r3 i2         ; store word
+lw   $r2 $$locbase i1         ; load word
+move $r3 $one                 ; copy ASM block argument's constant initial value to register
+aloc $one                     ; aloc size
+mcp  $hp $r2 $r3              ; mcp hp src size
+mul  $r2 $zero $one           ; get offset to array element
+add  $r2 $hp $r2              ; add array element offset to array base
+lb   $r2 $r2 i0               ; load byte
+mul  $r3 $zero $one           ; get offset to array element
+add  $r3 $r0 $r3              ; add array element offset to array base
+sb   $r3 $r2 i0               ; store byte
+cfsi i72                      ; free 72 bytes for locals and 0 slots for extra call arguments
 move $$reta $r1               ; restore return address
 poph i524288                  ; restore registers 40..64
 popl i15                      ; restore registers 16..40
@@ -956,68 +858,9 @@ move $$reta $r1               ; restore return address
 poph i524288                  ; restore registers 40..64
 popl i7                       ; restore registers 16..40
 jal  $zero $$reta i0          ; return from call
-pshl i255                     ; save registers 16..40
-pshh i524288                  ; save registers 40..64
-move $$locbase $sp            ; save locals base register for function abi_decode_24
-cfei i176                     ; allocate 176 bytes for locals and 0 slots for call arguments
-move $r0 $$arg1               ; save argument 1 (__ret_value)
-move $r1 $$reta               ; save return address
-addi $r2 $$locbase i96        ; get offset to local __ptr slice
-mcpi $r2 $$arg0 i16           ; copy memory
-addi $r2 $$locbase i96        ; get offset to local __ptr slice
-addi $r3 $$locbase i112       ; get offset to local __ptr slice
-mcpi $r3 $r2 i16              ; copy memory
-addi $r2 $$locbase i112       ; get offset to local __ptr slice
-addi $r3 $$locbase i144       ; get offset to local __ptr slice
-mcpi $r3 $r2 i16              ; copy memory
-addi $r2 $$locbase i144       ; get offset to local __ptr slice
-mcpi $$locbase $r2 i16        ; copy memory
-addi $r2 $$locbase i32        ; get offset to local __ptr { ptr, u64 }
-mcpi $r2 $$locbase i16        ; copy memory
-addi $r3 $$locbase i96        ; get offset to local __ptr slice
-addi $r4 $$locbase i128       ; get offset to local __ptr slice
-mcpi $r4 $r3 i16              ; copy memory
-addi $r3 $$locbase i128       ; get offset to local __ptr slice
-addi $r4 $$locbase i160       ; get offset to local __ptr slice
-mcpi $r4 $r3 i16              ; copy memory
-addi $r3 $$locbase i160       ; get offset to local __ptr slice
-addi $r4 $$locbase i16        ; get offset to local __ptr { ptr, u64 }
-mcpi $r4 $r3 i16              ; copy memory
-addi $r3 $$locbase i48        ; get offset to local __ptr { ptr, u64 }
-mcpi $r3 $r4 i16              ; copy memory
-addi $r3 $$locbase i64        ; get offset to local __ptr { ptr }
-mcpi $r3 $r2 i8               ; copy memory
-addi $r2 $$locbase i88        ; get offset to local __ptr { ptr }
-mcpi $r2 $r3 i8               ; copy memory
-addi $r2 $$locbase i88        ; get offset to local __ptr { ptr }
-addi $r3 $$locbase i72        ; get offset to local __ptr [u8; 1]
-mcli $r3 i1                   ; clear memory [u8; 1], 1 bytes
-addi $r4 $$locbase i80        ; get offset to local __ptr [u8; 1]
-mcpi $r4 $r3 i1               ; copy memory
-addi $r3 $$locbase i80        ; get offset to local __ptr [u8; 1]
-move $r7 $zero                ; move parameter from branch to block argument
-lt   $r4 $r7 $one
-jnzf $r4 $zero i2
-mcpi $r0 $r3 i1               ; copy memory
-jmpf $zero i10
-mul  $r4 $r7 $one
-add  $r4 $r3 $r4
-lw   $r5 $r2 i0               ; load word
-lb   $r5 $r5 i0               ; lb val ptr i0
-lw   $r6 $r2 i0               ; load word
-add  $r6 $r6 $one
-sw   $r2 $r6 i0               ; store word
-sb   $r4 $r5 i0               ; store byte
-add  $r7 $r7 $one
-jmpb $zero i12
-cfsi i176                     ; free 176 bytes for locals and 0 slots for extra call arguments
-move $$reta $r1               ; restore return address
-poph i524288                  ; restore registers 40..64
-popl i255                     ; restore registers 16..40
-jal  $zero $$reta i0          ; return from call
 pshl i15                      ; save registers 16..40
 pshh i524288                  ; save registers 40..64
-move $$locbase $sp            ; save locals base register for function log_42
+move $$locbase $sp            ; save locals base register for function log_46
 cfei i56                      ; allocate 56 bytes for locals and 0 slots for call arguments
 move $r0 $$reta               ; save return address
 addi $r1 $$locbase i48        ; get offset to local __ptr u8
@@ -1051,7 +894,7 @@ data_NonConfigurable_2 .word 14454674236531057292
 
 0x00000000 MOVE R60 $pc                                    ;; [26, 240, 48, 0]
 0x00000004 JMPF $zero 0x4                                  ;; [116, 0, 0, 4]
-0x00000008                                                 ;; [0, 0, 0, 0, 0, 0, 6, 72]
+0x00000008                                                 ;; [0, 0, 0, 0, 0, 0, 5, 144]
 0x00000010                                                 ;; [0, 0, 0, 0, 0, 0, 0, 0]
 0x00000018 LW R63 R60 0x1                                  ;; [93, 255, 192, 1]
 0x0000001c ADD R63 R63 R60                                 ;; [16, 255, 255, 0]
@@ -1147,10 +990,10 @@ data_NonConfigurable_2 .word 14454674236531057292
 0x00000184 JNZF R18 $zero 0x1                              ;; [118, 72, 0, 1]
 0x00000188 JMPF $zero 0x7                                  ;; [116, 0, 0, 7]
 0x0000018c MOVE R58 $writable                              ;; [26, 233, 0, 0]
-0x00000190 JAL R62 $pc 0x114                               ;; [153, 248, 49, 20]
+0x00000190 JAL R62 $pc 0xe6                                ;; [153, 248, 48, 230]
 0x00000194 MOVI $writable 0xff                             ;; [114, 64, 0, 255]
 0x00000198 MOVE R58 $writable                              ;; [26, 233, 0, 0]
-0x0000019c JAL R62 $pc 0x111                               ;; [153, 248, 49, 17]
+0x0000019c JAL R62 $pc 0xe3                                ;; [153, 248, 48, 227]
 0x000001a0 LW $writable R63 0x0                            ;; [93, 67, 240, 0]
 0x000001a4 RVRT $writable                                  ;; [54, 64, 0, 0]
 0x000001a8 CFSI 0x40ad8                                    ;; [146, 4, 10, 216]
@@ -1323,136 +1166,90 @@ data_NonConfigurable_2 .word 14454674236531057292
 0x00000444 PSHL 0xf                                        ;; [149, 0, 0, 15]
 0x00000448 PSHH 0x80000                                    ;; [150, 8, 0, 0]
 0x0000044c MOVE R59 $sp                                    ;; [26, 236, 80, 0]
-0x00000450 CFEI 0x20                                       ;; [145, 0, 0, 32]
+0x00000450 CFEI 0x48                                       ;; [145, 0, 0, 72]
 0x00000454 MOVE $writable R58                              ;; [26, 67, 160, 0]
 0x00000458 MOVE R17 R62                                    ;; [26, 71, 224, 0]
 0x0000045c MUL R18 $zero $one                              ;; [27, 72, 0, 64]
 0x00000460 ADD R18 R59 R18                                 ;; [16, 75, 180, 128]
 0x00000464 MOVI R19 0xff                                   ;; [114, 76, 0, 255]
 0x00000468 SB R18 R19 0x0                                  ;; [94, 73, 48, 0]
-0x0000046c ADDI R18 R59 0x10                               ;; [80, 75, 176, 16]
+0x0000046c ADDI R18 R59 0x18                               ;; [80, 75, 176, 24]
 0x00000470 MOVE R58 R59                                    ;; [26, 235, 176, 0]
 0x00000474 MOVE R57 R18                                    ;; [26, 229, 32, 0]
-0x00000478 JAL R62 $pc 0xc                                 ;; [153, 248, 48, 12]
-0x0000047c ADDI R18 R59 0x10                               ;; [80, 75, 176, 16]
-0x00000480 ADDI R19 R59 0x8                                ;; [80, 79, 176, 8]
-0x00000484 MOVE R58 R18                                    ;; [26, 233, 32, 0]
-0x00000488 MOVE R57 R19                                    ;; [26, 229, 48, 0]
-0x0000048c JAL R62 $pc 0x1a                                ;; [153, 248, 48, 26]
-0x00000490 MCPI $writable R19 0x1                          ;; [96, 65, 48, 1]
-0x00000494 CFSI 0x20                                       ;; [146, 0, 0, 32]
-0x00000498 MOVE R62 R17                                    ;; [26, 249, 16, 0]
-0x0000049c POPH 0x80000                                    ;; [152, 8, 0, 0]
-0x000004a0 POPL 0xf                                        ;; [151, 0, 0, 15]
-0x000004a4 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
-0x000004a8 PSHL 0x7                                        ;; [149, 0, 0, 7]
-0x000004ac PSHH 0x80000                                    ;; [150, 8, 0, 0]
-0x000004b0 MOVE R59 $sp                                    ;; [26, 236, 80, 0]
-0x000004b4 CFEI 0x28                                       ;; [145, 0, 0, 40]
-0x000004b8 MOVE $writable R57                              ;; [26, 67, 144, 0]
-0x000004bc MOVE R17 R62                                    ;; [26, 71, 224, 0]
-0x000004c0 ADDI R18 R59 0x10                               ;; [80, 75, 176, 16]
-0x000004c4 MCPI R18 R58 0x1                                ;; [96, 75, 160, 1]
-0x000004c8 ADDI R18 R59 0x10                               ;; [80, 75, 176, 16]
-0x000004cc SW R59 R18 0x3                                  ;; [95, 237, 32, 3]
-0x000004d0 SW R59 $one 0x4                                 ;; [95, 236, 16, 4]
-0x000004d4 ADDI R18 R59 0x18                               ;; [80, 75, 176, 24]
-0x000004d8 MCPI R59 R18 0x10                               ;; [96, 237, 32, 16]
-0x000004dc MCPI $writable R59 0x10                         ;; [96, 67, 176, 16]
-0x000004e0 CFSI 0x28                                       ;; [146, 0, 0, 40]
-0x000004e4 MOVE R62 R17                                    ;; [26, 249, 16, 0]
-0x000004e8 POPH 0x80000                                    ;; [152, 8, 0, 0]
-0x000004ec POPL 0x7                                        ;; [151, 0, 0, 7]
-0x000004f0 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
-0x000004f4 PSHL 0xff                                       ;; [149, 0, 0, 255]
-0x000004f8 PSHH 0x80000                                    ;; [150, 8, 0, 0]
-0x000004fc MOVE R59 $sp                                    ;; [26, 236, 80, 0]
-0x00000500 CFEI 0xb0                                       ;; [145, 0, 0, 176]
-0x00000504 MOVE $writable R57                              ;; [26, 67, 144, 0]
-0x00000508 MOVE R17 R62                                    ;; [26, 71, 224, 0]
-0x0000050c ADDI R18 R59 0x60                               ;; [80, 75, 176, 96]
-0x00000510 MCPI R18 R58 0x10                               ;; [96, 75, 160, 16]
-0x00000514 ADDI R18 R59 0x60                               ;; [80, 75, 176, 96]
-0x00000518 ADDI R19 R59 0x70                               ;; [80, 79, 176, 112]
-0x0000051c MCPI R19 R18 0x10                               ;; [96, 77, 32, 16]
-0x00000520 ADDI R18 R59 0x70                               ;; [80, 75, 176, 112]
-0x00000524 ADDI R19 R59 0x90                               ;; [80, 79, 176, 144]
-0x00000528 MCPI R19 R18 0x10                               ;; [96, 77, 32, 16]
-0x0000052c ADDI R18 R59 0x90                               ;; [80, 75, 176, 144]
-0x00000530 MCPI R59 R18 0x10                               ;; [96, 237, 32, 16]
-0x00000534 ADDI R18 R59 0x20                               ;; [80, 75, 176, 32]
-0x00000538 MCPI R18 R59 0x10                               ;; [96, 75, 176, 16]
-0x0000053c ADDI R19 R59 0x60                               ;; [80, 79, 176, 96]
-0x00000540 ADDI R20 R59 0x80                               ;; [80, 83, 176, 128]
-0x00000544 MCPI R20 R19 0x10                               ;; [96, 81, 48, 16]
-0x00000548 ADDI R19 R59 0x80                               ;; [80, 79, 176, 128]
-0x0000054c ADDI R20 R59 0xa0                               ;; [80, 83, 176, 160]
-0x00000550 MCPI R20 R19 0x10                               ;; [96, 81, 48, 16]
-0x00000554 ADDI R19 R59 0xa0                               ;; [80, 79, 176, 160]
-0x00000558 ADDI R20 R59 0x10                               ;; [80, 83, 176, 16]
-0x0000055c MCPI R20 R19 0x10                               ;; [96, 81, 48, 16]
-0x00000560 ADDI R19 R59 0x30                               ;; [80, 79, 176, 48]
-0x00000564 MCPI R19 R20 0x10                               ;; [96, 77, 64, 16]
-0x00000568 ADDI R19 R59 0x40                               ;; [80, 79, 176, 64]
-0x0000056c MCPI R19 R18 0x8                                ;; [96, 77, 32, 8]
-0x00000570 ADDI R18 R59 0x58                               ;; [80, 75, 176, 88]
-0x00000574 MCPI R18 R19 0x8                                ;; [96, 73, 48, 8]
-0x00000578 ADDI R18 R59 0x58                               ;; [80, 75, 176, 88]
-0x0000057c ADDI R19 R59 0x48                               ;; [80, 79, 176, 72]
-0x00000580 MCLI R19 0x1                                    ;; [112, 76, 0, 1]
-0x00000584 ADDI R20 R59 0x50                               ;; [80, 83, 176, 80]
-0x00000588 MCPI R20 R19 0x1                                ;; [96, 81, 48, 1]
-0x0000058c ADDI R19 R59 0x50                               ;; [80, 79, 176, 80]
-0x00000590 MOVE R23 $zero                                  ;; [26, 92, 0, 0]
-0x00000594 LT R20 R23 $one                                 ;; [22, 81, 112, 64]
-0x00000598 JNZF R20 $zero 0x2                              ;; [118, 80, 0, 2]
-0x0000059c MCPI $writable R19 0x1                          ;; [96, 65, 48, 1]
-0x000005a0 JMPF $zero 0xa                                  ;; [116, 0, 0, 10]
-0x000005a4 MUL R20 R23 $one                                ;; [27, 81, 112, 64]
-0x000005a8 ADD R20 R19 R20                                 ;; [16, 81, 53, 0]
-0x000005ac LW R21 R18 0x0                                  ;; [93, 85, 32, 0]
-0x000005b0 LB R21 R21 0x0                                  ;; [92, 85, 80, 0]
-0x000005b4 LW R22 R18 0x0                                  ;; [93, 89, 32, 0]
-0x000005b8 ADD R22 R22 $one                                ;; [16, 89, 96, 64]
-0x000005bc SW R18 R22 0x0                                  ;; [95, 73, 96, 0]
-0x000005c0 SB R20 R21 0x0                                  ;; [94, 81, 80, 0]
-0x000005c4 ADD R23 R23 $one                                ;; [16, 93, 112, 64]
-0x000005c8 JMPB $zero 0xc                                  ;; [117, 0, 0, 12]
-0x000005cc CFSI 0xb0                                       ;; [146, 0, 0, 176]
-0x000005d0 MOVE R62 R17                                    ;; [26, 249, 16, 0]
-0x000005d4 POPH 0x80000                                    ;; [152, 8, 0, 0]
-0x000005d8 POPL 0xff                                       ;; [151, 0, 0, 255]
-0x000005dc JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
-0x000005e0 PSHL 0xf                                        ;; [149, 0, 0, 15]
-0x000005e4 PSHH 0x80000                                    ;; [150, 8, 0, 0]
-0x000005e8 MOVE R59 $sp                                    ;; [26, 236, 80, 0]
-0x000005ec CFEI 0x38                                       ;; [145, 0, 0, 56]
-0x000005f0 MOVE $writable R62                              ;; [26, 67, 224, 0]
-0x000005f4 ADDI R17 R59 0x30                               ;; [80, 71, 176, 48]
-0x000005f8 SB R17 R58 0x0                                  ;; [94, 71, 160, 0]
-0x000005fc ADDI R17 R59 0x30                               ;; [80, 71, 176, 48]
-0x00000600 MOVE R18 $one                                   ;; [26, 72, 16, 0]
-0x00000604 ALOC $one                                       ;; [38, 4, 0, 0]
-0x00000608 MCP $hp R17 R18                                 ;; [40, 29, 20, 128]
-0x0000060c ADDI R17 R59 0x10                               ;; [80, 71, 176, 16]
-0x00000610 SW R59 $hp 0x2                                  ;; [95, 236, 112, 2]
-0x00000614 SW R59 $one 0x3                                 ;; [95, 236, 16, 3]
-0x00000618 MCPI R59 R17 0x10                               ;; [96, 237, 16, 16]
-0x0000061c ADDI R17 R59 0x20                               ;; [80, 71, 176, 32]
-0x00000620 MCPI R17 R59 0x10                               ;; [96, 71, 176, 16]
-0x00000624 LW R17 R63 0x2                                  ;; [93, 71, 240, 2]
-0x00000628 LW R18 R59 0x4                                  ;; [93, 75, 176, 4]
-0x0000062c LW R19 R59 0x5                                  ;; [93, 79, 176, 5]
-0x00000630 LOGD $zero R17 R18 R19                          ;; [52, 1, 20, 147]
-0x00000634 CFSI 0x38                                       ;; [146, 0, 0, 56]
-0x00000638 MOVE R62 $writable                              ;; [26, 249, 0, 0]
-0x0000063c POPH 0x80000                                    ;; [152, 8, 0, 0]
-0x00000640 POPL 0xf                                        ;; [151, 0, 0, 15]
-0x00000644 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x00000478 JAL R62 $pc 0x19                                ;; [153, 248, 48, 25]
+0x0000047c ADDI R19 R59 0x28                               ;; [80, 79, 176, 40]
+0x00000480 MCPI R19 R18 0x10                               ;; [96, 77, 32, 16]
+0x00000484 ADDI R18 R59 0x28                               ;; [80, 75, 176, 40]
+0x00000488 ADDI R19 R59 0x38                               ;; [80, 79, 176, 56]
+0x0000048c MCPI R19 R18 0x10                               ;; [96, 77, 32, 16]
+0x00000490 LW R18 R59 0x7                                  ;; [93, 75, 176, 7]
+0x00000494 LW R19 R59 0x8                                  ;; [93, 79, 176, 8]
+0x00000498 SW R59 R18 0x1                                  ;; [95, 237, 32, 1]
+0x0000049c SW R59 R19 0x2                                  ;; [95, 237, 48, 2]
+0x000004a0 LW R18 R59 0x1                                  ;; [93, 75, 176, 1]
+0x000004a4 MOVE R19 $one                                   ;; [26, 76, 16, 0]
+0x000004a8 ALOC $one                                       ;; [38, 4, 0, 0]
+0x000004ac MCP $hp R18 R19                                 ;; [40, 29, 36, 192]
+0x000004b0 MUL R18 $zero $one                              ;; [27, 72, 0, 64]
+0x000004b4 ADD R18 $hp R18                                 ;; [16, 72, 116, 128]
+0x000004b8 LB R18 R18 0x0                                  ;; [92, 73, 32, 0]
+0x000004bc MUL R19 $zero $one                              ;; [27, 76, 0, 64]
+0x000004c0 ADD R19 $writable R19                           ;; [16, 77, 4, 192]
+0x000004c4 SB R19 R18 0x0                                  ;; [94, 77, 32, 0]
+0x000004c8 CFSI 0x48                                       ;; [146, 0, 0, 72]
+0x000004cc MOVE R62 R17                                    ;; [26, 249, 16, 0]
+0x000004d0 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x000004d4 POPL 0xf                                        ;; [151, 0, 0, 15]
+0x000004d8 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x000004dc PSHL 0x7                                        ;; [149, 0, 0, 7]
+0x000004e0 PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x000004e4 MOVE R59 $sp                                    ;; [26, 236, 80, 0]
+0x000004e8 CFEI 0x28                                       ;; [145, 0, 0, 40]
+0x000004ec MOVE $writable R57                              ;; [26, 67, 144, 0]
+0x000004f0 MOVE R17 R62                                    ;; [26, 71, 224, 0]
+0x000004f4 ADDI R18 R59 0x10                               ;; [80, 75, 176, 16]
+0x000004f8 MCPI R18 R58 0x1                                ;; [96, 75, 160, 1]
+0x000004fc ADDI R18 R59 0x10                               ;; [80, 75, 176, 16]
+0x00000500 SW R59 R18 0x3                                  ;; [95, 237, 32, 3]
+0x00000504 SW R59 $one 0x4                                 ;; [95, 236, 16, 4]
+0x00000508 ADDI R18 R59 0x18                               ;; [80, 75, 176, 24]
+0x0000050c MCPI R59 R18 0x10                               ;; [96, 237, 32, 16]
+0x00000510 MCPI $writable R59 0x10                         ;; [96, 67, 176, 16]
+0x00000514 CFSI 0x28                                       ;; [146, 0, 0, 40]
+0x00000518 MOVE R62 R17                                    ;; [26, 249, 16, 0]
+0x0000051c POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x00000520 POPL 0x7                                        ;; [151, 0, 0, 7]
+0x00000524 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x00000528 PSHL 0xf                                        ;; [149, 0, 0, 15]
+0x0000052c PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x00000530 MOVE R59 $sp                                    ;; [26, 236, 80, 0]
+0x00000534 CFEI 0x38                                       ;; [145, 0, 0, 56]
+0x00000538 MOVE $writable R62                              ;; [26, 67, 224, 0]
+0x0000053c ADDI R17 R59 0x30                               ;; [80, 71, 176, 48]
+0x00000540 SB R17 R58 0x0                                  ;; [94, 71, 160, 0]
+0x00000544 ADDI R17 R59 0x30                               ;; [80, 71, 176, 48]
+0x00000548 MOVE R18 $one                                   ;; [26, 72, 16, 0]
+0x0000054c ALOC $one                                       ;; [38, 4, 0, 0]
+0x00000550 MCP $hp R17 R18                                 ;; [40, 29, 20, 128]
+0x00000554 ADDI R17 R59 0x10                               ;; [80, 71, 176, 16]
+0x00000558 SW R59 $hp 0x2                                  ;; [95, 236, 112, 2]
+0x0000055c SW R59 $one 0x3                                 ;; [95, 236, 16, 3]
+0x00000560 MCPI R59 R17 0x10                               ;; [96, 237, 16, 16]
+0x00000564 ADDI R17 R59 0x20                               ;; [80, 71, 176, 32]
+0x00000568 MCPI R17 R59 0x10                               ;; [96, 71, 176, 16]
+0x0000056c LW R17 R63 0x2                                  ;; [93, 71, 240, 2]
+0x00000570 LW R18 R59 0x4                                  ;; [93, 75, 176, 4]
+0x00000574 LW R19 R59 0x5                                  ;; [93, 79, 176, 5]
+0x00000578 LOGD $zero R17 R18 R19                          ;; [52, 1, 20, 147]
+0x0000057c CFSI 0x38                                       ;; [146, 0, 0, 56]
+0x00000580 MOVE R62 $writable                              ;; [26, 249, 0, 0]
+0x00000584 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x00000588 POPL 0xf                                        ;; [151, 0, 0, 15]
+0x0000058c JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
 .data_section:
-0x00000648 .word i18446744073709486083, as hex be bytes ([FF, FF, FF, FF, FF, FF, 00, 03])
-0x00000650 .word i262145, as hex be bytes ([00, 00, 00, 00, 00, 04, 00, 01])
-0x00000658 .word i14454674236531057292, as hex be bytes ([C8, 99, 51, A2, 4C, 6C, A2, 8C])
+0x00000590 .word i18446744073709486083, as hex be bytes ([FF, FF, FF, FF, FF, FF, 00, 03])
+0x00000598 .word i262145, as hex be bytes ([00, 00, 00, 00, 00, 04, 00, 01])
+0x000005a0 .word i14454674236531057292, as hex be bytes ([C8, 99, 51, A2, 4C, 6C, A2, 8C])
 ;; --- END OF TARGET BYTECODE ---
 
 warning
@@ -1552,7 +1349,7 @@ warning
 ____
 
   Compiled script "array_repeat" with 8 warnings.
-    Finished release [optimized + fuel] target(s) [1.632 KB] in ???
+    Finished release [optimized + fuel] target(s) [1.448 KB] in ???
 
 > forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat --experimental const_generics --verbose --release
 exit status: 0
@@ -1560,10 +1357,10 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert)
    Compiling script array_repeat (test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat)
-    Finished release [optimized + fuel] target(s) [2.864 KB] in ???
+    Finished release [optimized + fuel] target(s) [2.68 KB] in ???
     script array_repeat
-      Bytecode size: 2864 bytes (2.864 KB)
-      Bytecode hash: 0xdc2e29e1f37d24b165bc4b534388fc87ecb1148464b75c6268eb8499f2c9f6df
+      Bytecode size: 2680 bytes (2.68 KB)
+      Bytecode hash: 0x52c3bd1b89fec833f27c6fa87cbfcedafceffc8f8221e062e797b12d566c718c
      Running 1 test, filtered 0 tests
 
 tested -- array_repeat

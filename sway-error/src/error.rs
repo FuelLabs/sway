@@ -1103,7 +1103,7 @@ pub enum CompileError {
         max_num: u64,
         span: Span,
     },
-    #[error("Coherence violation: only traits defined in this crate can be implemented for external types.")]
+    #[error("Coherence violation: only traits defined in this package can be implemented for external types.")]
     IncoherentImplDueToOrphanRule {
         trait_name: String,
         type_name: String,
@@ -3196,22 +3196,22 @@ impl ToDiagnostic for CompileError {
             IncoherentImplDueToOrphanRule { trait_name, type_name, span } => Diagnostic {
                 reason: Some(Reason::new(
                     code(1),
-                    "coherence violation: only traits defined in this module can be implemented for external types".into()
+                    "coherence violation: only traits defined in this package can be implemented for external types".into()
                 )),
                 issue: Issue::error(
                     source_engine,
                     span.clone(),
                     format!(
-                        "cannot implement `{trait_name}` for `{type_name}`: both originate outside this module"
+                        "cannot implement `{trait_name}` for `{type_name}`: both originate outside this package"
                     ),
                 ),
                 hints: vec![],
                 help: {
                     let help = vec![
-                        "only traits defined in this module can be implemented for external types".to_string(),
+                        "only traits defined in this package can be implemented for external types".to_string(),
                         Diagnostic::help_empty_line(),
                         format!(
-                            "move this impl into the module that defines `{type_name}`"
+                            "move this impl into the package that defines `{type_name}`"
                         ),
                         format!(
                             "or define and use a local trait instead of `{trait_name}` to avoid the orphan rule"

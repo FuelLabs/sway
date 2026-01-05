@@ -117,7 +117,7 @@ impl TypeCheckContext<'_> {
             EnforceTypeArguments::No,
             None,
             self.self_type(),
-            &self.subst_ctx(),
+            &self.subst_ctx(handler),
             VisibilityCheck::Yes,
         )
         .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
@@ -1034,12 +1034,12 @@ impl TypeCheckContext<'_> {
                 &impl_self_method,
                 method_constraints.as_ref().map(|(type_id, _)| *type_id),
             )? {
-                return Ok(pick.get_method_safe_to_unify(self.engines, type_id));
+                return Ok(pick.get_method_safe_to_unify(handler, self.engines, type_id));
             }
 
             if qualified_call_path.is_none() {
                 if let Some(first) = maybe_method_decl_refs.first() {
-                    return Ok(first.get_method_safe_to_unify(self.engines, type_id));
+                    return Ok(first.get_method_safe_to_unify(handler, self.engines, type_id));
                 }
             }
         } else {

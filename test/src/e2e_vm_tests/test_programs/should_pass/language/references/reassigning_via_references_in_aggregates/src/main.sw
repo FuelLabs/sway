@@ -39,13 +39,6 @@ impl B {
     }
 }
 
-impl PartialEq for [u64; 3] {
-    fn eq(self, other: Self) -> bool {
-        self[0] == other[0] && self[1] == other[1] && self[2] == other[2]
-    }
-}
-impl Eq for [u64; 3] {}
-
 #[inline(always)]
 fn in_structs() {
     let mut x = 11u8;

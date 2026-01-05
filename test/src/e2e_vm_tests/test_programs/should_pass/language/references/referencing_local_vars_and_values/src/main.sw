@@ -166,7 +166,6 @@ fn reference_zero_sized_local_var_and_value_not_inlined<T>()
 
 #[inline(never)]
 fn test_all_inlined() {
-    reference_local_var_and_value::<()>();
     reference_local_var_and_value::<bool>();
     reference_local_var_and_value::<u8>();
     reference_local_var_and_value::<u16>();
@@ -183,6 +182,7 @@ fn test_all_inlined() {
     reference_local_var_and_value::<raw_ptr>();
     reference_local_var_and_value::<raw_slice>();
 
+    reference_zero_sized_local_var_and_value::<()>();
     reference_zero_sized_local_var_and_value::<EmptyStruct>();
     reference_zero_sized_local_var_and_value::<[u64;0]>();
     
@@ -212,7 +212,6 @@ fn test_all_inlined() {
 
 #[inline(never)]
 fn test_not_inlined() {
-    reference_local_var_and_value_not_inlined::<()>();
     reference_local_var_and_value_not_inlined::<bool>();
     reference_local_var_and_value_not_inlined::<u8>();
     reference_local_var_and_value_not_inlined::<u16>();
@@ -229,10 +228,10 @@ fn test_not_inlined() {
     reference_local_var_and_value_not_inlined::<raw_ptr>();
     reference_local_var_and_value_not_inlined::<raw_slice>();
     
+    reference_zero_sized_local_var_and_value_not_inlined::<()>();
     reference_zero_sized_local_var_and_value_not_inlined::<EmptyStruct>();
     reference_zero_sized_local_var_and_value_not_inlined::<[u64;0]>();
 
-    reference_local_reference_var_and_value_not_inlined::<()>();
     reference_local_reference_var_and_value_not_inlined::<bool>();
     reference_local_reference_var_and_value_not_inlined::<u8>();
     reference_local_reference_var_and_value_not_inlined::<u16>();

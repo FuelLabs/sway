@@ -129,6 +129,10 @@ pub enum Warning {
         deprecated_element_name: String,
         help: Option<String>,
     },
+    InherentImplForExternalType {
+        type_name: String,
+        type_definition_span: Option<Span>,
+    },
     DuplicatedStorageKey {
         first_field: IdentUnique,
         first_field_full_name: String,
@@ -306,6 +310,11 @@ impl fmt::Display for Warning {
                           Consider {effect_in_suggestion} before calling another contract"),
             UsingDeprecated { deprecated_element_name, deprecated_element, help } =>
                 write!(f, "{deprecated_element} \"{deprecated_element_name}\" is deprecated. {}", help.as_ref().unwrap_or(&"".into())),
+            InherentImplForExternalType { type_name, .. } =>
+                write!(
+                    f,
+                    "Inherent implementation for `{type_name}` must be defined in the package that defines the type."
+                ),
             DuplicatedStorageKey { first_field_full_name, second_field_full_name, key, .. } =>
                 write!(f, "Two storage fields have the same storage key.\nFirst field: {first_field_full_name}\nSecond field: {second_field_full_name}\nKey: {key}"),
             ErrorTypeEmptyEnum { enum_name } =>
@@ -545,6 +554,33 @@ impl ToDiagnostic for CompileWarning {
                     ),
                 ]),
                 help: vec![],
+            },
+            InherentImplForExternalType { type_name, type_definition_span } => Diagnostic {
+                reason: Some(Reason::new(
+                    code(1),
+                    "coherence violation: inherent implementations must be defined in the type's defining package".into()
+                )),
+                issue: Issue::warning(
+                    source_engine,
+                    self.span(),
+                    format!(
+                        "cannot define inherent implementation for `{type_name}`: type is defined in a different package"
+                    ),
+                ),
+                hints: match type_definition_span.clone() {
+                    Some(def_span) => vec![Hint::info(
+                        source_engine,
+                        def_span,
+                        format!("Type `{type_name}` is defined here."),
+                    )],
+                    None => vec![],
+                },
+                help: vec![
+                    FUTURE_HARD_ERROR_HELP.to_string(),
+                    Diagnostic::help_empty_line(),
+                    "move this impl into the package that defines the type".to_string(),
+                    "or define and use a local trait instead to avoid the orphan rule".to_string(),
+                ],
             },
             ErrorTypeEmptyEnum { enum_name } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Empty error type enum cannot be used in `panic` expressions".to_string())),

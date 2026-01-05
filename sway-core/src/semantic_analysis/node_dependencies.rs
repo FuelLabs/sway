@@ -27,7 +27,7 @@ pub(crate) fn order_ast_nodes_by_dependency(
     let decl_dependencies = DependencyMap::from_iter(
         nodes
             .iter()
-            .filter_map(|node| Dependencies::gather_from_decl_node(engines, node)),
+            .filter_map(|node| Dependencies::gather_from_decl_node(handler, engines, node)),
     );
 
     // Check here for recursive calls now that we have a nice map of the dependencies to help us.
@@ -50,7 +50,7 @@ pub(crate) fn order_ast_nodes_by_dependency(
     Ok(nodes
         .into_iter()
         .fold(Vec::<AstNode>::new(), |ordered, node| {
-            insert_into_ordered_nodes(engines, &decl_dependencies, ordered, node)
+            insert_into_ordered_nodes(handler, engines, &decl_dependencies, ordered, node)
         }))
 }
 
@@ -238,6 +238,7 @@ type DependencyMap = HashMap<DependentSymbol, Dependencies, MemoizedBuildHasher>
 type DependencySet = HashSet<DependentSymbol, MemoizedBuildHasher>;
 
 fn insert_into_ordered_nodes(
+    handler: &Handler,
     engines: &Engines,
     decl_dependencies: &DependencyMap,
     mut ordered_nodes: Vec<AstNode>,
@@ -245,7 +246,13 @@ fn insert_into_ordered_nodes(
 ) -> Vec<AstNode> {
     for idx in 0..ordered_nodes.len() {
         // If we find a node which depends on the new node, insert it in front.
-        if depends_on(engines, decl_dependencies, &ordered_nodes[idx], &node) {
+        if depends_on(
+            handler,
+            engines,
+            decl_dependencies,
+            &ordered_nodes[idx],
+            &node,
+        ) {
             ordered_nodes.insert(idx, node);
             return ordered_nodes;
         }
@@ -262,6 +269,7 @@ fn insert_into_ordered_nodes(
 // Does the dependant depend on the dependee?
 
 fn depends_on(
+    handler: &Handler,
     engines: &Engines,
     decl_dependencies: &DependencyMap,
     dependant_node: &AstNode,
@@ -281,7 +289,10 @@ fn depends_on(
         (AstNodeContent::IncludeStatement(_), AstNodeContent::Declaration(_)) => false,
         (AstNodeContent::UseStatement(_), AstNodeContent::Declaration(_)) => false,
         (AstNodeContent::Declaration(dependant), AstNodeContent::Declaration(dependee)) => {
-            match (decl_name(engines, dependant), decl_name(engines, dependee)) {
+            match (
+                decl_name(handler, engines, dependant),
+                decl_name(handler, engines, dependee),
+            ) {
                 (Some(dependant_name), Some(dependee_name)) => decl_dependencies
                     .get(&dependant_name)
                     .map(|deps_set| {
@@ -308,11 +319,12 @@ struct Dependencies {
 
 impl Dependencies {
     fn gather_from_decl_node(
+        handler: &Handler,
         engines: &Engines,
         node: &AstNode,
     ) -> Option<(DependentSymbol, Dependencies)> {
         match &node.content {
-            AstNodeContent::Declaration(decl) => decl_name(engines, decl).map(|name| {
+            AstNodeContent::Declaration(decl) => decl_name(handler, engines, decl).map(|name| {
                 (
                     name,
                     Dependencies {
@@ -947,7 +959,7 @@ impl PartialEq for DependentSymbol {
     }
 }
 
-fn decl_name(engines: &Engines, decl: &Declaration) -> Option<DependentSymbol> {
+fn decl_name(handler: &Handler, engines: &Engines, decl: &Declaration) -> Option<DependentSymbol> {
     let type_engine = engines.te();
     let dep_sym = |name| Some(DependentSymbol::new_symbol(name));
 
@@ -1045,7 +1057,11 @@ fn decl_name(engines: &Engines, decl: &Declaration) -> Option<DependentSymbol> {
             }
         }
         Declaration::ConstGenericDeclaration(_) => {
-            todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+            handler.emit_err(CompileError::Internal(
+                "Unexpected error on const generics",
+                decl.span(engines),
+            ));
+            None
         }
 
         // These don't have declaration dependencies.

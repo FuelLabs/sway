@@ -6,7 +6,7 @@ use std::{
 
 use crate::{
     engine_threading::*,
-    ir_generation::function::{get_encoding_representation, get_memory_id},
+    ir_generation::function::{get_encoding_representation_by_id, get_memory_id},
     language::{
         ty::{self, TyConstantDecl, TyIntrinsicFunctionKind},
         CallPath, Literal,
@@ -1726,7 +1726,7 @@ fn const_eval_intrinsic(
 
             let t = intrinsic.type_arguments[0].as_type_argument().unwrap();
 
-            let r = get_encoding_representation(lookup.engines, t.type_id);
+            let r = get_encoding_representation_by_id(lookup.engines, t.type_id);
 
             use std::hash::Hasher;
             let mut state = DefaultHasher::default();

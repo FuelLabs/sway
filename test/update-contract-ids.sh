@@ -105,7 +105,7 @@ $grep --include \*.sw -Hno "// AUTO-CONTRACT-ID" . -R | while read line ; do
             fi
         else
             echo -e "    ${BOLD_RED}error${NC}"
-            cargo r -p forc --release -- contract-id --release
+            cargo r -p forc --release -- contract-id --path $CONTRACT_ARGS
             popd >> /dev/null
         fi
     fi
