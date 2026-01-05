@@ -3,12 +3,17 @@ library;
 
 const GLOBAL_CONST: u64 = 1122;
 
+struct Struct {
+    x: u64,
+}
+
 // Using `#[test]` is a trick to be able to use library for avoiding `std` dependency
 // and still have the IR compilation phase run.
 #[test]
 fn test_local_vars() {
-    let outer = 42u64;
+    let outer = 0u64;
     let mut mut_outer = 100u64;
+    let mut s = Struct { x: 0 };
 
     const LOCAL_CONST: u64 = 2211;
 
@@ -19,6 +24,8 @@ fn test_local_vars() {
     const ERR_USES_OUTER: u64 = outer;
 
     const ERR_USES_MUT_OUTER: u64 = mut_outer;
+
+    const ERR_USES_MUT_STRUCT_FIELD: u64 = s.x;
 
     const ERR_USES_OUTER_IN_BLOCK: u64 = {
         outer
@@ -45,6 +52,11 @@ fn test_local_vars() {
     const ERR_USES_OUTER_IN_REASSIGNMENT_RHS: u64 = {
         let mut array = [1u64, 2u64, 3u64];
         array[outer]
+    };
+
+    const ERR_USES_OUTER_PROJECTION_ACCESS_IN_REASSIGNMENT_RHS: u64 = {
+        s.x = 1;
+        0u64
     };
 
     const ERR_USES_OUTER_IN_NESTED_CONSTS: u64 = {
