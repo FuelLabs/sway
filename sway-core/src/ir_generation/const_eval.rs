@@ -458,9 +458,12 @@ fn contains_outer_vars(expr: &ty::TyExpression, in_expr_vars: &HashSet<&Ident>) 
                         base_name,
                         base_type: _,
                         indices,
-                    } => !in_expr_vars.contains(base_name) || indices.iter().any(|proj_kind| {
-                        projection_kind_contains_outer_vars(proj_kind, in_expr_vars)
-                    }),
+                    } => {
+                        !in_expr_vars.contains(base_name)
+                            || indices.iter().any(|proj_kind| {
+                                projection_kind_contains_outer_vars(proj_kind, in_expr_vars)
+                            })
+                    }
                     ty::TyReassignmentTarget::DerefAccess { exp, indices } => {
                         contains_outer_vars(exp, in_expr_vars)
                             || indices.iter().any(|proj_kind| {
