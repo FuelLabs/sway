@@ -10,20 +10,7 @@ enum MyEnum {
 }
 
 pub type StringArray = str[4];
-impl PartialEq for StringArray {
-    fn eq(self, other: Self) -> bool {
-        from_str_array(self) == from_str_array(other)
-    }
-}
-impl Eq for StringArray {}
-
 pub type Array = [u32; 2];
-impl PartialEq for Array {
-    fn eq(self, other: Self) -> bool {
-        self[0] == other[0] && self[1] == other[1]
-    }
-}
-impl Eq for Array {}
 
 impl PartialEq for MyStruct {
     fn eq(self, other: Self) -> bool {

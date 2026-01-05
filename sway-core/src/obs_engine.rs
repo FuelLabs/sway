@@ -1,10 +1,12 @@
 use std::fmt::{Debug, Formatter, Result};
 use std::sync::Mutex;
 
+use sway_ir::Type;
+
 use crate::decl_engine::DeclRefFunction;
 use crate::language::parsed::MethodName;
 use crate::semantic_analysis::TypeCheckContext;
-use crate::{TypeBinding, TypeId};
+use crate::{Engines, TypeBinding, TypeId, TypeInfo};
 
 pub trait Observer {
     fn on_trace(&self, _msg: &str) {}
@@ -24,6 +26,15 @@ pub trait Observer {
         _args_types: &[TypeId],
         _new_ref: DeclRefFunction,
         _new_type_id: TypeId,
+    ) {
+    }
+
+    fn on_after_ir_type_resolution(
+        &self,
+        _engines: &Engines,
+        _ctx: &sway_ir::Context,
+        _type_info: &TypeInfo,
+        _ir_type: &Type,
     ) {
     }
 }
@@ -72,6 +83,18 @@ impl ObservabilityEngine {
     ) {
         if let Some(obs) = self.observer.lock().unwrap().as_mut() {
             obs.on_after_method_resolution(ctx, method_name, arguments_types, ref_function, tid);
+        }
+    }
+
+    pub fn raise_on_after_ir_type_resolution(
+        &self,
+        engines: &Engines,
+        ctx: &sway_ir::Context,
+        type_info: &TypeInfo,
+        ir_type: &Type,
+    ) {
+        if let Some(obs) = self.observer.lock().unwrap().as_mut() {
+            obs.on_after_ir_type_resolution(engines, ctx, type_info, ir_type);
         }
     }
 

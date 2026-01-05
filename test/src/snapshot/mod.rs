@@ -132,7 +132,9 @@ fn run_cmds(
                     .replace("{root}", root)
                     .replace("{name}", name.to_str().unwrap());
 
-                let _ = writeln!(snapshot, "> {cmd}");
+                if !cmd.starts_with("echo") {
+                    let _ = writeln!(snapshot, "> {cmd}");
+                }
 
                 let mut last_output: Option<String> = None;
 
@@ -320,6 +322,32 @@ fn run_cmds(
 
                             last_output = Some(String::new());
                         }
+                        continue;
+                    } else if let Some(args) = cmd.strip_prefix("echo ") {
+                        let mut chars = args.chars();
+                        'nextline: loop {
+                            for _ in 0..80 {
+                                if let Some(c) = chars.next() {
+                                    snapshot.push(c);
+                                } else {
+                                    break 'nextline;
+                                }
+                            }
+
+                            for c in chars.by_ref() {
+                                if c == ' ' || c == '\n' {
+                                    snapshot.push('\n');
+                                    continue 'nextline;
+                                } else {
+                                    snapshot.push(c);
+                                }
+                            }
+
+                            break 'nextline;
+                        }
+
+                        snapshot.push('\n');
+
                         continue;
                     } else {
                         panic!("`{cmd}` is not a supported snapshot command.\nPossible tool commands: forc doc, forc\nPossible filtering commands: sub, regex, filter-fn");

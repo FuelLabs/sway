@@ -112,6 +112,7 @@ pub(crate) fn struct_instantiation(
 
     if !struct_can_be_instantiated {
         let constructors = collect_struct_constructors(
+            handler,
             ctx.namespace(),
             ctx.engines,
             type_id,
@@ -322,6 +323,7 @@ pub(crate) fn struct_instantiation(
 }
 
 fn collect_struct_constructors(
+    handler: &Handler,
     namespace: &Namespace,
     engines: &crate::Engines,
     struct_type_id: TypeId,
@@ -342,7 +344,7 @@ fn collect_struct_constructors(
                 ResolvedTraitImplItem::Parsed(_) => unreachable!(),
                 ResolvedTraitImplItem::Typed(item) => match item {
                     ty::TyTraitItem::Fn(fn_decl_id) => {
-                        Some(fn_decl_id.get_method_safe_to_unify(engines, struct_type_id))
+                        Some(fn_decl_id.get_method_safe_to_unify(handler, engines, struct_type_id))
                     }
                     _ => None,
                 },

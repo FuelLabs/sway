@@ -1,5 +1,8 @@
 use ast_elements::type_argument::GenericTypeArgument;
-use sway_error::handler::{ErrorEmitted, Handler};
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
 use sway_types::{Ident, Named, Spanned};
 
 use crate::{
@@ -72,7 +75,10 @@ impl TyDecl {
                 TyTypeAliasDecl::collect(handler, engines, ctx, decl_id)?
             }
             parsed::Declaration::ConstGenericDeclaration(_) => {
-                todo!("Will be implemented by https://github.com/FuelLabs/sway/issues/6860")
+                return Err(handler.emit_err(CompileError::Internal(
+                    "Unexpected error on const generics",
+                    decl.span(engines),
+                )));
             }
         };
 
@@ -120,9 +126,10 @@ impl TyDecl {
                 let name = decl.name.clone();
                 let typed_const_decl =
                     match ty::TyConfigurableDecl::type_check(handler, ctx.by_ref(), decl) {
-                        Ok(config_decl) => ty::TyDecl::from(
-                            decl_engine.insert(config_decl.clone(), Some(&decl_id)),
-                        ),
+                        Ok(config_decl) => {
+                            config_decl.forbid_const_generics(handler, engines)?;
+                            ty::TyDecl::from(decl_engine.insert(config_decl, Some(&decl_id)))
+                        }
                         Err(err) => ty::TyDecl::ErrorRecovery(span, err),
                     };
                 ctx.insert_symbol(handler, name, typed_const_decl.clone())?;

@@ -13,7 +13,6 @@
 /forc-pkg/ @FuelLabs/tooling 
 /forc-plugins/ @FuelLabs/tooling 
 /forc-test/ @FuelLabs/tooling 
-/forc-tracing/ @FuelLabs/tooling 
 /forc-util/ @FuelLabs/tooling 
 /sway-lsp/ @FuelLabs/tooling 
 /swayfmt/ @FuelLabs/tooling

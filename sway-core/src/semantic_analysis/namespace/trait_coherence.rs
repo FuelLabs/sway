@@ -301,6 +301,7 @@ pub(crate) fn check_impls_for_overlap(
                                 type_mapping.insert(*tp_type_id, *tc_type_id);
                                 let mut type_id = other_entry.inner.key.type_id;
                                 type_id.subst(&SubstTypesContext::new(
+                                    handler,
                                     engines,
                                     &type_mapping,
                                     false,
@@ -319,6 +320,7 @@ pub(crate) fn check_impls_for_overlap(
                                 type_mapping.insert(*tp_type_id, *tc_type_id);
                                 let mut type_id = self_entry.inner.key.type_id;
                                 type_id.subst(&SubstTypesContext::new(
+                                    handler,
                                     engines,
                                     &type_mapping,
                                     false,

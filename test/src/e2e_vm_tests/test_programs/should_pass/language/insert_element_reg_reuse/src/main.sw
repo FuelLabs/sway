@@ -1,20 +1,5 @@
 script;
 
-impl PartialEq for [u64; 2] {
-    fn eq(self, other: Self) -> bool {
-        let mut i = 0;
-        while i < 2 {
-            if self[i] != other[i] {
-                return false;
-            }
-            i += 1;
-        }
-        true
-    }
-}
-
-impl Eq for [u64; 2] {}
-
 fn tester1(arg: Vec<[u64; 2]>) {
     let mut expected = Vec::new();
     expected.push([0, 1]);

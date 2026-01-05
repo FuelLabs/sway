@@ -7,6 +7,7 @@ use std::{
     fmt,
     hash::{Hash, Hasher},
 };
+use sway_error::handler::Handler;
 use sway_types::{Ident, Named, Span, Spanned};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -35,7 +36,7 @@ impl Named for TyTraitType {
 }
 
 impl IsConcrete for TyTraitType {
-    fn is_concrete(&self, engines: &Engines) -> bool {
+    fn is_concrete(&self, _: &Handler, engines: &Engines) -> bool {
         if let Some(ty) = &self.ty {
             ty.type_id().is_concrete(engines, TreatNumericAs::Concrete)
         } else {

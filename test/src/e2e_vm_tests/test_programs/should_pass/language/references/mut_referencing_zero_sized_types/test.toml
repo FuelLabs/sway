@@ -1,5 +1,4 @@
-# TODO Enable this test once https://github.com/FuelLabs/sway/issues/6898 is fixed.
-category = "disabled"
+category = "run"
 expected_result = { action = "return", value = 42 }
 expected_result_new_encoding = { action = "return_data", value = "000000000000002A" }
 validate_abi = true

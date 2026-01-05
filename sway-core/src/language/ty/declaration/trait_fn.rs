@@ -4,6 +4,7 @@ use std::{
 };
 
 use monomorphization::MonomorphizeHelper;
+use sway_error::handler::Handler;
 use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
@@ -62,10 +63,10 @@ impl Spanned for TyTraitFn {
 }
 
 impl IsConcrete for TyTraitFn {
-    fn is_concrete(&self, engines: &Engines) -> bool {
+    fn is_concrete(&self, handler: &Handler, engines: &Engines) -> bool {
         self.type_parameters()
             .iter()
-            .all(|tp| tp.is_concrete(engines))
+            .all(|tp| tp.is_concrete(handler, engines))
             && self
                 .return_type
                 .type_id

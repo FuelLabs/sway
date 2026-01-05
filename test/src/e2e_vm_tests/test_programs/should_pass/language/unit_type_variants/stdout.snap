@@ -1,0 +1,7 @@
+---
+source: test/src/snapshot/mod.rs
+---
+This test expects `enum_varitants_unit_1` parameter to be a simple { u64 }, given
+it receives an enum with all variants as unit
+
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/unit_type_variants --release --ir final --asm final | filter-fn unit_type_variants enum_varitants_unit_1

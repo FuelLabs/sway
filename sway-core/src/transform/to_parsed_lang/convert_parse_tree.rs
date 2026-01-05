@@ -3265,7 +3265,10 @@ fn configurable_field_to_configurable_declaration(
                 call_path_binding: TypeBinding {
                     inner: CallPath {
                         prefixes: vec![],
-                        suffix: Ident::new_with_override("encode".into(), span.clone()),
+                        suffix: Ident::new_with_override(
+                            "encode_configurable".into(),
+                            span.clone(),
+                        ),
                         callpath_type: CallPathType::Ambiguous,
                     },
                     type_arguments: TypeArgs::Regular(vec![GenericArgument::Type(

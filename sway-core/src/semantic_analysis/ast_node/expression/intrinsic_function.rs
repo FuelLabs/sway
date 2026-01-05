@@ -16,6 +16,7 @@ use crate::{
     },
     semantic_analysis::TypeCheckContext,
     type_system::*,
+    types::TypeMetadata,
 };
 
 impl ty::TyIntrinsicFunctionKind {
@@ -1496,11 +1497,25 @@ fn type_check_log(
             span,
         }));
     }
-    let ctx = ctx
-        .by_ref()
-        .with_help_text("")
-        .with_type_annotation(type_engine.new_unknown());
-    let exp = ty::TyExpression::type_check(handler, ctx, &arguments[0])?;
+
+    let exp = {
+        let ctx = ctx
+            .by_ref()
+            .with_help_text("")
+            .with_type_annotation(type_engine.new_unknown());
+        ty::TyExpression::type_check(handler, ctx, &arguments[0])?
+    };
+
+    // Forbid types with const generics on __log
+    let logged_expr = TypeMetadata::get_logged_expression(&exp, ctx.experimental.new_encoding)
+        .map_err(|err| handler.emit_err(err))?;
+    if logged_expr.return_type.has_const_generics(ctx.engines) {
+        let err = handler.emit_err(CompileError::ConstGenericNotSupportedHere {
+            span: logged_expr.span.clone(),
+        });
+        return Err(err);
+    }
+
     let intrinsic_function = ty::TyIntrinsicFunctionKind {
         kind,
         arguments: vec![exp],

@@ -587,9 +587,8 @@ impl Type {
     /// when it's not embedded in an aggregate.
     pub fn size(&self, context: &Context) -> TypeSize {
         match self.get_content(context) {
-            TypeContent::Uint(8) | TypeContent::Bool | TypeContent::Unit | TypeContent::Never => {
-                TypeSize::new(1)
-            }
+            TypeContent::Unit | TypeContent::Never => TypeSize::new(0),
+            TypeContent::Uint(8) | TypeContent::Bool => TypeSize::new(1),
             // All integers larger than a byte are words since FuelVM only has memory operations on those two units.
             TypeContent::Uint(16)
             | TypeContent::Uint(32)
@@ -655,7 +654,7 @@ pub struct TypeSize {
 }
 
 impl TypeSize {
-    pub(crate) fn new(size_in_bytes: u64) -> Self {
+    pub fn new(size_in_bytes: u64) -> Self {
         Self { size_in_bytes }
     }
 
@@ -745,13 +744,13 @@ mod tests {
         }
 
         #[test]
-        /// Unit, when not embedded in aggregates, has a size of 1 byte.
+        /// Unit, when not embedded in aggregates, has a size of 0 bytes.
         fn unit() {
             let context = create_context();
 
             let s_unit = Type::get_unit(&context).size(&context);
 
-            assert_eq!(s_unit.in_bytes(), 1);
+            assert_eq!(s_unit.in_bytes(), 0);
         }
 
         #[test]

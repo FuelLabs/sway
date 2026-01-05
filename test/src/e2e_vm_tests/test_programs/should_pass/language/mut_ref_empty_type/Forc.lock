@@ -1,8 +1,0 @@
-[[package]]
-name = "mut_ref_empty_type"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "std"
-source = "path+from-root-3299F53BAA3C44EE"

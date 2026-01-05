@@ -1,0 +1,8 @@
+[[package]]
+name = "std"
+source = "path+from-root-5A3F109D3546CAF9"
+
+[[package]]
+name = "type_layout"
+source = "member"
+dependencies = ["std"]

@@ -1,0 +1,3 @@
+[[package]]
+name = "impl_alias_same_package"
+source = "member"

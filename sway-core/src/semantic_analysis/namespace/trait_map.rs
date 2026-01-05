@@ -983,6 +983,7 @@ impl TraitMap {
     }
 
     fn make_item_for_type_mapping(
+        handler: &Handler,
         engines: &Engines,
         item: ResolvedTraitImplItem,
         mut type_mapping: TypeSubstMap,
@@ -999,6 +1000,7 @@ impl TraitMap {
                         type_mapping.insert(decl_implementing_for, type_id);
                     }
                     decl.subst(&SubstTypesContext::new(
+                        handler,
                         engines,
                         &type_mapping,
                         matches!(code_block_first_pass, CodeBlockFirstPass::No),
@@ -1013,6 +1015,7 @@ impl TraitMap {
                 ty::TyTraitItem::Constant(decl_ref) => {
                     let mut decl = (*decl_engine.get(decl_ref.id())).clone();
                     decl.subst(&SubstTypesContext::new(
+                        handler,
                         engines,
                         &type_mapping,
                         matches!(code_block_first_pass, CodeBlockFirstPass::No),
@@ -1024,6 +1027,7 @@ impl TraitMap {
                 ty::TyTraitItem::Type(decl_ref) => {
                     let mut decl = (*decl_engine.get(decl_ref.id())).clone();
                     decl.subst(&SubstTypesContext::new(
+                        handler,
                         engines,
                         &type_mapping,
                         matches!(code_block_first_pass, CodeBlockFirstPass::No),
@@ -1201,6 +1205,7 @@ impl TraitMap {
     ///   `type_id` (like in `filter_by_type()`). This is because the only
     ///   entries that qualify as hits are equivalents of `type_id`
     pub(crate) fn get_items_for_type_and_trait_name_and_trait_type_arguments(
+        handler: &Handler,
         module: &Module,
         engines: &Engines,
         type_id: TypeId,
@@ -1248,6 +1253,7 @@ impl TraitMap {
                         )
                         .map(|(_, i)| {
                             Self::make_item_for_type_mapping(
+                                handler,
                                 engines,
                                 i,
                                 type_mapping.clone(),
@@ -1276,6 +1282,7 @@ impl TraitMap {
     ///   `type_id` (like in `filter_by_type()`). This is because the only
     //    entries that qualify as hits are equivalents of `type_id`
     pub(crate) fn get_items_for_type_and_trait_name_and_trait_type_arguments_typed(
+        handler: &Handler,
         module: &Module,
         engines: &Engines,
         type_id: TypeId,
@@ -1283,6 +1290,7 @@ impl TraitMap {
         trait_type_args: &[GenericArgument],
     ) -> Vec<ty::TyTraitItem> {
         TraitMap::get_items_for_type_and_trait_name_and_trait_type_arguments(
+            handler,
             module,
             engines,
             type_id,

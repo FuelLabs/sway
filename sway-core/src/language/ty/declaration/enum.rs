@@ -85,10 +85,10 @@ impl Spanned for TyEnumDecl {
 }
 
 impl IsConcrete for TyEnumDecl {
-    fn is_concrete(&self, engines: &Engines) -> bool {
+    fn is_concrete(&self, handler: &Handler, engines: &Engines) -> bool {
         self.generic_parameters
             .iter()
-            .all(|tp| tp.is_concrete(engines))
+            .all(|tp| tp.is_concrete(handler, engines))
     }
 }
 

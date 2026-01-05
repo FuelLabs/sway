@@ -1,4 +1,4 @@
 cmds = [
+    "forc build --path {root} --no-experimental const_generics",
     "forc build --path {root}",
-    "forc build --path {root} --experimental const_generics",
 ]

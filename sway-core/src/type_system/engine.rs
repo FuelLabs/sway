@@ -144,7 +144,7 @@ pub struct TypeEngine {
 }
 
 pub trait IsConcrete {
-    fn is_concrete(&self, engines: &Engines) -> bool;
+    fn is_concrete(&self, handler: &Handler, engines: &Engines) -> bool;
 }
 
 #[derive(Debug, Clone)]

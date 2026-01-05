@@ -1,6 +1,5 @@
 ---
 source: test/src/e2e_vm_tests/harness_callback_handler.rs
-assertion_line: 20
 ---
 on_before_method_resolution: FromModule { method_name: len_xxx }; Regular([]); S<unresolved T -> u64, N -> 3>
     before get_method_safe_to_unify: S<unresolved T -> u64, N -> 3> len_xxx<Z -> None>(self: unresolved Self -> S<unresolved T -> T, N -> None>): u64 -> u64

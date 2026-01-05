@@ -17,7 +17,12 @@
       "output": "469b6a3ae1aee813b2c73788d36a1e8dd84089a16afa4d87d726f87eea55a219"
     }
   ],
-  "loggedTypes": [],
+  "loggedTypes": [
+    {
+      "concreteTypeId": "469b6a3ae1aee813b2c73788d36a1e8dd84089a16afa4d87d726f87eea55a219",
+      "logId": "5087777005172090899"
+    }
+  ],
   "messagesTypes": [],
   "metadataTypes": [
     {

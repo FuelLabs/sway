@@ -23,7 +23,7 @@ where
 
 impl<T> PartialEq for S<T>
 where
-    T: PartialEq,
+    T: Eq,
 {
     fn eq(self, other: Self) -> bool {
         let self_r_t_ptr = asm(r: self.r_t) {
