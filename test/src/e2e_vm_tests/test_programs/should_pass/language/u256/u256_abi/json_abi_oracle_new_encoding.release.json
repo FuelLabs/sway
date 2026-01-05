@@ -10,11 +10,7 @@
       "concreteTypeId": "1b5759d94094368cfd443019e7ca5ec4074300e544e5ea993a979f5da627261e",
       "indirect": false,
       "name": "SOME_U256",
-<<<<<<< HEAD
-      "offset": 304
-=======
-      "offset": 360
->>>>>>> 198463a87 (update tests)
+      "offset": 280
     }
   ],
   "encodingVersion": "1",
