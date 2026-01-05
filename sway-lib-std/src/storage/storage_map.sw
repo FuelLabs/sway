@@ -7,6 +7,7 @@ use ::storage::storage_api::*;
 use ::storage::storage_key::*;
 use ::codec::*;
 use ::debug::*;
+use ::bytes::*;
 
 /// The storage domain value of the [StorageMap].
 ///
@@ -208,6 +209,18 @@ where
     }
 
     fn get_slot_key(self, key: K) -> b256 {
-        sha256((STORAGE_MAP_DOMAIN, key, self.field_id()))
+        // Use the old hashing for StorageMaps to be backwards compatible with old versions
+        // Replacing: sha256((STORAGE_MAP_DOMAIN, key, self.field_id()))
+
+        let result_buffer: b256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
+        let mut digest_bytes = Bytes::with_capacity(65);
+        digest_bytes.push(STORAGE_MAP_DOMAIN);
+        digest_bytes.append(Bytes::from(key));
+        digest_bytes.append(Bytes::from(self.field_id()));
+        let digest = asm(hash: result_buffer, ptr: digest_bytes.ptr(), bytes: digest_bytes.len()) {
+            s256 hash ptr bytes;
+            hash: b256
+        };
+        result_buffer
     }
 }
