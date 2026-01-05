@@ -42,7 +42,6 @@ jobs:
           cargo install --locked --debug --path ./forc-plugins/forc-migrate
           cargo install --locked --debug --path ./forc-plugins/forc-node
           cargo install --locked --debug --path ./forc-plugins/forc-publish
-          cargo install --locked --debug forc-wallet
 
       - name: Install mdbook-forc-documenter
         run: cargo install --locked --debug --path ./scripts/mdbook-forc-documenter
