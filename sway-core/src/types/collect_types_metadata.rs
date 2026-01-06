@@ -111,13 +111,8 @@ impl TypeMetadata {
                         ))
                     } else {
                         match &arguments[0].1.expression {
-                            TyExpressionVariant::Ref(r) => {
-                                Ok(r.as_ref())
-                            }
-                            _ => Err(CompileError::InternalOwned(
-                            format!("The \"encode_allow_alias\" function must have exactly one argument but it had {}.", formatting::num_to_str(arguments.len())), 
-                            logged_expr.span.clone(),
-                        )),
+                            TyExpressionVariant::Ref(r) => Ok(r.as_ref()),
+                            _ => Err(CompileError::InternalOwned("The \"encode_allow_alias\" function must have a reference.".to_string(), logged_expr.span.clone()))
                         }
                     }
                 }
