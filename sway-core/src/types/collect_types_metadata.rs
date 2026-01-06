@@ -106,7 +106,7 @@ impl TypeMetadata {
                 } if call_path.suffix.as_str() == "encode_allow_alias" => {
                     if arguments.len() != 1 {
                         Err(CompileError::InternalOwned(
-                            format!("The \"encode\" function must have exactly one argument but it had {}.", formatting::num_to_str(arguments.len())), 
+                            format!("The \"encode_allow_alias\" function must have exactly one argument but it had {}.", formatting::num_to_str(arguments.len())), 
                             logged_expr.span.clone(),
                         ))
                     } else {
@@ -114,7 +114,10 @@ impl TypeMetadata {
                             TyExpressionVariant::Ref(r) => {
                                 Ok(r.as_ref())
                             }
-                            _ => todo!(),
+                            _ => Err(CompileError::InternalOwned(
+                            format!("The \"encode_allow_alias\" function must have exactly one argument but it had {}.", formatting::num_to_str(arguments.len())), 
+                            logged_expr.span.clone(),
+                        )),
                         }
                     }
                 }
