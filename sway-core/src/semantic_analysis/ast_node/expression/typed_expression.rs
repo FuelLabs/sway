@@ -3128,13 +3128,16 @@ fn type_check_panic(
             } => {
                 if !(call_path.suffix.as_str() == "encode_allow_alias" && arguments.len() == 1) {
                     return Err(handler.emit_err(CompileError::Internal(
-                        "In case of the new encoding, the `panic` expression argument must be a call to an \"encode\" function.",
+                        "In case of the new encoding, the `panic` expression argument must be a call to an \"encode_allow_alias\" function.",
                         expr_span
                     )));
                 } else {
                     match &arguments[0].1.expression {
                         TyExpressionVariant::Ref(r) => r.return_type,
-                        _ => todo!(),
+                        _ => return Err(handler.emit_err(CompileError::Internal(
+                            "In case of the new encoding, the `panic` expression argument must be a call to an \"encode_allow_alias\" function and a reference.",
+                            expr_span
+                        )))
                     }
                 }
             }
