@@ -33,7 +33,7 @@ jobs:
       - name: Install Forc plugins
         run: |
           cargo install --locked --debug --path ./forc-plugins/forc-client
-          cargo install --locked --debug forc-crypto
+          cargo install --locked --debug --git https://github.com/FuelLabs/forc forc-crypto
           cargo install --locked --debug --path ./forc-plugins/forc-debug
           cargo install --locked --debug --path ./forc-plugins/forc-fmt
           cargo install --locked --debug --path ./forc-plugins/forc-doc
