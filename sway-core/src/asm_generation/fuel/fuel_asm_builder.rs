@@ -1069,9 +1069,6 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             return Ok(());
         }
 
-        // TODO: Decide on a better limit for number of cases.
-        assert!(cases.len() < 20, "Too many switch cases to compile");
-
         // Sort the cases by their values to make range checking easier.
         let mut sorted_cases = cases.to_vec();
         sorted_cases.sort_by_key(|(val, _)| *val);
@@ -1098,15 +1095,62 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 .for_each(|(val, _)| *val -= min_case_value);
         }
 
-        let cases = cases
+        let sorted_cases: Vec<_> = sorted_cases
             .into_iter()
-            .map(|(val, BranchToWithArgs { block, args: _ })| (*val, self.block_to_label(block)))
+            .map(|(val, BranchToWithArgs { block, args: _ })| (val, self.block_to_label(&block)))
             .collect();
+
+        assert!(
+            sorted_cases[0].0 == 0,
+            "Lowest case value must be zero after adjustment"
+        );
+
+        let max_case_value = sorted_cases.last().unwrap().0;
+        // TODO: Decide on a better limit.
+        assert!(
+            max_case_value < 20,
+            "Jump table too large to compile switch"
+        );
+
+        // If the descriminant is greater than the highest case value, jump to default.
+        // TODO: For matching on enums where the compiler ensures that all variants are
+        // covered, this check can be skipped.
+        {
+            let cond_reg = self.reg_seqr.next();
+            self.immediate_to_reg(
+                max_case_value,
+                cond_reg.clone(),
+                None,
+                "max_case_value",
+                None,
+            );
+            self.cur_bytecode
+                .push(Op::jump_if_not_zero(cond_reg, default_label));
+        }
+
+        // For holes in the case values, i.e. non-contiguous case values,
+        // insert a jump to default for those.
+        let mut filled_sorted_cases = Vec::new();
+        let mut next = 0;
+        for (case_value, case_label) in sorted_cases {
+            while next < case_value {
+                filled_sorted_cases.push(default_label);
+                next += 1;
+            }
+            filled_sorted_cases.push(case_label);
+            next += 1;
+        }
+
+        // So far we've ensured that
+        // - The lowest case value is 0 (by subtracting min_case_value)
+        // - The highest case value is max_case_value (and jump to default if discrim > max)
+        // - Any holes in the case values jump to default
+        // Now we can emit the switch instruction.
+        let num_cases = filled_sorted_cases.len();
         self.cur_bytecode.push(Op::switch_comment(
             discrim_reg,
-            cases,
-            default_label,
-            format!("switch with {} cases", sorted_cases.len()),
+            filled_sorted_cases,
+            format!("switch with {} cases", num_cases),
         ));
 
         Ok(())

@@ -323,6 +323,19 @@ fn to_bytecode_mut(
                     }
                     println!("\"");
                 }
+                Datum::WordArray(ws) => {
+                    print!(".words as hex (");
+
+                    let mut first = true;
+                    for w in ws {
+                        if !first {
+                            print!(", ");
+                        }
+                        first = false;
+                        print!("{:02X?}", w.to_be_bytes());
+                    }
+                    println!("), len i{}", ws.len());
+                }
                 Datum::Slice(bs) => {
                     print!(".slice as hex ({bs:02X?}), len i{}, as ascii \"", bs.len());
 

@@ -705,6 +705,13 @@ impl Padding {
         }
     }
 
+    /// Returns the default [Padding] for a word array.
+    pub fn default_for_word_array(value: &[u64]) -> Self {
+        Self::Right {
+            target_size: value.len() * 8,
+        }
+    }
+
     /// Returns the default [Padding] for an aggregate.
     /// `aggregate_size` is the overall size of the aggregate in bytes.
     pub fn default_for_aggregate(aggregate_size: usize) -> Self {
