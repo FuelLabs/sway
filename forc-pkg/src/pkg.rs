@@ -1982,6 +1982,8 @@ fn report_assembly_information(
                 }
             }
 
+            sway_core::asm_generation::Datum::WordArray(words) => (words.len() * 8) as u64,
+
             sway_core::asm_generation::Datum::Collection(items) => {
                 items.iter().map(calculate_entry_size).sum()
             }
