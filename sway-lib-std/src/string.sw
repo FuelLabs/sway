@@ -240,6 +240,24 @@ impl String {
         self.bytes.ptr()
     }
 
+    /// Gets the length of the `String` in bytes.
+    ///
+    /// # Returns
+    ///
+    /// * [u64] - The length of the `String`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let string = String::from_ascii_str("Fuel");
+    ///     assert(string.len() == 4);
+    /// }
+    /// ```
+    pub fn len(self) -> u64 {
+        self.bytes.len()
+    }
+
     /// Converts the `String` into a string slice.
     ///
     /// # Returns
