@@ -240,7 +240,7 @@ impl String {
         self.bytes.ptr()
     }
 
-    /// Gets the length of the `String` in bytes.
+    /// Gets the length of the `String` in bytes, not chars or graphemes. In other words, it might not be what a human considers the length of the string.
     ///
     /// # Returns
     ///
