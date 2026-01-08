@@ -280,6 +280,17 @@ impl Block {
                 op: InstOp::Branch(block),
                 ..
             }) => vec![block.clone()],
+            Some(Instruction {
+                op:
+                    InstOp::Switch {
+                        discriminant: _,
+                        cases,
+                        default,
+                    },
+                ..
+            }) => std::iter::once(default.clone())
+                .chain(cases.iter().map(|(_, branch)| branch.clone()))
+                .collect(),
 
             _otherwise => Vec::new(),
         }
