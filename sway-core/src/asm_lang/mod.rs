@@ -1496,7 +1496,10 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
                 },
                 _ => self.clone(),
             },
-            Switch { discriminant, cases } => Self::Switch {
+            Switch {
+                discriminant,
+                cases,
+            } => Self::Switch {
                 discriminant: update_reg(discriminant),
                 cases: cases.clone(),
             },
@@ -1600,7 +1603,10 @@ impl ControlFlowOp<VirtualRegister> {
                     JumpType::Call => JumpType::Call,
                 },
             },
-            Switch { discriminant, cases } => Switch {
+            Switch {
+                discriminant,
+                cases,
+            } => Switch {
                 discriminant: map_reg(discriminant),
                 cases: cases.clone(),
             },
