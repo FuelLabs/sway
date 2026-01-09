@@ -3203,9 +3203,7 @@ where
 {
     if is_encode_trivial::<T>() {
         let size = __size_of::<T>();
-        asm(s: (item, size)) {
-            s: raw_slice
-        }
+        __transmute::<(&T, u64), raw_slice>((item, size))
     } else {
         let buffer = (*item).abi_encode(Buffer::new());
         buffer.as_raw_slice()

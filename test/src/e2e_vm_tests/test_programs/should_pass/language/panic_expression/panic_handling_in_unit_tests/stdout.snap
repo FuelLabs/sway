@@ -68,7 +68,7 @@ tested -- panic_handling_in_unit_tests
       test failing_error_signal_assert_eq ... FAILED (???, 2974 gas)
       test failing_error_signal_assert_ne ... FAILED (???, 2964 gas)
       test failing_error_signal_require_str_error ... FAILED (???, 974 gas)
-      test failing_error_signal_require_enum_error ... FAILED (???, 1139 gas)
+      test failing_error_signal_require_enum_error ... FAILED (???, 1137 gas)
       test failing_panic_no_arg ... FAILED (???, 611 gas)
       test failing_panic_unit_arg ... FAILED (???, 611 gas)
       test failing_panic_const_eval_str_arg ... FAILED (???, 79 gas)
@@ -77,7 +77,7 @@ tested -- panic_handling_in_unit_tests
       test failing_panic_non_const_eval_str_arg ... FAILED (???, 953 gas)
       test failing_panic_non_const_eval_str_empty_arg ... FAILED (???, 935 gas)
       test failing_panic_non_const_eval_str_whitespace_arg ... FAILED (???, 939 gas)
-      test failing_panic_error_enum_arg ... FAILED (???, 1101 gas)
+      test failing_panic_error_enum_arg ... FAILED (???, 1099 gas)
       test failing_panic_error_enum_arg_with_empty_msg ... FAILED (???, 1258 gas)
       test failing_panic_error_enum_arg_with_whitespace_msg ... FAILED (???, 1287 gas)
 
