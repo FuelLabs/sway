@@ -3,11 +3,9 @@
 
 script {
     entry fn main() -> u64, !1 {
-        // not: local [u64; 4]
         local [u64; 4] __anon_0
         // not: local { u64, u64 }
         local { u64, u64 } __anon_1
-        // not: local { u64, u64, [u64; 4], { u64, u64 } }
         local { u64, u64, [u64; 4], { u64, u64 } } __anon_2
 
         entry():
@@ -48,7 +46,6 @@ script {
         store v26 to v25, !10
         v27 = const u64 2
         v28 = get_elem_ptr v20, __ptr [u64; 4], v27
-        // not: mem_copy_val
         mem_copy_val v28, v0
         v29 = const u64 3
         v30 = get_elem_ptr v20, __ptr { u64, u64 }, v29
