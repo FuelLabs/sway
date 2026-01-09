@@ -438,7 +438,7 @@ fn profitability(context: &Context, function: Function, candidates: &mut FxHashS
             src_val_ptr,
         } = inst.get_instruction(context).unwrap().op
         {
-            if pointee_size(context, dst_val_ptr) > 200 {
+            if pointee_size(context, dst_val_ptr) >= 32 {
                 for sym in get_gep_referred_symbols(context, dst_val_ptr)
                     .union(&get_gep_referred_symbols(context, src_val_ptr))
                 {
