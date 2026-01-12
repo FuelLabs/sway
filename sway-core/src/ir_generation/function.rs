@@ -5591,7 +5591,7 @@ pub fn get_runtime_representation(ctx: &Context, t: Type) -> MemoryRepresentatio
                     item
                 }
             }
-        },
+        }
         TypeContent::Array(t, len) => {
             let item = get_runtime_representation(ctx, *t);
             let total_len_in_bytes = item.len_in_bytes() * len;

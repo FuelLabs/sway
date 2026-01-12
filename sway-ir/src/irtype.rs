@@ -623,7 +623,7 @@ impl Type {
                 } else {
                     TypeSize::new(super::size_bytes_round_up_to_word_alignment!(*n))
                 }
-            },
+            }
             TypeContent::Array(el_ty, cnt) => TypeSize::new(cnt * el_ty.size(context).in_bytes()),
             TypeContent::Struct(field_tys) => {
                 // Sum up all the field sizes, aligned to words.
