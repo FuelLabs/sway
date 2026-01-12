@@ -1,0 +1,1 @@
+cmds = ["forc test --path {root} --release"]
