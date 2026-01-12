@@ -17,9 +17,7 @@ use std::{
 };
 use sway_core::language::{
     parsed::ImportType,
-    ty::{
-        TyConstantDecl, TyDecl, TyFunctionDecl, TyIncludeStatement, TyTypeAliasDecl, TyUseStatement,
-    },
+    ty::{TyConstantDecl, TyDecl, TyFunctionDecl, TyModStatement, TyTypeAliasDecl, TyUseStatement},
     CallPath,
 };
 use sway_types::{Ident, Spanned};
@@ -37,16 +35,14 @@ pub(crate) fn import_code_action(
 
     // Collect the tokens we need to determine where to insert the import statement.
     let mut use_statements = Vec::<TyUseStatement>::new();
-    let mut include_statements = Vec::<TyIncludeStatement>::new();
+    let mut mod_statements = Vec::<TyModStatement>::new();
     let mut program_type_keyword = None;
 
     ctx.tokens.tokens_for_file(ctx.temp_uri).for_each(|item| {
         if let Some(TypedAstToken::TypedUseStatement(use_stmt)) = &item.value().as_typed() {
             use_statements.push(use_stmt.clone());
-        } else if let Some(TypedAstToken::TypedIncludeStatement(include_stmt)) =
-            &item.value().as_typed()
-        {
-            include_statements.push(include_stmt.clone());
+        } else if let Some(TypedAstToken::TypedModStatement(mod_stmt)) = &item.value().as_typed() {
+            mod_statements.push(mod_stmt.clone());
         } else if item.value().kind == SymbolKind::ProgramTypeKeyword {
             if let Some(ParsedAstToken::Keyword(ident)) = &item.value().as_parsed() {
                 program_type_keyword = Some(ident.clone());
@@ -60,7 +56,7 @@ pub(crate) fn import_code_action(
             let text_edit = get_text_edit(
                 &call_path,
                 &use_statements,
-                &include_statements,
+                &mod_statements,
                 &program_type_keyword,
             );
             let changes = HashMap::from([(ctx.uri.clone(), vec![text_edit])]);
@@ -179,14 +175,14 @@ pub(crate) fn get_call_paths_for_name<'s>(
 fn get_text_edit(
     call_path: &CallPath,
     use_statements: &[TyUseStatement],
-    include_statements: &[TyIncludeStatement],
+    mod_statements: &[TyModStatement],
     program_type_keyword: &Option<Ident>,
 ) -> TextEdit {
     get_text_edit_for_group(call_path, use_statements)
         .or_else(|| get_text_edit_in_use_block(call_path, use_statements))
         .unwrap_or(get_text_edit_fallback(
             call_path,
-            include_statements,
+            mod_statements,
             program_type_keyword,
         ))
 }
@@ -286,10 +282,10 @@ fn get_text_edit_in_use_block(
 /// type statement, or at the beginning of the file.
 fn get_text_edit_fallback(
     call_path: &CallPath,
-    include_statements: &[TyIncludeStatement],
+    mod_statements: &[TyModStatement],
     program_type_keyword: &Option<Ident>,
 ) -> TextEdit {
-    let range_line = include_statements
+    let range_line = mod_statements
         .iter()
         .map(|stmt| stmt.span())
         .reduce(|acc, span| {
@@ -371,8 +367,8 @@ mod tests {
         }
     }
 
-    fn get_incl_stmt_from_src(src: &Source, mod_name: &str, text: &str) -> TyIncludeStatement {
-        TyIncludeStatement {
+    fn get_mod_stmt_from_src(src: &Source, mod_name: &str, text: &str) -> TyModStatement {
+        TyModStatement {
             span: get_span_from_src(src, text).unwrap(),
             mod_name: get_ident_from_src(src, mod_name).unwrap(),
             visibility: Visibility::Private,
@@ -399,7 +395,7 @@ use b:c:*;
             get_use_stmt_from_src(&src, Vec::from(["b", "c"]), ImportType::Star, "use b:c:*;"),
         ];
 
-        let include_statements = vec![];
+        let mod_statements = vec![];
         let program_type_keyword = get_ident_from_src(&src, "contract");
 
         let expected_range = Range::new(Position::new(2, 0), Position::new(2, 10));
@@ -408,7 +404,7 @@ use b:c:*;
         let text_edit = get_text_edit(
             &new_call_path,
             &use_statements,
-            &include_statements,
+            &mod_statements,
             &program_type_keyword,
         );
         assert_text_edit(text_edit, expected_range, expected_text);
@@ -430,7 +426,7 @@ use b:c:*;
             "use b:c:*;",
         )];
 
-        let include_statements = vec![];
+        let mod_statements = vec![];
         let program_type_keyword = get_ident_from_src(&src, "predicate");
 
         let expected_range = Range::new(Position::new(2, 0), Position::new(2, 0));
@@ -439,7 +435,7 @@ use b:c:*;
         let text_edit = get_text_edit(
             &new_call_path,
             &use_statements,
-            &include_statements,
+            &mod_statements,
             &program_type_keyword,
         );
         assert_text_edit(text_edit, expected_range, expected_text);
@@ -469,7 +465,7 @@ use b:c:{D, F};
             ),
         ];
 
-        let include_statements = vec![];
+        let mod_statements = vec![];
         let program_type_keyword = get_ident_from_src(&src, "contract");
 
         let expected_range = Range::new(Position::new(2, 0), Position::new(2, 15));
@@ -478,7 +474,7 @@ use b:c:{D, F};
         let text_edit = get_text_edit(
             &new_call_path,
             &use_statements,
-            &include_statements,
+            &mod_statements,
             &program_type_keyword,
         );
         assert_text_edit(text_edit, expected_range, expected_text);
@@ -496,9 +492,9 @@ pub mod zz_module;
         let new_call_path = get_mock_call_path(vec!["b", "c"], "D");
         let use_statements = vec![];
 
-        let include_statements = vec![
-            get_incl_stmt_from_src(&src, "my_module", "mod my_module;"),
-            get_incl_stmt_from_src(&src, "zz_module", "pub mod zz_module"),
+        let mod_statements = vec![
+            get_mod_stmt_from_src(&src, "my_module", "mod my_module;"),
+            get_mod_stmt_from_src(&src, "zz_module", "pub mod zz_module"),
         ];
         let program_type_keyword = get_ident_from_src(&src, "library");
 
@@ -508,7 +504,7 @@ pub mod zz_module;
         let text_edit = get_text_edit(
             &new_call_path,
             &use_statements,
-            &include_statements,
+            &mod_statements,
             &program_type_keyword,
         );
         assert_text_edit(text_edit, expected_range, expected_text);
@@ -525,7 +521,7 @@ const HI: u8 = 0;
         let new_call_path = get_mock_call_path(vec!["b", "c"], "D");
         let use_statements = vec![];
 
-        let include_statements = vec![];
+        let mod_statements = vec![];
         let program_type_keyword = get_ident_from_src(&src, "script");
 
         let expected_range = Range::new(Position::new(1, 0), Position::new(1, 0));
@@ -534,7 +530,7 @@ const HI: u8 = 0;
         let text_edit = get_text_edit(
             &new_call_path,
             &use_statements,
-            &include_statements,
+            &mod_statements,
             &program_type_keyword,
         );
         assert_text_edit(text_edit, expected_range, expected_text);
