@@ -5574,7 +5574,24 @@ pub fn get_runtime_representation(ctx: &Context, t: Type) -> MemoryRepresentatio
 
             MemoryRepresentation::Or(items)
         }
-        TypeContent::StringArray(len) => MemoryRepresentation::Blob { len_in_bytes: *len },
+        TypeContent::StringArray(len) => {
+            if ctx.experimental.str_array_no_padding {
+                MemoryRepresentation::Blob { len_in_bytes: *len }
+            } else {
+                let item = MemoryRepresentation::Blob { len_in_bytes: *len };
+                let item_len_as_bytes = item.len_in_bytes();
+                if !item_len_as_bytes.is_multiple_of(8) {
+                    MemoryRepresentation::And(vec![
+                        item,
+                        MemoryRepresentation::Padding {
+                            len_in_bytes: item_len_as_bytes.next_multiple_of(8) - item_len_as_bytes,
+                        },
+                    ])
+                } else {
+                    item
+                }
+            }
+        },
         TypeContent::Array(t, len) => {
             let item = get_runtime_representation(ctx, *t);
             let total_len_in_bytes = item.len_in_bytes() * len;

@@ -245,12 +245,15 @@ pub fn serialize_to_storage_slots(
             //       assumption. It is a questionable effort because we anyhow
             //       want to improve and refactor Storage API in the future.
             let type_size_in_bytes = ty.size(context).in_bytes();
-            // assert!(
-            //     type_size_in_bytes.is_multiple_of(8),
-            //     "Expected string arrays, structs, and enums to be aligned to word boundary. The type size in bytes was {} and the type was {}.",
-            //     type_size_in_bytes,
-            //     ty.as_string(context)
-            // );
+
+            if !context.experimental.str_array_no_padding {
+                assert!(
+                    type_size_in_bytes.is_multiple_of(8),
+                    "Expected string arrays, structs, and enums to be aligned to word boundary. The type size in bytes was {} and the type was {}.",
+                    type_size_in_bytes,
+                    ty.as_string(context)
+                );
+            }
 
             let storage_key = get_storage_key(storage_field_names, key);
             (0..type_size_in_bytes.div_ceil(32))
