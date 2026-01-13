@@ -62,6 +62,10 @@ struct Opt {
     /// Set the log level
     #[clap(short='L', long, global = true, value_parser = LevelFilter::from_str)]
     log_level: Option<LevelFilter>,
+
+    /// Disable telemetry
+    #[clap(long, global = true)]
+    disable_telemetry: bool,
 }
 
 #[derive(Subcommand, Debug)]
@@ -127,6 +131,7 @@ pub async fn run_cli() -> ForcResult<()> {
         verbosity: Some(opt.verbose),
         silent: Some(opt.silent),
         log_level: opt.log_level,
+        disable_telemetry: Some(opt.disable_telemetry),
         ..Default::default()
     };
 

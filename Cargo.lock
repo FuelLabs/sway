@@ -2949,6 +2949,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "dirs"
+version = "6.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c3e8aa94d75141228480295a7d0e7feb620b1a5ad9f12bc40be62411e38cce4e"
+dependencies = [
+ "dirs-sys 0.5.0",
+]
+
+[[package]]
 name = "dirs-next"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2965,7 +2974,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1b1d1d91c932ef41c0f2663aa8b0ca0342d444d842c06914aa0a7e352d0bada6"
 dependencies = [
  "libc",
- "redox_users",
+ "redox_users 0.4.6",
  "winapi",
 ]
 
@@ -2977,8 +2986,20 @@ checksum = "520f05a5cbd335fae5a99ff7a6ab8627577660ee5cfd6a94a6a929b52ff0321c"
 dependencies = [
  "libc",
  "option-ext",
- "redox_users",
+ "redox_users 0.4.6",
  "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "dirs-sys"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e01a3366d27ee9890022452ee61b2b63a67e6f13f58900b651ff5665f0bb1fab"
+dependencies = [
+ "libc",
+ "option-ext",
+ "redox_users 0.5.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -2988,7 +3009,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4ebda144c4fe02d1f7ea1a7d9641b6fc6b580adcfa024ae48797ecdeb6825b4d"
 dependencies = [
  "libc",
- "redox_users",
+ "redox_users 0.4.6",
  "winapi",
 ]
 
@@ -3822,7 +3843,7 @@ dependencies = [
  "completest-pty",
  "forc-pkg",
  "forc-test",
- "forc-tracing 0.71.1",
+ "forc-tracing 0.72.0",
  "forc-util",
  "fs_extra",
  "fuel-abi-types 0.15.3",
@@ -3864,7 +3885,7 @@ dependencies = [
  "forc",
  "forc-debug",
  "forc-pkg",
- "forc-tracing 0.71.1",
+ "forc-tracing 0.72.0",
  "forc-tx",
  "forc-util",
  "forc-wallet",
@@ -3914,7 +3935,7 @@ dependencies = [
  "escargot",
  "forc-pkg",
  "forc-test",
- "forc-tracing 0.71.1",
+ "forc-tracing 0.72.0",
  "forc-util",
  "fuel-abi-types 0.15.3",
  "fuel-core-client 0.47.1",
@@ -3947,7 +3968,7 @@ dependencies = [
  "dir_indexer",
  "expect-test",
  "forc-pkg",
- "forc-tracing 0.71.1",
+ "forc-tracing 0.72.0",
  "forc-util",
  "horrorshow",
  "include_dir",
@@ -3971,7 +3992,7 @@ dependencies = [
  "anyhow",
  "clap",
  "forc-pkg",
- "forc-tracing 0.71.1",
+ "forc-tracing 0.72.0",
  "forc-util",
  "prettydiff",
  "sway-core",
@@ -4029,7 +4050,7 @@ dependencies = [
  "clap",
  "duplicate",
  "forc-pkg",
- "forc-tracing 0.71.1",
+ "forc-tracing 0.72.0",
  "forc-util",
  "itertools 0.13.0",
  "num-bigint",
@@ -4049,7 +4070,7 @@ dependencies = [
  "anyhow",
  "clap",
  "dialoguer",
- "forc-tracing 0.71.1",
+ "forc-tracing 0.72.0",
  "forc-util",
  "fuel-core",
  "fuel-core-chain-config 0.47.1",
@@ -4080,7 +4101,7 @@ dependencies = [
  "byte-unit",
  "cid",
  "flate2",
- "forc-tracing 0.71.1",
+ "forc-tracing 0.72.0",
  "forc-util",
  "fuel-abi-types 0.15.3",
  "futures",
@@ -4103,7 +4124,7 @@ dependencies = [
  "sway-features",
  "sway-types",
  "sway-utils",
- "sysinfo",
+ "sysinfo 0.29.11",
  "tar",
  "tempfile",
  "tokio",
@@ -4123,7 +4144,7 @@ dependencies = [
  "clap",
  "flate2",
  "forc-pkg",
- "forc-tracing 0.71.1",
+ "forc-tracing 0.72.0",
  "forc-util",
  "futures-util",
  "regex",
@@ -4176,11 +4197,10 @@ dependencies = [
 
 [[package]]
 name = "forc-tracing"
-version = "0.71.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e611c0494f5dae88f1d614fefc9ab9871db174270889acbfdd4cf4a8df54ea79"
+version = "0.72.0"
 dependencies = [
  "ansiterm",
+ "fuel-telemetry",
  "regex",
  "tracing",
  "tracing-subscriber",
@@ -4212,7 +4232,7 @@ dependencies = [
  "clap",
  "dirs 5.0.1",
  "fd-lock",
- "forc-tracing 0.71.1",
+ "forc-tracing 0.72.0",
  "fuel-abi-types 0.15.3",
  "fuel-asm 0.65.0",
  "fuel-tx 0.65.0",
@@ -5176,6 +5196,38 @@ name = "fuel-storage"
 version = "0.65.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1b9b46be43225f70c17f9e028f80a583c275fb2dec1e2a4e9100aa6385a2c86a"
+
+[[package]]
+name = "fuel-telemetry"
+version = "0.1.1"
+source = "git+https://github.com/FuelLabs/fuel-telemetry?branch=main#5c30418894954677d169489e103c71c887261f75"
+dependencies = [
+ "base64 0.22.1",
+ "chrono",
+ "dirs 6.0.0",
+ "fuel-telemetry-macros",
+ "influxdb-line-protocol",
+ "libc",
+ "nix 0.29.0",
+ "regex",
+ "reqwest 0.12.23",
+ "sysinfo 0.33.1",
+ "thiserror 2.0.17",
+ "tracing",
+ "tracing-appender",
+ "tracing-subscriber",
+ "uuid 1.18.1",
+]
+
+[[package]]
+name = "fuel-telemetry-macros"
+version = "0.1.1"
+source = "git+https://github.com/FuelLabs/fuel-telemetry?branch=main#5c30418894954677d169489e103c71c887261f75"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.106",
+]
 
 [[package]]
 name = "fuel-tx"
@@ -6645,7 +6697,7 @@ dependencies = [
  "rtnetlink",
  "system-configuration 0.6.1",
  "tokio",
- "windows",
+ "windows 0.53.0",
 ]
 
 [[package]]
@@ -6816,6 +6868,19 @@ name = "indoc"
 version = "2.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f4c7245a08504955605670dbf141fceab975f15ca21570696aebe9d2e71576bd"
+
+[[package]]
+name = "influxdb-line-protocol"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "22fa7ee6be451ea0b1912b962c91c8380835e97cf1584a77e18264e908448dcb"
+dependencies = [
+ "bytes",
+ "log",
+ "nom",
+ "smallvec",
+ "snafu",
+]
 
 [[package]]
 name = "inout"
@@ -9793,6 +9858,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "redox_users"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4e608c6638b9c18977b00b475ac1f28d14e84b27d8d42f70e0bf1e3dec127ac"
+dependencies = [
+ "getrandom 0.2.16",
+ "libredox",
+ "thiserror 2.0.17",
+]
+
+[[package]]
 name = "ref-cast"
 version = "1.0.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9930,6 +10006,7 @@ dependencies = [
  "cookie",
  "cookie_store",
  "encoding_rs",
+ "futures-channel",
  "futures-core",
  "futures-util",
  "h2 0.4.12",
@@ -11633,7 +11710,7 @@ dependencies = [
  "sway-types",
  "sway-utils",
  "swayfmt",
- "sysinfo",
+ "sysinfo 0.29.11",
  "thiserror 1.0.69",
  "toml 0.8.23",
  "tracing",
@@ -11707,7 +11784,7 @@ dependencies = [
  "dirs 5.0.1",
  "fd-lock",
  "forc-pkg",
- "forc-tracing 0.71.1",
+ "forc-tracing 0.72.0",
  "forc-util",
  "futures",
  "lsp-types",
@@ -11808,7 +11885,7 @@ name = "swayfmt"
 version = "0.70.3"
 dependencies = [
  "anyhow",
- "forc-tracing 0.71.1",
+ "forc-tracing 0.72.0",
  "indoc",
  "paste",
  "prettydiff",
@@ -11922,6 +11999,20 @@ dependencies = [
  "once_cell",
  "rayon",
  "winapi",
+]
+
+[[package]]
+name = "sysinfo"
+version = "0.33.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4fc858248ea01b66f19d8e8a6d55f41deaf91e9d495246fd01368d99935c6c01"
+dependencies = [
+ "core-foundation-sys",
+ "libc",
+ "memchr",
+ "ntapi",
+ "rayon",
+ "windows 0.57.0",
 ]
 
 [[package]]
@@ -12237,7 +12328,7 @@ dependencies = [
  "forc-client",
  "forc-pkg",
  "forc-test",
- "forc-tracing 0.71.1",
+ "forc-tracing 0.72.0",
  "forc-util",
  "fuel-vm 0.65.0",
  "futures",
@@ -12866,6 +12957,18 @@ dependencies = [
  "pin-project-lite",
  "tracing-attributes",
  "tracing-core",
+]
+
+[[package]]
+name = "tracing-appender"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "786d480bce6247ab75f005b14ae1624ad978d3029d9113f0a22fa1ac773faeaf"
+dependencies = [
+ "crossbeam-channel",
+ "thiserror 2.0.17",
+ "time",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -13516,6 +13619,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "windows"
+version = "0.57.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "12342cb4d8e3b046f3d80effd474a7a02447231330ef77d71daa6fbc40681143"
+dependencies = [
+ "windows-core 0.57.0",
+ "windows-targets 0.52.6",
+]
+
+[[package]]
 name = "windows-core"
 version = "0.53.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -13527,12 +13640,24 @@ dependencies = [
 
 [[package]]
 name = "windows-core"
+version = "0.57.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d2ed2439a290666cd67ecce2b0ffaad89c2a56b976b736e6ece670297897832d"
+dependencies = [
+ "windows-implement 0.57.0",
+ "windows-interface 0.57.0",
+ "windows-result 0.1.2",
+ "windows-targets 0.52.6",
+]
+
+[[package]]
+name = "windows-core"
 version = "0.62.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6844ee5416b285084d3d3fffd743b925a6c9385455f64f6d4fa3031c4c2749a9"
 dependencies = [
- "windows-implement",
- "windows-interface",
+ "windows-implement 0.60.1",
+ "windows-interface 0.59.2",
  "windows-link 0.2.0",
  "windows-result 0.4.0",
  "windows-strings 0.5.0",
@@ -13540,9 +13665,31 @@ dependencies = [
 
 [[package]]
 name = "windows-implement"
+version = "0.57.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9107ddc059d5b6fbfbffdfa7a7fe3e22a226def0b2608f72e9d552763d3e1ad7"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.106",
+]
+
+[[package]]
+name = "windows-implement"
 version = "0.60.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "edb307e42a74fb6de9bf3a02d9712678b22399c87e6fa869d6dfcd8c1b7754e0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.106",
+]
+
+[[package]]
+name = "windows-interface"
+version = "0.57.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "29bee4b38ea3cde66011baa44dba677c432a78593e202392d1e9070cf2a7fca7"
 dependencies = [
  "proc-macro2",
  "quote",

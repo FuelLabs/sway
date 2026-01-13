@@ -20,6 +20,7 @@ env:
   REGISTRY: ghcr.io
   RUST_VERSION: 1.90.0
   NIGHTLY_RUST_VERSION: nightly-2025-09-28
+  FORC_DISABLE_TELEMETRY: 1
 
 jobs:
   verifications-complete:
