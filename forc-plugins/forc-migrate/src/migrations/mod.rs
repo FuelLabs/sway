@@ -16,6 +16,7 @@ mod partial_eq;
 mod references;
 mod storage_domains;
 mod try_from_bytes_for_b256;
+mod str_array_layout;
 
 use std::{collections::HashSet, sync::Arc};
 
@@ -530,4 +531,7 @@ fn assert_migration_steps_consistency(migration_steps: MigrationSteps) {
 const MIGRATION_STEPS: MigrationSteps = &[(
     Feature::NewHashing,
     &[new_hashing::REVIEW_EXISTING_USAGES_OF_STORAGE_MAP_SHA256_AND_KECCAK256],
+), (
+    Feature::StrArrayNoPadding,
+    &[str_array_layout::REVIEW_EXISTING_USAGES_OF_STORAGE_STR_ARRAY],
 )];
