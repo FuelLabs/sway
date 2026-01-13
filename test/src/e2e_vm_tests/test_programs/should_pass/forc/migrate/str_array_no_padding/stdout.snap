@@ -1,0 +1,38 @@
+---
+source: test/src/snapshot/mod.rs
+---
+> forc migrate run --path test/src/e2e_vm_tests/test_programs/should_pass/forc/migrate/str_array_no_padding
+exit status: 0
+output:
+   Compiling str_array_no_padding (test/src/e2e_vm_tests/test_programs/should_pass/forc/migrate/str_array_no_padding)
+   Migrating Breaking change features new_hashing and str_array_no_padding
+     Checked [new_hashing]           Review existing usages of `StorageMap`, `sha256`, and `keccak256`
+      Review [str_array_no_padding]  Review storage of string arrays
+info: [str_array_no_padding] Review storage of string arrays
+ --> test/src/e2e_vm_tests/test_programs/should_pass/forc/migrate/str_array_no_padding/src/main.sw:8:5
+  |
+...
+8 |     not_ok_1: str[1] = __to_str_array("a"),
+  |     -------- info: Review this field
+9 |     not_ok_2: B = B { b: __to_str_array("b") },
+  |     -------- info: Review this field
+  |
+  = help: Runtime layout of string arrays is changing. Currently they are padded until reach
+  = help: size multiple of 8. This was done to improve their usage on encoding v0.
+  = help: Given that encoding v0 is reach its end of life, and encoding v1 will be the unique option
+  = help: string array layout can be fixed and improve its performance.
+  = help: This difference is layout has impact on storage, because now types will fall into different slots.
+  = help: To avoid issues one can:
+  = help:   - change from str[N] to [u8; M] where M is next multiple of 8 after N,
+  = help:   - migrate all types using <SOMETHING>
+  = help:  
+  = help: ╔═════════════════════════════════════════════════════════════════════════════════════╗
+  = help: ║ The above occurrences must not be seen as comprehensive, but rather as a guideline. ║
+  = help: ║ Carefully review all the storage access in your code.                               ║
+  = help: ╚═════════════════════════════════════════════════════════════════════════════════════╝
+  = help:  
+  = help: For a detailed migration guide see: https://github.com/FuelLabs/sway/issues/7528
+____
+
+If you've already reviewed the above points, you can ignore this info.
+    Finished Project is compatible with the next breaking change version of Sway
