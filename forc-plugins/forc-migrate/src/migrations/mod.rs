@@ -15,8 +15,8 @@ mod new_hashing;
 mod partial_eq;
 mod references;
 mod storage_domains;
-mod try_from_bytes_for_b256;
 mod str_array_layout;
+mod try_from_bytes_for_b256;
 
 use std::{collections::HashSet, sync::Arc};
 
@@ -528,10 +528,13 @@ fn assert_migration_steps_consistency(migration_steps: MigrationSteps) {
 
 /// The list of the migration steps, grouped by the Sway feature that causes
 /// the breaking changes behind the migration steps.
-const MIGRATION_STEPS: MigrationSteps = &[(
-    Feature::NewHashing,
-    &[new_hashing::REVIEW_EXISTING_USAGES_OF_STORAGE_MAP_SHA256_AND_KECCAK256],
-), (
-    Feature::StrArrayNoPadding,
-    &[str_array_layout::REVIEW_EXISTING_USAGES_OF_STORAGE_STR_ARRAY],
-)];
+const MIGRATION_STEPS: MigrationSteps = &[
+    (
+        Feature::NewHashing,
+        &[new_hashing::REVIEW_EXISTING_USAGES_OF_STORAGE_MAP_SHA256_AND_KECCAK256],
+    ),
+    (
+        Feature::StrArrayNoPadding,
+        &[str_array_layout::REVIEW_EXISTING_USAGES_OF_STORAGE_STR_ARRAY],
+    ),
+];
