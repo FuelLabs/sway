@@ -246,6 +246,37 @@ The proxy contract includes both its own storage slots and preserves the storage
 - Proxy contracts work with both regular and [chunked contracts](#large-contracts) (contracts over 100<!-- markdownlint-disable-line MD032 -->kB)
 - The implementation uses the SRC-14 standard for maximum compatibility with the Fuel ecosystem
 
+### Multi-Network Proxy Support
+
+For projects that need to deploy across multiple networks (testnet, mainnet, devnet, local), you can configure network-specific proxy addresses using the `addresses` table instead of a single `address` field:
+
+```TOML
+[project]
+name = "test_contract"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+implicit-std = false
+
+[proxy]
+enabled = true
+
+[proxy.addresses]
+testnet = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+mainnet = "0xfedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321"
+devnet = "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+local = "0x567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef123456"
+```
+
+When using network-specific proxy addresses:
+- `forc-deploy` automatically determines the current network and uses the appropriate proxy address
+- If no proxy address is configured for the current network, a new proxy contract will be deployed
+- The proxy address for the current network is automatically updated in `Forc.toml` after deployment
+
+**Note:** The `address` and `addresses` fields are mutually exclusive. Use `address` for single-network deployments or `addresses` for multi-network setups.
+
+This approach eliminates the need to manually update proxy addresses when switching between networks, making multi-network deployment workflows much more robust.
+
 ## Large Contracts
 
 For contracts over the maximum contract size limit (currently `100<!-- markdownlint-disable-line -->kB`) defined by the network, `forc-deploy` will split the contract into chunks and deploy the contract with multiple transactions using the Rust SDK's [loader contract](https://github.com/FuelLabs/fuels-rs/blob/master/docs/src/deploying/large_contracts.md) functionality. Chunks that have already been deployed will be reused on subsequent deployments.
