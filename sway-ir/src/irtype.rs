@@ -893,7 +893,11 @@ mod tests {
 
                 assert_eq!(str_array_ty.get_string_len(&context).unwrap(), len);
 
-                assert_eq!(s_str_array.in_bytes(), len);
+                assert_eq!(
+                    s_str_array.in_bytes(),
+                    size_bytes_round_up_to_word_alignment!(len)
+                );
+                assert_eq!(s_str_array.in_bytes(), s_str_array.in_bytes_aligned());
             }
         }
 
