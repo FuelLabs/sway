@@ -3,17 +3,11 @@
 use super::{MigrationStep, MigrationStepKind};
 use crate::{
     migrations::{DryRun, Occurrence, ProgramInfo},
-    visiting::{
-        InvalidateTypedElement, ProgramVisitor, TreesVisitor, VisitingContext,
-    },
+    visiting::{InvalidateTypedElement, ProgramVisitor, TreesVisitor, VisitingContext},
 };
 use anyhow::{Ok, Result};
 use sway_ast::StorageField;
-use sway_core::{TypeInfo, 
-    language::
-        ty::TyStorageField}
-    
-;
+use sway_core::{language::ty::TyStorageField, TypeInfo};
 use sway_types::Spanned;
 
 pub(super) const REVIEW_EXISTING_USAGES_OF_STORAGE_STR_ARRAY: MigrationStep = MigrationStep {
@@ -52,7 +46,7 @@ fn review_existing_usages_of_storage_and_str_array(
 }
 
 #[derive(Default)]
-struct Visitor { }
+struct Visitor {}
 
 impl TreesVisitor<Occurrence> for Visitor {
     fn visit_storage_field_decl(
@@ -63,24 +57,24 @@ impl TreesVisitor<Occurrence> for Visitor {
         output: &mut Vec<Occurrence>,
     ) -> Result<InvalidateTypedElement> {
         if let Some(ty_field_type) = ty_storage_field.map(|x| x.type_argument.type_id) {
-            let str_arrays = ty_field_type.extract_any_including_self(ctx.engines, &|x| x.is_str_array(), vec![], 0);
+            let str_arrays = ty_field_type.extract_any_including_self(
+                ctx.engines,
+                &|x| x.is_str_array(),
+                vec![],
+                0,
+            );
 
             for (str_array, _) in str_arrays {
-                match &*ctx.engines.te().get(str_array) {
-                    TypeInfo::StringArray(length) => {
-                        let Some(length) = length.extract_literal(ctx.engines) else {
-                            todo!()
-                        };
-                        if !length.is_multiple_of(8) {
-                            output.push(Occurrence::new(
-                                lexed_storage_field.name.span(),
-                                "Review this field".to_string(),
-                            ));
-                            return Ok(InvalidateTypedElement::Yes);
-                        }
-                    },
-                    _ => {
-
+                if let TypeInfo::StringArray(length) = &*ctx.engines.te().get(str_array) {
+                    let Some(length) = length.extract_literal(ctx.engines) else {
+                        todo!()
+                    };
+                    if !length.is_multiple_of(8) {
+                        output.push(Occurrence::new(
+                            lexed_storage_field.name.span(),
+                            "Review this field".to_string(),
+                        ));
+                        return Ok(InvalidateTypedElement::Yes);
                     }
                 }
             }
@@ -91,4 +85,3 @@ impl TreesVisitor<Occurrence> for Visitor {
         Ok(InvalidateTypedElement::No)
     }
 }
-
