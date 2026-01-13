@@ -68,6 +68,7 @@ script {
 !6 = span !0 59 89
 !7 = fn_call_path_span !0 59 77
 <<<<<<< HEAD
+<<<<<<< HEAD
 !8 = span !4 185284 185316
 !9 = fn_call_path_span !4 185284 185314
 !10 = span !4 1525 1549
@@ -84,6 +85,15 @@ script {
 !13 = span !4 184742 184800
 !14 = fn_call_path_span !4 184742 184761
 >>>>>>> 9638be5ed (fix runtime memory layout of string arrays)
+=======
+!8 = span !4 185773 185805
+!9 = fn_call_path_span !4 185773 185803
+!10 = span !4 1525 1549
+!11 = (!6 !7 !8 !9 !10)
+!12 = (!6 !7 !8 !9 !10)
+!13 = span !4 185748 185806
+!14 = fn_call_path_span !4 185748 185767
+>>>>>>> 4a87808ba (update tests)
 !15 = (!6 !7 !13 !14)
 !16 = span !0 40 90
 !17 = span !0 131 135
@@ -96,10 +106,14 @@ script {
 !24 = span !0 156 190
 !25 = fn_call_path_span !0 156 173
 <<<<<<< HEAD
+<<<<<<< HEAD
 !26 = span !4 93605 93631
 =======
 !26 = span !4 93148 93174
 >>>>>>> 9638be5ed (fix runtime memory layout of string arrays)
+=======
+!26 = span !4 93683 93709
+>>>>>>> 4a87808ba (update tests)
 !27 = (!24 !25 !26)
 !28 = "test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_one_u64/src/main.sw"
 !29 = span !28 17 21
