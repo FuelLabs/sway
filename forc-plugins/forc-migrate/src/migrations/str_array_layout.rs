@@ -37,7 +37,7 @@ pub(super) const REVIEW_EXISTING_USAGES_OF_STORAGE_STR_ARRAY: MigrationStep = Mi
         " ",
         "╔═════════════════════════════════════════════════════════════════════════════════════╗",
         "║ The above occurrences must not be seen as comprehensive, but rather as a guideline. ║",
-        "║ Carefully review all the storage access in your code.                               ║", 
+        "║ Carefully review all the storage access in your code.                               ║",
         "╚═════════════════════════════════════════════════════════════════════════════════════╝",
     ],
 };
@@ -66,25 +66,23 @@ impl TreesVisitor<Occurrence> for Visitor {
         output: &mut Vec<Occurrence>,
     ) -> Result<InvalidateTypedElement> {
         if let Some(ty_field_type) = ty_storage_field.map(|x| x.type_argument.type_id) {
-            let flag_this_field = ty_field_type.extract_any_including_self(
-                ctx.engines,
-                &|x| x.is_str_array(),
-                vec![],
-                0,
-            ).iter().any(|(str_array, _)| {
-                if let TypeInfo::StringArray(length) = &*ctx.engines.te().get(*str_array) {
-                    let Some(length) = length.extract_literal(ctx.engines) else {
-                        // storage should always have literal lengths, in any case
-                        // it is safer to flag it
-                        return true
-                    };
+            let flag_this_field = ty_field_type
+                .extract_any_including_self(ctx.engines, &|x| x.is_str_array(), vec![], 0)
+                .iter()
+                .any(|(str_array, _)| {
+                    if let TypeInfo::StringArray(length) = &*ctx.engines.te().get(*str_array) {
+                        let Some(length) = length.extract_literal(ctx.engines) else {
+                            // storage should always have literal lengths, in any case
+                            // it is safer to flag it
+                            return true;
+                        };
 
-                    !length.is_multiple_of(8)
-                } else {
-                    // should be unreachable
-                    false
-                }
-            });
+                        !length.is_multiple_of(8)
+                    } else {
+                        // should be unreachable
+                        false
+                    }
+                });
 
             if flag_this_field {
                 output.push(Occurrence::new(
