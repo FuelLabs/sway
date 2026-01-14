@@ -17,14 +17,25 @@ info: [str_array_no_padding] Review storage of string arrays
 9 |     not_ok_2: B = B { b: __to_str_array("b") },
   |     -------- info: Review this field
   |
-  = help: Runtime layout of string arrays is changing. Currently they are padded until reach
-  = help: size multiple of 8. This was done to improve their usage on encoding v0.
-  = help: Given that encoding v0 is reach its end of life, and encoding v1 will be the unique option
-  = help: string array layout can be fixed and improve its performance.
-  = help: This difference is layout has impact on storage, because now types will fall into different slots.
-  = help: To avoid issues one can:
-  = help:   - change from str[N] to [u8; M] where M is next multiple of 8 after N,
-  = help:   - migrate all types using <SOMETHING>
+  = help: The runtime layout of string arrays is changing.
+  = help:  
+  = help: The current behaviour pads their sizes until they reach a multiple of 8.
+  = help: This was done as an optimisation for `encoding v0`, but given that it is
+  = help: reaching its end of life, this behaviour will be kept only when the 
+  = help: experimental compiler flag `str_array_no_padding` is set to `false`.
+  = help:  
+  = help: For `encoding v1`, the compiler can achieve better performance by removing 
+  = help: this padding, allowing more types to be trivially encodable/decodable, and
+  = help: triggering other optimisations. This will be the new behaviour when 
+  = help: `str_array_no_padding` is set to `true`.
+  = help:  
+  = help: This difference directly impacts storage, because with the new layout, reads
+  = help: and writes of any type containing string arrays will touch different slots. 
+  = help: That happens because their size will be different.
+  = help:  
+  = help: One solution when migrating data is to read from storage using a version of
+  = help: the `struct` that instead of `str[N]` has `[u8; M]`, where M is the next 
+  = help: multiple of 8 after N, simulating the padding.
   = help:  
   = help: ╔═════════════════════════════════════════════════════════════════════════════════════╗
   = help: ║ The above occurrences must not be seen as comprehensive, but rather as a guideline. ║
