@@ -1,8 +1,3 @@
 [[package]]
 name = "array_oob_reassignment"
 source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "std"
-source = "path+from-root-CC73096846C1E083"
