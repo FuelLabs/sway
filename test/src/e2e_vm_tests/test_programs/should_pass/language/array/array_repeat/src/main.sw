@@ -152,6 +152,7 @@ fn to_slice<T>(array: T) -> raw_slice {
 
 trait IsZero { fn is_zero(self) -> bool; }
 
+// TODO-DCA: Fix issue the `is_zero` mehtods are never called. See: https://github.com/FuelLabs/sway/issues/5921.
 impl IsZero for bool { fn is_zero(self) -> bool { self == false }}
 impl IsZero for u8 { fn is_zero(self) -> bool { self == 0 }}
 impl IsZero for u16 { fn is_zero(self) -> bool { self == 0 }}

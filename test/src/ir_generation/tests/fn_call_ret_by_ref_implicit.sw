@@ -37,7 +37,7 @@ fn main() -> u64 {
 
 // check: fn $a_fn($(x_arg=$ID) $MD: u64, $(ret_val_arg_ptr=$ID): __ptr { u64, u64, u64 }) -> ()
 
-// check: $(temp_ptr=$VAL) = get_local __ptr { u64, u64, u64 }, $(=__anon_\d+)
+// check: $(temp_ptr=$VAL) = get_local __ptr { u64, u64, u64 }, $(=__tuple_init_\d+)
 
 // check: $(idx_0=$VAL) = const u64 0
 // check: $(field_0_ptr=$VAL) = get_elem_ptr $temp_ptr, __ptr u64, $idx_0

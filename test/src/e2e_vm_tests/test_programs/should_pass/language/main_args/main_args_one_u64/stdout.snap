@@ -1,5 +1,6 @@
 ---
 source: test/src/snapshot/mod.rs
+assertion_line: 101
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_one_u64 --release --ir final --asm final --bytecode
 exit status: 0
@@ -30,31 +31,31 @@ script {
         local { u64 } args
 
         entry():
-        v108v1 = const u64 0, !5
-        v526v1 = gtf v108v1, 10, !11
-        v527v1 = bitcast v526v1 to ptr, !12
-        v580v1 = cast_ptr v527v1 to __ptr { u64 }, !15
-        v672v1 = get_local __ptr { u64 }, __aggr_memcpy_0
-        mem_copy_val v672v1, v580v1
-        v116v1 = get_local __ptr { u64 }, args, !16
-        mem_copy_val v116v1, v672v1
-        v138v1 = get_local __ptr { u64 }, args, !17
-        v139v1 = const u64 0
-        v140v1 = get_elem_ptr v138v1, __ptr u64, v139v1, !18
-        v141v1 = load v140v1
-        v142v1 = call main_11(v141v1), !21
-        v143v1 = get_local __ptr u64, _result, !22
-        store v142v1 to v143v1, !22
-        v266v1 = get_local __ptr u64, _result, !23
-        v153v1 = const u64 8
-        retd v266v1 v153v1, !27
+        v104v1 = const u64 0, !5
+        v530v1 = gtf v104v1, 10, !11
+        v531v1 = bitcast v530v1 to ptr, !12
+        v584v1 = cast_ptr v531v1 to __ptr { u64 }, !15
+        v676v1 = get_local __ptr { u64 }, __aggr_memcpy_0
+        mem_copy_val v676v1, v584v1
+        v112v1 = get_local __ptr { u64 }, args, !16
+        mem_copy_val v112v1, v676v1
+        v134v1 = get_local __ptr { u64 }, args, !17
+        v135v1 = const u64 0
+        v136v1 = get_elem_ptr v134v1, __ptr u64, v135v1, !18
+        v137v1 = load v136v1
+        v138v1 = call main_11(v137v1), !21
+        v139v1 = get_local __ptr u64, _result, !22
+        store v138v1 to v139v1, !22
+        v258v1 = get_local __ptr u64, _result, !23
+        v149v1 = const u64 8
+        retd v258v1 v149v1, !27
     }
 
     entry_orig fn main_11(baba !29: u64) -> u64, !32 {
         entry(baba: u64):
-        v135v1 = const u64 1, !33
-        v452v1 = add baba, v135v1, !36
-        ret u64 v452v1
+        v131v1 = const u64 1, !33
+        v456v1 = add baba, v131v1, !36
+        ret u64 v456v1
     }
 }
 

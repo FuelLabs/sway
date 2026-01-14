@@ -1,5 +1,6 @@
 ---
 source: test/src/snapshot/mod.rs
+assertion_line: 101
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode --release --ir final --asm final
 exit status: 0
@@ -21,34 +22,34 @@ script {
         v138v1 = asm(src: ptr, target: target, len: len) -> (), !10 {
             mcp    target src len, !11
         }
-        v220v1 = const unit ()
-        ret () v220v1
+        v216v1 = const unit ()
+        ret () v216v1
     }
 
     pub entry fn __entry() -> __ptr never, !15 {
         local u64 _result
 
         entry():
-        v314v1 = call main_15(), !18
-        v315v1 = get_local __ptr u64, _result, !19
-        store v314v1 to v315v1, !19
-        v438v1 = get_local __ptr u64, _result, !20
-        v325v1 = const u64 8
-        retd v438v1 v325v1, !24
+        v308v1 = call main_15(), !18
+        v309v1 = get_local __ptr u64, _result, !19
+        store v308v1 to v309v1, !19
+        v428v1 = get_local __ptr u64, _result, !20
+        v319v1 = const u64 8
+        retd v428v1 v319v1, !24
     }
 
     entry_orig fn main_15() -> u64, !27 {
         entry():
-        v304v1 = get_config __ptr { u64 }, WRAPPED, !28
-        v305v1 = const u64 0
-        v306v1 = get_elem_ptr v304v1, __ptr u64, v305v1, !29
-        v307v1 = load v306v1
-        v308v1 = get_config __ptr { u64 }, TUPLE, !30
-        v309v1 = const u64 0
-        v310v1 = get_elem_ptr v308v1, __ptr u64, v309v1, !31
-        v311v1 = load v310v1
-        v563v1 = add v307v1, v311v1, !34
-        ret u64 v563v1
+        v298v1 = get_config __ptr { u64 }, WRAPPED, !28
+        v299v1 = const u64 0
+        v300v1 = get_elem_ptr v298v1, __ptr u64, v299v1, !29
+        v301v1 = load v300v1
+        v302v1 = get_config __ptr { u64 }, TUPLE, !30
+        v303v1 = const u64 0
+        v304v1 = get_elem_ptr v302v1, __ptr u64, v303v1, !31
+        v305v1 = load v304v1
+        v568v1 = add v301v1, v305v1, !34
+        ret u64 v568v1
     }
 }
 
