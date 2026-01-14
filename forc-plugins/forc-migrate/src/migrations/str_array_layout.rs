@@ -66,26 +66,32 @@ impl TreesVisitor<Occurrence> for Visitor {
         output: &mut Vec<Occurrence>,
     ) -> Result<InvalidateTypedElement> {
         if let Some(ty_field_type) = ty_storage_field.map(|x| x.type_argument.type_id) {
-            let str_arrays = ty_field_type.extract_any_including_self(
+            let flag_this_field = ty_field_type.extract_any_including_self(
                 ctx.engines,
                 &|x| x.is_str_array(),
                 vec![],
                 0,
-            );
-
-            for (str_array, _) in str_arrays {
-                if let TypeInfo::StringArray(length) = &*ctx.engines.te().get(str_array) {
+            ).iter().any(|(str_array, _)| {
+                if let TypeInfo::StringArray(length) = &*ctx.engines.te().get(*str_array) {
                     let Some(length) = length.extract_literal(ctx.engines) else {
-                        todo!()
+                        // storage should always have literal lengths, in any case
+                        // it is safer to flag it
+                        return true
                     };
-                    if !length.is_multiple_of(8) {
-                        output.push(Occurrence::new(
-                            lexed_storage_field.name.span(),
-                            "Review this field".to_string(),
-                        ));
-                        return Ok(InvalidateTypedElement::Yes);
-                    }
+
+                    !length.is_multiple_of(8)
+                } else {
+                    // should be unreachable
+                    false
                 }
+            });
+
+            if flag_this_field {
+                output.push(Occurrence::new(
+                    lexed_storage_field.name.span(),
+                    "Review this field".to_string(),
+                ));
+                return Ok(InvalidateTypedElement::Yes);
             }
         } else {
             todo!()
