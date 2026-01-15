@@ -103,18 +103,21 @@ impl TypeMetadata {
                     call_path,
                     arguments,
                     ..
-                } if call_path.suffix.as_str() == "encode" => {
+                } if call_path.suffix.as_str() == "encode_allow_alias" => {
                     if arguments.len() != 1 {
                         Err(CompileError::InternalOwned(
-                            format!("The \"encode\" function must have exactly one argument but it had {}.", formatting::num_to_str(arguments.len())), 
+                            format!("The \"encode_allow_alias\" function must have exactly one argument but it had {}.", formatting::num_to_str(arguments.len())), 
                             logged_expr.span.clone(),
                         ))
                     } else {
-                        Ok(&arguments[0].1)
+                        match &arguments[0].1.expression {
+                            TyExpressionVariant::Ref(r) => Ok(r.as_ref()),
+                            _ => Err(CompileError::InternalOwned("The \"encode_allow_alias\" function must have a reference.".to_string(), logged_expr.span.clone()))
+                        }
                     }
                 }
                 _ => Err(CompileError::Internal(
-                        "In case of the new encoding, the \"logged_expr\" must be a call to an \"encode\" function.",
+                        "In case of the new encoding, the \"logged_expr\" must be a call to an \"encode_allow_alias\" function.",
                         logged_expr.span.clone()
                     ))
             }
