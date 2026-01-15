@@ -1999,12 +1999,12 @@ pub fn compile_ir(
     );
     let errored = handler.has_errors();
 
-    let mut compiled = match bc_res {
+    let compiled = match bc_res {
         Ok(compiled) if !errored => compiled,
         _ => return fail(handler),
     };
 
-    let (_, warnings, infos) = handler.consume();
+    let (_, _warnings, _infos) = handler.consume();
     // TODO Print infos and warnings?
     // TODO: Set configurables offset metadata if needed.
 
