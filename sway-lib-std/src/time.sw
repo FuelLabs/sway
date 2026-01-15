@@ -405,7 +405,8 @@ impl Duration {
     }
 }
 
-impl Add for Duration {
+impl Add<Self> for Duration {
+    type Output = Self;
     fn add(self, other: Self) -> Self {
         Self {
             seconds: self.seconds + other.seconds,
@@ -413,7 +414,8 @@ impl Add for Duration {
     }
 }
 
-impl Subtract for Duration {
+impl Subtract<Self> for Duration {
+    type Output = Self;
     fn subtract(self, other: Self) -> Self {
         Self {
             seconds: self.seconds - other.seconds,
@@ -798,6 +800,20 @@ impl From<u64> for Time {
 impl Into<u64> for Time {
     fn into(self) -> u64 {
         self.unix
+    }
+}
+
+impl Add<Duration> for Time {
+    type Output = Self;
+    fn add(self, other: Duration) -> Self {
+        self.add(other)
+    }
+}
+
+impl Subtract<Duration> for Time {
+    type Output = Self;
+    fn subtract(self, other: Duration) -> Self {
+        self.subtract(other)
     }
 }
 
