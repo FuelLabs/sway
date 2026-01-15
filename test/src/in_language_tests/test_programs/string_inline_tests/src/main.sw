@@ -9,6 +9,7 @@ fn string_as_bytes() {
     let bytes = string.as_bytes();
     assert(bytes.len() == 0);
     assert(bytes.capacity() == string.capacity());
+    assert(bytes.len() == string.len());
 
     let mut bytes = Bytes::new();
     bytes.push(0u8);
@@ -17,12 +18,12 @@ fn string_as_bytes() {
     let bytes = string.as_bytes();
     assert(bytes.len() == 1);
     assert(bytes.capacity() == string.capacity());
+    assert(bytes.len() == string.len());
 }
 
 #[test]
 fn string_capacity() {
     let mut string = String::new();
-
     assert(string.capacity() == 0);
 
     let mut bytes = Bytes::new();
@@ -32,15 +33,31 @@ fn string_capacity() {
 }
 
 #[test]
+fn string_len() {
+    let mut string = String::new();
+    assert(string.len() == 0);
+
+    let mut bytes = Bytes::new();
+    bytes.push(0u8);
+    let string = String::from_ascii(bytes);
+    assert(string.len() == 1);
+
+    let mut string = String::from_ascii_str("ABCDEF");
+    assert(string.len() == 6);
+}
+
+#[test]
 fn string_clear() {
     // Clear non-empty
     let mut bytes = Bytes::new();
     bytes.push(0u8);
     let mut string = String::from_ascii(bytes);
     assert(!string.is_empty());
+    assert(string.len() == 1);
 
     string.clear();
     assert(string.is_empty());
+    assert(string.len() == 0);
 }
 
 #[test]
@@ -48,8 +65,10 @@ fn string_clear_empty() {
     let mut string = String::new();
 
     assert(string.is_empty());
+    assert(string.len() == 0);
     string.clear();
     assert(string.is_empty());
+    assert(string.len() == 0);
 }
 
 #[test]
@@ -63,6 +82,7 @@ fn string_from_ascii() {
 
     let mut string_from_ascii = String::from_ascii(bytes);
     assert(bytes.len() == string_from_ascii.capacity());
+    assert(bytes.len() == string_from_ascii.len());
 
     let bytes = string_from_ascii.as_bytes();
     assert(bytes.get(0).unwrap() == 0u8);
@@ -77,6 +97,8 @@ fn string_from_ascii() {
 fn string_from_ascii_str() {
     let mut string_from_ascii = String::from_ascii_str("ABCDEF");
     assert(string_from_ascii.capacity() == 6);
+    assert(string_from_ascii.len() == 6);
+
     let bytes = string_from_ascii.as_bytes();
     assert(bytes.get(0).unwrap() == 65u8);
     assert(bytes.get(1).unwrap() == 66u8);
@@ -90,22 +112,25 @@ fn string_from_ascii_str() {
 #[test]
 fn string_is_empty() {
     let mut string = String::new();
-
     assert(string.is_empty());
+    assert(string.len() == 0);
 
     let mut bytes = Bytes::new();
     bytes.push(0u8);
     let string = String::from_ascii(bytes);
     assert(!string.is_empty());
+    assert(string.len() == 1);
 
     let mut bytes = Bytes::new();
     bytes.push(0u8);
     bytes.push(1u8);
     let mut string = String::from_ascii(bytes);
     assert(!string.is_empty());
+    assert(string.len() == 2);
 
     string.clear();
     assert(string.is_empty());
+    assert(string.len() == 0);
 }
 
 #[test]
@@ -114,6 +139,7 @@ fn string_new() {
 
     assert(string.is_empty());
     assert(string.capacity() == 0);
+    assert(string.len() == 0);
 }
 
 #[test]
@@ -128,12 +154,15 @@ fn string_with_capacity() {
 
     let mut string = String::with_capacity(0);
     assert(string.capacity() == 0);
+    assert(string.len() == 0);
 
     string.clear();
     assert(string.capacity() == 0);
-    let mut string = String::with_capacity(4);
+    assert(string.len() == 0);
 
+    let mut string = String::with_capacity(4);
     assert(string.capacity() == 4);
+    assert(string.len() == 0);
 }
 
 #[test]
@@ -166,6 +195,7 @@ fn string_from_bytes() {
     let mut string_from_bytes = String::from(bytes);
     let bytes = string_from_bytes.as_bytes();
     assert(bytes.len() == 5);
+    assert(string_from_bytes.len() == 5);
     assert(bytes.capacity() == string_from_bytes.capacity());
     assert(bytes.get(0).unwrap() == 0u8);
     assert(bytes.get(1).unwrap() == 1u8);
@@ -388,6 +418,7 @@ fn string_clone() {
     let cloned_string = string.clone();
 
     assert(cloned_string.ptr() != string.ptr());
+    assert(cloned_string.len() == string.len());
     assert(cloned_string.as_bytes().len() == string.as_bytes().len());
     assert(cloned_string.as_bytes().get(0).unwrap() == string.as_bytes().get(0).unwrap());
     assert(cloned_string.as_bytes().get(1).unwrap() == string.as_bytes().get(1).unwrap());
