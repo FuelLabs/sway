@@ -58,8 +58,8 @@ use sway_ir::{
     create_o1_pass_group, register_known_passes, Context, Kind, Module, PassGroup, PassManager,
     PrintPassesOpts, VerifyPassesOpts, ARG_DEMOTION_NAME, ARG_POINTEE_MUTABILITY_TAGGER_NAME,
     CONST_DEMOTION_NAME, DCE_NAME, FN_DEDUP_DEBUG_PROFILE_NAME, FN_INLINE_NAME, GLOBALS_DCE_NAME,
-    MEM2REG_NAME, MEMCPYOPT_NAME, MEMCPYPROP_REVERSE_NAME, MISC_DEMOTION_NAME, RET_DEMOTION_NAME,
-    SIMPLIFY_CFG_NAME, SROA_NAME,
+    INIT_AGGR_LOWERING_NAME, MEM2REG_NAME, MEMCPYOPT_NAME, MEMCPYPROP_REVERSE_NAME,
+    MISC_DEMOTION_NAME, RET_DEMOTION_NAME, SIMPLIFY_CFG_NAME, SROA_NAME,
 };
 use sway_types::span::Source;
 use sway_types::{SourceEngine, SourceLocation, Span};
@@ -1281,7 +1281,11 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     // Initialize the pass manager and register known passes.
     let mut pass_mgr = PassManager::default();
     register_known_passes(&mut pass_mgr);
+
     let mut pass_group = PassGroup::default();
+
+    // Lowering passes must always run, and run as first passes.
+    pass_group.append_pass(INIT_AGGR_LOWERING_NAME);
 
     match build_config.optimization_level {
         OptLevel::Opt1 => {

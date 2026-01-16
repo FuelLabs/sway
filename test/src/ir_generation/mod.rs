@@ -17,8 +17,8 @@ use sway_error::handler::Handler;
 use sway_features::ExperimentalFeatures;
 use sway_ir::{
     create_fn_inline_pass, register_known_passes, Backtrace, PassGroup, PassManager,
-    ARG_DEMOTION_NAME, CONST_DEMOTION_NAME, DCE_NAME, MEMCPYOPT_NAME, MISC_DEMOTION_NAME,
-    RET_DEMOTION_NAME,
+    ARG_DEMOTION_NAME, CONST_DEMOTION_NAME, DCE_NAME, INIT_AGGR_LOWERING_NAME, MEMCPYOPT_NAME,
+    MISC_DEMOTION_NAME, RET_DEMOTION_NAME,
 };
 use sway_types::ProgramId;
 
@@ -313,6 +313,7 @@ pub(super) async fn run(
                     let mut pass_mgr = PassManager::default();
                     let mut pass_group = PassGroup::default();
                     register_known_passes(&mut pass_mgr);
+                    pass_group.append_pass(INIT_AGGR_LOWERING_NAME);
                     pass_group.append_pass(CONST_DEMOTION_NAME);
                     pass_group.append_pass(ARG_DEMOTION_NAME);
                     pass_group.append_pass(RET_DEMOTION_NAME);
@@ -367,9 +368,12 @@ pub(super) async fn run(
                             }
 
                             let mut group = PassGroup::default();
+
                             for pass in passes {
                                 if pass == "o1" {
-                                    group = sway_ir::create_o1_pass_group();
+                                    // For o1, we always run lowering passes, as first passes.
+                                    group.append_pass(INIT_AGGR_LOWERING_NAME);
+                                    group.append_group(sway_ir::create_o1_pass_group());
                                 } else {
                                     // pass needs a 'static str
                                     let pass = Box::leak(Box::new(pass));

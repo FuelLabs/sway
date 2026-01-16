@@ -133,6 +133,7 @@ fn instr_to_expr(context: &Context, vntable: &VNTable, instr: Value) -> Option<E
         )),
         InstOp::Ret(_, _) => None,
         InstOp::Store { .. } => None,
+        InstOp::InitAggr { .. } => None,
     }
 }
 

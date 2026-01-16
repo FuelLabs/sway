@@ -40,6 +40,16 @@ impl Constant {
             .get(self.0)
             .expect("Constants are global immutable data, they must live through the context")
     }
+
+    /// Returns `true` if the runtime memory representation of a
+    /// type instance memcmp-equal to this [Constant] would always be all zeros.
+    pub fn is_runtime_zeroed(&self, context: &Context) -> bool {
+        self.get_content(context).value.is_runtime_zeroed()
+    }
+
+    pub fn is_copy_type(&self, context: &Context) -> bool {
+        self.get_content(context).ty.is_copy_type(context)
+    }
 }
 
 /// A [`Type`] and constant value, including [`ConstantValue::Undef`] for uninitialized constants.
@@ -66,6 +76,31 @@ pub enum ConstantValue {
     Struct(Vec<ConstantContent>),
     Reference(Box<ConstantContent>),
     RawUntypedSlice(Vec<u8>),
+}
+
+impl ConstantValue {
+    /// Returns `true` if the runtime memory representation of a
+    /// type instance memcmp-equal to this [ConstantValue] would always be all zeros.
+    ///
+    /// Note that for types containing slices or references this is by definition never true,
+    /// as those types contain pointers. The pointed memory might be zeroed, but in general
+    /// case the pointer itself is not.
+    pub fn is_runtime_zeroed(&self) -> bool {
+        match self {
+            ConstantValue::Undef => false,
+            ConstantValue::Unit => true,
+            ConstantValue::Bool(b) => !*b,
+            ConstantValue::Uint(n) => *n == 0,
+            ConstantValue::U256(n) | ConstantValue::B256(n) => n.is_zero(),
+            ConstantValue::Struct(fields) => fields.iter().all(|f| f.value.is_runtime_zeroed()),
+            ConstantValue::Array(elems) => elems.iter().all(|el| el.value.is_runtime_zeroed()),
+            // `String` is a string array, not a smart pointer, so we check the bytes.
+            ConstantValue::String(bytes) => bytes.iter().all(|b| *b == 0),
+            ConstantValue::RawUntypedSlice(_)
+            | ConstantValue::Slice(_)
+            | ConstantValue::Reference(_) => false,
+        }
+    }
 }
 
 /// A [Constant] with its required [Padding].
