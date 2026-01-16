@@ -8,9 +8,7 @@ use std::{collections::HashSet, vec};
 use rustc_hash::FxHashMap;
 
 use crate::{
-    AnalysisResults, BinaryOpKind, Context, Function, InitAggrInitializer, InsertionPosition,
-    InstOp, Instruction, InstructionInserter, IrError, MetadataIndex, Pass, PassMutability,
-    Predicate, ScopedPass, Type, TypeContent, Value,
+    AnalysisResults, BinaryOpKind, Context, Function, InitAggrInitializer, InsertionPosition, InstOp, Instruction, InstructionInserter, IrError, MetadataIndex, Pass, PassMutability, Predicate, ScopedPass, Type, TypeContent, Value, dominator::{self}
 };
 
 pub const INIT_AGGR_LOWERING_NAME: &str = "lower-init-aggr";
@@ -19,7 +17,7 @@ pub fn create_init_aggr_lowering_pass() -> Pass {
     Pass {
         name: INIT_AGGR_LOWERING_NAME,
         descr: "Lowering of `init_aggr` instructions",
-        deps: Vec::new(),
+        deps: vec![],
         runner: ScopedPass::FunctionPass(PassMutability::Transform(init_aggr_lowering)),
     }
 }
@@ -62,16 +60,7 @@ pub fn init_aggr_lowering<'a, 'b>(
     }
 
     // Replace all usages of `root_init_aggr`s with the pointers to the aggregates they initialize.
-    // Because `root_init_aggrs` are collected in reverse post-order,
-    // we know that the `starting_block` of `replace_values` is the
-    // the block of the last `init_aggr` in the collection.
-    function.replace_values(
-        context,
-        &replace_map,
-        root_init_aggrs
-            .last()
-            .and_then(|ia| ia.get_parent_block(context)),
-    );
+    function.replace_values(context, &replace_map, None);
 
     // Finally, remove all root `root_init_aggr` instructions.
     function.remove_instructions(context, |inst| root_init_aggrs.contains(&inst));
@@ -391,7 +380,7 @@ fn lower_single_initializer_to_stores(
 /// Find root `init_aggr` instructions in a `function`.
 /// These are `init_aggr` instructions that are not nested in other `init_aggr` instructions.
 ///
-/// Returns a vector of [Value]s representing the root `init_aggr` instructions, in reverse post-order.
+/// Returns a vector of [Value]s representing the root `init_aggr` instructions, in post-order.
 fn find_root_init_aggrs(context: &Context, function: Function) -> Vec<Value> {
     fn visit_nested_init_aggrs(
         context: &Context,
@@ -423,23 +412,29 @@ fn find_root_init_aggrs(context: &Context, function: Function) -> Vec<Value> {
 
     let mut result = vec![];
     let mut nested_init_aggrs = HashSet::new();
-    for (_block, inst) in function.instruction_iter_rev(context) {
-        if let Some(Instruction {
-            parent: _,
-            op: InstOp::InitAggr(init_aggr),
-        }) = inst.get_instruction(context)
-        {
-            if !nested_init_aggrs.contains(&inst) {
-                // `inst` is a root `init_aggr`. Visit its nested `init_aggr`s.
-                result.push(inst);
-                visit_nested_init_aggrs(
-                    context,
-                    init_aggr.initializers(context),
-                    &mut nested_init_aggrs,
-                );
+
+    // Traverse blocks in post-order and their instructions in reverse order.
+    let po = dominator::compute_post_order(context, &function);
+    for block in po.po_to_block.iter() {
+        for inst in block.instruction_iter(context).rev() {
+            if let Some(Instruction {
+                parent: _,
+                op: InstOp::InitAggr(init_aggr),
+            }) = inst.get_instruction(context)
+            {
+                if !nested_init_aggrs.contains(&inst) {
+                    // `inst` is a root `init_aggr`. Visit its nested `init_aggr`s.
+                    result.push(inst);
+                    visit_nested_init_aggrs(
+                        context,
+                        init_aggr.initializers(context),
+                        &mut nested_init_aggrs,
+                    );
+                }
             }
         }
     }
+
     result
 }
 

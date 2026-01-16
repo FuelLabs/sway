@@ -500,8 +500,10 @@ pub fn register_known_passes(pm: &mut PassManager) {
     pm.register(create_escaped_symbols_pass());
     pm.register(create_module_printer_pass());
     pm.register(create_module_verifier_pass());
+
     // Lowering passes.
     pm.register(create_init_aggr_lowering_pass());
+
     // Optimization passes.
     pm.register(create_arg_pointee_mutability_tagger_pass());
     pm.register(create_fn_dedup_release_profile_pass());

@@ -1281,6 +1281,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     // Initialize the pass manager and register known passes.
     let mut pass_mgr = PassManager::default();
     register_known_passes(&mut pass_mgr);
+
     let mut pass_group = PassGroup::default();
 
     // Lowering passes must always run, and run as first passes.
