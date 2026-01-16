@@ -40,7 +40,7 @@ jobs:
           cargo install --locked --debug --path ./forc-plugins/forc-lsp
           cargo install --locked --debug --path ./forc-plugins/forc-mcp
           cargo install --locked --debug --path ./forc-plugins/forc-migrate
-          cargo install --locked --debug --path ./forc-plugins/forc-node
+          cargo install --locked --debug --git https://github.com/FuelLabs/forc forc-node
           cargo install --locked --debug --path ./forc-plugins/forc-publish
 
       - name: Install mdbook-forc-documenter
