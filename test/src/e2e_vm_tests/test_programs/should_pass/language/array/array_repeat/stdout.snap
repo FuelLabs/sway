@@ -1203,7 +1203,7 @@ warning
    --> test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat/src/main.sw:156:24
     |
 154 | 
-155 | // TODO-DCA: Fix issue the `is_zero` mehtods are never called. See: https://github.com/FuelLabs/sway/issues/5921.
+155 | // TODO-DCA: Fix DCA warning that `is_zero` methods are never called. See: https://github.com/FuelLabs/sway/issues/5921.
 156 | impl IsZero for bool { fn is_zero(self) -> bool { self == false }}
     |                        ------------------------------------------ This method is never called.
 157 | impl IsZero for u8 { fn is_zero(self) -> bool { self == 0 }}
@@ -1214,7 +1214,7 @@ ____
 warning
    --> test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat/src/main.sw:157:22
     |
-155 | // TODO-DCA: Fix issue the `is_zero` mehtods are never called. See: https://github.com/FuelLabs/sway/issues/5921.
+155 | // TODO-DCA: Fix DCA warning that `is_zero` methods are never called. See: https://github.com/FuelLabs/sway/issues/5921.
 156 | impl IsZero for bool { fn is_zero(self) -> bool { self == false }}
 157 | impl IsZero for u8 { fn is_zero(self) -> bool { self == 0 }}
     |                      -------------------------------------- This method is never called.
