@@ -9,6 +9,7 @@ output:
    Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     Finished release [optimized + fuel] target(s) [20.512 KB] in ???
 =======
 =======
@@ -25,10 +26,14 @@ output:
     Finished release [optimized + fuel] target(s) [20.64 KB] in ???
 >>>>>>> 4a87808ba (update tests)
 >>>>>>> 468706494 (update tests)
+=======
+    Finished release [optimized + fuel] target(s) [20.608 KB] in ???
+>>>>>>> a1ff2dad6 (update tests)
      Running 29 tests, filtered 0 tests
 
 tested -- const_of_contract_call
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
       test cost_of_in_bool ... ok (???, 11303 gas)
@@ -64,6 +69,8 @@ tested -- const_of_contract_call
 =======
 >>>>>>> 468706494 (update tests)
 <<<<<<< HEAD
+=======
+>>>>>>> a1ff2dad6 (update tests)
       test cost_of_in_bool ... ok (???, 11297 gas)
       test cost_of_in_u8 ... ok (???, 11112 gas)
       test cost_of_in_u16 ... ok (???, 11517 gas)
@@ -93,6 +100,7 @@ tested -- const_of_contract_call
       test in_enum_u64 ... ok (???, 11151 gas)
       test in_enum_u64_u64 ... ok (???, 11155 gas)
       test in_enum_u64_u64_u64 ... ok (???, 11171 gas)
+<<<<<<< HEAD
 =======
       test cost_of_in_bool ... ok (???, 11163 gas)
       test cost_of_in_u8 ... ok (???, 10978 gas)
@@ -159,6 +167,8 @@ tested -- const_of_contract_call
       test in_enum_u64_u64_u64 ... ok (???, 11174 gas)
 >>>>>>> 4a87808ba (update tests)
 >>>>>>> 468706494 (update tests)
+=======
+>>>>>>> a1ff2dad6 (update tests)
 
 test result: OK. 29 passed; 0 failed; finished in ???
 

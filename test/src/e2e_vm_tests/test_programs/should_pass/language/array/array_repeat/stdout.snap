@@ -520,18 +520,8 @@ script {
 !103 = span !10 3147 3171
 !104 = fn_call_path_span !10 3147 3157
 !105 = "test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert/src/codec.sw"
-<<<<<<< HEAD
-<<<<<<< HEAD
-!106 = span !105 94132 94142
-!107 = fn_call_path_span !105 94137 94140
-=======
-!106 = span !105 93675 93685
-!107 = fn_call_path_span !105 93680 93683
->>>>>>> 9638be5ed (fix runtime memory layout of string arrays)
-=======
-!106 = span !105 94210 94220
-!107 = fn_call_path_span !105 94215 94218
->>>>>>> 4a87808ba (update tests)
+!106 = span !105 94525 94535
+!107 = fn_call_path_span !105 94530 94533
 !108 = "test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert/src/raw_slice.sw"
 !109 = span !108 2922 2926
 !110 = (!103 !104 !106 !107 !109)
@@ -543,24 +533,10 @@ script {
 !116 = (!103 !104 !106 !107)
 !117 = span !108 2928 2929
 !118 = (!103 !104 !106 !107 !117)
-<<<<<<< HEAD
-<<<<<<< HEAD
-!119 = span !105 94111 94226
+!119 = span !105 94504 94619
 !120 = (!103 !104 !119)
-!121 = span !105 94158 94167
-!122 = span !105 94181 94196
-=======
-!119 = span !105 93654 93769
-!120 = (!103 !104 !119)
-!121 = span !105 93701 93710
-!122 = span !105 93724 93739
->>>>>>> 9638be5ed (fix runtime memory layout of string arrays)
-=======
-!119 = span !105 94189 94304
-!120 = (!103 !104 !119)
-!121 = span !105 94236 94245
-!122 = span !105 94259 94274
->>>>>>> 4a87808ba (update tests)
+!121 = span !105 94551 94560
+!122 = span !105 94574 94589
 !123 = span !10 3192 3320
 !124 = fn_name_span !10 3195 3203
 !125 = (!123 !124 !48)
@@ -582,14 +558,13 @@ script {
 !141 = fn_name_span !138 584 587
 !142 = (!140 !141)
 !143 = span !138 642 647
-<<<<<<< HEAD
-<<<<<<< HEAD
-!144 = span !105 93335 93347
+!144 = span !105 93728 93740
 !145 = (!143 !144)
 !146 = (!143 !144)
 !147 = (!143 !144)
 !148 = (!143 !144)
 !149 = (!143 !144)
+<<<<<<< HEAD
 =======
 !144 = span !105 92735 92739
 =======
@@ -608,6 +583,8 @@ script {
 !155 = (!143 !150)
 >>>>>>> 9638be5ed (fix runtime memory layout of string arrays)
 >>>>>>> 776aeb952 (fix runtime memory layout of string arrays)
+=======
+>>>>>>> a1ff2dad6 (update tests)
 
 ;; ASM: Final program
 ;; Program kind: Script
