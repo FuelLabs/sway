@@ -4489,7 +4489,7 @@ impl<'a> FnCompiler<'a> {
 
         let array_type = Type::new_array(context, elem_type, length_as_u64);
 
-        let temp_name = self.lexical_map.insert_named_anon("array_init");
+        let temp_name = self.lexical_map.insert_unique_named("array_init");
         let array_local_var = self
             .function
             .new_local_var(context, temp_name, array_type, None, false)
@@ -4594,7 +4594,7 @@ impl<'a> FnCompiler<'a> {
 
         let array_type = Type::new_array(context, elem_type, contents.len() as u64);
 
-        let temp_name = self.lexical_map.insert_named_anon("array_init");
+        let temp_name = self.lexical_map.insert_unique_named("array_init");
         let array_var = self
             .function
             .new_local_var(context, temp_name, array_type, None, false)
@@ -5085,7 +5085,7 @@ impl<'a> FnCompiler<'a> {
 
         // Create the struct.
         let struct_type = Type::new_struct(context, field_types.clone());
-        let temp_name = self.lexical_map.insert_named_anon(anon_name);
+        let temp_name = self.lexical_map.insert_unique_named(anon_name);
         let struct_var = self
             .function
             .new_local_var(context, temp_name, struct_type, None, false)

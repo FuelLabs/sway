@@ -344,6 +344,7 @@ impl Type {
     /// Is copy type, i.e., fits in registers and can be bitwise copied.
     // TODO: This is a copy of `sway_core::asm_generation::fuel::fuel_asm_builder::FuelAsmBuilder::is_copy_type`.
     //       There is also a counterpart in `sway_core::type_system::TypeInfo::is_copy_type`.
+    //       As well as the related `sway_ir::optimize::target_fuel::is_demotable_type`.
     //       It is all FuelVM specific and needs to be refactored to properly support other VM backends.
     pub fn is_copy_type(&self, context: &Context) -> bool {
         self.is_unit(context)
