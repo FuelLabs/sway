@@ -5,7 +5,7 @@ use forc_pkg as pkg;
 use forc_test::{
     GasCostsSource, TestFilter, TestGasLimit, TestResult, TestRunnerCount, TestedPackage,
 };
-use forc_tracing::println_action_green;
+use forc_tracing::{println_action_green, telemetry::info_telemetry};
 use forc_util::{
     tx_utils::{decode_fuel_vm_log_data, format_log_receipts},
     ForcError, ForcResult,
@@ -96,6 +96,8 @@ pub struct TestPrintOpts {
 }
 
 pub(crate) fn exec(cmd: Command) -> ForcResult<()> {
+    info_telemetry!("test_started");
+
     let test_runner_count = match cmd.test_threads {
         Some(runner_count) => TestRunnerCount::Manual(runner_count),
         None => TestRunnerCount::Auto,
@@ -155,8 +157,10 @@ pub(crate) fn exec(cmd: Command) -> ForcResult<()> {
     };
 
     if all_tests_passed {
+        info_telemetry!("test_success");
         Ok(())
     } else {
+        info_telemetry!("test_failed");
         let forc_error: ForcError = "Some tests failed.".into();
         const FAILING_UNIT_TESTS_EXIT_CODE: u8 = 101;
         Err(forc_error.exit_code(FAILING_UNIT_TESTS_EXIT_CODE))

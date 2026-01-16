@@ -1,5 +1,6 @@
 use crate::{cli, ops::forc_build};
 use clap::Parser;
+use forc_tracing::telemetry::info_telemetry;
 use forc_util::ForcResult;
 
 forc_util::cli_examples! {
@@ -38,6 +39,11 @@ pub struct Command {
 }
 
 pub(crate) fn exec(command: Command) -> ForcResult<()> {
-    forc_build::build(command)?;
-    Ok(())
+    info_telemetry!("build_started");
+    let result = forc_build::build(command);
+    match &result {
+        Ok(_) => info_telemetry!("build_success"),
+        Err(_) => info_telemetry!("build_failed"),
+    }
+    result
 }
