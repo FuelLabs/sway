@@ -551,7 +551,7 @@ impl BuiltPackage {
                 let root_file_name = format!("{}{}", &pkg_name, SWAY_BIN_ROOT_SUFFIX);
                 let root_path = output_dir.join(root_file_name);
                 fs::write(root_path, &root)?;
-                info!("      Predicate root: {}", root);
+                info!("      Predicate root [{}]: {}", pkg_name, root);
             }
             TreeType::Script => {
                 // hash the bytecode for scripts and store the result in a file in the output directory
