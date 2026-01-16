@@ -8,7 +8,10 @@ use std::{collections::HashSet, vec};
 use rustc_hash::FxHashMap;
 
 use crate::{
-    AnalysisResults, BinaryOpKind, Context, Function, InitAggrInitializer, InsertionPosition, InstOp, Instruction, InstructionInserter, IrError, MetadataIndex, Pass, PassMutability, Predicate, ScopedPass, Type, TypeContent, Value, dominator::{self}
+    dominator::{self},
+    AnalysisResults, BinaryOpKind, Context, Function, InitAggrInitializer, InsertionPosition,
+    InstOp, Instruction, InstructionInserter, IrError, MetadataIndex, Pass, PassMutability,
+    Predicate, ScopedPass, Type, TypeContent, Value,
 };
 
 pub const INIT_AGGR_LOWERING_NAME: &str = "lower-init-aggr";
