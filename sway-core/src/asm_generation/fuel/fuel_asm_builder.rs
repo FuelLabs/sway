@@ -1124,6 +1124,15 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 "max_case_value",
                 None,
             );
+            self.cur_bytecode.push(Op {
+                opcode: Either::Left(VirtualOp::GT(
+                    cond_reg.clone(),
+                    discrim_reg.clone(),
+                    cond_reg.clone(),
+                )),
+                comment: "check if switch discriminant > max case value".into(),
+                owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+            });
             self.cur_bytecode
                 .push(Op::jump_if_not_zero(cond_reg, default_label));
         }
