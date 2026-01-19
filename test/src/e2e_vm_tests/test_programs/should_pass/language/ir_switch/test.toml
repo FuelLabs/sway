@@ -1,4 +1,4 @@
 category = "ir_run"
-expected_result = { action = "return", value = 1 }
-expected_result_new_encoding = { action = "return_data", value = "01" }
+expected_result = { action = "return", value = 5 }
+expected_result_new_encoding = { action = "return_data", value = "0000000000000005" }
 validate_abi = false

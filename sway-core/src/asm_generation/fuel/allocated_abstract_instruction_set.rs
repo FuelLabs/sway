@@ -220,127 +220,126 @@ impl AllocatedAbstractInstructionSet {
                     owning_span,
                     comment,
                 }),
-                Either::Right(org_op) => match org_op {
-                    ControlFlowOp::Jump { to, type_ } => {
-                        let target_offset = label_offsets.get(&to).unwrap().offs;
-                        let ops = if matches!(type_, JumpType::Call) {
-                            compile_call(
-                                data_section,
-                                curr_offset,
-                                target_offset,
-                                far_jump_sizes.get(&op_idx).copied(),
-                                comment,
-                                owning_span,
-                            )
-                        } else {
-                            compile_jump(
-                                data_section,
-                                curr_offset,
-                                target_offset,
-                                match type_ {
-                                    JumpType::NotZero(cond) => Some(cond),
-                                    _ => None,
-                                },
-                                far_jump_sizes.contains_key(&op_idx),
-                                comment,
-                                owning_span,
-                            )
-                        };
-                        debug_assert_eq!(ops.len() as u64, op_size);
-                        realized_ops.extend(ops);
-                    }
-                    ControlFlowOp::Switch {
-                        discriminant,
-                        cases,
-                    } => {
-                        let target_offsets = cases
+                Either::Right(org_op) => {
+                    match org_op {
+                        ControlFlowOp::Jump { to, type_ } => {
+                            let target_offset = label_offsets.get(&to).unwrap().offs;
+                            let ops = if matches!(type_, JumpType::Call) {
+                                compile_call(
+                                    data_section,
+                                    curr_offset,
+                                    target_offset,
+                                    far_jump_sizes.get(&op_idx).copied(),
+                                    comment,
+                                    owning_span,
+                                )
+                            } else {
+                                compile_jump(
+                                    data_section,
+                                    curr_offset,
+                                    target_offset,
+                                    match type_ {
+                                        JumpType::NotZero(cond) => Some(cond),
+                                        _ => None,
+                                    },
+                                    far_jump_sizes.contains_key(&op_idx),
+                                    comment,
+                                    owning_span,
+                                )
+                            };
+                            debug_assert_eq!(ops.len() as u64, op_size);
+                            realized_ops.extend(ops);
+                        }
+                        ControlFlowOp::Switch {
+                            discriminant,
+                            cases,
+                        } => {
+                            let target_offsets = cases
                             .iter()
                             .map(|label| {
-                                label_offsets
+                                let label_offset = label_offsets
                                     .get(label)
                                     .map(|b| b.offs)
-                                    .expect("Switch case label not found in label_offsets")
+                                    .expect("Switch case label not found in label_offsets");
+                                label_offset.checked_sub(curr_offset).expect(
+                                    "Switch case target offset is before switch instruction",
+                                ).checked_sub(op_size).expect("Switch case target offset right at switch instruction")
                             })
                             .collect::<Vec<u64>>();
-                        // Ensure that all target offsets are forward jumps.
-                        target_offsets.iter().for_each(|&target_offset| {
-                            if target_offset < curr_offset {
-                                panic!("Switch case target offset is before current offset, which is not supported");
-                            }
-                        });
-                        // Insert a data section entry for the switch targets.
-                        let data_id = data_section.insert_data_value(Entry::new_word_array(
-                            target_offsets,
-                            EntryName::NonConfigurable,
-                            None,
-                        ));
-                        realized_ops.push(RealizedOp {
-                            opcode: AllocatedInstruction::AddrDataId(
-                                AllocatedRegister::Constant(ConstantRegister::Scratch),
-                                data_id,
-                            ),
-                            owning_span: owning_span.clone(),
-                            comment: "load switch target table address".into(),
-                        });
-                        // Multiply discriminant by 8 (since each address is 8 bytes) and add to the base address.
-                        realized_ops.push(RealizedOp {
-                            opcode: AllocatedInstruction::SLLI(
-                                discriminant.clone(),
-                                discriminant.clone(),
-                                VirtualImmediate12::new(3),
-                            ),
-                            owning_span: owning_span.clone(),
-                            comment: "multiply discriminant by 8".into(),
-                        });
-                        realized_ops.push(RealizedOp {
-                            opcode: AllocatedInstruction::ADD(
-                                AllocatedRegister::Constant(ConstantRegister::Scratch),
-                                discriminant,
-                                AllocatedRegister::Constant(ConstantRegister::Scratch),
-                            ),
-                            owning_span: owning_span.clone(),
-                            comment: "add discriminant to switch target table address".into(),
-                        });
-                        realized_ops.push(RealizedOp {
-                            opcode: AllocatedInstruction::LW(
-                                AllocatedRegister::Constant(ConstantRegister::Scratch),
-                                AllocatedRegister::Constant(ConstantRegister::Scratch),
-                                VirtualImmediate12::new(0),
-                            ),
-                            owning_span: owning_span.clone(),
-                            comment: "load switch target address".into(),
-                        });
-                        // Finally, jump to the loaded address.
-                        realized_ops.push(RealizedOp {
-                            opcode: AllocatedInstruction::JMPF(
-                                AllocatedRegister::Constant(ConstantRegister::Zero),
-                                VirtualImmediate18::new(0),
-                            ),
-                            owning_span,
-                            comment,
-                        });
-                    }
-                    ControlFlowOp::DataSectionOffsetPlaceholder => {
-                        realized_ops.push(RealizedOp {
-                            opcode: AllocatedInstruction::DataSectionOffsetPlaceholder,
-                            owning_span: None,
-                            comment: String::new(),
-                        });
-                    }
-                    ControlFlowOp::ConfigurablesOffsetPlaceholder => {
-                        realized_ops.push(RealizedOp {
-                            opcode: AllocatedInstruction::ConfigurablesOffsetPlaceholder,
-                            owning_span: None,
-                            comment: String::new(),
-                        });
-                    }
-                    ControlFlowOp::Comment => continue,
-                    ControlFlowOp::Label(..) => continue,
+                            // Insert a data section entry for the switch targets.
+                            let data_id = data_section.insert_data_value(Entry::new_word_array(
+                                target_offsets,
+                                EntryName::NonConfigurable,
+                                None,
+                            ));
+                            realized_ops.push(RealizedOp {
+                                opcode: AllocatedInstruction::AddrDataId(
+                                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                                    data_id,
+                                ),
+                                owning_span: owning_span.clone(),
+                                comment: "load switch target table address".into(),
+                            });
+                            // Multiply discriminant by 8 (since each address is 8 bytes) and add to the base address.
+                            realized_ops.push(RealizedOp {
+                                opcode: AllocatedInstruction::SLLI(
+                                    discriminant.clone(),
+                                    discriminant.clone(),
+                                    VirtualImmediate12::new(3),
+                                ),
+                                owning_span: owning_span.clone(),
+                                comment: "multiply discriminant by 8".into(),
+                            });
+                            realized_ops.push(RealizedOp {
+                                opcode: AllocatedInstruction::ADD(
+                                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                                    discriminant,
+                                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                                ),
+                                owning_span: owning_span.clone(),
+                                comment: "add discriminant to switch target table address".into(),
+                            });
+                            realized_ops.push(RealizedOp {
+                                opcode: AllocatedInstruction::LW(
+                                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                                    VirtualImmediate12::new(0),
+                                ),
+                                owning_span: owning_span.clone(),
+                                comment: "load switch target address".into(),
+                            });
+                            // Finally, jump to the loaded address.
+                            realized_ops.push(RealizedOp {
+                                opcode: AllocatedInstruction::JMPF(
+                                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                                    VirtualImmediate18::new(0),
+                                ),
+                                owning_span,
+                                comment,
+                            });
+                        }
+                        ControlFlowOp::DataSectionOffsetPlaceholder => {
+                            realized_ops.push(RealizedOp {
+                                opcode: AllocatedInstruction::DataSectionOffsetPlaceholder,
+                                owning_span: None,
+                                comment: String::new(),
+                            });
+                        }
+                        ControlFlowOp::ConfigurablesOffsetPlaceholder => {
+                            realized_ops.push(RealizedOp {
+                                opcode: AllocatedInstruction::ConfigurablesOffsetPlaceholder,
+                                owning_span: None,
+                                comment: String::new(),
+                            });
+                        }
+                        ControlFlowOp::Comment => continue,
+                        ControlFlowOp::Label(..) => continue,
 
-                    ControlFlowOp::PushAll(_) | ControlFlowOp::PopAll(_) => {
-                        unreachable!("still don't belong in organisational ops")
+                        ControlFlowOp::PushAll(_) | ControlFlowOp::PopAll(_) => {
+                            unreachable!("still don't belong in organisational ops")
+                        }
                     }
-                },
+                }
             };
             curr_offset += op_size;
         }
