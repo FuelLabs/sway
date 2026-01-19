@@ -7,35 +7,11 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
    Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
     Finished release [optimized + fuel] target(s) [20.512 KB] in ???
-=======
-=======
->>>>>>> 468706494 (update tests)
-<<<<<<< HEAD
-    Finished release [optimized + fuel] target(s) [20.608 KB] in ???
-=======
-    Finished release [optimized + fuel] target(s) [19.16 KB] in ???
->>>>>>> 9638be5ed (fix runtime memory layout of string arrays)
-<<<<<<< HEAD
->>>>>>> 776aeb952 (fix runtime memory layout of string arrays)
-=======
-=======
-    Finished release [optimized + fuel] target(s) [20.64 KB] in ???
->>>>>>> 4a87808ba (update tests)
->>>>>>> 468706494 (update tests)
-=======
-    Finished release [optimized + fuel] target(s) [20.608 KB] in ???
->>>>>>> a1ff2dad6 (update tests)
      Running 29 tests, filtered 0 tests
 
 tested -- const_of_contract_call
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
       test cost_of_in_bool ... ok (???, 11303 gas)
       test cost_of_in_u8 ... ok (???, 11118 gas)
       test cost_of_in_u16 ... ok (???, 11523 gas)
@@ -65,110 +41,6 @@ tested -- const_of_contract_call
       test in_enum_u64 ... ok (???, 11149 gas)
       test in_enum_u64_u64 ... ok (???, 11153 gas)
       test in_enum_u64_u64_u64 ... ok (???, 11169 gas)
-=======
-=======
->>>>>>> 468706494 (update tests)
-<<<<<<< HEAD
-=======
->>>>>>> a1ff2dad6 (update tests)
-      test cost_of_in_bool ... ok (???, 11297 gas)
-      test cost_of_in_u8 ... ok (???, 11112 gas)
-      test cost_of_in_u16 ... ok (???, 11517 gas)
-      test cost_of_in_u32 ... ok (???, 11770 gas)
-      test cost_of_in_u64 ... ok (???, 10946 gas)
-      test cost_of_in_u256 ... ok (???, 10993 gas)
-      test cost_of_in_b256 ... ok (???, 10975 gas)
-      test cost_of_in_str_0 ... ok (???, 11505 gas)
-      test cost_of_in_str_1 ... ok (???, 11684 gas)
-      test cost_of_in_str_8 ... ok (???, 11703 gas)
-      test cost_of_in_str_16 ... ok (???, 11696 gas)
-      test cost_of_in_str_32 ... ok (???, 11710 gas)
-      test cost_of_in_array_0 ... ok (???, 10910 gas)
-      test cost_of_in_array_1 ... ok (???, 11005 gas)
-      test cost_of_in_array_8 ... ok (???, 11658 gas)
-      test cost_of_in_array_16 ... ok (???, 11296 gas)
-      test cost_of_in_array_32 ... ok (???, 11605 gas)
-      test cost_of_in_array_64 ... ok (???, 12214 gas)
-      test cost_of_in_tuple_0 ... ok (???, 10933 gas)
-      test cost_of_in_tuple_1 ... ok (???, 11020 gas)
-      test cost_of_in_tuple_2 ... ok (???, 11103 gas)
-      test cost_of_in_tuple_3 ... ok (???, 11118 gas)
-      test cost_of_in_tuple_4 ... ok (???, 11088 gas)
-      test in_struct_u64 ... ok (???, 11049 gas)
-      test in_struct_u64_u64 ... ok (???, 11090 gas)
-      test in_struct_u64_u64_u64 ... ok (???, 11112 gas)
-      test in_enum_u64 ... ok (???, 11151 gas)
-      test in_enum_u64_u64 ... ok (???, 11155 gas)
-      test in_enum_u64_u64_u64 ... ok (???, 11171 gas)
-<<<<<<< HEAD
-=======
-      test cost_of_in_bool ... ok (???, 11163 gas)
-      test cost_of_in_u8 ... ok (???, 10978 gas)
-      test cost_of_in_u16 ... ok (???, 11383 gas)
-      test cost_of_in_u32 ... ok (???, 11636 gas)
-      test cost_of_in_u64 ... ok (???, 10812 gas)
-      test cost_of_in_u256 ... ok (???, 10859 gas)
-      test cost_of_in_b256 ... ok (???, 10841 gas)
-      test cost_of_in_str_0 ... ok (???, 11016 gas)
-      test cost_of_in_str_1 ... ok (???, 11381 gas)
-      test cost_of_in_str_8 ... ok (???, 11133 gas)
-      test cost_of_in_str_16 ... ok (???, 11126 gas)
-      test cost_of_in_str_32 ... ok (???, 11140 gas)
-      test cost_of_in_array_0 ... ok (???, 10778 gas)
-      test cost_of_in_array_1 ... ok (???, 10871 gas)
-      test cost_of_in_array_8 ... ok (???, 11544 gas)
-      test cost_of_in_array_16 ... ok (???, 11166 gas)
-      test cost_of_in_array_32 ... ok (???, 11475 gas)
-      test cost_of_in_array_64 ... ok (???, 12084 gas)
-      test cost_of_in_tuple_0 ... ok (???, 10803 gas)
-      test cost_of_in_tuple_1 ... ok (???, 10890 gas)
-      test cost_of_in_tuple_2 ... ok (???, 10971 gas)
-      test cost_of_in_tuple_3 ... ok (???, 10986 gas)
-      test cost_of_in_tuple_4 ... ok (???, 10956 gas)
-      test in_struct_u64 ... ok (???, 10919 gas)
-      test in_struct_u64_u64 ... ok (???, 10958 gas)
-      test in_struct_u64_u64_u64 ... ok (???, 10980 gas)
-      test in_enum_u64 ... ok (???, 11021 gas)
-      test in_enum_u64_u64 ... ok (???, 11023 gas)
-      test in_enum_u64_u64_u64 ... ok (???, 11039 gas)
->>>>>>> 9638be5ed (fix runtime memory layout of string arrays)
-<<<<<<< HEAD
->>>>>>> 776aeb952 (fix runtime memory layout of string arrays)
-=======
-=======
-      test cost_of_in_bool ... ok (???, 11300 gas)
-      test cost_of_in_u8 ... ok (???, 11115 gas)
-      test cost_of_in_u16 ... ok (???, 11520 gas)
-      test cost_of_in_u32 ... ok (???, 11773 gas)
-      test cost_of_in_u64 ... ok (???, 10949 gas)
-      test cost_of_in_u256 ... ok (???, 10996 gas)
-      test cost_of_in_b256 ... ok (???, 10978 gas)
-      test cost_of_in_str_0 ... ok (???, 11508 gas)
-      test cost_of_in_str_1 ... ok (???, 11687 gas)
-      test cost_of_in_str_8 ... ok (???, 11706 gas)
-      test cost_of_in_str_16 ... ok (???, 11699 gas)
-      test cost_of_in_str_32 ... ok (???, 11713 gas)
-      test cost_of_in_array_0 ... ok (???, 10913 gas)
-      test cost_of_in_array_1 ... ok (???, 11008 gas)
-      test cost_of_in_array_8 ... ok (???, 11681 gas)
-      test cost_of_in_array_16 ... ok (???, 11299 gas)
-      test cost_of_in_array_32 ... ok (???, 11608 gas)
-      test cost_of_in_array_64 ... ok (???, 12217 gas)
-      test cost_of_in_tuple_0 ... ok (???, 10936 gas)
-      test cost_of_in_tuple_1 ... ok (???, 11023 gas)
-      test cost_of_in_tuple_2 ... ok (???, 11106 gas)
-      test cost_of_in_tuple_3 ... ok (???, 11121 gas)
-      test cost_of_in_tuple_4 ... ok (???, 11091 gas)
-      test in_struct_u64 ... ok (???, 11052 gas)
-      test in_struct_u64_u64 ... ok (???, 11093 gas)
-      test in_struct_u64_u64_u64 ... ok (???, 11115 gas)
-      test in_enum_u64 ... ok (???, 11154 gas)
-      test in_enum_u64_u64 ... ok (???, 11158 gas)
-      test in_enum_u64_u64_u64 ... ok (???, 11174 gas)
->>>>>>> 4a87808ba (update tests)
->>>>>>> 468706494 (update tests)
-=======
->>>>>>> a1ff2dad6 (update tests)
 
 test result: OK. 29 passed; 0 failed; finished in ???
 
