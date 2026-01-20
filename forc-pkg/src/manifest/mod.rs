@@ -8,6 +8,7 @@ use forc_util::{validate_name, validate_project_name};
 use semver::Version;
 use serde::{de, Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
+use sha2::{Digest, Sha256};
 use std::{
     collections::{BTreeMap, HashMap},
     fmt::Display,
@@ -57,6 +58,8 @@ pub trait GenericManifestFile {
 
     /// Returns a mapping of member member names to package manifest files.
     fn member_manifests(&self) -> Result<MemberManifestFiles>;
+    /// Returns the checksum of the source described by this `ManifestFile`.
+    fn checksum(&self) -> Result<String>;
 }
 
 #[derive(Clone, Debug)]
@@ -158,6 +161,14 @@ impl GenericManifestFile for ManifestFile {
             ManifestFile::Workspace(workspace_manifest) => workspace_manifest.lock_path(),
         }
     }
+
+    // Returns the checksum of the source described by this `ManifestFile`.
+    fn checksum(&self) -> Result<String> {
+        match self {
+            ManifestFile::Package(package) => package.checksum(),
+            ManifestFile::Workspace(workspace) => workspace.checksum(),
+        }
+    }
 }
 
 impl TryInto<PackageManifestFile> for ManifestFile {
@@ -189,7 +200,7 @@ impl TryInto<WorkspaceManifestFile> for ManifestFile {
 type PatchMap = BTreeMap<String, Dependency>;
 
 /// A [PackageManifest] that was deserialized from a file at a particular path.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct PackageManifestFile {
     /// The deserialized `Forc.toml`.
     manifest: PackageManifest,
@@ -647,6 +658,18 @@ impl GenericManifestFile for PackageManifestFile {
 
         Ok(member_manifest_files)
     }
+
+    fn checksum(&self) -> Result<String> {
+        let mut hasher = Sha256::new();
+        let serialized = serde_json::to_string(&self.manifest)
+            .map_err(|e| anyhow::anyhow!("Failed to serialize package manifest: {}", e))?;
+        hasher.update(serialized.as_bytes());
+
+        add_source_files_to_hash(&mut hasher, self.dir())?;
+
+        let result = hasher.finalize();
+        Ok(format!("{:x}", result))
+    }
 }
 
 impl PackageManifest {
@@ -957,7 +980,7 @@ fn default_url() -> String {
 }
 
 /// A [WorkspaceManifest] that was deserialized from a file at a particular path.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct WorkspaceManifestFile {
     /// The derserialized `Forc.toml`
     manifest: WorkspaceManifest,
@@ -1084,6 +1107,21 @@ impl GenericManifestFile for WorkspaceManifestFile {
 
         Ok(member_manifest_files)
     }
+
+    fn checksum(&self) -> Result<String> {
+        let mut hasher = Sha256::new();
+        let serialized = serde_json::to_string(&self.manifest)
+            .map_err(|e| anyhow::anyhow!("Failed to serialize workspace manifest: {}", e))?;
+        hasher.update(serialized.as_bytes());
+
+        // Add source files from each member
+        for member in self.members() {
+            add_source_files_to_hash(&mut hasher, member)?;
+        }
+
+        let result = hasher.finalize();
+        Ok(format!("{:x}", result))
+    }
 }
 
 impl WorkspaceManifest {
@@ -1204,11 +1242,500 @@ pub fn find_dir_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
     find_within(dir, pkg_name).and_then(|path| path.parent().map(Path::to_path_buf))
 }
 
+/// Helper function to add source (.sw) files to the hash
+fn add_source_files_to_hash(hasher: &mut sha2::Sha256, base_path: &Path) -> Result<()> {
+    use std::collections::BTreeMap;
+    use walkdir::WalkDir;
+
+    // Using BTreeMap for deterministic ordering by relative path
+    let mut source_files = BTreeMap::new();
+
+    // Find src directory
+    let src_path = base_path.join("src");
+    if src_path.exists() {
+        // Collect all .sw files under src/
+        for entry in WalkDir::new(&src_path) {
+            let entry = entry?;
+            let path = entry.path();
+
+            if path.is_file() && path.extension() == Some(std::ffi::OsStr::new("sw")) {
+                // Calculate relative path from base_path for consistent naming
+                let rel_path = path
+                    .strip_prefix(base_path)
+                    .unwrap_or(path)
+                    .to_string_lossy()
+                    .to_string();
+
+                println!("adding {:?}", rel_path);
+                // Read file contents
+                let content = std::fs::read(path).map_err(|e| {
+                    anyhow::anyhow!("Failed to read file {}: {}", path.display(), e)
+                })?;
+
+                source_files.insert(rel_path, content);
+            }
+        }
+    }
+
+    // Add all files to the hasher in sorted order (guaranteed by BTreeMap)
+    for (rel_path, content) in source_files {
+        hasher.update(rel_path.as_bytes());
+        // Add a separator to prevent concatenation attacks
+        hasher.update(b"\0");
+        hasher.update(&content);
+        // Add another separator between files
+        hasher.update(b"\0\0");
+    }
+
+    Ok(())
+}
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
-
     use super::*;
+    use std::{fs, str::FromStr};
+    use tempfile::{tempdir, TempDir};
+
+    // Helper function to create a temporary package for testing
+    fn create_test_package(
+        name: &str,
+        source_files: Vec<(&str, &str)>,
+    ) -> Result<(TempDir, PackageManifestFile)> {
+        let temp_dir = tempdir()?;
+        let base_path = temp_dir.path();
+
+        // Create package structure
+        fs::create_dir_all(base_path.join("src"))?;
+
+        // Create Forc.toml
+        let forc_toml = format!(
+            r#"
+            [project]
+            authors = ["Test"]
+            entry = "main.sw"
+            license = "MIT"
+            name = "{}"
+            
+            [dependencies]
+        "#,
+            name
+        );
+        fs::write(base_path.join("Forc.toml"), forc_toml)?;
+
+        // Create source files
+        for (file_name, content) in source_files {
+            // Handle nested directories in the file path
+            let file_path = base_path.join("src").join(file_name);
+            if let Some(parent) = file_path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            fs::write(file_path, content)?;
+        }
+
+        // Create the manifest file
+        let manifest_file = PackageManifestFile::from_file(base_path.join("Forc.toml"))?;
+
+        Ok((temp_dir, manifest_file))
+    }
+
+    // Helper to create a workspace
+    fn create_test_workspace(
+        members: Vec<(&str, Vec<(&str, &str)>)>,
+    ) -> Result<(TempDir, WorkspaceManifestFile)> {
+        let temp_dir = tempdir()?;
+        let base_path = temp_dir.path();
+
+        // Create workspace Forc.toml
+        let mut workspace_toml = "[workspace]\nmembers = [".to_string();
+
+        for (i, (name, _)) in members.iter().enumerate() {
+            if i > 0 {
+                workspace_toml.push_str(", ");
+            }
+            workspace_toml.push_str(&format!("\"{name}\""));
+        }
+        workspace_toml.push_str("]\n");
+
+        fs::write(base_path.join("Forc.toml"), workspace_toml)?;
+
+        // Create each member
+        for (name, source_files) in members {
+            let member_path = base_path.join(name);
+            fs::create_dir_all(member_path.join("src"))?;
+
+            // Create member Forc.toml
+            let forc_toml = format!(
+                r#"
+                [project]
+                authors = ["Test"]
+                entry = "main.sw"
+                license = "MIT"
+                name = "{}"
+                
+                [dependencies]
+            "#,
+                name
+            );
+            fs::write(member_path.join("Forc.toml"), forc_toml)?;
+
+            // Create source files
+            for (file_name, content) in source_files {
+                // Handle nested directories in the file path
+                let file_path = member_path.join("src").join(file_name);
+                if let Some(parent) = file_path.parent() {
+                    fs::create_dir_all(parent)?;
+                }
+                fs::write(file_path, content)?;
+            }
+        }
+
+        // Create the workspace manifest file
+        let manifest_file = WorkspaceManifestFile::from_file(base_path.join("Forc.toml"))?;
+
+        Ok((temp_dir, manifest_file))
+    }
+
+    #[test]
+    fn test_package_checksum() -> Result<()> {
+        // Create a test package with specific source files
+        let (_temp_dir, pkg_manifest) = create_test_package(
+            "test_pkg",
+            vec![
+                ("main.sw", "fn main() -> u64 { 42 }"),
+                ("lib.sw", "fn helper() -> bool { true }"),
+            ],
+        )?;
+
+        // Get the checksum
+        let manifest_file = ManifestFile::Package(Box::new(pkg_manifest));
+        let checksum1 = manifest_file.checksum()?;
+
+        // Verify the checksum is a valid SHA-256 hash (64 hex chars)
+        assert_eq!(checksum1.len(), 64);
+        assert!(checksum1.chars().all(|c| c.is_ascii_hexdigit()));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_checksum_changes_with_content() -> Result<()> {
+        // Create first package
+        let (_temp_dir1, pkg_manifest1) =
+            create_test_package("test_pkg", vec![("main.sw", "fn main() -> u64 { 42 }")])?;
+
+        // Create second package with different content
+        let (_temp_dir2, pkg_manifest2) =
+            create_test_package("test_pkg", vec![("main.sw", "fn main() -> u64 { 43 }")])?;
+
+        let manifest_file1 = ManifestFile::Package(Box::new(pkg_manifest1));
+        let manifest_file2 = ManifestFile::Package(Box::new(pkg_manifest2));
+
+        let checksum1 = manifest_file1.checksum()?;
+        let checksum2 = manifest_file2.checksum()?;
+
+        // Different content should have different checksums
+        assert_ne!(checksum1, checksum2);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_checksum_consistent() -> Result<()> {
+        // Create the same package twice
+        let (_temp_dir1, pkg_manifest1) =
+            create_test_package("test_pkg", vec![("main.sw", "fn main() -> u64 { 42 }")])?;
+
+        let (_temp_dir2, pkg_manifest2) =
+            create_test_package("test_pkg", vec![("main.sw", "fn main() -> u64 { 42 }")])?;
+
+        let manifest_file1 = ManifestFile::Package(Box::new(pkg_manifest1));
+        let manifest_file2 = ManifestFile::Package(Box::new(pkg_manifest2));
+
+        let checksum1 = manifest_file1.checksum()?;
+        let checksum2 = manifest_file2.checksum()?;
+
+        // Same content should have the same checksum
+        assert_eq!(checksum1, checksum2);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_workspace_checksum() -> Result<()> {
+        // Create a test workspace with members
+        let (_temp_dir, workspace_manifest) = create_test_workspace(vec![
+            ("pkg1", vec![("main.sw", "fn main() -> u64 { 1 }")]),
+            ("pkg2", vec![("main.sw", "fn main() -> u64 { 2 }")]),
+        ])?;
+
+        let manifest_file = ManifestFile::Workspace(workspace_manifest);
+        let checksum = manifest_file.checksum()?;
+
+        // Verify the checksum is a valid SHA-256 hash
+        assert_eq!(checksum.len(), 64);
+        assert!(checksum.chars().all(|c| c.is_ascii_hexdigit()));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_checksum_affected_by_file_paths() -> Result<()> {
+        // Create first package with specific file name
+        let (_temp_dir1, pkg_manifest1) = create_test_package(
+            "test_pkg",
+            vec![("main.sw", ""), ("file1.sw", "fn test() -> u64 { 42 }")],
+        )?;
+
+        // Create second package with same content but different file name
+        let (_temp_dir2, pkg_manifest2) = create_test_package(
+            "test_pkg",
+            vec![("main.sw", ""), ("file2.sw", "fn test() -> u64 { 42 }")],
+        )?;
+
+        let manifest_file1 = ManifestFile::Package(Box::new(pkg_manifest1));
+        let manifest_file2 = ManifestFile::Package(Box::new(pkg_manifest2));
+
+        let checksum1 = manifest_file1.checksum()?;
+        let checksum2 = manifest_file2.checksum()?;
+
+        // Same content but different file names should have different checksums
+        assert_ne!(checksum1, checksum2);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_checksum_changes_with_dependencies() -> Result<()> {
+        // Create first package with a specific dependency version
+        let temp_dir1 = tempdir()?;
+        let base_path1 = temp_dir1.path();
+        fs::create_dir_all(base_path1.join("src"))?;
+
+        let forc_toml1 = r#"
+            [project]
+            authors = ["Test"]
+            entry = "main.sw"
+            license = "MIT"
+            name = "test_pkg"
+            
+            [dependencies]
+            dep1 = "1.0.0"
+        "#;
+        fs::write(base_path1.join("Forc.toml"), forc_toml1)?;
+        fs::write(
+            base_path1.join("src").join("main.sw"),
+            "fn main() -> u64 { 42 }",
+        )?;
+        let pkg_manifest1 = PackageManifestFile::from_file(base_path1.join("Forc.toml"))?;
+
+        // Create second package with a different dependency version
+        let temp_dir2 = tempdir()?;
+        let base_path2 = temp_dir2.path();
+        fs::create_dir_all(base_path2.join("src"))?;
+
+        let forc_toml2 = r#"
+            [project]
+            authors = ["Test"]
+            entry = "main.sw"
+            license = "MIT"
+            name = "test_pkg"
+            
+            [dependencies]
+            dep1 = "2.0.0"
+        "#;
+        fs::write(base_path2.join("Forc.toml"), forc_toml2)?;
+        fs::write(
+            base_path2.join("src").join("main.sw"),
+            "fn main() -> u64 { 42 }",
+        )?;
+        let pkg_manifest2 = PackageManifestFile::from_file(base_path2.join("Forc.toml"))?;
+
+        let manifest_file1 = ManifestFile::Package(Box::new(pkg_manifest1));
+        let manifest_file2 = ManifestFile::Package(Box::new(pkg_manifest2));
+
+        let checksum1 = manifest_file1.checksum()?;
+        let checksum2 = manifest_file2.checksum()?;
+
+        // Different dependency versions should result in different checksums
+        assert_ne!(checksum1, checksum2);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_checksum_unaffected_by_dependency_order() -> Result<()> {
+        // Create first package with dependencies in one order
+        let temp_dir1 = tempdir()?;
+        let base_path1 = temp_dir1.path();
+        fs::create_dir_all(base_path1.join("src"))?;
+
+        let forc_toml1 = r#"
+            [project]
+            authors = ["Test"]
+            entry = "main.sw"
+            license = "MIT"
+            name = "test_pkg"
+            
+            [dependencies]
+            dep1 = "1.0.0"
+            dep2 = "1.0.0"
+        "#;
+        fs::write(base_path1.join("Forc.toml"), forc_toml1)?;
+        fs::write(
+            base_path1.join("src").join("main.sw"),
+            "fn main() -> u64 { 42 }",
+        )?;
+        let pkg_manifest1 = PackageManifestFile::from_file(base_path1.join("Forc.toml"))?;
+
+        // Create second package with dependencies in different order
+        let temp_dir2 = tempdir()?;
+        let base_path2 = temp_dir2.path();
+        fs::create_dir_all(base_path2.join("src"))?;
+
+        let forc_toml2 = r#"
+            [project]
+            authors = ["Test"]
+            entry = "main.sw"
+            license = "MIT"
+            name = "test_pkg"
+            
+            [dependencies]
+            dep2 = "1.0.0"
+            dep1 = "1.0.0"
+        "#;
+        fs::write(base_path2.join("Forc.toml"), forc_toml2)?;
+        fs::write(
+            base_path2.join("src").join("main.sw"),
+            "fn main() -> u64 { 42 }",
+        )?;
+        let pkg_manifest2 = PackageManifestFile::from_file(base_path2.join("Forc.toml"))?;
+
+        let manifest_file1 = ManifestFile::Package(Box::new(pkg_manifest1));
+        let manifest_file2 = ManifestFile::Package(Box::new(pkg_manifest2));
+
+        let checksum1 = manifest_file1.checksum()?;
+        let checksum2 = manifest_file2.checksum()?;
+
+        // Different dependency order should still result in the same checksum
+        // because serde_json will normalize the serialization
+        assert_eq!(checksum1, checksum2);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_checksum_affected_by_filename_in_subfolder() -> Result<()> {
+        // Create first package with file in a specific subfolder structure
+        let temp_dir1 = tempdir()?;
+        let base_path1 = temp_dir1.path();
+        fs::create_dir_all(base_path1.join("src").join("subfolder"))?;
+
+        let forc_toml1 = r#"
+            [project]
+            authors = ["Test"]
+            entry = "main.sw"
+            license = "MIT"
+            name = "test_pkg"
+        "#;
+        fs::write(base_path1.join("Forc.toml"), forc_toml1)?;
+        fs::write(
+            base_path1.join("src").join("main.sw"),
+            "fn main() -> u64 { 42 }",
+        )?;
+        fs::write(
+            base_path1.join("src").join("subfolder").join("utils.sw"),
+            "fn helper() -> bool { true }",
+        )?;
+        let pkg_manifest1 = PackageManifestFile::from_file(base_path1.join("Forc.toml"))?;
+
+        // Create second package with same file but in a different location
+        let temp_dir2 = tempdir()?;
+        let base_path2 = temp_dir2.path();
+        fs::create_dir_all(base_path2.join("src").join("other_folder"))?;
+
+        let forc_toml2 = r#"
+            [project]
+            authors = ["Test"]
+            entry = "main.sw"
+            license = "MIT"
+            name = "test_pkg"
+        "#;
+        fs::write(base_path2.join("Forc.toml"), forc_toml2)?;
+        fs::write(
+            base_path2.join("src").join("main.sw"),
+            "fn main() -> u64 { 42 }",
+        )?;
+        fs::write(
+            base_path2.join("src").join("other_folder").join("utils.sw"),
+            "fn helper() -> bool { true }",
+        )?;
+        let pkg_manifest2 = PackageManifestFile::from_file(base_path2.join("Forc.toml"))?;
+
+        let manifest_file1 = ManifestFile::Package(Box::new(pkg_manifest1));
+        let manifest_file2 = ManifestFile::Package(Box::new(pkg_manifest2));
+
+        let checksum1 = manifest_file1.checksum()?;
+        let checksum2 = manifest_file2.checksum()?;
+
+        // Different file paths should result in different checksums
+        assert_ne!(checksum1, checksum2);
+
+        Ok(())
+    }
+
+    #[test]
+    // NOTE: We should probably do the caching in AST level instead of this
+    // string level operations. This test illustrates why we should be doing it
+    // on AST.
+    fn test_checksum_changes_with_whitespace_in_files() -> Result<()> {
+        // Create first package with specific formatting
+        let temp_dir1 = tempdir()?;
+        let base_path1 = temp_dir1.path();
+        fs::create_dir_all(base_path1.join("src"))?;
+
+        let forc_toml1 = r#"
+            [project]
+            authors = ["Test"]
+            entry = "main.sw"
+            license = "MIT"
+            name = "test_pkg"
+        "#;
+        fs::write(base_path1.join("Forc.toml"), forc_toml1)?;
+        fs::write(
+            base_path1.join("src").join("main.sw"),
+            "fn main() -> u64 { 42 }",
+        )?;
+        let pkg_manifest1 = PackageManifestFile::from_file(base_path1.join("Forc.toml"))?;
+
+        // Create second package with different whitespace
+        let temp_dir2 = tempdir()?;
+        let base_path2 = temp_dir2.path();
+        fs::create_dir_all(base_path2.join("src"))?;
+
+        let forc_toml2 = r#"
+            [project]
+            authors = ["Test"]
+            entry = "main.sw"
+            license = "MIT"
+            name = "test_pkg"
+        "#;
+        fs::write(base_path2.join("Forc.toml"), forc_toml2)?;
+        fs::write(
+            base_path2.join("src").join("main.sw"),
+            "fn main() -> u64 {\n    42\n}",
+        )?; // Different whitespace
+        let pkg_manifest2 = PackageManifestFile::from_file(base_path2.join("Forc.toml"))?;
+
+        let manifest_file1 = ManifestFile::Package(Box::new(pkg_manifest1));
+        let manifest_file2 = ManifestFile::Package(Box::new(pkg_manifest2));
+
+        let checksum1 = manifest_file1.checksum()?;
+        let checksum2 = manifest_file2.checksum()?;
+
+        // Different whitespace should result in different checksums
+        assert_ne!(checksum1, checksum2);
+
+        Ok(())
+    }
 
     #[test]
     fn deserialize_contract_dependency() {
