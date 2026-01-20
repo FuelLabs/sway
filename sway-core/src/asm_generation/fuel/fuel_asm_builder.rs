@@ -1073,10 +1073,36 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         let mut sorted_cases = cases.to_vec();
         sorted_cases.sort_by_key(|(val, _)| *val);
 
-        // If the lowest case value isn't 0, we subtract the descriminant and each
-        // case value by that amount to make the lowest case 0.
         let min_case_value = sorted_cases.first().unwrap().0;
         let discrim_reg = self.value_to_register(discriminant)?;
+
+        // If the descriminant is smaller than the lowest case value, jump to default.
+        // TODO: For matching on enums where the compiler ensures that all variants are
+        // covered, this check can be skipped.
+        {
+            let cond_reg = self.reg_seqr.next();
+            self.immediate_to_reg(
+                min_case_value,
+                cond_reg.clone(),
+                None,
+                "min_case_value",
+                None,
+            );
+            self.cur_bytecode.push(Op {
+                opcode: Either::Left(VirtualOp::LT(
+                    cond_reg.clone(),
+                    discrim_reg.clone(),
+                    cond_reg.clone(),
+                )),
+                comment: "check if switch discriminant < min case value".into(),
+                owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+            });
+            self.cur_bytecode
+                .push(Op::jump_if_not_zero(cond_reg, default_label));
+        }
+
+        // If the lowest case value isn't 0, we subtract the descriminant and each
+        // case value by that amount to make the lowest case 0.
         if min_case_value > 0 {
             self.cur_bytecode.push(Op {
                 opcode: Either::Left(VirtualOp::SUBI(
