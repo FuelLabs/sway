@@ -588,7 +588,6 @@ fn const_eval_typed_expr(
             let function_decl = lookup.engines.de().get_function(fn_ref);
 
             if function_decl.is_trait_method_dummy {
-                todo!("{}", expr.span.as_str());
                 return Err(ConstEvalError::CompileError);
             }
 
