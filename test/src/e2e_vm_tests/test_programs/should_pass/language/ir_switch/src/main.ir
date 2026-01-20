@@ -30,24 +30,28 @@ script {
         v30 = call switcher(v3)
         v31 = add v30, v21
 
-        ret u64 v31
+        v4 = const u64 4
+        v40 = call switcher(v4)
+        v41 = add v40, v31
+
+        ret u64 v41
     }
 
     fn switcher(v: u64) -> u64 {
         entry(v: u64):
         // check: switch
-        switch v, default: default_block(), [1: block1(), 2: block2()]
+        switch v, default: default_block(), [1: block1(), 3: block3()]
 
         default_block():
-        v = const u64 3
+        v = const u64 4
         ret u64 v
 
         block1():
         v1 = const u64 1
         ret u64 v1
 
-        block2():
-        v2 = const u64 2
-        ret u64 v2
+        block3():
+        v3 = const u64 3
+        ret u64 v3
     }
 }
