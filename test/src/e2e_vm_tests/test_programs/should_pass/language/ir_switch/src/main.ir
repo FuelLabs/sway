@@ -36,15 +36,11 @@ script {
     fn switcher(v: u64) -> u64 {
         entry(v: u64):
         // check: switch
-        switch v, default: default_block(), [0: block0(), 1: block1(), 2: block2()]
+        switch v, default: default_block(), [1: block1(), 2: block2()]
 
         default_block():
         v = const u64 3
         ret u64 v
-
-        block0():
-        v0 = const u64 0
-        ret u64 v0
 
         block1():
         v1 = const u64 1
