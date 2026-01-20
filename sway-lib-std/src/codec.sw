@@ -3195,7 +3195,8 @@ pub fn encode<T>(item: T) -> raw_slice
 where
     T: AbiEncode,
 {
-    if is_encode_trivial::<T>() {
+    const IS_TRIVIAL: bool = is_encode_trivial::<T>();
+    if IS_TRIVIAL {
         let size = __size_of::<T>();
         let ptr = asm(size: size, src: &item) {
             aloc size;
@@ -3228,7 +3229,8 @@ pub fn encode_and_return<T>(item: &T) -> !
 where
     T: AbiEncode,
 {
-    if is_encode_trivial::<T>() {
+    const IS_TRIVIAL: bool = is_encode_trivial::<T>();
+    if IS_TRIVIAL {
         let size = __size_of::<T>();
         __contract_ret(item, size);
     } else {
