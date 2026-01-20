@@ -5,15 +5,9 @@ use std::{
 };
 
 use crate::{
-    engine_threading::*,
-    ir_generation::function::{get_encoding_representation_by_id, get_memory_id},
-    language::{
-        ty::{self, ProjectionKind, TyConstantDecl, TyIntrinsicFunctionKind},
-        CallPath, Literal,
-    },
-    metadata::MetadataManager,
-    semantic_analysis::*,
-    TypeInfo, UnifyCheck,
+    TypeInfo, UnifyCheck, engine_threading::*, ir_generation::function::{get_encoding_representation_by_id, get_memory_id}, language::{
+        CallPath, LazyOp, Literal, ty::{self, ProjectionKind, TyConstantDecl, TyIntrinsicFunctionKind}
+    }, metadata::MetadataManager, semantic_analysis::*
 };
 
 use super::{
@@ -165,7 +159,6 @@ pub(crate) fn compile_const_decl(
                         env.module,
                         env.module_ns,
                         env.function_compiler,
-                        &call_path,
                         &value,
                     )?;
 
@@ -199,7 +192,6 @@ pub(super) fn compile_constant_expression(
     module: Module,
     module_ns: Option<&namespace::Module>,
     function_compiler: Option<&FnCompiler>,
-    _call_path: &CallPath,
     const_expr: &ty::TyExpression,
 ) -> Result<Value, CompileError> {
     let span_id_idx = md_mgr.span_to_md(context, &const_expr.span);
@@ -594,6 +586,12 @@ fn const_eval_typed_expr(
             }
 
             let function_decl = lookup.engines.de().get_function(fn_ref);
+
+            if function_decl.is_trait_method_dummy {
+                todo!("{}", expr.span.as_str());
+                return Err(ConstEvalError::CompileError);
+            }
+
             let res = const_eval_codeblock(lookup, known_consts, &function_decl.body);
 
             for (name, _) in arguments {
@@ -1040,9 +1038,17 @@ fn const_eval_typed_expr(
                 }
             }
         }
+        ty::TyExpressionVariant::LazyOperator { op, lhs, rhs  } => {
+            let lhs = const_eval_typed_expr(lookup, known_consts, lhs)?.unwrap();
+            match (op, lhs.get_content(lookup.context).as_bool().unwrap()) {
+                (LazyOp::And, true) | (LazyOp::Or, false) => {
+                    const_eval_typed_expr(lookup, known_consts, rhs)?
+                },
+                (LazyOp::And, false) | (LazyOp::Or, true) => Some(lhs),
+            }
+        }
         ty::TyExpressionVariant::FunctionParameter
         | ty::TyExpressionVariant::AsmExpression { .. }
-        | ty::TyExpressionVariant::LazyOperator { .. }
         | ty::TyExpressionVariant::AbiCast { .. }
         | ty::TyExpressionVariant::StorageAccess(_)
         | ty::TyExpressionVariant::AbiName(_)

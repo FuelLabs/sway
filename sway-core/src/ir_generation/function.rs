@@ -3704,16 +3704,85 @@ impl<'a> FnCompiler<'a> {
         ast_else: Option<&ty::TyExpression>,
         return_type: TypeId,
     ) -> Result<TerminatorValue, CompileError> {
+        let return_type = convert_resolved_typeid_no_span(
+                self.engines,
+                context,
+                md_mgr,
+                self.module,
+                Some(self),
+                return_type,
+            )
+            .unwrap_or_else(|_| Type::get_unit(context));
+        
+        let cond_span_md_idx = md_mgr.span_to_md(context, &ast_condition.span);
+        let cond_block = self.current_block;        
+
+        // Check if the condition is constant and only generate the correct branch
+        let condition_const_value = compile_constant_expression(
+            self.engines,
+            context,
+            md_mgr,
+            self.module,
+            None,
+            Some(self),
+            ast_condition,
+        );
+        if let Ok(condition_const_value) = condition_const_value {
+            let branch_block = self.function.create_block(context, Some("const_if_branch_block".into()));
+
+            cond_block
+                    .append(context)
+                    .branch(branch_block, vec![])
+                    .add_metadatum(context, cond_span_md_idx);
+
+            self.current_block = branch_block;
+
+            let branch_value = if condition_const_value.get_constant(context).expect("compile_constant_expression returns constants").get_content(context).as_bool().unwrap() {
+                self.compile_expression_to_register(context, md_mgr, ast_then)?
+            } else {
+                match ast_else {
+                    Some(ast_else) => {
+                        self.compile_expression_to_register(context, md_mgr, ast_else)?
+                    },
+                    None => {
+                        let v = Constant::unique(context, ConstantContent::new_unit(context));
+                        let v = Value::new_constant(context, v);
+                        TerminatorValue { value: CompiledValue::InRegister(v), is_terminator: false }
+                    },
+                }
+            };
+
+            if !branch_value.is_terminator {
+                let merge_block = self.function.create_block(context, Some("if_merge_block".into()));
+                let merge_val_arg_idx = merge_block.new_arg(context, return_type);
+                branch_block
+                    .append(context)
+                    .branch(merge_block, vec![branch_value.value.value()])
+                    .add_metadatum(context, cond_span_md_idx);
+                let val = merge_block.get_arg(context, merge_val_arg_idx).unwrap();
+
+                self.current_block = merge_block;
+                return Ok(TerminatorValue::new(
+                CompiledValue::InRegister(val),
+                    context,
+                ));
+            } else {
+                return Ok(branch_value);
+            }
+        }
+
+        let merge_block = self.function.create_block(context, Some("if_merge_block".into()));
+        let merge_val_arg_idx = merge_block.new_arg(context, return_type);
+
         // Compile the condition expression in the entry block.  Then save the current block so we
         // can jump to the true and false blocks after we've created them.
-        let cond_span_md_idx = md_mgr.span_to_md(context, &ast_condition.span);
         let cond_value = return_on_termination_or_extract!(self.compile_expression_to_register(
             context,
             md_mgr,
             ast_condition
         )?)
         .expect_register();
-        let cond_block = self.current_block;
+        
 
         // To keep the blocks in a nice order we create them only as we populate them.  It's
         // possible when compiling other expressions for the 'current' block to change, and it
@@ -3755,7 +3824,6 @@ impl<'a> FnCompiler<'a> {
             )
             .add_metadatum(context, cond_span_md_idx);
 
-        let merge_block = self.function.create_block(context, None);
         // Add a single argument to merge_block that merges true_value and false_value.
         // Rely on the type of the ast node when creating that argument.
         let val = if true_value.is_terminator && false_value.is_terminator {
@@ -3766,16 +3834,6 @@ impl<'a> FnCompiler<'a> {
             // value to the merge branch to signal that the expression diverges.
             merge_block.append(context).branch(true_block_begin, vec![])
         } else {
-            let return_type = convert_resolved_typeid_no_span(
-                self.engines,
-                context,
-                md_mgr,
-                self.module,
-                Some(self),
-                return_type,
-            )
-            .unwrap_or_else(|_| Type::get_unit(context));
-            let merge_val_arg_idx = merge_block.new_arg(context, return_type);
             if !true_value.is_terminator {
                 true_block_end
                     .append(context)
@@ -3789,6 +3847,7 @@ impl<'a> FnCompiler<'a> {
             self.current_block = merge_block;
             merge_block.get_arg(context, merge_val_arg_idx).unwrap()
         };
+
         Ok(TerminatorValue::new(
             CompiledValue::InRegister(val),
             context,
@@ -4171,7 +4230,6 @@ impl<'a> FnCompiler<'a> {
                 self.module,
                 None,
                 Some(self),
-                call_path,
                 value,
             )?;
 

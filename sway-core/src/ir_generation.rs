@@ -437,6 +437,8 @@ pub fn compile_program<'a>(
         )]
     })?;
 
+    eprintln!("{}", ctx);
+
     ctx.verify().map_err(|ir_error: sway_ir::IrError| {
         vec![CompileError::InternalOwned(
             ir_error.to_string(),
