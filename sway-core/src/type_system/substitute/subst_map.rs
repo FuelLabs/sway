@@ -478,6 +478,7 @@ impl TypeSubstMap {
                                 engines,
                                 type_subst_map: Some(self),
                                 subst_function_body: false,
+                                log: std::cell::RefCell::new(false)
                             };
                             if matches!(p.subst_inner(ctx), HasChanges::Yes) {
                                 need_to_create_new = true

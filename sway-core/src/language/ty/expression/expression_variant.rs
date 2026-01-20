@@ -681,6 +681,7 @@ impl HashWithEngines for TyExpressionVariant {
 
 impl SubstTypes for TyExpressionVariant {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
+        
         use TyExpressionVariant::*;
         match self {
             Literal(..) => HasChanges::No,

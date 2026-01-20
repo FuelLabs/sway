@@ -1,9 +1,5 @@
 use crate::{
-    decl_engine::*,
-    engine_threading::*,
-    language::{parsed::Declaration, ty::*, Visibility},
-    type_system::*,
-    types::*,
+    decl_engine::*, engine_threading::*, language::{Visibility, parsed::Declaration, ty::*}, semantic_analysis::TypeCheckContext, type_system::*, types::*
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -55,6 +51,23 @@ pub struct ConstGenericDecl {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ConstantDecl {
     pub decl_id: DeclId<TyConstantDecl>,
+}
+
+impl ReplaceDecls for ConstantDecl {
+    fn replace_decls_inner(
+        &mut self,
+        decl_mapping: &DeclMapping,
+        handler: &Handler,
+        ctx: &mut TypeCheckContext,
+    ) -> Result<bool, ErrorEmitted> {
+        let mut decl = TyConstantDecl::clone(&*ctx.engines.de().get(&self.decl_id));
+        let has_changes = decl.replace_decls(decl_mapping, handler, ctx)?;
+        if has_changes {
+            let new_ref = ctx.engines.de().insert(decl, None); // TODO fix this none
+            self.decl_id.replace_id(*new_ref.id());
+        }
+        Ok(has_changes)
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
