@@ -538,14 +538,13 @@ fn const_eval_typed_expr(
     known_consts: &mut MappedStack<Ident, Constant>,
     expr: &ty::TyExpression,
 ) -> Result<Option<Constant>, ConstEvalError> {
-    eprintln!("            {}", expr.span.as_str());
     if let TypeInfo::ErrorRecovery(_) = &*lookup.engines.te().get(expr.return_type) {
         return Err(ConstEvalError::CannotBeEvaluatedToConst {
             span: expr.span.clone(),
         });
     }
 
-    let constant = match &expr.expression {
+    Ok(match &expr.expression {
         ty::TyExpressionVariant::ConstGenericExpression { decl, .. } => {
             assert!(decl.value.is_some());
             const_eval_typed_expr(lookup, known_consts, decl.value.as_ref().unwrap())?
@@ -1059,10 +1058,7 @@ fn const_eval_typed_expr(
                 span: expr.span.clone(),
             });
         }
-    };
-    
-    eprintln!("            {} {:?}", expr.span.as_str(), constant.as_ref().map(|x| x.get_content(lookup.context)));
-    Ok(constant)
+    })
 }
 
 // the (constant) value of a codeblock is essentially it's last expression if there is one
