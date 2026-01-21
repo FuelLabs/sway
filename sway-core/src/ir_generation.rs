@@ -15,7 +15,8 @@ use std::{
 use sway_error::error::CompileError;
 use sway_features::ExperimentalFeatures;
 use sway_ir::{
-    Backtrace, Context, Function, InstOp, InstructionInserter, IrError, Kind, Module, Type, Value,
+    Backtrace, Context, Function, InstOp, InstructionInserter, IrError, Kind, Module, Type,
+    TypeContent, Value,
 };
 use sway_types::{span::Span, Ident};
 
@@ -452,14 +453,6 @@ fn type_correction(ctx: &mut Context) -> Result<(), IrError> {
         use_instr: sway_ir::Value,
         use_idx: usize,
     }
-    // This is a copy of sway_core::asm_generation::fuel::fuel_asm_builder::FuelAsmBuilder::is_copy_type.
-    fn is_copy_type(ty: &Type, context: &Context) -> bool {
-        ty.is_unit(context)
-            || ty.is_never(context)
-            || ty.is_bool(context)
-            || ty.is_ptr(context)
-            || ty.get_uint_width(context).map(|x| x < 256).unwrap_or(false)
-    }
 
     let mut instrs_to_fix = Vec::new();
     for module in ctx.module_iter() {
@@ -493,7 +486,7 @@ fn type_correction(ctx: &mut Context) -> Result<(), IrError> {
                             .map(|(idx, init)| (idx, init.get_type(ctx).unwrap()))
                             .collect::<Vec<_>>();
                         for (arg_idx, arg_ty) in args {
-                            if !is_copy_type(&arg_ty, ctx) {
+                            if !arg_ty.is_copy_type(ctx) {
                                 instrs_to_fix.push(TypeCorrection {
                                     actual_ty: arg_ty,
                                     expected_ty: Type::new_typed_pointer(ctx, arg_ty),
@@ -604,6 +597,41 @@ fn type_correction(ctx: &mut Context) -> Result<(), IrError> {
                                     use_instr: instr,
                                     use_idx: 0,
                                 });
+                            }
+                        }
+                    }
+                    InstOp::InitAggr(init_aggr) => {
+                        let aggr_type = init_aggr.aggr_ptr.match_ptr_type(ctx).unwrap();
+                        let expected_types = match aggr_type.get_content(ctx) {
+                            TypeContent::Array(array_elem_type, length) => {
+                                &std::iter::repeat_n(*array_elem_type, *length as usize)
+                                    .collect::<Vec<_>>()
+                            }
+                            TypeContent::Struct(field_types) => field_types,
+                            _ => {
+                                unreachable!("`aggr_ptr` must point to an array or struct IR type")
+                            }
+                        };
+                        for (idx, (initializer, expected_ty)) in init_aggr
+                            .initializers
+                            .iter()
+                            .zip(expected_types.iter())
+                            .enumerate()
+                        {
+                            let initializer_ty = initializer.get_type(ctx).unwrap();
+                            if let Some(initializer_pointee_ty) =
+                                initializer_ty.get_pointee_type(ctx)
+                            {
+                                // The value being stored in initialization is a pointer to what should've been stored.
+                                // So we just load the value and store it.
+                                if *expected_ty == initializer_pointee_ty {
+                                    instrs_to_fix.push(TypeCorrection {
+                                        actual_ty: initializer_ty,
+                                        expected_ty: initializer_pointee_ty,
+                                        use_instr: instr,
+                                        use_idx: idx + 1, // The first operand (at index zero) is the `aggr_ptr`, therefore plus one.
+                                    });
+                                }
                             }
                         }
                     }

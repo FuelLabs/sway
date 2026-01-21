@@ -1,10 +1,9 @@
 [project]
 authors = ["Fuel Labs <contact@fuel.sh>"]
 license = "Apache-2.0"
-name = "array_oob_global_const_index"
+name = "array_oob_const_index"
 entry = "main.sw"
 implicit-std = false
 
 [dependencies]
-std = { path = "../../../reduced_std_libs/sway-lib-std-core" }
 

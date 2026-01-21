@@ -8,7 +8,7 @@ use crate::{
     engine_threading::*,
     ir_generation::function::{get_encoding_representation_by_id, get_memory_id},
     language::{
-        ty::{self, TyConstantDecl, TyIntrinsicFunctionKind},
+        ty::{self, ProjectionKind, TyConstantDecl, TyIntrinsicFunctionKind},
         CallPath, Literal,
     },
     metadata::MetadataManager,
@@ -22,6 +22,7 @@ use super::{
     types::*,
 };
 
+use hashbrown::HashSet;
 use sway_ast::Intrinsic;
 use sway_error::error::CompileError;
 use sway_ir::{
@@ -252,12 +253,16 @@ pub(crate) fn compile_constant_expression_to_constant(
             span: const_expr.span.clone(),
         }),
     };
-    let mut known_consts = MappedStack::<Ident, Constant>::new();
 
-    match const_eval_typed_expr(lookup, &mut known_consts, const_expr) {
-        Ok(Some(constant)) => Ok(constant),
-        Ok(None) => err,
-        Err(_) => err,
+    if contains_outer_vars(const_expr, &HashSet::new()) {
+        err
+    } else {
+        let mut known_consts = MappedStack::<Ident, Constant>::new();
+        match const_eval_typed_expr(lookup, &mut known_consts, const_expr) {
+            Ok(Some(constant)) => Ok(constant),
+            Ok(None) => err,
+            Err(_) => err,
+        }
     }
 }
 
@@ -294,6 +299,244 @@ fn create_array_from_vec(
     });
 
     arr.map(|c| Constant::unique(lookup.context, c))
+}
+
+/// Returns true if the `expr` contains any variables declared outside of itself.
+///
+/// `in_expr_vars` are variables defined within the `expr` in a scope being examined.
+fn contains_outer_vars(expr: &ty::TyExpression, in_expr_vars: &HashSet<&Ident>) -> bool {
+    match &expr.expression {
+        ty::TyExpressionVariant::ConstGenericExpression {
+            decl,
+            span: _,
+            call_path: _,
+        } => decl
+            .value
+            .as_ref()
+            .is_some_and(|value| contains_outer_vars(value, in_expr_vars)),
+        ty::TyExpressionVariant::Literal(_) => false,
+        ty::TyExpressionVariant::FunctionApplication {
+            arguments,
+            fn_ref: _,
+            call_path: _,
+            selector,
+            type_binding: _,
+            method_target: _,
+            contract_call_params,
+            contract_caller,
+        } => {
+            arguments
+                .iter()
+                .any(|(_ident, arg)| contains_outer_vars(arg, in_expr_vars))
+                || selector.as_ref().is_some_and(|selector| {
+                    contains_outer_vars(&selector.contract_address, in_expr_vars)
+                        || contains_outer_vars(&selector.contract_caller, in_expr_vars)
+                })
+                || contract_call_params
+                    .values()
+                    .any(|param| contains_outer_vars(param, in_expr_vars))
+                || contract_caller
+                    .as_ref()
+                    .is_some_and(|caller| contains_outer_vars(caller, in_expr_vars))
+        }
+        ty::TyExpressionVariant::ConstantExpression {
+            decl: _,
+            span: _,
+            call_path: _,
+        } => false,
+        ty::TyExpressionVariant::ConfigurableExpression { .. } => false,
+        ty::TyExpressionVariant::VariableExpression { name, .. } => !in_expr_vars.contains(name),
+        ty::TyExpressionVariant::StructExpression {
+            fields,
+            instantiation_span: _,
+            struct_id: _,
+            call_path_binding: _,
+        } => fields
+            .iter()
+            .any(|field| contains_outer_vars(&field.value, in_expr_vars)),
+        ty::TyExpressionVariant::Tuple { fields } => fields
+            .iter()
+            .any(|field| contains_outer_vars(field, in_expr_vars)),
+        ty::TyExpressionVariant::ArrayExplicit {
+            elem_type: _,
+            contents,
+        } => contents
+            .iter()
+            .any(|elem| contains_outer_vars(elem, in_expr_vars)),
+        ty::TyExpressionVariant::ArrayRepeat {
+            elem_type: _,
+            value,
+            length,
+        } => contains_outer_vars(value, in_expr_vars) || contains_outer_vars(length, in_expr_vars),
+        ty::TyExpressionVariant::EnumInstantiation {
+            enum_ref: _,
+            tag: _,
+            contents,
+            variant_instantiation_span: _,
+            variant_name: _,
+            call_path_binding: _,
+            call_path_decl: _,
+        } => contents
+            .as_ref()
+            .is_some_and(|value| contains_outer_vars(value, in_expr_vars)),
+        ty::TyExpressionVariant::StructFieldAccess {
+            prefix,
+            field_to_access: _,
+            resolved_type_of_parent: _,
+            field_instantiation_span: _,
+        } => contains_outer_vars(prefix, in_expr_vars),
+        ty::TyExpressionVariant::TupleElemAccess {
+            prefix,
+            elem_to_access_num: _,
+            resolved_type_of_parent: _,
+            elem_to_access_span: _,
+        } => contains_outer_vars(prefix, in_expr_vars),
+        ty::TyExpressionVariant::ImplicitReturn(exp) => contains_outer_vars(exp, in_expr_vars),
+        ty::TyExpressionVariant::Return(exp) => contains_outer_vars(exp, in_expr_vars),
+        ty::TyExpressionVariant::Panic(exp) => contains_outer_vars(exp, in_expr_vars),
+        ty::TyExpressionVariant::MatchExp {
+            desugared,
+            scrutinees: _,
+        } => contains_outer_vars(desugared, in_expr_vars),
+        ty::TyExpressionVariant::IntrinsicFunction(kind) => kind
+            .arguments
+            .iter()
+            .any(|arg| contains_outer_vars(arg, in_expr_vars)),
+        ty::TyExpressionVariant::IfExp {
+            condition,
+            then,
+            r#else,
+        } => {
+            contains_outer_vars(condition, in_expr_vars)
+                || contains_outer_vars(then, in_expr_vars)
+                || r#else
+                    .as_ref()
+                    .map_or(false, |e| contains_outer_vars(e, in_expr_vars))
+        }
+        ty::TyExpressionVariant::CodeBlock(codeblock) => {
+            codeblock_contains_outer_vars(codeblock, in_expr_vars.clone())
+        }
+        ty::TyExpressionVariant::ArrayIndex { prefix, index } => {
+            contains_outer_vars(prefix, in_expr_vars) || contains_outer_vars(index, in_expr_vars)
+        }
+        ty::TyExpressionVariant::Ref(exp) => contains_outer_vars(exp, in_expr_vars),
+        ty::TyExpressionVariant::Deref(exp) => contains_outer_vars(exp, in_expr_vars),
+        ty::TyExpressionVariant::EnumTag { exp } => contains_outer_vars(exp, in_expr_vars),
+        ty::TyExpressionVariant::UnsafeDowncast {
+            exp,
+            variant: _,
+            call_path_decl: _,
+        } => contains_outer_vars(exp, in_expr_vars),
+        ty::TyExpressionVariant::WhileLoop { condition, body } => {
+            contains_outer_vars(condition, in_expr_vars)
+                || codeblock_contains_outer_vars(body, in_expr_vars.clone())
+        }
+        ty::TyExpressionVariant::Reassignment(r) => {
+            fn projection_kind_contains_outer_vars<'a>(
+                proj_kind: &'a ProjectionKind,
+                in_expr_vars: &HashSet<&'a Ident>,
+            ) -> bool {
+                match proj_kind {
+                    ProjectionKind::ArrayIndex {
+                        index,
+                        index_span: _,
+                    } => contains_outer_vars(index, in_expr_vars),
+                    ProjectionKind::StructField {
+                        name: _,
+                        field_to_access: _,
+                    } => false,
+                    ProjectionKind::TupleField {
+                        index: _,
+                        index_span: _,
+                    } => false,
+                }
+            }
+
+            contains_outer_vars(&r.rhs, in_expr_vars) || {
+                match &r.lhs {
+                    ty::TyReassignmentTarget::ElementAccess {
+                        base_name,
+                        base_type: _,
+                        indices,
+                    } => {
+                        !in_expr_vars.contains(base_name)
+                            || indices.iter().any(|proj_kind| {
+                                projection_kind_contains_outer_vars(proj_kind, in_expr_vars)
+                            })
+                    }
+                    ty::TyReassignmentTarget::DerefAccess { exp, indices } => {
+                        contains_outer_vars(exp, in_expr_vars)
+                            || indices.iter().any(|proj_kind| {
+                                projection_kind_contains_outer_vars(proj_kind, in_expr_vars)
+                            })
+                    }
+                }
+            }
+        }
+        ty::TyExpressionVariant::AsmExpression {
+            registers,
+            body: _,
+            returns: _,
+            whole_block_span: _,
+        } => registers.iter().any(|reg| {
+            reg.initializer
+                .as_ref()
+                .is_some_and(|init| contains_outer_vars(init, in_expr_vars))
+        }),
+        ty::TyExpressionVariant::LazyOperator { op: _, lhs, rhs } => {
+            contains_outer_vars(lhs, in_expr_vars) || contains_outer_vars(rhs, in_expr_vars)
+        }
+        ty::TyExpressionVariant::AbiCast {
+            abi_name: _,
+            address,
+            span: _,
+        } => contains_outer_vars(address, in_expr_vars),
+        ty::TyExpressionVariant::StorageAccess(storage_access) => storage_access
+            .key_expression
+            .as_ref()
+            .is_some_and(|e| contains_outer_vars(e, in_expr_vars)),
+        ty::TyExpressionVariant::AbiName(_) => false,
+        ty::TyExpressionVariant::FunctionParameter => false,
+        ty::TyExpressionVariant::Break => false,
+        ty::TyExpressionVariant::Continue => false,
+        ty::TyExpressionVariant::ForLoop { desugared } => {
+            contains_outer_vars(desugared, in_expr_vars)
+        }
+    }
+}
+
+fn codeblock_contains_outer_vars<'a>(
+    codeblock: &'a ty::TyCodeBlock,
+    mut in_expr_vars: HashSet<&'a sway_types::BaseIdent>,
+) -> bool {
+    for node in codeblock.contents.iter() {
+        match &node.content {
+            ty::TyAstNodeContent::Declaration(decl) => match decl {
+                ty::TyDecl::VariableDecl(var_decl) => {
+                    if contains_outer_vars(&var_decl.body, &in_expr_vars) {
+                        return true;
+                    }
+                    in_expr_vars.insert(&var_decl.name);
+                }
+                // Note that we don't need to check the body of constant declaration.
+                // The fact that it has passed the const eval phase already
+                // means that it's const-evaluable and, thus, does not contain any
+                // outer variables.
+                ty::TyDecl::ConstantDecl(_) => {}
+                // Other declarations cannot contain outer variables.
+                // That's guaranteed by the language semantics.
+                _ => {}
+            },
+            ty::TyAstNodeContent::Expression(e) => {
+                if contains_outer_vars(e, &in_expr_vars) {
+                    return true;
+                }
+            }
+            ty::TyAstNodeContent::SideEffect(_) => {}
+            ty::TyAstNodeContent::Error(_, _) => {}
+        }
+    }
+    false
 }
 
 /// Given an environment mapping names to constants,
@@ -843,8 +1086,9 @@ fn const_eval_codeblock(
                 let ty_const_decl = lookup.engines.de().get_constant(&const_decl.decl_id);
                 if let Some(constant) = ty_const_decl
                     .value
-                    .clone()
-                    .and_then(|expr| const_eval_typed_expr(lookup, known_consts, &expr).ok())
+                    .as_ref()
+                    .filter(|expr| !contains_outer_vars(expr, &HashSet::new()))
+                    .and_then(|expr| const_eval_typed_expr(lookup, known_consts, expr).ok())
                     .flatten()
                 {
                     known_consts.push(ty_const_decl.name().clone(), constant);

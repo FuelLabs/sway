@@ -1,0 +1,26 @@
+script {
+    entry fn main() -> bool {
+        local { u64 } __struct_init_00
+        local { u64 } __struct_init_01
+        local { u64 } __struct_init_02
+        local { u64 } __struct_init_03
+
+        entry():
+        v240v1 = get_local __ptr { u64 }, __struct_init_00
+        mem_clear_val v240v1
+        v245v1 = get_local __ptr { u64 }, __struct_init_01
+        mem_clear_val v245v1
+        v254v1 = get_local __ptr { u64 }, __struct_init_02
+        mem_clear_val v254v1
+        v265v1 = get_local __ptr { u64 }, __struct_init_03
+        mem_clear_val v265v1
+        v224v1 = const bool true
+        ret bool v224v1
+    }
+}
+
+// regex: VAL=v\d+v\d+
+
+// not: local { u64 }
+// not: get_local __ptr { u64 }
+// not: mem_clear_val $VAL

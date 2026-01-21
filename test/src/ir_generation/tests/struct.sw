@@ -13,25 +13,41 @@ struct Record {
     b: u64,
 }
 
+// ::check-ir::
+
+// check: local { u64, u64 } __struct_init_0
 // check: local { u64, u64 } record
 
-// check: $(temp_var=$VAL) = get_local __ptr { u64, u64 }, __anon_0
+// check: $(ptr_struct_init=$VAL) = get_local __ptr { u64, u64 }, __struct_init_0
+// check: $(c_1=$VAL) = const u64 40
+// check: $(c_2=$VAL) = const u64 2
+// check: $(init_aggr=$VAL) = init_aggr $ptr_struct_init [$c_1, $c_2]
+// check: $(init_aggr_val=$VAL) = load $init_aggr
+// check: $(ptr_record=$VAL) = get_local __ptr { u64, u64 }, record
+// check: store $init_aggr_val to $ptr_record
+// check: $(ptr_record=$VAL) = get_local __ptr { u64, u64 }, record
+// check: $(c_1=$VAL) = const u64 0
+// check: $(ptr_record_a=$VAL) = get_elem_ptr $ptr_record, __ptr u64, $c_1
+// check: $(load_a=$VAL) = load $ptr_record_a
+// check: ret u64 $load_a
 
-// check: $(idx_val=$VAL) = const u64 0
-// check: $(temp_ptr=$VAL) = get_elem_ptr $temp_var, __ptr u64, $idx_val
-// check: $(forty=$VAL) = const u64 40
-// check: store $forty to $temp_ptr
-// check: $(idx_val=$VAL) = const u64 1
-// check: $(temp_ptr=$VAL) = get_elem_ptr $temp_var, __ptr u64, $idx_val
-// check: $(two=$VAL) = const u64 2
-// check: store $two to $temp_ptr
+// ::check-ir-optimized::
+// pass: lower-init-aggr
 
-// check: $(temp_val=$VAL) = load $temp_var
-// check: $(record_ptr=$VAL) = get_local __ptr { u64, u64 }, record
-// check: store $temp_val to $record_ptr
-
-// check: $(record_ptr=$VAL) = get_local __ptr { u64, u64 }, record
-// check: $(idx_val=$VAL) = const u64 0
-// check: $(field_ptr=$VAL) = get_elem_ptr $record_ptr, __ptr u64, $idx_val
-// check: $(field_val=$VAL) = load $field_ptr
-// check: ret u64 $field_val
+// check: $(ptr_struct_init=$VAL) = get_local __ptr { u64, u64 }, __struct_init_0
+// check: $(c_1=$VAL) = const u64 0
+// check: $(ptr_struct_init_a=$VAL) = get_elem_ptr $ptr_struct_init, __ptr u64, $c_1
+// check: $(c_40=$VAL) = const u64 40
+// check: store $c_40 to $ptr_struct_init_a
+// check: $(c_1=$VAL) = const u64 1
+// check: $(ptr_struct_init_b=$VAL) = get_elem_ptr $ptr_struct_init, __ptr u64, $c_1
+// check: $(c_2=$VAL) = const u64 2
+// check: store $c_2 to $ptr_struct_init_b
+// check: $(load_struct_init=$VAL) = load $ptr_struct_init
+// check: $(ptr_record=$VAL) = get_local __ptr { u64, u64 }, record
+// check: store $load_struct_init to $ptr_record
+// check: $(ptr_record=$VAL) = get_local __ptr { u64, u64 }, record
+// check: $(c_1=$VAL) = const u64 0
+// check: $(ptr_record_a=$VAL) = get_elem_ptr $ptr_record, __ptr u64, $c_1
+// check: $(load_a=$VAL) = load $ptr_record_a
+// check: ret u64 $load_a

@@ -78,6 +78,12 @@ pub enum IrError {
     VerifyStoreMismatchedTypes(Option<Value>),
     VerifyStoreToNonPointer(String),
     VerifyUntypedValuePassedToFunction,
+    VerifyInitAggrAggrPointerMismatch,
+    VerifyInitAggrMismatchedStructInitializerCount(usize, usize),
+    VerifyInitAggrMismatchedArrayInitializerCount(usize, usize),
+    VerifyInitAggrUnknownInitializerType(usize),
+    VerifyInitAggrMismatchedStructFieldType(usize, String, String),
+    VerifyInitAggrMismatchedArrayElementType(usize, String, String),
 }
 impl IrError {
     pub(crate) fn get_problematic_value(&self) -> Option<&Value> {
@@ -496,6 +502,48 @@ impl fmt::Display for IrError {
                     f,
                     "Verification failed: Immutable local variable {local_name} in function \
                     {func_name} is missing an initializer."
+                )
+            }
+            IrError::VerifyInitAggrAggrPointerMismatch => {
+                write!(
+                    f,
+                    "Verification failed: init_aggr instruction's aggregate pointer must be a pointer to IR struct or array."
+                )
+            }
+            IrError::VerifyInitAggrMismatchedStructInitializerCount(
+                num_of_fields,
+                num_of_initializers,
+            ) => {
+                write!(
+                    f,
+                    "Verification failed: init_aggr instruction has {num_of_initializers} initializer(s) and the initialized struct has {num_of_fields} field(s)."
+                )
+            }
+            IrError::VerifyInitAggrMismatchedArrayInitializerCount(
+                num_of_elements,
+                num_of_initializers,
+            ) => {
+                write!(
+                    f,
+                    "Verification failed: init_aggr instruction has {num_of_initializers} initializer(s) and the initialized array has {num_of_elements} element(s)."
+                )
+            }
+            IrError::VerifyInitAggrUnknownInitializerType(idx) => {
+                write!(
+                    f,
+                    "Verification failed: init_aggr instruction has an initializer with an unknown type. Initializer index: {idx}."
+                )
+            }
+            IrError::VerifyInitAggrMismatchedStructFieldType(idx, field_ty, initializer_ty) => {
+                write!(
+                    f,
+                    "Verification failed: init_aggr instruction has an initializer with a type mismatch for struct field at index {idx}. Expected field type: {field_ty}, found initializer type: {initializer_ty}."
+                )
+            }
+            IrError::VerifyInitAggrMismatchedArrayElementType(idx, element_ty, initializer_ty) => {
+                write!(
+                    f,
+                    "Verification failed: init_aggr instruction has an initializer with a type mismatch for array element at index {idx}. Expected element type: {element_ty}, found initializer type: {initializer_ty}."
                 )
             }
         }

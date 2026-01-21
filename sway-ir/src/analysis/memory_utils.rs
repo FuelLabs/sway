@@ -8,8 +8,8 @@ use sway_types::{FxIndexMap, FxIndexSet};
 
 use crate::{
     AnalysisResult, AnalysisResultT, AnalysisResults, BlockArgument, Context, FuelVmInstruction,
-    Function, InstOp, Instruction, IrError, LocalVar, Pass, PassMutability, ScopedPass, Type,
-    Value, ValueDatum,
+    Function, InitAggr, InstOp, Instruction, IrError, LocalVar, Pass, PassMutability, ScopedPass,
+    Type, Value, ValueDatum,
 };
 
 pub const ESCAPED_SYMBOLS_NAME: &str = "escaped-symbols";
@@ -455,6 +455,15 @@ fn compute_escaped_symbols(context: &Context, function: &Function) -> EscapedSym
                 add_from_val(&mut result, stored_val, &mut is_complete)
             }
             InstOp::Alloc { .. } => (),
+            InstOp::InitAggr(init_aggr) => {
+                // Conceptually, we can think of `InitAggr` as a series of stores into the aggregate.
+                // If any of the initializer values refer to symbols, those symbols escape.
+                // This happens when the aggregate contains pointers, e.g., a Sway struct with fields
+                // that are references.
+                for init in init_aggr.initializers.iter() {
+                    add_from_val(&mut result, init, &mut is_complete);
+                }
+            }
         }
     }
 
@@ -535,6 +544,9 @@ pub fn get_loaded_ptr_values(context: &Context, inst: Value) -> Vec<Value> {
             arg1, arg2, arg3, ..
         }) => vec![*arg1, *arg2, *arg3],
         InstOp::FuelVm(FuelVmInstruction::Retd { ptr, .. }) => vec![*ptr],
+        // Similar like `Store` that never loads a pointer that might be its value,
+        // `InitAggr` does not load any pointers it might have in the initializers.
+        InstOp::InitAggr(_) => vec![],
     }
 }
 
@@ -582,6 +594,10 @@ pub fn get_stored_ptr_values(context: &Context, inst: Value) -> Vec<Value> {
         | InstOp::MemCopyVal { dst_val_ptr, .. }
         | InstOp::MemClearVal { dst_val_ptr }
         | InstOp::Store { dst_val_ptr, .. } => vec![*dst_val_ptr],
+        InstOp::InitAggr(InitAggr {
+            aggr_ptr,
+            initializers: _,
+        }) => vec![*aggr_ptr],
         InstOp::Load(_) => vec![],
         InstOp::Alloc { .. } => vec![],
         InstOp::FuelVm(vmop) => match vmop {

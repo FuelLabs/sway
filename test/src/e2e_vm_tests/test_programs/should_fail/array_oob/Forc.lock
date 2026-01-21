@@ -1,8 +1,0 @@
-[[package]]
-name = "array_oob"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "std"
-source = "path+from-root-B7F3BB0330F243C2"
