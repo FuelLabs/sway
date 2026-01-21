@@ -1,5 +1,10 @@
 use crate::{
-    decl_engine::*, engine_threading::*, language::{Visibility, parsed::Declaration, ty::*}, semantic_analysis::TypeCheckContext, type_system::*, types::*
+    decl_engine::*,
+    engine_threading::*,
+    language::{parsed::Declaration, ty::*, Visibility},
+    semantic_analysis::TypeCheckContext,
+    type_system::*,
+    types::*,
 };
 use serde::{Deserialize, Serialize};
 use std::{

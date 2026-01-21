@@ -455,7 +455,7 @@ impl MaterializeConstGenerics for TyExpression {
                         engines,
                         type_subst_map: Some(&type_subst_map),
                         subst_function_body: true,
-                        log: std::cell::RefCell::new(false)
+                        log: std::cell::RefCell::new(false),
                     });
 
                     if matches!(r, HasChanges::Yes) {

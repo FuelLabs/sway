@@ -46,7 +46,7 @@ impl<'a> SubstTypesContext<'a> {
             engines,
             type_subst_map: Some(type_subst_map),
             subst_function_body,
-            log: std::cell::RefCell::new(false)
+            log: std::cell::RefCell::new(false),
         }
     }
 
