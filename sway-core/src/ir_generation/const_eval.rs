@@ -5,7 +5,7 @@ use std::{
 };
 
 use crate::{
-    TypeInfo, UnifyCheck, engine_threading::*, ir_generation::function::{get_encoding_representation_by_id, get_memory_id}, language::{
+    TypeInfo, UnifyCheck, engine_threading::*, ir_generation::function::{get_encoding_id, get_encoding_representation_by_id, get_memory_id}, language::{
         CallPath, LazyOp, Literal, ty::{self, ProjectionKind, TyConstantDecl, TyIntrinsicFunctionKind}
     }, metadata::MetadataManager, semantic_analysis::*
 };
@@ -538,13 +538,14 @@ fn const_eval_typed_expr(
     known_consts: &mut MappedStack<Ident, Constant>,
     expr: &ty::TyExpression,
 ) -> Result<Option<Constant>, ConstEvalError> {
+    eprintln!("            {}", expr.span.as_str());
     if let TypeInfo::ErrorRecovery(_) = &*lookup.engines.te().get(expr.return_type) {
         return Err(ConstEvalError::CannotBeEvaluatedToConst {
             span: expr.span.clone(),
         });
     }
 
-    Ok(match &expr.expression {
+    let constant = match &expr.expression {
         ty::TyExpressionVariant::ConstGenericExpression { decl, .. } => {
             assert!(decl.value.is_some());
             const_eval_typed_expr(lookup, known_consts, decl.value.as_ref().unwrap())?
@@ -564,7 +565,7 @@ fn const_eval_typed_expr(
             ..
         } => {
             let mut actuals_const: Vec<_> = vec![];
-
+    
             for arg in arguments {
                 let (name, sub_expr) = arg;
                 let eval_expr_opt = const_eval_typed_expr(lookup, known_consts, sub_expr)?;
@@ -578,25 +579,25 @@ fn const_eval_typed_expr(
                     });
                 }
             }
-
+    
             assert!(actuals_const.len() == arguments.len());
-
+    
             for (name, cval) in actuals_const.into_iter() {
                 known_consts.push(name.clone(), cval);
             }
-
+    
             let function_decl = lookup.engines.de().get_function(fn_ref);
-
+    
             if function_decl.is_trait_method_dummy {
                 return Err(ConstEvalError::CompileError);
             }
-
+    
             let res = const_eval_codeblock(lookup, known_consts, &function_decl.body);
-
+    
             for (name, _) in arguments {
                 known_consts.pop(name);
             }
-
+    
             res?
         }
         ty::TyExpressionVariant::ConstantExpression { decl, .. } => {
@@ -636,7 +637,7 @@ fn const_eval_typed_expr(
             ..
         } => {
             let (mut field_types, mut field_vals): (Vec<_>, Vec<_>) = (vec![], vec![]);
-
+    
             for field in fields {
                 let ty::TyStructExpressionField { name: _, value, .. } = field;
                 let eval_expr_opt = const_eval_typed_expr(lookup, known_consts, value)?;
@@ -649,10 +650,10 @@ fn const_eval_typed_expr(
                     });
                 }
             }
-
+    
             assert!(field_types.len() == fields.len());
             assert!(field_vals.len() == fields.len());
-
+    
             get_struct_for_types(
                 lookup.engines,
                 lookup.context,
@@ -675,7 +676,7 @@ fn const_eval_typed_expr(
         }
         ty::TyExpressionVariant::Tuple { fields } => {
             let (mut field_types, mut field_vals): (Vec<_>, Vec<_>) = (vec![], vec![]);
-
+    
             for value in fields {
                 let eval_expr_opt = const_eval_typed_expr(lookup, known_consts, value)?;
                 if let Some(cv) = eval_expr_opt {
@@ -687,10 +688,10 @@ fn const_eval_typed_expr(
                     });
                 }
             }
-
+    
             assert!(field_types.len() == fields.len());
             assert!(field_vals.len() == fields.len());
-
+    
             create_tuple_aggregate(
                 lookup.engines,
                 lookup.context,
@@ -716,7 +717,7 @@ fn const_eval_typed_expr(
             contents,
         } => {
             let (mut element_types, mut element_vals): (Vec<_>, Vec<_>) = (vec![], vec![]);
-
+    
             for value in contents {
                 let eval_expr_opt = const_eval_typed_expr(lookup, known_consts, value)?;
                 if let Some(cv) = eval_expr_opt {
@@ -728,10 +729,10 @@ fn const_eval_typed_expr(
                     });
                 }
             }
-
+    
             assert!(element_types.len() == contents.len());
             assert!(element_vals.len() == contents.len());
-
+    
             create_array_from_vec(lookup, *elem_type, element_types, element_vals)
         }
         ty::TyExpressionVariant::ArrayRepeat {
@@ -747,10 +748,10 @@ fn const_eval_typed_expr(
                 .unwrap() as usize;
             let element_vals = (0..length).map(|_| constant).collect::<Vec<_>>();
             let element_types = (0..length).map(|_| value.return_type).collect::<Vec<_>>();
-
+    
             assert!(element_types.len() == length);
             assert!(element_vals.len() == length);
-
+    
             create_array_from_vec(lookup, *elem_type, element_types, element_vals)
         }
         ty::TyExpressionVariant::EnumInstantiation {
@@ -768,11 +769,11 @@ fn const_eval_typed_expr(
                 lookup.module,
                 &enum_decl.variants,
             );
-
+    
             if let Ok(enum_ty) = aggregate {
                 let tag_value = ConstantContent::new_uint(lookup.context, 64, *tag as u64);
                 let mut fields: Vec<ConstantContent> = vec![tag_value];
-
+    
                 match contents {
                     None => fields.push(ConstantContent::new_unit(lookup.context)),
                     Some(subexpr) => match const_eval_typed_expr(lookup, known_consts, subexpr)? {
@@ -784,7 +785,7 @@ fn const_eval_typed_expr(
                         }
                     },
                 }
-
+    
                 let fields_tys = enum_ty.get_field_types(lookup.context);
                 let c = ConstantContent::new_struct(lookup.context, fields_tys, fields);
                 let c = Constant::unique(lookup.context, c);
@@ -994,10 +995,10 @@ fn const_eval_typed_expr(
             // Arbitrary limit of iterations to avoid infinite loops like
             // while true {}
             let mut limit = 1_000_000;
-
+    
             while limit >= 0 {
                 limit -= 1;
-
+    
                 let condition = const_eval_typed_expr(lookup, known_consts, condition)?;
                 match condition.map(|x| x.get_content(lookup.context).value.clone()) {
                     Some(ConstantValue::Bool(true)) => {
@@ -1007,7 +1008,7 @@ fn const_eval_typed_expr(
                     _ => break,
                 }
             }
-
+    
             None
         }
         ty::TyExpressionVariant::Reassignment(r) => {
@@ -1039,11 +1040,11 @@ fn const_eval_typed_expr(
         }
         ty::TyExpressionVariant::LazyOperator { op, lhs, rhs  } => {
             let lhs = const_eval_typed_expr(lookup, known_consts, lhs)?.unwrap();
-            match (op, lhs.get_content(lookup.context).as_bool().unwrap()) {
-                (LazyOp::And, true) | (LazyOp::Or, false) => {
+            match (lhs.get_content(lookup.context).as_bool().unwrap(), op) {
+                (true, LazyOp::And) | (false, LazyOp::Or) => {
                     const_eval_typed_expr(lookup, known_consts, rhs)?
                 },
-                (LazyOp::And, false) | (LazyOp::Or, true) => Some(lhs),
+                (false, LazyOp::And) | (true, LazyOp::Or) => Some(lhs),
             }
         }
         ty::TyExpressionVariant::FunctionParameter
@@ -1058,7 +1059,10 @@ fn const_eval_typed_expr(
                 span: expr.span.clone(),
             });
         }
-    })
+    };
+    
+    eprintln!("            {} {:?}", expr.span.as_str(), constant.as_ref().map(|x| x.get_content(lookup.context)));
+    Ok(constant)
 }
 
 // the (constant) value of a codeblock is essentially it's last expression if there is one
@@ -1975,13 +1979,7 @@ fn const_eval_intrinsic(
 
             let t = intrinsic.type_arguments[0].as_type_argument().unwrap();
 
-            let r = get_encoding_representation_by_id(lookup.engines, t.type_id);
-
-            use std::hash::Hasher;
-            let mut state = DefaultHasher::default();
-            r.hash(&mut state);
-            let id = state.finish();
-
+            let id = get_encoding_id(lookup.engines, t.type_id);
             let c = ConstantContent {
                 ty: Type::get_uint64(lookup.context),
                 value: ConstantValue::Uint(id),
