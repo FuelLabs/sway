@@ -402,8 +402,8 @@ impl AllocatedAbstractInstructionSet {
                 JumpType::Call => 3,
             },
 
-            // A switch expands to AddrDataId (2 opcodes) + scale descriminant by word size (1 opcode)
-            // + add descriminant (1 opcode) + load (1 opcode) + jump (1 opcode) = 6 opcodes
+            // A switch expands to AddrDataId (2 opcodes) + scale discriminant by word size (1 opcode)
+            // + add discriminant (1 opcode) + load (1 opcode) + jump (1 opcode) = 6 opcodes
             Either::Right(Switch { .. }) => 6,
 
             Either::Right(Comment) => 0,
@@ -463,8 +463,8 @@ impl AllocatedAbstractInstructionSet {
             // Far jumps must be handled separately, as they require two instructions.
             Either::Right(Jump { .. }) => 1,
 
-            // A switch expands to AddrDataId (2 opcodes) + scale descriminant by word size (1 opcode)
-            // + add descriminant (1 opcode) + load (1 opcode) + jump (1 opcode) = 6 opcodes
+            // A switch expands to AddrDataId (2 opcodes) + scale discriminant by word size (1 opcode)
+            // + add discriminant (1 opcode) + load (1 opcode) + jump (1 opcode) = 6 opcodes
             Either::Right(Switch { .. }) => 6,
 
             Either::Right(Comment) => 0,

@@ -637,7 +637,7 @@ impl TestContext {
                 let compiled = forc_pkg::compile_ir(
                     Path::new(&main_file),
                     &engines,
-                    experimental.clone(),
+                    *experimental,
                     &mut SourceMap::new(),
                 )?;
 

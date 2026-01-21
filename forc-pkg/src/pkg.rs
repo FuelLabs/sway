@@ -1948,7 +1948,7 @@ pub fn compile_ir(
     source_map: &mut SourceMap,
 ) -> Result<BuiltPackageBytecode> {
     // Read main_file into a string
-    let source = fs::read_to_string(&main_file)
+    let source = fs::read_to_string(main_file)
         .with_context(|| format!("Failed to read Sway-IR file: {}", main_file.display()))?;
 
     let sway_ir = sway_ir::parser::parse(
