@@ -493,10 +493,10 @@ fn inline_instruction(
                 default,
             } => new_block.append(context).switch(
                 map_value(discriminant),
-                BranchToWithArgs {
-                    block: map_block(default.block),
-                    args: default.args.iter().map(|v| map_value(*v)).collect(),
-                },
+                default.map(|BranchToWithArgs { block, args }| BranchToWithArgs {
+                    block: map_block(block),
+                    args: args.iter().map(|v| map_value(*v)).collect(),
+                }),
                 cases
                     .iter()
                     .map(|(val, branch)| {

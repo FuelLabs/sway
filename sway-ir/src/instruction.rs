@@ -82,7 +82,9 @@ pub enum InstOp {
     Switch {
         discriminant: Value,
         cases: Vec<(u64, BranchToWithArgs)>,
-        default: BranchToWithArgs,
+        // If `default` is `None`, the switch is exhaustive.
+        // The case values must range from 0 to N-1 for N cases.
+        default: Option<BranchToWithArgs>,
     },
     /// A contract call with a list of arguments
     ContractCall {
@@ -507,7 +509,9 @@ impl InstOp {
                 default,
             } => {
                 let mut v = vec![*discriminant];
-                v.extend_from_slice(&default.args);
+                if let Some(default_branch) = default {
+                    v.extend_from_slice(&default_branch.args);
+                }
                 for case in cases {
                     v.extend_from_slice(&case.1.args);
                 }
@@ -718,10 +722,14 @@ impl InstOp {
                     *discriminant = replacement;
                 } else {
                     let mut cur_idx = 1;
-                    if idx - cur_idx < default.args.len() {
-                        default.args[idx - cur_idx] = replacement;
+                    let default_args_len = default
+                        .as_ref()
+                        .map(|default_branch| default_branch.args.len())
+                        .unwrap_or(0);
+                    if idx - cur_idx < default_args_len {
+                        default.as_mut().unwrap().args[idx - cur_idx] = replacement;
                     } else {
-                        cur_idx += default.args.len();
+                        cur_idx += default_args_len;
                         for case in cases.iter_mut() {
                             if idx - cur_idx < case.1.args.len() {
                                 case.1.args[idx - cur_idx] = replacement;
@@ -1087,7 +1095,9 @@ impl InstOp {
                 default,
             } => {
                 replace(discriminant);
-                default.args.iter_mut().for_each(replace);
+                if let Some(default_branch) = default {
+                    default_branch.args.iter_mut().for_each(replace);
+                }
                 for case in cases {
                     case.1.args.iter_mut().for_each(replace);
                 }
@@ -1584,10 +1594,13 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
     pub fn switch(
         self,
         discriminant: Value,
-        default: BranchToWithArgs,
+        default: Option<BranchToWithArgs>,
         cases: Vec<(u64, BranchToWithArgs)>,
     ) -> Value {
-        for case_block in std::iter::once(&default).chain(cases.iter().map(|c| &c.1)) {
+        if let Some(default_block) = &default {
+            default_block.block.add_pred(self.context, &self.block);
+        }
+        for case_block in cases.iter().map(|c| &c.1) {
             case_block.block.add_pred(self.context, &self.block);
         }
         let switch_val = Value::new_instruction(

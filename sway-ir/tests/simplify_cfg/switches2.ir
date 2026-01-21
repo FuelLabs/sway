@@ -1,0 +1,21 @@
+// regex: VAR=v\d+v\d+
+
+script {
+    fn main() -> u64 {
+        entry():
+        v0 = const u64 5
+        v1 = const u64 1
+        br testblock()
+
+        testblock():
+        v100 = const u64 0
+        // check: switch
+        switch v100, [0: block0(v0), 1: block1(v1)]
+
+        block0(v2: u64):
+        ret u64 v2
+
+        block1(v3: u64):
+        ret u64 v3
+    }
+}

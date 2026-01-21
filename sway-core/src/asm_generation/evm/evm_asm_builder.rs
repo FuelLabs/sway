@@ -454,7 +454,7 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
         instr_val: &Value,
         discriminant: &Value,
         cases: &[(u64, BranchToWithArgs)],
-        default: &BranchToWithArgs,
+        default: &Option<BranchToWithArgs>,
     ) -> Result<(), ErrorEmitted> {
         todo!();
     }

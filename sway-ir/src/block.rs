@@ -288,9 +288,14 @@ impl Block {
                         default,
                     },
                 ..
-            }) => std::iter::once(default.clone())
-                .chain(cases.iter().map(|(_, branch)| branch.clone()))
-                .collect(),
+            }) => {
+                let mut succs = default
+                    .as_ref()
+                    .map(|b| vec![b.clone()])
+                    .unwrap_or_default();
+                succs.extend(cases.iter().map(|(_, branch)| branch.clone()));
+                succs
+            }
 
             _otherwise => Vec::new(),
         }

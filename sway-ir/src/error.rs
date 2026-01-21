@@ -32,6 +32,7 @@ pub enum IrError {
     VerifyCmpUnknownTypes,
     VerifyConditionExprNotABool,
     VerifySwitchDiscriminantNotU64,
+    VerifySwitchNonExhaustiveCases,
     VerifyContractCallBadTypes(String),
     VerifyGepElementTypeNonPointer,
     VerifyGepFromNonPointer(String, Option<Value>),
@@ -209,6 +210,12 @@ impl fmt::Display for IrError {
                 write!(
                     f,
                     "Verification failed: Switch discriminant is not a u64 integer."
+                )
+            }
+            IrError::VerifySwitchNonExhaustiveCases => {
+                write!(
+                    f,
+                    "Verification failed: Switch cases are not exhaustive for the discriminant."
                 )
             }
             IrError::VerifyContractCallBadTypes(arg_name) => {
