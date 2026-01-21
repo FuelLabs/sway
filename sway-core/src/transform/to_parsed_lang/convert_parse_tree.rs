@@ -3112,14 +3112,20 @@ fn wrap_logged_expr_into_encode_call(logged_expr: Expression) -> Expression {
             call_path_binding: TypeBinding {
                 inner: CallPath {
                     prefixes: vec![],
-                    suffix: Ident::new_no_span("encode".into()),
+                    suffix: Ident::new_no_span("encode_allow_alias".into()),
                     callpath_type: CallPathType::Ambiguous,
                 },
                 type_arguments: TypeArgs::Regular(vec![]),
                 span: expression_span.clone(),
             },
             resolved_call_path_binding: None,
-            arguments: vec![logged_expr],
+            arguments: vec![Expression {
+                kind: ExpressionKind::Ref(RefExpression {
+                    to_mutable_value: false,
+                    value: Box::new(logged_expr),
+                }),
+                span: expression_span.clone(),
+            }],
         })),
         span: expression_span,
     }

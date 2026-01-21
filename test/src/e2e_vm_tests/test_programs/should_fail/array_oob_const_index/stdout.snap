@@ -1,0 +1,35 @@
+---
+source: test/src/snapshot/mod.rs
+assertion_line: 101
+---
+> forc test --path test/src/e2e_vm_tests/test_programs/should_fail/array_oob_const_index --release
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_fail/array_oob_const_index
+   Compiling library array_oob_const_index (test/src/e2e_vm_tests/test_programs/should_fail/array_oob_const_index)
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/array_oob_const_index/src/main.sw:5:9
+  |
+3 | fn literal_index() -> u64 {
+4 |     let ary = [1, 2, 3];
+5 |     ary[4]
+  |         ^ Index out of bounds; the length is 3 but the index is 4.
+6 | }
+7 | 
+  |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_oob_const_index/src/main.sw:12:9
+   |
+10 | fn global_const_index() -> u64 {
+11 |     let ary = [1, 2, 3];
+12 |     ary[I]
+   |         ^ Index out of bounds; the length is 3 but the index is 4.
+13 | }
+14 | 
+   |
+____
+
+  Aborting due to 2 errors.
+error: Failed to compile array_oob_const_index

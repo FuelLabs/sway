@@ -18,11 +18,10 @@ pub(super) fn convert_literal_to_value(context: &mut Context, ast_literal: &Lite
         // between widths we just emit a warning, and essentially ignore it. We also assume a
         // 'Numeric' integer of undetermined width is 'u64`. The IR would like to be type
         // consistent and doesn't tolerate missing integers of different width, so for now, until we
-        // do introduce explicit `as` casting, all integers are `u64` as far as the IR is
+        // do introduce explicit `as` casting, all integers except `u8` are `u64` as far as the IR is
         // concerned.
         //
-        // XXX The above isn't true for other targets.  We need to improved this.
-        // FIXME
+        // TODO: The above isn't true for other targets.  We need to improved this.
         Literal::U8(n) => ConstantContent::get_uint(context, 8, *n as u64),
         Literal::U16(n) => ConstantContent::get_uint(context, 64, *n as u64),
         Literal::U32(n) => ConstantContent::get_uint(context, 64, *n as u64),
@@ -41,7 +40,7 @@ pub(super) fn convert_literal_to_constant(
     ast_literal: &Literal,
 ) -> Constant {
     let c = match ast_literal {
-        // All integers are `u64`.  See comment above.
+        // All integers except `u8` are `u64`.  See comment above.
         Literal::U8(n) => ConstantContent::new_uint(context, 8, *n as u64),
         Literal::U16(n) => ConstantContent::new_uint(context, 64, *n as u64),
         Literal::U32(n) => ConstantContent::new_uint(context, 64, *n as u64),

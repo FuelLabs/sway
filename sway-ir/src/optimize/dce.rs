@@ -72,6 +72,7 @@ fn is_removable_store(
     match val.get_instruction(context).unwrap().op {
         InstOp::MemCopyBytes { dst_val_ptr, .. }
         | InstOp::MemCopyVal { dst_val_ptr, .. }
+        | InstOp::MemClearVal { dst_val_ptr, .. }
         | InstOp::Store { dst_val_ptr, .. } => {
             let syms = get_referred_symbols(context, dst_val_ptr);
             match syms {

@@ -63,7 +63,8 @@ pub fn compute_post_order_pass(
 }
 
 /// Compute the post-order traversal of the CFG.
-/// Beware: Unreachable blocks aren't part of the result.
+///
+/// **BEWARE: Unreachable blocks aren't part of the result.**
 pub fn compute_post_order(context: &Context, function: &Function) -> PostOrder {
     let mut res = PostOrder {
         block_to_po: FxHashMap::default(),

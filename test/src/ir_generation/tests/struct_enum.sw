@@ -19,33 +19,35 @@ enum Fruit {
     Grapes: u64,
 }
 
+// ::check-ir::
 
+// check: local { bool, { u64, ( () | () | u64 ) } } __struct_init_0
 // check: local { bool, { u64, ( () | () | u64 ) } } record
 
-// check: $(enum_ptr=$VAL) = get_local __ptr { u64, ( () | () | u64 ) }, $ID
-// check: $(idx_val=$VAL) = const u64 0
-// check: $(tag_ptr=$VAL) = get_elem_ptr $enum_ptr, __ptr u64, $idx_val
-// check: $(zero=$VAL) = const u64 0
-// check: store $zero to $tag_ptr
-// check: $(enum_val=$VAL) = load $enum_ptr
+// check: $(ptr_struct_init=$VAL) = get_local __ptr { bool, { u64, ( () | () | u64 ) } }, __struct_init_0
+// check: mem_clear_val $ptr_struct_init
+// check: $(load_struct_init=$VAL) = load $ptr_struct_init
+// check: $(ptr_record=$VAL) = get_local __ptr { bool, { u64, ( () | () | u64 ) } }, record
+// check: store $load_struct_init to $ptr_record
+// check: $(ptr_record=$VAL) = get_local __ptr { bool, { u64, ( () | () | u64 ) } }, record
+// check: $(id_0=$VAL) = const u64 0
+// check: $(ptr_record_a=$VAL) = get_elem_ptr $ptr_record, __ptr bool, $id_0
+// check: $(record_a_val=$VAL) = load $ptr_record_a
+// check: ret bool $record_a_val
 
-// check: $(temp_struct_ptr=$VAL) = get_local __ptr { bool, { u64, ( () | () | u64 ) } }, $ID
-// check: $(idx_val=$VAL) = const u64 0
-// check: $(field_ptr=$VAL) = get_elem_ptr $temp_struct_ptr, __ptr bool, $idx_val
-// check: $(f=$VAL) = const bool false
-// check: store $f to $field_ptr
+// ::check-ir-optimized::
+// pass: lower-init-aggr
 
-// check: $(idx_val=$VAL) = const u64 1
-// check: $(field_ptr=$VAL) = get_elem_ptr $temp_struct_ptr, __ptr { u64, ( () | () | u64 ) }, $idx_val
-// check: store $enum_val to $field_ptr
-// check: $(temp_struct_val=$VAL) = load $temp_struct_ptr
+// check: local { bool, { u64, ( () | () | u64 ) } } __struct_init_0
+// check: local { bool, { u64, ( () | () | u64 ) } } record
 
-// check: $(record_ptr=$VAL) = get_local __ptr { bool, { u64, ( () | () | u64 ) } }, record
-// check: store $temp_struct_val to $record_ptr
-
-// check: $(record_ptr=$VAL) = get_local __ptr { bool, { u64, ( () | () | u64 ) } }, record
-// check: $(idx_val=$VAL) = const u64 0
-// check: $(field_ptr=$VAL) = get_elem_ptr $record_ptr, __ptr bool, $idx_val
-// check: $(field_val=$VAL) = load $field_ptr
-
-// check: ret bool $field_val
+// check: $(ptr_struct_init=$VAL) = get_local __ptr { bool, { u64, ( () | () | u64 ) } }, __struct_init_0
+// check: mem_clear_val $ptr_struct_init
+// check: $(load_struct_init=$VAL) = load $ptr_struct_init
+// check: $(ptr_record=$VAL) = get_local __ptr { bool, { u64, ( () | () | u64 ) } }, record
+// check: store $load_struct_init to $ptr_record
+// check: $(ptr_record=$VAL) = get_local __ptr { bool, { u64, ( () | () | u64 ) } }, record
+// check: $(id_0=$VAL) = const u64 0
+// check: $(ptr_record_a=$VAL) = get_elem_ptr $ptr_record, __ptr bool, $id_0
+// check: $(record_a_val=$VAL) = load $ptr_record_a
+// check: ret bool $record_a_val

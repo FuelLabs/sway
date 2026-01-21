@@ -43,6 +43,8 @@ pub mod sroa;
 pub use sroa::*;
 pub mod fn_dedup;
 pub use fn_dedup::*;
+pub mod init_aggr_lowering;
+pub use init_aggr_lowering::*;
 
 mod target_fuel;
 

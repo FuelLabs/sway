@@ -1,15 +1,16 @@
 ---
 source: test/src/snapshot/mod.rs
+assertion_line: 101
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/transmute --ir final --asm final | filter-fn transmute transmute_by_reference_7
 
 fn transmute_by_reference_7(__ret_value: __ptr u256) -> () {
-    local [u8; 32] __anon_0
+    local [u8; 32] __array_init_0
     local mut [u8; 32] bytes
     local __ptr u256 v
 
     entry(__ret_value: __ptr u256):
-    v619v1 = get_local __ptr [u8; 32], __anon_0
+    v619v1 = get_local __ptr [u8; 32], __array_init_0
     mem_clear_val v619v1
     v621v1 = get_local __ptr [u8; 32], bytes
     mem_copy_val v621v1, v619v1

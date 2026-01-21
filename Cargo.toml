@@ -85,8 +85,6 @@ fuel-abi-types = "0.15"
 # Although ALL versions are "X.Y", we need the complete semver for
 # fuel-core-client as the GitHub Actions workflow parses this value to pull down
 # the correct tarball.
-fuel-core = { version = "0.47", default-features = false }
-fuel-core-chain-config = { version = "0.47", default-features = false }
 fuel-core-client = { version = "0.47.1", default-features = false }
 fuel-core-storage = { version = "0.47", default-features = false }
 fuel-core-types = { version = "0.47", default-features = false }
@@ -175,7 +173,6 @@ itertools = "0.13"
 k256 = "0.13"
 lazy_static = "1.4"
 libc = "0.2"
-libp2p-identity = "0.2"
 libtest-mimic = "0.7"
 lsp-types = "0.94"
 mark-flaky-tests = "1.0"
@@ -219,7 +216,6 @@ serde_json = "1.0"
 serde_with = "3.3"
 serde_yaml = "0.9"
 serial_test = "3.0"
-sha1 = "0.10"
 sha2 = "0.10"
 sha3 = "0.10"
 similar = "2.0"
@@ -234,7 +230,6 @@ taplo = "0.13"
 tar = "0.4"
 tempfile = "3"
 term-table = "1.3"
-termion = "4.0"
 textwrap = "0.16"
 thiserror = "1.0"
 tikv-jemallocator = "0.6"

@@ -677,6 +677,14 @@ fn inline_instruction(
             } => new_block
                 .append(context)
                 .store(map_value(dst_val_ptr), map_value(stored_val)),
+            InstOp::InitAggr(init_aggr) => new_block.append(context).init_aggr(
+                map_value(init_aggr.aggr_ptr),
+                init_aggr
+                    .initializers
+                    .iter()
+                    .map(|init| map_value(*init))
+                    .collect(),
+            ),
         }
         .add_metadatum(context, metadata);
 

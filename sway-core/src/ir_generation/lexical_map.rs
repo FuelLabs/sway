@@ -50,9 +50,9 @@ impl LexicalMap {
             .find_map(|scope| scope.get(symbol))
     }
 
+    /// Insert `new_symbol` into this lexical scope. If it has ever existed then the
+    /// original will be shadowed and the shadower is returned.
     pub(super) fn insert(&mut self, new_symbol: String) -> String {
-        // Insert this new symbol into this lexical scope.  If it has ever existed then the
-        // original will be shadowed and the shadower is returned.
         fn get_new_local_symbol(reserved: &HashSet<String>, candidate: String) -> String {
             if reserved.contains(&candidate) {
                 // Try again with adjusted candidate.
@@ -70,11 +70,17 @@ impl LexicalMap {
         local_symbol
     }
 
-    // Generate and reserve a unique 'anonymous' symbol.  Is in the form `__anon_X` where `X` is a
-    // unique number.
+    /// Generate and reserve a unique 'anonymous' symbol. It is in the form `__anon_X` where `X` is a
+    /// unique number.
     pub(super) fn insert_anon(&mut self) -> String {
+        self.insert_unique_named("anon")
+    }
+
+    /// Generate and reserve a unique named symbol. It is in the form `__<name>_X` where `X` is a
+    /// unique number.
+    pub(super) fn insert_unique_named(&mut self, name: &str) -> String {
         let anon_symbol = (0..)
-            .map(|n| format!("__anon_{n}"))
+            .map(|n| format!("__{name}_{n}"))
             .find(|candidate| !self.reserved_symbols.contains(candidate))
             .unwrap();
         self.symbol_map

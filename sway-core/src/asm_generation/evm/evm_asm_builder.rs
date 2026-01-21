@@ -380,6 +380,7 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
                     dst_val_ptr: dst_val,
                     stored_val,
                 } => self.compile_store(handler, instr_val, dst_val, stored_val)?,
+                InstOp::InitAggr(_) => todo!(),
             }
         } else {
             handler.emit_err(CompileError::Internal(

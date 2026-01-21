@@ -3197,6 +3197,19 @@ where
     }
 }
 
+pub fn encode_allow_alias<T>(item: &T) -> raw_slice
+where
+    T: AbiEncode,
+{
+    if is_encode_trivial::<T>() {
+        let size = __size_of::<T>();
+        __transmute::<(&T, u64), raw_slice>((item, size))
+    } else {
+        let buffer = (*item).abi_encode(Buffer::new());
+        buffer.as_raw_slice()
+    }
+}
+
 pub fn encode_and_return<T>(item: &T) -> !
 where
     T: AbiEncode,

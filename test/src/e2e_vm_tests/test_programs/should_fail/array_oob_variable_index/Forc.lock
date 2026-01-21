@@ -1,8 +1,3 @@
 [[package]]
 name = "array_oob_variable_index"
 source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "std"
-source = "path+from-root-156A19E3A346ACF0"

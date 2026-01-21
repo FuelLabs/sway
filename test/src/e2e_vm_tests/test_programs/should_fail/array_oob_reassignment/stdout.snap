@@ -1,0 +1,83 @@
+---
+source: test/src/snapshot/mod.rs
+assertion_line: 101
+---
+> forc test --path test/src/e2e_vm_tests/test_programs/should_fail/array_oob_reassignment --release
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_fail/array_oob_reassignment
+   Compiling library array_oob_reassignment (test/src/e2e_vm_tests/test_programs/should_fail/array_oob_reassignment)
+warning
+ --> test/src/e2e_vm_tests/test_programs/should_fail/array_oob_reassignment/src/main.sw:4:13
+  |
+2 | 
+3 | fn reassignment() {
+4 |     let mut a = [0; 0];
+  |             - This declaration is never used.
+5 |     a[0] = 1;
+6 | 
+  |
+____
+
+warning
+ --> test/src/e2e_vm_tests/test_programs/should_fail/array_oob_reassignment/src/main.sw:7:13
+  |
+5 |     a[0] = 1;
+6 | 
+7 |     let mut b = [[0; 1]; 1];
+  |             - This declaration is never used.
+8 |     b[0][1] = 1;
+9 | 
+  |
+____
+
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/array_oob_reassignment/src/main.sw:5:7
+  |
+3 | fn reassignment() {
+4 |     let mut a = [0; 0];
+5 |     a[0] = 1;
+  |       ^ Index out of bounds; the length is 0 but the index is 0.
+6 | 
+7 |     let mut b = [[0; 1]; 1];
+  |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_oob_reassignment/src/main.sw:8:10
+   |
+ 6 | 
+ 7 |     let mut b = [[0; 1]; 1];
+ 8 |     b[0][1] = 1;
+   |          ^ Index out of bounds; the length is 1 but the index is 1.
+ 9 | 
+10 |     b[1][0] = 1;
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_oob_reassignment/src/main.sw:10:7
+   |
+ 8 |     b[0][1] = 1;
+ 9 | 
+10 |     b[1][0] = 1;
+   |       ^ Index out of bounds; the length is 1 but the index is 1.
+11 | 
+12 |     a[0] = return;
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_oob_reassignment/src/main.sw:12:7
+   |
+10 |     b[1][0] = 1;
+11 | 
+12 |     a[0] = return;
+   |       ^ Index out of bounds; the length is 0 but the index is 0.
+13 | }
+14 | 
+   |
+____
+
+  Aborting due to 4 errors.
+error: Failed to compile array_oob_reassignment

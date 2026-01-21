@@ -15,7 +15,7 @@ The [FileCheck](https://docs.rs/filecheck/latest/filecheck/) crate is used to ve
 
 Some commonly used `FileCheck` `regex` directives are provided by the harness for use in matching particular IR and ASM tokens:
 
-* `VAL` - matches `v\d+` which is the syntax for IR values.
+* `VAL` - matches `v\d+v\d+` which is the syntax for IR values.
 * `ID` - matches `[_[:alpha:]][_0-9[:alpha:]]*` which is an identifier such as an IR block or function name.
 * `MD` - matches `!\\d+` which is an IR metadata index.
 

@@ -74,6 +74,19 @@ impl BlockArgument {
         None
     }
 
+    /// Get the actual parameters passed to this block argument from any of its block predecessors.
+    ///
+    /// Returns the predecessor block the parameter is coming from and the parameter.
+    pub fn get_vals_coming_from<'a>(
+        &'a self,
+        context: &'a Context,
+    ) -> impl Iterator<Item = (Block, Value)> + 'a {
+        self.block.pred_iter(context).flat_map(move |pred| {
+            self.get_val_coming_from(context, pred)
+                .map(|value| (*pred, value))
+        })
+    }
+
     /// Get the [Value] that this argument represents.
     pub fn as_value(&self, context: &Context) -> Value {
         self.block.get_arg(context, self.idx).unwrap()

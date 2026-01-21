@@ -239,6 +239,11 @@ fn analyse_fn(
                         *arg_mutabilities.get_mut(arg_idx).unwrap() = ArgPointeeMutability::Mutable;
                         continue 'analyse_next_arg;
                     }
+                    InstOp::InitAggr { .. } => {
+                        // Same like with store, we can't trace this anymore. Assume the worst.
+                        *arg_mutabilities.get_mut(arg_idx).unwrap() = ArgPointeeMutability::Mutable;
+                        continue 'analyse_next_arg;
+                    }
                     InstOp::CastPtr(..) | InstOp::GetElemPtr { .. } => {
                         // The result is now an alias of the argument. Process it.
                         def_use

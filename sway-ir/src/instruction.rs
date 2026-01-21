@@ -52,12 +52,12 @@ impl Instruction {
 pub enum InstOp {
     /// An opaque list of ASM instructions passed directly to codegen.
     AsmBlock(AsmBlock, Vec<AsmArg>),
-    /// Unary arithmetic operations
+    /// Unary arithmetic operations.
     UnaryOp {
         op: UnaryOpKind,
         arg: Value,
     },
-    /// Binary arithmetic operations
+    /// Binary arithmetic operations.
     BinaryOp {
         op: BinaryOpKind,
         arg1: Value,
@@ -86,7 +86,7 @@ pub enum InstOp {
         // The case values must range from 0 to N-1 for N cases.
         default: Option<BranchToWithArgs>,
     },
-    /// A contract call with a list of arguments
+    /// A contract call with a list of arguments.
     ContractCall {
         return_type: Type,
         name: Option<String>,
@@ -95,7 +95,7 @@ pub enum InstOp {
         asset_id: Value,
         gas: Value,
     },
-    /// Umbrella instruction variant for FuelVM-specific instructions
+    /// Umbrella instruction variant for FuelVM-specific instructions.
     FuelVm(FuelVmInstruction),
     /// Return a pointer to a local variable.
     GetLocal(LocalVar),
@@ -145,6 +145,86 @@ pub enum InstOp {
         ty: Type,
         count: Value,
     },
+    InitAggr(InitAggr),
+}
+
+#[derive(Debug, Clone, DebugWithContext)]
+pub struct InitAggr {
+    pub aggr_ptr: Value,
+    pub initializers: Vec<Value>,
+}
+
+impl InitAggr {
+    pub fn initializers<'s, 'a>(
+        &'s self,
+        context: &'a Context,
+    ) -> impl Iterator<Item = InitAggrInitializer> + use<'s, 'a> {
+        self.initializers
+            .iter()
+            .map(|value| InitAggrInitializer::new(*value, context))
+    }
+
+    /// If this [InitAggr] initializes an array where all elements are the same,
+    /// returns that element and the number of elements in the array: `[Value; usize]`.
+    pub fn as_repeat_array(&self, context: &Context) -> Option<(Value, usize)> {
+        self.aggr_ptr
+            .match_ptr_type(context)
+            .expect("`aggr_ptr` is a pointer")
+            .is_array(context)
+            .then(|| {
+                self.initializers
+                    .split_first()
+                    .and_then(|(first_init, rest)| {
+                        if rest.iter().all(|init| init == first_init) {
+                            Some((*first_init, self.initializers.len()))
+                        } else {
+                            None
+                        }
+                    })
+            })
+            .flatten()
+    }
+}
+
+/// A single initializer in an `init_aggr` instruction.
+#[derive(Debug, Clone, DebugWithContext, PartialEq, Eq)]
+pub enum InitAggrInitializer {
+    /// The initializer is an arbitrary value, and not a nested `init_aggr`.
+    Value(Value),
+    /// The initializer is a nested `init_aggr`.
+    /// An initializer's value comes from a nested `init_aggr` if and only if
+    /// it is a `load` of an `init_aggr`.
+    NestedInitAggr {
+        /// The `load` instruction that reads the value from the nested `init_aggr` instruction.
+        /// This is the actual [Value] used in the `init_aggr` instruction.
+        load: Value,
+        /// The nested `init_aggr` instruction.
+        /// `load` loads from this instruction.
+        init_aggr: Value,
+    },
+}
+
+impl InitAggrInitializer {
+    pub fn new(value: Value, context: &Context) -> Self {
+        if let Some(Instruction {
+            parent: _,
+            op: InstOp::Load(source),
+        }) = value.get_instruction(context)
+        {
+            if let Some(Instruction {
+                parent: _,
+                op: InstOp::InitAggr(_),
+            }) = source.get_instruction(context)
+            {
+                return InitAggrInitializer::NestedInitAggr {
+                    load: value,
+                    init_aggr: *source,
+                };
+            }
+        }
+
+        InitAggrInitializer::Value(value)
+    }
 }
 
 /// Metadata describing a logged event.
@@ -480,6 +560,7 @@ impl InstOp {
             InstOp::FuelVm(FuelVmInstruction::WideModularOp { result, .. }) => {
                 result.get_type(context)
             }
+            InstOp::InitAggr(InitAggr { aggr_ptr, .. }) => aggr_ptr.get_type(context),
         }
     }
 
@@ -630,6 +711,14 @@ impl InstOp {
                     vec![*ptr, *len]
                 }
             },
+            InstOp::InitAggr(InitAggr {
+                aggr_ptr,
+                initializers,
+            }) => {
+                let mut vals = vec![*aggr_ptr];
+                vals.extend(initializers);
+                vals
+            }
         }
     }
 
@@ -1049,6 +1138,18 @@ impl InstOp {
                     }
                 }
             },
+            InstOp::InitAggr(InitAggr {
+                aggr_ptr,
+                initializers,
+            }) => {
+                if idx == 0 {
+                    *aggr_ptr = replacement;
+                } else if idx - 1 < initializers.len() {
+                    initializers[idx - 1] = replacement;
+                } else {
+                    panic!("Invalid index for InitAggr");
+                }
+            }
         }
     }
 
@@ -1244,6 +1345,15 @@ impl InstOp {
                     replace(len);
                 }
             },
+            InstOp::InitAggr(InitAggr {
+                aggr_ptr,
+                initializers,
+            }) => {
+                replace(aggr_ptr);
+                initializers.iter_mut().for_each(|init| {
+                    replace(init);
+                });
+            }
         }
     }
 
@@ -1269,7 +1379,8 @@ impl InstOp {
             | InstOp::FuelVm(FuelVmInstruction::WideUnaryOp { .. })
             | InstOp::FuelVm(FuelVmInstruction::WideBinaryOp { .. })
             | InstOp::FuelVm(FuelVmInstruction::WideCmpOp { .. })
-            | InstOp::FuelVm(FuelVmInstruction::WideModularOp { .. }) => true,
+            | InstOp::FuelVm(FuelVmInstruction::WideModularOp { .. })
+            | InstOp::InitAggr { .. } => true,
 
             InstOp::UnaryOp { .. }
             | InstOp::BinaryOp { .. }
@@ -1420,13 +1531,13 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
                 instructions
                     .iter()
                     .position(|val| *val == inst)
-                    .expect("Provided position for insertion does not exist")
+                    .expect("Provided position for `After` insertion does not exist")
                     + 1
             }
             InsertionPosition::Before(inst) => instructions
                 .iter()
                 .position(|val| *val == inst)
-                .expect("Provided position for insertion does not exist"),
+                .expect("Provided position for `Before` insertion does not exist"),
             InsertionPosition::At(pos) => pos,
         }
     }
@@ -1862,5 +1973,15 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
 
     pub fn mem_clear_val(self, dst_val_ptr: Value) -> Value {
         insert_instruction!(self, InstOp::MemClearVal { dst_val_ptr })
+    }
+
+    pub fn init_aggr(self, aggr_ptr: Value, initializers: Vec<Value>) -> Value {
+        insert_instruction!(
+            self,
+            InstOp::InitAggr(InitAggr {
+                aggr_ptr,
+                initializers
+            })
+        )
     }
 }

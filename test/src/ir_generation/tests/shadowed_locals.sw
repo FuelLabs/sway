@@ -19,17 +19,21 @@ fn main() -> u64 {
 // check: $(true=$VAL) = const bool true
 // check: store $true to $a_var
 
-// check: $ID($(int_val=$VAL):
+// check: $ID($(int_val=$VAL): u64):
 // check: $(a__var=$VAL) = get_local __ptr u64, a_
 // check: store $int_val to $a__var
+
+// check: $(struct_init=$VAL) = get_local __ptr { u64 }, __struct_init_0
 // check: $(a_ptr=$VAL) = get_local __ptr u64, a_
 // check: $(a_loaded=$VAL) = load $a_ptr
-// check: $(struct_undef=$VAL) = get_local __ptr { u64 }, $ID
+// check: $(init_aggr=$VAL) = init_aggr v109v1 [$a_loaded]
 
-// check: $(idx_val=$VAL) = const u64 0
-// check: $(a_ptr=$VAL) = get_elem_ptr $struct_undef, __ptr u64, $idx_val
-// check: store $a_loaded to $a_ptr
-// check: $(struct_set=$VAL) = load $struct_undef
+// check: $(init_aggr_val=$VAL) = load $init_aggr
+// check: $(a___var=$VAL) = get_local __ptr { u64 }, a__
+// check: store $init_aggr_val to $a___var
 
 // check: $(a___var=$VAL) = get_local __ptr { u64 }, a__
-// check: store $struct_set to $a___var
+// check: $(idx_val=$VAL) = const u64 0
+// check: $(a_ptr=$VAL) = get_elem_ptr $a___var, __ptr u64, $idx_val
+// check: $(a_loaded=$VAL) = load $a_ptr
+// check: ret u64 $a_loaded

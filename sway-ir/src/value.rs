@@ -201,4 +201,9 @@ impl Value {
         self.get_type(context)
             .and_then(|ty| ty.get_pointee_type(context))
     }
+
+    /// Get parent [Block] of this value, iff the value is an [Instruction].
+    pub fn get_parent_block(&self, context: &Context) -> Option<Block> {
+        self.get_instruction(context).map(|inst| inst.parent)
+    }
 }

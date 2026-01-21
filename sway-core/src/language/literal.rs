@@ -33,6 +33,25 @@ impl Literal {
             _ => None,
         }
     }
+
+    /// Returns `true` if the runtime memory representation of a
+    /// type instance memcmp-equal to a constant represented by this [Literal]
+    /// would always be all zeros.
+    pub fn is_runtime_zeroed(&self) -> bool {
+        match self {
+            Literal::U8(v) => *v == 0,
+            Literal::U16(v) => *v == 0,
+            Literal::U32(v) => *v == 0,
+            Literal::U64(v) => *v == 0,
+            Literal::U256(v) => v.is_zero(),
+            // String is a string slice resulting in a fat pointer, so not zero.
+            Literal::String(_) => false,
+            Literal::Numeric(v) => *v == 0,
+            Literal::Boolean(v) => !(*v),
+            Literal::B256(v) => v.iter().all(|b| *b == 0),
+            Literal::Binary(v) => v.iter().all(|b| *b == 0),
+        }
+    }
 }
 
 impl Hash for Literal {

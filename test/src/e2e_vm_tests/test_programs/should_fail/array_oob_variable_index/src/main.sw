@@ -1,8 +1,16 @@
-script;
+// TODO: Enable this test once is https://github.com/FuelLabs/sway/issues/7521 fixed.
+library;
 
-fn main() -> u64 {
-    // index out of bounds: the length is 3 but the index is 4
+fn variable_index() -> u64 {
     let ary = [1, 2, 3];
     let i = 4;
     ary[i]
 }
+
+#[test]
+fn test() {
+    poke(variable_index());
+}
+
+#[inline(never)]
+fn poke<T>(_x: T) { }

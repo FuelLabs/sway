@@ -562,6 +562,29 @@ impl Function {
             })
     }
 
+    /// Return a reverse iterator to each instruction in each block in this function.
+    ///
+    /// Blocks and their instructions are both traversed in reverse order.
+    ///
+    /// This is a convenience method for when all instructions in a function need to be inspected
+    /// in reverse order.
+    /// The instruction value is returned from the iterator along with the block it belongs to.
+    pub fn instruction_iter_rev<'a>(
+        &self,
+        context: &'a Context,
+    ) -> impl Iterator<Item = (Block, Value)> + 'a {
+        context.functions[self.0]
+            .blocks
+            .iter()
+            .rev()
+            .flat_map(move |block| {
+                block
+                    .instruction_iter(context)
+                    .rev()
+                    .map(move |ins_val| (*block, ins_val))
+            })
+    }
+
     /// Replace a value with another within this function.
     ///
     /// This is a convenience method which iterates over this function's blocks and calls
