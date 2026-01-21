@@ -3704,7 +3704,6 @@ impl<'a> FnCompiler<'a> {
         ast_else: Option<&ty::TyExpression>,
         return_type: TypeId,
     ) -> Result<TerminatorValue, CompileError> {
-        eprintln!("{}", ast_condition.span.as_str());
         let cond_span_md_idx = md_mgr.span_to_md(context, &ast_condition.span);
 
         // Check if the condition is constant and only generate the correct branch
@@ -3723,10 +3722,8 @@ impl<'a> FnCompiler<'a> {
                 Some(self),
                 ast_condition,
             );
-            eprintln!("    will try as const: {:?}", condition_const_value.as_ref().map(|x| x.get_constant(context)));
             if let Ok(condition_const_value) = condition_const_value {
                 let condition_bool = condition_const_value.get_constant(context).expect("compile_constant_expression returns constants").get_content(context).as_bool().unwrap();
-                eprintln!("        value: {:?}", condition_bool);
                 let branch_value = if condition_bool {
                     self.compile_expression_to_register(context, md_mgr, ast_then)?
                 } else {
@@ -5662,12 +5659,13 @@ pub fn get_memory_id(ctx: &Context, t: Type) -> u64 {
     use std::hash::Hasher;
     let mut state = DefaultHasher::default();
     r.hash(&mut state);
-    let id = state.finish();
 
     // Uncomment here to debug the runtime memory representation
-    eprintln!("Runtime Repr: {:?} {:?} {id}", t.with_context(ctx), &r);
+    // let id = state.finish();
+    // eprintln!("Runtime Repr: {:?} {:?} {id}", t.with_context(ctx), &r);
+    // id
 
-    id
+    state.finish()
 }
 
 pub fn get_encoding_representation_by_id(
@@ -5768,12 +5766,13 @@ pub fn get_encoding_id(engines: &Engines, type_id: TypeId) -> u64 {
     if let Some(r) = get_encoding_representation_by_id(engines, type_id) {
         let mut state = DefaultHasher::default();
         r.hash(&mut state);
-        let id = state.finish();
 
         // Uncomment here to debug the encoding memory representation
-        eprintln!("Encoding Repr: {:?} {:?} {}", engines.help_out(type_id), &r, id);
-
-        id
+        // let id = state.finish();
+        // eprintln!("Encoding Repr: {:?} {:?} {}", engines.help_out(type_id), &r, id);
+        // id
+        
+        state.finish()
     } else {
         0
     }
