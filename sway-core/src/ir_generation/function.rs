@@ -3707,11 +3707,11 @@ impl<'a> FnCompiler<'a> {
         let cond_span_md_idx = md_mgr.span_to_md(context, &ast_condition.span);
 
         // Check if the condition is constant and only generate the correct branch
-        let try_const_eval_condition = match ast_condition.expression {
+        let try_const_eval_condition = matches!(
+            ast_condition.expression,
             TyExpressionVariant::ConstantExpression { .. }
-            | TyExpressionVariant::ConstGenericExpression { .. } => true,
-            _ => false,
-        };
+                | TyExpressionVariant::ConstGenericExpression { .. }
+        );
         if try_const_eval_condition {
             let condition_const_value = compile_constant_expression(
                 self.engines,
@@ -3723,19 +3723,27 @@ impl<'a> FnCompiler<'a> {
                 ast_condition,
             );
             if let Ok(condition_const_value) = condition_const_value {
-                let condition_bool = condition_const_value.get_constant(context).expect("compile_constant_expression returns constants").get_content(context).as_bool().unwrap();
+                let condition_bool = condition_const_value
+                    .get_constant(context)
+                    .expect("compile_constant_expression returns constants")
+                    .get_content(context)
+                    .as_bool()
+                    .unwrap();
                 let branch_value = if condition_bool {
                     self.compile_expression_to_register(context, md_mgr, ast_then)?
                 } else {
                     match ast_else {
                         Some(ast_else) => {
                             self.compile_expression_to_register(context, md_mgr, ast_else)?
-                        },
+                        }
                         None => {
                             let v = Constant::unique(context, ConstantContent::new_unit(context));
                             let v = Value::new_constant(context, v);
-                            TerminatorValue { value: CompiledValue::InRegister(v), is_terminator: false }
-                        },
+                            TerminatorValue {
+                                value: CompiledValue::InRegister(v),
+                                is_terminator: false,
+                            }
+                        }
                     }
                 };
 
@@ -3745,7 +3753,7 @@ impl<'a> FnCompiler<'a> {
 
         // Compile the condition expression in the entry block.  Then save the current block so we
         // can jump to the true and false blocks after we've created them.
-        
+
         let cond_value = return_on_termination_or_extract!(self.compile_expression_to_register(
             context,
             md_mgr,
@@ -5771,7 +5779,7 @@ pub fn get_encoding_id(engines: &Engines, type_id: TypeId) -> u64 {
         // let id = state.finish();
         // eprintln!("Encoding Repr: {:?} {:?} {}", engines.help_out(type_id), &r, id);
         // id
-        
+
         state.finish()
     } else {
         0
