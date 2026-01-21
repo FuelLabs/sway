@@ -330,7 +330,43 @@ pub struct Proxy {
     /// Points to the proxy contract to be updated with the new contract id.
     /// If there is a value for this field, forc will try to update the proxy contract's storage
     /// field such that it points to current contract's deployed instance.
+    /// 
+    /// This field provides backward compatibility for single-network deployments.
+    /// For multi-network deployments, use the `addresses` field instead.
     pub address: Option<String>,
+    /// Network-specific proxy addresses for multi-network deployments.
+    /// Keys should be network names (e.g., "testnet", "mainnet", "devnet", "local").
+    /// This field is mutually exclusive with the `address` field.
+    pub addresses: Option<BTreeMap<String, String>>,
+}
+
+impl Proxy {
+    /// Validate the proxy configuration.
+    /// 
+    /// Ensures that `address` and `addresses` fields are mutually exclusive.
+    pub fn validate(&self) -> anyhow::Result<()> {
+        if self.address.is_some() && self.addresses.is_some() {
+            bail!("Proxy configuration cannot have both `address` and `addresses` fields. Use `address` for single-network deployments or `addresses` for multi-network deployments.");
+        }
+        Ok(())
+    }
+    
+    /// Returns the proxy address for a specific network.
+    /// 
+    /// If `addresses` is configured, looks up the network-specific address.
+    /// Otherwise, falls back to the single `address` field for backward compatibility.
+    pub fn address_for_network(&self, network: &str) -> Option<&String> {
+        if let Some(addresses) = &self.addresses {
+            addresses.get(network)
+        } else {
+            self.address.as_ref()
+        }
+    }
+    
+    /// Returns true if the proxy has any addresses configured (either single or multi-network).
+    pub fn has_address(&self) -> bool {
+        self.address.is_some() || self.addresses.is_some()
+    }
 }
 
 impl DependencyDetails {
@@ -705,6 +741,7 @@ impl PackageManifest {
     /// 2. The validity of the details provided. Makes sure that there are no mismatching detail
     ///    declarations (to prevent mixing details specific to certain types).
     /// 3. The dependencies listed does not have an alias ("package" field) that is the same as package name.
+    /// 4. The proxy configuration is valid (mutually exclusive address/addresses fields).
     pub fn validate(&self) -> Result<()> {
         validate_project_name(&self.project.name)?;
         if let Some(ref org) = self.project.organization {
@@ -724,6 +761,9 @@ impl PackageManifest {
                     "Dependency \"{dep_name}\" collides with project name."
                 ))
             }
+        }
+        if let Some(ref proxy) = self.proxy {
+            proxy.validate()?;
         }
         Ok(())
     }

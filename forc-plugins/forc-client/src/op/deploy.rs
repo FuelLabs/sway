@@ -3,7 +3,7 @@ use crate::{
     constants::TX_SUBMIT_TIMEOUT_MS,
     util::{
         account::ForcClientAccount,
-        pkg::{built_pkgs, create_proxy_contract, update_proxy_address_in_manifest},
+        pkg::{built_pkgs, create_proxy_contract, update_proxy_address_in_manifest_for_network},
         target::Target,
         tx::{
             check_and_create_wallet_at_default_path, prompt_forc_wallet_password, select_account,
@@ -45,6 +45,34 @@ use std::{
     time::Duration,
 };
 use sway_core::{asm_generation::ProgramABI, language::parsed::TreeType, BuildTarget, IrCli};
+
+/// Resolves the proxy address for the current network context.
+/// 
+/// Uses the network name from chain info to look up network-specific proxy addresses,
+/// falling back to the single address field for backward compatibility.
+fn resolve_proxy_address_for_network(
+    proxy: &forc_pkg::manifest::Proxy,
+    chain_info: &fuels::types::chain_info::ChainInfo,
+) -> Option<String> {
+    if !proxy.enabled {
+        return None;
+    }
+
+    let target = Target::from_str(&chain_info.name).unwrap_or_default();
+    let network_name = match target {
+        Target::Testnet => "testnet",
+        Target::Mainnet => "mainnet", 
+        Target::Devnet => "devnet",
+        Target::Local => "local",
+    };
+
+    // First try network-specific addresses
+    if let Some(address) = proxy.address_for_network(network_name) {
+        Some(address.clone())
+    } else {
+        None
+    }
+}
 
 /// Default maximum contract size allowed for a single contract. If the target
 /// contract size is bigger than this amount, forc-deploy will automatically
@@ -584,45 +612,45 @@ pub async fn deploy_contracts(
             deploy_pkg(command, pkg, salt, &provider, &account).await?
         };
 
+        // Get chain info to resolve network-specific proxy addresses
+        let chain_info = provider.chain_info().await?;
         let proxy_id = match &pkg.descriptor.manifest_file.proxy {
-            Some(forc_pkg::manifest::Proxy {
-                enabled: true,
-                address: Some(proxy_addr),
-            }) => {
-                // Make a call into the contract to update impl contract address to 'deployed_contract'.
+            Some(proxy) if proxy.enabled => {
+                if let Some(proxy_addr) = resolve_proxy_address_for_network(proxy, &chain_info) {
+                    // Make a call into the contract to update impl contract address to 'deployed_contract'.
 
-                // Create a contract instance for the proxy contract using default proxy contract abi and
-                // specified address.
-                let proxy_contract =
-                    ContractId::from_str(proxy_addr).map_err(|e| anyhow::anyhow!(e))?;
+                    // Create a contract instance for the proxy contract using default proxy contract abi and
+                    // specified address.
+                    let proxy_contract =
+                        ContractId::from_str(&proxy_addr).map_err(|e| anyhow::anyhow!(e))?;
 
-                update_proxy_contract_target(&account, proxy_contract, deployed_contract_id)
+                    update_proxy_contract_target(&account, proxy_contract, deployed_contract_id)
+                        .await?;
+                    Some(proxy_contract)
+                } else {
+                    // No proxy address configured for this network, deploy a new one
+                    let pkg_name = &pkg.descriptor.name;
+                    let pkg_storage_slots = &pkg.storage_slots;
+                    // Deploy a new proxy contract.
+                    let deployed_proxy_contract = deploy_new_proxy(
+                        command,
+                        pkg_name,
+                        pkg_storage_slots,
+                        &deployed_contract_id,
+                        &provider,
+                        &account,
+                    )
                     .await?;
-                Some(proxy_contract)
-            }
-            Some(forc_pkg::manifest::Proxy {
-                enabled: true,
-                address: None,
-            }) => {
-                let pkg_name = &pkg.descriptor.name;
-                let pkg_storage_slots = &pkg.storage_slots;
-                // Deploy a new proxy contract.
-                let deployed_proxy_contract = deploy_new_proxy(
-                    command,
-                    pkg_name,
-                    pkg_storage_slots,
-                    &deployed_contract_id,
-                    &provider,
-                    &account,
-                )
-                .await?;
 
-                // Update manifest file such that the proxy address field points to the new proxy contract.
-                update_proxy_address_in_manifest(
-                    &format!("0x{deployed_proxy_contract}"),
-                    &pkg.descriptor.manifest_file,
-                )?;
-                Some(deployed_proxy_contract)
+                    // Update manifest file such that the proxy address field points to the new proxy contract.
+                    // This will now use network-aware updating logic
+                    update_proxy_address_in_manifest_for_network(
+                        &format!("0x{}", deployed_proxy_contract),
+                        &pkg.descriptor.manifest_file,
+                        &chain_info,
+                    )?;
+                    Some(deployed_proxy_contract)
+                }
             }
             // Proxy not enabled.
             _ => None,
@@ -652,12 +680,9 @@ async fn confirm_transaction_details(
         .map(|pkg| {
             tx_count += 1;
             let proxy_text = match &pkg.descriptor.manifest_file.proxy {
-                Some(forc_pkg::manifest::Proxy {
-                    enabled: true,
-                    address,
-                }) => {
+                Some(proxy) if proxy.enabled => {
                     tx_count += 1;
-                    if address.is_some() {
+                    if proxy.has_address() {
                         " + update proxy"
                     } else {
                         " + deploy proxy"
