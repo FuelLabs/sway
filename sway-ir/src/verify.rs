@@ -720,7 +720,7 @@ impl InstructionVerifier<'_, '_> {
         &self,
         descriminant: &Value,
         cases: &[(u64, BranchToWithArgs)],
-        default: &BranchToWithArgs,
+        default: &Option<BranchToWithArgs>,
     ) -> Result<(), IrError> {
         if !descriminant
             .get_type(self.context)
@@ -729,7 +729,28 @@ impl InstructionVerifier<'_, '_> {
             return Err(IrError::VerifySwitchDiscriminantNotU64);
         }
 
-        for dest_block in std::iter::once(default).chain(cases.iter().map(|(_, branch)| branch)) {
+        if let Some(default) = default {
+            if !self
+                .cur_function
+                .block_iter(self.context)
+                .contains(&default.block)
+            {
+                return Err(IrError::VerifyBranchToMissingBlock(
+                    self.context.blocks[default.block.0].label.clone(),
+                ));
+            }
+            self.verify_dest_args(default)?;
+        } else {
+            // If there is no default, it means the match is exhaustive.
+            // The case values must range from 0 to N-1 without gaps.
+            let mut covered_values = cases.iter().map(|(val, _)| *val).collect_vec();
+            covered_values.sort_unstable();
+            if (0..covered_values.len() as u64).ne(covered_values.iter().cloned()) {
+                return Err(IrError::VerifySwitchNonExhaustiveCases);
+            }
+        }
+
+        for dest_block in cases.iter().map(|(_, branch)| branch) {
             if !self
                 .cur_function
                 .block_iter(self.context)

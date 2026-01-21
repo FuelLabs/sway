@@ -33,6 +33,7 @@ use sway_error::{
 use sway_ir::*;
 use sway_types::{span::Span, Spanned};
 
+use core::panic;
 use either::Either;
 use std::collections::HashMap;
 
@@ -1052,21 +1053,27 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         instr_val: &Value,
         discriminant: &Value,
         cases: &[(u64, BranchToWithArgs)],
-        default: &BranchToWithArgs,
+        default: &Option<BranchToWithArgs>,
     ) -> Result<(), CompileError> {
-        for dest_block in cases
-            .iter()
-            .map(|(_, bb)| bb)
-            .chain(std::iter::once(default))
-        {
+        if let Some(default) = default {
+            self.compile_branch_to_phi_value(default)?;
+        }
+        for dest_block in cases.iter().map(|(_, bb)| bb) {
             self.compile_branch_to_phi_value(dest_block)?;
         }
 
-        let default_label = self.block_to_label(&default.block);
+        let default_label = default
+            .as_ref()
+            .map(|default| self.block_to_label(&default.block));
         if cases.len() == 0 {
-            // No cases, just jump to default.
-            self.cur_bytecode.push(Op::jump_to_label(default_label));
-            return Ok(());
+            // No cases.
+            if let Some(default_label) = default_label {
+                // There's a default, just jump to it.
+                self.cur_bytecode.push(Op::jump_to_label(default_label));
+                return Ok(());
+            }
+            // What now? There's no cases and no default, so just do nothing?
+            panic!("Switch with no cases and no default");
         }
 
         // Sort the cases by their values to make range checking easier.
@@ -1077,9 +1084,8 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         let discrim_reg = self.value_to_register(discriminant)?;
 
         // If the descriminant is smaller than the lowest case value, jump to default.
-        // TODO: For matching on enums where the compiler ensures that all variants are
-        // covered, this check can be skipped.
-        {
+        // This is only needed for non-exhaustive switches (i.e., there's a default_label).
+        if let Some(default_label) = default_label {
             let cond_reg = self.reg_seqr.next();
             self.immediate_to_reg(
                 min_case_value,
@@ -1139,9 +1145,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         );
 
         // If the descriminant is greater than the highest case value, jump to default.
-        // TODO: For matching on enums where the compiler ensures that all variants are
-        // covered, this check can be skipped.
-        {
+        if let Some(default_label) = default_label {
             let cond_reg = self.reg_seqr.next();
             self.immediate_to_reg(
                 max_case_value,
@@ -1169,7 +1173,12 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         let mut next = 0;
         for (case_value, case_label) in sorted_cases {
             while next < case_value {
-                filled_sorted_cases.push(default_label);
+                if let Some(default_label) = default_label {
+                    filled_sorted_cases.push(default_label);
+                } else {
+                    // We have a hole, and there's a no default case to jump to.
+                    panic!("Switch with hole in case values and no default case (i.e., marked exhaustive)");
+                }
                 next += 1;
             }
             filled_sorted_cases.push(case_label);
