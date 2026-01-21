@@ -8,8 +8,11 @@ output:
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
    Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
 <<<<<<< HEAD
+<<<<<<< HEAD
     Finished release [optimized + fuel] target(s) [20.104 KB] in ???
 =======
+=======
+>>>>>>> 5ece54482 (update tests)
 <<<<<<< HEAD
     Finished release [optimized + fuel] target(s) [20.144 KB] in ???
 =======
@@ -109,51 +112,14 @@ output:
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
    Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
     Finished release [optimized + fuel] target(s) [936 B] in ???
+=======
+    Finished release [optimized + fuel] target(s) [728 B] in ???
+>>>>>>> a4760abec (update tests)
      Running 1 test, filtered 0 tests
 
 tested -- const_of_contract_call
 
-      test isolated_cost_of_in_array_0 ... ok (???, 10276 gas)
-
-test result: OK. 1 passed; 0 failed; finished in ???
-
-    Finished in ???
-
-> Block: ARRAY1
-> replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
-
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
-exit status: 0
-output:
-    Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
-   Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
-   Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
-    Finished release [optimized + fuel] target(s) [1.064 KB] in ???
-     Running 1 test, filtered 0 tests
-
-tested -- const_of_contract_call
-
-      test isolated_cost_of_in_array_1 ... ok (???, 10453 gas)
-
-test result: OK. 1 passed; 0 failed; finished in ???
-
-    Finished in ???
-
-> Block: ARRAY16
-> replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
-
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
-exit status: 0
-output:
-    Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
-   Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
-   Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
-    Finished release [optimized + fuel] target(s) [1.056 KB] in ???
-     Running 1 test, filtered 0 tests
-
-tested -- const_of_contract_call
-
-      test isolated_cost_of_in_array_16 ... ok (???, 11814 gas)
+      test isolated_cost_of_in_array_32 ... ok (???, 10342 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
@@ -168,11 +134,12 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
    Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
-    Finished release [optimized + fuel] target(s) [1.056 KB] in ???
+    Finished release [optimized + fuel] target(s) [728 B] in ???
      Running 1 test, filtered 0 tests
 
 tested -- const_of_contract_call
 
+<<<<<<< HEAD
       test isolated_cost_of_in_array_32 ... ok (???, 13267 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
@@ -778,6 +745,9 @@ tested -- const_of_contract_call
 =======
       test isolated_cost_of_in_u8 ... ok (???, 10388 gas)
 >>>>>>> bde712782 (fix ir generation)
+=======
+      test isolated_cost_of_in_array_32 ... ok (???, 10342 gas)
+>>>>>>> a4760abec (update tests)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
