@@ -1071,7 +1071,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         let default_label = default
             .as_ref()
             .map(|default| self.block_to_label(&default.block));
-        if cases.len() == 0 {
+        if cases.is_empty() {
             // No cases.
             if let Some(default_label) = default_label {
                 // There's a default, just jump to it.
@@ -1089,7 +1089,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         let min_case_value = sorted_cases.first().unwrap().0;
         let discrim_reg = self.value_to_register(discriminant)?;
 
-        // If the descriminant is smaller than the lowest case value, jump to default.
+        // If the discriminant is smaller than the lowest case value, jump to default.
         // This is only needed for non-exhaustive switches (i.e., there's a default_label).
         if let Some(default_label) = default_label {
             let cond_reg = self.reg_seqr.next();
@@ -1113,7 +1113,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 .push(Op::jump_if_not_zero(cond_reg, default_label));
         }
 
-        // If the lowest case value isn't 0, we subtract the descriminant and each
+        // If the lowest case value isn't 0, we subtract the discriminant and each
         // case value by that amount to make the lowest case 0.
         if min_case_value > 0 {
             self.cur_bytecode.push(Op {
@@ -1150,7 +1150,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             "Jump table too large to compile switch"
         );
 
-        // If the descriminant is greater than the highest case value, jump to default.
+        // If the discriminant is greater than the highest case value, jump to default.
         if let Some(default_label) = default_label {
             let cond_reg = self.reg_seqr.next();
             self.immediate_to_reg(

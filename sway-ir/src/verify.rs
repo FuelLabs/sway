@@ -722,11 +722,11 @@ impl InstructionVerifier<'_, '_> {
 
     fn verify_switch(
         &self,
-        descriminant: &Value,
+        discriminant: &Value,
         cases: &[(u64, BranchToWithArgs)],
         default: &Option<BranchToWithArgs>,
     ) -> Result<(), IrError> {
-        if !descriminant
+        if !discriminant
             .get_type(self.context)
             .is(Type::is_uint64, self.context)
         {

@@ -1354,7 +1354,7 @@ pub(crate) enum ControlFlowOp<Reg> {
         /// The register to switch on
         discriminant: Reg,
         /// Label to jump to, based on the value in the discriminant register
-        /// It must be ensured that the descriminant register contains a value
+        /// It must be ensured that the discriminant register contains a value
         /// that is a valid index into this vector at runtime.
         cases: Vec<Label>,
     },

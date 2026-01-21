@@ -903,7 +903,7 @@ mod ir_builder {
         Call(String, Vec<String>),
         CastPtr(String, IrAstTy),
         Cbr(String, String, Vec<String>, String, Vec<String>),
-        // (descriminant, default_block, default_args, [(u64, block, args)])
+        // (discriminant, default_block, default_args, [(u64, block, args)])
         Switch(
             String,
             Option<(String, Vec<String>)>,
