@@ -233,7 +233,12 @@ fn run_cmds(
 
                         continue;
                     } else if let Some(args) = cmd.strip_prefix("filter-fn ") {
-                        if let Some(output) = last_output.take() {
+                        if let Some(output) = last_output.take() {    
+                            if !output.starts_with("exit status: 0") {
+                                last_output = Some(output);
+                                continue;
+                            }
+
                             let (name, fns) = args.trim().split_once(" ").unwrap();
 
                             let fns = fns
@@ -274,7 +279,9 @@ fn run_cmds(
 
                                         for m in ir.module_iter() {
                                             for f in m.function_iter(&ir) {
-                                                if fns.contains(f.get_name(&ir)) {
+                                                let fn_name = f.get_name(&ir);
+                                                let any = fns.iter().any(|x| fn_name.contains(x));
+                                                if any {
                                                     snapshot.push('\n');
                                                     function_print(snapshot, &ir, f, false)
                                                         .unwrap();
