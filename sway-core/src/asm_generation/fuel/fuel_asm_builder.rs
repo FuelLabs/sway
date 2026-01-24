@@ -1061,6 +1061,23 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         cases: &[(u64, BranchToWithArgs)],
         default: &Option<BranchToWithArgs>,
     ) -> Result<(), CompileError> {
+        let target_blocks = cases
+            .iter()
+            .map(|(_, bb)| &bb.block)
+            .chain(default.as_ref().map(|d| &d.block));
+        // Check if any two target blocks are the same with args.
+        let mut seen_blocks = rustc_hash::FxHashSet::default();
+        for bb in target_blocks {
+            if !seen_blocks.insert(bb) && bb.num_args(self.context) > 0 {
+                return Err(CompileError::Internal(
+                    "Cannot compile switch with multiple cases going to same dest block",
+                    self.md_mgr
+                        .val_to_span(self.context, *instr_val)
+                        .unwrap_or_else(Span::dummy),
+                ));
+            }
+        }
+
         if let Some(default) = default {
             self.compile_branch_to_phi_value(default)?;
         }
