@@ -753,6 +753,9 @@ impl InstructionVerifier<'_, '_> {
             }
             self.verify_dest_args(default)?;
         } else {
+            if covered_values.is_empty() {
+                return Err(IrError::VerifySwitchNoCases);
+            }
             // If there is no default, it means the match is exhaustive.
             // The case values must range from 0 to N-1 without gaps.
             if (0..covered_values.len() as u64).ne(covered_values.iter().cloned()) {
