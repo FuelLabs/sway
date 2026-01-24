@@ -1,0 +1,279 @@
+---
+source: test/src/snapshot/mod.rs
+---
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/if/inline_if_expr_const
+exit status: 0
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_pass/language/if/inline_if_expr_const
+   Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert)
+   Compiling script inline_if_expr_const (test/src/e2e_vm_tests/test_programs/should_pass/language/if/inline_if_expr_const)
+    Finished debug [unoptimized + fuel] target(s) [712 B] in ???
+     Running 1 test, filtered 0 tests
+
+tested -- inline_if_expr_const
+
+      test test_if_works ... ok (???, 653 gas)
+
+test result: OK. 1 passed; 0 failed; finished in ???
+
+    Finished in ???
+
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/if/inline_if_expr_const --ir initial | filter-fn inline_if_expr_const if_
+
+fn if_not_const_5(cond: bool) -> u64 {
+    local bool cond_
+
+    entry(cond: bool):
+    v80v1 = get_local __ptr bool, cond_
+    store cond to v80v1
+    v82v1 = get_local __ptr bool, cond_
+    v83v1 = load v82v1
+    cbr v83v1, block0(), block1()
+
+    block0():
+    v85v1 = const u64 10
+    br block2(v85v1)
+
+    block1():
+    v87v1 = const u64 20
+    br block2(v87v1)
+
+    block2(v79v1: u64):
+    ret u64 v79v1
+}
+
+
+fn if_const_true_6() -> u64 {
+    local bool COND
+
+    entry():
+    v90v1 = get_local __ptr bool, COND
+    v91v1 = const bool true
+    store v91v1 to v90v1
+    v93v1 = const u64 10
+    ret u64 v93v1
+}
+
+
+fn if_const_false_7() -> u64 {
+    local bool COND
+
+    entry():
+    v95v1 = get_local __ptr bool, COND
+    v96v1 = const bool false
+    store v96v1 to v95v1
+    v98v1 = const u64 20
+    ret u64 v98v1
+}
+
+
+fn if_const_generic_8() -> u64 {
+    entry():
+    v101v1 = const u64 1
+    v102v1 = const u64 1
+    v103v1 = call eq_4(v101v1, v102v1)
+    cbr v103v1, block0(), block1()
+
+    block0():
+    v105v1 = const u64 10
+    br block2(v105v1)
+
+    block1():
+    v107v1 = const u64 20
+    br block2(v107v1)
+
+    block2(v100v1: u64):
+    ret u64 v100v1
+}
+
+
+fn if_const_generic_9() -> u64 {
+    entry():
+    v111v1 = const u64 0
+    v112v1 = const u64 1
+    v113v1 = call eq_4(v111v1, v112v1)
+    cbr v113v1, block0(), block1()
+
+    block0():
+    v115v1 = const u64 10
+    br block2(v115v1)
+
+    block1():
+    v117v1 = const u64 20
+    br block2(v117v1)
+
+    block2(v110v1: u64):
+    ret u64 v110v1
+}
+
+
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/if/inline_if_expr_const --ir final --asm final | filter-fn inline_if_expr_const if_
+
+fn if_not_const_5(cond: bool) -> u64 {
+    local bool cond_
+
+    entry(cond: bool):
+    v99v1 = get_local __ptr bool, cond_
+    store cond to v99v1
+    v101v1 = get_local __ptr bool, cond_
+    v102v1 = load v101v1
+    v103v1 = const u64 10
+    cbr v102v1, block2(v103v1), block1()
+
+    block1():
+    v105v1 = const u64 20
+    br block2(v105v1)
+
+    block2(v98v1: u64):
+    ret u64 v98v1
+}
+
+
+fn if_const_true_6() -> u64 {
+    entry():
+    v108v1 = const u64 10
+    ret u64 v108v1
+}
+
+
+fn if_const_false_7() -> u64 {
+    entry():
+    v110v1 = const u64 20
+    ret u64 v110v1
+}
+
+
+fn if_const_generic_8() -> u64 {
+    local u64 other_
+    local u64 self_
+
+    entry():
+    v113v1 = get_local __ptr u64, self_
+    v114v1 = const u64 1
+    store v114v1 to v113v1
+    v116v1 = get_local __ptr u64, other_
+    v117v1 = const u64 1
+    store v117v1 to v116v1
+    v119v1 = get_local __ptr u64, self_
+    v120v1 = load v119v1
+    v121v1 = get_local __ptr u64, other_
+    v122v1 = load v121v1
+    v123v1 = cmp eq v120v1 v122v1
+    v124v1 = const u64 10
+    cbr v123v1, block2(v124v1), block1()
+
+    block1():
+    v126v1 = const u64 20
+    br block2(v126v1)
+
+    block2(v112v1: u64):
+    ret u64 v112v1
+}
+
+
+fn if_const_generic_9() -> u64 {
+    local u64 other_
+    local u64 self_
+
+    entry():
+    v130v1 = get_local __ptr u64, self_
+    v131v1 = const u64 0
+    store v131v1 to v130v1
+    v133v1 = get_local __ptr u64, other_
+    v134v1 = const u64 1
+    store v134v1 to v133v1
+    v136v1 = get_local __ptr u64, self_
+    v137v1 = load v136v1
+    v138v1 = get_local __ptr u64, other_
+    v139v1 = load v138v1
+    v140v1 = cmp eq v137v1 v139v1
+    v141v1 = const u64 10
+    cbr v140v1, block2(v141v1), block1()
+
+    block1():
+    v143v1 = const u64 20
+    br block2(v143v1)
+
+    block2(v129v1: u64):
+    ret u64 v129v1
+}
+
+
+pshl i7                       ; save registers 16..40
+pshh i524288                  ; save registers 40..64
+move $$locbase $sp            ; save locals base register for function if_not_const_5
+cfei i8                       ; allocate 8 bytes for locals and 0 slots for call arguments
+move $r0 $$reta               ; save return address
+sb   $$locbase $$arg0 i0      ; store byte
+lb   $r1 $$locbase i0         ; load byte
+movi $r2 i10                  ; initialize constant into register
+jnzf $r1 $zero i1
+movi $r2 i20                  ; initialize constant into register
+move $$retv $r2               ; set return value
+cfsi i8                       ; free 8 bytes for locals and 0 slots for extra call arguments
+move $$reta $r0               ; restore return address
+poph i524288                  ; restore registers 40..64
+popl i7                       ; restore registers 16..40
+jal  $zero $$reta i0          ; return from call
+
+pshl i3                       ; save registers 16..40
+pshh i524288                  ; save registers 40..64
+move $$locbase $sp            ; save locals base register for function if_const_true_6
+move $r0 $$reta               ; save return address
+movi $r1 i10                  ; initialize constant into register
+move $$retv $r1               ; set return value
+move $$reta $r0               ; restore return address
+poph i524288                  ; restore registers 40..64
+popl i3                       ; restore registers 16..40
+jal  $zero $$reta i0          ; return from call
+
+pshl i3                       ; save registers 16..40
+pshh i524288                  ; save registers 40..64
+move $$locbase $sp            ; save locals base register for function if_const_false_7
+move $r0 $$reta               ; save return address
+movi $r1 i20                  ; initialize constant into register
+move $$retv $r1               ; set return value
+move $$reta $r0               ; restore return address
+poph i524288                  ; restore registers 40..64
+popl i3                       ; restore registers 16..40
+jal  $zero $$reta i0          ; return from call
+
+pshl i7                       ; save registers 16..40
+pshh i524288                  ; save registers 40..64
+move $$locbase $sp            ; save locals base register for function if_const_generic_8
+cfei i16                      ; allocate 16 bytes for locals and 0 slots for call arguments
+move $r0 $$reta               ; save return address
+sw   $$locbase $one i1        ; store word
+sw   $$locbase $one i0        ; store word
+lw   $r1 $$locbase i1         ; load word
+lw   $r2 $$locbase i0         ; load word
+eq   $r1 $r1 $r2
+movi $r2 i10                  ; initialize constant into register
+jnzf $r1 $zero i1
+movi $r2 i20                  ; initialize constant into register
+move $$retv $r2               ; set return value
+cfsi i16                      ; free 16 bytes for locals and 0 slots for extra call arguments
+move $$reta $r0               ; restore return address
+poph i524288                  ; restore registers 40..64
+popl i7                       ; restore registers 16..40
+jal  $zero $$reta i0          ; return from call
+
+pshl i7                       ; save registers 16..40
+pshh i524288                  ; save registers 40..64
+move $$locbase $sp            ; save locals base register for function if_const_generic_9
+cfei i16                      ; allocate 16 bytes for locals and 0 slots for call arguments
+move $r0 $$reta               ; save return address
+sw   $$locbase $zero i1       ; store word
+sw   $$locbase $one i0        ; store word
+lw   $r1 $$locbase i1         ; load word
+lw   $r2 $$locbase i0         ; load word
+eq   $r1 $r1 $r2
+movi $r2 i10                  ; initialize constant into register
+jnzf $r1 $zero i1
+movi $r2 i20                  ; initialize constant into register
+move $$retv $r2               ; set return value
+cfsi i16                      ; free 16 bytes for locals and 0 slots for extra call arguments
+move $$reta $r0               ; restore return address
+poph i524288                  ; restore registers 40..64
+popl i7                       ; restore registers 16..40
+jal  $zero $$reta i0          ; return from call
