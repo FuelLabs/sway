@@ -733,7 +733,15 @@ impl InstructionVerifier<'_, '_> {
             return Err(IrError::VerifySwitchDiscriminantNotU64);
         }
 
+        let mut covered_values = cases.iter().map(|(val, _)| *val).collect_vec();
+        covered_values.sort_unstable();
         if let Some(default) = default {
+            // Check for duplicate case values
+            for window in covered_values.windows(2) {
+                if window[0] == window[1] {
+                    return Err(IrError::VerifySwitchDuplicateCase);
+                }
+            }
             if !self
                 .cur_function
                 .block_iter(self.context)
@@ -747,8 +755,6 @@ impl InstructionVerifier<'_, '_> {
         } else {
             // If there is no default, it means the match is exhaustive.
             // The case values must range from 0 to N-1 without gaps.
-            let mut covered_values = cases.iter().map(|(val, _)| *val).collect_vec();
-            covered_values.sort_unstable();
             if (0..covered_values.len() as u64).ne(covered_values.iter().cloned()) {
                 return Err(IrError::VerifySwitchNonExhaustiveCases);
             }
