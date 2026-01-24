@@ -1,0 +1,5 @@
+cmds = [
+    "forc test --path {root}",
+    "forc build --path {root} --ir initial | filter-fn {name} if_",
+    "forc build --path {root} --ir final --asm final | filter-fn {name} if_"
+]
