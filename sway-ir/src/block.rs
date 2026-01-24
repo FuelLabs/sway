@@ -403,6 +403,35 @@ impl Block {
                     *args = new_params;
                     modified = true;
                 }
+
+                Instruction {
+                    op:
+                        InstOp::Switch {
+                            discriminant: _,
+                            cases,
+                            default,
+                        },
+                    ..
+                } => {
+                    for (_case_val, branch) in cases.iter_mut() {
+                        if branch.block == old_succ {
+                            *branch = BranchToWithArgs {
+                                block: new_succ,
+                                args: new_params.clone(),
+                            };
+                            modified = true;
+                        }
+                    }
+                    if let Some(def_branch) = default {
+                        if def_branch.block == old_succ {
+                            *def_branch = BranchToWithArgs {
+                                block: new_succ,
+                                args: new_params,
+                            };
+                            modified = true;
+                        }
+                    }
+                }
                 _ => (),
             }
         }
