@@ -233,7 +233,7 @@ fn run_cmds(
 
                         continue;
                     } else if let Some(args) = cmd.strip_prefix("filter-fn ") {
-                        if let Some(output) = last_output.take() {    
+                        if let Some(output) = last_output.take() {
                             if !output.starts_with("exit status: 0") {
                                 last_output = Some(output);
                                 continue;
