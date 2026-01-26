@@ -319,6 +319,11 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
                 } => {
                     self.compile_conditional_branch(handler, cond_value, true_block, false_block)?
                 }
+                InstOp::Switch {
+                    discriminant,
+                    cases,
+                    default,
+                } => self.compile_switch(handler, instr_val, discriminant, cases, default)?,
                 InstOp::ContractCall {
                     params,
                     coins,
@@ -440,6 +445,17 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
         cond_value: &Value,
         true_block: &BranchToWithArgs,
         false_block: &BranchToWithArgs,
+    ) -> Result<(), ErrorEmitted> {
+        todo!();
+    }
+
+    fn compile_switch(
+        &mut self,
+        handler: &Handler,
+        instr_val: &Value,
+        discriminant: &Value,
+        cases: &[(u64, BranchToWithArgs)],
+        default: &Option<BranchToWithArgs>,
     ) -> Result<(), ErrorEmitted> {
         todo!();
     }

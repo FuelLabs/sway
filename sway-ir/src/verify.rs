@@ -278,6 +278,11 @@ impl InstructionVerifier<'_, '_> {
                     true_block,
                     false_block,
                 } => self.verify_cbr(cond_value, true_block, false_block)?,
+                InstOp::Switch {
+                    discriminant,
+                    cases,
+                    default,
+                } => self.verify_switch(discriminant, cases, default)?,
                 InstOp::ContractCall {
                     params,
                     coins,
@@ -713,6 +718,65 @@ impl InstructionVerifier<'_, '_> {
             self.verify_dest_args(true_block)
                 .and_then(|()| self.verify_dest_args(false_block))
         }
+    }
+
+    fn verify_switch(
+        &self,
+        discriminant: &Value,
+        cases: &[(u64, BranchToWithArgs)],
+        default: &Option<BranchToWithArgs>,
+    ) -> Result<(), IrError> {
+        if !discriminant
+            .get_type(self.context)
+            .is(Type::is_uint64, self.context)
+        {
+            return Err(IrError::VerifySwitchDiscriminantNotU64);
+        }
+
+        let mut covered_values = cases.iter().map(|(val, _)| *val).collect_vec();
+        covered_values.sort_unstable();
+        if let Some(default) = default {
+            // Check for duplicate case values
+            for window in covered_values.windows(2) {
+                if window[0] == window[1] {
+                    return Err(IrError::VerifySwitchDuplicateCase);
+                }
+            }
+            if !self
+                .cur_function
+                .block_iter(self.context)
+                .contains(&default.block)
+            {
+                return Err(IrError::VerifyBranchToMissingBlock(
+                    self.context.blocks[default.block.0].label.clone(),
+                ));
+            }
+            self.verify_dest_args(default)?;
+        } else {
+            if covered_values.is_empty() {
+                return Err(IrError::VerifySwitchNoCases);
+            }
+            // If there is no default, it means the match is exhaustive.
+            // The case values must range from 0 to N-1 without gaps.
+            if (0..covered_values.len() as u64).ne(covered_values.iter().cloned()) {
+                return Err(IrError::VerifySwitchNonExhaustiveCases);
+            }
+        }
+
+        for dest_block in cases.iter().map(|(_, branch)| branch) {
+            if !self
+                .cur_function
+                .block_iter(self.context)
+                .contains(&dest_block.block)
+            {
+                return Err(IrError::VerifyBranchToMissingBlock(
+                    self.context.blocks[dest_block.block.0].label.clone(),
+                ));
+            }
+            self.verify_dest_args(dest_block)?;
+        }
+
+        Ok(())
     }
 
     fn verify_cmp(
