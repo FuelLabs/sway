@@ -140,7 +140,16 @@ fn hash_fn(
         m_hash.hash(hasher);
     }
 
-    // Start with the function return type.
+    // Hash attributes...
+    function.is_entry(context).hash(state);
+    function.is_original_entry(context).hash(state);
+    function.is_fallback(context).hash(state);
+
+    for i in 0..function.num_args(context) {
+        function.is_arg_immutable(context, i).hash(state);
+    }
+
+    // ... and return type.
     function.get_return_type(context).hash(state);
 
     // ... and local variables.
@@ -150,6 +159,7 @@ fn hash_fn(
             init.hash(state);
         }
         local_var.get_type(context).hash(state);
+        local_var.is_mutable(context).hash(state);
     }
 
     // Process every block, first its arguments and then the instructions.
