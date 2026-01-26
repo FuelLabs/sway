@@ -34,3 +34,4 @@ type_layout::E2<u64, u64>|{ u64, ( u64 | u64 ) }|{b8,(b8|b8)}|Some({b8,(b8|b8)})
 type_layout::E2<(), u8>|{ u64, ( () | u8 ) }|{b8,({p8}|{b1,p7})}|Some({b8,({}|b1)})|false|16
 type_layout::E2<u8, ()>|{ u64, ( u8 | () ) }|{b8,({b1,p7}|{p8})}|Some({b8,(b1|{})})|false|16
 type_layout::E2<u8, u8>|{ u64, ( u8 | u8 ) }|{b8,({b1,p7}|{b1,p7})}|Some({b8,(b1|b1)})|false|16
+str[1]|string<1>|{b1,p7}|Some(b1)|false|8

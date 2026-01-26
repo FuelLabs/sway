@@ -618,7 +618,11 @@ impl Type {
             TypeContent::B256 => TypeSize::new(32),
             TypeContent::StringSlice => TypeSize::new(16),
             TypeContent::StringArray(n) => {
-                TypeSize::new(super::size_bytes_round_up_to_word_alignment!(*n))
+                if context.experimental.str_array_no_padding {
+                    TypeSize::new(*n)
+                } else {
+                    TypeSize::new(super::size_bytes_round_up_to_word_alignment!(*n))
+                }
             }
             TypeContent::Array(el_ty, cnt) => TypeSize::new(cnt * el_ty.size(context).in_bytes()),
             TypeContent::Struct(field_tys) => {
@@ -867,6 +871,7 @@ mod tests {
         }
 
         #[test]
+        /// Only valid when the feature `str_array_no_padding` is false.
         /// String array, when not embedded in aggregates, has a size in bytes of its length, aligned to the word boundary.
         /// Note that this differs from other arrays, which are packed but not, in addition, aligned to the word boundary.
         /// The reason we have the alignment/padding in case of string arrays, is because of the current ABI encoding.
