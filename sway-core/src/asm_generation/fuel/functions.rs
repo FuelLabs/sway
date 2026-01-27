@@ -241,9 +241,8 @@ impl FuelAsmBuilder<'_, '_> {
         let end_label = self
             .return_ctxs
             .last()
-            .expect("Calls guaranteed to save return context.")
-            .0;
-        self.cur_bytecode.push(Op::jump_to_label(end_label));
+            .expect("Calls guaranteed to save return context.");
+        self.cur_bytecode.push(Op::jump_to_label(end_label.clone()));
 
         Ok(())
     }
@@ -273,6 +272,9 @@ impl FuelAsmBuilder<'_, '_> {
 
         let func_is_entry = function.is_entry(self.context);
 
+        // Check function is a leaf fn
+        let is_leaf_fn = function.is_leaf_fn(self.context);
+
         // Insert a function label.
         let (start_label, end_label) = self.func_to_labels(&function);
         let md = function.get_metadata(self.context);
@@ -286,6 +288,7 @@ impl FuelAsmBuilder<'_, '_> {
             )),
             _ => None,
         };
+
         let comment = format!(
             "--- start of function: {} ---",
             function.get_name(self.context)
@@ -297,13 +300,16 @@ impl FuelAsmBuilder<'_, '_> {
         });
 
         // Manage the call frame.
-        if !func_is_entry {
-            // Save any general purpose registers used here on the stack.
-            self.cur_bytecode.push(Op {
-                opcode: Either::Right(OrganizationalOp::PushAll(start_label)),
-                comment: "save all registers".to_owned(),
-                owning_span: span.clone(),
-            });
+        match (is_leaf_fn, func_is_entry) {
+            (false, false) | (true, false) => {
+                // Save any general purpose registers used here on the stack.
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Right(OrganizationalOp::PushAll(start_label)),
+                    comment: "save all registers".to_owned(),
+                    owning_span: span.clone(),
+                });
+            }
+            _ => {}
         }
 
         let locals_alloc_result = self.alloc_locals(function);
@@ -317,24 +323,31 @@ impl FuelAsmBuilder<'_, '_> {
         }
 
         let reta = self.reg_seqr.next(); // XXX only do this if this function makes calls
-        if !func_is_entry {
-            // Save $reta and $retv
-            self.cur_bytecode.push(Op::register_move(
-                reta.clone(),
-                VirtualRegister::Constant(ConstantRegister::CallReturnAddress),
-                "save return address",
-                None,
-            ));
-            let retv = self.reg_seqr.next();
-            self.cur_bytecode.push(Op::register_move(
-                retv.clone(),
-                VirtualRegister::Constant(ConstantRegister::CallReturnValue),
-                "save return value",
-                None,
-            ));
 
-            // Store some info describing the call frame.
-            self.return_ctxs.push((end_label, retv));
+        match (is_leaf_fn, func_is_entry) {
+            (false, false) => {
+                // Save $reta and $retv
+                self.cur_bytecode.push(Op::register_move(
+                    reta.clone(),
+                    VirtualRegister::Constant(ConstantRegister::CallReturnAddress),
+                    "save return address",
+                    None,
+                ));
+                let retv = self.reg_seqr.next();
+                self.cur_bytecode.push(Op::register_move(
+                    retv.clone(),
+                    VirtualRegister::Constant(ConstantRegister::CallReturnValue),
+                    "save return value",
+                    None,
+                ));
+
+                // Store some info describing the call frame.
+                self.return_ctxs.push(end_label);
+            }
+            (true, _) => {
+                 self.return_ctxs.push(end_label);
+            }
+            _ => {}
         }
 
         self.init_locals(locals_alloc_result);
@@ -359,13 +372,15 @@ impl FuelAsmBuilder<'_, '_> {
             // actually returned to the calling context via a VM RET.
             self.drop_locals();
 
-            // Restore $reta.
-            self.cur_bytecode.push(Op::register_move(
-                VirtualRegister::Constant(ConstantRegister::CallReturnAddress),
-                reta,
-                "restore return address",
-                None,
-            ));
+            if !is_leaf_fn {
+                // Restore $reta.
+                self.cur_bytecode.push(Op::register_move(
+                    VirtualRegister::Constant(ConstantRegister::CallReturnAddress),
+                    reta,
+                    "restore return address",
+                    None,
+                ));
+            }
 
             // Restore GP regs.
             self.cur_bytecode.push(Op {

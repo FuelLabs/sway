@@ -286,7 +286,7 @@ warning
 ____
 
   Compiled library "panic_in_non_statement_positions" with 23 warnings.
-    Finished debug [unoptimized + fuel] target(s) [1.952 KB] in ???
+    Finished debug [unoptimized + fuel] target(s) [1.944 KB] in ???
      Running 16 tests, filtered 0 tests
 
 tested -- panic_in_non_statement_positions
