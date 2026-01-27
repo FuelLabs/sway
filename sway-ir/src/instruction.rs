@@ -46,7 +46,7 @@ impl Instruction {
     pub fn get_function(&self, context: &Context) -> Function {
         context.blocks[self.parent.0].function
     }
-    
+
     pub fn is_call(&self) -> bool {
         matches!(self.op, InstOp::Call(..))
     }

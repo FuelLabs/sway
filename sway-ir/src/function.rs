@@ -145,7 +145,8 @@ impl Function {
     }
 
     pub fn is_leaf_fn(&self, context: &Context) -> bool {
-        let any_call = self.instruction_iter(context)
+        let any_call = self
+            .instruction_iter(context)
             .filter_map(|(_, i)| i.get_instruction(context).map(|i| i.is_call()))
             .any(|x| x);
         !any_call
