@@ -144,6 +144,13 @@ impl Function {
         func
     }
 
+    pub fn is_leaf_fn(&self, context: &Context) -> bool {
+        let any_call = self.instruction_iter(context)
+            .filter_map(|(_, i)| i.get_instruction(context).map(|i| i.is_call()))
+            .any(|x| x);
+        !any_call
+    }
+
     /// Create and append a new [`Block`] to this function.
     pub fn create_block(&self, context: &mut Context, label: Option<Label>) -> Block {
         let block = Block::new(context, *self, label);
