@@ -242,7 +242,7 @@ impl FuelAsmBuilder<'_, '_> {
             .return_ctxs
             .last()
             .expect("Calls guaranteed to save return context.");
-        self.cur_bytecode.push(Op::jump_to_label(end_label.clone()));
+        self.cur_bytecode.push(Op::jump_to_label(*end_label));
 
         Ok(())
     }
@@ -345,7 +345,7 @@ impl FuelAsmBuilder<'_, '_> {
                 self.return_ctxs.push(end_label);
             }
             (true, _) => {
-                 self.return_ctxs.push(end_label);
+                self.return_ctxs.push(end_label);
             }
             _ => {}
         }
