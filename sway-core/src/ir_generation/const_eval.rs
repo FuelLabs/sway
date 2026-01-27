@@ -1043,8 +1043,17 @@ fn const_eval_typed_expr(
             }
         }
         ty::TyExpressionVariant::LazyOperator { op, lhs, rhs } => {
-            let lhs = const_eval_typed_expr(lookup, known_consts, lhs)?.unwrap();
-            match (lhs.get_content(lookup.context).as_bool().unwrap(), op) {
+            let lhs = const_eval_typed_expr(lookup, known_consts, lhs)?.ok_or_else(||
+                ConstEvalError::CannotBeEvaluatedToConst {
+                    span: expr.span.clone(),
+                }
+            )?;
+            let lhs_value = lhs.get_content(lookup.context).as_bool().ok_or_else(||
+                ConstEvalError::CannotBeEvaluatedToConst {
+                    span: expr.span.clone(),
+                }
+            )?;
+            match (lhs_value, op) {
                 (true, LazyOp::And) | (false, LazyOp::Or) => {
                     const_eval_typed_expr(lookup, known_consts, rhs)?
                 }
