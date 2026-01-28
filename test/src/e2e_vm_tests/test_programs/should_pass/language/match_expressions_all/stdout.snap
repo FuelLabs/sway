@@ -7,7 +7,7 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/match_expressions_all
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert)
    Compiling script match_expressions_all (test/src/e2e_vm_tests/test_programs/should_pass/language/match_expressions_all)
-    Finished debug [unoptimized + fuel] target(s) [3.04 KB] in ???
+    Finished debug [unoptimized + fuel] target(s) [2.992 KB] in ???
 
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/match_expressions_all --ir final --asm final --release | filter-fn match_expressions_all return_match_on_str_slice
 
