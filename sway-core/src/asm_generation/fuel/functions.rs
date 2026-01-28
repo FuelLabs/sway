@@ -436,7 +436,7 @@ impl FuelAsmBuilder<'_, '_> {
                 } else {
                     initial_arg_reg
                 };
-                
+
                 // Remember our arg copy.
                 self.reg_map.insert(*arg_val, arg_reg);
             }
@@ -445,7 +445,8 @@ impl FuelAsmBuilder<'_, '_> {
             for (idx, (arg_name, arg_val)) in function.args_iter(self.context).enumerate() {
                 // Except for the last arg register, the others hold an argument.
                 let arg_reg = if idx < compiler_constants::NUM_ARG_REGISTERS as usize - 1 {
-                    let initial_arg_reg = VirtualRegister::Constant(ConstantRegister::ARG_REGS[idx]);
+                    let initial_arg_reg =
+                        VirtualRegister::Constant(ConstantRegister::ARG_REGS[idx]);
                     if !is_leaf_fn {
                         let arg_copy_reg = self.reg_seqr.next();
 
