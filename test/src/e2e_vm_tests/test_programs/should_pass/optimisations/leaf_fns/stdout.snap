@@ -1,0 +1,4 @@
+---
+source: test/src/snapshot/mod.rs
+---
+> forc --path test/src/e2e_vm_tests/test_programs/should_pass/optimisations/leaf_fns --release --asm final | filter-fn leaf_fns leaf_fn

@@ -415,7 +415,7 @@ ____
 
 tested -- const_generics
 
-      test run_main ... ok (???, 466 gas)
+      test run_main ... ok (???, 462 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 

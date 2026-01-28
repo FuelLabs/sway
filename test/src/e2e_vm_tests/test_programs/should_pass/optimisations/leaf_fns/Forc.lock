@@ -1,0 +1,8 @@
+[[package]]
+name = "non_payable_zero_coins_let_binding"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-82924A5652A987D8"
