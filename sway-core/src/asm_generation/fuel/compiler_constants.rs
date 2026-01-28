@@ -21,6 +21,7 @@ pub(crate) const SCRATCH_REGISTER: u8 = NUM_TOTAL_REGISTERS - 4;
 pub(crate) const LOCALS_BASE: u8 = NUM_TOTAL_REGISTERS - 5;
 
 pub(crate) const NUM_ARG_REGISTERS: u8 = 6;
+pub(crate) const LAST_ARG_IN_REGISTER_INDEX: u8 = NUM_ARG_REGISTERS - 1;
 pub(crate) const ARG_REG0: u8 = NUM_TOTAL_REGISTERS - 6;
 pub(crate) const ARG_REG1: u8 = NUM_TOTAL_REGISTERS - 7;
 pub(crate) const ARG_REG2: u8 = NUM_TOTAL_REGISTERS - 8;
