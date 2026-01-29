@@ -419,12 +419,14 @@ impl FuelAsmBuilder<'_, '_> {
     //
     // We load arguments from the stack on both cases
     fn compile_fn_call_args(&mut self, function: Function, is_leaf_fn: bool) {
-        if function.num_args(self.context) <= compiler_constants::NUM_ARG_REGISTERS as usize {
-            // All arguments are passed through registers.
-            for (idx, (arg_name, arg_val)) in function.args_iter(self.context).enumerate() {
+        let uses_stack =
+            function.num_args(self.context) > compiler_constants::NUM_ARG_REGISTERS as usize;
+        for (idx, (arg_name, arg_val)) in function.args_iter(self.context).enumerate() {
+            let load_arg =
+                uses_stack && (idx >= compiler_constants::NUM_ARG_REGISTERS as usize - 1);
+            let arg_reg = if !load_arg {
                 let initial_arg_reg = VirtualRegister::Constant(ConstantRegister::ARG_REGS[idx]);
-                let arg_reg = if !is_leaf_fn {
-                    // Make a copy of the args in case we make calls and need to use the arg registers.
+                if !is_leaf_fn {
                     let arg_copy_reg = self.reg_seqr.next();
                     self.cur_bytecode.push(Op::register_move(
                         arg_copy_reg.clone(),
@@ -435,69 +437,42 @@ impl FuelAsmBuilder<'_, '_> {
                     arg_copy_reg
                 } else {
                     initial_arg_reg
-                };
+                }
+            } else {
+                let arg_copy_reg = self.reg_seqr.next();
 
-                // Remember our arg copy.
-                self.reg_map.insert(*arg_val, arg_reg);
-            }
-        } else {
-            // Get NUM_ARG_REGISTERS - 1 arguments from arg registers and rest from the stack.
-            for (idx, (arg_name, arg_val)) in function.args_iter(self.context).enumerate() {
-                // Except for the last arg register, the others hold an argument.
-                let arg_reg = if idx < compiler_constants::NUM_ARG_REGISTERS as usize - 1 {
-                    let initial_arg_reg =
-                        VirtualRegister::Constant(ConstantRegister::ARG_REGS[idx]);
-                    if !is_leaf_fn {
-                        let arg_copy_reg = self.reg_seqr.next();
+                // All arguments [NUM_ARG_REGISTERS - 1 ..] go into the stack.
+                assert!(
+                    self.locals_size_bytes().is_multiple_of(8),
+                    "The size of locals is not word aligned"
+                );
 
-                        // Make a copy of the args in case we make calls and need to use the arg registers.
-                        self.cur_bytecode.push(Op::register_move(
-                            arg_copy_reg.clone(),
-                            initial_arg_reg,
-                            format!("save argument {idx} ({arg_name})"),
-                            self.md_mgr.val_to_span(self.context, *arg_val),
-                        ));
-                        arg_copy_reg
-                    } else {
-                        initial_arg_reg
-                    }
-                } else {
-                    let arg_copy_reg = self.reg_seqr.next();
+                let stack_offset = (idx as u64 + 1) - compiler_constants::NUM_ARG_REGISTERS as u64;
 
-                    // All arguments [NUM_ARG_REGISTERS - 1 ..] go into the stack.
-                    assert!(
-                        self.locals_size_bytes().is_multiple_of(8),
-                        "The size of locals is not word aligned"
-                    );
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::LW(
+                        arg_copy_reg.clone(),
+                        VirtualRegister::Constant(
+                            ConstantRegister::ARG_REGS
+                                [compiler_constants::NUM_ARG_REGISTERS as usize - 1],
+                        ),
+                        VirtualImmediate12::try_new(
+                            stack_offset,
+                            self.md_mgr
+                                .val_to_span(self.context, *arg_val)
+                                .unwrap_or(Span::dummy()),
+                        )
+                        .expect("Too many arguments, cannot handle."),
+                    )),
+                    comment: format!("load argument {idx} ({arg_name}) from its stack slot"),
+                    owning_span: self.md_mgr.val_to_span(self.context, *arg_val),
+                });
 
-                    let stack_offset =
-                        (idx as u64 + 1) - compiler_constants::NUM_ARG_REGISTERS as u64;
+                arg_copy_reg
+            };
 
-                    self.cur_bytecode.push(Op {
-                        opcode: Either::Left(VirtualOp::LW(
-                            arg_copy_reg.clone(),
-                            VirtualRegister::Constant(
-                                ConstantRegister::ARG_REGS
-                                    [compiler_constants::NUM_ARG_REGISTERS as usize - 1],
-                            ),
-                            VirtualImmediate12::try_new(
-                                stack_offset,
-                                self.md_mgr
-                                    .val_to_span(self.context, *arg_val)
-                                    .unwrap_or(Span::dummy()),
-                            )
-                            .expect("Too many arguments, cannot handle."),
-                        )),
-                        comment: format!("load argument {idx} ({arg_name}) from its stack slot"),
-                        owning_span: self.md_mgr.val_to_span(self.context, *arg_val),
-                    });
-
-                    arg_copy_reg
-                };
-
-                // Remember our arg copy.
-                self.reg_map.insert(*arg_val, arg_reg);
-            }
+            // Remember our arg copy.
+            self.reg_map.insert(*arg_val, arg_reg);
         }
     }
 
