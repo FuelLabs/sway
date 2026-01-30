@@ -322,28 +322,25 @@ impl FuelAsmBuilder<'_, '_> {
         let reta = self.reg_seqr.next(); // XXX only do this if this function makes calls
 
         if !func_is_entry {
-             // Store some info describing the call frame.
+            // Store some info describing the call frame.
             self.return_ctxs.push(end_label);
         }
 
-        match (is_leaf_fn, func_is_entry) {
-            (false, false) => {
-                // Save $reta and $retv
-                self.cur_bytecode.push(Op::register_move(
-                    reta.clone(),
-                    VirtualRegister::Constant(ConstantRegister::CallReturnAddress),
-                    "save return address",
-                    None,
-                ));
-                let retv = self.reg_seqr.next();
-                self.cur_bytecode.push(Op::register_move(
-                    retv.clone(),
-                    VirtualRegister::Constant(ConstantRegister::CallReturnValue),
-                    "save return value",
-                    None,
-                ));
-            }
-            _ => {}
+        if !is_leaf_fn && !func_is_entry {
+            // Save $reta and $retv
+            self.cur_bytecode.push(Op::register_move(
+                reta.clone(),
+                VirtualRegister::Constant(ConstantRegister::CallReturnAddress),
+                "save return address",
+                None,
+            ));
+            let retv = self.reg_seqr.next();
+            self.cur_bytecode.push(Op::register_move(
+                retv.clone(),
+                VirtualRegister::Constant(ConstantRegister::CallReturnValue),
+                "save return value",
+                None,
+            ));
         }
 
         self.init_locals(locals_alloc_result);
