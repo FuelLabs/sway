@@ -1732,7 +1732,7 @@ warning
 ____
 
   Compiled script "logging" with 6 warnings.
-    Finished release [optimized + fuel] target(s) [2.872 KB] in ???
+    Finished release [optimized + fuel] target(s) [2.8 KB] in ???
 
 > forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/logging --release
 exit status: 0
@@ -1828,12 +1828,12 @@ warning
 ____
 
   Compiled script "logging" with 7 warnings.
-    Finished release [optimized + fuel] target(s) [2.88 KB] in ???
+    Finished release [optimized + fuel] target(s) [2.808 KB] in ???
      Running 1 test, filtered 0 tests
 
 tested -- logging
 
-      test call_main ... ok (???, 5730 gas)
+      test call_main ... ok (???, 5578 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 

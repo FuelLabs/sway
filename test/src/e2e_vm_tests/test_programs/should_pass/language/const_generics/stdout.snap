@@ -1,6 +1,5 @@
 ---
 source: test/src/snapshot/mod.rs
-snapshot_kind: text
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics --no-experimental const_generics --release
 exit status: 1
@@ -411,12 +410,12 @@ warning
 ____
 
   Compiled script "const_generics" with 2 warnings.
-    Finished release [optimized + fuel] target(s) [784 B] in ???
+    Finished release [optimized + fuel] target(s) [776 B] in ???
      Running 1 test, filtered 0 tests
 
 tested -- const_generics
 
-      test run_main ... ok (???, 474 gas)
+      test run_main ... ok (???, 462 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 

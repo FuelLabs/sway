@@ -230,7 +230,7 @@ fn run_cmds(
 
                             let mut inside_ir = false;
                             let mut inside_asm = false;
-                            let mut last_asm_lines = VecDeque::new();
+                            let mut last_asm_lines = VecDeque::<&str>::new();
                             let mut capture_line = false;
 
                             let compiling_project_line = format!("Compiling script {name}");
@@ -239,7 +239,7 @@ fn run_cmds(
                                     inside_ir = true;
                                 }
 
-                                if line.contains(";; ASM: Final program") {
+                                if line.contains(";; ASM:") {
                                     inside_asm = true;
                                 }
 
@@ -284,8 +284,10 @@ fn run_cmds(
                                                 snapshot.push('\n');
 
                                                 for l in last_asm_lines.drain(..) {
-                                                    snapshot.push_str(l);
-                                                    snapshot.push('\n');
+                                                    if l.starts_with("psh") {
+                                                        snapshot.push_str(l);
+                                                        snapshot.push('\n');
+                                                    }
                                                 }
                                             }
                                         }
