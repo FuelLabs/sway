@@ -321,6 +321,11 @@ impl FuelAsmBuilder<'_, '_> {
 
         let reta = self.reg_seqr.next(); // XXX only do this if this function makes calls
 
+        if !func_is_entry {
+             // Store some info describing the call frame.
+            self.return_ctxs.push(end_label);
+        }
+
         match (is_leaf_fn, func_is_entry) {
             (false, false) => {
                 // Save $reta and $retv
@@ -337,12 +342,6 @@ impl FuelAsmBuilder<'_, '_> {
                     "save return value",
                     None,
                 ));
-
-                // Store some info describing the call frame.
-                self.return_ctxs.push(end_label);
-            }
-            (true, _) => {
-                self.return_ctxs.push(end_label);
             }
             _ => {}
         }
