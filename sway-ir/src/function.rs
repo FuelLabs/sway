@@ -144,6 +144,7 @@ impl Function {
         func
     }
 
+    /// This function iterate over all instructions
     pub fn is_leaf_fn(&self, context: &Context) -> bool {
         let any_call = self
             .instruction_iter(context)
