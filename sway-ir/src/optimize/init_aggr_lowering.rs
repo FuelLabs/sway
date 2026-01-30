@@ -504,6 +504,7 @@ fn get_inst_inserter_for_before_init_aggr<'a, 'b>(
     InstructionInserter::new(context, block, InsertionPosition::Before(init_aggr))
 }
 
+#[allow(clippy::too_many_arguments)]
 fn lower_single_initializer_to_stores(
     context: &mut Context<'_>,
     init_aggr: Value,
