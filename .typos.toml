@@ -13,6 +13,14 @@ extend-ignore-identifiers-re = [
     "Aloc",
     "aloc",
     "SHW",
+    "configurables",
+    "Configurables",
+    "CONFIGURABLES",
+    "consts",
+    "Consts",
+    "CONSTS",
+    "cpy",
+    "Cpy",
 ]
 
 extend-ignore-re = [

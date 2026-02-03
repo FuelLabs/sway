@@ -1,0 +1,4 @@
+cmds = [
+    "forc test --path {root} --logs",
+    "forc test --path {root} --experimental str_array_no_padding --logs"
+]
