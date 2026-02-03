@@ -37,7 +37,7 @@ impl ResolvedFunctionDecl {
 }
 
 // The following types were using im::OrdMap but it revealed to be
-// much slower than using HashMap and sorting on iterationn.
+// much slower than using HashMap and sorting on iteration.
 pub(super) type SymbolMap = HashMap<Ident, ResolvedDeclaration>;
 pub(super) type SymbolUniqueMap = HashMap<IdentUnique, ResolvedDeclaration>;
 

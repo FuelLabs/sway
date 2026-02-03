@@ -302,7 +302,7 @@ impl TypeId {
         }
     }
 
-    pub(crate) fn extract_any_including_self<F>(
+    pub fn extract_any_including_self<F>(
         self,
         engines: &Engines,
         filter_fn: &F,
