@@ -350,6 +350,27 @@ impl Block {
                 op: InstOp::Branch(block),
                 ..
             }) if block.block == *succ => Some(&mut block.args),
+            Some(Instruction {
+                op:
+                    InstOp::Switch {
+                        discriminant: _,
+                        cases,
+                        default,
+                    },
+                ..
+            }) => {
+                for (_case_val, branch) in cases.iter_mut() {
+                    if branch.block == *succ {
+                        return Some(&mut branch.args);
+                    }
+                }
+                if let Some(def_branch) = default {
+                    if def_branch.block == *succ {
+                        return Some(&mut def_branch.args);
+                    }
+                }
+                None
+            }
             _ => None,
         }
     }
