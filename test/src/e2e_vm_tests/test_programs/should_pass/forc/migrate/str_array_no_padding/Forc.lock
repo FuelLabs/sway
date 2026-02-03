@@ -1,0 +1,8 @@
+[[package]]
+name = "std"
+source = "path+from-root-3941BF277303681A"
+
+[[package]]
+name = "str_array_no_padding"
+source = "member"
+dependencies = ["std"]

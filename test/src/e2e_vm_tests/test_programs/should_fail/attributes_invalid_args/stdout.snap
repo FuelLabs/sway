@@ -195,6 +195,7 @@ error: Attribute argument is invalid
   |       ----- help:   - experimental_new_encoding
   |       ----- help:   - experimental_new_hashing
   |       ----- help:   - experimental_references
+  |       ----- help:   - experimental_str_array_no_padding
   |
 ____
 
