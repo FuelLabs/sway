@@ -14,6 +14,7 @@ use sway_ir::{function_print, Backtrace};
 
 static FORC_COMPILATION: Once = Once::new();
 static FORC_DOC_COMPILATION: Once = Once::new();
+static FORC_MIGRATE_COMPILATION: Once = Once::new();
 
 fn compile_forc() {
     let args = vec!["b", "--release", "-p", "forc"];
@@ -26,6 +27,15 @@ fn compile_forc() {
 
 fn compile_forc_doc() {
     let args = vec!["b", "--release", "-p", "forc-doc"];
+    let o = std::process::Command::new("cargo")
+        .args(args)
+        .output()
+        .unwrap();
+    assert!(o.status.success());
+}
+
+fn compile_forc_migrate() {
+    let args = vec!["b", "--release", "-p", "forc-migrate"];
     let o = std::process::Command::new("cargo")
         .args(args)
         .output()
@@ -149,6 +159,11 @@ fn run_cmds(
                             compile_forc_doc();
                         });
                         format!("target/release/forc-doc {cmd} 1>&2")
+                    } else if let Some(cmd) = cmd.strip_prefix("forc migrate ") {
+                        FORC_MIGRATE_COMPILATION.call_once(|| {
+                            compile_forc_migrate();
+                        });
+                        format!("target/release/forc-migrate {cmd} 1>&2")
                     } else if let Some(cmd) = cmd.strip_prefix("forc ") {
                         FORC_COMPILATION.call_once(|| {
                             compile_forc();

@@ -1,0 +1,3 @@
+cmds = [
+    "forc migrate run --path {root}"
+]

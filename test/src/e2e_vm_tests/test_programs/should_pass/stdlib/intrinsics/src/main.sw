@@ -1,16 +1,30 @@
-script;
+library;
 
 use std::intrinsics::*;
 
 struct TestStruct {
+    #[allow(dead_code)]
     field_1: bool,
+     #[allow(dead_code)]
     field_2: u64,
 }
+
 fn is_ref_type<T>(_param: T) -> bool {
     is_reference_type::<T>()
 }
 
-fn main() -> bool {
+#[cfg(experimental_str_array_no_padding = false)]
+fn str_11_size() -> u64 {
+    16
+}
+
+#[cfg(experimental_str_array_no_padding = true)]
+fn str_11_size() -> u64 {
+    11
+}
+
+#[test]
+fn t() {
     let zero = b256::min();
     let a: u64 = 1;
     let b: u32 = 1;
@@ -36,12 +50,14 @@ fn main() -> bool {
     assert(is_ref_type(e));
     assert(is_ref_type(f));
 
+    __log(str_11_size());
+
     assert(size_of::<u64>() == 8);
     assert(size_of::<u32>() == 8);
     assert(size_of::<u16>() == 8);
     assert(size_of::<u8>() == 1);
     assert(size_of::<b256>() == 32);
-    assert(size_of::<str[11]>() == 16);
+    assert(size_of::<str[11]>() == str_11_size());
     assert(size_of::<[u16; 3]>() == 24);
     assert(size_of::<TestStruct>() == 16);
 
@@ -50,7 +66,5 @@ fn main() -> bool {
     assert(size_of_val(c) == 8);
     assert(size_of_val(d) == 1);
     assert(size_of_val(e) == 32);
-    assert(size_of_val(f) == 16);
-
-    true
+    assert(size_of_val(f) == str_11_size());
 }

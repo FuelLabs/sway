@@ -1212,6 +1212,10 @@ impl TypeInfo {
         }
     }
 
+    pub fn is_str_array(&self) -> bool {
+        matches!(self, TypeInfo::StringArray(_))
+    }
+
     pub fn is_array(&self) -> bool {
         matches!(self, TypeInfo::Array(_, _))
     }
