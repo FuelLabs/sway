@@ -1,0 +1,40 @@
+---
+source: test/src/snapshot/mod.rs
+---
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/stdlib/intrinsics --logs
+exit status: 0
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_pass/stdlib/intrinsics
+   Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-conversions)
+   Compiling library intrinsics (test/src/e2e_vm_tests/test_programs/should_pass/stdlib/intrinsics)
+    Finished debug [unoptimized + fuel] target(s) [1.32 KB] in ???
+     Running 1 test, filtered 0 tests
+
+tested -- intrinsics
+
+      test t ... ok (???, 2028 gas)
+           decoded log values:
+16, log rb: 1515152261580153489
+
+test result: OK. 1 passed; 0 failed; finished in ???
+
+    Finished in ???
+
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/stdlib/intrinsics --experimental str_array_no_padding --logs
+exit status: 0
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_pass/stdlib/intrinsics
+   Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-conversions)
+   Compiling library intrinsics (test/src/e2e_vm_tests/test_programs/should_pass/stdlib/intrinsics)
+    Finished debug [unoptimized + fuel] target(s) [1.32 KB] in ???
+     Running 1 test, filtered 0 tests
+
+tested -- intrinsics
+
+      test t ... ok (???, 2028 gas)
+           decoded log values:
+11, log rb: 1515152261580153489
+
+test result: OK. 1 passed; 0 failed; finished in ???
+
+    Finished in ???
