@@ -315,11 +315,11 @@ impl FuelAsmBuilder<'_, '_> {
             self.compile_external_args(function)
                 .map_err(|e| handler.emit_err(e))?
         } else {
-            // Make copies of the arg registers.
+            // Make copies of the arg registers, if function is not a leaf fn
             self.compile_fn_call_args(function, is_leaf_fn)
         }
 
-        let reta = self.reg_seqr.next(); // XXX only do this if this function makes calls
+        let reta = self.reg_seqr.next();
 
         if !func_is_entry {
             // Store some info describing the call frame.
@@ -407,13 +407,13 @@ impl FuelAsmBuilder<'_, '_> {
         Ok(())
     }
 
-    // Copy all arguments that are passed as registers into new registers. This is done
-    // to allow the current function to call others fns, as the set of function arguments is
-    // always the same.
-    //
-    // This is not required for "leaf fns" as they do not call others.
-    //
-    // We load arguments from the stack on both cases
+    /// Copy all arguments that are passed as registers into new registers. This is done
+    /// to allow the current function to call others fns, as the set of function arguments is
+    /// always the same.
+    ///
+    /// This is not required for "leaf fns" as they do not call others.
+    ///
+    /// We load arguments from the stack on both cases
     fn compile_fn_call_args(&mut self, function: Function, is_leaf_fn: bool) {
         let uses_stack =
             function.num_args(self.context) > compiler_constants::NUM_ARG_REGISTERS as usize;
