@@ -326,11 +326,11 @@ fn lower_to_stores<'a, 'b>(
             }
 
             match as_repeat_array(initializers) {
-                Some((initializer, length)) => {
-                    if initializer.is_runtime_zeroed(context) && skip_zeroes {
-                        // All elements are zero-initialized. We can skip initializing them again.
-                        return true;
-                    }
+                // If we have zero-initialized the root aggregate, `skip_zeroes` will
+                // skip initializing those elements again. But the below code for repeated
+                // values does not write to the root directly, but to a temporary, leading
+                // to uninitialized values being accessed.
+                Some((initializer, length)) if !skip_zeroes => {
                     let repeated_value = match initializer {
                         InitAggrInitializer::Value(value) => value,
                         InitAggrInitializer::NestedInitAggr {
@@ -433,7 +433,7 @@ fn lower_to_stores<'a, 'b>(
                         }
                     }
                 }
-                None => {
+                _ => {
                     // Non-repeating array initializers. Initialize each element individually.
                     for (insert_idx, initializer) in initializers.iter().enumerate() {
                         if initializer.is_runtime_zeroed(context) && skip_zeroes {
