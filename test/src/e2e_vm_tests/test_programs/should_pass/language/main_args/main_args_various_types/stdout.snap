@@ -1455,9 +1455,9 @@ move $r9 $zero                ; move parameter from branch to block argument
 movi $r0 i2                   ; initialize constant into register
 lt   $r0 $r9 $r0
 jnzf $r0 $zero i21
-addi $r0 $$locbase i824       ; get offset to local __ptr { { ptr, u64, u64 } }
-addi $r1 $$locbase i680       ; get offset to local __ptr { { ptr, u64, u64 } }
-mcpi $r1 $r0 i24              ; copy memory
+addi $r1 $$locbase i824       ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r0 $$locbase i680       ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r0 $r1 i24              ; copy memory
 addi $r0 $$locbase i680       ; get offset to local __ptr { { ptr, u64, u64 } }
 addi $r1 $$locbase i1192      ; get offset to local __ptr { { ptr, u64, u64 } }
 mcpi $r1 $r0 i24              ; copy memory
@@ -1934,9 +1934,9 @@ data_NonConfigurable_4 .word 18446744073709486084
 0x00000224 MOVI $writable 0x2                              ;; [114, 64, 0, 2]
 0x00000228 LT $writable R25 $writable                      ;; [22, 65, 148, 0]
 0x0000022c JNZF $writable $zero 0x15                       ;; [118, 64, 0, 21]
-0x00000230 ADDI $writable R59 0x338                        ;; [80, 67, 179, 56]
-0x00000234 ADDI R17 R59 0x2a8                              ;; [80, 71, 178, 168]
-0x00000238 MCPI R17 $writable 0x18                         ;; [96, 69, 0, 24]
+0x00000230 ADDI R17 R59 0x338                              ;; [80, 71, 179, 56]
+0x00000234 ADDI $writable R59 0x2a8                        ;; [80, 67, 178, 168]
+0x00000238 MCPI $writable R17 0x18                         ;; [96, 65, 16, 24]
 0x0000023c ADDI $writable R59 0x2a8                        ;; [80, 67, 178, 168]
 0x00000240 ADDI R17 R59 0x4a8                              ;; [80, 71, 180, 168]
 0x00000244 MCPI R17 $writable 0x18                         ;; [96, 69, 0, 24]

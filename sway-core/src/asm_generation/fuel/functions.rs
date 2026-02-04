@@ -327,18 +327,10 @@ impl FuelAsmBuilder<'_, '_> {
         }
 
         if !is_leaf_fn && !func_is_entry {
-            // Save $reta and $retv
             self.cur_bytecode.push(Op::register_move(
                 reta.clone(),
                 VirtualRegister::Constant(ConstantRegister::CallReturnAddress),
                 "save return address",
-                None,
-            ));
-            let retv = self.reg_seqr.next();
-            self.cur_bytecode.push(Op::register_move(
-                retv.clone(),
-                VirtualRegister::Constant(ConstantRegister::CallReturnValue),
-                "save return value",
                 None,
             ));
         }
