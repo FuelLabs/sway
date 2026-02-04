@@ -50,16 +50,21 @@ pub fn init_aggr_lowering<'a, 'b>(
             .expect("`root_aggr_ptr` must be a pointer");
 
         // TODO: (INIT-AGGR) Think of other possible optimizations that bring benefits, if any.
-        // Try mostly optimized lowerings first.
-        let _ = lower_mostly_zeroed_aggregate()
-            || lower_to_stores(
-                context,
-                *root_init_aggr,
-                aggr_type,
-                root_aggr_ptr,
-                &mut Vec::new(),
-                &initializers,
-            );
+        let _ = lower_mostly_zeroed_aggregate(
+            context,
+            *root_init_aggr,
+            aggr_type,
+            root_aggr_ptr,
+            &initializers,
+        ) || lower_to_stores(
+            context,
+            *root_init_aggr,
+            aggr_type,
+            root_aggr_ptr,
+            &mut Vec::new(),
+            &initializers,
+            false,
+        );
     }
 
     // Replace all usages of `root_init_aggr`s with the pointers to the aggregates they initialize.
@@ -95,9 +100,183 @@ fn deconstruct_init_aggr(context: &Context, init_aggr: Value) -> (Value, Vec<Ini
 /// E.g., a very common case is initializing tuples like `(0, 0, 0, some_variable)`.
 ///
 /// Returns `true` if the lowering was performed, `false` otherwise.
-fn lower_mostly_zeroed_aggregate() -> bool {
-    // TODO: (INIT-AGGR) Implement lowering of mostly zeroed aggregates.
-    false
+fn lower_mostly_zeroed_aggregate<'a, 'b>(
+    context: &'a mut Context<'b>,
+    init_aggr: Value,
+    aggr_type: Type,
+    root_aggr_ptr: Value,
+    initializers: &[InitAggrInitializer],
+) -> bool {
+    // This function computes, recursively, the total size of an aggregate type,
+    // and the size of its zero-initialized fields.
+    fn compute_relative_sizes(
+        context: &Context,
+        ty: Type,
+        inits: &[InitAggrInitializer],
+    ) -> Option<(u64, u64)> {
+        match ty.get_content(context).clone() {
+            TypeContent::Array(elem_type, length) => {
+                assert_eq!(
+                    length as usize,
+                    inits.len(),
+                    "`init_aggr` initializers must match the length of the array type"
+                );
+
+                let (mut total_size, mut zero_size) = (0u64, 0u64);
+                for init in inits {
+                    let init_values = match init {
+                        InitAggrInitializer::Value(_) => {
+                            if elem_type.is_aggregate(context) {
+                                // An aggregate, if initialized with a value, cannot be analyzed for zeroed fields.
+                                return None;
+                            }
+                            vec![init.clone()]
+                        }
+                        InitAggrInitializer::NestedInitAggr {
+                            load: _,
+                            init_aggr: nested_init_aggr,
+                        } => {
+                            let (_nested_aggr_ptr, nested_ia_initializers) =
+                                deconstruct_init_aggr(context, *nested_init_aggr);
+                            nested_ia_initializers
+                        }
+                    };
+                    let (elem_total_size, elem_zero_size) =
+                        compute_relative_sizes(context, elem_type, &init_values)?;
+                    total_size += elem_total_size;
+                    zero_size += elem_zero_size;
+                }
+                Some((total_size, zero_size))
+            }
+            TypeContent::Struct(field_types) => {
+                assert_eq!(
+                    field_types.len(),
+                    inits.len(),
+                    "`init_aggr` initializers must match the number of fields in the struct type"
+                );
+
+                let (mut total_size, mut zero_size) = (0u64, 0u64);
+                for (init, field_type) in inits.iter().zip(field_types) {
+                    let init_values = match init {
+                        InitAggrInitializer::Value(_) => {
+                            if field_type.is_aggregate(context) {
+                                // An aggregate, if initialized with a value, cannot be analyzed for zeroed fields.
+                                return None;
+                            }
+                            vec![init.clone()]
+                        }
+                        InitAggrInitializer::NestedInitAggr {
+                            load: _,
+                            init_aggr: nested_init_aggr,
+                        } => {
+                            let (_nested_aggr_ptr, nested_ia_initializers) =
+                                deconstruct_init_aggr(context, *nested_init_aggr);
+                            nested_ia_initializers
+                        }
+                    };
+                    let (field_total_size, field_zero_size) =
+                        compute_relative_sizes(context, field_type, &init_values)?;
+                    total_size += field_total_size;
+                    zero_size += field_zero_size;
+                }
+                Some((total_size, zero_size))
+            }
+            _ => {
+                let size = ty.size(context).in_bytes();
+                let is_zero_init = matches!(
+                    inits.first(),
+                    Some(InitAggrInitializer::Value(value))
+                        if value.get_constant(context).is_some_and(|c| c.is_runtime_zeroed(context))
+                );
+                let zero_size = if is_zero_init { size } else { 0 };
+                Some((size, zero_size))
+            }
+        }
+    }
+
+    let Some((total_size, zero_size)) = compute_relative_sizes(context, aggr_type, initializers)
+    else {
+        // Could not compute sizes.
+        return false;
+    };
+    let zero_ratio = zero_size as f64 / total_size as f64;
+    if zero_ratio < 0.30 {
+        // Not mostly zeroed.
+        return false;
+    }
+
+    // `lower_single_initializer_to_stores` stores values directly into the root aggregate,
+    // so we need to make sure that the `mem_clear_val` is done before any of those stores.
+    // 1. Collect all `init_aggr` related to the root.
+    fn collect_init_aggrs<'a, 'b>(
+        context: &'a Context<'b>,
+        init_aggr: Value,
+        init_aggrs: &mut FxHashMap<Value, usize>,
+    ) {
+        // All init_aggrs are initially marked with index 0 (unknown).
+        init_aggrs.insert(init_aggr, 0);
+        let Some(Instruction {
+            parent: _,
+            op: InstOp::InitAggr(init_aggr),
+        }) = init_aggr.get_instruction(context)
+        else {
+            unreachable!("`init_aggr` is an `InstOp::InitAggr`");
+        };
+        for initializer in init_aggr.initializers(context) {
+            if let InitAggrInitializer::NestedInitAggr {
+                load: _,
+                init_aggr: nested_init_aggr,
+            } = initializer
+            {
+                collect_init_aggrs(context, nested_init_aggr, init_aggrs);
+            }
+        }
+    }
+    let mut init_aggrs = FxHashMap::<Value, usize>::default();
+    collect_init_aggrs(context, init_aggr, &mut init_aggrs);
+    let parent_block = init_aggr
+        .get_parent_block(context)
+        .expect("`init_aggr` is an instruction and must have a parent block");
+    for (inst_idx, inst) in parent_block.instruction_iter(context).enumerate() {
+        if init_aggrs.contains_key(&inst) {
+            init_aggrs.insert(inst, inst_idx + 1);
+        }
+    }
+    // 2. Find the earliest instruction index among those `init_aggr`s.
+    let earliest_aggr_init_inst = init_aggrs
+        .iter()
+        .min_by(|(_inst1, index1), (_inst2, index2)| index1.cmp(index2))
+        .map(|(inst, _index)| *inst)
+        .expect("There should be at least one init_aggr");
+    // 3. We start with index 1. If a `init_aggr` is at index 0, it means that
+    //    it is in a different block than the others, and we cannot lower it this way.
+    let earliest_aggr_init_inst_idx = init_aggrs
+        .get(&earliest_aggr_init_inst)
+        .expect("`earliest_aggr_init_inst` must be in `init_aggrs`");
+    if *earliest_aggr_init_inst_idx == 0 {
+        // Cannot lower.
+        return false;
+    }
+
+    // Perform the lowering:
+    // 1. `mem_clear_val` for the entire aggregate.
+    let inserter = get_inst_inserter_for_before_init_aggr(context, earliest_aggr_init_inst);
+    inserter
+        .mem_clear_val(root_aggr_ptr)
+        .add_metadatum(context, init_aggr.get_metadata(context));
+
+    // 2. `store`s for the non-zero fields.
+    lower_to_stores(
+        context,
+        init_aggr,
+        aggr_type,
+        root_aggr_ptr,
+        &mut Vec::new(),
+        initializers,
+        true,
+    );
+
+    true
 }
 
 /// This is the default lowering, run if there are no any optimizations that we can perform.
@@ -121,6 +300,7 @@ fn lower_to_stores<'a, 'b>(
     root_aggr_ptr: Value,
     gep_indices: &mut Vec<u64>,
     initializers: &[InitAggrInitializer],
+    skip_zeroes: bool,
 ) -> bool {
     let init_aggr_metadata = init_aggr.get_metadata(context);
     match aggr_type.get_content(context).clone() {
@@ -146,7 +326,11 @@ fn lower_to_stores<'a, 'b>(
             }
 
             match as_repeat_array(initializers) {
-                Some((initializer, length)) => {
+                // If we have zero-initialized the root aggregate, `skip_zeroes` will
+                // skip initializing those elements again. But the below code for repeated
+                // values does not write to the root directly, but to a temporary, leading
+                // to uninitialized values being accessed.
+                Some((initializer, length)) if !skip_zeroes => {
                     let repeated_value = match initializer {
                         InitAggrInitializer::Value(value) => value,
                         InitAggrInitializer::NestedInitAggr {
@@ -180,6 +364,7 @@ fn lower_to_stores<'a, 'b>(
                                 nested_aggr_ptr,
                                 &mut gep_indices,
                                 &nested_ia_initializers,
+                                skip_zeroes,
                             );
 
                             // Remove the `nested_init_aggr` and adapt its associated `load`
@@ -248,9 +433,14 @@ fn lower_to_stores<'a, 'b>(
                         }
                     }
                 }
-                None => {
+                _ => {
                     // Non-repeating array initializers. Initialize each element individually.
                     for (insert_idx, initializer) in initializers.iter().enumerate() {
+                        if initializer.is_runtime_zeroed(context) && skip_zeroes {
+                            // This element is zero-initialized. We can skip initializing it again.
+                            continue;
+                        }
+
                         gep_indices.push(insert_idx as u64);
 
                         lower_single_initializer_to_stores(
@@ -261,6 +451,7 @@ fn lower_to_stores<'a, 'b>(
                             init_aggr_metadata,
                             initializer,
                             arr_elem_type,
+                            skip_zeroes,
                         );
 
                         gep_indices.pop();
@@ -277,6 +468,10 @@ fn lower_to_stores<'a, 'b>(
             for (insert_idx, (initializer, field_type)) in
                 initializers.iter().zip(field_types).enumerate()
             {
+                if initializer.is_runtime_zeroed(context) && skip_zeroes {
+                    // This field is zero-initialized. We can skip initializing it again.
+                    continue;
+                }
                 gep_indices.push(insert_idx as u64);
 
                 lower_single_initializer_to_stores(
@@ -287,6 +482,7 @@ fn lower_to_stores<'a, 'b>(
                     init_aggr_metadata,
                     initializer,
                     field_type,
+                    skip_zeroes,
                 );
 
                 gep_indices.pop();
@@ -308,6 +504,7 @@ fn get_inst_inserter_for_before_init_aggr<'a, 'b>(
     InstructionInserter::new(context, block, InsertionPosition::Before(init_aggr))
 }
 
+#[allow(clippy::too_many_arguments)]
 fn lower_single_initializer_to_stores(
     context: &mut Context<'_>,
     init_aggr: Value,
@@ -316,6 +513,7 @@ fn lower_single_initializer_to_stores(
     init_aggr_metadata: Option<MetadataIndex>,
     initializer: &InitAggrInitializer,
     elem_ty: Type,
+    skip_zeroes: bool,
 ) {
     match initializer {
         InitAggrInitializer::Value(value) => {
@@ -361,6 +559,7 @@ fn lower_single_initializer_to_stores(
                 root_aggr_ptr,
                 gep_indices,
                 &nested_ia_initializers,
+                skip_zeroes,
             );
 
             // Remove the `nested_init_aggr` and adapt its associated `load`
