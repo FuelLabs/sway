@@ -1,0 +1,384 @@
+---
+source: test/src/snapshot/mod.rs
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_ref --ir final
+exit status: 0
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_ref
+   Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
+// IR: Final
+library {
+}
+
+   Compiling script main_args_ref (test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_ref)
+// IR: Final
+script {
+    pub entry fn __entry() -> __ptr never, !3 {
+        local bool IS_TRIVIAL
+        local never __ret_value
+        local { ptr } __struct_init_0
+        local { u64 } __struct_init_00
+        local { u64 } __tmp_arg
+        local { u64 } __tmp_block_arg
+        local { { u64 } } __tmp_block_arg0
+        local { { u64 } } __tmp_block_arg1
+        local { { u64 } } __tmp_block_arg2
+        local { { u64 } } __tmp_block_arg3
+        local { { u64 } } __tuple_init_0
+        local u64 _result
+        local { { u64 } } args
+        local mut { ptr } buffer
+        local __ptr { ptr } buffer_
+        local __ptr { ptr } buffer_0
+        local __ptr { ptr } buffer_00
+        local __ptr u64 item_
+        local u64 other_
+        local u64 other_0
+        local ptr ptr_
+        local __ptr { { u64 } } ptr__
+        local u64 self_
+        local u64 self_0
+        local __ptr { ptr } self_00
+        local __ptr { ptr } self_1
+        local u64 size
+        local u64 v
+
+        entry():
+        v823v1 = get_local __ptr never, __ret_value
+        v131v1 = const u64 0, !5
+        v675v1 = gtf v131v1, 10, !11
+        v676v1 = bitcast v675v1 to ptr, !12
+        v678v1 = get_local __ptr ptr, ptr_, !15
+        store v676v1 to v678v1, !16
+        v680v1 = get_local __ptr u64, self_, !23
+        v23v1 = const u64 14333742065139216717
+        store v23v1 to v680v1, !24
+        v682v1 = get_local __ptr u64, other_, !25
+        v24v1 = const u64 14333742065139216717
+        store v24v1 to v682v1, !26
+        v684v1 = get_local __ptr u64, self_, !29
+        v685v1 = load v684v1, !30
+        v686v1 = get_local __ptr u64, other_, !32
+        v687v1 = load v686v1, !33
+        v688v1 = cmp eq v685v1 v687v1, !34
+        cbr v688v1, decode_script_data_0_decode_from_raw_ptr_1_is_decode_trivial_2_is_decode_trivial_3_block0(), decode_script_data_0_decode_from_raw_ptr_1_is_decode_trivial_2_is_decode_trivial_3_block1(v688v1), !36
+
+        decode_script_data_0_decode_from_raw_ptr_1_is_decode_trivial_2_is_decode_trivial_3_block0():
+        v691v1 = get_local __ptr u64, self_0, !41
+        v28v1 = const u64 17045370188297990602
+        store v28v1 to v691v1, !42
+        v693v1 = get_local __ptr u64, other_0, !43
+        v29v1 = const u64 17045370188297990602
+        store v29v1 to v693v1, !44
+        v695v1 = get_local __ptr u64, self_0, !45
+        v696v1 = load v695v1, !46
+        v697v1 = get_local __ptr u64, other_0, !47
+        v698v1 = load v697v1, !48
+        v699v1 = cmp eq v696v1 v698v1, !49
+        cbr v699v1, decode_script_data_0_decode_from_raw_ptr_1_is_decode_trivial_2_is_decode_trivial_3_is_decode_trivial_5_is_decode_trivial_6_block0(), decode_script_data_0_decode_from_raw_ptr_1_is_decode_trivial_2_is_decode_trivial_3_is_decode_trivial_5_is_decode_trivial_6_block1(v699v1), !51
+
+        decode_script_data_0_decode_from_raw_ptr_1_is_decode_trivial_2_is_decode_trivial_3_is_decode_trivial_5_is_decode_trivial_6_block0():
+        v33v1 = const bool true, !52
+        br decode_script_data_0_decode_from_raw_ptr_1_is_decode_trivial_2_is_decode_trivial_3_is_decode_trivial_5_is_decode_trivial_6_block1(v33v1), !53
+
+        decode_script_data_0_decode_from_raw_ptr_1_is_decode_trivial_2_is_decode_trivial_3_is_decode_trivial_5_is_decode_trivial_6_block1(v662v1: bool):
+        br decode_script_data_0_decode_from_raw_ptr_1_is_decode_trivial_2_is_decode_trivial_3_block1(v662v1), !54
+
+        decode_script_data_0_decode_from_raw_ptr_1_is_decode_trivial_2_is_decode_trivial_3_block1(v665v1: bool):
+        cbr v665v1, decode_script_data_0_decode_from_raw_ptr_1_block0(), decode_script_data_0_decode_from_raw_ptr_1_block1(), !55
+
+        decode_script_data_0_decode_from_raw_ptr_1_block0():
+        v772v1 = get_local __ptr ptr, ptr_, !57
+        v773v1 = load v772v1, !58
+        v774v1 = cast_ptr v773v1 to __ptr { { u64 } }, !59
+        v775v1 = get_local __ptr __ptr { { u64 } }, ptr__, !61
+        store v774v1 to v775v1, !62
+        v777v1 = get_local __ptr __ptr { { u64 } }, ptr__, !64
+        v778v1 = load v777v1, !65
+        v804v1 = get_local __ptr { { u64 } }, __tmp_block_arg1
+        mem_copy_val v804v1, v778v1
+        br decode_script_data_0_decode_from_raw_ptr_1_block2(v804v1), !66
+
+        decode_script_data_0_decode_from_raw_ptr_1_block1():
+        v711v1 = get_local __ptr { ptr }, __struct_init_0, !68
+        v712v1 = get_local __ptr ptr, ptr_, !70
+        v193v1 = const u64 0
+        v714v1 = get_elem_ptr v711v1, __ptr ptr, v193v1, !71
+        mem_copy_val v714v1, v712v1
+        v717v1 = get_local __ptr { ptr }, buffer, !73
+        mem_copy_val v717v1, v711v1
+        v719v1 = get_local __ptr { ptr }, buffer, !75
+        v721v1 = get_local __ptr __ptr { ptr }, buffer_, !78
+        store v719v1 to v721v1, !79
+        v723v1 = get_local __ptr { { u64 } }, __tuple_init_0, !81
+        v724v1 = get_local __ptr __ptr { ptr }, buffer_, !83
+        v726v1 = get_local __ptr __ptr { ptr }, buffer_0, !86
+        mem_copy_val v726v1, v724v1
+        v728v1 = get_local __ptr { u64 }, __struct_init_00, !88
+        v729v1 = get_local __ptr __ptr { ptr }, buffer_0, !90
+        v731v1 = get_local __ptr __ptr { ptr }, self_1, !93
+        mem_copy_val v731v1, v729v1
+        v733v1 = get_local __ptr __ptr { ptr }, self_1, !95
+        v735v1 = get_local __ptr __ptr { ptr }, buffer_00, !98
+        mem_copy_val v735v1, v733v1
+        v737v1 = get_local __ptr __ptr { ptr }, buffer_00, !100
+        v739v1 = get_local __ptr __ptr { ptr }, self_00, !103
+        mem_copy_val v739v1, v737v1
+        v741v1 = get_local __ptr __ptr { ptr }, self_00, !105
+        v742v1 = load v741v1, !106
+        v81v1 = const u64 0
+        v743v1 = get_elem_ptr v742v1, __ptr ptr, v81v1, !108
+        v744v1 = load v743v1, !109
+        v745v1 = asm(ptr: v744v1, val) -> u64 val, !111 {
+            lw     val ptr i0, !112
+        }
+        v746v1 = get_local __ptr u64, v, !114
+        store v745v1 to v746v1, !115
+        v748v1 = get_local __ptr __ptr { ptr }, self_00, !117
+        v749v1 = load v748v1, !118
+        v89v1 = const u64 0
+        v750v1 = get_elem_ptr v749v1, __ptr ptr, v89v1, !119
+        v751v1 = load v750v1, !120
+        v87v1 = const u64 1
+        v92v1 = const u64 8, !121
+        v752v1 = mul v87v1, v92v1, !122
+        v753v1 = add v751v1, v752v1, !123
+        v754v1 = get_local __ptr __ptr { ptr }, self_00, !125
+        v755v1 = load v754v1, !126
+        v96v1 = const u64 0
+        v756v1 = get_elem_ptr v755v1, __ptr ptr, v96v1, !127
+        store v753v1 to v756v1, !128
+        v758v1 = get_local __ptr u64, v, !130
+        v759v1 = load v758v1, !131
+        v199v1 = const u64 0
+        v763v1 = get_elem_ptr v728v1, __ptr u64, v199v1, !132
+        store v759v1 to v763v1, !133
+        v796v1 = get_local __ptr { u64 }, __tmp_block_arg
+        mem_copy_val v796v1, v728v1
+        v196v1 = const u64 0
+        v767v1 = get_elem_ptr v723v1, __ptr { u64 }, v196v1, !134
+        mem_copy_val v767v1, v796v1
+        v800v1 = get_local __ptr { { u64 } }, __tmp_block_arg0
+        mem_copy_val v800v1, v723v1
+        v806v1 = get_local __ptr { { u64 } }, __tmp_block_arg1
+        mem_copy_val v806v1, v800v1
+        br decode_script_data_0_decode_from_raw_ptr_1_block2(v806v1), !135
+
+        decode_script_data_0_decode_from_raw_ptr_1_block2(v802v1: __ptr { { u64 } }):
+        v810v1 = get_local __ptr { { u64 } }, __tmp_block_arg2
+        mem_copy_val v810v1, v802v1
+        v814v1 = get_local __ptr { { u64 } }, __tmp_block_arg3
+        mem_copy_val v814v1, v810v1
+        v139v1 = get_local __ptr { { u64 } }, args, !136
+        mem_copy_val v139v1, v814v1
+        v163v1 = get_local __ptr { { u64 } }, args, !137
+        v164v1 = const u64 0
+        v165v1 = get_elem_ptr v163v1, __ptr { u64 }, v164v1, !138
+        v820v1 = get_local __ptr { u64 }, __tmp_arg
+        mem_copy_val v820v1, v165v1
+        v822v1 = call main_15(v820v1)
+        v168v1 = get_local __ptr u64, _result, !139
+        store v822v1 to v168v1, !139
+        v187v1 = get_local __ptr u64, _result, !140
+        v188v3 = get_local __ptr __ptr u64, item_, !143
+        store v187v1 to v188v3, !143
+        v785v1 = get_local __ptr bool, IS_TRIVIAL, !145
+        v173v1 = const bool true, !146
+        store v173v1 to v785v1, !147
+        v787v1 = get_local __ptr u64, size, !149
+        v178v1 = const u64 8
+        store v178v1 to v787v1, !150
+        v789v1 = get_local __ptr __ptr u64, item_, !152
+        v790v1 = load v789v1, !143
+        v791v1 = get_local __ptr u64, size, !154
+        v792v1 = load v791v1, !143
+        retd v790v1 v792v1, !156
+    }
+
+    entry_orig fn main_15(baba: __ptr { u64 }) -> u64, !160 {
+        local u64 other_
+
+        entry(baba: __ptr { u64 }):
+        v157v1 = const u64 0
+        v158v1 = get_elem_ptr baba, __ptr u64, v157v1, !161
+        v649v1 = get_local __ptr u64, other_, !164
+        v160v1 = const u64 1, !165
+        store v160v1 to v649v1, !164
+        v652v1 = load v158v1, !164
+        v653v1 = get_local __ptr u64, other_, !167
+        v654v1 = load v653v1, !164
+        v655v1 = add v652v1, v654v1, !164
+        ret u64 v655v1
+    }
+}
+
+!0 = "test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_ref/src/main.<autogenerated>.sw"
+!1 = span !0 0 218
+!2 = fn_name_span !0 7 14
+!3 = (!1 !2)
+!4 = "test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw"
+!5 = span !4 1542 1543
+!6 = span !0 66 103
+!7 = fn_call_path_span !0 66 84
+!8 = span !4 186170 186202
+!9 = fn_call_path_span !4 186170 186200
+!10 = span !4 1525 1549
+!11 = (!6 !7 !8 !9 !10)
+!12 = (!6 !7 !8 !9 !10)
+!13 = span !4 186145 186203
+!14 = fn_call_path_span !4 186145 186164
+!15 = (!6 !7 !13 !14)
+!16 = (!6 !7 !13 !14)
+!17 = span !4 185885 185909
+!18 = fn_call_path_span !4 185885 185902
+!19 = span !4 3731 3753
+!20 = fn_call_path_span !4 3731 3751
+!21 = span !4 149043 149100
+!22 = fn_call_path_span !4 149070 149072
+!23 = (!6 !7 !13 !14 !17 !18 !19 !20 !21 !22)
+!24 = (!6 !7 !13 !14 !17 !18 !19 !20 !21 !22)
+!25 = (!6 !7 !13 !14 !17 !18 !19 !20 !21 !22)
+!26 = (!6 !7 !13 !14 !17 !18 !19 !20 !21 !22)
+!27 = "test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/ops.sw"
+!28 = span !27 16833 16837
+!29 = (!6 !7 !13 !14 !17 !18 !19 !20 !21 !22 !28)
+!30 = (!6 !7 !13 !14 !17 !18 !19 !20 !21 !22)
+!31 = span !27 16839 16844
+!32 = (!6 !7 !13 !14 !17 !18 !19 !20 !21 !22 !31)
+!33 = (!6 !7 !13 !14 !17 !18 !19 !20 !21 !22)
+!34 = (!6 !7 !13 !14 !17 !18 !19 !20 !21 !22)
+!35 = span !4 149043 149128
+!36 = (!6 !7 !13 !14 !17 !18 !19 !20 !35)
+!37 = span !4 149104 149128
+!38 = fn_call_path_span !4 149104 149121
+!39 = span !0 157 214
+!40 = fn_call_path_span !0 184 186
+!41 = (!6 !7 !13 !14 !17 !18 !19 !20 !37 !38 !19 !20 !39 !40)
+!42 = (!6 !7 !13 !14 !17 !18 !19 !20 !37 !38 !19 !20 !39 !40)
+!43 = (!6 !7 !13 !14 !17 !18 !19 !20 !37 !38 !19 !20 !39 !40)
+!44 = (!6 !7 !13 !14 !17 !18 !19 !20 !37 !38 !19 !20 !39 !40)
+!45 = (!6 !7 !13 !14 !17 !18 !19 !20 !37 !38 !19 !20 !39 !40 !28)
+!46 = (!6 !7 !13 !14 !17 !18 !19 !20 !37 !38 !19 !20 !39 !40)
+!47 = (!6 !7 !13 !14 !17 !18 !19 !20 !37 !38 !19 !20 !39 !40 !31)
+!48 = (!6 !7 !13 !14 !17 !18 !19 !20 !37 !38 !19 !20 !39 !40)
+!49 = (!6 !7 !13 !14 !17 !18 !19 !20 !37 !38 !19 !20 !39 !40)
+!50 = span !0 157 244
+!51 = (!6 !7 !13 !14 !17 !18 !19 !20 !37 !38 !19 !20 !50)
+!52 = span !4 95941 95945
+!53 = (!6 !7 !13 !14 !17 !18 !19 !20 !37 !38 !19 !20 !50)
+!54 = (!6 !7 !13 !14 !17 !18 !19 !20 !35)
+!55 = (!6 !7 !13 !14 !17)
+!56 = span !4 185961 185964
+!57 = (!6 !7 !13 !14 !56)
+!58 = (!6 !7 !13 !14)
+!59 = (!6 !7 !13 !14)
+!60 = span !4 185920 185966
+!61 = (!6 !7 !13 !14 !60)
+!62 = (!6 !7 !13 !14 !60)
+!63 = span !4 185976 185979
+!64 = (!6 !7 !13 !14 !63)
+!65 = (!6 !7 !13 !14)
+!66 = (!6 !7 !13 !14)
+!67 = span !4 186018 186038
+!68 = (!6 !7 !13 !14 !67)
+!69 = span !4 186033 186036
+!70 = (!6 !7 !13 !14 !69)
+!71 = (!6 !7 !13 !14 !67)
+!72 = span !4 186001 186039
+!73 = (!6 !7 !13 !14 !72)
+!74 = span !4 186062 186068
+!75 = (!6 !7 !13 !14 !74)
+!76 = span !4 186048 186069
+!77 = fn_call_path_span !4 186048 186061
+!78 = (!6 !7 !13 !14 !76 !77)
+!79 = (!6 !7 !13 !14 !76 !77)
+!80 = span !4 149201 149226
+!81 = (!6 !7 !13 !14 !76 !77 !80)
+!82 = span !4 149216 149222
+!83 = (!6 !7 !13 !14 !76 !77 !82)
+!84 = span !4 149202 149223
+!85 = fn_call_path_span !4 149202 149215
+!86 = (!6 !7 !13 !14 !76 !77 !84 !85)
+!87 = span !0 373 410
+!88 = (!6 !7 !13 !14 !76 !77 !84 !85 !87)
+!89 = span !0 385 391
+!90 = (!6 !7 !13 !14 !76 !77 !84 !85 !89)
+!91 = span !0 385 407
+!92 = fn_call_path_span !0 392 398
+!93 = (!6 !7 !13 !14 !76 !77 !84 !85 !91 !92)
+!94 = span !4 3480 3484
+!95 = (!6 !7 !13 !14 !76 !77 !84 !85 !91 !92 !94)
+!96 = span !4 3466 3485
+!97 = fn_call_path_span !4 3466 3479
+!98 = (!6 !7 !13 !14 !76 !77 !84 !85 !91 !92 !96 !97)
+!99 = span !4 96017 96023
+!100 = (!6 !7 !13 !14 !76 !77 !84 !85 !91 !92 !96 !97 !99)
+!101 = span !4 96017 96045
+!102 = fn_call_path_span !4 96024 96036
+!103 = (!6 !7 !13 !14 !76 !77 !84 !85 !91 !92 !96 !97 !101 !102)
+!104 = span !4 2282 2286
+!105 = (!6 !7 !13 !14 !76 !77 !84 !85 !91 !92 !96 !97 !101 !102 !104)
+!106 = (!6 !7 !13 !14 !76 !77 !84 !85 !91 !92 !96 !97 !101 !102)
+!107 = span !4 625 641
+!108 = (!6 !7 !13 !14 !76 !77 !84 !85 !91 !92 !96 !97 !101 !102 !107)
+!109 = (!6 !7 !13 !14 !76 !77 !84 !85 !91 !92 !96 !97 !101 !102)
+!110 = span !4 2273 2354
+!111 = (!6 !7 !13 !14 !76 !77 !84 !85 !91 !92 !96 !97 !101 !102 !110)
+!112 = span !4 2311 2324
+!113 = span !4 2265 2355
+!114 = (!6 !7 !13 !14 !76 !77 !84 !85 !91 !92 !96 !97 !101 !102 !113)
+!115 = (!6 !7 !13 !14 !76 !77 !84 !85 !91 !92 !96 !97 !101 !102 !113)
+!116 = span !4 2391 2395
+!117 = (!6 !7 !13 !14 !76 !77 !84 !85 !91 !92 !96 !97 !101 !102 !116)
+!118 = (!6 !7 !13 !14 !76 !77 !84 !85 !91 !92 !96 !97 !101 !102)
+!119 = (!6 !7 !13 !14 !76 !77 !84 !85 !91 !92 !96 !97 !101 !102 !107)
+!120 = (!6 !7 !13 !14 !76 !77 !84 !85 !91 !92 !96 !97 !101 !102)
+!121 = span !4 2401 2402
+!122 = (!6 !7 !13 !14 !76 !77 !84 !85 !91 !92 !96 !97 !101 !102)
+!123 = (!6 !7 !13 !14 !76 !77 !84 !85 !91 !92 !96 !97 !101 !102)
+!124 = span !4 2364 2403
+!125 = (!6 !7 !13 !14 !76 !77 !84 !85 !91 !92 !96 !97 !101 !102 !124)
+!126 = (!6 !7 !13 !14 !76 !77 !84 !85 !91 !92 !96 !97 !101 !102)
+!127 = (!6 !7 !13 !14 !76 !77 !84 !85 !91 !92 !96 !97 !101 !102 !124)
+!128 = (!6 !7 !13 !14 !76 !77 !84 !85 !91 !92 !96 !97 !101 !102 !124)
+!129 = span !4 2413 2414
+!130 = (!6 !7 !13 !14 !76 !77 !84 !85 !91 !92 !96 !97 !101 !102 !129)
+!131 = (!6 !7 !13 !14 !76 !77 !84 !85 !91 !92 !96 !97 !101 !102)
+!132 = (!6 !7 !13 !14 !76 !77 !84 !85 !87)
+!133 = (!6 !7 !13 !14 !76 !77 !84 !85 !87)
+!134 = (!6 !7 !13 !14 !76 !77 !80)
+!135 = (!6 !7 !13 !14)
+!136 = span !0 40 104
+!137 = span !0 145 149
+!138 = span !0 150 151
+!139 = span !0 121 153
+!140 = span !0 196 203
+!141 = span !0 170 204
+!142 = fn_call_path_span !0 170 187
+!143 = (!141 !142)
+!144 = span !4 93964 94013
+!145 = (!141 !142 !144)
+!146 = span !4 93989 94013
+!147 = (!141 !142 !144)
+!148 = span !4 94043 94071
+!149 = (!141 !142 !148)
+!150 = (!141 !142 !148)
+!151 = span !4 94095 94099
+!152 = (!141 !142 !151)
+!153 = span !4 94101 94105
+!154 = (!141 !142 !153)
+!155 = span !4 94080 94106
+!156 = (!141 !142 !155)
+!157 = "test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_ref/src/main.sw"
+!158 = span !157 46 99
+!159 = fn_name_span !157 49 53
+!160 = (!158 !159)
+!161 = span !157 33 41
+!162 = span !157 85 97
+!163 = fn_call_path_span !157 94 95
+!164 = (!162 !163)
+!165 = span !157 96 97
+!166 = span !27 1328 1333
+!167 = (!162 !163 !166)
+
+    Finished debug [unoptimized + fuel] target(s) [480 B] in ???
