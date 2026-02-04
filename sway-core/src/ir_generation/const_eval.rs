@@ -592,11 +592,12 @@ fn const_eval_typed_expr(
 
             let function_decl = lookup.engines.de().get_function(fn_ref);
 
-            if function_decl.is_trait_method_dummy {
-                return Err(ConstEvalError::CompileError);
-            }
-
-            let res = const_eval_codeblock(lookup, known_consts, &function_decl.body);
+            // save result here to always run the pop below
+            let res = if function_decl.is_trait_method_dummy {
+                Err(ConstEvalError::CompileError)
+            } else {
+                const_eval_codeblock(lookup, known_consts, &function_decl.body)
+            };
 
             for (name, _) in arguments {
                 known_consts.pop(name);
