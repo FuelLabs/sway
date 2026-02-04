@@ -3725,10 +3725,10 @@ impl<'a> FnCompiler<'a> {
             if let Ok(condition_const_value) = condition_const_value {
                 let condition_bool = condition_const_value
                     .get_constant(context)
-                    .expect("compile_constant_expression returns constants")
+                    .ok_or_else(|| CompileError::InternalOwned("compile_constant_expression did not returned a constant".to_string(), ast_condition.span.clone()))?
                     .get_content(context)
                     .as_bool()
-                    .unwrap();
+                    .ok_or_else(|| CompileError::InternalOwned("if condition returned non-bool".to_string(), ast_condition.span.clone()))?;
                 let branch_value = if condition_bool {
                     self.compile_expression_to_register(context, md_mgr, ast_then)?
                 } else {
