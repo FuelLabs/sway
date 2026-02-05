@@ -7,12 +7,12 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/if/inline_if_expr_const
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert)
    Compiling script inline_if_expr_const (test/src/e2e_vm_tests/test_programs/should_pass/language/if/inline_if_expr_const)
-    Finished debug [unoptimized + fuel] target(s) [712 B] in ???
+    Finished debug [unoptimized + fuel] target(s) [664 B] in ???
      Running 1 test, filtered 0 tests
 
 tested -- inline_if_expr_const
 
-      test test_if_works ... ok (???, 653 gas)
+      test test_if_works ... ok (???, 605 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
@@ -199,81 +199,71 @@ fn if_const_generic_9() -> u64 {
 }
 
 
-pshl i7                       ; save registers 16..40
+pshl i3                       ; save registers 16..40
 pshh i524288                  ; save registers 40..64
 move $$locbase $sp            ; save locals base register for function if_not_const_5
 cfei i8                       ; allocate 8 bytes for locals and 0 slots for call arguments
-move $r0 $$reta               ; save return address
 sb   $$locbase $$arg0 i0      ; store byte
-lb   $r1 $$locbase i0         ; load byte
-movi $r2 i10                  ; initialize constant into register
-jnzf $r1 $zero i1
-movi $r2 i20                  ; initialize constant into register
-move $$retv $r2               ; set return value
-cfsi i8                       ; free 8 bytes for locals and 0 slots for extra call arguments
-move $$reta $r0               ; restore return address
-poph i524288                  ; restore registers 40..64
-popl i7                       ; restore registers 16..40
-jal  $zero $$reta i0          ; return from call
-
-pshl i3                       ; save registers 16..40
-pshh i524288                  ; save registers 40..64
-move $$locbase $sp            ; save locals base register for function if_const_true_6
-move $r0 $$reta               ; save return address
+lb   $r0 $$locbase i0         ; load byte
 movi $r1 i10                  ; initialize constant into register
-move $$retv $r1               ; set return value
-move $$reta $r0               ; restore return address
-poph i524288                  ; restore registers 40..64
-popl i3                       ; restore registers 16..40
-jal  $zero $$reta i0          ; return from call
-
-pshl i3                       ; save registers 16..40
-pshh i524288                  ; save registers 40..64
-move $$locbase $sp            ; save locals base register for function if_const_false_7
-move $r0 $$reta               ; save return address
+jnzf $r0 $zero i1
 movi $r1 i20                  ; initialize constant into register
 move $$retv $r1               ; set return value
-move $$reta $r0               ; restore return address
+cfsi i8                       ; free 8 bytes for locals and 0 slots for extra call arguments
 poph i524288                  ; restore registers 40..64
 popl i3                       ; restore registers 16..40
 jal  $zero $$reta i0          ; return from call
 
-pshl i7                       ; save registers 16..40
+pshl i1                       ; save registers 16..40
+pshh i524288                  ; save registers 40..64
+move $$locbase $sp            ; save locals base register for function if_const_true_6
+movi $r0 i10                  ; initialize constant into register
+move $$retv $r0               ; set return value
+poph i524288                  ; restore registers 40..64
+popl i1                       ; restore registers 16..40
+jal  $zero $$reta i0          ; return from call
+
+pshl i1                       ; save registers 16..40
+pshh i524288                  ; save registers 40..64
+move $$locbase $sp            ; save locals base register for function if_const_false_7
+movi $r0 i20                  ; initialize constant into register
+move $$retv $r0               ; set return value
+poph i524288                  ; restore registers 40..64
+popl i1                       ; restore registers 16..40
+jal  $zero $$reta i0          ; return from call
+
+pshl i3                       ; save registers 16..40
 pshh i524288                  ; save registers 40..64
 move $$locbase $sp            ; save locals base register for function if_const_generic_8
 cfei i16                      ; allocate 16 bytes for locals and 0 slots for call arguments
-move $r0 $$reta               ; save return address
 sw   $$locbase $one i1        ; store word
 sw   $$locbase $one i0        ; store word
-lw   $r1 $$locbase i1         ; load word
-lw   $r2 $$locbase i0         ; load word
-eq   $r1 $r1 $r2
-movi $r2 i10                  ; initialize constant into register
-jnzf $r1 $zero i1
-movi $r2 i20                  ; initialize constant into register
-move $$retv $r2               ; set return value
+lw   $r0 $$locbase i1         ; load word
+lw   $r1 $$locbase i0         ; load word
+eq   $r0 $r0 $r1
+movi $r1 i10                  ; initialize constant into register
+jnzf $r0 $zero i1
+movi $r1 i20                  ; initialize constant into register
+move $$retv $r1               ; set return value
 cfsi i16                      ; free 16 bytes for locals and 0 slots for extra call arguments
-move $$reta $r0               ; restore return address
 poph i524288                  ; restore registers 40..64
-popl i7                       ; restore registers 16..40
+popl i3                       ; restore registers 16..40
 jal  $zero $$reta i0          ; return from call
 
-pshl i7                       ; save registers 16..40
+pshl i3                       ; save registers 16..40
 pshh i524288                  ; save registers 40..64
 move $$locbase $sp            ; save locals base register for function if_const_generic_9
 cfei i16                      ; allocate 16 bytes for locals and 0 slots for call arguments
-move $r0 $$reta               ; save return address
 sw   $$locbase $zero i1       ; store word
 sw   $$locbase $one i0        ; store word
-lw   $r1 $$locbase i1         ; load word
-lw   $r2 $$locbase i0         ; load word
-eq   $r1 $r1 $r2
-movi $r2 i10                  ; initialize constant into register
+lw   $r0 $$locbase i1         ; load word
+lw   $r1 $$locbase i0         ; load word
+eq   $r1 $r0 $r1
+movi $r0 i10                  ; initialize constant into register
 jnzf $r1 $zero i1
-movi $r2 i20                  ; initialize constant into register
-move $$retv $r2               ; set return value
+movi $r0 i20                  ; initialize constant into register
+move $$retv $r0               ; set return value
 cfsi i16                      ; free 16 bytes for locals and 0 slots for extra call arguments
-move $$reta $r0               ; restore return address
 poph i524288                  ; restore registers 40..64
-popl i7                       ; restore registers 16..40
+popl i3                       ; restore registers 16..40
 jal  $zero $$reta i0          ; return from call
