@@ -14,7 +14,6 @@ colored.workspace = true
 duct.workspace = true
 filecheck.workspace = true
 forc = { workspace = true, features = ["test"] }
-forc-client.workspace = true
 forc-pkg.workspace = true
 forc-test.workspace = true
 forc-tracing.workspace = true
