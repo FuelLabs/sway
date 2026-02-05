@@ -91,7 +91,9 @@ pub(crate) async fn deploy_contract(
         cmd.arg("--no-experimental").arg(no_exp.name());
     }
 
-    let output = cmd.output().map_err(|e| anyhow!("Failed to execute forc-deploy: {}", e))?;
+    let output = cmd
+        .output()
+        .map_err(|e| anyhow!("Failed to execute forc-deploy: {}", e))?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -122,14 +124,20 @@ fn parse_contract_id_from_output(output: &str) -> Result<ContractId> {
             let bytes = hex::decode(id_str)
                 .map_err(|e| anyhow!("Failed to decode contract ID hex: {}", e))?;
             if bytes.len() != 32 {
-                bail!("Invalid contract ID length: expected 32, got {}", bytes.len());
+                bail!(
+                    "Invalid contract ID length: expected 32, got {}",
+                    bytes.len()
+                );
             }
             let mut arr = [0u8; 32];
             arr.copy_from_slice(&bytes);
             return Ok(ContractId::from(arr));
         }
     }
-    bail!("Could not find contract ID in forc-deploy output:\n{}", output)
+    bail!(
+        "Could not find contract ID in forc-deploy output:\n{}",
+        output
+    )
 }
 
 /// Run a given project against a node. Assumes the node is running at localhost:4000.
@@ -169,16 +177,14 @@ pub(crate) async fn runs_on_node(
             cmd.arg("--no-experimental").arg(no_exp.name());
         }
 
-        let output = cmd.output().map_err(|e| anyhow!("Failed to execute forc-run: {}", e))?;
+        let output = cmd
+            .output()
+            .map_err(|e| anyhow!("Failed to execute forc-run: {}", e))?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             let stdout = String::from_utf8_lossy(&output.stdout);
-            bail!(
-                "forc-run failed:\nstdout: {}\nstderr: {}",
-                stdout,
-                stderr
-            );
+            bail!("forc-run failed:\nstdout: {}\nstderr: {}", stdout, stderr);
         }
 
         // forc-run doesn't output receipts in a easily parseable format by default.
