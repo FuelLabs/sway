@@ -272,7 +272,12 @@ impl TypeId {
     /// Indicates of a given type is generic or not. Rely on whether the type is `Custom` and
     /// consider the special case where the resolved type is a struct or enum with a name that
     /// matches the name of the `Custom`.
-    pub(crate) fn is_generic_parameter(self, engines: &Engines, resolved_type_id: TypeId) -> bool {
+    pub(crate) fn is_generic_parameter(
+        self,
+        engines: &Engines,
+        resolved_type_id: TypeId,
+        abi_type_aliases_enabled: bool,
+    ) -> bool {
         let type_engine = engines.te();
         let decl_engine = engines.de();
         match (&*type_engine.get(self), &*type_engine.get(resolved_type_id)) {
@@ -296,7 +301,13 @@ impl TypeId {
                     ..
                 },
                 TypeInfo::Alias { name, .. },
-            ) => call_path.call_path.suffix != name.clone(),
+            ) => {
+                if abi_type_aliases_enabled {
+                    false
+                } else {
+                    call_path.call_path.suffix != name.clone()
+                }
+            }
             (TypeInfo::Custom { .. }, _) => true,
             _ => false,
         }

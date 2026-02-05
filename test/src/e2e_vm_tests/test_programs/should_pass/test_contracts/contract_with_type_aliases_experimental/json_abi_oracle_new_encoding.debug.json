@@ -1,0 +1,236 @@
+{
+  "concreteTypes": [
+    {
+      "concreteTypeId": "e9133707b9a5964870ad23e86be4f17604dcc01a7f1aa3c29c89bc00bf826150",
+      "metadataTypeId": 0,
+      "type": "(SubId, SubId)"
+    },
+    {
+      "concreteTypeId": "6dc857ccc5450dd9656c41075b5f827d26b117e08f6a7aeb27c83eddb7eb46c2",
+      "metadataTypeId": 1,
+      "type": "(SubId, [IdentityAlias; 2], IdentityAliasWrapperAlias, struct contract_with_type_aliases_abi::Generic<IdentityAliasWrapperAlias>, (SubId, SubId), StringTy)"
+    },
+    {
+      "aliasOf": "1567acc73497bb83e04c376e2c8d3997d0207f0b9b8fa17b0192ee62e1c7a60b",
+      "concreteTypeId": "ec8b64f449a0a882a300f033518b1d36d4d86ae5fb56a2f73bee536991354f8c",
+      "metadataTypeId": 3,
+      "type": "IdentityAliasWrapperAlias"
+    },
+    {
+      "aliasOf": "bc5b9d5b85b9fb6e78bbb779cc67a95e60d6f291cd256a4c7dba66308dc7dfb8",
+      "concreteTypeId": "ad6cdbd8e07b2c3d4b95f6b4ba8e5eeb6106b604fb4dfc6ccb8274ee194aadf0",
+      "type": "StringTy"
+    },
+    {
+      "aliasOf": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b",
+      "concreteTypeId": "ed5a69f3ec26a28dea9c502e4de03d3c9da64d76a6cafee4348d8f090db3f1ba",
+      "type": "SubId"
+    },
+    {
+      "concreteTypeId": "51e03ee1e6f7b7c928eab4ea7bd4f5140eb25216646a3742afbe75a753b0bce3",
+      "metadataTypeId": 5,
+      "type": "[IdentityAlias; 2]"
+    },
+    {
+      "concreteTypeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b",
+      "type": "b256"
+    },
+    {
+      "concreteTypeId": "bc5b9d5b85b9fb6e78bbb779cc67a95e60d6f291cd256a4c7dba66308dc7dfb8",
+      "type": "str[9]"
+    },
+    {
+      "concreteTypeId": "7587b556083bd8ec430f2588f6b8aaeba231743f84761b1d8955e125f2527ef2",
+      "metadataTypeId": 6,
+      "type": "struct contract_with_type_aliases_abi::Generic<IdentityAliasWrapperAlias>",
+      "typeArguments": [
+        "ec8b64f449a0a882a300f033518b1d36d4d86ae5fb56a2f73bee536991354f8c"
+      ]
+    },
+    {
+      "concreteTypeId": "1567acc73497bb83e04c376e2c8d3997d0207f0b9b8fa17b0192ee62e1c7a60b",
+      "metadataTypeId": 7,
+      "type": "struct contract_with_type_aliases_abi::IdentityAliasWrapper"
+    }
+  ],
+  "configurables": [],
+  "encodingVersion": "1",
+  "errorCodes": {},
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [
+        {
+          "concreteTypeId": "ed5a69f3ec26a28dea9c502e4de03d3c9da64d76a6cafee4348d8f090db3f1ba",
+          "name": "x"
+        },
+        {
+          "concreteTypeId": "51e03ee1e6f7b7c928eab4ea7bd4f5140eb25216646a3742afbe75a753b0bce3",
+          "name": "y"
+        },
+        {
+          "concreteTypeId": "ec8b64f449a0a882a300f033518b1d36d4d86ae5fb56a2f73bee536991354f8c",
+          "name": "z"
+        },
+        {
+          "concreteTypeId": "7587b556083bd8ec430f2588f6b8aaeba231743f84761b1d8955e125f2527ef2",
+          "name": "w"
+        },
+        {
+          "concreteTypeId": "e9133707b9a5964870ad23e86be4f17604dcc01a7f1aa3c29c89bc00bf826150",
+          "name": "u"
+        },
+        {
+          "concreteTypeId": "ad6cdbd8e07b2c3d4b95f6b4ba8e5eeb6106b604fb4dfc6ccb8274ee194aadf0",
+          "name": "s"
+        }
+      ],
+      "name": "foo",
+      "output": "6dc857ccc5450dd9656c41075b5f827d26b117e08f6a7aeb27c83eddb7eb46c2"
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "metadataTypes": [
+    {
+      "components": [
+        {
+          "name": "__tuple_element",
+          "typeId": "ed5a69f3ec26a28dea9c502e4de03d3c9da64d76a6cafee4348d8f090db3f1ba"
+        },
+        {
+          "name": "__tuple_element",
+          "typeId": "ed5a69f3ec26a28dea9c502e4de03d3c9da64d76a6cafee4348d8f090db3f1ba"
+        }
+      ],
+      "metadataTypeId": 0,
+      "type": "(_, _)"
+    },
+    {
+      "components": [
+        {
+          "name": "__tuple_element",
+          "typeId": "ed5a69f3ec26a28dea9c502e4de03d3c9da64d76a6cafee4348d8f090db3f1ba"
+        },
+        {
+          "name": "__tuple_element",
+          "typeId": 5
+        },
+        {
+          "name": "__tuple_element",
+          "typeId": 3
+        },
+        {
+          "name": "__tuple_element",
+          "typeArguments": [
+            {
+              "name": "",
+              "typeId": 3
+            }
+          ],
+          "typeId": 6
+        },
+        {
+          "name": "__tuple_element",
+          "typeId": 0
+        },
+        {
+          "name": "__tuple_element",
+          "typeId": "ad6cdbd8e07b2c3d4b95f6b4ba8e5eeb6106b604fb4dfc6ccb8274ee194aadf0"
+        }
+      ],
+      "metadataTypeId": 1,
+      "type": "(_, _, _, _, _, _)"
+    },
+    {
+      "components": [
+        {
+          "name": "Address",
+          "typeId": 8
+        },
+        {
+          "name": "ContractId",
+          "typeId": 9
+        }
+      ],
+      "metadataTypeId": 2,
+      "type": "IdentityAlias"
+    },
+    {
+      "components": [
+        {
+          "name": "i",
+          "typeId": 2
+        }
+      ],
+      "metadataTypeId": 3,
+      "type": "IdentityAliasWrapperAlias"
+    },
+    {
+      "components": [
+        {
+          "name": "i",
+          "typeId": 2
+        }
+      ],
+      "metadataTypeId": 4,
+      "type": "T"
+    },
+    {
+      "components": [
+        {
+          "name": "__array_element",
+          "typeId": 2
+        }
+      ],
+      "metadataTypeId": 5,
+      "type": "[_; 2]"
+    },
+    {
+      "components": [
+        {
+          "name": "f",
+          "typeId": 4
+        }
+      ],
+      "metadataTypeId": 6,
+      "type": "struct contract_with_type_aliases_abi::Generic",
+      "typeParameters": [
+        4
+      ]
+    },
+    {
+      "components": [
+        {
+          "name": "i",
+          "typeId": 2
+        }
+      ],
+      "metadataTypeId": 7,
+      "type": "struct contract_with_type_aliases_abi::IdentityAliasWrapper"
+    },
+    {
+      "components": [
+        {
+          "name": "bits",
+          "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
+        }
+      ],
+      "metadataTypeId": 8,
+      "type": "struct std::address::Address"
+    },
+    {
+      "components": [
+        {
+          "name": "bits",
+          "typeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b"
+        }
+      ],
+      "metadataTypeId": 9,
+      "type": "struct std::contract_id::ContractId"
+    }
+  ],
+  "panickingCalls": {},
+  "programType": "contract",
+  "specVersion": "1.2"
+}

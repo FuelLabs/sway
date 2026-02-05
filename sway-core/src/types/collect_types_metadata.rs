@@ -131,6 +131,7 @@ impl TypeMetadata {
         engines: &Engines,
         type_id: TypeId,
         program_name: String,
+        abi_type_aliases_enabled: bool,
     ) -> Result<Self, ErrorEmitted> {
         Ok(TypeMetadata::LoggedType(
             LogId::new(type_id.get_abi_type_str(
@@ -140,6 +141,7 @@ impl TypeMetadata {
                     abi_with_callpaths: true,
                     abi_with_fully_specified_types: true,
                     abi_root_type_without_generic_type_parameters: false,
+                    abi_type_aliases: abi_type_aliases_enabled,
                 },
                 engines,
                 type_id,

@@ -1,0 +1,8 @@
+[[package]]
+name = "abi_with_alias_experimental"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-95C0899893008D15"

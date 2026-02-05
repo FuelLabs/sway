@@ -82,3 +82,9 @@ fn conditionally_compiled() {
     log("This is compiled only if both `some_feature` and `some_other_feature` are enabled.");
 }
 ```
+
+## Tracking Experimental Features
+
+- `abi_type_aliases` — keeps the JSON ABI emitter from expanding type aliases into their target type when serializing a contract's ABI, allowing the published JSON to preserve the original alias names.
+
+See the tracking issue for this feature [here](https://github.com/FuelLabs/sway/issues/7486).
