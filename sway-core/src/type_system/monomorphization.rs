@@ -275,6 +275,7 @@ where
         self_type,
         subst_ctx,
     )?;
+
     value.subst(&SubstTypesContext::new(
         handler,
         engines,
