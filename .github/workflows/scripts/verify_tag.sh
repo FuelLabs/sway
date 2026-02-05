@@ -48,7 +48,6 @@ for toml_path in \
     "workspace.dependencies.forc-test.version" \
     "workspace.dependencies.forc-util.version" \
     "workspace.dependencies.forc-plugins.version" \
-    "workspace.dependencies.forc-client.version" \
     "workspace.dependencies.forc-debug.version" \
     "workspace.dependencies.forc-doc.version" \
     "workspace.dependencies.forc-fmt.version" \

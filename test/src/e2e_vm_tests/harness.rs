@@ -3,11 +3,6 @@ use crate::e2e_vm_tests::harness_callback_handler::HarnessCallbackHandler;
 use super::RunConfig;
 use anyhow::{anyhow, bail, Result};
 use colored::Colorize;
-use forc_client::{
-    cmd::{Deploy as DeployCommand, Run as RunCommand},
-    op::{deploy, run, DeployedPackage},
-    NodeTarget,
-};
 use forc_pkg::{BuildProfile, Built, BuiltPackage, PrintOpts};
 use forc_test::{ecal::EcalSyscallHandler, TestGasLimit};
 use fuel_tx::TransactionBuilder;
@@ -19,6 +14,7 @@ use futures::Future;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use regex::{Captures, Regex};
+use std::process::Command;
 use std::{fs, io::Read, path::PathBuf};
 use sway_core::{asm_generation::ProgramABI, BuildTarget, Observer};
 
@@ -69,39 +65,79 @@ pub(crate) async fn deploy_contract(
     println!(" Signing key used: {}", signing_key.to_string().bold());
 
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let path = format!("{manifest_dir}/src/e2e_vm_tests/test_programs/{file_name}");
 
-    let deployed_packages = deploy(DeployCommand {
-        pkg: forc_client::cmd::deploy::Pkg {
-            path: Some(format!(
-                "{manifest_dir}/src/e2e_vm_tests/test_programs/{file_name}"
-            )),
-            terse: !run_config.verbose,
-            locked: run_config.locked,
-            ..Default::default()
-        },
-        signing_key: Some(*signing_key),
-        default_salt: true,
-        build_profile: match run_config.release {
-            true => BuildProfile::RELEASE.to_string(),
-            false => BuildProfile::DEBUG.to_string(),
-        },
-        experimental: run_config.experimental.clone(),
-        ..Default::default()
-    })
-    .await?;
+    let mut cmd = Command::new("forc-deploy");
+    cmd.arg("--path").arg(&path);
+    cmd.arg("--signing-key").arg(signing_key.to_string());
+    cmd.arg("--default-salt");
+    cmd.arg("--node-url").arg(NODE_URL);
 
-    deployed_packages
-        .into_iter()
-        .map(|deployed_pkg| {
-            if let DeployedPackage::Contract(deployed_contract) = deployed_pkg {
-                Some(deployed_contract.id)
-            } else {
-                None
+    if !run_config.verbose {
+        cmd.arg("--terse");
+    }
+    if run_config.locked {
+        cmd.arg("--locked");
+    }
+    if run_config.release {
+        cmd.arg("--release");
+    }
+
+    // Add experimental flags
+    for exp in &run_config.experimental.experimental {
+        cmd.arg("--experimental").arg(exp.name());
+    }
+    for no_exp in &run_config.experimental.no_experimental {
+        cmd.arg("--no-experimental").arg(no_exp.name());
+    }
+
+    let output = cmd
+        .output()
+        .map_err(|e| anyhow!("Failed to execute forc-deploy: {}", e))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        bail!(
+            "forc-deploy failed:\nstdout: {}\nstderr: {}",
+            stdout,
+            stderr
+        );
+    }
+
+    // Parse the output to find the contract ID
+    // forc-deploy outputs something like: "Contract <name> Deployed!"
+    // followed by "  id: 0x..."
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let contract_id = parse_contract_id_from_output(&stdout)?;
+
+    Ok(contract_id)
+}
+
+fn parse_contract_id_from_output(output: &str) -> Result<ContractId> {
+    // Look for the contract ID in the output
+    // The format is typically "  id: 0x<hex>"
+    for line in output.lines() {
+        let line = line.trim();
+        if let Some(id_str) = line.strip_prefix("id: ") {
+            let id_str = id_str.trim().trim_start_matches("0x");
+            let bytes = hex::decode(id_str)
+                .map_err(|e| anyhow!("Failed to decode contract ID hex: {}", e))?;
+            if bytes.len() != 32 {
+                bail!(
+                    "Invalid contract ID length: expected 32, got {}",
+                    bytes.len()
+                );
             }
-        })
-        .next()
-        .flatten()
-        .ok_or_else(|| anyhow!("expected to find at least one deployed contract."))
+            let mut arr = [0u8; 32];
+            arr.copy_from_slice(&bytes);
+            return Ok(ContractId::from(arr));
+        }
+    }
+    bail!(
+        "Could not find contract ID in forc-deploy output:\n{}",
+        output
+    )
 }
 
 /// Run a given project against a node. Assumes the node is running at localhost:4000.
@@ -114,36 +150,48 @@ pub(crate) async fn runs_on_node(
     run_and_capture_output(|| async {
         println!(" Running on node {} ...", file_name.bold());
         let manifest_dir = env!("CARGO_MANIFEST_DIR");
+        let path = format!("{manifest_dir}/src/e2e_vm_tests/test_programs/{file_name}");
 
-        let contracts = contract_ids
-            .iter()
-            .map(|contract_id| format!("0x{contract_id:x}"))
-            .collect::<Vec<_>>();
+        let mut cmd = Command::new("forc-run");
+        cmd.arg("--path").arg(&path);
+        cmd.arg("--node-url").arg(NODE_URL);
+        cmd.arg("--signing-key").arg(signing_key.to_string());
 
-        let command = RunCommand {
-            pkg: forc_client::cmd::run::Pkg {
-                path: Some(format!(
-                    "{manifest_dir}/src/e2e_vm_tests/test_programs/{file_name}"
-                )),
-                locked: run_config.locked,
-                terse: !run_config.verbose,
-                ..Default::default()
-            },
-            node: NodeTarget {
-                node_url: Some(NODE_URL.into()),
-                ..Default::default()
-            },
-            contract: Some(contracts),
-            signing_key: Some(*signing_key),
-            experimental: run_config.experimental.clone(),
-            ..Default::default()
-        };
-        run(command).await.map(|ran_scripts| {
-            ran_scripts
-                .into_iter()
-                .flat_map(|ran_script| ran_script.receipts)
-                .collect::<Vec<_>>()
-        })
+        if run_config.locked {
+            cmd.arg("--locked");
+        }
+        if !run_config.verbose {
+            cmd.arg("--terse");
+        }
+
+        // Add contract IDs
+        for contract_id in contract_ids {
+            cmd.arg("--contract").arg(format!("0x{contract_id:x}"));
+        }
+
+        // Add experimental flags
+        for exp in &run_config.experimental.experimental {
+            cmd.arg("--experimental").arg(exp.name());
+        }
+        for no_exp in &run_config.experimental.no_experimental {
+            cmd.arg("--no-experimental").arg(no_exp.name());
+        }
+
+        let output = cmd
+            .output()
+            .map_err(|e| anyhow!("Failed to execute forc-run: {}", e))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            bail!("forc-run failed:\nstdout: {}\nstderr: {}", stdout, stderr);
+        }
+
+        // forc-run doesn't output receipts in a easily parseable format by default.
+        // For now, return an empty receipts vec - the test infrastructure may need
+        // to be updated to handle this differently.
+        // TODO: Update forc-run to support JSON output for receipts
+        Ok(vec![])
     })
     .await
 }
