@@ -183,7 +183,9 @@ fn analyse_fn(
 
             match &ctx.values.get(value.0).unwrap().value {
                 ValueDatum::Instruction(inst) => match &inst.op {
-                    InstOp::ConditionalBranch { .. } | InstOp::Branch(_) => {
+                    InstOp::ConditionalBranch { .. }
+                    | InstOp::Branch(_)
+                    | InstOp::Switch { .. } => {
                         // Branch instructions do not mutate anything.
                         // They do pass arguments to the next block,
                         // but that is captured by that argument itself being

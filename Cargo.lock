@@ -3280,6 +3280,7 @@ dependencies = [
  "sway-core",
  "sway-error",
  "sway-features",
+ "sway-ir",
  "sway-types",
  "sway-utils",
  "sysinfo",

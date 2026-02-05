@@ -31,6 +31,10 @@ pub enum IrError {
     VerifyCmpTypeMismatch(String, String),
     VerifyCmpUnknownTypes,
     VerifyConditionExprNotABool,
+    VerifySwitchDiscriminantNotU64,
+    VerifySwitchNonExhaustiveCases,
+    VerifySwitchDuplicateCase,
+    VerifySwitchNoCases,
     VerifyContractCallBadTypes(String),
     VerifyGepElementTypeNonPointer,
     VerifyGepFromNonPointer(String, Option<Value>),
@@ -208,6 +212,30 @@ impl fmt::Display for IrError {
                 write!(
                     f,
                     "Verification failed: Expression used for conditional is not a boolean."
+                )
+            }
+            IrError::VerifySwitchDiscriminantNotU64 => {
+                write!(
+                    f,
+                    "Verification failed: Switch discriminant is not a u64 integer."
+                )
+            }
+            IrError::VerifySwitchNonExhaustiveCases => {
+                write!(
+                    f,
+                    "Verification failed: Switch cases are not exhaustive for the discriminant."
+                )
+            }
+            IrError::VerifySwitchDuplicateCase => {
+                write!(
+                    f,
+                    "Verification failed: Switch contains duplicate case values."
+                )
+            }
+            IrError::VerifySwitchNoCases => {
+                write!(
+                    f,
+                    "Verification failed: Switch must have at least one case."
                 )
             }
             IrError::VerifyContractCallBadTypes(arg_name) => {

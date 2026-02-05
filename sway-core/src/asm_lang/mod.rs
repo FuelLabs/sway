@@ -281,6 +281,34 @@ impl Op {
         }
     }
 
+    /// Switch
+    pub(crate) fn switch(on: VirtualRegister, cases: Vec<Label>) -> Self {
+        Op {
+            opcode: Either::Right(OrganizationalOp::Switch {
+                discriminant: on,
+                cases,
+            }),
+            comment: String::new(),
+            owning_span: None,
+        }
+    }
+
+    /// Switch with comment
+    pub(crate) fn switch_comment(
+        discriminant: VirtualRegister,
+        cases: Vec<Label>,
+        comment: impl Into<String>,
+    ) -> Self {
+        Op {
+            opcode: Either::Right(OrganizationalOp::Switch {
+                discriminant,
+                cases,
+            }),
+            comment: comment.into(),
+            owning_span: None,
+        }
+    }
+
     pub(crate) fn parse_opcode(
         handler: &Handler,
         name: &Ident,
@@ -1322,6 +1350,14 @@ pub(crate) enum ControlFlowOp<Reg> {
         /// Jump type
         type_: JumpType<Reg>,
     },
+    Switch {
+        /// The register to switch on
+        discriminant: Reg,
+        /// Label to jump to, based on the value in the discriminant register
+        /// It must be ensured that the discriminant register contains a value
+        /// that is a valid index into this vector at runtime.
+        cases: Vec<Label>,
+    },
     // Placeholder for the offset into the configurables section.
     ConfigurablesOffsetPlaceholder,
     // placeholder for the DataSection offset
@@ -1347,6 +1383,17 @@ impl<Reg: fmt::Display> fmt::Display for ControlFlowOp<Reg> {
                     JumpType::NotZero(cond) => format!("jnzi {cond} {to}"),
                     JumpType::Call => format!("fncall {to}"),
                 },
+                Switch {
+                    discriminant,
+                    cases,
+                } => {
+                    let mut result = format!("switch {discriminant} [");
+                    for dest in cases.iter() {
+                        result.push_str(&format!("{dest}, "));
+                    }
+                    result.push(']');
+                    result
+                }
                 Comment => "".into(),
                 DataSectionOffsetPlaceholder =>
                     "DATA SECTION OFFSET[0..32]\nDATA SECTION OFFSET[32..64]".into(),
@@ -1375,6 +1422,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
                 JumpType::NotZero(r1) => vec![r1],
                 JumpType::Call => vec![],
             },
+            Switch { discriminant, .. } => vec![discriminant],
         })
         .into_iter()
         .collect()
@@ -1395,6 +1443,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
                 JumpType::NotZero(r1) => vec![r1],
                 JumpType::Call => vec![],
             },
+            Switch { discriminant, .. } => vec![discriminant],
         })
         .into_iter()
         .collect()
@@ -1414,6 +1463,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
                 JumpType::NotZero(r1) => vec![r1],
                 JumpType::Call => vec![],
             },
+            Switch { discriminant, .. } => vec![discriminant],
         })
         .into_iter()
         .collect()
@@ -1445,6 +1495,13 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
                     type_: JumpType::NotZero(update_reg(r1)),
                 },
                 _ => self.clone(),
+            },
+            Switch {
+                discriminant,
+                cases,
+            } => Self::Switch {
+                discriminant: update_reg(discriminant),
+                cases: cases.clone(),
             },
         }
     }
@@ -1487,6 +1544,11 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
                     }
                 }
             },
+            Switch { cases, .. } => {
+                for case in cases.iter() {
+                    next_ops.push(label_to_index[case]);
+                }
+            }
         };
 
         next_ops
@@ -1540,6 +1602,13 @@ impl ControlFlowOp<VirtualRegister> {
                     JumpType::Unconditional => JumpType::Unconditional,
                     JumpType::Call => JumpType::Call,
                 },
+            },
+            Switch {
+                discriminant,
+                cases,
+            } => Switch {
+                discriminant: map_reg(discriminant),
+                cases: cases.clone(),
             },
             DataSectionOffsetPlaceholder => DataSectionOffsetPlaceholder,
             ConfigurablesOffsetPlaceholder => ConfigurablesOffsetPlaceholder,
