@@ -26,7 +26,7 @@ jobs:
   benchmarks:
     runs-on: warp-ubuntu-latest-x64-4x
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
