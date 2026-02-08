@@ -41,8 +41,7 @@ impl AllocatedAbstractInstructionSet {
     ///
     /// `is_entry` is true if the function is an entry point of the program.
     pub(crate) fn optimize(self, is_entry: bool) -> AllocatedAbstractInstructionSet {
-        self
-            .remove_redundant_sp_move_to_locbase(is_entry)
+        self.remove_redundant_sp_move_to_locbase(is_entry)
             .remove_redundant_ops()
     }
 
@@ -53,7 +52,10 @@ impl AllocatedAbstractInstructionSet {
     ///  - does not spill any registers to the stack when allocating registers
     ///
     /// This is the cases IFF the function contains `CFEI 0`.
-    fn remove_redundant_sp_move_to_locbase(mut self, is_entry: bool) -> AllocatedAbstractInstructionSet {
+    fn remove_redundant_sp_move_to_locbase(
+        mut self,
+        is_entry: bool,
+    ) -> AllocatedAbstractInstructionSet {
         if is_entry {
             // We need to keep the $$sp move to $$locbase in entry functions, as it is a part of the compiler's contract.
             // E.g., when calculating jump instruction index, `forc test` relies on the fact that
@@ -61,10 +63,7 @@ impl AllocatedAbstractInstructionSet {
             return self;
         }
 
-        let has_zero_cfei = self.ops.iter().any(|op| match &op.opcode {
-            Either::Left(AllocatedInstruction::CFEI(imm)) if imm.value() == 0 => true,
-            _ => false,
-        });
+        let has_zero_cfei = self.ops.iter().any(|op| matches!(&op.opcode, Either::Left(AllocatedInstruction::CFEI(imm)) if imm.value() == 0));
 
         if !has_zero_cfei {
             return self;
@@ -73,14 +72,15 @@ impl AllocatedAbstractInstructionSet {
         // If there is a `CFEI 0` then we know for sure that the function does not use stack at all.
         // This means $$locbase is not used anywhere and we can safely remove the `MOVE $$locbase, $$sp` instruction.
         // If $$locbase is used, this is a compilation error and will be caught by the verifier later on.
-        if let Some(move_to_locals_base_idx) = self
-            .ops
-            .iter()
-            .position(|op| matches!(&op.opcode, Either::Left(AllocatedInstruction::MOVE(
+        if let Some(move_to_locals_base_idx) = self.ops.iter().position(|op| {
+            matches!(
+                &op.opcode,
+                Either::Left(AllocatedInstruction::MOVE(
                     AllocatedRegister::Constant(ConstantRegister::LocalsBase),
                     AllocatedRegister::Constant(ConstantRegister::StackPointer),
-                ))))
-        {
+                ))
+            )
+        }) {
             self.ops.remove(move_to_locals_base_idx);
         }
 

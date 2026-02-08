@@ -141,6 +141,7 @@ impl AbstractProgram {
             .enumerate()
             .map(|(idx, instruction_set)| instruction_set.optimize(idx < entries.len()))
             // TODO: Add verification. E.g., verify that:
+            //        - function has exactly one CFEI/CFSI pair,
             //        - the stack use for each function is balanced,
             //        - $$locbase is only used if stack has been allocated for it.
             //        - etc.
