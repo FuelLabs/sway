@@ -100,7 +100,7 @@ impl AbstractProgram {
         }
 
         // Keep track of the labels (and names) that represent program entry points.
-        let entries = self
+        let entries: Vec<_> = self
             .entries
             .iter()
             .map(|entry| {
@@ -136,10 +136,15 @@ impl AbstractProgram {
             .collect::<Result<Vec<AllocatedAbstractInstructionSet>, CompileError>>()?;
 
         // Optimize allocated functions.
-        // TODO: Add verification. E.g., verify that the stack use for each function is balanced.
         let functions = allocated_functions
             .into_iter()
-            .map(|instruction_set| instruction_set.optimize())
+            .enumerate()
+            .map(|(idx, instruction_set)| instruction_set.optimize(idx < entries.len()))
+            // TODO: Add verification. E.g., verify that:
+            //        - the stack use for each function is balanced,
+            //        - $$locbase is only used if stack has been allocated for it.
+            //        - etc.
+            // .map(AllocatedAbstractInstructionSet::verify)
             .collect::<Vec<AllocatedAbstractInstructionSet>>();
 
         Ok(AllocatedProgram {
