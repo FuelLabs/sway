@@ -113,10 +113,17 @@ sw   $$locbase $r2 i1         ; store word
 addi $r2 $$locbase i16        ; get offset to local __ptr slice
 mcpi $r2 $$locbase i16        ; copy memory
 addi $r2 $$locbase i16        ; get offset to local __ptr slice
+<<<<<<< HEAD
 move $$arg0 $r0               ; [call: eq_9]: pass argument 0
 move $$arg1 $r2               ; [call: eq_9]: pass argument 1
 jal  $$reta $pc i40           ; [call: eq_9]: call function
 move $r0 $one                 ; move parameter from branch to block argument
+=======
+move $$arg0 $r0               ; [call]: pass argument 0
+move $$arg1 $r2               ; [call]: pass argument 1
+jal  $$reta $pc i40           ; [call]: call eq_9
+movi $r0 i1                   ; move parameter from branch to block argument
+>>>>>>> 0f3fd4cde (replave move by movi when possible on asm optimisation)
 jnzf $$retv $zero i31
 addi $r0 $$locbase i96        ; get offset to local __ptr slice
 addr $r2 data_NonConfigurable_9; get __const_global0's address in data section
@@ -127,10 +134,17 @@ sw   $$locbase $r2 i5         ; store word
 addi $r2 $$locbase i48        ; get offset to local __ptr slice
 mcpi $r2 $r3 i16              ; copy memory
 addi $r2 $$locbase i48        ; get offset to local __ptr slice
+<<<<<<< HEAD
 move $$arg0 $r0               ; [call: eq_9]: pass argument 0
 move $$arg1 $r2               ; [call: eq_9]: pass argument 1
 jal  $$reta $pc i25           ; [call: eq_9]: call function
 movi $r0 i2                   ; initialize constant into register
+=======
+move $$arg0 $r0               ; [call]: pass argument 0
+move $$arg1 $r2               ; [call]: pass argument 1
+jal  $$reta $pc i25           ; [call]: call eq_9
+movi $r0 i2                   ; move parameter from branch to block argument
+>>>>>>> 0f3fd4cde (replave move by movi when possible on asm optimisation)
 jnzf $$retv $zero i16
 addi $r0 $$locbase i96        ; get offset to local __ptr slice
 addr $r2 data_NonConfigurable_10; get __const_global1's address in data section
@@ -141,6 +155,7 @@ sw   $$locbase $r2 i9         ; store word
 addi $r2 $$locbase i80        ; get offset to local __ptr slice
 mcpi $r2 $r3 i16              ; copy memory
 addi $r2 $$locbase i80        ; get offset to local __ptr slice
+<<<<<<< HEAD
 move $$arg0 $r0               ; [call: eq_9]: pass argument 0
 move $$arg1 $r2               ; [call: eq_9]: pass argument 1
 jal  $$reta $pc i10           ; [call: eq_9]: call function
@@ -153,3 +168,17 @@ move $$reta $r1               ; [fn end: return_match_on_str_slice_8] restore re
 poph i524288                  ; [fn end: return_match_on_str_slice_8]: restore used high registers 40..64
 popl i15                      ; [fn end: return_match_on_str_slice_8]: restore used low registers 16..40
 jal  $zero $$reta i0          ; [fn end: return_match_on_str_slice_8] return from call
+=======
+move $$arg0 $r0               ; [call]: pass argument 0
+move $$arg1 $r2               ; [call]: pass argument 1
+jal  $$reta $pc i10           ; [call]: call eq_9
+movi $r0 i3                   ; move parameter from branch to block argument
+jnzf $$retv $zero i1
+movi $r0 i1000                ; move parameter from branch to block argument
+move $$retv $r0               ; set return value
+cfsi i112                     ; free 112 bytes for locals and 0 slots for extra call arguments
+move $$reta $r1               ; restore return address
+poph i524288                  ; restore registers 40..64
+popl i15                      ; restore registers 16..40
+jal  $zero $$reta i0          ; return from call
+>>>>>>> 0f3fd4cde (replave move by movi when possible on asm optimisation)
