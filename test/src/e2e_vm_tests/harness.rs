@@ -3,11 +3,6 @@ use crate::e2e_vm_tests::harness_callback_handler::HarnessCallbackHandler;
 use super::RunConfig;
 use anyhow::{anyhow, bail, Result};
 use colored::Colorize;
-use forc_client::{
-    cmd::{Deploy as DeployCommand, Run as RunCommand},
-    op::{deploy, run, DeployedPackage},
-    NodeTarget,
-};
 use forc_pkg::{BuildProfile, Built, BuiltPackage, PrintOpts};
 use forc_test::{ecal::EcalSyscallHandler, TestGasLimit};
 use fuel_tx::TransactionBuilder;
@@ -15,6 +10,12 @@ use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
 use fuel_vm::fuel_tx::{self, consensus_parameters::ConsensusParametersV1};
 use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::*;
+use fuels::prelude::{Contract as FuelsContract, Provider, TxPolicies};
+use fuels::types::transaction_builders::{
+    BuildableTransaction, ScriptTransactionBuilder, TransactionBuilder as FuelsTransactionBuilder,
+    VariableOutputPolicy,
+};
+use fuels_accounts::{signers::private_key::PrivateKeySigner, Account, ViewOnlyAccount};
 use futures::Future;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
@@ -68,40 +69,23 @@ pub(crate) async fn deploy_contract(
     println!(" Deploying {} ...", file_name.bold());
     println!(" Signing key used: {}", signing_key.to_string().bold());
 
-    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let built = compile_to_bytes(file_name, run_config, &None).await?;
+    let built_pkg = built.expect_pkg()?;
 
-    let deployed_packages = deploy(DeployCommand {
-        pkg: forc_client::cmd::deploy::Pkg {
-            path: Some(format!(
-                "{manifest_dir}/src/e2e_vm_tests/test_programs/{file_name}"
-            )),
-            terse: !run_config.verbose,
-            locked: run_config.locked,
-            ..Default::default()
-        },
-        signing_key: Some(*signing_key),
-        default_salt: true,
-        build_profile: match run_config.release {
-            true => BuildProfile::RELEASE.to_string(),
-            false => BuildProfile::DEBUG.to_string(),
-        },
-        experimental: run_config.experimental.clone(),
-        ..Default::default()
-    })
-    .await?;
+    let provider = Provider::connect(NODE_URL).await.map_err(|e| anyhow!("{e}"))?;
+    let signer = PrivateKeySigner::new(*signing_key);
+    let wallet = fuels_accounts::wallet::Wallet::new(signer, provider);
 
-    deployed_packages
-        .into_iter()
-        .map(|deployed_pkg| {
-            if let DeployedPackage::Contract(deployed_contract) = deployed_pkg {
-                Some(deployed_contract.id)
-            } else {
-                None
-            }
-        })
-        .next()
-        .flatten()
-        .ok_or_else(|| anyhow!("expected to find at least one deployed contract."))
+    let response = FuelsContract::regular(
+        built_pkg.bytecode.bytes.clone(),
+        Salt::default(),
+        built_pkg.storage_slots.clone(),
+    )
+    .deploy(&wallet, TxPolicies::default())
+    .await
+    .map_err(|e| anyhow!("Failed to deploy contract: {e}"))?;
+
+    Ok(response.contract_id)
 }
 
 /// Run a given project against a node. Assumes the node is running at localhost:4000.
@@ -113,37 +97,60 @@ pub(crate) async fn runs_on_node(
 ) -> (Result<Vec<fuel_tx::Receipt>>, String) {
     run_and_capture_output(|| async {
         println!(" Running on node {} ...", file_name.bold());
-        let manifest_dir = env!("CARGO_MANIFEST_DIR");
 
-        let contracts = contract_ids
-            .iter()
-            .map(|contract_id| format!("0x{contract_id:x}"))
-            .collect::<Vec<_>>();
+        let built = compile_to_bytes(file_name, run_config, &None).await?;
+        let built_pkg = built.expect_pkg()?;
 
-        let command = RunCommand {
-            pkg: forc_client::cmd::run::Pkg {
-                path: Some(format!(
-                    "{manifest_dir}/src/e2e_vm_tests/test_programs/{file_name}"
-                )),
-                locked: run_config.locked,
-                terse: !run_config.verbose,
-                ..Default::default()
-            },
-            node: NodeTarget {
-                node_url: Some(NODE_URL.into()),
-                ..Default::default()
-            },
-            contract: Some(contracts),
-            signing_key: Some(*signing_key),
-            experimental: run_config.experimental.clone(),
-            ..Default::default()
-        };
-        run(command).await.map(|ran_scripts| {
-            ran_scripts
-                .into_iter()
-                .flat_map(|ran_script| ran_script.receipts)
-                .collect::<Vec<_>>()
-        })
+        let provider = Provider::connect(NODE_URL).await.map_err(|e| anyhow!("{e}"))?;
+        let signer = PrivateKeySigner::new(*signing_key);
+        let wallet = fuels_accounts::wallet::Wallet::new(signer, provider);
+
+        let mut tb = ScriptTransactionBuilder::prepare_transfer(
+            vec![],
+            vec![],
+            TxPolicies::default(),
+        )
+        .with_script(built_pkg.bytecode.bytes.clone())
+        .with_variable_output_policy(VariableOutputPolicy::EstimateMinimum);
+
+        for contract_id in contract_ids {
+            let input_idx = tb.inputs().len() as u16;
+            tb.inputs_mut().push(fuels::types::input::Input::contract(
+                Default::default(),
+                Default::default(),
+                Default::default(),
+                Default::default(),
+                (*contract_id).into(),
+            ));
+            tb.outputs_mut().push(fuel_tx::Output::contract(
+                input_idx,
+                Default::default(),
+                Default::default(),
+            ));
+        }
+
+        wallet.add_witnesses(&mut tb).map_err(|e| anyhow!("{e}"))?;
+        wallet
+            .adjust_for_fee(&mut tb, 0)
+            .await
+            .map_err(|e| anyhow!("{e}"))?;
+
+        let tx = tb
+            .build(wallet.provider())
+            .await
+            .map_err(|e| anyhow!("{e}"))?;
+
+        let tx_status = wallet
+            .provider()
+            .send_transaction_and_await_commit(tx)
+            .await
+            .map_err(|e| anyhow!("{e}"))?;
+
+        let receipts = tx_status
+            .take_receipts_checked(None)
+            .map_err(|e| anyhow!("{e}"))?;
+
+        Ok(receipts.to_vec())
     })
     .await
 }
