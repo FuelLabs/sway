@@ -11,8 +11,8 @@ output:
 
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/match_expressions_all --ir final --asm final --release | filter-fn match_expressions_all return_match_on_str_slice
 
-pshl i15                      ; save registers 16..40
-pshh i524288                  ; save registers 40..64
+pshl i15                      ; push used low registers 16..40 to the stack
+pshh i524288                  ; push used high registers 40..64 to the stack
 move $$locbase $sp            ; save locals base register for function return_match_on_str_slice_8
 cfei i112                     ; allocate 112 bytes for locals and 0 slots for call arguments
 move $r0 $$arg0               ; save argument 0 (param)
@@ -63,6 +63,6 @@ movi $r0 i1000                ; initialize constant into register
 move $$retv $r0               ; set return value
 cfsi i112                     ; free 112 bytes for locals and 0 slots for extra call arguments
 move $$reta $r1               ; restore return address
-poph i524288                  ; restore registers 40..64
-popl i15                      ; restore registers 16..40
+poph i524288                  ; restore used high registers 40..64 from the stack
+popl i15                      ; restore used low registers 16..40 from the stack
 jal  $zero $$reta i0          ; return from call

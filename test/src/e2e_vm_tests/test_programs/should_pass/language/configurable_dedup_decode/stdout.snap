@@ -110,28 +110,26 @@ addi $$arg2 $ssp i8           ; get pointer to configurable WRAPPED stack addres
 jal  $$reta $pc i7            ; decode configurable WRAPPED
 move $$locbase $sp            ; save locals base register for function __entry
 cfei i8                       ; allocate 8 bytes for locals and 0 slots for call arguments
-jal  $$reta $pc i9            ; [call]: call main_15
+jal  $$reta $pc i8            ; [call]: call main_15
 sw   $$locbase $$retv i0      ; store word
 movi $r0 i8                   ; initialize constant into register
 retd  $$locbase $r0
-pshh i524288                  ; save registers 40..64
-move $$locbase $sp            ; save locals base register for function abi_decode_in_place_0
+pshh i524288                  ; push used high registers 40..64 to the stack
 mcp  $$arg2 $$arg0 $$arg1     ; mcp target src len
-poph i524288                  ; restore registers 40..64
+poph i524288                  ; restore used high registers 40..64 from the stack
 jal  $zero $$reta i0          ; return from call
-pshl i3                       ; save registers 16..40
-pshh i524288                  ; save registers 40..64
-move $$locbase $sp            ; save locals base register for function main_15
+pshl i3                       ; push used low registers 16..40 to the stack
+pshh i524288                  ; push used high registers 40..64 to the stack
 lw   $r0 $ssp i1              ; load word
 lw   $r1 $ssp i0              ; load word
 add  $r0 $r0 $r1
 move $$retv $r0               ; set return value
-poph i524288                  ; restore registers 40..64
-popl i3                       ; restore registers 16..40
+poph i524288                  ; restore used high registers 40..64 from the stack
+popl i3                       ; restore used low registers 16..40 from the stack
 jal  $zero $$reta i0          ; return from call
 .data:
 data_<Configurable, TUPLE>_0 .bytes[8] 00 00 00 00 00 00 00 02  ........
 data_<Configurable, WRAPPED>_1 .bytes[8] 00 00 00 00 00 00 00 01  ........
 
 
-    Finished release [optimized + fuel] target(s) [176 B] in ???
+    Finished release [optimized + fuel] target(s) [168 B] in ???

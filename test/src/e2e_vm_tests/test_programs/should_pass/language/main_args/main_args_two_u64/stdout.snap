@@ -224,13 +224,12 @@ sw   $$locbase $$retv i7      ; store word
 addi $r0 $$locbase i56        ; get offset to local __ptr u64
 movi $r1 i8                   ; initialize constant into register
 retd  $r0 $r1
-pshl i1                       ; save registers 16..40
-pshh i524288                  ; save registers 40..64
-move $$locbase $sp            ; save locals base register for function main_11
+pshl i1                       ; push used low registers 16..40 to the stack
+pshh i524288                  ; push used high registers 40..64 to the stack
 add  $r0 $$arg0 $$arg1
 move $$retv $r0               ; set return value
-poph i524288                  ; restore registers 40..64
-popl i1                       ; restore registers 16..40
+poph i524288                  ; restore used high registers 40..64 from the stack
+popl i1                       ; restore used low registers 16..40 from the stack
 jal  $zero $$reta i0          ; return from call
 .data:
 
@@ -239,7 +238,7 @@ jal  $zero $$reta i0          ; return from call
 
 0x00000000 MOVE R60 $pc                                    ;; [26, 240, 48, 0]
 0x00000004 JMPF $zero 0x4                                  ;; [116, 0, 0, 4]
-0x00000008                                                 ;; [0, 0, 0, 0, 0, 0, 0, 136]
+0x00000008                                                 ;; [0, 0, 0, 0, 0, 0, 0, 128]
 0x00000010                                                 ;; [0, 0, 0, 0, 0, 0, 0, 0]
 0x00000018 LW R63 R60 0x1                                  ;; [93, 255, 192, 1]
 0x0000001c ADD R63 R63 R60                                 ;; [16, 255, 255, 0]
@@ -262,14 +261,12 @@ jal  $zero $$reta i0          ; return from call
 0x00000060 RETD $writable R17                              ;; [37, 65, 16, 0]
 0x00000064 PSHL 0x1                                        ;; [149, 0, 0, 1]
 0x00000068 PSHH 0x80000                                    ;; [150, 8, 0, 0]
-0x0000006c MOVE R59 $sp                                    ;; [26, 236, 80, 0]
-0x00000070 ADD $writable R58 R57                           ;; [16, 67, 174, 64]
-0x00000074 MOVE R61 $writable                              ;; [26, 245, 0, 0]
-0x00000078 POPH 0x80000                                    ;; [152, 8, 0, 0]
-0x0000007c POPL 0x1                                        ;; [151, 0, 0, 1]
-0x00000080 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
-0x00000084 NOOP                                            ;; [71, 0, 0, 0]
+0x0000006c ADD $writable R58 R57                           ;; [16, 67, 174, 64]
+0x00000070 MOVE R61 $writable                              ;; [26, 245, 0, 0]
+0x00000074 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x00000078 POPL 0x1                                        ;; [151, 0, 0, 1]
+0x0000007c JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
 .data_section:
 ;; --- END OF TARGET BYTECODE ---
 
-    Finished release [optimized + fuel] target(s) [136 B] in ???
+    Finished release [optimized + fuel] target(s) [128 B] in ???

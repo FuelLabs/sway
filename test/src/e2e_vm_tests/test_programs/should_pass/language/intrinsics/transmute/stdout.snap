@@ -25,8 +25,8 @@ fn transmute_by_reference_7(__ret_value: __ptr u256) -> () {
 }
 
 
-pshl i1                       ; save registers 16..40
-pshh i524288                  ; save registers 40..64
+pshl i1                       ; push used low registers 16..40 to the stack
+pshh i524288                  ; push used high registers 40..64 to the stack
 move $$locbase $sp            ; save locals base register for function transmute_by_reference_7
 cfei i72                      ; allocate 72 bytes for locals and 0 slots for call arguments
 mcli $$locbase i32            ; clear memory [u8; 32], 32 bytes
@@ -37,6 +37,6 @@ sw   $$locbase $r0 i8         ; store word
 lw   $r0 $$locbase i8         ; load word
 mcpi $$arg0 $r0 i32           ; copy memory
 cfsi i72                      ; free 72 bytes for locals and 0 slots for extra call arguments
-poph i524288                  ; restore registers 40..64
-popl i1                       ; restore registers 16..40
+poph i524288                  ; restore used high registers 40..64 from the stack
+popl i1                       ; restore used low registers 16..40 from the stack
 jal  $zero $$reta i0          ; return from call
