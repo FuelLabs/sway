@@ -2,9 +2,10 @@ use std::collections::hash_map::Entry;
 
 use either::Either;
 use rustc_hash::FxHashMap;
+use sway_types::Span;
 
 use crate::asm_lang::{
-    ConstantRegister, ControlFlowOp, JumpType, Label, Op, VirtualOp, VirtualRegister,
+    ConstantRegister, ControlFlowOp, JumpType, Label, Op, VirtualImmediate18, VirtualOp, VirtualRegister
 };
 
 use super::super::abstract_instruction_set::AbstractInstructionSet;
@@ -34,6 +35,11 @@ impl KnownRegValue {
             KnownRegValue::Eq(VirtualRegister::Constant(ConstantRegister::One)) => Some(1),
             KnownRegValue::Eq(_) => None,
         }
+    }
+
+    fn value_as_imm18(&self) -> Option<VirtualImmediate18> {
+        let raw = self.value()?;
+        VirtualImmediate18::try_new(raw, Span::dummy()).ok()
     }
 
     /// Check if the value depends on value of another register.
@@ -82,6 +88,7 @@ enum ResetKnown {
     /// Only the `def_registers` and `def_const_registers` are reset
     Defs,
 }
+
 impl ResetKnown {
     fn apply(&self, op: &Op, known_values: &mut KnownValues) {
         match self {
@@ -134,12 +141,15 @@ impl AbstractInstructionSet {
                 if !reg.is_virtual() {
                     continue;
                 }
+
                 if let Some(r) = known_values.resolve(reg).and_then(|r| r.register()) {
                     **reg = r;
                 }
             }
 
-            // Some instructions can be further simplified with the known values.
+            // Replace "JNZ reg LABEL" to
+            // - NOOP if the reg is zero, or
+            // - "JMP LABEL" if reg is zero
             if let Either::Right(ControlFlowOp::Jump {
                 to,
                 type_: JumpType::NotZero(reg),
@@ -166,10 +176,10 @@ impl AbstractInstructionSet {
             }
 
             // Some ops are known to produce certain results, interpret them here.
-            let interpreted_op = match &op.opcode {
+            let interpreted_op = match op.opcode.clone() {
                 Either::Left(VirtualOp::MOVI(dst, imm)) => {
                     let imm = KnownRegValue::Const(imm.value() as u64);
-                    if known_values.resolve(dst) == Some(imm.clone()) {
+                    if known_values.resolve(&dst) == Some(imm.clone()) {
                         op.opcode = Either::Left(VirtualOp::NOOP);
                     } else {
                         known_values.assign(dst.clone(), imm);
@@ -177,10 +187,14 @@ impl AbstractInstructionSet {
                     true
                 }
                 Either::Left(VirtualOp::MOVE(dst, src)) => {
-                    if let Some(known) = known_values.resolve(src) {
-                        if known_values.resolve(dst) == Some(known.clone()) {
+                    if let Some(known) = known_values.resolve(&src) {
+                        if known_values.resolve(&dst) == Some(known.clone()) {
                             op.opcode = Either::Left(VirtualOp::NOOP);
                         } else {
+                            if let Some(imm) = known.value_as_imm18() {
+                                op.opcode = Either::Left(VirtualOp::MOVI(dst.clone(), imm));
+                            }
+
                             known_values.assign(dst.clone(), known);
                         }
                     } else {

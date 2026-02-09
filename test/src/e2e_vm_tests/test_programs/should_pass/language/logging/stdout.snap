@@ -1732,7 +1732,11 @@ warning
 ____
 
   Compiled script "logging" with 6 warnings.
+<<<<<<< HEAD
     Finished release [optimized + fuel] target(s) [2.792 KB] in ???
+=======
+    Finished release [optimized + fuel] target(s) [2.784 KB] in ???
+>>>>>>> 0f3fd4cde (replave move by movi when possible on asm optimisation)
 
 > forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/logging --release
 exit status: 0
@@ -1833,7 +1837,11 @@ ____
 
 tested -- logging
 
+<<<<<<< HEAD
       test call_main ... ok (???, 5570 gas)
+=======
+      test call_main ... ok (???, 5572 gas)
+>>>>>>> 0f3fd4cde (replave move by movi when possible on asm optimisation)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 

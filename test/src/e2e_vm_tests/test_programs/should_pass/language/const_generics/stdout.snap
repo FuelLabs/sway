@@ -410,12 +410,20 @@ warning
 ____
 
   Compiled script "const_generics" with 2 warnings.
+<<<<<<< HEAD
     Finished release [optimized + fuel] target(s) [760 B] in ???
+=======
+    Finished release [optimized + fuel] target(s) [736 B] in ???
+>>>>>>> 0f3fd4cde (replave move by movi when possible on asm optimisation)
      Running 1 test, filtered 0 tests
 
 tested -- const_generics
 
+<<<<<<< HEAD
       test run_main ... ok (???, 448 gas)
+=======
+      test run_main ... ok (???, 422 gas)
+>>>>>>> 0f3fd4cde (replave move by movi when possible on asm optimisation)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 

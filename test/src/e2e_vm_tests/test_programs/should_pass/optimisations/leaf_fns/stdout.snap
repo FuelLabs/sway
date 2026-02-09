@@ -63,7 +63,31 @@ add  $r2 $r2 $$arg3
 add  $r2 $r2 $$arg4
 add  $r0 $r2 $r0
 add  $r0 $r0 $r1
+<<<<<<< HEAD
 move $$retv $r0               ; [fn end: leaf_fn_7_4] set return value
 poph i524288                  ; [fn end: leaf_fn_7_4]: restore used high registers 40..64
 popl i7                       ; [fn end: leaf_fn_7_4]: restore used low registers 16..40
 jal  $zero $$reta i0          ; [fn end: leaf_fn_7_4] return from call
+=======
+move $$retv $r0               ; set return value
+poph i524288                  ; restore registers 40..64
+popl i7                       ; restore registers 16..40
+jal  $zero $$reta i0          ; return from call
+
+pshl i1                       ; save registers 16..40
+pshh i524288                  ; save registers 40..64
+move $$locbase $sp            ; save locals base register for function leaf_fn_caller_5
+move $r0 $$reta               ; save return address
+movi $$arg0 i0                ; [call]: pass argument 0
+movi $$arg1 i1                ; [call]: pass argument 1
+movi $$arg2 i2                ; [call]: pass argument 2
+movi $$arg3 i3                ; [call]: pass argument 3
+movi $$arg4 i4                ; [call]: pass argument 4
+movi $$arg5 i5                ; [call]: pass argument 5
+subi $$tmp $pc i148           ; load far jump target address
+jal  $$reta $$tmp i0          ; [call]: call leaf_fn_6_2
+move $$reta $r0               ; restore return address
+poph i524288                  ; restore registers 40..64
+popl i1                       ; restore registers 16..40
+jal  $zero $$reta i0          ; return from call
+>>>>>>> 0f3fd4cde (replave move by movi when possible on asm optimisation)
