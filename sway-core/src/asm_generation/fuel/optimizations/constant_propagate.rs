@@ -5,7 +5,8 @@ use rustc_hash::FxHashMap;
 use sway_types::Span;
 
 use crate::asm_lang::{
-    ConstantRegister, ControlFlowOp, JumpType, Label, Op, VirtualImmediate18, VirtualOp, VirtualRegister
+    ConstantRegister, ControlFlowOp, JumpType, Label, Op, VirtualImmediate18, VirtualOp,
+    VirtualRegister,
 };
 
 use super::super::abstract_instruction_set::AbstractInstructionSet;
