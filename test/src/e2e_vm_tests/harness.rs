@@ -72,7 +72,9 @@ pub(crate) async fn deploy_contract(
     let built = compile_to_bytes(file_name, run_config, &None).await?;
     let built_pkg = built.expect_pkg()?;
 
-    let provider = Provider::connect(NODE_URL).await.map_err(|e| anyhow!("{e}"))?;
+    let provider = Provider::connect(NODE_URL)
+        .await
+        .map_err(|e| anyhow!("{e}"))?;
     let signer = PrivateKeySigner::new(*signing_key);
     let wallet = fuels_accounts::wallet::Wallet::new(signer, provider);
 
@@ -101,17 +103,16 @@ pub(crate) async fn runs_on_node(
         let built = compile_to_bytes(file_name, run_config, &None).await?;
         let built_pkg = built.expect_pkg()?;
 
-        let provider = Provider::connect(NODE_URL).await.map_err(|e| anyhow!("{e}"))?;
+        let provider = Provider::connect(NODE_URL)
+            .await
+            .map_err(|e| anyhow!("{e}"))?;
         let signer = PrivateKeySigner::new(*signing_key);
         let wallet = fuels_accounts::wallet::Wallet::new(signer, provider);
 
-        let mut tb = ScriptTransactionBuilder::prepare_transfer(
-            vec![],
-            vec![],
-            TxPolicies::default(),
-        )
-        .with_script(built_pkg.bytecode.bytes.clone())
-        .with_variable_output_policy(VariableOutputPolicy::EstimateMinimum);
+        let mut tb =
+            ScriptTransactionBuilder::prepare_transfer(vec![], vec![], TxPolicies::default())
+                .with_script(built_pkg.bytecode.bytes.clone())
+                .with_variable_output_policy(VariableOutputPolicy::EstimateMinimum);
 
         for contract_id in contract_ids {
             let input_idx = tb.inputs().len() as u16;
@@ -120,7 +121,7 @@ pub(crate) async fn runs_on_node(
                 Default::default(),
                 Default::default(),
                 Default::default(),
-                (*contract_id).into(),
+                *contract_id,
             ));
             tb.outputs_mut().push(fuel_tx::Output::contract(
                 input_idx,
