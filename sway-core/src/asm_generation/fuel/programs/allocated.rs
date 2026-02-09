@@ -26,6 +26,7 @@ impl AllocatedProgram {
     pub(crate) fn into_final_program(mut self) -> Result<FinalProgram, crate::CompileError> {
         // Concat the prologue and all the functions together.
         let abstract_ops = AllocatedAbstractInstructionSet {
+            function: None,
             ops: std::iter::once(self.prologue.ops)
                 .chain(self.functions.into_iter().map(|f| f.ops))
                 .flatten()

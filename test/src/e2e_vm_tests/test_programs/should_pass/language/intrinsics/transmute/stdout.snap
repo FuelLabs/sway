@@ -25,10 +25,13 @@ fn transmute_by_reference_7(__ret_value: __ptr u256) -> () {
 }
 
 
-pshl i1                       ; push used low registers 16..40 to the stack
-pshh i524288                  ; push used high registers 40..64 to the stack
-move $$locbase $sp            ; save locals base register for function transmute_by_reference_7
-cfei i72                      ; allocate 72 bytes for locals and 0 slots for call arguments
+
+
+
+pshl i1                       ; [fn prologue: transmute_by_reference_7]: push used low registers 16..40
+pshh i524288                  ; [fn prologue: transmute_by_reference_7]: push used high registers 40..64
+move $$locbase $sp            ; [fn prologue: transmute_by_reference_7]: set locals base register
+cfei i72                      ; [fn prologue: transmute_by_reference_7]: allocate: locals 72 byte(s), call args 0 slot(s)
 mcli $$locbase i32            ; clear memory [u8; 32], 32 bytes
 addi $r0 $$locbase i32        ; get offset to local __ptr [u8; 32]
 mcpi $r0 $$locbase i32        ; copy memory
@@ -36,7 +39,7 @@ addi $r0 $$locbase i32        ; get offset to local __ptr [u8; 32]
 sw   $$locbase $r0 i8         ; store word
 lw   $r0 $$locbase i8         ; load word
 mcpi $$arg0 $r0 i32           ; copy memory
-cfsi i72                      ; free 72 bytes for locals and 0 slots for extra call arguments
-poph i524288                  ; restore used high registers 40..64 from the stack
-popl i1                       ; restore used low registers 16..40 from the stack
-jal  $zero $$reta i0          ; return from call
+cfsi i72                      ; [fn epilogue: transmute_by_reference_7] free: locals 72 byte(s), call args 0 slot(s)
+poph i524288                  ; [fn epilogue: transmute_by_reference_7]: restore used high registers 40..64
+popl i1                       ; [fn epilogue: transmute_by_reference_7]: restore used low registers 16..40
+jal  $zero $$reta i0          ; [fn epilogue: transmute_by_reference_7] return from call

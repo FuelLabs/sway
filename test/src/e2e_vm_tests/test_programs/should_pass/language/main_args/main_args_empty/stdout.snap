@@ -66,12 +66,12 @@ CONFIGURABLES_OFFSET[32..64]
 lw   $$ds $$tmp i1
 add  $$ds $$ds $$tmp
 cfei i0                       ; allocate stack space for globals
-move $$locbase $sp            ; save locals base register for function __entry
-jal  $$reta $pc i2            ; [call]: call main_0
-retd  $zero $zero
-pshh i524288                  ; push used high registers 40..64 to the stack
-poph i524288                  ; restore used high registers 40..64 from the stack
-jal  $zero $$reta i0          ; return from call
+move $$locbase $sp            ; [entry fn prologue: __entry]: set locals base register
+jal  $$reta $pc i2            ; [call: main_0]: call function
+retd  $zero $zero             ; [entry fn epilogue: __entry] return slice
+pshh i524288                  ; [fn prologue: main_0]: push used high registers 40..64
+poph i524288                  ; [fn epilogue: main_0]: restore used high registers 40..64
+jal  $zero $$reta i0          ; [fn epilogue: main_0] return from call
 .data:
 
 

@@ -1323,8 +1323,8 @@ CONFIGURABLES_OFFSET[32..64]
 lw   $$ds $$tmp i1
 add  $$ds $$ds $$tmp
 cfei i0                       ; allocate stack space for globals
-move $$locbase $sp            ; save locals base register for function __entry
-cfei i512                     ; allocate 512 bytes for locals and 0 slots for call arguments
+move $$locbase $sp            ; [entry fn prologue: __entry]: set locals base register
+cfei i512                     ; [entry fn prologue: __entry]: allocate: locals 512 byte(s), call args 0 slot(s)
 gtf  $r0 $zero i10            ; get transaction field
 addi $r1 $$locbase i168       ; get offset to local __ptr { ptr }
 sw   $$locbase $r0 i21        ; store word
@@ -1348,14 +1348,14 @@ addi $r0 $$locbase i344       ; get offset to local __ptr { [{ { string<3> }, { 
 addi $r1 $$locbase i184       ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
 mcpi $r1 $r0 i48              ; copy memory
 addi $r0 $$locbase i160       ; get offset to local __ptr { u64 }
-move $$arg0 $r1               ; [call]: pass argument 0
-move $$arg1 $r0               ; [call]: pass argument 1
-jal  $$reta $pc i82           ; [call]: call main_32
+move $$arg0 $r1               ; [call: main_32]: pass argument 0
+move $$arg1 $r0               ; [call: main_32]: pass argument 1
+jal  $$reta $pc i82           ; [call: main_32]: call function
 addi $r1 $$locbase i336       ; get offset to local __ptr { u64 }
 mcpi $r1 $r0 i8               ; copy memory
 addi $r0 $$locbase i336       ; get offset to local __ptr { u64 }
 movi $r1 i8                   ; initialize constant into register
-retd  $r0 $r1
+retd  $r0 $r1                 ; [entry fn epilogue: __entry] return slice
 movi $r0 i24                  ; initialize constant into register
 mul  $r0 $r3 $r0
 add  $r8 $r4 $r0
@@ -1432,18 +1432,18 @@ mcpi $r0 $r10 i24             ; copy memory
 mcpi $r8 $r0 i24              ; copy memory
 add  $r3 $r3 $one
 jmpb $zero i92
-pshl i1023                    ; push used low registers 16..40 to the stack
-pshh i524288                  ; push used high registers 40..64 to the stack
-move $$locbase $sp            ; save locals base register for function main_32
-cfei i1216                    ; allocate 1216 bytes for locals and 0 slots for call arguments
-move $r7 $$arg1               ; save argument 1 (__ret_value)
-move $r6 $$reta               ; save return address
+pshl i1023                    ; [fn prologue: main_32]: push used low registers 16..40
+pshh i524288                  ; [fn prologue: main_32]: push used high registers 40..64
+move $$locbase $sp            ; [fn prologue: main_32]: set locals base register
+cfei i1216                    ; [fn prologue: main_32]: allocate: locals 1216 byte(s), call args 0 slot(s)
+move $r7 $$arg1               ; [fn prologue: main_32]: copy argument 1 (__ret_value)
+move $r6 $$reta               ; [fn prologue: main_32]: save return address
 addi $r0 $$locbase i1040      ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
 mcpi $r0 $$arg0 i48           ; copy memory
 addi $r0 $$locbase i1040      ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
 addi $r1 $$locbase i424       ; get offset to local __ptr { { ptr, u64, u64 } }
-move $$arg0 $r1               ; [call]: pass argument 0
-jal  $$reta $pc i305          ; [call]: call new_52
+move $$arg0 $r1               ; [call: new_52]: pass argument 0
+jal  $$reta $pc i305          ; [call: new_52]: call function
 addi $r2 $$locbase i1144      ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
 mcpi $r2 $r0 i48              ; copy memory
 addi $r0 $$locbase i704       ; get offset to local __ptr { { ptr, u64, u64 } }
@@ -1557,20 +1557,20 @@ addi $r1 $$locbase i800       ; get offset to local __ptr { { ptr, u64, u64 } }
 addi $r2 $$locbase i528       ; get offset to local __ptr { { ptr, u64, u64 } }
 mcpi $r2 $r1 i24              ; copy memory
 addi $r1 $$locbase i376       ; get offset to local __ptr { { ptr, u64, u64 } }
-move $$arg0 $one              ; [call]: pass argument 0
-move $$arg1 $r2               ; [call]: pass argument 1
-move $$arg2 $r1               ; [call]: pass argument 2
-jal  $$reta $pc i148          ; [call]: call abi_encode_51
+move $$arg0 $one              ; [call: abi_encode_51]: pass argument 0
+move $$arg1 $r2               ; [call: abi_encode_51]: pass argument 1
+move $$arg2 $r1               ; [call: abi_encode_51]: pass argument 2
+jal  $$reta $pc i148          ; [call: abi_encode_51]: call function
 addi $r2 $$locbase i968       ; get offset to local __ptr { { ptr, u64, u64 } }
 mcpi $r2 $r1 i24              ; copy memory
 addi $r1 $$locbase i968       ; get offset to local __ptr { { ptr, u64, u64 } }
 addi $r2 $$locbase i552       ; get offset to local __ptr { { ptr, u64, u64 } }
 mcpi $r2 $r1 i24              ; copy memory
 addi $r1 $$locbase i400       ; get offset to local __ptr { { ptr, u64, u64 } }
-move $$arg0 $r0               ; [call]: pass argument 0
-move $$arg1 $r2               ; [call]: pass argument 1
-move $$arg2 $r1               ; [call]: pass argument 2
-jal  $$reta $pc i138          ; [call]: call abi_encode_51
+move $$arg0 $r0               ; [call: abi_encode_51]: pass argument 0
+move $$arg1 $r2               ; [call: abi_encode_51]: pass argument 1
+move $$arg2 $r1               ; [call: abi_encode_51]: pass argument 2
+jal  $$reta $pc i138          ; [call: abi_encode_51]: call function
 addi $r0 $$locbase i992       ; get offset to local __ptr { { ptr, u64, u64 } }
 mcpi $r0 $r1 i24              ; copy memory
 addi $r0 $$locbase i992       ; get offset to local __ptr { { ptr, u64, u64 } }
@@ -1582,20 +1582,20 @@ addi $r1 $$locbase i800       ; get offset to local __ptr { { ptr, u64, u64 } }
 addi $r2 $$locbase i480       ; get offset to local __ptr { { ptr, u64, u64 } }
 mcpi $r2 $r1 i24              ; copy memory
 addi $r1 $$locbase i328       ; get offset to local __ptr { { ptr, u64, u64 } }
-move $$arg0 $zero             ; [call]: pass argument 0
-move $$arg1 $r2               ; [call]: pass argument 1
-move $$arg2 $r1               ; [call]: pass argument 2
-jal  $$reta $pc i123          ; [call]: call abi_encode_51
+move $$arg0 $zero             ; [call: abi_encode_51]: pass argument 0
+move $$arg1 $r2               ; [call: abi_encode_51]: pass argument 1
+move $$arg2 $r1               ; [call: abi_encode_51]: pass argument 2
+jal  $$reta $pc i123          ; [call: abi_encode_51]: call function
 addi $r2 $$locbase i896       ; get offset to local __ptr { { ptr, u64, u64 } }
 mcpi $r2 $r1 i24              ; copy memory
 addi $r1 $$locbase i896       ; get offset to local __ptr { { ptr, u64, u64 } }
 addi $r2 $$locbase i504       ; get offset to local __ptr { { ptr, u64, u64 } }
 mcpi $r2 $r1 i24              ; copy memory
 addi $r1 $$locbase i352       ; get offset to local __ptr { { ptr, u64, u64 } }
-move $$arg0 $r0               ; [call]: pass argument 0
-move $$arg1 $r2               ; [call]: pass argument 1
-move $$arg2 $r1               ; [call]: pass argument 2
-jal  $$reta $pc i113          ; [call]: call abi_encode_51
+move $$arg0 $r0               ; [call: abi_encode_51]: pass argument 0
+move $$arg1 $r2               ; [call: abi_encode_51]: pass argument 1
+move $$arg2 $r1               ; [call: abi_encode_51]: pass argument 2
+jal  $$reta $pc i113          ; [call: abi_encode_51]: call function
 addi $r0 $$locbase i944       ; get offset to local __ptr { { ptr, u64, u64 } }
 mcpi $r0 $r1 i24              ; copy memory
 addi $r0 $$locbase i944       ; get offset to local __ptr { { ptr, u64, u64 } }
@@ -1632,9 +1632,9 @@ addi $r2 $$locbase i576       ; get offset to local __ptr string<3>
 mcpi $r2 $r1 i8               ; copy memory
 addi $r1 $$locbase i584       ; get offset to local __ptr slice
 mcpi $r1 $r0 i16              ; copy memory
-move $$arg0 $r2               ; [call]: pass argument 0
-move $$arg1 $r1               ; [call]: pass argument 1
-jal  $$reta $pc i132          ; [call]: call eq_str_3_57
+move $$arg0 $r2               ; [call: eq_str_3_57]: pass argument 0
+move $$arg1 $r1               ; [call: eq_str_3_57]: pass argument 1
+jal  $$reta $pc i132          ; [call: eq_str_3_57]: call function
 eq   $r0 $$retv $zero
 jnzf $r0 $zero i63
 addi $r0 $$locbase i1040      ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
@@ -1668,9 +1668,9 @@ addi $r2 $$locbase i600       ; get offset to local __ptr string<3>
 mcpi $r2 $r1 i8               ; copy memory
 addi $r1 $$locbase i608       ; get offset to local __ptr slice
 mcpi $r1 $r0 i16              ; copy memory
-move $$arg0 $r2               ; [call]: pass argument 0
-move $$arg1 $r1               ; [call]: pass argument 1
-jal  $$reta $pc i95           ; [call]: call eq_str_3_57
+move $$arg0 $r2               ; [call: eq_str_3_57]: pass argument 0
+move $$arg1 $r1               ; [call: eq_str_3_57]: pass argument 1
+jal  $$reta $pc i95           ; [call: eq_str_3_57]: call function
 eq   $r0 $$retv $zero
 jnzf $r0 $zero i22
 addi $r0 $$locbase i1040      ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
@@ -1701,15 +1701,15 @@ load $r0 data_NonConfigurable_4; load constant from data section
 rvrt $r0
 load $r0 data_NonConfigurable_4; load constant from data section
 rvrt $r0
-cfsi i1216                    ; free 1216 bytes for locals and 0 slots for extra call arguments
-move $$reta $r6               ; restore return address
-poph i524288                  ; restore used high registers 40..64 from the stack
-popl i1023                    ; restore used low registers 16..40 from the stack
-jal  $zero $$reta i0          ; return from call
-pshl i63                      ; push used low registers 16..40 to the stack
-pshh i524288                  ; push used high registers 40..64 to the stack
-move $$locbase $sp            ; save locals base register for function abi_encode_51
-cfei i144                     ; allocate 144 bytes for locals and 0 slots for call arguments
+cfsi i1216                    ; [fn epilogue: main_32] free: locals 1216 byte(s), call args 0 slot(s)
+move $$reta $r6               ; [fn epilogue: main_32] restore return address
+poph i524288                  ; [fn epilogue: main_32]: restore used high registers 40..64
+popl i1023                    ; [fn epilogue: main_32]: restore used low registers 16..40
+jal  $zero $$reta i0          ; [fn epilogue: main_32] return from call
+pshl i63                      ; [fn prologue: abi_encode_51]: push used low registers 16..40
+pshh i524288                  ; [fn prologue: abi_encode_51]: push used high registers 40..64
+move $$locbase $sp            ; [fn prologue: abi_encode_51]: set locals base register
+cfei i144                     ; [fn prologue: abi_encode_51]: allocate: locals 144 byte(s), call args 0 slot(s)
 addi $r0 $$locbase i120       ; get offset to local __ptr { { ptr, u64, u64 } }
 mcpi $r0 $$arg1 i24           ; copy memory
 addi $r0 $$locbase i96        ; get offset to local __ptr { { ptr, u64, u64 } }
@@ -1742,14 +1742,14 @@ addi $r1 $$locbase i24        ; get offset to local __ptr { ptr, u64, u64 }
 mcpi $r1 $r2 i24              ; copy memory
 mcpi $r0 $r1 i24              ; copy memory
 mcpi $$arg2 $r0 i24           ; copy memory
-cfsi i144                     ; free 144 bytes for locals and 0 slots for extra call arguments
-poph i524288                  ; restore used high registers 40..64 from the stack
-popl i63                      ; restore used low registers 16..40 from the stack
-jal  $zero $$reta i0          ; return from call
-pshl i7                       ; push used low registers 16..40 to the stack
-pshh i524288                  ; push used high registers 40..64 to the stack
-move $$locbase $sp            ; save locals base register for function new_52
-cfei i72                      ; allocate 72 bytes for locals and 0 slots for call arguments
+cfsi i144                     ; [fn epilogue: abi_encode_51] free: locals 144 byte(s), call args 0 slot(s)
+poph i524288                  ; [fn epilogue: abi_encode_51]: restore used high registers 40..64
+popl i63                      ; [fn epilogue: abi_encode_51]: restore used low registers 16..40
+jal  $zero $$reta i0          ; [fn epilogue: abi_encode_51] return from call
+pshl i7                       ; [fn prologue: new_52]: push used low registers 16..40
+pshh i524288                  ; [fn prologue: new_52]: push used high registers 40..64
+move $$locbase $sp            ; [fn prologue: new_52]: set locals base register
+cfei i72                      ; [fn prologue: new_52]: allocate: locals 72 byte(s), call args 0 slot(s)
 addi $r0 $$locbase i48        ; get offset to local __ptr { { ptr, u64, u64 } }
 movi $r1 i1024                ; initialize constant into register
 aloc $r1
@@ -1761,14 +1761,14 @@ sw   $$locbase $zero i5       ; store word
 mcpi $$locbase $r1 i24        ; copy memory
 mcpi $r0 $$locbase i24        ; copy memory
 mcpi $$arg0 $r0 i24           ; copy memory
-cfsi i72                      ; free 72 bytes for locals and 0 slots for extra call arguments
-poph i524288                  ; restore used high registers 40..64 from the stack
-popl i7                       ; restore used low registers 16..40 from the stack
-jal  $zero $$reta i0          ; return from call
-pshl i7                       ; push used low registers 16..40 to the stack
-pshh i524288                  ; push used high registers 40..64 to the stack
-move $$locbase $sp            ; save locals base register for function eq_str_3_57
-cfei i40                      ; allocate 40 bytes for locals and 0 slots for call arguments
+cfsi i72                      ; [fn epilogue: new_52] free: locals 72 byte(s), call args 0 slot(s)
+poph i524288                  ; [fn epilogue: new_52]: restore used high registers 40..64
+popl i7                       ; [fn epilogue: new_52]: restore used low registers 16..40
+jal  $zero $$reta i0          ; [fn epilogue: new_52] return from call
+pshl i7                       ; [fn prologue: eq_str_3_57]: push used low registers 16..40
+pshh i524288                  ; [fn prologue: eq_str_3_57]: push used high registers 40..64
+move $$locbase $sp            ; [fn prologue: eq_str_3_57]: set locals base register
+cfei i40                      ; [fn prologue: eq_str_3_57]: allocate: locals 40 byte(s), call args 0 slot(s)
 addi $r0 $$locbase i16        ; get offset to local __ptr string<3>
 mcpi $r0 $$arg0 i8            ; copy memory
 addi $r0 $$locbase i24        ; get offset to local __ptr slice
@@ -1781,11 +1781,11 @@ lw   $r0 $$locbase i0         ; load word
 addi $r1 $$locbase i16        ; get offset to local __ptr string<3>
 movi $r2 i3                   ; initialize constant into register
 meq  $r0 $r1 $r0 $r2          ; meq r a b len
-move $$retv $r0               ; set return value
-cfsi i40                      ; free 40 bytes for locals and 0 slots for extra call arguments
-poph i524288                  ; restore used high registers 40..64 from the stack
-popl i7                       ; restore used low registers 16..40 from the stack
-jal  $zero $$reta i0          ; return from call
+move $$retv $r0               ; [fn epilogue: eq_str_3_57] set return value
+cfsi i40                      ; [fn epilogue: eq_str_3_57] free: locals 40 byte(s), call args 0 slot(s)
+poph i524288                  ; [fn epilogue: eq_str_3_57]: restore used high registers 40..64
+popl i7                       ; [fn epilogue: eq_str_3_57]: restore used low registers 16..40
+jal  $zero $$reta i0          ; [fn epilogue: eq_str_3_57] return from call
 .data:
 data_NonConfigurable_0 .word 14757395258967588866
 data_NonConfigurable_1 .word 3647243719605075626

@@ -82,7 +82,7 @@ pub struct FuelAsmBuilder<'ir, 'eng> {
     // Final resulting VM bytecode ops; entry functions with their function and label, and regular
     // non-entry functions.
     pub(super) entries: Vec<(Function, Label, Vec<Op>, Option<DeclRefFunction>)>,
-    pub(super) non_entries: Vec<Vec<Op>>,
+    pub(super) non_entries: Vec<(Function, Vec<Op>)>,
 
     // In progress VM bytecode ops.
     pub(super) cur_bytecode: Vec<Op>,
@@ -202,13 +202,19 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
         let entries = entries
             .clone()
             .into_iter()
-            .map(|(f, l, ops, test_decl_ref)| (f, l, AbstractInstructionSet { ops }, test_decl_ref))
+            .map(|(f, l, ops, test_decl_ref)| (f, l, AbstractInstructionSet {
+                function: Some((f.get_name(context).to_string(), true)),
+                ops
+            }, test_decl_ref))
             .collect::<Vec<_>>();
 
         let non_entries = non_entries
             .clone()
             .into_iter()
-            .map(|ops| AbstractInstructionSet { ops })
+            .map(|(f, ops)| AbstractInstructionSet {
+                function: Some((f.get_name(context).to_string(), false)),
+                ops,
+            })
             .collect::<Vec<_>>();
 
         let entries = entries
@@ -226,7 +232,7 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
             })
             .collect();
 
-        let before_entry = AbstractInstructionSet { ops: before_entry };
+        let before_entry = AbstractInstructionSet { function: None, ops: before_entry };
 
         let virtual_abstract_program = AbstractProgram::new(
             program_kind,
@@ -337,8 +343,9 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         }
 
         let module = block.get_function(self.context).get_module(self.context);
+        let fn_name = block.get_function(self.context).get_name(self.context);
         for instr_val in block.instruction_iter(self.context) {
-            self.compile_instruction(handler, &instr_val, func_is_entry, module)?;
+            self.compile_instruction(handler, &instr_val, fn_name, func_is_entry, module)?;
         }
         Ok(())
     }
@@ -347,6 +354,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         &mut self,
         handler: &Handler,
         instr_val: &Value,
+        fn_name: &str,
         func_is_entry: bool,
         module: Module,
     ) -> Result<(), ErrorEmitted> {
@@ -502,9 +510,9 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 InstOp::PtrToInt(ptr_val, _int_ty) => self.compile_no_op_move(instr_val, ptr_val),
                 InstOp::Ret(ret_val, ty) => {
                     if func_is_entry {
-                        self.compile_ret_from_entry(instr_val, ret_val, ty)
+                        self.compile_ret_from_entry(fn_name, instr_val, ret_val, ty)
                     } else {
-                        self.compile_ret_from_call(instr_val, ret_val)
+                        self.compile_ret_from_call(fn_name, instr_val, ret_val)
                     }
                 }
                 InstOp::Store {
@@ -884,12 +892,17 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         ptr: &Value,
         len: &Value,
     ) -> Result<(), CompileError> {
+        let fn_name = instr_val
+            .get_parent_function(self.context)
+            .expect("RETD is an instruction")
+            .get_name(self.context);
+
         let ptr = self.value_to_register(ptr)?;
         let len = self.value_to_register(len)?;
 
         self.cur_bytecode.push(Op {
             opcode: Either::Left(VirtualOp::RETD(ptr, len)),
-            comment: String::new(),
+            comment: format!("[entry fn epilogue: {fn_name}] return slice"),
             owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
         });
 
@@ -1896,6 +1909,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
     fn compile_ret_from_entry(
         &mut self,
+        fn_name: &str,
         instr_val: &Value,
         ret_val: &Value,
         ret_type: &Type,
@@ -1910,7 +1924,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     ConstantRegister::Zero,
                 ))),
                 owning_span,
-                comment: "return unit as zero".into(),
+                comment: format!("[entry fn epilogue: {fn_name}] return unit as zero"),
             });
         } else {
             let ret_reg = self.value_to_register(ret_val)?;
@@ -1919,7 +1933,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 self.cur_bytecode.push(Op {
                     owning_span,
                     opcode: Either::Left(VirtualOp::RET(ret_reg)),
-                    comment: "".into(),
+                    comment: format!("[entry fn epilogue: {fn_name}] return value"),
                 });
             } else {
                 // Sometimes (all the time?) a slice type will be `ptr slice`.
@@ -1936,7 +1950,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                             VirtualImmediate12::new(1),
                         )),
                         owning_span: owning_span.clone(),
-                        comment: "load size of returned slice".into(),
+                        comment: format!("[entry fn epilogue: {fn_name}] load size of returned slice"),
                     });
                     self.cur_bytecode.push(Op {
                         opcode: Either::Left(VirtualOp::LW(
@@ -1945,7 +1959,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                             VirtualImmediate12::new(0),
                         )),
                         owning_span: owning_span.clone(),
-                        comment: "load pointer to returned slice".into(),
+                        comment: format!("[entry fn epilogue: {fn_name}] load pointer to returned slice"),
                     });
                 } else {
                     let size_in_bytes = ret_type
@@ -1957,14 +1971,14 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         size_in_bytes,
                         size_reg.clone(),
                         None,
-                        "get size of type returned by pointer",
+                        format!("[entry fn epilogue: {fn_name}] get size of returned data"),
                         owning_span.clone(),
                     );
                 }
                 self.cur_bytecode.push(Op {
                     owning_span,
                     opcode: Either::Left(VirtualOp::RETD(ret_reg, size_reg)),
-                    comment: "".into(),
+                    comment: format!("[entry fn epilogue: {fn_name}] return slice"),
                 });
             }
         }

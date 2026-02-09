@@ -138,8 +138,7 @@ impl AbstractProgram {
         // Optimize allocated functions.
         let functions = allocated_functions
             .into_iter()
-            .enumerate()
-            .map(|(idx, instruction_set)| instruction_set.optimize(idx < entries.len()))
+            .map(|instruction_set| instruction_set.optimize())
             // TODO: Add verification. E.g., verify that:
             //        - function has exactly one CFEI/CFSI pair,
             //        - the stack use for each function is balanced,
@@ -200,6 +199,7 @@ impl AbstractProgram {
         );
         let label = self.reg_seqr.get_label();
         AllocatedAbstractInstructionSet {
+            function: None,
             ops: [
                 AllocatedAbstractOp {
                     opcode: Either::Left(AllocatedInstruction::MOVE(

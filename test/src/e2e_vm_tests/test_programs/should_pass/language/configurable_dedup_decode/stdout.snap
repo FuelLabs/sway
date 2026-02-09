@@ -108,25 +108,25 @@ addr $$arg0 data_Configurable_1; get pointer to configurable WRAPPED default val
 addi $$arg1 $zero i8          ; get length of configurable WRAPPED default value
 addi $$arg2 $ssp i8           ; get pointer to configurable WRAPPED stack address
 jal  $$reta $pc i7            ; decode configurable WRAPPED
-move $$locbase $sp            ; save locals base register for function __entry
-cfei i8                       ; allocate 8 bytes for locals and 0 slots for call arguments
-jal  $$reta $pc i8            ; [call]: call main_15
+move $$locbase $sp            ; [entry fn prologue: __entry]: set locals base register
+cfei i8                       ; [entry fn prologue: __entry]: allocate: locals 8 byte(s), call args 0 slot(s)
+jal  $$reta $pc i8            ; [call: main_15]: call function
 sw   $$locbase $$retv i0      ; store word
 movi $r0 i8                   ; initialize constant into register
-retd  $$locbase $r0
-pshh i524288                  ; push used high registers 40..64 to the stack
+retd  $$locbase $r0           ; [entry fn epilogue: __entry] return slice
+pshh i524288                  ; [fn prologue: abi_decode_in_place_0]: push used high registers 40..64
 mcp  $$arg2 $$arg0 $$arg1     ; mcp target src len
-poph i524288                  ; restore used high registers 40..64 from the stack
-jal  $zero $$reta i0          ; return from call
-pshl i3                       ; push used low registers 16..40 to the stack
-pshh i524288                  ; push used high registers 40..64 to the stack
+poph i524288                  ; [fn epilogue: abi_decode_in_place_0]: restore used high registers 40..64
+jal  $zero $$reta i0          ; [fn epilogue: abi_decode_in_place_0] return from call
+pshl i3                       ; [fn prologue: main_15]: push used low registers 16..40
+pshh i524288                  ; [fn prologue: main_15]: push used high registers 40..64
 lw   $r0 $ssp i1              ; load word
 lw   $r1 $ssp i0              ; load word
 add  $r0 $r0 $r1
-move $$retv $r0               ; set return value
-poph i524288                  ; restore used high registers 40..64 from the stack
-popl i3                       ; restore used low registers 16..40 from the stack
-jal  $zero $$reta i0          ; return from call
+move $$retv $r0               ; [fn epilogue: main_15] set return value
+poph i524288                  ; [fn epilogue: main_15]: restore used high registers 40..64
+popl i3                       ; [fn epilogue: main_15]: restore used low registers 16..40
+jal  $zero $$reta i0          ; [fn epilogue: main_15] return from call
 .data:
 data_<Configurable, TUPLE>_0 .bytes[8] 00 00 00 00 00 00 00 02  ........
 data_<Configurable, WRAPPED>_1 .bytes[8] 00 00 00 00 00 00 00 01  ........
