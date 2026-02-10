@@ -900,7 +900,7 @@ impl FuelAsmBuilder<'_, '_> {
         self.cur_bytecode.push(Op::register_move(
             locals_base_reg.clone(),
             VirtualRegister::Constant(ConstantRegister::StackPointer),
-            format!("{fn_init_prefix} set locals base register",).to_string(),
+            format!("{fn_init_prefix} set locals base register"),
             None,
         ));
 

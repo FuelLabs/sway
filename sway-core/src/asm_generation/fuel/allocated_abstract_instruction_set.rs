@@ -181,10 +181,10 @@ impl AllocatedAbstractInstructionSet {
             )
         }
 
-        // PUSHA/POPA are abstract instructions that emitted only by the compiler
-        // as a function prologue/epilogue. They cannot be, e.g., defined in an
-        // `asm` block by developers. This means it is always justifiable to add
-        // the [fn init/end] prefix to the comments.
+        // PUSHA/POPA are abstract instructions that are emitted only by the compiler
+        // as a part of a function prologue/epilogue. They cannot be, e.g., defined in
+        // `asm` blocks by developers. This means it is correct to always add
+        // the `[fn init/end]` prefix to the instruction comments.
         let (fn_init_prefix, fn_end_prefix) = if let Some((fn_name, is_entry)) = &self.function {
             let fn_kind = if *is_entry { "entry" } else { "fn" };
             (
