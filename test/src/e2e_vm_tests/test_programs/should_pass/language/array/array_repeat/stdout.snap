@@ -515,14 +515,14 @@ CONFIGURABLES_OFFSET[32..64]
 lw   $$ds $$tmp i1
 add  $$ds $$ds $$tmp
 cfei i0                       ; allocate stack space for globals
-move $$locbase $sp            ; [entry fn prologue: __entry]: set locals base register
+move $$locbase $sp            ; [entry init: __entry]: set locals base register
 jal  $$reta $pc i2            ; [call: main_0]: call function
-retd  $zero $zero             ; [entry fn epilogue: __entry] return slice
-pshl i7                       ; [fn prologue: main_0]: push used low registers 16..40
-pshh i524288                  ; [fn prologue: main_0]: push used high registers 40..64
-move $$locbase $sp            ; [fn prologue: main_0]: set locals base register
-cfei i264920                  ; [fn prologue: main_0]: allocate: locals 264920 byte(s), call args 0 slot(s)
-move $r1 $$reta               ; [fn prologue: main_0]: save return address
+retd  $zero $zero             ; [entry end: __entry] return slice
+pshl i7                       ; [fn init: main_0]: push used low registers 16..40
+pshh i524288                  ; [fn init: main_0]: push used high registers 40..64
+move $$locbase $sp            ; [fn init: main_0]: set locals base register
+cfei i264920                  ; [fn init: main_0]: allocate: locals 264920 byte(s), call args 0 slot(s)
+move $r1 $$reta               ; [fn init: main_0]: save return address
 move $$arg0 $$locbase         ; [call: array_repeat_zero_small_u8_1]: pass argument 0
 jal  $$reta $pc i94           ; [call: array_repeat_zero_small_u8_1]: call function
 addi $r0 $$locbase i8         ; get offset to local __ptr [u64; 5]
@@ -613,53 +613,53 @@ move $$arg0 $r0               ; [call: log_46]: pass argument 0
 jal  $$reta $pc i148          ; [call: log_46]: call function
 load $r0 data_NonConfigurable_0; load constant from data section
 rvrt $r0
-cfsi i264920                  ; [fn epilogue: main_0] free: locals 264920 byte(s), call args 0 slot(s)
-move $$reta $r1               ; [fn epilogue: main_0] restore return address
-poph i524288                  ; [fn epilogue: main_0]: restore used high registers 40..64
-popl i7                       ; [fn epilogue: main_0]: restore used low registers 16..40
-jal  $zero $$reta i0          ; [fn epilogue: main_0] return from call
-pshh i524288                  ; [fn prologue: array_repeat_zero_small_u8_1]: push used high registers 40..64
+cfsi i264920                  ; [fn end: main_0] free: locals 264920 byte(s), call args 0 slot(s)
+move $$reta $r1               ; [fn end: main_0] restore return address
+poph i524288                  ; [fn end: main_0]: restore used high registers 40..64
+popl i7                       ; [fn end: main_0]: restore used low registers 16..40
+jal  $zero $$reta i0          ; [fn end: main_0] return from call
+pshh i524288                  ; [fn init: array_repeat_zero_small_u8_1]: push used high registers 40..64
 mcli $$arg0 i5                ; clear memory [u8; 5], 5 bytes
-poph i524288                  ; [fn epilogue: array_repeat_zero_small_u8_1]: restore used high registers 40..64
-jal  $zero $$reta i0          ; [fn epilogue: array_repeat_zero_small_u8_1] return from call
-pshh i524288                  ; [fn prologue: array_repeat_zero_small_u16_2]: push used high registers 40..64
+poph i524288                  ; [fn end: array_repeat_zero_small_u8_1]: restore used high registers 40..64
+jal  $zero $$reta i0          ; [fn end: array_repeat_zero_small_u8_1] return from call
+pshh i524288                  ; [fn init: array_repeat_zero_small_u16_2]: push used high registers 40..64
 mcli $$arg0 i40               ; clear memory [u64; 5], 40 bytes
-poph i524288                  ; [fn epilogue: array_repeat_zero_small_u16_2]: restore used high registers 40..64
-jal  $zero $$reta i0          ; [fn epilogue: array_repeat_zero_small_u16_2] return from call
-pshh i524288                  ; [fn prologue: array_repeat_zero_small_u256_5]: push used high registers 40..64
+poph i524288                  ; [fn end: array_repeat_zero_small_u16_2]: restore used high registers 40..64
+jal  $zero $$reta i0          ; [fn end: array_repeat_zero_small_u16_2] return from call
+pshh i524288                  ; [fn init: array_repeat_zero_small_u256_5]: push used high registers 40..64
 mcli $$arg0 i160              ; clear memory [u256; 5], 160 bytes
-poph i524288                  ; [fn epilogue: array_repeat_zero_small_u256_5]: restore used high registers 40..64
-jal  $zero $$reta i0          ; [fn epilogue: array_repeat_zero_small_u256_5] return from call
-pshh i524288                  ; [fn prologue: array_repeat_zero_small_b256_6]: push used high registers 40..64
+poph i524288                  ; [fn end: array_repeat_zero_small_u256_5]: restore used high registers 40..64
+jal  $zero $$reta i0          ; [fn end: array_repeat_zero_small_u256_5] return from call
+pshh i524288                  ; [fn init: array_repeat_zero_small_b256_6]: push used high registers 40..64
 mcli $$arg0 i160              ; clear memory [b256; 5], 160 bytes
-poph i524288                  ; [fn epilogue: array_repeat_zero_small_b256_6]: restore used high registers 40..64
-jal  $zero $$reta i0          ; [fn epilogue: array_repeat_zero_small_b256_6] return from call
-pshh i524288                  ; [fn prologue: array_repeat_zero_small_bool_7]: push used high registers 40..64
+poph i524288                  ; [fn end: array_repeat_zero_small_b256_6]: restore used high registers 40..64
+jal  $zero $$reta i0          ; [fn end: array_repeat_zero_small_b256_6] return from call
+pshh i524288                  ; [fn init: array_repeat_zero_small_bool_7]: push used high registers 40..64
 mcli $$arg0 i5                ; clear memory [bool; 5], 5 bytes
-poph i524288                  ; [fn epilogue: array_repeat_zero_small_bool_7]: restore used high registers 40..64
-jal  $zero $$reta i0          ; [fn epilogue: array_repeat_zero_small_bool_7] return from call
-pshh i524288                  ; [fn prologue: array_repeat_zero_big_u8_8]: push used high registers 40..64
+poph i524288                  ; [fn end: array_repeat_zero_small_bool_7]: restore used high registers 40..64
+jal  $zero $$reta i0          ; [fn end: array_repeat_zero_small_bool_7] return from call
+pshh i524288                  ; [fn init: array_repeat_zero_big_u8_8]: push used high registers 40..64
 mcli $$arg0 i25               ; clear memory [u8; 25], 25 bytes
-poph i524288                  ; [fn epilogue: array_repeat_zero_big_u8_8]: restore used high registers 40..64
-jal  $zero $$reta i0          ; [fn epilogue: array_repeat_zero_big_u8_8] return from call
-pshh i524288                  ; [fn prologue: array_repeat_zero_big_u32_10]: push used high registers 40..64
+poph i524288                  ; [fn end: array_repeat_zero_big_u8_8]: restore used high registers 40..64
+jal  $zero $$reta i0          ; [fn end: array_repeat_zero_big_u8_8] return from call
+pshh i524288                  ; [fn init: array_repeat_zero_big_u32_10]: push used high registers 40..64
 mcli $$arg0 i200              ; clear memory [u64; 25], 200 bytes
-poph i524288                  ; [fn epilogue: array_repeat_zero_big_u32_10]: restore used high registers 40..64
-jal  $zero $$reta i0          ; [fn epilogue: array_repeat_zero_big_u32_10] return from call
-pshh i524288                  ; [fn prologue: array_repeat_zero_big_u256_12]: push used high registers 40..64
+poph i524288                  ; [fn end: array_repeat_zero_big_u32_10]: restore used high registers 40..64
+jal  $zero $$reta i0          ; [fn end: array_repeat_zero_big_u32_10] return from call
+pshh i524288                  ; [fn init: array_repeat_zero_big_u256_12]: push used high registers 40..64
 mcli $$arg0 i800              ; clear memory [u256; 25], 800 bytes
-poph i524288                  ; [fn epilogue: array_repeat_zero_big_u256_12]: restore used high registers 40..64
-jal  $zero $$reta i0          ; [fn epilogue: array_repeat_zero_big_u256_12] return from call
-pshh i524288                  ; [fn prologue: array_repeat_zero_big_b256_13]: push used high registers 40..64
+poph i524288                  ; [fn end: array_repeat_zero_big_u256_12]: restore used high registers 40..64
+jal  $zero $$reta i0          ; [fn end: array_repeat_zero_big_u256_12] return from call
+pshh i524288                  ; [fn init: array_repeat_zero_big_b256_13]: push used high registers 40..64
 mcli $$arg0 i800              ; clear memory [b256; 25], 800 bytes
-poph i524288                  ; [fn epilogue: array_repeat_zero_big_b256_13]: restore used high registers 40..64
-jal  $zero $$reta i0          ; [fn epilogue: array_repeat_zero_big_b256_13] return from call
-pshh i524288                  ; [fn prologue: array_repeat_zero_big_bool_14]: push used high registers 40..64
+poph i524288                  ; [fn end: array_repeat_zero_big_b256_13]: restore used high registers 40..64
+jal  $zero $$reta i0          ; [fn end: array_repeat_zero_big_b256_13] return from call
+pshh i524288                  ; [fn init: array_repeat_zero_big_bool_14]: push used high registers 40..64
 mcli $$arg0 i25               ; clear memory [bool; 25], 25 bytes
-poph i524288                  ; [fn epilogue: array_repeat_zero_big_bool_14]: restore used high registers 40..64
-jal  $zero $$reta i0          ; [fn epilogue: array_repeat_zero_big_bool_14] return from call
-pshl i1                       ; [fn prologue: small_array_repeat_15]: push used low registers 16..40
-pshh i524288                  ; [fn prologue: small_array_repeat_15]: push used high registers 40..64
+poph i524288                  ; [fn end: array_repeat_zero_big_bool_14]: restore used high registers 40..64
+jal  $zero $$reta i0          ; [fn end: array_repeat_zero_big_bool_14] return from call
+pshl i1                       ; [fn init: small_array_repeat_15]: push used low registers 16..40
+pshh i524288                  ; [fn init: small_array_repeat_15]: push used high registers 40..64
 mul  $r0 $zero $one           ; get offset to array element
 add  $r0 $$arg0 $r0           ; add array element offset to array base
 sb   $r0 $one i0              ; store byte
@@ -678,11 +678,11 @@ movi $r0 i4                   ; initialize constant into register
 mul  $r0 $r0 $one             ; get offset to array element
 add  $r0 $$arg0 $r0           ; add array element offset to array base
 sb   $r0 $one i0              ; store byte
-poph i524288                  ; [fn epilogue: small_array_repeat_15]: restore used high registers 40..64
-popl i1                       ; [fn epilogue: small_array_repeat_15]: restore used low registers 16..40
-jal  $zero $$reta i0          ; [fn epilogue: small_array_repeat_15] return from call
-pshl i3                       ; [fn prologue: big_array_repeat_16]: push used low registers 16..40
-pshh i524288                  ; [fn prologue: big_array_repeat_16]: push used high registers 40..64
+poph i524288                  ; [fn end: small_array_repeat_15]: restore used high registers 40..64
+popl i1                       ; [fn end: small_array_repeat_15]: restore used low registers 16..40
+jal  $zero $$reta i0          ; [fn end: small_array_repeat_15] return from call
+pshl i3                       ; [fn init: big_array_repeat_16]: push used low registers 16..40
+pshh i524288                  ; [fn init: big_array_repeat_16]: push used high registers 40..64
 move $r1 $zero                ; move parameter from branch to block argument
 mul  $r0 $r1 $one             ; get offset to array element
 add  $r0 $$arg0 $r0           ; add array element offset to array base
@@ -691,23 +691,23 @@ add  $r1 $r1 $one
 movi $r0 i25                  ; initialize constant into register
 lt   $r0 $r1 $r0
 jnzb $r0 $zero i5
-poph i524288                  ; [fn epilogue: big_array_repeat_16]: restore used high registers 40..64
-popl i3                       ; [fn epilogue: big_array_repeat_16]: restore used low registers 16..40
-jal  $zero $$reta i0          ; [fn epilogue: big_array_repeat_16] return from call
-pshh i524288                  ; [fn prologue: u8_array_bigger_than_18_bits_17]: push used high registers 40..64
+poph i524288                  ; [fn end: big_array_repeat_16]: restore used high registers 40..64
+popl i3                       ; [fn end: big_array_repeat_16]: restore used low registers 16..40
+jal  $zero $$reta i0          ; [fn end: big_array_repeat_16] return from call
+pshh i524288                  ; [fn init: u8_array_bigger_than_18_bits_17]: push used high registers 40..64
 load $$tmp data_NonConfigurable_1; loading clear size in bytes
 mcl  $$arg0 $$tmp             ; clear memory [u8; 262145]
-poph i524288                  ; [fn epilogue: u8_array_bigger_than_18_bits_17]: restore used high registers 40..64
-jal  $zero $$reta i0          ; [fn epilogue: u8_array_bigger_than_18_bits_17] return from call
-pshh i524288                  ; [fn prologue: arrays_with_const_length_18]: push used high registers 40..64
-poph i524288                  ; [fn epilogue: arrays_with_const_length_18]: restore used high registers 40..64
-jal  $zero $$reta i0          ; [fn epilogue: arrays_with_const_length_18] return from call
-pshl i15                      ; [fn prologue: decode_array_19]: push used low registers 16..40
-pshh i524288                  ; [fn prologue: decode_array_19]: push used high registers 40..64
-move $$locbase $sp            ; [fn prologue: decode_array_19]: set locals base register
-cfei i72                      ; [fn prologue: decode_array_19]: allocate: locals 72 byte(s), call args 0 slot(s)
-move $r2 $$arg0               ; [fn prologue: decode_array_19]: copy argument 0 (__ret_value)
-move $r3 $$reta               ; [fn prologue: decode_array_19]: save return address
+poph i524288                  ; [fn end: u8_array_bigger_than_18_bits_17]: restore used high registers 40..64
+jal  $zero $$reta i0          ; [fn end: u8_array_bigger_than_18_bits_17] return from call
+pshh i524288                  ; [fn init: arrays_with_const_length_18]: push used high registers 40..64
+poph i524288                  ; [fn end: arrays_with_const_length_18]: restore used high registers 40..64
+jal  $zero $$reta i0          ; [fn end: arrays_with_const_length_18] return from call
+pshl i15                      ; [fn init: decode_array_19]: push used low registers 16..40
+pshh i524288                  ; [fn init: decode_array_19]: push used high registers 40..64
+move $$locbase $sp            ; [fn init: decode_array_19]: set locals base register
+cfei i72                      ; [fn init: decode_array_19]: allocate: locals 72 byte(s), call args 0 slot(s)
+move $r2 $$arg0               ; [fn init: decode_array_19]: copy argument 0 (__ret_value)
+move $r3 $$reta               ; [fn init: decode_array_19]: save return address
 addi $r0 $$locbase i16        ; get offset to local __ptr [u8; 1]
 mul  $r1 $zero $one           ; get offset to array element
 add  $r1 $r0 $r1              ; add array element offset to array base
@@ -737,15 +737,15 @@ lb   $r0 $r0 i0               ; load byte
 mul  $r1 $zero $one           ; get offset to array element
 add  $r1 $r2 $r1              ; add array element offset to array base
 sb   $r1 $r0 i0               ; store byte
-cfsi i72                      ; [fn epilogue: decode_array_19] free: locals 72 byte(s), call args 0 slot(s)
-move $$reta $r3               ; [fn epilogue: decode_array_19] restore return address
-poph i524288                  ; [fn epilogue: decode_array_19]: restore used high registers 40..64
-popl i15                      ; [fn epilogue: decode_array_19]: restore used low registers 16..40
-jal  $zero $$reta i0          ; [fn epilogue: decode_array_19] return from call
-pshl i1                       ; [fn prologue: to_slice_20]: push used low registers 16..40
-pshh i524288                  ; [fn prologue: to_slice_20]: push used high registers 40..64
-move $$locbase $sp            ; [fn prologue: to_slice_20]: set locals base register
-cfei i40                      ; [fn prologue: to_slice_20]: allocate: locals 40 byte(s), call args 0 slot(s)
+cfsi i72                      ; [fn end: decode_array_19] free: locals 72 byte(s), call args 0 slot(s)
+move $$reta $r3               ; [fn end: decode_array_19] restore return address
+poph i524288                  ; [fn end: decode_array_19]: restore used high registers 40..64
+popl i15                      ; [fn end: decode_array_19]: restore used low registers 16..40
+jal  $zero $$reta i0          ; [fn end: decode_array_19] return from call
+pshl i1                       ; [fn init: to_slice_20]: push used low registers 16..40
+pshh i524288                  ; [fn init: to_slice_20]: push used high registers 40..64
+move $$locbase $sp            ; [fn init: to_slice_20]: set locals base register
+cfei i40                      ; [fn init: to_slice_20]: allocate: locals 40 byte(s), call args 0 slot(s)
 addi $r0 $$locbase i16        ; get offset to local __ptr [u8; 1]
 mcpi $r0 $$arg0 i1            ; copy memory
 addi $r0 $$locbase i16        ; get offset to local __ptr [u8; 1]
@@ -754,14 +754,14 @@ sw   $$locbase $one i4        ; store word
 addi $r0 $$locbase i24        ; get offset to local __ptr { ptr, u64 }
 mcpi $$locbase $r0 i16        ; copy memory
 mcpi $$arg1 $$locbase i16     ; copy memory
-cfsi i40                      ; [fn epilogue: to_slice_20] free: locals 40 byte(s), call args 0 slot(s)
-poph i524288                  ; [fn epilogue: to_slice_20]: restore used high registers 40..64
-popl i1                       ; [fn epilogue: to_slice_20]: restore used low registers 16..40
-jal  $zero $$reta i0          ; [fn epilogue: to_slice_20] return from call
-pshl i7                       ; [fn prologue: log_46]: push used low registers 16..40
-pshh i524288                  ; [fn prologue: log_46]: push used high registers 40..64
-move $$locbase $sp            ; [fn prologue: log_46]: set locals base register
-cfei i40                      ; [fn prologue: log_46]: allocate: locals 40 byte(s), call args 0 slot(s)
+cfsi i40                      ; [fn end: to_slice_20] free: locals 40 byte(s), call args 0 slot(s)
+poph i524288                  ; [fn end: to_slice_20]: restore used high registers 40..64
+popl i1                       ; [fn end: to_slice_20]: restore used low registers 16..40
+jal  $zero $$reta i0          ; [fn end: to_slice_20] return from call
+pshl i7                       ; [fn init: log_46]: push used low registers 16..40
+pshh i524288                  ; [fn init: log_46]: push used high registers 40..64
+move $$locbase $sp            ; [fn init: log_46]: set locals base register
+cfei i40                      ; [fn init: log_46]: allocate: locals 40 byte(s), call args 0 slot(s)
 addi $r0 $$locbase i32        ; get offset to local __ptr u8
 sb   $r0 $$arg0 i0            ; store byte
 addi $r0 $$locbase i32        ; get offset to local __ptr u8
@@ -773,10 +773,10 @@ load $r0 data_NonConfigurable_2; load constant from data section
 lw   $r1 $$locbase i2         ; load slice pointer for logging data
 lw   $r2 $$locbase i3         ; load slice size for logging data
 logd $zero $r0 $r1 $r2        ; log slice
-cfsi i40                      ; [fn epilogue: log_46] free: locals 40 byte(s), call args 0 slot(s)
-poph i524288                  ; [fn epilogue: log_46]: restore used high registers 40..64
-popl i7                       ; [fn epilogue: log_46]: restore used low registers 16..40
-jal  $zero $$reta i0          ; [fn epilogue: log_46] return from call
+cfsi i40                      ; [fn end: log_46] free: locals 40 byte(s), call args 0 slot(s)
+poph i524288                  ; [fn end: log_46]: restore used high registers 40..64
+popl i7                       ; [fn end: log_46]: restore used low registers 16..40
+jal  $zero $$reta i0          ; [fn end: log_46] return from call
 .data:
 data_NonConfigurable_0 .word 18446744073709486083
 data_NonConfigurable_1 .word 262145

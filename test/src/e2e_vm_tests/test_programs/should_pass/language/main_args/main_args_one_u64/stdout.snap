@@ -108,8 +108,8 @@ CONFIGURABLES_OFFSET[32..64]
 lw   $$ds $$tmp i1
 add  $$ds $$ds $$tmp
 cfei i0                       ; allocate stack space for globals
-move $$locbase $sp            ; [entry fn prologue: __entry]: set locals base register
-cfei i24                      ; [entry fn prologue: __entry]: allocate: locals 24 byte(s), call args 0 slot(s)
+move $$locbase $sp            ; [entry init: __entry]: set locals base register
+cfei i24                      ; [entry init: __entry]: allocate: locals 24 byte(s), call args 0 slot(s)
 gtf  $r0 $zero i10            ; get transaction field
 mcpi $$locbase $r0 i8         ; copy memory
 addi $r0 $$locbase i16        ; get offset to local __ptr { u64 }
@@ -120,14 +120,14 @@ jal  $$reta $pc i5            ; [call: main_11]: call function
 sw   $$locbase $$retv i1      ; store word
 addi $r0 $$locbase i8         ; get offset to local __ptr u64
 movi $r1 i8                   ; initialize constant into register
-retd  $r0 $r1                 ; [entry fn epilogue: __entry] return slice
-pshl i1                       ; [fn prologue: main_11]: push used low registers 16..40
-pshh i524288                  ; [fn prologue: main_11]: push used high registers 40..64
+retd  $r0 $r1                 ; [entry end: __entry] return slice
+pshl i1                       ; [fn init: main_11]: push used low registers 16..40
+pshh i524288                  ; [fn init: main_11]: push used high registers 40..64
 add  $r0 $$arg0 $one
-move $$retv $r0               ; [fn epilogue: main_11] set return value
-poph i524288                  ; [fn epilogue: main_11]: restore used high registers 40..64
-popl i1                       ; [fn epilogue: main_11]: restore used low registers 16..40
-jal  $zero $$reta i0          ; [fn epilogue: main_11] return from call
+move $$retv $r0               ; [fn end: main_11] set return value
+poph i524288                  ; [fn end: main_11]: restore used high registers 40..64
+popl i1                       ; [fn end: main_11]: restore used low registers 16..40
+jal  $zero $$reta i0          ; [fn end: main_11] return from call
 .data:
 
 

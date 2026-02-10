@@ -233,7 +233,7 @@ impl FuelAsmBuilder<'_, '_> {
             self.cur_bytecode.push(Op::register_move(
                 VirtualRegister::Constant(ConstantRegister::CallReturnValue),
                 ret_reg,
-                format!("[fn epilogue: {fn_name}] set return value"),
+                format!("[fn end: {fn_name}] set return value"),
                 owning_span,
             ));
         }
@@ -307,7 +307,7 @@ impl FuelAsmBuilder<'_, '_> {
             // Save any general purpose registers used here on the stack.
             self.cur_bytecode.push(Op {
                 opcode: Either::Right(OrganizationalOp::PushAll(start_label)),
-                comment: format!("[fn prologue: {fn_name}]: push all used registers to stack"),
+                comment: format!("[fn init: {fn_name}]: push all used registers to stack"),
                 owning_span: span.clone(),
             });
         }
@@ -333,7 +333,7 @@ impl FuelAsmBuilder<'_, '_> {
             self.cur_bytecode.push(Op::register_move(
                 reta.clone(),
                 VirtualRegister::Constant(ConstantRegister::CallReturnAddress),
-                format!("[fn prologue: {fn_name}]: save return address"),
+                format!("[fn init: {fn_name}]: save return address"),
                 None,
             ));
         }
@@ -365,7 +365,7 @@ impl FuelAsmBuilder<'_, '_> {
                 self.cur_bytecode.push(Op::register_move(
                     VirtualRegister::Constant(ConstantRegister::CallReturnAddress),
                     reta,
-                    format!("[fn epilogue: {fn_name}] restore return address"),
+                    format!("[fn end: {fn_name}] restore return address"),
                     None,
                 ));
             }
@@ -373,7 +373,7 @@ impl FuelAsmBuilder<'_, '_> {
             // Restore GP regs.
             self.cur_bytecode.push(Op {
                 opcode: Either::Right(OrganizationalOp::PopAll(start_label)),
-                comment: format!("[fn epilogue: {fn_name}] restore all used registers"),
+                comment: format!("[fn end: {fn_name}] restore all used registers"),
                 owning_span: None,
             });
 
@@ -384,7 +384,7 @@ impl FuelAsmBuilder<'_, '_> {
                     ConstantRegister::CallReturnAddress.into(),
                     VirtualImmediate12::new(0),
                 )),
-                comment: format!("[fn epilogue: {fn_name}] return from call"),
+                comment: format!("[fn end: {fn_name}] return from call"),
                 owning_span: None,
             });
         }
@@ -423,7 +423,7 @@ impl FuelAsmBuilder<'_, '_> {
                     self.cur_bytecode.push(Op::register_move(
                         arg_copy_reg.clone(),
                         initial_arg_reg,
-                        format!("[fn prologue: {fn_name}]: copy argument {idx} ({arg_name})"),
+                        format!("[fn init: {fn_name}]: copy argument {idx} ({arg_name})"),
                         self.md_mgr.val_to_span(self.context, *arg_val),
                     ));
                     arg_copy_reg
@@ -456,7 +456,7 @@ impl FuelAsmBuilder<'_, '_> {
                         )
                         .expect("Too many arguments, cannot handle."),
                     )),
-                    comment: format!("[fn prologue: {fn_name}]: load argument {idx} ({arg_name}) from its stack slot"),
+                    comment: format!("[fn init: {fn_name}]: load argument {idx} ({arg_name}) from its stack slot"),
                     owning_span: self.md_mgr.val_to_span(self.context, *arg_val),
                 });
 
@@ -884,17 +884,17 @@ impl FuelAsmBuilder<'_, '_> {
         // Reserve space on the stack (in bytes) for all our locals which require it.  Firstly save
         // the current $sp.
         let fn_name = function.get_name(self.context);
-        let fn_prologue_prefix = format!("[{}fn prologue: {fn_name}]:", if function.is_entry(self.context) {
-            "entry "
+        let fn_init_prefix = format!("[{} init: {fn_name}]:", if function.is_entry(self.context) {
+            "entry"
         } else {
-            ""
+            "fn"
         });
         let locals_base_reg = VirtualRegister::Constant(ConstantRegister::LocalsBase);
         self.cur_bytecode.push(Op::register_move(
             locals_base_reg.clone(),
             VirtualRegister::Constant(ConstantRegister::StackPointer),
             format!(
-                "{fn_prologue_prefix} set locals base register",
+                "{fn_init_prefix} set locals base register",
             )
             .to_string(),
             None,
@@ -909,7 +909,7 @@ impl FuelAsmBuilder<'_, '_> {
                 VirtualRegister::Constant(ConstantRegister::StackPointer),
                 VirtualImmediate24::new(locals_size_bytes + (max_num_extra_args * 8),)
             )),
-            comment: format!("{fn_prologue_prefix} allocate: locals {locals_size_bytes} byte(s), call args {max_num_extra_args} slot(s)"),
+            comment: format!("{fn_init_prefix} allocate: locals {locals_size_bytes} byte(s), call args {max_num_extra_args} slot(s)"),
             owning_span: None,
         });
         (
@@ -1054,7 +1054,7 @@ impl FuelAsmBuilder<'_, '_> {
             opcode: Either::Left(
                 VirtualOp::CFSI(VirtualRegister::Constant(ConstantRegister::StackPointer),
                 VirtualImmediate24::new(locals_size_bytes + (max_num_extra_args * 8), ))),
-            comment: format!("[{}fn epilogue: {fn_name}] free: locals {locals_size_bytes} byte(s), call args {max_num_extra_args} slot(s)", if func_is_entry { "entry " } else { "" }),
+            comment: format!("[{} end: {fn_name}] free: locals {locals_size_bytes} byte(s), call args {max_num_extra_args} slot(s)", if func_is_entry { "entry" } else { "fn" }),
             owning_span: None,
         });
     }

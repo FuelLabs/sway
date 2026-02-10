@@ -902,7 +902,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
         self.cur_bytecode.push(Op {
             opcode: Either::Left(VirtualOp::RETD(ptr, len)),
-            comment: format!("[entry fn epilogue: {fn_name}] return slice"),
+            comment: format!("[entry end: {fn_name}] return slice"),
             owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
         });
 
@@ -1924,7 +1924,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     ConstantRegister::Zero,
                 ))),
                 owning_span,
-                comment: format!("[entry fn epilogue: {fn_name}] return unit as zero"),
+                comment: format!("[entry end: {fn_name}] return unit as zero"),
             });
         } else {
             let ret_reg = self.value_to_register(ret_val)?;
@@ -1933,7 +1933,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 self.cur_bytecode.push(Op {
                     owning_span,
                     opcode: Either::Left(VirtualOp::RET(ret_reg)),
-                    comment: format!("[entry fn epilogue: {fn_name}] return value"),
+                    comment: format!("[entry end: {fn_name}] return value"),
                 });
             } else {
                 // Sometimes (all the time?) a slice type will be `ptr slice`.
@@ -1950,7 +1950,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                             VirtualImmediate12::new(1),
                         )),
                         owning_span: owning_span.clone(),
-                        comment: format!("[entry fn epilogue: {fn_name}] load size of returned slice"),
+                        comment: format!("[entry end: {fn_name}] load size of returned slice"),
                     });
                     self.cur_bytecode.push(Op {
                         opcode: Either::Left(VirtualOp::LW(
@@ -1959,7 +1959,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                             VirtualImmediate12::new(0),
                         )),
                         owning_span: owning_span.clone(),
-                        comment: format!("[entry fn epilogue: {fn_name}] load pointer to returned slice"),
+                        comment: format!("[entry end: {fn_name}] load pointer to returned slice"),
                     });
                 } else {
                     let size_in_bytes = ret_type
@@ -1971,14 +1971,14 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         size_in_bytes,
                         size_reg.clone(),
                         None,
-                        format!("[entry fn epilogue: {fn_name}] get size of returned data"),
+                        format!("[entry end: {fn_name}] get size of returned data"),
                         owning_span.clone(),
                     );
                 }
                 self.cur_bytecode.push(Op {
                     owning_span,
                     opcode: Either::Left(VirtualOp::RETD(ret_reg, size_reg)),
-                    comment: format!("[entry fn epilogue: {fn_name}] return slice"),
+                    comment: format!("[entry end: {fn_name}] return slice"),
                 });
             }
         }

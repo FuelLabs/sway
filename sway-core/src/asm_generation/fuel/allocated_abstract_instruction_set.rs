@@ -186,14 +186,14 @@ impl AllocatedAbstractInstructionSet {
         // PUSHA/POPA are abstract instructions that emitted only by the compiler
         // as a function prologue/epilogue. They cannot be, e.g., defined in an
         // `asm` block by developers. This means it is always justifiable to add
-        // the [fn prologue/epilogue] prefix to the comments.
-        let (fn_prologue_prefix, fn_epilogue_prefix) = if let Some((fn_name, is_entry)) = &self.function {
-            let entry = if *is_entry {
-                "entry "
+        // the [fn init/end] prefix to the comments.
+        let (fn_init_prefix, fn_end_prefix) = if let Some((fn_name, is_entry)) = &self.function {
+            let fn_kind = if *is_entry {
+                "entry"
             } else {
-                ""
+                "fn"
             };
-            (format!("[{entry}fn prologue: {fn_name}]: "), format!("[{entry}fn epilogue: {fn_name}]: "))
+            (format!("[{fn_kind} init: {fn_name}]: "), format!("[{fn_kind} end: {fn_name}]: "))
         } else {
             ("".into(), "".into())
         };
@@ -214,14 +214,14 @@ impl AllocatedAbstractInstructionSet {
                     if mask_l.value() != 0 {
                         new_ops.push(AllocatedAbstractOp {
                             opcode: Either::Left(AllocatedInstruction::PSHL(mask_l)),
-                            comment: format!("{fn_prologue_prefix}push used low registers 16..40"),
+                            comment: format!("{fn_init_prefix}push used low registers 16..40"),
                             owning_span: op.owning_span.clone(),
                         });
                     }
                     if mask_h.value() != 0 {
                         new_ops.push(AllocatedAbstractOp {
                             opcode: Either::Left(AllocatedInstruction::PSHH(mask_h)),
-                            comment: format!("{fn_prologue_prefix}push used high registers 40..64"),
+                            comment: format!("{fn_init_prefix}push used high registers 40..64"),
                             owning_span: op.owning_span.clone(),
                         });
                     }
@@ -240,14 +240,14 @@ impl AllocatedAbstractInstructionSet {
                     if mask_h.value() != 0 {
                         new_ops.push(AllocatedAbstractOp {
                             opcode: Either::Left(AllocatedInstruction::POPH(mask_h)),
-                            comment: format!("{fn_epilogue_prefix}restore used high registers 40..64"),
+                            comment: format!("{fn_end_prefix}restore used high registers 40..64"),
                             owning_span: op.owning_span.clone(),
                         });
                     }
                     if mask_l.value() != 0 {
                         new_ops.push(AllocatedAbstractOp {
                             opcode: Either::Left(AllocatedInstruction::POPL(mask_l)),
-                            comment: format!("{fn_epilogue_prefix}restore used low registers 16..40"),
+                            comment: format!("{fn_end_prefix}restore used low registers 16..40"),
                             owning_span: op.owning_span.clone(),
                         });
                     }

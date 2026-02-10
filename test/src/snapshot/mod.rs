@@ -290,7 +290,7 @@ fn run_cmds(
                                 }
 
                                 if inside_asm {
-                                    if line.contains("fn prologue:") && fns.iter().any(|f| line.contains(&format!("fn prologue: {f}"))) {
+                                    if (line.contains("fn init:") || line.contains("entry init")) && fns.iter().any(|f| line.contains(&format!("init: {f}"))) {
                                         capture_line = true;
 
                                         snapshot.push('\n');
@@ -300,7 +300,7 @@ fn run_cmds(
                                         inside_asm = false;
                                     }
 
-                                    if line.contains("fn epilogue:") && line.contains("] return") {
+                                    if line.contains("end:") && line.contains("] return") {
                                         if capture_line {
                                             captured.push_str(line);
                                             captured.push('\n');
