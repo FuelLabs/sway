@@ -101,8 +101,6 @@ impl AbstractInstructionSet {
             let remove = match &op.opcode {
                 Either::Left(VirtualOp::NOOP) => true,
                 Either::Left(VirtualOp::MOVE(a, b)) => a == b,
-                // Note that we **must not** remove CFEI/CFSI with an immediate of 0,
-                // as they are used later on. E.g., in case of spilling when allocating registers.
                 _ => false,
             };
 
