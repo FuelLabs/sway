@@ -320,7 +320,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         &mut self,
         handler: &Handler,
         block: &Block,
-        func_is_entry: bool,
+        is_entry_fn: bool,
     ) -> Result<(), ErrorEmitted> {
         if block
             .get_function(self.context)
@@ -345,7 +345,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         let module = block.get_function(self.context).get_module(self.context);
         let fn_name = block.get_function(self.context).get_name(self.context);
         for instr_val in block.instruction_iter(self.context) {
-            self.compile_instruction(handler, &instr_val, fn_name, func_is_entry, module)?;
+            self.compile_instruction(handler, &instr_val, fn_name, is_entry_fn, module)?;
         }
         Ok(())
     }
@@ -355,7 +355,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         handler: &Handler,
         instr_val: &Value,
         fn_name: &str,
-        func_is_entry: bool,
+        is_entry_fn: bool,
         module: Module,
     ) -> Result<(), ErrorEmitted> {
         let Some(instruction) = instr_val.get_instruction(self.context) else {
@@ -509,7 +509,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 InstOp::Nop => Ok(()),
                 InstOp::PtrToInt(ptr_val, _int_ty) => self.compile_no_op_move(instr_val, ptr_val),
                 InstOp::Ret(ret_val, ty) => {
-                    if func_is_entry {
+                    if is_entry_fn {
                         self.compile_ret_from_entry(fn_name, instr_val, ret_val, ty)
                     } else {
                         self.compile_ret_from_call(fn_name, instr_val, ret_val)

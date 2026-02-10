@@ -271,7 +271,7 @@ impl FuelAsmBuilder<'_, '_> {
             )));
         }
 
-        let func_is_entry = function.is_entry(self.context);
+        let is_entry_fn = function.is_entry(self.context);
 
         // Check function is a leaf fn
         let is_leaf_fn = function.is_leaf_fn(self.context);
@@ -303,7 +303,7 @@ impl FuelAsmBuilder<'_, '_> {
         let fn_name = function.get_name(self.context);
 
         // Manage the call frame.
-        if !func_is_entry {
+        if !is_entry_fn {
             // Save any general purpose registers used here on the stack.
             self.cur_bytecode.push(Op {
                 opcode: Either::Right(OrganizationalOp::PushAll(start_label)),
@@ -314,7 +314,7 @@ impl FuelAsmBuilder<'_, '_> {
 
         let locals_alloc_result = self.alloc_locals(function);
 
-        if func_is_entry {
+        if is_entry_fn {
             self.compile_external_args(function)
                 .map_err(|e| handler.emit_err(e))?
         } else {
@@ -324,12 +324,12 @@ impl FuelAsmBuilder<'_, '_> {
 
         let reta = self.reg_seqr.next();
 
-        if !func_is_entry {
+        if !is_entry_fn {
             // Store some info describing the call frame.
             self.return_ctxs.push(end_label);
         }
 
-        if !is_leaf_fn && !func_is_entry {
+        if !is_leaf_fn && !is_entry_fn {
             self.cur_bytecode.push(Op::register_move(
                 reta.clone(),
                 VirtualRegister::Constant(ConstantRegister::CallReturnAddress),
@@ -346,10 +346,10 @@ impl FuelAsmBuilder<'_, '_> {
         for block in po.po_to_block.iter().rev() {
             let label = self.block_to_label(block);
             self.cur_bytecode.push(Op::unowned_jump_label(label));
-            self.compile_block(handler, block, func_is_entry)?;
+            self.compile_block(handler, block, is_entry_fn)?;
         }
 
-        if !func_is_entry {
+        if !is_entry_fn {
             // Insert the end of function label.
             self.cur_bytecode.push(Op::unowned_jump_label(end_label));
 
@@ -358,7 +358,7 @@ impl FuelAsmBuilder<'_, '_> {
 
             // Free our stack allocated locals.  This is unneeded for entries since they will have
             // actually returned to the calling context via a VM RET.
-            self.drop_locals(fn_name, func_is_entry);
+            self.drop_locals(fn_name, is_entry_fn);
 
             if !is_leaf_fn {
                 // Restore $reta.
@@ -392,7 +392,7 @@ impl FuelAsmBuilder<'_, '_> {
         // Save this function.
         let mut ops = Vec::new();
         ops.append(&mut self.cur_bytecode);
-        if func_is_entry {
+        if is_entry_fn {
             self.entries
                 .push((function, start_label, ops, test_decl_ref));
         } else {
@@ -1044,7 +1044,7 @@ impl FuelAsmBuilder<'_, '_> {
             .push((locals_size_bytes, locals_base_reg, max_num_extra_args));
     }
 
-    pub(super) fn drop_locals(&mut self, fn_name: &str, func_is_entry: bool) {
+    pub(super) fn drop_locals(&mut self, fn_name: &str, is_entry_fn: bool) {
         let (locals_size_bytes, max_num_extra_args) =
             (self.locals_size_bytes(), self.max_num_extra_args());
         if locals_size_bytes > compiler_constants::TWENTY_FOUR_BITS {
@@ -1054,7 +1054,7 @@ impl FuelAsmBuilder<'_, '_> {
             opcode: Either::Left(
                 VirtualOp::CFSI(VirtualRegister::Constant(ConstantRegister::StackPointer),
                 VirtualImmediate24::new(locals_size_bytes + (max_num_extra_args * 8), ))),
-            comment: format!("[{} end: {fn_name}] free: locals {locals_size_bytes} byte(s), call args {max_num_extra_args} slot(s)", if func_is_entry { "entry" } else { "fn" }),
+            comment: format!("[{} end: {fn_name}] free: locals {locals_size_bytes} byte(s), call args {max_num_extra_args} slot(s)", if is_entry_fn { "entry" } else { "fn" }),
             owning_span: None,
         });
     }
