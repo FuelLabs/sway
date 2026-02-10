@@ -1,6 +1,5 @@
 ---
 source: test/src/snapshot/mod.rs
-assertion_line: 101
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode --release --ir final --asm final
 exit status: 0
@@ -111,18 +110,14 @@ addi $$arg2 $ssp i8           ; get pointer to configurable WRAPPED stack addres
 jal  $$reta $pc i7            ; decode configurable WRAPPED
 move $$locbase $sp            ; save locals base register for function __entry
 cfei i8                       ; allocate 8 bytes for locals and 0 slots for call arguments
-jal  $$reta $pc i13           ; [call]: call main_15
+jal  $$reta $pc i9            ; [call]: call main_15
 sw   $$locbase $$retv i0      ; store word
 movi $r0 i8                   ; initialize constant into register
 retd  $$locbase $r0
-pshl i1                       ; save registers 16..40
 pshh i524288                  ; save registers 40..64
 move $$locbase $sp            ; save locals base register for function abi_decode_in_place_0
-move $r0 $$reta               ; save return address
 mcp  $$arg2 $$arg0 $$arg1     ; mcp target src len
-move $$reta $r0               ; restore return address
 poph i524288                  ; restore registers 40..64
-popl i1                       ; restore registers 16..40
 jal  $zero $$reta i0          ; return from call
 pshl i3                       ; save registers 16..40
 pshh i524288                  ; save registers 40..64
@@ -139,4 +134,4 @@ data_<Configurable, TUPLE>_0 .bytes[8] 00 00 00 00 00 00 00 02  ........
 data_<Configurable, WRAPPED>_1 .bytes[8] 00 00 00 00 00 00 00 01  ........
 
 
-    Finished release [optimized + fuel] target(s) [192 B] in ???
+    Finished release [optimized + fuel] target(s) [176 B] in ???

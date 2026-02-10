@@ -68,7 +68,7 @@ pub struct FuelAsmBuilder<'ir, 'eng> {
     // but before the call cleanup, and a copy of the $retv for when the return value is a reference
     // type and must be copied in memory.  Unless we have nested function declarations this vector
     // will usually have 0 or 1 entry.
-    pub(super) return_ctxs: Vec<(Label, VirtualRegister)>,
+    pub(super) return_ctxs: Vec<Label>,
 
     // Stack size and base register for locals and num_extra_args in any call in the function.
     pub(super) locals_ctxs: Vec<(u64, VirtualRegister, u64)>,
