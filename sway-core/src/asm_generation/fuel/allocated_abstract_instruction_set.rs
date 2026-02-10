@@ -53,9 +53,7 @@ impl AllocatedAbstractInstructionSet {
     ///  - does not spill any registers to the stack when allocating registers
     ///
     /// This is the cases IFF the function contains `CFEI 0`.
-    fn remove_redundant_sp_move_to_locbase(
-        mut self,
-    ) -> AllocatedAbstractInstructionSet {
+    fn remove_redundant_sp_move_to_locbase(mut self) -> AllocatedAbstractInstructionSet {
         let Some((_fn_name, is_entry)) = &self.function else {
             // Don't optimize if we are not in a function.
             return self;
@@ -188,12 +186,11 @@ impl AllocatedAbstractInstructionSet {
         // `asm` block by developers. This means it is always justifiable to add
         // the [fn init/end] prefix to the comments.
         let (fn_init_prefix, fn_end_prefix) = if let Some((fn_name, is_entry)) = &self.function {
-            let fn_kind = if *is_entry {
-                "entry"
-            } else {
-                "fn"
-            };
-            (format!("[{fn_kind} init: {fn_name}]: "), format!("[{fn_kind} end: {fn_name}]: "))
+            let fn_kind = if *is_entry { "entry" } else { "fn" };
+            (
+                format!("[{fn_kind} init: {fn_name}]: "),
+                format!("[{fn_kind} end: {fn_name}]: "),
+            )
         } else {
             ("".into(), "".into())
         };

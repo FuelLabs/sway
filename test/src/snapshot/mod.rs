@@ -290,7 +290,9 @@ fn run_cmds(
                                 }
 
                                 if inside_asm {
-                                    if (line.contains("fn init:") || line.contains("entry init")) && fns.iter().any(|f| line.contains(&format!("init: {f}"))) {
+                                    if (line.contains("fn init:") || line.contains("entry init"))
+                                        && fns.iter().any(|f| line.contains(&format!("init: {f}")))
+                                    {
                                         capture_line = true;
 
                                         snapshot.push('\n');

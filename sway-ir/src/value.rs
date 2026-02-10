@@ -9,7 +9,13 @@
 use rustc_hash::FxHashMap;
 
 use crate::{
-    Block, Constant, Function, Instruction, block::BlockArgument, context::Context, instruction::InstOp, irtype::Type, metadata::{MetadataIndex, combine}, pretty::DebugWithContext
+    block::BlockArgument,
+    context::Context,
+    instruction::InstOp,
+    irtype::Type,
+    metadata::{combine, MetadataIndex},
+    pretty::DebugWithContext,
+    Block, Constant, Function, Instruction,
 };
 
 /// A wrapper around an [ECS](https://github.com/orlp/slotmap) handle into the
@@ -203,6 +209,7 @@ impl Value {
 
     /// Get parent [Function] of this value, iff the value is an [Instruction].
     pub fn get_parent_function(&self, context: &Context) -> Option<Function> {
-        self.get_instruction(context).map(|inst| inst.parent.get_function(context))
+        self.get_instruction(context)
+            .map(|inst| inst.parent.get_function(context))
     }
 }

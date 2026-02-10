@@ -567,9 +567,7 @@ pub(crate) fn color_interference_graph(
 /// list `self.ops`. The algorithm used is Chaitin's graph-coloring register allocation
 /// algorithm (https://en.wikipedia.org/wiki/Chaitin%27s_algorithm). The individual steps of
 /// the algorithm are thoroughly explained in register_allocator.rs.
-pub(crate) fn allocate_registers(
-    ops: &[Op],
-) -> Result<Vec<AllocatedAbstractOp>, CompileError> {
+pub(crate) fn allocate_registers(ops: &[Op]) -> Result<Vec<AllocatedAbstractOp>, CompileError> {
     enum ColouringResult {
         Success {
             updated_ops: Vec<Op>,

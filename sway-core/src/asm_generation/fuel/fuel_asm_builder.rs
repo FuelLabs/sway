@@ -202,10 +202,17 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
         let entries = entries
             .clone()
             .into_iter()
-            .map(|(f, l, ops, test_decl_ref)| (f, l, AbstractInstructionSet {
-                function: Some((f.get_name(context).to_string(), true)),
-                ops
-            }, test_decl_ref))
+            .map(|(f, l, ops, test_decl_ref)| {
+                (
+                    f,
+                    l,
+                    AbstractInstructionSet {
+                        function: Some((f.get_name(context).to_string(), true)),
+                        ops,
+                    },
+                    test_decl_ref,
+                )
+            })
             .collect::<Vec<_>>();
 
         let non_entries = non_entries
@@ -232,7 +239,10 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
             })
             .collect();
 
-        let before_entry = AbstractInstructionSet { function: None, ops: before_entry };
+        let before_entry = AbstractInstructionSet {
+            function: None,
+            ops: before_entry,
+        };
 
         let virtual_abstract_program = AbstractProgram::new(
             program_kind,

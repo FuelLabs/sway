@@ -113,7 +113,9 @@ impl FuelAsmBuilder<'_, '_> {
                         VirtualImmediate18::try_new(self.locals_size_bytes(), Span::dummy())
                             .expect("Stack size too big for these many arguments, cannot handle."),
                     )),
-                    comment: format!("[call: {fn_name}]: temporarily save locals size to add up next"),
+                    comment: format!(
+                        "[call: {fn_name}]: temporarily save locals size to add up next"
+                    ),
                     owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
                 });
                 self.cur_bytecode.push(Op {
@@ -172,7 +174,9 @@ impl FuelAsmBuilder<'_, '_> {
                             )
                             .expect("Too many arguments, cannot handle."),
                         )),
-                        comment: format!("[call: {fn_name}]: pass argument {idx} via its stack slot"),
+                        comment: format!(
+                            "[call: {fn_name}]: pass argument {idx} via its stack slot"
+                        ),
                         owning_span: self.md_mgr.val_to_span(self.context, *arg_val),
                     });
                 }
@@ -884,19 +888,19 @@ impl FuelAsmBuilder<'_, '_> {
         // Reserve space on the stack (in bytes) for all our locals which require it.  Firstly save
         // the current $sp.
         let fn_name = function.get_name(self.context);
-        let fn_init_prefix = format!("[{} init: {fn_name}]:", if function.is_entry(self.context) {
-            "entry"
-        } else {
-            "fn"
-        });
+        let fn_init_prefix = format!(
+            "[{} init: {fn_name}]:",
+            if function.is_entry(self.context) {
+                "entry"
+            } else {
+                "fn"
+            }
+        );
         let locals_base_reg = VirtualRegister::Constant(ConstantRegister::LocalsBase);
         self.cur_bytecode.push(Op::register_move(
             locals_base_reg.clone(),
             VirtualRegister::Constant(ConstantRegister::StackPointer),
-            format!(
-                "{fn_init_prefix} set locals base register",
-            )
-            .to_string(),
+            format!("{fn_init_prefix} set locals base register",).to_string(),
             None,
         ));
 
