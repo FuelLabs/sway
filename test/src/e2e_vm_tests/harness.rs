@@ -147,11 +147,7 @@ pub(crate) async fn runs_on_node(
             .await
             .map_err(|e| anyhow!("{e}"))?;
 
-        let receipts = tx_status
-            .take_receipts_checked(None)
-            .map_err(|e| anyhow!("{e}"))?;
-
-        Ok(receipts.to_vec())
+        Ok(tx_status.take_receipts().to_vec())
     })
     .await
 }
