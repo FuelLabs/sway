@@ -174,7 +174,9 @@ features! {
     new_hashing = true,
     "https://github.com/FuelLabs/sway/issues/7256",
     str_array_no_padding = false,
-    "https://github.com/FuelLabs/sway/issues/7528"
+    "https://github.com/FuelLabs/sway/issues/7528",
+    abi_type_aliases = false,
+    "https://github.com/FuelLabs/sway/issues/7486"
 }
 
 #[derive(Clone, Debug, Default, Parser)]

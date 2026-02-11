@@ -1811,6 +1811,10 @@ pub fn compile(
                         abi_with_callpaths: true,
                         type_ids_to_full_type_str: HashMap::<String, String>::new(),
                         unique_names: HashMap::new(),
+                        metadata_declaration_cache: HashMap::new(),
+                        concrete_declaration_cache: HashMap::new(),
+                        type_cache_enabled: experimental.abi_type_aliases,
+                        experimental,
                     },
                     engines,
                     if experimental.new_encoding {

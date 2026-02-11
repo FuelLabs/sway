@@ -1,0 +1,4 @@
+category = "compile"
+validate_abi = true
+validate_storage_slots = true
+experimental = { abi_type_aliases = true }

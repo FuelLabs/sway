@@ -11,6 +11,7 @@ pub struct AbiStrContext {
     pub abi_with_callpaths: bool,
     pub abi_with_fully_specified_types: bool,
     pub abi_root_type_without_generic_type_parameters: bool,
+    pub abi_type_aliases: bool,
 }
 
 impl TypeId {
@@ -26,7 +27,7 @@ impl TypeId {
         let self_abi_str = type_engine
             .get(*self)
             .abi_str(handler, ctx, engines, true)?;
-        if self.is_generic_parameter(engines, resolved_type_id) {
+        if self.is_generic_parameter(engines, resolved_type_id, ctx.abi_type_aliases) {
             Ok(format!("generic {self_abi_str}"))
         } else {
             match (
@@ -37,9 +38,10 @@ impl TypeId {
                 | (TypeInfo::Custom { .. }, TypeInfo::Enum { .. }) => type_engine
                     .get(resolved_type_id)
                     .abi_str(handler, ctx, engines, true),
-                (_, TypeInfo::Alias { ty, .. }) => ty
+                (_, TypeInfo::Alias { ty, .. }) if !ctx.abi_type_aliases => ty
                     .type_id
                     .get_abi_type_str(handler, ctx, engines, ty.type_id),
+                (_, TypeInfo::Alias { .. }) => Ok(self_abi_str),
                 (TypeInfo::Tuple(fields), TypeInfo::Tuple(resolved_fields)) => {
                     assert_eq!(fields.len(), resolved_fields.len());
                     let field_strs = resolved_fields
@@ -204,7 +206,13 @@ impl TypeInfo {
                 "__slice {}",
                 ty.abi_str(handler, ctx, engines, false)?
             )),
-            Alias { ty, .. } => Ok(ty.abi_str(handler, ctx, engines, false)?),
+            Alias { name, ty } => {
+                if ctx.abi_type_aliases {
+                    Ok(name.to_string())
+                } else {
+                    ty.abi_str(handler, ctx, engines, false)
+                }
+            }
             TraitType {
                 name,
                 implemented_in: _,

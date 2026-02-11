@@ -25,7 +25,7 @@ pub fn generate_abi_program(program: &TyProgram, engines: &Engines) -> EvmAbiRes
 /// Gives back a string that represents the type, considering what it resolves to
 fn get_type_str(type_id: &TypeId, engines: &Engines, resolved_type_id: TypeId) -> String {
     let type_engine = engines.te();
-    if type_id.is_generic_parameter(engines, resolved_type_id) {
+    if type_id.is_generic_parameter(engines, resolved_type_id, false) {
         format!("generic {}", abi_str(&type_engine.get(*type_id), engines))
     } else {
         match (
