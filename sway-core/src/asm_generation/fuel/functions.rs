@@ -353,6 +353,9 @@ impl FuelAsmBuilder<'_, '_> {
             self.compile_block(handler, block, is_entry_fn)?;
         }
 
+        // Generate epilogue for non-entry functions.
+        // Entry functions will return to the caller via a RET(D),
+        // so they don't need an epilogue.
         if !is_entry_fn {
             // Insert the end of function label.
             self.cur_bytecode.push(Op::unowned_jump_label(end_label));
@@ -360,9 +363,8 @@ impl FuelAsmBuilder<'_, '_> {
             // Pop the call frame entry.
             self.return_ctxs.pop();
 
-            // Free our stack allocated locals.  This is unneeded for entries since they will have
-            // actually returned to the calling context via a VM RET.
-            self.drop_locals(fn_name, is_entry_fn);
+            // Free our stack allocated locals.
+            self.drop_locals(fn_name);
 
             if !is_leaf_fn {
                 // Restore $reta.
@@ -374,7 +376,7 @@ impl FuelAsmBuilder<'_, '_> {
                 ));
             }
 
-            // Restore GP regs.
+            // Restore general purpose registers.
             self.cur_bytecode.push(Op {
                 opcode: Either::Right(OrganizationalOp::PopAll(start_label)),
                 comment: format!("[fn end: {fn_name}] restore all used registers"),
@@ -1048,7 +1050,8 @@ impl FuelAsmBuilder<'_, '_> {
             .push((locals_size_bytes, locals_base_reg, max_num_extra_args));
     }
 
-    pub(super) fn drop_locals(&mut self, fn_name: &str, is_entry_fn: bool) {
+    /// Free stack allocated locals in non-entry functions.
+    pub(super) fn drop_locals(&mut self, fn_name: &str) {
         let (locals_size_bytes, max_num_extra_args) =
             (self.locals_size_bytes(), self.max_num_extra_args());
         if locals_size_bytes > compiler_constants::TWENTY_FOUR_BITS {
@@ -1058,7 +1061,7 @@ impl FuelAsmBuilder<'_, '_> {
             opcode: Either::Left(
                 VirtualOp::CFSI(VirtualRegister::Constant(ConstantRegister::StackPointer),
                 VirtualImmediate24::new(locals_size_bytes + (max_num_extra_args * 8), ))),
-            comment: format!("[{} end: {fn_name}] free: locals {locals_size_bytes} byte(s), call args {max_num_extra_args} slot(s)", if is_entry_fn { "entry" } else { "fn" }),
+            comment: format!("[fn end: {fn_name}] free: locals {locals_size_bytes} byte(s), call args {max_num_extra_args} slot(s)"),
             owning_span: None,
         });
     }
