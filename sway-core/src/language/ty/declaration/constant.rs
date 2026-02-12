@@ -93,14 +93,11 @@ impl IsConcrete for TyConstantDecl {
 
 impl SubstTypes for TyConstantDecl {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-        *ctx.log.borrow_mut() = true;
-        let r = has_changes! {
+        has_changes! {
             self.return_type.subst(ctx);
             self.type_ascription.subst(ctx);
             self.value.subst(ctx);
-        };
-        *ctx.log.borrow_mut() = false;
-        r
+        }
     }
 }
 

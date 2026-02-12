@@ -31,7 +31,6 @@ pub struct SubstTypesContext<'a> {
     pub engines: &'a Engines,
     pub type_subst_map: Option<&'a TypeSubstMap>,
     pub subst_function_body: bool,
-    pub log: std::cell::RefCell<bool>,
 }
 
 impl<'a> SubstTypesContext<'a> {
@@ -46,7 +45,6 @@ impl<'a> SubstTypesContext<'a> {
             engines,
             type_subst_map: Some(type_subst_map),
             subst_function_body,
-            log: std::cell::RefCell::new(false),
         }
     }
 
@@ -56,7 +54,6 @@ impl<'a> SubstTypesContext<'a> {
             engines,
             type_subst_map: None,
             subst_function_body: false,
-            log: std::cell::RefCell::new(false),
         }
     }
 

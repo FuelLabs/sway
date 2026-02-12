@@ -3726,16 +3726,16 @@ impl<'a> FnCompiler<'a> {
                 let condition_bool = condition_const_value
                     .get_constant(context)
                     .ok_or_else(|| {
-                        CompileError::InternalOwned(
-                            "compile_constant_expression did not returned a constant".to_string(),
+                        CompileError::Internal(
+                            "compile_constant_expression did not returned a constant",
                             ast_condition.span.clone(),
                         )
                     })?
                     .get_content(context)
                     .as_bool()
                     .ok_or_else(|| {
-                        CompileError::InternalOwned(
-                            "if condition returned non-bool".to_string(),
+                        CompileError::Internal(
+                            "if condition returned non-bool",
                             ast_condition.span.clone(),
                         )
                     })?;
