@@ -11,19 +11,6 @@ output:
 
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/match_expressions_all --ir final --asm final --release | filter-fn match_expressions_all return_match_on_str_slice
 
-<<<<<<< HEAD
-
-
-
-
-
-pshl i15                      ; [fn init: return_match_on_str_slice_8]: push used low registers 16..40
-pshh i524288                  ; [fn init: return_match_on_str_slice_8]: push used high registers 40..64
-move $$locbase $sp            ; [fn init: return_match_on_str_slice_8]: set locals base register
-cfei i112                     ; [fn init: return_match_on_str_slice_8]: allocate: locals 112 byte(s), call args 0 slot(s)
-move $r0 $$arg0               ; [fn init: return_match_on_str_slice_8]: copy argument 0 (param)
-move $r1 $$reta               ; [fn init: return_match_on_str_slice_8]: save return address
-=======
 fn return_match_on_str_slice_8(param: __ptr slice) -> u64 {
     local { ptr, u64 } __anon_0
     local slice __anon_1
@@ -106,13 +93,17 @@ fn return_match_on_str_slice_8(param: __ptr slice) -> u64 {
 }
 
 
-pshl i15                      ; save registers 16..40
-pshh i524288                  ; save registers 40..64
-move $$locbase $sp            ; save locals base register for function return_match_on_str_slice_8
-cfei i112                     ; allocate 112 bytes for locals and 0 slots for call arguments
-move $r0 $$arg0               ; save argument 0 (param)
-move $r1 $$reta               ; save return address
->>>>>>> 04738e9f4 (update tests)
+
+
+
+
+
+pshl i15                      ; [fn init: return_match_on_str_slice_8]: push used low registers 16..40
+pshh i524288                  ; [fn init: return_match_on_str_slice_8]: push used high registers 40..64
+move $$locbase $sp            ; [fn init: return_match_on_str_slice_8]: set locals base register
+cfei i112                     ; [fn init: return_match_on_str_slice_8]: allocate: locals 112 byte(s), call args 0 slot(s)
+move $r0 $$arg0               ; [fn init: return_match_on_str_slice_8]: copy argument 0 (param)
+move $r1 $$reta               ; [fn init: return_match_on_str_slice_8]: save return address
 addi $r2 $$locbase i96        ; get offset to local __ptr slice
 mcpi $r2 $$arg0 i16           ; copy memory
 addr $r2 data_NonConfigurable_7; get __const_global's address in data section

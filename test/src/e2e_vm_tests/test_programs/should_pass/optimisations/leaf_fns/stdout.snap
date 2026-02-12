@@ -3,11 +3,6 @@ source: test/src/snapshot/mod.rs
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/optimisations/leaf_fns --release --ir final --asm final | filter-fn leaf_fns leaf_fn
 
-<<<<<<< HEAD
-pshh i524288                  ; [fn init: leaf_fn_0_1]: push used high registers 40..64
-poph i524288                  ; [fn end: leaf_fn_0_1]: restore used high registers 40..64
-jal  $zero $$reta i0          ; [fn end: leaf_fn_0_1] return from call
-=======
 fn leaf_fn_0_1() -> () {
     entry():
     v23v1 = const unit ()
@@ -38,11 +33,9 @@ fn leaf_fn_7_4(a: u64, b: u64, c: u64, d: u64, e: u64, f: u64, g: u64) -> u64 {
 }
 
 
-pshh i524288                  ; save registers 40..64
-move $$locbase $sp            ; save locals base register for function leaf_fn_0_1
-poph i524288                  ; restore registers 40..64
-jal  $zero $$reta i0          ; return from call
->>>>>>> 15185e32f (update tests)
+pshh i524288                  ; [fn init: leaf_fn_0_1]: push used high registers 40..64
+poph i524288                  ; [fn end: leaf_fn_0_1]: restore used high registers 40..64
+jal  $zero $$reta i0          ; [fn end: leaf_fn_0_1] return from call
 
 
 pshl i1                       ; [fn init: leaf_fn_6_2]: push used low registers 16..40

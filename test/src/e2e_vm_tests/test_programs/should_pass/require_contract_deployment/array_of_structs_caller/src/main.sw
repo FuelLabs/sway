@@ -7,9 +7,9 @@ use std::hash::*;
 const CONTRACT_ID = 0x14ed3cd06c2947248f69d54bfa681fe40d26267be84df7e19e253622b7921bbe;
 #[cfg(experimental_new_encoding = true)]
 <<<<<<< HEAD
-const CONTRACT_ID = 0x3a538fcd0aacef0147f0f673e1717a8c6756e2f091438a58b0795553e728b5be; // AUTO-CONTRACT-ID ../../test_contracts/array_of_structs_contract --release
+const CONTRACT_ID = 0xfdb499f3ef8cb08c6526b32a31785e9a85f3953ee2bfcc0c10ad0744d2663ae9; // AUTO-CONTRACT-ID ../../test_contracts/array_of_structs_contract --release
 =======
-const CONTRACT_ID = 0x5ffc4edf4c66f00f3d4eafc2b74cd6ae6c6cb308a4a9e4db3ec1cd5e4a9c698b; // AUTO-CONTRACT-ID ../../test_contracts/array_of_structs_contract --release
+const CONTRACT_ID = 0xfdb499f3ef8cb08c6526b32a31785e9a85f3953ee2bfcc0c10ad0744d2663ae9; // AUTO-CONTRACT-ID ../../test_contracts/array_of_structs_contract --release
 >>>>>>> 15185e32f (update tests)
 
 fn get_address() -> Option<std::address::Address> {
