@@ -512,7 +512,7 @@ fn build_call_command(
         devnet: false,
     };
 
-    let gas = gas_price.map(|price| forc_tx::Gas {
+    let gas = gas_price.map(|price| forc_client::cmd::call::Gas {
         price: Some(price),
         script_gas_limit: None,
         max_fee: None,
@@ -767,7 +767,7 @@ mod tests {
 
             // Deploy the test contract
             let contract_id = Contract::load_from(
-                "../../forc-plugins/forc-client/test/data/contract_with_types/contract_with_types.bin",
+                "test/data/contract_with_types/contract_with_types.bin",
                 LoadConfiguration::default(),
             )?
             .deploy(&wallet, TxPolicies::default())
@@ -775,7 +775,7 @@ mod tests {
             .contract_id;
 
             // Use the existing ABI file directly (no temp file needed)
-            let abi_path = "../../forc-plugins/forc-client/test/data/contract_with_types/contract_with_types-abi.json";
+            let abi_path = "test/data/contract_with_types/contract_with_types-abi.json";
 
             Ok(E2ETestFixture {
                 contract_id: format!("0x{contract_id}"),

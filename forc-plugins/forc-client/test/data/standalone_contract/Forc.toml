@@ -1,9 +1,0 @@
-[project]
-authors = ["Fuel Labs <contact@fuel.sh>"]
-entry = "main.sw"
-implicit-std = false
-license = "Apache-2.0"
-name = "standalone_contract"
-
-[dependencies]
-std = { path = "../../../../../sway-lib-std/" }
