@@ -207,8 +207,8 @@ CONFIGURABLES_OFFSET[32..64]
 lw   $$ds $$tmp i1
 add  $$ds $$ds $$tmp
 cfei i0                       ; allocate stack space for globals
-move $$locbase $sp            ; save locals base register for function __entry
-cfei i88                      ; allocate 88 bytes for locals and 0 slots for call arguments
+move $$locbase $sp            ; [entry init: __entry]: set locals base register
+cfei i88                      ; [entry init: __entry]: allocate: locals 88 byte(s), call args 0 slot(s)
 gtf  $r0 $zero i10            ; get transaction field
 mcpi $$locbase $r0 i16        ; copy memory
 addi $r0 $$locbase i24        ; get offset to local __ptr { u64, u64 }
@@ -217,21 +217,20 @@ addi $r1 $$locbase i64        ; get offset to local __ptr { u64, u64 }
 mcpi $r1 $r0 i16              ; copy memory
 lw   $r0 $$locbase i8         ; load word
 lw   $r1 $$locbase i9         ; load word
-move $$arg0 $r0               ; [call]: pass argument 0
-move $$arg1 $r1               ; [call]: pass argument 1
-jal  $$reta $pc i5            ; [call]: call main_11
+move $$arg0 $r0               ; [call: main_11]: pass argument 0
+move $$arg1 $r1               ; [call: main_11]: pass argument 1
+jal  $$reta $pc i5            ; [call: main_11]: call function
 sw   $$locbase $$retv i7      ; store word
 addi $r0 $$locbase i56        ; get offset to local __ptr u64
 movi $r1 i8                   ; initialize constant into register
-retd  $r0 $r1
-pshl i1                       ; save registers 16..40
-pshh i524288                  ; save registers 40..64
-move $$locbase $sp            ; save locals base register for function main_11
+retd  $r0 $r1                 ; [entry end: __entry] return slice
+pshl i1                       ; [fn init: main_11]: push used low registers 16..40
+pshh i524288                  ; [fn init: main_11]: push used high registers 40..64
 add  $r0 $$arg0 $$arg1
-move $$retv $r0               ; set return value
-poph i524288                  ; restore registers 40..64
-popl i1                       ; restore registers 16..40
-jal  $zero $$reta i0          ; return from call
+move $$retv $r0               ; [fn end: main_11] set return value
+poph i524288                  ; [fn end: main_11]: restore used high registers 40..64
+popl i1                       ; [fn end: main_11]: restore used low registers 16..40
+jal  $zero $$reta i0          ; [fn end: main_11] return from call
 .data:
 
 
@@ -239,7 +238,7 @@ jal  $zero $$reta i0          ; return from call
 
 0x00000000 MOVE R60 $pc                                    ;; [26, 240, 48, 0]
 0x00000004 JMPF $zero 0x4                                  ;; [116, 0, 0, 4]
-0x00000008                                                 ;; [0, 0, 0, 0, 0, 0, 0, 136]
+0x00000008                                                 ;; [0, 0, 0, 0, 0, 0, 0, 128]
 0x00000010                                                 ;; [0, 0, 0, 0, 0, 0, 0, 0]
 0x00000018 LW R63 R60 0x1                                  ;; [93, 255, 192, 1]
 0x0000001c ADD R63 R63 R60                                 ;; [16, 255, 255, 0]
@@ -262,14 +261,12 @@ jal  $zero $$reta i0          ; return from call
 0x00000060 RETD $writable R17                              ;; [37, 65, 16, 0]
 0x00000064 PSHL 0x1                                        ;; [149, 0, 0, 1]
 0x00000068 PSHH 0x80000                                    ;; [150, 8, 0, 0]
-0x0000006c MOVE R59 $sp                                    ;; [26, 236, 80, 0]
-0x00000070 ADD $writable R58 R57                           ;; [16, 67, 174, 64]
-0x00000074 MOVE R61 $writable                              ;; [26, 245, 0, 0]
-0x00000078 POPH 0x80000                                    ;; [152, 8, 0, 0]
-0x0000007c POPL 0x1                                        ;; [151, 0, 0, 1]
-0x00000080 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
-0x00000084 NOOP                                            ;; [71, 0, 0, 0]
+0x0000006c ADD $writable R58 R57                           ;; [16, 67, 174, 64]
+0x00000070 MOVE R61 $writable                              ;; [26, 245, 0, 0]
+0x00000074 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x00000078 POPL 0x1                                        ;; [151, 0, 0, 1]
+0x0000007c JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
 .data_section:
 ;; --- END OF TARGET BYTECODE ---
 
-    Finished release [optimized + fuel] target(s) [136 B] in ???
+    Finished release [optimized + fuel] target(s) [128 B] in ???

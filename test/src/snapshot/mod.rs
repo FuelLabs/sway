@@ -3,7 +3,7 @@ use libtest_mimic::{Arguments, Trial};
 use normalize_path::NormalizePath;
 use regex::{Captures, Regex};
 use std::{
-    collections::{BTreeSet, HashMap, VecDeque},
+    collections::{BTreeSet, HashMap},
     path::{Path, PathBuf},
     str::FromStr,
     sync::Once,
@@ -245,7 +245,6 @@ fn run_cmds(
 
                             let mut inside_ir = false;
                             let mut inside_asm = false;
-                            let mut last_asm_lines = VecDeque::<&str>::new();
                             let mut capture_line = false;
 
                             let compiling_project_line = format!("Compiling script {name}");
@@ -291,34 +290,19 @@ fn run_cmds(
                                 }
 
                                 if inside_asm {
-                                    if line.contains("save locals base register for function") {
-                                        for f in fns.iter() {
-                                            if line.contains(f.as_str()) {
-                                                capture_line = true;
+                                    if (line.contains("fn init:") || line.contains("entry init"))
+                                        && fns.iter().any(|f| line.contains(&format!("init: {f}")))
+                                    {
+                                        capture_line = true;
 
-                                                snapshot.push('\n');
-
-                                                for l in last_asm_lines.drain(..) {
-                                                    if l.starts_with("psh") {
-                                                        snapshot.push_str(l);
-                                                        snapshot.push('\n');
-                                                    }
-                                                }
-                                            }
-                                        }
+                                        snapshot.push('\n');
                                     }
-
-                                    // keep the last two lines
-                                    if last_asm_lines.len() >= 2 {
-                                        last_asm_lines.pop_front();
-                                    }
-                                    last_asm_lines.push_back(line);
 
                                     if line.is_empty() {
                                         inside_asm = false;
                                     }
 
-                                    if line.contains("; return from call") {
+                                    if line.contains("end:") && line.contains("] return") {
                                         if capture_line {
                                             captured.push_str(line);
                                             captured.push('\n');

@@ -294,7 +294,7 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
         &mut self,
         handler: &Handler,
         instr_val: &Value,
-        func_is_entry: bool,
+        is_entry_fn: bool,
     ) -> Result<(), ErrorEmitted> {
         if let Some(instruction) = instr_val.get_instruction(self.context) {
             match &instruction.op {
@@ -365,7 +365,7 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
                     self.compile_ptr_to_int(instr_val, ptr_val, int_ty)
                 }
                 InstOp::Ret(ret_val, ty) => {
-                    if func_is_entry {
+                    if is_entry_fn {
                         self.compile_ret_from_entry(instr_val, ret_val, ty)
                     } else {
                         self.compile_ret_from_call(instr_val, ret_val)
@@ -648,13 +648,13 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
             .push(AbstractOp::new(Op::MStore(MStore)));
 
         //self.init_locals(function);
-        let func_is_entry = function.is_entry(self.context);
+        let is_entry_fn = function.is_entry(self.context);
 
         // Compile instructions.
         for block in function.block_iter(self.context) {
             self.insert_block_label(block);
             for instr_val in block.instruction_iter(self.context) {
-                self.compile_instruction(handler, &instr_val, func_is_entry)?;
+                self.compile_instruction(handler, &instr_val, is_entry_fn)?;
             }
         }
 

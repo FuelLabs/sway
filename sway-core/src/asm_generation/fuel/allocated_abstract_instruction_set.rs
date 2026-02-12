@@ -31,14 +31,63 @@ pub(crate) struct BasicBlock {
     pub(crate) offs: u64,
 }
 
+/// If `function` is `Some`, then this instruction set belongs to a function.
 #[derive(Clone)]
 pub struct AllocatedAbstractInstructionSet {
+    /// `Some` if this instruction set belongs to a single function.
+    /// The `String` is the function name, and the `bool` is whether it's an entry function.
+    pub(crate) function: Option<(String, bool)>,
     pub(crate) ops: Vec<AllocatedAbstractOp>,
 }
 
 impl AllocatedAbstractInstructionSet {
     pub(crate) fn optimize(self) -> AllocatedAbstractInstructionSet {
-        self.remove_redundant_ops()
+        self.remove_redundant_sp_move_to_locbase()
+            .remove_redundant_ops()
+    }
+
+    /// Remove the `MOVE $$locbase, $$sp` instruction in non-entry functions, if the function does
+    /// not use stack at all. This means the function:
+    ///  - does not have any locals
+    ///  - does not call any functions that spill arguments to the stack
+    ///  - does not spill any registers to the stack when allocating registers
+    ///
+    /// This is the cases IFF the function contains `CFEI 0`.
+    fn remove_redundant_sp_move_to_locbase(mut self) -> AllocatedAbstractInstructionSet {
+        let Some((_fn_name, is_entry)) = &self.function else {
+            // Don't optimize if we are not in a function.
+            return self;
+        };
+
+        if *is_entry {
+            // We need to keep the $$sp move to $$locbase in entry functions, as it is a part of the compiler's contract.
+            // E.g., when calculating jump instruction index, `forc test` relies on the fact that
+            // every test entry function has `MOVE $$locbase, $$sp`.
+            return self;
+        }
+
+        let has_zero_cfei = self.ops.iter().any(|op| matches!(&op.opcode, Either::Left(AllocatedInstruction::CFEI(imm)) if imm.value() == 0));
+
+        if !has_zero_cfei {
+            return self;
+        }
+
+        // If there is a `CFEI 0` then we know for sure that the function does not use stack at all.
+        // This means $$locbase is not used anywhere and we can safely remove the `MOVE $$locbase, $$sp` instruction.
+        // If $$locbase is used, this is a compilation error and will be caught by the verifier later on.
+        if let Some(move_to_locals_base_idx) = self.ops.iter().position(|op| {
+            matches!(
+                &op.opcode,
+                Either::Left(AllocatedInstruction::MOVE(
+                    AllocatedRegister::Constant(ConstantRegister::LocalsBase),
+                    AllocatedRegister::Constant(ConstantRegister::StackPointer),
+                ))
+            )
+        }) {
+            self.ops.remove(move_to_locals_base_idx);
+        }
+
+        self
     }
 
     fn remove_redundant_ops(mut self) -> AllocatedAbstractInstructionSet {
@@ -61,8 +110,10 @@ impl AllocatedAbstractInstructionSet {
         self
     }
 
-    /// Replace each PUSHA instruction with stores of all used registers to the stack, and each
-    /// POPA with respective loads from the stack.
+    /// Replace each PUSHA instruction with pushing of all used registers to the stack, and each
+    /// POPA with respective popping from the stack.
+    ///
+    /// Effectively, we are lowering the abstract PUSHA/POPA instructions into PSHL/PSHH and POPL/POPH instructions.
     ///
     /// Typically there will be only one of each but the code here allows for nested sections or
     /// even overlapping sections.
@@ -130,7 +181,21 @@ impl AllocatedAbstractInstructionSet {
             )
         }
 
-        // Now replace the PUSHA/POPA instructions with STOREs and LOADs.
+        // PUSHA/POPA are abstract instructions that are emitted only by the compiler
+        // as a part of a function prologue/epilogue. They cannot be, e.g., defined in
+        // `asm` blocks by developers. This means it is correct to always add
+        // the `[fn init/end]` prefix to the instruction comments.
+        let (fn_init_prefix, fn_end_prefix) = if let Some((fn_name, is_entry)) = &self.function {
+            let fn_kind = if *is_entry { "entry" } else { "fn" };
+            (
+                format!("[{fn_kind} init: {fn_name}]: "),
+                format!("[{fn_kind} end: {fn_name}]: "),
+            )
+        } else {
+            ("".into(), "".into())
+        };
+
+        // Now replace the PUSHA/POPA instructions with PSHL/PSHH and POPL/POPH instructions.
         self.ops = self.ops.drain(..).fold(Vec::new(), |mut new_ops, op| {
             match &op.opcode {
                 Either::Right(ControlFlowOp::PushAll(label)) => {
@@ -146,14 +211,14 @@ impl AllocatedAbstractInstructionSet {
                     if mask_l.value() != 0 {
                         new_ops.push(AllocatedAbstractOp {
                             opcode: Either::Left(AllocatedInstruction::PSHL(mask_l)),
-                            comment: "save registers 16..40".into(),
+                            comment: format!("{fn_init_prefix}push used low registers 16..40"),
                             owning_span: op.owning_span.clone(),
                         });
                     }
                     if mask_h.value() != 0 {
                         new_ops.push(AllocatedAbstractOp {
                             opcode: Either::Left(AllocatedInstruction::PSHH(mask_h)),
-                            comment: "save registers 40..64".into(),
+                            comment: format!("{fn_init_prefix}push used high registers 40..64"),
                             owning_span: op.owning_span.clone(),
                         });
                     }
@@ -172,14 +237,14 @@ impl AllocatedAbstractInstructionSet {
                     if mask_h.value() != 0 {
                         new_ops.push(AllocatedAbstractOp {
                             opcode: Either::Left(AllocatedInstruction::POPH(mask_h)),
-                            comment: "restore registers 40..64".into(),
+                            comment: format!("{fn_end_prefix}restore used high registers 40..64"),
                             owning_span: op.owning_span.clone(),
                         });
                     }
                     if mask_l.value() != 0 {
                         new_ops.push(AllocatedAbstractOp {
                             opcode: Either::Left(AllocatedInstruction::POPL(mask_l)),
-                            comment: "restore registers 16..40".into(),
+                            comment: format!("{fn_end_prefix}restore used low registers 16..40"),
                             owning_span: op.owning_span.clone(),
                         });
                     }

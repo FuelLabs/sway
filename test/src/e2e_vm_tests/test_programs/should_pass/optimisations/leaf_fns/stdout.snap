@@ -3,36 +3,37 @@ source: test/src/snapshot/mod.rs
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/optimisations/leaf_fns --release --ir final --asm final | filter-fn leaf_fns leaf_fn
 
-pshh i524288                  ; save registers 40..64
-move $$locbase $sp            ; save locals base register for function leaf_fn_0_1
-poph i524288                  ; restore registers 40..64
-jal  $zero $$reta i0          ; return from call
+pshh i524288                  ; [fn init: leaf_fn_0_1]: push used high registers 40..64
+poph i524288                  ; [fn end: leaf_fn_0_1]: restore used high registers 40..64
+jal  $zero $$reta i0          ; [fn end: leaf_fn_0_1] return from call
 
-pshl i1                       ; save registers 16..40
-pshh i524288                  ; save registers 40..64
-move $$locbase $sp            ; save locals base register for function leaf_fn_6_2
+
+pshl i1                       ; [fn init: leaf_fn_6_2]: push used low registers 16..40
+pshh i524288                  ; [fn init: leaf_fn_6_2]: push used high registers 40..64
 add  $r0 $$arg0 $$arg1
 add  $r0 $r0 $$arg2
 add  $r0 $r0 $$arg3
 add  $r0 $r0 $$arg4
 add  $r0 $r0 $$arg5
-move $$retv $r0               ; set return value
-poph i524288                  ; restore registers 40..64
-popl i1                       ; restore registers 16..40
-jal  $zero $$reta i0          ; return from call
+move $$retv $r0               ; [fn end: leaf_fn_6_2] set return value
+poph i524288                  ; [fn end: leaf_fn_6_2]: restore used high registers 40..64
+popl i1                       ; [fn end: leaf_fn_6_2]: restore used low registers 16..40
+jal  $zero $$reta i0          ; [fn end: leaf_fn_6_2] return from call
 
-pshl i7                       ; save registers 16..40
-pshh i524288                  ; save registers 40..64
-move $$locbase $sp            ; save locals base register for function leaf_fn_7_4
-lw   $r0 $$arg5 i0            ; load argument 5 (f) from its stack slot
-lw   $r1 $$arg5 i1            ; load argument 6 (g) from its stack slot
+
+
+
+pshl i7                       ; [fn init: leaf_fn_7_4]: push used low registers 16..40
+pshh i524288                  ; [fn init: leaf_fn_7_4]: push used high registers 40..64
+lw   $r0 $$arg5 i0            ; [fn init: leaf_fn_7_4]: load argument 5 (f) from its stack slot
+lw   $r1 $$arg5 i1            ; [fn init: leaf_fn_7_4]: load argument 6 (g) from its stack slot
 add  $r2 $$arg0 $$arg1
 add  $r2 $r2 $$arg2
 add  $r2 $r2 $$arg3
 add  $r2 $r2 $$arg4
 add  $r0 $r2 $r0
 add  $r0 $r0 $r1
-move $$retv $r0               ; set return value
-poph i524288                  ; restore registers 40..64
-popl i7                       ; restore registers 16..40
-jal  $zero $$reta i0          ; return from call
+move $$retv $r0               ; [fn end: leaf_fn_7_4] set return value
+poph i524288                  ; [fn end: leaf_fn_7_4]: restore used high registers 40..64
+popl i7                       ; [fn end: leaf_fn_7_4]: restore used low registers 16..40
+jal  $zero $$reta i0          ; [fn end: leaf_fn_7_4] return from call
