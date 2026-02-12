@@ -10,8 +10,13 @@ use super::{
 
 /// An [AbstractInstructionSet] is a set of instructions that use entirely virtual registers
 /// and excessive moves, with the intention of later optimizing it.
+///
+/// If `function` is `Some`, then this instruction set belongs to a function.
 #[derive(Clone)]
 pub struct AbstractInstructionSet {
+    /// `Some` if this instruction set belongs to a single function.
+    /// The `String` is the function name, and the `bool` is whether it's an entry function.
+    pub(crate) function: Option<(String, bool)>,
     pub(crate) ops: Vec<Op>,
 }
 
@@ -20,7 +25,10 @@ impl AbstractInstructionSet {
     pub(crate) fn allocate_registers(
         self,
     ) -> Result<AllocatedAbstractInstructionSet, CompileError> {
-        register_allocator::allocate_registers(&self.ops)
+        Ok(AllocatedAbstractInstructionSet {
+            function: self.function,
+            ops: register_allocator::allocate_registers(&self.ops)?,
+        })
     }
 }
 

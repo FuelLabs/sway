@@ -1,0 +1,338 @@
+---
+source: test/src/snapshot/mod.rs
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/spill_registers --release --ir final --asm final | filter-fn spill_registers reg_pressure
+
+
+
+
+
+pshl i3                       ; [fn init: reg_pressure_12]: push used low registers 16..40
+pshh i524288                  ; [fn init: reg_pressure_12]: push used high registers 40..64
+move $$locbase $sp            ; [fn init: reg_pressure_12]: set locals base register
+cfei i512                     ; [fn init: reg_pressure_12]: allocate: locals 0 byte(s), call args 0 slot(s), register spills 512 byte(s)
+move $r0 $$reta               ; [fn init: reg_pressure_12]: save return address
+sw   $$locbase $r0 i0         ; [spill/refill]: spill
+jal  $$reta $pc i323          ; [call: dummy_13]: call function
+move $r0 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r0 i1         ; [spill/refill]: spill
+jal  $$reta $pc i320          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i2         ; [spill/refill]: spill
+jal  $$reta $pc i317          ; [call: dummy_13]: call function
+move $r0 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r0 i3         ; [spill/refill]: spill
+jal  $$reta $pc i314          ; [call: dummy_13]: call function
+move $r0 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r0 i4         ; [spill/refill]: spill
+jal  $$reta $pc i311          ; [call: dummy_13]: call function
+move $r0 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r0 i5         ; [spill/refill]: spill
+jal  $$reta $pc i308          ; [call: dummy_13]: call function
+move $r0 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r0 i6         ; [spill/refill]: spill
+jal  $$reta $pc i305          ; [call: dummy_13]: call function
+move $r0 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r0 i7         ; [spill/refill]: spill
+jal  $$reta $pc i302          ; [call: dummy_13]: call function
+move $r0 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r0 i8         ; [spill/refill]: spill
+jal  $$reta $pc i299          ; [call: dummy_13]: call function
+move $r0 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r0 i9         ; [spill/refill]: spill
+jal  $$reta $pc i296          ; [call: dummy_13]: call function
+move $r0 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r0 i10        ; [spill/refill]: spill
+jal  $$reta $pc i293          ; [call: dummy_13]: call function
+move $r0 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r0 i11        ; [spill/refill]: spill
+jal  $$reta $pc i290          ; [call: dummy_13]: call function
+move $r0 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r0 i12        ; [spill/refill]: spill
+jal  $$reta $pc i287          ; [call: dummy_13]: call function
+move $r0 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r0 i13        ; [spill/refill]: spill
+jal  $$reta $pc i284          ; [call: dummy_13]: call function
+move $r0 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r0 i14        ; [spill/refill]: spill
+jal  $$reta $pc i281          ; [call: dummy_13]: call function
+move $r0 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r0 i15        ; [spill/refill]: spill
+jal  $$reta $pc i278          ; [call: dummy_13]: call function
+move $r0 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r0 i16        ; [spill/refill]: spill
+jal  $$reta $pc i275          ; [call: dummy_13]: call function
+move $r0 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r0 i17        ; [spill/refill]: spill
+jal  $$reta $pc i272          ; [call: dummy_13]: call function
+move $r0 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r0 i18        ; [spill/refill]: spill
+jal  $$reta $pc i269          ; [call: dummy_13]: call function
+move $r0 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r0 i19        ; [spill/refill]: spill
+jal  $$reta $pc i266          ; [call: dummy_13]: call function
+move $r0 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r0 i20        ; [spill/refill]: spill
+jal  $$reta $pc i263          ; [call: dummy_13]: call function
+move $r0 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r0 i21        ; [spill/refill]: spill
+jal  $$reta $pc i260          ; [call: dummy_13]: call function
+move $r0 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r0 i22        ; [spill/refill]: spill
+jal  $$reta $pc i257          ; [call: dummy_13]: call function
+move $r0 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r0 i23        ; [spill/refill]: spill
+jal  $$reta $pc i254          ; [call: dummy_13]: call function
+move $r0 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r0 i24        ; [spill/refill]: spill
+jal  $$reta $pc i251          ; [call: dummy_13]: call function
+move $r0 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r0 i25        ; [spill/refill]: spill
+jal  $$reta $pc i248          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i26        ; [spill/refill]: spill
+jal  $$reta $pc i245          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i27        ; [spill/refill]: spill
+jal  $$reta $pc i242          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i28        ; [spill/refill]: spill
+jal  $$reta $pc i239          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i29        ; [spill/refill]: spill
+jal  $$reta $pc i236          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i30        ; [spill/refill]: spill
+jal  $$reta $pc i233          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i31        ; [spill/refill]: spill
+jal  $$reta $pc i230          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i32        ; [spill/refill]: spill
+jal  $$reta $pc i227          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i33        ; [spill/refill]: spill
+jal  $$reta $pc i224          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i34        ; [spill/refill]: spill
+jal  $$reta $pc i221          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i35        ; [spill/refill]: spill
+jal  $$reta $pc i218          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i36        ; [spill/refill]: spill
+jal  $$reta $pc i215          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i37        ; [spill/refill]: spill
+jal  $$reta $pc i212          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i38        ; [spill/refill]: spill
+jal  $$reta $pc i209          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i39        ; [spill/refill]: spill
+jal  $$reta $pc i206          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i40        ; [spill/refill]: spill
+jal  $$reta $pc i203          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i41        ; [spill/refill]: spill
+jal  $$reta $pc i200          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i42        ; [spill/refill]: spill
+jal  $$reta $pc i197          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i43        ; [spill/refill]: spill
+jal  $$reta $pc i194          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i44        ; [spill/refill]: spill
+jal  $$reta $pc i191          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i45        ; [spill/refill]: spill
+jal  $$reta $pc i188          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i46        ; [spill/refill]: spill
+jal  $$reta $pc i185          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i47        ; [spill/refill]: spill
+jal  $$reta $pc i182          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i48        ; [spill/refill]: spill
+jal  $$reta $pc i179          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i49        ; [spill/refill]: spill
+jal  $$reta $pc i176          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i50        ; [spill/refill]: spill
+jal  $$reta $pc i173          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i51        ; [spill/refill]: spill
+jal  $$reta $pc i170          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i52        ; [spill/refill]: spill
+jal  $$reta $pc i167          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i53        ; [spill/refill]: spill
+jal  $$reta $pc i164          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i54        ; [spill/refill]: spill
+jal  $$reta $pc i161          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i55        ; [spill/refill]: spill
+jal  $$reta $pc i158          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i56        ; [spill/refill]: spill
+jal  $$reta $pc i155          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i57        ; [spill/refill]: spill
+jal  $$reta $pc i152          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i58        ; [spill/refill]: spill
+jal  $$reta $pc i149          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i59        ; [spill/refill]: spill
+jal  $$reta $pc i146          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i60        ; [spill/refill]: spill
+jal  $$reta $pc i143          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i61        ; [spill/refill]: spill
+jal  $$reta $pc i140          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i62        ; [spill/refill]: spill
+jal  $$reta $pc i137          ; [call: dummy_13]: call function
+move $r1 $$retv               ; [call: dummy_13]: copy returned value
+sw   $$locbase $r1 i63        ; [spill/refill]: spill
+jal  $$reta $pc i134          ; [call: dummy_13]: call function
+lw   $r0 $$locbase i1         ; [spill/refill]: refill from spill
+lw   $r1 $$locbase i2         ; [spill/refill]: refill from spill
+add  $r1 $r0 $r1
+lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
+add  $r1 $r1 $r0
+lw   $r0 $$locbase i4         ; [spill/refill]: refill from spill
+add  $r1 $r1 $r0
+lw   $r0 $$locbase i5         ; [spill/refill]: refill from spill
+add  $r1 $r1 $r0
+lw   $r0 $$locbase i6         ; [spill/refill]: refill from spill
+add  $r1 $r1 $r0
+lw   $r0 $$locbase i7         ; [spill/refill]: refill from spill
+add  $r1 $r1 $r0
+lw   $r0 $$locbase i8         ; [spill/refill]: refill from spill
+add  $r1 $r1 $r0
+lw   $r0 $$locbase i9         ; [spill/refill]: refill from spill
+add  $r1 $r1 $r0
+lw   $r0 $$locbase i10        ; [spill/refill]: refill from spill
+add  $r1 $r1 $r0
+lw   $r0 $$locbase i11        ; [spill/refill]: refill from spill
+add  $r1 $r1 $r0
+lw   $r0 $$locbase i12        ; [spill/refill]: refill from spill
+add  $r1 $r1 $r0
+lw   $r0 $$locbase i13        ; [spill/refill]: refill from spill
+add  $r1 $r1 $r0
+lw   $r0 $$locbase i14        ; [spill/refill]: refill from spill
+add  $r1 $r1 $r0
+lw   $r0 $$locbase i15        ; [spill/refill]: refill from spill
+add  $r1 $r1 $r0
+lw   $r0 $$locbase i16        ; [spill/refill]: refill from spill
+add  $r1 $r1 $r0
+lw   $r0 $$locbase i17        ; [spill/refill]: refill from spill
+add  $r1 $r1 $r0
+lw   $r0 $$locbase i18        ; [spill/refill]: refill from spill
+add  $r1 $r1 $r0
+lw   $r0 $$locbase i19        ; [spill/refill]: refill from spill
+add  $r1 $r1 $r0
+lw   $r0 $$locbase i20        ; [spill/refill]: refill from spill
+add  $r1 $r1 $r0
+lw   $r0 $$locbase i21        ; [spill/refill]: refill from spill
+add  $r1 $r1 $r0
+lw   $r0 $$locbase i22        ; [spill/refill]: refill from spill
+add  $r1 $r1 $r0
+lw   $r0 $$locbase i23        ; [spill/refill]: refill from spill
+add  $r1 $r1 $r0
+lw   $r0 $$locbase i24        ; [spill/refill]: refill from spill
+add  $r1 $r1 $r0
+lw   $r0 $$locbase i25        ; [spill/refill]: refill from spill
+add  $r0 $r1 $r0
+lw   $r1 $$locbase i26        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+lw   $r1 $$locbase i27        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+lw   $r1 $$locbase i28        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+lw   $r1 $$locbase i29        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+lw   $r1 $$locbase i30        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+lw   $r1 $$locbase i31        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+lw   $r1 $$locbase i32        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+lw   $r1 $$locbase i33        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+lw   $r1 $$locbase i34        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+lw   $r1 $$locbase i35        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+lw   $r1 $$locbase i36        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+lw   $r1 $$locbase i37        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+lw   $r1 $$locbase i38        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+lw   $r1 $$locbase i39        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+lw   $r1 $$locbase i40        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+lw   $r1 $$locbase i41        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+lw   $r1 $$locbase i42        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+lw   $r1 $$locbase i43        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+lw   $r1 $$locbase i44        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+lw   $r1 $$locbase i45        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+lw   $r1 $$locbase i46        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+lw   $r1 $$locbase i47        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+lw   $r1 $$locbase i48        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+lw   $r1 $$locbase i49        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+lw   $r1 $$locbase i50        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+lw   $r1 $$locbase i51        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+lw   $r1 $$locbase i52        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+lw   $r1 $$locbase i53        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+lw   $r1 $$locbase i54        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+lw   $r1 $$locbase i55        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+lw   $r1 $$locbase i56        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+lw   $r1 $$locbase i57        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+lw   $r1 $$locbase i58        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+lw   $r1 $$locbase i59        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+lw   $r1 $$locbase i60        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+lw   $r1 $$locbase i61        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+lw   $r1 $$locbase i62        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+lw   $r1 $$locbase i63        ; [spill/refill]: refill from spill
+add  $r0 $r0 $r1
+add  $r0 $r0 $$retv
+move $$retv $r0               ; [fn end: reg_pressure_12] set return value
+cfsi i512                     ; [fn end: reg_pressure_12] free: locals 0 byte(s), call args 0 slot(s), register spills 512 byte(s)
+lw   $r0 $$locbase i0         ; [spill/refill]: refill from spill
+move $$reta $r0               ; [fn end: reg_pressure_12] restore return address
+poph i524288                  ; [fn end: reg_pressure_12]: restore used high registers 40..64
+popl i3                       ; [fn end: reg_pressure_12]: restore used low registers 16..40
+jal  $zero $$reta i0          ; [fn end: reg_pressure_12] return from call
