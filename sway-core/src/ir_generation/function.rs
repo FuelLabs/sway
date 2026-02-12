@@ -3727,7 +3727,7 @@ impl<'a> FnCompiler<'a> {
                     .get_constant(context)
                     .ok_or_else(|| {
                         CompileError::Internal(
-                            "compile_constant_expression did not returned a constant",
+                            "compile_constant_expression did not return a constant.",
                             ast_condition.span.clone(),
                         )
                     })?
