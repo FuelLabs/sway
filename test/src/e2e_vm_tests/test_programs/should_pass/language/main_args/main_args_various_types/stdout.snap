@@ -10,6 +10,10 @@ output:
 library {
 }
 
+DIFF------------------------------
+.program:
+DIFF------------------------------
+.program:
 ;; --- START OF TARGET BYTECODE ---
 
 0x00000000 MOVE R60 $pc                                    ;; [26, 240, 48, 0]
@@ -1309,6 +1313,2272 @@ script {
 !474 = span !114 123 200
 !475 = span !114 164 177
 
+DIFF------------------------------
+.program:
+DIFF------------------------------
+.program:
+DIFF------------------------------
+.program:
+.0                                      ; --- start of function: __entry ---
+move $$locbase $sp                      ; save locals base register for function __entry
+cfei i512                               ; allocate 512 bytes for locals and 0 slots for call arguments
+.10
+gtf $r1 $zero i10                       ; get transaction field
+addi $r2 $$locbase i168                 ; get offset to local __ptr { ptr }
+sw $$locbase $r1 i21                    ; store word
+addi $r3 $$locbase i440                 ; get offset to local __ptr { ptr }
+mcpi $r3 $r2 i8                         ; copy memory
+addi $r4 $$locbase i440                 ; get offset to local __ptr { ptr }
+addi $r5 $$locbase i248                 ; get offset to local __ptr { [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2] }
+addi $r6 $$locbase i112                 ; get offset to local __ptr [u8; 48]
+mcli $r6 i48                            ; clear memory [u8; 48], 48 bytes
+addi $r7 $$locbase i392                 ; get offset to local __ptr [u8; 48]
+mcpi $r7 $r6 i48                        ; copy memory
+addi $r8 $$locbase i392                 ; get offset to local __ptr [u8; 48]
+ move $r9 $zero                          ; move parameter from branch to block argument
+ movi $r9 i0                             ; move parameter from branch to block argument
+ji  .11
+.11
+move $r11 $r9                           ; move parameter from branch to block argument
+movi $r12 i2                            ; initialize constant into register
+ lt $r13 $r11 $r12
+ lt $r13 $r9 $r12
+jnzi $r13 .12
+ji  .13
+.13
+mcpi $r5 $r8 i48                        ; copy memory
+addi $r14 $$locbase i344                ; get offset to local __ptr { [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2] }
+mcpi $r14 $r5 i48                       ; copy memory
+addi $r15 $$locbase i344                ; get offset to local __ptr { [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2] }
+addi $r16 $$locbase i184                ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+mcpi $r16 $r15 i48                      ; copy memory
+addi $r17 $$locbase i160                ; get offset to local __ptr { u64 }
+move $$arg0 $r16                        ; [call]: pass argument 0
+move $$arg1 $r17                        ; [call]: pass argument 1
+fncall .2                               ; [call]: call main_32
+ move $r18 $zero                         ; [call]: return unit value
+ movi $r18 i0                            ; [call]: return unit value
+addi $r19 $$locbase i336                ; get offset to local __ptr { u64 }
+mcpi $r19 $r17 i8                       ; copy memory
+addi $r20 $$locbase i336                ; get offset to local __ptr { u64 }
+movi $r21 i8                            ; initialize constant into register
+retd $r20 $r21
+.12
+movi $r22 i24                           ; initialize constant into register
+mul $r23 $r11 $r22
+add $r24 $r8 $r23
+move $r25 $r24                          ; return value from ASM block with return register ptr_out
+addi $r26 $$locbase i296                ; get offset to local __ptr { { string<3> }, { u64, ( u64 | u64 ) } }
+addi $r27 $$locbase i176                ; get offset to local __ptr { string<3> }
+addi $r28 $$locbase i320                ; get offset to local __ptr { ptr, u64 }
+mcpi $r28 $r4 i8                        ; copy memory
+addi $r29 $r28 i8                       ; get offset to aggregate element
+movi $r30 i3                            ; initialize constant into register
+sw $$locbase $r30 i41                   ; store word
+move $r31 $r28                          ; return value from ASM block with return register ptr
+ mcpi $$locbase $r31 i16                 ; copy memory
+ mcpi $$locbase $r28 i16                 ; copy memory
+addi $r32 $$locbase i480                ; get offset to local __ptr slice
+mcpi $r32 $$locbase i16                 ; copy memory
+lw $r33 $r4 i0                          ; load word
+movi $r34 i3                            ; initialize constant into register
+add $r35 $r33 $r34
+sw $r4 $r35 i0                          ; store word
+addi $r36 $$locbase i480                ; get offset to local __ptr slice
+addi $r37 $$locbase i448                ; get offset to local __ptr slice
+mcpi $r37 $r36 i16                      ; copy memory
+addi $r38 $$locbase i448                ; get offset to local __ptr slice
+addi $r39 $$locbase i464                ; get offset to local __ptr slice
+mcpi $r39 $r38 i16                      ; copy memory
+addi $r40 $$locbase i464                ; get offset to local __ptr slice
+addi $r41 $$locbase i496                ; get offset to local __ptr slice
+mcpi $r41 $r40 i16                      ; copy memory
+addi $r42 $$locbase i496                ; get offset to local __ptr slice
+move $r43 $r42                          ; return value from ASM block with return register ptr
+addi $r44 $$locbase i16                 ; get offset to local __ptr { ptr, u64 }
+ mcpi $r44 $r43 i16                      ; copy memory
+ mcpi $r44 $r42 i16                      ; copy memory
+addi $r45 $$locbase i64                 ; get offset to local __ptr { ptr, u64 }
+mcpi $r45 $r44 i16                      ; copy memory
+lw $r46 $$locbase i8                    ; load word
+move $r47 $r46                          ; return value from ASM block with return register s
+addi $r48 $$locbase i32                 ; get offset to local __ptr string<3>
+ mcpi $r48 $r47 i8                       ; copy memory
+ mcpi $r48 $r46 i8                       ; copy memory
+mcpi $r27 $r48 i8                       ; copy memory
+lw $r49 $r4 i0                          ; load word
+lw $r50 $r49 i0                         ; lw val ptr i0
+move $r51 $r50                          ; return value from ASM block with return register val
+lw $r52 $r4 i0                          ; load word
+movi $r53 i8                            ; initialize constant into register
+add $r54 $r52 $r53
+sw $r4 $r54 i0                          ; store word
+eq $r55 $r51 $zero
+jnzi $r55 .14
+ji  .15
+.15
+eq $r56 $r51 $one
+jnzi $r56 .16
+ji  .17
+.17
+rvrt $zero
+.16
+addi $r57 $$locbase i96                 ; get offset to local __ptr { u64, ( u64 | u64 ) }
+sw $$locbase $one i12                   ; store word
+lw $r58 $r4 i0                          ; load word
+lw $r59 $r58 i0                         ; lw val ptr i0
+move $r60 $r59                          ; return value from ASM block with return register val
+lw $r61 $r4 i0                          ; load word
+movi $r62 i8                            ; initialize constant into register
+add $r63 $r61 $r62
+sw $r4 $r63 i0                          ; store word
+addi $r64 $r57 i8                       ; get offset to aggregate element
+sw $$locbase $r60 i13                   ; store word
+addi $r65 $$locbase i232                ; get offset to local __ptr { u64, ( u64 | u64 ) }
+mcpi $r65 $r57 i16                      ; copy memory
+move $r66 $r65                          ; move parameter from branch to block argument
+ji  .18
+.14
+addi $r67 $$locbase i80                 ; get offset to local __ptr { u64, ( u64 | u64 ) }
+sw $$locbase $zero i10                  ; store word
+lw $r68 $r4 i0                          ; load word
+lw $r69 $r68 i0                         ; lw val ptr i0
+move $r70 $r69                          ; return value from ASM block with return register val
+lw $r71 $r4 i0                          ; load word
+movi $r72 i8                            ; initialize constant into register
+add $r73 $r71 $r72
+sw $r4 $r73 i0                          ; store word
+addi $r74 $r67 i8                       ; get offset to aggregate element
+sw $$locbase $r70 i11                   ; store word
+addi $r75 $$locbase i232                ; get offset to local __ptr { u64, ( u64 | u64 ) }
+mcpi $r75 $r67 i16                      ; copy memory
+move $r66 $r75                          ; move parameter from branch to block argument
+ji  .18
+.18
+move $r78 $r66                          ; move parameter from branch to block argument
+mcpi $r26 $r27 i8                       ; copy memory
+addi $r79 $r26 i8                       ; get offset to aggregate element
+mcpi $r79 $r78 i16                      ; copy memory
+addi $r80 $$locbase i40                 ; get offset to local __ptr { { string<3> }, { u64, ( u64 | u64 ) } }
+mcpi $r80 $r26 i24                      ; copy memory
+mcpi $r25 $r80 i24                      ; copy memory
+add $r81 $r11 $one
+move $r9 $r81                           ; move parameter from branch to block argument
+ji  .11
+DIFF------------------------------
+.program:
+.0                                      ; --- start of function: __entry ---
+move $$locbase $sp                      ; save locals base register for function __entry
+cfei i512                               ; allocate 512 bytes for locals and 0 slots for call arguments
+.10
+gtf $r1 $zero i10                       ; get transaction field
+addi $r2 $$locbase i168                 ; get offset to local __ptr { ptr }
+sw $$locbase $r1 i21                    ; store word
+addi $r3 $$locbase i440                 ; get offset to local __ptr { ptr }
+mcpi $r3 $r2 i8                         ; copy memory
+addi $r4 $$locbase i440                 ; get offset to local __ptr { ptr }
+addi $r5 $$locbase i248                 ; get offset to local __ptr { [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2] }
+addi $r6 $$locbase i112                 ; get offset to local __ptr [u8; 48]
+mcli $r6 i48                            ; clear memory [u8; 48], 48 bytes
+addi $r7 $$locbase i392                 ; get offset to local __ptr [u8; 48]
+mcpi $r7 $r6 i48                        ; copy memory
+addi $r8 $$locbase i392                 ; get offset to local __ptr [u8; 48]
+movi $r9 i0                             ; move parameter from branch to block argument
+.11
+move $r11 $r9                           ; move parameter from branch to block argument
+movi $r12 i2                            ; initialize constant into register
+lt $r13 $r9 $r12
+jnzi $r13 .12
+.13
+mcpi $r5 $r8 i48                        ; copy memory
+addi $r14 $$locbase i344                ; get offset to local __ptr { [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2] }
+mcpi $r14 $r5 i48                       ; copy memory
+addi $r15 $$locbase i344                ; get offset to local __ptr { [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2] }
+addi $r16 $$locbase i184                ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+mcpi $r16 $r15 i48                      ; copy memory
+addi $r17 $$locbase i160                ; get offset to local __ptr { u64 }
+move $$arg0 $r16                        ; [call]: pass argument 0
+move $$arg1 $r17                        ; [call]: pass argument 1
+fncall .2                               ; [call]: call main_32
+addi $r19 $$locbase i336                ; get offset to local __ptr { u64 }
+mcpi $r19 $r17 i8                       ; copy memory
+addi $r20 $$locbase i336                ; get offset to local __ptr { u64 }
+movi $r21 i8                            ; initialize constant into register
+retd $r20 $r21
+.12
+movi $r22 i24                           ; initialize constant into register
+mul $r23 $r11 $r22
+add $r24 $r8 $r23
+move $r25 $r24                          ; return value from ASM block with return register ptr_out
+addi $r26 $$locbase i296                ; get offset to local __ptr { { string<3> }, { u64, ( u64 | u64 ) } }
+addi $r27 $$locbase i176                ; get offset to local __ptr { string<3> }
+addi $r28 $$locbase i320                ; get offset to local __ptr { ptr, u64 }
+mcpi $r28 $r4 i8                        ; copy memory
+movi $r30 i3                            ; initialize constant into register
+sw $$locbase $r30 i41                   ; store word
+mcpi $$locbase $r28 i16                 ; copy memory
+addi $r32 $$locbase i480                ; get offset to local __ptr slice
+mcpi $r32 $$locbase i16                 ; copy memory
+lw $r33 $r4 i0                          ; load word
+movi $r34 i3                            ; initialize constant into register
+add $r35 $r33 $r34
+sw $r4 $r35 i0                          ; store word
+addi $r36 $$locbase i480                ; get offset to local __ptr slice
+addi $r37 $$locbase i448                ; get offset to local __ptr slice
+mcpi $r37 $r36 i16                      ; copy memory
+addi $r38 $$locbase i448                ; get offset to local __ptr slice
+addi $r39 $$locbase i464                ; get offset to local __ptr slice
+mcpi $r39 $r38 i16                      ; copy memory
+addi $r40 $$locbase i464                ; get offset to local __ptr slice
+addi $r41 $$locbase i496                ; get offset to local __ptr slice
+mcpi $r41 $r40 i16                      ; copy memory
+addi $r42 $$locbase i496                ; get offset to local __ptr slice
+addi $r44 $$locbase i16                 ; get offset to local __ptr { ptr, u64 }
+mcpi $r44 $r42 i16                      ; copy memory
+addi $r45 $$locbase i64                 ; get offset to local __ptr { ptr, u64 }
+mcpi $r45 $r44 i16                      ; copy memory
+lw $r46 $$locbase i8                    ; load word
+addi $r48 $$locbase i32                 ; get offset to local __ptr string<3>
+mcpi $r48 $r46 i8                       ; copy memory
+mcpi $r27 $r48 i8                       ; copy memory
+lw $r49 $r4 i0                          ; load word
+lw $r50 $r49 i0                         ; lw val ptr i0
+move $r51 $r50                          ; return value from ASM block with return register val
+lw $r52 $r4 i0                          ; load word
+movi $r53 i8                            ; initialize constant into register
+add $r54 $r52 $r53
+sw $r4 $r54 i0                          ; store word
+eq $r55 $r51 $zero
+jnzi $r55 .14
+.15
+eq $r56 $r51 $one
+jnzi $r56 .16
+.17
+rvrt $zero
+.16
+addi $r57 $$locbase i96                 ; get offset to local __ptr { u64, ( u64 | u64 ) }
+sw $$locbase $one i12                   ; store word
+lw $r58 $r4 i0                          ; load word
+lw $r59 $r58 i0                         ; lw val ptr i0
+move $r60 $r59                          ; return value from ASM block with return register val
+lw $r61 $r4 i0                          ; load word
+movi $r62 i8                            ; initialize constant into register
+add $r63 $r61 $r62
+sw $r4 $r63 i0                          ; store word
+sw $$locbase $r60 i13                   ; store word
+addi $r65 $$locbase i232                ; get offset to local __ptr { u64, ( u64 | u64 ) }
+mcpi $r65 $r57 i16                      ; copy memory
+move $r66 $r65                          ; move parameter from branch to block argument
+ji  .18
+.14
+addi $r67 $$locbase i80                 ; get offset to local __ptr { u64, ( u64 | u64 ) }
+sw $$locbase $zero i10                  ; store word
+lw $r68 $r4 i0                          ; load word
+lw $r69 $r68 i0                         ; lw val ptr i0
+move $r70 $r69                          ; return value from ASM block with return register val
+lw $r71 $r4 i0                          ; load word
+movi $r72 i8                            ; initialize constant into register
+add $r73 $r71 $r72
+sw $r4 $r73 i0                          ; store word
+sw $$locbase $r70 i11                   ; store word
+addi $r75 $$locbase i232                ; get offset to local __ptr { u64, ( u64 | u64 ) }
+mcpi $r75 $r67 i16                      ; copy memory
+move $r66 $r75                          ; move parameter from branch to block argument
+.18
+move $r78 $r66                          ; move parameter from branch to block argument
+mcpi $r26 $r27 i8                       ; copy memory
+addi $r79 $r26 i8                       ; get offset to aggregate element
+mcpi $r79 $r78 i16                      ; copy memory
+addi $r80 $$locbase i40                 ; get offset to local __ptr { { string<3> }, { u64, ( u64 | u64 ) } }
+mcpi $r80 $r26 i24                      ; copy memory
+mcpi $r25 $r80 i24                      ; copy memory
+add $r81 $r11 $one
+move $r9 $r81                           ; move parameter from branch to block argument
+ji  .11
+DIFF------------------------------
+.program:
+.0                                      ; --- start of function: __entry ---
+move $$locbase $sp                      ; save locals base register for function __entry
+cfei i512                               ; allocate 512 bytes for locals and 0 slots for call arguments
+.10
+gtf $r1 $zero i10                       ; get transaction field
+addi $r2 $$locbase i168                 ; get offset to local __ptr { ptr }
+sw $$locbase $r1 i21                    ; store word
+addi $r3 $$locbase i440                 ; get offset to local __ptr { ptr }
+mcpi $r3 $r2 i8                         ; copy memory
+addi $r4 $$locbase i440                 ; get offset to local __ptr { ptr }
+addi $r5 $$locbase i248                 ; get offset to local __ptr { [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2] }
+addi $r6 $$locbase i112                 ; get offset to local __ptr [u8; 48]
+mcli $r6 i48                            ; clear memory [u8; 48], 48 bytes
+addi $r7 $$locbase i392                 ; get offset to local __ptr [u8; 48]
+mcpi $r7 $r6 i48                        ; copy memory
+addi $r8 $$locbase i392                 ; get offset to local __ptr [u8; 48]
+movi $r9 i0                             ; move parameter from branch to block argument
+.11
+move $r11 $r9                           ; move parameter from branch to block argument
+movi $r12 i2                            ; initialize constant into register
+lt $r13 $r9 $r12
+jnzi $r13 .12
+.13
+mcpi $r5 $r8 i48                        ; copy memory
+addi $r14 $$locbase i344                ; get offset to local __ptr { [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2] }
+mcpi $r14 $r5 i48                       ; copy memory
+addi $r15 $$locbase i344                ; get offset to local __ptr { [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2] }
+addi $r16 $$locbase i184                ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+mcpi $r16 $r15 i48                      ; copy memory
+addi $r17 $$locbase i160                ; get offset to local __ptr { u64 }
+move $$arg0 $r16                        ; [call]: pass argument 0
+move $$arg1 $r17                        ; [call]: pass argument 1
+fncall .2                               ; [call]: call main_32
+addi $r19 $$locbase i336                ; get offset to local __ptr { u64 }
+mcpi $r19 $r17 i8                       ; copy memory
+addi $r20 $$locbase i336                ; get offset to local __ptr { u64 }
+movi $r21 i8                            ; initialize constant into register
+retd $r20 $r21
+.12
+movi $r22 i24                           ; initialize constant into register
+mul $r23 $r11 $r22
+add $r24 $r8 $r23
+move $r25 $r24                          ; return value from ASM block with return register ptr_out
+addi $r26 $$locbase i296                ; get offset to local __ptr { { string<3> }, { u64, ( u64 | u64 ) } }
+addi $r27 $$locbase i176                ; get offset to local __ptr { string<3> }
+addi $r28 $$locbase i320                ; get offset to local __ptr { ptr, u64 }
+mcpi $r28 $r4 i8                        ; copy memory
+movi $r30 i3                            ; initialize constant into register
+sw $$locbase $r30 i41                   ; store word
+mcpi $$locbase $r28 i16                 ; copy memory
+addi $r32 $$locbase i480                ; get offset to local __ptr slice
+mcpi $r32 $$locbase i16                 ; copy memory
+lw $r33 $r4 i0                          ; load word
+movi $r34 i3                            ; initialize constant into register
+add $r35 $r33 $r34
+sw $r4 $r35 i0                          ; store word
+addi $r36 $$locbase i480                ; get offset to local __ptr slice
+addi $r37 $$locbase i448                ; get offset to local __ptr slice
+mcpi $r37 $r36 i16                      ; copy memory
+addi $r38 $$locbase i448                ; get offset to local __ptr slice
+addi $r39 $$locbase i464                ; get offset to local __ptr slice
+mcpi $r39 $r38 i16                      ; copy memory
+addi $r40 $$locbase i464                ; get offset to local __ptr slice
+addi $r41 $$locbase i496                ; get offset to local __ptr slice
+mcpi $r41 $r40 i16                      ; copy memory
+addi $r42 $$locbase i496                ; get offset to local __ptr slice
+addi $r44 $$locbase i16                 ; get offset to local __ptr { ptr, u64 }
+mcpi $r44 $r42 i16                      ; copy memory
+addi $r45 $$locbase i64                 ; get offset to local __ptr { ptr, u64 }
+mcpi $r45 $r44 i16                      ; copy memory
+lw $r46 $$locbase i8                    ; load word
+addi $r48 $$locbase i32                 ; get offset to local __ptr string<3>
+mcpi $r48 $r46 i8                       ; copy memory
+mcpi $r27 $r48 i8                       ; copy memory
+lw $r49 $r4 i0                          ; load word
+lw $r50 $r49 i0                         ; lw val ptr i0
+move $r51 $r50                          ; return value from ASM block with return register val
+lw $r52 $r4 i0                          ; load word
+movi $r53 i8                            ; initialize constant into register
+add $r54 $r52 $r53
+sw $r4 $r54 i0                          ; store word
+eq $r55 $r51 $zero
+jnzi $r55 .14
+.15
+eq $r56 $r51 $one
+jnzi $r56 .16
+.17
+rvrt $zero
+.16
+addi $r57 $$locbase i96                 ; get offset to local __ptr { u64, ( u64 | u64 ) }
+sw $$locbase $one i12                   ; store word
+lw $r58 $r4 i0                          ; load word
+lw $r59 $r58 i0                         ; lw val ptr i0
+move $r60 $r59                          ; return value from ASM block with return register val
+lw $r61 $r4 i0                          ; load word
+movi $r62 i8                            ; initialize constant into register
+add $r63 $r61 $r62
+sw $r4 $r63 i0                          ; store word
+sw $$locbase $r60 i13                   ; store word
+addi $r65 $$locbase i232                ; get offset to local __ptr { u64, ( u64 | u64 ) }
+mcpi $r65 $r57 i16                      ; copy memory
+move $r66 $r65                          ; move parameter from branch to block argument
+ji  .18
+.14
+addi $r67 $$locbase i80                 ; get offset to local __ptr { u64, ( u64 | u64 ) }
+sw $$locbase $zero i10                  ; store word
+lw $r68 $r4 i0                          ; load word
+lw $r69 $r68 i0                         ; lw val ptr i0
+move $r70 $r69                          ; return value from ASM block with return register val
+lw $r71 $r4 i0                          ; load word
+movi $r72 i8                            ; initialize constant into register
+add $r73 $r71 $r72
+sw $r4 $r73 i0                          ; store word
+sw $$locbase $r70 i11                   ; store word
+addi $r75 $$locbase i232                ; get offset to local __ptr { u64, ( u64 | u64 ) }
+mcpi $r75 $r67 i16                      ; copy memory
+move $r66 $r75                          ; move parameter from branch to block argument
+.18
+move $r78 $r66                          ; move parameter from branch to block argument
+mcpi $r26 $r27 i8                       ; copy memory
+addi $r79 $r26 i8                       ; get offset to aggregate element
+mcpi $r79 $r78 i16                      ; copy memory
+addi $r80 $$locbase i40                 ; get offset to local __ptr { { string<3> }, { u64, ( u64 | u64 ) } }
+mcpi $r80 $r26 i24                      ; copy memory
+mcpi $r25 $r80 i24                      ; copy memory
+add $r81 $r11 $one
+move $r9 $r81                           ; move parameter from branch to block argument
+ji  .11
+DIFF------------------------------
+.program:
+.0                                      ; --- start of function: __entry ---
+move $$locbase $sp                      ; save locals base register for function __entry
+cfei i512                               ; allocate 512 bytes for locals and 0 slots for call arguments
+.10
+gtf $r1 $zero i10                       ; get transaction field
+addi $r2 $$locbase i168                 ; get offset to local __ptr { ptr }
+sw $$locbase $r1 i21                    ; store word
+addi $r3 $$locbase i440                 ; get offset to local __ptr { ptr }
+mcpi $r3 $r2 i8                         ; copy memory
+addi $r4 $$locbase i440                 ; get offset to local __ptr { ptr }
+addi $r5 $$locbase i248                 ; get offset to local __ptr { [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2] }
+addi $r6 $$locbase i112                 ; get offset to local __ptr [u8; 48]
+mcli $r6 i48                            ; clear memory [u8; 48], 48 bytes
+addi $r7 $$locbase i392                 ; get offset to local __ptr [u8; 48]
+mcpi $r7 $r6 i48                        ; copy memory
+addi $r8 $$locbase i392                 ; get offset to local __ptr [u8; 48]
+movi $r9 i0                             ; move parameter from branch to block argument
+.11
+move $r11 $r9                           ; move parameter from branch to block argument
+movi $r12 i2                            ; initialize constant into register
+lt $r13 $r9 $r12
+jnzi $r13 .12
+.13
+mcpi $r5 $r8 i48                        ; copy memory
+addi $r14 $$locbase i344                ; get offset to local __ptr { [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2] }
+mcpi $r14 $r5 i48                       ; copy memory
+addi $r15 $$locbase i344                ; get offset to local __ptr { [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2] }
+addi $r16 $$locbase i184                ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+mcpi $r16 $r15 i48                      ; copy memory
+addi $r17 $$locbase i160                ; get offset to local __ptr { u64 }
+move $$arg0 $r16                        ; [call]: pass argument 0
+move $$arg1 $r17                        ; [call]: pass argument 1
+fncall .2                               ; [call]: call main_32
+addi $r19 $$locbase i336                ; get offset to local __ptr { u64 }
+mcpi $r19 $r17 i8                       ; copy memory
+addi $r20 $$locbase i336                ; get offset to local __ptr { u64 }
+movi $r21 i8                            ; initialize constant into register
+retd $r20 $r21
+.12
+movi $r22 i24                           ; initialize constant into register
+mul $r23 $r11 $r22
+add $r24 $r8 $r23
+move $r25 $r24                          ; return value from ASM block with return register ptr_out
+addi $r26 $$locbase i296                ; get offset to local __ptr { { string<3> }, { u64, ( u64 | u64 ) } }
+addi $r27 $$locbase i176                ; get offset to local __ptr { string<3> }
+addi $r28 $$locbase i320                ; get offset to local __ptr { ptr, u64 }
+mcpi $r28 $r4 i8                        ; copy memory
+movi $r30 i3                            ; initialize constant into register
+sw $$locbase $r30 i41                   ; store word
+mcpi $$locbase $r28 i16                 ; copy memory
+addi $r32 $$locbase i480                ; get offset to local __ptr slice
+mcpi $r32 $$locbase i16                 ; copy memory
+lw $r33 $r4 i0                          ; load word
+movi $r34 i3                            ; initialize constant into register
+add $r35 $r33 $r34
+sw $r4 $r35 i0                          ; store word
+addi $r36 $$locbase i480                ; get offset to local __ptr slice
+addi $r37 $$locbase i448                ; get offset to local __ptr slice
+mcpi $r37 $r36 i16                      ; copy memory
+addi $r38 $$locbase i448                ; get offset to local __ptr slice
+addi $r39 $$locbase i464                ; get offset to local __ptr slice
+mcpi $r39 $r38 i16                      ; copy memory
+addi $r40 $$locbase i464                ; get offset to local __ptr slice
+addi $r41 $$locbase i496                ; get offset to local __ptr slice
+mcpi $r41 $r40 i16                      ; copy memory
+addi $r42 $$locbase i496                ; get offset to local __ptr slice
+addi $r44 $$locbase i16                 ; get offset to local __ptr { ptr, u64 }
+mcpi $r44 $r42 i16                      ; copy memory
+addi $r45 $$locbase i64                 ; get offset to local __ptr { ptr, u64 }
+mcpi $r45 $r44 i16                      ; copy memory
+lw $r46 $$locbase i8                    ; load word
+addi $r48 $$locbase i32                 ; get offset to local __ptr string<3>
+mcpi $r48 $r46 i8                       ; copy memory
+mcpi $r27 $r48 i8                       ; copy memory
+lw $r49 $r4 i0                          ; load word
+lw $r50 $r49 i0                         ; lw val ptr i0
+move $r51 $r50                          ; return value from ASM block with return register val
+lw $r52 $r4 i0                          ; load word
+movi $r53 i8                            ; initialize constant into register
+add $r54 $r52 $r53
+sw $r4 $r54 i0                          ; store word
+eq $r55 $r51 $zero
+jnzi $r55 .14
+.15
+eq $r56 $r51 $one
+jnzi $r56 .16
+.17
+rvrt $zero
+.16
+addi $r57 $$locbase i96                 ; get offset to local __ptr { u64, ( u64 | u64 ) }
+sw $$locbase $one i12                   ; store word
+lw $r58 $r4 i0                          ; load word
+lw $r59 $r58 i0                         ; lw val ptr i0
+move $r60 $r59                          ; return value from ASM block with return register val
+lw $r61 $r4 i0                          ; load word
+movi $r62 i8                            ; initialize constant into register
+add $r63 $r61 $r62
+sw $r4 $r63 i0                          ; store word
+sw $$locbase $r60 i13                   ; store word
+addi $r65 $$locbase i232                ; get offset to local __ptr { u64, ( u64 | u64 ) }
+mcpi $r65 $r57 i16                      ; copy memory
+move $r66 $r65                          ; move parameter from branch to block argument
+ji  .18
+.14
+addi $r67 $$locbase i80                 ; get offset to local __ptr { u64, ( u64 | u64 ) }
+sw $$locbase $zero i10                  ; store word
+lw $r68 $r4 i0                          ; load word
+lw $r69 $r68 i0                         ; lw val ptr i0
+move $r70 $r69                          ; return value from ASM block with return register val
+lw $r71 $r4 i0                          ; load word
+movi $r72 i8                            ; initialize constant into register
+add $r73 $r71 $r72
+sw $r4 $r73 i0                          ; store word
+sw $$locbase $r70 i11                   ; store word
+addi $r75 $$locbase i232                ; get offset to local __ptr { u64, ( u64 | u64 ) }
+mcpi $r75 $r67 i16                      ; copy memory
+move $r66 $r75                          ; move parameter from branch to block argument
+.18
+move $r78 $r66                          ; move parameter from branch to block argument
+mcpi $r26 $r27 i8                       ; copy memory
+addi $r79 $r26 i8                       ; get offset to aggregate element
+mcpi $r79 $r78 i16                      ; copy memory
+addi $r80 $$locbase i40                 ; get offset to local __ptr { { string<3> }, { u64, ( u64 | u64 ) } }
+mcpi $r80 $r26 i24                      ; copy memory
+mcpi $r25 $r80 i24                      ; copy memory
+add $r81 $r11 $one
+move $r9 $r81                           ; move parameter from branch to block argument
+ji  .11
+DIFF------------------------------
+.program:
+.2                                      ; --- start of function: main_32 ---
+pusha .2                                ; save all registers
+move $$locbase $sp                      ; save locals base register for function main_32
+cfei i1216                              ; allocate 1216 bytes for locals and 0 slots for call arguments
+move $r83 $$arg0                        ; save argument 0 (ops)
+move $r84 $$arg1                        ; save argument 1 (__ret_value)
+move $r85 $$reta                        ; save return address
+.19
+addi $r86 $$locbase i1040               ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+ mcpi $r86 $r83 i48                      ; copy memory
+ mcpi $r86 $$arg0 i48                    ; copy memory
+addi $r87 $$locbase i1040               ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+ jnzi $zero .20
+ 
+ji  .21
+.21
+addi $r88 $$locbase i424                ; get offset to local __ptr { { ptr, u64, u64 } }
+move $$arg0 $r88                        ; [call]: pass argument 0
+fncall .6                               ; [call]: call new_52
+ move $r89 $zero                         ; [call]: return unit value
+ movi $r89 i0                            ; [call]: return unit value
+addi $r90 $$locbase i1144               ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+mcpi $r90 $r87 i48                      ; copy memory
+addi $r91 $$locbase i704                ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r91 $r88 i24                      ; copy memory
+addi $r92 $$locbase i704                ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r93 $$locbase i824                ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r93 $r92 i24                      ; copy memory
+ move $r94 $zero                         ; move parameter from branch to block argument
+ movi $r94 i0                            ; move parameter from branch to block argument
+ji  .22
+.22
+move $r96 $r94                          ; move parameter from branch to block argument
+movi $r97 i2                            ; initialize constant into register
+ lt $r98 $r96 $r97
+ lt $r98 $r94 $r97
+jnzi $r98 .23
+ji  .24
+.24
+addi $r99 $$locbase i824                ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r100 $$locbase i680               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r100 $r99 i24                     ; copy memory
+addi $r101 $$locbase i680               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r102 $$locbase i1192              ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r102 $r101 i24                    ; copy memory
+addi $r103 $$locbase i1192              ; get offset to local __ptr { { ptr, u64, u64 } }
+move $r104 $r103                        ; return value from ASM block with return register buffer
+addi $r105 $$locbase i48                ; get offset to local __ptr { ptr, u64, u64 }
+ mcpi $r105 $r104 i24                    ; copy memory
+ mcpi $r105 $r103 i24                    ; copy memory
+addi $r106 $$locbase i144               ; get offset to local __ptr { ptr, u64, u64 }
+mcpi $r106 $r105 i24                    ; copy memory
+addi $r107 $r106 i16                    ; get offset to aggregate element
+addi $r108 $$locbase i192               ; get offset to local __ptr { ptr, u64 }
+mcpi $r108 $r106 i8                     ; copy memory
+addi $r109 $r108 i8                     ; get offset to aggregate element
+mcpi $r109 $r107 i8                     ; copy memory
+move $r110 $r108                        ; return value from ASM block with return register s
+addi $r111 $$locbase i72                ; get offset to local __ptr slice
+ mcpi $r111 $r110 i16                    ; copy memory
+ mcpi $r111 $r108 i16                    ; copy memory
+addi $r112 $$locbase i648               ; get offset to local __ptr slice
+mcpi $r112 $r111 i16                    ; copy memory
+move $r113 $r112                        ; move parameter from branch to block argument
+ji  .25
+.23
+addi $r114 $$locbase i1144              ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+movi $r115 i24                          ; get array element size
+mul $r116 $r96 $r115                    ; get offset to array element
+add $r116 $r114 $r116                   ; add array element offset to array base
+addi $r117 $$locbase i824               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r118 $$locbase i1104              ; get offset to local __ptr { { string<3> }, { u64, ( u64 | u64 ) } }
+mcpi $r118 $r116 i24                    ; copy memory
+addi $r119 $$locbase i728               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r119 $r117 i24                    ; copy memory
+addi $r120 $$locbase i1104              ; get offset to local __ptr { { string<3> }, { u64, ( u64 | u64 ) } }
+addi $r121 $$locbase i728               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r122 $$locbase i1088              ; get offset to local __ptr { string<3> }
+mcpi $r122 $r120 i8                     ; copy memory
+addi $r123 $$locbase i752               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r123 $r121 i24                    ; copy memory
+addi $r124 $$locbase i1088              ; get offset to local __ptr { string<3> }
+addi $r125 $$locbase i752               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r126 $$locbase i1096              ; get offset to local __ptr string<3>
+mcpi $r126 $r124 i8                     ; copy memory
+addi $r127 $$locbase i776               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r127 $r125 i24                    ; copy memory
+addi $r128 $$locbase i456               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r129 $$locbase i776               ; get offset to local __ptr { { ptr, u64, u64 } }
+move $r130 $r129                        ; return value from ASM block with return register buffer
+ mcpi $$locbase $r130 i24                ; copy memory
+ mcpi $$locbase $r129 i24                ; copy memory
+addi $r131 $$locbase i120               ; get offset to local __ptr { ptr, u64, u64 }
+mcpi $r131 $$locbase i24                ; copy memory
+lw $r132 $$locbase i15                  ; load word
+addi $r133 $r131 i8                     ; get offset to aggregate element
+lw $r134 $$locbase i16                  ; load word
+addi $r135 $r131 i16                    ; get offset to aggregate element
+lw $r136 $$locbase i17                  ; load word
+addi $r137 $$locbase i1096              ; get offset to local __ptr string<3>
+movi $r138 i3                           ; initialize constant into register
+add $r139 $r136 $r138
+gt $r140 $r139 $r134
+move $r141 $r132                        ; move parameter from branch to block argument
+move $r142 $r134                        ; move parameter from branch to block argument
+jnzi $r140 .26
+ji  .27
+.26
+movi $r143 i2                           ; initialize constant into register
+mul $r144 $r134 $r143
+movi $r145 i3                           ; initialize constant into register
+add $r146 $r144 $r145
+aloc $r146
+mcp $hp $r132 $r136
+move $r147 $hp                          ; return value from ASM block with return register hp
+ move $r141 $r147                        ; move parameter from branch to block argument
+ move $r141 $hp                          ; move parameter from branch to block argument
+move $r142 $r146                        ; move parameter from branch to block argument
+ji  .27
+.27
+move $r151 $r141                        ; move parameter from branch to block argument
+move $r153 $r142                        ; move parameter from branch to block argument
+addi $r154 $$locbase i184               ; get offset to local __ptr string<3>
+mcpi $r154 $r137 i8                     ; copy memory
+add $r155 $r151 $r136
+mcpi $r155 $r154 i3                     ; copy memory
+addi $r156 $$locbase i224               ; get offset to local __ptr { ptr, u64, u64 }
+sw $$locbase $r151 i28                  ; store word
+addi $r157 $r156 i8                     ; get offset to aggregate element
+sw $$locbase $r153 i29                  ; store word
+addi $r158 $r156 i16                    ; get offset to aggregate element
+sw $$locbase $r139 i30                  ; store word
+move $r159 $r156                        ; return value from ASM block with return register buffer
+addi $r160 $$locbase i24                ; get offset to local __ptr { ptr, u64, u64 }
+ mcpi $r160 $r159 i24                    ; copy memory
+ mcpi $r160 $r156 i24                    ; copy memory
+mcpi $r128 $r160 i24                    ; copy memory
+addi $r161 $$locbase i872               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r161 $r128 i24                    ; copy memory
+addi $r162 $$locbase i872               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r163 $$locbase i848               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r163 $r162 i24                    ; copy memory
+addi $r164 $$locbase i1104              ; get offset to local __ptr { { string<3> }, { u64, ( u64 | u64 ) } }
+addi $r165 $r164 i8                     ; get offset to aggregate element
+addi $r166 $$locbase i848               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r167 $$locbase i1128              ; get offset to local __ptr { u64, ( u64 | u64 ) }
+mcpi $r167 $r165 i16                    ; copy memory
+addi $r168 $$locbase i800               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r168 $r166 i24                    ; copy memory
+addi $r169 $$locbase i1128              ; get offset to local __ptr { u64, ( u64 | u64 ) }
+addi $r170 $$locbase i296               ; get offset to local __ptr { u64, ( u64 | u64 ) }
+mcpi $r170 $r169 i16                    ; copy memory
+addi $r171 $$locbase i296               ; get offset to local __ptr { u64, ( u64 | u64 ) }
+lw $r172 $$locbase i37                  ; load word
+eq $r173 $r172 $zero
+jnzi $r173 .28
+ji  .29
+.29
+addi $r174 $$locbase i296               ; get offset to local __ptr { u64, ( u64 | u64 ) }
+lw $r175 $$locbase i37                  ; load word
+eq $r176 $r175 $one
+jnzi $r176 .30
+ji  .31
+.31
+load $r177 data_NonConfigurable_0       ; load constant from data section
+rvrt $r177
+.30
+addi $r178 $$locbase i296               ; get offset to local __ptr { u64, ( u64 | u64 ) }
+addi $r179 $r178 i8                     ; get offset to aggregate element
+lw $r180 $$locbase i38                  ; load word
+addi $r181 $$locbase i800               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r182 $$locbase i528               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r182 $r181 i24                    ; copy memory
+addi $r183 $$locbase i376               ; get offset to local __ptr { { ptr, u64, u64 } }
+ move $$arg0 $one                        ; [call]: pass argument 0
+ movi $$arg0 i1                          ; [call]: pass argument 0
+move $$arg1 $r182                       ; [call]: pass argument 1
+move $$arg2 $r183                       ; [call]: pass argument 2
+fncall .4                               ; [call]: call abi_encode_51
+ move $r184 $zero                        ; [call]: return unit value
+ movi $r184 i0                           ; [call]: return unit value
+addi $r185 $$locbase i968               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r185 $r183 i24                    ; copy memory
+addi $r186 $$locbase i968               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r187 $$locbase i552               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r187 $r186 i24                    ; copy memory
+addi $r188 $$locbase i400               ; get offset to local __ptr { { ptr, u64, u64 } }
+move $$arg0 $r180                       ; [call]: pass argument 0
+move $$arg1 $r187                       ; [call]: pass argument 1
+move $$arg2 $r188                       ; [call]: pass argument 2
+fncall .4                               ; [call]: call abi_encode_51
+ move $r189 $zero                        ; [call]: return unit value
+ movi $r189 i0                           ; [call]: return unit value
+addi $r190 $$locbase i992               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r190 $r188 i24                    ; copy memory
+addi $r191 $$locbase i992               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r192 $$locbase i624               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r192 $r191 i24                    ; copy memory
+move $r193 $r192                        ; move parameter from branch to block argument
+ji  .32
+.28
+addi $r194 $$locbase i296               ; get offset to local __ptr { u64, ( u64 | u64 ) }
+addi $r195 $r194 i8                     ; get offset to aggregate element
+lw $r196 $$locbase i38                  ; load word
+addi $r197 $$locbase i800               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r198 $$locbase i480               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r198 $r197 i24                    ; copy memory
+addi $r199 $$locbase i328               ; get offset to local __ptr { { ptr, u64, u64 } }
+ move $$arg0 $zero                       ; [call]: pass argument 0
+ movi $$arg0 i0                          ; [call]: pass argument 0
+move $$arg1 $r198                       ; [call]: pass argument 1
+move $$arg2 $r199                       ; [call]: pass argument 2
+fncall .4                               ; [call]: call abi_encode_51
+ move $r200 $zero                        ; [call]: return unit value
+ movi $r200 i0                           ; [call]: return unit value
+addi $r201 $$locbase i896               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r201 $r199 i24                    ; copy memory
+addi $r202 $$locbase i896               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r203 $$locbase i504               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r203 $r202 i24                    ; copy memory
+addi $r204 $$locbase i352               ; get offset to local __ptr { { ptr, u64, u64 } }
+move $$arg0 $r196                       ; [call]: pass argument 0
+move $$arg1 $r203                       ; [call]: pass argument 1
+move $$arg2 $r204                       ; [call]: pass argument 2
+fncall .4                               ; [call]: call abi_encode_51
+ move $r205 $zero                        ; [call]: return unit value
+ movi $r205 i0                           ; [call]: return unit value
+addi $r206 $$locbase i944               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r206 $r204 i24                    ; copy memory
+addi $r207 $$locbase i944               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r208 $$locbase i624               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r208 $r207 i24                    ; copy memory
+move $r193 $r208                        ; move parameter from branch to block argument
+ji  .32
+.32
+move $r211 $r193                        ; move parameter from branch to block argument
+addi $r212 $$locbase i1016              ; get offset to local __ptr { { ptr, u64, u64 } }
+ mcpi $r212 $r211 i24                    ; copy memory
+ mcpi $r212 $r193 i24                    ; copy memory
+addi $r213 $$locbase i1016              ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r214 $$locbase i920               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r214 $r213 i24                    ; copy memory
+addi $r215 $$locbase i920               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r216 $$locbase i824               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r216 $r215 i24                    ; copy memory
+add $r217 $r96 $one
+move $r94 $r217                         ; move parameter from branch to block argument
+ji  .22
+.20
+addi $r219 $$locbase i664               ; get offset to local __ptr { __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2], u64 }
+sw $$locbase $r87 i83                   ; store word
+addi $r220 $r219 i8                     ; get offset to aggregate element
+movi $r221 i48                          ; initialize constant into register
+sw $$locbase $r221 i84                  ; store word
+addi $r222 $$locbase i104               ; get offset to local __ptr { __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2], u64 }
+mcpi $r222 $r219 i16                    ; copy memory
+addi $r223 $$locbase i648               ; get offset to local __ptr slice
+mcpi $r223 $r222 i16                    ; copy memory
+move $r113 $r223                        ; move parameter from branch to block argument
+ji  .25
+.25
+move $r226 $r113                        ; move parameter from branch to block argument
+addi $r227 $$locbase i264               ; get offset to local __ptr slice
+ mcpi $r227 $r226 i16                    ; copy memory
+ mcpi $r227 $r113 i16                    ; copy memory
+load $r228 data_NonConfigurable_1       ; load constant from data section
+lw $r229 $$locbase i33                  ; load slice pointer for logging data
+lw $r230 $$locbase i34                  ; load slice size for logging data
+logd $zero $r228 $r229 $r230            ; log slice
+addi $r231 $$locbase i1040              ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+movi $r232 i24                          ; get array element size
+ mul $r233 $zero $r232                   ; get offset to array element
+ add $r233 $r231 $r233                   ; add array element offset to array base
+ movi $r233 i0                           ; get offset to array element
+ add $r233 $r231 $zero                   ; add array element offset to array base
+addr $r234 data_NonConfigurable_2       ; get __const_global's address in data section
+addi $r235 $$locbase i88                ; get offset to local __ptr { ptr, u64 }
+sw $$locbase $r234 i11                  ; store word
+addi $r236 $r235 i8                     ; get offset to aggregate element
+movi $r237 i3                           ; initialize constant into register
+sw $$locbase $r237 i12                  ; store word
+addi $r238 $$locbase i168               ; get offset to local __ptr slice
+mcpi $r238 $r235 i16                    ; copy memory
+addi $r239 $$locbase i576               ; get offset to local __ptr string<3>
+mcpi $r239 $r233 i8                     ; copy memory
+addi $r240 $$locbase i584               ; get offset to local __ptr slice
+mcpi $r240 $r238 i16                    ; copy memory
+move $$arg0 $r239                       ; [call]: pass argument 0
+move $$arg1 $r240                       ; [call]: pass argument 1
+fncall .8                               ; [call]: call eq_str_3_57
+move $r241 $$retv                       ; [call]: copy the return value
+ eq $r242 $r241 $zero
+ eq $r242 $$retv $zero
+jnzi $r242 .33
+ji  .34
+.34
+addi $r243 $$locbase i1040              ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+movi $r244 i24                          ; get array element size
+ mul $r245 $zero $r244                   ; get offset to array element
+ add $r245 $r243 $r245                   ; add array element offset to array base
+ movi $r245 i0                           ; get offset to array element
+ add $r245 $r243 $zero                   ; add array element offset to array base
+addi $r246 $r245 i8                     ; get offset to aggregate element
+addi $r247 $$locbase i280               ; get offset to local __ptr { u64, ( u64 | u64 ) }
+mcpi $r247 $r246 i16                    ; copy memory
+addi $r248 $$locbase i280               ; get offset to local __ptr { u64, ( u64 | u64 ) }
+lw $r249 $$locbase i35                  ; load word
+eq $r250 $r249 $zero
+jnzi $r250 .35
+ji  .36
+.36
+rvrt $one
+.35
+addi $r251 $$locbase i280               ; get offset to local __ptr { u64, ( u64 | u64 ) }
+addi $r252 $r251 i8                     ; get offset to aggregate element
+lw $r253 $$locbase i36                  ; load word
+movi $r254 i1338                        ; initialize constant into register
+eq $r255 $r253 $r254
+eq $r256 $r255 $zero
+jnzi $r256 .37
+ji  .38
+.38
+addi $r257 $$locbase i1040              ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+movi $r258 i24                          ; get array element size
+ mul $r259 $one $r258                    ; get offset to array element
+ movi $r259 i24                          ; get offset to array element
+add $r259 $r257 $r259                   ; add array element offset to array base
+addr $r260 data_NonConfigurable_3       ; get __const_global0's address in data section
+addi $r261 $$locbase i208               ; get offset to local __ptr { ptr, u64 }
+sw $$locbase $r260 i26                  ; store word
+addi $r262 $r261 i8                     ; get offset to aggregate element
+movi $r263 i3                           ; initialize constant into register
+sw $$locbase $r263 i27                  ; store word
+addi $r264 $$locbase i248               ; get offset to local __ptr slice
+mcpi $r264 $r261 i16                    ; copy memory
+addi $r265 $$locbase i600               ; get offset to local __ptr string<3>
+mcpi $r265 $r259 i8                     ; copy memory
+addi $r266 $$locbase i608               ; get offset to local __ptr slice
+mcpi $r266 $r264 i16                    ; copy memory
+move $$arg0 $r265                       ; [call]: pass argument 0
+move $$arg1 $r266                       ; [call]: pass argument 1
+fncall .8                               ; [call]: call eq_str_3_57
+move $r267 $$retv                       ; [call]: copy the return value
+ eq $r268 $r267 $zero
+ eq $r268 $$retv $zero
+jnzi $r268 .39
+ji  .40
+.40
+addi $r269 $$locbase i1040              ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+movi $r270 i24                          ; get array element size
+ mul $r271 $one $r270                    ; get offset to array element
+ movi $r271 i24                          ; get offset to array element
+add $r271 $r269 $r271                   ; add array element offset to array base
+addi $r272 $r271 i8                     ; get offset to aggregate element
+addi $r273 $$locbase i312               ; get offset to local __ptr { u64, ( u64 | u64 ) }
+mcpi $r273 $r272 i16                    ; copy memory
+addi $r274 $$locbase i312               ; get offset to local __ptr { u64, ( u64 | u64 ) }
+lw $r275 $$locbase i39                  ; load word
+eq $r276 $r275 $one
+jnzi $r276 .41
+ji  .42
+.42
+movi $r277 i2                           ; initialize constant into register
+rvrt $r277
+.41
+addi $r278 $$locbase i312               ; get offset to local __ptr { u64, ( u64 | u64 ) }
+addi $r279 $r278 i8                     ; get offset to aggregate element
+lw $r280 $$locbase i40                  ; load word
+eq $r281 $r280 $one
+eq $r282 $r281 $zero
+jnzi $r282 .43
+ji  .44
+.44
+addi $r283 $$locbase i448               ; get offset to local __ptr { u64 }
+sw $$locbase $one i56                   ; store word
+mcpi $r84 $r283 i8                      ; copy memory
+ji  .3
+.43
+load $r284 data_NonConfigurable_4       ; load constant from data section
+rvrt $r284
+.39
+load $r285 data_NonConfigurable_4       ; load constant from data section
+rvrt $r285
+.37
+load $r286 data_NonConfigurable_4       ; load constant from data section
+rvrt $r286
+.33
+load $r287 data_NonConfigurable_4       ; load constant from data section
+rvrt $r287
+.3
+cfsi i1216                              ; free 1216 bytes for locals and 0 slots for extra call arguments
+move $$reta $r85                        ; restore return address
+popa .2                                 ; restore all registers
+jal $zero $$reta i0                     ; return from call
+DIFF------------------------------
+.program:
+.2                                      ; --- start of function: main_32 ---
+pusha .2                                ; save all registers
+move $$locbase $sp                      ; save locals base register for function main_32
+cfei i1216                              ; allocate 1216 bytes for locals and 0 slots for call arguments
+move $r84 $$arg1                        ; save argument 1 (__ret_value)
+move $r85 $$reta                        ; save return address
+.19
+addi $r86 $$locbase i1040               ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+mcpi $r86 $$arg0 i48                    ; copy memory
+addi $r87 $$locbase i1040               ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+.21
+addi $r88 $$locbase i424                ; get offset to local __ptr { { ptr, u64, u64 } }
+move $$arg0 $r88                        ; [call]: pass argument 0
+fncall .6                               ; [call]: call new_52
+addi $r90 $$locbase i1144               ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+mcpi $r90 $r87 i48                      ; copy memory
+addi $r91 $$locbase i704                ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r91 $r88 i24                      ; copy memory
+addi $r92 $$locbase i704                ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r93 $$locbase i824                ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r93 $r92 i24                      ; copy memory
+movi $r94 i0                            ; move parameter from branch to block argument
+.22
+move $r96 $r94                          ; move parameter from branch to block argument
+movi $r97 i2                            ; initialize constant into register
+lt $r98 $r94 $r97
+jnzi $r98 .23
+.24
+addi $r99 $$locbase i824                ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r100 $$locbase i680               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r100 $r99 i24                     ; copy memory
+addi $r101 $$locbase i680               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r102 $$locbase i1192              ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r102 $r101 i24                    ; copy memory
+addi $r103 $$locbase i1192              ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r105 $$locbase i48                ; get offset to local __ptr { ptr, u64, u64 }
+mcpi $r105 $r103 i24                    ; copy memory
+addi $r106 $$locbase i144               ; get offset to local __ptr { ptr, u64, u64 }
+mcpi $r106 $r105 i24                    ; copy memory
+addi $r107 $r106 i16                    ; get offset to aggregate element
+addi $r108 $$locbase i192               ; get offset to local __ptr { ptr, u64 }
+mcpi $r108 $r106 i8                     ; copy memory
+addi $r109 $r108 i8                     ; get offset to aggregate element
+mcpi $r109 $r107 i8                     ; copy memory
+addi $r111 $$locbase i72                ; get offset to local __ptr slice
+mcpi $r111 $r108 i16                    ; copy memory
+addi $r112 $$locbase i648               ; get offset to local __ptr slice
+mcpi $r112 $r111 i16                    ; copy memory
+move $r113 $r112                        ; move parameter from branch to block argument
+ji  .25
+.23
+addi $r114 $$locbase i1144              ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+movi $r115 i24                          ; get array element size
+mul $r116 $r96 $r115                    ; get offset to array element
+add $r116 $r114 $r116                   ; add array element offset to array base
+addi $r117 $$locbase i824               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r118 $$locbase i1104              ; get offset to local __ptr { { string<3> }, { u64, ( u64 | u64 ) } }
+mcpi $r118 $r116 i24                    ; copy memory
+addi $r119 $$locbase i728               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r119 $r117 i24                    ; copy memory
+addi $r120 $$locbase i1104              ; get offset to local __ptr { { string<3> }, { u64, ( u64 | u64 ) } }
+addi $r121 $$locbase i728               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r122 $$locbase i1088              ; get offset to local __ptr { string<3> }
+mcpi $r122 $r120 i8                     ; copy memory
+addi $r123 $$locbase i752               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r123 $r121 i24                    ; copy memory
+addi $r124 $$locbase i1088              ; get offset to local __ptr { string<3> }
+addi $r125 $$locbase i752               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r126 $$locbase i1096              ; get offset to local __ptr string<3>
+mcpi $r126 $r124 i8                     ; copy memory
+addi $r127 $$locbase i776               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r127 $r125 i24                    ; copy memory
+addi $r128 $$locbase i456               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r129 $$locbase i776               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $$locbase $r129 i24                ; copy memory
+addi $r131 $$locbase i120               ; get offset to local __ptr { ptr, u64, u64 }
+mcpi $r131 $$locbase i24                ; copy memory
+lw $r132 $$locbase i15                  ; load word
+lw $r134 $$locbase i16                  ; load word
+lw $r136 $$locbase i17                  ; load word
+addi $r137 $$locbase i1096              ; get offset to local __ptr string<3>
+movi $r138 i3                           ; initialize constant into register
+add $r139 $r136 $r138
+gt $r140 $r139 $r134
+move $r141 $r132                        ; move parameter from branch to block argument
+move $r142 $r134                        ; move parameter from branch to block argument
+jnzi $r140 .26
+ji  .27
+.26
+movi $r143 i2                           ; initialize constant into register
+mul $r144 $r134 $r143
+movi $r145 i3                           ; initialize constant into register
+add $r146 $r144 $r145
+aloc $r146
+mcp $hp $r132 $r136
+move $r141 $hp                          ; move parameter from branch to block argument
+move $r142 $r146                        ; move parameter from branch to block argument
+.27
+move $r151 $r141                        ; move parameter from branch to block argument
+move $r153 $r142                        ; move parameter from branch to block argument
+addi $r154 $$locbase i184               ; get offset to local __ptr string<3>
+mcpi $r154 $r137 i8                     ; copy memory
+add $r155 $r151 $r136
+mcpi $r155 $r154 i3                     ; copy memory
+addi $r156 $$locbase i224               ; get offset to local __ptr { ptr, u64, u64 }
+sw $$locbase $r151 i28                  ; store word
+sw $$locbase $r153 i29                  ; store word
+sw $$locbase $r139 i30                  ; store word
+addi $r160 $$locbase i24                ; get offset to local __ptr { ptr, u64, u64 }
+mcpi $r160 $r156 i24                    ; copy memory
+mcpi $r128 $r160 i24                    ; copy memory
+addi $r161 $$locbase i872               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r161 $r128 i24                    ; copy memory
+addi $r162 $$locbase i872               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r163 $$locbase i848               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r163 $r162 i24                    ; copy memory
+addi $r164 $$locbase i1104              ; get offset to local __ptr { { string<3> }, { u64, ( u64 | u64 ) } }
+addi $r165 $r164 i8                     ; get offset to aggregate element
+addi $r166 $$locbase i848               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r167 $$locbase i1128              ; get offset to local __ptr { u64, ( u64 | u64 ) }
+mcpi $r167 $r165 i16                    ; copy memory
+addi $r168 $$locbase i800               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r168 $r166 i24                    ; copy memory
+addi $r169 $$locbase i1128              ; get offset to local __ptr { u64, ( u64 | u64 ) }
+addi $r170 $$locbase i296               ; get offset to local __ptr { u64, ( u64 | u64 ) }
+mcpi $r170 $r169 i16                    ; copy memory
+lw $r172 $$locbase i37                  ; load word
+eq $r173 $r172 $zero
+jnzi $r173 .28
+.29
+lw $r175 $$locbase i37                  ; load word
+eq $r176 $r175 $one
+jnzi $r176 .30
+.31
+load $r177 data_NonConfigurable_0       ; load constant from data section
+rvrt $r177
+.30
+lw $r180 $$locbase i38                  ; load word
+addi $r181 $$locbase i800               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r182 $$locbase i528               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r182 $r181 i24                    ; copy memory
+addi $r183 $$locbase i376               ; get offset to local __ptr { { ptr, u64, u64 } }
+movi $$arg0 i1                          ; [call]: pass argument 0
+move $$arg1 $r182                       ; [call]: pass argument 1
+move $$arg2 $r183                       ; [call]: pass argument 2
+fncall .4                               ; [call]: call abi_encode_51
+addi $r185 $$locbase i968               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r185 $r183 i24                    ; copy memory
+addi $r186 $$locbase i968               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r187 $$locbase i552               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r187 $r186 i24                    ; copy memory
+addi $r188 $$locbase i400               ; get offset to local __ptr { { ptr, u64, u64 } }
+move $$arg0 $r180                       ; [call]: pass argument 0
+move $$arg1 $r187                       ; [call]: pass argument 1
+move $$arg2 $r188                       ; [call]: pass argument 2
+fncall .4                               ; [call]: call abi_encode_51
+addi $r190 $$locbase i992               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r190 $r188 i24                    ; copy memory
+addi $r191 $$locbase i992               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r192 $$locbase i624               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r192 $r191 i24                    ; copy memory
+move $r193 $r192                        ; move parameter from branch to block argument
+ji  .32
+.28
+lw $r196 $$locbase i38                  ; load word
+addi $r197 $$locbase i800               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r198 $$locbase i480               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r198 $r197 i24                    ; copy memory
+addi $r199 $$locbase i328               ; get offset to local __ptr { { ptr, u64, u64 } }
+movi $$arg0 i0                          ; [call]: pass argument 0
+move $$arg1 $r198                       ; [call]: pass argument 1
+move $$arg2 $r199                       ; [call]: pass argument 2
+fncall .4                               ; [call]: call abi_encode_51
+addi $r201 $$locbase i896               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r201 $r199 i24                    ; copy memory
+addi $r202 $$locbase i896               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r203 $$locbase i504               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r203 $r202 i24                    ; copy memory
+addi $r204 $$locbase i352               ; get offset to local __ptr { { ptr, u64, u64 } }
+move $$arg0 $r196                       ; [call]: pass argument 0
+move $$arg1 $r203                       ; [call]: pass argument 1
+move $$arg2 $r204                       ; [call]: pass argument 2
+fncall .4                               ; [call]: call abi_encode_51
+addi $r206 $$locbase i944               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r206 $r204 i24                    ; copy memory
+addi $r207 $$locbase i944               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r208 $$locbase i624               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r208 $r207 i24                    ; copy memory
+move $r193 $r208                        ; move parameter from branch to block argument
+.32
+addi $r212 $$locbase i1016              ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r212 $r193 i24                    ; copy memory
+addi $r213 $$locbase i1016              ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r214 $$locbase i920               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r214 $r213 i24                    ; copy memory
+addi $r215 $$locbase i920               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r216 $$locbase i824               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r216 $r215 i24                    ; copy memory
+add $r217 $r96 $one
+move $r94 $r217                         ; move parameter from branch to block argument
+ji  .22
+.25
+addi $r227 $$locbase i264               ; get offset to local __ptr slice
+mcpi $r227 $r113 i16                    ; copy memory
+load $r228 data_NonConfigurable_1       ; load constant from data section
+lw $r229 $$locbase i33                  ; load slice pointer for logging data
+lw $r230 $$locbase i34                  ; load slice size for logging data
+logd $zero $r228 $r229 $r230            ; log slice
+addi $r231 $$locbase i1040              ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+add $r233 $r231 $zero                   ; add array element offset to array base
+addr $r234 data_NonConfigurable_2       ; get __const_global's address in data section
+addi $r235 $$locbase i88                ; get offset to local __ptr { ptr, u64 }
+sw $$locbase $r234 i11                  ; store word
+movi $r237 i3                           ; initialize constant into register
+sw $$locbase $r237 i12                  ; store word
+addi $r238 $$locbase i168               ; get offset to local __ptr slice
+mcpi $r238 $r235 i16                    ; copy memory
+addi $r239 $$locbase i576               ; get offset to local __ptr string<3>
+mcpi $r239 $r233 i8                     ; copy memory
+addi $r240 $$locbase i584               ; get offset to local __ptr slice
+mcpi $r240 $r238 i16                    ; copy memory
+move $$arg0 $r239                       ; [call]: pass argument 0
+move $$arg1 $r240                       ; [call]: pass argument 1
+fncall .8                               ; [call]: call eq_str_3_57
+eq $r242 $$retv $zero
+jnzi $r242 .33
+.34
+addi $r243 $$locbase i1040              ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+add $r245 $r243 $zero                   ; add array element offset to array base
+addi $r246 $r245 i8                     ; get offset to aggregate element
+addi $r247 $$locbase i280               ; get offset to local __ptr { u64, ( u64 | u64 ) }
+mcpi $r247 $r246 i16                    ; copy memory
+lw $r249 $$locbase i35                  ; load word
+eq $r250 $r249 $zero
+jnzi $r250 .35
+.36
+rvrt $one
+.35
+lw $r253 $$locbase i36                  ; load word
+movi $r254 i1338                        ; initialize constant into register
+eq $r255 $r253 $r254
+eq $r256 $r255 $zero
+jnzi $r256 .37
+.38
+addi $r257 $$locbase i1040              ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+movi $r259 i24                          ; get offset to array element
+add $r259 $r257 $r259                   ; add array element offset to array base
+addr $r260 data_NonConfigurable_3       ; get __const_global0's address in data section
+addi $r261 $$locbase i208               ; get offset to local __ptr { ptr, u64 }
+sw $$locbase $r260 i26                  ; store word
+movi $r263 i3                           ; initialize constant into register
+sw $$locbase $r263 i27                  ; store word
+addi $r264 $$locbase i248               ; get offset to local __ptr slice
+mcpi $r264 $r261 i16                    ; copy memory
+addi $r265 $$locbase i600               ; get offset to local __ptr string<3>
+mcpi $r265 $r259 i8                     ; copy memory
+addi $r266 $$locbase i608               ; get offset to local __ptr slice
+mcpi $r266 $r264 i16                    ; copy memory
+move $$arg0 $r265                       ; [call]: pass argument 0
+move $$arg1 $r266                       ; [call]: pass argument 1
+fncall .8                               ; [call]: call eq_str_3_57
+eq $r268 $$retv $zero
+jnzi $r268 .39
+.40
+addi $r269 $$locbase i1040              ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+movi $r271 i24                          ; get offset to array element
+add $r271 $r269 $r271                   ; add array element offset to array base
+addi $r272 $r271 i8                     ; get offset to aggregate element
+addi $r273 $$locbase i312               ; get offset to local __ptr { u64, ( u64 | u64 ) }
+mcpi $r273 $r272 i16                    ; copy memory
+lw $r275 $$locbase i39                  ; load word
+eq $r276 $r275 $one
+jnzi $r276 .41
+.42
+movi $r277 i2                           ; initialize constant into register
+rvrt $r277
+.41
+lw $r280 $$locbase i40                  ; load word
+eq $r281 $r280 $one
+eq $r282 $r281 $zero
+jnzi $r282 .43
+.44
+addi $r283 $$locbase i448               ; get offset to local __ptr { u64 }
+sw $$locbase $one i56                   ; store word
+mcpi $r84 $r283 i8                      ; copy memory
+ji  .3
+.43
+load $r284 data_NonConfigurable_4       ; load constant from data section
+rvrt $r284
+.39
+load $r285 data_NonConfigurable_4       ; load constant from data section
+rvrt $r285
+.37
+load $r286 data_NonConfigurable_4       ; load constant from data section
+rvrt $r286
+.33
+load $r287 data_NonConfigurable_4       ; load constant from data section
+rvrt $r287
+.3
+cfsi i1216                              ; free 1216 bytes for locals and 0 slots for extra call arguments
+move $$reta $r85                        ; restore return address
+popa .2                                 ; restore all registers
+jal $zero $$reta i0                     ; return from call
+DIFF------------------------------
+.program:
+.2                                      ; --- start of function: main_32 ---
+pusha .2                                ; save all registers
+move $$locbase $sp                      ; save locals base register for function main_32
+cfei i1216                              ; allocate 1216 bytes for locals and 0 slots for call arguments
+move $r84 $$arg1                        ; save argument 1 (__ret_value)
+move $r85 $$reta                        ; save return address
+.19
+addi $r86 $$locbase i1040               ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+mcpi $r86 $$arg0 i48                    ; copy memory
+addi $r87 $$locbase i1040               ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+.21
+addi $r88 $$locbase i424                ; get offset to local __ptr { { ptr, u64, u64 } }
+move $$arg0 $r88                        ; [call]: pass argument 0
+fncall .6                               ; [call]: call new_52
+addi $r90 $$locbase i1144               ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+mcpi $r90 $r87 i48                      ; copy memory
+addi $r91 $$locbase i704                ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r91 $r88 i24                      ; copy memory
+addi $r92 $$locbase i704                ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r93 $$locbase i824                ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r93 $r92 i24                      ; copy memory
+movi $r94 i0                            ; move parameter from branch to block argument
+.22
+move $r96 $r94                          ; move parameter from branch to block argument
+movi $r97 i2                            ; initialize constant into register
+lt $r98 $r94 $r97
+jnzi $r98 .23
+.24
+addi $r99 $$locbase i824                ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r100 $$locbase i680               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r100 $r99 i24                     ; copy memory
+addi $r101 $$locbase i680               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r102 $$locbase i1192              ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r102 $r101 i24                    ; copy memory
+addi $r103 $$locbase i1192              ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r105 $$locbase i48                ; get offset to local __ptr { ptr, u64, u64 }
+mcpi $r105 $r103 i24                    ; copy memory
+addi $r106 $$locbase i144               ; get offset to local __ptr { ptr, u64, u64 }
+mcpi $r106 $r105 i24                    ; copy memory
+addi $r107 $r106 i16                    ; get offset to aggregate element
+addi $r108 $$locbase i192               ; get offset to local __ptr { ptr, u64 }
+mcpi $r108 $r106 i8                     ; copy memory
+addi $r109 $r108 i8                     ; get offset to aggregate element
+mcpi $r109 $r107 i8                     ; copy memory
+addi $r111 $$locbase i72                ; get offset to local __ptr slice
+mcpi $r111 $r108 i16                    ; copy memory
+addi $r112 $$locbase i648               ; get offset to local __ptr slice
+mcpi $r112 $r111 i16                    ; copy memory
+move $r113 $r112                        ; move parameter from branch to block argument
+ji  .25
+.23
+addi $r114 $$locbase i1144              ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+movi $r115 i24                          ; get array element size
+mul $r116 $r96 $r115                    ; get offset to array element
+add $r116 $r114 $r116                   ; add array element offset to array base
+addi $r117 $$locbase i824               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r118 $$locbase i1104              ; get offset to local __ptr { { string<3> }, { u64, ( u64 | u64 ) } }
+mcpi $r118 $r116 i24                    ; copy memory
+addi $r119 $$locbase i728               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r119 $r117 i24                    ; copy memory
+addi $r120 $$locbase i1104              ; get offset to local __ptr { { string<3> }, { u64, ( u64 | u64 ) } }
+addi $r121 $$locbase i728               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r122 $$locbase i1088              ; get offset to local __ptr { string<3> }
+mcpi $r122 $r120 i8                     ; copy memory
+addi $r123 $$locbase i752               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r123 $r121 i24                    ; copy memory
+addi $r124 $$locbase i1088              ; get offset to local __ptr { string<3> }
+addi $r125 $$locbase i752               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r126 $$locbase i1096              ; get offset to local __ptr string<3>
+mcpi $r126 $r124 i8                     ; copy memory
+addi $r127 $$locbase i776               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r127 $r125 i24                    ; copy memory
+addi $r128 $$locbase i456               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r129 $$locbase i776               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $$locbase $r129 i24                ; copy memory
+addi $r131 $$locbase i120               ; get offset to local __ptr { ptr, u64, u64 }
+mcpi $r131 $$locbase i24                ; copy memory
+lw $r132 $$locbase i15                  ; load word
+lw $r134 $$locbase i16                  ; load word
+lw $r136 $$locbase i17                  ; load word
+addi $r137 $$locbase i1096              ; get offset to local __ptr string<3>
+movi $r138 i3                           ; initialize constant into register
+add $r139 $r136 $r138
+gt $r140 $r139 $r134
+move $r141 $r132                        ; move parameter from branch to block argument
+move $r142 $r134                        ; move parameter from branch to block argument
+jnzi $r140 .26
+ji  .27
+.26
+movi $r143 i2                           ; initialize constant into register
+mul $r144 $r134 $r143
+movi $r145 i3                           ; initialize constant into register
+add $r146 $r144 $r145
+aloc $r146
+mcp $hp $r132 $r136
+move $r141 $hp                          ; move parameter from branch to block argument
+move $r142 $r146                        ; move parameter from branch to block argument
+.27
+move $r151 $r141                        ; move parameter from branch to block argument
+move $r153 $r142                        ; move parameter from branch to block argument
+addi $r154 $$locbase i184               ; get offset to local __ptr string<3>
+mcpi $r154 $r137 i8                     ; copy memory
+add $r155 $r151 $r136
+mcpi $r155 $r154 i3                     ; copy memory
+addi $r156 $$locbase i224               ; get offset to local __ptr { ptr, u64, u64 }
+sw $$locbase $r151 i28                  ; store word
+sw $$locbase $r153 i29                  ; store word
+sw $$locbase $r139 i30                  ; store word
+addi $r160 $$locbase i24                ; get offset to local __ptr { ptr, u64, u64 }
+mcpi $r160 $r156 i24                    ; copy memory
+mcpi $r128 $r160 i24                    ; copy memory
+addi $r161 $$locbase i872               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r161 $r128 i24                    ; copy memory
+addi $r162 $$locbase i872               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r163 $$locbase i848               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r163 $r162 i24                    ; copy memory
+addi $r164 $$locbase i1104              ; get offset to local __ptr { { string<3> }, { u64, ( u64 | u64 ) } }
+addi $r165 $r164 i8                     ; get offset to aggregate element
+addi $r166 $$locbase i848               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r167 $$locbase i1128              ; get offset to local __ptr { u64, ( u64 | u64 ) }
+mcpi $r167 $r165 i16                    ; copy memory
+addi $r168 $$locbase i800               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r168 $r166 i24                    ; copy memory
+addi $r169 $$locbase i1128              ; get offset to local __ptr { u64, ( u64 | u64 ) }
+addi $r170 $$locbase i296               ; get offset to local __ptr { u64, ( u64 | u64 ) }
+mcpi $r170 $r169 i16                    ; copy memory
+lw $r172 $$locbase i37                  ; load word
+eq $r173 $r172 $zero
+jnzi $r173 .28
+.29
+lw $r175 $$locbase i37                  ; load word
+eq $r176 $r175 $one
+jnzi $r176 .30
+.31
+load $r177 data_NonConfigurable_0       ; load constant from data section
+rvrt $r177
+.30
+lw $r180 $$locbase i38                  ; load word
+addi $r181 $$locbase i800               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r182 $$locbase i528               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r182 $r181 i24                    ; copy memory
+addi $r183 $$locbase i376               ; get offset to local __ptr { { ptr, u64, u64 } }
+movi $$arg0 i1                          ; [call]: pass argument 0
+move $$arg1 $r182                       ; [call]: pass argument 1
+move $$arg2 $r183                       ; [call]: pass argument 2
+fncall .4                               ; [call]: call abi_encode_51
+addi $r185 $$locbase i968               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r185 $r183 i24                    ; copy memory
+addi $r186 $$locbase i968               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r187 $$locbase i552               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r187 $r186 i24                    ; copy memory
+addi $r188 $$locbase i400               ; get offset to local __ptr { { ptr, u64, u64 } }
+move $$arg0 $r180                       ; [call]: pass argument 0
+move $$arg1 $r187                       ; [call]: pass argument 1
+move $$arg2 $r188                       ; [call]: pass argument 2
+fncall .4                               ; [call]: call abi_encode_51
+addi $r190 $$locbase i992               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r190 $r188 i24                    ; copy memory
+addi $r191 $$locbase i992               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r192 $$locbase i624               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r192 $r191 i24                    ; copy memory
+move $r193 $r192                        ; move parameter from branch to block argument
+ji  .32
+.28
+lw $r196 $$locbase i38                  ; load word
+addi $r197 $$locbase i800               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r198 $$locbase i480               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r198 $r197 i24                    ; copy memory
+addi $r199 $$locbase i328               ; get offset to local __ptr { { ptr, u64, u64 } }
+movi $$arg0 i0                          ; [call]: pass argument 0
+move $$arg1 $r198                       ; [call]: pass argument 1
+move $$arg2 $r199                       ; [call]: pass argument 2
+fncall .4                               ; [call]: call abi_encode_51
+addi $r201 $$locbase i896               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r201 $r199 i24                    ; copy memory
+addi $r202 $$locbase i896               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r203 $$locbase i504               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r203 $r202 i24                    ; copy memory
+addi $r204 $$locbase i352               ; get offset to local __ptr { { ptr, u64, u64 } }
+move $$arg0 $r196                       ; [call]: pass argument 0
+move $$arg1 $r203                       ; [call]: pass argument 1
+move $$arg2 $r204                       ; [call]: pass argument 2
+fncall .4                               ; [call]: call abi_encode_51
+addi $r206 $$locbase i944               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r206 $r204 i24                    ; copy memory
+addi $r207 $$locbase i944               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r208 $$locbase i624               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r208 $r207 i24                    ; copy memory
+move $r193 $r208                        ; move parameter from branch to block argument
+.32
+addi $r212 $$locbase i1016              ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r212 $r193 i24                    ; copy memory
+addi $r213 $$locbase i1016              ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r214 $$locbase i920               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r214 $r213 i24                    ; copy memory
+addi $r215 $$locbase i920               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r216 $$locbase i824               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r216 $r215 i24                    ; copy memory
+add $r217 $r96 $one
+move $r94 $r217                         ; move parameter from branch to block argument
+ji  .22
+.25
+addi $r227 $$locbase i264               ; get offset to local __ptr slice
+mcpi $r227 $r113 i16                    ; copy memory
+load $r228 data_NonConfigurable_1       ; load constant from data section
+lw $r229 $$locbase i33                  ; load slice pointer for logging data
+lw $r230 $$locbase i34                  ; load slice size for logging data
+logd $zero $r228 $r229 $r230            ; log slice
+addi $r231 $$locbase i1040              ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+add $r233 $r231 $zero                   ; add array element offset to array base
+addr $r234 data_NonConfigurable_2       ; get __const_global's address in data section
+addi $r235 $$locbase i88                ; get offset to local __ptr { ptr, u64 }
+sw $$locbase $r234 i11                  ; store word
+movi $r237 i3                           ; initialize constant into register
+sw $$locbase $r237 i12                  ; store word
+addi $r238 $$locbase i168               ; get offset to local __ptr slice
+mcpi $r238 $r235 i16                    ; copy memory
+addi $r239 $$locbase i576               ; get offset to local __ptr string<3>
+mcpi $r239 $r233 i8                     ; copy memory
+addi $r240 $$locbase i584               ; get offset to local __ptr slice
+mcpi $r240 $r238 i16                    ; copy memory
+move $$arg0 $r239                       ; [call]: pass argument 0
+move $$arg1 $r240                       ; [call]: pass argument 1
+fncall .8                               ; [call]: call eq_str_3_57
+eq $r242 $$retv $zero
+jnzi $r242 .33
+.34
+addi $r243 $$locbase i1040              ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+add $r245 $r243 $zero                   ; add array element offset to array base
+addi $r246 $r245 i8                     ; get offset to aggregate element
+addi $r247 $$locbase i280               ; get offset to local __ptr { u64, ( u64 | u64 ) }
+mcpi $r247 $r246 i16                    ; copy memory
+lw $r249 $$locbase i35                  ; load word
+eq $r250 $r249 $zero
+jnzi $r250 .35
+.36
+rvrt $one
+.35
+lw $r253 $$locbase i36                  ; load word
+movi $r254 i1338                        ; initialize constant into register
+eq $r255 $r253 $r254
+eq $r256 $r255 $zero
+jnzi $r256 .37
+.38
+addi $r257 $$locbase i1040              ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+movi $r259 i24                          ; get offset to array element
+add $r259 $r257 $r259                   ; add array element offset to array base
+addr $r260 data_NonConfigurable_3       ; get __const_global0's address in data section
+addi $r261 $$locbase i208               ; get offset to local __ptr { ptr, u64 }
+sw $$locbase $r260 i26                  ; store word
+movi $r263 i3                           ; initialize constant into register
+sw $$locbase $r263 i27                  ; store word
+addi $r264 $$locbase i248               ; get offset to local __ptr slice
+mcpi $r264 $r261 i16                    ; copy memory
+addi $r265 $$locbase i600               ; get offset to local __ptr string<3>
+mcpi $r265 $r259 i8                     ; copy memory
+addi $r266 $$locbase i608               ; get offset to local __ptr slice
+mcpi $r266 $r264 i16                    ; copy memory
+move $$arg0 $r265                       ; [call]: pass argument 0
+move $$arg1 $r266                       ; [call]: pass argument 1
+fncall .8                               ; [call]: call eq_str_3_57
+eq $r268 $$retv $zero
+jnzi $r268 .39
+.40
+addi $r269 $$locbase i1040              ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+movi $r271 i24                          ; get offset to array element
+add $r271 $r269 $r271                   ; add array element offset to array base
+addi $r272 $r271 i8                     ; get offset to aggregate element
+addi $r273 $$locbase i312               ; get offset to local __ptr { u64, ( u64 | u64 ) }
+mcpi $r273 $r272 i16                    ; copy memory
+lw $r275 $$locbase i39                  ; load word
+eq $r276 $r275 $one
+jnzi $r276 .41
+.42
+movi $r277 i2                           ; initialize constant into register
+rvrt $r277
+.41
+lw $r280 $$locbase i40                  ; load word
+eq $r281 $r280 $one
+eq $r282 $r281 $zero
+jnzi $r282 .43
+.44
+addi $r283 $$locbase i448               ; get offset to local __ptr { u64 }
+sw $$locbase $one i56                   ; store word
+mcpi $r84 $r283 i8                      ; copy memory
+ji  .3
+.43
+load $r284 data_NonConfigurable_4       ; load constant from data section
+rvrt $r284
+.39
+load $r285 data_NonConfigurable_4       ; load constant from data section
+rvrt $r285
+.37
+load $r286 data_NonConfigurable_4       ; load constant from data section
+rvrt $r286
+.33
+load $r287 data_NonConfigurable_4       ; load constant from data section
+rvrt $r287
+.3
+cfsi i1216                              ; free 1216 bytes for locals and 0 slots for extra call arguments
+move $$reta $r85                        ; restore return address
+popa .2                                 ; restore all registers
+jal $zero $$reta i0                     ; return from call
+DIFF------------------------------
+.program:
+.2                                      ; --- start of function: main_32 ---
+pusha .2                                ; save all registers
+move $$locbase $sp                      ; save locals base register for function main_32
+cfei i1216                              ; allocate 1216 bytes for locals and 0 slots for call arguments
+move $r84 $$arg1                        ; save argument 1 (__ret_value)
+move $r85 $$reta                        ; save return address
+.19
+addi $r86 $$locbase i1040               ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+mcpi $r86 $$arg0 i48                    ; copy memory
+addi $r87 $$locbase i1040               ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+.21
+addi $r88 $$locbase i424                ; get offset to local __ptr { { ptr, u64, u64 } }
+move $$arg0 $r88                        ; [call]: pass argument 0
+fncall .6                               ; [call]: call new_52
+addi $r90 $$locbase i1144               ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+mcpi $r90 $r87 i48                      ; copy memory
+addi $r91 $$locbase i704                ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r91 $r88 i24                      ; copy memory
+addi $r92 $$locbase i704                ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r93 $$locbase i824                ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r93 $r92 i24                      ; copy memory
+movi $r94 i0                            ; move parameter from branch to block argument
+.22
+move $r96 $r94                          ; move parameter from branch to block argument
+movi $r97 i2                            ; initialize constant into register
+lt $r98 $r94 $r97
+jnzi $r98 .23
+.24
+addi $r99 $$locbase i824                ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r100 $$locbase i680               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r100 $r99 i24                     ; copy memory
+addi $r101 $$locbase i680               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r102 $$locbase i1192              ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r102 $r101 i24                    ; copy memory
+addi $r103 $$locbase i1192              ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r105 $$locbase i48                ; get offset to local __ptr { ptr, u64, u64 }
+mcpi $r105 $r103 i24                    ; copy memory
+addi $r106 $$locbase i144               ; get offset to local __ptr { ptr, u64, u64 }
+mcpi $r106 $r105 i24                    ; copy memory
+addi $r107 $r106 i16                    ; get offset to aggregate element
+addi $r108 $$locbase i192               ; get offset to local __ptr { ptr, u64 }
+mcpi $r108 $r106 i8                     ; copy memory
+addi $r109 $r108 i8                     ; get offset to aggregate element
+mcpi $r109 $r107 i8                     ; copy memory
+addi $r111 $$locbase i72                ; get offset to local __ptr slice
+mcpi $r111 $r108 i16                    ; copy memory
+addi $r112 $$locbase i648               ; get offset to local __ptr slice
+mcpi $r112 $r111 i16                    ; copy memory
+move $r113 $r112                        ; move parameter from branch to block argument
+ji  .25
+.23
+addi $r114 $$locbase i1144              ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+movi $r115 i24                          ; get array element size
+mul $r116 $r96 $r115                    ; get offset to array element
+add $r116 $r114 $r116                   ; add array element offset to array base
+addi $r117 $$locbase i824               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r118 $$locbase i1104              ; get offset to local __ptr { { string<3> }, { u64, ( u64 | u64 ) } }
+mcpi $r118 $r116 i24                    ; copy memory
+addi $r119 $$locbase i728               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r119 $r117 i24                    ; copy memory
+addi $r120 $$locbase i1104              ; get offset to local __ptr { { string<3> }, { u64, ( u64 | u64 ) } }
+addi $r121 $$locbase i728               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r122 $$locbase i1088              ; get offset to local __ptr { string<3> }
+mcpi $r122 $r120 i8                     ; copy memory
+addi $r123 $$locbase i752               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r123 $r121 i24                    ; copy memory
+addi $r124 $$locbase i1088              ; get offset to local __ptr { string<3> }
+addi $r125 $$locbase i752               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r126 $$locbase i1096              ; get offset to local __ptr string<3>
+mcpi $r126 $r124 i8                     ; copy memory
+addi $r127 $$locbase i776               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r127 $r125 i24                    ; copy memory
+addi $r128 $$locbase i456               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r129 $$locbase i776               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $$locbase $r129 i24                ; copy memory
+addi $r131 $$locbase i120               ; get offset to local __ptr { ptr, u64, u64 }
+mcpi $r131 $$locbase i24                ; copy memory
+lw $r132 $$locbase i15                  ; load word
+lw $r134 $$locbase i16                  ; load word
+lw $r136 $$locbase i17                  ; load word
+addi $r137 $$locbase i1096              ; get offset to local __ptr string<3>
+movi $r138 i3                           ; initialize constant into register
+add $r139 $r136 $r138
+gt $r140 $r139 $r134
+move $r141 $r132                        ; move parameter from branch to block argument
+move $r142 $r134                        ; move parameter from branch to block argument
+jnzi $r140 .26
+ji  .27
+.26
+movi $r143 i2                           ; initialize constant into register
+mul $r144 $r134 $r143
+movi $r145 i3                           ; initialize constant into register
+add $r146 $r144 $r145
+aloc $r146
+mcp $hp $r132 $r136
+move $r141 $hp                          ; move parameter from branch to block argument
+move $r142 $r146                        ; move parameter from branch to block argument
+.27
+move $r151 $r141                        ; move parameter from branch to block argument
+move $r153 $r142                        ; move parameter from branch to block argument
+addi $r154 $$locbase i184               ; get offset to local __ptr string<3>
+mcpi $r154 $r137 i8                     ; copy memory
+add $r155 $r151 $r136
+mcpi $r155 $r154 i3                     ; copy memory
+addi $r156 $$locbase i224               ; get offset to local __ptr { ptr, u64, u64 }
+sw $$locbase $r151 i28                  ; store word
+sw $$locbase $r153 i29                  ; store word
+sw $$locbase $r139 i30                  ; store word
+addi $r160 $$locbase i24                ; get offset to local __ptr { ptr, u64, u64 }
+mcpi $r160 $r156 i24                    ; copy memory
+mcpi $r128 $r160 i24                    ; copy memory
+addi $r161 $$locbase i872               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r161 $r128 i24                    ; copy memory
+addi $r162 $$locbase i872               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r163 $$locbase i848               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r163 $r162 i24                    ; copy memory
+addi $r164 $$locbase i1104              ; get offset to local __ptr { { string<3> }, { u64, ( u64 | u64 ) } }
+addi $r165 $r164 i8                     ; get offset to aggregate element
+addi $r166 $$locbase i848               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r167 $$locbase i1128              ; get offset to local __ptr { u64, ( u64 | u64 ) }
+mcpi $r167 $r165 i16                    ; copy memory
+addi $r168 $$locbase i800               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r168 $r166 i24                    ; copy memory
+addi $r169 $$locbase i1128              ; get offset to local __ptr { u64, ( u64 | u64 ) }
+addi $r170 $$locbase i296               ; get offset to local __ptr { u64, ( u64 | u64 ) }
+mcpi $r170 $r169 i16                    ; copy memory
+lw $r172 $$locbase i37                  ; load word
+eq $r173 $r172 $zero
+jnzi $r173 .28
+.29
+lw $r175 $$locbase i37                  ; load word
+eq $r176 $r175 $one
+jnzi $r176 .30
+.31
+load $r177 data_NonConfigurable_0       ; load constant from data section
+rvrt $r177
+.30
+lw $r180 $$locbase i38                  ; load word
+addi $r181 $$locbase i800               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r182 $$locbase i528               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r182 $r181 i24                    ; copy memory
+addi $r183 $$locbase i376               ; get offset to local __ptr { { ptr, u64, u64 } }
+movi $$arg0 i1                          ; [call]: pass argument 0
+move $$arg1 $r182                       ; [call]: pass argument 1
+move $$arg2 $r183                       ; [call]: pass argument 2
+fncall .4                               ; [call]: call abi_encode_51
+addi $r185 $$locbase i968               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r185 $r183 i24                    ; copy memory
+addi $r186 $$locbase i968               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r187 $$locbase i552               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r187 $r186 i24                    ; copy memory
+addi $r188 $$locbase i400               ; get offset to local __ptr { { ptr, u64, u64 } }
+move $$arg0 $r180                       ; [call]: pass argument 0
+move $$arg1 $r187                       ; [call]: pass argument 1
+move $$arg2 $r188                       ; [call]: pass argument 2
+fncall .4                               ; [call]: call abi_encode_51
+addi $r190 $$locbase i992               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r190 $r188 i24                    ; copy memory
+addi $r191 $$locbase i992               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r192 $$locbase i624               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r192 $r191 i24                    ; copy memory
+move $r193 $r192                        ; move parameter from branch to block argument
+ji  .32
+.28
+lw $r196 $$locbase i38                  ; load word
+addi $r197 $$locbase i800               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r198 $$locbase i480               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r198 $r197 i24                    ; copy memory
+addi $r199 $$locbase i328               ; get offset to local __ptr { { ptr, u64, u64 } }
+movi $$arg0 i0                          ; [call]: pass argument 0
+move $$arg1 $r198                       ; [call]: pass argument 1
+move $$arg2 $r199                       ; [call]: pass argument 2
+fncall .4                               ; [call]: call abi_encode_51
+addi $r201 $$locbase i896               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r201 $r199 i24                    ; copy memory
+addi $r202 $$locbase i896               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r203 $$locbase i504               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r203 $r202 i24                    ; copy memory
+addi $r204 $$locbase i352               ; get offset to local __ptr { { ptr, u64, u64 } }
+move $$arg0 $r196                       ; [call]: pass argument 0
+move $$arg1 $r203                       ; [call]: pass argument 1
+move $$arg2 $r204                       ; [call]: pass argument 2
+fncall .4                               ; [call]: call abi_encode_51
+addi $r206 $$locbase i944               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r206 $r204 i24                    ; copy memory
+addi $r207 $$locbase i944               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r208 $$locbase i624               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r208 $r207 i24                    ; copy memory
+move $r193 $r208                        ; move parameter from branch to block argument
+.32
+addi $r212 $$locbase i1016              ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r212 $r193 i24                    ; copy memory
+addi $r213 $$locbase i1016              ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r214 $$locbase i920               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r214 $r213 i24                    ; copy memory
+addi $r215 $$locbase i920               ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r216 $$locbase i824               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r216 $r215 i24                    ; copy memory
+add $r217 $r96 $one
+move $r94 $r217                         ; move parameter from branch to block argument
+ji  .22
+.25
+addi $r227 $$locbase i264               ; get offset to local __ptr slice
+mcpi $r227 $r113 i16                    ; copy memory
+load $r228 data_NonConfigurable_1       ; load constant from data section
+lw $r229 $$locbase i33                  ; load slice pointer for logging data
+lw $r230 $$locbase i34                  ; load slice size for logging data
+logd $zero $r228 $r229 $r230            ; log slice
+addi $r231 $$locbase i1040              ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+add $r233 $r231 $zero                   ; add array element offset to array base
+addr $r234 data_NonConfigurable_2       ; get __const_global's address in data section
+addi $r235 $$locbase i88                ; get offset to local __ptr { ptr, u64 }
+sw $$locbase $r234 i11                  ; store word
+movi $r237 i3                           ; initialize constant into register
+sw $$locbase $r237 i12                  ; store word
+addi $r238 $$locbase i168               ; get offset to local __ptr slice
+mcpi $r238 $r235 i16                    ; copy memory
+addi $r239 $$locbase i576               ; get offset to local __ptr string<3>
+mcpi $r239 $r233 i8                     ; copy memory
+addi $r240 $$locbase i584               ; get offset to local __ptr slice
+mcpi $r240 $r238 i16                    ; copy memory
+move $$arg0 $r239                       ; [call]: pass argument 0
+move $$arg1 $r240                       ; [call]: pass argument 1
+fncall .8                               ; [call]: call eq_str_3_57
+eq $r242 $$retv $zero
+jnzi $r242 .33
+.34
+addi $r243 $$locbase i1040              ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+add $r245 $r243 $zero                   ; add array element offset to array base
+addi $r246 $r245 i8                     ; get offset to aggregate element
+addi $r247 $$locbase i280               ; get offset to local __ptr { u64, ( u64 | u64 ) }
+mcpi $r247 $r246 i16                    ; copy memory
+lw $r249 $$locbase i35                  ; load word
+eq $r250 $r249 $zero
+jnzi $r250 .35
+.36
+rvrt $one
+.35
+lw $r253 $$locbase i36                  ; load word
+movi $r254 i1338                        ; initialize constant into register
+eq $r255 $r253 $r254
+eq $r256 $r255 $zero
+jnzi $r256 .37
+.38
+addi $r257 $$locbase i1040              ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+movi $r259 i24                          ; get offset to array element
+add $r259 $r257 $r259                   ; add array element offset to array base
+addr $r260 data_NonConfigurable_3       ; get __const_global0's address in data section
+addi $r261 $$locbase i208               ; get offset to local __ptr { ptr, u64 }
+sw $$locbase $r260 i26                  ; store word
+movi $r263 i3                           ; initialize constant into register
+sw $$locbase $r263 i27                  ; store word
+addi $r264 $$locbase i248               ; get offset to local __ptr slice
+mcpi $r264 $r261 i16                    ; copy memory
+addi $r265 $$locbase i600               ; get offset to local __ptr string<3>
+mcpi $r265 $r259 i8                     ; copy memory
+addi $r266 $$locbase i608               ; get offset to local __ptr slice
+mcpi $r266 $r264 i16                    ; copy memory
+move $$arg0 $r265                       ; [call]: pass argument 0
+move $$arg1 $r266                       ; [call]: pass argument 1
+fncall .8                               ; [call]: call eq_str_3_57
+eq $r268 $$retv $zero
+jnzi $r268 .39
+.40
+addi $r269 $$locbase i1040              ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+movi $r271 i24                          ; get offset to array element
+add $r271 $r269 $r271                   ; add array element offset to array base
+addi $r272 $r271 i8                     ; get offset to aggregate element
+addi $r273 $$locbase i312               ; get offset to local __ptr { u64, ( u64 | u64 ) }
+mcpi $r273 $r272 i16                    ; copy memory
+lw $r275 $$locbase i39                  ; load word
+eq $r276 $r275 $one
+jnzi $r276 .41
+.42
+movi $r277 i2                           ; initialize constant into register
+rvrt $r277
+.41
+lw $r280 $$locbase i40                  ; load word
+eq $r281 $r280 $one
+eq $r282 $r281 $zero
+jnzi $r282 .43
+.44
+addi $r283 $$locbase i448               ; get offset to local __ptr { u64 }
+sw $$locbase $one i56                   ; store word
+mcpi $r84 $r283 i8                      ; copy memory
+ji  .3
+.43
+load $r284 data_NonConfigurable_4       ; load constant from data section
+rvrt $r284
+.39
+load $r285 data_NonConfigurable_4       ; load constant from data section
+rvrt $r285
+.37
+load $r286 data_NonConfigurable_4       ; load constant from data section
+rvrt $r286
+.33
+load $r287 data_NonConfigurable_4       ; load constant from data section
+rvrt $r287
+.3
+cfsi i1216                              ; free 1216 bytes for locals and 0 slots for extra call arguments
+move $$reta $r85                        ; restore return address
+popa .2                                 ; restore all registers
+jal $zero $$reta i0                     ; return from call
+DIFF------------------------------
+.program:
+.4                                      ; --- start of function: abi_encode_51 ---
+pusha .4                                ; save all registers
+move $$locbase $sp                      ; save locals base register for function abi_encode_51
+cfei i144                               ; allocate 144 bytes for locals and 0 slots for call arguments
+.45
+addi $r289 $$locbase i120               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r289 $$arg1 i24                   ; copy memory
+addi $r290 $$locbase i96                ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r291 $$locbase i120               ; get offset to local __ptr { { ptr, u64, u64 } }
+move $r292 $r291                        ; return value from ASM block with return register buffer
+ mcpi $$locbase $r292 i24                ; copy memory
+ mcpi $$locbase $r291 i24                ; copy memory
+addi $r293 $$locbase i48                ; get offset to local __ptr { ptr, u64, u64 }
+mcpi $r293 $$locbase i24                ; copy memory
+lw $r294 $$locbase i6                   ; load word
+addi $r295 $r293 i8                     ; get offset to aggregate element
+lw $r296 $$locbase i7                   ; load word
+addi $r297 $r293 i16                    ; get offset to aggregate element
+lw $r298 $$locbase i8                   ; load word
+movi $r299 i8                           ; initialize constant into register
+add $r300 $r298 $r299
+gt $r301 $r300 $r296
+move $r302 $r294                        ; move parameter from branch to block argument
+move $r303 $r296                        ; move parameter from branch to block argument
+jnzi $r301 .46
+ji  .47
+.46
+movi $r304 i2                           ; initialize constant into register
+mul $r305 $r296 $r304
+movi $r306 i8                           ; initialize constant into register
+add $r307 $r305 $r306
+aloc $r307
+mcp $hp $r294 $r298
+move $r308 $hp                          ; return value from ASM block with return register hp
+ move $r302 $r308                        ; move parameter from branch to block argument
+ move $r302 $hp                          ; move parameter from branch to block argument
+move $r303 $r307                        ; move parameter from branch to block argument
+ji  .47
+.47
+move $r312 $r302                        ; move parameter from branch to block argument
+move $r314 $r303                        ; move parameter from branch to block argument
+ add $r315 $r312 $r298
+ add $r315 $r302 $r298
+sw $r315 $$arg0 i0                      ; store word
+addi $r316 $$locbase i72                ; get offset to local __ptr { ptr, u64, u64 }
+sw $$locbase $r312 i9                   ; store word
+addi $r317 $r316 i8                     ; get offset to aggregate element
+sw $$locbase $r314 i10                  ; store word
+addi $r318 $r316 i16                    ; get offset to aggregate element
+sw $$locbase $r300 i11                  ; store word
+move $r319 $r316                        ; return value from ASM block with return register buffer
+addi $r320 $$locbase i24                ; get offset to local __ptr { ptr, u64, u64 }
+ mcpi $r320 $r319 i24                    ; copy memory
+ mcpi $r320 $r316 i24                    ; copy memory
+mcpi $r290 $r320 i24                    ; copy memory
+mcpi $$arg2 $r290 i24                   ; copy memory
+ji  .5
+.5
+cfsi i144                               ; free 144 bytes for locals and 0 slots for extra call arguments
+popa .4                                 ; restore all registers
+jal $zero $$reta i0                     ; return from call
+DIFF------------------------------
+.program:
+.4                                      ; --- start of function: abi_encode_51 ---
+pusha .4                                ; save all registers
+move $$locbase $sp                      ; save locals base register for function abi_encode_51
+cfei i144                               ; allocate 144 bytes for locals and 0 slots for call arguments
+.45
+addi $r289 $$locbase i120               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r289 $$arg1 i24                   ; copy memory
+addi $r290 $$locbase i96                ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r291 $$locbase i120               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $$locbase $r291 i24                ; copy memory
+addi $r293 $$locbase i48                ; get offset to local __ptr { ptr, u64, u64 }
+mcpi $r293 $$locbase i24                ; copy memory
+lw $r294 $$locbase i6                   ; load word
+lw $r296 $$locbase i7                   ; load word
+lw $r298 $$locbase i8                   ; load word
+movi $r299 i8                           ; initialize constant into register
+add $r300 $r298 $r299
+gt $r301 $r300 $r296
+move $r302 $r294                        ; move parameter from branch to block argument
+move $r303 $r296                        ; move parameter from branch to block argument
+jnzi $r301 .46
+ji  .47
+.46
+movi $r304 i2                           ; initialize constant into register
+mul $r305 $r296 $r304
+movi $r306 i8                           ; initialize constant into register
+add $r307 $r305 $r306
+aloc $r307
+mcp $hp $r294 $r298
+move $r302 $hp                          ; move parameter from branch to block argument
+move $r303 $r307                        ; move parameter from branch to block argument
+.47
+move $r312 $r302                        ; move parameter from branch to block argument
+move $r314 $r303                        ; move parameter from branch to block argument
+add $r315 $r302 $r298
+sw $r315 $$arg0 i0                      ; store word
+addi $r316 $$locbase i72                ; get offset to local __ptr { ptr, u64, u64 }
+sw $$locbase $r312 i9                   ; store word
+sw $$locbase $r314 i10                  ; store word
+sw $$locbase $r300 i11                  ; store word
+addi $r320 $$locbase i24                ; get offset to local __ptr { ptr, u64, u64 }
+mcpi $r320 $r316 i24                    ; copy memory
+mcpi $r290 $r320 i24                    ; copy memory
+mcpi $$arg2 $r290 i24                   ; copy memory
+.5
+cfsi i144                               ; free 144 bytes for locals and 0 slots for extra call arguments
+popa .4                                 ; restore all registers
+jal $zero $$reta i0                     ; return from call
+DIFF------------------------------
+.program:
+.4                                      ; --- start of function: abi_encode_51 ---
+pusha .4                                ; save all registers
+move $$locbase $sp                      ; save locals base register for function abi_encode_51
+cfei i144                               ; allocate 144 bytes for locals and 0 slots for call arguments
+.45
+addi $r289 $$locbase i120               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r289 $$arg1 i24                   ; copy memory
+addi $r290 $$locbase i96                ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r291 $$locbase i120               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $$locbase $r291 i24                ; copy memory
+addi $r293 $$locbase i48                ; get offset to local __ptr { ptr, u64, u64 }
+mcpi $r293 $$locbase i24                ; copy memory
+lw $r294 $$locbase i6                   ; load word
+lw $r296 $$locbase i7                   ; load word
+lw $r298 $$locbase i8                   ; load word
+movi $r299 i8                           ; initialize constant into register
+add $r300 $r298 $r299
+gt $r301 $r300 $r296
+move $r302 $r294                        ; move parameter from branch to block argument
+move $r303 $r296                        ; move parameter from branch to block argument
+jnzi $r301 .46
+ji  .47
+.46
+movi $r304 i2                           ; initialize constant into register
+mul $r305 $r296 $r304
+movi $r306 i8                           ; initialize constant into register
+add $r307 $r305 $r306
+aloc $r307
+mcp $hp $r294 $r298
+move $r302 $hp                          ; move parameter from branch to block argument
+move $r303 $r307                        ; move parameter from branch to block argument
+.47
+move $r312 $r302                        ; move parameter from branch to block argument
+move $r314 $r303                        ; move parameter from branch to block argument
+add $r315 $r302 $r298
+sw $r315 $$arg0 i0                      ; store word
+addi $r316 $$locbase i72                ; get offset to local __ptr { ptr, u64, u64 }
+sw $$locbase $r312 i9                   ; store word
+sw $$locbase $r314 i10                  ; store word
+sw $$locbase $r300 i11                  ; store word
+addi $r320 $$locbase i24                ; get offset to local __ptr { ptr, u64, u64 }
+mcpi $r320 $r316 i24                    ; copy memory
+mcpi $r290 $r320 i24                    ; copy memory
+mcpi $$arg2 $r290 i24                   ; copy memory
+.5
+cfsi i144                               ; free 144 bytes for locals and 0 slots for extra call arguments
+popa .4                                 ; restore all registers
+jal $zero $$reta i0                     ; return from call
+DIFF------------------------------
+.program:
+.4                                      ; --- start of function: abi_encode_51 ---
+pusha .4                                ; save all registers
+move $$locbase $sp                      ; save locals base register for function abi_encode_51
+cfei i144                               ; allocate 144 bytes for locals and 0 slots for call arguments
+.45
+addi $r289 $$locbase i120               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r289 $$arg1 i24                   ; copy memory
+addi $r290 $$locbase i96                ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r291 $$locbase i120               ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $$locbase $r291 i24                ; copy memory
+addi $r293 $$locbase i48                ; get offset to local __ptr { ptr, u64, u64 }
+mcpi $r293 $$locbase i24                ; copy memory
+lw $r294 $$locbase i6                   ; load word
+lw $r296 $$locbase i7                   ; load word
+lw $r298 $$locbase i8                   ; load word
+movi $r299 i8                           ; initialize constant into register
+add $r300 $r298 $r299
+gt $r301 $r300 $r296
+move $r302 $r294                        ; move parameter from branch to block argument
+move $r303 $r296                        ; move parameter from branch to block argument
+jnzi $r301 .46
+ji  .47
+.46
+movi $r304 i2                           ; initialize constant into register
+mul $r305 $r296 $r304
+movi $r306 i8                           ; initialize constant into register
+add $r307 $r305 $r306
+aloc $r307
+mcp $hp $r294 $r298
+move $r302 $hp                          ; move parameter from branch to block argument
+move $r303 $r307                        ; move parameter from branch to block argument
+.47
+move $r312 $r302                        ; move parameter from branch to block argument
+move $r314 $r303                        ; move parameter from branch to block argument
+add $r315 $r302 $r298
+sw $r315 $$arg0 i0                      ; store word
+addi $r316 $$locbase i72                ; get offset to local __ptr { ptr, u64, u64 }
+sw $$locbase $r312 i9                   ; store word
+sw $$locbase $r314 i10                  ; store word
+sw $$locbase $r300 i11                  ; store word
+addi $r320 $$locbase i24                ; get offset to local __ptr { ptr, u64, u64 }
+mcpi $r320 $r316 i24                    ; copy memory
+mcpi $r290 $r320 i24                    ; copy memory
+mcpi $$arg2 $r290 i24                   ; copy memory
+.5
+cfsi i144                               ; free 144 bytes for locals and 0 slots for extra call arguments
+popa .4                                 ; restore all registers
+jal $zero $$reta i0                     ; return from call
+DIFF------------------------------
+.program:
+.6                                      ; --- start of function: new_52 ---
+pusha .6                                ; save all registers
+move $$locbase $sp                      ; save locals base register for function new_52
+cfei i72                                ; allocate 72 bytes for locals and 0 slots for call arguments
+.48
+addi $r322 $$locbase i48                ; get offset to local __ptr { { ptr, u64, u64 } }
+movi $r323 i1024                        ; initialize constant into register
+aloc $r323
+move $r324 $hp                          ; return value from ASM block with return register hp
+addi $r325 $$locbase i24                ; get offset to local __ptr { ptr, u64, u64 }
+ sw $$locbase $r324 i3                   ; store word
+ sw $$locbase $hp i3                     ; store word
+addi $r326 $r325 i8                     ; get offset to aggregate element
+movi $r327 i1024                        ; initialize constant into register
+sw $$locbase $r327 i4                   ; store word
+addi $r328 $r325 i16                    ; get offset to aggregate element
+sw $$locbase $zero i5                   ; store word
+move $r329 $r325                        ; return value from ASM block with return register buffer
+ mcpi $$locbase $r329 i24                ; copy memory
+ mcpi $$locbase $r325 i24                ; copy memory
+mcpi $r322 $$locbase i24                ; copy memory
+mcpi $$arg0 $r322 i24                   ; copy memory
+ji  .7
+.7
+cfsi i72                                ; free 72 bytes for locals and 0 slots for extra call arguments
+popa .6                                 ; restore all registers
+jal $zero $$reta i0                     ; return from call
+DIFF------------------------------
+.program:
+.6                                      ; --- start of function: new_52 ---
+pusha .6                                ; save all registers
+move $$locbase $sp                      ; save locals base register for function new_52
+cfei i72                                ; allocate 72 bytes for locals and 0 slots for call arguments
+.48
+addi $r322 $$locbase i48                ; get offset to local __ptr { { ptr, u64, u64 } }
+movi $r323 i1024                        ; initialize constant into register
+aloc $r323
+addi $r325 $$locbase i24                ; get offset to local __ptr { ptr, u64, u64 }
+sw $$locbase $hp i3                     ; store word
+movi $r327 i1024                        ; initialize constant into register
+sw $$locbase $r327 i4                   ; store word
+sw $$locbase $zero i5                   ; store word
+mcpi $$locbase $r325 i24                ; copy memory
+mcpi $r322 $$locbase i24                ; copy memory
+mcpi $$arg0 $r322 i24                   ; copy memory
+.7
+cfsi i72                                ; free 72 bytes for locals and 0 slots for extra call arguments
+popa .6                                 ; restore all registers
+jal $zero $$reta i0                     ; return from call
+DIFF------------------------------
+.program:
+.6                                      ; --- start of function: new_52 ---
+pusha .6                                ; save all registers
+move $$locbase $sp                      ; save locals base register for function new_52
+cfei i72                                ; allocate 72 bytes for locals and 0 slots for call arguments
+.48
+addi $r322 $$locbase i48                ; get offset to local __ptr { { ptr, u64, u64 } }
+movi $r323 i1024                        ; initialize constant into register
+aloc $r323
+addi $r325 $$locbase i24                ; get offset to local __ptr { ptr, u64, u64 }
+sw $$locbase $hp i3                     ; store word
+movi $r327 i1024                        ; initialize constant into register
+sw $$locbase $r327 i4                   ; store word
+sw $$locbase $zero i5                   ; store word
+mcpi $$locbase $r325 i24                ; copy memory
+mcpi $r322 $$locbase i24                ; copy memory
+mcpi $$arg0 $r322 i24                   ; copy memory
+.7
+cfsi i72                                ; free 72 bytes for locals and 0 slots for extra call arguments
+popa .6                                 ; restore all registers
+jal $zero $$reta i0                     ; return from call
+DIFF------------------------------
+.program:
+.6                                      ; --- start of function: new_52 ---
+pusha .6                                ; save all registers
+move $$locbase $sp                      ; save locals base register for function new_52
+cfei i72                                ; allocate 72 bytes for locals and 0 slots for call arguments
+.48
+addi $r322 $$locbase i48                ; get offset to local __ptr { { ptr, u64, u64 } }
+movi $r323 i1024                        ; initialize constant into register
+aloc $r323
+addi $r325 $$locbase i24                ; get offset to local __ptr { ptr, u64, u64 }
+sw $$locbase $hp i3                     ; store word
+movi $r327 i1024                        ; initialize constant into register
+sw $$locbase $r327 i4                   ; store word
+sw $$locbase $zero i5                   ; store word
+mcpi $$locbase $r325 i24                ; copy memory
+mcpi $r322 $$locbase i24                ; copy memory
+mcpi $$arg0 $r322 i24                   ; copy memory
+.7
+cfsi i72                                ; free 72 bytes for locals and 0 slots for extra call arguments
+popa .6                                 ; restore all registers
+jal $zero $$reta i0                     ; return from call
+DIFF------------------------------
+.program:
+.8                                      ; --- start of function: eq_str_3_57 ---
+pusha .8                                ; save all registers
+move $$locbase $sp                      ; save locals base register for function eq_str_3_57
+cfei i40                                ; allocate 40 bytes for locals and 0 slots for call arguments
+.49
+addi $r331 $$locbase i16                ; get offset to local __ptr string<3>
+mcpi $r331 $$arg0 i8                    ; copy memory
+addi $r332 $$locbase i24                ; get offset to local __ptr slice
+mcpi $r332 $$arg1 i16                   ; copy memory
+addi $r333 $$locbase i24                ; get offset to local __ptr slice
+move $r334 $r333                        ; return value from ASM block with return register s
+lw $r335 $r333 i0                       ; load word
+ addi $r336 $r334 i8                     ; get offset to aggregate element
+ addi $r336 $r333 i8                     ; get offset to aggregate element
+lw $r337 $r333 i1                       ; load word
+sw $$locbase $r335 i0                   ; store word
+addi $r338 $$locbase i8                 ; get offset to aggregate element
+sw $$locbase $r337 i1                   ; store word
+lw $r339 $$locbase i0                   ; load word
+addi $r340 $$locbase i16                ; get offset to local __ptr string<3>
+movi $r341 i3                           ; initialize constant into register
+meq $r342 $r340 $r339 $r341             ; meq r a b len
+move $r343 $r342                        ; return value from ASM block with return register r
+ move $$retv $r343                       ; set return value
+ move $$retv $r342                       ; set return value
+ji  .9
+.9
+cfsi i40                                ; free 40 bytes for locals and 0 slots for extra call arguments
+popa .8                                 ; restore all registers
+jal $zero $$reta i0                     ; return from call
+DIFF------------------------------
+.program:
+.8                                      ; --- start of function: eq_str_3_57 ---
+pusha .8                                ; save all registers
+move $$locbase $sp                      ; save locals base register for function eq_str_3_57
+cfei i40                                ; allocate 40 bytes for locals and 0 slots for call arguments
+.49
+addi $r331 $$locbase i16                ; get offset to local __ptr string<3>
+mcpi $r331 $$arg0 i8                    ; copy memory
+addi $r332 $$locbase i24                ; get offset to local __ptr slice
+mcpi $r332 $$arg1 i16                   ; copy memory
+addi $r333 $$locbase i24                ; get offset to local __ptr slice
+lw $r335 $$locbase i3                   ; load word
+lw $r337 $$locbase i4                   ; load word
+sw $$locbase $r335 i0                   ; store word
+sw $$locbase $r337 i1                   ; store word
+lw $r339 $$locbase i0                   ; load word
+addi $r340 $$locbase i16                ; get offset to local __ptr string<3>
+movi $r341 i3                           ; initialize constant into register
+meq $r342 $r340 $r339 $r341             ; meq r a b len
+move $$retv $r342                       ; set return value
+.9
+cfsi i40                                ; free 40 bytes for locals and 0 slots for extra call arguments
+popa .8                                 ; restore all registers
+jal $zero $$reta i0                     ; return from call
+DIFF------------------------------
+.program:
+.8                                      ; --- start of function: eq_str_3_57 ---
+pusha .8                                ; save all registers
+move $$locbase $sp                      ; save locals base register for function eq_str_3_57
+cfei i40                                ; allocate 40 bytes for locals and 0 slots for call arguments
+.49
+addi $r331 $$locbase i16                ; get offset to local __ptr string<3>
+mcpi $r331 $$arg0 i8                    ; copy memory
+addi $r332 $$locbase i24                ; get offset to local __ptr slice
+mcpi $r332 $$arg1 i16                   ; copy memory
+lw $r335 $$locbase i3                   ; load word
+lw $r337 $$locbase i4                   ; load word
+sw $$locbase $r335 i0                   ; store word
+sw $$locbase $r337 i1                   ; store word
+lw $r339 $$locbase i0                   ; load word
+addi $r340 $$locbase i16                ; get offset to local __ptr string<3>
+movi $r341 i3                           ; initialize constant into register
+meq $r342 $r340 $r339 $r341             ; meq r a b len
+move $$retv $r342                       ; set return value
+.9
+cfsi i40                                ; free 40 bytes for locals and 0 slots for extra call arguments
+popa .8                                 ; restore all registers
+jal $zero $$reta i0                     ; return from call
+DIFF------------------------------
+.program:
+.8                                      ; --- start of function: eq_str_3_57 ---
+pusha .8                                ; save all registers
+move $$locbase $sp                      ; save locals base register for function eq_str_3_57
+cfei i40                                ; allocate 40 bytes for locals and 0 slots for call arguments
+.49
+addi $r331 $$locbase i16                ; get offset to local __ptr string<3>
+mcpi $r331 $$arg0 i8                    ; copy memory
+addi $r332 $$locbase i24                ; get offset to local __ptr slice
+mcpi $r332 $$arg1 i16                   ; copy memory
+lw $r335 $$locbase i3                   ; load word
+lw $r337 $$locbase i4                   ; load word
+sw $$locbase $r335 i0                   ; store word
+sw $$locbase $r337 i1                   ; store word
+lw $r339 $$locbase i0                   ; load word
+addi $r340 $$locbase i16                ; get offset to local __ptr string<3>
+movi $r341 i3                           ; initialize constant into register
+meq $r342 $r340 $r339 $r341             ; meq r a b len
+move $$retv $r342                       ; set return value
+.9
+cfsi i40                                ; free 40 bytes for locals and 0 slots for extra call arguments
+popa .8                                 ; restore all registers
+jal $zero $$reta i0                     ; return from call
 ;; ASM: Final program
 ;; Program kind: Script
 .program:
@@ -1438,6 +3708,7 @@ move $r5 $$arg1               ; [fn init: main_32]: copy argument 1 (__ret_value
 move $r4 $$reta               ; [fn init: main_32]: save return address
 addi $r0 $$locbase i1088      ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
 mcpi $r0 $$arg0 i48           ; copy memory
+<<<<<<< HEAD
 addi $r0 $$locbase i1088      ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
 addi $r1 $$locbase i480       ; get offset to local __ptr { { ptr, u64, u64 } }
 movi $r2 i1024                ; initialize constant into register
@@ -1450,6 +3721,13 @@ sw   $$locbase $zero i20      ; store word
 mcpi $$locbase $r2 i24        ; copy memory
 mcpi $r1 $$locbase i24        ; copy memory
 addi $r2 $$locbase i1192      ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+=======
+addi $r0 $$locbase i1040      ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+addi $r1 $$locbase i424       ; get offset to local __ptr { { ptr, u64, u64 } }
+move $$arg0 $r1               ; [call]: pass argument 0
+jal  $$reta $pc i299          ; [call]: call new_52
+addi $r2 $$locbase i1144      ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+>>>>>>> ef4a6e047 (more operators for const_propagate)
 mcpi $r2 $r0 i48              ; copy memory
 addi $r0 $$locbase i752       ; get offset to local __ptr { { ptr, u64, u64 } }
 mcpi $r0 $r1 i24              ; copy memory
@@ -1598,7 +3876,7 @@ addi $r2 $$locbase i944       ; get offset to local __ptr { { ptr, u64, u64 } }
 movi $$arg0 i1                ; [call]: pass argument 0
 move $$arg1 $r2               ; [call]: pass argument 1
 move $$arg2 $r1               ; [call]: pass argument 2
-jal  $$reta $pc i148          ; [call]: call abi_encode_51
+jal  $$reta $pc i142          ; [call]: call abi_encode_51
 addi $r2 $$locbase i968       ; get offset to local __ptr { { ptr, u64, u64 } }
 >>>>>>> 0f3fd4cde (replave move by movi when possible on asm optimisation)
 mcpi $r2 $r1 i24              ; copy memory
@@ -1606,10 +3884,17 @@ addi $r1 $$locbase i944       ; get offset to local __ptr { { ptr, u64, u64 } }
 addi $r2 $$locbase i552       ; get offset to local __ptr { { ptr, u64, u64 } }
 mcpi $r2 $r1 i24              ; copy memory
 addi $r1 $$locbase i400       ; get offset to local __ptr { { ptr, u64, u64 } }
+<<<<<<< HEAD
 move $$arg0 $r0               ; [call: abi_encode_51]: pass argument 0
 move $$arg1 $r2               ; [call: abi_encode_51]: pass argument 1
 move $$arg2 $r1               ; [call: abi_encode_51]: pass argument 2
 jal  $$reta $pc i113          ; [call: abi_encode_51]: call function
+=======
+move $$arg0 $r0               ; [call]: pass argument 0
+move $$arg1 $r2               ; [call]: pass argument 1
+move $$arg2 $r1               ; [call]: pass argument 2
+jal  $$reta $pc i132          ; [call]: call abi_encode_51
+>>>>>>> ef4a6e047 (more operators for const_propagate)
 addi $r0 $$locbase i992       ; get offset to local __ptr { { ptr, u64, u64 } }
 mcpi $r0 $r1 i24              ; copy memory
 addi $r0 $$locbase i992       ; get offset to local __ptr { { ptr, u64, u64 } }
@@ -1627,7 +3912,7 @@ addi $r1 $$locbase i328       ; get offset to local __ptr { { ptr, u64, u64 } }
 movi $$arg0 i0                ; [call]: pass argument 0
 move $$arg1 $r2               ; [call]: pass argument 1
 move $$arg2 $r1               ; [call]: pass argument 2
-jal  $$reta $pc i123          ; [call]: call abi_encode_51
+jal  $$reta $pc i117          ; [call]: call abi_encode_51
 addi $r2 $$locbase i896       ; get offset to local __ptr { { ptr, u64, u64 } }
 mcpi $r2 $r1 i24              ; copy memory
 addi $r1 $$locbase i896       ; get offset to local __ptr { { ptr, u64, u64 } }
@@ -1637,7 +3922,7 @@ addi $r1 $$locbase i352       ; get offset to local __ptr { { ptr, u64, u64 } }
 move $$arg0 $r0               ; [call]: pass argument 0
 move $$arg1 $r2               ; [call]: pass argument 1
 move $$arg2 $r1               ; [call]: pass argument 2
-jal  $$reta $pc i113          ; [call]: call abi_encode_51
+jal  $$reta $pc i107          ; [call]: call abi_encode_51
 addi $r0 $$locbase i944       ; get offset to local __ptr { { ptr, u64, u64 } }
 >>>>>>> 0f3fd4cde (replave move by movi when possible on asm optimisation)
 mcpi $r0 $r1 i24              ; copy memory
@@ -1655,6 +3940,7 @@ load $r0 data_NonConfigurable_1; load constant from data section
 lw   $r1 $$locbase i39        ; load slice pointer for logging data
 lw   $r2 $$locbase i40        ; load slice size for logging data
 logd $zero $r0 $r1 $r2        ; log slice
+<<<<<<< HEAD
 addi $r0 $$locbase i1088      ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
 movi $r1 i24                  ; get array element size
 mul  $r1 $zero $r1            ; get offset to array element
@@ -1681,6 +3967,30 @@ mul  $r1 $zero $r1            ; get offset to array element
 add  $r1 $r0 $r1              ; add array element offset to array base
 addi $r0 $r1 i8               ; get offset to aggregate element
 addi $r1 $$locbase i328       ; get offset to local __ptr { u64, ( u64 | u64 ) }
+=======
+addi $r0 $$locbase i1040      ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+add  $r0 $r0 $zero            ; add array element offset to array base
+addr $r1 data_NonConfigurable_2; get __const_global's address in data section
+addi $r2 $$locbase i88        ; get offset to local __ptr { ptr, u64 }
+sw   $$locbase $r1 i11        ; store word
+movi $r1 i3                   ; initialize constant into register
+sw   $$locbase $r1 i12        ; store word
+addi $r1 $$locbase i168       ; get offset to local __ptr slice
+mcpi $r1 $r2 i16              ; copy memory
+addi $r2 $$locbase i576       ; get offset to local __ptr string<3>
+mcpi $r2 $r0 i8               ; copy memory
+addi $r0 $$locbase i584       ; get offset to local __ptr slice
+mcpi $r0 $r1 i16              ; copy memory
+move $$arg0 $r2               ; [call]: pass argument 0
+move $$arg1 $r0               ; [call]: pass argument 1
+jal  $$reta $pc i128          ; [call]: call eq_str_3_57
+eq   $r0 $$retv $zero
+jnzf $r0 $zero i59
+addi $r0 $$locbase i1040      ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+add  $r0 $r0 $zero            ; add array element offset to array base
+addi $r0 $r0 i8               ; get offset to aggregate element
+addi $r1 $$locbase i280       ; get offset to local __ptr { u64, ( u64 | u64 ) }
+>>>>>>> ef4a6e047 (more operators for const_propagate)
 mcpi $r1 $r0 i16              ; copy memory
 lw   $r0 $$locbase i41        ; load word
 eq   $r0 $r0 $zero
@@ -1690,10 +4000,16 @@ lw   $r0 $$locbase i42        ; load word
 movi $r1 i1338                ; initialize constant into register
 eq   $r0 $r0 $r1
 eq   $r0 $r0 $zero
+<<<<<<< HEAD
 jnzf $r0 $zero i45
 addi $r0 $$locbase i1088      ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
 movi $r1 i24                  ; get array element size
 mul  $r1 $one $r1             ; get offset to array element
+=======
+jnzf $r0 $zero i43
+addi $r0 $$locbase i1040      ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+movi $r1 i24                  ; get offset to array element
+>>>>>>> ef4a6e047 (more operators for const_propagate)
 add  $r1 $r0 $r1              ; add array element offset to array base
 addr $r0 data_NonConfigurable_3; get __const_global0's address in data section
 addi $r2 $$locbase i256       ; get offset to local __ptr { ptr, u64 }
@@ -1706,6 +4022,7 @@ addi $r2 $$locbase i648       ; get offset to local __ptr string<3>
 mcpi $r2 $r1 i8               ; copy memory
 addi $r1 $$locbase i656       ; get offset to local __ptr slice
 mcpi $r1 $r0 i16              ; copy memory
+<<<<<<< HEAD
 move $$arg0 $r2               ; [call: eq_str_3_57]: pass argument 0
 move $$arg1 $r1               ; [call: eq_str_3_57]: pass argument 1
 jal  $$reta $pc i76           ; [call: eq_str_3_57]: call function
@@ -1714,6 +4031,15 @@ jnzf $r0 $zero i22
 addi $r0 $$locbase i1088      ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
 movi $r1 i24                  ; get array element size
 mul  $r1 $one $r1             ; get offset to array element
+=======
+move $$arg0 $r2               ; [call]: pass argument 0
+move $$arg1 $r1               ; [call]: pass argument 1
+jal  $$reta $pc i94           ; [call]: call eq_str_3_57
+eq   $r0 $$retv $zero
+jnzf $r0 $zero i21
+addi $r0 $$locbase i1040      ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
+movi $r1 i24                  ; get offset to array element
+>>>>>>> ef4a6e047 (more operators for const_propagate)
 add  $r1 $r0 $r1              ; add array element offset to array base
 addi $r0 $r1 i8               ; get offset to aggregate element
 addi $r1 $$locbase i360       ; get offset to local __ptr { u64, ( u64 | u64 ) }
@@ -1817,7 +4143,11 @@ data_NonConfigurable_4 .word 18446744073709486084
 
 0x00000000 MOVE R60 $pc                                    ;; [26, 240, 48, 0]
 0x00000004 JMPF $zero 0x4                                  ;; [116, 0, 0, 4]
+<<<<<<< HEAD
 0x00000008                                                 ;; [0, 0, 0, 0, 0, 0, 7, 56]
+=======
+0x00000008                                                 ;; [0, 0, 0, 0, 0, 0, 7, 80]
+>>>>>>> ef4a6e047 (more operators for const_propagate)
 0x00000010                                                 ;; [0, 0, 0, 0, 0, 0, 0, 0]
 0x00000018 LW R63 R60 0x1                                  ;; [93, 255, 192, 1]
 0x0000001c ADD R63 R63 R60                                 ;; [16, 255, 255, 0]
@@ -2111,7 +4441,7 @@ data_NonConfigurable_4 .word 18446744073709486084
 0x000001f4 ADDI $writable R59 0x410                        ;; [80, 67, 180, 16]
 0x000001f8 ADDI R17 R59 0x1a8                              ;; [80, 71, 177, 168]
 0x000001fc MOVE R58 R17                                    ;; [26, 233, 16, 0]
-0x00000200 JAL R62 $pc 0x131                               ;; [153, 248, 49, 49]
+0x00000200 JAL R62 $pc 0x12b                               ;; [153, 248, 49, 43]
 0x00000204 ADDI R18 R59 0x478                              ;; [80, 75, 180, 120]
 0x00000208 MCPI R18 $writable 0x30                         ;; [96, 73, 0, 48]
 0x0000020c ADDI $writable R59 0x2c0                        ;; [80, 67, 178, 192]
@@ -2228,7 +4558,7 @@ data_NonConfigurable_4 .word 18446744073709486084
 0x000003c8 MOVI R58 0x1                                    ;; [114, 232, 0, 1]
 0x000003cc MOVE R57 R18                                    ;; [26, 229, 32, 0]
 0x000003d0 MOVE R56 R17                                    ;; [26, 225, 16, 0]
-0x000003d4 JAL R62 $pc 0x94                                ;; [153, 248, 48, 148]
+0x000003d4 JAL R62 $pc 0x8e                                ;; [153, 248, 48, 142]
 0x000003d8 ADDI R18 R59 0x3c8                              ;; [80, 75, 179, 200]
 0x000003dc MCPI R18 R17 0x18                               ;; [96, 73, 16, 24]
 0x000003e0 ADDI R17 R59 0x3c8                              ;; [80, 71, 179, 200]
@@ -2238,7 +4568,7 @@ data_NonConfigurable_4 .word 18446744073709486084
 0x000003f0 MOVE R58 $writable                              ;; [26, 233, 0, 0]
 0x000003f4 MOVE R57 R18                                    ;; [26, 229, 32, 0]
 0x000003f8 MOVE R56 R17                                    ;; [26, 225, 16, 0]
-0x000003fc JAL R62 $pc 0x8a                                ;; [153, 248, 48, 138]
+0x000003fc JAL R62 $pc 0x84                                ;; [153, 248, 48, 132]
 0x00000400 ADDI $writable R59 0x3e0                        ;; [80, 67, 179, 224]
 0x00000404 MCPI $writable R17 0x18                         ;; [96, 65, 16, 24]
 0x00000408 ADDI $writable R59 0x3e0                        ;; [80, 67, 179, 224]
@@ -2253,7 +4583,7 @@ data_NonConfigurable_4 .word 18446744073709486084
 0x0000042c MOVI R58 0x0                                    ;; [114, 232, 0, 0]
 0x00000430 MOVE R57 R18                                    ;; [26, 229, 32, 0]
 0x00000434 MOVE R56 R17                                    ;; [26, 225, 16, 0]
-0x00000438 JAL R62 $pc 0x7b                                ;; [153, 248, 48, 123]
+0x00000438 JAL R62 $pc 0x75                                ;; [153, 248, 48, 117]
 0x0000043c ADDI R18 R59 0x380                              ;; [80, 75, 179, 128]
 0x00000440 MCPI R18 R17 0x18                               ;; [96, 73, 16, 24]
 0x00000444 ADDI R17 R59 0x380                              ;; [80, 71, 179, 128]
@@ -2263,7 +4593,7 @@ data_NonConfigurable_4 .word 18446744073709486084
 0x00000454 MOVE R58 $writable                              ;; [26, 233, 0, 0]
 0x00000458 MOVE R57 R18                                    ;; [26, 229, 32, 0]
 0x0000045c MOVE R56 R17                                    ;; [26, 225, 16, 0]
-0x00000460 JAL R62 $pc 0x71                                ;; [153, 248, 48, 113]
+0x00000460 JAL R62 $pc 0x6b                                ;; [153, 248, 48, 107]
 0x00000464 ADDI $writable R59 0x3b0                        ;; [80, 67, 179, 176]
 0x00000468 MCPI $writable R17 0x18                         ;; [96, 65, 16, 24]
 0x0000046c ADDI $writable R59 0x3b0                        ;; [80, 67, 179, 176]
@@ -2278,6 +4608,7 @@ data_NonConfigurable_4 .word 18446744073709486084
 0x00000490 ADDI R17 R59 0x338                              ;; [80, 71, 179, 56]
 >>>>>>> 0f3fd4cde (replave move by movi when possible on asm optimisation)
 0x00000494 MCPI R17 $writable 0x18                         ;; [96, 69, 0, 24]
+<<<<<<< HEAD
 0x00000498 ADDI $writable R59 0x428                        ;; [80, 67, 180, 40]
 0x0000049c MCPI $writable R17 0x18                         ;; [96, 65, 16, 24]
 0x000004a0 ADDI $writable R59 0x428                        ;; [80, 67, 180, 40]
@@ -2455,3 +4786,188 @@ data_NonConfigurable_4 .word 18446744073709486084
 ;; --- END OF TARGET BYTECODE ---
 
     Finished release [optimized + fuel] target(s) [1.888 KB] in ???
+=======
+0x00000498 ADD R25 R25 $one                                ;; [16, 101, 144, 64]
+0x0000049c JMPB $zero 0x9d                                 ;; [117, 0, 0, 157]
+0x000004a0 ADDI $writable R59 0x108                        ;; [80, 67, 177, 8]
+0x000004a4 MCPI $writable R17 0x10                         ;; [96, 65, 16, 16]
+0x000004a8 LW $writable R63 0x1                            ;; [93, 67, 240, 1]
+0x000004ac LW R17 R59 0x21                                 ;; [93, 71, 176, 33]
+0x000004b0 LW R18 R59 0x22                                 ;; [93, 75, 176, 34]
+0x000004b4 LOGD $zero $writable R17 R18                    ;; [52, 1, 4, 82]
+0x000004b8 ADDI $writable R59 0x410                        ;; [80, 67, 180, 16]
+0x000004bc ADD $writable $writable $zero                   ;; [16, 65, 0, 0]
+0x000004c0 MOVI R17 0x10                                   ;; [114, 68, 0, 16]
+0x000004c4 ADD R17 R17 R63                                 ;; [16, 69, 31, 192]
+0x000004c8 ADDI R18 R59 0x58                               ;; [80, 75, 176, 88]
+0x000004cc SW R59 R17 0xb                                  ;; [95, 237, 16, 11]
+0x000004d0 MOVI R17 0x3                                    ;; [114, 68, 0, 3]
+0x000004d4 SW R59 R17 0xc                                  ;; [95, 237, 16, 12]
+0x000004d8 ADDI R17 R59 0xa8                               ;; [80, 71, 176, 168]
+0x000004dc MCPI R17 R18 0x10                               ;; [96, 69, 32, 16]
+0x000004e0 ADDI R18 R59 0x240                              ;; [80, 75, 178, 64]
+0x000004e4 MCPI R18 $writable 0x8                          ;; [96, 73, 0, 8]
+0x000004e8 ADDI $writable R59 0x248                        ;; [80, 67, 178, 72]
+0x000004ec MCPI $writable R17 0x10                         ;; [96, 65, 16, 16]
+0x000004f0 MOVE R58 R18                                    ;; [26, 233, 32, 0]
+0x000004f4 MOVE R57 $writable                              ;; [26, 229, 0, 0]
+0x000004f8 JAL R62 $pc 0x80                                ;; [153, 248, 48, 128]
+0x000004fc EQ $writable R61 $zero                          ;; [19, 67, 208, 0]
+0x00000500 JNZF $writable $zero 0x3b                       ;; [118, 64, 0, 59]
+0x00000504 ADDI $writable R59 0x410                        ;; [80, 67, 180, 16]
+0x00000508 ADD $writable $writable $zero                   ;; [16, 65, 0, 0]
+0x0000050c ADDI $writable $writable 0x8                    ;; [80, 65, 0, 8]
+0x00000510 ADDI R17 R59 0x118                              ;; [80, 71, 177, 24]
+0x00000514 MCPI R17 $writable 0x10                         ;; [96, 69, 0, 16]
+0x00000518 LW $writable R59 0x23                           ;; [93, 67, 176, 35]
+0x0000051c EQ $writable $writable $zero                    ;; [19, 65, 0, 0]
+0x00000520 JNZF $writable $zero 0x1                        ;; [118, 64, 0, 1]
+0x00000524 RVRT $one                                       ;; [54, 4, 0, 0]
+0x00000528 LW $writable R59 0x24                           ;; [93, 67, 176, 36]
+0x0000052c MOVI R17 0x53a                                  ;; [114, 68, 5, 58]
+0x00000530 EQ $writable $writable R17                      ;; [19, 65, 4, 64]
+0x00000534 EQ $writable $writable $zero                    ;; [19, 65, 0, 0]
+0x00000538 JNZF $writable $zero 0x2b                       ;; [118, 64, 0, 43]
+0x0000053c ADDI $writable R59 0x410                        ;; [80, 67, 180, 16]
+0x00000540 MOVI R17 0x18                                   ;; [114, 68, 0, 24]
+0x00000544 ADD R17 $writable R17                           ;; [16, 69, 4, 64]
+0x00000548 MOVI $writable 0x18                             ;; [114, 64, 0, 24]
+0x0000054c ADD $writable $writable R63                     ;; [16, 65, 15, 192]
+0x00000550 ADDI R18 R59 0xd0                               ;; [80, 75, 176, 208]
+0x00000554 SW R59 $writable 0x1a                           ;; [95, 237, 0, 26]
+0x00000558 MOVI $writable 0x3                              ;; [114, 64, 0, 3]
+0x0000055c SW R59 $writable 0x1b                           ;; [95, 237, 0, 27]
+0x00000560 ADDI $writable R59 0xf8                         ;; [80, 67, 176, 248]
+0x00000564 MCPI $writable R18 0x10                         ;; [96, 65, 32, 16]
+0x00000568 ADDI R18 R59 0x258                              ;; [80, 75, 178, 88]
+0x0000056c MCPI R18 R17 0x8                                ;; [96, 73, 16, 8]
+0x00000570 ADDI R17 R59 0x260                              ;; [80, 71, 178, 96]
+0x00000574 MCPI R17 $writable 0x10                         ;; [96, 69, 0, 16]
+0x00000578 MOVE R58 R18                                    ;; [26, 233, 32, 0]
+0x0000057c MOVE R57 R17                                    ;; [26, 229, 16, 0]
+0x00000580 JAL R62 $pc 0x5e                                ;; [153, 248, 48, 94]
+0x00000584 EQ $writable R61 $zero                          ;; [19, 67, 208, 0]
+0x00000588 JNZF $writable $zero 0x15                       ;; [118, 64, 0, 21]
+0x0000058c ADDI $writable R59 0x410                        ;; [80, 67, 180, 16]
+0x00000590 MOVI R17 0x18                                   ;; [114, 68, 0, 24]
+0x00000594 ADD R17 $writable R17                           ;; [16, 69, 4, 64]
+0x00000598 ADDI $writable R17 0x8                          ;; [80, 65, 16, 8]
+0x0000059c ADDI R17 R59 0x138                              ;; [80, 71, 177, 56]
+0x000005a0 MCPI R17 $writable 0x10                         ;; [96, 69, 0, 16]
+0x000005a4 LW $writable R59 0x27                           ;; [93, 67, 176, 39]
+0x000005a8 EQ $writable $writable $one                     ;; [19, 65, 0, 64]
+0x000005ac JNZF $writable $zero 0x2                        ;; [118, 64, 0, 2]
+0x000005b0 MOVI $writable 0x2                              ;; [114, 64, 0, 2]
+0x000005b4 RVRT $writable                                  ;; [54, 64, 0, 0]
+0x000005b8 LW $writable R59 0x28                           ;; [93, 67, 176, 40]
+0x000005bc EQ $writable $writable $one                     ;; [19, 65, 0, 64]
+0x000005c0 EQ $writable $writable $zero                    ;; [19, 65, 0, 0]
+0x000005c4 JNZF $writable $zero 0x4                        ;; [118, 64, 0, 4]
+0x000005c8 ADDI $writable R59 0x1c0                        ;; [80, 67, 177, 192]
+0x000005cc SW R59 $one 0x38                                ;; [95, 236, 16, 56]
+0x000005d0 MCPI R23 $writable 0x8                          ;; [96, 93, 0, 8]
+0x000005d4 JMPF $zero 0x8                                  ;; [116, 0, 0, 8]
+0x000005d8 LW $writable R63 0x4                            ;; [93, 67, 240, 4]
+0x000005dc RVRT $writable                                  ;; [54, 64, 0, 0]
+0x000005e0 LW $writable R63 0x4                            ;; [93, 67, 240, 4]
+0x000005e4 RVRT $writable                                  ;; [54, 64, 0, 0]
+0x000005e8 LW $writable R63 0x4                            ;; [93, 67, 240, 4]
+0x000005ec RVRT $writable                                  ;; [54, 64, 0, 0]
+0x000005f0 LW $writable R63 0x4                            ;; [93, 67, 240, 4]
+0x000005f4 RVRT $writable                                  ;; [54, 64, 0, 0]
+0x000005f8 CFSI 0x4c0                                      ;; [146, 0, 4, 192]
+0x000005fc MOVE R62 R22                                    ;; [26, 249, 96, 0]
+0x00000600 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x00000604 POPL 0x3ff                                      ;; [151, 0, 3, 255]
+0x00000608 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x0000060c PSHL 0x3f                                       ;; [149, 0, 0, 63]
+0x00000610 PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x00000614 MOVE R59 $sp                                    ;; [26, 236, 80, 0]
+0x00000618 CFEI 0x90                                       ;; [145, 0, 0, 144]
+0x0000061c ADDI $writable R59 0x78                         ;; [80, 67, 176, 120]
+0x00000620 MCPI $writable R57 0x18                         ;; [96, 67, 144, 24]
+0x00000624 ADDI $writable R59 0x60                         ;; [80, 67, 176, 96]
+0x00000628 ADDI R17 R59 0x78                               ;; [80, 71, 176, 120]
+0x0000062c MCPI R59 R17 0x18                               ;; [96, 237, 16, 24]
+0x00000630 ADDI R17 R59 0x30                               ;; [80, 71, 176, 48]
+0x00000634 MCPI R17 R59 0x18                               ;; [96, 71, 176, 24]
+0x00000638 LW R17 R59 0x6                                  ;; [93, 71, 176, 6]
+0x0000063c LW R21 R59 0x7                                  ;; [93, 87, 176, 7]
+0x00000640 LW R18 R59 0x8                                  ;; [93, 75, 176, 8]
+0x00000644 MOVI R19 0x8                                    ;; [114, 76, 0, 8]
+0x00000648 ADD R19 R18 R19                                 ;; [16, 77, 36, 192]
+0x0000064c GT R20 R19 R21                                  ;; [21, 81, 53, 64]
+0x00000650 JNZF R20 $zero 0x1                              ;; [118, 80, 0, 1]
+0x00000654 JMPF $zero 0x7                                  ;; [116, 0, 0, 7]
+0x00000658 MOVI R20 0x2                                    ;; [114, 80, 0, 2]
+0x0000065c MUL R20 R21 R20                                 ;; [27, 81, 85, 0]
+0x00000660 MOVI R21 0x8                                    ;; [114, 84, 0, 8]
+0x00000664 ADD R21 R20 R21                                 ;; [16, 85, 69, 64]
+0x00000668 ALOC R21                                        ;; [38, 84, 0, 0]
+0x0000066c MCP $hp R17 R18                                 ;; [40, 29, 20, 128]
+0x00000670 MOVE R17 $hp                                    ;; [26, 68, 112, 0]
+0x00000674 ADD R18 R17 R18                                 ;; [16, 73, 20, 128]
+0x00000678 SW R18 R58 0x0                                  ;; [95, 75, 160, 0]
+0x0000067c ADDI R18 R59 0x48                               ;; [80, 75, 176, 72]
+0x00000680 SW R59 R17 0x9                                  ;; [95, 237, 16, 9]
+0x00000684 SW R59 R21 0xa                                  ;; [95, 237, 80, 10]
+0x00000688 SW R59 R19 0xb                                  ;; [95, 237, 48, 11]
+0x0000068c ADDI R17 R59 0x18                               ;; [80, 71, 176, 24]
+0x00000690 MCPI R17 R18 0x18                               ;; [96, 69, 32, 24]
+0x00000694 MCPI $writable R17 0x18                         ;; [96, 65, 16, 24]
+0x00000698 MCPI R56 $writable 0x18                         ;; [96, 225, 0, 24]
+0x0000069c CFSI 0x90                                       ;; [146, 0, 0, 144]
+0x000006a0 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x000006a4 POPL 0x3f                                       ;; [151, 0, 0, 63]
+0x000006a8 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x000006ac PSHL 0x7                                        ;; [149, 0, 0, 7]
+0x000006b0 PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x000006b4 MOVE R59 $sp                                    ;; [26, 236, 80, 0]
+0x000006b8 CFEI 0x48                                       ;; [145, 0, 0, 72]
+0x000006bc ADDI $writable R59 0x30                         ;; [80, 67, 176, 48]
+0x000006c0 MOVI R17 0x400                                  ;; [114, 68, 4, 0]
+0x000006c4 ALOC R17                                        ;; [38, 68, 0, 0]
+0x000006c8 ADDI R17 R59 0x18                               ;; [80, 71, 176, 24]
+0x000006cc SW R59 $hp 0x3                                  ;; [95, 236, 112, 3]
+0x000006d0 MOVI R18 0x400                                  ;; [114, 72, 4, 0]
+0x000006d4 SW R59 R18 0x4                                  ;; [95, 237, 32, 4]
+0x000006d8 SW R59 $zero 0x5                                ;; [95, 236, 0, 5]
+0x000006dc MCPI R59 R17 0x18                               ;; [96, 237, 16, 24]
+0x000006e0 MCPI $writable R59 0x18                         ;; [96, 67, 176, 24]
+0x000006e4 MCPI R58 $writable 0x18                         ;; [96, 233, 0, 24]
+0x000006e8 CFSI 0x48                                       ;; [146, 0, 0, 72]
+0x000006ec POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x000006f0 POPL 0x7                                        ;; [151, 0, 0, 7]
+0x000006f4 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x000006f8 PSHL 0x7                                        ;; [149, 0, 0, 7]
+0x000006fc PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x00000700 MOVE R59 $sp                                    ;; [26, 236, 80, 0]
+0x00000704 CFEI 0x28                                       ;; [145, 0, 0, 40]
+0x00000708 ADDI $writable R59 0x10                         ;; [80, 67, 176, 16]
+0x0000070c MCPI $writable R58 0x8                          ;; [96, 67, 160, 8]
+0x00000710 ADDI $writable R59 0x18                         ;; [80, 67, 176, 24]
+0x00000714 MCPI $writable R57 0x10                         ;; [96, 67, 144, 16]
+0x00000718 LW $writable R59 0x3                            ;; [93, 67, 176, 3]
+0x0000071c LW R17 R59 0x4                                  ;; [93, 71, 176, 4]
+0x00000720 SW R59 $writable 0x0                            ;; [95, 237, 0, 0]
+0x00000724 SW R59 R17 0x1                                  ;; [95, 237, 16, 1]
+0x00000728 LW $writable R59 0x0                            ;; [93, 67, 176, 0]
+0x0000072c ADDI R17 R59 0x10                               ;; [80, 71, 176, 16]
+0x00000730 MOVI R18 0x3                                    ;; [114, 72, 0, 3]
+0x00000734 MEQ $writable R17 $writable R18                 ;; [41, 65, 20, 18]
+0x00000738 MOVE R61 $writable                              ;; [26, 245, 0, 0]
+0x0000073c CFSI 0x28                                       ;; [146, 0, 0, 40]
+0x00000740 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x00000744 POPL 0x7                                        ;; [151, 0, 0, 7]
+0x00000748 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x0000074c NOOP                                            ;; [71, 0, 0, 0]
+.data_section:
+0x00000750 .word i14757395258967588866, as hex be bytes ([CC, CC, CC, CC, CC, CC, 00, 02])
+0x00000758 .word i3647243719605075626, as hex be bytes ([32, 9D, 9C, D6, CC, 55, BE, AA])
+0x00000760 .bytes as hex ([73, 65, 74]), len i3, as ascii "set"
+0x00000768 .bytes as hex ([61, 64, 64]), len i3, as ascii "add"
+0x00000770 .word i18446744073709486084, as hex be bytes ([FF, FF, FF, FF, FF, FF, 00, 04])
+;; --- END OF TARGET BYTECODE ---
+
+    Finished release [optimized + fuel] target(s) [1.912 KB] in ???
+>>>>>>> ef4a6e047 (more operators for const_propagate)

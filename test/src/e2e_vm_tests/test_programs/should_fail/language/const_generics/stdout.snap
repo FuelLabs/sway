@@ -6,6 +6,8 @@ exit status: 1
 output:
     Building test/src/e2e_vm_tests/test_programs/should_fail/language/const_generics
    Compiling library std (sway-lib-std)
+DIFF------------------------------
+.program:
    Compiling script const_generics (test/src/e2e_vm_tests/test_programs/should_fail/language/const_generics)
 error
  --> test/src/e2e_vm_tests/test_programs/should_fail/language/const_generics/src/main.sw:7:15
@@ -27,5 +29,35 @@ exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_fail/language/const_generics
    Compiling library std (sway-lib-std)
+DIFF------------------------------
+.program:
    Compiling script const_generics (test/src/e2e_vm_tests/test_programs/should_fail/language/const_generics)
+<<<<<<< HEAD
     Finished debug [unoptimized + fuel] target(s) [56 B] in ???
+=======
+DIFF------------------------------
+.program:
+DIFF------------------------------
+.program:
+.0                                      ; --- start of function: __entry ---
+move $$locbase $sp                      ; save locals base register for function __entry
+cfei i0                                 ; allocate 0 bytes for locals and 0 slots for call arguments
+.4
+fncall .2                               ; [call]: call main_0
+ move $r1 $zero                          ; [call]: return unit value
+ movi $r1 i0                             ; [call]: return unit value
+retd $zero $zero
+DIFF------------------------------
+.program:
+.2                                      ; --- start of function: main_0 ---
+pusha .2                                ; save all registers
+move $$locbase $sp                      ; save locals base register for function main_0
+cfei i0                                 ; allocate 0 bytes for locals and 0 slots for call arguments
+.5
+ji  .3
+.3
+cfsi i0                                 ; free 0 bytes for locals and 0 slots for extra call arguments
+popa .2                                 ; restore all registers
+jal $zero $$reta i0                     ; return from call
+    Finished debug [unoptimized + fuel] target(s) [64 B] in ???
+>>>>>>> ef4a6e047 (more operators for const_propagate)

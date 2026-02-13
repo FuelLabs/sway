@@ -1,12 +1,13 @@
 ---
 source: test/src/snapshot/mod.rs
-assertion_line: 266
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_fail/language/panic_expression/too_many_panic_expressions
 exit status: 1
 output:
     Building test/src/e2e_vm_tests/test_programs/should_fail/language/panic_expression/too_many_panic_expressions
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
+DIFF------------------------------
+.program:
    Compiling script too_many_panic_expressions (test/src/e2e_vm_tests/test_programs/should_fail/language/panic_expression/too_many_panic_expressions)
 error: Project contains more than 256 `panic` expressions
   --> test/src/e2e_vm_tests/test_programs/should_fail/language/panic_expression/too_many_panic_expressions/src/main.sw:38:11

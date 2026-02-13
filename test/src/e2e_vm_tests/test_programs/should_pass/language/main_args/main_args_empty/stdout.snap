@@ -10,6 +10,10 @@ output:
 library {
 }
 
+DIFF------------------------------
+.program:
+DIFF------------------------------
+.program:
 ;; --- START OF TARGET BYTECODE ---
 
 0x00000000 MOVE R60 $pc                                    ;; [26, 240, 48, 0]
@@ -54,6 +58,80 @@ script {
 !12 = fn_name_span !10 12 16
 !13 = (!11 !12)
 
+DIFF------------------------------
+.program:
+DIFF------------------------------
+.program:
+DIFF------------------------------
+.program:
+.0                                      ; --- start of function: __entry ---
+move $$locbase $sp                      ; save locals base register for function __entry
+cfei i0                                 ; allocate 0 bytes for locals and 0 slots for call arguments
+.4
+fncall .2                               ; [call]: call main_0
+ move $r1 $zero                          ; [call]: return unit value
+ movi $r1 i0                             ; [call]: return unit value
+retd $zero $zero
+DIFF------------------------------
+.program:
+.0                                      ; --- start of function: __entry ---
+move $$locbase $sp                      ; save locals base register for function __entry
+.4
+fncall .2                               ; [call]: call main_0
+retd $zero $zero
+DIFF------------------------------
+.program:
+.0                                      ; --- start of function: __entry ---
+move $$locbase $sp                      ; save locals base register for function __entry
+.4
+fncall .2                               ; [call]: call main_0
+retd $zero $zero
+DIFF------------------------------
+.program:
+.0                                      ; --- start of function: __entry ---
+move $$locbase $sp                      ; save locals base register for function __entry
+.4
+fncall .2                               ; [call]: call main_0
+retd $zero $zero
+DIFF------------------------------
+.program:
+.2                                      ; --- start of function: main_0 ---
+pusha .2                                ; save all registers
+move $$locbase $sp                      ; save locals base register for function main_0
+cfei i0                                 ; allocate 0 bytes for locals and 0 slots for call arguments
+.5
+ji  .3
+.3
+cfsi i0                                 ; free 0 bytes for locals and 0 slots for extra call arguments
+popa .2                                 ; restore all registers
+jal $zero $$reta i0                     ; return from call
+DIFF------------------------------
+.program:
+.2                                      ; --- start of function: main_0 ---
+pusha .2                                ; save all registers
+move $$locbase $sp                      ; save locals base register for function main_0
+.5
+.3
+popa .2                                 ; restore all registers
+jal $zero $$reta i0                     ; return from call
+DIFF------------------------------
+.program:
+.2                                      ; --- start of function: main_0 ---
+pusha .2                                ; save all registers
+move $$locbase $sp                      ; save locals base register for function main_0
+.5
+.3
+popa .2                                 ; restore all registers
+jal $zero $$reta i0                     ; return from call
+DIFF------------------------------
+.program:
+.2                                      ; --- start of function: main_0 ---
+pusha .2                                ; save all registers
+move $$locbase $sp                      ; save locals base register for function main_0
+.5
+.3
+popa .2                                 ; restore all registers
+jal $zero $$reta i0                     ; return from call
 ;; ASM: Final program
 ;; Program kind: Script
 .program:

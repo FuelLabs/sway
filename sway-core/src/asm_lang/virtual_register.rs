@@ -10,6 +10,12 @@ pub enum VirtualRegister {
     Constant(ConstantRegister),
 }
 
+impl From<&str> for VirtualRegister {
+    fn from(value: &str) -> Self {
+        VirtualRegister::Virtual(value.to_string())
+    }
+}
+
 impl VirtualRegister {
     pub fn is_virtual(&self) -> bool {
         matches!(self, Self::Virtual(_))
