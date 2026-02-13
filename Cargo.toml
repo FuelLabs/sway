@@ -102,9 +102,6 @@ fuel-types = "0.65"
 fuel-tx = "0.65"
 fuel-vm = "0.65"
 
-# Dependencies from the `forc-wallet` repository:
-forc-wallet = "0.15"
-
 #
 # External dependencies
 #
@@ -132,7 +129,6 @@ crossbeam-channel = "0.5"
 dap = "0.4.1-alpha"
 dashmap = "6.1"
 devault = "0.2"
-dialoguer = "0.11"
 dir_indexer = "0.0"
 dirs = "5.0"
 downcast-rs = "1.2"
@@ -202,7 +198,6 @@ rexpect = "0.6"
 revm = "14.0"
 rmcp = "0.2"
 ropey = "1.5"
-rpassword = "7.2"
 rustc-hash = "1.1"
 rustyline = "15.0"
 scopeguard = "1.2"
