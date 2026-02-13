@@ -364,18 +364,32 @@ async fn can_send_string_message() {
     assert_eq!(*messages_contract_id, **message_receipt.sender().unwrap());
     assert_eq!(&recipient_address, message_receipt.recipient().unwrap());
     assert_eq!(amount, message_receipt.amount().unwrap());
-    assert_eq!(16, message_receipt.len().unwrap()); // smo ID + 8 bytes
-    assert_eq!(
-        [
-            102, // 'f'
-            117, // 'u'
-            101, // 'e'
-            108, // 'l'
-            0,
-            0,
-            0,
-            0,
-        ],
-        message_receipt.data().unwrap()[8..16]
-    );
+    let message_receipt_len = message_receipt.len().unwrap(); // smo ID + str array len
+    match message_receipt_len {
+        // str array with no padding (new memory layout)
+        12 => assert_eq!(
+            [
+                102, // 'f'
+                117, // 'u'
+                101, // 'e'
+                108, // 'l'
+            ],
+            message_receipt.data().unwrap()[8..12]
+        ),
+        // str array with padding (old memory layout)
+        16 => assert_eq!(
+            [
+                102, // 'f'
+                117, // 'u'
+                101, // 'e'
+                108, // 'l'
+                0,
+                0,
+                0,
+                0,
+            ],
+            message_receipt.data().unwrap()[8..16]
+        ),
+        _ => panic!("Unexpected message receipt length: {message_receipt_len}. It must be either 12 (str array with no padding) or 16 (str array with padding)."),
+    }
 }

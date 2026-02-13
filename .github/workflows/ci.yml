@@ -448,17 +448,29 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           cache-provider: "warpbuild"
-      - name: Build All Tests
-        run: cargo run --locked --release -p forc -- build --release --locked --path ./test/src/sdk-harness
-      - name: Test All Tests
-        run: cargo run --locked --release -p forc -- test --release --locked --path ./test/src/sdk-harness
-      - name: Cargo Test sway-lib-std
+      - name: Build All Test Projects (Debug)
+        run: cargo run --locked --release -p forc -- build --locked --path ./test/src/sdk-harness
+      - name: Run All SDK Tests (Debug)
         run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
-      - name: Build All Tests - Experimental Feature 'new_hashing' disabled
+      - name: Build All Test Projects (Release)
+        run: cargo run --locked --release -p forc -- build --release --locked --path ./test/src/sdk-harness
+      - name: Run All SDK Tests (Release)
+        run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
+      - name: Build All Test Projects - ['new_hashing' disabled] (Debug)
+        run: cargo run --locked --release -p forc -- build --locked --path ./test/src/sdk-harness --no-experimental new_hashing
+      - name: Run All SDK Tests - ['new_hashing' disabled] (Debug)
+        run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
+      - name: Build All Test Projects - ['new_hashing' disabled] (Release)
         run: cargo run --locked --release -p forc -- build --release --locked --path ./test/src/sdk-harness --no-experimental new_hashing
-      - name: Test All Tests - Experimental Feature 'new_hashing' disabled
-        run: cargo run --locked --release -p forc -- test --release --locked --path ./test/src/sdk-harness --no-experimental new_hashing
-      - name: Cargo Test sway-lib-std - Experimental Feature 'new_hashing' disabled
+      - name: Run All SDK Tests - ['new_hashing' disabled] (Release)
+        run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
+      - name: Build All Test Projects - ['str_array_no_padding' enabled] (Debug)
+        run: cargo run --locked --release -p forc -- build --locked --path ./test/src/sdk-harness --experimental str_array_no_padding
+      - name: Run All SDK Tests - ['str_array_no_padding' enabled] (Debug)
+        run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
+      - name: Build All Test Projects - ['str_array_no_padding' enabled] (Release)
+        run: cargo run --locked --release -p forc -- build --release --locked --path ./test/src/sdk-harness --experimental str_array_no_padding
+      - name: Run All SDK Tests - ['str_array_no_padding' enabled] (Release)
         run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
 
   forc-run-benchmarks:
@@ -526,34 +538,26 @@ jobs:
         run: forc test --path sway-lib-std
       - name: Run Std Unit Tests (Release)
         run: forc test --release --path sway-lib-std
-      - name: Run Std Unit Tests - Experimental feature 'const_generics' (Debug)
-        run: forc test --path sway-lib-std --experimental const_generics
-      - name: Run Std Unit Tests - Experimental feature 'const_generics' (Release)
-        run: forc test --release --path sway-lib-std --experimental const_generics
-      - name: Run Std Unit Tests - Experimental feature 'new_hashing' (Debug)
+      - name: Run Std Unit Tests - ['new_hashing' disabled] (Debug)
         run: forc test --path sway-lib-std --no-experimental new_hashing
-      - name: Run Std Unit Tests - Experimental feature 'new_hashing' (Release)
+      - name: Run Std Unit Tests - ['new_hashing' disabled] (Release)
         run: forc test --release --path sway-lib-std --no-experimental new_hashing
-      - name: Run Std Unit Tests - Experimental feature 'const_generics,new_hashing' (Debug)
-        run: forc test --path sway-lib-std --experimental const_generics --no-experimental new_hashing
-      - name: Run Std Unit Tests - Experimental feature 'const_generics,new_hashing' (Release)
-        run: forc test --release --path sway-lib-std --experimental const_generics --no-experimental new_hashing
+      - name: Run Std Unit Tests - ['str_array_no_padding' enabled] (Debug)
+        run: forc test --path sway-lib-std --experimental str_array_no_padding
+      - name: Run Std Unit Tests - ['str_array_no_padding' enabled] (Release)
+        run: forc test --release --path sway-lib-std --experimental str_array_no_padding
       - name: Run In Language Unit Tests (Debug)
         run: forc test --error-on-warnings --path test/src/in_language_tests
       - name: Run In Language Unit Tests (Release)
         run: forc test --error-on-warnings --release --path test/src/in_language_tests
-      - name: Run In Language Unit Tests - Experimental feature 'const_generics' (Debug)
-        run: forc test --error-on-warnings --path test/src/in_language_tests --experimental const_generics
-      - name: Run In Language Unit Tests - Experimental feature 'const_generics' (Release)
-        run: forc test --error-on-warnings --release --path test/src/in_language_tests --experimental const_generics
-      - name: Run In Language Unit Tests - Experimental feature 'new_hashing' (Debug)
+      - name: Run In Language Unit Tests - ['new_hashing' disabled] (Debug)
         run: forc test --error-on-warnings --path test/src/in_language_tests --no-experimental new_hashing
-      - name: Run In Language Unit Tests - Experimental feature 'new_hashing' (Release)
+      - name: Run In Language Unit Tests - ['new_hashing' disabled] (Release)
         run: forc test --error-on-warnings --release --path test/src/in_language_tests --no-experimental new_hashing
-      - name: Run In Language Unit Tests - Experimental feature 'const_generics,new_hashing' (Debug)
-        run: forc test --error-on-warnings --path test/src/in_language_tests --experimental const_generics --no-experimental new_hashing
-      - name: Run In Language Unit Tests - Experimental feature 'const_generics,new_hashing' (Release)
-        run: forc test --error-on-warnings --release --path test/src/in_language_tests --experimental const_generics --no-experimental new_hashing
+      - name: Run In Language Unit Tests - ['str_array_no_padding' enabled] (Debug)
+        run: forc test --error-on-warnings --path test/src/in_language_tests --experimental str_array_no_padding
+      - name: Run In Language Unit Tests - ['str_array_no_padding' enabled] (Release)
+        run: forc test --error-on-warnings --release --path test/src/in_language_tests --experimental str_array_no_padding
 
   forc-pkg-fuels-deps-check:
     runs-on: ubuntu-latest
