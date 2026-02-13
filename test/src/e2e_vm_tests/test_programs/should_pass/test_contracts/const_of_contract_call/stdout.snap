@@ -7,11 +7,16 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
    Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
+<<<<<<< HEAD
     Finished release [optimized + fuel] target(s) [19 KB] in ???
+=======
+    Finished release [optimized + fuel] target(s) [20.12 KB] in ???
+>>>>>>> ae8bf196f (transient clear_dependent_on)
      Running 29 tests, filtered 0 tests
 
 tested -- const_of_contract_call
 
+<<<<<<< HEAD
       test cost_of_in_bool ... ok (???, 11137 gas)
       test cost_of_in_u8 ... ok (???, 11059 gas)
       test cost_of_in_u16 ... ok (???, 11378 gas)
@@ -41,6 +46,37 @@ tested -- const_of_contract_call
       test in_enum_u64 ... ok (???, 11048 gas)
       test in_enum_u64_u64 ... ok (???, 11043 gas)
       test in_enum_u64_u64_u64 ... ok (???, 11059 gas)
+=======
+      test cost_of_in_bool ... ok (???, 11268 gas)
+      test cost_of_in_u8 ... ok (???, 11087 gas)
+      test cost_of_in_u16 ... ok (???, 11474 gas)
+      test cost_of_in_u32 ... ok (???, 11711 gas)
+      test cost_of_in_u64 ... ok (???, 10943 gas)
+      test cost_of_in_u256 ... ok (???, 10984 gas)
+      test cost_of_in_b256 ... ok (???, 10966 gas)
+      test cost_of_in_str_0 ... ok (???, 11458 gas)
+      test cost_of_in_str_1 ... ok (???, 11637 gas)
+      test cost_of_in_str_8 ... ok (???, 11652 gas)
+      test cost_of_in_str_16 ... ok (???, 11645 gas)
+      test cost_of_in_str_32 ... ok (???, 11659 gas)
+      test cost_of_in_array_0 ... ok (???, 10907 gas)
+      test cost_of_in_array_1 ... ok (???, 10996 gas)
+      test cost_of_in_array_8 ... ok (???, 11523 gas)
+      test cost_of_in_array_16 ... ok (???, 11030 gas)
+      test cost_of_in_array_32 ... ok (???, 11084 gas)
+      test cost_of_in_array_64 ... ok (???, 11180 gas)
+      test cost_of_in_tuple_0 ... ok (???, 10930 gas)
+      test cost_of_in_tuple_1 ... ok (???, 11001 gas)
+      test cost_of_in_tuple_2 ... ok (???, 11090 gas)
+      test cost_of_in_tuple_3 ... ok (???, 11103 gas)
+      test cost_of_in_tuple_4 ... ok (???, 11073 gas)
+      test in_struct_u64 ... ok (???, 11034 gas)
+      test in_struct_u64_u64 ... ok (???, 11079 gas)
+      test in_struct_u64_u64_u64 ... ok (???, 11099 gas)
+      test in_enum_u64 ... ok (???, 11134 gas)
+      test in_enum_u64_u64 ... ok (???, 11138 gas)
+      test in_enum_u64_u64_u64 ... ok (???, 11154 gas)
+>>>>>>> ae8bf196f (transient clear_dependent_on)
 
 test result: OK. 29 passed; 0 failed; finished in ???
 
