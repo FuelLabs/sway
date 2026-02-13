@@ -69,7 +69,16 @@ impl KnownValues {
 
     /// Clear values that depend on a register having a specific value.
     fn clear_dependent_on(&mut self, reg: &VirtualRegister) {
-        self.values.retain(|_, v| !v.depends_on(reg));
+        let mut q = vec![reg.clone()];
+
+        while let Some(reg) = q.pop() {
+            let keys = self.values.extract_if(|_, v| v.depends_on(&reg))
+                .map(|(k, _)| k)
+                .collect::<Vec<_>>();
+            q.extend(keys);
+
+            self.values.remove(&reg);
+        }
     }
 
     /// Insert a known value for a register.
@@ -177,13 +186,13 @@ impl AbstractInstructionSet {
             }
 
             // Some ops are known to produce certain results, interpret them here.
-            let interpreted_op = match op.opcode.clone() {
+            let skip_reset = match op.opcode.clone() {
                 Either::Left(VirtualOp::MOVI(dst, imm)) => {
                     let imm = KnownRegValue::Const(imm.value() as u64);
-                    if known_values.resolve(&dst) == Some(imm.clone()) {
+                    if known_values.resolve(&dst).as_ref() == Some(&imm) {
                         op.opcode = Either::Left(VirtualOp::NOOP);
                     } else {
-                        known_values.assign(dst.clone(), imm);
+                        known_values.assign(dst, imm);
                     }
                     true
                 }
@@ -207,7 +216,7 @@ impl AbstractInstructionSet {
             };
 
             // If we don't know how to interpret the op, it's outputs are not known.
-            if !interpreted_op {
+            if !skip_reset {
                 let reset = match &op.opcode {
                     Either::Left(op) => match op {
                         VirtualOp::ECAL(_, _, _, _) => ResetKnown::Full,
@@ -248,5 +257,120 @@ impl AbstractInstructionSet {
         }
 
         self
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use expect_test::expect;
+    use prettydiff::basic::DiffOp;
+
+    fn optimise(
+        ops: impl IntoIterator<Item = Op>,
+        f: impl FnOnce(AbstractInstructionSet) -> AbstractInstructionSet,
+    ) -> String {
+        let ops = AbstractInstructionSet {
+            ops: ops.into_iter().collect(),
+        };
+
+        let old = format!("{ops}");
+        let ops = f(ops);
+        let new = format!("{ops}");
+
+        let lines = prettydiff::diff_lines(&old, &new);
+
+        let mut s = String::new();
+        for d in lines.diff() {
+            match d {
+                DiffOp::Insert(items) => {
+                    for item in items {
+                        s.push_str(format!("+ {}\n", item).as_str());
+                    }
+                }
+                DiffOp::Replace(items, items1) => {
+                    for item in items {
+                        s.push_str(format!("- {}\n", item).as_str());
+                    }
+
+                    for item in items1 {
+                        s.push_str(format!("+ {}\n", item).as_str());
+                    }
+                }
+                DiffOp::Remove(items) => {
+                    for item in items {
+                        s.push_str(format!("- {}\n", item).as_str());
+                    }
+                }
+                DiffOp::Equal(items) => {
+                    for item in items {
+                        s.push_str(format!("{}\n", item).as_str());
+                    }
+                }
+            }
+        }
+
+        s
+    }
+
+    #[test]
+    fn constant_propagate_transform_movi_to_noop() {
+        let actual = optimise(
+            [
+                VirtualOp::movi("0", 10).into(),
+                VirtualOp::movi("0", 10).into(),
+            ],
+            |ops| ops.constant_propagate(),
+        );
+
+        expect![
+            ".program:
+movi $r0 i10
+- movi $r0 i10
+"
+        ]
+        .assert_eq(&actual);
+    }
+
+    #[test]
+    fn constant_propagate_transform_move_to_noop() {
+        let actual = optimise(
+            [
+                VirtualOp::movi("0", 10).into(),
+                VirtualOp::movi("1", 10).into(),
+                VirtualOp::r#move("1", "0").into(),
+            ],
+            |ops| ops.constant_propagate(),
+        );
+
+        expect![
+            ".program:
+movi $r0 i10
+movi $r1 i10
+- move $r1 $r0
+"
+        ]
+        .assert_eq(&actual);
+    }
+
+    #[test]
+    fn constant_propagate_transform_move_to_movi() {
+        let actual = optimise(
+            [
+                VirtualOp::movi("0", 10).into(),
+                VirtualOp::r#move(ConstantRegister::FuncArg0, "0").into(),
+            ],
+            |ops| ops.constant_propagate(),
+        );
+
+        expect![
+            ".program:
+movi $r0 i10
+- move $$arg0 $r0
++ movi $$arg0 i10
+"
+        ]
+        .assert_eq(&actual);
     }
 }
