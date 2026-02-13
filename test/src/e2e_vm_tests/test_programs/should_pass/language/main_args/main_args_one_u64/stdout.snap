@@ -31,13 +31,13 @@ script {
 
         entry():
         v104v1 = const u64 0, !5
-        v530v1 = gtf v104v1, 10, !11
-        v531v1 = bitcast v530v1 to ptr, !12
-        v584v1 = cast_ptr v531v1 to __ptr { u64 }, !15
-        v676v1 = get_local __ptr { u64 }, __aggr_memcpy_0
-        mem_copy_val v676v1, v584v1
+        v364v1 = gtf v104v1, 10, !11
+        v365v1 = bitcast v364v1 to ptr, !12
+        v418v1 = cast_ptr v365v1 to __ptr { u64 }, !15
+        v432v1 = get_local __ptr { u64 }, __aggr_memcpy_0
+        mem_copy_val v432v1, v418v1
         v112v1 = get_local __ptr { u64 }, args, !16
-        mem_copy_val v112v1, v676v1
+        mem_copy_val v112v1, v432v1
         v134v1 = get_local __ptr { u64 }, args, !17
         v135v1 = const u64 0
         v136v1 = get_elem_ptr v134v1, __ptr u64, v135v1, !18
@@ -45,16 +45,16 @@ script {
         v138v1 = call main_11(v137v1), !21
         v139v1 = get_local __ptr u64, _result, !22
         store v138v1 to v139v1, !22
-        v258v1 = get_local __ptr u64, _result, !23
+        v158v1 = get_local __ptr u64, _result, !23
         v149v1 = const u64 8
-        retd v258v1 v149v1, !27
+        retd v158v1 v149v1, !27
     }
 
     entry_orig fn main_11(baba !29: u64) -> u64, !32 {
         entry(baba: u64):
         v131v1 = const u64 1, !33
-        v456v1 = add baba, v131v1, !36
-        ret u64 v456v1
+        v350v1 = add baba, v131v1, !36
+        ret u64 v350v1
     }
 }
 
@@ -66,13 +66,13 @@ script {
 !5 = span !4 1542 1543
 !6 = span !0 59 89
 !7 = fn_call_path_span !0 59 77
-!8 = span !4 186088 186120
-!9 = fn_call_path_span !4 186088 186118
+!8 = span !4 186170 186202
+!9 = fn_call_path_span !4 186170 186200
 !10 = span !4 1525 1549
 !11 = (!6 !7 !8 !9 !10)
 !12 = (!6 !7 !8 !9 !10)
-!13 = span !4 186063 186121
-!14 = fn_call_path_span !4 186063 186082
+!13 = span !4 186145 186203
+!14 = fn_call_path_span !4 186145 186164
 !15 = (!6 !7 !13 !14)
 !16 = span !0 40 90
 !17 = span !0 131 135
@@ -84,7 +84,7 @@ script {
 !23 = span !0 182 189
 !24 = span !0 156 190
 !25 = fn_call_path_span !0 156 173
-!26 = span !4 93998 94024
+!26 = span !4 94080 94106
 !27 = (!24 !25 !26)
 !28 = "test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_one_u64/src/main.sw"
 !29 = span !28 17 21

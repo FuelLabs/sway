@@ -80,6 +80,9 @@ impl ReplaceDecls for TyAstNode {
             TyAstNodeContent::Declaration(TyDecl::VariableDecl(ref mut decl)) => {
                 decl.body.replace_decls(decl_mapping, handler, ctx)
             }
+            TyAstNodeContent::Declaration(TyDecl::ConstantDecl(ref mut decl)) => {
+                decl.replace_decls(decl_mapping, handler, ctx)
+            }
             TyAstNodeContent::Declaration(_) => Ok(false),
             TyAstNodeContent::Expression(ref mut expr) => {
                 expr.replace_decls(decl_mapping, handler, ctx)
