@@ -6,6 +6,8 @@ exit status: 1
 output:
     Building test/src/e2e_vm_tests/test_programs/should_fail/dbg_wrong_args_count
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
+DIFF------------------------------
+.program:
    Compiling script dbg_wrong_args_count (test/src/e2e_vm_tests/test_programs/should_fail/dbg_wrong_args_count)
 error
  --> test/src/e2e_vm_tests/test_programs/should_fail/dbg_wrong_args_count/src/main.sw:4:13

@@ -273,6 +273,62 @@ pub(crate) enum VirtualOp {
 }
 
 impl VirtualOp {
+    pub fn r#move(a: impl Into<VirtualRegister>, b: impl Into<VirtualRegister>) -> VirtualOp {
+        VirtualOp::MOVE(a.into(), b.into())
+    }
+
+    pub fn r#movi(a: impl Into<VirtualRegister>, b: impl Into<VirtualImmediate18>) -> VirtualOp {
+        VirtualOp::MOVI(a.into(), b.into())
+    }
+
+    pub fn add(
+        a: impl Into<VirtualRegister>,
+        b: impl Into<VirtualRegister>,
+        c: impl Into<VirtualRegister>,
+    ) -> VirtualOp {
+        VirtualOp::ADD(a.into(), b.into(), c.into())
+    }
+
+    pub fn sub(
+        a: impl Into<VirtualRegister>,
+        b: impl Into<VirtualRegister>,
+        c: impl Into<VirtualRegister>,
+    ) -> VirtualOp {
+        VirtualOp::SUB(a.into(), b.into(), c.into())
+    }
+
+    pub fn mul(
+        a: impl Into<VirtualRegister>,
+        b: impl Into<VirtualRegister>,
+        c: impl Into<VirtualRegister>,
+    ) -> VirtualOp {
+        VirtualOp::MUL(a.into(), b.into(), c.into())
+    }
+
+    pub fn div(
+        a: impl Into<VirtualRegister>,
+        b: impl Into<VirtualRegister>,
+        c: impl Into<VirtualRegister>,
+    ) -> VirtualOp {
+        VirtualOp::DIV(a.into(), b.into(), c.into())
+    }
+
+    pub fn exp(
+        a: impl Into<VirtualRegister>,
+        b: impl Into<VirtualRegister>,
+        c: impl Into<VirtualRegister>,
+    ) -> VirtualOp {
+        VirtualOp::EXP(a.into(), b.into(), c.into())
+    }
+
+    pub fn xor(
+        a: impl Into<VirtualRegister>,
+        b: impl Into<VirtualRegister>,
+        c: impl Into<VirtualRegister>,
+    ) -> VirtualOp {
+        VirtualOp::XOR(a.into(), b.into(), c.into())
+    }
+
     pub(crate) fn registers(&self) -> BTreeSet<&VirtualRegister> {
         use VirtualOp::*;
         (match self {
@@ -784,9 +840,9 @@ impl VirtualOp {
     }
 
     /// Returns a list of all registers *read* by instruction `self`.
-    pub(crate) fn use_registers_mut(&mut self) -> BTreeSet<&mut VirtualRegister> {
+    pub(crate) fn use_registers_mut(&mut self) -> Vec<&mut VirtualRegister> {
         use VirtualOp::*;
-        (match self {
+        match self {
             /* Arithmetic/Logic (ALU) Instructions */
             ADD(_r1, r2, r3) => vec![r2, r3],
             ADDI(_r1, r2, _i) => vec![r2],
@@ -912,9 +968,7 @@ impl VirtualOp {
             AddrDataId(_r1, _i) => vec![],
 
             Undefined => vec![],
-        })
-        .into_iter()
-        .collect()
+        }
     }
 
     /// Returns a list of all registers *written* by instruction `self`. All of our opcodes define

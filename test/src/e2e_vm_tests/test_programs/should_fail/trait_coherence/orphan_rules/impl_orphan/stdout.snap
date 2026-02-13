@@ -6,6 +6,8 @@ exit status: 1
 output:
     Building test/src/e2e_vm_tests/test_programs/should_fail/trait_coherence/orphan_rules/impl_orphan
    Compiling library impl_orphan_lib (test/src/e2e_vm_tests/test_programs/should_fail/trait_coherence/orphan_rules/impl_orphan_lib)
+DIFF------------------------------
+.program:
    Compiling library impl_orphan (test/src/e2e_vm_tests/test_programs/should_fail/trait_coherence/orphan_rules/impl_orphan)
 error: coherence violation: only traits defined in this package can be implemented for external types
  --> test/src/e2e_vm_tests/test_programs/should_fail/trait_coherence/orphan_rules/impl_orphan/src/lib.sw:4:1

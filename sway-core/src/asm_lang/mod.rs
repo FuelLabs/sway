@@ -94,6 +94,16 @@ pub(crate) struct Op {
     pub(crate) owning_span: Option<Span>,
 }
 
+impl From<VirtualOp> for Op {
+    fn from(opcode: VirtualOp) -> Self {
+        Op {
+            opcode: Either::Left(opcode),
+            comment: String::new(),
+            owning_span: None,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct AllocatedAbstractOp {
     pub(crate) opcode: Either<AllocatedInstruction, ControlFlowOp<AllocatedRegister>>,
@@ -746,7 +756,7 @@ impl Op {
         }
     }
 
-    pub(crate) fn use_registers_mut(&mut self) -> BTreeSet<&mut VirtualRegister> {
+    pub(crate) fn use_registers_mut(&mut self) -> Vec<&mut VirtualRegister> {
         match &mut self.opcode {
             Either::Left(virt_op) => virt_op.use_registers_mut(),
             Either::Right(org_op) => org_op.use_registers_mut(),
@@ -1400,9 +1410,10 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
         .collect()
     }
 
-    pub(crate) fn use_registers_mut(&mut self) -> BTreeSet<&mut Reg> {
+    pub(crate) fn use_registers_mut(&mut self) -> Vec<&mut Reg> {
         use ControlFlowOp::*;
-        (match self {
+
+        match self {
             Label(_)
             | Comment
             | DataSectionOffsetPlaceholder
@@ -1414,9 +1425,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
                 JumpType::NotZero(r1) => vec![r1],
                 JumpType::Call => vec![],
             },
-        })
-        .into_iter()
-        .collect()
+        }
     }
 
     pub(crate) fn def_registers(&self) -> BTreeSet<&Reg> {

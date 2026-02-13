@@ -125,6 +125,13 @@ impl fmt::Display for VirtualImmediate12 {
 pub struct VirtualImmediate18 {
     value: u32,
 }
+
+impl From<u64> for VirtualImmediate18 {
+    fn from(value: u64) -> Self {
+        VirtualImmediate18::new(value)
+    }
+}
+
 impl VirtualImmediate18 {
     pub(crate) fn try_new(raw: u64, err_msg_span: Span) -> Result<Self, CompileError> {
         if raw > compiler_constants::EIGHTEEN_BITS {

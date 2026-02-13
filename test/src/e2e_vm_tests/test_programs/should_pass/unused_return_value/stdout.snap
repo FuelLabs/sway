@@ -1,12 +1,13 @@
 ---
 source: test/src/snapshot/mod.rs
-assertion_line: 266
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/unused_return_value
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/unused_return_value
    Compiling library unused_return_value (test/src/e2e_vm_tests/test_programs/should_pass/unused_return_value)
+DIFF------------------------------
+.program:
 warning: Returned value is ignored
   --> test/src/e2e_vm_tests/test_programs/should_pass/unused_return_value/src/main.sw:18:5
    |
