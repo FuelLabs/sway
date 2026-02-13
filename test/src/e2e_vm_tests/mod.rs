@@ -748,18 +748,23 @@ impl TestContext {
                     print_receipts(output, &receipts);
                 }
 
-                if !receipts.iter().all(|res| {
-                    !matches!(
-                        res,
-                        fuel_tx::Receipt::Revert { .. } | fuel_tx::Receipt::Panic { .. }
-                    )
-                }) {
+                let failure_reason = receipts
+                    .iter()
+                    .find(|res| {
+                        matches!(
+                            res,
+                            fuel_tx::Receipt::Revert { .. } | fuel_tx::Receipt::Panic { .. }
+                        )
+                    })
+                    .map(|receipt| format!("{receipt:#?}"));
+
+                if let Some(failure_reason) = failure_reason {
                     println!();
                     for cid in contract_ids {
                         println!("Deployed contract: {}", format!("{:#x}", cid).bold(),);
                     }
 
-                    return Err(anyhow::Error::msg("Receipts contain reverts or panics"));
+                    return Err(anyhow!("{failure_reason}"));
                 }
 
                 if receipts.len() < 2 {
