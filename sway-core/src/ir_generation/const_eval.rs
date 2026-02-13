@@ -1,15 +1,14 @@
 use std::{
-    hash::{DefaultHasher, Hash},
     io::Read,
     ops::{BitAnd, BitOr, BitXor, Not, Rem},
 };
 
 use crate::{
     engine_threading::*,
-    ir_generation::function::{get_encoding_representation_by_id, get_memory_id},
+    ir_generation::function::{get_encoding_id, get_memory_id},
     language::{
         ty::{self, ProjectionKind, TyConstantDecl, TyIntrinsicFunctionKind},
-        CallPath, Literal,
+        CallPath, LazyOp, Literal,
     },
     metadata::MetadataManager,
     semantic_analysis::*,
@@ -165,7 +164,6 @@ pub(crate) fn compile_const_decl(
                         env.module,
                         env.module_ns,
                         env.function_compiler,
-                        &call_path,
                         &value,
                     )?;
 
@@ -199,7 +197,6 @@ pub(super) fn compile_constant_expression(
     module: Module,
     module_ns: Option<&namespace::Module>,
     function_compiler: Option<&FnCompiler>,
-    _call_path: &CallPath,
     const_expr: &ty::TyExpression,
 ) -> Result<Value, CompileError> {
     let span_id_idx = md_mgr.span_to_md(context, &const_expr.span);
@@ -594,7 +591,13 @@ fn const_eval_typed_expr(
             }
 
             let function_decl = lookup.engines.de().get_function(fn_ref);
-            let res = const_eval_codeblock(lookup, known_consts, &function_decl.body);
+
+            // save result here to always run the pop below
+            let res = if function_decl.is_trait_method_dummy {
+                Err(ConstEvalError::CompileError)
+            } else {
+                const_eval_codeblock(lookup, known_consts, &function_decl.body)
+            };
 
             for (name, _) in arguments {
                 known_consts.pop(name);
@@ -1040,9 +1043,26 @@ fn const_eval_typed_expr(
                 }
             }
         }
+        ty::TyExpressionVariant::LazyOperator { op, lhs, rhs } => {
+            let lhs = const_eval_typed_expr(lookup, known_consts, lhs)?.ok_or_else(|| {
+                ConstEvalError::CannotBeEvaluatedToConst {
+                    span: expr.span.clone(),
+                }
+            })?;
+            let lhs_value = lhs.get_content(lookup.context).as_bool().ok_or_else(|| {
+                ConstEvalError::CannotBeEvaluatedToConst {
+                    span: expr.span.clone(),
+                }
+            })?;
+            match (lhs_value, op) {
+                (true, LazyOp::And) | (false, LazyOp::Or) => {
+                    const_eval_typed_expr(lookup, known_consts, rhs)?
+                }
+                (false, LazyOp::And) | (true, LazyOp::Or) => Some(lhs),
+            }
+        }
         ty::TyExpressionVariant::FunctionParameter
         | ty::TyExpressionVariant::AsmExpression { .. }
-        | ty::TyExpressionVariant::LazyOperator { .. }
         | ty::TyExpressionVariant::AbiCast { .. }
         | ty::TyExpressionVariant::StorageAccess(_)
         | ty::TyExpressionVariant::AbiName(_)
@@ -1970,13 +1990,7 @@ fn const_eval_intrinsic(
 
             let t = intrinsic.type_arguments[0].as_type_argument().unwrap();
 
-            let r = get_encoding_representation_by_id(lookup.engines, t.type_id);
-
-            use std::hash::Hasher;
-            let mut state = DefaultHasher::default();
-            r.hash(&mut state);
-            let id = state.finish();
-
+            let id = get_encoding_id(lookup.engines, t.type_id);
             let c = ConstantContent {
                 ty: Type::get_uint64(lookup.context),
                 value: ConstantValue::Uint(id),

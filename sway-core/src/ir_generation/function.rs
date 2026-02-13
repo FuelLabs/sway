@@ -3704,9 +3704,66 @@ impl<'a> FnCompiler<'a> {
         ast_else: Option<&ty::TyExpression>,
         return_type: TypeId,
     ) -> Result<TerminatorValue, CompileError> {
+        let cond_span_md_idx = md_mgr.span_to_md(context, &ast_condition.span);
+
+        // Check if the condition is constant and only generate the correct branch
+        let try_const_eval_condition = matches!(
+            ast_condition.expression,
+            TyExpressionVariant::ConstantExpression { .. }
+                | TyExpressionVariant::ConstGenericExpression { .. }
+        );
+        if try_const_eval_condition {
+            let condition_const_value = compile_constant_expression(
+                self.engines,
+                context,
+                md_mgr,
+                self.module,
+                None,
+                Some(self),
+                ast_condition,
+            );
+            if let Ok(condition_const_value) = condition_const_value {
+                let condition_bool = condition_const_value
+                    .get_constant(context)
+                    .ok_or_else(|| {
+                        CompileError::Internal(
+                            "compile_constant_expression did not return a constant.",
+                            ast_condition.span.clone(),
+                        )
+                    })?
+                    .get_content(context)
+                    .as_bool()
+                    .ok_or_else(|| {
+                        CompileError::Internal(
+                            "if condition returned non-bool",
+                            ast_condition.span.clone(),
+                        )
+                    })?;
+                let branch_value = if condition_bool {
+                    self.compile_expression_to_register(context, md_mgr, ast_then)?
+                } else {
+                    match ast_else {
+                        Some(ast_else) => {
+                            self.compile_expression_to_register(context, md_mgr, ast_else)?
+                        }
+                        None => {
+                            let v = Constant::unique(context, ConstantContent::new_unit(context));
+                            let v = Value::new_constant(context, v);
+                            TerminatorValue {
+                                value: CompiledValue::InRegister(v),
+                                is_terminator: false,
+                            }
+                        }
+                    }
+                };
+
+                return Ok(branch_value);
+            }
+        }
+
         // Compile the condition expression in the entry block.  Then save the current block so we
         // can jump to the true and false blocks after we've created them.
-        let cond_span_md_idx = md_mgr.span_to_md(context, &ast_condition.span);
+
         let cond_value = return_on_termination_or_extract!(self.compile_expression_to_register(
             context,
             md_mgr,
@@ -4171,7 +4228,6 @@ impl<'a> FnCompiler<'a> {
                 self.module,
                 None,
                 Some(self),
-                call_path,
                 value,
             )?;
 
@@ -5618,12 +5674,15 @@ pub fn get_runtime_representation(ctx: &Context, t: Type) -> MemoryRepresentatio
 pub fn get_memory_id(ctx: &Context, t: Type) -> u64 {
     let r = get_runtime_representation(ctx, t);
 
-    // Uncomment here to debug the runtime memory representation
-    // eprintln!("Runtime Repr: {:?} {:?}", t.with_context(ctx), &r);
-
     use std::hash::Hasher;
     let mut state = DefaultHasher::default();
     r.hash(&mut state);
+
+    // Uncomment here to debug the runtime memory representation
+    // let id = state.finish();
+    // eprintln!("Runtime Repr: {:?} {:?} {id}", t.with_context(ctx), &r);
+    // id
+
     state.finish()
 }
 
@@ -5723,11 +5782,14 @@ pub fn get_encoding_representation(
 pub fn get_encoding_id(engines: &Engines, type_id: TypeId) -> u64 {
     use std::hash::Hasher;
     if let Some(r) = get_encoding_representation_by_id(engines, type_id) {
-        // Uncomment here to debug the encoding memory representation
-        // eprintln!("Encoding Repr: {:?} {:?}", engines.help_out(type_id), &r);
-
         let mut state = DefaultHasher::default();
         r.hash(&mut state);
+
+        // Uncomment here to debug the encoding memory representation
+        // let id = state.finish();
+        // eprintln!("Encoding Repr: {:?} {:?} {}", engines.help_out(type_id), &r, id);
+        // id
+
         state.finish()
     } else {
         0
