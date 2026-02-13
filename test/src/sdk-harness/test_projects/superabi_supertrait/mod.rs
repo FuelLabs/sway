@@ -2,13 +2,13 @@ use fuels::prelude::*;
 
 abigen!(Contract(
     name = "SuperAbiSuperTraitTestContract",
-    abi = "test_projects/superabi_supertrait/out/release/superabi_supertrait-abi.json"
+    abi = "out_for_sdk_harness_tests/superabi_supertrait-abi.json"
 ));
 
 async fn get_superabi_supertrait_instance() -> SuperAbiSuperTraitTestContract<Wallet> {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
-        "test_projects/superabi_supertrait/out/release/superabi_supertrait.bin",
+        "out_for_sdk_harness_tests/superabi_supertrait.bin",
         LoadConfiguration::default(),
     )
     .unwrap()

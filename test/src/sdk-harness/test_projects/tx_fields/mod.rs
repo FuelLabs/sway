@@ -11,22 +11,22 @@ use fuels::{
 use std::fs;
 
 const MESSAGE_DATA: [u8; 3] = [1u8, 2u8, 3u8];
-const TX_CONTRACT_BYTECODE_PATH: &str = "test_artifacts/tx_contract/out/release/tx_contract.bin";
+const TX_CONTRACT_BYTECODE_PATH: &str = "out_for_sdk_harness_tests/tx_contract.bin";
 const TX_OUTPUT_PREDICATE_BYTECODE_PATH: &str =
-    "test_artifacts/tx_output_predicate/out/release/tx_output_predicate.bin";
+    "out_for_sdk_harness_tests/tx_output_predicate.bin";
 const TX_OUTPUT_CONTRACT_BYTECODE_PATH: &str =
-    "test_artifacts/tx_output_contract/out/release/tx_output_contract.bin";
-const TX_FIELDS_PREDICATE_BYTECODE_PATH: &str = "test_projects/tx_fields/out/release/tx_fields.bin";
+    "out_for_sdk_harness_tests/tx_output_contract.bin";
+const TX_FIELDS_PREDICATE_BYTECODE_PATH: &str = "out_for_sdk_harness_tests/tx_fields.bin";
 const TX_CONTRACT_CREATION_PREDICATE_BYTECODE_PATH: &str =
-    "test_artifacts/tx_output_contract_creation_predicate/out/release/tx_output_contract_creation_predicate.bin";
+    "out_for_sdk_harness_tests/tx_output_contract_creation_predicate.bin";
 const TX_TYPE_PREDICATE_BYTECODE_PATH: &str =
-    "test_artifacts/tx_type_predicate/out/release/tx_type_predicate.bin";
+    "out_for_sdk_harness_tests/tx_type_predicate.bin";
 const TX_WITNESS_PREDICATE_BYTECODE_PATH: &str =
-    "test_artifacts/tx_witness_predicate/out/release/tx_witness_predicate.bin";
+    "out_for_sdk_harness_tests/tx_witness_predicate.bin";
 const TX_INPUT_COUNT_PREDICATE_BYTECODE_PATH: &str =
-    "test_artifacts/tx_input_count_predicate/out/release/tx_input_count_predicate.bin";
+    "out_for_sdk_harness_tests/tx_input_count_predicate.bin";
 const TX_OUTPUT_COUNT_PREDICATE_BYTECODE_PATH: &str =
-    "test_artifacts/tx_output_count_predicate/out/release/tx_output_count_predicate.bin";
+    "out_for_sdk_harness_tests/tx_output_count_predicate.bin";
 
 use crate::tx_fields::Output as SwayOutput;
 use crate::tx_fields::Transaction as SwayTransaction;
@@ -34,35 +34,35 @@ use crate::tx_fields::Transaction as SwayTransaction;
 abigen!(
     Contract(
         name = "TxContractTest",
-        abi = "test_artifacts/tx_contract/out/release/tx_contract-abi.json",
+        abi = "out_for_sdk_harness_tests/tx_contract-abi.json",
     ),
     Contract(
         name = "TxOutputContract",
-        abi = "test_artifacts/tx_output_contract/out/release/tx_output_contract-abi.json",
+        abi = "out_for_sdk_harness_tests/tx_output_contract-abi.json",
     ),
     Predicate(
         name = "TestPredicate",
-        abi = "test_projects/tx_fields/out/release/tx_fields-abi.json"
+        abi = "out_for_sdk_harness_tests/tx_fields-abi.json"
     ),
     Predicate(
         name = "TestOutputPredicate",
-        abi = "test_artifacts/tx_output_predicate/out/release/tx_output_predicate-abi.json"
+        abi = "out_for_sdk_harness_tests/tx_output_predicate-abi.json"
     ),
     Predicate(
         name = "TestTxTypePredicate",
-        abi = "test_artifacts/tx_type_predicate/out/release/tx_type_predicate-abi.json"
+        abi = "out_for_sdk_harness_tests/tx_type_predicate-abi.json"
     ),
     Predicate(
         name = "TestTxWitnessPredicate",
-        abi = "test_artifacts/tx_witness_predicate/out/release/tx_witness_predicate-abi.json"
+        abi = "out_for_sdk_harness_tests/tx_witness_predicate-abi.json"
     ),
     Predicate(
         name = "TestTxInputCountPredicate",
-        abi = "test_artifacts/tx_input_count_predicate/out/release/tx_input_count_predicate-abi.json"
+        abi = "out_for_sdk_harness_tests/tx_input_count_predicate-abi.json"
     ),
     Predicate(
         name = "TestTxOutputCountPredicate",
-        abi = "test_artifacts/tx_output_count_predicate/out/release/tx_output_count_predicate-abi.json"
+        abi = "out_for_sdk_harness_tests/tx_output_count_predicate-abi.json"
     )
 );
 

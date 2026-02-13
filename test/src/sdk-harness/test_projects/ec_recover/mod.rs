@@ -8,7 +8,7 @@ use rand::{rngs::StdRng, Rng, SeedableRng};
 
 abigen!(Contract(
     name = "EcRecoverContract",
-    abi = "test_projects/ec_recover/out/release/ec_recover-abi.json"
+    abi = "out_for_sdk_harness_tests/ec_recover-abi.json"
 ));
 
 async fn setup_env() -> Result<(
@@ -43,7 +43,7 @@ async fn setup_env() -> Result<(
     let wallet = Wallet::new(signer, provider);
 
     let contract_id = Contract::load_from(
-        "test_projects/ec_recover/out/release/ec_recover.bin",
+        "out_for_sdk_harness_tests/ec_recover.bin",
         LoadConfiguration::default(),
     )
     .unwrap()

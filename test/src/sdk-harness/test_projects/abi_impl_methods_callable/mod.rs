@@ -2,13 +2,13 @@ use fuels::prelude::*;
 
 abigen!(Contract(
     name = "AbiImplMethodsCallable",
-    abi = "test_projects/abi_impl_methods_callable/out/release/abi_impl_methods_callable-abi.json"
+    abi = "out_for_sdk_harness_tests/abi_impl_methods_callable-abi.json"
 ));
 
 async fn get_abi_impl_methods_callable_instance() -> AbiImplMethodsCallable<Wallet> {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
-        "test_projects/abi_impl_methods_callable/out/release/abi_impl_methods_callable.bin",
+        "out_for_sdk_harness_tests/abi_impl_methods_callable.bin",
         LoadConfiguration::default(),
     )
     .unwrap()

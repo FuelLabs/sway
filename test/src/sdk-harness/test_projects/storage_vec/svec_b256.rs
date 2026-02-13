@@ -1,6 +1,6 @@
 testgen!(
     test_b256_vec,
-    "test_artifacts/storage_vec/svec_b256/out/release/svec_b256-abi.json",
+    "out_for_sdk_harness_tests/svec_b256-abi.json",
     "b256",
     ::fuels::types::Bits256,
     ::fuels::types::Bits256([1; 32]),

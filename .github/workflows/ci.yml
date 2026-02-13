@@ -449,27 +449,27 @@ jobs:
         with:
           cache-provider: "warpbuild"
       - name: Build All Test Projects (Debug)
-        run: cargo run --locked --release -p forc -- build --locked --path ./test/src/sdk-harness
+        run: cargo run --locked --release -p forc -- build --locked --path ./test/src/sdk-harness --output-directory ./test/src/sdk-harness/out_for_sdk_harness_tests
       - name: Run All SDK Tests (Debug)
         run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
       - name: Build All Test Projects (Release)
-        run: cargo run --locked --release -p forc -- build --release --locked --path ./test/src/sdk-harness
+        run: cargo run --locked --release -p forc -- build --release --locked --path ./test/src/sdk-harness --output-directory ./test/src/sdk-harness/out_for_sdk_harness_tests
       - name: Run All SDK Tests (Release)
         run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
       - name: Build All Test Projects - ['new_hashing' disabled] (Debug)
-        run: cargo run --locked --release -p forc -- build --locked --path ./test/src/sdk-harness --no-experimental new_hashing
+        run: cargo run --locked --release -p forc -- build --locked --path ./test/src/sdk-harness --no-experimental new_hashing --output-directory ./test/src/sdk-harness/out_for_sdk_harness_tests
       - name: Run All SDK Tests - ['new_hashing' disabled] (Debug)
         run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
       - name: Build All Test Projects - ['new_hashing' disabled] (Release)
-        run: cargo run --locked --release -p forc -- build --release --locked --path ./test/src/sdk-harness --no-experimental new_hashing
+        run: cargo run --locked --release -p forc -- build --release --locked --path ./test/src/sdk-harness --no-experimental new_hashing --output-directory ./test/src/sdk-harness/out_for_sdk_harness_tests
       - name: Run All SDK Tests - ['new_hashing' disabled] (Release)
         run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
       - name: Build All Test Projects - ['str_array_no_padding' enabled] (Debug)
-        run: cargo run --locked --release -p forc -- build --locked --path ./test/src/sdk-harness --experimental str_array_no_padding
+        run: cargo run --locked --release -p forc -- build --locked --path ./test/src/sdk-harness --experimental str_array_no_padding --output-directory ./test/src/sdk-harness/out_for_sdk_harness_tests
       - name: Run All SDK Tests - ['str_array_no_padding' enabled] (Debug)
         run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
       - name: Build All Test Projects - ['str_array_no_padding' enabled] (Release)
-        run: cargo run --locked --release -p forc -- build --release --locked --path ./test/src/sdk-harness --experimental str_array_no_padding
+        run: cargo run --locked --release -p forc -- build --release --locked --path ./test/src/sdk-harness --experimental str_array_no_padding --output-directory ./test/src/sdk-harness/out_for_sdk_harness_tests
       - name: Run All SDK Tests - ['str_array_no_padding' enabled] (Release)
         run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
 

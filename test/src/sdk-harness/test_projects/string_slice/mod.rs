@@ -11,12 +11,12 @@ use std::str::FromStr;
 
 abigen!(Contract(
     name = "TestStringSlicePredicate",
-    abi = "test_projects/string_slice/string_slice_predicate/out/release/string_slice_predicate-abi.json",
+    abi = "out_for_sdk_harness_tests/string_slice_predicate-abi.json",
 ));
 
 async fn setup() -> (Vec<u8>, Address, Wallet, u64, AssetId) {
     let predicate_code = std::fs::read(
-        "test_projects/string_slice/string_slice_predicate/out/release/string_slice_predicate.bin",
+        "out_for_sdk_harness_tests/string_slice_predicate.bin",
     )
     .unwrap();
     let predicate_address = fuel_tx::Input::predicate_owner(&predicate_code);

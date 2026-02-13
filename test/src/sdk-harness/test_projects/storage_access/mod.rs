@@ -2,13 +2,13 @@ use fuels::{prelude::*, types::Bits256};
 
 abigen!(Contract(
     name = "TestStorageAccessContract",
-    abi = "test_projects/storage_access/out/release/storage_access-abi.json",
+    abi = "out_for_sdk_harness_tests/storage_access-abi.json",
 ));
 
 async fn test_storage_access_instance() -> TestStorageAccessContract<Wallet> {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
-        "test_projects/storage_access/out/release/storage_access.bin",
+        "out_for_sdk_harness_tests/storage_access.bin",
         LoadConfiguration::default(),
     )
     .unwrap()

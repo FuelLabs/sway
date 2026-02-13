@@ -3,13 +3,13 @@ use std::str::FromStr;
 
 abigen!(Contract(
     name = "VecInAbiTestContract",
-    abi = "test_projects/vec_in_abi/out/release/vec_in_abi-abi.json"
+    abi = "out_for_sdk_harness_tests/vec_in_abi-abi.json"
 ));
 
 async fn get_vec_in_abi_instance() -> (VecInAbiTestContract<Wallet>, ContractId) {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
-        "test_projects/vec_in_abi/out/release/vec_in_abi.bin",
+        "out_for_sdk_harness_tests/vec_in_abi.bin",
         LoadConfiguration::default(),
     )
     .unwrap()

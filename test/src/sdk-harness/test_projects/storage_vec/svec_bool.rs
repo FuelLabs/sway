@@ -1,6 +1,6 @@
 testgen!(
     test_bool_vec,
-    "test_artifacts/storage_vec/svec_bool/out/release/svec_bool-abi.json",
+    "out_for_sdk_harness_tests/svec_bool-abi.json",
     "bool",
     bool,
     true,
