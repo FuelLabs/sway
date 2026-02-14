@@ -2,7 +2,7 @@ use fuels::prelude::*;
 
 abigen!(Contract(
     name = "TestAssetId",
-    abi = "out_for_sdk_harness_tests/asset_id-abi.json"
+    abi = "out/asset_id-abi.json"
 ));
 
 #[tokio::test]
@@ -25,7 +25,7 @@ async fn can_get_base_asset_id() {
 
 async fn get_instance(wallet: Wallet) -> (TestAssetId<Wallet>, ContractId) {
     let fuelcontract_id = Contract::load_from(
-        "out_for_sdk_harness_tests/asset_id.bin",
+        "out/asset_id.bin",
         LoadConfiguration::default(),
     )
     .unwrap()

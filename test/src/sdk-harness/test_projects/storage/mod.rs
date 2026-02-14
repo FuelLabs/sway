@@ -5,13 +5,13 @@ use fuels::{
 
 abigen!(Contract(
     name = "TestStorageContract",
-    abi = "out_for_sdk_harness_tests/storage-abi.json",
+    abi = "out/storage-abi.json",
 ));
 
 async fn get_test_storage_instance() -> TestStorageContract<Wallet> {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
-        "out_for_sdk_harness_tests/storage.bin",
+        "out/storage.bin",
         LoadConfiguration::default(),
     )
     .unwrap()

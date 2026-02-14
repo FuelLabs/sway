@@ -2,14 +2,14 @@ use fuels::prelude::*;
 
 abigen!(Contract(
     name = "TestStorageVecOfStorageStringContract",
-    abi = "out_for_sdk_harness_tests/storage_vec_of_storage_string-abi.json",
+    abi = "out/storage_vec_of_storage_string-abi.json",
 ));
 
 async fn test_storage_vec_of_storage_string_instance(
 ) -> TestStorageVecOfStorageStringContract<Wallet> {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
-        "out_for_sdk_harness_tests/storage_vec_of_storage_string.bin",
+        "out/storage_vec_of_storage_string.bin",
         LoadConfiguration::default(),
     )
     .unwrap()

@@ -10,7 +10,7 @@ use std::str::FromStr;
 
 async fn setup() -> (Vec<u8>, Address, Wallet, u64, AssetId) {
     let predicate_code = std::fs::read(
-        "out_for_sdk_harness_tests/predicate_panic_expression.bin",
+        "out/predicate_panic_expression.bin",
     )
     .unwrap();
     let predicate_address = fuel_tx::Input::predicate_owner(&predicate_code);

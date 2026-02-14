@@ -1,6 +1,6 @@
 testgen!(
     test_enum_vec,
-    "out_for_sdk_harness_tests/svec_enum-abi.json",
+    "out/svec_enum-abi.json",
     "enum",
     TestEnum,
     TestEnum::A(true),

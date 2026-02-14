@@ -34,7 +34,7 @@ pub async fn run_compiled_script(binary_filepath: &str) -> Result<Vec<Receipt>, 
 async fn check_script_bytecode_hash() {
     // Calculate padded script hash (since memory is read in whole words, the bytecode will be padded)
     let mut script_bytecode =
-        std::fs::read("out_for_sdk_harness_tests/script_bytecode.bin")
+        std::fs::read("out/script_bytecode.bin")
             .unwrap()
             .to_vec();
     let padding = script_bytecode.len() % 8;
@@ -42,7 +42,7 @@ async fn check_script_bytecode_hash() {
     let script_hash = Hasher::hash(&script_bytecode); // This is the hard that must be hard-coded in the predicate
 
     // Run script and get the hash it returns
-    let path_to_bin = "out_for_sdk_harness_tests/script_bytecode.bin";
+    let path_to_bin = "out/script_bytecode.bin";
     let return_val = run_compiled_script(path_to_bin).await.unwrap();
     let script_hash_from_vm =
         unsafe { Bytes32::from_slice_unchecked(return_val[0].data().unwrap()) };

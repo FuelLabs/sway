@@ -8,15 +8,15 @@ use fuels::{
 abigen!(
     Contract(
         name = "TestContextContract",
-        abi = "out_for_sdk_harness_tests/context-abi.json",
+        abi = "out/context-abi.json",
     ),
     Contract(
         name = "TestContextCallerContract",
-        abi = "out_for_sdk_harness_tests/context_caller_contract-abi.json",
+        abi = "out/context_caller_contract-abi.json",
     ),
     Contract(
         name = "FuelCoin",
-        abi = "out_for_sdk_harness_tests/asset_ops-abi.json"
+        abi = "out/asset_ops-abi.json"
     )
 );
 
@@ -28,7 +28,7 @@ async fn get_contracts() -> (
 ) {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id_1 = Contract::load_from(
-        "out_for_sdk_harness_tests/context.bin",
+        "out/context.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
@@ -37,7 +37,7 @@ async fn get_contracts() -> (
     .unwrap()
     .contract_id;
     let id_2 = Contract::load_from(
-        "out_for_sdk_harness_tests/context_caller_contract.bin",
+        "out/context_caller_contract.bin",
         LoadConfiguration::default(),
     )
     .unwrap()

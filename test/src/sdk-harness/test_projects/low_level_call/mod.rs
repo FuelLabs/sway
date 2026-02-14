@@ -23,11 +23,11 @@ abigen!(
     Contract(
         name = "TestContract",
         abi =
-            "out_for_sdk_harness_tests/low_level_callee_contract-abi.json"
+            "out/low_level_callee_contract-abi.json"
     ),
     Script(
         name = "TestScript",
-        abi = "out_for_sdk_harness_tests/low_level_call-abi.json"
+        abi = "out/low_level_call-abi.json"
     )
 );
 
@@ -41,7 +41,7 @@ async fn low_level_call(
     // Build the script instance
     let script_instance = TestScript::new(
         wallet,
-        "out_for_sdk_harness_tests/low_level_call.bin",
+        "out/low_level_call.bin",
     );
 
     // Add the contract being called to the inputs and outputs
@@ -90,7 +90,7 @@ async fn get_contract_instance() -> (TestContract<Wallet>, ContractId, Wallet) {
     let wallet = wallets.pop().unwrap();
 
     let id = Contract::load_from(
-        "out_for_sdk_harness_tests/low_level_callee_contract.bin",
+        "out/low_level_callee_contract.bin",
         LoadConfiguration::default(),
     )
     .unwrap()

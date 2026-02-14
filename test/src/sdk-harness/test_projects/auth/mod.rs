@@ -15,15 +15,15 @@ use std::str::FromStr;
 abigen!(
     Contract(
         name = "AuthContract",
-        abi = "out_for_sdk_harness_tests/auth_testing_contract-abi.json"
+        abi = "out/auth_testing_contract-abi.json"
     ),
     Contract(
         name = "AuthCallerContract",
-        abi = "out_for_sdk_harness_tests/auth_caller_contract-abi.json"
+        abi = "out/auth_caller_contract-abi.json"
     ),
     Predicate(
         name = "AuthPredicate",
-        abi = "out_for_sdk_harness_tests/auth_predicate-abi.json"
+        abi = "out/auth_predicate-abi.json"
     ),
 );
 
@@ -95,7 +95,7 @@ async fn input_message_msg_sender_from_contract() {
 
     // Setup contract
     let id = Contract::load_from(
-        "out_for_sdk_harness_tests/auth_testing_contract.bin",
+        "out/auth_testing_contract.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
@@ -198,7 +198,7 @@ async fn caller_addresses_from_messages() {
     let wallet4 = Wallet::new(signer_4, provider.clone());
 
     let id_1 = Contract::load_from(
-        "out_for_sdk_harness_tests/auth_testing_contract.bin",
+        "out/auth_testing_contract.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
@@ -325,7 +325,7 @@ async fn caller_addresses_from_coins() {
     let wallet4 = Wallet::new(signer_4, provider.clone());
 
     let id_1 = Contract::load_from(
-        "out_for_sdk_harness_tests/auth_testing_contract.bin",
+        "out/auth_testing_contract.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
@@ -454,7 +454,7 @@ async fn caller_addresses_from_coins_and_messages() {
     let wallet4 = Wallet::new(signer_4, provider.clone());
 
     let id_1 = Contract::load_from(
-        "out_for_sdk_harness_tests/auth_testing_contract.bin",
+        "out/auth_testing_contract.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
@@ -538,7 +538,7 @@ async fn get_contracts() -> (
     let wallet = launch_provider_and_get_wallet().await.unwrap();
 
     let id_1 = Contract::load_from(
-        "out_for_sdk_harness_tests/auth_testing_contract.bin",
+        "out/auth_testing_contract.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
@@ -548,7 +548,7 @@ async fn get_contracts() -> (
     .contract_id;
 
     let id_2 = Contract::load_from(
-        "out_for_sdk_harness_tests/auth_caller_contract.bin",
+        "out/auth_caller_contract.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
@@ -592,7 +592,7 @@ async fn can_get_predicate_address() {
         .encode_data(predicate_address)
         .unwrap();
     let predicate: Predicate =
-        Predicate::load_from("out_for_sdk_harness_tests/auth_predicate.bin")
+        Predicate::load_from("out/auth_predicate.bin")
             .unwrap()
             .with_provider(first_wallet.try_provider().unwrap().clone())
             .with_data(predicate_data);
@@ -672,7 +672,7 @@ async fn when_incorrect_predicate_address_passed() {
         .encode_data(predicate_address)
         .unwrap();
     let predicate: Predicate =
-        Predicate::load_from("out_for_sdk_harness_tests/auth_predicate.bin")
+        Predicate::load_from("out/auth_predicate.bin")
             .unwrap()
             .with_provider(first_wallet.try_provider().unwrap().clone())
             .with_data(predicate_data);
@@ -751,7 +751,7 @@ async fn can_get_predicate_address_in_message() {
         .encode_data(predicate_address)
         .unwrap();
     let predicate: Predicate =
-        Predicate::load_from("out_for_sdk_harness_tests/auth_predicate.bin")
+        Predicate::load_from("out/auth_predicate.bin")
             .unwrap()
             .with_provider(wallet.try_provider().unwrap().clone())
             .with_data(predicate_data);

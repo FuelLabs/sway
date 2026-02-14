@@ -9,14 +9,20 @@ use fuels::{
 };
 use std::str::FromStr;
 
-abigen!(Contract(
-    name = "TestStringSlicePredicate",
-    abi = "out_for_sdk_harness_tests/string_slice_predicate-abi.json",
-));
+abigen!(
+    Contract(
+        name = "TestStringSlicePredicate",
+        abi = "out/string_slice_predicate-abi.json",
+    ),
+    Script(
+        name = "TestScript",
+        abi = "out/script_string_slice-abi.json"
+    )
+);
 
 async fn setup() -> (Vec<u8>, Address, Wallet, u64, AssetId) {
     let predicate_code = std::fs::read(
-        "out_for_sdk_harness_tests/string_slice_predicate.bin",
+        "out/string_slice_predicate.bin",
     )
     .unwrap();
     let predicate_address = fuel_tx::Input::predicate_owner(&predicate_code);
@@ -166,17 +172,14 @@ async fn test_string_slice_predicate() {
 
 #[tokio::test]
 async fn script_string_slice() -> Result<()> {
-    setup_program_test!(
-        Wallets("wallet"),
-        Abigen(Script(
-            name = "MyScript",
-            project = "test_projects/string_slice/script_string_slice",
-        )),
-        LoadScript(
-            name = "script_instance",
-            script = "MyScript",
-            wallet = "wallet"
-        )
+    let mut wallets = launch_custom_provider_and_get_wallets(WalletsConfig::default(), None, None)
+        .await
+        .unwrap();
+    let wallet = wallets.pop().unwrap();
+
+    let script_instance = TestScript::new(
+        wallet,
+        "out/script_string_slice.bin",
     );
 
     let response = script_instance

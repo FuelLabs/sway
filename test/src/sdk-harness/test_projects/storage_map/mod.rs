@@ -7,13 +7,13 @@ pub mod try_insert;
 
 abigen!(Contract(
     name = "TestStorageMapContract",
-    abi = "out_for_sdk_harness_tests/storage_map-abi.json",
+    abi = "out/storage_map-abi.json",
 ));
 
 async fn test_storage_map_instance() -> TestStorageMapContract<Wallet> {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
-        "out_for_sdk_harness_tests/storage_map.bin",
+        "out/storage_map.bin",
         LoadConfiguration::default(),
     )
     .unwrap()

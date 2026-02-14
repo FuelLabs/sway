@@ -1,6 +1,6 @@
 testgen!(
     test_u64_vec,
-    "out_for_sdk_harness_tests/svec_u64-abi.json",
+    "out/svec_u64-abi.json",
     "u64",
     u64,
     1u64,

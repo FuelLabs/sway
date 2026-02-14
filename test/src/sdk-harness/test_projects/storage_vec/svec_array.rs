@@ -1,6 +1,6 @@
 testgen!(
     test_array_vec,
-    "out_for_sdk_harness_tests/svec_array-abi.json",
+    "out/svec_array-abi.json",
     "array",
     [u8; 3],
     [1; 3],

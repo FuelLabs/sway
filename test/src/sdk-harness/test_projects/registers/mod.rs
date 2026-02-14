@@ -3,7 +3,7 @@ use fuels::prelude::*;
 
 abigen!(Contract(
     name = "TestRegistersContract",
-    abi = "out_for_sdk_harness_tests/registers-abi.json",
+    abi = "out/registers-abi.json",
 ));
 
 // Compile contract, create node and deploy contract, returning TestRegistersContract contract instance
@@ -13,7 +13,7 @@ abigen!(Contract(
 async fn deploy_test_registers_instance() -> TestRegistersContract<Wallet> {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
-        "out_for_sdk_harness_tests/registers.bin",
+        "out/registers.bin",
         LoadConfiguration::default(),
     )
     .unwrap()

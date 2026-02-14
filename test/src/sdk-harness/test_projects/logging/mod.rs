@@ -4,11 +4,11 @@ use fuels::prelude::*;
 async fn run_valid() -> Result<()> {
     abigen!(Script(
         name = "Logging",
-        abi = "out_for_sdk_harness_tests/logging-abi.json",
+        abi = "out/logging-abi.json",
     ));
 
     let wallet = launch_provider_and_get_wallet().await.unwrap();
-    let bin_path = "out_for_sdk_harness_tests/logging.bin";
+    let bin_path = "out/logging.bin";
     let instance = Logging::new(wallet.clone(), bin_path);
 
     let response = instance.main().call().await?;

@@ -2,7 +2,7 @@ use fuels::{prelude::*, types::Bits256};
 
 abigen!(Contract(
     name = "RunExternalProxyContract",
-    abi = "out_for_sdk_harness_tests/run_external_proxy_with_storage-abi.json",
+    abi = "out/run_external_proxy_with_storage-abi.json",
 ));
 
 #[tokio::test]
@@ -10,10 +10,10 @@ async fn run_external_can_proxy_call() {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
 
     let storage_configuration =
-        StorageConfiguration::default().add_slot_overrides_from_file("out_for_sdk_harness_tests/run_external_target_with_storage-storage_slots.json").unwrap();
+        StorageConfiguration::default().add_slot_overrides_from_file("out/run_external_target_with_storage-storage_slots.json").unwrap();
 
     let target_id = Contract::load_from(
-        "out_for_sdk_harness_tests/run_external_target_with_storage.bin",
+        "out/run_external_target_with_storage.bin",
         LoadConfiguration::default()
             .with_storage_configuration(storage_configuration.clone()),
     )
@@ -27,7 +27,7 @@ async fn run_external_can_proxy_call() {
         .with_TARGET(target_id.clone().into())
         .unwrap();
     let id = Contract::load_from(
-        "out_for_sdk_harness_tests/run_external_proxy_with_storage.bin",
+        "out/run_external_proxy_with_storage.bin",
         LoadConfiguration::default().with_configurables(configurables).with_storage_configuration(storage_configuration),
     )
     .unwrap()

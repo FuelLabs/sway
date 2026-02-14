@@ -2,7 +2,7 @@ use fuels::{prelude::*, types::Bits256};
 
 abigen!(Contract(
     name = "TestMessagesContract",
-    abi = "out_for_sdk_harness_tests/messages-abi.json"
+    abi = "out/messages-abi.json"
 ));
 
 async fn get_messages_contract_instance() -> (TestMessagesContract<Wallet>, ContractId, Wallet) {
@@ -20,7 +20,7 @@ async fn get_messages_contract_instance() -> (TestMessagesContract<Wallet>, Cont
         .await
         .unwrap();
     let messages_contract_id = Contract::load_from(
-        "out_for_sdk_harness_tests/messages.bin",
+        "out/messages.bin",
         LoadConfiguration::default(),
     )
     .unwrap()

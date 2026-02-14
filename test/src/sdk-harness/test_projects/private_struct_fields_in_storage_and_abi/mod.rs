@@ -2,14 +2,14 @@ use fuels::prelude::*;
 
 abigen!(Contract(
     name = "TestPrivateStructFieldsInStorageAndAbi",
-    abi = "out_for_sdk_harness_tests/private_struct_fields_in_storage_and_abi-abi.json",
+    abi = "out/private_struct_fields_in_storage_and_abi-abi.json",
 ));
 
 async fn test_storage_private_struct_fields_instance(
 ) -> TestPrivateStructFieldsInStorageAndAbi<Wallet> {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
-        "out_for_sdk_harness_tests/private_struct_fields_in_storage_and_abi.bin",
+        "out/private_struct_fields_in_storage_and_abi.bin",
         LoadConfiguration::default(),
     )
     .unwrap()

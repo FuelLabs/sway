@@ -33,14 +33,14 @@ macro_rules! testgen {
                     let wallet = launch_provider_and_get_wallet().await.unwrap();
                     let id = Contract::load_from(
                         &format!(
-                            "out_for_sdk_harness_tests/svec_{}.bin",
+                            "out/svec_{}.bin",
                             $type_label,
                         ),
                         LoadConfiguration::default()
                         .with_storage_configuration(StorageConfiguration::default()
                             .add_slot_overrides_from_file(
                                 &format!(
-                                    "out_for_sdk_harness_tests/svec_{}-storage_slots.json",
+                                    "out/svec_{}-storage_slots.json",
                                     $type_label,
                                 )
                             )

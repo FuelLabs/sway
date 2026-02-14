@@ -1,6 +1,6 @@
 testgen!(
     test_str_vec,
-    "out_for_sdk_harness_tests/svec_str-abi.json",
+    "out/svec_str-abi.json",
     "str",
     ::fuels::types::SizedAsciiString::<4>,
     ::fuels::types::SizedAsciiString::<4>::new("yeet".to_string()).unwrap(),

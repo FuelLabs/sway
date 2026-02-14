@@ -8,13 +8,13 @@ async fn contract_uses_default_configurables() -> Result<()> {
     abigen!(Contract(
         name = "MyContract",
         abi =
-            "out_for_sdk_harness_tests/configurables_in_contract-abi.json"
+            "out/configurables_in_contract-abi.json"
     ));
 
     let wallet = launch_provider_and_get_wallet().await.unwrap();
 
     let contract_id = Contract::load_from(
-        "out_for_sdk_harness_tests/configurables_in_contract.bin",
+        "out/configurables_in_contract.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
@@ -57,7 +57,7 @@ async fn contract_configurables() -> Result<()> {
     abigen!(Contract(
         name = "MyContract",
         abi =
-            "out_for_sdk_harness_tests/configurables_in_contract-abi.json"
+            "out/configurables_in_contract-abi.json"
     ));
 
     let wallet = launch_provider_and_get_wallet().await.unwrap();
@@ -79,7 +79,7 @@ async fn contract_configurables() -> Result<()> {
         .with_MY_CONTRACT_ID(new_contract_id.clone())?;
 
     let contract_id = Contract::load_from(
-        "out_for_sdk_harness_tests/configurables_in_contract.bin",
+        "out/configurables_in_contract.bin",
         LoadConfiguration::default().with_configurables(configurables),
     )?
     .deploy(&wallet, TxPolicies::default())

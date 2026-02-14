@@ -1,6 +1,6 @@
 testgen!(
     test_struct_vec,
-    "out_for_sdk_harness_tests/svec_struct-abi.json",
+    "out/svec_struct-abi.json",
     "struct",
     TestStruct,
     TestStruct { a: true, b: 1 },

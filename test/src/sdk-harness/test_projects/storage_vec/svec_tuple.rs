@@ -1,6 +1,6 @@
 testgen!(
     test_tuple_vec,
-    "out_for_sdk_harness_tests/svec_tuple-abi.json",
+    "out/svec_tuple-abi.json",
     "tuple",
     (u8, u8, u8),
     (1, 1, 1),
