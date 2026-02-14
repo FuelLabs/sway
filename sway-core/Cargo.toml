@@ -52,9 +52,9 @@ toml = { workspace = true, features = ["parse"] }
 tracing.workspace = true
 uint.workspace = true
 vec1.workspace = true
-prettydiff.workspace = true
 
 [dev-dependencies]
+prettydiff.workspace = true
 expect-test.workspace = true
 
 [lints]
