@@ -22,6 +22,7 @@ async-trait.workspace = true
 axum.workspace = true
 chrono.workspace = true
 clap.workspace = true
+forc-client.workspace = true
 fuel-crypto.workspace = true
 fuels-core.workspace = true
 hex.workspace = true
