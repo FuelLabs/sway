@@ -43,11 +43,6 @@ impl KnownRegValue {
         VirtualImmediate18::try_new(raw, Span::dummy()).ok()
     }
 
-    fn value_as_imm12(&self) -> Option<VirtualImmediate12> {
-        let raw = self.value()?;
-        VirtualImmediate12::try_new(raw, Span::dummy()).ok()
-    }
-
     /// Check if the value depends on value of another register.
     fn depends_on(&self, reg: &VirtualRegister) -> bool {
         match self {
@@ -73,20 +68,19 @@ impl KnownValues {
     }
 
     /// Clear values that depend on a register having a specific value.
-    // fn clear_dependent_on(&mut self, reg: &VirtualRegister) {
-    //     let mut q = vec![reg.clone()];
-
-    //     while let Some(reg) = q.pop() {
-    //         let keys = self.values.extract_if(|_, v| v.depends_on(&reg))
-    //             .map(|(k, _)| k)
-    //             .collect::<Vec<_>>();
-    //         q.extend(keys);
-
-    //         self.values.remove(&reg);
-    //     }
-    // }
     fn clear_dependent_on(&mut self, reg: &VirtualRegister) {
-        self.values.retain(|_, v| !v.depends_on(reg));
+        let mut q = vec![reg.clone()];
+
+        while let Some(reg) = q.pop() {
+            let keys = self
+                .values
+                .extract_if(|_, v| v.depends_on(&reg))
+                .map(|(k, _)| k)
+                .collect::<Vec<_>>();
+            q.extend(keys);
+
+            self.values.remove(&reg);
+        }
     }
 
     /// Insert a known value for a register.
@@ -239,33 +233,176 @@ impl AbstractInstructionSet {
                 // <op> dest <a is known> <b is known>
                 // to
                 // movi dest <a <op> b as imm>
-                Either::Left(VirtualOp::ADD(dst, l, r)) => {
-                    transform_to_movi(&mut known_values, op, dst, l, r, |l, r| l.checked_add(r))
-                }
-                Either::Left(VirtualOp::SUB(dst, l, r)) => {
-                    transform_to_movi(&mut known_values, op, dst, l, r, |l, r| l.checked_sub(r))
-                }
-                Either::Left(VirtualOp::MUL(dst, l, r)) => {
-                    transform_to_movi(&mut known_values, op, dst, l, r, |l, r| l.checked_mul(r))
-                }
-                // Either::Left(VirtualOp::DIV(dst, l, r)) => {
-                //     transform_to_movi(&mut known_values, op, dst, l, r, |l, r| l.checked_div(r))
-                // }
-                // Either::Left(VirtualOp::EXP(dst, l, r)) => {
-                //     solve_operator(&mut known_values, op, dst, l, r, |l, r| {
-                //         l.checked_pow(r as u32)
-                //     })
-                // }
+                Either::Left(VirtualOp::ADD(dst, l, r)) => transform_to_movi(
+                    &mut known_values,
+                    op,
+                    true,
+                    dst,
+                    l,
+                    r,
+                    |l, r| l.checked_add(r),
+                    |dst, l, r| Some(VirtualOp::ADDI(dst, l, r)),
+                ),
+                Either::Left(VirtualOp::SUB(dst, l, r)) => transform_to_movi(
+                    &mut known_values,
+                    op,
+                    false,
+                    dst,
+                    l,
+                    r,
+                    |l, r| l.checked_sub(r),
+                    |dst, l, r| Some(VirtualOp::SUBI(dst, l, r)),
+                ),
+                Either::Left(VirtualOp::MUL(dst, l, r)) => transform_to_movi(
+                    &mut known_values,
+                    op,
+                    true,
+                    dst,
+                    l,
+                    r,
+                    |l, r| l.checked_mul(r),
+                    |dst, l, r| Some(VirtualOp::MULI(dst, l, r)),
+                ),
+                Either::Left(VirtualOp::DIV(dst, l, r)) => transform_to_movi(
+                    &mut known_values,
+                    op,
+                    false,
+                    dst,
+                    l,
+                    r,
+                    |l, r| l.checked_div(r),
+                    |dst, l, r| Some(VirtualOp::DIVI(dst, l, r)),
+                ),
+                Either::Left(VirtualOp::EXP(dst, l, r)) => transform_to_movi(
+                    &mut known_values,
+                    op,
+                    false,
+                    dst,
+                    l,
+                    r,
+                    |l, r| l.checked_pow(r as u32),
+                    |dst, l, r| Some(VirtualOp::EXPI(dst, l, r)),
+                ),
+                Either::Left(VirtualOp::MLOG(dst, l, r)) => transform_to_movi(
+                    &mut known_values,
+                    op,
+                    false,
+                    dst,
+                    l,
+                    r,
+                    |l, r| l.checked_ilog(r).map(|x| x as u64),
+                    |_, _, _| None,
+                ),
+                Either::Left(VirtualOp::MOD(dst, l, r)) => transform_to_movi(
+                    &mut known_values,
+                    op,
+                    false,
+                    dst,
+                    l,
+                    r,
+                    |l, r| l.checked_rem(r),
+                    |dst, l, r| Some(VirtualOp::MODI(dst, l, r)),
+                ),
+                Either::Left(VirtualOp::MROO(dst, l, r)) => transform_to_movi(
+                    &mut known_values,
+                    op,
+                    false,
+                    dst,
+                    l,
+                    r,
+                    checked_nth_root,
+                    |_, _, _| None,
+                ),
 
-                // Either::Left(VirtualOp::AND(dst, l, r)) => {
-                //     solve_operator(&mut known_values, op, dst, l, r, |l, r| Some(l.bitand(r)))
-                // }
-                // Either::Left(VirtualOp::OR(dst, l, r)) => {
-                //     solve_operator(&mut known_values, op, dst, l, r, |l, r| Some(l.bitor(r)))
-                // }
-                // Either::Left(VirtualOp::XOR(dst, l, r)) => {
-                //     solve_operator(&mut known_values, op, dst, l, r, |l, r| Some(l.bitxor(r)))
-                // }
+                // Boolean
+                Either::Left(VirtualOp::AND(dst, l, r)) => transform_to_movi(
+                    &mut known_values,
+                    op,
+                    true,
+                    dst,
+                    l,
+                    r,
+                    |l, r| Some(l.bitand(r)),
+                    |dst, l, r| Some(VirtualOp::ANDI(dst, l, r)),
+                ),
+                Either::Left(VirtualOp::OR(dst, l, r)) => transform_to_movi(
+                    &mut known_values,
+                    op,
+                    true,
+                    dst,
+                    l,
+                    r,
+                    |l, r| Some(l.bitor(r)),
+                    |dst, l, r| Some(VirtualOp::ORI(dst, l, r)),
+                ),
+                Either::Left(VirtualOp::XOR(dst, l, r)) => transform_to_movi(
+                    &mut known_values,
+                    op,
+                    true,
+                    dst,
+                    l,
+                    r,
+                    |l, r| Some(l.bitxor(r)),
+                    |dst, l, r| Some(VirtualOp::XORI(dst, l, r)),
+                ),
+                Either::Left(VirtualOp::SLL(dst, l, r)) => transform_to_movi(
+                    &mut known_values,
+                    op,
+                    false,
+                    dst,
+                    l,
+                    r,
+                    |l, r| {
+                        let r = r.try_into().ok()?;
+                        l.checked_shl(r)
+                    },
+                    |dst, l, r| Some(VirtualOp::SLLI(dst, l, r)),
+                ),
+                Either::Left(VirtualOp::SRL(dst, l, r)) => transform_to_movi(
+                    &mut known_values,
+                    op,
+                    false,
+                    dst,
+                    l,
+                    r,
+                    |l, r| {
+                        let r = r.try_into().ok()?;
+                        l.checked_shr(r)
+                    },
+                    |dst, l, r| Some(VirtualOp::SRLI(dst, l, r)),
+                ),
+
+                // Comparisons
+                Either::Left(VirtualOp::EQ(dst, l, r)) => transform_to_movi(
+                    &mut known_values,
+                    op,
+                    false,
+                    dst,
+                    l,
+                    r,
+                    |l, r| Some(if l == r { 1 } else { 0 }),
+                    |_, _, _| None,
+                ),
+                Either::Left(VirtualOp::GT(dst, l, r)) => transform_to_movi(
+                    &mut known_values,
+                    op,
+                    false,
+                    dst,
+                    l,
+                    r,
+                    |l, r| Some(if l > r { 1 } else { 0 }),
+                    |_, _, _| None,
+                ),
+                Either::Left(VirtualOp::LT(dst, l, r)) => transform_to_movi(
+                    &mut known_values,
+                    op,
+                    false,
+                    dst,
+                    l,
+                    r,
+                    |l, r| Some(if l > r { 1 } else { 0 }),
+                    |_, _, _| None,
+                ),
                 _ => false,
             };
 
@@ -313,13 +450,16 @@ impl AbstractInstructionSet {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn transform_to_movi(
     known_values: &mut KnownValues,
     op: &mut Op,
+    is_commutative: bool,
     dst: VirtualRegister,
     l: VirtualRegister,
     r: VirtualRegister,
-    f: impl FnOnce(u64, u64) -> Option<u64>,
+    apply_op: impl FnOnce(u64, u64) -> Option<u64>,
+    with_imm: impl FnOnce(VirtualRegister, VirtualRegister, VirtualImmediate12) -> Option<VirtualOp>,
 ) -> bool {
     let lv = known_values.resolve(&l);
     let rv = known_values.resolve(&r);
@@ -329,7 +469,7 @@ fn transform_to_movi(
             let imm = lv
                 .value()
                 .zip(rv.value())
-                .and_then(|(l, r)| f(l, r))
+                .and_then(|(l, r)| apply_op(l, r))
                 .and_then(|raw| VirtualImmediate18::try_new(raw, Span::dummy()).ok());
             if let Some(imm) = imm {
                 known_values.assign(dst.clone(), KnownRegValue::Const(imm.value() as u64));
@@ -337,10 +477,87 @@ fn transform_to_movi(
                 return true;
             }
         }
-        _ => {},
+        (None, Some(rv)) => {
+            if let Some(imm) = rv
+                .value()
+                .and_then(|raw| VirtualImmediate12::try_new(raw, Span::dummy()).ok())
+                .and_then(|imm| with_imm(dst, l, imm))
+            {
+                op.opcode = Either::Left(imm);
+                return false;
+            }
+        }
+        (Some(lv), None) if is_commutative => {
+            if let Some(imm) = lv
+                .value()
+                .and_then(|raw| VirtualImmediate12::try_new(raw, Span::dummy()).ok())
+                .and_then(|imm| with_imm(dst, r, imm))
+            {
+                op.opcode = Either::Left(imm);
+                return false;
+            }
+        }
+        _ => {}
     }
 
     false
+}
+
+// Copied from fuel_vm to guarantee exactly same behaviour.
+// See fuel-vm/src/interpreter/executors/instruction.rs
+pub fn checked_nth_root(target: u64, nth_root: u64) -> Option<u64> {
+    if nth_root == 0 {
+        // Zeroth root is not defined
+        return None;
+    }
+
+    if nth_root == 1 || target <= 1 {
+        // Corner cases
+        return Some(target);
+    }
+
+    if nth_root >= target || nth_root > 64 {
+        // For any root >= target, result always 1
+        // For any n>1, n**64 can never fit into u64
+        return Some(1);
+    }
+
+    let nth_root = u32::try_from(nth_root).expect("Never loses bits, checked above");
+
+    // Use floating point operation to get an approximation for the starting point.
+    // This is at most off by one in either direction.
+
+    let powf = f64::powf;
+
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let guess = powf(target as f64, (nth_root as f64).recip()) as u64;
+
+    debug_assert!(guess != 0, "This should never occur for {{target, n}} > 1");
+
+    // Check if a value raised to nth_power is below the target value, handling overflow
+    // correctly
+    let is_nth_power_below_target = |v: u64| match v.checked_pow(nth_root) {
+        Some(pow) => target < pow,
+        None => true, // v**nth_root >= 2**64 and target < 2**64
+    };
+
+    // Compute guess**n to check if the guess is too large.
+    // Note that if guess == 1, then g1 == 1 as well, meaning that we will not return
+    // here.
+    if is_nth_power_below_target(guess) {
+        return Some(guess.saturating_sub(1));
+    }
+
+    // Check if the initial guess was correct
+    let guess_plus_one = guess
+        .checked_add(1)
+        .expect("Guess cannot be u64::MAX, as we have taken a root > 2 of a value to get it");
+    if is_nth_power_below_target(guess_plus_one) {
+        return Some(guess);
+    }
+
+    // If not, then the value above must be the correct one.
+    Some(guess_plus_one)
 }
 
 #[cfg(test)]

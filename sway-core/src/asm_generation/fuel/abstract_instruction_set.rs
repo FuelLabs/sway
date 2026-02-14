@@ -1,9 +1,7 @@
 use super::{
     allocated_abstract_instruction_set::AllocatedAbstractInstructionSet, register_allocator,
 };
-use crate::asm_lang::{
-    allocated_ops::AllocatedOp, Op, RealizedOp,
-};
+use crate::asm_lang::{allocated_ops::AllocatedOp, Op, RealizedOp};
 use std::fmt;
 use sway_error::error::CompileError;
 
