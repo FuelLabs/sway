@@ -6,8 +6,6 @@ exit status: 1
 output:
     Building test/src/e2e_vm_tests/test_programs/should_fail/unsupported_const_generics
    Compiling library std (sway-lib-std)
-DIFF------------------------------
-.program:
    Compiling script unsupported_const_generics (test/src/e2e_vm_tests/test_programs/should_fail/unsupported_const_generics)
 warning
   --> test/src/e2e_vm_tests/test_programs/should_fail/unsupported_const_generics/src/main.sw:64:5
