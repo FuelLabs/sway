@@ -49,6 +49,7 @@ forc-util = { path = "forc-util/", version = "0.70.3" }
 
 # Forc plugins
 forc-plugins = { path = "forc-plugins/", version = "0.70.3" }
+forc-client = "0.71"
 forc-debug = { path = "forc-plugins/forc-debug/", version = "0.70.3" }
 forc-doc = { path = "forc-plugins/forc-doc/", version = "0.70.3" }
 forc-fmt = { path = "forc-plugins/forc-fmt/", version = "0.70.3" }
