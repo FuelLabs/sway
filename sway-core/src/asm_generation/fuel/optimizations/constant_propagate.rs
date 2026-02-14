@@ -582,6 +582,7 @@ mod tests {
         f: impl FnOnce(AbstractInstructionSet) -> AbstractInstructionSet,
     ) -> String {
         let ops = AbstractInstructionSet {
+            function: None,
             ops: ops.into_iter().collect(),
         };
 
