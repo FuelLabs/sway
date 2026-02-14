@@ -2,20 +2,6 @@
 source: test/src/snapshot/mod.rs
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg_release --asm final | sub ecal
-ecal $r189 $r188 $zero $zero            ; ecal id fd zero zero
-ecal $r313 $r312 $zero $zero            ; ecal id fd zero zero
-ecal $r438 $r437 $zero $zero            ; ecal id fd zero zero
-ecal $r473 $r472 $zero $zero            ; ecal id fd zero zero
-ecal $r629 $r628 $zero $zero            ; ecal id fd zero zero
-ecal $r668 $r667 $zero $zero            ; ecal id fd zero zero
-ecal $r727 $r726 $zero $zero            ; ecal id fd zero zero
-ecal $r790 $r789 $zero $zero            ; ecal id fd zero zero
-ecal $r866 $r865 $zero $zero            ; ecal id fd zero zero
-ecal $r901 $r900 $zero $zero            ; ecal id fd zero zero
-ecal $r936 $r935 $zero $zero            ; ecal id fd zero zero
-ecal $r973 $r972 $zero $zero            ; ecal id fd zero zero
-ecal $r1008 $r1007 $zero $zero          ; ecal id fd zero zero
-ecal $r1080 $r1076 $r1077 $r1079        ; ecal id fd buf count
 ecal $r1 $r0 $zero $zero      ; ecal id fd zero zero
 ecal $r1 $r0 $zero $zero      ; ecal id fd zero zero
 ecal $r1 $r0 $zero $zero      ; ecal id fd zero zero
@@ -32,85 +18,6 @@ ecal $r1 $r0 $zero $zero      ; ecal id fd zero zero
 ecal $r3 $r0 $r1 $r2          ; ecal id fd buf count
 
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg_release --release --asm final | sub ecal
-ecal $r74 $r75 $r71 $r73                ; ecal id fd buf count
-ecal $r87 $r88 $zero $zero              ; ecal id fd zero zero
-ecal $r114 $r115 $zero $zero            ; ecal id fd zero zero
-ecal $r141 $r142 $zero $zero            ; ecal id fd zero zero
-ecal $r168 $r169 $zero $zero            ; ecal id fd zero zero
-ecal $r279 $r280 $r276 $r278            ; ecal id fd buf count
-ecal $r292 $r293 $zero $zero            ; ecal id fd zero zero
-ecal $r327 $r328 $zero $zero            ; ecal id fd zero zero
-ecal $r371 $r372 $zero $zero            ; ecal id fd zero zero
-ecal $r428 $r429 $zero $zero            ; ecal id fd zero zero
-ecal $r489 $r490 $zero $zero            ; ecal id fd zero zero
-ecal $r521 $r522 $zero $zero            ; ecal id fd zero zero
-ecal $r553 $r554 $zero $zero            ; ecal id fd zero zero
-ecal $r587 $r588 $zero $zero            ; ecal id fd zero zero
-ecal $r616 $r617 $zero $zero            ; ecal id fd zero zero
-ecal $r74 $r75 $r71 $r73                ; ecal id fd buf count
-ecal $r87 $r88 $zero $zero              ; ecal id fd zero zero
-ecal $r114 $r115 $zero $zero            ; ecal id fd zero zero
-ecal $r141 $r142 $zero $zero            ; ecal id fd zero zero
-ecal $r168 $r169 $zero $zero            ; ecal id fd zero zero
-ecal $r279 $r280 $r276 $r278            ; ecal id fd buf count
-ecal $r292 $r293 $zero $zero            ; ecal id fd zero zero
-ecal $r327 $r328 $zero $zero            ; ecal id fd zero zero
-ecal $r371 $r372 $zero $zero            ; ecal id fd zero zero
-ecal $r428 $r429 $zero $zero            ; ecal id fd zero zero
-ecal $r489 $r490 $zero $zero            ; ecal id fd zero zero
-ecal $r521 $r522 $zero $zero            ; ecal id fd zero zero
-ecal $r553 $r554 $zero $zero            ; ecal id fd zero zero
-ecal $r587 $r588 $zero $zero            ; ecal id fd zero zero
-ecal $r616 $r617 $zero $zero            ; ecal id fd zero zero
-ecal $r74 $r75 $r71 $r73                ; ecal id fd buf count
-ecal $r87 $r88 $zero $zero              ; ecal id fd zero zero
-ecal $r114 $r115 $zero $zero            ; ecal id fd zero zero
-ecal $r141 $r142 $zero $zero            ; ecal id fd zero zero
-ecal $r168 $r169 $zero $zero            ; ecal id fd zero zero
-ecal $r279 $r280 $r276 $r278            ; ecal id fd buf count
-ecal $r292 $r293 $zero $zero            ; ecal id fd zero zero
-ecal $r327 $r328 $zero $zero            ; ecal id fd zero zero
-ecal $r371 $r372 $zero $zero            ; ecal id fd zero zero
-ecal $r428 $r429 $zero $zero            ; ecal id fd zero zero
-ecal $r489 $r490 $zero $zero            ; ecal id fd zero zero
-ecal $r521 $r522 $zero $zero            ; ecal id fd zero zero
-ecal $r553 $r554 $zero $zero            ; ecal id fd zero zero
-ecal $r587 $r588 $zero $zero            ; ecal id fd zero zero
-ecal $r616 $r617 $zero $zero            ; ecal id fd zero zero
-ecal $r74 $r75 $r71 $r73                ; ecal id fd buf count
-ecal $r87 $r88 $zero $zero              ; ecal id fd zero zero
-ecal $r114 $r115 $zero $zero            ; ecal id fd zero zero
-ecal $r141 $r142 $zero $zero            ; ecal id fd zero zero
-ecal $r168 $r169 $zero $zero            ; ecal id fd zero zero
-ecal $r279 $r280 $r276 $r278            ; ecal id fd buf count
-ecal $r292 $r293 $zero $zero            ; ecal id fd zero zero
-ecal $r327 $r328 $zero $zero            ; ecal id fd zero zero
-ecal $r371 $r372 $zero $zero            ; ecal id fd zero zero
-ecal $r428 $r429 $zero $zero            ; ecal id fd zero zero
-ecal $r489 $r490 $zero $zero            ; ecal id fd zero zero
-ecal $r521 $r522 $zero $zero            ; ecal id fd zero zero
-ecal $r553 $r554 $zero $zero            ; ecal id fd zero zero
-ecal $r587 $r588 $zero $zero            ; ecal id fd zero zero
-ecal $r616 $r617 $zero $zero            ; ecal id fd zero zero
- ecal $r651 $r652 $r649 $r650            ; ecal id fd buf count
- ecal $r651 $r652 $r649 $$retv           ; ecal id fd buf count
-ecal $r651 $r652 $r649 $$retv           ; ecal id fd buf count
-ecal $r651 $r652 $r649 $$retv           ; ecal id fd buf count
-ecal $r651 $r652 $r649 $$retv           ; ecal id fd buf count
-ecal $r714 $r715 $r711 $r713            ; ecal id fd buf count
-ecal $r714 $r715 $r711 $r713            ; ecal id fd buf count
-ecal $r714 $r715 $r711 $r713            ; ecal id fd buf count
-ecal $r714 $r715 $r711 $r713            ; ecal id fd buf count
- ecal $r723 $r724 $r725 $r726            ; ecal id fd buf count
- ecal $r723 $r724 $$locbase $one         ; ecal id fd buf count
- ecal $r734 $r735 $r733 $r736            ; ecal id fd buf count
- ecal $r734 $r735 $r733 $one             ; ecal id fd buf count
-ecal $r723 $r724 $$locbase $one         ; ecal id fd buf count
-ecal $r734 $r735 $r733 $one             ; ecal id fd buf count
-ecal $r723 $r724 $$locbase $one         ; ecal id fd buf count
-ecal $r734 $r735 $r733 $one             ; ecal id fd buf count
-ecal $r723 $r724 $$locbase $one         ; ecal id fd buf count
-ecal $r734 $r735 $r733 $one             ; ecal id fd buf count
 ecal $r2 $r5 $r0 $r1          ; ecal id fd buf count
 ecal $r0 $r1 $zero $zero      ; ecal id fd zero zero
 ecal $r0 $r1 $zero $zero      ; ecal id fd zero zero

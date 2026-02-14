@@ -6,8 +6,6 @@ exit status: 1
 output:
     Building test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_contract_storage
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
-DIFF------------------------------
-.program:
    Compiling contract attributes_invalid_target_contract_storage (test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_contract_storage)
 error: Attribute cannot annotate item
  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_contract_storage/src/main.sw:3:3

@@ -6,15 +6,7 @@ exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_unknown
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
-DIFF------------------------------
-.program:
-DIFF------------------------------
-.program:
    Compiling library attributes_unknown (test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_unknown)
-DIFF------------------------------
-.program:
-DIFF------------------------------
-.program:
 warning: Attribute is unknown
  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_unknown/src/main.sw:3:3
   |
