@@ -381,7 +381,7 @@ impl AbstractInstructionSet {
                     |dst, l, r| Some(VirtualOp::SRLI(dst, l, r)),
                 ),
 
-                // Comparisons
+                // // Comparisons
                 Either::Left(VirtualOp::EQ(dst, l, r)) => transform_to_movi(
                     &mut known_values,
                     op,
@@ -409,7 +409,7 @@ impl AbstractInstructionSet {
                     dst,
                     l,
                     r,
-                    |l, r| Some(if l > r { 1 } else { 0 }),
+                    |l, r| Some(if l < r { 1 } else { 0 }),
                     |_, _, _| None,
                 ),
                 _ => false,
