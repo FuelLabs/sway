@@ -3367,6 +3367,7 @@ dependencies = [
  "sway-core 0.70.3",
  "sway-error 0.70.3",
  "sway-features 0.70.3",
+ "sway-ir 0.70.3",
  "sway-types 0.70.3",
  "sway-utils 0.70.3",
  "sysinfo 0.29.11",
