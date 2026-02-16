@@ -72,6 +72,8 @@ impl FuelAsmBuilder<'_, '_> {
         function: &Function,
         args: &[Value],
     ) -> Result<(), CompileError> {
+        let fn_name = function.get_name(self.context);
+
         // Put the args into the args registers.
         if args.len() <= compiler_constants::NUM_ARG_REGISTERS as usize {
             for (idx, arg_val) in args.iter().enumerate() {
@@ -79,7 +81,7 @@ impl FuelAsmBuilder<'_, '_> {
                 self.cur_bytecode.push(Op::register_move(
                     VirtualRegister::Constant(ConstantRegister::ARG_REGS[idx]),
                     arg_reg,
-                    format!("[call]: pass argument {idx}"),
+                    format!("[call: {fn_name}]: pass argument {idx}"),
                     self.md_mgr.val_to_span(self.context, *arg_val),
                 ));
             }
@@ -98,8 +100,7 @@ impl FuelAsmBuilder<'_, '_> {
                         VirtualImmediate12::try_new(self.locals_size_bytes(), Span::dummy())
                             .expect("Stack size too big for these many arguments, cannot handle."),
                     )),
-                    comment: "[call]: save address of stack arguments in last argument register"
-                        .to_string(),
+                    comment: format!("[call: {fn_name}]: save address of stack arguments in last argument register"),
                     owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
                 });
             } else {
@@ -112,7 +113,9 @@ impl FuelAsmBuilder<'_, '_> {
                         VirtualImmediate18::try_new(self.locals_size_bytes(), Span::dummy())
                             .expect("Stack size too big for these many arguments, cannot handle."),
                     )),
-                    comment: "[call]: temporarily save locals size to add up next".to_string(),
+                    comment: format!(
+                        "[call: {fn_name}]: temporarily save locals size to add up next"
+                    ),
                     owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
                 });
                 self.cur_bytecode.push(Op {
@@ -127,8 +130,7 @@ impl FuelAsmBuilder<'_, '_> {
                                 [(compiler_constants::NUM_ARG_REGISTERS - 1) as usize],
                         ),
                     )),
-                    comment: "[call]: save address of stack arguments in last argument register"
-                        .to_string(),
+                    comment: format!("[call: {fn_name}]: save address of stack arguments in last argument register"),
                     owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
                 });
             }
@@ -141,7 +143,7 @@ impl FuelAsmBuilder<'_, '_> {
                     self.cur_bytecode.push(Op::register_move(
                         VirtualRegister::Constant(ConstantRegister::ARG_REGS[idx]),
                         arg_reg,
-                        format!("[call]: pass argument {idx}"),
+                        format!("[call: {fn_name}]: pass argument {idx}"),
                         self.md_mgr.val_to_span(self.context, *arg_val),
                     ));
                 } else {
@@ -172,7 +174,9 @@ impl FuelAsmBuilder<'_, '_> {
                             )
                             .expect("Too many arguments, cannot handle."),
                         )),
-                        comment: format!("[call]: pass argument {idx} via its stack slot"),
+                        comment: format!(
+                            "[call: {fn_name}]: pass argument {idx} via its stack slot"
+                        ),
                         owning_span: self.md_mgr.val_to_span(self.context, *arg_val),
                     });
                 }
@@ -186,7 +190,7 @@ impl FuelAsmBuilder<'_, '_> {
                 to: fn_label,
                 type_: JumpType::Call,
             }),
-            comment: format!("[call]: call {}", function.get_name(self.context)),
+            comment: format!("[call: {fn_name}]: call function"),
             owning_span: None,
         });
 
@@ -198,7 +202,7 @@ impl FuelAsmBuilder<'_, '_> {
                     ret_reg.clone(),
                     VirtualRegister::Constant(ConstantRegister::CallReturnValue),
                 )),
-                comment: "[call]: copy the return value".into(),
+                comment: format!("[call: {fn_name}]: copy returned value"),
                 owning_span: None,
             });
         } else {
@@ -207,7 +211,7 @@ impl FuelAsmBuilder<'_, '_> {
                     ret_reg.clone(),
                     VirtualRegister::Constant(ConstantRegister::Zero),
                 )),
-                comment: "[call]: return unit value".into(),
+                comment: format!("[call: {fn_name}]: copy returned unit value"),
                 owning_span: None,
             });
         }
@@ -218,6 +222,7 @@ impl FuelAsmBuilder<'_, '_> {
 
     pub(super) fn compile_ret_from_call(
         &mut self,
+        fn_name: &str,
         instr_val: &Value,
         ret_val: &Value,
     ) -> Result<(), CompileError> {
@@ -232,7 +237,7 @@ impl FuelAsmBuilder<'_, '_> {
             self.cur_bytecode.push(Op::register_move(
                 VirtualRegister::Constant(ConstantRegister::CallReturnValue),
                 ret_reg,
-                "set return value",
+                format!("[fn end: {fn_name}] set return value"),
                 owning_span,
             ));
         }
@@ -241,9 +246,8 @@ impl FuelAsmBuilder<'_, '_> {
         let end_label = self
             .return_ctxs
             .last()
-            .expect("Calls guaranteed to save return context.")
-            .0;
-        self.cur_bytecode.push(Op::jump_to_label(end_label));
+            .expect("Calls guaranteed to save return context.");
+        self.cur_bytecode.push(Op::jump_to_label(*end_label));
 
         Ok(())
     }
@@ -271,7 +275,10 @@ impl FuelAsmBuilder<'_, '_> {
             )));
         }
 
-        let func_is_entry = function.is_entry(self.context);
+        let is_entry_fn = function.is_entry(self.context);
+
+        // Check function is a leaf fn
+        let is_leaf_fn = function.is_leaf_fn(self.context);
 
         // Insert a function label.
         let (start_label, end_label) = self.func_to_labels(&function);
@@ -286,6 +293,7 @@ impl FuelAsmBuilder<'_, '_> {
             )),
             _ => None,
         };
+
         let comment = format!(
             "--- start of function: {} ---",
             function.get_name(self.context)
@@ -296,45 +304,42 @@ impl FuelAsmBuilder<'_, '_> {
             None => Op::unowned_jump_label_comment(start_label, comment),
         });
 
+        let fn_name = function.get_name(self.context);
+
         // Manage the call frame.
-        if !func_is_entry {
+        if !is_entry_fn {
             // Save any general purpose registers used here on the stack.
             self.cur_bytecode.push(Op {
                 opcode: Either::Right(OrganizationalOp::PushAll(start_label)),
-                comment: "save all registers".to_owned(),
+                comment: format!("[fn init: {fn_name}]: push all used registers to stack"),
                 owning_span: span.clone(),
             });
         }
 
         let locals_alloc_result = self.alloc_locals(function);
 
-        if func_is_entry {
+        if is_entry_fn {
             self.compile_external_args(function)
                 .map_err(|e| handler.emit_err(e))?
         } else {
-            // Make copies of the arg registers.
-            self.compile_fn_call_args(function)
+            // Make copies of the arg registers, if function is not a leaf fn
+            self.compile_fn_call_args(function, is_leaf_fn)
         }
 
-        let reta = self.reg_seqr.next(); // XXX only do this if this function makes calls
-        if !func_is_entry {
-            // Save $reta and $retv
+        let reta = self.reg_seqr.next();
+
+        if !is_entry_fn {
+            // Store some info describing the call frame.
+            self.return_ctxs.push(end_label);
+        }
+
+        if !is_leaf_fn && !is_entry_fn {
             self.cur_bytecode.push(Op::register_move(
                 reta.clone(),
                 VirtualRegister::Constant(ConstantRegister::CallReturnAddress),
-                "save return address",
+                format!("[fn init: {fn_name}]: save return address"),
                 None,
             ));
-            let retv = self.reg_seqr.next();
-            self.cur_bytecode.push(Op::register_move(
-                retv.clone(),
-                VirtualRegister::Constant(ConstantRegister::CallReturnValue),
-                "save return value",
-                None,
-            ));
-
-            // Store some info describing the call frame.
-            self.return_ctxs.push((end_label, retv));
         }
 
         self.init_locals(locals_alloc_result);
@@ -345,32 +350,36 @@ impl FuelAsmBuilder<'_, '_> {
         for block in po.po_to_block.iter().rev() {
             let label = self.block_to_label(block);
             self.cur_bytecode.push(Op::unowned_jump_label(label));
-            self.compile_block(handler, block, func_is_entry)?;
+            self.compile_block(handler, block, is_entry_fn)?;
         }
 
-        if !func_is_entry {
+        // Generate epilogue for non-entry functions.
+        // Entry functions will return to the caller via a RET(D),
+        // so they don't need an epilogue.
+        if !is_entry_fn {
             // Insert the end of function label.
             self.cur_bytecode.push(Op::unowned_jump_label(end_label));
 
             // Pop the call frame entry.
             self.return_ctxs.pop();
 
-            // Free our stack allocated locals.  This is unneeded for entries since they will have
-            // actually returned to the calling context via a VM RET.
-            self.drop_locals();
+            // Free our stack allocated locals.
+            self.drop_locals(fn_name);
 
-            // Restore $reta.
-            self.cur_bytecode.push(Op::register_move(
-                VirtualRegister::Constant(ConstantRegister::CallReturnAddress),
-                reta,
-                "restore return address",
-                None,
-            ));
+            if !is_leaf_fn {
+                // Restore $reta.
+                self.cur_bytecode.push(Op::register_move(
+                    VirtualRegister::Constant(ConstantRegister::CallReturnAddress),
+                    reta,
+                    format!("[fn end: {fn_name}] restore return address"),
+                    None,
+                ));
+            }
 
-            // Restore GP regs.
+            // Restore general purpose registers.
             self.cur_bytecode.push(Op {
                 opcode: Either::Right(OrganizationalOp::PopAll(start_label)),
-                comment: "restore all registers".to_owned(),
+                comment: format!("[fn end: {fn_name}] restore all used registers"),
                 owning_span: None,
             });
 
@@ -381,7 +390,7 @@ impl FuelAsmBuilder<'_, '_> {
                     ConstantRegister::CallReturnAddress.into(),
                     VirtualImmediate12::new(0),
                 )),
-                comment: "return from call".into(),
+                comment: format!("[fn end: {fn_name}] return from call"),
                 owning_span: None,
             });
         }
@@ -389,75 +398,79 @@ impl FuelAsmBuilder<'_, '_> {
         // Save this function.
         let mut ops = Vec::new();
         ops.append(&mut self.cur_bytecode);
-        if func_is_entry {
+        if is_entry_fn {
             self.entries
                 .push((function, start_label, ops, test_decl_ref));
         } else {
-            self.non_entries.push(ops);
+            self.non_entries.push((function, ops));
         }
 
         Ok(())
     }
 
-    fn compile_fn_call_args(&mut self, function: Function) {
-        if function.num_args(self.context) <= compiler_constants::NUM_ARG_REGISTERS as usize {
-            // All arguments are passed through registers.
-            for (idx, (arg_name, arg_val)) in function.args_iter(self.context).enumerate() {
-                // Make a copy of the args in case we make calls and need to use the arg registers.
-                let arg_copy_reg = self.reg_seqr.next();
-                self.cur_bytecode.push(Op::register_move(
-                    arg_copy_reg.clone(),
-                    VirtualRegister::Constant(ConstantRegister::ARG_REGS[idx]),
-                    format!("save argument {idx} ({arg_name})"),
-                    self.md_mgr.val_to_span(self.context, *arg_val),
-                ));
-
-                // Remember our arg copy.
-                self.reg_map.insert(*arg_val, arg_copy_reg);
-            }
-        } else {
-            // Get NUM_ARG_REGISTERS - 1 arguments from arg registers and rest from the stack.
-            for (idx, (arg_name, arg_val)) in function.args_iter(self.context).enumerate() {
-                let arg_copy_reg = self.reg_seqr.next();
-                // Except for the last arg register, the others hold an argument.
-                if idx < compiler_constants::NUM_ARG_REGISTERS as usize - 1 {
-                    // Make a copy of the args in case we make calls and need to use the arg registers.
+    /// Copy all arguments that are passed as registers into new registers. This is done
+    /// to allow the current function to call others fns, as the set of function arguments is
+    /// always the same.
+    ///
+    /// This is not required for "leaf fns" as they do not call others.
+    ///
+    /// We load arguments from the stack on both cases
+    fn compile_fn_call_args(&mut self, function: Function, is_leaf_fn: bool) {
+        let fn_name = function.get_name(self.context);
+        let uses_stack =
+            function.num_args(self.context) > compiler_constants::NUM_ARG_REGISTERS as usize;
+        for (idx, (arg_name, arg_val)) in function.args_iter(self.context).enumerate() {
+            let load_arg =
+                uses_stack && (idx >= compiler_constants::NUM_ARG_REGISTERS as usize - 1);
+            let arg_reg = if !load_arg {
+                let initial_arg_reg = VirtualRegister::Constant(ConstantRegister::ARG_REGS[idx]);
+                if !is_leaf_fn {
+                    let arg_copy_reg = self.reg_seqr.next();
                     self.cur_bytecode.push(Op::register_move(
                         arg_copy_reg.clone(),
-                        VirtualRegister::Constant(ConstantRegister::ARG_REGS[idx]),
-                        format!("save argument {idx} ({arg_name})"),
+                        initial_arg_reg,
+                        format!("[fn init: {fn_name}]: copy argument {idx} ({arg_name})"),
                         self.md_mgr.val_to_span(self.context, *arg_val),
                     ));
+                    arg_copy_reg
                 } else {
-                    // All arguments [NUM_ARG_REGISTERS - 1 ..] go into the stack.
-                    assert!(
-                        self.locals_size_bytes().is_multiple_of(8),
-                        "The size of locals is not word aligned"
-                    );
-                    let stack_offset =
-                        (idx as u64 + 1) - compiler_constants::NUM_ARG_REGISTERS as u64;
-                    self.cur_bytecode.push(Op {
-                        opcode: Either::Left(VirtualOp::LW(
-                            arg_copy_reg.clone(),
-                            VirtualRegister::Constant(
-                                ConstantRegister::ARG_REGS
-                                    [compiler_constants::NUM_ARG_REGISTERS as usize - 1],
-                            ),
-                            VirtualImmediate12::try_new(
-                                stack_offset,
-                                self.md_mgr
-                                    .val_to_span(self.context, *arg_val)
-                                    .unwrap_or(Span::dummy()),
-                            )
-                            .expect("Too many arguments, cannot handle."),
-                        )),
-                        comment: format!("load argument {idx} ({arg_name}) from its stack slot"),
-                        owning_span: self.md_mgr.val_to_span(self.context, *arg_val),
-                    });
+                    initial_arg_reg
                 }
-                // Remember our arg copy.
-                self.reg_map.insert(*arg_val, arg_copy_reg);
-            }
+            } else {
+                let arg_copy_reg = self.reg_seqr.next();
+
+                // All arguments [NUM_ARG_REGISTERS - 1 ..] go into the stack.
+                assert!(
+                    self.locals_size_bytes().is_multiple_of(8),
+                    "The size of locals is not word aligned"
+                );
+
+                let stack_offset = (idx as u64 + 1) - compiler_constants::NUM_ARG_REGISTERS as u64;
+
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::LW(
+                        arg_copy_reg.clone(),
+                        VirtualRegister::Constant(
+                            ConstantRegister::ARG_REGS
+                                [compiler_constants::NUM_ARG_REGISTERS as usize - 1],
+                        ),
+                        VirtualImmediate12::try_new(
+                            stack_offset,
+                            self.md_mgr
+                                .val_to_span(self.context, *arg_val)
+                                .unwrap_or(Span::dummy()),
+                        )
+                        .expect("Too many arguments, cannot handle."),
+                    )),
+                    comment: format!("[fn init: {fn_name}]: load argument {idx} ({arg_name}) from its stack slot"),
+                    owning_span: self.md_mgr.val_to_span(self.context, *arg_val),
+                });
+
+                arg_copy_reg
+            };
+
+            // Remember our arg copy.
+            self.reg_map.insert(*arg_val, arg_reg);
         }
     }
 
@@ -876,15 +889,20 @@ impl FuelAsmBuilder<'_, '_> {
 
         // Reserve space on the stack (in bytes) for all our locals which require it.  Firstly save
         // the current $sp.
+        let fn_name = function.get_name(self.context);
+        let fn_init_prefix = format!(
+            "[{} init: {fn_name}]:",
+            if function.is_entry(self.context) {
+                "entry"
+            } else {
+                "fn"
+            }
+        );
         let locals_base_reg = VirtualRegister::Constant(ConstantRegister::LocalsBase);
         self.cur_bytecode.push(Op::register_move(
             locals_base_reg.clone(),
             VirtualRegister::Constant(ConstantRegister::StackPointer),
-            format!(
-                "save locals base register for function {}",
-                function.get_name(self.context)
-            )
-            .to_string(),
+            format!("{fn_init_prefix} set locals base register"),
             None,
         ));
 
@@ -897,7 +915,7 @@ impl FuelAsmBuilder<'_, '_> {
                 VirtualRegister::Constant(ConstantRegister::StackPointer),
                 VirtualImmediate24::new(locals_size_bytes + (max_num_extra_args * 8),)
             )),
-            comment: format!("allocate {locals_size_bytes} bytes for locals and {max_num_extra_args} slots for call arguments"),
+            comment: format!("{fn_init_prefix} allocate: locals {locals_size_bytes} byte(s), call args {max_num_extra_args} slot(s)"),
             owning_span: None,
         });
         (
@@ -1032,7 +1050,8 @@ impl FuelAsmBuilder<'_, '_> {
             .push((locals_size_bytes, locals_base_reg, max_num_extra_args));
     }
 
-    pub(super) fn drop_locals(&mut self) {
+    /// Free stack allocated locals in non-entry functions.
+    pub(super) fn drop_locals(&mut self, fn_name: &str) {
         let (locals_size_bytes, max_num_extra_args) =
             (self.locals_size_bytes(), self.max_num_extra_args());
         if locals_size_bytes > compiler_constants::TWENTY_FOUR_BITS {
@@ -1042,7 +1061,7 @@ impl FuelAsmBuilder<'_, '_> {
             opcode: Either::Left(
                 VirtualOp::CFSI(VirtualRegister::Constant(ConstantRegister::StackPointer),
                 VirtualImmediate24::new(locals_size_bytes + (max_num_extra_args * 8), ))),
-            comment: format!("free {locals_size_bytes} bytes for locals and {max_num_extra_args} slots for extra call arguments"),
+            comment: format!("[fn end: {fn_name}] free: locals {locals_size_bytes} byte(s), call args {max_num_extra_args} slot(s)"),
             owning_span: None,
         });
     }

@@ -1,6 +1,5 @@
 ---
 source: test/src/snapshot/mod.rs
-assertion_line: 101
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_one_u64 --release --ir final --asm final --bytecode
 exit status: 0
@@ -32,13 +31,13 @@ script {
 
         entry():
         v104v1 = const u64 0, !5
-        v530v1 = gtf v104v1, 10, !11
-        v531v1 = bitcast v530v1 to ptr, !12
-        v584v1 = cast_ptr v531v1 to __ptr { u64 }, !15
-        v676v1 = get_local __ptr { u64 }, __aggr_memcpy_0
-        mem_copy_val v676v1, v584v1
+        v364v1 = gtf v104v1, 10, !11
+        v365v1 = bitcast v364v1 to ptr, !12
+        v418v1 = cast_ptr v365v1 to __ptr { u64 }, !15
+        v432v1 = get_local __ptr { u64 }, __aggr_memcpy_0
+        mem_copy_val v432v1, v418v1
         v112v1 = get_local __ptr { u64 }, args, !16
-        mem_copy_val v112v1, v676v1
+        mem_copy_val v112v1, v432v1
         v134v1 = get_local __ptr { u64 }, args, !17
         v135v1 = const u64 0
         v136v1 = get_elem_ptr v134v1, __ptr u64, v135v1, !18
@@ -46,16 +45,16 @@ script {
         v138v1 = call main_11(v137v1), !21
         v139v1 = get_local __ptr u64, _result, !22
         store v138v1 to v139v1, !22
-        v258v1 = get_local __ptr u64, _result, !23
+        v158v1 = get_local __ptr u64, _result, !23
         v149v1 = const u64 8
-        retd v258v1 v149v1, !27
+        retd v158v1 v149v1, !27
     }
 
     entry_orig fn main_11(baba !29: u64) -> u64, !32 {
         entry(baba: u64):
         v131v1 = const u64 1, !33
-        v456v1 = add baba, v131v1, !36
-        ret u64 v456v1
+        v350v1 = add baba, v131v1, !36
+        ret u64 v350v1
     }
 }
 
@@ -67,13 +66,13 @@ script {
 !5 = span !4 1542 1543
 !6 = span !0 59 89
 !7 = fn_call_path_span !0 59 77
-!8 = span !4 186088 186120
-!9 = fn_call_path_span !4 186088 186118
+!8 = span !4 186170 186202
+!9 = fn_call_path_span !4 186170 186200
 !10 = span !4 1525 1549
 !11 = (!6 !7 !8 !9 !10)
 !12 = (!6 !7 !8 !9 !10)
-!13 = span !4 186063 186121
-!14 = fn_call_path_span !4 186063 186082
+!13 = span !4 186145 186203
+!14 = fn_call_path_span !4 186145 186164
 !15 = (!6 !7 !13 !14)
 !16 = span !0 40 90
 !17 = span !0 131 135
@@ -85,7 +84,7 @@ script {
 !23 = span !0 182 189
 !24 = span !0 156 190
 !25 = fn_call_path_span !0 156 173
-!26 = span !4 93998 94024
+!26 = span !4 94080 94106
 !27 = (!24 !25 !26)
 !28 = "test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_one_u64/src/main.sw"
 !29 = span !28 17 21
@@ -109,27 +108,26 @@ CONFIGURABLES_OFFSET[32..64]
 lw   $$ds $$tmp i1
 add  $$ds $$ds $$tmp
 cfei i0                       ; allocate stack space for globals
-move $$locbase $sp            ; save locals base register for function __entry
-cfei i24                      ; allocate 24 bytes for locals and 0 slots for call arguments
+move $$locbase $sp            ; [entry init: __entry]: set locals base register
+cfei i24                      ; [entry init: __entry]: allocate: locals 24 byte(s), call args 0 slot(s)
 gtf  $r0 $zero i10            ; get transaction field
 mcpi $$locbase $r0 i8         ; copy memory
 addi $r0 $$locbase i16        ; get offset to local __ptr { u64 }
 mcpi $r0 $$locbase i8         ; copy memory
 lw   $r0 $$locbase i2         ; load word
-move $$arg0 $r0               ; [call]: pass argument 0
-jal  $$reta $pc i5            ; [call]: call main_11
+move $$arg0 $r0               ; [call: main_11]: pass argument 0
+jal  $$reta $pc i5            ; [call: main_11]: call function
 sw   $$locbase $$retv i1      ; store word
 addi $r0 $$locbase i8         ; get offset to local __ptr u64
 movi $r1 i8                   ; initialize constant into register
-retd  $r0 $r1
-pshl i1                       ; save registers 16..40
-pshh i524288                  ; save registers 40..64
-move $$locbase $sp            ; save locals base register for function main_11
+retd  $r0 $r1                 ; [entry end: __entry] return slice
+pshl i1                       ; [fn init: main_11]: push used low registers 16..40
+pshh i524288                  ; [fn init: main_11]: push used high registers 40..64
 add  $r0 $$arg0 $one
-move $$retv $r0               ; set return value
-poph i524288                  ; restore registers 40..64
-popl i1                       ; restore registers 16..40
-jal  $zero $$reta i0          ; return from call
+move $$retv $r0               ; [fn end: main_11] set return value
+poph i524288                  ; [fn end: main_11]: restore used high registers 40..64
+popl i1                       ; [fn end: main_11]: restore used low registers 16..40
+jal  $zero $$reta i0          ; [fn end: main_11] return from call
 .data:
 
 
@@ -137,7 +135,7 @@ jal  $zero $$reta i0          ; return from call
 
 0x00000000 MOVE R60 $pc                                    ;; [26, 240, 48, 0]
 0x00000004 JMPF $zero 0x4                                  ;; [116, 0, 0, 4]
-0x00000008                                                 ;; [0, 0, 0, 0, 0, 0, 0, 120]
+0x00000008                                                 ;; [0, 0, 0, 0, 0, 0, 0, 112]
 0x00000010                                                 ;; [0, 0, 0, 0, 0, 0, 0, 0]
 0x00000018 LW R63 R60 0x1                                  ;; [93, 255, 192, 1]
 0x0000001c ADD R63 R63 R60                                 ;; [16, 255, 255, 0]
@@ -156,14 +154,12 @@ jal  $zero $$reta i0          ; return from call
 0x00000050 RETD $writable R17                              ;; [37, 65, 16, 0]
 0x00000054 PSHL 0x1                                        ;; [149, 0, 0, 1]
 0x00000058 PSHH 0x80000                                    ;; [150, 8, 0, 0]
-0x0000005c MOVE R59 $sp                                    ;; [26, 236, 80, 0]
-0x00000060 ADD $writable R58 $one                          ;; [16, 67, 160, 64]
-0x00000064 MOVE R61 $writable                              ;; [26, 245, 0, 0]
-0x00000068 POPH 0x80000                                    ;; [152, 8, 0, 0]
-0x0000006c POPL 0x1                                        ;; [151, 0, 0, 1]
-0x00000070 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
-0x00000074 NOOP                                            ;; [71, 0, 0, 0]
+0x0000005c ADD $writable R58 $one                          ;; [16, 67, 160, 64]
+0x00000060 MOVE R61 $writable                              ;; [26, 245, 0, 0]
+0x00000064 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x00000068 POPL 0x1                                        ;; [151, 0, 0, 1]
+0x0000006c JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
 .data_section:
 ;; --- END OF TARGET BYTECODE ---
 
-    Finished release [optimized + fuel] target(s) [120 B] in ???
+    Finished release [optimized + fuel] target(s) [112 B] in ???

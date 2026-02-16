@@ -56,7 +56,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
@@ -76,7 +76,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
@@ -98,7 +98,7 @@ jobs:
       fuel_core_version: ${{steps.get_fuel_core_ver.outputs.version}}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
@@ -115,7 +115,7 @@ jobs:
   build-sway-lib-std:
     runs-on: warp-ubuntu-latest-x64-4x
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -131,7 +131,7 @@ jobs:
   build-sway-examples:
     runs-on: warp-ubuntu-latest-x64-4x
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -145,7 +145,7 @@ jobs:
   build-reference-examples:
     runs-on: warp-ubuntu-latest-x64-4x
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -159,7 +159,7 @@ jobs:
   forc-fmt-check-sway-lib-std:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -173,7 +173,7 @@ jobs:
   forc-fmt-check-sway-examples:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -187,7 +187,7 @@ jobs:
   forc-fmt-check-panic:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -224,7 +224,7 @@ jobs:
   build-mdbook:
     runs-on: warp-ubuntu-latest-x64-4x
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -273,7 +273,7 @@ jobs:
   build-forc-doc-sway-lib-std:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -292,7 +292,7 @@ jobs:
   build-forc-test-project:
     runs-on: warp-ubuntu-latest-x64-4x
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -329,7 +329,7 @@ jobs:
   cargo-build-workspace:
     runs-on: warp-ubuntu-latest-x64-8x
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -345,7 +345,7 @@ jobs:
   cargo-clippy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -360,7 +360,7 @@ jobs:
   cargo-toml-fmt-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -376,7 +376,7 @@ jobs:
   cargo-fmt-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -389,7 +389,7 @@ jobs:
     runs-on: warp-ubuntu-latest-x64-4x
     needs: get-fuel-core-version
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -414,7 +414,7 @@ jobs:
     runs-on: warp-ubuntu-latest-x64-4x
     needs: get-fuel-core-version
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -439,7 +439,7 @@ jobs:
   cargo-test-lib-std:
     runs-on: warp-ubuntu-latest-x64-8x
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -467,7 +467,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -481,7 +481,7 @@ jobs:
         run: ./benchmark.sh
       - name: Checkout benchmark data
         if: github.event_name != 'push'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
         with:
           repository: FuelLabs/sway-performance-data
           path: performance-data
@@ -495,7 +495,7 @@ jobs:
           owner: FuelLabs
       - name: Checkout benchmark data
         if: github.event_name == 'push'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
         with:
           repository: FuelLabs/sway-performance-data
           path: performance-data
@@ -512,7 +512,7 @@ jobs:
   forc-unit-tests:
     runs-on: warp-ubuntu-latest-x64-4x
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -558,7 +558,7 @@ jobs:
   forc-pkg-fuels-deps-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -596,13 +596,11 @@ jobs:
     strategy:
       matrix:
         tool:
-          - test: cargo test --locked --release -p forc-client -- --test-threads 1
           - test: cargo test --locked --release -p forc-debug
-          - test: cargo test --locked --release -p forc-client -- --test-threads 1
           - test: cargo test --locked --release -p forc-mcp -- --test-threads 1
           - test: cargo nextest run --locked --release -p sway-lsp --no-capture --profile ci --config-file sway-lsp/tests/nextest.toml
           - test: cargo test --locked --release -p forc -- --nocapture
-          - test: cargo test --locked --release --workspace --exclude forc-debug --exclude sway-lsp --exclude forc-client --exclude forc-mcp --exclude forc
+          - test: cargo test --locked --release --workspace --exclude forc-debug --exclude sway-lsp --exclude forc-mcp --exclude forc
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
@@ -633,7 +631,7 @@ jobs:
   cargo-unused-deps-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
@@ -683,7 +681,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
@@ -729,7 +727,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
@@ -871,13 +869,13 @@ jobs:
       - name: Strip release binaries x86_64-linux-gnu
         if: matrix.job.target == 'x86_64-unknown-linux-gnu'
         run: |
-          for BINARY in forc forc-fmt forc-lsp forc-debug forc-deploy forc-run forc-doc forc-tx forc-submit forc-mcp forc-migrate forc-publish forc-call; do
+          for BINARY in forc forc-fmt forc-lsp forc-debug forc-doc forc-tx forc-mcp forc-migrate forc-publish; do
             strip "target/${{ matrix.job.target }}/release/$BINARY"
           done
       - name: Strip release binaries aarch64-linux-gnu
         if: matrix.job.target == 'aarch64-unknown-linux-gnu'
         run: |
-          for BINARY in forc forc-fmt forc-lsp forc-debug forc-deploy forc-run forc-doc forc-tx forc-submit forc-mcp forc-migrate forc-publish forc-call; do
+          for BINARY in forc forc-fmt forc-lsp forc-debug forc-doc forc-tx forc-mcp forc-migrate forc-publish; do
             docker run --rm -v \
             "$PWD/target:/target:Z" \
             ghcr.io/cross-rs/${{ matrix.job.target }}:main \
@@ -887,7 +885,7 @@ jobs:
       - name: Strip release binaries mac
         if: matrix.job.os == 'macos-latest'
         run: |
-          for BINARY in forc forc-fmt forc-lsp forc-debug forc-deploy forc-run forc-doc forc-tx forc-submit forc-mcp forc-migrate forc-publish forc-call; do
+          for BINARY in forc forc-fmt forc-lsp forc-debug forc-doc forc-tx forc-mcp forc-migrate forc-publish; do
             strip -x "target/${{ matrix.job.target }}/release/$BINARY"
           done
 
@@ -901,7 +899,7 @@ jobs:
           ZIP_FILE_NAME=forc-binaries-${{ env.PLATFORM_NAME }}_${{ env.ARCH }}.tar.gz
           echo "ZIP_FILE_NAME=$ZIP_FILE_NAME" >> $GITHUB_ENV
           mkdir -pv ./forc-binaries
-          for BINARY in forc forc-fmt forc-lsp forc-debug forc-deploy forc-run forc-doc forc-tx forc-submit forc-mcp forc-migrate forc-publish forc-call; do
+          for BINARY in forc forc-fmt forc-lsp forc-debug forc-doc forc-tx forc-mcp forc-migrate forc-publish; do
             cp "target/${{ matrix.job.target }}/release/$BINARY" ./forc-binaries
           done
           tar -czvf $ZIP_FILE_NAME ./forc-binaries

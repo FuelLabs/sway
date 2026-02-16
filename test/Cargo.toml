@@ -14,12 +14,13 @@ colored.workspace = true
 duct.workspace = true
 filecheck.workspace = true
 forc = { workspace = true, features = ["test"] }
-forc-client.workspace = true
 forc-pkg.workspace = true
 forc-test.workspace = true
 forc-tracing.workspace = true
 forc-util = { workspace = true, features = ["tx"] }
 fuel-vm = { workspace = true, features = ["random"] }
+fuels.workspace = true
+fuels-accounts.workspace = true
 futures.workspace = true
 gag.workspace = true
 git2.workspace = true

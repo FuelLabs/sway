@@ -3,7 +3,7 @@ use libtest_mimic::{Arguments, Trial};
 use normalize_path::NormalizePath;
 use regex::{Captures, Regex};
 use std::{
-    collections::{BTreeSet, HashMap, VecDeque},
+    collections::{BTreeSet, HashMap},
     path::{Path, PathBuf},
     str::FromStr,
     sync::Once,
@@ -234,6 +234,11 @@ fn run_cmds(
                         continue;
                     } else if let Some(args) = cmd.strip_prefix("filter-fn ") {
                         if let Some(output) = last_output.take() {
+                            if !output.starts_with("exit status: 0") {
+                                last_output = Some(output);
+                                continue;
+                            }
+
                             let (name, fns) = args.trim().split_once(" ").unwrap();
 
                             let fns = fns
@@ -245,7 +250,6 @@ fn run_cmds(
 
                             let mut inside_ir = false;
                             let mut inside_asm = false;
-                            let mut last_asm_lines = VecDeque::new();
                             let mut capture_line = false;
 
                             let compiling_project_line = format!("Compiling script {name}");
@@ -254,7 +258,7 @@ fn run_cmds(
                                     inside_ir = true;
                                 }
 
-                                if line.contains(";; ASM: Final program") {
+                                if line.contains(";; ASM:") {
                                     inside_asm = true;
                                 }
 
@@ -275,7 +279,9 @@ fn run_cmds(
 
                                         for m in ir.module_iter() {
                                             for f in m.function_iter(&ir) {
-                                                if fns.contains(f.get_name(&ir)) {
+                                                let fn_name = f.get_name(&ir);
+                                                let any = fns.iter().any(|x| fn_name.contains(x));
+                                                if any {
                                                     snapshot.push('\n');
                                                     function_print(snapshot, &ir, f, false)
                                                         .unwrap();
@@ -291,32 +297,19 @@ fn run_cmds(
                                 }
 
                                 if inside_asm {
-                                    if line.contains("save locals base register for function") {
-                                        for f in fns.iter() {
-                                            if line.contains(f.as_str()) {
-                                                capture_line = true;
+                                    if (line.contains("fn init:") || line.contains("entry init"))
+                                        && fns.iter().any(|f| line.contains(&format!("init: {f}")))
+                                    {
+                                        capture_line = true;
 
-                                                snapshot.push('\n');
-
-                                                for l in last_asm_lines.drain(..) {
-                                                    snapshot.push_str(l);
-                                                    snapshot.push('\n');
-                                                }
-                                            }
-                                        }
+                                        snapshot.push('\n');
                                     }
-
-                                    // keep the last two lines
-                                    if last_asm_lines.len() >= 2 {
-                                        last_asm_lines.pop_front();
-                                    }
-                                    last_asm_lines.push_back(line);
 
                                     if line.is_empty() {
                                         inside_asm = false;
                                     }
 
-                                    if line.contains("; return from call") {
+                                    if line.contains("end:") && line.contains("] return") {
                                         if capture_line {
                                             captured.push_str(line);
                                             captured.push('\n');
