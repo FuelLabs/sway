@@ -27,13 +27,6 @@ use crate::{
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, DebugWithContext)]
 pub struct Block(pub slotmap::DefaultKey);
 
-impl Block {
-    pub fn get_module<'a>(&self, context: &'a Context) -> &'a Module {
-        let f = context.blocks[self.0].function;
-        &context.functions[f.0].module
-    }
-}
-
 #[doc(hidden)]
 pub struct BlockContent {
     /// Block label, useful for printing.
@@ -111,6 +104,12 @@ impl Block {
             preds: FxHashSet::default(),
         };
         Block(context.blocks.insert(content))
+    }
+
+    /// Get the parent module for this block.
+    pub fn get_module(&self, context: &Context) -> Module {
+        let f = context.blocks[self.0].function;
+        context.functions[f.0].module
     }
 
     /// Get the parent function for this block.

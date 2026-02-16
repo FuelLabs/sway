@@ -49,7 +49,7 @@ forc-util = { path = "forc-util/", version = "0.70.3" }
 
 # Forc plugins
 forc-plugins = { path = "forc-plugins/", version = "0.70.3" }
-forc-client = { path = "forc-plugins/forc-client/", version = "0.70.3" }
+forc-client = "0.71"
 forc-debug = { path = "forc-plugins/forc-debug/", version = "0.70.3" }
 forc-doc = { path = "forc-plugins/forc-doc/", version = "0.70.3" }
 forc-fmt = { path = "forc-plugins/forc-fmt/", version = "0.70.3" }
@@ -102,9 +102,6 @@ fuel-types = "0.65"
 fuel-tx = "0.65"
 fuel-vm = "0.65"
 
-# Dependencies from the `forc-wallet` repository:
-forc-wallet = "0.15"
-
 #
 # External dependencies
 #
@@ -115,8 +112,6 @@ anyhow = "1.0"
 assert-json-diff = "2.0"
 assert_matches = "1.5"
 async-trait = "0.1"
-aws-config = "1.5"
-aws-sdk-kms = "1.44"
 axum = "0.8"
 byte-unit = "5.1"
 bytes = "1.7"
@@ -134,7 +129,6 @@ crossbeam-channel = "0.5"
 dap = "0.4.1-alpha"
 dashmap = "6.1"
 devault = "0.2"
-dialoguer = "0.11"
 dir_indexer = "0.0"
 dirs = "5.0"
 downcast-rs = "1.2"
@@ -170,7 +164,6 @@ indoc = "2.0"
 insta = "1.40"
 ipfs-api-backend-hyper = "0.6"
 itertools = "0.13"
-k256 = "0.13"
 lazy_static = "1.4"
 libc = "0.2"
 libtest-mimic = "0.7"
@@ -205,7 +198,6 @@ rexpect = "0.6"
 revm = "14.0"
 rmcp = "0.2"
 ropey = "1.5"
-rpassword = "7.2"
 rustc-hash = "1.1"
 rustyline = "15.0"
 scopeguard = "1.2"

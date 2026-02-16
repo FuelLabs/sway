@@ -23,5 +23,5 @@ fn main() -> u64{
 // check: fn never_inline_1() -> u64
 
 // ::check-asm::
-// not: call always_inline_0
-// check: call never_inline_1
+// not: [call: always_inline_0]: call function
+// check: [call: never_inline_1]: call function

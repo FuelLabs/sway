@@ -1028,39 +1028,6 @@ impl<'a> FnCompiler<'a> {
         span: Span,
         return_type: TypeId,
     ) -> Result<TerminatorValue, CompileError> {
-        fn store_key_in_local_mem(
-            compiler: &mut FnCompiler,
-            context: &mut Context,
-            value: Value,
-            span_md_idx: Option<MetadataIndex>,
-        ) -> Result<Value, CompileError> {
-            // New name for the key
-            let key_name = compiler.lexical_map.insert("key_for_storage".to_owned());
-
-            // Local variable for the key
-            let key_var = compiler
-                .function
-                .new_local_var(context, key_name, Type::get_b256(context), None, false)
-                .map_err(|ir_error| {
-                    CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
-                })?;
-
-            // Convert the key variable to a value using get_local.
-            let key_val = compiler
-                .current_block
-                .append(context)
-                .get_local(key_var)
-                .add_metadatum(context, span_md_idx);
-
-            // Store the value to the key pointer value
-            compiler
-                .current_block
-                .append(context)
-                .store(key_val, value)
-                .add_metadatum(context, span_md_idx);
-            Ok(key_val)
-        }
-
         let engines = self.engines;
 
         // We safely index into arguments and type_arguments arrays below
@@ -1301,39 +1268,49 @@ impl<'a> FnCompiler<'a> {
             Intrinsic::StateClear => {
                 let key_exp = arguments[0].clone();
                 let number_of_slots_exp = arguments[1].clone();
+
+                let span_md_idx = md_mgr.span_to_md(context, &span);
+
                 let key_value = return_on_termination_or_extract!(
-                    self.compile_expression_to_register(context, md_mgr, &key_exp)?
+                    self.compile_expression_to_memory(context, md_mgr, &key_exp)?
                 )
-                .expect_register();
+                .expect_memory()
+                .add_metadatum(context, span_md_idx);
+
                 let number_of_slots_value = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, &number_of_slots_exp)?
                 )
-                .expect_register();
-                let span_md_idx = md_mgr.span_to_md(context, &span);
-                let key_var = store_key_in_local_mem(self, context, key_value, span_md_idx)?;
+                .expect_register()
+                .add_metadatum(context, span_md_idx);
+
                 let val = self
                     .current_block
                     .append(context)
-                    .state_clear(key_var, number_of_slots_value)
+                    .state_clear(key_value, number_of_slots_value)
                     .add_metadatum(context, span_md_idx);
+
                 Ok(TerminatorValue::new(
                     CompiledValue::InRegister(val),
                     context,
                 ))
             }
             Intrinsic::StateLoadWord => {
-                let exp = &arguments[0];
-                let value = return_on_termination_or_extract!(
-                    self.compile_expression_to_register(context, md_mgr, exp)?
-                )
-                .expect_register();
+                let key_exp = &arguments[0];
+
                 let span_md_idx = md_mgr.span_to_md(context, &span);
-                let key_var = store_key_in_local_mem(self, context, value, span_md_idx)?;
+
+                let key_value = return_on_termination_or_extract!(
+                    self.compile_expression_to_memory(context, md_mgr, key_exp)?
+                )
+                .expect_memory()
+                .add_metadatum(context, span_md_idx);
+
                 let val = self
                     .current_block
                     .append(context)
-                    .state_load_word(key_var)
+                    .state_load_word(key_value)
                     .add_metadatum(context, span_md_idx);
+
                 Ok(TerminatorValue::new(
                     CompiledValue::InRegister(val),
                     context,
@@ -1352,21 +1329,27 @@ impl<'a> FnCompiler<'a> {
                         hint: "This argument must be a copy type".to_string(),
                     });
                 }
+
+                let span_md_idx = md_mgr.span_to_md(context, &span);
+
                 let key_value = return_on_termination_or_extract!(
-                    self.compile_expression_to_register(context, md_mgr, key_exp)?
+                    self.compile_expression_to_memory(context, md_mgr, key_exp)?
                 )
-                .expect_register();
+                .expect_memory()
+                .add_metadatum(context, span_md_idx);
+
                 let val_value = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, val_exp)?
                 )
-                .expect_register();
-                let span_md_idx = md_mgr.span_to_md(context, &span);
-                let key_var = store_key_in_local_mem(self, context, key_value, span_md_idx)?;
+                .expect_register()
+                .add_metadatum(context, span_md_idx);
+
                 let val = self
                     .current_block
                     .append(context)
-                    .state_store_word(val_value, key_var)
+                    .state_store_word(val_value, key_value)
                     .add_metadatum(context, span_md_idx);
+
                 Ok(TerminatorValue::new(
                     CompiledValue::InRegister(val),
                     context,
@@ -1389,20 +1372,27 @@ impl<'a> FnCompiler<'a> {
                         hint: "This argument must be raw_ptr".to_string(),
                     });
                 }
+
+                let span_md_idx = md_mgr.span_to_md(context, &span);
+
                 let key_value = return_on_termination_or_extract!(
-                    self.compile_expression_to_register(context, md_mgr, &key_exp)?
+                    self.compile_expression_to_memory(context, md_mgr, &key_exp)?
                 )
-                .expect_register();
+                .expect_memory()
+                .add_metadatum(context, span_md_idx);
+
                 let val_ptr = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, &val_exp)?
                 )
-                .expect_register();
+                .expect_register()
+                .add_metadatum(context, span_md_idx);
+
                 let number_of_slots_value = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, &number_of_slots_exp)?
                 )
-                .expect_register();
-                let span_md_idx = md_mgr.span_to_md(context, &span);
-                let key_var = store_key_in_local_mem(self, context, key_value, span_md_idx)?;
+                .expect_register()
+                .add_metadatum(context, span_md_idx);
+
                 let b256_ty = Type::get_b256(context);
                 let b256_ptr_ty = Type::new_typed_pointer(context, b256_ty);
                 let val_ptr = self
@@ -1410,31 +1400,25 @@ impl<'a> FnCompiler<'a> {
                     .append(context)
                     .cast_ptr(val_ptr, b256_ptr_ty)
                     .add_metadatum(context, span_md_idx);
-                match kind {
-                    Intrinsic::StateLoadQuad => {
-                        let val = self
-                            .current_block
-                            .append(context)
-                            .state_load_quad_word(val_ptr, key_var, number_of_slots_value)
-                            .add_metadatum(context, span_md_idx);
-                        Ok(TerminatorValue::new(
-                            CompiledValue::InRegister(val),
-                            context,
-                        ))
-                    }
-                    Intrinsic::StateStoreQuad => {
-                        let val = self
-                            .current_block
-                            .append(context)
-                            .state_store_quad_word(val_ptr, key_var, number_of_slots_value)
-                            .add_metadatum(context, span_md_idx);
-                        Ok(TerminatorValue::new(
-                            CompiledValue::InRegister(val),
-                            context,
-                        ))
-                    }
+
+                let val = match kind {
+                    Intrinsic::StateLoadQuad => self
+                        .current_block
+                        .append(context)
+                        .state_load_quad_word(val_ptr, key_value, number_of_slots_value)
+                        .add_metadatum(context, span_md_idx),
+                    Intrinsic::StateStoreQuad => self
+                        .current_block
+                        .append(context)
+                        .state_store_quad_word(val_ptr, key_value, number_of_slots_value)
+                        .add_metadatum(context, span_md_idx),
                     _ => unreachable!(),
-                }
+                };
+
+                Ok(TerminatorValue::new(
+                    CompiledValue::InRegister(val),
+                    context,
+                ))
             }
             Intrinsic::Log => {
                 if context.program_kind == Kind::Predicate {
@@ -1636,19 +1620,18 @@ impl<'a> FnCompiler<'a> {
 
                 /* First operand: recipient */
                 let recipient_value = return_on_termination_or_extract!(
-                    self.compile_expression_to_register(context, md_mgr, &arguments[0])?
+                    self.compile_expression_to_memory(context, md_mgr, &arguments[0])?
                 )
-                .expect_register();
-                let recipient_md_idx = md_mgr.span_to_md(context, &span);
-                let recipient_var =
-                    store_key_in_local_mem(self, context, recipient_value, recipient_md_idx)?;
+                .expect_memory()
+                .add_metadatum(context, span_md_idx);
 
                 /* Second operand: message data */
                 // Step 1: compile the user data and get its type
                 let user_message = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, &arguments[1])?
                 )
-                .expect_register();
+                .expect_register()
+                .add_metadatum(context, span_md_idx);
 
                 let user_message_type = user_message.get_type(context).ok_or_else(|| {
                     CompileError::Internal(
@@ -1701,18 +1684,19 @@ impl<'a> FnCompiler<'a> {
                 let gep_val = self
                     .current_block
                     .append(context)
-                    .get_elem_ptr_with_idx(message, u64_ty, 0);
+                    .get_elem_ptr_with_idx(message, u64_ty, 0)
+                    .add_metadatum(context, span_md_idx);
                 self.current_block
                     .append(context)
                     .store(gep_val, message_id_val)
                     .add_metadatum(context, span_md_idx);
 
                 // Step 6: Insert the user message data as the second field of the struct
-                let gep_val = self.current_block.append(context).get_elem_ptr_with_idx(
-                    message,
-                    user_message_type,
-                    1,
-                );
+                let gep_val = self
+                    .current_block
+                    .append(context)
+                    .get_elem_ptr_with_idx(message, user_message_type, 1)
+                    .add_metadatum(context, span_md_idx);
                 let user_message_size = 8 + user_message_type.size(context).in_bytes();
                 self.current_block
                     .append(context)
@@ -1727,13 +1711,15 @@ impl<'a> FnCompiler<'a> {
                 let coins = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, &arguments[2])?
                 )
-                .expect_register();
+                .expect_register()
+                .add_metadatum(context, span_md_idx);
 
                 let val = self
                     .current_block
                     .append(context)
-                    .smo(recipient_var, message, user_message_size_val, coins)
+                    .smo(recipient_value, message, user_message_size_val, coins)
                     .add_metadatum(context, span_md_idx);
+
                 Ok(TerminatorValue::new(
                     CompiledValue::InRegister(val),
                     context,
@@ -3704,9 +3690,66 @@ impl<'a> FnCompiler<'a> {
         ast_else: Option<&ty::TyExpression>,
         return_type: TypeId,
     ) -> Result<TerminatorValue, CompileError> {
+        let cond_span_md_idx = md_mgr.span_to_md(context, &ast_condition.span);
+
+        // Check if the condition is constant and only generate the correct branch
+        let try_const_eval_condition = matches!(
+            ast_condition.expression,
+            TyExpressionVariant::ConstantExpression { .. }
+                | TyExpressionVariant::ConstGenericExpression { .. }
+        );
+        if try_const_eval_condition {
+            let condition_const_value = compile_constant_expression(
+                self.engines,
+                context,
+                md_mgr,
+                self.module,
+                None,
+                Some(self),
+                ast_condition,
+            );
+            if let Ok(condition_const_value) = condition_const_value {
+                let condition_bool = condition_const_value
+                    .get_constant(context)
+                    .ok_or_else(|| {
+                        CompileError::Internal(
+                            "compile_constant_expression did not return a constant.",
+                            ast_condition.span.clone(),
+                        )
+                    })?
+                    .get_content(context)
+                    .as_bool()
+                    .ok_or_else(|| {
+                        CompileError::Internal(
+                            "if condition returned non-bool",
+                            ast_condition.span.clone(),
+                        )
+                    })?;
+                let branch_value = if condition_bool {
+                    self.compile_expression_to_register(context, md_mgr, ast_then)?
+                } else {
+                    match ast_else {
+                        Some(ast_else) => {
+                            self.compile_expression_to_register(context, md_mgr, ast_else)?
+                        }
+                        None => {
+                            let v = Constant::unique(context, ConstantContent::new_unit(context));
+                            let v = Value::new_constant(context, v);
+                            TerminatorValue {
+                                value: CompiledValue::InRegister(v),
+                                is_terminator: false,
+                            }
+                        }
+                    }
+                };
+
+                return Ok(branch_value);
+            }
+        }
+
         // Compile the condition expression in the entry block.  Then save the current block so we
         // can jump to the true and false blocks after we've created them.
-        let cond_span_md_idx = md_mgr.span_to_md(context, &ast_condition.span);
+
         let cond_value = return_on_termination_or_extract!(self.compile_expression_to_register(
             context,
             md_mgr,
@@ -4171,7 +4214,6 @@ impl<'a> FnCompiler<'a> {
                 self.module,
                 None,
                 Some(self),
-                call_path,
                 value,
             )?;
 
@@ -5618,12 +5660,15 @@ pub fn get_runtime_representation(ctx: &Context, t: Type) -> MemoryRepresentatio
 pub fn get_memory_id(ctx: &Context, t: Type) -> u64 {
     let r = get_runtime_representation(ctx, t);
 
-    // Uncomment here to debug the runtime memory representation
-    // eprintln!("Runtime Repr: {:?} {:?}", t.with_context(ctx), &r);
-
     use std::hash::Hasher;
     let mut state = DefaultHasher::default();
     r.hash(&mut state);
+
+    // Uncomment here to debug the runtime memory representation
+    // let id = state.finish();
+    // eprintln!("Runtime Repr: {:?} {:?} {id}", t.with_context(ctx), &r);
+    // id
+
     state.finish()
 }
 
@@ -5723,11 +5768,14 @@ pub fn get_encoding_representation(
 pub fn get_encoding_id(engines: &Engines, type_id: TypeId) -> u64 {
     use std::hash::Hasher;
     if let Some(r) = get_encoding_representation_by_id(engines, type_id) {
-        // Uncomment here to debug the encoding memory representation
-        // eprintln!("Encoding Repr: {:?} {:?}", engines.help_out(type_id), &r);
-
         let mut state = DefaultHasher::default();
         r.hash(&mut state);
+
+        // Uncomment here to debug the encoding memory representation
+        // let id = state.finish();
+        // eprintln!("Encoding Repr: {:?} {:?} {}", engines.help_out(type_id), &r, id);
+        // id
+
         state.finish()
     } else {
         0

@@ -1,0 +1,3 @@
+cmds = [
+    "forc build --path {root} --release --ir final --asm final | filter-fn {name} leaf_fn"
+]

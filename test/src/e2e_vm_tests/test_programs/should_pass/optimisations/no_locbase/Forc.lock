@@ -1,0 +1,8 @@
+[[package]]
+name = "no_locbase"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-DFFD5554E03903CA"
