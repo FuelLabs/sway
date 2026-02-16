@@ -3,7 +3,7 @@ use fuels::types::ContractId;
 
 abigen!(Contract(
     name = "TestPowContract",
-    abi = "test_artifacts/pow/out/release/pow-abi.json"
+    abi = "out/pow-abi.json"
 ));
 
 #[tokio::test]
@@ -108,7 +108,7 @@ async fn overflowing_pow_u8_panics_max() {
 
 async fn get_pow_test_instance(wallet: Wallet) -> (TestPowContract<Wallet>, ContractId) {
     let pow_id = Contract::load_from(
-        "test_artifacts/pow/out/release/pow.bin",
+        "out/pow.bin",
         LoadConfiguration::default(),
     )
     .unwrap()

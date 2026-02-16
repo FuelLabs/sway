@@ -2,7 +2,7 @@ use fuels::prelude::*;
 
 abigen!(Contract(
     name = "MethodsContract",
-    abi = "test_artifacts/methods_contract/out/release/methods_contract-abi.json",
+    abi = "out/methods_contract-abi.json",
 ));
 
 #[tokio::test]
@@ -27,7 +27,7 @@ async fn run_methods_test() {
 
 async fn get_methods_instance(wallet: Wallet) -> MethodsContract<Wallet> {
     let id = Contract::load_from(
-        "test_artifacts/methods_contract/out/release/methods_contract.bin",
+        "out/methods_contract.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
