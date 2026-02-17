@@ -6,8 +6,6 @@ exit status: 1
 output:
     Building test/src/e2e_vm_tests/test_programs/should_fail/method_not_found
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
-DIFF------------------------------
-.program:
    Compiling contract method_not_found (test/src/e2e_vm_tests/test_programs/should_fail/method_not_found)
 warning
   --> test/src/e2e_vm_tests/test_programs/should_fail/method_not_found/src/main.sw:64:15

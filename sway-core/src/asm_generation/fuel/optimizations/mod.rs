@@ -23,20 +23,14 @@ impl AbstractInstructionSet {
     ) -> AbstractInstructionSet {
         match level {
             // On debug builds do a single pass through the simple optimizations
-            OptLevel::Opt0 => {
-                let old = self.const_indexing_aggregates_function(data_section);
-                let old_str = old.to_string();
-                let new = old.constant_propagate();
-
-                eprintln!("DIFF------------------------------");
-                eprintln!("{}", prettydiff::diff_lines(&old_str, &new.to_string()));
-
-                new.dce()
-                    .simplify_cfg()
-                    .remove_sequential_jumps()
-                    .remove_redundant_moves()
-                    .remove_redundant_ops()
-            }
+            OptLevel::Opt0 => self
+                .const_indexing_aggregates_function(data_section)
+                .constant_propagate()
+                .dce()
+                .simplify_cfg()
+                .remove_sequential_jumps()
+                .remove_redundant_moves()
+                .remove_redundant_ops(),
             // On release builds we can do more iterations
             OptLevel::Opt1 => {
                 for _ in 0..MAX_OPT_ROUNDS {

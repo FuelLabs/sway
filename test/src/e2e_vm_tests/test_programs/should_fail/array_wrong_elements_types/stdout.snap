@@ -6,8 +6,6 @@ exit status: 1
 output:
     Building test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types
    Compiling library std (sway-lib-std)
-DIFF------------------------------
-.program:
    Compiling script array_wrong_elements_types (test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types)
 error
   --> test/src/e2e_vm_tests/test_programs/should_fail/array_wrong_elements_types/src/main.sw:41:27

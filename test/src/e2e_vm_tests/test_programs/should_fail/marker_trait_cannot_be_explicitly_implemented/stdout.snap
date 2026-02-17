@@ -6,8 +6,6 @@ exit status: 1
 output:
     Building test/src/e2e_vm_tests/test_programs/should_fail/marker_trait_cannot_be_explicitly_implemented
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
-DIFF------------------------------
-.program:
    Compiling library marker_trait_cannot_be_explicitly_implemented (test/src/e2e_vm_tests/test_programs/should_fail/marker_trait_cannot_be_explicitly_implemented)
 warning
  --> test/src/e2e_vm_tests/test_programs/should_fail/marker_trait_cannot_be_explicitly_implemented/src/main.sw:6:5

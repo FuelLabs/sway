@@ -6,8 +6,6 @@ exit status: 1
 output:
     Building test/src/e2e_vm_tests/test_programs/should_fail/non_payable_non_script_call_with_non_zero_coins
    Compiling library std (sway-lib-std)
-DIFF------------------------------
-.program:
    Compiling contract non_payable_non_script_call_with_non_zero_coins (test/src/e2e_vm_tests/test_programs/should_fail/non_payable_non_script_call_with_non_zero_coins)
 warning
   --> test/src/e2e_vm_tests/test_programs/should_fail/non_payable_non_script_call_with_non_zero_coins/src/main.sw:25:13
