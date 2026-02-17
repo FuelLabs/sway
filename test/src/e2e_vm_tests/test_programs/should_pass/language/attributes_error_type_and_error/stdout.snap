@@ -6,6 +6,10 @@ exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_error_type_and_error
    Compiling library attributes_error_type_and_error (test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_error_type_and_error)
+DIFF------------------------------
+.program:
+DIFF------------------------------
+.program:
 warning: Empty error type enum cannot be used in `panic` expressions
  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes_error_type_and_error/src/main.sw:5:10
   |

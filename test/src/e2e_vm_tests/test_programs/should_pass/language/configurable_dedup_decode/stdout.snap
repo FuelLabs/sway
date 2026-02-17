@@ -10,6 +10,10 @@ output:
 library {
 }
 
+DIFF------------------------------
+.program:
+DIFF------------------------------
+.program:
    Compiling script configurable_dedup_decode (test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode)
 // IR: Final
 script {
@@ -88,6 +92,186 @@ script {
 !33 = fn_call_path_span !0 235 236
 !34 = (!32 !33)
 
+DIFF------------------------------
+.program:
+addr $$arg0 data_Configurable_0         ; get pointer to configurable TUPLE default value
+addi $$arg1 $zero i8                    ; get length of configurable TUPLE default value
+addi $$arg2 $ssp i0                     ; get pointer to configurable TUPLE stack address
+fncall .0                               ; decode configurable TUPLE
+addr $$arg0 data_Configurable_1         ; get pointer to configurable WRAPPED default value
+addi $$arg1 $zero i8                    ; get length of configurable WRAPPED default value
+addi $$arg2 $ssp i8                     ; get pointer to configurable WRAPPED stack address
+fncall .0                               ; decode configurable WRAPPED
+DIFF------------------------------
+.program:
+addr $$arg0 data_Configurable_0         ; get pointer to configurable TUPLE default value
+addi $$arg1 $zero i8                    ; get length of configurable TUPLE default value
+addi $$arg2 $ssp i0                     ; get pointer to configurable TUPLE stack address
+fncall .0                               ; decode configurable TUPLE
+addr $$arg0 data_Configurable_1         ; get pointer to configurable WRAPPED default value
+addi $$arg1 $zero i8                    ; get length of configurable WRAPPED default value
+addi $$arg2 $ssp i8                     ; get pointer to configurable WRAPPED stack address
+fncall .0                               ; decode configurable WRAPPED
+DIFF------------------------------
+.program:
+.2                                      ; --- start of function: __entry ---
+move $$locbase $sp                      ; [entry init: __entry]: set locals base register
+cfei i8                                 ; [entry init: __entry]: allocate: locals 8 byte(s), call args 0 slot(s)
+.7
+fncall .4                               ; [call: main_15]: call function
+move $r6 $$retv                         ; [call: main_15]: copy returned value
+ sw $$locbase $r6 i0                     ; store word
+ sw $$locbase $$retv i0                  ; store word
+movi $r7 i8                             ; initialize constant into register
+retd $$locbase $r7                      ; [entry end: __entry] return slice
+DIFF------------------------------
+.program:
+.2                                      ; --- start of function: __entry ---
+move $$locbase $sp                      ; [entry init: __entry]: set locals base register
+cfei i8                                 ; [entry init: __entry]: allocate: locals 8 byte(s), call args 0 slot(s)
+.7
+fncall .4                               ; [call: main_15]: call function
+sw $$locbase $$retv i0                  ; store word
+movi $r7 i8                             ; initialize constant into register
+retd $$locbase $r7                      ; [entry end: __entry] return slice
+DIFF------------------------------
+.program:
+.2                                      ; --- start of function: __entry ---
+move $$locbase $sp                      ; [entry init: __entry]: set locals base register
+cfei i8                                 ; [entry init: __entry]: allocate: locals 8 byte(s), call args 0 slot(s)
+.7
+fncall .4                               ; [call: main_15]: call function
+sw $$locbase $$retv i0                  ; store word
+movi $r7 i8                             ; initialize constant into register
+retd $$locbase $r7                      ; [entry end: __entry] return slice
+DIFF------------------------------
+.program:
+.2                                      ; --- start of function: __entry ---
+move $$locbase $sp                      ; [entry init: __entry]: set locals base register
+cfei i8                                 ; [entry init: __entry]: allocate: locals 8 byte(s), call args 0 slot(s)
+.7
+fncall .4                               ; [call: main_15]: call function
+sw $$locbase $$retv i0                  ; store word
+movi $r7 i8                             ; initialize constant into register
+retd $$locbase $r7                      ; [entry end: __entry] return slice
+DIFF------------------------------
+.program:
+.0                                      ; --- start of function: abi_decode_in_place_0 ---
+pusha .0                                ; [fn init: abi_decode_in_place_0]: push all used registers to stack
+move $$locbase $sp                      ; [fn init: abi_decode_in_place_0]: set locals base register
+cfei i0                                 ; [fn init: abi_decode_in_place_0]: allocate: locals 0 byte(s), call args 0 slot(s)
+.6
+move $r1 $$arg0                         ; copy ASM block argument's constant initial value to register
+move $r2 $$arg2                         ; copy ASM block argument's constant initial value to register
+move $r3 $$arg1                         ; copy ASM block argument's constant initial value to register
+ mcp $r2 $r1 $r3                         ; mcp target src len
+ move $r4 $zero                          ; return unit value from ASM block without return register
+ mcp $$arg2 $$arg0 $$arg1                ; mcp target src len
+ movi $r4 i0                             ; return unit value from ASM block without return register
+ji  .1
+.1
+cfsi i0                                 ; [fn end: abi_decode_in_place_0] free: locals 0 byte(s), call args 0 slot(s)
+popa .0                                 ; [fn end: abi_decode_in_place_0] restore all used registers
+jal $zero $$reta i0                     ; [fn end: abi_decode_in_place_0] return from call
+DIFF------------------------------
+.program:
+.0                                      ; --- start of function: abi_decode_in_place_0 ---
+pusha .0                                ; [fn init: abi_decode_in_place_0]: push all used registers to stack
+move $$locbase $sp                      ; [fn init: abi_decode_in_place_0]: set locals base register
+cfei i0                                 ; [fn init: abi_decode_in_place_0]: allocate: locals 0 byte(s), call args 0 slot(s)
+.6
+mcp $$arg2 $$arg0 $$arg1                ; mcp target src len
+.1
+cfsi i0                                 ; [fn end: abi_decode_in_place_0] free: locals 0 byte(s), call args 0 slot(s)
+popa .0                                 ; [fn end: abi_decode_in_place_0] restore all used registers
+jal $zero $$reta i0                     ; [fn end: abi_decode_in_place_0] return from call
+DIFF------------------------------
+.program:
+.0                                      ; --- start of function: abi_decode_in_place_0 ---
+pusha .0                                ; [fn init: abi_decode_in_place_0]: push all used registers to stack
+move $$locbase $sp                      ; [fn init: abi_decode_in_place_0]: set locals base register
+cfei i0                                 ; [fn init: abi_decode_in_place_0]: allocate: locals 0 byte(s), call args 0 slot(s)
+.6
+mcp $$arg2 $$arg0 $$arg1                ; mcp target src len
+.1
+cfsi i0                                 ; [fn end: abi_decode_in_place_0] free: locals 0 byte(s), call args 0 slot(s)
+popa .0                                 ; [fn end: abi_decode_in_place_0] restore all used registers
+jal $zero $$reta i0                     ; [fn end: abi_decode_in_place_0] return from call
+DIFF------------------------------
+.program:
+.0                                      ; --- start of function: abi_decode_in_place_0 ---
+pusha .0                                ; [fn init: abi_decode_in_place_0]: push all used registers to stack
+move $$locbase $sp                      ; [fn init: abi_decode_in_place_0]: set locals base register
+cfei i0                                 ; [fn init: abi_decode_in_place_0]: allocate: locals 0 byte(s), call args 0 slot(s)
+.6
+mcp $$arg2 $$arg0 $$arg1                ; mcp target src len
+.1
+cfsi i0                                 ; [fn end: abi_decode_in_place_0] free: locals 0 byte(s), call args 0 slot(s)
+popa .0                                 ; [fn end: abi_decode_in_place_0] restore all used registers
+jal $zero $$reta i0                     ; [fn end: abi_decode_in_place_0] return from call
+DIFF------------------------------
+.program:
+.4                                      ; --- start of function: main_15 ---
+pusha .4                                ; [fn init: main_15]: push all used registers to stack
+move $$locbase $sp                      ; [fn init: main_15]: set locals base register
+cfei i0                                 ; [fn init: main_15]: allocate: locals 0 byte(s), call args 0 slot(s)
+.8
+addi $r9 $ssp i8                        ; get address of configurable WRAPPED
+lw $r10 $ssp i1                         ; load word
+addi $r11 $ssp i0                       ; get address of configurable TUPLE
+lw $r12 $ssp i0                         ; load word
+add $r13 $r10 $r12
+move $$retv $r13                        ; [fn end: main_15] set return value
+ji  .5
+.5
+cfsi i0                                 ; [fn end: main_15] free: locals 0 byte(s), call args 0 slot(s)
+popa .4                                 ; [fn end: main_15] restore all used registers
+jal $zero $$reta i0                     ; [fn end: main_15] return from call
+DIFF------------------------------
+.program:
+.4                                      ; --- start of function: main_15 ---
+pusha .4                                ; [fn init: main_15]: push all used registers to stack
+move $$locbase $sp                      ; [fn init: main_15]: set locals base register
+cfei i0                                 ; [fn init: main_15]: allocate: locals 0 byte(s), call args 0 slot(s)
+.8
+lw $r10 $ssp i1                         ; load word
+lw $r12 $ssp i0                         ; load word
+add $r13 $r10 $r12
+move $$retv $r13                        ; [fn end: main_15] set return value
+.5
+cfsi i0                                 ; [fn end: main_15] free: locals 0 byte(s), call args 0 slot(s)
+popa .4                                 ; [fn end: main_15] restore all used registers
+jal $zero $$reta i0                     ; [fn end: main_15] return from call
+DIFF------------------------------
+.program:
+.4                                      ; --- start of function: main_15 ---
+pusha .4                                ; [fn init: main_15]: push all used registers to stack
+move $$locbase $sp                      ; [fn init: main_15]: set locals base register
+cfei i0                                 ; [fn init: main_15]: allocate: locals 0 byte(s), call args 0 slot(s)
+.8
+lw $r10 $ssp i1                         ; load word
+lw $r12 $ssp i0                         ; load word
+add $r13 $r10 $r12
+move $$retv $r13                        ; [fn end: main_15] set return value
+.5
+cfsi i0                                 ; [fn end: main_15] free: locals 0 byte(s), call args 0 slot(s)
+popa .4                                 ; [fn end: main_15] restore all used registers
+jal $zero $$reta i0                     ; [fn end: main_15] return from call
+DIFF------------------------------
+.program:
+.4                                      ; --- start of function: main_15 ---
+pusha .4                                ; [fn init: main_15]: push all used registers to stack
+move $$locbase $sp                      ; [fn init: main_15]: set locals base register
+cfei i0                                 ; [fn init: main_15]: allocate: locals 0 byte(s), call args 0 slot(s)
+.8
+lw $r10 $ssp i1                         ; load word
+lw $r12 $ssp i0                         ; load word
+add $r13 $r10 $r12
+move $$retv $r13                        ; [fn end: main_15] set return value
+.5
+cfsi i0                                 ; [fn end: main_15] free: locals 0 byte(s), call args 0 slot(s)
+popa .4                                 ; [fn end: main_15] restore all used registers
+jal $zero $$reta i0                     ; [fn end: main_15] return from call
 ;; ASM: Final program
 ;; Program kind: Script
 .program:

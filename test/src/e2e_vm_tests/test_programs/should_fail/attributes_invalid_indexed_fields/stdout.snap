@@ -6,6 +6,8 @@ exit status: 1
 output:
     Building test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_indexed_fields
    Compiling library std (sway-lib-std)
+DIFF------------------------------
+.program:
    Compiling contract attributes_invalid_indexed_fields (test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_indexed_fields)
 error: Indexed fields must be in event structs
  --> test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_indexed_fields/src/lib.sw:6:3

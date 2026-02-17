@@ -120,6 +120,14 @@ impl fmt::Display for VirtualImmediate12 {
     }
 }
 
+impl TryInto<VirtualImmediate12> for u64 {
+    type Error = CompileError;
+
+    fn try_into(self) -> Result<VirtualImmediate12, Self::Error> {
+        VirtualImmediate12::try_new(self, Span::dummy())
+    }
+}
+
 /// 18-bits immediate value type
 #[derive(Clone, Debug)]
 pub struct VirtualImmediate18 {

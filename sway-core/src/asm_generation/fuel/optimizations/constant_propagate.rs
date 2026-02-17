@@ -1,6 +1,6 @@
 use super::super::abstract_instruction_set::AbstractInstructionSet;
 use crate::asm_lang::{
-    ConstantRegister, ControlFlowOp, JumpType, Label, Op, VirtualImmediate12, VirtualImmediate18,
+    ConstantRegister, ControlFlowOp, JumpType, Label, Op, VirtualImmediate18,
     VirtualOp, VirtualRegister,
 };
 use either::Either;
@@ -186,6 +186,100 @@ impl AbstractInstructionSet {
                 }
             }
 
+            macro_rules! transform_operator {
+                (assign_value; $dst:ident, $l:ident, $r:ident; left) => {
+                    known_values.assign($dst.clone(), KnownRegValue::Eq($l.clone()));
+                };
+                (assign_value; $dst:ident, $l:ident, $r:ident; right) => {
+                    known_values.assign($dst.clone(), KnownRegValue::Eq($r.clone()));
+                };
+                (assign_value; $dst:ident, $l:ident, $r:ident; $v:literal) => {
+                    known_values.assign($dst.clone(), KnownRegValue::Const($v));
+                };
+                // If the value is one of the operands, we will use MOVE
+                // if is a literal we will use MOVI
+                (new_opcode; $dst:ident, $l:ident, $r:ident; left) => {
+                    Either::Left(VirtualOp::MOVE($dst.clone(), $l.clone()))
+                };
+                (new_opcode; $dst:ident, $l:ident, $r:ident; right) => {
+                    Either::Left(VirtualOp::MOVE($dst.clone(), $r.clone()))
+                };
+                (new_opcode; $dst:ident, $l:ident, $r:ident; $v:literal) => {{
+                    let imm = VirtualImmediate18::try_new($v, Span::dummy()).ok()?;
+                    Either::Left(VirtualOp::MOVI($dst.clone(), imm))
+                }};
+                // if left == $initial_value assigns $end_value
+                (gen; $op:ident, $opI:ident; $dst:ident, $l:ident, $r:ident, $lv: ident, $rv:ident; if left is $initial_value:literal assigns $end_value:tt; $($rest:tt)*) => {
+                    if let (Some(KnownRegValue::Const($initial_value)), _) = (&$lv, &$rv) {
+                        let new_opcode = transform_operator!{new_opcode; $dst, $l, $r; $end_value};
+                        // The line above can bail so we must run it before we change anything
+                        transform_operator!{assign_value; $dst, $l, $r; $end_value};
+                        op.opcode = new_opcode;
+                        return Some(true);
+                    }
+                    transform_operator!{gen; $op, $opI; $dst, $l, $r, $lv, $rv; $($rest)*}
+                };
+                // if right == $initial_value assigns $end_value
+                (gen; $op:ident, $opI:ident; $dst:ident, $l:ident, $r:ident, $lv: ident, $rv:ident; if right is $initial_value:literal assigns $end_value:tt; $($rest:tt)*) => {
+                    if let (_, Some(KnownRegValue::Const($initial_value))) = (&$lv, &$rv) {
+                        let new_opcode = transform_operator!{new_opcode; $dst, $l, $r; $end_value};
+                        // The line above can bail so we must run it before we change anything
+                        transform_operator!{assign_value; $dst, $l, $r; $end_value};
+                        op.opcode = new_opcode;
+                        return Some(true);
+                    }
+                    transform_operator!{gen; $op, $opI; $dst, $l, $r, $lv, $rv; $($rest)*}
+                };
+                // When both register values are known transform to MOVI
+                (gen; $op:ident, $opI:ident; $dst:ident, $l:ident, $r:ident, $lv: ident, $rv:ident; both_known: $f:path; $($rest:tt)*) => {
+                    if let (Some(KnownRegValue::Const($lv)), Some(KnownRegValue::Const($rv))) = (&$lv, &$rv) {
+                        let raw = $f(*$lv, (*$rv).try_into().ok()?)?.into();
+                        let imm = VirtualImmediate18::try_new(raw, Span::dummy()).ok()?;
+                        known_values.assign($dst.clone(), KnownRegValue::Const(raw));
+                        op.opcode = Either::Left(VirtualOp::MOVI($dst.clone(), imm));
+                        return Some(true);
+                    }
+                    transform_operator!{gen; $op, $opI; $dst, $l, $r, $lv, $rv; $($rest)*}
+                };
+                // Transform from $op to $opI because $op is commutative
+                (gen; $op:ident, $opI:ident; $dst:ident, $l:ident, $r:ident, $lv: ident, $rv:ident; commutative: true; $($rest:tt)*) => {
+                    if let (Some(KnownRegValue::Const($lv)), _) = (&$lv, &$rv) {
+                        op.opcode = Either::Left(VirtualOp::$opI($dst.clone(), $r.clone(), (*$lv).try_into().ok()?));
+                        return Some(false);
+                    }
+                    transform_operator!{gen; $op, $opI; $dst, $l, $r, $lv, $rv; $($rest)*}
+                };
+                (gen; $op:ident, $opI:ident; $dst:ident, $l:ident, $r:ident, $lv: ident, $rv:ident;) => {
+                };
+                (gen; $op:ident, $opI:ident; $($rest:tt)*) => {
+                    compile_error!(stringify!($($rest)*))
+                };
+                (replace_imm; None; $dst:ident, $l:ident, $r:ident, $lv: ident, $rv:ident) => {
+                };
+                (replace_imm; $opI:ident; $dst:ident, $l:ident, $r:ident, $lv: ident, $rv:ident) => {
+                    if let (_, Some(KnownRegValue::Const(rv))) = (&$lv, &$rv) {
+                        op.opcode = Either::Left(VirtualOp::$opI($dst.clone(), $l.clone(), (*rv).try_into().ok()?));
+                        return Some(false);
+                    }
+                };
+                ($op:ident, $opI:ident; $($rest:tt)*) => {{
+                    let mut f = || -> Option<bool> {
+                        match &op.opcode {
+                            Either::Left(VirtualOp::$op(dst, l, r)) => {
+                                let lv = known_values.resolve(&l);
+                                let rv = known_values.resolve(&r);
+
+                                transform_operator!{gen; $op, $opI; dst, l, r, lv, rv; $($rest)*}
+                                transform_operator!{replace_imm; $opI; dst, l, r, lv, rv}
+                            }
+                            _ => {}
+                        };
+                        Some(false)
+                    };
+                    f().unwrap_or_default()
+                }};
+            }
+
             // Propagate constant of some ops
             // Also transform them if they registers are known
             let skip_reset = match op.opcode.clone() {
@@ -229,180 +323,85 @@ impl AbstractInstructionSet {
 
                     true
                 }
-                // The following transforms
-                // <op> dest <a is known> <b is known>
-                // to
-                // movi dest <a <op> b as imm>
-                Either::Left(VirtualOp::ADD(dst, l, r)) => transform_to_movi(
-                    &mut known_values,
-                    op,
-                    true,
-                    dst,
-                    l,
-                    r,
-                    |l, r| l.checked_add(r),
-                    |dst, l, r| Some(VirtualOp::ADDI(dst, l, r)),
-                ),
-                Either::Left(VirtualOp::SUB(dst, l, r)) => transform_to_movi(
-                    &mut known_values,
-                    op,
-                    false,
-                    dst,
-                    l,
-                    r,
-                    |l, r| l.checked_sub(r),
-                    |dst, l, r| Some(VirtualOp::SUBI(dst, l, r)),
-                ),
-                Either::Left(VirtualOp::MUL(dst, l, r)) => transform_to_movi(
-                    &mut known_values,
-                    op,
-                    true,
-                    dst,
-                    l,
-                    r,
-                    |l, r| l.checked_mul(r),
-                    |dst, l, r| Some(VirtualOp::MULI(dst, l, r)),
-                ),
-                Either::Left(VirtualOp::DIV(dst, l, r)) => transform_to_movi(
-                    &mut known_values,
-                    op,
-                    false,
-                    dst,
-                    l,
-                    r,
-                    |l, r| l.checked_div(r),
-                    |dst, l, r| Some(VirtualOp::DIVI(dst, l, r)),
-                ),
-                Either::Left(VirtualOp::EXP(dst, l, r)) => transform_to_movi(
-                    &mut known_values,
-                    op,
-                    false,
-                    dst,
-                    l,
-                    r,
-                    |l, r| l.checked_pow(r as u32),
-                    |dst, l, r| Some(VirtualOp::EXPI(dst, l, r)),
-                ),
-                Either::Left(VirtualOp::MLOG(dst, l, r)) => transform_to_movi(
-                    &mut known_values,
-                    op,
-                    false,
-                    dst,
-                    l,
-                    r,
-                    |l, r| l.checked_ilog(r).map(|x| x as u64),
-                    |_, _, _| None,
-                ),
-                Either::Left(VirtualOp::MOD(dst, l, r)) => transform_to_movi(
-                    &mut known_values,
-                    op,
-                    false,
-                    dst,
-                    l,
-                    r,
-                    |l, r| l.checked_rem(r),
-                    |dst, l, r| Some(VirtualOp::MODI(dst, l, r)),
-                ),
-                Either::Left(VirtualOp::MROO(dst, l, r)) => transform_to_movi(
-                    &mut known_values,
-                    op,
-                    false,
-                    dst,
-                    l,
-                    r,
-                    checked_nth_root,
-                    |_, _, _| None,
-                ),
 
-                // Boolean
-                Either::Left(VirtualOp::AND(dst, l, r)) => transform_to_movi(
-                    &mut known_values,
-                    op,
-                    true,
-                    dst,
-                    l,
-                    r,
-                    |l, r| Some(l.bitand(r)),
-                    |dst, l, r| Some(VirtualOp::ANDI(dst, l, r)),
-                ),
-                Either::Left(VirtualOp::OR(dst, l, r)) => transform_to_movi(
-                    &mut known_values,
-                    op,
-                    true,
-                    dst,
-                    l,
-                    r,
-                    |l, r| Some(l.bitor(r)),
-                    |dst, l, r| Some(VirtualOp::ORI(dst, l, r)),
-                ),
-                Either::Left(VirtualOp::XOR(dst, l, r)) => transform_to_movi(
-                    &mut known_values,
-                    op,
-                    true,
-                    dst,
-                    l,
-                    r,
-                    |l, r| Some(l.bitxor(r)),
-                    |dst, l, r| Some(VirtualOp::XORI(dst, l, r)),
-                ),
-                Either::Left(VirtualOp::SLL(dst, l, r)) => transform_to_movi(
-                    &mut known_values,
-                    op,
-                    false,
-                    dst,
-                    l,
-                    r,
-                    |l, r| {
-                        let r = r.try_into().ok()?;
-                        l.checked_shl(r)
-                    },
-                    |dst, l, r| Some(VirtualOp::SLLI(dst, l, r)),
-                ),
-                Either::Left(VirtualOp::SRL(dst, l, r)) => transform_to_movi(
-                    &mut known_values,
-                    op,
-                    false,
-                    dst,
-                    l,
-                    r,
-                    |l, r| {
-                        let r = r.try_into().ok()?;
-                        l.checked_shr(r)
-                    },
-                    |dst, l, r| Some(VirtualOp::SRLI(dst, l, r)),
-                ),
+                // algebraic operators
+                Either::Left(VirtualOp::ADD(..)) => transform_operator! {ADD, ADDI;
+                    both_known: u64::checked_add;
+                    if left is 0 assigns right;
+                    if right is 0 assigns left;
+                    commutative: true;
+                },
+                Either::Left(VirtualOp::SUB(..)) => transform_operator! {SUB, SUBI;
+                    both_known: u64::checked_sub;
+                    if right is 0 assigns left;
+                },
+                Either::Left(VirtualOp::MUL(..)) => transform_operator! {MUL, MULI;
+                    both_known: u64::checked_mul;
+                    if left is 1 assigns right;
+                    if right is 1 assigns left;
+                    if left is 0 assigns 0;
+                    if right is 0 assigns 0;
+                    commutative: true;
+                },
+                Either::Left(VirtualOp::DIV(..)) => transform_operator! {DIV, DIVI;
+                    both_known: u64::checked_div;
+                    if right is 1 assigns left;
+                    if left is 0 assigns 0;
+                },
+                Either::Left(VirtualOp::EXP(..)) => transform_operator! {EXP, EXPI;
+                    both_known: u64::checked_pow;
+                    if right is 0 assigns 1;
+                    if right is 1 assigns left;
+                    if left is 0 assigns 0;
+                },
+                Either::Left(VirtualOp::MLOG(..)) => transform_operator! {MLOG, None;
+                    both_known: u64::checked_ilog;
+                },
+                Either::Left(VirtualOp::MOD(..)) => transform_operator! {MOD, MODI;
+                    both_known: u64::checked_rem;
+                },
+                Either::Left(VirtualOp::MROO(..)) => transform_operator! {MROO, None;
+                    both_known: checked_nth_root;
+                },
 
-                // // Comparisons
-                Either::Left(VirtualOp::EQ(dst, l, r)) => transform_to_movi(
-                    &mut known_values,
-                    op,
-                    false,
-                    dst,
-                    l,
-                    r,
-                    |l, r| Some(if l == r { 1 } else { 0 }),
-                    |_, _, _| None,
-                ),
-                Either::Left(VirtualOp::GT(dst, l, r)) => transform_to_movi(
-                    &mut known_values,
-                    op,
-                    false,
-                    dst,
-                    l,
-                    r,
-                    |l, r| Some(if l > r { 1 } else { 0 }),
-                    |_, _, _| None,
-                ),
-                Either::Left(VirtualOp::LT(dst, l, r)) => transform_to_movi(
-                    &mut known_values,
-                    op,
-                    false,
-                    dst,
-                    l,
-                    r,
-                    |l, r| Some(if l < r { 1 } else { 0 }),
-                    |_, _, _| None,
-                ),
+                // bitwise
+                Either::Left(VirtualOp::AND(..)) => transform_operator! {AND, ANDI;
+                    both_known: u64_bitand;
+                    if left is 0 assigns 0;
+                    if right is 0 assigns 0;
+                     commutative: true;
+                },
+                Either::Left(VirtualOp::OR(..)) => transform_operator! {OR, ORI;
+                    both_known: u64_bitor;
+                    if left is 0 assigns right;
+                    if right is 0 assigns left;
+                     commutative: true;
+                },
+                Either::Left(VirtualOp::XOR(..)) => transform_operator! {XOR, XORI;
+                    both_known: u64_bitxor;
+                    if left is 0 assigns right;
+                    if right is 0 assigns left;
+                    commutative: true;
+                },
+                Either::Left(VirtualOp::SLL(..)) => transform_operator! {SLL, SLLI;
+                    both_known: u64::checked_shl;
+                    if right is 0 assigns left;
+                },
+                Either::Left(VirtualOp::SRL(..)) => transform_operator! {SRL, SRLI;
+                    both_known: u64::checked_shr;
+                    if right is 0 assigns left;
+                },
+
+                // Comparisons
+                Either::Left(VirtualOp::EQ(..)) => transform_operator! {EQ, None;
+                    both_known: u64_eq;
+                },
+                Either::Left(VirtualOp::GT(..)) => transform_operator! {GT, None;
+                    both_known: u64_gt;
+                },
+                Either::Left(VirtualOp::LT(..)) => transform_operator! {LT, None;
+                    both_known: u64_lt;
+                },
                 _ => false,
             };
 
@@ -450,57 +449,34 @@ impl AbstractInstructionSet {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
-fn transform_to_movi(
-    known_values: &mut KnownValues,
-    op: &mut Op,
-    is_commutative: bool,
-    dst: VirtualRegister,
-    l: VirtualRegister,
-    r: VirtualRegister,
-    apply_op: impl FnOnce(u64, u64) -> Option<u64>,
-    with_imm: impl FnOnce(VirtualRegister, VirtualRegister, VirtualImmediate12) -> Option<VirtualOp>,
-) -> bool {
-    let lv = known_values.resolve(&l);
-    let rv = known_values.resolve(&r);
+#[inline(always)]
+fn u64_bitand(l: u64, r: u64) -> Option<u64> {
+    Some(l.bitand(r))
+}
 
-    match (lv, rv) {
-        (Some(lv), Some(rv)) => {
-            let imm = lv
-                .value()
-                .zip(rv.value())
-                .and_then(|(l, r)| apply_op(l, r))
-                .and_then(|raw| VirtualImmediate18::try_new(raw, Span::dummy()).ok());
-            if let Some(imm) = imm {
-                known_values.assign(dst.clone(), KnownRegValue::Const(imm.value() as u64));
-                op.opcode = Either::Left(VirtualOp::MOVI(dst, imm));
-                return true;
-            }
-        }
-        (None, Some(rv)) => {
-            if let Some(imm) = rv
-                .value()
-                .and_then(|raw| VirtualImmediate12::try_new(raw, Span::dummy()).ok())
-                .and_then(|imm| with_imm(dst, l, imm))
-            {
-                op.opcode = Either::Left(imm);
-                return false;
-            }
-        }
-        (Some(lv), None) if is_commutative => {
-            if let Some(imm) = lv
-                .value()
-                .and_then(|raw| VirtualImmediate12::try_new(raw, Span::dummy()).ok())
-                .and_then(|imm| with_imm(dst, r, imm))
-            {
-                op.opcode = Either::Left(imm);
-                return false;
-            }
-        }
-        _ => {}
-    }
+#[inline(always)]
+fn u64_bitor(l: u64, r: u64) -> Option<u64> {
+    Some(l.bitor(r))
+}
 
-    false
+#[inline(always)]
+fn u64_bitxor(l: u64, r: u64) -> Option<u64> {
+    Some(l.bitxor(r))
+}
+
+#[inline(always)]
+fn u64_eq(l: u64, r: u64) -> Option<u64> {
+    Some(if l == r { 1 } else { 0 })
+}
+
+#[inline(always)]
+fn u64_gt(l: u64, r: u64) -> Option<u64> {
+    Some(if l > r { 1 } else { 0 })
+}
+
+#[inline(always)]
+fn u64_lt(l: u64, r: u64) -> Option<u64> {
+    Some(if l < r { 1 } else { 0 })
 }
 
 // Copied from fuel_vm to guarantee exactly same behaviour.

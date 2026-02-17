@@ -10,6 +10,10 @@ output:
 library {
 }
 
+DIFF------------------------------
+.program:
+DIFF------------------------------
+.program:
 ;; --- START OF TARGET BYTECODE ---
 
 0x00000000 MOVE R60 $pc                                    ;; [26, 240, 48, 0]
@@ -195,6 +199,200 @@ script {
 !81 = fn_call_path_span !74 57 58
 !82 = (!80 !81)
 
+DIFF------------------------------
+.program:
+DIFF------------------------------
+.program:
+DIFF------------------------------
+.program:
+.0                                      ; --- start of function: __entry ---
+move $$locbase $sp                      ; [entry init: __entry]: set locals base register
+cfei i88                                ; [entry init: __entry]: allocate: locals 88 byte(s), call args 0 slot(s)
+.4
+gtf $r1 $zero i10                       ; get transaction field
+ jnzi $one .5
+ ji  .5
+ji  .6
+.6
+addi $r2 $$locbase i16                  ; get offset to local __ptr { ptr }
+sw $$locbase $r1 i2                     ; store word
+addi $r3 $$locbase i80                  ; get offset to local __ptr { ptr }
+mcpi $r3 $r2 i8                         ; copy memory
+addi $r4 $$locbase i80                  ; get offset to local __ptr { ptr }
+addi $r5 $$locbase i40                  ; get offset to local __ptr { u64, u64 }
+lw $r6 $$locbase i10                    ; load word
+lw $r7 $r6 i0                           ; lw val ptr i0
+move $r8 $r7                            ; return value from ASM block with return register val
+lw $r9 $$locbase i10                    ; load word
+movi $r10 i8                            ; initialize constant into register
+ add $r11 $r9 $r10
+ addi $r11 $r9 i8
+sw $$locbase $r11 i10                   ; store word
+lw $r12 $$locbase i10                   ; load word
+lw $r13 $r12 i0                         ; lw val ptr i0
+move $r14 $r13                          ; return value from ASM block with return register val
+lw $r15 $$locbase i10                   ; load word
+movi $r16 i8                            ; initialize constant into register
+ add $r17 $r15 $r16
+ addi $r17 $r15 i8
+sw $$locbase $r17 i10                   ; store word
+sw $$locbase $r8 i5                     ; store word
+addi $r18 $r5 i8                        ; get offset to aggregate element
+sw $$locbase $r14 i6                    ; store word
+addi $r19 $$locbase i24                 ; get offset to local __ptr { u64, u64 }
+mcpi $r19 $r5 i16                       ; copy memory
+move $r20 $r19                          ; move parameter from branch to block argument
+ji  .7
+.5
+mcpi $$locbase $r1 i16                  ; copy memory
+addi $r21 $$locbase i24                 ; get offset to local __ptr { u64, u64 }
+mcpi $r21 $$locbase i16                 ; copy memory
+move $r20 $r21                          ; move parameter from branch to block argument
+ji  .7
+.7
+move $r24 $r20                          ; move parameter from branch to block argument
+addi $r25 $$locbase i64                 ; get offset to local __ptr { u64, u64 }
+ mcpi $r25 $r24 i16                      ; copy memory
+ mcpi $r25 $r20 i16                      ; copy memory
+addi $r26 $$locbase i64                 ; get offset to local __ptr { u64, u64 }
+lw $r27 $$locbase i8                    ; load word
+addi $r28 $$locbase i64                 ; get offset to local __ptr { u64, u64 }
+addi $r29 $r28 i8                       ; get offset to aggregate element
+lw $r30 $$locbase i9                    ; load word
+move $$arg0 $r27                        ; [call: main_11]: pass argument 0
+move $$arg1 $r30                        ; [call: main_11]: pass argument 1
+fncall .2                               ; [call: main_11]: call function
+move $r31 $$retv                        ; [call: main_11]: copy returned value
+addi $r32 $$locbase i56                 ; get offset to local __ptr u64
+ sw $$locbase $r31 i7                    ; store word
+ sw $$locbase $$retv i7                  ; store word
+addi $r33 $$locbase i56                 ; get offset to local __ptr u64
+movi $r34 i8                            ; initialize constant into register
+retd $r33 $r34                          ; [entry end: __entry] return slice
+DIFF------------------------------
+.program:
+.0                                      ; --- start of function: __entry ---
+move $$locbase $sp                      ; [entry init: __entry]: set locals base register
+cfei i88                                ; [entry init: __entry]: allocate: locals 88 byte(s), call args 0 slot(s)
+.4
+gtf $r1 $zero i10                       ; get transaction field
+.5
+mcpi $$locbase $r1 i16                  ; copy memory
+addi $r21 $$locbase i24                 ; get offset to local __ptr { u64, u64 }
+mcpi $r21 $$locbase i16                 ; copy memory
+move $r20 $r21                          ; move parameter from branch to block argument
+.7
+addi $r25 $$locbase i64                 ; get offset to local __ptr { u64, u64 }
+ mcpi $r25 $r20 i16                      ; copy memory
+ mcpi $r25 $r21 i16                      ; copy memory
+lw $r27 $$locbase i8                    ; load word
+lw $r30 $$locbase i9                    ; load word
+move $$arg0 $r27                        ; [call: main_11]: pass argument 0
+move $$arg1 $r30                        ; [call: main_11]: pass argument 1
+fncall .2                               ; [call: main_11]: call function
+sw $$locbase $$retv i7                  ; store word
+addi $r33 $$locbase i56                 ; get offset to local __ptr u64
+movi $r34 i8                            ; initialize constant into register
+retd $r33 $r34                          ; [entry end: __entry] return slice
+DIFF------------------------------
+.program:
+.0                                      ; --- start of function: __entry ---
+move $$locbase $sp                      ; [entry init: __entry]: set locals base register
+cfei i88                                ; [entry init: __entry]: allocate: locals 88 byte(s), call args 0 slot(s)
+.4
+gtf $r1 $zero i10                       ; get transaction field
+.5
+mcpi $$locbase $r1 i16                  ; copy memory
+addi $r21 $$locbase i24                 ; get offset to local __ptr { u64, u64 }
+mcpi $r21 $$locbase i16                 ; copy memory
+.7
+addi $r25 $$locbase i64                 ; get offset to local __ptr { u64, u64 }
+mcpi $r25 $r21 i16                      ; copy memory
+lw $r27 $$locbase i8                    ; load word
+lw $r30 $$locbase i9                    ; load word
+move $$arg0 $r27                        ; [call: main_11]: pass argument 0
+move $$arg1 $r30                        ; [call: main_11]: pass argument 1
+fncall .2                               ; [call: main_11]: call function
+sw $$locbase $$retv i7                  ; store word
+addi $r33 $$locbase i56                 ; get offset to local __ptr u64
+movi $r34 i8                            ; initialize constant into register
+retd $r33 $r34                          ; [entry end: __entry] return slice
+DIFF------------------------------
+.program:
+.0                                      ; --- start of function: __entry ---
+move $$locbase $sp                      ; [entry init: __entry]: set locals base register
+cfei i88                                ; [entry init: __entry]: allocate: locals 88 byte(s), call args 0 slot(s)
+.4
+gtf $r1 $zero i10                       ; get transaction field
+.5
+mcpi $$locbase $r1 i16                  ; copy memory
+addi $r21 $$locbase i24                 ; get offset to local __ptr { u64, u64 }
+mcpi $r21 $$locbase i16                 ; copy memory
+.7
+addi $r25 $$locbase i64                 ; get offset to local __ptr { u64, u64 }
+mcpi $r25 $r21 i16                      ; copy memory
+lw $r27 $$locbase i8                    ; load word
+lw $r30 $$locbase i9                    ; load word
+move $$arg0 $r27                        ; [call: main_11]: pass argument 0
+move $$arg1 $r30                        ; [call: main_11]: pass argument 1
+fncall .2                               ; [call: main_11]: call function
+sw $$locbase $$retv i7                  ; store word
+addi $r33 $$locbase i56                 ; get offset to local __ptr u64
+movi $r34 i8                            ; initialize constant into register
+retd $r33 $r34                          ; [entry end: __entry] return slice
+DIFF------------------------------
+.program:
+.2                                      ; --- start of function: main_11 ---
+pusha .2                                ; [fn init: main_11]: push all used registers to stack
+move $$locbase $sp                      ; [fn init: main_11]: set locals base register
+cfei i0                                 ; [fn init: main_11]: allocate: locals 0 byte(s), call args 0 slot(s)
+.8
+add $r36 $$arg0 $$arg1
+move $$retv $r36                        ; [fn end: main_11] set return value
+ji  .3
+.3
+cfsi i0                                 ; [fn end: main_11] free: locals 0 byte(s), call args 0 slot(s)
+popa .2                                 ; [fn end: main_11] restore all used registers
+jal $zero $$reta i0                     ; [fn end: main_11] return from call
+DIFF------------------------------
+.program:
+.2                                      ; --- start of function: main_11 ---
+pusha .2                                ; [fn init: main_11]: push all used registers to stack
+move $$locbase $sp                      ; [fn init: main_11]: set locals base register
+cfei i0                                 ; [fn init: main_11]: allocate: locals 0 byte(s), call args 0 slot(s)
+.8
+add $r36 $$arg0 $$arg1
+move $$retv $r36                        ; [fn end: main_11] set return value
+.3
+cfsi i0                                 ; [fn end: main_11] free: locals 0 byte(s), call args 0 slot(s)
+popa .2                                 ; [fn end: main_11] restore all used registers
+jal $zero $$reta i0                     ; [fn end: main_11] return from call
+DIFF------------------------------
+.program:
+.2                                      ; --- start of function: main_11 ---
+pusha .2                                ; [fn init: main_11]: push all used registers to stack
+move $$locbase $sp                      ; [fn init: main_11]: set locals base register
+cfei i0                                 ; [fn init: main_11]: allocate: locals 0 byte(s), call args 0 slot(s)
+.8
+add $r36 $$arg0 $$arg1
+move $$retv $r36                        ; [fn end: main_11] set return value
+.3
+cfsi i0                                 ; [fn end: main_11] free: locals 0 byte(s), call args 0 slot(s)
+popa .2                                 ; [fn end: main_11] restore all used registers
+jal $zero $$reta i0                     ; [fn end: main_11] return from call
+DIFF------------------------------
+.program:
+.2                                      ; --- start of function: main_11 ---
+pusha .2                                ; [fn init: main_11]: push all used registers to stack
+move $$locbase $sp                      ; [fn init: main_11]: set locals base register
+cfei i0                                 ; [fn init: main_11]: allocate: locals 0 byte(s), call args 0 slot(s)
+.8
+add $r36 $$arg0 $$arg1
+move $$retv $r36                        ; [fn end: main_11] set return value
+.3
+cfsi i0                                 ; [fn end: main_11] free: locals 0 byte(s), call args 0 slot(s)
+popa .2                                 ; [fn end: main_11] restore all used registers
+jal $zero $$reta i0                     ; [fn end: main_11] return from call
 ;; ASM: Final program
 ;; Program kind: Script
 .program:
