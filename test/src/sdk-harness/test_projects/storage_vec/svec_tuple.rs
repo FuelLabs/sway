@@ -1,6 +1,6 @@
 testgen!(
     test_tuple_vec,
-    "test_artifacts/storage_vec/svec_tuple/out/release/svec_tuple-abi.json",
+    "out/svec_tuple-abi.json",
     "tuple",
     (u8, u8, u8),
     (1, 1, 1),

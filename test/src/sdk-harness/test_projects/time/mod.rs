@@ -4,14 +4,14 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 abigen!(Contract(
     name = "TimeTestContract",
-    abi = "test_projects/time/out/release/time-abi.json"
+    abi = "out/time-abi.json"
 ));
 
 async fn get_block_instance() -> (TimeTestContract<Wallet>, ContractId, Provider) {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let provider = wallet.provider();
     let id = Contract::load_from(
-        "test_projects/time/out/release/time.bin",
+        "out/time.bin",
         LoadConfiguration::default(),
     )
     .unwrap()

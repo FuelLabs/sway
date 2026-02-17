@@ -6,11 +6,11 @@ use fuels::prelude::*;
 async fn emits_indexed_events() -> Result<()> {
     abigen!(Script(
         name = "Events",
-        abi = "test_projects/events/out/release/events-abi.json",
+        abi = "out/events-abi.json",
     ));
 
     let wallet = launch_provider_and_get_wallet().await.unwrap();
-    let bin_path = "test_projects/events/out/release/events.bin";
+    let bin_path = "out/events.bin";
     let instance = Events::new(wallet.clone(), bin_path);
 
     let response = instance.main().call().await?;

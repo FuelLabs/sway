@@ -2,7 +2,7 @@ use fuels::prelude::*;
 
 abigen!(Contract(
     name = "TestStorageStringContract",
-    abi = "test_projects/storage_string/out/release/storage_string-abi.json",
+    abi = "out/storage_string-abi.json",
 ));
 
 async fn setup() -> TestStorageStringContract<Wallet> {
@@ -17,7 +17,7 @@ async fn setup() -> TestStorageStringContract<Wallet> {
     .unwrap();
     let wallet = wallets.pop().unwrap();
     let id = Contract::load_from(
-        "test_projects/storage_string/out/release/storage_string.bin",
+        "out/storage_string.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
