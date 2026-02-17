@@ -6,10 +6,6 @@ exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/dump_impls_struct
    Compiling library dump_impls_common (test/src/e2e_vm_tests/test_programs/should_pass/dump_impls_common)
-DIFF------------------------------
-.program:
-DIFF------------------------------
-.program:
 info: Trait impls dump was requested.
   --> test/src/e2e_vm_tests/test_programs/should_pass/dump_impls_common/src/lib.sw:3:1
    |
@@ -23,10 +19,6 @@ info: Trait impls dump was requested.
 ____
 
    Compiling library dump_impls_struct (test/src/e2e_vm_tests/test_programs/should_pass/dump_impls_struct)
-DIFF------------------------------
-.program:
-DIFF------------------------------
-.program:
 info: Trait impls dump was requested.
   --> test/src/e2e_vm_tests/test_programs/should_pass/dump_impls_common/src/lib.sw:3:1
    |

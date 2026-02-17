@@ -1,7 +1,7 @@
 use super::super::abstract_instruction_set::AbstractInstructionSet;
 use crate::asm_lang::{
-    ConstantRegister, ControlFlowOp, JumpType, Label, Op, VirtualImmediate18,
-    VirtualOp, VirtualRegister,
+    ConstantRegister, ControlFlowOp, JumpType, Label, Op, VirtualImmediate18, VirtualOp,
+    VirtualRegister,
 };
 use either::Either;
 use rustc_hash::FxHashMap;
