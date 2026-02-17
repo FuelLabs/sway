@@ -6,6 +6,8 @@ exit status: 1
 output:
     Building test/src/e2e_vm_tests/test_programs/should_fail/type_check_analyze_errors
    Compiling library std (sway-lib-std)
+DIFF------------------------------
+.program:
    Compiling script type_check_analyze_errors (test/src/e2e_vm_tests/test_programs/should_fail/type_check_analyze_errors)
 error
  --> test/src/e2e_vm_tests/test_programs/should_fail/type_check_analyze_errors/src/main.sw:5:14

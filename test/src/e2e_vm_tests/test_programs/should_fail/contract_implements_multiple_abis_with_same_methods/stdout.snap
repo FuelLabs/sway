@@ -6,6 +6,8 @@ exit status: 1
 output:
     Building test/src/e2e_vm_tests/test_programs/should_fail/contract_implements_multiple_abis_with_same_methods
    Compiling library std (sway-lib-std)
+DIFF------------------------------
+.program:
    Compiling contract contract_implements_multiple_abis_with_same_methods (test/src/e2e_vm_tests/test_programs/should_fail/contract_implements_multiple_abis_with_same_methods)
 error: Multiple contracts methods with the same name.
   --> test/src/e2e_vm_tests/test_programs/should_fail/contract_implements_multiple_abis_with_same_methods/src/main.sw:14:8

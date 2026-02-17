@@ -6,7 +6,640 @@ exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/panic_in_non_statement_positions
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
+DIFF------------------------------
+.program:
    Compiling library panic_in_non_statement_positions (test/src/e2e_vm_tests/test_programs/should_pass/panic_in_non_statement_positions)
+DIFF------------------------------
+.program:
+DIFF------------------------------
+.program:
+.0                                      ; --- start of function: in_init ---
+move $$locbase $sp                      ; [entry init: in_init]: set locals base register
+cfei i48                                ; [entry init: in_init]: allocate: locals 48 byte(s), call args 0 slot(s)
+.36
+sw $$locbase $zero i0                   ; store word
+addi $r1 $$locbase i8                   ; get offset to aggregate element
+movi $r2 i42                            ; initialize constant into register
+sw $$locbase $r2 i1                     ; store word
+addi $r3 $$locbase i32                  ; get offset to local __ptr slice
+move $$arg0 $$locbase                   ; [call: encode_allow_alias_0]: pass argument 0
+move $$arg1 $r3                         ; [call: encode_allow_alias_0]: pass argument 1
+fncall .2                               ; [call: encode_allow_alias_0]: call function
+ move $r4 $zero                          ; [call: encode_allow_alias_0]: copy returned unit value
+ movi $r4 i0                             ; [call: encode_allow_alias_0]: copy returned unit value
+addi $r5 $$locbase i16                  ; get offset to local __ptr slice
+mcpi $r5 $r3 i16                        ; copy memory
+load $r6 data_NonConfigurable_0         ; load constant from data section
+lw $r7 $$locbase i2                     ; load slice pointer for logging data
+lw $r8 $$locbase i3                     ; load slice size for logging data
+logd $zero $r6 $r7 $r8                  ; log slice
+load $r9 data_NonConfigurable_1         ; load constant from data section
+rvrt $r9
+DIFF------------------------------
+.program:
+.6                                      ; --- start of function: in_array ---
+move $$locbase $sp                      ; [entry init: in_array]: set locals base register
+cfei i48                                ; [entry init: in_array]: allocate: locals 48 byte(s), call args 0 slot(s)
+.48
+sw $$locbase $zero i0                   ; store word
+addi $r136 $$locbase i8                 ; get offset to aggregate element
+movi $r137 i42                          ; initialize constant into register
+sw $$locbase $r137 i1                   ; store word
+addi $r138 $$locbase i32                ; get offset to local __ptr slice
+move $$arg0 $$locbase                   ; [call: encode_allow_alias_0]: pass argument 0
+move $$arg1 $r138                       ; [call: encode_allow_alias_0]: pass argument 1
+fncall .2                               ; [call: encode_allow_alias_0]: call function
+ move $r139 $zero                        ; [call: encode_allow_alias_0]: copy returned unit value
+ movi $r139 i0                           ; [call: encode_allow_alias_0]: copy returned unit value
+addi $r140 $$locbase i16                ; get offset to local __ptr slice
+mcpi $r140 $r138 i16                    ; copy memory
+load $r141 data_NonConfigurable_0       ; load constant from data section
+lw $r142 $$locbase i2                   ; load slice pointer for logging data
+lw $r143 $$locbase i3                   ; load slice size for logging data
+logd $zero $r141 $r142 $r143            ; log slice
+load $r144 data_NonConfigurable_4       ; load constant from data section
+rvrt $r144
+DIFF------------------------------
+.program:
+.8                                      ; --- start of function: in_length_1_array ---
+move $$locbase $sp                      ; [entry init: in_length_1_array]: set locals base register
+cfei i48                                ; [entry init: in_length_1_array]: allocate: locals 48 byte(s), call args 0 slot(s)
+.49
+sw $$locbase $zero i0                   ; store word
+addi $r146 $$locbase i8                 ; get offset to aggregate element
+movi $r147 i42                          ; initialize constant into register
+sw $$locbase $r147 i1                   ; store word
+addi $r148 $$locbase i32                ; get offset to local __ptr slice
+move $$arg0 $$locbase                   ; [call: encode_allow_alias_0]: pass argument 0
+move $$arg1 $r148                       ; [call: encode_allow_alias_0]: pass argument 1
+fncall .2                               ; [call: encode_allow_alias_0]: call function
+ move $r149 $zero                        ; [call: encode_allow_alias_0]: copy returned unit value
+ movi $r149 i0                           ; [call: encode_allow_alias_0]: copy returned unit value
+addi $r150 $$locbase i16                ; get offset to local __ptr slice
+mcpi $r150 $r148 i16                    ; copy memory
+load $r151 data_NonConfigurable_0       ; load constant from data section
+lw $r152 $$locbase i2                   ; load slice pointer for logging data
+lw $r153 $$locbase i3                   ; load slice size for logging data
+logd $zero $r151 $r152 $r153            ; log slice
+load $r154 data_NonConfigurable_5       ; load constant from data section
+rvrt $r154
+DIFF------------------------------
+.program:
+.10                                     ; --- start of function: in_length_2_array_first ---
+move $$locbase $sp                      ; [entry init: in_length_2_array_first]: set locals base register
+cfei i48                                ; [entry init: in_length_2_array_first]: allocate: locals 48 byte(s), call args 0 slot(s)
+.50
+sw $$locbase $zero i0                   ; store word
+addi $r156 $$locbase i8                 ; get offset to aggregate element
+movi $r157 i42                          ; initialize constant into register
+sw $$locbase $r157 i1                   ; store word
+addi $r158 $$locbase i32                ; get offset to local __ptr slice
+move $$arg0 $$locbase                   ; [call: encode_allow_alias_0]: pass argument 0
+move $$arg1 $r158                       ; [call: encode_allow_alias_0]: pass argument 1
+fncall .2                               ; [call: encode_allow_alias_0]: call function
+ move $r159 $zero                        ; [call: encode_allow_alias_0]: copy returned unit value
+ movi $r159 i0                           ; [call: encode_allow_alias_0]: copy returned unit value
+addi $r160 $$locbase i16                ; get offset to local __ptr slice
+mcpi $r160 $r158 i16                    ; copy memory
+load $r161 data_NonConfigurable_0       ; load constant from data section
+lw $r162 $$locbase i2                   ; load slice pointer for logging data
+lw $r163 $$locbase i3                   ; load slice size for logging data
+logd $zero $r161 $r162 $r163            ; log slice
+load $r164 data_NonConfigurable_6       ; load constant from data section
+rvrt $r164
+DIFF------------------------------
+.program:
+.12                                     ; --- start of function: in_length_2_array_second ---
+move $$locbase $sp                      ; [entry init: in_length_2_array_second]: set locals base register
+cfei i48                                ; [entry init: in_length_2_array_second]: allocate: locals 48 byte(s), call args 0 slot(s)
+.51
+sw $$locbase $zero i0                   ; store word
+addi $r166 $$locbase i8                 ; get offset to aggregate element
+movi $r167 i42                          ; initialize constant into register
+sw $$locbase $r167 i1                   ; store word
+addi $r168 $$locbase i32                ; get offset to local __ptr slice
+move $$arg0 $$locbase                   ; [call: encode_allow_alias_0]: pass argument 0
+move $$arg1 $r168                       ; [call: encode_allow_alias_0]: pass argument 1
+fncall .2                               ; [call: encode_allow_alias_0]: call function
+ move $r169 $zero                        ; [call: encode_allow_alias_0]: copy returned unit value
+ movi $r169 i0                           ; [call: encode_allow_alias_0]: copy returned unit value
+addi $r170 $$locbase i16                ; get offset to local __ptr slice
+mcpi $r170 $r168 i16                    ; copy memory
+load $r171 data_NonConfigurable_0       ; load constant from data section
+lw $r172 $$locbase i2                   ; load slice pointer for logging data
+lw $r173 $$locbase i3                   ; load slice size for logging data
+logd $zero $r171 $r172 $r173            ; log slice
+load $r174 data_NonConfigurable_7       ; load constant from data section
+rvrt $r174
+DIFF------------------------------
+.program:
+.14                                     ; --- start of function: in_tuple ---
+move $$locbase $sp                      ; [entry init: in_tuple]: set locals base register
+cfei i48                                ; [entry init: in_tuple]: allocate: locals 48 byte(s), call args 0 slot(s)
+.52
+sw $$locbase $zero i0                   ; store word
+addi $r176 $$locbase i8                 ; get offset to aggregate element
+movi $r177 i42                          ; initialize constant into register
+sw $$locbase $r177 i1                   ; store word
+addi $r178 $$locbase i32                ; get offset to local __ptr slice
+move $$arg0 $$locbase                   ; [call: encode_allow_alias_0]: pass argument 0
+move $$arg1 $r178                       ; [call: encode_allow_alias_0]: pass argument 1
+fncall .2                               ; [call: encode_allow_alias_0]: call function
+ move $r179 $zero                        ; [call: encode_allow_alias_0]: copy returned unit value
+ movi $r179 i0                           ; [call: encode_allow_alias_0]: copy returned unit value
+addi $r180 $$locbase i16                ; get offset to local __ptr slice
+mcpi $r180 $r178 i16                    ; copy memory
+load $r181 data_NonConfigurable_0       ; load constant from data section
+lw $r182 $$locbase i2                   ; load slice pointer for logging data
+lw $r183 $$locbase i3                   ; load slice size for logging data
+logd $zero $r181 $r182 $r183            ; log slice
+load $r184 data_NonConfigurable_8       ; load constant from data section
+rvrt $r184
+DIFF------------------------------
+.program:
+.16                                     ; --- start of function: in_struct ---
+move $$locbase $sp                      ; [entry init: in_struct]: set locals base register
+cfei i48                                ; [entry init: in_struct]: allocate: locals 48 byte(s), call args 0 slot(s)
+.53
+sw $$locbase $zero i0                   ; store word
+addi $r186 $$locbase i8                 ; get offset to aggregate element
+movi $r187 i42                          ; initialize constant into register
+sw $$locbase $r187 i1                   ; store word
+addi $r188 $$locbase i32                ; get offset to local __ptr slice
+move $$arg0 $$locbase                   ; [call: encode_allow_alias_0]: pass argument 0
+move $$arg1 $r188                       ; [call: encode_allow_alias_0]: pass argument 1
+fncall .2                               ; [call: encode_allow_alias_0]: call function
+ move $r189 $zero                        ; [call: encode_allow_alias_0]: copy returned unit value
+ movi $r189 i0                           ; [call: encode_allow_alias_0]: copy returned unit value
+addi $r190 $$locbase i16                ; get offset to local __ptr slice
+mcpi $r190 $r188 i16                    ; copy memory
+load $r191 data_NonConfigurable_0       ; load constant from data section
+lw $r192 $$locbase i2                   ; load slice pointer for logging data
+lw $r193 $$locbase i3                   ; load slice size for logging data
+logd $zero $r191 $r192 $r193            ; log slice
+load $r194 data_NonConfigurable_9       ; load constant from data section
+rvrt $r194
+DIFF------------------------------
+.program:
+.18                                     ; --- start of function: in_parentheses ---
+move $$locbase $sp                      ; [entry init: in_parentheses]: set locals base register
+cfei i48                                ; [entry init: in_parentheses]: allocate: locals 48 byte(s), call args 0 slot(s)
+.54
+sw $$locbase $zero i0                   ; store word
+addi $r196 $$locbase i8                 ; get offset to aggregate element
+movi $r197 i42                          ; initialize constant into register
+sw $$locbase $r197 i1                   ; store word
+addi $r198 $$locbase i32                ; get offset to local __ptr slice
+move $$arg0 $$locbase                   ; [call: encode_allow_alias_0]: pass argument 0
+move $$arg1 $r198                       ; [call: encode_allow_alias_0]: pass argument 1
+fncall .2                               ; [call: encode_allow_alias_0]: call function
+ move $r199 $zero                        ; [call: encode_allow_alias_0]: copy returned unit value
+ movi $r199 i0                           ; [call: encode_allow_alias_0]: copy returned unit value
+addi $r200 $$locbase i16                ; get offset to local __ptr slice
+mcpi $r200 $r198 i16                    ; copy memory
+load $r201 data_NonConfigurable_0       ; load constant from data section
+lw $r202 $$locbase i2                   ; load slice pointer for logging data
+lw $r203 $$locbase i3                   ; load slice size for logging data
+logd $zero $r201 $r202 $r203            ; log slice
+load $r204 data_NonConfigurable_10      ; load constant from data section
+rvrt $r204
+DIFF------------------------------
+.program:
+.20                                     ; --- start of function: in_if_condition ---
+move $$locbase $sp                      ; [entry init: in_if_condition]: set locals base register
+cfei i48                                ; [entry init: in_if_condition]: allocate: locals 48 byte(s), call args 0 slot(s)
+.55
+sw $$locbase $zero i0                   ; store word
+addi $r206 $$locbase i8                 ; get offset to aggregate element
+movi $r207 i42                          ; initialize constant into register
+sw $$locbase $r207 i1                   ; store word
+addi $r208 $$locbase i32                ; get offset to local __ptr slice
+move $$arg0 $$locbase                   ; [call: encode_allow_alias_0]: pass argument 0
+move $$arg1 $r208                       ; [call: encode_allow_alias_0]: pass argument 1
+fncall .2                               ; [call: encode_allow_alias_0]: call function
+ move $r209 $zero                        ; [call: encode_allow_alias_0]: copy returned unit value
+ movi $r209 i0                           ; [call: encode_allow_alias_0]: copy returned unit value
+addi $r210 $$locbase i16                ; get offset to local __ptr slice
+mcpi $r210 $r208 i16                    ; copy memory
+load $r211 data_NonConfigurable_0       ; load constant from data section
+lw $r212 $$locbase i2                   ; load slice pointer for logging data
+lw $r213 $$locbase i3                   ; load slice size for logging data
+logd $zero $r211 $r212 $r213            ; log slice
+load $r214 data_NonConfigurable_11      ; load constant from data section
+rvrt $r214
+DIFF------------------------------
+.program:
+.22                                     ; --- start of function: in_while_condition ---
+move $$locbase $sp                      ; [entry init: in_while_condition]: set locals base register
+cfei i48                                ; [entry init: in_while_condition]: allocate: locals 48 byte(s), call args 0 slot(s)
+.56
+sw $$locbase $zero i0                   ; store word
+addi $r216 $$locbase i8                 ; get offset to aggregate element
+movi $r217 i42                          ; initialize constant into register
+sw $$locbase $r217 i1                   ; store word
+addi $r218 $$locbase i32                ; get offset to local __ptr slice
+move $$arg0 $$locbase                   ; [call: encode_allow_alias_0]: pass argument 0
+move $$arg1 $r218                       ; [call: encode_allow_alias_0]: pass argument 1
+fncall .2                               ; [call: encode_allow_alias_0]: call function
+ move $r219 $zero                        ; [call: encode_allow_alias_0]: copy returned unit value
+ movi $r219 i0                           ; [call: encode_allow_alias_0]: copy returned unit value
+addi $r220 $$locbase i16                ; get offset to local __ptr slice
+mcpi $r220 $r218 i16                    ; copy memory
+load $r221 data_NonConfigurable_0       ; load constant from data section
+lw $r222 $$locbase i2                   ; load slice pointer for logging data
+lw $r223 $$locbase i3                   ; load slice size for logging data
+logd $zero $r221 $r222 $r223            ; log slice
+load $r224 data_NonConfigurable_12      ; load constant from data section
+rvrt $r224
+DIFF------------------------------
+.program:
+.24                                     ; --- start of function: in_enum ---
+move $$locbase $sp                      ; [entry init: in_enum]: set locals base register
+cfei i48                                ; [entry init: in_enum]: allocate: locals 48 byte(s), call args 0 slot(s)
+.57
+sw $$locbase $zero i0                   ; store word
+addi $r226 $$locbase i8                 ; get offset to aggregate element
+movi $r227 i42                          ; initialize constant into register
+sw $$locbase $r227 i1                   ; store word
+addi $r228 $$locbase i32                ; get offset to local __ptr slice
+move $$arg0 $$locbase                   ; [call: encode_allow_alias_0]: pass argument 0
+move $$arg1 $r228                       ; [call: encode_allow_alias_0]: pass argument 1
+fncall .2                               ; [call: encode_allow_alias_0]: call function
+ move $r229 $zero                        ; [call: encode_allow_alias_0]: copy returned unit value
+ movi $r229 i0                           ; [call: encode_allow_alias_0]: copy returned unit value
+addi $r230 $$locbase i16                ; get offset to local __ptr slice
+mcpi $r230 $r228 i16                    ; copy memory
+load $r231 data_NonConfigurable_0       ; load constant from data section
+lw $r232 $$locbase i2                   ; load slice pointer for logging data
+lw $r233 $$locbase i3                   ; load slice size for logging data
+logd $zero $r231 $r232 $r233            ; log slice
+load $r234 data_NonConfigurable_13      ; load constant from data section
+rvrt $r234
+DIFF------------------------------
+.program:
+.26                                     ; --- start of function: in_enum_multivariant ---
+move $$locbase $sp                      ; [entry init: in_enum_multivariant]: set locals base register
+cfei i48                                ; [entry init: in_enum_multivariant]: allocate: locals 48 byte(s), call args 0 slot(s)
+.58
+sw $$locbase $zero i0                   ; store word
+addi $r236 $$locbase i8                 ; get offset to aggregate element
+movi $r237 i42                          ; initialize constant into register
+sw $$locbase $r237 i1                   ; store word
+addi $r238 $$locbase i32                ; get offset to local __ptr slice
+move $$arg0 $$locbase                   ; [call: encode_allow_alias_0]: pass argument 0
+move $$arg1 $r238                       ; [call: encode_allow_alias_0]: pass argument 1
+fncall .2                               ; [call: encode_allow_alias_0]: call function
+ move $r239 $zero                        ; [call: encode_allow_alias_0]: copy returned unit value
+ movi $r239 i0                           ; [call: encode_allow_alias_0]: copy returned unit value
+addi $r240 $$locbase i16                ; get offset to local __ptr slice
+mcpi $r240 $r238 i16                    ; copy memory
+load $r241 data_NonConfigurable_0       ; load constant from data section
+lw $r242 $$locbase i2                   ; load slice pointer for logging data
+lw $r243 $$locbase i3                   ; load slice size for logging data
+logd $zero $r241 $r242 $r243            ; log slice
+load $r244 data_NonConfigurable_14      ; load constant from data section
+rvrt $r244
+DIFF------------------------------
+.program:
+.28                                     ; --- start of function: in_fun_arg ---
+move $$locbase $sp                      ; [entry init: in_fun_arg]: set locals base register
+cfei i48                                ; [entry init: in_fun_arg]: allocate: locals 48 byte(s), call args 0 slot(s)
+.59
+sw $$locbase $zero i0                   ; store word
+addi $r246 $$locbase i8                 ; get offset to aggregate element
+movi $r247 i42                          ; initialize constant into register
+sw $$locbase $r247 i1                   ; store word
+addi $r248 $$locbase i32                ; get offset to local __ptr slice
+move $$arg0 $$locbase                   ; [call: encode_allow_alias_0]: pass argument 0
+move $$arg1 $r248                       ; [call: encode_allow_alias_0]: pass argument 1
+fncall .2                               ; [call: encode_allow_alias_0]: call function
+ move $r249 $zero                        ; [call: encode_allow_alias_0]: copy returned unit value
+ movi $r249 i0                           ; [call: encode_allow_alias_0]: copy returned unit value
+addi $r250 $$locbase i16                ; get offset to local __ptr slice
+mcpi $r250 $r248 i16                    ; copy memory
+load $r251 data_NonConfigurable_0       ; load constant from data section
+lw $r252 $$locbase i2                   ; load slice pointer for logging data
+lw $r253 $$locbase i3                   ; load slice size for logging data
+logd $zero $r251 $r252 $r253            ; log slice
+load $r254 data_NonConfigurable_15      ; load constant from data section
+rvrt $r254
+DIFF------------------------------
+.program:
+.30                                     ; --- start of function: in_lazy_and ---
+move $$locbase $sp                      ; [entry init: in_lazy_and]: set locals base register
+cfei i48                                ; [entry init: in_lazy_and]: allocate: locals 48 byte(s), call args 0 slot(s)
+.60
+sw $$locbase $zero i0                   ; store word
+addi $r256 $$locbase i8                 ; get offset to aggregate element
+movi $r257 i42                          ; initialize constant into register
+sw $$locbase $r257 i1                   ; store word
+addi $r258 $$locbase i32                ; get offset to local __ptr slice
+move $$arg0 $$locbase                   ; [call: encode_allow_alias_0]: pass argument 0
+move $$arg1 $r258                       ; [call: encode_allow_alias_0]: pass argument 1
+fncall .2                               ; [call: encode_allow_alias_0]: call function
+ move $r259 $zero                        ; [call: encode_allow_alias_0]: copy returned unit value
+ movi $r259 i0                           ; [call: encode_allow_alias_0]: copy returned unit value
+addi $r260 $$locbase i16                ; get offset to local __ptr slice
+mcpi $r260 $r258 i16                    ; copy memory
+load $r261 data_NonConfigurable_0       ; load constant from data section
+lw $r262 $$locbase i2                   ; load slice pointer for logging data
+lw $r263 $$locbase i3                   ; load slice size for logging data
+logd $zero $r261 $r262 $r263            ; log slice
+load $r264 data_NonConfigurable_16      ; load constant from data section
+rvrt $r264
+DIFF------------------------------
+.program:
+.32                                     ; --- start of function: in_lazy_or ---
+move $$locbase $sp                      ; [entry init: in_lazy_or]: set locals base register
+cfei i48                                ; [entry init: in_lazy_or]: allocate: locals 48 byte(s), call args 0 slot(s)
+.61
+sw $$locbase $zero i0                   ; store word
+addi $r266 $$locbase i8                 ; get offset to aggregate element
+movi $r267 i42                          ; initialize constant into register
+sw $$locbase $r267 i1                   ; store word
+addi $r268 $$locbase i32                ; get offset to local __ptr slice
+move $$arg0 $$locbase                   ; [call: encode_allow_alias_0]: pass argument 0
+move $$arg1 $r268                       ; [call: encode_allow_alias_0]: pass argument 1
+fncall .2                               ; [call: encode_allow_alias_0]: call function
+ move $r269 $zero                        ; [call: encode_allow_alias_0]: copy returned unit value
+ movi $r269 i0                           ; [call: encode_allow_alias_0]: copy returned unit value
+addi $r270 $$locbase i16                ; get offset to local __ptr slice
+mcpi $r270 $r268 i16                    ; copy memory
+load $r271 data_NonConfigurable_0       ; load constant from data section
+lw $r272 $$locbase i2                   ; load slice pointer for logging data
+lw $r273 $$locbase i3                   ; load slice size for logging data
+logd $zero $r271 $r272 $r273            ; log slice
+load $r274 data_NonConfigurable_17      ; load constant from data section
+rvrt $r274
+DIFF------------------------------
+.program:
+.34                                     ; --- start of function: in_match_scrutinee ---
+move $$locbase $sp                      ; [entry init: in_match_scrutinee]: set locals base register
+cfei i48                                ; [entry init: in_match_scrutinee]: allocate: locals 48 byte(s), call args 0 slot(s)
+.62
+sw $$locbase $zero i0                   ; store word
+addi $r276 $$locbase i8                 ; get offset to aggregate element
+movi $r277 i42                          ; initialize constant into register
+sw $$locbase $r277 i1                   ; store word
+addi $r278 $$locbase i32                ; get offset to local __ptr slice
+move $$arg0 $$locbase                   ; [call: encode_allow_alias_0]: pass argument 0
+move $$arg1 $r278                       ; [call: encode_allow_alias_0]: pass argument 1
+fncall .2                               ; [call: encode_allow_alias_0]: call function
+ move $r279 $zero                        ; [call: encode_allow_alias_0]: copy returned unit value
+ movi $r279 i0                           ; [call: encode_allow_alias_0]: copy returned unit value
+addi $r280 $$locbase i16                ; get offset to local __ptr slice
+mcpi $r280 $r278 i16                    ; copy memory
+load $r281 data_NonConfigurable_0       ; load constant from data section
+lw $r282 $$locbase i2                   ; load slice pointer for logging data
+lw $r283 $$locbase i3                   ; load slice size for logging data
+logd $zero $r281 $r282 $r283            ; log slice
+load $r284 data_NonConfigurable_18      ; load constant from data section
+rvrt $r284
+DIFF------------------------------
+.program:
+.2                                      ; --- start of function: encode_allow_alias_0 ---
+pusha .2                                ; [fn init: encode_allow_alias_0]: push all used registers to stack
+move $$locbase $sp                      ; [fn init: encode_allow_alias_0]: set locals base register
+cfei i616                               ; [fn init: encode_allow_alias_0]: allocate: locals 616 byte(s), call args 0 slot(s)
+move $r10 $$arg0                        ; [fn init: encode_allow_alias_0]: copy argument 0 (item)
+move $r11 $$arg1                        ; [fn init: encode_allow_alias_0]: copy argument 1 (__ret_value)
+move $r12 $$reta                        ; [fn init: encode_allow_alias_0]: save return address
+.37
+addi $r13 $$locbase i520                ; get offset to local __ptr __ptr { u64, ( u64 ) }
+ sw $$locbase $r10 i65                   ; store word
+ sw $$locbase $$arg0 i65                 ; store word
+addi $r14 $$locbase i544                ; get offset to local __ptr u64
+load $r15 data_NonConfigurable_2        ; load constant from data section
+sw $$locbase $r15 i68                   ; store word
+addi $r16 $$locbase i528                ; get offset to local __ptr u64
+load $r17 data_NonConfigurable_2        ; load constant from data section
+sw $$locbase $r17 i66                   ; store word
+addi $r18 $$locbase i544                ; get offset to local __ptr u64
+lw $r19 $$locbase i68                   ; load word
+addi $r20 $$locbase i528                ; get offset to local __ptr u64
+lw $r21 $$locbase i66                   ; load word
+eq $r22 $r19 $r21
+move $r23 $r22                          ; move parameter from branch to block argument
+jnzi $r22 .38
+ji  .39
+.38
+ move $r23 $one                          ; move parameter from branch to block argument
+ movi $r23 i1                            ; move parameter from branch to block argument
+ji  .39
+.39
+move $r26 $r23                          ; move parameter from branch to block argument
+ jnzi $r26 .40
+ jnzi $r23 .40
+ji  .41
+.41
+addi $r27 $$locbase i520                ; get offset to local __ptr __ptr { u64, ( u64 ) }
+lw $r28 $$locbase i65                   ; load word
+addi $r29 $$locbase i208                ; get offset to local __ptr { { ptr, u64, u64 } }
+movi $r30 i1024                         ; initialize constant into register
+aloc $r30
+move $r31 $hp                           ; return value from ASM block with return register hp
+addi $r32 $$locbase i80                 ; get offset to local __ptr { ptr, u64, u64 }
+ sw $$locbase $r31 i10                   ; store word
+ sw $$locbase $hp i10                    ; store word
+addi $r33 $r32 i8                       ; get offset to aggregate element
+movi $r34 i1024                         ; initialize constant into register
+sw $$locbase $r34 i11                   ; store word
+addi $r35 $r32 i16                      ; get offset to aggregate element
+sw $$locbase $zero i12                  ; store word
+move $r36 $r32                          ; return value from ASM block with return register buffer
+ mcpi $$locbase $r36 i24                 ; copy memory
+ mcpi $$locbase $r32 i24                 ; copy memory
+mcpi $r29 $$locbase i24                 ; copy memory
+addi $r37 $$locbase i280                ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r37 $r29 i24                      ; copy memory
+addi $r38 $$locbase i552                ; get offset to local __ptr { u64, ( u64 ) }
+mcpi $r38 $r28 i16                      ; copy memory
+addi $r39 $$locbase i424                ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r39 $r37 i24                      ; copy memory
+addi $r40 $$locbase i552                ; get offset to local __ptr { u64, ( u64 ) }
+addi $r41 $$locbase i144                ; get offset to local __ptr { u64, ( u64 ) }
+mcpi $r41 $r40 i16                      ; copy memory
+addi $r42 $$locbase i144                ; get offset to local __ptr { u64, ( u64 ) }
+addi $r43 $$locbase i568                ; get offset to local __ptr u64
+mcpi $r43 $r42 i8                       ; copy memory
+addi $r44 $$locbase i536                ; get offset to local __ptr u64
+sw $$locbase $zero i67                  ; store word
+addi $r45 $$locbase i568                ; get offset to local __ptr u64
+lw $r46 $$locbase i71                   ; load word
+addi $r47 $$locbase i536                ; get offset to local __ptr u64
+lw $r48 $$locbase i67                   ; load word
+eq $r49 $r46 $r48
+jnzi $r49 .42
+ji  .43
+.43
+load $r50 data_NonConfigurable_3        ; load constant from data section
+rvrt $r50
+.42
+addi $r51 $$locbase i144                ; get offset to local __ptr { u64, ( u64 ) }
+addi $r52 $r51 i8                       ; get offset to aggregate element
+addi $r53 $$locbase i608                ; get offset to local __ptr u64
+mcpi $r53 $r52 i8                       ; copy memory
+addi $r54 $$locbase i424                ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r55 $$locbase i232                ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r55 $r54 i24                      ; copy memory
+addi $r56 $$locbase i160                ; get offset to local __ptr { { ptr, u64, u64 } }
+ move $$arg0 $zero                       ; [call: abi_encode_7]: pass argument 0
+ movi $$arg0 i0                          ; [call: abi_encode_7]: pass argument 0
+move $$arg1 $r55                        ; [call: abi_encode_7]: pass argument 1
+move $$arg2 $r56                        ; [call: abi_encode_7]: pass argument 2
+fncall .4                               ; [call: abi_encode_7]: call function
+ move $r57 $zero                         ; [call: abi_encode_7]: copy returned unit value
+ movi $r57 i0                            ; [call: abi_encode_7]: copy returned unit value
+addi $r58 $$locbase i448                ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r58 $r56 i24                      ; copy memory
+addi $r59 $$locbase i608                ; get offset to local __ptr u64
+lw $r60 $$locbase i76                   ; load word
+addi $r61 $$locbase i448                ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r62 $$locbase i256                ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r62 $r61 i24                      ; copy memory
+addi $r63 $$locbase i184                ; get offset to local __ptr { { ptr, u64, u64 } }
+move $$arg0 $r60                        ; [call: abi_encode_7]: pass argument 0
+move $$arg1 $r62                        ; [call: abi_encode_7]: pass argument 1
+move $$arg2 $r63                        ; [call: abi_encode_7]: pass argument 2
+fncall .4                               ; [call: abi_encode_7]: call function
+ move $r64 $zero                         ; [call: abi_encode_7]: copy returned unit value
+ movi $r64 i0                            ; [call: abi_encode_7]: copy returned unit value
+addi $r65 $$locbase i472                ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r65 $r63 i24                      ; copy memory
+addi $r66 $$locbase i472                ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r67 $$locbase i304                ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r67 $r66 i24                      ; copy memory
+addi $r68 $$locbase i496                ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r68 $r67 i24                      ; copy memory
+addi $r69 $$locbase i496                ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r70 $$locbase i328                ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r70 $r69 i24                      ; copy memory
+addi $r71 $$locbase i400                ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r71 $r70 i24                      ; copy memory
+addi $r72 $$locbase i400                ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r73 $$locbase i576                ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r73 $r72 i24                      ; copy memory
+addi $r74 $$locbase i576                ; get offset to local __ptr { { ptr, u64, u64 } }
+move $r75 $r74                          ; return value from ASM block with return register buffer
+addi $r76 $$locbase i24                 ; get offset to local __ptr { ptr, u64, u64 }
+ mcpi $r76 $r75 i24                      ; copy memory
+ mcpi $r76 $r74 i24                      ; copy memory
+addi $r77 $$locbase i104                ; get offset to local __ptr { ptr, u64, u64 }
+mcpi $r77 $r76 i24                      ; copy memory
+addi $r78 $r77 i16                      ; get offset to aggregate element
+addi $r79 $$locbase i128                ; get offset to local __ptr { ptr, u64 }
+mcpi $r79 $r77 i8                       ; copy memory
+addi $r80 $r79 i8                       ; get offset to aggregate element
+mcpi $r80 $r78 i8                       ; copy memory
+move $r81 $r79                          ; return value from ASM block with return register s
+addi $r82 $$locbase i48                 ; get offset to local __ptr slice
+ mcpi $r82 $r81 i16                      ; copy memory
+ mcpi $r82 $r79 i16                      ; copy memory
+addi $r83 $$locbase i352                ; get offset to local __ptr slice
+mcpi $r83 $r82 i16                      ; copy memory
+addi $r84 $$locbase i368                ; get offset to local __ptr slice
+mcpi $r84 $r83 i16                      ; copy memory
+move $r85 $r84                          ; move parameter from branch to block argument
+ji  .44
+.40
+addi $r86 $$locbase i600                ; get offset to local __ptr u64
+movi $r87 i16                           ; initialize constant into register
+sw $$locbase $r87 i75                   ; store word
+addi $r88 $$locbase i384                ; get offset to local __ptr { __ptr { u64, ( u64 ) }, u64 }
+addi $r89 $$locbase i520                ; get offset to local __ptr __ptr { u64, ( u64 ) }
+addi $r90 $$locbase i600                ; get offset to local __ptr u64
+mcpi $r88 $r89 i8                       ; copy memory
+addi $r91 $r88 i8                       ; get offset to aggregate element
+mcpi $r91 $r90 i8                       ; copy memory
+addi $r92 $$locbase i64                 ; get offset to local __ptr { __ptr { u64, ( u64 ) }, u64 }
+mcpi $r92 $r88 i16                      ; copy memory
+addi $r93 $$locbase i368                ; get offset to local __ptr slice
+mcpi $r93 $r92 i16                      ; copy memory
+move $r85 $r93                          ; move parameter from branch to block argument
+ji  .44
+.44
+move $r96 $r85                          ; move parameter from branch to block argument
+ mcpi $r11 $r96 i16                      ; copy memory
+ mcpi $r11 $r85 i16                      ; copy memory
+ji  .3
+.3
+cfsi i616                               ; [fn end: encode_allow_alias_0] free: locals 616 byte(s), call args 0 slot(s)
+move $$reta $r12                        ; [fn end: encode_allow_alias_0] restore return address
+popa .2                                 ; [fn end: encode_allow_alias_0] restore all used registers
+jal $zero $$reta i0                     ; [fn end: encode_allow_alias_0] return from call
+DIFF------------------------------
+.program:
+.4                                      ; --- start of function: abi_encode_7 ---
+pusha .4                                ; [fn init: abi_encode_7]: push all used registers to stack
+move $$locbase $sp                      ; [fn init: abi_encode_7]: set locals base register
+cfei i152                               ; [fn init: abi_encode_7]: allocate: locals 152 byte(s), call args 0 slot(s)
+.45
+addi $r98 $$locbase i144                ; get offset to local __ptr u64
+sw $$locbase $$arg0 i18                 ; store word
+addi $r99 $$locbase i120                ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r99 $$arg1 i24                    ; copy memory
+addi $r100 $$locbase i96                ; get offset to local __ptr { { ptr, u64, u64 } }
+addi $r101 $$locbase i120               ; get offset to local __ptr { { ptr, u64, u64 } }
+move $r102 $r101                        ; return value from ASM block with return register buffer
+ mcpi $$locbase $r102 i24                ; copy memory
+ mcpi $$locbase $r101 i24                ; copy memory
+addi $r103 $$locbase i48                ; get offset to local __ptr { ptr, u64, u64 }
+mcpi $r103 $$locbase i24                ; copy memory
+lw $r104 $$locbase i6                   ; load word
+addi $r105 $r103 i8                     ; get offset to aggregate element
+lw $r106 $$locbase i7                   ; load word
+addi $r107 $r103 i16                    ; get offset to aggregate element
+lw $r108 $$locbase i8                   ; load word
+addi $r109 $$locbase i144               ; get offset to local __ptr u64
+lw $r110 $$locbase i18                  ; load word
+movi $r111 i8                           ; initialize constant into register
+ add $r112 $r108 $r111
+ addi $r112 $r108 i8
+gt $r113 $r112 $r106
+move $r114 $r104                        ; move parameter from branch to block argument
+move $r115 $r106                        ; move parameter from branch to block argument
+jnzi $r113 .46
+ji  .47
+.46
+movi $r116 i2                           ; initialize constant into register
+ mul $r117 $r106 $r116
+ muli $r117 $r106 i2
+movi $r118 i8                           ; initialize constant into register
+ add $r119 $r117 $r118
+ addi $r119 $r117 i8
+aloc $r119
+mcp $hp $r104 $r108
+move $r120 $hp                          ; return value from ASM block with return register hp
+ move $r114 $r120                        ; move parameter from branch to block argument
+ move $r114 $hp                          ; move parameter from branch to block argument
+move $r115 $r119                        ; move parameter from branch to block argument
+ji  .47
+.47
+move $r124 $r114                        ; move parameter from branch to block argument
+move $r126 $r115                        ; move parameter from branch to block argument
+ add $r127 $r124 $r108
+ add $r127 $r114 $r108
+sw $r127 $r110 i0                       ; store word
+movi $r128 i8                           ; initialize constant into register
+ add $r129 $r108 $r128
+ addi $r129 $r108 i8
+addi $r130 $$locbase i72                ; get offset to local __ptr { ptr, u64, u64 }
+sw $$locbase $r124 i9                   ; store word
+addi $r131 $r130 i8                     ; get offset to aggregate element
+sw $$locbase $r126 i10                  ; store word
+addi $r132 $r130 i16                    ; get offset to aggregate element
+sw $$locbase $r129 i11                  ; store word
+move $r133 $r130                        ; return value from ASM block with return register buffer
+addi $r134 $$locbase i24                ; get offset to local __ptr { ptr, u64, u64 }
+ mcpi $r134 $r133 i24                    ; copy memory
+ mcpi $r134 $r130 i24                    ; copy memory
+mcpi $r100 $r134 i24                    ; copy memory
+mcpi $$arg2 $r100 i24                   ; copy memory
+ji  .5
+.5
+cfsi i152                               ; [fn end: abi_encode_7] free: locals 152 byte(s), call args 0 slot(s)
+popa .4                                 ; [fn end: abi_encode_7] restore all used registers
+jal $zero $$reta i0                     ; [fn end: abi_encode_7] return from call
 warning
  --> test/src/e2e_vm_tests/test_programs/should_pass/panic_in_non_statement_positions/src/main.sw:7:12
   |

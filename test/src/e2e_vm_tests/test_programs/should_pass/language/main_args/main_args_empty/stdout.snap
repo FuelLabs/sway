@@ -10,6 +10,10 @@ output:
 library {
 }
 
+DIFF------------------------------
+.program:
+DIFF------------------------------
+.program:
 ;; --- START OF TARGET BYTECODE ---
 
 0x00000000 MOVE R60 $pc                                    ;; [26, 240, 48, 0]
@@ -54,6 +58,89 @@ script {
 !12 = fn_name_span !10 12 16
 !13 = (!11 !12)
 
+DIFF------------------------------
+.program:
+DIFF------------------------------
+.program:
+DIFF------------------------------
+.program:
+.0                                      ; --- start of function: __entry ---
+move $$locbase $sp                      ; [entry init: __entry]: set locals base register
+cfei i0                                 ; [entry init: __entry]: allocate: locals 0 byte(s), call args 0 slot(s)
+.4
+fncall .2                               ; [call: main_0]: call function
+ move $r1 $zero                          ; [call: main_0]: copy returned unit value
+ movi $r1 i0                             ; [call: main_0]: copy returned unit value
+retd $zero $zero                        ; [entry end: __entry] return slice
+DIFF------------------------------
+.program:
+.0                                      ; --- start of function: __entry ---
+move $$locbase $sp                      ; [entry init: __entry]: set locals base register
+cfei i0                                 ; [entry init: __entry]: allocate: locals 0 byte(s), call args 0 slot(s)
+.4
+fncall .2                               ; [call: main_0]: call function
+retd $zero $zero                        ; [entry end: __entry] return slice
+DIFF------------------------------
+.program:
+.0                                      ; --- start of function: __entry ---
+move $$locbase $sp                      ; [entry init: __entry]: set locals base register
+cfei i0                                 ; [entry init: __entry]: allocate: locals 0 byte(s), call args 0 slot(s)
+.4
+fncall .2                               ; [call: main_0]: call function
+retd $zero $zero                        ; [entry end: __entry] return slice
+DIFF------------------------------
+.program:
+.0                                      ; --- start of function: __entry ---
+move $$locbase $sp                      ; [entry init: __entry]: set locals base register
+cfei i0                                 ; [entry init: __entry]: allocate: locals 0 byte(s), call args 0 slot(s)
+.4
+fncall .2                               ; [call: main_0]: call function
+retd $zero $zero                        ; [entry end: __entry] return slice
+DIFF------------------------------
+.program:
+.2                                      ; --- start of function: main_0 ---
+pusha .2                                ; [fn init: main_0]: push all used registers to stack
+move $$locbase $sp                      ; [fn init: main_0]: set locals base register
+cfei i0                                 ; [fn init: main_0]: allocate: locals 0 byte(s), call args 0 slot(s)
+.5
+ji  .3
+.3
+cfsi i0                                 ; [fn end: main_0] free: locals 0 byte(s), call args 0 slot(s)
+popa .2                                 ; [fn end: main_0] restore all used registers
+jal $zero $$reta i0                     ; [fn end: main_0] return from call
+DIFF------------------------------
+.program:
+.2                                      ; --- start of function: main_0 ---
+pusha .2                                ; [fn init: main_0]: push all used registers to stack
+move $$locbase $sp                      ; [fn init: main_0]: set locals base register
+cfei i0                                 ; [fn init: main_0]: allocate: locals 0 byte(s), call args 0 slot(s)
+.5
+.3
+cfsi i0                                 ; [fn end: main_0] free: locals 0 byte(s), call args 0 slot(s)
+popa .2                                 ; [fn end: main_0] restore all used registers
+jal $zero $$reta i0                     ; [fn end: main_0] return from call
+DIFF------------------------------
+.program:
+.2                                      ; --- start of function: main_0 ---
+pusha .2                                ; [fn init: main_0]: push all used registers to stack
+move $$locbase $sp                      ; [fn init: main_0]: set locals base register
+cfei i0                                 ; [fn init: main_0]: allocate: locals 0 byte(s), call args 0 slot(s)
+.5
+.3
+cfsi i0                                 ; [fn end: main_0] free: locals 0 byte(s), call args 0 slot(s)
+popa .2                                 ; [fn end: main_0] restore all used registers
+jal $zero $$reta i0                     ; [fn end: main_0] return from call
+DIFF------------------------------
+.program:
+.2                                      ; --- start of function: main_0 ---
+pusha .2                                ; [fn init: main_0]: push all used registers to stack
+move $$locbase $sp                      ; [fn init: main_0]: set locals base register
+cfei i0                                 ; [fn init: main_0]: allocate: locals 0 byte(s), call args 0 slot(s)
+.5
+.3
+cfsi i0                                 ; [fn end: main_0] free: locals 0 byte(s), call args 0 slot(s)
+popa .2                                 ; [fn end: main_0] restore all used registers
+jal $zero $$reta i0                     ; [fn end: main_0] return from call
 ;; ASM: Final program
 ;; Program kind: Script
 .program:

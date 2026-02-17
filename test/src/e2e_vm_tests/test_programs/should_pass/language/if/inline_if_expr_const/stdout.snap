@@ -6,7 +6,298 @@ exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/if/inline_if_expr_const
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert)
+DIFF------------------------------
+.program:
    Compiling script inline_if_expr_const (test/src/e2e_vm_tests/test_programs/should_pass/language/if/inline_if_expr_const)
+DIFF------------------------------
+.program:
+DIFF------------------------------
+.program:
+.0                                      ; --- start of function: __entry ---
+move $$locbase $sp                      ; [entry init: __entry]: set locals base register
+cfei i0                                 ; [entry init: __entry]: allocate: locals 0 byte(s), call args 0 slot(s)
+.18
+fncall .2                               ; [call: main_0]: call function
+ move $r1 $zero                          ; [call: main_0]: copy returned unit value
+ movi $r1 i0                             ; [call: main_0]: copy returned unit value
+retd $zero $zero                        ; [entry end: __entry] return slice
+DIFF------------------------------
+.program:
+.16                                     ; --- start of function: test_if_works ---
+move $$locbase $sp                      ; [entry init: test_if_works]: set locals base register
+cfei i0                                 ; [entry init: test_if_works]: allocate: locals 0 byte(s), call args 0 slot(s)
+.34
+fncall .2                               ; [call: main_0]: call function
+ move $r105 $zero                        ; [call: main_0]: copy returned unit value
+ movi $r105 i0                           ; [call: main_0]: copy returned unit value
+ret $zero                               ; [entry end: test_if_works] return unit as zero
+DIFF------------------------------
+.program:
+.2                                      ; --- start of function: main_0 ---
+pusha .2                                ; [fn init: main_0]: push all used registers to stack
+move $$locbase $sp                      ; [fn init: main_0]: set locals base register
+cfei i96                                ; [fn init: main_0]: allocate: locals 96 byte(s), call args 0 slot(s)
+move $r2 $$reta                         ; [fn init: main_0]: save return address
+.19
+ move $$arg0 $one                        ; [call: if_not_const_5]: pass argument 0
+ movi $$arg0 i1                          ; [call: if_not_const_5]: pass argument 0
+fncall .6                               ; [call: if_not_const_5]: call function
+move $r3 $$retv                         ; [call: if_not_const_5]: copy returned value
+addi $r4 $$locbase i48                  ; get offset to local __ptr u64
+ sw $$locbase $r3 i6                     ; store word
+ sw $$locbase $$retv i6                  ; store word
+movi $r5 i10                            ; initialize constant into register
+sw $$locbase $r5 i0                     ; store word
+addi $r6 $$locbase i48                  ; get offset to local __ptr u64
+lw $r7 $$locbase i6                     ; load word
+lw $r8 $$locbase i0                     ; load word
+eq $r9 $r7 $r8
+move $$arg0 $r9                         ; [call: assert_1]: pass argument 0
+fncall .4                               ; [call: assert_1]: call function
+ move $r10 $zero                         ; [call: assert_1]: copy returned unit value
+ move $$arg0 $zero                       ; [call: if_not_const_5]: pass argument 0
+ movi $r10 i0                            ; [call: assert_1]: copy returned unit value
+ movi $$arg0 i0                          ; [call: if_not_const_5]: pass argument 0
+fncall .6                               ; [call: if_not_const_5]: call function
+move $r11 $$retv                        ; [call: if_not_const_5]: copy returned value
+addi $r12 $$locbase i56                 ; get offset to local __ptr u64
+ sw $$locbase $r11 i7                    ; store word
+ sw $$locbase $$retv i7                  ; store word
+addi $r13 $$locbase i8                  ; get offset to local __ptr u64
+movi $r14 i20                           ; initialize constant into register
+sw $$locbase $r14 i1                    ; store word
+addi $r15 $$locbase i56                 ; get offset to local __ptr u64
+lw $r16 $$locbase i7                    ; load word
+addi $r17 $$locbase i8                  ; get offset to local __ptr u64
+lw $r18 $$locbase i1                    ; load word
+eq $r19 $r16 $r18
+move $$arg0 $r19                        ; [call: assert_1]: pass argument 0
+fncall .4                               ; [call: assert_1]: call function
+ move $r20 $zero                         ; [call: assert_1]: copy returned unit value
+ movi $r20 i0                            ; [call: assert_1]: copy returned unit value
+fncall .8                               ; [call: if_const_true_6]: call function
+move $r21 $$retv                        ; [call: if_const_true_6]: copy returned value
+addi $r22 $$locbase i64                 ; get offset to local __ptr u64
+ sw $$locbase $r21 i8                    ; store word
+ sw $$locbase $$retv i8                  ; store word
+addi $r23 $$locbase i16                 ; get offset to local __ptr u64
+movi $r24 i10                           ; initialize constant into register
+sw $$locbase $r24 i2                    ; store word
+addi $r25 $$locbase i64                 ; get offset to local __ptr u64
+lw $r26 $$locbase i8                    ; load word
+addi $r27 $$locbase i16                 ; get offset to local __ptr u64
+lw $r28 $$locbase i2                    ; load word
+eq $r29 $r26 $r28
+move $$arg0 $r29                        ; [call: assert_1]: pass argument 0
+fncall .4                               ; [call: assert_1]: call function
+ move $r30 $zero                         ; [call: assert_1]: copy returned unit value
+ movi $r30 i0                            ; [call: assert_1]: copy returned unit value
+fncall .10                              ; [call: if_const_false_7]: call function
+move $r31 $$retv                        ; [call: if_const_false_7]: copy returned value
+addi $r32 $$locbase i72                 ; get offset to local __ptr u64
+ sw $$locbase $r31 i9                    ; store word
+ sw $$locbase $$retv i9                  ; store word
+addi $r33 $$locbase i24                 ; get offset to local __ptr u64
+movi $r34 i20                           ; initialize constant into register
+sw $$locbase $r34 i3                    ; store word
+addi $r35 $$locbase i72                 ; get offset to local __ptr u64
+lw $r36 $$locbase i9                    ; load word
+addi $r37 $$locbase i24                 ; get offset to local __ptr u64
+lw $r38 $$locbase i3                    ; load word
+eq $r39 $r36 $r38
+move $$arg0 $r39                        ; [call: assert_1]: pass argument 0
+fncall .4                               ; [call: assert_1]: call function
+ move $r40 $zero                         ; [call: assert_1]: copy returned unit value
+ movi $r40 i0                            ; [call: assert_1]: copy returned unit value
+fncall .12                              ; [call: if_const_generic_8]: call function
+move $r41 $$retv                        ; [call: if_const_generic_8]: copy returned value
+addi $r42 $$locbase i80                 ; get offset to local __ptr u64
+ sw $$locbase $r41 i10                   ; store word
+ sw $$locbase $$retv i10                 ; store word
+addi $r43 $$locbase i32                 ; get offset to local __ptr u64
+movi $r44 i10                           ; initialize constant into register
+sw $$locbase $r44 i4                    ; store word
+addi $r45 $$locbase i80                 ; get offset to local __ptr u64
+lw $r46 $$locbase i10                   ; load word
+addi $r47 $$locbase i32                 ; get offset to local __ptr u64
+lw $r48 $$locbase i4                    ; load word
+eq $r49 $r46 $r48
+move $$arg0 $r49                        ; [call: assert_1]: pass argument 0
+fncall .4                               ; [call: assert_1]: call function
+ move $r50 $zero                         ; [call: assert_1]: copy returned unit value
+ movi $r50 i0                            ; [call: assert_1]: copy returned unit value
+fncall .14                              ; [call: if_const_generic_9]: call function
+move $r51 $$retv                        ; [call: if_const_generic_9]: copy returned value
+addi $r52 $$locbase i88                 ; get offset to local __ptr u64
+ sw $$locbase $r51 i11                   ; store word
+ sw $$locbase $$retv i11                 ; store word
+addi $r53 $$locbase i40                 ; get offset to local __ptr u64
+movi $r54 i20                           ; initialize constant into register
+sw $$locbase $r54 i5                    ; store word
+addi $r55 $$locbase i88                 ; get offset to local __ptr u64
+lw $r56 $$locbase i11                   ; load word
+addi $r57 $$locbase i40                 ; get offset to local __ptr u64
+lw $r58 $$locbase i5                    ; load word
+eq $r59 $r56 $r58
+move $$arg0 $r59                        ; [call: assert_1]: pass argument 0
+fncall .4                               ; [call: assert_1]: call function
+ move $r60 $zero                         ; [call: assert_1]: copy returned unit value
+ movi $r60 i0                            ; [call: assert_1]: copy returned unit value
+ji  .3
+.3
+cfsi i96                                ; [fn end: main_0] free: locals 96 byte(s), call args 0 slot(s)
+move $$reta $r2                         ; [fn end: main_0] restore return address
+popa .2                                 ; [fn end: main_0] restore all used registers
+jal $zero $$reta i0                     ; [fn end: main_0] return from call
+DIFF------------------------------
+.program:
+.4                                      ; --- start of function: assert_1 ---
+pusha .4                                ; [fn init: assert_1]: push all used registers to stack
+move $$locbase $sp                      ; [fn init: assert_1]: set locals base register
+cfei i16                                ; [fn init: assert_1]: allocate: locals 16 byte(s), call args 0 slot(s)
+.20
+addi $r62 $$locbase i8                  ; get offset to local __ptr bool
+sb $r62 $$arg0 i0                       ; store byte
+addi $r63 $$locbase i8                  ; get offset to local __ptr bool
+lb $r64 $r63 i0                         ; load byte
+eq $r65 $r64 $zero
+jnzi $r65 .21
+ji  .22
+.22
+ji  .5
+.21
+addr $r66 data_NonConfigurable_0        ; get std::error_signals::FAILED_ASSERT_SIGNAL's address in data section
+mcpi $$locbase $r66 i8                  ; copy memory
+lw $r67 $$locbase i0                    ; load word
+rvrt $r67
+.5
+cfsi i16                                ; [fn end: assert_1] free: locals 16 byte(s), call args 0 slot(s)
+popa .4                                 ; [fn end: assert_1] restore all used registers
+jal $zero $$reta i0                     ; [fn end: assert_1] return from call
+DIFF------------------------------
+.program:
+.6                                      ; --- start of function: if_not_const_5 ---
+pusha .6                                ; [fn init: if_not_const_5]: push all used registers to stack
+move $$locbase $sp                      ; [fn init: if_not_const_5]: set locals base register
+cfei i8                                 ; [fn init: if_not_const_5]: allocate: locals 8 byte(s), call args 0 slot(s)
+.23
+sb $$locbase $$arg0 i0                  ; store byte
+lb $r69 $$locbase i0                    ; load byte
+movi $r70 i10                           ; initialize constant into register
+ move $r71 $r70                          ; move parameter from branch to block argument
+ movi $r71 i10                           ; move parameter from branch to block argument
+jnzi $r69 .24
+ji  .25
+.25
+movi $r72 i20                           ; initialize constant into register
+ move $r71 $r72                          ; move parameter from branch to block argument
+ movi $r71 i20                           ; move parameter from branch to block argument
+ji  .24
+.24
+move $r75 $r71                          ; move parameter from branch to block argument
+ move $$retv $r75                        ; [fn end: if_not_const_5] set return value
+ move $$retv $r71                        ; [fn end: if_not_const_5] set return value
+ji  .7
+.7
+cfsi i8                                 ; [fn end: if_not_const_5] free: locals 8 byte(s), call args 0 slot(s)
+popa .6                                 ; [fn end: if_not_const_5] restore all used registers
+jal $zero $$reta i0                     ; [fn end: if_not_const_5] return from call
+DIFF------------------------------
+.program:
+.8                                      ; --- start of function: if_const_true_6 ---
+pusha .8                                ; [fn init: if_const_true_6]: push all used registers to stack
+move $$locbase $sp                      ; [fn init: if_const_true_6]: set locals base register
+cfei i0                                 ; [fn init: if_const_true_6]: allocate: locals 0 byte(s), call args 0 slot(s)
+.26
+movi $r77 i10                           ; initialize constant into register
+ move $$retv $r77                        ; [fn end: if_const_true_6] set return value
+ movi $$retv i10                         ; [fn end: if_const_true_6] set return value
+ji  .9
+.9
+cfsi i0                                 ; [fn end: if_const_true_6] free: locals 0 byte(s), call args 0 slot(s)
+popa .8                                 ; [fn end: if_const_true_6] restore all used registers
+jal $zero $$reta i0                     ; [fn end: if_const_true_6] return from call
+DIFF------------------------------
+.program:
+.10                                     ; --- start of function: if_const_false_7 ---
+pusha .10                               ; [fn init: if_const_false_7]: push all used registers to stack
+move $$locbase $sp                      ; [fn init: if_const_false_7]: set locals base register
+cfei i0                                 ; [fn init: if_const_false_7]: allocate: locals 0 byte(s), call args 0 slot(s)
+.27
+movi $r79 i20                           ; initialize constant into register
+ move $$retv $r79                        ; [fn end: if_const_false_7] set return value
+ movi $$retv i20                         ; [fn end: if_const_false_7] set return value
+ji  .11
+.11
+cfsi i0                                 ; [fn end: if_const_false_7] free: locals 0 byte(s), call args 0 slot(s)
+popa .10                                ; [fn end: if_const_false_7] restore all used registers
+jal $zero $$reta i0                     ; [fn end: if_const_false_7] return from call
+DIFF------------------------------
+.program:
+.12                                     ; --- start of function: if_const_generic_8 ---
+pusha .12                               ; [fn init: if_const_generic_8]: push all used registers to stack
+move $$locbase $sp                      ; [fn init: if_const_generic_8]: set locals base register
+cfei i16                                ; [fn init: if_const_generic_8]: allocate: locals 16 byte(s), call args 0 slot(s)
+.28
+addi $r81 $$locbase i8                  ; get offset to local __ptr u64
+sw $$locbase $one i1                    ; store word
+sw $$locbase $one i0                    ; store word
+addi $r82 $$locbase i8                  ; get offset to local __ptr u64
+lw $r83 $$locbase i1                    ; load word
+lw $r84 $$locbase i0                    ; load word
+eq $r85 $r83 $r84
+movi $r86 i10                           ; initialize constant into register
+ move $r87 $r86                          ; move parameter from branch to block argument
+ movi $r87 i10                           ; move parameter from branch to block argument
+jnzi $r85 .29
+ji  .30
+.30
+movi $r88 i20                           ; initialize constant into register
+ move $r87 $r88                          ; move parameter from branch to block argument
+ movi $r87 i20                           ; move parameter from branch to block argument
+ji  .29
+.29
+move $r91 $r87                          ; move parameter from branch to block argument
+ move $$retv $r91                        ; [fn end: if_const_generic_8] set return value
+ move $$retv $r87                        ; [fn end: if_const_generic_8] set return value
+ji  .13
+.13
+cfsi i16                                ; [fn end: if_const_generic_8] free: locals 16 byte(s), call args 0 slot(s)
+popa .12                                ; [fn end: if_const_generic_8] restore all used registers
+jal $zero $$reta i0                     ; [fn end: if_const_generic_8] return from call
+DIFF------------------------------
+.program:
+.14                                     ; --- start of function: if_const_generic_9 ---
+pusha .14                               ; [fn init: if_const_generic_9]: push all used registers to stack
+move $$locbase $sp                      ; [fn init: if_const_generic_9]: set locals base register
+cfei i16                                ; [fn init: if_const_generic_9]: allocate: locals 16 byte(s), call args 0 slot(s)
+.31
+addi $r93 $$locbase i8                  ; get offset to local __ptr u64
+sw $$locbase $zero i1                   ; store word
+sw $$locbase $one i0                    ; store word
+addi $r94 $$locbase i8                  ; get offset to local __ptr u64
+lw $r95 $$locbase i1                    ; load word
+lw $r96 $$locbase i0                    ; load word
+eq $r97 $r95 $r96
+movi $r98 i10                           ; initialize constant into register
+ move $r99 $r98                          ; move parameter from branch to block argument
+ movi $r99 i10                           ; move parameter from branch to block argument
+jnzi $r97 .32
+ji  .33
+.33
+movi $r100 i20                          ; initialize constant into register
+ move $r99 $r100                         ; move parameter from branch to block argument
+ movi $r99 i20                           ; move parameter from branch to block argument
+ji  .32
+.32
+move $r103 $r99                         ; move parameter from branch to block argument
+ move $$retv $r103                       ; [fn end: if_const_generic_9] set return value
+ move $$retv $r99                        ; [fn end: if_const_generic_9] set return value
+ji  .15
+.15
+cfsi i16                                ; [fn end: if_const_generic_9] free: locals 16 byte(s), call args 0 slot(s)
+popa .14                                ; [fn end: if_const_generic_9] restore all used registers
+jal $zero $$reta i0                     ; [fn end: if_const_generic_9] return from call
     Finished debug [unoptimized + fuel] target(s) [632 B] in ???
      Running 1 test, filtered 0 tests
 
