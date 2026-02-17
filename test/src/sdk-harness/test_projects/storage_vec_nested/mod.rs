@@ -2,13 +2,13 @@ use fuels::prelude::*;
 
 abigen!(Contract(
     name = "TestStorageVecNestedContract",
-    abi = "test_projects/storage_vec_nested/out/release/storage_vec_nested-abi.json",
+    abi = "out/storage_vec_nested-abi.json",
 ));
 
 async fn test_storage_vec_nested_instance() -> TestStorageVecNestedContract<Wallet> {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
-        "test_projects/storage_vec_nested/out/release/storage_vec_nested.bin",
+        "out/storage_vec_nested.bin",
         LoadConfiguration::default(),
     )
     .unwrap()

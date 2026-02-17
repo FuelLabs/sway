@@ -1,6 +1,6 @@
 testgen!(
     test_struct_vec,
-    "test_artifacts/storage_vec/svec_struct/out/release/svec_struct-abi.json",
+    "out/svec_struct-abi.json",
     "struct",
     TestStruct,
     TestStruct { a: true, b: 1 },

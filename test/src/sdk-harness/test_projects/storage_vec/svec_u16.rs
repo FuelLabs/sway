@@ -1,6 +1,6 @@
 testgen!(
     test_u16_vec,
-    "test_artifacts/storage_vec/svec_u16/out/release/svec_u16-abi.json",
+    "out/svec_u16-abi.json",
     "u16",
     u16,
     1u16,

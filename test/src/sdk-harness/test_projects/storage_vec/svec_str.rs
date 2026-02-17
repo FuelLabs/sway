@@ -1,6 +1,6 @@
 testgen!(
     test_str_vec,
-    "test_artifacts/storage_vec/svec_str/out/release/svec_str-abi.json",
+    "out/svec_str-abi.json",
     "str",
     ::fuels::types::SizedAsciiString::<4>,
     ::fuels::types::SizedAsciiString::<4>::new("yeet".to_string()).unwrap(),
