@@ -353,7 +353,7 @@ impl VirtualOp {
         VirtualOp::AND(a.into(), b.into(), c.into())
     }
 
-     pub fn or(
+    pub fn or(
         a: impl Into<VirtualRegister>,
         b: impl Into<VirtualRegister>,
         c: impl Into<VirtualRegister>,

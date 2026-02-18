@@ -15,9 +15,7 @@ use super::data_section::DataSection;
 /// Maximum number of optimization rounds to perform in release build.
 const MAX_OPT_ROUNDS: usize = 10;
 
-fn log_nothing(_: &str) {
-
-}
+fn log_nothing(_: &str) {}
 
 impl AbstractInstructionSet {
     pub(crate) fn optimize(

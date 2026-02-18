@@ -132,7 +132,10 @@ impl ResetKnown {
 
 impl AbstractInstructionSet {
     /// Symbolically interpret code and propagate known register values.
-    pub(crate) fn constant_propagate(mut self, mut log: impl FnMut(&str)) -> AbstractInstructionSet {
+    pub(crate) fn constant_propagate(
+        mut self,
+        mut log: impl FnMut(&str),
+    ) -> AbstractInstructionSet {
         if self.ops.is_empty() {
             return self;
         }
@@ -459,8 +462,8 @@ impl AbstractInstructionSet {
                             ControlFlowOp::PopAll(_) => ResetKnown::Full,
                         },
                     }
-                },
-                Some(reset) => reset
+                }
+                Some(reset) => reset,
             };
 
             log(&format!("    {reset:?}\n"));
@@ -592,21 +595,17 @@ mod tests {
                 VirtualOp::movi("2", 2).into(),
                 VirtualOp::movi("3", 8).into(),
                 VirtualOp::movi("4", 9).into(),
-                
                 VirtualOp::movi("0", 10).into(),
                 VirtualOp::r#move("0", "1").into(),
-
-                //add 
+                //add
                 VirtualOp::add(ConstantRegister::FuncArg0, "0", "1").into(),
                 VirtualOp::add(ConstantRegister::FuncArg1, ConstantRegister::Zero, "0").into(),
                 VirtualOp::add(ConstantRegister::FuncArg2, "0", ConstantRegister::Zero).into(),
                 VirtualOp::add(ConstantRegister::FuncArg3, "5", "0").into(),
                 VirtualOp::add(ConstantRegister::FuncArg4, "0", "5").into(),
-
                 //sub
                 VirtualOp::sub(ConstantRegister::FuncArg0, "0", "1").into(),
                 VirtualOp::sub(ConstantRegister::FuncArg1, "0", ConstantRegister::Zero).into(),
-
                 //mul
                 VirtualOp::mul(ConstantRegister::FuncArg0, "0", "1").into(),
                 VirtualOp::mul(ConstantRegister::FuncArg1, ConstantRegister::One, "0").into(),
@@ -615,65 +614,52 @@ mod tests {
                 VirtualOp::mul(ConstantRegister::FuncArg4, "0", ConstantRegister::Zero).into(),
                 VirtualOp::mul(ConstantRegister::FuncArg5, "5", "0").into(),
                 VirtualOp::mul(ConstantRegister::FuncArg0, "0", "5").into(),
-
                 //div
                 VirtualOp::div(ConstantRegister::FuncArg0, "0", "1").into(),
                 VirtualOp::div(ConstantRegister::FuncArg1, "0", ConstantRegister::One).into(),
                 VirtualOp::div(ConstantRegister::FuncArg2, ConstantRegister::Zero, "0").into(),
-
                 //exp
                 VirtualOp::exp(ConstantRegister::FuncArg0, "0", "2").into(),
                 VirtualOp::exp(ConstantRegister::FuncArg1, "0", ConstantRegister::Zero).into(),
                 VirtualOp::exp(ConstantRegister::FuncArg2, "0", ConstantRegister::One).into(),
                 VirtualOp::exp(ConstantRegister::FuncArg3, ConstantRegister::Zero, "0").into(),
                 VirtualOp::exp(ConstantRegister::FuncArg4, ConstantRegister::One, "0").into(),
-
                 //mlog
                 VirtualOp::mlog(ConstantRegister::FuncArg0, "3", "2").into(),
-
                 //mod
                 VirtualOp::r#mod(ConstantRegister::FuncArg0, "4", "2").into(),
                 VirtualOp::r#mod(ConstantRegister::FuncArg1, "4", ConstantRegister::One).into(),
-
                 //mroo
                 VirtualOp::mroo(ConstantRegister::FuncArg0, "4", "2").into(),
                 VirtualOp::mroo(ConstantRegister::FuncArg1, "4", ConstantRegister::One).into(),
-
                 //and
                 VirtualOp::and(ConstantRegister::FuncArg0, "0", "2").into(),
                 VirtualOp::and(ConstantRegister::FuncArg1, ConstantRegister::Zero, "2").into(),
                 VirtualOp::and(ConstantRegister::FuncArg2, "2", ConstantRegister::Zero).into(),
                 VirtualOp::and(ConstantRegister::FuncArg3, "5", "0").into(),
                 VirtualOp::and(ConstantRegister::FuncArg4, "0", "5").into(),
-
                 //or
                 VirtualOp::or(ConstantRegister::FuncArg0, "0", "2").into(),
                 VirtualOp::or(ConstantRegister::FuncArg1, ConstantRegister::Zero, "2").into(),
                 VirtualOp::or(ConstantRegister::FuncArg2, "2", ConstantRegister::Zero).into(),
                 VirtualOp::or(ConstantRegister::FuncArg3, "5", "0").into(),
                 VirtualOp::or(ConstantRegister::FuncArg4, "0", "5").into(),
-
                 //xor
                 VirtualOp::xor(ConstantRegister::FuncArg0, "0", "2").into(),
                 VirtualOp::xor(ConstantRegister::FuncArg1, ConstantRegister::Zero, "2").into(),
                 VirtualOp::xor(ConstantRegister::FuncArg2, "2", ConstantRegister::Zero).into(),
                 VirtualOp::xor(ConstantRegister::FuncArg3, "5", "0").into(),
                 VirtualOp::xor(ConstantRegister::FuncArg4, "0", "5").into(),
-
                 //sll
                 VirtualOp::sll(ConstantRegister::FuncArg0, "0", "2").into(),
                 VirtualOp::sll(ConstantRegister::FuncArg2, "2", ConstantRegister::Zero).into(),
-
                 //srl
                 VirtualOp::srl(ConstantRegister::FuncArg0, "0", "2").into(),
                 VirtualOp::srl(ConstantRegister::FuncArg2, "2", ConstantRegister::Zero).into(),
-
                 //eq
                 VirtualOp::eq(ConstantRegister::FuncArg0, "0", "2").into(),
-
                 //gt
                 VirtualOp::gt(ConstantRegister::FuncArg0, "0", "2").into(),
-
                 //lt
                 VirtualOp::lt(ConstantRegister::FuncArg0, "0", "2").into(),
             ],
