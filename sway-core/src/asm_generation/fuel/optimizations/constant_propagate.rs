@@ -618,6 +618,7 @@ mod tests {
                 VirtualOp::div(ConstantRegister::FuncArg0, "0", "1").into(),
                 VirtualOp::div(ConstantRegister::FuncArg1, "0", ConstantRegister::One).into(),
                 VirtualOp::div(ConstantRegister::FuncArg2, ConstantRegister::Zero, "0").into(),
+                VirtualOp::div(ConstantRegister::FuncArg2, ConstantRegister::Zero, ConstantRegister::Zero).into(),
                 //exp
                 VirtualOp::exp(ConstantRegister::FuncArg0, "0", "2").into(),
                 VirtualOp::exp(ConstantRegister::FuncArg0, ConstantRegister::Zero, ConstantRegister::Zero).into(),
@@ -752,138 +753,123 @@ mod tests {
                 Some(Const(0)) Some(Const(10))
                 changed to: movi $$arg2 i0                          ; 23
                 Nothing
-            exp $$arg0 $r0 $r2                      ; 24
-                Some(Const(10)) Some(Const(2))
-                changed to: movi $$arg0 i100                        ; 24
-                Nothing
-            exp $$arg0 $zero $zero                  ; 25
+            div $$arg2 $zero $zero                  ; 24
                 Some(Const(0)) Some(Const(0))
-                changed to: movi $$arg0 i1                          ; 25
+                Full
+            exp $$arg0 $r0 $r2                      ; 25
+                None None
+                Full
+            exp $$arg0 $zero $zero                  ; 26
+                Some(Const(0)) Some(Const(0))
+                changed to: movi $$arg0 i1                          ; 26
                 Nothing
-            exp $$arg1 $r0 $zero                    ; 26
-                Some(Const(10)) Some(Const(0))
-                changed to: movi $$arg1 i1                          ; 26
+            exp $$arg1 $r0 $zero                    ; 27
+                None Some(Const(0))
+                changed to: movi $$arg1 i1                          ; 27
                 Nothing
-            exp $$arg2 $r0 $one                     ; 27
-                Some(Const(10)) Some(Const(1))
-                changed to: movi $$arg2 i10                         ; 27
+            exp $$arg2 $r0 $one                     ; 28
+                None Some(Const(1))
+                changed to: move $$arg2 $r0                         ; 28
                 Nothing
-            exp $$arg3 $zero $r0                    ; 28
-                Some(Const(0)) Some(Const(10))
-                changed to: movi $$arg3 i0                          ; 28
+            exp $$arg3 $zero $r0                    ; 29
+                Some(Const(0)) None
+                changed to: movi $$arg3 i0                          ; 29
                 Nothing
-            exp $$arg4 $one $r0                     ; 29
-                Some(Const(1)) Some(Const(10))
-                changed to: movi $$arg4 i1                          ; 29
+            exp $$arg4 $one $r0                     ; 30
+                Some(Const(1)) None
+                changed to: movi $$arg4 i1                          ; 30
                 Nothing
-            mlog $$arg0 $r3 $r2                     ; 30
-                Some(Const(8)) Some(Const(2))
-                changed to: movi $$arg0 i3                          ; 30
+            mlog $$arg0 $r3 $r2                     ; 31
+                None None
+                Full
+            mod $$arg0 $r4 $r2                      ; 32
+                None None
+                Full
+            mod $$arg1 $r4 $one                     ; 33
+                None Some(Const(1))
+                changed to: movi $$arg1 i0                          ; 33
                 Nothing
-            mod $$arg0 $r4 $r2                      ; 31
-                Some(Const(9)) Some(Const(2))
-                changed to: movi $$arg0 i1                          ; 31
+            mroo $$arg0 $r4 $r2                     ; 34
+                None None
+                Full
+            mroo $$arg1 $r4 $one                    ; 35
+                None Some(Const(1))
+                changed to: move $$arg1 $r4                         ; 35
                 Nothing
-            mod $$arg1 $r4 $one                     ; 32
-                Some(Const(9)) Some(Const(1))
-                changed to: movi $$arg1 i0                          ; 32
+            and $$arg0 $r0 $r2                      ; 36
+                None None
+                Full
+            and $$arg1 $zero $r2                    ; 37
+                Some(Const(0)) None
+                changed to: movi $$arg1 i0                          ; 37
                 Nothing
-            mroo $$arg0 $r4 $r2                     ; 33
-                Some(Const(9)) Some(Const(2))
-                changed to: movi $$arg0 i3                          ; 33
+            and $$arg2 $r2 $zero                    ; 38
+                None Some(Const(0))
+                changed to: movi $$arg2 i0                          ; 38
                 Nothing
-            mroo $$arg1 $r4 $one                    ; 34
-                Some(Const(9)) Some(Const(1))
-                changed to: movi $$arg1 i9                          ; 34
+            and $$arg3 $r5 $r0                      ; 39
+                None None
+                Full
+            and $$arg4 $r0 $r5                      ; 40
+                None None
+                Full
+            or $$arg0 $r0 $r2                       ; 41
+                None None
+                Full
+            or $$arg1 $zero $r2                     ; 42
+                Some(Const(0)) None
+                changed to: move $$arg1 $r2                         ; 42
                 Nothing
-            and $$arg0 $r0 $r2                      ; 35
-                Some(Const(10)) Some(Const(2))
-                changed to: movi $$arg0 i2                          ; 35
+            or $$arg2 $r2 $zero                     ; 43
+                None Some(Const(0))
+                changed to: move $$arg2 $r2                         ; 43
                 Nothing
-            and $$arg1 $zero $r2                    ; 36
-                Some(Const(0)) Some(Const(2))
-                changed to: movi $$arg1 i0                          ; 36
+            or $$arg3 $r5 $r0                       ; 44
+                None None
+                Full
+            or $$arg4 $r0 $r5                       ; 45
+                None None
+                Full
+            xor $$arg0 $r0 $r2                      ; 46
+                None None
+                Full
+            xor $$arg1 $zero $r2                    ; 47
+                Some(Const(0)) None
+                changed to: move $$arg1 $r2                         ; 47
                 Nothing
-            and $$arg2 $r2 $zero                    ; 37
-                Some(Const(2)) Some(Const(0))
-                changed to: movi $$arg2 i0                          ; 37
+            xor $$arg2 $r2 $zero                    ; 48
+                None Some(Const(0))
+                changed to: move $$arg2 $r2                         ; 48
                 Nothing
-            and $$arg3 $r5 $r0                      ; 38
-                None Some(Const(10))
-                changed to: andi $$arg3 $r5 i10                     ; 38
-                Defs
-            and $$arg4 $r0 $r5                      ; 39
-                Some(Const(10)) None
-                changed to: andi $$arg4 $r5 i10                     ; 39
-                Defs
-            or $$arg0 $r0 $r2                       ; 40
-                Some(Const(10)) Some(Const(2))
-                changed to: movi $$arg0 i10                         ; 40
+            xor $$arg3 $r5 $r0                      ; 49
+                None None
+                Full
+            xor $$arg4 $r0 $r5                      ; 50
+                None None
+                Full
+            sll $$arg0 $r0 $r2                      ; 51
+                None None
+                Full
+            sll $$arg2 $r2 $zero                    ; 52
+                None Some(Const(0))
+                changed to: move $$arg2 $r2                         ; 52
                 Nothing
-            or $$arg1 $zero $r2                     ; 41
-                Some(Const(0)) Some(Const(2))
-                changed to: movi $$arg1 i2                          ; 41
+            srl $$arg0 $r0 $r2                      ; 53
+                None None
+                Full
+            srl $$arg2 $r2 $zero                    ; 54
+                None Some(Const(0))
+                changed to: move $$arg2 $r2                         ; 54
                 Nothing
-            or $$arg2 $r2 $zero                     ; 42
-                Some(Const(2)) Some(Const(0))
-                changed to: movi $$arg2 i2                          ; 42
-                Nothing
-            or $$arg3 $r5 $r0                       ; 43
-                None Some(Const(10))
-                changed to: ori $$arg3 $r5 i10                      ; 43
-                Defs
-            or $$arg4 $r0 $r5                       ; 44
-                Some(Const(10)) None
-                changed to: ori $$arg4 $r5 i10                      ; 44
-                Defs
-            xor $$arg0 $r0 $r2                      ; 45
-                Some(Const(10)) Some(Const(2))
-                changed to: movi $$arg0 i8                          ; 45
-                Nothing
-            xor $$arg1 $zero $r2                    ; 46
-                Some(Const(0)) Some(Const(2))
-                changed to: movi $$arg1 i2                          ; 46
-                Nothing
-            xor $$arg2 $r2 $zero                    ; 47
-                Some(Const(2)) Some(Const(0))
-                changed to: movi $$arg2 i2                          ; 47
-                Nothing
-            xor $$arg3 $r5 $r0                      ; 48
-                None Some(Const(10))
-                changed to: xori $$arg3 $r5 i10                     ; 48
-                Defs
-            xor $$arg4 $r0 $r5                      ; 49
-                Some(Const(10)) None
-                changed to: xori $$arg4 $r5 i10                     ; 49
-                Defs
-            sll $$arg0 $r0 $r2                      ; 50
-                Some(Const(10)) Some(Const(2))
-                changed to: movi $$arg0 i40                         ; 50
-                Nothing
-            sll $$arg2 $r2 $zero                    ; 51
-                Some(Const(2)) Some(Const(0))
-                changed to: movi $$arg2 i2                          ; 51
-                Nothing
-            srl $$arg0 $r0 $r2                      ; 52
-                Some(Const(10)) Some(Const(2))
-                changed to: movi $$arg0 i2                          ; 52
-                Nothing
-            srl $$arg2 $r2 $zero                    ; 53
-                Some(Const(2)) Some(Const(0))
-                changed to: movi $$arg2 i2                          ; 53
-                Nothing
-            eq $$arg0 $r0 $r2                       ; 54
-                Some(Const(10)) Some(Const(2))
-                changed to: movi $$arg0 i0                          ; 54
-                Nothing
-            gt $$arg0 $r0 $r2                       ; 55
-                Some(Const(10)) Some(Const(2))
-                changed to: movi $$arg0 i1                          ; 55
-                Nothing
-            lt $$arg0 $r0 $r2                       ; 56
-                Some(Const(10)) Some(Const(2))
-                changed to: movi $$arg0 i0                          ; 56
-                Nothing
+            eq $$arg0 $r0 $r2                       ; 55
+                None None
+                Full
+            gt $$arg0 $r0 $r2                       ; 56
+                None None
+                Full
+            lt $$arg0 $r0 $r2                       ; 57
+                None None
+                Full
         "#]]
         .assert_eq(&str);
     }
