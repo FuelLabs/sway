@@ -8,13 +8,13 @@ use forc_util::ForcResult;
 
 forc_util::cli_examples! {
 crate::cli::Opt {
-    [Add a dependencies => "forc remove <DEP>"]
-    [Add a contract dependency => "forc remove <DEP> --contract-dep"]
+    [Remove a dependency => "forc remove <DEP>"]
+    [Remove a contract dependency => "forc remove <DEP> --contract-dep"]
     [Dry run  => "forc remove <DEP> --dry-run"]
 }
 }
 
-// Add dependencies to Forc toml
+/// Remove dependencies from a Forc.toml manifest file
 #[derive(Debug, Parser)]
 #[clap(bin_name = "forc remove", version, after_help = help())]
 pub struct Command {
