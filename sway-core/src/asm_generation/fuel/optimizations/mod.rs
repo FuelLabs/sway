@@ -15,6 +15,10 @@ use super::data_section::DataSection;
 /// Maximum number of optimization rounds to perform in release build.
 const MAX_OPT_ROUNDS: usize = 10;
 
+fn log_nothing(_: &str) {
+
+}
+
 impl AbstractInstructionSet {
     pub(crate) fn optimize(
         mut self,
@@ -25,7 +29,7 @@ impl AbstractInstructionSet {
             // On debug builds do a single pass through the simple optimizations
             OptLevel::Opt0 => self
                 .const_indexing_aggregates_function(data_section)
-                .constant_propagate()
+                .constant_propagate(log_nothing)
                 .dce()
                 .simplify_cfg()
                 .remove_sequential_jumps()

@@ -763,6 +763,8 @@ impl Op {
         }
     }
 
+    /// Returns a list of all registers *written* by instruction `self`. All of our opcodes define
+    /// exactly 0 or 1 register, so the size of this returned vector should always be at most 1.
     pub(crate) fn def_registers(&self) -> BTreeSet<&VirtualRegister> {
         match &self.opcode {
             Either::Left(virt_op) => virt_op.def_registers(),
@@ -770,6 +772,8 @@ impl Op {
         }
     }
 
+    /// What are the special registers that an OP may set.
+    /// Examples: Error, Overflow, Flags etc...
     pub(crate) fn def_const_registers(&self) -> BTreeSet<&VirtualRegister> {
         match &self.opcode {
             Either::Left(virt_op) => virt_op.def_const_registers(),
@@ -1196,7 +1200,7 @@ impl fmt::Display for VirtualOp {
             MROO(a, b, c) => write!(fmtr, "mroo {a} {b} {c}"),
             MUL(a, b, c) => write!(fmtr, "mul {a} {b} {c}"),
             MULI(a, b, c) => write!(fmtr, "muli {a} {b} {c}"),
-            NOOP => Ok(()),
+            NOOP => write!(fmtr, "noop"),
             NOT(a, b) => write!(fmtr, "not {a} {b}"),
             OR(a, b, c) => write!(fmtr, "or {a} {b} {c}"),
             ORI(a, b, c) => write!(fmtr, "ori {a} {b} {c}"),

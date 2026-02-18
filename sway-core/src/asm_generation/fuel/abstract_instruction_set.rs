@@ -36,7 +36,14 @@ impl fmt::Display for AbstractInstructionSet {
             ".program:\n{}",
             self.ops
                 .iter()
-                .map(|x| format!("{x}"))
+                .filter_map(|x| {
+                    let line = format!("{x}");
+                    if line.is_empty() {
+                        None
+                    } else {
+                        Some(line)
+                    }
+                })
                 .collect::<Vec<_>>()
                 .join("\n")
         )

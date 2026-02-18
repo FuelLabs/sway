@@ -321,12 +321,92 @@ impl VirtualOp {
         VirtualOp::EXP(a.into(), b.into(), c.into())
     }
 
+    pub fn mlog(
+        a: impl Into<VirtualRegister>,
+        b: impl Into<VirtualRegister>,
+        c: impl Into<VirtualRegister>,
+    ) -> VirtualOp {
+        VirtualOp::MLOG(a.into(), b.into(), c.into())
+    }
+
+    pub fn r#mod(
+        a: impl Into<VirtualRegister>,
+        b: impl Into<VirtualRegister>,
+        c: impl Into<VirtualRegister>,
+    ) -> VirtualOp {
+        VirtualOp::MOD(a.into(), b.into(), c.into())
+    }
+
+    pub fn mroo(
+        a: impl Into<VirtualRegister>,
+        b: impl Into<VirtualRegister>,
+        c: impl Into<VirtualRegister>,
+    ) -> VirtualOp {
+        VirtualOp::MROO(a.into(), b.into(), c.into())
+    }
+
+    pub fn and(
+        a: impl Into<VirtualRegister>,
+        b: impl Into<VirtualRegister>,
+        c: impl Into<VirtualRegister>,
+    ) -> VirtualOp {
+        VirtualOp::AND(a.into(), b.into(), c.into())
+    }
+
+     pub fn or(
+        a: impl Into<VirtualRegister>,
+        b: impl Into<VirtualRegister>,
+        c: impl Into<VirtualRegister>,
+    ) -> VirtualOp {
+        VirtualOp::OR(a.into(), b.into(), c.into())
+    }
+
     pub fn xor(
         a: impl Into<VirtualRegister>,
         b: impl Into<VirtualRegister>,
         c: impl Into<VirtualRegister>,
     ) -> VirtualOp {
         VirtualOp::XOR(a.into(), b.into(), c.into())
+    }
+
+    pub fn sll(
+        a: impl Into<VirtualRegister>,
+        b: impl Into<VirtualRegister>,
+        c: impl Into<VirtualRegister>,
+    ) -> VirtualOp {
+        VirtualOp::SLL(a.into(), b.into(), c.into())
+    }
+
+    pub fn srl(
+        a: impl Into<VirtualRegister>,
+        b: impl Into<VirtualRegister>,
+        c: impl Into<VirtualRegister>,
+    ) -> VirtualOp {
+        VirtualOp::SRL(a.into(), b.into(), c.into())
+    }
+
+    pub fn eq(
+        a: impl Into<VirtualRegister>,
+        b: impl Into<VirtualRegister>,
+        c: impl Into<VirtualRegister>,
+    ) -> VirtualOp {
+        VirtualOp::EQ(a.into(), b.into(), c.into())
+    }
+
+    pub fn gt(
+        a: impl Into<VirtualRegister>,
+        b: impl Into<VirtualRegister>,
+        c: impl Into<VirtualRegister>,
+    ) -> VirtualOp {
+        VirtualOp::GT(a.into(), b.into(), c.into())
+    }
+
+    pub fn lt(
+        a: impl Into<VirtualRegister>,
+        b: impl Into<VirtualRegister>,
+        c: impl Into<VirtualRegister>,
+    ) -> VirtualOp {
+        VirtualOp::LT(a.into(), b.into(), c.into())
     }
 
     pub(crate) fn registers(&self) -> BTreeSet<&VirtualRegister> {
@@ -584,7 +664,8 @@ impl VirtualOp {
         }
     }
 
-    // What are the special registers that an OP may set.
+    /// What are the special registers that an OP may set.
+    /// Examples: Error, Overflow, Flags etc...
     pub(crate) fn def_const_registers(&self) -> BTreeSet<&VirtualRegister> {
         use ConstantRegister::*;
         use VirtualOp::*;

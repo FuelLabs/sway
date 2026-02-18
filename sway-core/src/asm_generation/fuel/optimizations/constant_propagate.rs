@@ -93,26 +93,20 @@ impl KnownValues {
 /// What knowledge is lost after an op we don't know how to interpret?
 #[derive(Clone, Debug)]
 enum ResetKnown {
-    /// Reset all known values
-    Full,
-    /// Reset non-virtual registers in addition to defs
-    NonVirtual,
+    /// Do nothing
+    Nothing,
     /// Only the `def_registers` and `def_const_registers` are reset
     Defs,
+    /// Reset non-virtual registers in addition to defs
+    DefsAndNonVirtuals,
+    /// Reset all known values
+    Full,
 }
 
 impl ResetKnown {
     fn apply(&self, op: &Op, known_values: &mut KnownValues) {
         match self {
-            ResetKnown::Full => {
-                known_values.values.clear();
-            }
-            ResetKnown::NonVirtual => {
-                Self::Defs.apply(op, known_values);
-                known_values
-                    .values
-                    .retain(|k, _| matches!(k, VirtualRegister::Virtual(_)));
-            }
+            ResetKnown::Nothing => {}
             ResetKnown::Defs => {
                 for d in op.def_registers() {
                     known_values.clear_dependent_on(d);
@@ -123,13 +117,22 @@ impl ResetKnown {
                     known_values.values.remove(d);
                 }
             }
+            ResetKnown::DefsAndNonVirtuals => {
+                Self::Defs.apply(op, known_values);
+                known_values
+                    .values
+                    .retain(|k, _| matches!(k, VirtualRegister::Virtual(_)));
+            }
+            ResetKnown::Full => {
+                known_values.values.clear();
+            }
         }
     }
 }
 
 impl AbstractInstructionSet {
     /// Symbolically interpret code and propagate known register values.
-    pub(crate) fn constant_propagate(mut self) -> AbstractInstructionSet {
+    pub(crate) fn constant_propagate(mut self, mut log: impl FnMut(&str)) -> AbstractInstructionSet {
         if self.ops.is_empty() {
             return self;
         }
@@ -186,6 +189,7 @@ impl AbstractInstructionSet {
                 }
             }
 
+            // This macro must be declared here to be able to capture some variables
             macro_rules! transform_operator {
                 (assign_value; $dst:ident, $l:ident, $r:ident; left) => {
                     known_values.assign($dst.clone(), KnownRegValue::Eq($l.clone()));
@@ -215,7 +219,7 @@ impl AbstractInstructionSet {
                         // The line above can bail so we must run it before we change anything
                         transform_operator!{assign_value; $dst, $l, $r; $end_value};
                         op.opcode = new_opcode;
-                        return Some(true);
+                        return Some(ResetKnown::Nothing);
                     }
                     transform_operator!{gen; $op, $opI; $dst, $l, $r, $lv, $rv; $($rest)*}
                 };
@@ -226,7 +230,7 @@ impl AbstractInstructionSet {
                         // The line above can bail so we must run it before we change anything
                         transform_operator!{assign_value; $dst, $l, $r; $end_value};
                         op.opcode = new_opcode;
-                        return Some(true);
+                        return Some(ResetKnown::Nothing);
                     }
                     transform_operator!{gen; $op, $opI; $dst, $l, $r, $lv, $rv; $($rest)*}
                 };
@@ -237,7 +241,7 @@ impl AbstractInstructionSet {
                         let imm = VirtualImmediate18::try_new(raw, Span::dummy()).ok()?;
                         known_values.assign($dst.clone(), KnownRegValue::Const(raw));
                         op.opcode = Either::Left(VirtualOp::MOVI($dst.clone(), imm));
-                        return Some(true);
+                        return Some(ResetKnown::Nothing);
                     }
                     transform_operator!{gen; $op, $opI; $dst, $l, $r, $lv, $rv; $($rest)*}
                 };
@@ -245,7 +249,7 @@ impl AbstractInstructionSet {
                 (gen; $op:ident, $opI:ident; $dst:ident, $l:ident, $r:ident, $lv: ident, $rv:ident; commutative: true; $($rest:tt)*) => {
                     if let (Some(KnownRegValue::Const($lv)), _) = (&$lv, &$rv) {
                         op.opcode = Either::Left(VirtualOp::$opI($dst.clone(), $r.clone(), (*$lv).try_into().ok()?));
-                        return Some(false);
+                        return Some(ResetKnown::Defs);
                     }
                     transform_operator!{gen; $op, $opI; $dst, $l, $r, $lv, $rv; $($rest)*}
                 };
@@ -254,35 +258,41 @@ impl AbstractInstructionSet {
                 (gen; $op:ident, $opI:ident; $($rest:tt)*) => {
                     compile_error!(stringify!($($rest)*))
                 };
+                // Transform from $op to $opI if $opI was defined.
+                // Otherwise does not generate code
                 (replace_imm; None; $dst:ident, $l:ident, $r:ident, $lv: ident, $rv:ident) => {
                 };
                 (replace_imm; $opI:ident; $dst:ident, $l:ident, $r:ident, $lv: ident, $rv:ident) => {
                     if let (_, Some(KnownRegValue::Const(rv))) = (&$lv, &$rv) {
                         op.opcode = Either::Left(VirtualOp::$opI($dst.clone(), $l.clone(), (*rv).try_into().ok()?));
-                        return Some(false);
+                        return Some(ResetKnown::Defs);
                     }
                 };
                 ($op:ident, $opI:ident; $($rest:tt)*) => {{
-                    let mut f = || -> Option<bool> {
+                    let mut f = || -> Option<ResetKnown> {
                         match &op.opcode {
                             Either::Left(VirtualOp::$op(dst, l, r)) => {
                                 let lv = known_values.resolve(&l);
                                 let rv = known_values.resolve(&r);
+                                log(&format!("    {:?} {:?}\n", lv, rv));
 
                                 transform_operator!{gen; $op, $opI; dst, l, r, lv, rv; $($rest)*}
                                 transform_operator!{replace_imm; $opI; dst, l, r, lv, rv}
                             }
                             _ => {}
                         };
-                        Some(false)
+                        None
                     };
-                    f().unwrap_or_default()
+                    f()
                 }};
             }
 
+            let before = format!("{op}");
+            log(&format!("{op}\n"));
+
             // Propagate constant of some ops
             // Also transform them if they registers are known
-            let skip_reset = match op.opcode.clone() {
+            let reset = match op.opcode.clone() {
                 Either::Left(VirtualOp::MOVI(dst, imm)) => {
                     let imm = KnownRegValue::Const(imm.value() as u64);
 
@@ -296,7 +306,7 @@ impl AbstractInstructionSet {
                         known_values.assign(dst, imm);
                     }
 
-                    true
+                    Some(ResetKnown::Nothing)
                 }
                 Either::Left(VirtualOp::MOVE(dst, src)) => {
                     if let Some(known_src) = known_values.resolve(&src) {
@@ -321,7 +331,7 @@ impl AbstractInstructionSet {
                         known_values.assign(dst, KnownRegValue::Eq(src));
                     }
 
-                    true
+                    Some(ResetKnown::Nothing)
                 }
 
                 // algebraic operators
@@ -353,15 +363,18 @@ impl AbstractInstructionSet {
                     if right is 0 assigns 1;
                     if right is 1 assigns left;
                     if left is 0 assigns 0;
+                    if left is 1 assigns 1;
                 },
                 Either::Left(VirtualOp::MLOG(..)) => transform_operator! {MLOG, None;
                     both_known: u64::checked_ilog;
                 },
                 Either::Left(VirtualOp::MOD(..)) => transform_operator! {MOD, MODI;
                     both_known: u64::checked_rem;
+                    if right is 1 assigns 0;
                 },
                 Either::Left(VirtualOp::MROO(..)) => transform_operator! {MROO, None;
                     both_known: checked_nth_root;
+                    if right is 1 assigns left;
                 },
 
                 // bitwise
@@ -375,7 +388,7 @@ impl AbstractInstructionSet {
                     both_known: u64_bitor;
                     if left is 0 assigns right;
                     if right is 0 assigns left;
-                     commutative: true;
+                    commutative: true;
                 },
                 Either::Left(VirtualOp::XOR(..)) => transform_operator! {XOR, XORI;
                     both_known: u64_bitxor;
@@ -402,47 +415,56 @@ impl AbstractInstructionSet {
                 Either::Left(VirtualOp::LT(..)) => transform_operator! {LT, None;
                     both_known: u64_lt;
                 },
-                _ => false,
+                _ => None,
             };
 
-            if !skip_reset {
-                let reset = match &op.opcode {
-                    Either::Left(op) => match op {
-                        VirtualOp::ECAL(_, _, _, _) => ResetKnown::Full,
-                        // TODO: this constraint can be relaxed
-                        _ if op.has_side_effect() => ResetKnown::Full,
-                        _ => ResetKnown::Defs,
-                    },
-                    Either::Right(op) => match op {
-                        // If this is a jump target, then multiple execution paths can lead to it,
-                        // and we can't assume to know register values.
-                        ControlFlowOp::Label(label) => {
-                            if jump_target_labels.contains_key(label) {
-                                ResetKnown::Full
-                            } else {
-                                ResetKnown::Defs
-                            }
-                        }
-                        // Jumping away doesn't invalidate state, but for calls:
-                        // TODO: `def_const_registers` doesn't contain return value, which
-                        //       seems incorrect, so I'm clearing everything as a precaution
-                        ControlFlowOp::Jump { type_, .. } => match type_ {
-                            JumpType::Call => ResetKnown::Full,
+            let after = format!("{op}");
+            if before != after {
+                log(&format!("    changed to: {op}\n"));
+            }
+
+            let reset = match reset {
+                None => {
+                    match &op.opcode {
+                        Either::Left(op) => match op {
+                            VirtualOp::ECAL(_, _, _, _) => ResetKnown::Full,
+                            // TODO: this constraint can be relaxed
+                            _ if op.has_side_effect() => ResetKnown::Full,
                             _ => ResetKnown::Defs,
                         },
-                        // These ops mark their outputs properly and cause no control-flow effects
-                        ControlFlowOp::Comment
-                        | ControlFlowOp::ConfigurablesOffsetPlaceholder
-                        | ControlFlowOp::DataSectionOffsetPlaceholder => ResetKnown::Defs,
-                        // This changes the stack pointer
-                        ControlFlowOp::PushAll(_) => ResetKnown::NonVirtual,
-                        // This can be considered to destroy all known values
-                        ControlFlowOp::PopAll(_) => ResetKnown::Full,
-                    },
-                };
+                        Either::Right(op) => match op {
+                            // If this is a jump target, then multiple execution paths can lead to it,
+                            // and we can't assume to know register values.
+                            ControlFlowOp::Label(label) => {
+                                if jump_target_labels.contains_key(label) {
+                                    ResetKnown::Full
+                                } else {
+                                    ResetKnown::Defs
+                                }
+                            }
+                            // Jumping away doesn't invalidate state, but for calls:
+                            // TODO: `def_const_registers` doesn't contain return value, which
+                            //       seems incorrect, so I'm clearing everything as a precaution
+                            ControlFlowOp::Jump { type_, .. } => match type_ {
+                                JumpType::Call => ResetKnown::Full,
+                                _ => ResetKnown::Defs,
+                            },
+                            // These ops mark their outputs properly and cause no control-flow effects
+                            ControlFlowOp::Comment
+                            | ControlFlowOp::ConfigurablesOffsetPlaceholder
+                            | ControlFlowOp::DataSectionOffsetPlaceholder => ResetKnown::Defs,
+                            // This changes the stack pointer
+                            ControlFlowOp::PushAll(_) => ResetKnown::DefsAndNonVirtuals,
+                            // This can be considered to destroy all known values
+                            ControlFlowOp::PopAll(_) => ResetKnown::Full,
+                        },
+                    }
+                },
+                Some(reset) => reset
+            };
 
-                reset.apply(op, &mut known_values);
-            }
+            log(&format!("    {reset:?}\n"));
+            reset.apply(op, &mut known_values);
         }
 
         self
@@ -540,253 +562,338 @@ pub fn checked_nth_root(target: u64, nth_root: u64) -> Option<u64> {
 mod tests {
     use super::*;
     use expect_test::expect;
-    use prettydiff::basic::DiffOp;
 
     fn optimise(
         ops: impl IntoIterator<Item = Op>,
         f: impl FnOnce(AbstractInstructionSet) -> AbstractInstructionSet,
-    ) -> String {
-        let ops = AbstractInstructionSet {
+    ) {
+        let mut ops = AbstractInstructionSet {
             function: None,
             ops: ops.into_iter().collect(),
         };
 
-        let old = format!("{ops}");
-        let ops = f(ops);
-        let new = format!("{ops}");
-
-        let lines = prettydiff::diff_lines(&old, &new);
-
-        let mut s = String::new();
-        for d in lines.diff() {
-            match d {
-                DiffOp::Insert(items) => {
-                    for item in items {
-                        s.push_str(format!("+ {}\n", item).as_str());
-                    }
-                }
-                DiffOp::Replace(items, items1) => {
-                    for item in items {
-                        s.push_str(format!("- {}\n", item).as_str());
-                    }
-
-                    for item in items1 {
-                        s.push_str(format!("+ {}\n", item).as_str());
-                    }
-                }
-                DiffOp::Remove(items) => {
-                    for item in items {
-                        s.push_str(format!("- {}\n", item).as_str());
-                    }
-                }
-                DiffOp::Equal(items) => {
-                    for item in items {
-                        s.push_str(format!("{}\n", item).as_str());
-                    }
-                }
-            }
+        for i in 0..ops.ops.len() {
+            ops.ops[i].comment = i.to_string();
         }
 
-        s
+        f(ops);
     }
 
     #[test]
-    fn constant_propagate_transform_movi_to_noop() {
-        let actual = optimise(
-            [
-                VirtualOp::movi("0", 10).into(),
-                VirtualOp::movi("0", 10).into(),
-            ],
-            |ops| ops.constant_propagate(),
-        );
-
-        expect![
-            ".program:
-movi $r0 i10
-- movi $r0 i10
-"
-        ]
-        .assert_eq(&actual);
-    }
-
-    #[test]
-    fn constant_propagate_transform_move_to_noop() {
-        let actual = optimise(
+    fn constant_propagate_transform() {
+        let mut str = String::new();
+        let capture = |s: &str| {
+            str.push_str(s);
+        };
+        optimise(
             [
                 VirtualOp::movi("0", 10).into(),
                 VirtualOp::movi("1", 10).into(),
-                VirtualOp::r#move("1", "0").into(),
-            ],
-            |ops| ops.constant_propagate(),
-        );
-
-        expect![
-            ".program:
-movi $r0 i10
-movi $r1 i10
-- move $r1 $r0
-"
-        ]
-        .assert_eq(&actual);
-    }
-
-    #[test]
-    fn constant_propagate_transform_move_to_movi() {
-        let actual = optimise(
-            [
+                VirtualOp::movi("2", 2).into(),
+                VirtualOp::movi("3", 8).into(),
+                VirtualOp::movi("4", 9).into(),
+                
                 VirtualOp::movi("0", 10).into(),
-                VirtualOp::r#move(ConstantRegister::FuncArg0, "0").into(),
-            ],
-            |ops| ops.constant_propagate(),
-        );
+                VirtualOp::r#move("0", "1").into(),
 
-        expect![
-            ".program:
-movi $r0 i10
-- move $$arg0 $r0
-+ movi $$arg0 i10
-"
-        ]
-        .assert_eq(&actual);
-    }
-
-    #[test]
-    fn constant_propagate_transform_add_to_addi_on_op_0() {
-        let actual = optimise(
-            [
-                VirtualOp::movi("0", 10).into(),
+                //add 
                 VirtualOp::add(ConstantRegister::FuncArg0, "0", "1").into(),
+                VirtualOp::add(ConstantRegister::FuncArg1, ConstantRegister::Zero, "0").into(),
+                VirtualOp::add(ConstantRegister::FuncArg2, "0", ConstantRegister::Zero).into(),
+                VirtualOp::add(ConstantRegister::FuncArg3, "5", "0").into(),
+                VirtualOp::add(ConstantRegister::FuncArg4, "0", "5").into(),
+
+                //sub
+                VirtualOp::sub(ConstantRegister::FuncArg0, "0", "1").into(),
+                VirtualOp::sub(ConstantRegister::FuncArg1, "0", ConstantRegister::Zero).into(),
+
+                //mul
+                VirtualOp::mul(ConstantRegister::FuncArg0, "0", "1").into(),
+                VirtualOp::mul(ConstantRegister::FuncArg1, ConstantRegister::One, "0").into(),
+                VirtualOp::mul(ConstantRegister::FuncArg2, "0", ConstantRegister::One).into(),
+                VirtualOp::mul(ConstantRegister::FuncArg3, ConstantRegister::Zero, "0").into(),
+                VirtualOp::mul(ConstantRegister::FuncArg4, "0", ConstantRegister::Zero).into(),
+                VirtualOp::mul(ConstantRegister::FuncArg5, "5", "0").into(),
+                VirtualOp::mul(ConstantRegister::FuncArg0, "0", "5").into(),
+
+                //div
+                VirtualOp::div(ConstantRegister::FuncArg0, "0", "1").into(),
+                VirtualOp::div(ConstantRegister::FuncArg1, "0", ConstantRegister::One).into(),
+                VirtualOp::div(ConstantRegister::FuncArg2, ConstantRegister::Zero, "0").into(),
+
+                //exp
+                VirtualOp::exp(ConstantRegister::FuncArg0, "0", "2").into(),
+                VirtualOp::exp(ConstantRegister::FuncArg1, "0", ConstantRegister::Zero).into(),
+                VirtualOp::exp(ConstantRegister::FuncArg2, "0", ConstantRegister::One).into(),
+                VirtualOp::exp(ConstantRegister::FuncArg3, ConstantRegister::Zero, "0").into(),
+                VirtualOp::exp(ConstantRegister::FuncArg4, ConstantRegister::One, "0").into(),
+
+                //mlog
+                VirtualOp::mlog(ConstantRegister::FuncArg0, "3", "2").into(),
+
+                //mod
+                VirtualOp::r#mod(ConstantRegister::FuncArg0, "4", "2").into(),
+                VirtualOp::r#mod(ConstantRegister::FuncArg1, "4", ConstantRegister::One).into(),
+
+                //mroo
+                VirtualOp::mroo(ConstantRegister::FuncArg0, "4", "2").into(),
+                VirtualOp::mroo(ConstantRegister::FuncArg1, "4", ConstantRegister::One).into(),
+
+                //and
+                VirtualOp::and(ConstantRegister::FuncArg0, "0", "2").into(),
+                VirtualOp::and(ConstantRegister::FuncArg1, ConstantRegister::Zero, "2").into(),
+                VirtualOp::and(ConstantRegister::FuncArg2, "2", ConstantRegister::Zero).into(),
+                VirtualOp::and(ConstantRegister::FuncArg3, "5", "0").into(),
+                VirtualOp::and(ConstantRegister::FuncArg4, "0", "5").into(),
+
+                //or
+                VirtualOp::or(ConstantRegister::FuncArg0, "0", "2").into(),
+                VirtualOp::or(ConstantRegister::FuncArg1, ConstantRegister::Zero, "2").into(),
+                VirtualOp::or(ConstantRegister::FuncArg2, "2", ConstantRegister::Zero).into(),
+                VirtualOp::or(ConstantRegister::FuncArg3, "5", "0").into(),
+                VirtualOp::or(ConstantRegister::FuncArg4, "0", "5").into(),
+
+                //xor
+                VirtualOp::xor(ConstantRegister::FuncArg0, "0", "2").into(),
+                VirtualOp::xor(ConstantRegister::FuncArg1, ConstantRegister::Zero, "2").into(),
+                VirtualOp::xor(ConstantRegister::FuncArg2, "2", ConstantRegister::Zero).into(),
+                VirtualOp::xor(ConstantRegister::FuncArg3, "5", "0").into(),
+                VirtualOp::xor(ConstantRegister::FuncArg4, "0", "5").into(),
+
+                //sll
+                VirtualOp::sll(ConstantRegister::FuncArg0, "0", "2").into(),
+                VirtualOp::sll(ConstantRegister::FuncArg2, "2", ConstantRegister::Zero).into(),
+
+                //srl
+                VirtualOp::srl(ConstantRegister::FuncArg0, "0", "2").into(),
+                VirtualOp::srl(ConstantRegister::FuncArg2, "2", ConstantRegister::Zero).into(),
+
+                //eq
+                VirtualOp::eq(ConstantRegister::FuncArg0, "0", "2").into(),
+
+                //gt
+                VirtualOp::gt(ConstantRegister::FuncArg0, "0", "2").into(),
+
+                //lt
+                VirtualOp::lt(ConstantRegister::FuncArg0, "0", "2").into(),
             ],
-            |ops| ops.constant_propagate(),
+            |ops| ops.constant_propagate(capture),
         );
 
-        expect![
-            ".program:
-movi $r0 i10
-- add $$arg0 $r0 $r1
-+ addi $$arg0 $r1 i10
-"
-        ]
-        .assert_eq(&actual);
-    }
-
-    #[test]
-    fn constant_propagate_transform_add_to_addi_on_op_1() {
-        let actual = optimise(
-            [
-                VirtualOp::movi("0", 10).into(),
-                VirtualOp::add(ConstantRegister::FuncArg0, "1", "0").into(),
-            ],
-            |ops| ops.constant_propagate(),
-        );
-
-        expect![
-            ".program:
-movi $r0 i10
-- add $$arg0 $r1 $r0
-+ addi $$arg0 $r1 i10
-"
-        ]
-        .assert_eq(&actual);
-    }
-
-    #[test]
-    fn constant_propagate_transform_add_to_movi_on_both_ops() {
-        let actual = optimise(
-            [
-                VirtualOp::movi("0", 10).into(),
-                VirtualOp::add(ConstantRegister::FuncArg0, "0", "0").into(),
-            ],
-            |ops| ops.constant_propagate(),
-        );
-
-        expect![
-            ".program:
-movi $r0 i10
-- add $$arg0 $r0 $r0
-+ movi $$arg0 i20
-"
-        ]
-        .assert_eq(&actual);
-    }
-
-    #[test]
-    fn constant_propagate_transform_sub_to_movi_on_op_1() {
-        let actual = optimise(
-            [
-                VirtualOp::movi("0", 10).into(),
-                VirtualOp::sub(ConstantRegister::FuncArg0, "0", "0").into(),
-            ],
-            |ops| ops.constant_propagate(),
-        );
-
-        expect![
-            ".program:
-movi $r0 i10
-- sub $$arg0 $r0 $r0
-+ movi $$arg0 i0
-"
-        ]
-        .assert_eq(&actual);
-    }
-
-    #[test]
-    fn constant_propagate_transform_mul_to_movi_on_op_1() {
-        let actual = optimise(
-            [
-                VirtualOp::movi("0", 10).into(),
-                VirtualOp::mul(ConstantRegister::FuncArg0, "0", "0").into(),
-            ],
-            |ops| ops.constant_propagate(),
-        );
-
-        expect![
-            ".program:
-movi $r0 i10
-- mul $$arg0 $r0 $r0
-+ movi $$arg0 i100
-"
-        ]
-        .assert_eq(&actual);
-    }
-
-    #[test]
-    fn constant_propagate_transform_div_to_movi_on_op_1() {
-        let actual = optimise(
-            [
-                VirtualOp::movi("0", 10).into(),
-                VirtualOp::div(ConstantRegister::FuncArg0, "0", "0").into(),
-            ],
-            |ops| ops.constant_propagate(),
-        );
-
-        expect![
-            ".program:
-movi $r0 i10
-- div $$arg0 $r0 $r0
-+ movi $$arg0 i1
-"
-        ]
-        .assert_eq(&actual);
-    }
-
-    #[test]
-    fn constant_propagate_transform_exp_to_movi_on_op_1() {
-        let actual = optimise(
-            [
-                VirtualOp::movi("0", 3).into(),
-                VirtualOp::exp(ConstantRegister::FuncArg0, "0", "0").into(),
-            ],
-            |ops| ops.constant_propagate(),
-        );
-
-        expect![
-            ".program:
-movi $r0 i3
-- exp $$arg0 $r0 $r0
-+ movi $$arg0 i27
-"
-        ]
-        .assert_eq(&actual);
+        expect![[r#"
+            movi $r0 i10                            ; 0
+                Nothing
+            movi $r1 i10                            ; 1
+                Nothing
+            movi $r2 i2                             ; 2
+                Nothing
+            movi $r3 i8                             ; 3
+                Nothing
+            movi $r4 i9                             ; 4
+                Nothing
+            movi $r0 i10                            ; 5
+                changed to: noop                                    ; 5
+                Nothing
+            move $r0 $r1                            ; 6
+                changed to: noop                                    ; 6
+                Nothing
+            add $$arg0 $r0 $r1                      ; 7
+                Some(Const(10)) Some(Const(10))
+                changed to: movi $$arg0 i20                         ; 7
+                Nothing
+            add $$arg1 $zero $r0                    ; 8
+                Some(Const(0)) Some(Const(10))
+                changed to: movi $$arg1 i10                         ; 8
+                Nothing
+            add $$arg2 $r0 $zero                    ; 9
+                Some(Const(10)) Some(Const(0))
+                changed to: movi $$arg2 i10                         ; 9
+                Nothing
+            add $$arg3 $r5 $r0                      ; 10
+                None Some(Const(10))
+                changed to: addi $$arg3 $r5 i10                     ; 10
+                Defs
+            add $$arg4 $r0 $r5                      ; 11
+                Some(Const(10)) None
+                changed to: addi $$arg4 $r5 i10                     ; 11
+                Defs
+            sub $$arg0 $r0 $r1                      ; 12
+                Some(Const(10)) Some(Const(10))
+                changed to: movi $$arg0 i0                          ; 12
+                Nothing
+            sub $$arg1 $r0 $zero                    ; 13
+                Some(Const(10)) Some(Const(0))
+                changed to: movi $$arg1 i10                         ; 13
+                Nothing
+            mul $$arg0 $r0 $r1                      ; 14
+                Some(Const(10)) Some(Const(10))
+                changed to: movi $$arg0 i100                        ; 14
+                Nothing
+            mul $$arg1 $one $r0                     ; 15
+                Some(Const(1)) Some(Const(10))
+                changed to: movi $$arg1 i10                         ; 15
+                Nothing
+            mul $$arg2 $r0 $one                     ; 16
+                Some(Const(10)) Some(Const(1))
+                changed to: movi $$arg2 i10                         ; 16
+                Nothing
+            mul $$arg3 $zero $r0                    ; 17
+                Some(Const(0)) Some(Const(10))
+                changed to: movi $$arg3 i0                          ; 17
+                Nothing
+            mul $$arg4 $r0 $zero                    ; 18
+                Some(Const(10)) Some(Const(0))
+                changed to: movi $$arg4 i0                          ; 18
+                Nothing
+            mul $$arg5 $r5 $r0                      ; 19
+                None Some(Const(10))
+                changed to: muli $$arg5 $r5 i10                     ; 19
+                Defs
+            mul $$arg0 $r0 $r5                      ; 20
+                Some(Const(10)) None
+                changed to: muli $$arg0 $r5 i10                     ; 20
+                Defs
+            div $$arg0 $r0 $r1                      ; 21
+                Some(Const(10)) Some(Const(10))
+                changed to: movi $$arg0 i1                          ; 21
+                Nothing
+            div $$arg1 $r0 $one                     ; 22
+                Some(Const(10)) Some(Const(1))
+                changed to: movi $$arg1 i10                         ; 22
+                Nothing
+            div $$arg2 $zero $r0                    ; 23
+                Some(Const(0)) Some(Const(10))
+                changed to: movi $$arg2 i0                          ; 23
+                Nothing
+            exp $$arg0 $r0 $r2                      ; 24
+                Some(Const(10)) Some(Const(2))
+                changed to: movi $$arg0 i100                        ; 24
+                Nothing
+            exp $$arg1 $r0 $zero                    ; 25
+                Some(Const(10)) Some(Const(0))
+                changed to: movi $$arg1 i1                          ; 25
+                Nothing
+            exp $$arg2 $r0 $one                     ; 26
+                Some(Const(10)) Some(Const(1))
+                changed to: movi $$arg2 i10                         ; 26
+                Nothing
+            exp $$arg3 $zero $r0                    ; 27
+                Some(Const(0)) Some(Const(10))
+                changed to: movi $$arg3 i0                          ; 27
+                Nothing
+            exp $$arg4 $one $r0                     ; 28
+                Some(Const(1)) Some(Const(10))
+                changed to: movi $$arg4 i1                          ; 28
+                Nothing
+            mlog $$arg0 $r3 $r2                     ; 29
+                Some(Const(8)) Some(Const(2))
+                changed to: movi $$arg0 i3                          ; 29
+                Nothing
+            mod $$arg0 $r4 $r2                      ; 30
+                Some(Const(9)) Some(Const(2))
+                changed to: movi $$arg0 i1                          ; 30
+                Nothing
+            mod $$arg1 $r4 $one                     ; 31
+                Some(Const(9)) Some(Const(1))
+                changed to: movi $$arg1 i0                          ; 31
+                Nothing
+            mroo $$arg0 $r4 $r2                     ; 32
+                Some(Const(9)) Some(Const(2))
+                changed to: movi $$arg0 i3                          ; 32
+                Nothing
+            mroo $$arg1 $r4 $one                    ; 33
+                Some(Const(9)) Some(Const(1))
+                changed to: movi $$arg1 i9                          ; 33
+                Nothing
+            and $$arg0 $r0 $r2                      ; 34
+                Some(Const(10)) Some(Const(2))
+                changed to: movi $$arg0 i2                          ; 34
+                Nothing
+            and $$arg1 $zero $r2                    ; 35
+                Some(Const(0)) Some(Const(2))
+                changed to: movi $$arg1 i0                          ; 35
+                Nothing
+            and $$arg2 $r2 $zero                    ; 36
+                Some(Const(2)) Some(Const(0))
+                changed to: movi $$arg2 i0                          ; 36
+                Nothing
+            and $$arg3 $r5 $r0                      ; 37
+                None Some(Const(10))
+                changed to: andi $$arg3 $r5 i10                     ; 37
+                Defs
+            and $$arg4 $r0 $r5                      ; 38
+                Some(Const(10)) None
+                changed to: andi $$arg4 $r5 i10                     ; 38
+                Defs
+            or $$arg0 $r0 $r2                       ; 39
+                Some(Const(10)) Some(Const(2))
+                changed to: movi $$arg0 i10                         ; 39
+                Nothing
+            or $$arg1 $zero $r2                     ; 40
+                Some(Const(0)) Some(Const(2))
+                changed to: movi $$arg1 i2                          ; 40
+                Nothing
+            or $$arg2 $r2 $zero                     ; 41
+                Some(Const(2)) Some(Const(0))
+                changed to: movi $$arg2 i2                          ; 41
+                Nothing
+            or $$arg3 $r5 $r0                       ; 42
+                None Some(Const(10))
+                changed to: ori $$arg3 $r5 i10                      ; 42
+                Defs
+            or $$arg4 $r0 $r5                       ; 43
+                Some(Const(10)) None
+                changed to: ori $$arg4 $r5 i10                      ; 43
+                Defs
+            xor $$arg0 $r0 $r2                      ; 44
+                Some(Const(10)) Some(Const(2))
+                changed to: movi $$arg0 i8                          ; 44
+                Nothing
+            xor $$arg1 $zero $r2                    ; 45
+                Some(Const(0)) Some(Const(2))
+                changed to: movi $$arg1 i2                          ; 45
+                Nothing
+            xor $$arg2 $r2 $zero                    ; 46
+                Some(Const(2)) Some(Const(0))
+                changed to: movi $$arg2 i2                          ; 46
+                Nothing
+            xor $$arg3 $r5 $r0                      ; 47
+                None Some(Const(10))
+                changed to: xori $$arg3 $r5 i10                     ; 47
+                Defs
+            xor $$arg4 $r0 $r5                      ; 48
+                Some(Const(10)) None
+                changed to: xori $$arg4 $r5 i10                     ; 48
+                Defs
+            sll $$arg0 $r0 $r2                      ; 49
+                Some(Const(10)) Some(Const(2))
+                changed to: movi $$arg0 i40                         ; 49
+                Nothing
+            sll $$arg2 $r2 $zero                    ; 50
+                Some(Const(2)) Some(Const(0))
+                changed to: movi $$arg2 i2                          ; 50
+                Nothing
+            srl $$arg0 $r0 $r2                      ; 51
+                Some(Const(10)) Some(Const(2))
+                changed to: movi $$arg0 i2                          ; 51
+                Nothing
+            srl $$arg2 $r2 $zero                    ; 52
+                Some(Const(2)) Some(Const(0))
+                changed to: movi $$arg2 i2                          ; 52
+                Nothing
+            eq $$arg0 $r0 $r2                       ; 53
+                Some(Const(10)) Some(Const(2))
+                changed to: movi $$arg0 i0                          ; 53
+                Nothing
+            gt $$arg0 $r0 $r2                       ; 54
+                Some(Const(10)) Some(Const(2))
+                changed to: movi $$arg0 i1                          ; 54
+                Nothing
+            lt $$arg0 $r0 $r2                       ; 55
+                Some(Const(10)) Some(Const(2))
+                changed to: movi $$arg0 i0                          ; 55
+                Nothing
+        "#]]
+        .assert_eq(&str);
     }
 }
