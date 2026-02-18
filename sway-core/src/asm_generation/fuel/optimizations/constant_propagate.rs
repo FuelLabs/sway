@@ -618,10 +618,20 @@ mod tests {
                 VirtualOp::div(ConstantRegister::FuncArg0, "0", "1").into(),
                 VirtualOp::div(ConstantRegister::FuncArg1, "0", ConstantRegister::One).into(),
                 VirtualOp::div(ConstantRegister::FuncArg2, ConstantRegister::Zero, "0").into(),
-                VirtualOp::div(ConstantRegister::FuncArg2, ConstantRegister::Zero, ConstantRegister::Zero).into(),
+                VirtualOp::div(
+                    ConstantRegister::FuncArg2,
+                    ConstantRegister::Zero,
+                    ConstantRegister::Zero,
+                )
+                .into(),
                 //exp
                 VirtualOp::exp(ConstantRegister::FuncArg0, "0", "2").into(),
-                VirtualOp::exp(ConstantRegister::FuncArg0, ConstantRegister::Zero, ConstantRegister::Zero).into(),
+                VirtualOp::exp(
+                    ConstantRegister::FuncArg0,
+                    ConstantRegister::Zero,
+                    ConstantRegister::Zero,
+                )
+                .into(),
                 VirtualOp::exp(ConstantRegister::FuncArg1, "0", ConstantRegister::Zero).into(),
                 VirtualOp::exp(ConstantRegister::FuncArg2, "0", ConstantRegister::One).into(),
                 VirtualOp::exp(ConstantRegister::FuncArg3, ConstantRegister::Zero, "0").into(),
