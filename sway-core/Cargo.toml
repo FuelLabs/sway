@@ -55,7 +55,6 @@ vec1.workspace = true
 
 [dev-dependencies]
 expect-test.workspace = true
-prettydiff.workspace = true
 
 [lints]
 workspace = true
