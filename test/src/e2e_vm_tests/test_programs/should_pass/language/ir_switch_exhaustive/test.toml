@@ -1,0 +1,4 @@
+category = "ir_run"
+expected_result = { action = "return", value = 10 }
+expected_result_new_encoding = { action = "return_data", value = "000000000000000a" }
+validate_abi = false

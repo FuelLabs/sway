@@ -33,6 +33,7 @@ use sway_error::{
 use sway_ir::*;
 use sway_types::{span::Span, Spanned};
 
+use core::panic;
 use either::Either;
 use std::collections::HashMap;
 
@@ -402,6 +403,11 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     true_block,
                     false_block,
                 } => self.compile_conditional_branch(cond_value, true_block, false_block),
+                InstOp::Switch {
+                    discriminant,
+                    cases,
+                    default,
+                } => self.compile_switch(instr_val, discriminant, cases, default),
                 InstOp::ContractCall {
                     params,
                     coins,
@@ -1067,6 +1073,175 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
         let false_label = self.block_to_label(&false_block.block);
         self.cur_bytecode.push(Op::jump_to_label(false_label));
+
+        Ok(())
+    }
+
+    fn compile_switch(
+        &mut self,
+        instr_val: &Value,
+        discriminant: &Value,
+        cases: &[(u64, BranchToWithArgs)],
+        default: &Option<BranchToWithArgs>,
+    ) -> Result<(), CompileError> {
+        let target_blocks = cases
+            .iter()
+            .map(|(_, bb)| &bb.block)
+            .chain(default.as_ref().map(|d| &d.block));
+        // Check if any two target blocks are the same with args.
+        let mut seen_blocks = rustc_hash::FxHashSet::default();
+        for bb in target_blocks {
+            if !seen_blocks.insert(bb) && bb.num_args(self.context) > 0 {
+                return Err(CompileError::Internal(
+                    "Cannot compile switch with multiple cases going to same dest block",
+                    self.md_mgr
+                        .val_to_span(self.context, *instr_val)
+                        .unwrap_or_else(Span::dummy),
+                ));
+            }
+        }
+
+        if let Some(default) = default {
+            self.compile_branch_to_phi_value(default)?;
+        }
+        for dest_block in cases.iter().map(|(_, bb)| bb) {
+            self.compile_branch_to_phi_value(dest_block)?;
+        }
+
+        let default_label = default
+            .as_ref()
+            .map(|default| self.block_to_label(&default.block));
+        if cases.is_empty() {
+            // No cases.
+            if let Some(default_label) = default_label {
+                // There's a default, just jump to it.
+                self.cur_bytecode.push(Op::jump_to_label(default_label));
+                return Ok(());
+            }
+            // What now? There's no cases and no default, so just do nothing?
+            panic!("Switch with no cases and no default");
+        }
+
+        // Sort the cases by their values to make range checking easier.
+        let mut sorted_cases = cases.to_vec();
+        sorted_cases.sort_by_key(|(val, _)| *val);
+
+        let min_case_value = sorted_cases.first().unwrap().0;
+        let discrim_reg = self.value_to_register(discriminant)?;
+
+        // If the discriminant is smaller than the lowest case value, jump to default.
+        // This is only needed for non-exhaustive switches (i.e., there's a default_label).
+        if let Some(default_label) = default_label {
+            let cond_reg = self.reg_seqr.next();
+            self.immediate_to_reg(
+                min_case_value,
+                cond_reg.clone(),
+                None,
+                "min_case_value",
+                None,
+            );
+            self.cur_bytecode.push(Op {
+                opcode: Either::Left(VirtualOp::LT(
+                    cond_reg.clone(),
+                    discrim_reg.clone(),
+                    cond_reg.clone(),
+                )),
+                comment: "check if switch discriminant < min case value".into(),
+                owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+            });
+            self.cur_bytecode
+                .push(Op::jump_if_not_zero(cond_reg, default_label));
+        }
+
+        // If the lowest case value isn't 0, we subtract the discriminant and each
+        // case value by that amount to make the lowest case 0.
+        if min_case_value > 0 {
+            self.cur_bytecode.push(Op {
+                opcode: Either::Left(VirtualOp::SUBI(
+                    discrim_reg.clone(),
+                    discrim_reg.clone(),
+                    VirtualImmediate12::new(min_case_value),
+                )),
+                comment: format!(
+                    "adjust switch discriminant by subtracting min case value {}",
+                    min_case_value
+                ),
+                owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+            });
+            sorted_cases
+                .iter_mut()
+                .for_each(|(val, _)| *val -= min_case_value);
+        }
+
+        let sorted_cases: Vec<_> = sorted_cases
+            .into_iter()
+            .map(|(val, BranchToWithArgs { block, args: _ })| (val, self.block_to_label(&block)))
+            .collect();
+
+        assert!(
+            sorted_cases[0].0 == 0,
+            "Lowest case value must be zero after adjustment"
+        );
+
+        let max_case_value = sorted_cases.last().unwrap().0;
+        // TODO: Decide on a better limit.
+        assert!(
+            max_case_value < 20,
+            "Jump table too large to compile switch"
+        );
+
+        // If the discriminant is greater than the highest case value, jump to default.
+        if let Some(default_label) = default_label {
+            let cond_reg = self.reg_seqr.next();
+            self.immediate_to_reg(
+                max_case_value,
+                cond_reg.clone(),
+                None,
+                "max_case_value",
+                None,
+            );
+            self.cur_bytecode.push(Op {
+                opcode: Either::Left(VirtualOp::GT(
+                    cond_reg.clone(),
+                    discrim_reg.clone(),
+                    cond_reg.clone(),
+                )),
+                comment: "check if switch discriminant > max case value".into(),
+                owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+            });
+            self.cur_bytecode
+                .push(Op::jump_if_not_zero(cond_reg, default_label));
+        }
+
+        // For holes in the case values, i.e. non-contiguous case values,
+        // insert a jump to default for those.
+        let mut filled_sorted_cases = Vec::new();
+        let mut next = 0;
+        for (case_value, case_label) in sorted_cases {
+            while next < case_value {
+                if let Some(default_label) = default_label {
+                    filled_sorted_cases.push(default_label);
+                } else {
+                    // We have a hole, and there's a no default case to jump to.
+                    panic!("Switch with hole in case values and no default case (i.e., marked exhaustive)");
+                }
+                next += 1;
+            }
+            filled_sorted_cases.push(case_label);
+            next += 1;
+        }
+
+        // So far we've ensured that
+        // - The lowest case value is 0 (by subtracting min_case_value)
+        // - The highest case value is max_case_value (and jump to default if discrim > max)
+        // - Any holes in the case values jump to default
+        // Now we can emit the switch instruction.
+        let num_cases = filled_sorted_cases.len();
+        self.cur_bytecode.push(Op::switch_comment(
+            discrim_reg,
+            filled_sorted_cases,
+            format!("switch with {} cases", num_cases),
+        ));
 
         Ok(())
     }

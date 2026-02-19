@@ -256,6 +256,7 @@ mod ir_builder {
                 / op_call()
                 / op_cast_ptr()
                 / op_cbr()
+                / op_switch()
                 / op_cmp()
                 / op_const()
                 / op_contract_call()
@@ -360,6 +361,26 @@ mod ir_builder {
                 "(" _ targs:(id() ** comma()) ")" _
                  comma() fblock:id() "(" _ fargs:(id() ** comma()) ")" _ {
                     IrAstOperation::Cbr(cond, tblock, targs, fblock, fargs)
+                }
+
+            rule switch_case() -> (u64, String, Vec<String>)
+                = case_val:decimal() _ ":" _ case_block:id()
+                "(" _ case_args:(id() ** comma()) _ ")" {
+                    (case_val, case_block, case_args)
+                }
+
+            rule switch_default() -> Option<(String, Vec<String>)>
+                = comma() "default" _ ":" _ dblock:id()
+                "(" _ dargs:(id() ** comma()) ")" _ {
+                    Some((dblock, dargs))
+                }
+                / { None }
+
+            rule op_switch() -> IrAstOperation
+                = "switch" _ discrim:id() _
+                 default:switch_default()
+                 comma() "[" _ cases:(switch_case() ** comma()) _ "]" _ {
+                    IrAstOperation::Switch(discrim, default, cases)
                 }
 
             rule op_cmp() -> IrAstOperation
@@ -806,8 +827,8 @@ mod ir_builder {
         module::{Kind, Module},
         value::Value,
         variable::LocalVar,
-        Backtrace, BinaryOpKind, BlockArgument, ConfigContent, Constant, GlobalVar, Instruction,
-        LogEventData, StorageKey, UnaryOpKind, B256,
+        Backtrace, BinaryOpKind, BlockArgument, BranchToWithArgs, ConfigContent, Constant,
+        GlobalVar, Instruction, LogEventData, StorageKey, UnaryOpKind, B256,
     };
 
     #[derive(Debug)]
@@ -882,6 +903,12 @@ mod ir_builder {
         Call(String, Vec<String>),
         CastPtr(String, IrAstTy),
         Cbr(String, String, Vec<String>, String, Vec<String>),
+        // (discriminant, default_block, default_args, [(u64, block, args)])
+        Switch(
+            String,
+            Option<(String, Vec<String>)>,
+            Vec<(u64, String, Vec<String>)>,
+        ),
         Cmp(Predicate, String, String),
         Const(IrAstTy, IrAstConst),
         ContractCall(IrAstTy, String, String, String, String, String),
@@ -1446,6 +1473,32 @@ mod ir_builder {
                                 .collect(),
                         )
                         .add_metadatum(context, opt_metadata),
+                    IrAstOperation::Switch(discrim_name, default, cases) => {
+                        let descrim_val = *val_map.get(&discrim_name).unwrap();
+                        let default = default.map(|(block_name, block_args)| {
+                            let block = *named_blocks.get(&block_name).unwrap();
+                            let args = block_args
+                                .iter()
+                                .map(|arg| *val_map.get(arg).unwrap())
+                                .collect();
+                            BranchToWithArgs { block, args }
+                        });
+                        let case_blocks: Vec<(u64, BranchToWithArgs)> = cases
+                            .into_iter()
+                            .map(|(case_val, block_name, block_args)| {
+                                let block = *named_blocks.get(&block_name).unwrap();
+                                let args = block_args
+                                    .into_iter()
+                                    .map(|arg| *val_map.get(&arg).unwrap())
+                                    .collect();
+                                (case_val, BranchToWithArgs { block, args })
+                            })
+                            .collect();
+                        block
+                            .append(context)
+                            .switch(descrim_val, default, case_blocks)
+                            .add_metadatum(context, opt_metadata)
+                    }
                     IrAstOperation::Cmp(pred, lhs, rhs) => block
                         .append(context)
                         .cmp(

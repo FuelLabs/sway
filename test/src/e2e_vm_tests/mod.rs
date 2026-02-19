@@ -18,6 +18,7 @@ use forc_util::tx_utils::decode_log_data;
 use fuel_vm::fuel_tx;
 use fuel_vm::prelude::*;
 use git2::Repository;
+use rand::{Rng, SeedableRng};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use regex::Regex;
 use std::borrow::Cow;
@@ -33,6 +34,7 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
+use sway_core::source_map::SourceMap;
 use sway_core::BuildTarget;
 use sway_features::{CliFields, ExperimentalFeatures};
 use tokio::sync::Mutex;
@@ -48,6 +50,7 @@ enum TestCategory {
     FailsToCompile,
     Runs,
     RunsWithContract,
+    IrRuns,
     UnitTestsPass,
     Disabled,
 }
@@ -531,6 +534,7 @@ impl TestContext {
                     script_data.clone(),
                     witness_data.clone(),
                 )?;
+
                 let actual_result = match result {
                     harness::VMExecutionResult::Fuel(state, receipts, ecal) => {
                         print_receipts(output, &receipts);
@@ -617,6 +621,163 @@ impl TestContext {
 
                     output.push_str(&out);
                     result?;
+                }
+            }
+            TestCategory::IrRuns => {
+                let expected_result = expected_result
+                    .as_ref()
+                    .expect("No expected result found. This is likely because the `test.toml` is missing either an \"expected_result_new_encoding\" or \"expected_result\" entry.");
+
+                let engines = sway_core::Engines::default();
+
+                let manifest_dir = env!("CARGO_MANIFEST_DIR");
+                let main_file =
+                    format!("{manifest_dir}/src/e2e_vm_tests/test_programs/{name}/src/main.ir");
+
+                let compiled = forc_pkg::compile_ir(
+                    Path::new(&main_file),
+                    &engines,
+                    *experimental,
+                    &mut SourceMap::new(),
+                )?;
+
+                // Code taken from harness::runs_in_vm
+                let result = || -> Result<harness::VMExecutionResult> {
+                    let storage = MemoryStorage::default();
+
+                    let rng = &mut rand::rngs::StdRng::seed_from_u64(2322u64);
+                    let maturity = 1.into();
+                    let script_data = script_data.clone().unwrap_or_default();
+                    let block_height = (u32::MAX >> 1).into();
+                    // The default max length is 1MB which isn't enough for the bigger tests.
+                    let max_size = 64 * 1024 * 1024;
+                    let script_params = ScriptParameters::DEFAULT
+                        .with_max_script_length(max_size)
+                        .with_max_script_data_length(max_size);
+                    let tx_params = TxParameters::DEFAULT.with_max_size(max_size);
+                    let params =
+                        ConsensusParameters::V1(consensus_parameters::ConsensusParametersV1 {
+                            script_params,
+                            tx_params,
+                            ..Default::default()
+                        });
+                    let mut tb = TransactionBuilder::script(compiled.bytes, script_data);
+
+                    tb.with_params(params)
+                        .add_unsigned_coin_input(
+                            SecretKey::random(rng),
+                            rng.r#gen(),
+                            1,
+                            Default::default(),
+                            rng.r#gen(),
+                        )
+                        .maturity(maturity);
+
+                    if let Some(witnesses) = witness_data.clone() {
+                        for witness in witnesses {
+                            tb.add_witness(witness.into());
+                        }
+                    }
+                    let gas_price = 0;
+                    let consensus_params = tb.get_params().clone();
+
+                    let params = ConsensusParameters::default();
+                    // Temporarily finalize to calculate `script_gas_limit`
+                    let tmp_tx = tb.clone().finalize();
+                    // Get `max_gas` used by everything except the script execution. Add `1` because of rounding.
+                    let max_gas = tmp_tx
+                        .max_gas(consensus_params.gas_costs(), consensus_params.fee_params())
+                        + 1;
+                    // Increase `script_gas_limit` to the maximum allowed value.
+                    tb.script_gas_limit(consensus_params.tx_params().max_gas_per_tx() - max_gas);
+
+                    let tx = tb
+                        .finalize_checked(block_height)
+                        .into_ready(gas_price, params.gas_costs(), params.fee_params(), None)
+                        .map_err(|e| anyhow::anyhow!("{e:?}"))?;
+
+                    let mem_instance = MemoryInstance::new();
+                    let mut i: Interpreter<_, _, _, forc_test::ecal::EcalSyscallHandler> =
+                        Interpreter::with_storage(mem_instance, storage, Default::default());
+                    let transition = i.transact(tx).map_err(anyhow::Error::msg)?;
+
+                    Ok(harness::VMExecutionResult::Fuel(
+                        *transition.state(),
+                        transition.receipts().to_vec(),
+                        Box::new(i.ecal_state().clone()),
+                    ))
+                };
+                let result = result()?;
+                let actual_result = match result {
+                    harness::VMExecutionResult::Fuel(state, receipts, ecal) => {
+                        print_receipts(output, &receipts);
+
+                        let gas_used = receipts.iter().find_map(|r| {
+                            if let Receipt::ScriptResult { gas_used, .. } = r {
+                                Some(*gas_used)
+                            } else {
+                                None
+                            }
+                        });
+
+                        if let Some(gas_used) = gas_used {
+                            perf_data.gas_usages.push(GasUsage::new(gas_used as usize));
+                        }
+
+                        use std::fmt::Write;
+                        let _ = writeln!(output, "  {}", "Captured Output".green().bold());
+                        for captured in ecal.captured.iter() {
+                            match captured {
+                                Syscall::Write { bytes, .. } => {
+                                    let s = std::str::from_utf8(bytes.as_slice()).unwrap();
+                                    output.push_str(s);
+                                }
+                                Syscall::Fflush { .. } => {}
+                                Syscall::Unknown { ra, rb, rc, rd } => {
+                                    let _ = writeln!(output, "Unknown ecal: {ra} {rb} {rc} {rd}");
+                                }
+                            }
+                        }
+
+                        match state {
+                            ProgramState::Return(v) => TestResult::Return(v),
+                            ProgramState::ReturnData(digest) => {
+                                // Find the ReturnData receipt matching the digest
+                                let receipt = receipts
+                                    .iter()
+                                    .find(|r| r.digest() == Some(&digest))
+                                    .unwrap();
+                                // Get the data from the receipt
+                                let data = receipt.data().unwrap().to_vec();
+                                TestResult::ReturnData(data)
+                            }
+                            ProgramState::Revert(v) => TestResult::Revert(v),
+                            ProgramState::RunProgram(_) => {
+                                panic!("Execution is in a suspended state: RunProgram");
+                            }
+                            ProgramState::VerifyPredicate(_) => {
+                                panic!("Execution is in a suspended state: VerifyPredicate");
+                            }
+                        }
+                    }
+                    harness::VMExecutionResult::Evm(state) => match state {
+                        revm::primitives::ExecutionResult::Success { reason, .. } => match reason {
+                            revm::primitives::SuccessReason::Stop => TestResult::Result(0),
+                            revm::primitives::SuccessReason::Return => todo!(),
+                            revm::primitives::SuccessReason::SelfDestruct => todo!(),
+                            revm::primitives::SuccessReason::EofReturnContract => todo!(),
+                        },
+                        revm::primitives::ExecutionResult::Revert { .. } => TestResult::Result(0),
+                        revm::primitives::ExecutionResult::Halt { reason, .. } => {
+                            panic!("EVM exited with unhandled reason: {reason:?}");
+                        }
+                    },
+                };
+
+                if &actual_result != expected_result {
+                    return Err(anyhow::Error::msg(format!(
+                        "expected: {expected_result:?}\nactual: {actual_result:?}"
+                    )));
                 }
             }
 
@@ -1691,6 +1852,7 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
         .and_then(|category_val| match category_val.as_str() {
             Some("run") => Ok(TestCategory::Runs),
             Some("run_on_node") => Ok(TestCategory::RunsWithContract),
+            Some("ir_run") => Ok(TestCategory::IrRuns),
             Some("fail") => Ok(TestCategory::FailsToCompile),
             Some("compile") => Ok(TestCategory::Compiles),
             Some("disabled") => Ok(TestCategory::Disabled),
@@ -1698,7 +1860,7 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
             None => Err(anyhow!(
                 "Malformed category '{category_val}', should be a string."
             )),
-            Some(other) => Err(anyhow!("Unknown test category '{other}'. Valid categories are: run, run_on_node, fail, compile, disabled, and unit_tests_pass.")),
+            Some(other) => Err(anyhow!("Unknown test category '{other}'. Valid categories are: run, run_on_node, ir_run, fail, compile, disabled, and unit_tests_pass.")),
         })?;
 
     let expected_decoded_test_logs = if let Some(toml::Value::Array(a)) =
@@ -1733,7 +1895,7 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
     }
 
     let (script_data, script_data_new_encoding) = match &category {
-        TestCategory::Runs | TestCategory::RunsWithContract => {
+        TestCategory::Runs | TestCategory::RunsWithContract | TestCategory::IrRuns => {
             let script_data = match toml_content.get("script_data") {
                 Some(toml::Value::String(v)) => {
                     let decoded = hex::decode(v.replace(' ', ""))
@@ -1774,7 +1936,7 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
     };
 
     let witness_data = match &category {
-        TestCategory::Runs | TestCategory::RunsWithContract => {
+        TestCategory::Runs | TestCategory::RunsWithContract | TestCategory::IrRuns => {
             match toml_content.get("witness_data") {
                 Some(toml::Value::Array(items)) => {
                     let mut data = vec![];
@@ -1806,7 +1968,7 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
     };
 
     let expected_result = match &category {
-        TestCategory::Runs | TestCategory::RunsWithContract => {
+        TestCategory::Runs | TestCategory::RunsWithContract | TestCategory::IrRuns => {
             get_expected_result("expected_result", &toml_content)
         }
         TestCategory::Compiles
@@ -1819,11 +1981,10 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
         &category,
         get_expected_result("expected_result_new_encoding", &toml_content),
     ) {
-        (TestCategory::Runs | TestCategory::RunsWithContract, Some(value))
-            if !has_experimental_field =>
-        {
-            Some(value)
-        }
+        (
+            TestCategory::Runs | TestCategory::RunsWithContract | TestCategory::IrRuns,
+            Some(value),
+        ) if !has_experimental_field => Some(value),
         _ => None,
     };
 

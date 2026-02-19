@@ -217,6 +217,8 @@ impl AbstractInstructionSet {
                             JumpType::Call => ResetKnown::Full,
                             _ => ResetKnown::Defs,
                         },
+                        // Same as non-call jumps.
+                        ControlFlowOp::Switch { .. } => ResetKnown::Defs,
                         // These ops mark their outputs properly and cause no control-flow effects
                         ControlFlowOp::Comment
                         | ControlFlowOp::ConfigurablesOffsetPlaceholder

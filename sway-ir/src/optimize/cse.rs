@@ -99,6 +99,7 @@ fn instr_to_expr(context: &Context, vntable: &VNTable, instr: Value) -> Option<E
             vntable.value_map.get(val2).cloned().unwrap(),
         )),
         InstOp::ConditionalBranch { .. } => None,
+        InstOp::Switch { .. } => None,
         InstOp::ContractCall { .. } => None,
         InstOp::FuelVm(_) => None,
         InstOp::GetLocal(_) => None,

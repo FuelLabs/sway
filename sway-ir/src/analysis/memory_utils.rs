@@ -433,6 +433,7 @@ fn compute_escaped_symbols(context: &Context, function: &Function) -> EscapedSym
             InstOp::CastPtr(ptr, _) => add_from_val(&mut result, ptr, &mut is_complete),
             InstOp::Cmp(_, _, _) => (),
             InstOp::ConditionalBranch { .. } => (),
+            InstOp::Switch { .. } => (),
             InstOp::ContractCall { params, .. } => {
                 add_from_val(&mut result, params, &mut is_complete)
             }
@@ -481,6 +482,7 @@ pub fn get_loaded_ptr_values(context: &Context, inst: Value) -> Vec<Value> {
         | InstOp::BitCast(_, _)
         | InstOp::Branch(_)
         | InstOp::ConditionalBranch { .. }
+        | InstOp::Switch { .. }
         | InstOp::Cmp(_, _, _)
         | InstOp::Nop
         | InstOp::CastPtr(_, _)
@@ -573,6 +575,7 @@ pub fn get_stored_ptr_values(context: &Context, inst: Value) -> Vec<Value> {
         | InstOp::BitCast(_, _)
         | InstOp::Branch(_)
         | InstOp::ConditionalBranch { .. }
+        | InstOp::Switch { .. }
         | InstOp::Cmp(_, _, _)
         | InstOp::Nop
         | InstOp::PtrToInt(_, _)

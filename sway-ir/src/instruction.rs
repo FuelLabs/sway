@@ -83,6 +83,13 @@ pub enum InstOp {
         true_block: BranchToWithArgs,
         false_block: BranchToWithArgs,
     },
+    Switch {
+        discriminant: Value,
+        cases: Vec<(u64, BranchToWithArgs)>,
+        // If `default` is `None`, the switch is exhaustive.
+        // The case values must range from 0 to N-1 for N cases.
+        default: Option<BranchToWithArgs>,
+    },
     /// A contract call with a list of arguments.
     ContractCall {
         return_type: Type,
@@ -520,6 +527,7 @@ impl InstOp {
             // These are all terminators which don't return, essentially.  No type.
             InstOp::Branch(_)
             | InstOp::ConditionalBranch { .. }
+            | InstOp::Switch { .. }
             | InstOp::FuelVm(
                 FuelVmInstruction::Revert(..)
                 | FuelVmInstruction::JmpMem
@@ -578,6 +586,20 @@ impl InstOp {
                 let mut v = vec![*cond_value];
                 v.extend_from_slice(&true_block.args);
                 v.extend_from_slice(&false_block.args);
+                v
+            }
+            InstOp::Switch {
+                discriminant,
+                cases,
+                default,
+            } => {
+                let mut v = vec![*discriminant];
+                if let Some(default_branch) = default {
+                    v.extend_from_slice(&default_branch.args);
+                }
+                for case in cases {
+                    v.extend_from_slice(&case.1.args);
+                }
                 v
             }
             InstOp::ContractCall {
@@ -782,6 +804,34 @@ impl InstOp {
                     false_block.args[idx - 1 - true_block.args.len()] = replacement;
                 } else {
                     panic!("Invalid index for ConditionalBranch");
+                }
+            }
+            InstOp::Switch {
+                discriminant,
+                cases,
+                default,
+            } => {
+                if idx == 0 {
+                    *discriminant = replacement;
+                } else {
+                    let mut cur_idx = 1;
+                    let default_args_len = default
+                        .as_ref()
+                        .map(|default_branch| default_branch.args.len())
+                        .unwrap_or(0);
+                    if idx - cur_idx < default_args_len {
+                        default.as_mut().unwrap().args[idx - cur_idx] = replacement;
+                    } else {
+                        cur_idx += default_args_len;
+                        for case in cases.iter_mut() {
+                            if idx - cur_idx < case.1.args.len() {
+                                case.1.args[idx - cur_idx] = replacement;
+                                return;
+                            }
+                            cur_idx += case.1.args.len();
+                        }
+                        panic!("Invalid index for Switch");
+                    }
                 }
             }
             InstOp::ContractCall {
@@ -1144,6 +1194,19 @@ impl InstOp {
                 true_block.args.iter_mut().for_each(replace);
                 false_block.args.iter_mut().for_each(replace);
             }
+            InstOp::Switch {
+                discriminant,
+                cases,
+                default,
+            } => {
+                replace(discriminant);
+                if let Some(default_branch) = default {
+                    default_branch.args.iter_mut().for_each(replace);
+                }
+                for case in cases {
+                    case.1.args.iter_mut().for_each(replace);
+                }
+            }
             InstOp::ContractCall {
                 params,
                 coins,
@@ -1330,6 +1393,7 @@ impl InstOp {
             | InstOp::CastPtr { .. }
             | InstOp::Cmp(..)
             | InstOp::ConditionalBranch { .. }
+            | InstOp::Switch { .. }
             | InstOp::FuelVm(FuelVmInstruction::Gtf { .. })
             | InstOp::FuelVm(FuelVmInstruction::ReadRegister(_))
             | InstOp::FuelVm(FuelVmInstruction::StateLoadWord(_))
@@ -1356,6 +1420,7 @@ impl InstOp {
             self,
             InstOp::Branch(_)
                 | InstOp::ConditionalBranch { .. }
+                | InstOp::Switch { .. }
                 | InstOp::Ret(..)
                 | InstOp::FuelVm(
                     FuelVmInstruction::Revert(..)
@@ -1639,6 +1704,33 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
         false_block.add_pred(self.context, &self.block);
         self.context.blocks[self.block.0].instructions.push(cbr_val);
         cbr_val
+    }
+
+    pub fn switch(
+        self,
+        discriminant: Value,
+        default: Option<BranchToWithArgs>,
+        cases: Vec<(u64, BranchToWithArgs)>,
+    ) -> Value {
+        if let Some(default_block) = &default {
+            default_block.block.add_pred(self.context, &self.block);
+        }
+        for case_block in cases.iter().map(|c| &c.1) {
+            case_block.block.add_pred(self.context, &self.block);
+        }
+        let switch_val = Value::new_instruction(
+            self.context,
+            self.block,
+            InstOp::Switch {
+                discriminant,
+                cases,
+                default,
+            },
+        );
+        self.context.blocks[self.block.0]
+            .instructions
+            .push(switch_val);
+        switch_val
     }
 
     pub fn contract_call(
