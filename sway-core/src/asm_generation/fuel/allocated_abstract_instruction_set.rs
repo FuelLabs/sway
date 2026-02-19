@@ -40,6 +40,28 @@ pub struct AllocatedAbstractInstructionSet {
     pub(crate) ops: Vec<AllocatedAbstractOp>,
 }
 
+fn generate_mask(regs: &[&AllocatedRegister]) -> (VirtualImmediate24, VirtualImmediate24) {
+    let mask = regs.iter().fold((0, 0), |mut accum, reg| {
+        let reg_id = reg.to_reg_id().to_u8();
+        assert!((16..64).contains(&reg_id));
+        let reg_id = reg_id - 16;
+        let (mask_ref, bit) = if reg_id < 24 {
+            (&mut accum.0, reg_id)
+        } else {
+            (&mut accum.1, reg_id - 24)
+        };
+        // Set bit (from the least significant side) of mask_ref.
+        *mask_ref |= 1 << bit;
+        accum
+    });
+    (
+        VirtualImmediate24::try_new(mask.0, Span::dummy())
+            .expect("mask should have fit in 24b"),
+        VirtualImmediate24::try_new(mask.1, Span::dummy())
+            .expect("mask should have fit in 24b"),
+    )
+}
+
 impl AllocatedAbstractInstructionSet {
     pub(crate) fn optimize(self) -> AllocatedAbstractInstructionSet {
         self.remove_redundant_sp_move_to_locbase()
@@ -117,7 +139,7 @@ impl AllocatedAbstractInstructionSet {
     ///
     /// Typically there will be only one of each but the code here allows for nested sections or
     /// even overlapping sections.
-    pub(crate) fn emit_pusha_popa(mut self) -> Self {
+    pub(crate) fn lower_pusha_popa(mut self) -> Self {
         // Gather the sets of used registers per section.  Using a fold here because it's actually
         // simpler to manage.  We use a HashSet to keep track of the active section labels and then
         // build a HashMap of Label to HashSet of registers.
@@ -159,28 +181,6 @@ impl AllocatedAbstractInstructionSet {
             )
             .0;
 
-        fn generate_mask(regs: &[&AllocatedRegister]) -> (VirtualImmediate24, VirtualImmediate24) {
-            let mask = regs.iter().fold((0, 0), |mut accum, reg| {
-                let reg_id = reg.to_reg_id().to_u8();
-                assert!((16..64).contains(&reg_id));
-                let reg_id = reg_id - 16;
-                let (mask_ref, bit) = if reg_id < 24 {
-                    (&mut accum.0, reg_id)
-                } else {
-                    (&mut accum.1, reg_id - 24)
-                };
-                // Set bit (from the least significant side) of mask_ref.
-                *mask_ref |= 1 << bit;
-                accum
-            });
-            (
-                VirtualImmediate24::try_new(mask.0, Span::dummy())
-                    .expect("mask should have fit in 24b"),
-                VirtualImmediate24::try_new(mask.1, Span::dummy())
-                    .expect("mask should have fit in 24b"),
-            )
-        }
-
         // PUSHA/POPA are abstract instructions that are emitted only by the compiler
         // as a part of a function prologue/epilogue. They cannot be, e.g., defined in
         // `asm` blocks by developers. This means it is correct to always add
@@ -208,6 +208,7 @@ impl AllocatedAbstractInstructionSet {
                         .collect::<Vec<_>>();
 
                     let (mask_l, mask_h) = generate_mask(&regs);
+                    // eprintln!("{fn_init_prefix} {:?} {:?} {:?}", regs, mask_l, mask_h);
                     if mask_l.value() != 0 {
                         new_ops.push(AllocatedAbstractOp {
                             opcode: Either::Left(AllocatedInstruction::PSHL(mask_l)),
