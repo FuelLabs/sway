@@ -55,10 +55,8 @@ fn generate_mask(regs: &[&AllocatedRegister]) -> (VirtualImmediate24, VirtualImm
         accum
     });
     (
-        VirtualImmediate24::try_new(mask.0, Span::dummy())
-            .expect("mask should have fit in 24b"),
-        VirtualImmediate24::try_new(mask.1, Span::dummy())
-            .expect("mask should have fit in 24b"),
+        VirtualImmediate24::try_new(mask.0, Span::dummy()).expect("mask should have fit in 24b"),
+        VirtualImmediate24::try_new(mask.1, Span::dummy()).expect("mask should have fit in 24b"),
     )
 }
 

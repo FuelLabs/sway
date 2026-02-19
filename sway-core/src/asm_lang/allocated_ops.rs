@@ -12,7 +12,9 @@
 use super::*;
 use crate::{
     asm_generation::fuel::{
-        compiler_constants::{DATA_SECTION_REGISTER, FIRST_ALLOCATED_REGISTER},
+        compiler_constants::{
+            DATA_SECTION_REGISTER, LOWER_ALLOCATABLE_REGISTER, UPPER_ALLOCATABLE_REGISTER,
+        },
         data_section::{DataId, DataSection},
     },
     fuel_prelude::fuel_asm::{self, op},
@@ -51,12 +53,12 @@ impl AllocatedRegister {
     pub(crate) fn to_reg_id(&self) -> fuel_asm::RegId {
         match self {
             AllocatedRegister::Allocated(id) => {
-                let id = FIRST_ALLOCATED_REGISTER.checked_sub(*id).unwrap();
-                if id <= 16 {
-                    panic!("invalid register id")
+                let id = UPPER_ALLOCATABLE_REGISTER.checked_sub(*id).unwrap();
+                if !(LOWER_ALLOCATABLE_REGISTER..=UPPER_ALLOCATABLE_REGISTER).contains(&id) {
+                    panic!("invalid register id: {id}")
                 }
                 fuel_asm::RegId::new(id)
-            },
+            }
             AllocatedRegister::Constant(constant) => constant.to_reg_id(),
         }
     }
