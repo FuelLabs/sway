@@ -48,8 +48,8 @@ impl fmt::Display for AllocatedRegister {
 }
 
 impl AllocatedRegister {
-    /// First allocated register startd at `FIRST_ALLOCATED_REGISTER` (52) and goes
-    /// down until 17.
+    /// First allocated register starts at `UPPER_ALLOCATABLE_REGISTER` (52) and goes
+    /// down until `LOWER_ALLOCATABLE_REGISTER` (16).
     pub(crate) fn to_reg_id(&self) -> fuel_asm::RegId {
         match self {
             AllocatedRegister::Allocated(id) => {
