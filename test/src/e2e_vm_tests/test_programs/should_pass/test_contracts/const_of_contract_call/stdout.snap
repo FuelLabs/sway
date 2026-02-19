@@ -2,49 +2,26 @@
 source: test/src/snapshot/mod.rs
 ---
 > forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
-exit status: 0
+exit status: 1
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
    Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
-    Finished release [optimized + fuel] target(s) [19 KB] in ???
-     Running 29 tests, filtered 0 tests
+error
+   --> test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call/src/main.sw:356:53
+    |
+354 | #[test]
+355 | fn cost_of_in_array_1() {
+356 |     let _ = abi(MyContract, CONTRACT_ID).in_array_1([0]);
+    |                                                     ^^^ Internal compiler error: `InstOp::InitAggr` was not lowered in the IR.
+Please file an issue on the repository and include the code that triggered this error.
+357 | }
+358 | /* END ARRAY1 */
+    |
+____
 
-tested -- const_of_contract_call
-
-      test cost_of_in_bool ... ok (???, 11137 gas)
-      test cost_of_in_u8 ... ok (???, 11059 gas)
-      test cost_of_in_u16 ... ok (???, 11378 gas)
-      test cost_of_in_u32 ... ok (???, 11605 gas)
-      test cost_of_in_u64 ... ok (???, 10857 gas)
-      test cost_of_in_u256 ... ok (???, 10898 gas)
-      test cost_of_in_b256 ... ok (???, 10880 gas)
-      test cost_of_in_str_0 ... ok (???, 11376 gas)
-      test cost_of_in_str_1 ... ok (???, 11549 gas)
-      test cost_of_in_str_8 ... ok (???, 11568 gas)
-      test cost_of_in_str_16 ... ok (???, 11561 gas)
-      test cost_of_in_str_32 ... ok (???, 11575 gas)
-      test cost_of_in_array_0 ... ok (???, 10823 gas)
-      test cost_of_in_array_1 ... ok (???, 10910 gas)
-      test cost_of_in_array_8 ... ok (???, 11435 gas)
-      test cost_of_in_array_16 ... ok (???, 10944 gas)
-      test cost_of_in_array_32 ... ok (???, 10998 gas)
-      test cost_of_in_array_64 ... ok (???, 11098 gas)
-      test cost_of_in_tuple_0 ... ok (???, 10848 gas)
-      test cost_of_in_tuple_1 ... ok (???, 10946 gas)
-      test cost_of_in_tuple_2 ... ok (???, 10955 gas)
-      test cost_of_in_tuple_3 ... ok (???, 10968 gas)
-      test cost_of_in_tuple_4 ... ok (???, 10979 gas)
-      test in_struct_u64 ... ok (???, 10915 gas)
-      test in_struct_u64_u64 ... ok (???, 10946 gas)
-      test in_struct_u64_u64_u64 ... ok (???, 10966 gas)
-      test in_enum_u64 ... ok (???, 11048 gas)
-      test in_enum_u64_u64 ... ok (???, 11043 gas)
-      test in_enum_u64_u64_u64 ... ok (???, 11059 gas)
-
-test result: OK. 29 passed; 0 failed; finished in ???
-
-    Finished in ???
+  Aborting due to 1 error.
+error: Failed to compile const_of_contract_call
 
 > Block: ARRAY0
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
@@ -70,21 +47,26 @@ test result: OK. 1 passed; 0 failed; finished in ???
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
 
 > forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
-exit status: 0
+exit status: 1
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
    Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
-    Finished release [optimized + fuel] target(s) [744 B] in ???
-     Running 1 test, filtered 0 tests
+error
+   --> test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call/src/main.sw:179:53
+    |
+177 | #[test]
+178 | fn isolated_cost_of_in_array_1() {
+179 |     let _ = abi(MyContract, CONTRACT_ID).in_array_1([0]);
+    |                                                     ^^^ Internal compiler error: `InstOp::InitAggr` was not lowered in the IR.
+Please file an issue on the repository and include the code that triggered this error.
+180 | }
+181 | /* END ARRAY1 */
+    |
+____
 
-tested -- const_of_contract_call
-
-      test isolated_cost_of_in_array_1 ... ok (???, 10260 gas)
-
-test result: OK. 1 passed; 0 failed; finished in ???
-
-    Finished in ???
+  Aborting due to 1 error.
+error: Failed to compile const_of_contract_call
 
 > Block: ARRAY16
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
@@ -370,21 +352,26 @@ test result: OK. 1 passed; 0 failed; finished in ???
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
 
 > forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
-exit status: 0
+exit status: 1
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
    Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
-    Finished release [optimized + fuel] target(s) [728 B] in ???
-     Running 1 test, filtered 0 tests
+error
+   --> test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call/src/main.sw:199:56
+    |
+197 | #[test]
+198 | fn in_struct_u64() {
+199 |     let _ = abi(MyContract, CONTRACT_ID).in_struct_u64(S1 { a: 0 });
+    |                                                        ^^^^^^^^^^^ Internal compiler error: `InstOp::InitAggr` was not lowered in the IR.
+Please file an issue on the repository and include the code that triggered this error.
+200 | }
+201 | /* END STRUCT_U64 */
+    |
+____
 
-tested -- const_of_contract_call
-
-      test in_struct_u64 ... ok (???, 10254 gas)
-
-test result: OK. 1 passed; 0 failed; finished in ???
-
-    Finished in ???
+  Aborting due to 1 error.
+error: Failed to compile const_of_contract_call
 
 > Block: STRUCT_U64_U64
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
@@ -450,21 +437,26 @@ test result: OK. 1 passed; 0 failed; finished in ???
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
 
 > forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
-exit status: 0
+exit status: 1
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
    Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
-    Finished release [optimized + fuel] target(s) [728 B] in ???
-     Running 1 test, filtered 0 tests
+error
+   --> test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call/src/main.sw:191:53
+    |
+189 | #[test]
+190 | fn isolated_cost_of_in_tuple_1() {
+191 |     let _ = abi(MyContract, CONTRACT_ID).in_tuple_1((0,));
+    |                                                     ^^^^ Internal compiler error: `InstOp::InitAggr` was not lowered in the IR.
+Please file an issue on the repository and include the code that triggered this error.
+192 | }
+193 | /* END TUPLE1 */
+    |
+____
 
-tested -- const_of_contract_call
-
-      test isolated_cost_of_in_tuple_1 ... ok (???, 10254 gas)
-
-test result: OK. 1 passed; 0 failed; finished in ???
-
-    Finished in ???
+  Aborting due to 1 error.
+error: Failed to compile const_of_contract_call
 
 > Block: TUPLE2
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
