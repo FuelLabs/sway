@@ -8,13 +8,13 @@ use forc_util::ForcResult;
 
 forc_util::cli_examples! {
   crate::cli::Opt {
-      [Add a dependencies => "forc add <DEP>[@<VERSION>] "]
+      [Add a dependency => "forc add <DEP>[@<VERSION>] "]
       [Add a contract dependency => "forc add <DEP>[@<VERSION>] --contract-dep"]
       [Dry run  => "forc add <DEP>[@<VERSION>] --dry-run"]
   }
 }
 
-// Add dependencies to Forc toml
+/// Add dependencies to a Forc.toml manifest file
 #[derive(Debug, Parser)]
 #[clap(bin_name = "forc add", version, after_help = help())]
 pub struct Command {
