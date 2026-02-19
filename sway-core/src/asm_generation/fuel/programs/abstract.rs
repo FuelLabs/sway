@@ -131,7 +131,7 @@ impl AbstractProgram {
             .into_iter()
             .map(|abstract_instruction_set| {
                 let allocated = abstract_instruction_set.allocate_registers()?;
-                Ok(allocated.emit_pusha_popa())
+                Ok(allocated.lower_pusha_popa())
             })
             .collect::<Result<Vec<AllocatedAbstractInstructionSet>, CompileError>>()?;
 
