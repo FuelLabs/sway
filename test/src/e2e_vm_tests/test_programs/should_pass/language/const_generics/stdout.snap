@@ -410,12 +410,20 @@ warning
 ____
 
   Compiled script "const_generics" with 2 warnings.
+<<<<<<< HEAD
     Finished release [optimized + fuel] target(s) [680 B] in ???
+=======
+    Finished release [optimized + fuel] target(s) [720 B] in ???
+>>>>>>> 80ba6fe31 (update tests)
      Running 1 test, filtered 0 tests
 
 tested -- const_generics
 
+<<<<<<< HEAD
       test run_main ... ok (???, 386 gas)
+=======
+      test run_main ... ok (???, 400 gas)
+>>>>>>> 80ba6fe31 (update tests)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
