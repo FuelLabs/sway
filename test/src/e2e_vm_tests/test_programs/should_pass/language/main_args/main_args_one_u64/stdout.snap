@@ -121,12 +121,10 @@ sw   $$locbase $$retv i1      ; store word
 addi $r0 $$locbase i8         ; get offset to local __ptr u64
 movi $r1 i8                   ; initialize constant into register
 retd  $r0 $r1                 ; [entry end: __entry] return slice
-pshl i1                       ; [fn init: main_11]: push used low registers 16..40
-pshh i524288                  ; [fn init: main_11]: push used high registers 40..64
+pshh i528384                  ; [fn init: main_11]: push used high registers 40..64
 add  $r0 $$arg0 $one
 move $$retv $r0               ; [fn end: main_11] set return value
-poph i524288                  ; [fn end: main_11]: restore used high registers 40..64
-popl i1                       ; [fn end: main_11]: restore used low registers 16..40
+poph i528384                  ; [fn end: main_11]: restore used high registers 40..64
 jal  $zero $$reta i0          ; [fn end: main_11] return from call
 .data:
 
@@ -135,31 +133,29 @@ jal  $zero $$reta i0          ; [fn end: main_11] return from call
 
 0x00000000 MOVE R60 $pc                                    ;; [26, 240, 48, 0]
 0x00000004 JMPF $zero 0x4                                  ;; [116, 0, 0, 4]
-0x00000008                                                 ;; [0, 0, 0, 0, 0, 0, 0, 112]
+0x00000008                                                 ;; [0, 0, 0, 0, 0, 0, 0, 104]
 0x00000010                                                 ;; [0, 0, 0, 0, 0, 0, 0, 0]
 0x00000018 LW R63 R60 0x1                                  ;; [93, 255, 192, 1]
 0x0000001c ADD R63 R63 R60                                 ;; [16, 255, 255, 0]
 0x00000020 MOVE R59 $sp                                    ;; [26, 236, 80, 0]
 0x00000024 CFEI 0x18                                       ;; [145, 0, 0, 24]
-0x00000028 GTF $writable $zero 0xa                         ;; [97, 64, 0, 10]
-0x0000002c MCPI R59 $writable 0x8                          ;; [96, 237, 0, 8]
-0x00000030 ADDI $writable R59 0x10                         ;; [80, 67, 176, 16]
-0x00000034 MCPI $writable R59 0x8                          ;; [96, 67, 176, 8]
-0x00000038 LW $writable R59 0x2                            ;; [93, 67, 176, 2]
-0x0000003c MOVE R58 $writable                              ;; [26, 233, 0, 0]
+0x00000028 GTF R52 $zero 0xa                               ;; [97, 208, 0, 10]
+0x0000002c MCPI R59 R52 0x8                                ;; [96, 239, 64, 8]
+0x00000030 ADDI R52 R59 0x10                               ;; [80, 211, 176, 16]
+0x00000034 MCPI R52 R59 0x8                                ;; [96, 211, 176, 8]
+0x00000038 LW R52 R59 0x2                                  ;; [93, 211, 176, 2]
+0x0000003c MOVE R58 R52                                    ;; [26, 235, 64, 0]
 0x00000040 JAL R62 $pc 0x5                                 ;; [153, 248, 48, 5]
 0x00000044 SW R59 R61 0x1                                  ;; [95, 239, 208, 1]
-0x00000048 ADDI $writable R59 0x8                          ;; [80, 67, 176, 8]
-0x0000004c MOVI R17 0x8                                    ;; [114, 68, 0, 8]
-0x00000050 RETD $writable R17                              ;; [37, 65, 16, 0]
-0x00000054 PSHL 0x1                                        ;; [149, 0, 0, 1]
-0x00000058 PSHH 0x80000                                    ;; [150, 8, 0, 0]
-0x0000005c ADD $writable R58 $one                          ;; [16, 67, 160, 64]
-0x00000060 MOVE R61 $writable                              ;; [26, 245, 0, 0]
-0x00000064 POPH 0x80000                                    ;; [152, 8, 0, 0]
-0x00000068 POPL 0x1                                        ;; [151, 0, 0, 1]
-0x0000006c JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x00000048 ADDI R52 R59 0x8                                ;; [80, 211, 176, 8]
+0x0000004c MOVI R51 0x8                                    ;; [114, 204, 0, 8]
+0x00000050 RETD R52 R51                                    ;; [37, 211, 48, 0]
+0x00000054 PSHH 0x81000                                    ;; [150, 8, 16, 0]
+0x00000058 ADD R52 R58 $one                                ;; [16, 211, 160, 64]
+0x0000005c MOVE R61 R52                                    ;; [26, 247, 64, 0]
+0x00000060 POPH 0x81000                                    ;; [152, 8, 16, 0]
+0x00000064 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
 .data_section:
 ;; --- END OF TARGET BYTECODE ---
 
-    Finished release [optimized + fuel] target(s) [112 B] in ???
+    Finished release [optimized + fuel] target(s) [104 B] in ???

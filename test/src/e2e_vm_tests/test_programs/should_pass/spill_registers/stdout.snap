@@ -139,203 +139,201 @@ fn reg_pressure_12() -> u64 {
 
 
 
-
-pshl i3                       ; [fn init: reg_pressure_12]: push used low registers 16..40
-pshh i524288                  ; [fn init: reg_pressure_12]: push used high registers 40..64
+pshh i530432                  ; [fn init: reg_pressure_12]: push used high registers 40..64
 move $$locbase $sp            ; [fn init: reg_pressure_12]: set locals base register
 cfei i512                     ; [fn init: reg_pressure_12]: allocate: locals 0 byte(s), call args 0 slot(s), register spills 512 byte(s)
 move $r0 $$reta               ; [fn init: reg_pressure_12]: save return address
 sw   $$locbase $r0 i0         ; [spill/refill]: spill
-jal  $$reta $pc i323          ; [call: dummy_13]: call function
+jal  $$reta $pc i322          ; [call: dummy_13]: call function
 move $r0 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r0 i1         ; [spill/refill]: spill
-jal  $$reta $pc i320          ; [call: dummy_13]: call function
+jal  $$reta $pc i319          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i2         ; [spill/refill]: spill
-jal  $$reta $pc i317          ; [call: dummy_13]: call function
+jal  $$reta $pc i316          ; [call: dummy_13]: call function
 move $r0 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r0 i3         ; [spill/refill]: spill
-jal  $$reta $pc i314          ; [call: dummy_13]: call function
+jal  $$reta $pc i313          ; [call: dummy_13]: call function
 move $r0 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r0 i4         ; [spill/refill]: spill
-jal  $$reta $pc i311          ; [call: dummy_13]: call function
+jal  $$reta $pc i310          ; [call: dummy_13]: call function
 move $r0 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r0 i5         ; [spill/refill]: spill
-jal  $$reta $pc i308          ; [call: dummy_13]: call function
+jal  $$reta $pc i307          ; [call: dummy_13]: call function
 move $r0 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r0 i6         ; [spill/refill]: spill
-jal  $$reta $pc i305          ; [call: dummy_13]: call function
+jal  $$reta $pc i304          ; [call: dummy_13]: call function
 move $r0 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r0 i7         ; [spill/refill]: spill
-jal  $$reta $pc i302          ; [call: dummy_13]: call function
+jal  $$reta $pc i301          ; [call: dummy_13]: call function
 move $r0 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r0 i8         ; [spill/refill]: spill
-jal  $$reta $pc i299          ; [call: dummy_13]: call function
+jal  $$reta $pc i298          ; [call: dummy_13]: call function
 move $r0 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r0 i9         ; [spill/refill]: spill
-jal  $$reta $pc i296          ; [call: dummy_13]: call function
+jal  $$reta $pc i295          ; [call: dummy_13]: call function
 move $r0 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r0 i10        ; [spill/refill]: spill
-jal  $$reta $pc i293          ; [call: dummy_13]: call function
+jal  $$reta $pc i292          ; [call: dummy_13]: call function
 move $r0 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r0 i11        ; [spill/refill]: spill
-jal  $$reta $pc i290          ; [call: dummy_13]: call function
+jal  $$reta $pc i289          ; [call: dummy_13]: call function
 move $r0 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r0 i12        ; [spill/refill]: spill
-jal  $$reta $pc i287          ; [call: dummy_13]: call function
+jal  $$reta $pc i286          ; [call: dummy_13]: call function
 move $r0 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r0 i13        ; [spill/refill]: spill
-jal  $$reta $pc i284          ; [call: dummy_13]: call function
+jal  $$reta $pc i283          ; [call: dummy_13]: call function
 move $r0 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r0 i14        ; [spill/refill]: spill
-jal  $$reta $pc i281          ; [call: dummy_13]: call function
+jal  $$reta $pc i280          ; [call: dummy_13]: call function
 move $r0 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r0 i15        ; [spill/refill]: spill
-jal  $$reta $pc i278          ; [call: dummy_13]: call function
+jal  $$reta $pc i277          ; [call: dummy_13]: call function
 move $r0 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r0 i16        ; [spill/refill]: spill
-jal  $$reta $pc i275          ; [call: dummy_13]: call function
+jal  $$reta $pc i274          ; [call: dummy_13]: call function
 move $r0 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r0 i17        ; [spill/refill]: spill
-jal  $$reta $pc i272          ; [call: dummy_13]: call function
+jal  $$reta $pc i271          ; [call: dummy_13]: call function
 move $r0 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r0 i18        ; [spill/refill]: spill
-jal  $$reta $pc i269          ; [call: dummy_13]: call function
+jal  $$reta $pc i268          ; [call: dummy_13]: call function
 move $r0 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r0 i19        ; [spill/refill]: spill
-jal  $$reta $pc i266          ; [call: dummy_13]: call function
+jal  $$reta $pc i265          ; [call: dummy_13]: call function
 move $r0 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r0 i20        ; [spill/refill]: spill
-jal  $$reta $pc i263          ; [call: dummy_13]: call function
+jal  $$reta $pc i262          ; [call: dummy_13]: call function
 move $r0 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r0 i21        ; [spill/refill]: spill
-jal  $$reta $pc i260          ; [call: dummy_13]: call function
+jal  $$reta $pc i259          ; [call: dummy_13]: call function
 move $r0 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r0 i22        ; [spill/refill]: spill
-jal  $$reta $pc i257          ; [call: dummy_13]: call function
+jal  $$reta $pc i256          ; [call: dummy_13]: call function
 move $r0 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r0 i23        ; [spill/refill]: spill
-jal  $$reta $pc i254          ; [call: dummy_13]: call function
+jal  $$reta $pc i253          ; [call: dummy_13]: call function
 move $r0 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r0 i24        ; [spill/refill]: spill
-jal  $$reta $pc i251          ; [call: dummy_13]: call function
+jal  $$reta $pc i250          ; [call: dummy_13]: call function
 move $r0 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r0 i25        ; [spill/refill]: spill
-jal  $$reta $pc i248          ; [call: dummy_13]: call function
+jal  $$reta $pc i247          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i26        ; [spill/refill]: spill
-jal  $$reta $pc i245          ; [call: dummy_13]: call function
+jal  $$reta $pc i244          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i27        ; [spill/refill]: spill
-jal  $$reta $pc i242          ; [call: dummy_13]: call function
+jal  $$reta $pc i241          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i28        ; [spill/refill]: spill
-jal  $$reta $pc i239          ; [call: dummy_13]: call function
+jal  $$reta $pc i238          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i29        ; [spill/refill]: spill
-jal  $$reta $pc i236          ; [call: dummy_13]: call function
+jal  $$reta $pc i235          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i30        ; [spill/refill]: spill
-jal  $$reta $pc i233          ; [call: dummy_13]: call function
+jal  $$reta $pc i232          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i31        ; [spill/refill]: spill
-jal  $$reta $pc i230          ; [call: dummy_13]: call function
+jal  $$reta $pc i229          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i32        ; [spill/refill]: spill
-jal  $$reta $pc i227          ; [call: dummy_13]: call function
+jal  $$reta $pc i226          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i33        ; [spill/refill]: spill
-jal  $$reta $pc i224          ; [call: dummy_13]: call function
+jal  $$reta $pc i223          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i34        ; [spill/refill]: spill
-jal  $$reta $pc i221          ; [call: dummy_13]: call function
+jal  $$reta $pc i220          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i35        ; [spill/refill]: spill
-jal  $$reta $pc i218          ; [call: dummy_13]: call function
+jal  $$reta $pc i217          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i36        ; [spill/refill]: spill
-jal  $$reta $pc i215          ; [call: dummy_13]: call function
+jal  $$reta $pc i214          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i37        ; [spill/refill]: spill
-jal  $$reta $pc i212          ; [call: dummy_13]: call function
+jal  $$reta $pc i211          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i38        ; [spill/refill]: spill
-jal  $$reta $pc i209          ; [call: dummy_13]: call function
+jal  $$reta $pc i208          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i39        ; [spill/refill]: spill
-jal  $$reta $pc i206          ; [call: dummy_13]: call function
+jal  $$reta $pc i205          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i40        ; [spill/refill]: spill
-jal  $$reta $pc i203          ; [call: dummy_13]: call function
+jal  $$reta $pc i202          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i41        ; [spill/refill]: spill
-jal  $$reta $pc i200          ; [call: dummy_13]: call function
+jal  $$reta $pc i199          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i42        ; [spill/refill]: spill
-jal  $$reta $pc i197          ; [call: dummy_13]: call function
+jal  $$reta $pc i196          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i43        ; [spill/refill]: spill
-jal  $$reta $pc i194          ; [call: dummy_13]: call function
+jal  $$reta $pc i193          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i44        ; [spill/refill]: spill
-jal  $$reta $pc i191          ; [call: dummy_13]: call function
+jal  $$reta $pc i190          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i45        ; [spill/refill]: spill
-jal  $$reta $pc i188          ; [call: dummy_13]: call function
+jal  $$reta $pc i187          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i46        ; [spill/refill]: spill
-jal  $$reta $pc i185          ; [call: dummy_13]: call function
+jal  $$reta $pc i184          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i47        ; [spill/refill]: spill
-jal  $$reta $pc i182          ; [call: dummy_13]: call function
+jal  $$reta $pc i181          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i48        ; [spill/refill]: spill
-jal  $$reta $pc i179          ; [call: dummy_13]: call function
+jal  $$reta $pc i178          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i49        ; [spill/refill]: spill
-jal  $$reta $pc i176          ; [call: dummy_13]: call function
+jal  $$reta $pc i175          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i50        ; [spill/refill]: spill
-jal  $$reta $pc i173          ; [call: dummy_13]: call function
+jal  $$reta $pc i172          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i51        ; [spill/refill]: spill
-jal  $$reta $pc i170          ; [call: dummy_13]: call function
+jal  $$reta $pc i169          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i52        ; [spill/refill]: spill
-jal  $$reta $pc i167          ; [call: dummy_13]: call function
+jal  $$reta $pc i166          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i53        ; [spill/refill]: spill
-jal  $$reta $pc i164          ; [call: dummy_13]: call function
+jal  $$reta $pc i163          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i54        ; [spill/refill]: spill
-jal  $$reta $pc i161          ; [call: dummy_13]: call function
+jal  $$reta $pc i160          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i55        ; [spill/refill]: spill
-jal  $$reta $pc i158          ; [call: dummy_13]: call function
+jal  $$reta $pc i157          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i56        ; [spill/refill]: spill
-jal  $$reta $pc i155          ; [call: dummy_13]: call function
+jal  $$reta $pc i154          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i57        ; [spill/refill]: spill
-jal  $$reta $pc i152          ; [call: dummy_13]: call function
+jal  $$reta $pc i151          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i58        ; [spill/refill]: spill
-jal  $$reta $pc i149          ; [call: dummy_13]: call function
+jal  $$reta $pc i148          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i59        ; [spill/refill]: spill
-jal  $$reta $pc i146          ; [call: dummy_13]: call function
+jal  $$reta $pc i145          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i60        ; [spill/refill]: spill
-jal  $$reta $pc i143          ; [call: dummy_13]: call function
+jal  $$reta $pc i142          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i61        ; [spill/refill]: spill
-jal  $$reta $pc i140          ; [call: dummy_13]: call function
+jal  $$reta $pc i139          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i62        ; [spill/refill]: spill
-jal  $$reta $pc i137          ; [call: dummy_13]: call function
+jal  $$reta $pc i136          ; [call: dummy_13]: call function
 move $r1 $$retv               ; [call: dummy_13]: copy returned value
 sw   $$locbase $r1 i63        ; [spill/refill]: spill
-jal  $$reta $pc i134          ; [call: dummy_13]: call function
+jal  $$reta $pc i133          ; [call: dummy_13]: call function
 lw   $r0 $$locbase i1         ; [spill/refill]: refill from spill
 lw   $r1 $$locbase i2         ; [spill/refill]: refill from spill
 add  $r1 $r0 $r1
@@ -466,6 +464,5 @@ move $$retv $r0               ; [fn end: reg_pressure_12] set return value
 cfsi i512                     ; [fn end: reg_pressure_12] free: locals 0 byte(s), call args 0 slot(s), register spills 512 byte(s)
 lw   $r0 $$locbase i0         ; [spill/refill]: refill from spill
 move $$reta $r0               ; [fn end: reg_pressure_12] restore return address
-poph i524288                  ; [fn end: reg_pressure_12]: restore used high registers 40..64
-popl i3                       ; [fn end: reg_pressure_12]: restore used low registers 16..40
+poph i530432                  ; [fn end: reg_pressure_12]: restore used high registers 40..64
 jal  $zero $$reta i0          ; [fn end: reg_pressure_12] return from call
