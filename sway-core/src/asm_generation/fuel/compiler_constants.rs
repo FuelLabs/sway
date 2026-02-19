@@ -28,6 +28,8 @@ pub(crate) const ARG_REG3: u8 = NUM_TOTAL_REGISTERS - 9;
 pub(crate) const ARG_REG4: u8 = NUM_TOTAL_REGISTERS - 10;
 pub(crate) const ARG_REG5: u8 = NUM_TOTAL_REGISTERS - 11;
 
+pub(crate) const FIRST_ALLOCATED_REGISTER: u8 = ARG_REG5 - 1;
+
 pub(crate) const NUM_ALLOCATABLE_REGISTERS: u8 =
     NUM_FREE_REGISTERS - NUM_COMPILER_RESERVED_REGISTERS;
 
