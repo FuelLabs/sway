@@ -118,18 +118,16 @@ pshh i524288                  ; [fn init: abi_decode_in_place_0]: push used high
 mcp  $$arg2 $$arg0 $$arg1     ; mcp target src len
 poph i524288                  ; [fn end: abi_decode_in_place_0]: restore used high registers 40..64
 jal  $zero $$reta i0          ; [fn end: abi_decode_in_place_0] return from call
-pshl i3                       ; [fn init: main_15]: push used low registers 16..40
-pshh i524288                  ; [fn init: main_15]: push used high registers 40..64
+pshh i530432                  ; [fn init: main_15]: push used high registers 40..64
 lw   $r0 $ssp i1              ; load word
 lw   $r1 $ssp i0              ; load word
 add  $r0 $r0 $r1
 move $$retv $r0               ; [fn end: main_15] set return value
-poph i524288                  ; [fn end: main_15]: restore used high registers 40..64
-popl i3                       ; [fn end: main_15]: restore used low registers 16..40
+poph i530432                  ; [fn end: main_15]: restore used high registers 40..64
 jal  $zero $$reta i0          ; [fn end: main_15] return from call
 .data:
 data_<Configurable, TUPLE>_0 .bytes[8] 00 00 00 00 00 00 00 02  ........
 data_<Configurable, WRAPPED>_1 .bytes[8] 00 00 00 00 00 00 00 01  ........
 
 
-    Finished release [optimized + fuel] target(s) [168 B] in ???
+    Finished release [optimized + fuel] target(s) [160 B] in ???
