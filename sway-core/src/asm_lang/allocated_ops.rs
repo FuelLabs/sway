@@ -246,7 +246,12 @@ pub(crate) enum AllocatedInstruction {
         AllocatedRegister,
     ),
     SCWQ(AllocatedRegister, AllocatedRegister, AllocatedRegister),
-    SRW(AllocatedRegister, AllocatedRegister, AllocatedRegister),
+    SRW(
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        VirtualImmediate06,
+    ),
     SRWQ(
         AllocatedRegister,
         AllocatedRegister,
@@ -412,7 +417,7 @@ impl AllocatedInstruction {
             RVRT(_r1) => vec![],
             SMO(_r1, _r2, _r3, _r4) => vec![],
             SCWQ(_r1, r2, _r3) => vec![r2],
-            SRW(r1, r2, _r3) => vec![r1, r2],
+            SRW(r1, r2, _r3, _imm) => vec![r1, r2],
             SRWQ(_r1, r2, _r3, _r4) => vec![r2],
             SWW(_r1, r2, _r3) => vec![r2],
             SWWQ(_r1, r2, _r3, _r4) => vec![r2],
@@ -547,7 +552,7 @@ impl fmt::Display for AllocatedInstruction {
             RVRT(a) => write!(fmtr, "rvrt {a}"),
             SMO(a, b, c, d) => write!(fmtr, "smo  {a} {b} {c} {d}"),
             SCWQ(a, b, c) => write!(fmtr, "scwq {a} {b} {c}"),
-            SRW(a, b, c) => write!(fmtr, "srw  {a} {b} {c}"),
+            SRW(a, b, c, d) => write!(fmtr, "srw  {a} {b} {c} {d}"),
             SRWQ(a, b, c, d) => write!(fmtr, "srwq {a} {b} {c} {d}"),
             SWW(a, b, c) => write!(fmtr, "sww  {a} {b} {c}"),
             SWWQ(a, b, c, d) => write!(fmtr, "swwq {a} {b} {c} {d}"),
@@ -787,7 +792,13 @@ impl AllocatedOp {
                 op::SMO::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
             }
             SCWQ(a, b, c) => op::SCWQ::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
-            SRW(a, b, c) => op::SRW::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            SRW(a, b, c, d) => op::SRW::new(
+                a.to_reg_id(),
+                b.to_reg_id(),
+                c.to_reg_id(),
+                d.value().into(),
+            )
+            .into(),
             SRWQ(a, b, c, d) => {
                 op::SRWQ::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
             }

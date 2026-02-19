@@ -79,7 +79,7 @@ fn main() -> bool {
   // with #[storage(read, write)] which is not allowed for predicates
   /*
   asm(r1: 0, r2: 0, r3) {
-    srw r1 r2 r3;
+    srw r1 r2 r3 i0;
   }
 
   asm(r1: 0, r2: 0, r3: 0, r4: 0) {

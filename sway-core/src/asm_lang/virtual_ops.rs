@@ -201,7 +201,12 @@ pub(crate) enum VirtualOp {
         VirtualRegister,
     ),
     SCWQ(VirtualRegister, VirtualRegister, VirtualRegister),
-    SRW(VirtualRegister, VirtualRegister, VirtualRegister),
+    SRW(
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        VirtualImmediate06,
+    ),
     SRWQ(
         VirtualRegister,
         VirtualRegister,
@@ -367,7 +372,7 @@ impl VirtualOp {
             RVRT(r1) => vec![r1],
             SMO(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             SCWQ(r1, r2, r3) => vec![r1, r2, r3],
-            SRW(r1, r2, r3) => vec![r1, r2, r3],
+            SRW(r1, r2, r3, _i) => vec![r1, r2, r3],
             SRWQ(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             SWW(r1, r2, r3) => vec![r1, r2, r3],
             SWWQ(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
@@ -448,7 +453,7 @@ impl VirtualOp {
             |  BHEI(_)
             | CSIZ(_, _)
             | BSIZ(_, _)
-            | SRW(_, _, _)
+            | SRW(_, _, _, _)
             | TIME(_, _)
             |  GM(_, _)
             | GTF(_, _, _)
@@ -624,7 +629,7 @@ impl VirtualOp {
             | RVRT(_)
             | SMO(_, _, _, _)
             | SCWQ(_, _, _)
-            | SRW(_, _, _)
+            | SRW(_, _, _, _)
             | SRWQ(_, _, _, _)
             | SWW(_, _, _)
             | SWWQ(_, _, _, _)
@@ -747,7 +752,7 @@ impl VirtualOp {
             RVRT(r1) => vec![r1],
             SMO(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             SCWQ(r1, _r2, r3) => vec![r1, r3],
-            SRW(_r1, _r2, r3) => vec![r3],
+            SRW(_r1, _r2, r3, _i) => vec![r3],
             SRWQ(r1, _r2, r3, r4) => vec![r1, r3, r4],
             SWW(r1, _r2, r3) => vec![r1, r3],
             SWWQ(r1, _r2, r3, r4) => vec![r1, r3, r4],
@@ -881,7 +886,7 @@ impl VirtualOp {
             RVRT(r1) => vec![r1],
             SMO(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             SCWQ(r1, _r2, r3) => vec![r1, r3],
-            SRW(_r1, _r2, r3) => vec![r3],
+            SRW(_r1, _r2, r3, _i) => vec![r3],
             SRWQ(r1, _r2, r3, r4) => vec![r1, r3, r4],
             SWW(r1, _r2, r3) => vec![r1, r3],
             SWWQ(r1, _r2, r3, r4) => vec![r1, r3, r4],
@@ -1013,7 +1018,7 @@ impl VirtualOp {
             RVRT(_r1) => vec![],
             SMO(_r1, _r2, _r3, _r4) => vec![],
             SCWQ(_r1, r2, _r3) => vec![r2],
-            SRW(r1, r2, _r3) => vec![r1, r2],
+            SRW(r1, r2, _r3, _i) => vec![r1, r2],
             SRWQ(_r1, r2, _r3, _r4) => vec![r2],
             SWW(_r1, r2, _r3) => vec![r2],
             SWWQ(_r1, r2, _r3, _r4) => vec![r2],
@@ -1441,10 +1446,11 @@ impl VirtualOp {
                 update_reg(reg_to_reg_map, r2),
                 update_reg(reg_to_reg_map, r3),
             ),
-            SRW(r1, r2, r3) => Self::SRW(
+            SRW(r1, r2, r3, i) => Self::SRW(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
                 update_reg(reg_to_reg_map, r3),
+                i.clone(),
             ),
             SRWQ(r1, r2, r3, r4) => Self::SRWQ(
                 update_reg(reg_to_reg_map, r1),
@@ -1928,11 +1934,11 @@ impl VirtualOp {
             BSIZ(reg1, reg2) => {
                 AllocatedInstruction::BSIZ(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
             }
-            LDC(reg1, reg2, reg3, imm0) => AllocatedInstruction::LDC(
+            LDC(reg1, reg2, reg3, imm) => AllocatedInstruction::LDC(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
-                imm0.clone(),
+                imm.clone(),
             ),
             BLDD(reg1, reg2, reg3, reg4) => AllocatedInstruction::BLDD(
                 map_reg(&mapping, reg1),
@@ -1970,10 +1976,11 @@ impl VirtualOp {
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
             ),
-            SRW(reg1, reg2, reg3) => AllocatedInstruction::SRW(
+            SRW(reg1, reg2, reg3, imm) => AllocatedInstruction::SRW(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
+                imm.clone(),
             ),
             SRWQ(reg1, reg2, reg3, reg4) => AllocatedInstruction::SRWQ(
                 map_reg(&mapping, reg1),

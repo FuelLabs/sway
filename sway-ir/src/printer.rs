@@ -918,11 +918,12 @@ fn instruction_to_doc<'a>(
                         .append(md_namer.md_idx_to_doc(context, metadata)),
                     ),
                 ),
-                FuelVmInstruction::StateLoadWord(key) => Doc::line(
+                FuelVmInstruction::StateLoadWord { key, offset } => Doc::line(
                     Doc::text(format!(
-                        "{} = state_load_word key {}",
+                        "{} = state_load_word key {}, {}",
                         namer.name(context, ins_value),
                         namer.name(context, key),
+                        offset,
                     ))
                     .append(md_namer.md_idx_to_doc(context, metadata)),
                 ),

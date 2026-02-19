@@ -4,7 +4,7 @@ category = "fail"
 #sameln: $()Pure function cannot access storage
 #check: $()fn read_asm_instructions()
 #nextln: $()Function "read_asm_instructions" is pure and cannot access storage.
-#check: $()srw r1 r2 r3;
+#check: $()srw r1 r2 r3 i0;
 #nextln: $()Reading a word from the storage happens here.
 #check: $()srwq r1 r2 r3 r4;
 #nextln: $()Reading storage slots happens here.
@@ -32,7 +32,7 @@ category = "fail"
 #sameln: $()Pure function cannot access storage
 #check: $()fn read_intrinsics(self) -> Self
 #nextln: $()Function "read_intrinsics" is pure and cannot access storage.
-#check: $()let _ = __state_load_word(b256::zero());
+#check: $()let _ = __state_load_word(b256::zero()
 #nextln: $()Reading a word from the storage happens here.
 #check: $()let _ = __state_load_quad(b256::zero(), ptr, 1);
 #nextln: $()Reading storage slots happens here.

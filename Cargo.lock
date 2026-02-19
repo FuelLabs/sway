@@ -3712,8 +3712,7 @@ dependencies = [
 [[package]]
 name = "fuel-asm"
 version = "0.65.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "49ae81d896972a39cfbe6e5659624d08aa889d30950d2831cca1c50bce95898f"
+source = "git+https://github.com/FuelLabs/fuel-vm#ec7761c4319febd9a7a1d76bb3686916ba9dcf21"
 dependencies = [
  "bitflags 2.9.4",
  "fuel-types 0.65.0",
@@ -3724,8 +3723,7 @@ dependencies = [
 [[package]]
 name = "fuel-compression"
 version = "0.65.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "55258ae5ef436d6b6c024db4dbe80784c8eafc5062b8b90f365db416e6b4e7bc"
+source = "git+https://github.com/FuelLabs/fuel-vm#ec7761c4319febd9a7a1d76bb3686916ba9dcf21"
 dependencies = [
  "fuel-derive 0.65.0",
  "fuel-types 0.65.0",
@@ -3801,8 +3799,7 @@ dependencies = [
 [[package]]
 name = "fuel-core-client"
 version = "0.47.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8fd34ff2c9ad4ed347982759b93ee72f9d31492cd49101fe1b0189a3cb32b434"
+source = "git+https://github.com/FuelLabs/fuel-core?branch=dento%2Fdynamic-storage#cc74bdcfdde71204884b9ee7397bb8b5e619d2a1"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -3953,8 +3950,7 @@ dependencies = [
 [[package]]
 name = "fuel-core-storage"
 version = "0.47.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e565d1cf1a528868988bb1165a7ccbc2f410dea356ddbf01032931fbde5c11e"
+source = "git+https://github.com/FuelLabs/fuel-core?branch=dento%2Fdynamic-storage#cc74bdcfdde71204884b9ee7397bb8b5e619d2a1"
 dependencies = [
  "anyhow",
  "derive_more 0.99.20",
@@ -3996,8 +3992,7 @@ dependencies = [
 [[package]]
 name = "fuel-core-types"
 version = "0.47.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9726f08ebe75b92c894626b804dd0a8f8efbe5fc3f25ded79a4d292812647e3d"
+source = "git+https://github.com/FuelLabs/fuel-core?branch=dento%2Fdynamic-storage#cc74bdcfdde71204884b9ee7397bb8b5e619d2a1"
 dependencies = [
  "anyhow",
  "bs58",
@@ -4008,6 +4003,7 @@ dependencies = [
  "fuel-vm 0.65.0",
  "k256",
  "parking_lot",
+ "proptest",
  "rand 0.8.5",
  "secrecy",
  "serde",
@@ -4039,8 +4035,7 @@ dependencies = [
 [[package]]
 name = "fuel-crypto"
 version = "0.65.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1bbd5d5d9809d517dab5f92a8c915403d83375efb6f3f5dd3994ff1e4ae28fe"
+source = "git+https://github.com/FuelLabs/fuel-vm#ec7761c4319febd9a7a1d76bb3686916ba9dcf21"
 dependencies = [
  "base64ct",
  "coins-bip32",
@@ -4072,8 +4067,7 @@ dependencies = [
 [[package]]
 name = "fuel-derive"
 version = "0.65.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eb4078dbab152ef822bc092bd542796270031152ff8c96008b9006fb8c52ce53"
+source = "git+https://github.com/FuelLabs/fuel-vm#ec7761c4319febd9a7a1d76bb3686916ba9dcf21"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4146,8 +4140,7 @@ dependencies = [
 [[package]]
 name = "fuel-merkle"
 version = "0.65.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f5ecc75b1771d36c86293fef3b63ebcd5fa5bafbc51d356d92ff60ebac59f636"
+source = "git+https://github.com/FuelLabs/fuel-vm#ec7761c4319febd9a7a1d76bb3686916ba9dcf21"
 dependencies = [
  "derive_more 0.99.20",
  "digest 0.10.7",
@@ -4167,8 +4160,7 @@ checksum = "ca73c81646409e9cacac532ff790567d629bc6c512c10ff986536e2335de22c9"
 [[package]]
 name = "fuel-storage"
 version = "0.65.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b9b46be43225f70c17f9e028f80a583c275fb2dec1e2a4e9100aa6385a2c86a"
+source = "git+https://github.com/FuelLabs/fuel-vm#ec7761c4319febd9a7a1d76bb3686916ba9dcf21"
 
 [[package]]
 name = "fuel-telemetry"
@@ -4229,8 +4221,7 @@ dependencies = [
 [[package]]
 name = "fuel-tx"
 version = "0.65.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6c26aca0167279221e6ea9bc688f4f9688d2e5a42533c05f1bdf97f1d200b1b"
+source = "git+https://github.com/FuelLabs/fuel-vm#ec7761c4319febd9a7a1d76bb3686916ba9dcf21"
 dependencies = [
  "bitflags 2.9.4",
  "derive_more 1.0.0",
@@ -4264,8 +4255,7 @@ dependencies = [
 [[package]]
 name = "fuel-types"
 version = "0.65.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b128048cde245d6e895cb7f7824d38d3e4d9f1b4cb5d514c7186bd79308af6a9"
+source = "git+https://github.com/FuelLabs/fuel-vm#ec7761c4319febd9a7a1d76bb3686916ba9dcf21"
 dependencies = [
  "educe 0.6.0",
  "fuel-derive 0.65.0",
@@ -4312,8 +4302,7 @@ dependencies = [
 [[package]]
 name = "fuel-vm"
 version = "0.65.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1632d884ec82f140f21f9943f0bcda8dfcdad02a94a032f67051e27eb1e8054"
+source = "git+https://github.com/FuelLabs/fuel-vm#ec7761c4319febd9a7a1d76bb3686916ba9dcf21"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4363,8 +4352,7 @@ dependencies = [
 [[package]]
 name = "fuels"
 version = "0.76.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "81901ab28bf46f0398c2b980a2343a3ea6c96ccf638a602cfeedb24db81ae31c"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=ironcev%2Fclonable-isuseraccountvariables#292073078b6077cf36c3ce3a9bbf7df48a6661a2"
 dependencies = [
  "fuel-core-client 0.47.1",
  "fuel-crypto 0.65.0",
@@ -4405,8 +4393,7 @@ dependencies = [
 [[package]]
 name = "fuels-accounts"
 version = "0.76.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0f2af2d57d6b20289978ccf81397ca385a4f0f9220111b7e27109111ba721b9"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=ironcev%2Fclonable-isuseraccountvariables#292073078b6077cf36c3ce3a9bbf7df48a6661a2"
 dependencies = [
  "async-trait",
  "chrono",
@@ -4447,8 +4434,7 @@ dependencies = [
 [[package]]
 name = "fuels-code-gen"
 version = "0.76.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b5d6a0c6d15b5bbba10b5862488c34fbeb06e82036409b6e663dedd68430aec9"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=ironcev%2Fclonable-isuseraccountvariables#292073078b6077cf36c3ce3a9bbf7df48a6661a2"
 dependencies = [
  "Inflector",
  "fuel-abi-types",
@@ -4493,8 +4479,7 @@ dependencies = [
 [[package]]
 name = "fuels-core"
 version = "0.76.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d857ff8b9a0034c86c63c53c079098ffd674d47089dd1a8c93bda3cf7e976885"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=ironcev%2Fclonable-isuseraccountvariables#292073078b6077cf36c3ce3a9bbf7df48a6661a2"
 dependencies = [
  "async-trait",
  "auto_impl",
@@ -4536,8 +4521,7 @@ dependencies = [
 [[package]]
 name = "fuels-macros"
 version = "0.76.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eb02dbec62f9441a199d08b584489f6f91f301e189b1299caeb21154c256ffeb"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=ironcev%2Fclonable-isuseraccountvariables#292073078b6077cf36c3ce3a9bbf7df48a6661a2"
 dependencies = [
  "fuels-code-gen 0.76.0",
  "itertools 0.12.1",
@@ -4568,8 +4552,7 @@ dependencies = [
 [[package]]
 name = "fuels-programs"
 version = "0.76.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d94a8919bc58ac98bd4376ad24b2137b75fad05eb096bf5dffe1d5438d684d1b"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=ironcev%2Fclonable-isuseraccountvariables#292073078b6077cf36c3ce3a9bbf7df48a6661a2"
 dependencies = [
  "async-trait",
  "fuel-abi-types",
@@ -4611,8 +4594,7 @@ dependencies = [
 [[package]]
 name = "fuels-test-helpers"
 version = "0.76.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4f277d3dd44e8ebc2aa2a5234ad8fee3433c43b0b58c2a7d7f73449d1e6930c"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=ironcev%2Fclonable-isuseraccountvariables#292073078b6077cf36c3ce3a9bbf7df48a6661a2"
 dependencies = [
  "fuel-core-chain-config 0.47.1",
  "fuel-core-client 0.47.1",

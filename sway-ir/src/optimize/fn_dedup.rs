@@ -252,7 +252,7 @@ fn hash_fn(
                         | crate::FuelVmInstruction::Smo { .. }
                         | crate::FuelVmInstruction::StateClear { .. }
                         | crate::FuelVmInstruction::StateLoadQuadWord { .. }
-                        | crate::FuelVmInstruction::StateLoadWord(_)
+                        | crate::FuelVmInstruction::StateLoadWord { .. }
                         | crate::FuelVmInstruction::StateStoreQuadWord { .. }
                         | crate::FuelVmInstruction::StateStoreWord { .. } => (),
                         crate::FuelVmInstruction::WideUnaryOp { op, .. } => op.hash(state),

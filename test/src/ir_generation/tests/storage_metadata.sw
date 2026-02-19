@@ -25,7 +25,7 @@ impl Incrementor for Contract {
     #[storage(read, write)]
     fn increment(increment_by: u64) -> u64 {
         let new_val = asm(key: KEY, is_set, i: increment_by, res) {
-            srw res is_set key;
+            srw res is_set key i0;
             add res res i;
             sww key is_set res;
             res: u64
@@ -36,7 +36,7 @@ impl Incrementor for Contract {
     #[storage(read)]
     fn get() -> u64 {
         asm(key: KEY, is_set, res) {
-            srw res is_set key;
+            srw res is_set key i0;
             res: u64
         }
     }
@@ -56,7 +56,7 @@ impl Incrementor for Contract {
 // unordered: $(readwrite_fn_name_md=$MD) = fn_name_span $MD 553 562
 
 // unordered: $(read_md=$MD) = purity "reads"
-// unordered: $(read_fn_name_md=$MD) = fn_name_span $MD 833 836
+// unordered: $(read_fn_name_md=$MD) = fn_name_span $MD 836 839
 
 // The span idx is first, then the storage attribute, then the function name attribute.
 

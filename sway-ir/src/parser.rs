@@ -510,8 +510,8 @@ mod ir_builder {
                 }
 
             rule op_state_load_word() -> IrAstOperation
-                = "state_load_word" _ "key" _ key:id() {
-                    IrAstOperation::StateLoadWord(key)
+                = "state_load_word" _ "key" _ key:id() comma() offset:decimal() {
+                    IrAstOperation::StateLoadWord(key, offset)
                 }
 
             rule op_state_store_quad_word() -> IrAstOperation
@@ -906,7 +906,7 @@ mod ir_builder {
         Smo(String, String, String, String),
         StateClear(String, String),
         StateLoadQuadWord(String, String, String),
-        StateLoadWord(String),
+        StateLoadWord(String, u64),
         StateStoreQuadWord(String, String, String),
         StateStoreWord(String, String),
         Store(String, String),
@@ -1622,9 +1622,9 @@ mod ir_builder {
                             *val_map.get(&number_of_slots).unwrap(),
                         )
                         .add_metadatum(context, opt_metadata),
-                    IrAstOperation::StateLoadWord(key) => block
+                    IrAstOperation::StateLoadWord(key, offset) => block
                         .append(context)
-                        .state_load_word(*val_map.get(&key).unwrap())
+                        .state_load_word(*val_map.get(&key).unwrap(), offset)
                         .add_metadatum(context, opt_metadata),
                     IrAstOperation::StateStoreQuadWord(src, key, number_of_slots) => block
                         .append(context)

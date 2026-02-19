@@ -472,6 +472,14 @@ jobs:
         run: cargo run --locked --release -p forc -- build --release --locked --path ./test/src/sdk-harness --experimental str_array_no_padding --output-directory ./test/src/sdk-harness/out
       - name: Run All SDK Tests - ['str_array_no_padding' enabled] (Release)
         run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
+      - name: Build All Test Projects - ['aligned_and_dynamic_storage' enabled] (Debug)
+        run: cargo run --locked --release -p forc -- build --locked --path ./test/src/sdk-harness --experimental aligned_and_dynamic_storage --output-directory ./test/src/sdk-harness/out
+      - name: Run All SDK Tests - ['aligned_and_dynamic_storage' enabled] (Debug)
+        run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --skip can_get_predicate_address --nocapture
+      - name: Build All Test Projects - ['aligned_and_dynamic_storage' enabled] (Release)
+        run: cargo run --locked --release -p forc -- build --release --locked --path ./test/src/sdk-harness --experimental aligned_and_dynamic_storage --output-directory ./test/src/sdk-harness/out
+      - name: Run All SDK Tests - ['aligned_and_dynamic_storage' enabled] (Release)
+        run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
 
   forc-run-benchmarks:
     runs-on: warp-ubuntu-latest-x64-4x
@@ -546,6 +554,10 @@ jobs:
         run: forc test --path sway-lib-std --experimental str_array_no_padding
       - name: Run Std Unit Tests - ['str_array_no_padding' enabled] (Release)
         run: forc test --release --path sway-lib-std --experimental str_array_no_padding
+      - name: Run Std Unit Tests - ['aligned_and_dynamic_storage' enabled] (Debug)
+        run: forc test --path sway-lib-std --experimental aligned_and_dynamic_storage
+      - name: Run Std Unit Tests - ['aligned_and_dynamic_storage' enabled] (Release)
+        run: forc test --release --path sway-lib-std --experimental aligned_and_dynamic_storage
       - name: Run In Language Unit Tests (Debug)
         run: forc test --error-on-warnings --path test/src/in_language_tests
       - name: Run In Language Unit Tests (Release)
@@ -558,6 +570,10 @@ jobs:
         run: forc test --error-on-warnings --path test/src/in_language_tests --experimental str_array_no_padding
       - name: Run In Language Unit Tests - ['str_array_no_padding' enabled] (Release)
         run: forc test --error-on-warnings --release --path test/src/in_language_tests --experimental str_array_no_padding
+      - name: Run In Language Unit Tests - ['aligned_and_dynamic_storage' enabled] (Debug)
+        run: forc test --error-on-warnings --path test/src/in_language_tests --experimental aligned_and_dynamic_storage
+      - name: Run In Language Unit Tests - ['aligned_and_dynamic_storage' enabled] (Release)
+        run: forc test --error-on-warnings --release --path test/src/in_language_tests --experimental aligned_and_dynamic_storage
 
   forc-pkg-fuels-deps-check:
     runs-on: ubuntu-latest

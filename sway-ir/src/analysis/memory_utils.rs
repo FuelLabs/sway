@@ -508,7 +508,9 @@ pub fn get_loaded_ptr_values(context: &Context, inst: Value) -> Vec<Value> {
             log_val: src_val_ptr,
             ..
         })
-        | InstOp::FuelVm(FuelVmInstruction::StateLoadWord(src_val_ptr))
+        | InstOp::FuelVm(FuelVmInstruction::StateLoadWord {
+            key: src_val_ptr, ..
+        })
         | InstOp::FuelVm(FuelVmInstruction::StateStoreWord {
             key: src_val_ptr, ..
         })
@@ -606,7 +608,7 @@ pub fn get_stored_ptr_values(context: &Context, inst: Value) -> Vec<Value> {
             | FuelVmInstruction::Smo { .. }
             | FuelVmInstruction::StateClear { .. } => vec![],
             FuelVmInstruction::StateLoadQuadWord { load_val, .. } => vec![*load_val],
-            FuelVmInstruction::StateLoadWord(_) | FuelVmInstruction::StateStoreWord { .. } => {
+            FuelVmInstruction::StateLoadWord { .. } | FuelVmInstruction::StateStoreWord { .. } => {
                 vec![]
             }
             FuelVmInstruction::StateStoreQuadWord { stored_val: _, .. } => vec![],

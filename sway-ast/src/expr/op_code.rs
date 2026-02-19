@@ -310,7 +310,7 @@ define_op_codes!(
         Srw,
         SrwOpcode,
         "srw",
-        (ret: reg, is_set: reg, state_addr: reg)
+        (ret: reg, is_set: reg, state_addr: reg, offset: imm)
     ),
     (
         Srwq,

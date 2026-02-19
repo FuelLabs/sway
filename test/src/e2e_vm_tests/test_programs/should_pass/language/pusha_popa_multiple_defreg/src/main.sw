@@ -37,7 +37,7 @@ fn store_read() -> u64 {
         movi c i32;
         aloc c;
         move slot hp;
-        srw a b slot;   // somehow make b allocate to $r3
+        srw a b slot i0;   // somehow make b allocate to $r3
         movi c i0;
         add a a slot;
         sub a a slot;
@@ -52,5 +52,5 @@ fn store_read() -> u64 {
 fn incorrect_pusha_popa() -> () {
     let c = abi(IncorrectPushaPopa, CONTRACT_ID);
     c.incorrect_pusha_popa();
-    ()	
+    ()
 }
