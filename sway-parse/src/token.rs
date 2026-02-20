@@ -805,11 +805,13 @@ pub fn parse_int_suffix(suffix: &str) -> Option<LitIntType> {
         "i16" => LitIntType::I16,
         "i32" => LitIntType::I32,
         "i64" => LitIntType::I64,
+        "b256" => LitIntType::B256,
         _ => return None,
     })
 }
 
 fn parse_digits(big_uint: &mut BigUint, l: &mut Lexer<'_>, radix: u32) -> Option<usize> {
+    let mut num_digits = 1;
     loop {
         match l.stream.peek() {
             None => break None,
@@ -819,9 +821,13 @@ fn parse_digits(big_uint: &mut BigUint, l: &mut Lexer<'_>, radix: u32) -> Option
             Some(&(index, character)) => match character.to_digit(radix) {
                 None => break Some(index),
                 Some(digit) => {
+                    if (radix == 16 && num_digits == 64) || (radix == 2 && num_digits == 256) {
+                        break Some(index);
+                    }
                     let _ = l.stream.next();
                     *big_uint *= radix;
                     *big_uint += digit;
+                    num_digits += 1;
                 }
             },
         };

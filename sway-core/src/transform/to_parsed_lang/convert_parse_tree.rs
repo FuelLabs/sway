@@ -4153,6 +4153,12 @@ fn literal_to_literal(
                         let error = ConvertParseTreeError::SignedIntegersNotSupported { span };
                         return Err(handler.emit_err(error.into()));
                     }
+                    LitIntType::B256 => {
+                        let bytes = parsed.to_bytes_be();
+                        let mut full_bytes = [0u8; 32];
+                        full_bytes[(32 - bytes.len())..].copy_from_slice(&bytes);
+                        Literal::B256(full_bytes)
+                    }
                 },
             }
         }
