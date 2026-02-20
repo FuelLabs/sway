@@ -524,93 +524,90 @@ move $$locbase $sp            ; [fn init: main_0]: set locals base register
 cfei i264920                  ; [fn init: main_0]: allocate: locals 264920 byte(s), call args 0 slot(s)
 move $r1 $$reta               ; [fn init: main_0]: save return address
 move $$arg0 $$locbase         ; [call: array_repeat_zero_small_u8_1]: pass argument 0
-jal  $$reta $pc i94           ; [call: array_repeat_zero_small_u8_1]: call function
+jal  $$reta $pc i91           ; [call: array_repeat_zero_small_u8_1]: call function
 addi $r0 $$locbase i8         ; get offset to local __ptr [u64; 5]
 move $$arg0 $r0               ; [call: array_repeat_zero_small_u16_2]: pass argument 0
-jal  $$reta $pc i95           ; [call: array_repeat_zero_small_u16_2]: call function
+jal  $$reta $pc i92           ; [call: array_repeat_zero_small_u16_2]: call function
 addi $r0 $$locbase i48        ; get offset to local __ptr [u64; 5]
 move $$arg0 $r0               ; [call: array_repeat_zero_small_u16_2]: pass argument 0
-jal  $$reta $pc i92           ; [call: array_repeat_zero_small_u16_2]: call function
+jal  $$reta $pc i89           ; [call: array_repeat_zero_small_u16_2]: call function
 movi $r0 i32989               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
 add  $r0 $$locbase $r0        ; get absolute byte offset to local
 move $$arg0 $r0               ; [call: array_repeat_zero_small_u16_2]: pass argument 0
-jal  $$reta $pc i87           ; [call: array_repeat_zero_small_u16_2]: call function
+jal  $$reta $pc i84           ; [call: array_repeat_zero_small_u16_2]: call function
 movi $r0 i32994               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
 add  $r0 $$locbase $r0        ; get absolute byte offset to local
 move $$arg0 $r0               ; [call: array_repeat_zero_small_u256_5]: pass argument 0
-jal  $$reta $pc i86           ; [call: array_repeat_zero_small_u256_5]: call function
+jal  $$reta $pc i83           ; [call: array_repeat_zero_small_u256_5]: call function
 movi $r0 i33014               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
 add  $r0 $$locbase $r0        ; get absolute byte offset to local
 move $$arg0 $r0               ; [call: array_repeat_zero_small_b256_6]: pass argument 0
-jal  $$reta $pc i85           ; [call: array_repeat_zero_small_b256_6]: call function
+jal  $$reta $pc i82           ; [call: array_repeat_zero_small_b256_6]: call function
 movi $r0 i33034               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
 add  $r0 $$locbase $r0        ; get absolute byte offset to local
 move $$arg0 $r0               ; [call: array_repeat_zero_small_bool_7]: pass argument 0
-jal  $$reta $pc i84           ; [call: array_repeat_zero_small_bool_7]: call function
+jal  $$reta $pc i81           ; [call: array_repeat_zero_small_bool_7]: call function
 movi $r0 i33035               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
 add  $r0 $$locbase $r0        ; get absolute byte offset to local
 move $$arg0 $r0               ; [call: array_repeat_zero_big_u8_8]: pass argument 0
-jal  $$reta $pc i83           ; [call: array_repeat_zero_big_u8_8]: call function
+jal  $$reta $pc i80           ; [call: array_repeat_zero_big_u8_8]: call function
 movi $r0 i33039               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
 add  $r0 $$locbase $r0        ; get absolute byte offset to local
 move $$arg0 $r0               ; [call: array_repeat_zero_big_u32_10]: pass argument 0
-jal  $$reta $pc i82           ; [call: array_repeat_zero_big_u32_10]: call function
+jal  $$reta $pc i79           ; [call: array_repeat_zero_big_u32_10]: call function
 movi $r0 i33064               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
 add  $r0 $$locbase $r0        ; get absolute byte offset to local
 move $$arg0 $r0               ; [call: array_repeat_zero_big_u32_10]: pass argument 0
-jal  $$reta $pc i77           ; [call: array_repeat_zero_big_u32_10]: call function
+jal  $$reta $pc i74           ; [call: array_repeat_zero_big_u32_10]: call function
 movi $r0 i33089               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
 add  $r0 $$locbase $r0        ; get absolute byte offset to local
 move $$arg0 $r0               ; [call: array_repeat_zero_big_u32_10]: pass argument 0
-jal  $$reta $pc i72           ; [call: array_repeat_zero_big_u32_10]: call function
+jal  $$reta $pc i69           ; [call: array_repeat_zero_big_u32_10]: call function
 addi $r0 $$locbase i88        ; get offset to local __ptr [u256; 25]
 move $$arg0 $r0               ; [call: array_repeat_zero_big_u256_12]: pass argument 0
-jal  $$reta $pc i73           ; [call: array_repeat_zero_big_u256_12]: call function
+jal  $$reta $pc i70           ; [call: array_repeat_zero_big_u256_12]: call function
 addi $r0 $$locbase i888       ; get offset to local __ptr [b256; 25]
 move $$arg0 $r0               ; [call: array_repeat_zero_big_b256_13]: pass argument 0
-jal  $$reta $pc i74           ; [call: array_repeat_zero_big_b256_13]: call function
+jal  $$reta $pc i71           ; [call: array_repeat_zero_big_b256_13]: call function
 addi $r0 $$locbase i1688      ; get offset to local __ptr [bool; 25]
 move $$arg0 $r0               ; [call: array_repeat_zero_big_bool_14]: pass argument 0
-jal  $$reta $pc i75           ; [call: array_repeat_zero_big_bool_14]: call function
+jal  $$reta $pc i72           ; [call: array_repeat_zero_big_bool_14]: call function
 addi $r0 $$locbase i1720      ; get offset to local __ptr [bool; 5]
 move $$arg0 $r0               ; [call: small_array_repeat_15]: pass argument 0
-jal  $$reta $pc i76           ; [call: small_array_repeat_15]: call function
+jal  $$reta $pc i73           ; [call: small_array_repeat_15]: call function
 addi $r0 $$locbase i1728      ; get offset to local __ptr [bool; 25]
 move $$arg0 $r0               ; [call: big_array_repeat_16]: pass argument 0
-jal  $$reta $pc i96           ; [call: big_array_repeat_16]: call function
+jal  $$reta $pc i84           ; [call: big_array_repeat_16]: call function
 addi $r0 $$locbase i1760      ; get offset to local __ptr [u8; 262145]
 move $$arg0 $r0               ; [call: u8_array_bigger_than_18_bits_17]: pass argument 0
-jal  $$reta $pc i106          ; [call: u8_array_bigger_than_18_bits_17]: call function
-jal  $$reta $pc i110          ; [call: arrays_with_const_length_18]: call function
+jal  $$reta $pc i93           ; [call: u8_array_bigger_than_18_bits_17]: call function
+jal  $$reta $pc i97           ; [call: arrays_with_const_length_18]: call function
 movi $r0 i33114               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
 add  $r0 $$locbase $r0        ; get absolute byte offset to local
 move $$arg0 $r0               ; [call: decode_array_19]: pass argument 0
-jal  $$reta $pc i108          ; [call: decode_array_19]: call function
+jal  $$reta $pc i95           ; [call: decode_array_19]: call function
 movi $r0 i33114               ; get word offset to local from base
 muli $r0 $r0 i8               ; get byte offset to local from base
 add  $r0 $$locbase $r0        ; get absolute byte offset to local
-mul  $r2 $zero $one           ; get offset to array element
-add  $r2 $r0 $r2              ; add array element offset to array base
-lb   $r0 $r2 i0               ; load byte
+lb   $r0 $r0 i0               ; load byte
 movi $r2 i255                 ; initialize constant into register
 eq   $r2 $r0 $r2
 eq   $r2 $r2 $zero
 jnzf $r2 $zero i1
-jmpf $zero i7
+jmpf $zero i6
 move $$arg0 $r0               ; [call: log_46]: pass argument 0
-jal  $$reta $pc i151          ; [call: log_46]: call function
-movi $r0 i255                 ; initialize constant into register
-move $$arg0 $r0               ; [call: log_46]: pass argument 0
-jal  $$reta $pc i148          ; [call: log_46]: call function
+jal  $$reta $pc i134          ; [call: log_46]: call function
+movi $$arg0 i255              ; [call: log_46]: pass argument 0
+jal  $$reta $pc i132          ; [call: log_46]: call function
 load $r0 data_NonConfigurable_0; load constant from data section
 rvrt $r0
 cfsi i264920                  ; [fn end: main_0] free: locals 264920 byte(s), call args 0 slot(s)
@@ -660,37 +657,27 @@ poph i524288                  ; [fn end: array_repeat_zero_big_bool_14]: restore
 jal  $zero $$reta i0          ; [fn end: array_repeat_zero_big_bool_14] return from call
 pshl i1                       ; [fn init: small_array_repeat_15]: push used low registers 16..40
 pshh i524288                  ; [fn init: small_array_repeat_15]: push used high registers 40..64
-mul  $r0 $zero $one           ; get offset to array element
-add  $r0 $$arg0 $r0           ; add array element offset to array base
+sb   $$arg0 $one i0           ; store byte
+addi $r0 $$arg0 i1            ; add array element offset to array base
 sb   $r0 $one i0              ; store byte
-mul  $r0 $one $one            ; get offset to array element
-add  $r0 $$arg0 $r0           ; add array element offset to array base
+addi $r0 $$arg0 i2            ; add array element offset to array base
 sb   $r0 $one i0              ; store byte
-movi $r0 i2                   ; initialize constant into register
-mul  $r0 $r0 $one             ; get offset to array element
-add  $r0 $$arg0 $r0           ; add array element offset to array base
+addi $r0 $$arg0 i3            ; add array element offset to array base
 sb   $r0 $one i0              ; store byte
-movi $r0 i3                   ; initialize constant into register
-mul  $r0 $r0 $one             ; get offset to array element
-add  $r0 $$arg0 $r0           ; add array element offset to array base
-sb   $r0 $one i0              ; store byte
-movi $r0 i4                   ; initialize constant into register
-mul  $r0 $r0 $one             ; get offset to array element
-add  $r0 $$arg0 $r0           ; add array element offset to array base
+addi $r0 $$arg0 i4            ; add array element offset to array base
 sb   $r0 $one i0              ; store byte
 poph i524288                  ; [fn end: small_array_repeat_15]: restore used high registers 40..64
 popl i1                       ; [fn end: small_array_repeat_15]: restore used low registers 16..40
 jal  $zero $$reta i0          ; [fn end: small_array_repeat_15] return from call
 pshl i3                       ; [fn init: big_array_repeat_16]: push used low registers 16..40
 pshh i524288                  ; [fn init: big_array_repeat_16]: push used high registers 40..64
-move $r1 $zero                ; move parameter from branch to block argument
-mul  $r0 $r1 $one             ; get offset to array element
-add  $r0 $$arg0 $r0           ; add array element offset to array base
+movi $r1 i0                   ; move parameter from branch to block argument
+add  $r0 $$arg0 $r1           ; add array element offset to array base
 sb   $r0 $one i0              ; store byte
-add  $r1 $r1 $one
+addi $r1 $r1 i1
 movi $r0 i25                  ; initialize constant into register
 lt   $r0 $r1 $r0
-jnzb $r0 $zero i5
+jnzb $r0 $zero i4
 poph i524288                  ; [fn end: big_array_repeat_16]: restore used high registers 40..64
 popl i3                       ; [fn end: big_array_repeat_16]: restore used low registers 16..40
 jal  $zero $$reta i0          ; [fn end: big_array_repeat_16] return from call
@@ -709,15 +696,13 @@ cfei i72                      ; [fn init: decode_array_19]: allocate: locals 72 
 move $r2 $$arg0               ; [fn init: decode_array_19]: copy argument 0 (__ret_value)
 move $r3 $$reta               ; [fn init: decode_array_19]: save return address
 addi $r0 $$locbase i16        ; get offset to local __ptr [u8; 1]
-mul  $r1 $zero $one           ; get offset to array element
-add  $r1 $r0 $r1              ; add array element offset to array base
-movi $r0 i255                 ; initialize constant into register
-sb   $r1 $r0 i0               ; store byte
+movi $r1 i255                 ; initialize constant into register
+sb   $r0 $r1 i0               ; store byte
 addi $r0 $$locbase i16        ; get offset to local __ptr [u8; 1]
 addi $r1 $$locbase i24        ; get offset to local __ptr slice
 move $$arg0 $r0               ; [call: to_slice_20]: pass argument 0
 move $$arg1 $r1               ; [call: to_slice_20]: pass argument 1
-jal  $$reta $pc i25           ; [call: to_slice_20]: call function
+jal  $$reta $pc i21           ; [call: to_slice_20]: call function
 addi $r0 $$locbase i40        ; get offset to local __ptr slice
 mcpi $r0 $r1 i16              ; copy memory
 addi $r0 $$locbase i40        ; get offset to local __ptr slice
@@ -728,15 +713,11 @@ lw   $r1 $$locbase i8         ; load word
 sw   $$locbase $r0 i0         ; store word
 sw   $$locbase $r1 i1         ; store word
 lw   $r0 $$locbase i0         ; load word
-move $r1 $one                 ; copy ASM block argument's constant initial value to register
+movi $r1 i1                   ; copy ASM block argument's constant initial value to register
 aloc $one                     ; aloc size
 mcp  $hp $r0 $r1              ; mcp hp src size
-mul  $r0 $zero $one           ; get offset to array element
-add  $r0 $hp $r0              ; add array element offset to array base
-lb   $r0 $r0 i0               ; load byte
-mul  $r1 $zero $one           ; get offset to array element
-add  $r1 $r2 $r1              ; add array element offset to array base
-sb   $r1 $r0 i0               ; store byte
+lb   $r0 $hp i0               ; load byte
+sb   $r2 $r0 i0               ; store byte
 cfsi i72                      ; [fn end: decode_array_19] free: locals 72 byte(s), call args 0 slot(s)
 move $$reta $r3               ; [fn end: decode_array_19] restore return address
 poph i524288                  ; [fn end: decode_array_19]: restore used high registers 40..64
@@ -787,7 +768,7 @@ data_NonConfigurable_2 .word 14454674236531057292
 
 0x00000000 MOVE R60 $pc                                    ;; [26, 240, 48, 0]
 0x00000004 JMPF $zero 0x4                                  ;; [116, 0, 0, 4]
-0x00000008                                                 ;; [0, 0, 0, 0, 0, 0, 4, 56]
+0x00000008                                                 ;; [0, 0, 0, 0, 0, 0, 3, 240]
 0x00000010                                                 ;; [0, 0, 0, 0, 0, 0, 0, 0]
 0x00000018 LW R63 R60 0x1                                  ;; [93, 255, 192, 1]
 0x0000001c ADD R63 R63 R60                                 ;; [16, 255, 255, 0]
@@ -800,263 +781,245 @@ data_NonConfigurable_2 .word 14454674236531057292
 0x00000038 CFEI 0x40ad8                                    ;; [145, 4, 10, 216]
 0x0000003c MOVE R17 R62                                    ;; [26, 71, 224, 0]
 0x00000040 MOVE R58 R59                                    ;; [26, 235, 176, 0]
-0x00000044 JAL R62 $pc 0x5e                                ;; [153, 248, 48, 94]
+0x00000044 JAL R62 $pc 0x5b                                ;; [153, 248, 48, 91]
 0x00000048 ADDI $writable R59 0x8                          ;; [80, 67, 176, 8]
 0x0000004c MOVE R58 $writable                              ;; [26, 233, 0, 0]
-0x00000050 JAL R62 $pc 0x5f                                ;; [153, 248, 48, 95]
+0x00000050 JAL R62 $pc 0x5c                                ;; [153, 248, 48, 92]
 0x00000054 ADDI $writable R59 0x30                         ;; [80, 67, 176, 48]
 0x00000058 MOVE R58 $writable                              ;; [26, 233, 0, 0]
-0x0000005c JAL R62 $pc 0x5c                                ;; [153, 248, 48, 92]
+0x0000005c JAL R62 $pc 0x59                                ;; [153, 248, 48, 89]
 0x00000060 MOVI $writable 0x80dd                           ;; [114, 64, 128, 221]
 0x00000064 MULI $writable $writable 0x8                    ;; [85, 65, 0, 8]
 0x00000068 ADD $writable R59 $writable                     ;; [16, 67, 180, 0]
 0x0000006c MOVE R58 $writable                              ;; [26, 233, 0, 0]
-0x00000070 JAL R62 $pc 0x57                                ;; [153, 248, 48, 87]
+0x00000070 JAL R62 $pc 0x54                                ;; [153, 248, 48, 84]
 0x00000074 MOVI $writable 0x80e2                           ;; [114, 64, 128, 226]
 0x00000078 MULI $writable $writable 0x8                    ;; [85, 65, 0, 8]
 0x0000007c ADD $writable R59 $writable                     ;; [16, 67, 180, 0]
 0x00000080 MOVE R58 $writable                              ;; [26, 233, 0, 0]
-0x00000084 JAL R62 $pc 0x56                                ;; [153, 248, 48, 86]
+0x00000084 JAL R62 $pc 0x53                                ;; [153, 248, 48, 83]
 0x00000088 MOVI $writable 0x80f6                           ;; [114, 64, 128, 246]
 0x0000008c MULI $writable $writable 0x8                    ;; [85, 65, 0, 8]
 0x00000090 ADD $writable R59 $writable                     ;; [16, 67, 180, 0]
 0x00000094 MOVE R58 $writable                              ;; [26, 233, 0, 0]
-0x00000098 JAL R62 $pc 0x55                                ;; [153, 248, 48, 85]
+0x00000098 JAL R62 $pc 0x52                                ;; [153, 248, 48, 82]
 0x0000009c MOVI $writable 0x810a                           ;; [114, 64, 129, 10]
 0x000000a0 MULI $writable $writable 0x8                    ;; [85, 65, 0, 8]
 0x000000a4 ADD $writable R59 $writable                     ;; [16, 67, 180, 0]
 0x000000a8 MOVE R58 $writable                              ;; [26, 233, 0, 0]
-0x000000ac JAL R62 $pc 0x54                                ;; [153, 248, 48, 84]
+0x000000ac JAL R62 $pc 0x51                                ;; [153, 248, 48, 81]
 0x000000b0 MOVI $writable 0x810b                           ;; [114, 64, 129, 11]
 0x000000b4 MULI $writable $writable 0x8                    ;; [85, 65, 0, 8]
 0x000000b8 ADD $writable R59 $writable                     ;; [16, 67, 180, 0]
 0x000000bc MOVE R58 $writable                              ;; [26, 233, 0, 0]
-0x000000c0 JAL R62 $pc 0x53                                ;; [153, 248, 48, 83]
+0x000000c0 JAL R62 $pc 0x50                                ;; [153, 248, 48, 80]
 0x000000c4 MOVI $writable 0x810f                           ;; [114, 64, 129, 15]
 0x000000c8 MULI $writable $writable 0x8                    ;; [85, 65, 0, 8]
 0x000000cc ADD $writable R59 $writable                     ;; [16, 67, 180, 0]
 0x000000d0 MOVE R58 $writable                              ;; [26, 233, 0, 0]
-0x000000d4 JAL R62 $pc 0x52                                ;; [153, 248, 48, 82]
+0x000000d4 JAL R62 $pc 0x4f                                ;; [153, 248, 48, 79]
 0x000000d8 MOVI $writable 0x8128                           ;; [114, 64, 129, 40]
 0x000000dc MULI $writable $writable 0x8                    ;; [85, 65, 0, 8]
 0x000000e0 ADD $writable R59 $writable                     ;; [16, 67, 180, 0]
 0x000000e4 MOVE R58 $writable                              ;; [26, 233, 0, 0]
-0x000000e8 JAL R62 $pc 0x4d                                ;; [153, 248, 48, 77]
+0x000000e8 JAL R62 $pc 0x4a                                ;; [153, 248, 48, 74]
 0x000000ec MOVI $writable 0x8141                           ;; [114, 64, 129, 65]
 0x000000f0 MULI $writable $writable 0x8                    ;; [85, 65, 0, 8]
 0x000000f4 ADD $writable R59 $writable                     ;; [16, 67, 180, 0]
 0x000000f8 MOVE R58 $writable                              ;; [26, 233, 0, 0]
-0x000000fc JAL R62 $pc 0x48                                ;; [153, 248, 48, 72]
+0x000000fc JAL R62 $pc 0x45                                ;; [153, 248, 48, 69]
 0x00000100 ADDI $writable R59 0x58                         ;; [80, 67, 176, 88]
 0x00000104 MOVE R58 $writable                              ;; [26, 233, 0, 0]
-0x00000108 JAL R62 $pc 0x49                                ;; [153, 248, 48, 73]
+0x00000108 JAL R62 $pc 0x46                                ;; [153, 248, 48, 70]
 0x0000010c ADDI $writable R59 0x378                        ;; [80, 67, 179, 120]
 0x00000110 MOVE R58 $writable                              ;; [26, 233, 0, 0]
-0x00000114 JAL R62 $pc 0x4a                                ;; [153, 248, 48, 74]
+0x00000114 JAL R62 $pc 0x47                                ;; [153, 248, 48, 71]
 0x00000118 ADDI $writable R59 0x698                        ;; [80, 67, 182, 152]
 0x0000011c MOVE R58 $writable                              ;; [26, 233, 0, 0]
-0x00000120 JAL R62 $pc 0x4b                                ;; [153, 248, 48, 75]
+0x00000120 JAL R62 $pc 0x48                                ;; [153, 248, 48, 72]
 0x00000124 ADDI $writable R59 0x6b8                        ;; [80, 67, 182, 184]
 0x00000128 MOVE R58 $writable                              ;; [26, 233, 0, 0]
-0x0000012c JAL R62 $pc 0x4c                                ;; [153, 248, 48, 76]
+0x0000012c JAL R62 $pc 0x49                                ;; [153, 248, 48, 73]
 0x00000130 ADDI $writable R59 0x6c0                        ;; [80, 67, 182, 192]
 0x00000134 MOVE R58 $writable                              ;; [26, 233, 0, 0]
-0x00000138 JAL R62 $pc 0x60                                ;; [153, 248, 48, 96]
+0x00000138 JAL R62 $pc 0x54                                ;; [153, 248, 48, 84]
 0x0000013c ADDI $writable R59 0x6e0                        ;; [80, 67, 182, 224]
 0x00000140 MOVE R58 $writable                              ;; [26, 233, 0, 0]
-0x00000144 JAL R62 $pc 0x6a                                ;; [153, 248, 48, 106]
-0x00000148 JAL R62 $pc 0x6e                                ;; [153, 248, 48, 110]
+0x00000144 JAL R62 $pc 0x5d                                ;; [153, 248, 48, 93]
+0x00000148 JAL R62 $pc 0x61                                ;; [153, 248, 48, 97]
 0x0000014c MOVI $writable 0x815a                           ;; [114, 64, 129, 90]
 0x00000150 MULI $writable $writable 0x8                    ;; [85, 65, 0, 8]
 0x00000154 ADD $writable R59 $writable                     ;; [16, 67, 180, 0]
 0x00000158 MOVE R58 $writable                              ;; [26, 233, 0, 0]
-0x0000015c JAL R62 $pc 0x6c                                ;; [153, 248, 48, 108]
+0x0000015c JAL R62 $pc 0x5f                                ;; [153, 248, 48, 95]
 0x00000160 MOVI $writable 0x815a                           ;; [114, 64, 129, 90]
 0x00000164 MULI $writable $writable 0x8                    ;; [85, 65, 0, 8]
 0x00000168 ADD $writable R59 $writable                     ;; [16, 67, 180, 0]
-0x0000016c MUL R18 $zero $one                              ;; [27, 72, 0, 64]
-0x00000170 ADD R18 $writable R18                           ;; [16, 73, 4, 128]
-0x00000174 LB $writable R18 0x0                            ;; [92, 65, 32, 0]
-0x00000178 MOVI R18 0xff                                   ;; [114, 72, 0, 255]
-0x0000017c EQ R18 $writable R18                            ;; [19, 73, 4, 128]
-0x00000180 EQ R18 R18 $zero                                ;; [19, 73, 32, 0]
-0x00000184 JNZF R18 $zero 0x1                              ;; [118, 72, 0, 1]
-0x00000188 JMPF $zero 0x7                                  ;; [116, 0, 0, 7]
-0x0000018c MOVE R58 $writable                              ;; [26, 233, 0, 0]
-0x00000190 JAL R62 $pc 0x97                                ;; [153, 248, 48, 151]
-0x00000194 MOVI $writable 0xff                             ;; [114, 64, 0, 255]
-0x00000198 MOVE R58 $writable                              ;; [26, 233, 0, 0]
-0x0000019c JAL R62 $pc 0x94                                ;; [153, 248, 48, 148]
-0x000001a0 LW $writable R63 0x0                            ;; [93, 67, 240, 0]
-0x000001a4 RVRT $writable                                  ;; [54, 64, 0, 0]
-0x000001a8 CFSI 0x40ad8                                    ;; [146, 4, 10, 216]
-0x000001ac MOVE R62 R17                                    ;; [26, 249, 16, 0]
-0x000001b0 POPH 0x80000                                    ;; [152, 8, 0, 0]
-0x000001b4 POPL 0x7                                        ;; [151, 0, 0, 7]
-0x000001b8 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
-0x000001bc PSHH 0x80000                                    ;; [150, 8, 0, 0]
-0x000001c0 MCLI R58 0x5                                    ;; [112, 232, 0, 5]
-0x000001c4 POPH 0x80000                                    ;; [152, 8, 0, 0]
-0x000001c8 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
-0x000001cc PSHH 0x80000                                    ;; [150, 8, 0, 0]
-0x000001d0 MCLI R58 0x28                                   ;; [112, 232, 0, 40]
-0x000001d4 POPH 0x80000                                    ;; [152, 8, 0, 0]
-0x000001d8 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
-0x000001dc PSHH 0x80000                                    ;; [150, 8, 0, 0]
-0x000001e0 MCLI R58 0xa0                                   ;; [112, 232, 0, 160]
-0x000001e4 POPH 0x80000                                    ;; [152, 8, 0, 0]
-0x000001e8 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
-0x000001ec PSHH 0x80000                                    ;; [150, 8, 0, 0]
-0x000001f0 MCLI R58 0xa0                                   ;; [112, 232, 0, 160]
-0x000001f4 POPH 0x80000                                    ;; [152, 8, 0, 0]
-0x000001f8 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
-0x000001fc PSHH 0x80000                                    ;; [150, 8, 0, 0]
-0x00000200 MCLI R58 0x5                                    ;; [112, 232, 0, 5]
-0x00000204 POPH 0x80000                                    ;; [152, 8, 0, 0]
-0x00000208 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
-0x0000020c PSHH 0x80000                                    ;; [150, 8, 0, 0]
-0x00000210 MCLI R58 0x19                                   ;; [112, 232, 0, 25]
-0x00000214 POPH 0x80000                                    ;; [152, 8, 0, 0]
-0x00000218 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
-0x0000021c PSHH 0x80000                                    ;; [150, 8, 0, 0]
-0x00000220 MCLI R58 0xc8                                   ;; [112, 232, 0, 200]
-0x00000224 POPH 0x80000                                    ;; [152, 8, 0, 0]
-0x00000228 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
-0x0000022c PSHH 0x80000                                    ;; [150, 8, 0, 0]
-0x00000230 MCLI R58 0x320                                  ;; [112, 232, 3, 32]
-0x00000234 POPH 0x80000                                    ;; [152, 8, 0, 0]
-0x00000238 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
-0x0000023c PSHH 0x80000                                    ;; [150, 8, 0, 0]
-0x00000240 MCLI R58 0x320                                  ;; [112, 232, 3, 32]
-0x00000244 POPH 0x80000                                    ;; [152, 8, 0, 0]
-0x00000248 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
-0x0000024c PSHH 0x80000                                    ;; [150, 8, 0, 0]
-0x00000250 MCLI R58 0x19                                   ;; [112, 232, 0, 25]
-0x00000254 POPH 0x80000                                    ;; [152, 8, 0, 0]
-0x00000258 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
-0x0000025c PSHL 0x1                                        ;; [149, 0, 0, 1]
-0x00000260 PSHH 0x80000                                    ;; [150, 8, 0, 0]
-0x00000264 MUL $writable $zero $one                        ;; [27, 64, 0, 64]
-0x00000268 ADD $writable R58 $writable                     ;; [16, 67, 164, 0]
-0x0000026c SB $writable $one 0x0                           ;; [94, 64, 16, 0]
-0x00000270 MUL $writable $one $one                         ;; [27, 64, 16, 64]
-0x00000274 ADD $writable R58 $writable                     ;; [16, 67, 164, 0]
+0x0000016c LB $writable $writable 0x0                      ;; [92, 65, 0, 0]
+0x00000170 MOVI R18 0xff                                   ;; [114, 72, 0, 255]
+0x00000174 EQ R18 $writable R18                            ;; [19, 73, 4, 128]
+0x00000178 EQ R18 R18 $zero                                ;; [19, 73, 32, 0]
+0x0000017c JNZF R18 $zero 0x1                              ;; [118, 72, 0, 1]
+0x00000180 JMPF $zero 0x6                                  ;; [116, 0, 0, 6]
+0x00000184 MOVE R58 $writable                              ;; [26, 233, 0, 0]
+0x00000188 JAL R62 $pc 0x86                                ;; [153, 248, 48, 134]
+0x0000018c MOVI R58 0xff                                   ;; [114, 232, 0, 255]
+0x00000190 JAL R62 $pc 0x84                                ;; [153, 248, 48, 132]
+0x00000194 LW $writable R63 0x0                            ;; [93, 67, 240, 0]
+0x00000198 RVRT $writable                                  ;; [54, 64, 0, 0]
+0x0000019c CFSI 0x40ad8                                    ;; [146, 4, 10, 216]
+0x000001a0 MOVE R62 R17                                    ;; [26, 249, 16, 0]
+0x000001a4 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x000001a8 POPL 0x7                                        ;; [151, 0, 0, 7]
+0x000001ac JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x000001b0 PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x000001b4 MCLI R58 0x5                                    ;; [112, 232, 0, 5]
+0x000001b8 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x000001bc JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x000001c0 PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x000001c4 MCLI R58 0x28                                   ;; [112, 232, 0, 40]
+0x000001c8 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x000001cc JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x000001d0 PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x000001d4 MCLI R58 0xa0                                   ;; [112, 232, 0, 160]
+0x000001d8 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x000001dc JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x000001e0 PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x000001e4 MCLI R58 0xa0                                   ;; [112, 232, 0, 160]
+0x000001e8 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x000001ec JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x000001f0 PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x000001f4 MCLI R58 0x5                                    ;; [112, 232, 0, 5]
+0x000001f8 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x000001fc JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x00000200 PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x00000204 MCLI R58 0x19                                   ;; [112, 232, 0, 25]
+0x00000208 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x0000020c JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x00000210 PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x00000214 MCLI R58 0xc8                                   ;; [112, 232, 0, 200]
+0x00000218 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x0000021c JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x00000220 PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x00000224 MCLI R58 0x320                                  ;; [112, 232, 3, 32]
+0x00000228 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x0000022c JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x00000230 PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x00000234 MCLI R58 0x320                                  ;; [112, 232, 3, 32]
+0x00000238 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x0000023c JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x00000240 PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x00000244 MCLI R58 0x19                                   ;; [112, 232, 0, 25]
+0x00000248 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x0000024c JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x00000250 PSHL 0x1                                        ;; [149, 0, 0, 1]
+0x00000254 PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x00000258 SB R58 $one 0x0                                 ;; [94, 232, 16, 0]
+0x0000025c ADDI $writable R58 0x1                          ;; [80, 67, 160, 1]
+0x00000260 SB $writable $one 0x0                           ;; [94, 64, 16, 0]
+0x00000264 ADDI $writable R58 0x2                          ;; [80, 67, 160, 2]
+0x00000268 SB $writable $one 0x0                           ;; [94, 64, 16, 0]
+0x0000026c ADDI $writable R58 0x3                          ;; [80, 67, 160, 3]
+0x00000270 SB $writable $one 0x0                           ;; [94, 64, 16, 0]
+0x00000274 ADDI $writable R58 0x4                          ;; [80, 67, 160, 4]
 0x00000278 SB $writable $one 0x0                           ;; [94, 64, 16, 0]
-0x0000027c MOVI $writable 0x2                              ;; [114, 64, 0, 2]
-0x00000280 MUL $writable $writable $one                    ;; [27, 65, 0, 64]
-0x00000284 ADD $writable R58 $writable                     ;; [16, 67, 164, 0]
-0x00000288 SB $writable $one 0x0                           ;; [94, 64, 16, 0]
-0x0000028c MOVI $writable 0x3                              ;; [114, 64, 0, 3]
-0x00000290 MUL $writable $writable $one                    ;; [27, 65, 0, 64]
-0x00000294 ADD $writable R58 $writable                     ;; [16, 67, 164, 0]
+0x0000027c POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x00000280 POPL 0x1                                        ;; [151, 0, 0, 1]
+0x00000284 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x00000288 PSHL 0x3                                        ;; [149, 0, 0, 3]
+0x0000028c PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x00000290 MOVI R17 0x0                                    ;; [114, 68, 0, 0]
+0x00000294 ADD $writable R58 R17                           ;; [16, 67, 164, 64]
 0x00000298 SB $writable $one 0x0                           ;; [94, 64, 16, 0]
-0x0000029c MOVI $writable 0x4                              ;; [114, 64, 0, 4]
-0x000002a0 MUL $writable $writable $one                    ;; [27, 65, 0, 64]
-0x000002a4 ADD $writable R58 $writable                     ;; [16, 67, 164, 0]
-0x000002a8 SB $writable $one 0x0                           ;; [94, 64, 16, 0]
+0x0000029c ADDI R17 R17 0x1                                ;; [80, 69, 16, 1]
+0x000002a0 MOVI $writable 0x19                             ;; [114, 64, 0, 25]
+0x000002a4 LT $writable R17 $writable                      ;; [22, 65, 20, 0]
+0x000002a8 JNZB $writable $zero 0x4                        ;; [119, 64, 0, 4]
 0x000002ac POPH 0x80000                                    ;; [152, 8, 0, 0]
-0x000002b0 POPL 0x1                                        ;; [151, 0, 0, 1]
+0x000002b0 POPL 0x3                                        ;; [151, 0, 0, 3]
 0x000002b4 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
-0x000002b8 PSHL 0x3                                        ;; [149, 0, 0, 3]
-0x000002bc PSHH 0x80000                                    ;; [150, 8, 0, 0]
-0x000002c0 MOVE R17 $zero                                  ;; [26, 68, 0, 0]
-0x000002c4 MUL $writable R17 $one                          ;; [27, 65, 16, 64]
-0x000002c8 ADD $writable R58 $writable                     ;; [16, 67, 164, 0]
-0x000002cc SB $writable $one 0x0                           ;; [94, 64, 16, 0]
-0x000002d0 ADD R17 R17 $one                                ;; [16, 69, 16, 64]
-0x000002d4 MOVI $writable 0x19                             ;; [114, 64, 0, 25]
-0x000002d8 LT $writable R17 $writable                      ;; [22, 65, 20, 0]
-0x000002dc JNZB $writable $zero 0x5                        ;; [119, 64, 0, 5]
-0x000002e0 POPH 0x80000                                    ;; [152, 8, 0, 0]
-0x000002e4 POPL 0x3                                        ;; [151, 0, 0, 3]
-0x000002e8 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
-0x000002ec PSHH 0x80000                                    ;; [150, 8, 0, 0]
-0x000002f0 LW R60 R63 0x1                                  ;; [93, 243, 240, 1]
-0x000002f4 MCL R58 R60                                     ;; [39, 235, 192, 0]
-0x000002f8 POPH 0x80000                                    ;; [152, 8, 0, 0]
-0x000002fc JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
-0x00000300 PSHH 0x80000                                    ;; [150, 8, 0, 0]
-0x00000304 POPH 0x80000                                    ;; [152, 8, 0, 0]
-0x00000308 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
-0x0000030c PSHL 0xf                                        ;; [149, 0, 0, 15]
-0x00000310 PSHH 0x80000                                    ;; [150, 8, 0, 0]
-0x00000314 MOVE R59 $sp                                    ;; [26, 236, 80, 0]
-0x00000318 CFEI 0x48                                       ;; [145, 0, 0, 72]
-0x0000031c MOVE R18 R58                                    ;; [26, 75, 160, 0]
-0x00000320 MOVE R19 R62                                    ;; [26, 79, 224, 0]
-0x00000324 ADDI $writable R59 0x10                         ;; [80, 67, 176, 16]
-0x00000328 MUL R17 $zero $one                              ;; [27, 68, 0, 64]
-0x0000032c ADD R17 $writable R17                           ;; [16, 69, 4, 64]
-0x00000330 MOVI $writable 0xff                             ;; [114, 64, 0, 255]
-0x00000334 SB R17 $writable 0x0                            ;; [94, 69, 0, 0]
-0x00000338 ADDI $writable R59 0x10                         ;; [80, 67, 176, 16]
-0x0000033c ADDI R17 R59 0x18                               ;; [80, 71, 176, 24]
-0x00000340 MOVE R58 $writable                              ;; [26, 233, 0, 0]
-0x00000344 MOVE R57 R17                                    ;; [26, 229, 16, 0]
-0x00000348 JAL R62 $pc 0x19                                ;; [153, 248, 48, 25]
-0x0000034c ADDI $writable R59 0x28                         ;; [80, 67, 176, 40]
-0x00000350 MCPI $writable R17 0x10                         ;; [96, 65, 16, 16]
-0x00000354 ADDI $writable R59 0x28                         ;; [80, 67, 176, 40]
-0x00000358 ADDI R17 R59 0x38                               ;; [80, 71, 176, 56]
-0x0000035c MCPI R17 $writable 0x10                         ;; [96, 69, 0, 16]
-0x00000360 LW $writable R59 0x7                            ;; [93, 67, 176, 7]
-0x00000364 LW R17 R59 0x8                                  ;; [93, 71, 176, 8]
-0x00000368 SW R59 $writable 0x0                            ;; [95, 237, 0, 0]
-0x0000036c SW R59 R17 0x1                                  ;; [95, 237, 16, 1]
-0x00000370 LW $writable R59 0x0                            ;; [93, 67, 176, 0]
-0x00000374 MOVE R17 $one                                   ;; [26, 68, 16, 0]
-0x00000378 ALOC $one                                       ;; [38, 4, 0, 0]
-0x0000037c MCP $hp $writable R17                           ;; [40, 29, 4, 64]
-0x00000380 MUL $writable $zero $one                        ;; [27, 64, 0, 64]
-0x00000384 ADD $writable $hp $writable                     ;; [16, 64, 116, 0]
-0x00000388 LB $writable $writable 0x0                      ;; [92, 65, 0, 0]
-0x0000038c MUL R17 $zero $one                              ;; [27, 68, 0, 64]
-0x00000390 ADD R17 R18 R17                                 ;; [16, 69, 36, 64]
-0x00000394 SB R17 $writable 0x0                            ;; [94, 69, 0, 0]
-0x00000398 CFSI 0x48                                       ;; [146, 0, 0, 72]
-0x0000039c MOVE R62 R19                                    ;; [26, 249, 48, 0]
-0x000003a0 POPH 0x80000                                    ;; [152, 8, 0, 0]
-0x000003a4 POPL 0xf                                        ;; [151, 0, 0, 15]
-0x000003a8 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
-0x000003ac PSHL 0x1                                        ;; [149, 0, 0, 1]
-0x000003b0 PSHH 0x80000                                    ;; [150, 8, 0, 0]
-0x000003b4 MOVE R59 $sp                                    ;; [26, 236, 80, 0]
-0x000003b8 CFEI 0x28                                       ;; [145, 0, 0, 40]
-0x000003bc ADDI $writable R59 0x10                         ;; [80, 67, 176, 16]
-0x000003c0 MCPI $writable R58 0x1                          ;; [96, 67, 160, 1]
+0x000002b8 PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x000002bc LW R60 R63 0x1                                  ;; [93, 243, 240, 1]
+0x000002c0 MCL R58 R60                                     ;; [39, 235, 192, 0]
+0x000002c4 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x000002c8 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x000002cc PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x000002d0 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x000002d4 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x000002d8 PSHL 0xf                                        ;; [149, 0, 0, 15]
+0x000002dc PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x000002e0 MOVE R59 $sp                                    ;; [26, 236, 80, 0]
+0x000002e4 CFEI 0x48                                       ;; [145, 0, 0, 72]
+0x000002e8 MOVE R18 R58                                    ;; [26, 75, 160, 0]
+0x000002ec MOVE R19 R62                                    ;; [26, 79, 224, 0]
+0x000002f0 ADDI $writable R59 0x10                         ;; [80, 67, 176, 16]
+0x000002f4 MOVI R17 0xff                                   ;; [114, 68, 0, 255]
+0x000002f8 SB $writable R17 0x0                            ;; [94, 65, 16, 0]
+0x000002fc ADDI $writable R59 0x10                         ;; [80, 67, 176, 16]
+0x00000300 ADDI R17 R59 0x18                               ;; [80, 71, 176, 24]
+0x00000304 MOVE R58 $writable                              ;; [26, 233, 0, 0]
+0x00000308 MOVE R57 R17                                    ;; [26, 229, 16, 0]
+0x0000030c JAL R62 $pc 0x15                                ;; [153, 248, 48, 21]
+0x00000310 ADDI $writable R59 0x28                         ;; [80, 67, 176, 40]
+0x00000314 MCPI $writable R17 0x10                         ;; [96, 65, 16, 16]
+0x00000318 ADDI $writable R59 0x28                         ;; [80, 67, 176, 40]
+0x0000031c ADDI R17 R59 0x38                               ;; [80, 71, 176, 56]
+0x00000320 MCPI R17 $writable 0x10                         ;; [96, 69, 0, 16]
+0x00000324 LW $writable R59 0x7                            ;; [93, 67, 176, 7]
+0x00000328 LW R17 R59 0x8                                  ;; [93, 71, 176, 8]
+0x0000032c SW R59 $writable 0x0                            ;; [95, 237, 0, 0]
+0x00000330 SW R59 R17 0x1                                  ;; [95, 237, 16, 1]
+0x00000334 LW $writable R59 0x0                            ;; [93, 67, 176, 0]
+0x00000338 MOVI R17 0x1                                    ;; [114, 68, 0, 1]
+0x0000033c ALOC $one                                       ;; [38, 4, 0, 0]
+0x00000340 MCP $hp $writable R17                           ;; [40, 29, 4, 64]
+0x00000344 LB $writable $hp 0x0                            ;; [92, 64, 112, 0]
+0x00000348 SB R18 $writable 0x0                            ;; [94, 73, 0, 0]
+0x0000034c CFSI 0x48                                       ;; [146, 0, 0, 72]
+0x00000350 MOVE R62 R19                                    ;; [26, 249, 48, 0]
+0x00000354 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x00000358 POPL 0xf                                        ;; [151, 0, 0, 15]
+0x0000035c JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x00000360 PSHL 0x1                                        ;; [149, 0, 0, 1]
+0x00000364 PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x00000368 MOVE R59 $sp                                    ;; [26, 236, 80, 0]
+0x0000036c CFEI 0x28                                       ;; [145, 0, 0, 40]
+0x00000370 ADDI $writable R59 0x10                         ;; [80, 67, 176, 16]
+0x00000374 MCPI $writable R58 0x1                          ;; [96, 67, 160, 1]
+0x00000378 ADDI $writable R59 0x10                         ;; [80, 67, 176, 16]
+0x0000037c SW R59 $writable 0x3                            ;; [95, 237, 0, 3]
+0x00000380 SW R59 $one 0x4                                 ;; [95, 236, 16, 4]
+0x00000384 ADDI $writable R59 0x18                         ;; [80, 67, 176, 24]
+0x00000388 MCPI R59 $writable 0x10                         ;; [96, 237, 0, 16]
+0x0000038c MCPI R57 R59 0x10                               ;; [96, 231, 176, 16]
+0x00000390 CFSI 0x28                                       ;; [146, 0, 0, 40]
+0x00000394 POPH 0x80000                                    ;; [152, 8, 0, 0]
+0x00000398 POPL 0x1                                        ;; [151, 0, 0, 1]
+0x0000039c JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x000003a0 PSHL 0x7                                        ;; [149, 0, 0, 7]
+0x000003a4 PSHH 0x80000                                    ;; [150, 8, 0, 0]
+0x000003a8 MOVE R59 $sp                                    ;; [26, 236, 80, 0]
+0x000003ac CFEI 0x28                                       ;; [145, 0, 0, 40]
+0x000003b0 ADDI $writable R59 0x20                         ;; [80, 67, 176, 32]
+0x000003b4 SB $writable R58 0x0                            ;; [94, 67, 160, 0]
+0x000003b8 ADDI $writable R59 0x20                         ;; [80, 67, 176, 32]
+0x000003bc SW R59 $writable 0x0                            ;; [95, 237, 0, 0]
+0x000003c0 SW R59 $one 0x1                                 ;; [95, 236, 16, 1]
 0x000003c4 ADDI $writable R59 0x10                         ;; [80, 67, 176, 16]
-0x000003c8 SW R59 $writable 0x3                            ;; [95, 237, 0, 3]
-0x000003cc SW R59 $one 0x4                                 ;; [95, 236, 16, 4]
-0x000003d0 ADDI $writable R59 0x18                         ;; [80, 67, 176, 24]
-0x000003d4 MCPI R59 $writable 0x10                         ;; [96, 237, 0, 16]
-0x000003d8 MCPI R57 R59 0x10                               ;; [96, 231, 176, 16]
+0x000003c8 MCPI $writable R59 0x10                         ;; [96, 67, 176, 16]
+0x000003cc LW $writable R63 0x2                            ;; [93, 67, 240, 2]
+0x000003d0 LW R17 R59 0x2                                  ;; [93, 71, 176, 2]
+0x000003d4 LW R18 R59 0x3                                  ;; [93, 75, 176, 3]
+0x000003d8 LOGD $zero $writable R17 R18                    ;; [52, 1, 4, 82]
 0x000003dc CFSI 0x28                                       ;; [146, 0, 0, 40]
 0x000003e0 POPH 0x80000                                    ;; [152, 8, 0, 0]
-0x000003e4 POPL 0x1                                        ;; [151, 0, 0, 1]
+0x000003e4 POPL 0x7                                        ;; [151, 0, 0, 7]
 0x000003e8 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
-0x000003ec PSHL 0x7                                        ;; [149, 0, 0, 7]
-0x000003f0 PSHH 0x80000                                    ;; [150, 8, 0, 0]
-0x000003f4 MOVE R59 $sp                                    ;; [26, 236, 80, 0]
-0x000003f8 CFEI 0x28                                       ;; [145, 0, 0, 40]
-0x000003fc ADDI $writable R59 0x20                         ;; [80, 67, 176, 32]
-0x00000400 SB $writable R58 0x0                            ;; [94, 67, 160, 0]
-0x00000404 ADDI $writable R59 0x20                         ;; [80, 67, 176, 32]
-0x00000408 SW R59 $writable 0x0                            ;; [95, 237, 0, 0]
-0x0000040c SW R59 $one 0x1                                 ;; [95, 236, 16, 1]
-0x00000410 ADDI $writable R59 0x10                         ;; [80, 67, 176, 16]
-0x00000414 MCPI $writable R59 0x10                         ;; [96, 67, 176, 16]
-0x00000418 LW $writable R63 0x2                            ;; [93, 67, 240, 2]
-0x0000041c LW R17 R59 0x2                                  ;; [93, 71, 176, 2]
-0x00000420 LW R18 R59 0x3                                  ;; [93, 75, 176, 3]
-0x00000424 LOGD $zero $writable R17 R18                    ;; [52, 1, 4, 82]
-0x00000428 CFSI 0x28                                       ;; [146, 0, 0, 40]
-0x0000042c POPH 0x80000                                    ;; [152, 8, 0, 0]
-0x00000430 POPL 0x7                                        ;; [151, 0, 0, 7]
-0x00000434 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x000003ec NOOP                                            ;; [71, 0, 0, 0]
 .data_section:
-0x00000438 .word i18446744073709486083, as hex be bytes ([FF, FF, FF, FF, FF, FF, 00, 03])
-0x00000440 .word i262145, as hex be bytes ([00, 00, 00, 00, 00, 04, 00, 01])
-0x00000448 .word i14454674236531057292, as hex be bytes ([C8, 99, 51, A2, 4C, 6C, A2, 8C])
+0x000003f0 .word i18446744073709486083, as hex be bytes ([FF, FF, FF, FF, FF, FF, 00, 03])
+0x000003f8 .word i262145, as hex be bytes ([00, 00, 00, 00, 00, 04, 00, 01])
+0x00000400 .word i14454674236531057292, as hex be bytes ([C8, 99, 51, A2, 4C, 6C, A2, 8C])
 ;; --- END OF TARGET BYTECODE ---
 
 warning
@@ -1156,7 +1119,7 @@ warning
 ____
 
   Compiled script "array_repeat" with 8 warnings.
-    Finished release [optimized + fuel] target(s) [1.104 KB] in ???
+    Finished release [optimized + fuel] target(s) [1.032 KB] in ???
 
 > forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat --verbose --release
 exit status: 0
@@ -1164,15 +1127,15 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert)
    Compiling script array_repeat (test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat)
-    Finished release [optimized + fuel] target(s) [2.288 KB] in ???
+    Finished release [optimized + fuel] target(s) [2.144 KB] in ???
     script array_repeat
-      Bytecode size: 2288 bytes (2.288 KB)
-      Bytecode hash: 0xe5a340658508bd113ab881f379d12c5f90c3ae523d9ed90a11444c58a669baff
+      Bytecode size: 2144 bytes (2.144 KB)
+      Bytecode hash: 0xabd375e17dfb789d46e484affebec14ba4b174616abc3f2034be7b0554350ae4
      Running 1 test, filtered 0 tests
 
 tested -- array_repeat
 
-      test test_array_repeat_zero ... ok (???, 6299319 gas)
+      test test_array_repeat_zero ... ok (???, 5774597 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 

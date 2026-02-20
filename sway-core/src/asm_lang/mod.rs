@@ -94,6 +94,16 @@ pub(crate) struct Op {
     pub(crate) owning_span: Option<Span>,
 }
 
+impl From<VirtualOp> for Op {
+    fn from(opcode: VirtualOp) -> Self {
+        Op {
+            opcode: Either::Left(opcode),
+            comment: String::new(),
+            owning_span: None,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct AllocatedAbstractOp {
     pub(crate) opcode: Either<AllocatedInstruction, ControlFlowOp<AllocatedRegister>>,
@@ -746,13 +756,15 @@ impl Op {
         }
     }
 
-    pub(crate) fn use_registers_mut(&mut self) -> BTreeSet<&mut VirtualRegister> {
+    pub(crate) fn use_registers_mut(&mut self) -> Vec<&mut VirtualRegister> {
         match &mut self.opcode {
             Either::Left(virt_op) => virt_op.use_registers_mut(),
             Either::Right(org_op) => org_op.use_registers_mut(),
         }
     }
 
+    /// Returns a list of all registers *written* by instruction `self`. All of our opcodes define
+    /// exactly 0 or 1 register, so the size of this returned vector should always be at most 1.
     pub(crate) fn def_registers(&self) -> BTreeSet<&VirtualRegister> {
         match &self.opcode {
             Either::Left(virt_op) => virt_op.def_registers(),
@@ -760,6 +772,8 @@ impl Op {
         }
     }
 
+    /// What are the special registers that an OP may set.
+    /// Examples: Error, Overflow, Flags etc...
     pub(crate) fn def_const_registers(&self) -> BTreeSet<&VirtualRegister> {
         match &self.opcode {
             Either::Left(virt_op) => virt_op.def_const_registers(),
@@ -1186,7 +1200,7 @@ impl fmt::Display for VirtualOp {
             MROO(a, b, c) => write!(fmtr, "mroo {a} {b} {c}"),
             MUL(a, b, c) => write!(fmtr, "mul {a} {b} {c}"),
             MULI(a, b, c) => write!(fmtr, "muli {a} {b} {c}"),
-            NOOP => Ok(()),
+            NOOP => write!(fmtr, "noop"),
             NOT(a, b) => write!(fmtr, "not {a} {b}"),
             OR(a, b, c) => write!(fmtr, "or {a} {b} {c}"),
             ORI(a, b, c) => write!(fmtr, "ori {a} {b} {c}"),
@@ -1400,9 +1414,10 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
         .collect()
     }
 
-    pub(crate) fn use_registers_mut(&mut self) -> BTreeSet<&mut Reg> {
+    pub(crate) fn use_registers_mut(&mut self) -> Vec<&mut Reg> {
         use ControlFlowOp::*;
-        (match self {
+
+        match self {
             Label(_)
             | Comment
             | DataSectionOffsetPlaceholder
@@ -1414,9 +1429,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
                 JumpType::NotZero(r1) => vec![r1],
                 JumpType::Call => vec![],
             },
-        })
-        .into_iter()
-        .collect()
+        }
     }
 
     pub(crate) fn def_registers(&self) -> BTreeSet<&Reg> {

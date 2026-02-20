@@ -1,12 +1,9 @@
-use sway_error::error::CompileError;
-
-use crate::asm_lang::{allocated_ops::AllocatedOp, Op, RealizedOp};
-
-use std::fmt;
-
 use super::{
     allocated_abstract_instruction_set::AllocatedAbstractInstructionSet, register_allocator,
 };
+use crate::asm_lang::{allocated_ops::AllocatedOp, Op, RealizedOp};
+use std::fmt;
+use sway_error::error::CompileError;
 
 /// An [AbstractInstructionSet] is a set of instructions that use entirely virtual registers
 /// and excessive moves, with the intention of later optimizing it.
@@ -39,7 +36,14 @@ impl fmt::Display for AbstractInstructionSet {
             ".program:\n{}",
             self.ops
                 .iter()
-                .map(|x| format!("{x}"))
+                .filter_map(|x| {
+                    let line = format!("{x}");
+                    if line.is_empty() {
+                        None
+                    } else {
+                        Some(line)
+                    }
+                })
                 .collect::<Vec<_>>()
                 .join("\n")
         )

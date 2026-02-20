@@ -63,97 +63,97 @@
       "concreteTypeId": "b760f44fa5965c2474a3b471467a22c43185152129295af588b022ae50b50903",
       "indirect": false,
       "name": "BOOL",
-      "offset": 4224
+      "offset": 4120
     },
     {
       "concreteTypeId": "c89951a24c6ca28c13fd1cfdc646b2b656d69e61a92b91023be7eb58eb914b6b",
       "indirect": false,
       "name": "U8",
-      "offset": 4416
+      "offset": 4312
     },
     {
       "concreteTypeId": "c89951a24c6ca28c13fd1cfdc646b2b656d69e61a92b91023be7eb58eb914b6b",
       "indirect": false,
       "name": "ANOTHER_U8",
-      "offset": 4152
+      "offset": 4048
     },
     {
       "concreteTypeId": "29881aad8730c5ab11d275376323d8e4ff4179aae8ccb6c13fe4902137e162ef",
       "indirect": false,
       "name": "U16",
-      "offset": 4360
+      "offset": 4256
     },
     {
       "concreteTypeId": "d7649d428b9ff33d188ecbf38a7e4d8fd167fa01b2e10fe9a8f9308e52f1d7cc",
       "indirect": false,
       "name": "U32",
-      "offset": 4400
+      "offset": 4296
     },
     {
       "concreteTypeId": "d7649d428b9ff33d188ecbf38a7e4d8fd167fa01b2e10fe9a8f9308e52f1d7cc",
       "indirect": false,
       "name": "U64",
-      "offset": 4408
+      "offset": 4304
     },
     {
       "concreteTypeId": "1b5759d94094368cfd443019e7ca5ec4074300e544e5ea993a979f5da627261e",
       "indirect": false,
       "name": "U256",
-      "offset": 4368
+      "offset": 4264
     },
     {
       "concreteTypeId": "7c5ee1cecf5f8eacd1284feb5f0bf2bdea533a51e2f0c9aabe9236d335989f3b",
       "indirect": false,
       "name": "B256",
-      "offset": 4192
+      "offset": 4088
     },
     {
       "concreteTypeId": "81fc10c4681a3271cf2d66b2ec6fbc8ed007a442652930844fcf11818c295bff",
       "indirect": false,
       "name": "CONFIGURABLE_STRUCT",
-      "offset": 4312
+      "offset": 4208
     },
     {
       "concreteTypeId": "a2922861f03be8a650595dd76455b95383a61b46dd418f02607fa2e00dc39d5c",
       "indirect": false,
       "name": "CONFIGURABLE_ENUM_A",
-      "offset": 4232
+      "offset": 4128
     },
     {
       "concreteTypeId": "a2922861f03be8a650595dd76455b95383a61b46dd418f02607fa2e00dc39d5c",
       "indirect": false,
       "name": "CONFIGURABLE_ENUM_B",
-      "offset": 4272
+      "offset": 4168
     },
     {
       "concreteTypeId": "4926d35d1a5157936b0a29bc126b8aace6d911209a5c130e9b716b0c73643ea6",
       "indirect": false,
       "name": "ARRAY_BOOL",
-      "offset": 4160
+      "offset": 4056
     },
     {
       "concreteTypeId": "776fb5a3824169d6736138565fdc20aad684d9111266a5ff6d5c675280b7e199",
       "indirect": false,
       "name": "ARRAY_U64",
-      "offset": 4168
+      "offset": 4064
     },
     {
       "concreteTypeId": "c998ca9a5f221fe7b5c66ae70c8a9562b86d964408b00d17f883c906bc1fe4be",
       "indirect": false,
       "name": "TUPLE_BOOL_U64",
-      "offset": 4344
+      "offset": 4240
     },
     {
       "concreteTypeId": "94f0fa95c830be5e4f711963e83259fe7e8bc723278ab6ec34449e791a99b53a",
       "indirect": false,
       "name": "STR_4",
-      "offset": 4336
+      "offset": 4232
     },
     {
       "concreteTypeId": "c89951a24c6ca28c13fd1cfdc646b2b656d69e61a92b91023be7eb58eb914b6b",
       "indirect": false,
       "name": "NOT_USED",
-      "offset": 4328
+      "offset": 4224
     }
   ],
   "encodingVersion": "1",
