@@ -61,10 +61,9 @@ impl ResolveSymbols for ParseModule {
 impl ResolveSymbols for AstNode {
     fn resolve_symbols(&mut self, handler: &Handler, ctx: SymbolResolveContext) {
         match &mut self.content {
-            AstNodeContent::UseStatement(_) => {}
+            AstNodeContent::Statement(_) => {}
             AstNodeContent::Declaration(decl) => decl.resolve_symbols(handler, ctx),
             AstNodeContent::Expression(expr) => expr.resolve_symbols(handler, ctx),
-            AstNodeContent::IncludeStatement(_) => {}
             AstNodeContent::Error(_, _) => {}
         }
     }

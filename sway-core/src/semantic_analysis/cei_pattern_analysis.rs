@@ -193,7 +193,7 @@ fn analyze_code_block_entry(
         ty::TyAstNodeContent::Expression(expr) => {
             analyze_expression(engines, expr, block_name, warnings)
         }
-        ty::TyAstNodeContent::SideEffect(_) | ty::TyAstNodeContent::Error(_, _) => HashSet::new(),
+        ty::TyAstNodeContent::Statement(_) | ty::TyAstNodeContent::Error(_, _) => HashSet::new(),
     }
 }
 
@@ -495,7 +495,7 @@ fn effects_of_codeblock_entry(engines: &Engines, ast_node: &ty::TyAstNode) -> Ha
     match &ast_node.content {
         ty::TyAstNodeContent::Declaration(decl) => effects_of_codeblock_decl(engines, decl),
         ty::TyAstNodeContent::Expression(expr) => effects_of_expression(engines, expr),
-        ty::TyAstNodeContent::SideEffect(_) | ty::TyAstNodeContent::Error(_, _) => HashSet::new(),
+        ty::TyAstNodeContent::Statement(_) | ty::TyAstNodeContent::Error(_, _) => HashSet::new(),
     }
 }
 

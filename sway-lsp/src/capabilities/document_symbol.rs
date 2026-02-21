@@ -4,8 +4,8 @@ use std::path::PathBuf;
 use sway_core::{
     language::ty::{
         TyAbiDecl, TyAstNodeContent, TyConstantDecl, TyDecl, TyEnumDecl, TyFunctionDecl,
-        TyFunctionParameter, TyIncludeStatement, TyProgram, TySideEffectVariant, TyStorageDecl,
-        TyStructDecl, TyTraitInterfaceItem, TyTraitItem, TyTraitType,
+        TyFunctionParameter, TyModStatement, TyProgram, TyStatement, TyStorageDecl, TyStructDecl,
+        TyTraitInterfaceItem, TyTraitItem, TyTraitType,
     },
     Engines, GenericTypeArgument,
 };
@@ -51,15 +51,10 @@ pub fn to_document_symbols(
     .flatten()
     .filter_map(|node| {
         match &node.content {
-            TyAstNodeContent::SideEffect(side_effect) => {
-                if let TySideEffectVariant::IncludeStatement(include_statement) =
-                    &side_effect.side_effect
-                {
-                    Some(build_include_symbol(include_statement))
-                } else {
-                    None
-                }
+            TyAstNodeContent::Statement(TyStatement::Mod(mod_statement)) => {
+                Some(build_mod_symbol(mod_statement))
             }
+            TyAstNodeContent::Statement(_) => None,
             TyAstNodeContent::Declaration(decl) => match decl {
                 TyDecl::TypeAliasDecl(decl) => {
                     let type_alias_decl = engines.de().get_type_alias(&decl.decl_id);
@@ -228,8 +223,8 @@ pub fn to_document_symbols(
     nodes
 }
 
-fn build_include_symbol(include_statement: &TyIncludeStatement) -> DocumentSymbol {
-    let span = include_statement.span();
+fn build_mod_symbol(mod_statement: &TyModStatement) -> DocumentSymbol {
+    let span = mod_statement.span();
     let range = get_range_from_span(&span);
     DocumentSymbolBuilder::new()
         .name(span.str().to_string())

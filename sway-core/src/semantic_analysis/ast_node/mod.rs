@@ -29,10 +29,12 @@ impl ty::TyAstNode {
         node: &AstNode,
     ) -> Result<(), ErrorEmitted> {
         match node.content.clone() {
-            AstNodeContent::UseStatement(stmt) => {
-                collect_use_statement(handler, engines, ctx, &stmt);
-            }
-            AstNodeContent::IncludeStatement(_i) => (),
+            AstNodeContent::Statement(statement) => match statement {
+                Statement::Use(stmt) => {
+                    collect_use_statement(handler, engines, ctx, &stmt);
+                }
+                Statement::Mod(_mod_stmt) => (),
+            },
             AstNodeContent::Declaration(decl) => ty::TyDecl::collect(handler, engines, ctx, decl)?,
             AstNodeContent::Expression(expr) => {
                 ty::TyExpression::collect(handler, engines, ctx, &expr)?
@@ -54,29 +56,25 @@ impl ty::TyAstNode {
 
         let node = ty::TyAstNode {
             content: match node.content.clone() {
-                AstNodeContent::UseStatement(stmt) => {
-                    handle_use_statement(&mut ctx, &stmt, handler);
-                    ty::TyAstNodeContent::SideEffect(ty::TySideEffect {
-                        side_effect: ty::TySideEffectVariant::UseStatement(ty::TyUseStatement {
+                AstNodeContent::Statement(statement) => match statement {
+                    Statement::Use(stmt) => {
+                        handle_use_statement(&mut ctx, &stmt, handler);
+                        ty::TyAstNodeContent::Statement(ty::TyStatement::Use(ty::TyUseStatement {
                             alias: stmt.alias,
                             call_path: stmt.call_path,
                             span: stmt.span,
                             is_relative_to_package_root: stmt.is_relative_to_package_root,
                             import_type: stmt.import_type,
-                        }),
-                    })
-                }
-                AstNodeContent::IncludeStatement(i) => {
-                    ty::TyAstNodeContent::SideEffect(ty::TySideEffect {
-                        side_effect: ty::TySideEffectVariant::IncludeStatement(
-                            ty::TyIncludeStatement {
-                                mod_name: i.mod_name,
-                                span: i.span,
-                                visibility: i.visibility,
-                            },
-                        ),
-                    })
-                }
+                        }))
+                    }
+                    Statement::Mod(i) => {
+                        ty::TyAstNodeContent::Statement(ty::TyStatement::Mod(ty::TyModStatement {
+                            mod_name: i.mod_name,
+                            span: i.span,
+                            visibility: i.visibility,
+                        }))
+                    }
+                },
                 AstNodeContent::Declaration(decl) => ty::TyAstNodeContent::Declaration(
                     ty::TyDecl::type_check(handler, &mut ctx, decl)?,
                 ),

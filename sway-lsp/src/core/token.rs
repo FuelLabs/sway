@@ -7,9 +7,9 @@ use sway_core::{
         parsed::{
             AbiCastExpression, AmbiguousPathExpression, Declaration, DelineatedPathExpression,
             EnumVariant, Expression, FunctionApplicationExpression, FunctionParameter,
-            IncludeStatement, MethodApplicationExpression, Scrutinee, StorageField,
-            StorageNamespace, StructExpression, StructExpressionField, StructField,
-            StructScrutineeField, Supertrait, TraitFn, UseStatement,
+            MethodApplicationExpression, ModStatement, Scrutinee, StorageField, StorageNamespace,
+            StructExpression, StructExpressionField, StructField, StructScrutineeField, Supertrait,
+            TraitFn, UseStatement,
         },
         ty,
     },
@@ -37,7 +37,7 @@ pub enum ParsedAstToken {
     FunctionParameter(FunctionParameter),
     Ident(Ident),
     ModuleName,
-    IncludeStatement(IncludeStatement),
+    ModStatement(ModStatement),
     Intrinsic(Intrinsic),
     Keyword(Ident),
     LibrarySpan(Span),
@@ -84,8 +84,9 @@ pub enum TypedAstToken {
     TypedParameter(TypeParameter),
     TypedTraitConstraint(TraitConstraint),
     TypedModuleName,
-    TypedIncludeStatement(ty::TyIncludeStatement),
+    TypedModStatement(ty::TyModStatement),
     TypedUseStatement(ty::TyUseStatement),
+    TypedStatement(ty::TyStatement),
     Ident(Ident),
 }
 

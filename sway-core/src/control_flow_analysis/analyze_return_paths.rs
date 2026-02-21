@@ -191,7 +191,7 @@ fn connect_node<'eng: 'cfg, 'cfg>(
             }
             Ok(NodeConnection::NextStep(Some(entry)))
         }
-        ty::TyAstNodeContent::SideEffect(_) => Ok(NodeConnection::NextStep(leaf_opt)),
+        ty::TyAstNodeContent::Statement(_) => Ok(NodeConnection::NextStep(leaf_opt)),
         ty::TyAstNodeContent::Declaration(decl) => Ok(NodeConnection::NextStep(
             connect_declaration(engines, node, decl, graph, leaf_opt)?,
         )),

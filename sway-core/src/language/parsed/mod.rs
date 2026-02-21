@@ -2,7 +2,7 @@
 mod code_block;
 pub mod declaration;
 mod expression;
-mod include_statement;
+mod mod_statement;
 mod module;
 mod program;
 mod use_statement;
@@ -10,7 +10,7 @@ mod use_statement;
 pub use code_block::*;
 pub use declaration::*;
 pub use expression::*;
-pub use include_statement::IncludeStatement;
+pub use mod_statement::ModStatement;
 pub use module::{ModuleEvaluationOrder, ParseModule, ParseSubmodule};
 pub use program::{ParseProgram, TreeType};
 use sway_error::handler::ErrorEmitted;
@@ -54,15 +54,13 @@ impl PartialEqWithEngines for AstNode {
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum AstNodeContent {
-    /// A statement of the form `use foo::bar;` or `use ::foo::bar;`
-    UseStatement(UseStatement),
+    /// Any statement node.
+    Statement(Statement),
     /// Any type of declaration, of which there are quite a few. See [Declaration] for more details
     /// on the possible variants.
     Declaration(Declaration),
     /// Any type of expression, of which there are quite a few. See [Expression] for more details.
     Expression(Expression),
-    /// A statement of the form `mod foo::bar;` which imports/includes another source file.
-    IncludeStatement(IncludeStatement),
     /// A malformed statement.
     ///
     /// Used for parser recovery when we cannot form a more specific node.
@@ -75,15 +73,32 @@ impl EqWithEngines for AstNodeContent {}
 impl PartialEqWithEngines for AstNodeContent {
     fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         match (self, other) {
-            (AstNodeContent::UseStatement(lhs), AstNodeContent::UseStatement(rhs)) => lhs.eq(rhs),
+            (AstNodeContent::Statement(lhs), AstNodeContent::Statement(rhs)) => lhs.eq(rhs, ctx),
             (AstNodeContent::Declaration(lhs), AstNodeContent::Declaration(rhs)) => {
                 lhs.eq(rhs, ctx)
             }
             (AstNodeContent::Expression(lhs), AstNodeContent::Expression(rhs)) => lhs.eq(rhs, ctx),
-            (AstNodeContent::IncludeStatement(lhs), AstNodeContent::IncludeStatement(rhs)) => {
-                lhs.eq(rhs)
-            }
             (AstNodeContent::Error(lhs, ..), AstNodeContent::Error(rhs, ..)) => lhs.eq(rhs),
+            _ => false,
+        }
+    }
+}
+
+/// Statements that can appear in the parse tree.
+#[derive(Debug, Clone)]
+pub enum Statement {
+    /// A statement of the form `use foo::bar;` or `use ::foo::bar;`
+    Use(UseStatement),
+    /// A statement of the form `mod foo::bar;` which imports/includes another source file.
+    Mod(ModStatement),
+}
+
+impl EqWithEngines for Statement {}
+impl PartialEqWithEngines for Statement {
+    fn eq(&self, other: &Self, _ctx: &PartialEqWithEnginesContext) -> bool {
+        match (self, other) {
+            (Statement::Use(lhs), Statement::Use(rhs)) => lhs.eq(rhs),
+            (Statement::Mod(lhs), Statement::Mod(rhs)) => lhs.eq(rhs),
             _ => false,
         }
     }
