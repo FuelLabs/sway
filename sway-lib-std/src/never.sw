@@ -54,6 +54,7 @@ use ::ops::{Eq, Not, Ord, PartialEq};
 /// }
 /// ```
 impl Not for ! {
+    type Output = Self;
     fn not(self) -> Self {
         match self {}
     }

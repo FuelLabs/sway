@@ -8,16 +8,19 @@ const MAX_U32_U64: u64 = __transmute::<u32, u64>(u32::max());
 const MAX_U16_U64: u64 = __transmute::<u16, u64>(u16::max());
 
 /// Trait for the addition of two values.
-pub trait Add {
-    /// Add two values of the same type.
+pub trait Add<Rhs> {
+    /// The type of the result of the addition.
+    type Output;
+
+    /// Add two values.
     ///
     /// # Arguments
     ///
-    /// * `other`: [Self] - The value to add to self.
+    /// * `other`: [Rhs] - The value to add to self.
     ///
     /// # Returns
     ///
-    /// * [Self] - The result of the two values added.
+    /// * [Self::Output] - The result of the two values added.
     ///
     /// # Examples
     ///
@@ -26,7 +29,8 @@ pub trait Add {
     ///     val: u64,
     /// }
     ///
-    /// impl Add for MyStruct {
+    /// impl Add<MyStruct> for MyStruct {
+    ///     type Output = MyStruct;
     ///     fn add(self, other: Self) -> Self {
     ///         let val = self.val + other.val;
     ///         Self {
@@ -42,23 +46,26 @@ pub trait Add {
     ///     assert(result_struct.val == 3);
     /// }
     /// ```
-    fn add(self, other: Self) -> Self;
+    fn add(self, other: Rhs) -> Self::Output;
 }
 
-impl Add for u256 {
+impl Add<Self> for u256 {
+    type Output = Self;
     fn add(self, other: Self) -> Self {
         __add(self, other)
     }
 }
 
-impl Add for u64 {
+impl Add<Self> for u64 {
+    type Output = Self;
     fn add(self, other: Self) -> Self {
         __add(self, other)
     }
 }
 
 // Emulate overflowing arithmetic for non-64-bit integer types
-impl Add for u32 {
+impl Add<Self> for u32 {
+    type Output = Self;
     fn add(self, other: Self) -> Self {
         let res_u64 = __add(
             __transmute::<Self, u64>(self),
@@ -79,7 +86,8 @@ impl Add for u32 {
     }
 }
 
-impl Add for u16 {
+impl Add<Self> for u16 {
+    type Output = Self;
     fn add(self, other: Self) -> Self {
         let res_u64 = __add(
             __transmute::<Self, u64>(self),
@@ -100,7 +108,8 @@ impl Add for u16 {
     }
 }
 
-impl Add for u8 {
+impl Add<Self> for u8 {
+    type Output = Self;
     fn add(self, other: Self) -> Self {
         let res_u64 = __add(u8_as_u64(self), u8_as_u64(other));
 
@@ -121,16 +130,19 @@ impl Add for u8 {
 }
 
 /// Trait for the subtraction of two values.
-pub trait Subtract {
-    /// Subtract two values of the same type.
+pub trait Subtract<Rhs> {
+    /// The type of the result of the subtraction.
+    type Output;
+
+    /// Subtract two values.
     ///
     /// # Arguments
     ///
-    /// * `other`: [Self] - The value to subtract from self.
+    /// * `other`: [Rhs] - The value to subtract from self.
     ///
     /// # Returns
     ///
-    /// * [Self] - The result of the two values subtracted.
+    /// * [Self::Output] - The result of the two values subtracted.
     ///
     /// # Examples
     ///
@@ -139,7 +151,8 @@ pub trait Subtract {
     ///     val: u64,
     /// }
     ///
-    /// impl Subtract for MyStruct {
+    /// impl Subtract<MyStruct> for MyStruct {
+    ///     type Output = MyStruct;
     ///     fn subtract(self, other: Self) -> Self {
     ///         let val = self.val - other.val;
     ///         Self {
@@ -155,22 +168,25 @@ pub trait Subtract {
     ///     assert(result_struct.val == 2);
     /// }
     /// ```
-    fn subtract(self, other: Self) -> Self;
+    fn subtract(self, other: Rhs) -> Self::Output;
 }
 
-impl Subtract for u256 {
+impl Subtract<Self> for u256 {
+    type Output = Self;
     fn subtract(self, other: Self) -> Self {
         __sub(self, other)
     }
 }
 
-impl Subtract for u64 {
+impl Subtract<Self> for u64 {
+    type Output = Self;
     fn subtract(self, other: Self) -> Self {
         __sub(self, other)
     }
 }
 
-impl Subtract for u32 {
+impl Subtract<Self> for u32 {
+    type Output = Self;
     fn subtract(self, other: Self) -> Self {
         let res_u64 = __sub(
             __transmute::<Self, u64>(self),
@@ -191,7 +207,8 @@ impl Subtract for u32 {
     }
 }
 
-impl Subtract for u16 {
+impl Subtract<Self> for u16 {
+    type Output = Self;
     fn subtract(self, other: Self) -> Self {
         let res_u64 = __sub(
             __transmute::<Self, u64>(self),
@@ -212,7 +229,8 @@ impl Subtract for u16 {
     }
 }
 
-impl Subtract for u8 {
+impl Subtract<Self> for u8 {
+    type Output = Self;
     fn subtract(self, other: Self) -> Self {
         let res_u64 = __sub(u8_as_u64(self), u8_as_u64(other));
 
@@ -233,16 +251,19 @@ impl Subtract for u8 {
 }
 
 /// Trait for the multiplication of two values.
-pub trait Multiply {
-    /// Multiply two values of the same type.
+pub trait Multiply<Rhs> {
+    /// The type of the result of the multiplication.
+    type Output;
+
+    /// Multiply two values.
     ///
     /// # Arguments
     ///
-    /// * `other`: [Self] - The value to multiply with self.
+    /// * `other`: [Rhs] - The value to multiply with self.
     ///
     /// # Returns
     ///
-    /// * [Self] - The result of the two values multiplied.
+    /// * [Self::Output] - The result of the two values multiplied.
     ///
     /// # Examples
     ///
@@ -251,7 +272,8 @@ pub trait Multiply {
     ///     val: u64,
     /// }
     ///
-    /// impl Multiply for MyStruct {
+    /// impl Multiply<MyStruct> for MyStruct {
+    ///     type Output = MyStruct;
     ///     fn multiply(self, other: Self) -> Self {
     ///         let val = self.val * other.val;
     ///         Self {
@@ -267,23 +289,26 @@ pub trait Multiply {
     ///     assert(result_struct.val == 6);
     /// }
     /// ```
-    fn multiply(self, other: Self) -> Self;
+    fn multiply(self, other: Rhs) -> Self::Output;
 }
 
-impl Multiply for u256 {
+impl Multiply<Self> for u256 {
+    type Output = Self;
     fn multiply(self, other: Self) -> Self {
         __mul(self, other)
     }
 }
 
-impl Multiply for u64 {
+impl Multiply<Self> for u64 {
+    type Output = Self;
     fn multiply(self, other: Self) -> Self {
         __mul(self, other)
     }
 }
 
 // Emulate overflowing arithmetic for non-64-bit integer types
-impl Multiply for u32 {
+impl Multiply<Self> for u32 {
+    type Output = Self;
     fn multiply(self, other: Self) -> Self {
         let res_u64 = __mul(
             __transmute::<Self, u64>(self),
@@ -304,7 +329,8 @@ impl Multiply for u32 {
     }
 }
 
-impl Multiply for u16 {
+impl Multiply<Self> for u16 {
+    type Output = Self;
     fn multiply(self, other: Self) -> Self {
         let res_u64 = __mul(
             __transmute::<Self, u64>(self),
@@ -325,7 +351,8 @@ impl Multiply for u16 {
     }
 }
 
-impl Multiply for u8 {
+impl Multiply<Self> for u8 {
+    type Output = Self;
     fn multiply(self, other: Self) -> Self {
         let res_u64 = __mul(u8_as_u64(self), u8_as_u64(other));
 
@@ -346,16 +373,19 @@ impl Multiply for u8 {
 }
 
 /// Trait for the division of two values.
-pub trait Divide {
-    /// Divide two values of the same type.
+pub trait Divide<Rhs> {
+    /// The type of the result of the division.
+    type Output;
+
+    /// Divide two values.
     ///
     /// # Arguments
     ///
-    /// * `other`: [Self] - The value to divide with self.
+    /// * `other`: [Rhs] - The value to divide with self.
     ///
     /// # Returns
     ///
-    /// * [Self] - The result of the two values divided.
+    /// * [Self::Output] - The result of the two values divided.
     ///
     /// # Examples
     ///
@@ -364,7 +394,8 @@ pub trait Divide {
     ///     val: u64,
     /// }
     ///
-    /// impl Divide for MyStruct {
+    /// impl Divide<MyStruct> for MyStruct {
+    ///     type Output = MyStruct;
     ///     fn divide(self, other: Self) -> Self {
     ///         let val = self.val / other.val;
     ///         Self {
@@ -380,16 +411,18 @@ pub trait Divide {
     ///     assert(result_struct.val == 5);
     /// }
     /// ```
-    fn divide(self, other: Self) -> Self;
+    fn divide(self, other: Rhs) -> Self::Output;
 }
 
-impl Divide for u256 {
+impl Divide<Self> for u256 {
+    type Output = Self;
     fn divide(self, other: Self) -> Self {
         __div(self, other)
     }
 }
 
-impl Divide for u64 {
+impl Divide<Self> for u64 {
+    type Output = Self;
     fn divide(self, other: Self) -> Self {
         __div(self, other)
     }
@@ -399,35 +432,41 @@ impl Divide for u64 {
 // but if signed integers are ever introduced,
 // overflow needs to be handled, since
 // Self::max() / -1 overflows
-impl Divide for u32 {
+impl Divide<Self> for u32 {
+    type Output = Self;
     fn divide(self, other: Self) -> Self {
         __div(self, other)
     }
 }
 
-impl Divide for u16 {
+impl Divide<Self> for u16 {
+    type Output = Self;
     fn divide(self, other: Self) -> Self {
         __div(self, other)
     }
 }
 
-impl Divide for u8 {
+impl Divide<Self> for u8 {
+    type Output = Self;
     fn divide(self, other: Self) -> Self {
         __div(self, other)
     }
 }
 
 /// Trait for the modulo of two values.
-pub trait Mod {
-    /// Modulo two values of the same type.
+pub trait Mod<Rhs> {
+    /// The type of the result of the modulo.
+    type Output;
+
+    /// Modulo two values.
     ///
     /// # Arguments
     ///
-    /// * `other`: [Self] - The value to mod with self.
+    /// * `other`: [Rhs] - The value to mod with self.
     ///
     /// # Returns
     ///
-    /// * [Self] - The modulo of the two values.
+    /// * [Self::Output] - The modulo of the two values.
     ///
     /// # Examples
     ///
@@ -436,7 +475,8 @@ pub trait Mod {
     ///     val: u64,
     /// }
     ///
-    /// impl Mod for MyStruct {
+    /// impl Mod<MyStruct> for MyStruct {
+    ///     type Output = MyStruct;
     ///     fn modulo(self, other: Self) -> Self {
     ///         let val = self.val % other.val;
     ///         Self {
@@ -452,34 +492,39 @@ pub trait Mod {
     ///     assert(result_struct.val == 0);
     /// }
     /// ```
-    fn modulo(self, other: Self) -> Self;
+    fn modulo(self, other: Rhs) -> Self::Output;
 }
 
-impl Mod for u256 {
+impl Mod<Self> for u256 {
+    type Output = Self;
     fn modulo(self, other: Self) -> Self {
         __mod(self, other)
     }
 }
 
-impl Mod for u64 {
+impl Mod<Self> for u64 {
+    type Output = Self;
     fn modulo(self, other: Self) -> Self {
         __mod(self, other)
     }
 }
 
-impl Mod for u32 {
+impl Mod<Self> for u32 {
+    type Output = Self;
     fn modulo(self, other: Self) -> Self {
         __mod(self, other)
     }
 }
 
-impl Mod for u16 {
+impl Mod<Self> for u16 {
+    type Output = Self;
     fn modulo(self, other: Self) -> Self {
         __mod(self, other)
     }
 }
 
-impl Mod for u8 {
+impl Mod<Self> for u8 {
+    type Output = Self;
     fn modulo(self, other: Self) -> Self {
         __mod(self, other)
     }
@@ -487,11 +532,14 @@ impl Mod for u8 {
 
 /// Trait to invert a type.
 pub trait Not {
+    /// The type of the result of the inverse.
+    type Output;
+
     /// Inverts the value of the type.
     ///
     /// # Returns
     ///
-    /// * [Self] - The result of the inverse.
+    /// * [Self::Output] - The result of the inverse.
     ///
     /// # Examples
     ///
@@ -501,6 +549,7 @@ pub trait Not {
     /// }
     ///
     /// impl Not for MyStruct {
+    ///     type Output = MyStruct;
     ///     fn not(self) -> Self {
     ///         Self {
     ///             val: !self.val,
@@ -514,34 +563,39 @@ pub trait Not {
     ///     assert(!result_struct.val);
     /// }
     /// ```
-    fn not(self) -> Self;
+    fn not(self) -> Self::Output;
 }
 
 impl Not for bool {
+    type Output = Self;
     fn not(self) -> Self {
         __eq(self, false)
     }
 }
 
 impl Not for u256 {
+    type Output = Self;
     fn not(self) -> Self {
         __not(self)
     }
 }
 
 impl Not for b256 {
+    type Output = Self;
     fn not(self) -> Self {
         __not(self)
     }
 }
 
 impl Not for u64 {
+    type Output = Self;
     fn not(self) -> Self {
         __not(self)
     }
 }
 
 impl Not for u32 {
+    type Output = Self;
     fn not(self) -> Self {
         let v = __not(self);
         __and(v, u32::max())
@@ -549,6 +603,7 @@ impl Not for u32 {
 }
 
 impl Not for u16 {
+    type Output = Self;
     fn not(self) -> Self {
         let v = __not(self);
         __and(v, u16::max())
@@ -556,6 +611,7 @@ impl Not for u16 {
 }
 
 impl Not for u8 {
+    type Output = Self;
     fn not(self) -> Self {
         let v = __not(self);
         __and(v, u8::max())
@@ -942,16 +998,19 @@ impl Ord for u8 {
 }
 
 /// Trait to bitwise AND two values of the same type.
-pub trait BitwiseAnd {
-    /// Bitwise AND two values of the same type.
+pub trait BitwiseAnd<Rhs> {
+    /// The type of the result of the bitwise AND.
+    type Output;
+
+    /// Bitwise AND two values.
     ///
     /// # Arguments
     ///
-    /// * `other`: [Self] - The value of the same type.
+    /// * `other`: [Rhs] - The value of the same type.
     ///
     /// # Returns
     ///
-    /// * [Self] - The result of the bitwise AND of the two values.
+    /// * [Self::Output] - The result of the bitwise AND of the two values.
     ///
     /// # Examples
     ///
@@ -960,7 +1019,8 @@ pub trait BitwiseAnd {
     ///     val: u64,
     /// }
     ///
-    /// impl BitwiseAnd for MyStruct {
+    /// impl BitwiseAnd<MyStruct> for MyStruct {
+    ///     type Output = MyStruct;
     ///     fn binary_and(self, other: Self) -> Self {
     ///         let val = self.val & other.val;
     ///         Self {
@@ -976,56 +1036,65 @@ pub trait BitwiseAnd {
     ///     assert(result_struct.val == 10);
     /// }
     /// ```
-    fn binary_and(self, other: Self) -> Self;
+    fn binary_and(self, other: Rhs) -> Self::Output;
 }
 
-impl BitwiseAnd for u256 {
+impl BitwiseAnd<Self> for u256 {
+    type Output = Self;
     fn binary_and(self, other: Self) -> Self {
         __and(self, other)
     }
 }
 
-impl BitwiseAnd for b256 {
+impl BitwiseAnd<Self> for b256 {
+    type Output = Self;
     fn binary_and(self, other: Self) -> Self {
         __and(self, other)
     }
 }
 
-impl BitwiseAnd for u64 {
+impl BitwiseAnd<Self> for u64 {
+    type Output = Self;
     fn binary_and(self, other: Self) -> Self {
         __and(self, other)
     }
 }
 
-impl BitwiseAnd for u32 {
+impl BitwiseAnd<Self> for u32 {
+    type Output = Self;
     fn binary_and(self, other: Self) -> Self {
         __and(self, other)
     }
 }
 
-impl BitwiseAnd for u16 {
+impl BitwiseAnd<Self> for u16 {
+    type Output = Self;
     fn binary_and(self, other: Self) -> Self {
         __and(self, other)
     }
 }
 
-impl BitwiseAnd for u8 {
+impl BitwiseAnd<Self> for u8 {
+    type Output = Self;
     fn binary_and(self, other: Self) -> Self {
         __and(self, other)
     }
 }
 
 /// Trait to bitwise OR two values of the same type.
-pub trait BitwiseOr {
-    /// Bitwise OR two values of the same type.
+pub trait BitwiseOr<Rhs> {
+    /// The type of the result of the bitwise OR.
+    type Output;
+
+    /// Bitwise OR two values.
     ///
     /// # Arguments
     ///
-    /// * `other`: [Self] - The value of the same type.
+    /// * `other`: [Rhs] - The value of the same type.
     ///
     /// # Returns
     ///
-    /// * [Self] - The result of the bitwise OR of the two values.
+    /// * [Self::Output] - The result of the bitwise OR of the two values.
     ///
     /// # Examples
     ///
@@ -1034,7 +1103,8 @@ pub trait BitwiseOr {
     ///     val: u64,
     /// }
     ///
-    /// impl BitwiseOr for MyStruct {
+    /// impl BitwiseOr<MyStruct> for MyStruct {
+    ///     type Output = MyStruct;
     ///     fn binary_or(self, other: Self) -> Self {
     ///         let val = self.val | other.val;
     ///         Self {
@@ -1050,56 +1120,65 @@ pub trait BitwiseOr {
     ///     assert(result_struct.val == 11);
     /// }
     /// ```
-    fn binary_or(self, other: Self) -> Self;
+    fn binary_or(self, other: Rhs) -> Self::Output;
 }
 
-impl BitwiseOr for u256 {
+impl BitwiseOr<Self> for u256 {
+    type Output = Self;
     fn binary_or(self, other: Self) -> Self {
         __or(self, other)
     }
 }
 
-impl BitwiseOr for b256 {
+impl BitwiseOr<Self> for b256 {
+    type Output = Self;
     fn binary_or(self, other: Self) -> Self {
         __or(self, other)
     }
 }
 
-impl BitwiseOr for u64 {
+impl BitwiseOr<Self> for u64 {
+    type Output = Self;
     fn binary_or(self, other: Self) -> Self {
         __or(self, other)
     }
 }
 
-impl BitwiseOr for u32 {
+impl BitwiseOr<Self> for u32 {
+    type Output = Self;
     fn binary_or(self, other: Self) -> Self {
         __or(self, other)
     }
 }
 
-impl BitwiseOr for u16 {
+impl BitwiseOr<Self> for u16 {
+    type Output = Self;
     fn binary_or(self, other: Self) -> Self {
         __or(self, other)
     }
 }
 
-impl BitwiseOr for u8 {
+impl BitwiseOr<Self> for u8 {
+    type Output = Self;
     fn binary_or(self, other: Self) -> Self {
         __or(self, other)
     }
 }
 
 /// Trait to bitwise XOR two values of the same type.
-pub trait BitwiseXor {
-    /// Bitwise XOR two values of the same type.
+pub trait BitwiseXor<Rhs> {
+    /// The type of the result of the bitwise XOR.
+    type Output;
+
+    /// Bitwise XOR two values.
     ///
     /// # Arguments
     ///
-    /// * `other`: [Self] - The value of the same type.
+    /// * `other`: [Rhs] - The value of the same type.
     ///
     /// # Returns
     ///
-    /// * [Self] - The result of the bitwise XOR of the two values.
+    /// * [Self::Output] - The result of the bitwise XOR of the two values.
     ///
     /// # Examples
     ///
@@ -1108,7 +1187,8 @@ pub trait BitwiseXor {
     ///     val: u64,
     /// }
     ///
-    /// impl BitwiseXOr for MyStruct {
+    /// impl BitwiseXor<MyStruct> for MyStruct {
+    ///     type Output = MyStruct;
     ///     fn binary_xor(self, other: Self) -> Self {
     ///         let val = self.val ^ other.val;
     ///         Self {
@@ -1124,40 +1204,46 @@ pub trait BitwiseXor {
     ///     assert(result_struct.val == 1);
     /// }
     /// ```
-    fn binary_xor(self, other: Self) -> Self;
+    fn binary_xor(self, other: Rhs) -> Self::Output;
 }
 
-impl BitwiseXor for u256 {
+impl BitwiseXor<Self> for u256 {
+    type Output = Self;
     fn binary_xor(self, other: Self) -> Self {
         __xor(self, other)
     }
 }
 
-impl BitwiseXor for b256 {
+impl BitwiseXor<Self> for b256 {
+    type Output = Self;
     fn binary_xor(self, other: Self) -> Self {
         __xor(self, other)
     }
 }
 
-impl BitwiseXor for u64 {
+impl BitwiseXor<Self> for u64 {
+    type Output = Self;
     fn binary_xor(self, other: Self) -> Self {
         __xor(self, other)
     }
 }
 
-impl BitwiseXor for u32 {
+impl BitwiseXor<Self> for u32 {
+    type Output = Self;
     fn binary_xor(self, other: Self) -> Self {
         __xor(self, other)
     }
 }
 
-impl BitwiseXor for u16 {
+impl BitwiseXor<Self> for u16 {
+    type Output = Self;
     fn binary_xor(self, other: Self) -> Self {
         __xor(self, other)
     }
 }
 
-impl BitwiseXor for u8 {
+impl BitwiseXor<Self> for u8 {
+    type Output = Self;
     fn binary_xor(self, other: Self) -> Self {
         __xor(self, other)
     }
