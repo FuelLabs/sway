@@ -1,3 +1,4 @@
+use crate::eytzinger::Eytzinger;
 use crate::SourceId;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
@@ -12,7 +13,7 @@ lazy_static! {
     static ref DUMMY_SPAN: Span = Span::new(
         Source {
             text: Arc::from(""),
-            line_starts: Arc::new(vec![])
+            line_starts: Arc::new(<_>::default())
         },
         0,
         0,
@@ -28,7 +29,7 @@ lazy_static! {
 pub struct Source {
     pub text: Arc<str>,
     #[serde(skip)]
-    pub line_starts: Arc<Vec<usize>>,
+    pub line_starts: Arc<Eytzinger<usize>>,
 }
 
 impl serde::Serialize for Source {
@@ -49,7 +50,7 @@ impl<'de> serde::Deserialize<'de> for Source {
 }
 
 impl Source {
-    fn calc_line_starts(text: &str) -> Arc<Vec<usize>> {
+    fn calc_line_starts(text: &str) -> Arc<Eytzinger<usize>> {
         let mut lines_starts = Vec::with_capacity(text.len() / 80);
         lines_starts.push(0);
         for (idx, c) in text.char_indices() {
@@ -57,7 +58,7 @@ impl Source {
                 lines_starts.push(idx + c.len_utf8())
             }
         }
-        Arc::new(lines_starts)
+        Arc::new(lines_starts.as_slice().into())
     }
 
     pub fn new(text: &str) -> Self {
@@ -72,14 +73,17 @@ impl Source {
         if position > self.text.len() || self.text.is_empty() {
             LineCol { line: 0, col: 0 }
         } else {
-            let (line, line_start) = match self.line_starts.binary_search(&position) {
-                Ok(line) => (line, self.line_starts.get(line)),
+            let (line, line_start) = match self.line_starts.binary_search(position) {
+                Ok(idx) => (self.line_starts.get_original_index(idx).unwrap(), self.line_starts.get(idx)),
                 Err(0) => (0, None),
-                Err(line) => (line - 1, self.line_starts.get(line - 1)),
+                Err(idx) => (self.line_starts.get_original_index(idx).unwrap() - 1, self.line_starts.get_previous_value(idx)),
             };
-            line_start.map_or(LineCol { line: 0, col: 0 }, |line_start| LineCol {
-                line,
-                col: position - line_start,
+            
+            line_start.map_or(LineCol { line: 0, col: 0 }, |line_start| {
+                LineCol {
+                    line,
+                    col: position - line_start,
+                }
             })
         }
     }

@@ -24,6 +24,8 @@ pub mod style;
 
 pub mod ast;
 
+mod eytzinger;
+
 pub type Id = [u8; Bytes32::LEN];
 pub type Contract = [u8; ContractId::LEN];
 
