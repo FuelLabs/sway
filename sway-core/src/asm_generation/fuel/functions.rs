@@ -385,7 +385,10 @@ impl FuelAsmBuilder<'_, '_> {
 
             // Jump to the return address.
             self.cur_bytecode.push(Op {
-                opcode: Either::Right(ControlFlowOp::ReturnFromCall),
+                opcode: Either::Right(ControlFlowOp::ReturnFromCall {
+                    zero: VirtualRegister::Constant(ConstantRegister::Zero),
+                    reta: VirtualRegister::Constant(ConstantRegister::CallReturnAddress),
+                }),
                 comment: format!("[fn end: {fn_name}] return from call"),
                 owning_span: None,
             });

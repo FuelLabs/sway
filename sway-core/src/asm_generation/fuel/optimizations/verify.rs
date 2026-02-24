@@ -1,17 +1,34 @@
 use crate::{
     asm_generation::fuel::abstract_instruction_set::AbstractInstructionSet,
-    asm_lang::VirtualRegister,
+    asm_lang::{ConstantRegister, ControlFlowOp, VirtualRegister},
 };
 use std::collections::HashSet;
+use either::Either;
 use sway_error::error::CompileError;
 use sway_types::Span;
 
 impl AbstractInstructionSet {
-    // At the moment the only verification we do is to make sure used registers are
-    // initialised.  Without doing dataflow analysis we still can't guarantee the init is
-    // _before_ the use, but future refactoring to convert abstract ops into SSA and BBs will
-    // make this possible or even make this check redundant.
     pub(crate) fn verify(self) -> Result<AbstractInstructionSet, CompileError> {
+        // Check `ReturnFromCall` is correct
+        for op in self.ops.iter() {
+            match &op.opcode {
+                Either::Right(ControlFlowOp::ReturnFromCall { zero, reta }) => {
+                    if !matches!(zero, VirtualRegister::Constant(ConstantRegister::Zero)) {
+                        return Err(CompileError::Internal("ReturnFromCall incorrectly not using $zero", Span::dummy()));
+                    }
+
+                    if !matches!(reta, VirtualRegister::Constant(ConstantRegister::CallReturnAddress)) {
+                        return Err(CompileError::Internal("ReturnFromCall incorrectly not using $reta", Span::dummy()));
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        // At the moment the only verification we do is to make sure used registers are
+        // initialised.  Without doing dataflow analysis we still can't guarantee the init is
+        // _before_ the use, but future refactoring to convert abstract ops into SSA and BBs will
+        // make this possible or even make this check redundant.
         macro_rules! add_virt_regs {
             ($regs: expr, $set: expr) => {
                 let mut regs = $regs;

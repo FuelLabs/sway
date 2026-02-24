@@ -260,7 +260,7 @@ impl AllocatedAbstractInstructionSet {
 
     /// Runs two passes -- one to get the instruction offsets of the labels and one to replace the
     /// labels in the organizational ops
-    pub(crate) fn realize_labels(
+    pub(crate) fn lower_to_realized_ops(
         mut self,
         data_section: &mut DataSection,
         far_jump_sizes: &FxHashMap<usize, u64>,
@@ -337,13 +337,11 @@ impl AllocatedAbstractInstructionSet {
                             owning_span,
                         });
                     }
-                    ControlFlowOp::ReturnFromCall => {
+                    ControlFlowOp::ReturnFromCall { zero, reta } => {
+                        assert!(matches!(zero, AllocatedRegister::Constant(ConstantRegister::Zero)));
+                        assert!(matches!(reta, AllocatedRegister::Constant(ConstantRegister::CallReturnAddress)));
                         realized_ops.push(RealizedOp {
-                            opcode: AllocatedInstruction::JAL(
-                                AllocatedRegister::Constant(ConstantRegister::Zero),
-                                AllocatedRegister::Constant(ConstantRegister::CallReturnAddress),
-                                VirtualImmediate12::new(0),
-                            ),
+                            opcode: AllocatedInstruction::JAL(zero, reta, VirtualImmediate12::new(0)),
                             comment,
                             owning_span,
                         });
@@ -414,7 +412,7 @@ impl AllocatedAbstractInstructionSet {
                 JumpType::Call => 3,
             },
             Either::Right(JumpToAddr(..)) => 1,
-            Either::Right(ReturnFromCall) => 1,
+            Either::Right(ReturnFromCall { .. }) => 1,
             Either::Right(Comment) => 0,
             Either::Right(DataSectionOffsetPlaceholder) => {
                 // If the placeholder is 32 bits, this is 1. if 64, this should be 2. We use LW
@@ -485,7 +483,7 @@ impl AllocatedAbstractInstructionSet {
             ),
 
             Either::Right(JumpToAddr(..)) => 1,
-            Either::Right(ReturnFromCall) => 1,
+            Either::Right(ReturnFromCall { .. }) => 1,
         }
     }
 

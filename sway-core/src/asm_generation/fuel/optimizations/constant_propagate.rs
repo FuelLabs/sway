@@ -125,7 +125,7 @@ impl AbstractInstructionSet {
                     *jump_target_labels.entry(*to).or_default() += 1;
                 }
                 // Do not optimize if we have manual jumps
-                // because they generate miscompilations
+                // because they can generate miscompilations
                 Either::Right(ControlFlowOp::JumpToAddr(..)) => {
                     return self;
                 }
@@ -235,7 +235,7 @@ impl AbstractInstructionSet {
                         // This can be considered to destroy all known values
                         ControlFlowOp::PopAll(_) => ResetKnown::Full,
                         ControlFlowOp::JumpToAddr(_) => ResetKnown::Full,
-                        ControlFlowOp::ReturnFromCall => ResetKnown::Full,
+                        ControlFlowOp::ReturnFromCall { .. } => ResetKnown::Full,
                     },
                 };
 

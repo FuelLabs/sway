@@ -1279,7 +1279,10 @@ pub(crate) enum ControlFlowOp<Reg> {
     // Jump to an adrress in memory
     JumpToAddr(Reg),
     // Return from function call
-    ReturnFromCall,
+    ReturnFromCall {
+        zero: Reg,
+        reta: Reg,
+    },
 }
 
 pub(crate) type OrganizationalOp = ControlFlowOp<VirtualRegister>;
@@ -1305,7 +1308,7 @@ impl<Reg: fmt::Display> fmt::Display for ControlFlowOp<Reg> {
                 PushAll(lab) => format!("pusha {lab}"),
                 PopAll(lab) => format!("popa {lab}"),
                 JumpToAddr(r0) => format!("jmp {r0}"),
-                ReturnFromCall => "jal  $zero $$reta i0".to_string(),
+                ReturnFromCall { .. } => "jal $zero $$reta i0".to_string(),
             }
         )
     }
@@ -1327,7 +1330,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
                 JumpType::Call => vec![],
             },
             JumpToAddr(r0) => vec![r0],
-            ReturnFromCall => vec![],
+            ReturnFromCall { zero, reta } => vec![zero, reta],
         })
         .into_iter()
         .collect()
@@ -1349,7 +1352,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
                 JumpType::Call => vec![],
             },
             JumpToAddr(r0) => vec![r0],
-            ReturnFromCall => vec![],
+            ReturnFromCall { zero, reta } => vec![zero, reta],
         })
         .into_iter()
         .collect()
@@ -1371,7 +1374,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
                 JumpType::Call => vec![],
             },
             JumpToAddr(r0) => vec![r0],
-            ReturnFromCall => vec![],
+            ReturnFromCall { zero, reta } => vec![zero, reta],
         })
         .into_iter()
         .collect()
@@ -1404,7 +1407,10 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
                 _ => self.clone(),
             },
             JumpToAddr(r0) => JumpToAddr(update_reg(r0)),
-            ReturnFromCall => ReturnFromCall,
+            ReturnFromCall {zero, reta } => ReturnFromCall {
+                zero: update_reg(zero),
+                reta: update_reg(reta),
+            },
         }
     }
 
@@ -1451,7 +1457,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             },
             // Impossible to know, so we return empty.
             JumpToAddr(_) => {}
-            ReturnFromCall => {}
+            ReturnFromCall { .. } => {}
         };
 
         next_ops
@@ -1511,7 +1517,10 @@ impl ControlFlowOp<VirtualRegister> {
             PushAll(label) => PushAll(*label),
             PopAll(label) => PopAll(*label),
             JumpToAddr(r0) => JumpToAddr(map_reg(r0)),
-            ReturnFromCall => ReturnFromCall,
+            ReturnFromCall { zero, reta } => ReturnFromCall {
+                zero: map_reg(zero),
+                reta: map_reg(reta),
+            },
         }
     }
 }

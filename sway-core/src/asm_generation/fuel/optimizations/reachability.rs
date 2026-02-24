@@ -15,6 +15,12 @@ impl AbstractInstructionSet {
         let mut cur_live = BTreeSet::default();
         let mut dead_indices = FxHashSet::default();
         for (rev_ix, op) in ops.iter().rev().enumerate() {
+            // We cannot guarantee the jump will not end in a 
+            // instruction that will be eliminated below
+            if let Either::Right(ControlFlowOp::JumpToAddr(..)) = &op.opcode {
+                return self;
+            }
+
             let ix = ops.len() - rev_ix - 1;
 
             let op_use = op.use_registers();
