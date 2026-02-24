@@ -7,11 +7,11 @@ use sway_error::error::CompileError;
 use sway_types::Span;
 
 impl AbstractInstructionSet {
+    // At the moment the only verification we do is to make sure used registers are
+    // initialised.  Without doing dataflow analysis we still can't guarantee the init is
+    // _before_ the use, but future refactoring to convert abstract ops into SSA and BBs will
+    // make this possible or even make this check redundant.
     pub(crate) fn verify(self) -> Result<AbstractInstructionSet, CompileError> {
-        // At the moment the only verification we do is to make sure used registers are
-        // initialised.  Without doing dataflow analysis we still can't guarantee the init is
-        // _before_ the use, but future refactoring to convert abstract ops into SSA and BBs will
-        // make this possible or even make this check redundant.
         macro_rules! add_virt_regs {
             ($regs: expr, $set: expr) => {
                 let mut regs = $regs;

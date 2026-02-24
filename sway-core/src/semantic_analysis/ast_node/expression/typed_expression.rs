@@ -3186,7 +3186,7 @@ fn check_asm_block_validity(
             .map(|reg_name| VirtualRegister::Virtual(reg_name.to_string()))
             .collect::<Vec<VirtualRegister>>();
 
-        // check for jumps here
+        // we do not support jumps inside asm blocks
         match op.op_name.as_str() {
             "jmp" | "ji" | "jne" | "jnei" | "jnzi" | "jmpb" | "jmpf" | "jnzb" | "jnzf" | "jneb"
             | "jnef" | "jal" => {
