@@ -86,8 +86,16 @@ impl AbstractInstructionSet {
         // Keep track of a map between jump labels and op indices. Useful to compute op successors.
         let mut label_to_index: HashMap<Label, usize> = HashMap::default();
         for (idx, op) in ops.iter().enumerate() {
-            if let Either::Right(ControlFlowOp::Label(op_label)) = op.opcode {
-                label_to_index.insert(op_label, idx);
+            match &op.opcode {
+                Either::Right(ControlFlowOp::Label(op_label)) => {
+                    label_to_index.insert(*op_label, idx);
+                }
+                // We cannot guarantee the jump will not end in a
+                // instruction that will be eliminated below
+                Either::Right(ControlFlowOp::JumpToAddr(..)) => {
+                    return self;
+                }
+                _ => {}
             }
         }
 
