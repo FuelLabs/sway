@@ -2,8 +2,8 @@ use crate::{
     asm_generation::fuel::abstract_instruction_set::AbstractInstructionSet,
     asm_lang::{ConstantRegister, ControlFlowOp, VirtualRegister},
 };
-use std::collections::HashSet;
 use either::Either;
+use std::collections::HashSet;
 use sway_error::error::CompileError;
 use sway_types::Span;
 
@@ -11,17 +11,23 @@ impl AbstractInstructionSet {
     pub(crate) fn verify(self) -> Result<AbstractInstructionSet, CompileError> {
         // Check `ReturnFromCall` is correct
         for op in self.ops.iter() {
-            match &op.opcode {
-                Either::Right(ControlFlowOp::ReturnFromCall { zero, reta }) => {
-                    if !matches!(zero, VirtualRegister::Constant(ConstantRegister::Zero)) {
-                        return Err(CompileError::Internal("ReturnFromCall incorrectly not using $zero", Span::dummy()));
-                    }
-
-                    if !matches!(reta, VirtualRegister::Constant(ConstantRegister::CallReturnAddress)) {
-                        return Err(CompileError::Internal("ReturnFromCall incorrectly not using $reta", Span::dummy()));
-                    }
+            if let Either::Right(ControlFlowOp::ReturnFromCall { zero, reta }) = &op.opcode {
+                if !matches!(zero, VirtualRegister::Constant(ConstantRegister::Zero)) {
+                    return Err(CompileError::Internal(
+                        "ReturnFromCall incorrectly not using $zero",
+                        Span::dummy(),
+                    ));
                 }
-                _ => {}
+
+                if !matches!(
+                    reta,
+                    VirtualRegister::Constant(ConstantRegister::CallReturnAddress)
+                ) {
+                    return Err(CompileError::Internal(
+                        "ReturnFromCall incorrectly not using $reta",
+                        Span::dummy(),
+                    ));
+                }
             }
         }
 

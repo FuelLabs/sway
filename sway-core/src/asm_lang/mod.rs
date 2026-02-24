@@ -1407,7 +1407,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
                 _ => self.clone(),
             },
             JumpToAddr(r0) => JumpToAddr(update_reg(r0)),
-            ReturnFromCall {zero, reta } => ReturnFromCall {
+            ReturnFromCall { zero, reta } => ReturnFromCall {
                 zero: update_reg(zero),
                 reta: update_reg(reta),
             },

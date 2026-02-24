@@ -338,10 +338,20 @@ impl AllocatedAbstractInstructionSet {
                         });
                     }
                     ControlFlowOp::ReturnFromCall { zero, reta } => {
-                        assert!(matches!(zero, AllocatedRegister::Constant(ConstantRegister::Zero)));
-                        assert!(matches!(reta, AllocatedRegister::Constant(ConstantRegister::CallReturnAddress)));
+                        assert!(matches!(
+                            zero,
+                            AllocatedRegister::Constant(ConstantRegister::Zero)
+                        ));
+                        assert!(matches!(
+                            reta,
+                            AllocatedRegister::Constant(ConstantRegister::CallReturnAddress)
+                        ));
                         realized_ops.push(RealizedOp {
-                            opcode: AllocatedInstruction::JAL(zero, reta, VirtualImmediate12::new(0)),
+                            opcode: AllocatedInstruction::JAL(
+                                zero,
+                                reta,
+                                VirtualImmediate12::new(0),
+                            ),
                             comment,
                             owning_span,
                         });
