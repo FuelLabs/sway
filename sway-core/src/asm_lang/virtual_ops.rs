@@ -100,9 +100,6 @@ pub(crate) enum VirtualOp {
         VirtualRegister,
     ),
 
-    /* Control Flow Instructions */
-    RET(VirtualRegister),
-
     /* Memory Instructions */
     ALOC(VirtualRegister, VirtualRegister),
     CFEI(VirtualRegister, VirtualImmediate24),
@@ -170,6 +167,7 @@ pub(crate) enum VirtualOp {
         VirtualRegister,
     ),
     MINT(VirtualRegister, VirtualRegister),
+    RET(VirtualRegister),
     RETD(VirtualRegister, VirtualRegister),
     RVRT(VirtualRegister),
     SMO(
