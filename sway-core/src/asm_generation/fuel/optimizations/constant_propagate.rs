@@ -225,6 +225,7 @@ impl AbstractInstructionSet {
                         ControlFlowOp::PushAll(_) => ResetKnown::NonVirtual,
                         // This can be considered to destroy all known values
                         ControlFlowOp::PopAll(_) => ResetKnown::Full,
+                        ControlFlowOp::JumpToAddr(_) => ResetKnown::Full,
                     },
                 };
 

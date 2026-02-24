@@ -330,7 +330,13 @@ impl AllocatedAbstractInstructionSet {
                     }
                     ControlFlowOp::Comment => continue,
                     ControlFlowOp::Label(..) => continue,
-
+                    ControlFlowOp::JumpToAddr(reg) => {
+                        realized_ops.push(RealizedOp {
+                            opcode: AllocatedInstruction::JMP(reg),
+                            comment,
+                            owning_span,
+                        });
+                    }
                     ControlFlowOp::PushAll(_) | ControlFlowOp::PopAll(_) => {
                         unreachable!("still don't belong in organisational ops")
                     }
@@ -396,17 +402,14 @@ impl AllocatedAbstractInstructionSet {
                 JumpType::NotZero(_) => 2,
                 JumpType::Call => 3,
             },
-
+            Either::Right(JumpToAddr(..)) => 1,
             Either::Right(Comment) => 0,
-
             Either::Right(DataSectionOffsetPlaceholder) => {
                 // If the placeholder is 32 bits, this is 1. if 64, this should be 2. We use LW
                 // to load the data, which loads a whole word, so for now this is 2.
                 2
             }
-
             Either::Right(ConfigurablesOffsetPlaceholder) => 2,
-
             Either::Right(PushAll(_)) | Either::Right(PopAll(_)) => unreachable!(
                 "fix me, pushall and popall don't really belong in control flow ops \
                         since they're not about control flow"
@@ -468,6 +471,8 @@ impl AllocatedAbstractInstructionSet {
                 "fix me, pushall and popall don't really belong in control flow ops \
                         since they're not about control flow"
             ),
+
+            Either::Right(JumpToAddr(..)) => 1,
         }
     }
 

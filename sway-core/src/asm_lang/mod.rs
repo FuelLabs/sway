@@ -739,6 +739,7 @@ impl Op {
         }
     }
 
+    /// Returns a list of all registers *read* by instruction `self`.
     pub(crate) fn use_registers(&self) -> BTreeSet<&VirtualRegister> {
         match &self.opcode {
             Either::Left(virt_op) => virt_op.use_registers(),
@@ -746,6 +747,7 @@ impl Op {
         }
     }
 
+    /// Returns a list of all registers *read* by instruction `self`.
     pub(crate) fn use_registers_mut(&mut self) -> BTreeSet<&mut VirtualRegister> {
         match &mut self.opcode {
             Either::Left(virt_op) => virt_op.use_registers_mut(),
@@ -767,6 +769,10 @@ impl Op {
         }
     }
 
+    /// Returns a list of indices that represent the successors of `self` in the list of
+    /// instructions `ops`. For most instructions, the successor is simply the next instruction in
+    /// `ops`. The exceptions are jump instructions that can have arbitrary successors and RVRT
+    /// which does not have any successors.
     pub(crate) fn successors(
         &self,
         index: usize,
@@ -1330,6 +1336,8 @@ pub(crate) enum ControlFlowOp<Reg> {
     PushAll(Label),
     // Restore all previously saved general purpose registers.
     PopAll(Label),
+    // Jump to an adrress in memory
+    JumpToAddr(Reg),
 }
 
 pub(crate) type OrganizationalOp = ControlFlowOp<VirtualRegister>;
@@ -1354,6 +1362,7 @@ impl<Reg: fmt::Display> fmt::Display for ControlFlowOp<Reg> {
                     "CONFIGURABLES_OFFSET[0..32]\nCONFIGURABLES_OFFSET[32..64]".into(),
                 PushAll(lab) => format!("pusha {lab}"),
                 PopAll(lab) => format!("popa {lab}"),
+                JumpToAddr(r0) => format!("jmp {r0}"),
             }
         )
     }
@@ -1369,17 +1378,18 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             | ConfigurablesOffsetPlaceholder
             | PushAll(_)
             | PopAll(_) => vec![],
-
             Jump { type_, .. } => match type_ {
                 JumpType::Unconditional => vec![],
                 JumpType::NotZero(r1) => vec![r1],
                 JumpType::Call => vec![],
             },
+            JumpToAddr(r0) => vec![r0],
         })
         .into_iter()
         .collect()
     }
 
+    /// Returns a list of all registers *read* by instruction `self`.
     pub(crate) fn use_registers(&self) -> BTreeSet<&Reg> {
         use ControlFlowOp::*;
         (match self {
@@ -1389,17 +1399,18 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             | ConfigurablesOffsetPlaceholder
             | PushAll(_)
             | PopAll(_) => vec![],
-
             Jump { type_, .. } => match type_ {
                 JumpType::Unconditional => vec![],
                 JumpType::NotZero(r1) => vec![r1],
                 JumpType::Call => vec![],
             },
+            JumpToAddr(r0) => vec![r0],
         })
         .into_iter()
         .collect()
     }
 
+    /// Returns a list of all registers *read* by instruction `self`.
     pub(crate) fn use_registers_mut(&mut self) -> BTreeSet<&mut Reg> {
         use ControlFlowOp::*;
         (match self {
@@ -1414,6 +1425,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
                 JumpType::NotZero(r1) => vec![r1],
                 JumpType::Call => vec![],
             },
+            JumpToAddr(r0) => vec![r0],
         })
         .into_iter()
         .collect()
@@ -1438,7 +1450,6 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             | ConfigurablesOffsetPlaceholder
             | PushAll(_)
             | PopAll(_) => self.clone(),
-
             Jump { to, type_ } => match type_ {
                 JumpType::NotZero(r1) => Self::Jump {
                     to: *to,
@@ -1446,9 +1457,14 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
                 },
                 _ => self.clone(),
             },
+            JumpToAddr(r0) => JumpToAddr(update_reg(r0)),
         }
     }
 
+    /// Returns a list of indices that represent the successors of `self` in the list of
+    /// instructions `ops`. For most instructions, the successor is simply the next instruction in
+    /// `ops`. The exceptions are jump instructions that can have arbitrary successors and RVRT
+    /// which does not have any successors.
     pub(crate) fn successors(
         &self,
         index: usize,
@@ -1470,7 +1486,6 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
                     next_ops.push(index + 1);
                 }
             }
-
             Jump { to, type_, .. } => match type_ {
                 JumpType::Unconditional => {
                     next_ops.push(label_to_index[to]);
@@ -1487,6 +1502,8 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
                     }
                 }
             },
+            // Impossible to know, so we return empty.
+            JumpToAddr(_) => {}
         };
 
         next_ops
@@ -1545,6 +1562,7 @@ impl ControlFlowOp<VirtualRegister> {
             ConfigurablesOffsetPlaceholder => ConfigurablesOffsetPlaceholder,
             PushAll(label) => PushAll(*label),
             PopAll(label) => PopAll(*label),
+            JumpToAddr(r0) => JumpToAddr(map_reg(r0)),
         }
     }
 }

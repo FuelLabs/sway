@@ -87,7 +87,7 @@ impl fmt::Display for VirtualImmediate06 {
 /// 12-bits immediate value type
 #[derive(Clone, Debug)]
 pub struct VirtualImmediate12 {
-    value: u16,
+    pub(crate) value: u16,
 }
 
 impl VirtualImmediate12 {
