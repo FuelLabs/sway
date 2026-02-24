@@ -1,52 +1,13 @@
+use crate::{
+    asm_generation::fuel::abstract_instruction_set::AbstractInstructionSet,
+    asm_lang::VirtualRegister,
+};
 use std::collections::HashSet;
-
-use either::Either;
 use sway_error::error::CompileError;
 use sway_types::Span;
 
-use crate::{
-    asm_generation::fuel::abstract_instruction_set::AbstractInstructionSet,
-    asm_lang::{ConstantRegister, VirtualImmediate12, VirtualOp, VirtualRegister},
-};
-
 impl AbstractInstructionSet {
     pub(crate) fn verify(self) -> Result<AbstractInstructionSet, CompileError> {
-        // Verify "jumps" are done using ControlFlowOp. This is expected
-        // by some ASM optimizations.
-        for op in self.ops.iter() {
-            if let Either::Left(vop) = &op.opcode {
-                let forbidden_jmp = match vop {
-                    // Exception for JAL, that is used to return from functions
-                    VirtualOp::JAL(
-                        VirtualRegister::Constant(ConstantRegister::Zero),
-                        VirtualRegister::Constant(ConstantRegister::CallReturnAddress),
-                        VirtualImmediate12 { value: 0 },
-                    ) => false,
-                    VirtualOp::JMP(..)
-                    | VirtualOp::JI(..)
-                    | VirtualOp::JNE(..)
-                    | VirtualOp::JNEI(..)
-                    | VirtualOp::JNZI(..)
-                    | VirtualOp::JMPB(..)
-                    | VirtualOp::JMPF(..)
-                    | VirtualOp::JNZB(..)
-                    | VirtualOp::JNZF(..)
-                    | VirtualOp::JNEB(..)
-                    | VirtualOp::JNEF(..)
-                    | VirtualOp::JAL(..) => true,
-                    _ => false,
-                };
-                if forbidden_jmp {
-                    return Err(CompileError::InternalOwned(
-                        format!(
-                            "At this stage all jumps must be done using ControlFlowOp: {vop:?}"
-                        ),
-                        Span::dummy(),
-                    ));
-                }
-            }
-        }
-
         // At the moment the only verification we do is to make sure used registers are
         // initialised.  Without doing dataflow analysis we still can't guarantee the init is
         // _before_ the use, but future refactoring to convert abstract ops into SSA and BBs will

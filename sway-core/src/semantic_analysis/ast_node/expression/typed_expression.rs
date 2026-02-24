@@ -3186,40 +3186,37 @@ fn check_asm_block_validity(
             .map(|reg_name| VirtualRegister::Virtual(reg_name.to_string()))
             .collect::<Vec<VirtualRegister>>();
 
-        opcodes.push((
-            crate::asm_lang::Op::parse_opcode(
-                handler,
-                &op.op_name,
-                &registers,
-                &op.immediate,
-                op.span.clone(),
-            )?,
-            op.op_name.clone(),
-            op.span.clone(),
-        ));
+        // check for jumps here
+        match op.op_name.as_str() {
+            "jmp" | "ji" | "jne" | "jnei" | "jnzi" | "jmpb" | "jmpf" | "jnzb" | "jnzf" | "jneb"
+            | "jnef" | "jal" => {
+                handler.emit_err(CompileError::DisallowedControlFlowInstruction {
+                    name: op.op_name.to_string(),
+                    span: op.span.clone(),
+                });
+            }
+            _ => {
+                opcodes.push((
+                    crate::asm_lang::Op::parse_opcode(
+                        handler,
+                        &op.op_name,
+                        &registers,
+                        &op.immediate,
+                        op.span.clone(),
+                    )?,
+                    op.op_name.clone(),
+                    op.span.clone(),
+                ));
+            }
+        }
     }
 
     // Check #1: Disallow control flow instructions
     //
     for err in opcodes.iter().filter_map(|op| {
-        if matches!(
-            op.0,
-            VirtualOp::JMP(..)
-                | VirtualOp::JI(..)
-                | VirtualOp::JNE(..)
-                | VirtualOp::JNEI(..)
-                | VirtualOp::JNZI(..)
-                | VirtualOp::JMPB(..)
-                | VirtualOp::JMPF(..)
-                | VirtualOp::JNZB(..)
-                | VirtualOp::JNZF(..)
-                | VirtualOp::JNEB(..)
-                | VirtualOp::JNEF(..)
-                | VirtualOp::JAL(..)
-                | VirtualOp::RET(..)
-                | VirtualOp::RETD(..)
-                | VirtualOp::RVRT(..)
-        ) {
+        if matches!(op.0, |VirtualOp::RET(..)| VirtualOp::RETD(..)
+            | VirtualOp::RVRT(..))
+        {
             Some(CompileError::DisallowedControlFlowInstruction {
                 name: op.1.to_string(),
                 span: op.2.clone(),

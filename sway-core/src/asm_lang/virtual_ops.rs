@@ -101,28 +101,6 @@ pub(crate) enum VirtualOp {
     ),
 
     /* Control Flow Instructions */
-    JMP(VirtualRegister),
-    JI(VirtualImmediate24),
-    JNE(VirtualRegister, VirtualRegister, VirtualRegister),
-    JNEI(VirtualRegister, VirtualRegister, VirtualImmediate12),
-    JNZI(VirtualRegister, VirtualImmediate18),
-    JMPB(VirtualRegister, VirtualImmediate18),
-    JMPF(VirtualRegister, VirtualImmediate18),
-    JNZB(VirtualRegister, VirtualRegister, VirtualImmediate12),
-    JNZF(VirtualRegister, VirtualRegister, VirtualImmediate12),
-    JNEB(
-        VirtualRegister,
-        VirtualRegister,
-        VirtualRegister,
-        VirtualImmediate06,
-    ),
-    JNEF(
-        VirtualRegister,
-        VirtualRegister,
-        VirtualRegister,
-        VirtualImmediate06,
-    ),
-    JAL(VirtualRegister, VirtualRegister, VirtualImmediate12),
     RET(VirtualRegister),
 
     /* Memory Instructions */
@@ -317,18 +295,6 @@ impl VirtualOp {
             WQMM(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
 
             /* Control Flow Instructions */
-            JMP(r1) => vec![r1],
-            JI(_im) => vec![],
-            JNE(r1, r2, r3) => vec![r1, r2, r3],
-            JNEI(r1, r2, _i) => vec![r1, r2],
-            JNZI(r1, _i) => vec![r1],
-            JMPB(r1, _i) => vec![r1],
-            JMPF(r1, _i) => vec![r1],
-            JNZB(r1, r2, _i) => vec![r1, r2],
-            JNZF(r1, r2, _i) => vec![r1, r2],
-            JNEB(r1, r2, r3, _i) => vec![r1, r2, r3],
-            JNEF(r1, r2, r3, _i) => vec![r1, r2, r3],
-            JAL(r1, r2, _i) => vec![r1, r2],
             RET(r1) => vec![r1],
 
             /* Memory Instructions */
@@ -465,18 +431,6 @@ impl VirtualOp {
             | WQCM(_, _, _, _)
             | WQAM(_, _, _, _)
             | WQMM(_, _, _, _)
-            | JMP(_)
-            | JI(_)
-            | JNE(_, _, _)
-            | JNEI(_, _, _)
-            | JNZI(_, _)
-            | JMPB(_, _)
-            | JMPF(_, _)
-            | JNZB(_, _, _)
-            | JNZF(_, _, _)
-            | JNEB(_, _, _, _)
-            | JNEF(_, _, _, _)
-            | JAL(_, _, _)
             | RET(_)
             | ALOC(..)
             | CFEI(..)
@@ -583,18 +537,6 @@ impl VirtualOp {
             | CFSI(sp, _)
             | CFE(sp, _)
             | CFS(sp, _) => vec![sp],
-            JMP(_)
-            | JI(_)
-            | JNE(_, _, _)
-            | JNEI(_, _, _)
-            | JNZI(_, _)
-            | JMPB(_, _)
-            | JMPF(_, _)
-            | JNZB(_, _, _)
-            | JNZF(_, _, _)
-            | JNEB(_, _, _, _)
-            | JNEF(_, _, _, _)
-            | JAL(_, _, _)
             | RET(_)
             | LB(_, _, _)
             | LW(_, _, _)
@@ -697,18 +639,6 @@ impl VirtualOp {
             WQMM(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
 
             /* Control Flow Instructions */
-            JMP(r1) => vec![r1],
-            JI(_im) => vec![],
-            JNE(r1, r2, r3) => vec![r1, r2, r3],
-            JNEI(r1, r2, _i) => vec![r1, r2],
-            JNZI(r1, _i) => vec![r1],
-            JMPB(r1, _i) => vec![r1],
-            JMPF(r1, _i) => vec![r1],
-            JNZB(r1, r2, _i) => vec![r1, r2],
-            JNZF(r1, r2, _i) => vec![r1, r2],
-            JNEB(r1, r2, r3, _i) => vec![r1, r2, r3],
-            JNEF(r1, r2, r3, _i) => vec![r1, r2, r3],
-            JAL(_r1, r2, _i) => vec![r2],
             RET(r1) => vec![r1],
 
             /* Memory Instructions */
@@ -831,18 +761,6 @@ impl VirtualOp {
             WQMM(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
 
             /* Control Flow Instructions */
-            JMP(r1) => vec![r1],
-            JI(_im) => vec![],
-            JNE(r1, r2, r3) => vec![r1, r2, r3],
-            JNEI(r1, r2, _i) => vec![r1, r2],
-            JNZI(r1, _i) => vec![r1],
-            JMPB(r1, _i) => vec![r1],
-            JMPF(r1, _i) => vec![r1],
-            JNZB(r1, r2, _i) => vec![r1, r2],
-            JNZF(r1, r2, _i) => vec![r1, r2],
-            JNEB(r1, r2, r3, _i) => vec![r1, r2, r3],
-            JNEF(r1, r2, r3, _i) => vec![r1, r2, r3],
-            JAL(_r1, r2, _i) => vec![r2],
             RET(r1) => vec![r1],
 
             /* Memory Instructions */
@@ -963,18 +881,6 @@ impl VirtualOp {
             WQMM(_, _, _, _) => vec![],
 
             /* Control Flow Instructions */
-            JMP(_r1) => vec![],
-            JI(_im) => vec![],
-            JNE(_r1, _r2, _r3) => vec![],
-            JNEI(_r1, _r2, _i) => vec![],
-            JNZI(_r1, _i) => vec![],
-            JMPB(_r1, _i) => vec![],
-            JMPF(_r1, _i) => vec![],
-            JNZB(_r1, _r2, _i) => vec![],
-            JNZF(_r1, _r2, _i) => vec![],
-            JNEB(_r1, _r2, _r3, _i) => vec![],
-            JNEF(_r1, _r2, _r3, _i) => vec![],
-            JAL(r1, _r2, _i) => vec![r1],
             RET(_r1) => vec![],
 
             /* Memory Instructions */
@@ -1061,10 +967,6 @@ impl VirtualOp {
         };
         match self {
             RVRT(_) => vec![],
-            JI(_) | JNEI(..) | JNZI(..) => {
-                unreachable!("At this stage we shouldn't have jumps in the code.")
-            }
-
             _ => next_op,
         }
     }
@@ -1265,48 +1167,6 @@ impl VirtualOp {
             ),
 
             /* Control Flow Instructions */
-            JMP(r1) => Self::JMP(update_reg(reg_to_reg_map, r1)),
-            JI(_) => self.clone(),
-            JNE(r1, r2, r3) => Self::JNE(
-                update_reg(reg_to_reg_map, r1),
-                update_reg(reg_to_reg_map, r2),
-                update_reg(reg_to_reg_map, r3),
-            ),
-            JNEI(r1, r2, i) => Self::JNEI(
-                update_reg(reg_to_reg_map, r1),
-                update_reg(reg_to_reg_map, r2),
-                i.clone(),
-            ),
-            JNZI(r1, i) => Self::JNZI(update_reg(reg_to_reg_map, r1), i.clone()),
-            JMPB(r1, i) => Self::JMPB(update_reg(reg_to_reg_map, r1), i.clone()),
-            JMPF(r1, i) => Self::JMPF(update_reg(reg_to_reg_map, r1), i.clone()),
-            JNZB(r1, r2, i) => Self::JNZB(
-                update_reg(reg_to_reg_map, r1),
-                update_reg(reg_to_reg_map, r2),
-                i.clone(),
-            ),
-            JNZF(r1, r2, i) => Self::JNZF(
-                update_reg(reg_to_reg_map, r1),
-                update_reg(reg_to_reg_map, r2),
-                i.clone(),
-            ),
-            JNEB(r1, r2, r3, i) => Self::JNEB(
-                update_reg(reg_to_reg_map, r1),
-                update_reg(reg_to_reg_map, r2),
-                update_reg(reg_to_reg_map, r3),
-                i.clone(),
-            ),
-            JNEF(r1, r2, r3, i) => Self::JNEF(
-                update_reg(reg_to_reg_map, r1),
-                update_reg(reg_to_reg_map, r2),
-                update_reg(reg_to_reg_map, r3),
-                i.clone(),
-            ),
-            JAL(r1, r2, i) => Self::JAL(
-                update_reg(reg_to_reg_map, r1),
-                update_reg(reg_to_reg_map, r2),
-                i.clone(),
-            ),
             RET(r1) => Self::RET(update_reg(reg_to_reg_map, r1)),
 
             /* Memory Instructions */
@@ -1544,46 +1404,6 @@ impl VirtualOp {
         }
     }
 
-    /// Use `offset_map` to update the immediate value of a jump instruction. The map simply tells
-    /// us what the new offset should be given the existing offset.
-    pub(crate) fn update_jump_immediate_values(&mut self, offset_map: &HashMap<u64, u64>) -> Self {
-        use VirtualOp::*;
-        match self {
-            JI(i) => Self::JI(
-                VirtualImmediate24::try_new(
-                    *offset_map
-                        .get(&(i.value() as u64))
-                        .expect("new offset should be valid"),
-                    crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
-                )
-                .unwrap(),
-            ),
-            JNEI(r1, r2, i) => Self::JNEI(
-                r1.clone(),
-                r2.clone(),
-                VirtualImmediate12::try_new(
-                    *offset_map
-                        .get(&(i.value() as u64))
-                        .expect("new offset should be valid"),
-                    crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
-                )
-                .unwrap(),
-            ),
-            JNZI(r1, i) => Self::JNZI(
-                r1.clone(),
-                VirtualImmediate18::try_new(
-                    *offset_map
-                        .get(&(i.value() as u64))
-                        .expect("new offset should be valid"),
-                    crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
-                )
-                .unwrap(),
-            ),
-
-            _ => self.clone(),
-        }
-    }
-
     pub(crate) fn allocate_registers(&self, pool: &RegisterPool) -> AllocatedInstruction {
         let virtual_registers = self.registers();
         let register_allocation_result = virtual_registers
@@ -1802,48 +1622,6 @@ impl VirtualOp {
             ),
 
             /* Control Flow Instructions */
-            JMP(reg1) => AllocatedInstruction::JMP(map_reg(&mapping, reg1)),
-            JI(imm) => AllocatedInstruction::JI(imm.clone()),
-            JNE(reg1, reg2, reg3) => AllocatedInstruction::JNE(
-                map_reg(&mapping, reg1),
-                map_reg(&mapping, reg2),
-                map_reg(&mapping, reg3),
-            ),
-            JNEI(reg1, reg2, imm) => AllocatedInstruction::JNEI(
-                map_reg(&mapping, reg1),
-                map_reg(&mapping, reg2),
-                imm.clone(),
-            ),
-            JNZI(reg1, imm) => AllocatedInstruction::JNZI(map_reg(&mapping, reg1), imm.clone()),
-            JMPB(reg1, imm) => AllocatedInstruction::JMPB(map_reg(&mapping, reg1), imm.clone()),
-            JMPF(reg1, imm) => AllocatedInstruction::JMPF(map_reg(&mapping, reg1), imm.clone()),
-            JNZB(reg1, reg2, imm) => AllocatedInstruction::JNZB(
-                map_reg(&mapping, reg1),
-                map_reg(&mapping, reg2),
-                imm.clone(),
-            ),
-            JNZF(reg1, reg2, imm) => AllocatedInstruction::JNZF(
-                map_reg(&mapping, reg1),
-                map_reg(&mapping, reg2),
-                imm.clone(),
-            ),
-            JNEB(reg1, reg2, reg3, imm) => AllocatedInstruction::JNEB(
-                map_reg(&mapping, reg1),
-                map_reg(&mapping, reg2),
-                map_reg(&mapping, reg3),
-                imm.clone(),
-            ),
-            JNEF(reg1, reg2, reg3, imm) => AllocatedInstruction::JNEF(
-                map_reg(&mapping, reg1),
-                map_reg(&mapping, reg2),
-                map_reg(&mapping, reg3),
-                imm.clone(),
-            ),
-            JAL(reg1, reg2, imm) => AllocatedInstruction::JAL(
-                map_reg(&mapping, reg1),
-                map_reg(&mapping, reg2),
-                imm.clone(),
-            ),
             RET(reg) => AllocatedInstruction::RET(map_reg(&mapping, reg)),
 
             /* Memory Instructions */

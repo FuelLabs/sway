@@ -10,8 +10,8 @@ use crate::{
     },
     asm_lang::{
         virtual_register::{self, *},
-        JumpType, Op, OrganizationalOp, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24,
-        VirtualOp,
+        ControlFlowOp, JumpType, Op, OrganizationalOp, VirtualImmediate12, VirtualImmediate18,
+        VirtualImmediate24, VirtualOp,
     },
     decl_engine::DeclRef,
     fuel_prelude::fuel_asm::GTFArgs,
@@ -384,12 +384,17 @@ impl FuelAsmBuilder<'_, '_> {
             });
 
             // Jump to the return address.
+            // self.cur_bytecode.push(Op {
+            //     opcode: Either::Left(VirtualOp::JAL(
+            //         ConstantRegister::Zero.into(),
+            //         ConstantRegister::CallReturnAddress.into(),
+            //         VirtualImmediate12::new(0),
+            //     )),
+            //     comment: format!("[fn end: {fn_name}] return from call"),
+            //     owning_span: None,
+            // });
             self.cur_bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::JAL(
-                    ConstantRegister::Zero.into(),
-                    ConstantRegister::CallReturnAddress.into(),
-                    VirtualImmediate12::new(0),
-                )),
+                opcode: Either::Right(ControlFlowOp::ReturnFromCall),
                 comment: format!("[fn end: {fn_name}] return from call"),
                 owning_span: None,
             });
