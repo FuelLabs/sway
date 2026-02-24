@@ -1276,7 +1276,7 @@ pub(crate) enum ControlFlowOp<Reg> {
     PushAll(Label),
     // Restore all previously saved general purpose registers.
     PopAll(Label),
-    // Jump to an adrress in memory
+    // Jump to an address in memory
     JumpToAddr(Reg),
     // Return from function call
     ReturnFromCall {
