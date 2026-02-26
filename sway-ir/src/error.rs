@@ -48,6 +48,7 @@ pub enum IrError {
     VerifyIntToPtrUnknownSourceType,
     VerifyAllocCountNotUint64,
     VerifyInvalidGtfIndexType,
+    VerifyInvalidGtfTxFieldIdSize(u64),
     VerifyLoadFromNonPointer(String),
     VerifyLocalMissingInitializer(String, String),
     VerifyLogId,
@@ -73,6 +74,7 @@ pub enum IrError {
     VerifyStateDestBadType(String),
     VerifyStateKeyBadType,
     VerifyStateKeyNonPointer(String),
+    VerifyStateLoadWordOffsetSize(u64),
     VerifyStoreMismatchedTypes(Option<Value>),
     VerifyStoreToNonPointer(String),
     VerifyUntypedValuePassedToFunction,
@@ -396,6 +398,10 @@ impl fmt::Display for IrError {
                     "Verification failed: State access operation must be to a {ty} pointer."
                 )
             }
+            IrError::VerifyStateLoadWordOffsetSize(offset) => write!(
+                f,
+                "Verification failed: 'state_load_word' instruction has offset that does not fit in 6 bits: {offset}."
+            ),
             IrError::VerifyStoreMismatchedTypes(_) => {
                 write!(
                     f,
@@ -411,7 +417,11 @@ impl fmt::Display for IrError {
             ),
             IrError::VerifyInvalidGtfIndexType => write!(
                 f,
-                "Verification failed: An non-integer value has been passed to a 'gtf' instruction."
+                "Verification failed: A non-integer value has been passed as index to a 'gtf' instruction."
+            ),
+            IrError::VerifyInvalidGtfTxFieldIdSize(tx_field_id) => write!(
+                f,
+                "Verification failed: 'gtf' instruction has transaction field ID that does not fit in 12 bits: {tx_field_id}."
             ),
             IrError::VerifyLogId => {
                 write!(f, "Verification failed: log ID must be an integer.")

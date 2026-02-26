@@ -642,8 +642,8 @@ impl Op {
                 VirtualOp::SCWQ(r1, r2, r3)
             }
             "srw" => {
-                let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
-                VirtualOp::SRW(r1, r2, r3)
+                let (r1, r2, r3, imm) = three_regs_imm_06(handler, args, immediate, whole_op_span)?;
+                VirtualOp::SRW(r1, r2, r3, imm)
             }
             "srwq" => {
                 let (r1, r2, r3, r4) = four_regs(handler, args, immediate, whole_op_span)?;
@@ -1257,7 +1257,7 @@ impl fmt::Display for VirtualOp {
             RVRT(a) => write!(fmtr, "rvrt {a}"),
             SMO(a, b, c, d) => write!(fmtr, "smo {a} {b} {c} {d}"),
             SCWQ(a, b, c) => write!(fmtr, "scwq {a} {b} {c}"),
-            SRW(a, b, c) => write!(fmtr, "srw {a} {b} {c}"),
+            SRW(a, b, c, d) => write!(fmtr, "srw {a} {b} {c} {d}"),
             SRWQ(a, b, c, d) => write!(fmtr, "srwq {a} {b} {c} {d}"),
             SWW(a, b, c) => write!(fmtr, "sww {a} {b} {c}"),
             SWWQ(a, b, c, d) => write!(fmtr, "swwq {a} {b} {c} {d}"),

@@ -16,7 +16,7 @@ impl TestAbi for Contract {
         other_contract.deposit();
         // effect -- therefore violation of CEI where effect should go before interaction
         asm(key: KEY, is_set, res) {
-            srw res is_set key;
+            srw res is_set key i0;
             res: u64
         }
     }

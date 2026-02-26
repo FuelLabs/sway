@@ -7,9 +7,19 @@ abi Abi {
 struct S { }
 
 impl S {
+    #[cfg(experimental_aligned_and_dynamic_storage = false)]
     fn read_intrinsics(self) -> Self {
         let ptr = asm (p: 0) { p: raw_ptr };
         let _ = __state_load_word(b256::zero());
+        let _ = __state_load_quad(b256::zero(), ptr, 1);
+
+        self
+    }
+
+    #[cfg(experimental_aligned_and_dynamic_storage = true)]
+    fn read_intrinsics(self) -> Self {
+        let ptr = asm (p: 0) { p: raw_ptr };
+        let _ = __state_load_word(b256::zero(), 0);
         let _ = __state_load_quad(b256::zero(), ptr, 1);
 
         self
@@ -47,7 +57,7 @@ impl Abi for Contract {
 
 fn read_asm_instructions() {
     asm(r1, r2, r3: 0) {
-        srw r1 r2 r3;
+        srw r1 r2 r3 i0;
     }
 
     asm(r1: 0, r2, r3: 0, r4: 0) {

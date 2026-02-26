@@ -90,7 +90,6 @@ fuel-core-storage = { version = "0.47", default-features = false }
 fuel-core-types = { version = "0.47", default-features = false }
 
 # Dependencies from the `fuels-rs` repository:
-
 fuels = "0.76"
 fuels-core = "0.76"
 fuels-accounts = "0.76"
@@ -244,3 +243,18 @@ vte = "0.13"
 walkdir = "2.3"
 whoami = "1.5"
 wiremock = "0.6"
+
+[patch.crates-io]
+fuel-core-client = { git = "https://github.com/FuelLabs/fuel-core", branch = "dento/dynamic-storage" }
+fuel-core-storage = { git = "https://github.com/FuelLabs/fuel-core", branch = "dento/dynamic-storage" }
+fuel-core-types = { git = "https://github.com/FuelLabs/fuel-core", branch = "dento/dynamic-storage" }
+
+fuel-asm = { git = "https://github.com/FuelLabs/fuel-vm" }
+fuel-crypto = { git = "https://github.com/FuelLabs/fuel-vm" }
+fuel-types = { git = "https://github.com/FuelLabs/fuel-vm" }
+fuel-tx = { git = "https://github.com/FuelLabs/fuel-vm" }
+fuel-vm = { git = "https://github.com/FuelLabs/fuel-vm" }
+
+fuels = { git = "https://github.com/FuelLabs/fuels-rs", branch = "ironcev/clonable-isuseraccountvariables" }
+fuels-core = { git = "https://github.com/FuelLabs/fuels-rs", branch = "ironcev/clonable-isuseraccountvariables" }
+fuels-accounts = { git = "https://github.com/FuelLabs/fuels-rs", branch = "ironcev/clonable-isuseraccountvariables" }

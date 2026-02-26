@@ -426,6 +426,7 @@ fn imm(instruction: Instruction) -> Option<String> {
         Instruction::WQML(op) => imm06_to_string(op.imm06()),
         Instruction::WDDV(op) => imm06_to_string(op.imm06()),
         Instruction::WQDV(op) => imm06_to_string(op.imm06()),
+        Instruction::SRW(op) => imm06_to_string(op.imm06()),
         _ => None,
     }
 }

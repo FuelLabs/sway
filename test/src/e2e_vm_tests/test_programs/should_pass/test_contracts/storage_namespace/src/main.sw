@@ -36,9 +36,16 @@ impl BasicStorage for Contract {
         write(key, 0, value);
     }
 
+    #[cfg(experimental_aligned_and_dynamic_storage = false)]
     #[storage(read)]
     fn intrinsic_load_word(key: b256) -> u64 {
         __state_load_word(key)
+    }
+
+    #[cfg(experimental_aligned_and_dynamic_storage = true)]
+    #[storage(read)]
+    fn intrinsic_load_word(key: b256) -> u64 {
+        __state_load_word(key, 0)
     }
 
     #[storage(write)]

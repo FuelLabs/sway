@@ -118,7 +118,7 @@ define_op_codes!(
     (Rvrt, RvrtOpcode, "rvrt", (value)),
     (Smo, SmoOpcode, "smo", (addr, len, output, coins)),
     (Scwq, ScwqOpcode, "scwq", (addr, is_set, len)),
-    (Srw, SrwOpcode, "srw", (ret, is_set, state_addr)),
+    (Srw, SrwOpcode, "srw", (ret, is_set, state_addr, offset)),
     (Srwq, SrwqOpcode, "srwq", (addr, is_set, state_addr, count)),
     (Sww, SwwOpcode, "sww", (state_addr, is_set, value)),
     (Swwq, SwwqOpcode, "swwq", (state_addr, is_set, addr, count)),
