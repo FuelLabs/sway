@@ -1,6 +1,14 @@
 use anyhow::Result;
-use fuel_vm::{prelude::{Finalizable, GasCostsValues, TransactionBuilderExt as _}, state::ProgramState, storage::MemoryStorage};
-use fuels::{crypto::SecretKey, tx::{ConsensusParameters, GasCosts, Receipt, ScriptParameters, TxParameters}, types::gas_price::LatestGasPrice};
+use fuel_vm::{
+    prelude::{Finalizable, GasCostsValues, TransactionBuilderExt as _},
+    state::ProgramState,
+    storage::MemoryStorage,
+};
+use fuels::{
+    crypto::SecretKey,
+    tx::{ConsensusParameters, GasCosts, Receipt, ScriptParameters, TxParameters},
+    types::gas_price::LatestGasPrice,
+};
 use gimli::{DebugLine, LittleEndian, Reader};
 use libtest_mimic::{Arguments, Trial};
 use normalize_path::NormalizePath;
@@ -8,9 +16,17 @@ use object::{Object, ObjectSection};
 use rand::{Rng as _, SeedableRng as _};
 use regex::{Captures, Regex};
 use std::{
-    borrow::Cow, collections::{BTreeSet, HashMap}, error::Error, io::{Seek, Write}, ops::ControlFlow, path::{Path, PathBuf}, str::FromStr, sync::Once, u64
+    borrow::Cow,
+    collections::{BTreeSet, HashMap},
+    error::Error,
+    io::{Seek, Write},
+    ops::ControlFlow,
+    path::{Path, PathBuf},
+    str::FromStr,
+    sync::Once,
+    u64,
 };
-use sway_core::{Engines, asm_generation::fuel};
+use sway_core::{asm_generation::fuel, Engines};
 use sway_features::ExperimentalFeatures;
 use sway_ir::{function_print, Backtrace};
 
@@ -365,7 +381,7 @@ fn run_cmds(
                         }
                         continue;
                     } else if let Some(args) = cmd.strip_prefix("fuel-vm ") {
-                         if let Err(err) = fuel_vm_command(snapshot, args) {
+                        if let Err(err) = fuel_vm_command(snapshot, args) {
                             snapshot.push_str(&format!("{err:#?}"));
                         }
                         continue;
@@ -473,9 +489,12 @@ fn fuel_vm_command(snapshot: &mut String, args: &str) -> Result<(), std::io::Err
             let asset_id = fuels::types::AssetId::BASE;
             let tx_pointer = rng.r#gen();
 
-            let gas_costs = forc_test::GasCostsSource::BuiltIn.provide_gas_costs().unwrap();
+            let gas_costs = forc_test::GasCostsSource::BuiltIn
+                .provide_gas_costs()
+                .unwrap();
             let consensus_params = maxed_consensus_params(gas_costs.clone());
-            let mut tx_builder = fuel_vm::prelude::TransactionBuilder::script(bytecode, script_input_data);
+            let mut tx_builder =
+                fuel_vm::prelude::TransactionBuilder::script(bytecode, script_input_data);
             tx_builder
                 .with_gas_costs(GasCosts::new(gas_costs))
                 .script_gas_limit(u64::MAX)
@@ -485,13 +504,28 @@ fn fuel_vm_command(snapshot: &mut String, args: &str) -> Result<(), std::io::Err
             let block_height = (u32::MAX >> 1).into();
             let tx = tx_builder
                 .finalize_checked(block_height)
-                .into_ready(0, consensus_params.gas_costs(), consensus_params.fee_params(), None)
+                .into_ready(
+                    0,
+                    consensus_params.gas_costs(),
+                    consensus_params.fee_params(),
+                    None,
+                )
                 .unwrap();
 
-            let interpreter_params = fuel_vm::interpreter::InterpreterParams::new(0, consensus_params);
+            let interpreter_params =
+                fuel_vm::interpreter::InterpreterParams::new(0, consensus_params);
             let memory_instance = fuel_vm::prelude::MemoryInstance::new();
             let storage = MemoryStorage::default();
-            let mut interpreter: fuel_vm::prelude::Interpreter<fuel_vm::prelude::MemoryInstance, MemoryStorage, fuel_vm::prelude::Script, forc_test::ecal::EcalSyscallHandler> = fuel_vm::prelude::Interpreter::with_storage(memory_instance, storage, interpreter_params);
+            let mut interpreter: fuel_vm::prelude::Interpreter<
+                fuel_vm::prelude::MemoryInstance,
+                MemoryStorage,
+                fuel_vm::prelude::Script,
+                forc_test::ecal::EcalSyscallHandler,
+            > = fuel_vm::prelude::Interpreter::with_storage(
+                memory_instance,
+                storage,
+                interpreter_params,
+            );
 
             interpreter.ecal_state_mut().clear();
 
@@ -510,7 +544,9 @@ fn fuel_vm_command(snapshot: &mut String, args: &str) -> Result<(), std::io::Err
                         break;
                     }
                     Ok(
-                        ProgramState::Return(_) | ProgramState::ReturnData(_) | ProgramState::Revert(_),
+                        ProgramState::Return(_)
+                        | ProgramState::ReturnData(_)
+                        | ProgramState::Revert(_),
                     ) => break,
                     Ok(ProgramState::RunProgram(_) | ProgramState::VerifyPredicate(_)) => {
                         state = interpreter.resume();
@@ -524,19 +560,18 @@ fn fuel_vm_command(snapshot: &mut String, args: &str) -> Result<(), std::io::Err
                 snapshot.push_str(&format!("{l:#?}\n"));
             }
         }
-        _ => panic!("unknown command")
+        _ => panic!("unknown command"),
     }
 
     Ok(())
 }
 
-pub(crate) fn maxed_consensus_params(
-    gas_costs_values: GasCostsValues,
-) -> ConsensusParameters {
+pub(crate) fn maxed_consensus_params(gas_costs_values: GasCostsValues) -> ConsensusParameters {
     let script_params = ScriptParameters::DEFAULT
         .with_max_script_length(u64::MAX)
         .with_max_script_data_length(u64::MAX);
-    let tx_params = TxParameters::DEFAULT.with_max_gas_per_tx(u64::MAX)
+    let tx_params = TxParameters::DEFAULT
+        .with_max_gas_per_tx(u64::MAX)
         .with_max_size(u64::MAX);
     let contract_params = fuels::tx::ContractParameters::DEFAULT
         .with_contract_max_size(u64::MAX)
@@ -576,21 +611,29 @@ fn patch_bin_command(repo_root: &PathBuf, root: &String, args: &str) -> Result<(
     let build = args.trim();
     let out_dir = proj_root.join("out").join(build);
 
-    let bin_file = std::fs::read_dir(&out_dir)?.into_iter().flatten().find(|x| {
-        x.path().extension().and_then(|x| x.to_str()) == Some("bin")
-    });
-    let dwarf_file = std::fs::read_dir(&out_dir)?.into_iter().flatten().find(|x| {
-        x.path().extension().and_then(|x| x.to_str()) == Some("obj")
-    }).unwrap();
+    let bin_file = std::fs::read_dir(&out_dir)?
+        .into_iter()
+        .flatten()
+        .find(|x| x.path().extension().and_then(|x| x.to_str()) == Some("bin"));
+    let dwarf_file = std::fs::read_dir(&out_dir)?
+        .into_iter()
+        .flatten()
+        .find(|x| x.path().extension().and_then(|x| x.to_str()) == Some("obj"))
+        .unwrap();
 
     let file = std::fs::read(dwarf_file.path()).unwrap();
     let file = object::File::parse(&*file).unwrap();
 
-    dump_file(&file, if file.is_little_endian() {
-        gimli::RunTimeEndian::Little
-    } else {
-        gimli::RunTimeEndian::Big
-    }, &bin_file.unwrap().path()).unwrap();
+    dump_file(
+        &file,
+        if file.is_little_endian() {
+            gimli::RunTimeEndian::Little
+        } else {
+            gimli::RunTimeEndian::Big
+        },
+        &bin_file.unwrap().path(),
+    )
+    .unwrap();
 
     Ok(())
 }
@@ -709,13 +752,17 @@ fn dump_file(
                             let v = if c == '0' { 0 } else { 1 };
                             i |= v << (24 - idx - 1);
                         }
-                    
+
                         if let Ok(i) = fuel_vm::fuel_asm::Instruction::try_from(i) {
                             print!(" will patch to {i:?}");
                         }
 
-                        let mut f = std::fs::File::options().write(true).open(bin_file_path).unwrap();
-                        f.seek(std::io::SeekFrom::Start(row.address() as u64 * 4)).unwrap();
+                        let mut f = std::fs::File::options()
+                            .write(true)
+                            .open(bin_file_path)
+                            .unwrap();
+                        f.seek(std::io::SeekFrom::Start(row.address() as u64 * 4))
+                            .unwrap();
                         f.write_all(&i.to_be_bytes()).unwrap();
                         f.flush().unwrap();
                     }

@@ -277,7 +277,7 @@ fn to_bytecode_mut(
                         print!("{}{:#010x} ", " ".repeat(indentation), bytecode.len());
                         print_instruction(&instruction);
                     }
-                    
+
                     if let Some(span) = &span {
                         source_map.insert(source_engine, half_word_ix, span);
                     }
