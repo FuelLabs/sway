@@ -1,14 +1,16 @@
 use anyhow::Result;
+use fuel_vm::{prelude::{Finalizable, GasCostsValues, TransactionBuilderExt as _}, state::ProgramState, storage::MemoryStorage};
+use fuels::{crypto::SecretKey, tx::{ConsensusParameters, GasCosts, Receipt, ScriptParameters, TxParameters}, types::gas_price::LatestGasPrice};
+use gimli::{DebugLine, LittleEndian, Reader};
 use libtest_mimic::{Arguments, Trial};
 use normalize_path::NormalizePath;
+use object::{Object, ObjectSection};
+use rand::{Rng as _, SeedableRng as _};
 use regex::{Captures, Regex};
 use std::{
-    collections::{BTreeSet, HashMap},
-    path::{Path, PathBuf},
-    str::FromStr,
-    sync::Once,
+    borrow::Cow, collections::{BTreeSet, HashMap}, error::Error, io::{Seek, Write}, ops::ControlFlow, path::{Path, PathBuf}, str::FromStr, sync::Once, u64
 };
-use sway_core::Engines;
+use sway_core::{Engines, asm_generation::fuel};
 use sway_features::ExperimentalFeatures;
 use sway_ir::{function_print, Backtrace};
 
@@ -357,6 +359,16 @@ fn run_cmds(
                         snapshot.push('\n');
 
                         continue;
+                    } else if let Some(args) = cmd.strip_prefix("patch-bin ") {
+                        if let Err(err) = patch_bin_command(repo_root, root, args) {
+                            snapshot.push_str(&format!("{err:#?}"));
+                        }
+                        continue;
+                    } else if let Some(args) = cmd.strip_prefix("fuel-vm ") {
+                         if let Err(err) = fuel_vm_command(snapshot, args) {
+                            snapshot.push_str(&format!("{err:#?}"));
+                        }
+                        continue;
                     } else {
                         panic!("`{cmd}` is not a supported snapshot command.\nPossible tool commands: forc doc, forc\nPossible filtering commands: sub, regex, filter-fn");
                     };
@@ -437,6 +449,282 @@ fn run_cmds(
         }
     }
 
+    Ok(())
+}
+
+fn fuel_vm_command(snapshot: &mut String, args: &str) -> Result<(), std::io::Error> {
+    let mut args = args.split(" ");
+    match args.next() {
+        Some("run") => {
+            let bin_file = args.next().unwrap();
+
+            let bytecode = std::fs::read(bin_file)?;
+            let script_input_data = vec![];
+
+            const TEST_METADATA_SEED: u64 = 0x7E57u64;
+            let rng = &mut rand::rngs::StdRng::seed_from_u64(TEST_METADATA_SEED);
+
+            // Prepare the transaction metadata.
+            let secret_key = SecretKey::random(rng);
+            let utxo_id = rng.r#gen();
+            let amount = 1;
+            let maturity = 1.into();
+
+            let asset_id = fuels::types::AssetId::BASE;
+            let tx_pointer = rng.r#gen();
+
+            let gas_costs = forc_test::GasCostsSource::BuiltIn.provide_gas_costs().unwrap();
+            let consensus_params = maxed_consensus_params(gas_costs.clone());
+            let mut tx_builder = fuel_vm::prelude::TransactionBuilder::script(bytecode, script_input_data);
+            tx_builder
+                .with_gas_costs(GasCosts::new(gas_costs))
+                .script_gas_limit(u64::MAX)
+                .with_params(consensus_params.clone())
+                .add_unsigned_coin_input(secret_key, utxo_id, amount, asset_id, tx_pointer)
+                .maturity(maturity);
+            let block_height = (u32::MAX >> 1).into();
+            let tx = tx_builder
+                .finalize_checked(block_height)
+                .into_ready(0, consensus_params.gas_costs(), consensus_params.fee_params(), None)
+                .unwrap();
+
+            let interpreter_params = fuel_vm::interpreter::InterpreterParams::new(0, consensus_params);
+            let memory_instance = fuel_vm::prelude::MemoryInstance::new();
+            let storage = MemoryStorage::default();
+            let mut interpreter: fuel_vm::prelude::Interpreter<fuel_vm::prelude::MemoryInstance, MemoryStorage, fuel_vm::prelude::Script, forc_test::ecal::EcalSyscallHandler> = fuel_vm::prelude::Interpreter::with_storage(memory_instance, storage, interpreter_params);
+
+            interpreter.ecal_state_mut().clear();
+
+            // Run test until its end
+            interpreter.set_single_stepping(true);
+            let mut state = {
+                let transition = interpreter.transact(tx.clone());
+                Ok(*transition.unwrap().state())
+            };
+
+            loop {
+                interpreter.set_single_stepping(true);
+                match state {
+                    Err(_) => {
+                        state = Ok(ProgramState::Revert(0));
+                        break;
+                    }
+                    Ok(
+                        ProgramState::Return(_) | ProgramState::ReturnData(_) | ProgramState::Revert(_),
+                    ) => break,
+                    Ok(ProgramState::RunProgram(_) | ProgramState::VerifyPredicate(_)) => {
+                        state = interpreter.resume();
+                    }
+                }
+            }
+
+            let (gas_used, logs) = get_gas_and_receipts(interpreter.receipts().to_vec()).unwrap();
+            snapshot.push_str(&format!("Gas: {}\nLogs:\n", gas_used));
+            for l in logs {
+                snapshot.push_str(&format!("{l:#?}\n"));
+            }
+        }
+        _ => panic!("unknown command")
+    }
+
+    Ok(())
+}
+
+pub(crate) fn maxed_consensus_params(
+    gas_costs_values: GasCostsValues,
+) -> ConsensusParameters {
+    let script_params = ScriptParameters::DEFAULT
+        .with_max_script_length(u64::MAX)
+        .with_max_script_data_length(u64::MAX);
+    let tx_params = TxParameters::DEFAULT.with_max_gas_per_tx(u64::MAX)
+        .with_max_size(u64::MAX);
+    let contract_params = fuels::tx::ContractParameters::DEFAULT
+        .with_contract_max_size(u64::MAX)
+        .with_max_storage_slots(u64::MAX);
+    ConsensusParameters::V1(fuels::tx::consensus_parameters::ConsensusParametersV1 {
+        script_params,
+        tx_params,
+        contract_params,
+        gas_costs: gas_costs_values.into(),
+        block_gas_limit: u64::MAX,
+        ..Default::default()
+    })
+}
+
+fn get_gas_and_receipts(receipts: Vec<Receipt>) -> anyhow::Result<(u64, Vec<Receipt>)> {
+    let gas_used = *receipts
+        .iter()
+        .find_map(|receipt| match receipt {
+            fuels::tx::Receipt::ScriptResult { gas_used, .. } => Some(gas_used),
+            _ => None,
+        })
+        .ok_or_else(|| anyhow::anyhow!("missing used gas information from test execution"))?;
+
+    // Only retain `Log` and `LogData` receipts.
+    let logs = receipts
+        .into_iter()
+        // .filter(|receipt| {
+        //     matches!(receipt, fuels::tx::Receipt::Log { .. })
+        //         || matches!(receipt, fuels::tx::Receipt::LogData { .. })
+        // })
+        .collect();
+    Ok((gas_used, logs))
+}
+
+fn patch_bin_command(repo_root: &PathBuf, root: &String, args: &str) -> Result<(), std::io::Error> {
+    let proj_root = repo_root.join(root);
+    let build = args.trim();
+    let out_dir = proj_root.join("out").join(build);
+
+    let bin_file = std::fs::read_dir(&out_dir)?.into_iter().flatten().find(|x| {
+        x.path().extension().and_then(|x| x.to_str()) == Some("bin")
+    });
+    let dwarf_file = std::fs::read_dir(&out_dir)?.into_iter().flatten().find(|x| {
+        x.path().extension().and_then(|x| x.to_str()) == Some("obj")
+    }).unwrap();
+
+    let file = std::fs::read(dwarf_file.path()).unwrap();
+    let file = object::File::parse(&*file).unwrap();
+
+    dump_file(&file, if file.is_little_endian() {
+        gimli::RunTimeEndian::Little
+    } else {
+        gimli::RunTimeEndian::Big
+    }, &bin_file.unwrap().path()).unwrap();
+
+    Ok(())
+}
+
+fn dump_file(
+    object: &object::File,
+    endian: gimli::RunTimeEndian,
+    bin_file_path: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let bin_file = std::fs::read(bin_file_path).unwrap();
+
+    // Load a section and return as `Cow<[u8]>`.
+    let load_section = |id: gimli::SectionId| -> Result<Cow<[u8]>, Box<dyn std::error::Error>> {
+        Ok(match object.section_by_name(id.name()) {
+            Some(section) => section.uncompressed_data()?,
+            None => Cow::Borrowed(&[]),
+        })
+    };
+
+    // Borrow a `Cow<[u8]>` to create an `EndianSlice`.
+    let borrow_section = |section| gimli::EndianSlice::new(Cow::as_ref(section), endian);
+
+    // Load all of the sections.
+    let dwarf_sections = gimli::DwarfSections::load(&load_section)?;
+
+    // Create `EndianSlice`s for all of the sections.
+    let dwarf = dwarf_sections.borrow(borrow_section);
+
+    // Iterate over the compilation units.
+    let mut iter = dwarf.units();
+    while let Some(header) = iter.next()? {
+        println!(
+            "Line number info for unit at <.debug_info+0x{:?}>",
+            header.offset()
+        );
+        let unit = dwarf.unit(header)?;
+        let unit = unit.unit_ref(&dwarf);
+
+        // Get the line program for the compilation unit.
+        if let Some(program) = unit.line_program.clone() {
+            let comp_dir = if let Some(ref dir) = unit.comp_dir {
+                PathBuf::from(dir.to_string_lossy().into_owned())
+            } else {
+                PathBuf::new()
+            };
+
+            // Iterate over the line program rows.
+            let mut rows = program.rows();
+            while let Some((header, row)) = rows.next_row()? {
+                if row.end_sequence() {
+                    // End of sequence indicates a possible gap in addresses.
+                    println!("{:x} end-sequence", row.address());
+                } else {
+                    // Determine the path. Real applications should cache this for performance.
+                    let mut path = PathBuf::new();
+                    if let Some(file) = row.file(header) {
+                        path.clone_from(&comp_dir);
+
+                        // The directory index 0 is defined to correspond to the compilation unit directory.
+                        if file.directory_index() != 0 {
+                            if let Some(dir) = file.directory(header) {
+                                path.push(unit.attr_string(dir)?.to_string_lossy().as_ref());
+                            }
+                        }
+
+                        path.push(
+                            unit.attr_string(file.path_name())?
+                                .to_string_lossy()
+                                .as_ref(),
+                        );
+                    }
+
+                    // Determine line/column. DWARF line/column is never 0, so we use that
+                    // but other applications may want to display this differently.
+                    let line = match row.line() {
+                        Some(line) => line.get(),
+                        None => 0,
+                    };
+                    let column = match row.column() {
+                        gimli::ColumnType::LeftEdge => 0,
+                        gimli::ColumnType::Column(column) => column.get(),
+                    };
+
+                    println!("{:x} {}:{}:{}", row.address(), path.display(), line, column);
+
+                    let opcode = [
+                        bin_file[row.address() as usize * 4 + 0],
+                        bin_file[row.address() as usize * 4 + 1],
+                        bin_file[row.address() as usize * 4 + 2],
+                        bin_file[row.address() as usize * 4 + 3],
+                    ];
+                    print!("    ");
+                    if let Ok(i) = fuel_vm::fuel_asm::Instruction::try_from(opcode) {
+                        print!(" {i:?}");
+                    }
+                    let opcode = u32::from_le_bytes(opcode);
+                    println!("{:x}", opcode);
+
+                    let code = std::fs::read_to_string(&path).unwrap();
+                    let line = code.lines().skip((line - 1) as usize).next().unwrap();
+                    print!("    {line}");
+
+                    if let Some((_, rest)) = line.split_once("// PATCH: ") {
+                        let mut args = String::new();
+                        let mut i = 0u32;
+                        for part in rest.trim().split(" ") {
+                            if part.len() == 6 {
+                                args.push_str(part);
+                            }
+                            if let Some(n) = part.strip_prefix("0x") {
+                                i = (u8::from_str_radix(n, 16).unwrap() as u32) << 24;
+                            }
+                        }
+
+                        for (idx, c) in args.chars().enumerate() {
+                            let v = if c == '0' { 0 } else { 1 };
+                            i |= v << (24 - idx - 1);
+                        }
+                    
+                        if let Ok(i) = fuel_vm::fuel_asm::Instruction::try_from(i) {
+                            print!(" will patch to {i:?}");
+                        }
+
+                        let mut f = std::fs::File::options().write(true).open(bin_file_path).unwrap();
+                        f.seek(std::io::SeekFrom::Start(row.address() as u64 * 4)).unwrap();
+                        f.write_all(&i.to_be_bytes()).unwrap();
+                        f.flush().unwrap();
+                    }
+
+                    println!();
+                }
+            }
+        }
+    }
     Ok(())
 }
 

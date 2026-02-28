@@ -15,7 +15,7 @@ impl AbstractInstructionSet {
         let mut cur_live = BTreeSet::default();
         let mut dead_indices = FxHashSet::default();
         for (rev_ix, op) in ops.iter().rev().enumerate() {
-            // We cannot guarantee the jump will not end in a
+            // We cannot guarantee the jump will not end in an
             // instruction that will be eliminated below
             if let Either::Right(ControlFlowOp::JumpToAddr(..)) = &op.opcode {
                 return self;
@@ -90,7 +90,7 @@ impl AbstractInstructionSet {
                 Either::Right(ControlFlowOp::Label(op_label)) => {
                     label_to_index.insert(*op_label, idx);
                 }
-                // We cannot guarantee the jump will not end in a
+                // We cannot guarantee the jump will not end in an
                 // instruction that will be eliminated below
                 Either::Right(ControlFlowOp::JumpToAddr(..)) => {
                     return self;
