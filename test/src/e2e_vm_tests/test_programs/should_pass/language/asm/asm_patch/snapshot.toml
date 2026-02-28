@@ -1,0 +1,7 @@
+cmds = [
+    "forc build --path {root}",
+    "forc parse-bytecode {root}/out/debug/asm_patch.bin",
+    "patch-bin debug",
+    "forc parse-bytecode {root}/out/debug/asm_patch.bin",
+    "fuel-vm run {root}/out/debug/asm_patch.bin"
+]

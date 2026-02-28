@@ -118,9 +118,18 @@ impl AbstractInstructionSet {
         // The set of labels that are jump targets, and how many places jump to them.
         // todo: build proper control flow graph instead
         let mut jump_target_labels = FxHashMap::<Label, usize>::default();
+
         for op in &self.ops {
-            if let Either::Right(ControlFlowOp::Jump { to, .. }) = &op.opcode {
-                *jump_target_labels.entry(*to).or_default() += 1;
+            match &op.opcode {
+                Either::Right(ControlFlowOp::Jump { to, .. }) => {
+                    *jump_target_labels.entry(*to).or_default() += 1;
+                }
+                // Do not optimize if we have manual jumps
+                // because they can generate miscompilations
+                Either::Right(ControlFlowOp::JumpToAddr(..)) => {
+                    return self;
+                }
+                _ => {}
             }
         }
 
@@ -225,6 +234,8 @@ impl AbstractInstructionSet {
                         ControlFlowOp::PushAll(_) => ResetKnown::NonVirtual,
                         // This can be considered to destroy all known values
                         ControlFlowOp::PopAll(_) => ResetKnown::Full,
+                        ControlFlowOp::JumpToAddr(_) => ResetKnown::Full,
+                        ControlFlowOp::ReturnFromCall { .. } => ResetKnown::Full,
                     },
                 };
 

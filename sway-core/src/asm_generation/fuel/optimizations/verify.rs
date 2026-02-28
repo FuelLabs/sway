@@ -1,19 +1,40 @@
+use crate::{
+    asm_generation::fuel::abstract_instruction_set::AbstractInstructionSet,
+    asm_lang::{ConstantRegister, ControlFlowOp, VirtualRegister},
+};
+use either::Either;
 use std::collections::HashSet;
-
 use sway_error::error::CompileError;
 use sway_types::Span;
 
-use crate::{
-    asm_generation::fuel::abstract_instruction_set::AbstractInstructionSet,
-    asm_lang::VirtualRegister,
-};
-
 impl AbstractInstructionSet {
-    // At the moment the only verification we do is to make sure used registers are
-    // initialised.  Without doing dataflow analysis we still can't guarantee the init is
-    // _before_ the use, but future refactoring to convert abstract ops into SSA and BBs will
-    // make this possible or even make this check redundant.
     pub(crate) fn verify(self) -> Result<AbstractInstructionSet, CompileError> {
+        // Check `ReturnFromCall` is correct
+        for op in self.ops.iter() {
+            if let Either::Right(ControlFlowOp::ReturnFromCall { zero, reta }) = &op.opcode {
+                if !matches!(zero, VirtualRegister::Constant(ConstantRegister::Zero)) {
+                    return Err(CompileError::Internal(
+                        "ReturnFromCall incorrectly not using $zero",
+                        Span::dummy(),
+                    ));
+                }
+
+                if !matches!(
+                    reta,
+                    VirtualRegister::Constant(ConstantRegister::CallReturnAddress)
+                ) {
+                    return Err(CompileError::Internal(
+                        "ReturnFromCall incorrectly not using $reta",
+                        Span::dummy(),
+                    ));
+                }
+            }
+        }
+
+        // At the moment the only verification we do is to make sure used registers are
+        // initialised.  Without doing dataflow analysis we still can't guarantee the init is
+        // _before_ the use, but future refactoring to convert abstract ops into SSA and BBs will
+        // make this possible or even make this check redundant.
         macro_rules! add_virt_regs {
             ($regs: expr, $set: expr) => {
                 let mut regs = $regs;
