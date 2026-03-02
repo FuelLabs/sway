@@ -597,8 +597,8 @@ impl InstOp {
                 if let Some(default_branch) = default {
                     v.extend_from_slice(&default_branch.args);
                 }
-                for case in cases {
-                    v.extend_from_slice(&case.1.args);
+                for (_case_val, branch) in cases {
+                    v.extend_from_slice(&branch.args);
                 }
                 v
             }
@@ -823,12 +823,12 @@ impl InstOp {
                         default.as_mut().unwrap().args[idx - cur_idx] = replacement;
                     } else {
                         cur_idx += default_args_len;
-                        for case in cases.iter_mut() {
-                            if idx - cur_idx < case.1.args.len() {
-                                case.1.args[idx - cur_idx] = replacement;
+                        for (_case_val, branch) in cases.iter_mut() {
+                            if idx - cur_idx < branch.args.len() {
+                                branch.args[idx - cur_idx] = replacement;
                                 return;
                             }
-                            cur_idx += case.1.args.len();
+                            cur_idx += branch.args.len();
                         }
                         panic!("Invalid index for Switch");
                     }
@@ -1203,8 +1203,8 @@ impl InstOp {
                 if let Some(default_branch) = default {
                     default_branch.args.iter_mut().for_each(replace);
                 }
-                for case in cases {
-                    case.1.args.iter_mut().for_each(replace);
+                for (_case_val, branch) in cases {
+                    branch.args.iter_mut().for_each(replace);
                 }
             }
             InstOp::ContractCall {

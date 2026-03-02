@@ -281,11 +281,10 @@ impl Op {
         }
     }
 
-    /// Switch
-    pub(crate) fn switch(on: VirtualRegister, cases: Vec<Label>) -> Self {
+    pub(crate) fn switch(discriminant: VirtualRegister, cases: Vec<Label>) -> Self {
         Op {
             opcode: Either::Right(OrganizationalOp::Switch {
-                discriminant: on,
+                discriminant,
                 cases,
             }),
             comment: String::new(),
@@ -293,7 +292,6 @@ impl Op {
         }
     }
 
-    /// Switch with comment
     pub(crate) fn switch_comment(
         discriminant: VirtualRegister,
         cases: Vec<Label>,

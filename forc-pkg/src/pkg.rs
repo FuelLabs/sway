@@ -1947,7 +1947,6 @@ pub fn compile_ir(
     experimental: ExperimentalFeatures,
     source_map: &mut SourceMap,
 ) -> Result<BuiltPackageBytecode> {
-    // Read main_file into a string
     let source = fs::read_to_string(main_file)
         .with_context(|| format!("Failed to read Sway-IR file: {}", main_file.display()))?;
 
@@ -2005,7 +2004,7 @@ pub fn compile_ir(
     };
 
     let (_, _warnings, _infos) = handler.consume();
-    // TODO Print infos and warnings?
+    // TODO: Print infos and warnings?
     // TODO: Set configurables offset metadata if needed.
 
     let bytecode = BuiltPackageBytecode {

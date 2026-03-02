@@ -63,7 +63,7 @@ fn unlink_empty_blocks(context: &mut Context, function: &Function) -> Result<boo
         block,
         BranchToWithArgs {
             block: to_block,
-            args: cur_params,
+            args: cur_args,
         },
     ) in candidates
     {
@@ -84,21 +84,21 @@ fn unlink_empty_blocks(context: &mut Context, function: &Function) -> Result<boo
         }
         let preds: Vec<_> = block.pred_iter(context).copied().collect();
         for pred in preds {
-            // Whatever parameters "block" passed to "to_block", that
+            // Whatever arguments "block" passed to "to_block", that
             // should now go from "pred" to "to_block".
-            let params_from_pred = pred.get_succ_params(context, &block);
-            let new_params = cur_params
+            let args_from_pred = pred.get_succ_args(context, &block);
+            let new_args = cur_args
                 .iter()
-                .map(|cur_param| match &context.values[cur_param.0].value {
+                .map(|cur_arg| match &context.values[cur_arg.0].value {
                     ValueDatum::Argument(arg) if arg.block == block => {
                         // An argument should map to the actual parameter passed.
-                        params_from_pred[arg.idx]
+                        args_from_pred[arg.idx]
                     }
-                    _ => *cur_param,
+                    _ => *cur_arg,
                 })
                 .collect();
 
-            pred.replace_successor(context, block, to_block, new_params);
+            pred.replace_successor(context, block, to_block, new_args);
             modified = true;
         }
     }
@@ -205,12 +205,12 @@ fn merge_blocks(context: &mut Context, function: &Function) -> Result<bool, IrEr
 
         // Loop for the rest of the chain, to all the `to_block`s.
         for to_block in block_chain {
-            let from_params = from_block.get_succ_params(context, &to_block);
+            let from_args = from_block.get_succ_args(context, &to_block);
             // We collect here so that we can have &mut Context later on.
             let to_blocks: Vec<_> = to_block.arg_iter(context).copied().enumerate().collect();
             for (arg_idx, to_block_arg) in to_blocks {
-                // replace all uses of `to_block_arg` with the parameter from `from_block`.
-                replace_map.insert(to_block_arg, from_params[arg_idx]);
+                // replace all uses of `to_block_arg` with the argument from `from_block`.
+                replace_map.insert(to_block_arg, from_args[arg_idx]);
             }
 
             // Update the parent block field for every instruction

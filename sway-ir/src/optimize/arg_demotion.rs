@@ -282,7 +282,7 @@ fn demote_block_signature(context: &mut Context, function: &Function, block: Blo
     for pred in preds {
         for (arg_idx, _arg_val, arg_var) in &arg_vars {
             // Get the value which is being passed to the block at this index.
-            let arg_val = pred.get_succ_params(context, &block)[*arg_idx];
+            let arg_val = pred.get_succ_args(context, &block)[*arg_idx];
 
             // Insert a `get_local` and `store` for each candidate argument and insert them at the
             // end of this block, before the terminator.

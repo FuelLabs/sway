@@ -33,7 +33,6 @@ use sway_error::{
 use sway_ir::*;
 use sway_types::{span::Span, Spanned};
 
-use core::panic;
 use either::Either;
 use std::collections::HashMap;
 

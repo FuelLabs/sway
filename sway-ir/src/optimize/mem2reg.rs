@@ -373,8 +373,8 @@ pub fn promote_locals(
                             Value::new_constant(context, constant)
                         }
                     };
-                    let params = node.get_succ_params_mut(context, &succ).unwrap();
-                    params.push(new_val);
+                    let succ_args = node.get_succ_args_mut(context, &succ).unwrap();
+                    succ_args.push(new_val);
                 }
             }
         }

@@ -343,7 +343,7 @@ impl AllocatedAbstractInstructionSet {
                                     data_id,
                                 ),
                                 owning_span: owning_span.clone(),
-                                comment: "load switch target table address".into(),
+                                comment: "[switch] load switch targets table base address".into(),
                             });
                             // Multiply discriminant by 8 (since each address is 8 bytes) and add to the base address.
                             realized_ops.push(RealizedOp {
@@ -353,7 +353,7 @@ impl AllocatedAbstractInstructionSet {
                                     VirtualImmediate12::new(3),
                                 ),
                                 owning_span: owning_span.clone(),
-                                comment: "multiply discriminant by 8".into(),
+                                comment: "[switch] get discriminant's target offset (discriminant * 8)".into(),
                             });
                             realized_ops.push(RealizedOp {
                                 opcode: AllocatedInstruction::ADD(
@@ -362,7 +362,7 @@ impl AllocatedAbstractInstructionSet {
                                     AllocatedRegister::Constant(ConstantRegister::Scratch),
                                 ),
                                 owning_span: owning_span.clone(),
-                                comment: "add discriminant to switch target table address".into(),
+                                comment: "[switch] add discriminant's target offset to targets base address".into(),
                             });
                             realized_ops.push(RealizedOp {
                                 opcode: AllocatedInstruction::LW(
@@ -371,7 +371,7 @@ impl AllocatedAbstractInstructionSet {
                                     VirtualImmediate12::new(0),
                                 ),
                                 owning_span: owning_span.clone(),
-                                comment: "load switch target address".into(),
+                                comment: "[switch] load discriminant's target address".into(),
                             });
                             // Finally, jump to the loaded address.
                             realized_ops.push(RealizedOp {
@@ -380,7 +380,7 @@ impl AllocatedAbstractInstructionSet {
                                     VirtualImmediate18::new(0),
                                 ),
                                 owning_span,
-                                comment,
+                                comment: "[switch] jump to discriminant's target address".into(),
                             });
                         }
                         ControlFlowOp::DataSectionOffsetPlaceholder => {
@@ -425,10 +425,10 @@ impl AllocatedAbstractInstructionSet {
     /// instructions to be added, and so on.
     ///
     /// For this reason, we take a two-pass approach. On the first pass, we pessimistically assume
-    /// that all jumps may require take two opcodes, and use this assumption to calculate the
+    /// that all jumps may require two opcodes, and use this assumption to calculate the
     /// offsets of labels. Then we see which jumps actually require two opcodes and mark them as such.
     /// This approach is not optimal as it sometimes requires more opcodes than necessary,
-    /// but it is simple and quite works well in practice.
+    /// but it is simple and works quite well in practice.
     fn resolve_labels(&mut self, data_section: &mut DataSection) -> LabeledBlocks {
         let far_jump_indices = self.collect_far_jumps();
         self.map_label_offsets(data_section, &far_jump_indices)
