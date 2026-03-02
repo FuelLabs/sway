@@ -4,7 +4,7 @@ mod harness;
 mod harness_callback_handler;
 mod util;
 
-use crate::e2e_vm_tests::harness::run_and_capture_output;
+use crate::e2e_vm_tests::harness::{run_and_capture_output, VMExecutionResult};
 use crate::{FilterConfig, RunConfig};
 
 use anyhow::{anyhow, bail, Result};
@@ -18,7 +18,6 @@ use forc_util::tx_utils::decode_log_data;
 use fuel_vm::fuel_tx;
 use fuel_vm::prelude::*;
 use git2::Repository;
-use rand::{Rng, SeedableRng};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use regex::Regex;
 use std::borrow::Cow;
@@ -530,82 +529,15 @@ impl TestContext {
                 }
 
                 let result = harness::runs_in_vm(
-                    compiled.clone(),
+                    compiled.descriptor.target,
+                    compiled.bytecode.clone(),
                     script_data.clone(),
                     witness_data.clone(),
                 )?;
 
-                let actual_result = match result {
-                    harness::VMExecutionResult::Fuel(state, receipts, ecal) => {
-                        print_receipts(output, &receipts);
+                Self::check_vm_execution_result(output, &mut perf_data, expected_result, result)?;
 
-                        let gas_used = receipts.iter().find_map(|r| {
-                            if let Receipt::ScriptResult { gas_used, .. } = r {
-                                Some(*gas_used)
-                            } else {
-                                None
-                            }
-                        });
-
-                        if let Some(gas_used) = gas_used {
-                            perf_data.gas_usages.push(GasUsage::new(gas_used as usize));
-                        }
-
-                        use std::fmt::Write;
-                        let _ = writeln!(output, "  {}", "Captured Output".green().bold());
-                        for captured in ecal.captured.iter() {
-                            match captured {
-                                Syscall::Write { bytes, .. } => {
-                                    let s = std::str::from_utf8(bytes.as_slice()).unwrap();
-                                    output.push_str(s);
-                                }
-                                Syscall::Fflush { .. } => {}
-                                Syscall::Unknown { ra, rb, rc, rd } => {
-                                    let _ = writeln!(output, "Unknown ecal: {ra} {rb} {rc} {rd}");
-                                }
-                            }
-                        }
-
-                        match state {
-                            ProgramState::Return(v) => TestResult::Return(v),
-                            ProgramState::ReturnData(digest) => {
-                                // Find the ReturnData receipt matching the digest
-                                let receipt = receipts
-                                    .iter()
-                                    .find(|r| r.digest() == Some(&digest))
-                                    .unwrap();
-                                // Get the data from the receipt
-                                let data = receipt.data().unwrap().to_vec();
-                                TestResult::ReturnData(data)
-                            }
-                            ProgramState::Revert(v) => TestResult::Revert(v),
-                            ProgramState::RunProgram(_) => {
-                                panic!("Execution is in a suspended state: RunProgram");
-                            }
-                            ProgramState::VerifyPredicate(_) => {
-                                panic!("Execution is in a suspended state: VerifyPredicate");
-                            }
-                        }
-                    }
-                    harness::VMExecutionResult::Evm(state) => match state {
-                        revm::primitives::ExecutionResult::Success { reason, .. } => match reason {
-                            revm::primitives::SuccessReason::Stop => TestResult::Result(0),
-                            revm::primitives::SuccessReason::Return => todo!(),
-                            revm::primitives::SuccessReason::SelfDestruct => todo!(),
-                            revm::primitives::SuccessReason::EofReturnContract => todo!(),
-                        },
-                        revm::primitives::ExecutionResult::Revert { .. } => TestResult::Result(0),
-                        revm::primitives::ExecutionResult::Halt { reason, .. } => {
-                            panic!("EVM exited with unhandled reason: {reason:?}");
-                        }
-                    },
-                };
-
-                if &actual_result != expected_result {
-                    return Err(anyhow::Error::msg(format!(
-                        "expected: {expected_result:?}\nactual: {actual_result:?}"
-                    )));
-                } else if *validate_abi {
+                if *validate_abi {
                     let (result, out) = run_and_capture_output(|| async {
                         harness::test_json_abi(
                             name,
@@ -633,154 +565,36 @@ impl TestContext {
                 let manifest_dir = env!("CARGO_MANIFEST_DIR");
                 let main_file =
                     format!("{manifest_dir}/src/e2e_vm_tests/test_programs/{name}/src/main.ir");
+                let main_file = Path::new(&main_file);
+                if !main_file.exists() {
+                    return Err(anyhow!(
+                        "No \"main.ir\" file found for \"ir_run\" test: {name}\n\
+                        Tests of category \"ir_run\" must have a \"main.ir\" file to compile and run.\n\
+                        \"main.ir\" file expected at path: {}",
+                        main_file.display()
+                    ));
+                }
 
-                let compiled = forc_pkg::compile_ir(
-                    Path::new(&main_file),
+                let bytecode = forc_pkg::compile_ir(
+                    main_file,
                     &engines,
-                    *experimental,
                     &mut SourceMap::new(),
+                    *experimental,
                 )?;
 
-                // Code taken from harness::runs_in_vm
-                let result = || -> Result<harness::VMExecutionResult> {
-                    let storage = MemoryStorage::default();
+                perf_data
+                    .bytecode_sizes
+                    .push(BytecodeSize::new(bytecode.bytes.len()));
 
-                    let rng = &mut rand::rngs::StdRng::seed_from_u64(2322u64);
-                    let maturity = 1.into();
-                    let script_data = script_data.clone().unwrap_or_default();
-                    let block_height = (u32::MAX >> 1).into();
-                    // The default max length is 1MB which isn't enough for the bigger tests.
-                    let max_size = 64 * 1024 * 1024;
-                    let script_params = ScriptParameters::DEFAULT
-                        .with_max_script_length(max_size)
-                        .with_max_script_data_length(max_size);
-                    let tx_params = TxParameters::DEFAULT.with_max_size(max_size);
-                    let params =
-                        ConsensusParameters::V1(consensus_parameters::ConsensusParametersV1 {
-                            script_params,
-                            tx_params,
-                            ..Default::default()
-                        });
-                    let mut tb = TransactionBuilder::script(compiled.bytes, script_data);
+                let result = harness::runs_in_vm(
+                    BuildTarget::Fuel,
+                    bytecode,
+                    script_data.clone(),
+                    witness_data.clone(),
+                )?;
 
-                    tb.with_params(params)
-                        .add_unsigned_coin_input(
-                            SecretKey::random(rng),
-                            rng.r#gen(),
-                            1,
-                            Default::default(),
-                            rng.r#gen(),
-                        )
-                        .maturity(maturity);
-
-                    if let Some(witnesses) = witness_data.clone() {
-                        for witness in witnesses {
-                            tb.add_witness(witness.into());
-                        }
-                    }
-                    let gas_price = 0;
-                    let consensus_params = tb.get_params().clone();
-
-                    let params = ConsensusParameters::default();
-                    // Temporarily finalize to calculate `script_gas_limit`
-                    let tmp_tx = tb.clone().finalize();
-                    // Get `max_gas` used by everything except the script execution. Add `1` because of rounding.
-                    let max_gas = tmp_tx
-                        .max_gas(consensus_params.gas_costs(), consensus_params.fee_params())
-                        + 1;
-                    // Increase `script_gas_limit` to the maximum allowed value.
-                    tb.script_gas_limit(consensus_params.tx_params().max_gas_per_tx() - max_gas);
-
-                    let tx = tb
-                        .finalize_checked(block_height)
-                        .into_ready(gas_price, params.gas_costs(), params.fee_params(), None)
-                        .map_err(|e| anyhow::anyhow!("{e:?}"))?;
-
-                    let mem_instance = MemoryInstance::new();
-                    let mut i: Interpreter<_, _, _, forc_test::ecal::EcalSyscallHandler> =
-                        Interpreter::with_storage(mem_instance, storage, Default::default());
-                    let transition = i.transact(tx).map_err(anyhow::Error::msg)?;
-
-                    Ok(harness::VMExecutionResult::Fuel(
-                        *transition.state(),
-                        transition.receipts().to_vec(),
-                        Box::new(i.ecal_state().clone()),
-                    ))
-                };
-                let result = result()?;
-                let actual_result = match result {
-                    harness::VMExecutionResult::Fuel(state, receipts, ecal) => {
-                        print_receipts(output, &receipts);
-
-                        let gas_used = receipts.iter().find_map(|r| {
-                            if let Receipt::ScriptResult { gas_used, .. } = r {
-                                Some(*gas_used)
-                            } else {
-                                None
-                            }
-                        });
-
-                        if let Some(gas_used) = gas_used {
-                            perf_data.gas_usages.push(GasUsage::new(gas_used as usize));
-                        }
-
-                        use std::fmt::Write;
-                        let _ = writeln!(output, "  {}", "Captured Output".green().bold());
-                        for captured in ecal.captured.iter() {
-                            match captured {
-                                Syscall::Write { bytes, .. } => {
-                                    let s = std::str::from_utf8(bytes.as_slice()).unwrap();
-                                    output.push_str(s);
-                                }
-                                Syscall::Fflush { .. } => {}
-                                Syscall::Unknown { ra, rb, rc, rd } => {
-                                    let _ = writeln!(output, "Unknown ecal: {ra} {rb} {rc} {rd}");
-                                }
-                            }
-                        }
-
-                        match state {
-                            ProgramState::Return(v) => TestResult::Return(v),
-                            ProgramState::ReturnData(digest) => {
-                                // Find the ReturnData receipt matching the digest
-                                let receipt = receipts
-                                    .iter()
-                                    .find(|r| r.digest() == Some(&digest))
-                                    .unwrap();
-                                // Get the data from the receipt
-                                let data = receipt.data().unwrap().to_vec();
-                                TestResult::ReturnData(data)
-                            }
-                            ProgramState::Revert(v) => TestResult::Revert(v),
-                            ProgramState::RunProgram(_) => {
-                                panic!("Execution is in a suspended state: RunProgram");
-                            }
-                            ProgramState::VerifyPredicate(_) => {
-                                panic!("Execution is in a suspended state: VerifyPredicate");
-                            }
-                        }
-                    }
-                    harness::VMExecutionResult::Evm(state) => match state {
-                        revm::primitives::ExecutionResult::Success { reason, .. } => match reason {
-                            revm::primitives::SuccessReason::Stop => TestResult::Result(0),
-                            revm::primitives::SuccessReason::Return => todo!(),
-                            revm::primitives::SuccessReason::SelfDestruct => todo!(),
-                            revm::primitives::SuccessReason::EofReturnContract => todo!(),
-                        },
-                        revm::primitives::ExecutionResult::Revert { .. } => TestResult::Result(0),
-                        revm::primitives::ExecutionResult::Halt { reason, .. } => {
-                            panic!("EVM exited with unhandled reason: {reason:?}");
-                        }
-                    },
-                };
-
-                if &actual_result != expected_result {
-                    return Err(anyhow::Error::msg(format!(
-                        "expected: {expected_result:?}\nactual: {actual_result:?}"
-                    )));
-                }
+                Self::check_vm_execution_result(output, &mut perf_data, expected_result, result)?;
             }
-
             TestCategory::Compiles => {
                 let (result, out) =
                     run_and_capture_output(|| harness::compile_to_bytes(name, run_config, logs))
@@ -1078,6 +892,87 @@ impl TestContext {
         }
 
         Ok(perf_data)
+    }
+
+    fn check_vm_execution_result(
+        output: &mut String,
+        perf_data: &mut TestPerfData,
+        expected_result: &TestResult,
+        result: VMExecutionResult,
+    ) -> Result<(), anyhow::Error> {
+        let actual_result = match result {
+            VMExecutionResult::Fuel(state, receipts, ecal) => {
+                print_receipts(output, &receipts);
+
+                let gas_used = receipts.iter().find_map(|r| {
+                    if let Receipt::ScriptResult { gas_used, .. } = r {
+                        Some(*gas_used)
+                    } else {
+                        None
+                    }
+                });
+
+                if let Some(gas_used) = gas_used {
+                    perf_data.gas_usages.push(GasUsage::new(gas_used as usize));
+                }
+
+                use std::fmt::Write;
+                let _ = writeln!(output, "  {}", "Captured Output".green().bold());
+                for captured in ecal.captured.iter() {
+                    match captured {
+                        Syscall::Write { bytes, .. } => {
+                            let s = std::str::from_utf8(bytes.as_slice()).unwrap();
+                            output.push_str(s);
+                        }
+                        Syscall::Fflush { .. } => {}
+                        Syscall::Unknown { ra, rb, rc, rd } => {
+                            let _ = writeln!(output, "Unknown ecal: {ra} {rb} {rc} {rd}");
+                        }
+                    }
+                }
+
+                match state {
+                    ProgramState::Return(v) => TestResult::Return(v),
+                    ProgramState::ReturnData(digest) => {
+                        // Find the ReturnData receipt matching the digest
+                        let receipt = receipts
+                            .iter()
+                            .find(|r| r.digest() == Some(&digest))
+                            .unwrap();
+                        // Get the data from the receipt
+                        let data = receipt.data().unwrap().to_vec();
+                        TestResult::ReturnData(data)
+                    }
+                    ProgramState::Revert(v) => TestResult::Revert(v),
+                    ProgramState::RunProgram(_) => {
+                        panic!("Execution is in a suspended state: RunProgram");
+                    }
+                    ProgramState::VerifyPredicate(_) => {
+                        panic!("Execution is in a suspended state: VerifyPredicate");
+                    }
+                }
+            }
+            VMExecutionResult::Evm(state) => match state {
+                revm::primitives::ExecutionResult::Success { reason, .. } => match reason {
+                    revm::primitives::SuccessReason::Stop => TestResult::Result(0),
+                    revm::primitives::SuccessReason::Return => todo!(),
+                    revm::primitives::SuccessReason::SelfDestruct => todo!(),
+                    revm::primitives::SuccessReason::EofReturnContract => todo!(),
+                },
+                revm::primitives::ExecutionResult::Revert { .. } => TestResult::Result(0),
+                revm::primitives::ExecutionResult::Halt { reason, .. } => {
+                    panic!("EVM exited with unhandled reason: {reason:?}");
+                }
+            },
+        };
+
+        if &actual_result != expected_result {
+            return Err(anyhow::Error::msg(format!(
+                "expected: {expected_result:?}\nactual: {actual_result:?}"
+            )));
+        }
+
+        Ok(())
     }
 }
 

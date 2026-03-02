@@ -758,7 +758,7 @@ impl InstructionVerifier<'_, '_> {
             }
             // If there is no default, it means the match is exhaustive.
             // The case values must range from 0 to N-1 without gaps.
-            if (0..covered_values.len() as u64).ne(covered_values.into_iter()) {
+            if (0..covered_values.len() as u64).ne(covered_values) {
                 return Err(IrError::VerifySwitchNonExhaustiveCases);
             }
         }

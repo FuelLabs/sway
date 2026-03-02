@@ -1942,13 +1942,13 @@ pub fn compile(
 
 /// Compiles the given Sway-IR script.
 pub fn compile_ir(
-    main_file: &Path,
+    ir_file: &Path,
     engines: &Engines,
-    experimental: ExperimentalFeatures,
     source_map: &mut SourceMap,
+    experimental: ExperimentalFeatures,
 ) -> Result<BuiltPackageBytecode> {
-    let source = fs::read_to_string(main_file)
-        .with_context(|| format!("Failed to read Sway-IR file: {}", main_file.display()))?;
+    let source = fs::read_to_string(ir_file)
+        .with_context(|| format!("Failed to read Sway-IR file: {}", ir_file.display()))?;
 
     let sway_ir = sway_ir::parser::parse(
         &source,
@@ -1965,7 +1965,7 @@ pub fn compile_ir(
     let fail = |handler: Handler| {
         let (errors, warnings, infos) = handler.consume();
         print_on_failure(engines.se(), false, &infos, &warnings, &errors, false);
-        bail!("Failed to compile {}", main_file.display());
+        bail!("Failed to compile {}", ir_file.display());
     };
     let asm = match asm {
         Err(_) => return fail(handler),

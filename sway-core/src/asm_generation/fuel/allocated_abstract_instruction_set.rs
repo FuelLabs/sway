@@ -353,7 +353,9 @@ impl AllocatedAbstractInstructionSet {
                                     VirtualImmediate12::new(3),
                                 ),
                                 owning_span: owning_span.clone(),
-                                comment: "[switch] get discriminant's target offset (discriminant * 8)".into(),
+                                comment:
+                                    "[switch] get discriminant's target offset (discriminant * 8)"
+                                        .into(),
                             });
                             realized_ops.push(RealizedOp {
                                 opcode: AllocatedInstruction::ADD(

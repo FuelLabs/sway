@@ -4,9 +4,9 @@ script {
     fn main(a: u64) -> u64 {
         entry(a: u64):
         v0 = const u64 5
-        // check $(const_5=$VAR) = const u64 5
+        // unordered: $(const_5=$VAR) = const u64 5
         v1 = const u64 1
-        // check $(const_1=$VAR) = const u64 1
+        // unordered: $(const_1=$VAR) = const u64 1
         // not: br testblock()
         br testblock()
 
@@ -14,8 +14,8 @@ script {
         testblock():
         v100 = const u64 0
         v200 = add a, v100
-        // check $(var_add_res=$VAR) = add a,
-        // check switch $var_add_res, [0: block0($const_5), 1: block1(const_1)]
+        // unordered: $(var_add_res=$VAR) = add a,
+        // check: switch $var_add_res, [0: block0($const_5), 1: block1($const_1)]
         switch v200, [0: block0(v0), 1: block1(v1)]
 
         block0(v2: u64):

@@ -1,5 +1,3 @@
-// regex: VAR=v\d+v\d+
-
 script {
     pub entry fn __entry() -> __ptr never {
         local u64 _result
@@ -39,7 +37,6 @@ script {
 
     fn switcher(v: u64) -> u64 {
         entry(v: u64):
-        // check: switch
         switch v, [0: block0(), 1: block1(), 2: block2(), 3: block3(), 4: block4()]
 
         block0():
