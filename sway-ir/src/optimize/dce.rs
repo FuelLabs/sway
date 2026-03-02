@@ -309,9 +309,7 @@ pub fn dce(
                 .map(|arg| cemetery.contains(arg))
                 .collect_vec();
             for pred in block.pred_iter(context).cloned().collect_vec() {
-                let args = pred
-                    .get_succ_args_mut(context, &block)
-                    .expect("Invalid IR");
+                let args = pred.get_succ_args_mut(context, &block).expect("Invalid IR");
                 let mut index = 0;
                 // Remove arguments passed to a dead argument.
                 args.retain(|_| {
