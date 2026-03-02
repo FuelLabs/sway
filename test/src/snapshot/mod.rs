@@ -468,6 +468,10 @@ fn run_cmds(
     Ok(())
 }
 
+/// FuelVM commands:
+///     run: will run the specified binary beginning to end.
+/// Will also print the gas used and all receipts to the
+/// snapshot.
 fn fuel_vm_command(snapshot: &mut String, args: &str) -> Result<(), std::io::Error> {
     let mut args = args.split(" ");
     match args.next() {
@@ -480,7 +484,6 @@ fn fuel_vm_command(snapshot: &mut String, args: &str) -> Result<(), std::io::Err
             const TEST_METADATA_SEED: u64 = 0x7E57u64;
             let rng = &mut rand::rngs::StdRng::seed_from_u64(TEST_METADATA_SEED);
 
-            // Prepare the transaction metadata.
             let secret_key = SecretKey::random(rng);
             let utxo_id = rng.r#gen();
             let amount = 1;
@@ -529,7 +532,7 @@ fn fuel_vm_command(snapshot: &mut String, args: &str) -> Result<(), std::io::Err
 
             interpreter.ecal_state_mut().clear();
 
-            // Run test until its end
+            // Run until its end
             interpreter.set_single_stepping(true);
             let mut state = {
                 let transition = interpreter.transact(tx.clone());
@@ -540,7 +543,6 @@ fn fuel_vm_command(snapshot: &mut String, args: &str) -> Result<(), std::io::Err
                 interpreter.set_single_stepping(true);
                 match state {
                     Err(_) => {
-                        state = Ok(ProgramState::Revert(0));
                         break;
                     }
                     Ok(
@@ -595,17 +597,29 @@ fn get_gas_and_receipts(receipts: Vec<Receipt>) -> anyhow::Result<(u64, Vec<Rece
         })
         .ok_or_else(|| anyhow::anyhow!("missing used gas information from test execution"))?;
 
-    // Only retain `Log` and `LogData` receipts.
     let logs = receipts
         .into_iter()
-        // .filter(|receipt| {
-        //     matches!(receipt, fuels::tx::Receipt::Log { .. })
-        //         || matches!(receipt, fuels::tx::Receipt::LogData { .. })
-        // })
         .collect();
     Ok((gas_used, logs))
 }
 
+/// Will iterate all instrunctions inside the DWARF file. For 
+/// each instruction will check if the corresponding source
+/// code line has a "// PATCH: " comment.
+/// If it has, will parse whatever comes after the double colon
+/// and replace with that specific instruction. Example:
+/// 
+/// ```
+/// asm(r1, r0: 0) {
+///     addi r1 r0 i3;
+///     log r0 r0 r0 r0; // PATCH: 0x50 010000 010000 000000 000100
+///     addi r1 r1 i5;
+///     r1: u64
+/// }
+/// ``` 
+/// 
+/// The format is a HEX value corresponding the instruction. Then
+/// four 6 bits binary numbers corresponding to its arguments.
 fn patch_bin_command(repo_root: &PathBuf, root: &String, args: &str) -> Result<(), std::io::Error> {
     let proj_root = repo_root.join(root);
     let build = args.trim();
@@ -624,7 +638,7 @@ fn patch_bin_command(repo_root: &PathBuf, root: &String, args: &str) -> Result<(
     let file = std::fs::read(dwarf_file.path()).unwrap();
     let file = object::File::parse(&*file).unwrap();
 
-    dump_file(
+    patch_file(
         &file,
         if file.is_little_endian() {
             gimli::RunTimeEndian::Little
@@ -632,20 +646,18 @@ fn patch_bin_command(repo_root: &PathBuf, root: &String, args: &str) -> Result<(
             gimli::RunTimeEndian::Big
         },
         &bin_file.unwrap().path(),
-    )
-    .unwrap();
+    );
 
     Ok(())
 }
 
-fn dump_file(
+fn patch_file(
     object: &object::File,
     endian: gimli::RunTimeEndian,
     bin_file_path: &Path,
-) -> Result<(), Box<dyn std::error::Error>> {
+) {
     let bin_file = std::fs::read(bin_file_path).unwrap();
 
-    // Load a section and return as `Cow<[u8]>`.
     let load_section = |id: gimli::SectionId| -> Result<Cow<[u8]>, Box<dyn std::error::Error>> {
         Ok(match object.section_by_name(id.name()) {
             Some(section) => section.uncompressed_data()?,
@@ -653,26 +665,15 @@ fn dump_file(
         })
     };
 
-    // Borrow a `Cow<[u8]>` to create an `EndianSlice`.
     let borrow_section = |section| gimli::EndianSlice::new(Cow::as_ref(section), endian);
-
-    // Load all of the sections.
-    let dwarf_sections = gimli::DwarfSections::load(&load_section)?;
-
-    // Create `EndianSlice`s for all of the sections.
+    let dwarf_sections = gimli::DwarfSections::load(&load_section).unwrap();
     let dwarf = dwarf_sections.borrow(borrow_section);
 
-    // Iterate over the compilation units.
     let mut iter = dwarf.units();
-    while let Some(header) = iter.next()? {
-        println!(
-            "Line number info for unit at <.debug_info+0x{:?}>",
-            header.offset()
-        );
-        let unit = dwarf.unit(header)?;
+    while let Some(header) = iter.next().unwrap() {
+        let unit = dwarf.unit(header).unwrap();
         let unit = unit.unit_ref(&dwarf);
 
-        // Get the line program for the compilation unit.
         if let Some(program) = unit.line_program.clone() {
             let comp_dir = if let Some(ref dir) = unit.comp_dir {
                 PathBuf::from(dir.to_string_lossy().into_owned())
@@ -680,99 +681,75 @@ fn dump_file(
                 PathBuf::new()
             };
 
-            // Iterate over the line program rows.
             let mut rows = program.rows();
-            while let Some((header, row)) = rows.next_row()? {
-                if row.end_sequence() {
-                    // End of sequence indicates a possible gap in addresses.
-                    println!("{:x} end-sequence", row.address());
-                } else {
-                    // Determine the path. Real applications should cache this for performance.
-                    let mut path = PathBuf::new();
-                    if let Some(file) = row.file(header) {
-                        path.clone_from(&comp_dir);
+            while let Some((header, row)) = rows.next_row().unwrap() {
+                let mut path = PathBuf::new();
+                if let Some(file) = row.file(header) {
+                    path.clone_from(&comp_dir);
 
-                        // The directory index 0 is defined to correspond to the compilation unit directory.
-                        if file.directory_index() != 0 {
-                            if let Some(dir) = file.directory(header) {
-                                path.push(unit.attr_string(dir)?.to_string_lossy().as_ref());
-                            }
+                    if file.directory_index() != 0 {
+                        if let Some(dir) = file.directory(header) {
+                            path.push(unit.attr_string(dir).unwrap().to_string_lossy().as_ref());
                         }
-
-                        path.push(
-                            unit.attr_string(file.path_name())?
-                                .to_string_lossy()
-                                .as_ref(),
-                        );
                     }
 
-                    // Determine line/column. DWARF line/column is never 0, so we use that
-                    // but other applications may want to display this differently.
-                    let line = match row.line() {
-                        Some(line) => line.get(),
-                        None => 0,
-                    };
-                    let column = match row.column() {
-                        gimli::ColumnType::LeftEdge => 0,
-                        gimli::ColumnType::Column(column) => column.get(),
-                    };
+                    path.push(
+                        unit.attr_string(file.path_name()).unwrap()
+                            .to_string_lossy()
+                            .as_ref(),
+                    );
+                }
 
-                    println!("{:x} {}:{}:{}", row.address(), path.display(), line, column);
+                let line = match row.line() {
+                    Some(line) => line.get(),
+                    None => 0,
+                };
+                let column = match row.column() {
+                    gimli::ColumnType::LeftEdge => 0,
+                    gimli::ColumnType::Column(column) => column.get(),
+                };
 
-                    let opcode = [
-                        bin_file[row.address() as usize * 4 + 0],
-                        bin_file[row.address() as usize * 4 + 1],
-                        bin_file[row.address() as usize * 4 + 2],
-                        bin_file[row.address() as usize * 4 + 3],
-                    ];
-                    print!("    ");
-                    if let Ok(i) = fuel_vm::fuel_asm::Instruction::try_from(opcode) {
-                        print!(" {i:?}");
-                    }
-                    let opcode = u32::from_le_bytes(opcode);
-                    println!("{:x}", opcode);
+                let opcode = [
+                    bin_file[row.address() as usize * 4 + 0],
+                    bin_file[row.address() as usize * 4 + 1],
+                    bin_file[row.address() as usize * 4 + 2],
+                    bin_file[row.address() as usize * 4 + 3],
+                ];
 
-                    let code = std::fs::read_to_string(&path).unwrap();
-                    let line = code.lines().skip((line - 1) as usize).next().unwrap();
-                    print!("    {line}");
+                let opcode = u32::from_le_bytes(opcode);
 
-                    if let Some((_, rest)) = line.split_once("// PATCH: ") {
-                        let mut args = String::new();
-                        let mut i = 0u32;
-                        for part in rest.trim().split(" ") {
-                            if part.len() == 6 {
-                                args.push_str(part);
-                            }
-                            if let Some(n) = part.strip_prefix("0x") {
-                                i = (u8::from_str_radix(n, 16).unwrap() as u32) << 24;
-                            }
+                let code = std::fs::read_to_string(&path).unwrap();
+                let line = code.lines().skip((line - 1) as usize).next().unwrap();
+
+                if let Some((_, rest)) = line.split_once("// PATCH: ") {
+                    let mut args = String::new();
+                    let mut i = 0u32;
+                    for part in rest.trim().split(" ") {
+                        if part.len() == 6 {
+                            args.push_str(part);
                         }
-
-                        for (idx, c) in args.chars().enumerate() {
-                            let v = if c == '0' { 0 } else { 1 };
-                            i |= v << (24 - idx - 1);
+                        if let Some(n) = part.strip_prefix("0x") {
+                            i = (u8::from_str_radix(n, 16).unwrap() as u32) << 24;
                         }
-
-                        if let Ok(i) = fuel_vm::fuel_asm::Instruction::try_from(i) {
-                            print!(" will patch to {i:?}");
-                        }
-
-                        let mut f = std::fs::File::options()
-                            .write(true)
-                            .open(bin_file_path)
-                            .unwrap();
-                        f.seek(std::io::SeekFrom::Start(row.address() as u64 * 4))
-                            .unwrap();
-                        f.write_all(&i.to_be_bytes()).unwrap();
-                        f.flush().unwrap();
                     }
 
-                    println!();
+                    for (idx, c) in args.chars().enumerate() {
+                        let v = if c == '0' { 0 } else { 1 };
+                        i |= v << (24 - idx - 1);
+                    }
+
+                    let mut f = std::fs::File::options()
+                        .write(true)
+                        .open(bin_file_path)
+                        .unwrap();
+                    f.seek(std::io::SeekFrom::Start(row.address() as u64 * 4))
+                        .unwrap();
+                    f.write_all(&i.to_be_bytes()).unwrap();
+                    f.flush().unwrap();
                 }
             }
         }
     }
-    Ok(())
 }
 
 pub fn discover_tests(test_root: &Path) -> Vec<PathBuf> {
