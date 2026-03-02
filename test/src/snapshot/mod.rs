@@ -596,7 +596,7 @@ fn get_gas_and_receipts(receipts: Vec<Receipt>) -> anyhow::Result<(u64, Vec<Rece
     Ok((gas_used, logs))
 }
 
-/// Will iterate all instrunctions inside the DWARF file. For
+/// Iterate all instructions inside the DWARF file. For
 /// each instruction will check if the corresponding source
 /// code line has a "// PATCH: " comment.
 /// If it has, will parse whatever comes after the double colon
