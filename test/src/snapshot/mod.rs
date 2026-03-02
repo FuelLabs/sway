@@ -20,7 +20,6 @@ use std::{
     path::{Path, PathBuf},
     str::FromStr,
     sync::Once,
-    u64,
 };
 use sway_core::Engines;
 use sway_features::ExperimentalFeatures;
@@ -614,17 +613,17 @@ fn get_gas_and_receipts(receipts: Vec<Receipt>) -> anyhow::Result<(u64, Vec<Rece
 ///
 /// The format is a HEX value corresponding the instruction. Then
 /// four 6 bits binary numbers corresponding to its arguments.
-fn patch_bin_command(repo_root: &PathBuf, root: &String, args: &str) -> Result<(), std::io::Error> {
+fn patch_bin_command(repo_root: &Path, root: &String, args: &str) -> Result<(), std::io::Error> {
     let proj_root = repo_root.join(root);
     let build = args.trim();
     let out_dir = proj_root.join("out").join(build);
 
-    let bin_file = std::fs::read_dir(&out_dir)?
-        .into_iter()
+    let bin_file = std::fs::read_dir(&out_dir)
+        .unwrap()
         .flatten()
         .find(|x| x.path().extension().and_then(|x| x.to_str()) == Some("bin"));
-    let dwarf_file = std::fs::read_dir(&out_dir)?
-        .into_iter()
+    let dwarf_file = std::fs::read_dir(&out_dir)
+        .unwrap()
         .flatten()
         .find(|x| x.path().extension().and_then(|x| x.to_str()) == Some("obj"))
         .unwrap();
@@ -695,7 +694,8 @@ fn patch_file(object: &object::File, endian: gimli::RunTimeEndian, bin_file_path
                 };
 
                 let code = std::fs::read_to_string(&path).unwrap();
-                let line = code.lines().skip((line - 1) as usize).next().unwrap();
+                let line = line.checked_sub(1).unwrap_or_default();
+                let line = code.lines().nth(line as usize).unwrap();
 
                 if let Some((_, rest)) = line.split_once("// PATCH: ") {
                     let mut args = String::new();
@@ -718,8 +718,7 @@ fn patch_file(object: &object::File, endian: gimli::RunTimeEndian, bin_file_path
                         .write(true)
                         .open(bin_file_path)
                         .unwrap();
-                    f.seek(std::io::SeekFrom::Start(row.address() as u64 * 4))
-                        .unwrap();
+                    f.seek(std::io::SeekFrom::Start(row.address() * 4)).unwrap();
                     f.write_all(&i.to_be_bytes()).unwrap();
                     f.flush().unwrap();
                 }
