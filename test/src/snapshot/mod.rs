@@ -1,15 +1,13 @@
 use anyhow::Result;
 use fuel_vm::{
-    prelude::{Finalizable, GasCostsValues, TransactionBuilderExt as _},
+    prelude::{GasCostsValues, TransactionBuilderExt as _},
     state::ProgramState,
     storage::MemoryStorage,
 };
 use fuels::{
     crypto::SecretKey,
     tx::{ConsensusParameters, GasCosts, Receipt, ScriptParameters, TxParameters},
-    types::gas_price::LatestGasPrice,
 };
-use gimli::{DebugLine, LittleEndian, Reader};
 use libtest_mimic::{Arguments, Trial};
 use normalize_path::NormalizePath;
 use object::{Object, ObjectSection};
@@ -18,15 +16,13 @@ use regex::{Captures, Regex};
 use std::{
     borrow::Cow,
     collections::{BTreeSet, HashMap},
-    error::Error,
     io::{Seek, Write},
-    ops::ControlFlow,
     path::{Path, PathBuf},
     str::FromStr,
     sync::Once,
     u64,
 };
-use sway_core::{asm_generation::fuel, Engines};
+use sway_core::Engines;
 use sway_features::ExperimentalFeatures;
 use sway_ir::{function_print, Backtrace};
 
@@ -650,8 +646,6 @@ fn patch_bin_command(repo_root: &PathBuf, root: &String, args: &str) -> Result<(
 }
 
 fn patch_file(object: &object::File, endian: gimli::RunTimeEndian, bin_file_path: &Path) {
-    let bin_file = std::fs::read(bin_file_path).unwrap();
-
     let load_section = |id: gimli::SectionId| -> Result<Cow<[u8]>, Box<dyn std::error::Error>> {
         Ok(match object.section_by_name(id.name()) {
             Some(section) => section.uncompressed_data()?,
@@ -699,19 +693,6 @@ fn patch_file(object: &object::File, endian: gimli::RunTimeEndian, bin_file_path
                     Some(line) => line.get(),
                     None => 0,
                 };
-                let column = match row.column() {
-                    gimli::ColumnType::LeftEdge => 0,
-                    gimli::ColumnType::Column(column) => column.get(),
-                };
-
-                let opcode = [
-                    bin_file[row.address() as usize * 4 + 0],
-                    bin_file[row.address() as usize * 4 + 1],
-                    bin_file[row.address() as usize * 4 + 2],
-                    bin_file[row.address() as usize * 4 + 3],
-                ];
-
-                let opcode = u32::from_le_bytes(opcode);
 
                 let code = std::fs::read_to_string(&path).unwrap();
                 let line = code.lines().skip((line - 1) as usize).next().unwrap();

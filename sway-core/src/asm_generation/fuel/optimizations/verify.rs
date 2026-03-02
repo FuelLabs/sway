@@ -15,7 +15,7 @@ impl AbstractInstructionSet {
                 if !matches!(zero, VirtualRegister::Constant(ConstantRegister::Zero)) {
                     return Err(CompileError::Internal(
                         "ReturnFromCall incorrectly not using $zero",
-                        Span::dummy(),
+                        op.owning_span.as_ref().unwrap_or(&Span::dummy()).clone(),
                     ));
                 }
 
@@ -25,7 +25,7 @@ impl AbstractInstructionSet {
                 ) {
                     return Err(CompileError::Internal(
                         "ReturnFromCall incorrectly not using $reta",
-                        Span::dummy(),
+                        op.owning_span.as_ref().unwrap_or(&Span::dummy()).clone(),
                     ));
                 }
             }
