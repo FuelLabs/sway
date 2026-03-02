@@ -821,9 +821,8 @@ fn instruction_to_doc<'a>(
                 doc.append(
                     Doc::line(
                         with_default_doc
-                            .append(Doc::text(", ["))
-                            .append(Doc::list_sep(case_labels, Doc::text(", ")))
-                            .append(Doc::text("]")),
+                            .append(Doc::text(", "))
+                            .append(Doc::in_brackets_comma_sep(case_labels))
                     )
                     .append(md_namer.md_idx_to_doc(context, metadata)),
                 )

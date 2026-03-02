@@ -33,7 +33,7 @@ pub enum IrError {
     VerifyConditionExprNotABool,
     VerifySwitchDiscriminantNotU64,
     VerifySwitchNonExhaustiveCases,
-    VerifySwitchDuplicateCase,
+    VerifySwitchDuplicateCase(u64),
     VerifySwitchNoCases,
     VerifyContractCallBadTypes(String),
     VerifyGepElementTypeNonPointer,
@@ -226,10 +226,10 @@ impl fmt::Display for IrError {
                     "Verification failed: Switch cases are not exhaustive for the discriminant."
                 )
             }
-            IrError::VerifySwitchDuplicateCase => {
+            IrError::VerifySwitchDuplicateCase(duplicate_value) => {
                 write!(
                     f,
-                    "Verification failed: Switch contains duplicate case values."
+                    "Verification failed: Switch contains duplicate case value {duplicate_value}."
                 )
             }
             IrError::VerifySwitchNoCases => {

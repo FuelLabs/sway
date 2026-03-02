@@ -1715,7 +1715,7 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
         if let Some(default_block) = &default {
             default_block.block.add_pred(self.context, &self.block);
         }
-        for case_block in cases.iter().map(|c| &c.1) {
+        for (_case_val, case_block) in cases.iter() {
             case_block.block.add_pred(self.context, &self.block);
         }
         let switch_val = Value::new_instruction(
