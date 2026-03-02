@@ -597,18 +597,16 @@ fn get_gas_and_receipts(receipts: Vec<Receipt>) -> anyhow::Result<(u64, Vec<Rece
         })
         .ok_or_else(|| anyhow::anyhow!("missing used gas information from test execution"))?;
 
-    let logs = receipts
-        .into_iter()
-        .collect();
+    let logs = receipts.into_iter().collect();
     Ok((gas_used, logs))
 }
 
-/// Will iterate all instrunctions inside the DWARF file. For 
+/// Will iterate all instrunctions inside the DWARF file. For
 /// each instruction will check if the corresponding source
 /// code line has a "// PATCH: " comment.
 /// If it has, will parse whatever comes after the double colon
 /// and replace with that specific instruction. Example:
-/// 
+///
 /// ```
 /// asm(r1, r0: 0) {
 ///     addi r1 r0 i3;
@@ -616,8 +614,8 @@ fn get_gas_and_receipts(receipts: Vec<Receipt>) -> anyhow::Result<(u64, Vec<Rece
 ///     addi r1 r1 i5;
 ///     r1: u64
 /// }
-/// ``` 
-/// 
+/// ```
+///
 /// The format is a HEX value corresponding the instruction. Then
 /// four 6 bits binary numbers corresponding to its arguments.
 fn patch_bin_command(repo_root: &PathBuf, root: &String, args: &str) -> Result<(), std::io::Error> {
@@ -651,11 +649,7 @@ fn patch_bin_command(repo_root: &PathBuf, root: &String, args: &str) -> Result<(
     Ok(())
 }
 
-fn patch_file(
-    object: &object::File,
-    endian: gimli::RunTimeEndian,
-    bin_file_path: &Path,
-) {
+fn patch_file(object: &object::File, endian: gimli::RunTimeEndian, bin_file_path: &Path) {
     let bin_file = std::fs::read(bin_file_path).unwrap();
 
     let load_section = |id: gimli::SectionId| -> Result<Cow<[u8]>, Box<dyn std::error::Error>> {
@@ -694,7 +688,8 @@ fn patch_file(
                     }
 
                     path.push(
-                        unit.attr_string(file.path_name()).unwrap()
+                        unit.attr_string(file.path_name())
+                            .unwrap()
                             .to_string_lossy()
                             .as_ref(),
                     );
