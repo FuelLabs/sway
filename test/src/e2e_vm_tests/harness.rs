@@ -3,7 +3,7 @@ use crate::e2e_vm_tests::harness_callback_handler::HarnessCallbackHandler;
 use super::RunConfig;
 use anyhow::{anyhow, bail, Result};
 use colored::Colorize;
-use forc_pkg::{BuildProfile, Built, BuiltPackage, PrintOpts};
+use forc_pkg::{BuildProfile, Built, BuiltPackage, BuiltPackageBytecode, PrintOpts};
 use forc_test::{ecal::EcalSyscallHandler, TestGasLimit};
 use fuel_tx::TransactionBuilder;
 use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
@@ -159,11 +159,12 @@ pub(crate) enum VMExecutionResult {
 
 /// Very basic check that code does indeed run in the VM.
 pub(crate) fn runs_in_vm(
-    script: BuiltPackage,
+    target: BuildTarget,
+    bytecode: BuiltPackageBytecode,
     script_data: Option<Vec<u8>>,
     witness_data: Option<Vec<Vec<u8>>>,
 ) -> Result<VMExecutionResult> {
-    match script.descriptor.target {
+    match target {
         BuildTarget::Fuel => {
             let storage = MemoryStorage::default();
 
@@ -182,7 +183,7 @@ pub(crate) fn runs_in_vm(
                 tx_params,
                 ..Default::default()
             });
-            let mut tb = TransactionBuilder::script(script.bytecode.bytes, script_data);
+            let mut tb = TransactionBuilder::script(bytecode.bytes, script_data);
 
             tb.with_params(params)
                 .add_unsigned_coin_input(
@@ -247,7 +248,7 @@ pub(crate) fn runs_in_vm(
                         match address_opt {
                             None => todo!(),
                             Some(address) => {
-                                evm.tx_mut().data = script.bytecode.bytes.into();
+                                evm.tx_mut().data = bytecode.bytes.into();
                                 evm.tx_mut().transact_to =
                                     revm::interpreter::primitives::TransactTo::Call(*address);
 

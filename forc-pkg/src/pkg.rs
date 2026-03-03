@@ -47,7 +47,10 @@ use sway_core::{
     write_dwarf, BuildTarget, Engines, FinalizedEntry, LspConfig,
 };
 use sway_core::{namespace::Package, Observer};
-use sway_core::{set_bytecode_configurables_offset, DbgGeneration, IrCli, PrintAsm};
+use sway_core::{
+    set_bytecode_configurables_offset, BuildConfig, DbgGeneration, IrCli, PanicOccurrences,
+    PanickingCallOccurrences, PrintAsm,
+};
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_features::ExperimentalFeatures;
 use sway_types::{Ident, ProgramId, Span, Spanned};
@@ -1940,6 +1943,84 @@ pub fn compile(
     Ok(compiled_package)
 }
 
+/// Compiles the given Sway-IR script.
+pub fn compile_ir(
+    ir_file: &Path,
+    engines: &Engines,
+    build_config: Option<&BuildConfig>,
+    source_map: &mut SourceMap,
+    experimental: ExperimentalFeatures,
+) -> Result<BuiltPackageBytecode> {
+    let source = fs::read_to_string(ir_file)
+        .with_context(|| format!("Failed to read Sway-IR file: {}", ir_file.display()))?;
+
+    let sway_ir = sway_ir::parser::parse(
+        &source,
+        engines.se(),
+        experimental,
+        build_config
+            .map(|config| config.backtrace.into())
+            .unwrap_or_default(),
+    )?;
+
+    let handler = Handler::default();
+    let asm = sway_core::asm_generation::from_ir::compile_ir_context_to_finalized_asm(
+        &handler,
+        &sway_ir,
+        build_config,
+    );
+
+    let fail = |handler: Handler| {
+        let (errors, warnings, infos) = handler.consume();
+        print_on_failure(engines.se(), false, &infos, &warnings, &errors, false);
+        bail!("Failed to compile {}", ir_file.display());
+    };
+
+    let finalized_asm = match asm {
+        Err(_) => return fail(handler),
+        Ok(asm) => asm,
+    };
+
+    let mut compiled_asm = sway_core::CompiledAsm {
+        finalized_asm,
+        panic_occurrences: PanicOccurrences::default(),
+        panicking_call_occurrences: PanickingCallOccurrences::default(),
+    };
+
+    let entries = compiled_asm
+        .finalized_asm
+        .entries
+        .iter()
+        .map(|finalized_entry| PkgEntry::from_finalized_entry(finalized_entry, engines))
+        .collect::<anyhow::Result<_>>()?;
+
+    let bytecode_res = sway_core::asm_to_bytecode(
+        &handler,
+        &mut compiled_asm,
+        source_map,
+        engines.se(),
+        build_config.unwrap_or(&BuildConfig::dummy_for_asm_generation()),
+    );
+
+    let errored = handler.has_errors();
+
+    let compiled = match bytecode_res {
+        Ok(compiled) if !errored => compiled,
+        _ => return fail(handler),
+    };
+
+    let (_, _warnings, _infos) = handler.consume();
+    // TODO: Print infos and warnings?
+    // TODO: Set configurables offset metadata if needed.
+
+    let bytecode = BuiltPackageBytecode {
+        bytes: compiled.bytecode,
+        entries,
+    };
+
+    Ok(bytecode)
+}
+
 /// Reports assembly information for a compiled package to an external `dyno` process through `stdout`.
 fn report_assembly_information(
     compiled_asm: &sway_core::CompiledAsm,
@@ -1981,6 +2062,8 @@ fn report_assembly_information(
                     ((bytes.len() + 7) & 0xfffffff8_usize) as u64
                 }
             }
+
+            sway_core::asm_generation::Datum::WordArray(words) => (words.len() * 8) as u64,
 
             sway_core::asm_generation::Datum::Collection(items) => {
                 items.iter().map(calculate_entry_size).sum()

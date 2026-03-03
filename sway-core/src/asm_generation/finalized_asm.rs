@@ -11,6 +11,7 @@ use crate::BuildConfig;
 
 use etk_asm::asm::Assembler;
 use fuel_vm::fuel_asm::{Imm06, Imm12, Imm18, Imm24, Instruction, RegId};
+use itertools::Itertools;
 use sway_error::error::CompileError;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::span::Span;
@@ -322,6 +323,15 @@ fn to_bytecode_mut(
                         );
                     }
                     println!("\"");
+                }
+                Datum::WordArray(ws) => {
+                    print!(".words as hex (");
+                    Itertools::intersperse(
+                        ws.iter().map(|w| format!("{:02X?}", w.to_be_bytes())),
+                        ", ".to_string(),
+                    )
+                    .for_each(|item| print!("{item}"));
+                    println!("), len i{}", ws.len());
                 }
                 Datum::Slice(bs) => {
                     print!(".slice as hex ({bs:02X?}), len i{}, as ascii \"", bs.len());

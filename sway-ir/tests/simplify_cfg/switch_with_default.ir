@@ -1,0 +1,22 @@
+// regex: VAR=v\d+v\d+
+
+script {
+    fn main(a: u64) -> u64 {
+        entry(a: u64):
+        v0 = const u64 5
+        // check: $(const_5=$VAR) = const u64 5
+        // nextln: switch a, default: defblock($const_5), [5: block1()]
+        // not: br testblock()
+        br testblock()
+
+        // not: testblock()
+        testblock():
+        switch a, default: defblock(v0), [5: block1()]
+
+        defblock(v1: u64):
+        ret u64 v1
+
+        block1():
+        ret u64 v0
+    }
+}

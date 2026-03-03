@@ -236,6 +236,19 @@ fn hash_fn(
                     get_localised_id(true_block.block, localised_block_id).hash(state);
                     get_localised_id(false_block.block, localised_block_id).hash(state);
                 }
+                crate::InstOp::Switch {
+                    discriminant: _,
+                    cases,
+                    default,
+                } => {
+                    default.as_ref().inspect(|default| {
+                        get_localised_id(default.block, localised_block_id).hash(state)
+                    });
+                    for (case_val, branch) in cases {
+                        case_val.hash(state);
+                        get_localised_id(branch.block, localised_block_id).hash(state);
+                    }
+                }
                 crate::InstOp::ContractCall { name, .. } => {
                     name.hash(state);
                 }

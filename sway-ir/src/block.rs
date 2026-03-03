@@ -292,21 +292,37 @@ impl Block {
                 op: InstOp::Branch(block),
                 ..
             }) => vec![block.clone()],
+            Some(Instruction {
+                op:
+                    InstOp::Switch {
+                        discriminant: _,
+                        cases,
+                        default,
+                    },
+                ..
+            }) => {
+                let mut succs = default
+                    .as_ref()
+                    .map(|b| vec![b.clone()])
+                    .unwrap_or_default();
+                succs.extend(cases.iter().map(|(_, branch)| branch.clone()));
+                succs
+            }
 
             _otherwise => Vec::new(),
         }
     }
 
     /// For a particular successor (if it indeed is one), get the arguments passed.
-    pub fn get_succ_params(&self, context: &Context, succ: &Block) -> Vec<Value> {
+    pub fn get_succ_args(&self, context: &Context, succ: &Block) -> Vec<Value> {
         self.successors(context)
             .iter()
             .find(|branch| &branch.block == succ)
             .map_or(vec![], |branch| branch.args.clone())
     }
 
-    /// For a particular successor (if it indeed is one), get a mut ref to parameters passed.
-    pub fn get_succ_params_mut<'a>(
+    /// For a particular successor (if it indeed is one), get a mutable reference to the arguments passed.
+    pub fn get_succ_args_mut<'a>(
         &'a self,
         context: &'a mut Context,
         succ: &Block,
@@ -333,6 +349,27 @@ impl Block {
                 op: InstOp::Branch(block),
                 ..
             }) if block.block == *succ => Some(&mut block.args),
+            Some(Instruction {
+                op:
+                    InstOp::Switch {
+                        discriminant: _,
+                        cases,
+                        default,
+                    },
+                ..
+            }) => {
+                if let Some(def_branch) = default {
+                    if def_branch.block == *succ {
+                        return Some(&mut def_branch.args);
+                    }
+                }
+                for (_case_val, branch) in cases.iter_mut() {
+                    if branch.block == *succ {
+                        return Some(&mut branch.args);
+                    }
+                }
+                None
+            }
             _ => None,
         }
     }
@@ -344,7 +381,7 @@ impl Block {
         context: &mut Context,
         old_succ: Block,
         new_succ: Block,
-        new_params: Vec<Value>,
+        new_args: Vec<Value>,
     ) {
         let mut modified = false;
         if let Some(term) = self.get_terminator_mut(context) {
@@ -369,12 +406,12 @@ impl Block {
                     if old_succ == *true_block {
                         modified = true;
                         *true_block = new_succ;
-                        true_opds.clone_from(&new_params);
+                        true_opds.clone_from(&new_args);
                     }
                     if old_succ == *false_block {
                         modified = true;
                         *false_block = new_succ;
-                        *false_opds = new_params
+                        *false_opds = new_args
                     }
                 }
 
@@ -383,8 +420,37 @@ impl Block {
                     ..
                 } if *block == old_succ => {
                     *block = new_succ;
-                    *args = new_params;
+                    *args = new_args;
                     modified = true;
+                }
+
+                Instruction {
+                    op:
+                        InstOp::Switch {
+                            discriminant: _,
+                            cases,
+                            default,
+                        },
+                    ..
+                } => {
+                    for (_case_val, branch) in cases.iter_mut() {
+                        if branch.block == old_succ {
+                            *branch = BranchToWithArgs {
+                                block: new_succ,
+                                args: new_args.clone(),
+                            };
+                            modified = true;
+                        }
+                    }
+                    if let Some(def_branch) = default {
+                        if def_branch.block == old_succ {
+                            *def_branch = BranchToWithArgs {
+                                block: new_succ,
+                                args: new_args,
+                            };
+                            modified = true;
+                        }
+                    }
                 }
                 _ => (),
             }

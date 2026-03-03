@@ -4,7 +4,7 @@ mod harness;
 mod harness_callback_handler;
 mod util;
 
-use crate::e2e_vm_tests::harness::run_and_capture_output;
+use crate::e2e_vm_tests::harness::{run_and_capture_output, VMExecutionResult};
 use crate::{FilterConfig, RunConfig};
 
 use anyhow::{anyhow, bail, Result};
@@ -33,6 +33,7 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
+use sway_core::source_map::SourceMap;
 use sway_core::BuildTarget;
 use sway_features::{CliFields, ExperimentalFeatures};
 use tokio::sync::Mutex;
@@ -48,6 +49,7 @@ enum TestCategory {
     FailsToCompile,
     Runs,
     RunsWithContract,
+    IrRuns,
     UnitTestsPass,
     Disabled,
 }
@@ -527,81 +529,15 @@ impl TestContext {
                 }
 
                 let result = harness::runs_in_vm(
-                    compiled.clone(),
+                    compiled.descriptor.target,
+                    compiled.bytecode.clone(),
                     script_data.clone(),
                     witness_data.clone(),
                 )?;
-                let actual_result = match result {
-                    harness::VMExecutionResult::Fuel(state, receipts, ecal) => {
-                        print_receipts(output, &receipts);
 
-                        let gas_used = receipts.iter().find_map(|r| {
-                            if let Receipt::ScriptResult { gas_used, .. } = r {
-                                Some(*gas_used)
-                            } else {
-                                None
-                            }
-                        });
+                Self::check_vm_execution_result(output, &mut perf_data, expected_result, result)?;
 
-                        if let Some(gas_used) = gas_used {
-                            perf_data.gas_usages.push(GasUsage::new(gas_used as usize));
-                        }
-
-                        use std::fmt::Write;
-                        let _ = writeln!(output, "  {}", "Captured Output".green().bold());
-                        for captured in ecal.captured.iter() {
-                            match captured {
-                                Syscall::Write { bytes, .. } => {
-                                    let s = std::str::from_utf8(bytes.as_slice()).unwrap();
-                                    output.push_str(s);
-                                }
-                                Syscall::Fflush { .. } => {}
-                                Syscall::Unknown { ra, rb, rc, rd } => {
-                                    let _ = writeln!(output, "Unknown ecal: {ra} {rb} {rc} {rd}");
-                                }
-                            }
-                        }
-
-                        match state {
-                            ProgramState::Return(v) => TestResult::Return(v),
-                            ProgramState::ReturnData(digest) => {
-                                // Find the ReturnData receipt matching the digest
-                                let receipt = receipts
-                                    .iter()
-                                    .find(|r| r.digest() == Some(&digest))
-                                    .unwrap();
-                                // Get the data from the receipt
-                                let data = receipt.data().unwrap().to_vec();
-                                TestResult::ReturnData(data)
-                            }
-                            ProgramState::Revert(v) => TestResult::Revert(v),
-                            ProgramState::RunProgram(_) => {
-                                panic!("Execution is in a suspended state: RunProgram");
-                            }
-                            ProgramState::VerifyPredicate(_) => {
-                                panic!("Execution is in a suspended state: VerifyPredicate");
-                            }
-                        }
-                    }
-                    harness::VMExecutionResult::Evm(state) => match state {
-                        revm::primitives::ExecutionResult::Success { reason, .. } => match reason {
-                            revm::primitives::SuccessReason::Stop => TestResult::Result(0),
-                            revm::primitives::SuccessReason::Return => todo!(),
-                            revm::primitives::SuccessReason::SelfDestruct => todo!(),
-                            revm::primitives::SuccessReason::EofReturnContract => todo!(),
-                        },
-                        revm::primitives::ExecutionResult::Revert { .. } => TestResult::Result(0),
-                        revm::primitives::ExecutionResult::Halt { reason, .. } => {
-                            panic!("EVM exited with unhandled reason: {reason:?}");
-                        }
-                    },
-                };
-
-                if &actual_result != expected_result {
-                    return Err(anyhow::Error::msg(format!(
-                        "expected: {expected_result:?}\nactual: {actual_result:?}"
-                    )));
-                } else if *validate_abi {
+                if *validate_abi {
                     let (result, out) = run_and_capture_output(|| async {
                         harness::test_json_abi(
                             name,
@@ -619,7 +555,47 @@ impl TestContext {
                     result?;
                 }
             }
+            TestCategory::IrRuns => {
+                let expected_result = expected_result
+                    .as_ref()
+                    .expect("No expected result found. This is likely because the `test.toml` is missing either an \"expected_result_new_encoding\" or \"expected_result\" entry.");
 
+                let engines = sway_core::Engines::default();
+
+                let manifest_dir = env!("CARGO_MANIFEST_DIR");
+                let main_file =
+                    format!("{manifest_dir}/src/e2e_vm_tests/test_programs/{name}/src/main.ir");
+                let main_file = Path::new(&main_file);
+                if !main_file.exists() {
+                    return Err(anyhow!(
+                        "No \"main.ir\" file found for \"ir_run\" test: {name}\n\
+                        Tests of category \"ir_run\" must have a \"main.ir\" file to compile and run.\n\
+                        \"main.ir\" file expected at path: {}",
+                        main_file.display()
+                    ));
+                }
+
+                let bytecode = forc_pkg::compile_ir(
+                    main_file,
+                    &engines,
+                    Some(&run_config.clone().into()),
+                    &mut SourceMap::new(),
+                    *experimental,
+                )?;
+
+                perf_data
+                    .bytecode_sizes
+                    .push(BytecodeSize::new(bytecode.bytes.len()));
+
+                let result = harness::runs_in_vm(
+                    BuildTarget::Fuel,
+                    bytecode,
+                    script_data.clone(),
+                    witness_data.clone(),
+                )?;
+
+                Self::check_vm_execution_result(output, &mut perf_data, expected_result, result)?;
+            }
             TestCategory::Compiles => {
                 let (result, out) =
                     run_and_capture_output(|| harness::compile_to_bytes(name, run_config, logs))
@@ -917,6 +893,87 @@ impl TestContext {
         }
 
         Ok(perf_data)
+    }
+
+    fn check_vm_execution_result(
+        output: &mut String,
+        perf_data: &mut TestPerfData,
+        expected_result: &TestResult,
+        result: VMExecutionResult,
+    ) -> Result<(), anyhow::Error> {
+        let actual_result = match result {
+            VMExecutionResult::Fuel(state, receipts, ecal) => {
+                print_receipts(output, &receipts);
+
+                let gas_used = receipts.iter().find_map(|r| {
+                    if let Receipt::ScriptResult { gas_used, .. } = r {
+                        Some(*gas_used)
+                    } else {
+                        None
+                    }
+                });
+
+                if let Some(gas_used) = gas_used {
+                    perf_data.gas_usages.push(GasUsage::new(gas_used as usize));
+                }
+
+                use std::fmt::Write;
+                let _ = writeln!(output, "  {}", "Captured Output".green().bold());
+                for captured in ecal.captured.iter() {
+                    match captured {
+                        Syscall::Write { bytes, .. } => {
+                            let s = std::str::from_utf8(bytes.as_slice()).unwrap();
+                            output.push_str(s);
+                        }
+                        Syscall::Fflush { .. } => {}
+                        Syscall::Unknown { ra, rb, rc, rd } => {
+                            let _ = writeln!(output, "Unknown ecal: {ra} {rb} {rc} {rd}");
+                        }
+                    }
+                }
+
+                match state {
+                    ProgramState::Return(v) => TestResult::Return(v),
+                    ProgramState::ReturnData(digest) => {
+                        // Find the ReturnData receipt matching the digest
+                        let receipt = receipts
+                            .iter()
+                            .find(|r| r.digest() == Some(&digest))
+                            .unwrap();
+                        // Get the data from the receipt
+                        let data = receipt.data().unwrap().to_vec();
+                        TestResult::ReturnData(data)
+                    }
+                    ProgramState::Revert(v) => TestResult::Revert(v),
+                    ProgramState::RunProgram(_) => {
+                        panic!("Execution is in a suspended state: RunProgram");
+                    }
+                    ProgramState::VerifyPredicate(_) => {
+                        panic!("Execution is in a suspended state: VerifyPredicate");
+                    }
+                }
+            }
+            VMExecutionResult::Evm(state) => match state {
+                revm::primitives::ExecutionResult::Success { reason, .. } => match reason {
+                    revm::primitives::SuccessReason::Stop => TestResult::Result(0),
+                    revm::primitives::SuccessReason::Return => todo!(),
+                    revm::primitives::SuccessReason::SelfDestruct => todo!(),
+                    revm::primitives::SuccessReason::EofReturnContract => todo!(),
+                },
+                revm::primitives::ExecutionResult::Revert { .. } => TestResult::Result(0),
+                revm::primitives::ExecutionResult::Halt { reason, .. } => {
+                    panic!("EVM exited with unhandled reason: {reason:?}");
+                }
+            },
+        };
+
+        if &actual_result != expected_result {
+            return Err(anyhow::Error::msg(format!(
+                "expected: {expected_result:?}\nactual: {actual_result:?}"
+            )));
+        }
+
+        Ok(())
     }
 }
 
@@ -1691,6 +1748,7 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
         .and_then(|category_val| match category_val.as_str() {
             Some("run") => Ok(TestCategory::Runs),
             Some("run_on_node") => Ok(TestCategory::RunsWithContract),
+            Some("ir_run") => Ok(TestCategory::IrRuns),
             Some("fail") => Ok(TestCategory::FailsToCompile),
             Some("compile") => Ok(TestCategory::Compiles),
             Some("disabled") => Ok(TestCategory::Disabled),
@@ -1698,7 +1756,7 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
             None => Err(anyhow!(
                 "Malformed category '{category_val}', should be a string."
             )),
-            Some(other) => Err(anyhow!("Unknown test category '{other}'. Valid categories are: run, run_on_node, fail, compile, disabled, and unit_tests_pass.")),
+            Some(other) => Err(anyhow!("Unknown test category '{other}'. Valid categories are: run, run_on_node, ir_run, fail, compile, disabled, and unit_tests_pass.")),
         })?;
 
     let expected_decoded_test_logs = if let Some(toml::Value::Array(a)) =
@@ -1733,7 +1791,7 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
     }
 
     let (script_data, script_data_new_encoding) = match &category {
-        TestCategory::Runs | TestCategory::RunsWithContract => {
+        TestCategory::Runs | TestCategory::RunsWithContract | TestCategory::IrRuns => {
             let script_data = match toml_content.get("script_data") {
                 Some(toml::Value::String(v)) => {
                     let decoded = hex::decode(v.replace(' ', ""))
@@ -1774,7 +1832,7 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
     };
 
     let witness_data = match &category {
-        TestCategory::Runs | TestCategory::RunsWithContract => {
+        TestCategory::Runs | TestCategory::RunsWithContract | TestCategory::IrRuns => {
             match toml_content.get("witness_data") {
                 Some(toml::Value::Array(items)) => {
                     let mut data = vec![];
@@ -1806,7 +1864,7 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
     };
 
     let expected_result = match &category {
-        TestCategory::Runs | TestCategory::RunsWithContract => {
+        TestCategory::Runs | TestCategory::RunsWithContract | TestCategory::IrRuns => {
             get_expected_result("expected_result", &toml_content)
         }
         TestCategory::Compiles
@@ -1819,11 +1877,10 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
         &category,
         get_expected_result("expected_result_new_encoding", &toml_content),
     ) {
-        (TestCategory::Runs | TestCategory::RunsWithContract, Some(value))
-            if !has_experimental_field =>
-        {
-            Some(value)
-        }
+        (
+            TestCategory::Runs | TestCategory::RunsWithContract | TestCategory::IrRuns,
+            Some(value),
+        ) if !has_experimental_field => Some(value),
         _ => None,
     };
 

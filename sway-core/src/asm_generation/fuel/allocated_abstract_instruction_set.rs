@@ -285,56 +285,128 @@ impl AllocatedAbstractInstructionSet {
                     owning_span,
                     comment,
                 }),
-                Either::Right(org_op) => match org_op {
-                    ControlFlowOp::Jump { to, type_ } => {
-                        let target_offset = label_offsets.get(&to).unwrap().offs;
-                        let ops = if matches!(type_, JumpType::Call) {
-                            compile_call(
-                                data_section,
-                                curr_offset,
-                                target_offset,
-                                far_jump_sizes.get(&op_idx).copied(),
-                                comment,
+                Either::Right(org_op) => {
+                    match org_op {
+                        ControlFlowOp::Jump { to, type_ } => {
+                            let target_offset = label_offsets.get(&to).unwrap().offs;
+                            let ops = if matches!(type_, JumpType::Call) {
+                                compile_call(
+                                    data_section,
+                                    curr_offset,
+                                    target_offset,
+                                    far_jump_sizes.get(&op_idx).copied(),
+                                    comment,
+                                    owning_span,
+                                )
+                            } else {
+                                compile_jump(
+                                    data_section,
+                                    curr_offset,
+                                    target_offset,
+                                    match type_ {
+                                        JumpType::NotZero(cond) => Some(cond),
+                                        _ => None,
+                                    },
+                                    far_jump_sizes.contains_key(&op_idx),
+                                    comment,
+                                    owning_span,
+                                )
+                            };
+                            debug_assert_eq!(ops.len() as u64, op_size);
+                            realized_ops.extend(ops);
+                        }
+                        ControlFlowOp::Switch {
+                            discriminant,
+                            cases,
+                        } => {
+                            let target_offsets = cases
+                            .iter()
+                            .map(|label| {
+                                let label_offset = label_offsets
+                                    .get(label)
+                                    .map(|b| b.offs)
+                                    .expect("Switch case label not found in label_offsets");
+                                label_offset.checked_sub(curr_offset).expect(
+                                    "Switch case target offset is before switch instruction",
+                                ).checked_sub(op_size).expect("Switch case target offset right at switch instruction")
+                            })
+                            .collect::<Vec<u64>>();
+                            // Insert a data section entry for the switch targets.
+                            let data_id = data_section.insert_data_value(Entry::new_word_array(
+                                target_offsets,
+                                EntryName::NonConfigurable,
+                                None,
+                            ));
+                            realized_ops.push(RealizedOp {
+                                opcode: AllocatedInstruction::AddrDataId(
+                                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                                    data_id,
+                                ),
+                                owning_span: owning_span.clone(),
+                                comment: "[switch] load switch targets table base address".into(),
+                            });
+                            // Multiply discriminant by 8 (since each address is 8 bytes) and add to the base address.
+                            realized_ops.push(RealizedOp {
+                                opcode: AllocatedInstruction::SLLI(
+                                    discriminant.clone(),
+                                    discriminant.clone(),
+                                    VirtualImmediate12::new(3),
+                                ),
+                                owning_span: owning_span.clone(),
+                                comment:
+                                    "[switch] get discriminant's target offset (discriminant * 8)"
+                                        .into(),
+                            });
+                            realized_ops.push(RealizedOp {
+                                opcode: AllocatedInstruction::ADD(
+                                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                                    discriminant,
+                                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                                ),
+                                owning_span: owning_span.clone(),
+                                comment: "[switch] add discriminant's target offset to targets base address".into(),
+                            });
+                            realized_ops.push(RealizedOp {
+                                opcode: AllocatedInstruction::LW(
+                                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                                    VirtualImmediate12::new(0),
+                                ),
+                                owning_span: owning_span.clone(),
+                                comment: "[switch] load discriminant's target address".into(),
+                            });
+                            // Finally, jump to the loaded address.
+                            realized_ops.push(RealizedOp {
+                                opcode: AllocatedInstruction::JMPF(
+                                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                                    VirtualImmediate18::new(0),
+                                ),
                                 owning_span,
-                            )
-                        } else {
-                            compile_jump(
-                                data_section,
-                                curr_offset,
-                                target_offset,
-                                match type_ {
-                                    JumpType::NotZero(cond) => Some(cond),
-                                    _ => None,
-                                },
-                                far_jump_sizes.contains_key(&op_idx),
-                                comment,
-                                owning_span,
-                            )
-                        };
-                        debug_assert_eq!(ops.len() as u64, op_size);
-                        realized_ops.extend(ops);
-                    }
-                    ControlFlowOp::DataSectionOffsetPlaceholder => {
-                        realized_ops.push(RealizedOp {
-                            opcode: AllocatedInstruction::DataSectionOffsetPlaceholder,
-                            owning_span: None,
-                            comment: String::new(),
-                        });
-                    }
-                    ControlFlowOp::ConfigurablesOffsetPlaceholder => {
-                        realized_ops.push(RealizedOp {
-                            opcode: AllocatedInstruction::ConfigurablesOffsetPlaceholder,
-                            owning_span: None,
-                            comment: String::new(),
-                        });
-                    }
-                    ControlFlowOp::Comment => continue,
-                    ControlFlowOp::Label(..) => continue,
+                                comment: "[switch] jump to discriminant's target address".into(),
+                            });
+                        }
+                        ControlFlowOp::DataSectionOffsetPlaceholder => {
+                            realized_ops.push(RealizedOp {
+                                opcode: AllocatedInstruction::DataSectionOffsetPlaceholder,
+                                owning_span: None,
+                                comment: String::new(),
+                            });
+                        }
+                        ControlFlowOp::ConfigurablesOffsetPlaceholder => {
+                            realized_ops.push(RealizedOp {
+                                opcode: AllocatedInstruction::ConfigurablesOffsetPlaceholder,
+                                owning_span: None,
+                                comment: String::new(),
+                            });
+                        }
+                        ControlFlowOp::Comment => continue,
+                        ControlFlowOp::Label(..) => continue,
 
-                    ControlFlowOp::PushAll(_) | ControlFlowOp::PopAll(_) => {
-                        unreachable!("still don't belong in organisational ops")
+                        ControlFlowOp::PushAll(_) | ControlFlowOp::PopAll(_) => {
+                            unreachable!("still don't belong in organisational ops")
+                        }
                     }
-                },
+                }
             };
             curr_offset += op_size;
         }
@@ -355,10 +427,10 @@ impl AllocatedAbstractInstructionSet {
     /// instructions to be added, and so on.
     ///
     /// For this reason, we take a two-pass approach. On the first pass, we pessimistically assume
-    /// that all jumps may require take two opcodes, and use this assumption to calculate the
+    /// that all jumps may require two opcodes, and use this assumption to calculate the
     /// offsets of labels. Then we see which jumps actually require two opcodes and mark them as such.
     /// This approach is not optimal as it sometimes requires more opcodes than necessary,
-    /// but it is simple and quite works well in practice.
+    /// but it is simple and works quite well in practice.
     fn resolve_labels(&mut self, data_section: &mut DataSection) -> LabeledBlocks {
         let far_jump_indices = self.collect_far_jumps();
         self.map_label_offsets(data_section, &far_jump_indices)
@@ -396,6 +468,10 @@ impl AllocatedAbstractInstructionSet {
                 JumpType::NotZero(_) => 2,
                 JumpType::Call => 3,
             },
+
+            // A switch expands to AddrDataId (2 opcodes) + scale discriminant by word size (1 opcode)
+            // + add discriminant (1 opcode) + load (1 opcode) + jump (1 opcode) = 6 opcodes
+            Either::Right(Switch { .. }) => 6,
 
             Either::Right(Comment) => 0,
 
@@ -454,6 +530,10 @@ impl AllocatedAbstractInstructionSet {
             // Far jumps must be handled separately, as they require two instructions.
             Either::Right(Jump { .. }) => 1,
 
+            // A switch expands to AddrDataId (2 opcodes) + scale discriminant by word size (1 opcode)
+            // + add discriminant (1 opcode) + load (1 opcode) + jump (1 opcode) = 6 opcodes
+            Either::Right(Switch { .. }) => 6,
+
             Either::Right(Comment) => 0,
 
             Either::Right(DataSectionOffsetPlaceholder) => {
@@ -492,7 +572,10 @@ impl AllocatedAbstractInstructionSet {
 
         for (op_idx, op) in self.ops.iter().enumerate() {
             // If we're seeing a control flow op then it's the end of the block.
-            if let Either::Right(ControlFlowOp::Label(_) | ControlFlowOp::Jump { .. }) = op.opcode {
+            if let Either::Right(
+                ControlFlowOp::Label(_) | ControlFlowOp::Jump { .. } | ControlFlowOp::Switch { .. },
+            ) = op.opcode
+            {
                 if let Some((lab, _idx, offs)) = cur_basic_block {
                     // Insert the previous basic block.
                     labelled_blocks.insert(lab, BasicBlock { offs });
@@ -575,7 +658,10 @@ impl AllocatedAbstractInstructionSet {
 
         for (op_idx, op) in self.ops.iter().enumerate() {
             // If we're seeing a control flow op then it's the end of the block.
-            if let Either::Right(ControlFlowOp::Label(_) | ControlFlowOp::Jump { .. }) = op.opcode {
+            if let Either::Right(
+                ControlFlowOp::Label(_) | ControlFlowOp::Jump { .. } | ControlFlowOp::Switch { .. },
+            ) = op.opcode
+            {
                 if let Some((lab, _idx, offs)) = cur_basic_block {
                     // Insert the previous basic block.
                     labelled_blocks.insert(lab, BasicBlock { offs });

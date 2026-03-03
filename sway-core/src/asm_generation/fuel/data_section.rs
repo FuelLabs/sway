@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use rustc_hash::FxHashMap;
 use sway_ir::{
     size_bytes_round_up_to_word_alignment, ConstantContent, ConstantValue, Context, Padding,
@@ -34,6 +35,7 @@ pub enum Datum {
     Byte(u8),
     Word(u64),
     ByteArray(Vec<u8>),
+    WordArray(Vec<u64>),
     Slice(Vec<u8>),
     Collection(Vec<Entry>),
 }
@@ -63,6 +65,18 @@ impl Entry {
         Entry {
             padding: padding.unwrap_or(Padding::default_for_byte_array(&bytes)),
             value: Datum::ByteArray(bytes),
+            name,
+        }
+    }
+
+    pub(crate) fn new_word_array(
+        words: Vec<u64>,
+        name: EntryName,
+        padding: Option<Padding>,
+    ) -> Entry {
+        Entry {
+            padding: padding.unwrap_or(Padding::default_for_word_array(&words)),
+            value: Datum::WordArray(words),
             name,
         }
     }
@@ -173,6 +187,7 @@ impl Entry {
                 .copied()
                 .take((bytes.len() + 7) & 0xfffffff8_usize)
                 .collect(),
+            Datum::WordArray(words) => words.iter().flat_map(|w| w.to_be_bytes()).collect(),
             Datum::Collection(items) => items.iter().flat_map(|el| el.to_bytes()).collect(),
         };
 
@@ -400,6 +415,7 @@ impl fmt::Display for DataSection {
                 Datum::Word(w) => format!(".word {w}"),
                 Datum::ByteArray(bs) => display_bytes_for_data_section(bs, ".bytes"),
                 Datum::Slice(bs) => display_bytes_for_data_section(bs, ".slice"),
+                Datum::WordArray(ws) => display_words_for_data_section(ws),
                 Datum::Collection(els) => format!(
                     ".collection {{ {} }}",
                     els.iter()
@@ -438,4 +454,12 @@ fn display_bytes_for_data_section(bs: &Vec<u8>, prefix: &str) -> String {
         });
     }
     format!("{prefix}[{}] {hex_str} {chr_str}", bs.len())
+}
+
+fn display_words_for_data_section(ws: &[u64]) -> String {
+    let ws_str = String::from_iter(Itertools::intersperse(
+        ws.iter().map(|w| w.to_string()),
+        " ".to_string(),
+    ));
+    format!(".word_array[{}] {ws_str}", ws.len())
 }
