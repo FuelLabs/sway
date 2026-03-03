@@ -10,6 +10,7 @@ pub(crate) mod virtual_immediate;
 pub(crate) mod virtual_ops;
 pub(crate) mod virtual_register;
 use indexmap::IndexMap;
+use itertools::Itertools;
 pub(crate) use virtual_immediate::*;
 pub(crate) use virtual_ops::*;
 pub(crate) use virtual_register::*;
@@ -1386,9 +1387,10 @@ impl<Reg: fmt::Display> fmt::Display for ControlFlowOp<Reg> {
                     cases,
                 } => {
                     let mut result = format!("switch {discriminant} [");
-                    for dest in cases.iter() {
-                        result.push_str(&format!("{dest}, "));
-                    }
+                    result.extend(Itertools::intersperse(
+                        cases.iter().map(|dest| dest.to_string()),
+                        ", ".to_string(),
+                    ));
                     result.push(']');
                     result
                 }

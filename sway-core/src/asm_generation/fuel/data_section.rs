@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use rustc_hash::FxHashMap;
 use sway_ir::{
     size_bytes_round_up_to_word_alignment, ConstantContent, ConstantValue, Context, Padding,
@@ -456,18 +457,9 @@ fn display_bytes_for_data_section(bs: &Vec<u8>, prefix: &str) -> String {
 }
 
 fn display_words_for_data_section(ws: &Vec<u64>) -> String {
-    let mut hex_str = String::new();
-    let mut chr_str = String::new();
-    for w in ws {
-        let bytes = w.to_be_bytes();
-        for b in &bytes {
-            hex_str.push_str(format!("{b:02x} ").as_str());
-            chr_str.push(if *b == b' ' || b.is_ascii_graphic() {
-                *b as char
-            } else {
-                '.'
-            });
-        }
-    }
-    format!(".word_array [{}] {hex_str} {chr_str}", ws.len())
+    let ws_str = String::from_iter(Itertools::intersperse(
+        ws.iter().map(|w| w.to_string()),
+        " ".to_string(),
+    ));
+    format!(".word_array[{}] {ws_str}", ws.len())
 }

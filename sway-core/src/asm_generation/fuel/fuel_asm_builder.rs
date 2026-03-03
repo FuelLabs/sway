@@ -1083,19 +1083,20 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         cases: &[(u64, BranchToWithArgs)],
         default: &Option<BranchToWithArgs>,
     ) -> Result<(), CompileError> {
+        let inst_span = self.md_mgr.val_to_span(self.context, *instr_val);
+
         let target_blocks = cases
             .iter()
             .map(|(_, bb)| &bb.block)
             .chain(default.as_ref().map(|d| &d.block));
+
         // Check if any two target blocks are the same with args.
         let mut seen_blocks = rustc_hash::FxHashSet::default();
-        for bb in target_blocks {
-            if !seen_blocks.insert(bb) && bb.num_args(self.context) > 0 {
+        for tb in target_blocks {
+            if !seen_blocks.insert(tb) && tb.num_args(self.context) > 0 {
                 return Err(CompileError::Internal(
                     "Cannot compile switch with multiple cases going to same dest block",
-                    self.md_mgr
-                        .val_to_span(self.context, *instr_val)
-                        .unwrap_or_else(Span::dummy),
+                    inst_span.unwrap_or_else(Span::dummy),
                 ));
             }
         }
@@ -1136,8 +1137,8 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 min_case_value,
                 cond_reg.clone(),
                 None,
-                "min_case_value",
-                None,
+                "[switch] get `min_case_value` for range check",
+                inst_span.clone(),
             );
             self.cur_bytecode.push(Op {
                 opcode: Either::Left(VirtualOp::LT(
@@ -1145,11 +1146,14 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     discrim_reg.clone(),
                     cond_reg.clone(),
                 )),
-                comment: "check if switch discriminant < min case value".into(),
-                owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+                comment: "[switch] check if discriminant < `min_case_value`".into(),
+                owning_span: inst_span.clone(),
             });
-            self.cur_bytecode
-                .push(Op::jump_if_not_zero(cond_reg, default_label));
+            self.cur_bytecode.push(Op::jump_if_not_zero_comment(
+                cond_reg,
+                default_label,
+                "[switch] jump to default if discriminant < `min_case_value`",
+            ));
         }
 
         // If the lowest case value isn't 0, we subtract the discriminant and each
@@ -1161,11 +1165,8 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     discrim_reg.clone(),
                     VirtualImmediate12::new(min_case_value),
                 )),
-                comment: format!(
-                    "adjust switch discriminant by subtracting min case value {}",
-                    min_case_value
-                ),
-                owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+                comment: format!("[switch] adjust discriminant by subtracting `min_case_value` of {min_case_value}"),
+                owning_span: inst_span.clone(),
             });
             sorted_cases
                 .iter_mut()
@@ -1182,11 +1183,12 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             "Lowest case value must be zero after adjustment"
         );
 
-        let max_case_value = sorted_cases.last().unwrap().0;
         // TODO: Decide on a better limit.
+        const MAX_CASE_VALUE_LIMIT: u64 = 20;
+        let max_case_value = sorted_cases.last().unwrap().0;
         assert!(
-            max_case_value < 20,
-            "Jump table too large to compile switch"
+            max_case_value < MAX_CASE_VALUE_LIMIT,
+            "Jump table too large to compile switch. Max case value was {max_case_value}, but the limit is {MAX_CASE_VALUE_LIMIT}."
         );
 
         // If the discriminant is greater than the highest case value, jump to default.
@@ -1196,8 +1198,8 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 max_case_value,
                 cond_reg.clone(),
                 None,
-                "max_case_value",
-                None,
+                "[switch] get `max_case_value` for range check",
+                inst_span.clone(),
             );
             self.cur_bytecode.push(Op {
                 opcode: Either::Left(VirtualOp::GT(
@@ -1205,11 +1207,14 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     discrim_reg.clone(),
                     cond_reg.clone(),
                 )),
-                comment: "check if switch discriminant > max case value".into(),
-                owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+                comment: "[switch] check if discriminant > `max_case_value`".into(),
+                owning_span: inst_span.clone(),
             });
-            self.cur_bytecode
-                .push(Op::jump_if_not_zero(cond_reg, default_label));
+            self.cur_bytecode.push(Op::jump_if_not_zero_comment(
+                cond_reg,
+                default_label,
+                "[switch] jump to default if discriminant > `max_case_value`",
+            ));
         }
 
         // For holes in the case values, i.e. non-contiguous case values,
@@ -1239,7 +1244,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         self.cur_bytecode.push(Op::switch_comment(
             discrim_reg,
             filled_sorted_cases,
-            format!("switch with {} cases", num_cases),
+            format!("[switch] switch to one of {num_cases} case(s)"),
         ));
 
         Ok(())
