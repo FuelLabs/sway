@@ -1,0 +1,19 @@
+[package]
+name = "test-proj"
+description = "A cargo-generate template for Rust + Sway integration testing."
+version = "0.1.0"
+edition = "2021"
+authors = ["xunilrj <xunilrj@hotmail.com>"]
+license = "Apache-2.0"
+
+[dev-dependencies]
+cynic = "=3.12.0"
+fuels = "0.76"
+tokio = { version = "1.12", features = ["rt", "macros"] }
+
+[[test]]
+harness = true
+name = "integration_tests"
+path = "tests/harness.rs"
+
+[workspace]
