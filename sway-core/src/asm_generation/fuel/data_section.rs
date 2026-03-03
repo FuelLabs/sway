@@ -456,7 +456,7 @@ fn display_bytes_for_data_section(bs: &Vec<u8>, prefix: &str) -> String {
     format!("{prefix}[{}] {hex_str} {chr_str}", bs.len())
 }
 
-fn display_words_for_data_section(ws: &Vec<u64>) -> String {
+fn display_words_for_data_section(ws: &[u64]) -> String {
     let ws_str = String::from_iter(Itertools::intersperse(
         ws.iter().map(|w| w.to_string()),
         " ".to_string(),
