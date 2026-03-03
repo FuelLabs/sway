@@ -1,8 +1,0 @@
-[project]
-authors = ["xunilrj"]
-entry = "main.sw"
-license = "Apache-2.0"
-name = "test-proj"
-
-[dependencies]
-std = { path = "../sway-lib-std" }
