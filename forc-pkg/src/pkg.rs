@@ -47,7 +47,10 @@ use sway_core::{
     write_dwarf, BuildTarget, Engines, FinalizedEntry, LspConfig,
 };
 use sway_core::{namespace::Package, Observer};
-use sway_core::{set_bytecode_configurables_offset, DbgGeneration, IrCli, PrintAsm};
+use sway_core::{
+    set_bytecode_configurables_offset, BuildConfig, DbgGeneration, IrCli, PanicOccurrences,
+    PanickingCallOccurrences, PrintAsm,
+};
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_features::ExperimentalFeatures;
 use sway_types::{Ident, ProgramId, Span, Spanned};
@@ -1944,6 +1947,7 @@ pub fn compile(
 pub fn compile_ir(
     ir_file: &Path,
     engines: &Engines,
+    build_config: Option<&BuildConfig>,
     source_map: &mut SourceMap,
     experimental: ExperimentalFeatures,
 ) -> Result<BuiltPackageBytecode> {
@@ -1954,12 +1958,16 @@ pub fn compile_ir(
         &source,
         engines.se(),
         experimental,
-        sway_ir::context::Backtrace::default(),
+        build_config
+            .map(|config| config.backtrace.into())
+            .unwrap_or_default(),
     )?;
 
     let handler = Handler::default();
     let asm = sway_core::asm_generation::from_ir::compile_ir_context_to_finalized_asm(
-        &handler, &sway_ir, None,
+        &handler,
+        &sway_ir,
+        build_config,
     );
 
     let fail = |handler: Handler| {
@@ -1967,17 +1975,16 @@ pub fn compile_ir(
         print_on_failure(engines.se(), false, &infos, &warnings, &errors, false);
         bail!("Failed to compile {}", ir_file.display());
     };
-    let asm = match asm {
+
+    let finalized_asm = match asm {
         Err(_) => return fail(handler),
         Ok(asm) => asm,
     };
 
-    let panic_occurrences = sway_core::PanicOccurrences::default();
-    let panicking_call_occurrences = sway_core::PanickingCallOccurrences::default();
     let mut compiled_asm = sway_core::CompiledAsm {
-        finalized_asm: asm,
-        panic_occurrences,
-        panicking_call_occurrences,
+        finalized_asm,
+        panic_occurrences: PanicOccurrences::default(),
+        panicking_call_occurrences: PanickingCallOccurrences::default(),
     };
 
     let entries = compiled_asm
@@ -1987,18 +1994,17 @@ pub fn compile_ir(
         .map(|finalized_entry| PkgEntry::from_finalized_entry(finalized_entry, engines))
         .collect::<anyhow::Result<_>>()?;
 
-    let sway_build_config = sway_core::BuildConfig::dummy_for_asm_generation();
-
-    let bc_res = sway_core::asm_to_bytecode(
+    let bytecode_res = sway_core::asm_to_bytecode(
         &handler,
         &mut compiled_asm,
         source_map,
         engines.se(),
-        &sway_build_config,
+        build_config.unwrap_or(&BuildConfig::dummy_for_asm_generation()),
     );
+
     let errored = handler.has_errors();
 
-    let compiled = match bc_res {
+    let compiled = match bytecode_res {
         Ok(compiled) if !errored => compiled,
         _ => return fail(handler),
     };

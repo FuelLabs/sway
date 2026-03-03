@@ -578,6 +578,7 @@ impl TestContext {
                 let bytecode = forc_pkg::compile_ir(
                     main_file,
                     &engines,
+                    Some(&run_config.clone().into()),
                     &mut SourceMap::new(),
                     *experimental,
                 )?;

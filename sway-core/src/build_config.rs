@@ -223,7 +223,7 @@ impl From<Backtrace> for sway_ir::Backtrace {
 }
 
 /// Configuration for the overall build and compilation process.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct BuildConfig {
     // Build target for code generation.
     pub(crate) build_target: BuildTarget,
@@ -240,7 +240,7 @@ pub struct BuildConfig {
     pub(crate) verify_ir: IrCli,
     pub(crate) include_tests: bool,
     pub(crate) optimization_level: OptLevel,
-    pub(crate) backtrace: Backtrace,
+    pub backtrace: Backtrace,
     pub time_phases: bool,
     pub profile: bool,
     pub metrics_outfile: Option<String>,
@@ -309,6 +309,13 @@ impl BuildConfig {
             BuildTarget::default(),
             DbgGeneration::None,
         )
+    }
+
+    pub fn with_build_target(self, build_target: BuildTarget) -> Self {
+        Self {
+            build_target,
+            ..self
+        }
     }
 
     pub fn with_print_dca_graph(self, a: Option<String>) -> Self {

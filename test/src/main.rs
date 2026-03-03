@@ -223,6 +223,17 @@ pub struct RunConfig {
     pub gas_costs_values: GasCostsValues,
 }
 
+impl From<RunConfig> for sway_core::BuildConfig {
+    fn from(run_config: RunConfig) -> Self {
+        Self::default()
+            .with_build_target(run_config.build_target)
+            .with_print_ir(run_config.print_ir)
+            .with_verify_ir(run_config.verify_ir)
+            .with_print_asm(run_config.print_asm)
+            .with_print_bytecode(run_config.print_bytecode, false)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct RunKindConfig {
     pub kind: TestKind,
