@@ -3214,9 +3214,10 @@ fn check_asm_block_validity(
     // Check #1: Disallow control flow instructions
     //
     for err in opcodes.iter().filter_map(|op| {
-        if matches!(op.0, |VirtualOp::RET(..)| VirtualOp::RETD(..)
-            | VirtualOp::RVRT(..))
-        {
+        if matches!(
+            op.0,
+            VirtualOp::RET(..) | VirtualOp::RETD(..) | VirtualOp::RVRT(..)
+        ) {
             Some(CompileError::DisallowedControlFlowInstruction {
                 name: op.1.to_string(),
                 span: op.2.clone(),
