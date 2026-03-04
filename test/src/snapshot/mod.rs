@@ -381,7 +381,7 @@ fn run_cmds(
                         }
                         continue;
                     } else {
-                        panic!("`{cmd}` is not a supported snapshot command.\nPossible tool commands: forc doc, forc\nPossible filtering commands: sub, regex, filter-fn");
+                        panic!("`{cmd}` is not a supported snapshot command.\nPossible tool commands: echo, forc, forc doc, forc migrate, replace-file, patch-bin, fuel-vm\nPossible filtering commands: sub, regex, filter-fn");
                     };
 
                     let o = duct::cmd!("bash", "-c", cmd.clone())
