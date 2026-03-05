@@ -344,7 +344,7 @@ pub enum FuelVmInstruction {
     /// Revert VM execution.
     Revert(Value),
     /// - Sends a message to an output via the `smo` FuelVM instruction.
-    /// - The first operand must be a `B256` representing the recipient.
+    /// - The first operand must be a `b256` representing the recipient.
     /// - The second operand is the message data being sent.
     /// - `message_size` and `coins` must be of type `U64`.
     Smo {
@@ -353,15 +353,15 @@ pub enum FuelVmInstruction {
         message_size: Value,
         coins: Value,
     },
-    /// Clears `number_of_slots` storage slots (`b256` each) starting at key `key`.
+    /// Clears `number_of_slots` storage slots (32 bytes each) starting at key `key`.
     StateClear {
         key: Value,
         number_of_slots: Value,
     },
-    /// Reads `number_of_slots` slots (`b256` each) from storage starting at key `key` and stores
-    /// them in memory starting at address `load_val`.
-    StateLoadQuadWord {
-        load_val: Value,
+    /// Clears `number_of_slots` dynamic storage slots starting at key `key`.
+    /// Unlike [Self::StateClear] (SCWQ), this does not report whether slots were previously set,
+    /// making it cheaper. Maps to the `SCLR` opcode.
+    StateClearSlots {
         key: Value,
         number_of_slots: Value,
     },
@@ -370,17 +370,61 @@ pub enum FuelVmInstruction {
         key: Value,
         offset: u64,
     },
-    /// Stores `number_of_slots` slots (`b256` each) starting at address `stored_val` in memory into
+    /// Reads `number_of_slots` slots (32 bytes each) from storage starting at key `key` and stores
+    /// them in memory starting at address `load_val`.
+    StateLoadQuadWord {
+        load_val: Value,
+        key: Value,
+        number_of_slots: Value,
+    },
+    /// Reads `len` bytes from storage starting at key `key` with byte offset `offset`
+    /// and stores them in memory starting at address `load_val`.
+    /// Unlike [Self::StateLoadQuadWord] (SRWQ), this operates at byte granularity
+    /// and does not return a bool but sets `$err` to 1 if the slot doesn't exist.
+    /// Maps to the `SRDD` or `SRDI` opcode, depending on whether `len` is a constant
+    /// that fits in an immediate of six bits.
+    StateReadSlot {
+        load_val: Value,
+        key: Value,
+        offset: Value,
+        len: Value,
+    },
+    /// Writes a single word to a storage slot. `key` must be a `b256` and the type of `stored_val`
+    /// must be a `u64`.
+    StateStoreWord {
+        stored_val: Value,
+        key: Value,
+    },
+    /// Stores `number_of_slots` slots (32 bytes each) starting at address `stored_val` in memory into
     /// storage starting at key `key`. `key` must be a `b256`.
     StateStoreQuadWord {
         stored_val: Value,
         key: Value,
         number_of_slots: Value,
     },
-    /// Writes a single word to a storage slot. `key` must be a `b256` and the type of `stored_val`
-    /// must be a `u64`.
-    StateStoreWord {
+    /// Writes `len` bytes starting at address `stored_val` in memory into storage at key `key`.
+    /// `key` must be a `b256`.
+    StateWriteSlot {
         stored_val: Value,
+        key: Value,
+        len: Value,
+    },
+    /// Updates `len` bytes from storage at key `key` starting at offset `offset`. Updates them with
+    /// `len` bytes from address `stored_val` in memory.
+    /// Charges gas for full slot read and write. Writing past the end extends the slot, but `offset` must be valid.
+    /// An unoccupied slot is treated as zero-length for the purposes of the read.
+    /// Setting `offset` to `u64::MAX` will cause the write to happen at the end of the slot (append).
+    StateUpdateSlot {
+        stored_val: Value,
+        key: Value,
+        offset: Value,
+        len: Value,
+    },
+    /// Preloads the storage slot at key `key` and returns the length of the stored data.
+    /// If the slot is not set, it returns 0.
+    /// Maps to the `SPLD` opcode, but does not distinguish between "not set" and
+    /// "set to empty" since both are treated as zero-length.
+    StatePreload {
         key: Value,
     },
     WideUnaryOp {
@@ -533,15 +577,34 @@ impl InstOp {
             // No-op is also no-type.
             InstOp::Nop => None,
 
-            // State load returns a u64, other state ops return a bool.
+            // State load word returns a u64. If the slot was not set, it returns 0.
             InstOp::FuelVm(FuelVmInstruction::StateLoadWord { .. }) => {
                 Some(Type::get_uint64(context))
             }
+
+            // State preload returns a u64, the length of the preloaded data or 0 if the slot was not set.
+            InstOp::FuelVm(FuelVmInstruction::StatePreload { .. }) => {
+                Some(Type::get_uint64(context))
+            }
+
+            // These state instructions return a bool to indicate success or failure of the operation,
+            // or to convey additional information such as whether a slot was previously set for clear
+            // or whether a read slot was found for read.
             InstOp::FuelVm(FuelVmInstruction::StateClear { .. })
             | InstOp::FuelVm(FuelVmInstruction::StateLoadQuadWord { .. })
             | InstOp::FuelVm(FuelVmInstruction::StateStoreQuadWord { .. })
             | InstOp::FuelVm(FuelVmInstruction::StateStoreWord { .. }) => {
                 Some(Type::get_bool(context))
+            }
+
+            // These state instructions do not report status, so they return unit.
+            // Note that StateReadSlot (SRDD) report status via $err, but from the
+            // instruction perspective it still returns unit.
+            InstOp::FuelVm(FuelVmInstruction::StateClearSlots { .. })
+            | InstOp::FuelVm(FuelVmInstruction::StateReadSlot { .. })
+            | InstOp::FuelVm(FuelVmInstruction::StateWriteSlot { .. })
+            | InstOp::FuelVm(FuelVmInstruction::StateUpdateSlot { .. }) => {
+                Some(Type::get_unit(context))
             }
 
             // Memory writes return unit.
@@ -668,19 +731,39 @@ impl InstOp {
                     key,
                     number_of_slots,
                 } => vec![*key, *number_of_slots],
+                FuelVmInstruction::StateClearSlots {
+                    key,
+                    number_of_slots,
+                } => vec![*key, *number_of_slots],
                 FuelVmInstruction::StateLoadQuadWord {
                     load_val,
                     key,
                     number_of_slots,
                 } => vec![*load_val, *key, *number_of_slots],
+                FuelVmInstruction::StateReadSlot {
+                    load_val,
+                    key,
+                    offset,
+                    len,
+                } => vec![*load_val, *key, *offset, *len],
                 FuelVmInstruction::StateLoadWord { key, .. } => vec![*key],
                 FuelVmInstruction::StateStoreQuadWord {
                     stored_val,
                     key,
                     number_of_slots,
-                } => {
-                    vec![*stored_val, *key, *number_of_slots]
-                }
+                } => vec![*stored_val, *key, *number_of_slots],
+                FuelVmInstruction::StateWriteSlot {
+                    stored_val,
+                    key,
+                    len,
+                } => vec![*stored_val, *key, *len],
+                FuelVmInstruction::StateUpdateSlot {
+                    stored_val,
+                    key,
+                    offset,
+                    len,
+                } => vec![*stored_val, *key, *offset, *len],
+                FuelVmInstruction::StatePreload { key } => vec![*key],
                 FuelVmInstruction::StateStoreWord { stored_val, key } => vec![*stored_val, *key],
                 FuelVmInstruction::WideUnaryOp { arg, result, .. } => vec![*result, *arg],
                 FuelVmInstruction::WideBinaryOp {
@@ -991,6 +1074,18 @@ impl InstOp {
                         panic!("Invalid index for StateClear");
                     }
                 }
+                FuelVmInstruction::StateClearSlots {
+                    key,
+                    number_of_slots,
+                } => {
+                    if idx == 0 {
+                        *key = replacement;
+                    } else if idx == 1 {
+                        *number_of_slots = replacement;
+                    } else {
+                        panic!("Invalid index for StateClearSlots");
+                    }
+                }
                 FuelVmInstruction::StateLoadQuadWord {
                     load_val,
                     key,
@@ -1004,6 +1099,24 @@ impl InstOp {
                         *number_of_slots = replacement;
                     } else {
                         panic!("Invalid index for StateLoadQuadWord");
+                    }
+                }
+                FuelVmInstruction::StateReadSlot {
+                    load_val,
+                    key,
+                    offset,
+                    len,
+                } => {
+                    if idx == 0 {
+                        *load_val = replacement;
+                    } else if idx == 1 {
+                        *key = replacement;
+                    } else if idx == 2 {
+                        *offset = replacement;
+                    } else if idx == 3 {
+                        *len = replacement;
+                    } else {
+                        panic!("Invalid index for StateReadSlot");
                     }
                 }
                 FuelVmInstruction::StateLoadWord { key, .. } => {
@@ -1026,6 +1139,46 @@ impl InstOp {
                         *number_of_slots = replacement;
                     } else {
                         panic!("Invalid index for StateStoreQuadWord");
+                    }
+                }
+                FuelVmInstruction::StateWriteSlot {
+                    stored_val,
+                    key,
+                    len,
+                } => {
+                    if idx == 0 {
+                        *stored_val = replacement;
+                    } else if idx == 1 {
+                        *key = replacement;
+                    } else if idx == 2 {
+                        *len = replacement;
+                    } else {
+                        panic!("Invalid index for StateWriteSlot");
+                    }
+                }
+                FuelVmInstruction::StateUpdateSlot {
+                    stored_val,
+                    key,
+                    offset,
+                    len,
+                } => {
+                    if idx == 0 {
+                        *stored_val = replacement;
+                    } else if idx == 1 {
+                        *key = replacement;
+                    } else if idx == 2 {
+                        *offset = replacement;
+                    } else if idx == 3 {
+                        *len = replacement;
+                    } else {
+                        panic!("Invalid index for StateUpdateSlot");
+                    }
+                }
+                FuelVmInstruction::StatePreload { key } => {
+                    if idx == 0 {
+                        *key = replacement;
+                    } else {
+                        panic!("Invalid index for StatePreload");
                     }
                 }
                 FuelVmInstruction::StateStoreWord { stored_val, key } => {
@@ -1234,6 +1387,13 @@ impl InstOp {
                     replace(key);
                     replace(number_of_slots);
                 }
+                FuelVmInstruction::StateClearSlots {
+                    key,
+                    number_of_slots,
+                } => {
+                    replace(key);
+                    replace(number_of_slots);
+                }
                 FuelVmInstruction::StateLoadQuadWord {
                     load_val,
                     key,
@@ -1242,6 +1402,17 @@ impl InstOp {
                     replace(load_val);
                     replace(key);
                     replace(number_of_slots);
+                }
+                FuelVmInstruction::StateReadSlot {
+                    load_val,
+                    key,
+                    offset,
+                    len,
+                } => {
+                    replace(load_val);
+                    replace(key);
+                    replace(offset);
+                    replace(len);
                 }
                 FuelVmInstruction::StateLoadWord { key, .. } => {
                     replace(key);
@@ -1254,6 +1425,29 @@ impl InstOp {
                     replace(key);
                     replace(stored_val);
                     replace(number_of_slots);
+                }
+                FuelVmInstruction::StateWriteSlot {
+                    stored_val,
+                    key,
+                    len,
+                } => {
+                    replace(stored_val);
+                    replace(key);
+                    replace(len);
+                }
+                FuelVmInstruction::StateUpdateSlot {
+                    stored_val,
+                    key,
+                    offset,
+                    len,
+                } => {
+                    replace(stored_val);
+                    replace(key);
+                    replace(offset);
+                    replace(len);
+                }
+                FuelVmInstruction::StatePreload { key } => {
+                    replace(key);
                 }
                 FuelVmInstruction::StateStoreWord { stored_val, key } => {
                     replace(key);
@@ -1311,8 +1505,13 @@ impl InstOp {
             | InstOp::FuelVm(FuelVmInstruction::Log { .. })
             | InstOp::FuelVm(FuelVmInstruction::Smo { .. })
             | InstOp::FuelVm(FuelVmInstruction::StateClear { .. })
+            | InstOp::FuelVm(FuelVmInstruction::StateClearSlots { .. })
             | InstOp::FuelVm(FuelVmInstruction::StateLoadQuadWord { .. })
+            | InstOp::FuelVm(FuelVmInstruction::StateReadSlot { .. })
             | InstOp::FuelVm(FuelVmInstruction::StateStoreQuadWord { .. })
+            | InstOp::FuelVm(FuelVmInstruction::StateWriteSlot { .. })
+            | InstOp::FuelVm(FuelVmInstruction::StateUpdateSlot { .. })
+            | InstOp::FuelVm(FuelVmInstruction::StatePreload { .. })
             | InstOp::FuelVm(FuelVmInstruction::StateStoreWord { .. })
             | InstOp::FuelVm(FuelVmInstruction::Revert(..))
             | InstOp::FuelVm(FuelVmInstruction::JmpMem)
@@ -1835,6 +2034,16 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
         )
     }
 
+    pub fn state_clear_slots(self, key: Value, number_of_slots: Value) -> Value {
+        insert_instruction!(
+            self,
+            InstOp::FuelVm(FuelVmInstruction::StateClearSlots {
+                key,
+                number_of_slots
+            })
+        )
+    }
+
     pub fn state_load_quad_word(
         self,
         load_val: Value,
@@ -1847,6 +2056,18 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
                 load_val,
                 key,
                 number_of_slots
+            })
+        )
+    }
+
+    pub fn state_read_slot(self, load_val: Value, key: Value, offset: Value, len: Value) -> Value {
+        insert_instruction!(
+            self,
+            InstOp::FuelVm(FuelVmInstruction::StateReadSlot {
+                load_val,
+                key,
+                offset,
+                len
             })
         )
     }
@@ -1871,6 +2092,42 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
                 key,
                 number_of_slots
             })
+        )
+    }
+
+    pub fn state_write_slot(self, stored_val: Value, key: Value, len: Value) -> Value {
+        insert_instruction!(
+            self,
+            InstOp::FuelVm(FuelVmInstruction::StateWriteSlot {
+                stored_val,
+                key,
+                len
+            })
+        )
+    }
+
+    pub fn state_update_slot(
+        self,
+        stored_val: Value,
+        key: Value,
+        offset: Value,
+        len: Value,
+    ) -> Value {
+        insert_instruction!(
+            self,
+            InstOp::FuelVm(FuelVmInstruction::StateUpdateSlot {
+                stored_val,
+                key,
+                offset,
+                len
+            })
+        )
+    }
+
+    pub fn state_preload(self, key: Value) -> Value {
+        insert_instruction!(
+            self,
+            InstOp::FuelVm(FuelVmInstruction::StatePreload { key })
         )
     }
 

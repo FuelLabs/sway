@@ -538,6 +538,12 @@ fn inline_instruction(
                 } => new_block
                     .append(context)
                     .state_clear(map_value(key), map_value(number_of_slots)),
+                FuelVmInstruction::StateClearSlots {
+                    key,
+                    number_of_slots,
+                } => new_block
+                    .append(context)
+                    .state_clear_slots(map_value(key), map_value(number_of_slots)),
                 FuelVmInstruction::StateLoadQuadWord {
                     load_val,
                     key,
@@ -550,6 +556,17 @@ fn inline_instruction(
                 FuelVmInstruction::StateLoadWord { key, offset } => new_block
                     .append(context)
                     .state_load_word(map_value(key), offset),
+                FuelVmInstruction::StateReadSlot {
+                    load_val,
+                    key,
+                    offset,
+                    len,
+                } => new_block.append(context).state_read_slot(
+                    map_value(load_val),
+                    map_value(key),
+                    map_value(offset),
+                    map_value(len),
+                ),
                 FuelVmInstruction::StateStoreQuadWord {
                     stored_val,
                     key,
@@ -559,6 +576,29 @@ fn inline_instruction(
                     map_value(key),
                     map_value(number_of_slots),
                 ),
+                FuelVmInstruction::StateWriteSlot {
+                    stored_val,
+                    key,
+                    len,
+                } => new_block.append(context).state_write_slot(
+                    map_value(stored_val),
+                    map_value(key),
+                    map_value(len),
+                ),
+                FuelVmInstruction::StateUpdateSlot {
+                    stored_val,
+                    key,
+                    offset,
+                    len,
+                } => new_block.append(context).state_update_slot(
+                    map_value(stored_val),
+                    map_value(key),
+                    map_value(offset),
+                    map_value(len),
+                ),
+                FuelVmInstruction::StatePreload { key } => {
+                    new_block.append(context).state_preload(map_value(key))
+                }
                 FuelVmInstruction::StateStoreWord { stored_val, key } => new_block
                     .append(context)
                     .state_store_word(map_value(stored_val), map_value(key)),

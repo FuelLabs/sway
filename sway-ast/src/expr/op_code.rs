@@ -306,6 +306,7 @@ define_op_codes!(
         (addr: reg, len: reg, output: reg, coins: reg)
     ),
     (Scwq, ScwqOpcode, "scwq", (addr: reg, is_set: reg, len: reg)),
+    (Sclr, SclrOpcode, "sclr", (addr: reg, len: reg)),
     (
         Srw,
         SrwOpcode,
@@ -319,6 +320,18 @@ define_op_codes!(
         (addr: reg, is_set: reg, state_addr: reg, count: reg)
     ),
     (
+        Srdd,
+        SrddOpcode,
+        "srdd",
+        (addr: reg, state_addr: reg, offset: reg, len: reg)
+    ),
+    (
+        Srdi,
+        SrdiOpcode,
+        "srdi",
+        (addr: reg, state_addr: reg, offset: reg, len: imm)
+    ),
+    (
         Sww,
         SwwOpcode,
         "sww",
@@ -329,6 +342,26 @@ define_op_codes!(
         SwwqOpcode,
         "swwq",
         (state_addr: reg, is_set: reg, addr: reg, count: reg)
+    ),
+    (Swrd, SwrdOpcode, "swrd", (state_addr: reg, addr: reg, len: reg)),
+    (Swri, SwriOpcode, "swri", (state_addr: reg, addr: reg, len: imm)),
+    (
+        Supd,
+        SupdOpcode,
+        "supd",
+        (state_addr: reg, addr: reg, offset: reg, len: reg)
+    ),
+    (
+        Supi,
+        SupiOpcode,
+        "supi",
+        (state_addr: reg, addr: reg, offset: reg, len: imm)
+    ),
+    (
+        Spld,
+        SpldOpcode,
+        "spld",
+        (dest_len: reg, state_addr: reg)
     ),
     (Time, TimeOpcode, "time", (ret: reg, height: reg)),
     (Tr, TrOpcode, "tr", (contract: reg, coins: reg, asset: reg)),

@@ -46,7 +46,8 @@ impl Abi for Contract {
     fn test() {
         read_asm_instructions();
         write_asm_instructions();
-        clear_asm_instruction();
+        update_asm_instructions();
+        clear_asm_instructions();
 
         let s = S {};
         let _ = s.read_intrinsics();
@@ -63,6 +64,18 @@ fn read_asm_instructions() {
     asm(r1: 0, r2, r3: 0, r4: 0) {
         srwq r1 r2 r3 r4;
     }
+
+    asm(r1: 0, r2: 0, r3: 0, r4: 0) {
+        srdd r1 r2 r3 r4;
+    }
+
+    asm(r1: 0, r2: 0, r3: 0) {
+        srdi r1 r2 r3 i0;
+    }
+
+    asm(r1, r2: 0) {
+        spld r1 r2;
+    }
 }
 
 #[storage(read)]
@@ -74,11 +87,34 @@ fn write_asm_instructions() {
     asm(r1: 0, r2, r3: 0, r4: 0) {
         swwq r1 r2 r3 r4;
     }
+
+    asm(r1: 0, r2: 0, r3: 0) {
+        swrd r1 r2 r3;
+    }
+
+    asm(r1: 0, r2: 0) {
+        swri r1 r2 i0;
+    }
 }
 
 #[storage(read)]
-fn clear_asm_instruction() {
+fn update_asm_instructions() {
+    asm(r1: 0, r2: 0, r3: 0, r4: 0) {
+        supd r1 r2 r3 r4;
+    }
+
+    asm(r1: 0, r2: 0, r3: 0) {
+        supi r1 r2 r3 i0;
+    }
+}
+
+#[storage(read)]
+fn clear_asm_instructions() {
     asm(r1: 0, r2, r3: 0) {
         scwq r1 r2 r3;
+    }
+
+    asm(r1: 0, r2: 0) {
+        sclr r1 r2;
     }
 }

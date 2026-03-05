@@ -363,12 +363,22 @@ impl Type {
     }
 
     // TODO: (REFERENCES) Check all the usages of `is_ptr`.
-    /// Returns true if `self` is a pointer type.
+    /// Returns true if `self` is **any** pointer type, typed or untyped.
     pub fn is_ptr(&self, context: &Context) -> bool {
         matches!(
             *self.get_content(context),
             TypeContent::TypedPointer(_) | TypeContent::Pointer
         )
+    }
+
+    /// Returns true if `self` is a typed pointer type.
+    pub fn is_typed_ptr(&self, context: &Context) -> bool {
+        matches!(*self.get_content(context), TypeContent::TypedPointer(_))
+    }
+
+    /// Returns true if `self` is an untyped pointer type.
+    pub fn is_untyped_ptr(&self, context: &Context) -> bool {
+        matches!(*self.get_content(context), TypeContent::Pointer)
     }
 
     /// Get pointed to type iff `self`` is a pointer.

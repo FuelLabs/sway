@@ -278,9 +278,15 @@ mod ir_builder {
                 / op_revert()
                 / op_jmp_mem()
                 / op_smo()
+                / op_state_clear_slots()
+                / op_state_clear()
+                / op_state_read_slot()
                 / op_state_load_quad_word()
                 / op_state_load_word()
                 / op_state_store_quad_word()
+                / op_state_write_slot()
+                / op_state_update_slot()
+                / op_state_preload()
                 / op_state_store_word()
                 / op_store()
                 / op_alloc()
@@ -504,9 +510,19 @@ mod ir_builder {
                     IrAstOperation::StateClear(key, number_of_slots)
                 }
 
+            rule op_state_clear_slots() -> IrAstOperation
+                = "state_clear_slots" _ "key" _ key:id() comma()  number_of_slots:id() {
+                    IrAstOperation::StateClearSlots(key, number_of_slots)
+                }
+
             rule op_state_load_quad_word() -> IrAstOperation
                 = "state_load_quad_word" _ dst:id() comma() "key" _ key:id() comma()  number_of_slots:id() {
                     IrAstOperation::StateLoadQuadWord(dst, key, number_of_slots)
+                }
+
+            rule op_state_read_slot() -> IrAstOperation
+                = "state_read_slot" _ dst:id() comma() "key" _ key:id() comma() offset:id() comma() len:id() {
+                    IrAstOperation::StateReadSlot(dst, key, offset, len)
                 }
 
             rule op_state_load_word() -> IrAstOperation
@@ -517,6 +533,21 @@ mod ir_builder {
             rule op_state_store_quad_word() -> IrAstOperation
                 = "state_store_quad_word" _ src:id() comma() "key" _ key:id() comma()  number_of_slots:id() {
                     IrAstOperation::StateStoreQuadWord(src, key, number_of_slots)
+                }
+
+            rule op_state_write_slot() -> IrAstOperation
+                = "state_write_slot" _ src:id() comma() "key" _ key:id() comma() len:id() {
+                    IrAstOperation::StateWriteSlot(src, key, len)
+                }
+
+            rule op_state_update_slot() -> IrAstOperation
+                = "state_update_slot" _ src:id() comma() "key" _ key:id() comma() offset:id() comma() len:id() {
+                    IrAstOperation::StateUpdateSlot(src, key, offset, len)
+                }
+
+            rule op_state_preload() -> IrAstOperation
+                = "state_preload" _ "key" _ key:id() {
+                    IrAstOperation::StatePreload(key)
                 }
 
             rule op_state_store_word() -> IrAstOperation
@@ -905,9 +936,14 @@ mod ir_builder {
         JmpMem,
         Smo(String, String, String, String),
         StateClear(String, String),
+        StateClearSlots(String, String),
         StateLoadQuadWord(String, String, String),
+        StateReadSlot(String, String, String, String),
         StateLoadWord(String, u64),
         StateStoreQuadWord(String, String, String),
+        StateWriteSlot(String, String, String),
+        StateUpdateSlot(String, String, String, String),
+        StatePreload(String),
         StateStoreWord(String, String),
         Store(String, String),
         WideUnaryOp(UnaryOpKind, String, String),
@@ -1614,12 +1650,28 @@ mod ir_builder {
                             *val_map.get(&number_of_slots).unwrap(),
                         )
                         .add_metadatum(context, opt_metadata),
+                    IrAstOperation::StateClearSlots(key, number_of_slots) => block
+                        .append(context)
+                        .state_clear_slots(
+                            *val_map.get(&key).unwrap(),
+                            *val_map.get(&number_of_slots).unwrap(),
+                        )
+                        .add_metadatum(context, opt_metadata),
                     IrAstOperation::StateLoadQuadWord(dst, key, number_of_slots) => block
                         .append(context)
                         .state_load_quad_word(
                             *val_map.get(&dst).unwrap(),
                             *val_map.get(&key).unwrap(),
                             *val_map.get(&number_of_slots).unwrap(),
+                        )
+                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::StateReadSlot(dst, key, offset, len) => block
+                        .append(context)
+                        .state_read_slot(
+                            *val_map.get(&dst).unwrap(),
+                            *val_map.get(&key).unwrap(),
+                            *val_map.get(&offset).unwrap(),
+                            *val_map.get(&len).unwrap(),
                         )
                         .add_metadatum(context, opt_metadata),
                     IrAstOperation::StateLoadWord(key, offset) => block
@@ -1633,6 +1685,27 @@ mod ir_builder {
                             *val_map.get(&key).unwrap(),
                             *val_map.get(&number_of_slots).unwrap(),
                         )
+                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::StateWriteSlot(src, key, len) => block
+                        .append(context)
+                        .state_write_slot(
+                            *val_map.get(&src).unwrap(),
+                            *val_map.get(&key).unwrap(),
+                            *val_map.get(&len).unwrap(),
+                        )
+                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::StateUpdateSlot(src, key, offset, len) => block
+                        .append(context)
+                        .state_update_slot(
+                            *val_map.get(&src).unwrap(),
+                            *val_map.get(&key).unwrap(),
+                            *val_map.get(&offset).unwrap(),
+                            *val_map.get(&len).unwrap(),
+                        )
+                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::StatePreload(key) => block
+                        .append(context)
+                        .state_preload(*val_map.get(&key).unwrap())
                         .add_metadatum(context, opt_metadata),
                     IrAstOperation::StateStoreWord(src, key) => block
                         .append(context)

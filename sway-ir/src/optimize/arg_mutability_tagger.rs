@@ -302,10 +302,12 @@ fn analyse_fn(
                         | FuelVmInstruction::Revert(_)
                         | FuelVmInstruction::JmpMem
                         | FuelVmInstruction::Smo { .. }
-                        | FuelVmInstruction::StateClear { .. } => {}
-                        FuelVmInstruction::StateLoadQuadWord { load_val, .. } => {
-                            // If the loaded value is an alias of the argument pointer,
-                            // then the argument is being mutated.
+                        | FuelVmInstruction::StateClear { .. }
+                        | FuelVmInstruction::StateClearSlots { .. } => {}
+                        FuelVmInstruction::StateLoadQuadWord { load_val, .. }
+                        | FuelVmInstruction::StateReadSlot { load_val, .. } => {
+                            // `load_val` is being written to, that's the destination of the load.
+                            // So if it's an alias of the argument pointer, then the argument is being mutated.
                             if in_worklist.contains(load_val) || aliases.contains(load_val) {
                                 *arg_mutabilities.get_mut(arg_idx).unwrap() =
                                     ArgPointeeMutability::Mutable;
@@ -315,6 +317,9 @@ fn analyse_fn(
                         FuelVmInstruction::StateLoadWord { .. }
                         | FuelVmInstruction::StateStoreWord { .. } => {}
                         FuelVmInstruction::StateStoreQuadWord { .. } => {}
+                        FuelVmInstruction::StateWriteSlot { .. } => {}
+                        FuelVmInstruction::StateUpdateSlot { .. } => {}
+                        FuelVmInstruction::StatePreload { .. } => {}
                         FuelVmInstruction::WideUnaryOp { result, .. }
                         | FuelVmInstruction::WideBinaryOp { result, .. }
                         | FuelVmInstruction::WideModularOp { result, .. } => {

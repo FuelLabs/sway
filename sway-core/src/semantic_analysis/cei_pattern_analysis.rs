@@ -685,8 +685,9 @@ fn effects_of_intrinsic(intr: &sway_ast::Intrinsic) -> HashSet<Effect> {
 
 fn effects_of_asm_op(op: &AsmOp) -> HashSet<Effect> {
     match op.op_name.as_str().to_lowercase().as_str() {
-        "scwq" | "sww" | "swwq" => HashSet::from([Effect::StorageWrite]),
-        "srw" | "srwq" => HashSet::from([Effect::StorageRead]),
+        "scwq" | "sclr" | "sww" | "swwq" | "swrd" | "swri" => HashSet::from([Effect::StorageWrite]),
+        "supd" | "supi" => HashSet::from([Effect::StorageRead, Effect::StorageWrite]),
+        "srw" | "srwq" | "srdd" | "srdi" | "spld" => HashSet::from([Effect::StorageRead]),
         "tr" | "tro" => HashSet::from([Effect::BalanceTreeReadWrite]),
         "bal" => HashSet::from([Effect::BalanceTreeRead]),
         "smo" => HashSet::from([Effect::OutputMessage]),
