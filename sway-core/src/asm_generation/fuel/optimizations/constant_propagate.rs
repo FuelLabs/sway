@@ -445,8 +445,6 @@ impl AbstractInstructionSet {
                             _ => ResetKnown::Defs,
                         },
                         Either::Right(op) => match op {
-                            // If this is a jump target, then multiple execution paths can lead to it,
-                            // and we can't assume to know register values.
                             ControlFlowOp::Label(label) => {
                                 if jump_target_labels.contains_key(label) {
                                     ResetKnown::Full
@@ -454,21 +452,17 @@ impl AbstractInstructionSet {
                                     ResetKnown::Defs
                                 }
                             }
-                            // Jumping away doesn't invalidate state, but for calls:
-                            // TODO: `def_const_registers` doesn't contain return value, which
-                            //       seems incorrect, so I'm clearing everything as a precaution
                             ControlFlowOp::Jump { type_, .. } => match type_ {
                                 JumpType::Call => ResetKnown::Full,
                                 _ => ResetKnown::Defs,
                             },
-                            // These ops mark their outputs properly and cause no control-flow effects
                             ControlFlowOp::Comment
                             | ControlFlowOp::ConfigurablesOffsetPlaceholder
                             | ControlFlowOp::DataSectionOffsetPlaceholder => ResetKnown::Defs,
-                            // This changes the stack pointer
                             ControlFlowOp::PushAll(_) => ResetKnown::DefsAndNonVirtuals,
-                            // This can be considered to destroy all known values
                             ControlFlowOp::PopAll(_) => ResetKnown::Full,
+                            ControlFlowOp::JumpToAddr(_) => ResetKnown::Full,
+                            ControlFlowOp::ReturnFromCall { .. } => ResetKnown::Full,
                         },
                     }
                 }
