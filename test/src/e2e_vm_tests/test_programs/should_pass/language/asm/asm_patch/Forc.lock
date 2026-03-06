@@ -1,0 +1,8 @@
+[[package]]
+name = "asm_patch"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-18CD21D6D3BE4433"
