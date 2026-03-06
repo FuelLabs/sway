@@ -105,12 +105,16 @@ enum ResetKnown {
 
 impl ResetKnown {
     fn apply(&self, op: &Op, known_values: &mut KnownValues) {
-        // All instruction write to $of and $err somehow. 
+        // All instruction write to $of and $err somehow.
         // Majority of cases we clear them
         known_values.clear_dependent_on(&VirtualRegister::Constant(ConstantRegister::Overflow));
-        known_values.values.remove(&VirtualRegister::Constant(ConstantRegister::Overflow));
+        known_values
+            .values
+            .remove(&VirtualRegister::Constant(ConstantRegister::Overflow));
         known_values.clear_dependent_on(&VirtualRegister::Constant(ConstantRegister::Error));
-        known_values.values.remove(&VirtualRegister::Constant(ConstantRegister::Error));
+        known_values
+            .values
+            .remove(&VirtualRegister::Constant(ConstantRegister::Error));
 
         match self {
             ResetKnown::Nothing => {}
