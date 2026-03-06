@@ -134,9 +134,9 @@ pub struct VirtualImmediate18 {
     value: u32,
 }
 
-impl From<u64> for VirtualImmediate18 {
-    fn from(value: u64) -> Self {
-        VirtualImmediate18::new(value)
+impl From<u8> for VirtualImmediate18 {
+    fn from(value: u8) -> Self {
+        VirtualImmediate18::new(value as u64)
     }
 }
 
