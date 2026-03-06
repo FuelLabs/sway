@@ -105,6 +105,13 @@ enum ResetKnown {
 
 impl ResetKnown {
     fn apply(&self, op: &Op, known_values: &mut KnownValues) {
+        // All instruction write to $of and $err somehow. 
+        // Majority of cases we clear them
+        known_values.clear_dependent_on(&VirtualRegister::Constant(ConstantRegister::Overflow));
+        known_values.values.remove(&VirtualRegister::Constant(ConstantRegister::Overflow));
+        known_values.clear_dependent_on(&VirtualRegister::Constant(ConstantRegister::Error));
+        known_values.values.remove(&VirtualRegister::Constant(ConstantRegister::Error));
+
         match self {
             ResetKnown::Nothing => {}
             ResetKnown::Defs => {
@@ -677,6 +684,9 @@ mod tests {
                 VirtualOp::gt(ConstantRegister::FuncArg0, "0", "2").into(),
                 //lt
                 VirtualOp::lt(ConstantRegister::FuncArg0, "0", "2").into(),
+                // err register
+                VirtualOp::r#move("0", ConstantRegister::Error).into(),
+                VirtualOp::eq("1", "0", ConstantRegister::One).into(),
             ],
             |ops| ops.constant_propagate(capture),
         );
@@ -883,6 +893,11 @@ mod tests {
             lt $$arg0 $r0 $r2                       ; 57
                 None None
                 Full
+            move $r0 $err                           ; 58
+                Nothing
+            eq $r1 $r0 $one                         ; 59
+                None Some(Const(1))
+                Defs
         "#]]
         .assert_eq(&str);
     }
