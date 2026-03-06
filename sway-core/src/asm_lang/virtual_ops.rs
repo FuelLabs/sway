@@ -963,7 +963,7 @@ impl VirtualOp {
     /// ECAL can do pretty much anything, but it executes the next instruction, if "$pc"
     /// is not manipulated.
     pub(crate) fn successors(&self, index: usize, ops: &[Op]) -> InstructionSuccessor {
-        assert!(index <= ops.len());
+        assert!(index < ops.len());
         match self {
             VirtualOp::RET(..) | VirtualOp::RETD(..) | VirtualOp::RVRT(..) => {
                 InstructionSuccessor::Many(vec![])
