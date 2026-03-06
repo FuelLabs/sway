@@ -16,8 +16,8 @@ use crate::{
         FinalizedAsm, ProgramKind,
     },
     asm_lang::{
-        virtual_register::*, JumpType, Label, Op, VirtualImmediate06, VirtualImmediate12,
-        VirtualImmediate18, VirtualOp, WideCmp, WideOperations,
+        virtual_register::*, ControlFlowOp, JumpType, Label, Op, VirtualImmediate06,
+        VirtualImmediate12, VirtualImmediate18, VirtualOp, WideCmp, WideOperations,
     },
     decl_engine::DeclRefFunction,
     metadata::MetadataManager,
@@ -2049,7 +2049,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
         self.cur_bytecode.push(Op {
             owning_span,
-            opcode: Either::Left(VirtualOp::JMP(by4_reg)),
+            opcode: Either::Right(ControlFlowOp::JumpToAddr(by4_reg)),
             comment: "[jump]: jump to computed value".into(),
         });
 

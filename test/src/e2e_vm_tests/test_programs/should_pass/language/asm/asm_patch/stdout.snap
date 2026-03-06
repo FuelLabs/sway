@@ -1,0 +1,105 @@
+---
+source: test/src/snapshot/mod.rs
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/asm/asm_patch
+exit status: 0
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_pass/language/asm/asm_patch
+   Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
+   Compiling script asm_patch (test/src/e2e_vm_tests/test_programs/should_pass/language/asm/asm_patch)
+    Finished debug [unoptimized + fuel] target(s) [112 B] in ???
+
+> forc parse-bytecode test/src/e2e_vm_tests/test_programs/should_pass/language/asm/asm_patch/out/debug/asm_patch.bin
+exit status: 0
+output:
+                                                                                                                   
+  half-word   byte   op                                               raw           notes                          
+          0   0      MOVE { dst: 0x3c, src: 0x3 }                     1a f0 30 00                                  
+          1   4      JMPF { dynamic: 0x0, fixed: 4 }                  74 00 00 04                                  
+          2   8      InvalidOpcode                                    00 00 00 00   data section offset lo (0)     
+          3   12     InvalidOpcode                                    00 00 00 70   data section offset hi (112)   
+          4   16     InvalidOpcode                                    00 00 00 00   configurables offset lo (0)    
+          5   20     InvalidOpcode                                    00 00 00 70   configurables offset hi (112)  
+          6   24     LW { dst: 0x3f, addr: 0x3c, offset: 1 }          5d ff c0 01                                  
+          7   28     ADD { dst: 0x3f, lhs: 0x3f, rhs: 0x3c }          10 ff ff 00                                  
+          8   32     MOVE { dst: 0x3b, src: 0x5 }                     1a ec 50 00                                  
+          9   36     CFEI { amount: 24 }                              91 00 00 18                                  
+         10   40     JAL { ret_addr: 0x3e, target: 0x3, offset: 8 }   99 f8 30 08                                  
+         11   44     SW { addr: 0x3b, value: 0x3d, offset: 0 }        5f ef d0 00                                  
+         12   48     SW { addr: 0x3b, value: 0x3b, offset: 1 }        5f ef b0 01                                  
+         13   52     MOVI { dst: 0x10, val: 8 }                       72 40 00 08                                  
+         14   56     SW { addr: 0x3b, value: 0x10, offset: 2 }        5f ed 00 02                                  
+         15   60     LW { dst: 0x10, addr: 0x3b, offset: 1 }          5d 43 b0 01                                  
+         16   64     LW { dst: 0x11, addr: 0x3b, offset: 2 }          5d 47 b0 02                                  
+         17   68     RETD { addr: 0x10, len: 0x11 }                   25 41 10 00                                  
+         18   72     PSHL { bitmask: 3 }                              95 00 00 03                                  
+         19   76     PSHH { bitmask: 524288 }                         96 08 00 00                                  
+         20   80     MOVE { dst: 0x11, src: 0x0 }                     1a 44 00 00                                  
+         21   84     ADDI { dst: 0x10, lhs: 0x0, rhs: 3 }             50 40 00 03                                  
+         22   88     LOG { a: 0x11, b: 0x11, c: 0x11, d: 0x0 }        33 45 14 40                                  
+         23   92     ADDI { dst: 0x10, lhs: 0x10, rhs: 5 }            50 41 00 05                                  
+         24   96     MOVE { dst: 0x3d, src: 0x10 }                    1a f5 00 00                                  
+         25   100    POPH { bitmask: 524288 }                         98 08 00 00                                  
+         26   104    POPL { bitmask: 3 }                              97 00 00 03                                  
+         27   108    JAL { ret_addr: 0x0, target: 0x3e, offset: 0 }   99 03 e0 00                                  
+                                                                                                                   
+
+
+> patch-bin debug
+
+> forc parse-bytecode test/src/e2e_vm_tests/test_programs/should_pass/language/asm/asm_patch/out/debug/asm_patch.bin
+exit status: 0
+output:
+                                                                                                                   
+  half-word   byte   op                                               raw           notes                          
+          0   0      MOVE { dst: 0x3c, src: 0x3 }                     1a f0 30 00                                  
+          1   4      JMPF { dynamic: 0x0, fixed: 4 }                  74 00 00 04                                  
+          2   8      InvalidOpcode                                    00 00 00 00   data section offset lo (0)     
+          3   12     InvalidOpcode                                    00 00 00 70   data section offset hi (112)   
+          4   16     InvalidOpcode                                    00 00 00 00   configurables offset lo (0)    
+          5   20     InvalidOpcode                                    00 00 00 70   configurables offset hi (112)  
+          6   24     LW { dst: 0x3f, addr: 0x3c, offset: 1 }          5d ff c0 01                                  
+          7   28     ADD { dst: 0x3f, lhs: 0x3f, rhs: 0x3c }          10 ff ff 00                                  
+          8   32     MOVE { dst: 0x3b, src: 0x5 }                     1a ec 50 00                                  
+          9   36     CFEI { amount: 24 }                              91 00 00 18                                  
+         10   40     JAL { ret_addr: 0x3e, target: 0x3, offset: 8 }   99 f8 30 08                                  
+         11   44     SW { addr: 0x3b, value: 0x3d, offset: 0 }        5f ef d0 00                                  
+         12   48     SW { addr: 0x3b, value: 0x3b, offset: 1 }        5f ef b0 01                                  
+         13   52     MOVI { dst: 0x10, val: 8 }                       72 40 00 08                                  
+         14   56     SW { addr: 0x3b, value: 0x10, offset: 2 }        5f ed 00 02                                  
+         15   60     LW { dst: 0x10, addr: 0x3b, offset: 1 }          5d 43 b0 01                                  
+         16   64     LW { dst: 0x11, addr: 0x3b, offset: 2 }          5d 47 b0 02                                  
+         17   68     RETD { addr: 0x10, len: 0x11 }                   25 41 10 00                                  
+         18   72     PSHL { bitmask: 3 }                              95 00 00 03                                  
+         19   76     PSHH { bitmask: 524288 }                         96 08 00 00                                  
+         20   80     MOVE { dst: 0x11, src: 0x0 }                     1a 44 00 00                                  
+         21   84     ADDI { dst: 0x10, lhs: 0x0, rhs: 3 }             50 40 00 03                                  
+         22   88     ADDI { dst: 0x10, lhs: 0x10, rhs: 4 }            50 41 00 04                                  
+         23   92     ADDI { dst: 0x10, lhs: 0x10, rhs: 5 }            50 41 00 05                                  
+         24   96     ADDI { dst: 0x10, lhs: 0x10, rhs: 4 }            50 41 00 04                                  
+         25   100    POPH { bitmask: 524288 }                         98 08 00 00                                  
+         26   104    POPL { bitmask: 3 }                              97 00 00 03                                  
+         27   108    JAL { ret_addr: 0x0, target: 0x3e, offset: 0 }   99 03 e0 00                                  
+                                                                                                                   
+
+
+> fuel-vm run test/src/e2e_vm_tests/test_programs/should_pass/language/asm/asm_patch/out/debug/asm_patch.bin
+Gas: 406
+Logs:
+ReturnData {
+    id: 0x0000000000000000000000000000000000000000000000000000000000000000,
+    ptr: 10736,
+    len: 8,
+    digest: 0xaf5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc,
+    pc: 10436,
+    is: 10368,
+    data: Some(
+        Bytes(
+            0000000000000000,
+        ),
+    ),
+}
+ScriptResult {
+    result: Success,
+    gas_used: 406,
+}
