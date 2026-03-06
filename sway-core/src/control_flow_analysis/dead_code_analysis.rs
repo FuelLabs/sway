@@ -1201,6 +1201,7 @@ fn get_trait_fn_node_index<'a>(
 /// connects any inner parts of an expression to the graph
 /// note the main expression node has already been inserted
 #[allow(clippy::too_many_arguments)]
+#[allow(unused_assignments)] // Clippy's false positive on the `previous_force_struct_fields_connection`.
 fn connect_expression<'eng: 'cfg, 'cfg>(
     engines: &'eng Engines,
     expr_variant: &ty::TyExpressionVariant,
@@ -1323,7 +1324,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             }
 
             // save the existing options value to restore after handling the arguments
-            let force_struct_fields_connection = options.force_struct_fields_connection;
+            let previous_force_struct_fields_connection = options.force_struct_fields_connection;
 
             // if the function is external, assume that any struct that is being referenced
             // as an argument "consumes" all of the respective struct fields.
@@ -1405,7 +1406,8 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                     param_leaves = vec![];
                 }
             }
-            options.force_struct_fields_connection = force_struct_fields_connection;
+
+            options.force_struct_fields_connection = previous_force_struct_fields_connection;
 
             // connect final leaf to fn exit
             for leaf in current_leaf {
