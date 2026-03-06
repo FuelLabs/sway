@@ -3,7 +3,7 @@ use std::collections::{BTreeSet, HashMap};
 use either::Either;
 use rustc_hash::FxHashSet;
 
-use crate::asm_lang::{ControlFlowOp, JumpType, Label};
+use crate::asm_lang::{ControlFlowOp, InstructionSuccessor, JumpType, Label};
 
 use super::super::{abstract_instruction_set::AbstractInstructionSet, analyses::liveness_analysis};
 
@@ -91,7 +91,8 @@ impl AbstractInstructionSet {
                     label_to_index.insert(*op_label, idx);
                 }
                 // We cannot guarantee the jump will not end in an
-                // instruction that will be eliminated below
+                // instruction that will be eliminated below so we
+                // bail any optimisation
                 Either::Right(ControlFlowOp::JumpToAddr(..)) => {
                     return self;
                 }
@@ -101,17 +102,22 @@ impl AbstractInstructionSet {
 
         let mut reachables = vec![false; ops.len()];
         let mut worklist = vec![0];
-        while let Some(op_idx) = worklist.pop() {
-            if reachables[op_idx] {
+        while let Some(idx) = worklist.pop() {
+            if reachables[idx] {
                 continue;
             }
-            reachables[op_idx] = true;
-            let op = &ops[op_idx];
-            for s in &op.successors(op_idx, ops, &label_to_index) {
-                if reachables[*s] {
-                    continue;
+
+            reachables[idx] = true;
+
+            match ops[idx].successors(idx, ops, &label_to_index) {
+                InstructionSuccessor::Unknown => {
+                    // bail any optimisation
+                    return self;
                 }
-                worklist.push(*s);
+                InstructionSuccessor::ReturnFromCall => {}
+                InstructionSuccessor::Many(ids) => {
+                    worklist.extend(ids);
+                }
             }
         }
 

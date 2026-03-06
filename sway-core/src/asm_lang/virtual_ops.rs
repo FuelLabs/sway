@@ -12,7 +12,10 @@ use super::{
     virtual_register::*,
     Op,
 };
-use crate::asm_generation::fuel::{data_section::DataId, register_allocator::RegisterPool};
+use crate::{
+    asm_generation::fuel::{data_section::DataId, register_allocator::RegisterPool},
+    asm_lang::InstructionSuccessor,
+};
 
 use std::collections::{BTreeSet, HashMap};
 
@@ -952,20 +955,28 @@ impl VirtualOp {
         .collect()
     }
 
-    /// Returns a list of indices that represent the successors of `self` in the list of
-    /// instructions `ops`. For most instructions, the successor is simply the next instruction in
-    /// `ops`. The exceptions are jump instructions that can have arbitrary successors and RVRT
+    /// Returns all successors of `self`.
+    /// For most instructions, the successor is simply the next instruction in
+    /// `ops`, if there is any.
+    /// Exceptions are jump instructions which can have arbitrary successors; RVRT
     /// which does not have any successors.
-    pub(crate) fn successors(&self, index: usize, ops: &[Op]) -> Vec<usize> {
-        use VirtualOp::*;
-        let next_op = if index >= ops.len() - 1 {
-            vec![]
-        } else {
-            vec![index + 1]
-        };
+    /// ECAL can do pretty much anything, but it executes the next instruction, if "$pc"
+    /// is not manipulated.
+    pub(crate) fn successors(&self, index: usize, ops: &[Op]) -> InstructionSuccessor {
+        assert!(index <= ops.len());
         match self {
-            RVRT(_) => vec![],
-            _ => next_op,
+            VirtualOp::RET(..) | VirtualOp::RETD(..) | VirtualOp::RVRT(..) => {
+                InstructionSuccessor::Many(vec![])
+            }
+            _ => {
+                // If the last instruction is none of the above,
+                // we return empty vec as the VM would halt.
+                InstructionSuccessor::Many(if index >= ops.len() - 1 {
+                    vec![]
+                } else {
+                    vec![index + 1]
+                })
+            }
         }
     }
 
