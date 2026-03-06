@@ -32,16 +32,16 @@ output:
          15   60     LW { dst: 0x10, addr: 0x3b, offset: 1 }          5d 43 b0 01                                  
          16   64     LW { dst: 0x11, addr: 0x3b, offset: 2 }          5d 47 b0 02                                  
          17   68     RETD { addr: 0x10, len: 0x11 }                   25 41 10 00                                  
-         18   72     PSHL { bitmask: 3 }                              95 00 00 03                                  
+         18   72     PSHL { bitmask: 1 }                              95 00 00 01                                  
          19   76     PSHH { bitmask: 524288 }                         96 08 00 00                                  
-         20   80     MOVE { dst: 0x11, src: 0x0 }                     1a 44 00 00                                  
-         21   84     ADDI { dst: 0x10, lhs: 0x0, rhs: 3 }             50 40 00 03                                  
-         22   88     LOG { a: 0x11, b: 0x11, c: 0x11, d: 0x0 }        33 45 14 40                                  
-         23   92     ADDI { dst: 0x10, lhs: 0x10, rhs: 5 }            50 41 00 05                                  
-         24   96     MOVE { dst: 0x3d, src: 0x10 }                    1a f5 00 00                                  
-         25   100    POPH { bitmask: 524288 }                         98 08 00 00                                  
-         26   104    POPL { bitmask: 3 }                              97 00 00 03                                  
-         27   108    JAL { ret_addr: 0x0, target: 0x3e, offset: 0 }   99 03 e0 00                                  
+         20   80     ADDI { dst: 0x10, lhs: 0x0, rhs: 3 }             50 40 00 03                                  
+         21   84     LOG { a: 0x0, b: 0x0, c: 0x0, d: 0x0 }           33 00 00 00                                  
+         22   88     ADDI { dst: 0x10, lhs: 0x10, rhs: 5 }            50 41 00 05                                  
+         23   92     MOVE { dst: 0x3d, src: 0x10 }                    1a f5 00 00                                  
+         24   96     POPH { bitmask: 524288 }                         98 08 00 00                                  
+         25   100    POPL { bitmask: 1 }                              97 00 00 01                                  
+         26   104    JAL { ret_addr: 0x0, target: 0x3e, offset: 0 }   99 03 e0 00                                  
+         27   108    NOOP                                             47 00 00 00                                  
                                                                                                                    
 
 
@@ -70,21 +70,21 @@ output:
          15   60     LW { dst: 0x10, addr: 0x3b, offset: 1 }          5d 43 b0 01                                  
          16   64     LW { dst: 0x11, addr: 0x3b, offset: 2 }          5d 47 b0 02                                  
          17   68     RETD { addr: 0x10, len: 0x11 }                   25 41 10 00                                  
-         18   72     PSHL { bitmask: 3 }                              95 00 00 03                                  
+         18   72     PSHL { bitmask: 1 }                              95 00 00 01                                  
          19   76     PSHH { bitmask: 524288 }                         96 08 00 00                                  
-         20   80     MOVE { dst: 0x11, src: 0x0 }                     1a 44 00 00                                  
-         21   84     ADDI { dst: 0x10, lhs: 0x0, rhs: 3 }             50 40 00 03                                  
-         22   88     ADDI { dst: 0x10, lhs: 0x10, rhs: 4 }            50 41 00 04                                  
-         23   92     ADDI { dst: 0x10, lhs: 0x10, rhs: 5 }            50 41 00 05                                  
-         24   96     ADDI { dst: 0x10, lhs: 0x10, rhs: 4 }            50 41 00 04                                  
-         25   100    POPH { bitmask: 524288 }                         98 08 00 00                                  
-         26   104    POPL { bitmask: 3 }                              97 00 00 03                                  
-         27   108    JAL { ret_addr: 0x0, target: 0x3e, offset: 0 }   99 03 e0 00                                  
+         20   80     ADDI { dst: 0x10, lhs: 0x0, rhs: 3 }             50 40 00 03                                  
+         21   84     ADDI { dst: 0x10, lhs: 0x10, rhs: 4 }            50 41 00 04                                  
+         22   88     ADDI { dst: 0x10, lhs: 0x10, rhs: 5 }            50 41 00 05                                  
+         23   92     ADDI { dst: 0x10, lhs: 0x10, rhs: 4 }            50 41 00 04                                  
+         24   96     POPH { bitmask: 524288 }                         98 08 00 00                                  
+         25   100    POPL { bitmask: 1 }                              97 00 00 01                                  
+         26   104    JAL { ret_addr: 0x0, target: 0x3e, offset: 0 }   99 03 e0 00                                  
+         27   108    NOOP                                             47 00 00 00                                  
                                                                                                                    
 
 
 > fuel-vm run test/src/e2e_vm_tests/test_programs/should_pass/language/asm/asm_patch/out/debug/asm_patch.bin
-Gas: 406
+Gas: 404
 Logs:
 ReturnData {
     id: 0x0000000000000000000000000000000000000000000000000000000000000000,
@@ -101,5 +101,5 @@ ReturnData {
 }
 ScriptResult {
     result: Success,
-    gas_used: 406,
+    gas_used: 404,
 }
