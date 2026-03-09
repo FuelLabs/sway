@@ -144,7 +144,7 @@ pub fn abi_decode<T>(data: raw_slice) -> T where T: AbiDecode {
 
 > A *trap representation* is a bit pattern that is *not* a valid value for the type. 
 
-Some types *DO* match their memory layout, but they stil *CANNOT* be safe trivially decoded.
+Some types *DO* match their memory layout, but they still *CANNOT* be safe trivially decoded.
 Example: `bool`. It is trivially encodable, but not trivially decodable.
 Another example are `enums`, because they have a "hidden" discriminant that only accepts certain values.
 
