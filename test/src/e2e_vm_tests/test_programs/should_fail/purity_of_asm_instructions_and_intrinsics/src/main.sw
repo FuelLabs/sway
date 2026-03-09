@@ -1,9 +1,5 @@
 contract;
 
-abi Abi {
-    fn test();
-}
-
 struct S { }
 
 impl S {
@@ -12,6 +8,8 @@ impl S {
         let ptr = asm (p: 0) { p: raw_ptr };
         let _ = __state_load_word(b256::zero());
         let _ = __state_load_quad(b256::zero(), ptr, 1);
+        let _ = __state_load_slot(b256::zero(), ptr, 0, 8);
+        let _ = __state_preload(b256::zero());
 
         self
     }
@@ -21,6 +19,8 @@ impl S {
         let ptr = asm (p: 0) { p: raw_ptr };
         let _ = __state_load_word(b256::zero(), 0);
         let _ = __state_load_quad(b256::zero(), ptr, 1);
+        let _ = __state_load_slot(b256::zero(), ptr, 0, 8);
+        let _ = __state_preload(b256::zero());
 
         self
     }
@@ -30,19 +30,29 @@ impl S {
         let ptr = asm (p: 0) { p: raw_ptr };
         let _ = __state_store_word(b256::zero(), 0);
         let _ = __state_store_quad(b256::zero(), ptr, 1);
+        __state_store_slot(b256::zero(), ptr, 8);
 
         self
     }
 
     #[storage(read)]
-    fn clear_intrinsic(self) -> Self {
+    fn clear_intrinsics(self) -> Self {
         let _ = __state_clear(b256::zero(), 1);
+        let _ = __state_clear_slots(b256::zero(), 1);
+
+        self
+    }
+
+    #[storage(read)]
+    fn update_intrinsics(self) -> Self {
+        let ptr = asm (p: 0) { p: raw_ptr };
+        __state_update_slot(b256::zero(), ptr, 0, 8);
 
         self
     }
 }
 
-impl Abi for Contract {
+impl Contract {
     fn test() {
         read_asm_instructions();
         write_asm_instructions();
@@ -52,7 +62,8 @@ impl Abi for Contract {
         let s = S {};
         let _ = s.read_intrinsics();
         let _ = s.write_intrinsics();
-        let _ = s.clear_intrinsic();
+        let _ = s.clear_intrinsics();
+        let _ = s.update_intrinsics();
     }
 }
 

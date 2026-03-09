@@ -9,6 +9,7 @@ use sway_types::{integer_bits::IntegerBits, Spanned};
 
 use crate::{
     engine_threading::*,
+    error::{span_of_arguments, span_of_type_arguments},
     language::{
         parsed::{Expression, ExpressionKind},
         ty::{self, TyIntrinsicFunctionKind},
@@ -58,15 +59,36 @@ impl ty::TyIntrinsicFunctionKind {
             }
             Intrinsic::Gtf => type_check_gtf(handler, ctx, kind, arguments, type_arguments, span),
             Intrinsic::AddrOf => type_check_addr_of(handler, ctx, kind, arguments, span),
-            Intrinsic::StateClear => type_check_state_clear(handler, ctx, kind, arguments, span),
+            Intrinsic::StateClear | Intrinsic::StateClearSlots => {
+                type_check_state_clear(handler, ctx, kind, arguments, type_arguments, span)
+            }
             Intrinsic::StateLoadWord => {
-                type_check_state_load_word(handler, ctx, kind, arguments, span)
+                type_check_state_load_word(handler, ctx, kind, arguments, type_arguments, span)
             }
             Intrinsic::StateStoreWord => {
                 type_check_state_store_word(handler, ctx, kind, arguments, type_arguments, span)
             }
             Intrinsic::StateLoadQuad | Intrinsic::StateStoreQuad => {
-                type_check_state_quad(handler, ctx, kind, arguments, type_arguments, span)
+                type_check_state_load_store_quad(
+                    handler,
+                    ctx,
+                    kind,
+                    arguments,
+                    type_arguments,
+                    span,
+                )
+            }
+            Intrinsic::StateLoadSlot => {
+                type_check_state_load_slot(handler, ctx, kind, arguments, type_arguments, span)
+            }
+            Intrinsic::StateStoreSlot => {
+                type_check_state_store_slot(handler, ctx, kind, arguments, type_arguments, span)
+            }
+            Intrinsic::StateUpdateSlot => {
+                type_check_state_update_slot(handler, ctx, kind, arguments, type_arguments, span)
+            }
+            Intrinsic::StatePreload => {
+                type_check_state_preload(handler, ctx, kind, arguments, type_arguments, span)
             }
             Intrinsic::Log => type_check_log(handler, ctx, kind, arguments, span),
             Intrinsic::Add | Intrinsic::Sub | Intrinsic::Mul | Intrinsic::Div | Intrinsic::Mod => {
@@ -139,7 +161,8 @@ fn type_check_encoding_memory_id(
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
             expected: 0,
-            span,
+            actual: arguments.len(),
+            span: span_of_arguments(arguments, &span),
         }));
     }
 
@@ -147,7 +170,8 @@ fn type_check_encoding_memory_id(
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
             name: kind.to_string(),
             expected: 1,
-            span,
+            actual: type_arguments.len(),
+            span: span_of_type_arguments(type_arguments, &span),
         }));
     }
 
@@ -185,7 +209,8 @@ fn type_check_runtime_memory_id(
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
             expected: 0,
-            span,
+            actual: arguments.len(),
+            span: span_of_arguments(arguments, &span),
         }));
     }
 
@@ -193,7 +218,8 @@ fn type_check_runtime_memory_id(
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
             name: kind.to_string(),
             expected: 1,
-            span,
+            actual: type_arguments.len(),
+            span: span_of_type_arguments(type_arguments, &span),
         }));
     }
 
@@ -231,7 +257,8 @@ fn type_check_alloc(
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
             expected: 1,
-            span,
+            actual: arguments.len(),
+            span: span_of_arguments(arguments, &span),
         }));
     }
 
@@ -242,7 +269,8 @@ fn type_check_alloc(
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
             name: kind.to_string(),
             expected: 1,
-            span,
+            actual: type_arguments.len(),
+            span: span_of_type_arguments(type_arguments, &span),
         }));
     }
 
@@ -290,7 +318,8 @@ fn type_check_transmute(
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
             expected: 1,
-            span,
+            actual: arguments.len(),
+            span: span_of_arguments(arguments, &span),
         }));
     }
 
@@ -301,7 +330,8 @@ fn type_check_transmute(
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
             name: kind.to_string(),
             expected: 2,
-            span,
+            actual: type_arguments.len(),
+            span: span_of_type_arguments(type_arguments, &span),
         }));
     }
 
@@ -369,7 +399,8 @@ fn type_check_elem_at(
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
             expected: 2,
-            span,
+            actual: arguments.len(),
+            span: span_of_arguments(arguments, &span),
         }));
     }
 
@@ -445,7 +476,8 @@ fn type_check_slice(
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
             expected: 3,
-            span,
+            actual: arguments.len(),
+            span: span_of_arguments(arguments, &span),
         }));
     }
 
@@ -624,7 +656,8 @@ fn type_check_encode_buffer_empty(
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
             expected: 0,
-            span,
+            actual: arguments.len(),
+            span: span_of_arguments(arguments, &span),
         }));
     }
 
@@ -665,7 +698,8 @@ fn type_check_encode_append(
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
             expected: 2,
-            span,
+            actual: arguments.len(),
+            span: span_of_arguments(arguments, &span),
         }));
     }
 
@@ -721,9 +755,9 @@ fn type_check_encode_append(
     Ok((kind, buffer_type))
 }
 
-/// Signature: `__not(val: u64) -> u64`
-/// Description: Return the bitwise negation of the operator.
-/// Constraints: None.
+/// Signature: `__not(val: T) -> T`
+/// Description: Return the bitwise negation of `val`.
+/// Constraints: `T` is an integer type: `u8`, `u16`, `u32`, `u64`, `u256`, or `b256`.
 fn type_check_not(
     handler: &Handler,
     ctx: TypeCheckContext,
@@ -739,13 +773,16 @@ fn type_check_not(
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
             expected: 1,
-            span,
+            actual: arguments.len(),
+            span: span_of_arguments(arguments, &span),
         }));
     }
 
     let return_type = type_engine.new_unknown();
 
-    let mut ctx = ctx.with_help_text("").with_type_annotation(return_type);
+    let mut ctx = ctx
+        .with_help_text("\"__not\" intrinsic argument must be an integer type: `u8`, `u16`, `u32`, `u64`, `u256`, or `b256`.")
+        .with_type_annotation(return_type);
 
     let operand = &arguments[0];
     let operand_expr = ty::TyExpression::type_check(handler, ctx.by_ref(), operand)?;
@@ -764,9 +801,9 @@ fn type_check_not(
         )),
         _ => Err(handler.emit_err(CompileError::TypeError(
             sway_error::type_error::TypeError::MismatchedType {
-                expected: "unsigned integer or b256".into(),
+                expected: "u8, u16, u32, u64, u256, or b256".into(),
                 received: engines.help_out(return_type).to_string(),
-                help_text: "Incorrect argument type".into(),
+                help_text: "\"__not\" intrinsic argument must be an integer type: `u8`, `u16`, `u32`, `u64`, `u256`, or `b256`.".into(),
                 span,
             },
         ))),
@@ -790,7 +827,8 @@ fn type_check_size_of_val(
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
             expected: 1,
-            span,
+            actual: arguments.len(),
+            span: span_of_arguments(arguments, &span),
         }));
     }
     let ctx = ctx
@@ -824,14 +862,16 @@ fn type_check_size_of_type(
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
             expected: 0,
-            span,
+            actual: arguments.len(),
+            span: span_of_arguments(arguments, &span),
         }));
     }
     if type_arguments.len() != 1 {
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
             name: kind.to_string(),
             expected: 1,
-            span,
+            actual: type_arguments.len(),
+            span: span_of_type_arguments(type_arguments, &span),
         }));
     }
     let targ = type_arguments[0].clone();
@@ -886,7 +926,8 @@ fn type_check_is_reference_type(
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
             name: kind.to_string(),
             expected: 1,
-            span,
+            actual: type_arguments.len(),
+            span: span_of_type_arguments(type_arguments, &span),
         }));
     }
     let targ = type_arguments[0].clone();
@@ -941,7 +982,8 @@ fn type_check_assert_is_str_array(
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
             name: kind.to_string(),
             expected: 1,
-            span,
+            actual: type_arguments.len(),
+            span: span_of_type_arguments(type_arguments, &span),
         }));
     }
     let targ = type_arguments[0].clone();
@@ -992,7 +1034,8 @@ fn type_check_to_str_array(
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
             expected: 1,
-            span,
+            actual: arguments.len(),
+            span: span_of_arguments(arguments, &span),
         }));
     }
     let arg = &arguments[0];
@@ -1044,9 +1087,11 @@ fn type_check_cmp(
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
             expected: 2,
-            span,
+            actual: arguments.len(),
+            span: span_of_arguments(arguments, &span),
         }));
     }
+
     let mut ctx = ctx.by_ref().with_type_annotation(type_engine.new_unknown());
 
     let lhs = &arguments[0];
@@ -1107,7 +1152,8 @@ fn type_check_gtf(
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
             expected: 2,
-            span,
+            actual: arguments.len(),
+            span: span_of_arguments(arguments, &span),
         }));
     }
 
@@ -1115,7 +1161,8 @@ fn type_check_gtf(
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
             name: kind.to_string(),
             expected: 1,
-            span,
+            actual: type_arguments.len(),
+            span: span_of_type_arguments(type_arguments, &span),
         }));
     }
 
@@ -1179,7 +1226,8 @@ fn type_check_addr_of(
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
             expected: 1,
-            span,
+            actual: arguments.len(),
+            span: span_of_arguments(arguments, &span),
         }));
     }
     let ctx = ctx
@@ -1195,15 +1243,24 @@ fn type_check_addr_of(
     Ok((intrinsic_function, type_engine.id_of_raw_ptr()))
 }
 
-/// Signature: `__state_load_clear(key: b256, slots: u64) -> bool`
+/// Signature: `__state_clear(key: b256, slots: u64) -> bool`
 /// Description: Clears `slots` number of slots (`b256` each) in storage starting at key `key`.
 ///              Returns a Boolean describing whether all the storage slots were previously set.
+/// Constraints: None.
+///
+/// or
+///
+/// Signature: `__state_clear_slots(key: b256, slots: u64)`
+/// Description: Clears `slots` number of dynamic storage slots starting at key `key`.
+///              Unlike `__state_clear`, this does not report whether slots were previously set,
+///              making it cheaper.
 /// Constraints: None.
 fn type_check_state_clear(
     handler: &Handler,
     ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
     arguments: &[Expression],
+    type_arguments: &[GenericArgument],
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
     let type_engine = ctx.engines.te();
@@ -1211,42 +1268,264 @@ fn type_check_state_clear(
     if arguments.len() != 2 {
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
-            expected: 1,
-            span,
+            expected: 2,
+            actual: arguments.len(),
+            span: span_of_arguments(arguments, &span),
+        }));
+    }
+
+    if !type_arguments.is_empty() {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
+            name: kind.to_string(),
+            expected: 0,
+            actual: type_arguments.len(),
+            span: span_of_type_arguments(type_arguments, &span),
         }));
     }
 
     // `key` argument
     let mut ctx = ctx
-        .with_help_text("")
-        .with_type_annotation(type_engine.new_unknown());
+        .with_help_text(
+            "\"key\" argument is the key into the state storage and must be of type `b256`.",
+        )
+        .with_type_annotation(type_engine.id_of_b256());
     let key_exp = ty::TyExpression::type_check(handler, ctx.by_ref(), &arguments[0])?;
-    let key_ty = type_engine
-        .to_typeinfo(key_exp.return_type, &span)
-        .map_err(|e| handler.emit_err(e.into()))
-        .unwrap_or_else(TypeInfo::ErrorRecovery);
-    if !key_ty.eq(
-        &TypeInfo::B256,
-        &PartialEqWithEnginesContext::new(ctx.engines()),
-    ) {
-        return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
-            name: kind.to_string(),
-            span,
-            hint: "Argument type must be B256, a key into the state storage".to_string(),
-        }));
-    }
 
     // `slots` argument
-    let mut ctx = ctx.with_type_annotation(type_engine.id_of_u64());
-    let number_of_slots_exp = ty::TyExpression::type_check(handler, ctx.by_ref(), &arguments[1])?;
+    let mut ctx = ctx
+        .with_help_text(
+            "\"slots\" argument is the number of slots to clear and must be of type `u64`.",
+        )
+        .with_type_annotation(type_engine.id_of_u64());
+    let slots_exp = ty::TyExpression::type_check(handler, ctx.by_ref(), &arguments[1])?;
+
+    // Determine the return type based on the intrinsic kind
+    let return_type = match kind {
+        Intrinsic::StateClear => type_engine.id_of_bool(),
+        Intrinsic::StateClearSlots => type_engine.id_of_unit(),
+        _ => panic!(
+            "Unexpected intrinsic kind in `type_check_state_clear`: {:?}",
+            kind
+        ),
+    };
 
     // Typed intrinsic
     let intrinsic_function = ty::TyIntrinsicFunctionKind {
         kind,
-        arguments: vec![key_exp, number_of_slots_exp],
+        arguments: vec![key_exp, slots_exp],
         type_arguments: vec![],
         span,
     };
+
+    Ok((intrinsic_function, return_type))
+}
+
+/// Signature: `__state_store_slot(key: b256, ptr: raw_ptr, len: u64)`
+/// Description: Writes `len` bytes starting at address `ptr` in memory into the storage slot at key `key`.
+///              Maps to the `SWRD` or `SWRI` opcode, depending on whether `len` is a constant
+///              that fits in an immediate of twelve bits.
+/// Constraints: None.
+fn type_check_state_store_slot(
+    handler: &Handler,
+    ctx: TypeCheckContext,
+    kind: sway_ast::Intrinsic,
+    arguments: &[Expression],
+    type_arguments: &[GenericArgument],
+    span: Span,
+) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
+    let type_engine = ctx.engines.te();
+
+    if arguments.len() != 3 {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+            name: kind.to_string(),
+            expected: 3,
+            actual: arguments.len(),
+            span: span_of_arguments(arguments, &span),
+        }));
+    }
+
+    if !type_arguments.is_empty() {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
+            name: kind.to_string(),
+            expected: 0,
+            actual: type_arguments.len(),
+            span: span_of_type_arguments(type_arguments, &span),
+        }));
+    }
+
+    // `key` argument
+    let mut ctx = ctx
+        .with_help_text(
+            "\"key\" argument is the key into the state storage and must be of type `b256`.",
+        )
+        .with_type_annotation(type_engine.id_of_b256());
+    let key_exp = ty::TyExpression::type_check(handler, ctx.by_ref(), &arguments[0])?;
+
+    // `ptr` argument
+    let mut ctx = ctx
+        .with_help_text(
+            "\"ptr\" argument is the pointer to the memory location and must be of type `raw_ptr`.",
+        )
+        .with_type_annotation(type_engine.id_of_raw_ptr());
+    let ptr_exp = ty::TyExpression::type_check(handler, ctx.by_ref(), &arguments[1])?;
+
+    // `len` argument
+    let mut ctx = ctx
+        .with_help_text("\"len\" argument is the number of bytes to store in the slot and must be of type `u64`.")
+        .with_type_annotation(type_engine.id_of_u64());
+    let len_exp = ty::TyExpression::type_check(handler, ctx.by_ref(), &arguments[2])?;
+
+    // Typed intrinsic
+    let intrinsic_function = ty::TyIntrinsicFunctionKind {
+        kind,
+        arguments: vec![key_exp, ptr_exp, len_exp],
+        type_arguments: vec![],
+        span,
+    };
+
+    Ok((intrinsic_function, type_engine.id_of_unit()))
+}
+
+/// Signature: `__state_update_slot(key: b256, ptr: raw_ptr, offset: u64, len: u64)`
+/// Description: Updates `len` bytes at byte `offset` in the storage slot at key `key` with data
+/// from memory at address `ptr`. If `offset` is `u64::max`, appends to the existing data.
+/// Maps to the `SUPD` or `SUPI` opcode.
+/// Constraints: None.
+fn type_check_state_update_slot(
+    handler: &Handler,
+    ctx: TypeCheckContext,
+    kind: sway_ast::Intrinsic,
+    arguments: &[Expression],
+    type_arguments: &[GenericArgument],
+    span: Span,
+) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
+    let type_engine = ctx.engines.te();
+
+    if arguments.len() != 4 {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+            name: kind.to_string(),
+            expected: 4,
+            actual: arguments.len(),
+            span: span_of_arguments(arguments, &span),
+        }));
+    }
+
+    if !type_arguments.is_empty() {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
+            name: kind.to_string(),
+            expected: 0,
+            actual: type_arguments.len(),
+            span: span_of_type_arguments(type_arguments, &span),
+        }));
+    }
+
+    // `key` argument
+    let mut ctx = ctx
+        .with_help_text(
+            "\"key\" argument is the key into the state storage and must be of type `b256`.",
+        )
+        .with_type_annotation(type_engine.id_of_b256());
+    let key_exp = ty::TyExpression::type_check(handler, ctx.by_ref(), &arguments[0])?;
+
+    // `ptr` argument
+    let mut ctx = ctx
+        .with_help_text(
+            "\"ptr\" argument is the pointer to the memory location and must be of type `raw_ptr`.",
+        )
+        .with_type_annotation(type_engine.id_of_raw_ptr());
+    let ptr_exp = ty::TyExpression::type_check(handler, ctx.by_ref(), &arguments[1])?;
+
+    // `offset` argument
+    let mut ctx = ctx
+        .with_help_text("\"offset\" argument is the byte offset within the storage slot and must be of type `u64`. Use `u64::max()` to append.")
+        .with_type_annotation(type_engine.id_of_u64());
+    let offset_exp = ty::TyExpression::type_check(handler, ctx.by_ref(), &arguments[2])?;
+
+    // `len` argument
+    let ctx = ctx
+        .with_help_text(
+            "\"len\" argument is the number of bytes to update and must be of type `u64`.",
+        )
+        .with_type_annotation(type_engine.id_of_u64());
+    let len_exp = ty::TyExpression::type_check(handler, ctx, &arguments[3])?;
+
+    let intrinsic_function = ty::TyIntrinsicFunctionKind {
+        kind,
+        arguments: vec![key_exp, ptr_exp, offset_exp, len_exp],
+        type_arguments: vec![],
+        span,
+    };
+
+    Ok((intrinsic_function, type_engine.id_of_unit()))
+}
+
+/// Signature: `__state_load_slot(key: b256, ptr: raw_ptr, offset: u64, len: u64) -> bool`
+/// Description: Reads `len` bytes from the storage slot at key `key` starting at byte `offset`
+/// into memory at address `ptr`. Returns `true` if the slot was previously set, `false` otherwise.
+/// Constraints: None.
+fn type_check_state_load_slot(
+    handler: &Handler,
+    ctx: TypeCheckContext,
+    kind: sway_ast::Intrinsic,
+    arguments: &[Expression],
+    type_arguments: &[GenericArgument],
+    span: Span,
+) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
+    let type_engine = ctx.engines.te();
+
+    if arguments.len() != 4 {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+            name: kind.to_string(),
+            expected: 4,
+            actual: arguments.len(),
+            span: span_of_arguments(arguments, &span),
+        }));
+    }
+
+    if !type_arguments.is_empty() {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
+            name: kind.to_string(),
+            expected: 0,
+            actual: type_arguments.len(),
+            span: span_of_type_arguments(type_arguments, &span),
+        }));
+    }
+
+    // `key` argument
+    let mut ctx = ctx
+        .with_help_text(
+            "\"key\" argument is the key into the state storage and must be of type `b256`.",
+        )
+        .with_type_annotation(type_engine.id_of_b256());
+    let key_exp = ty::TyExpression::type_check(handler, ctx.by_ref(), &arguments[0])?;
+
+    // `ptr` argument
+    let mut ctx = ctx
+        .with_help_text(
+            "\"ptr\" argument is the pointer to the memory location and must be of type `raw_ptr`.",
+        )
+        .with_type_annotation(type_engine.id_of_raw_ptr());
+    let ptr_exp = ty::TyExpression::type_check(handler, ctx.by_ref(), &arguments[1])?;
+
+    // `offset` argument
+    let mut ctx = ctx
+        .with_help_text("\"offset\" argument is the byte offset within the storage slot and must be of type `u64`.")
+        .with_type_annotation(type_engine.id_of_u64());
+    let offset_exp = ty::TyExpression::type_check(handler, ctx.by_ref(), &arguments[2])?;
+
+    // `len` argument
+    let ctx = ctx
+        .with_help_text("\"len\" argument is the number of bytes to load from the slot and must be of type `u64`.")
+        .with_type_annotation(type_engine.id_of_u64());
+    let len_exp = ty::TyExpression::type_check(handler, ctx, &arguments[3])?;
+
+    let intrinsic_function = ty::TyIntrinsicFunctionKind {
+        kind,
+        arguments: vec![key_exp, ptr_exp, offset_exp, len_exp],
+        type_arguments: vec![],
+        span,
+    };
+
     Ok((intrinsic_function, type_engine.id_of_bool()))
 }
 
@@ -1258,51 +1537,105 @@ fn type_check_state_load_word(
     ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
     arguments: &[Expression],
+    type_arguments: &[GenericArgument],
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
     let type_engine = ctx.engines.te();
     let engines = ctx.engines();
 
-    let num_of_args: u64 = if ctx.experimental.dynamic_storage {
+    let num_of_args: usize = if ctx.experimental.dynamic_storage {
         2
     } else {
         1
     };
-    if arguments.len() != num_of_args as usize {
+    if arguments.len() != num_of_args {
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
             expected: num_of_args,
-            span,
+            actual: arguments.len(),
+            span: span_of_arguments(arguments, &span),
+        }));
+    }
+
+    if !type_arguments.is_empty() {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
+            name: kind.to_string(),
+            expected: 0,
+            actual: type_arguments.len(),
+            span: span_of_type_arguments(type_arguments, &span),
         }));
     }
 
     let mut ctx = ctx
-        .with_help_text("")
-        .with_type_annotation(type_engine.new_unknown());
+        .with_help_text(
+            "\"key\" argument is the key into the state storage and must be of type `b256`.",
+        )
+        .with_type_annotation(type_engine.id_of_b256());
     let key_exp = ty::TyExpression::type_check(handler, ctx.by_ref(), &arguments[0])?;
-    let key_ty = type_engine
-        .to_typeinfo(key_exp.return_type, &span)
-        .map_err(|e| handler.emit_err(e.into()))
-        .unwrap_or_else(TypeInfo::ErrorRecovery);
-    if !key_ty.eq(&TypeInfo::B256, &PartialEqWithEnginesContext::new(engines)) {
-        return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
-            name: kind.to_string(),
-            span,
-            hint: "Argument type must be B256, a key into the state storage".to_string(),
-        }));
-    }
 
     let offset_exp = if num_of_args == 2 {
         // Type check the second argument which is the offset.
-        let ctx = ctx.with_type_annotation(type_engine.id_of_u64());
+        let ctx = ctx
+            .with_help_text("\"offset\" argument is the offset within the storage slot and must be of type `u64`.")
+            .with_type_annotation(type_engine.id_of_u64());
         ty::TyExpression::type_check(handler, ctx, &arguments[1])?
     } else {
+        // By default, set the offset to 0.
         ty::TyExpression::u64_literal(0, Span::dummy(), engines)
     };
 
     let intrinsic_function = ty::TyIntrinsicFunctionKind {
         kind,
         arguments: vec![key_exp, offset_exp],
+        type_arguments: vec![],
+        span,
+    };
+
+    Ok((intrinsic_function, type_engine.id_of_u64()))
+}
+
+/// Signature: `__state_preload(key: b256) -> u64`
+/// Description: Preloads the storage slot at key `key` and returns the length of the stored data.
+///              Returns 0 if the slot is not set.
+/// Constraints: None.
+fn type_check_state_preload(
+    handler: &Handler,
+    ctx: TypeCheckContext,
+    kind: sway_ast::Intrinsic,
+    arguments: &[Expression],
+    type_arguments: &[GenericArgument],
+    span: Span,
+) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
+    let type_engine = ctx.engines.te();
+
+    if arguments.len() != 1 {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+            name: kind.to_string(),
+            expected: 1,
+            actual: arguments.len(),
+            span: span_of_arguments(arguments, &span),
+        }));
+    }
+
+    if !type_arguments.is_empty() {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
+            name: kind.to_string(),
+            expected: 0,
+            actual: type_arguments.len(),
+            span: span_of_type_arguments(type_arguments, &span),
+        }));
+    }
+
+    let ctx = ctx
+        .with_help_text(
+            "\"key\" argument is the key into the state storage and must be of type `b256`.",
+        )
+        .with_type_annotation(type_engine.id_of_b256());
+    let key_exp = ty::TyExpression::type_check(handler, ctx, &arguments[0])?;
+
+    let intrinsic_function = ty::TyIntrinsicFunctionKind {
+        kind,
+        arguments: vec![key_exp],
         type_arguments: vec![],
         span,
     };
@@ -1323,93 +1656,59 @@ fn type_check_state_store_word(
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
     let type_engine = ctx.engines.te();
-    let engines = ctx.engines();
 
     if arguments.len() != 2 {
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
             expected: 2,
-            span,
+            actual: arguments.len(),
+            span: span_of_arguments(arguments, &span),
         }));
     }
-    if type_arguments.len() > 1 {
+
+    if !type_arguments.is_empty() {
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
             name: kind.to_string(),
-            expected: 1,
-            span,
+            expected: 0,
+            actual: type_arguments.len(),
+            span: span_of_type_arguments(type_arguments, &span),
         }));
     }
+
     let mut ctx = ctx
-        .with_help_text("")
-        .with_type_annotation(type_engine.new_unknown());
+        .with_help_text(
+            "\"key\" argument is the key into the state storage and must be of type `b256`.",
+        )
+        .with_type_annotation(type_engine.id_of_b256());
     let key_exp = ty::TyExpression::type_check(handler, ctx.by_ref(), &arguments[0])?;
-    let key_ty = type_engine
-        .to_typeinfo(key_exp.return_type, &span)
-        .map_err(|e| handler.emit_err(e.into()))
-        .unwrap_or_else(TypeInfo::ErrorRecovery);
-    if !key_ty.eq(
-        &TypeInfo::B256,
-        &PartialEqWithEnginesContext::new(ctx.engines()),
-    ) {
-        return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
-            name: kind.to_string(),
-            span,
-            hint: "Argument type must be B256, a key into the state storage".to_string(),
-        }));
-    }
-    let mut ctx = ctx.with_type_annotation(type_engine.new_unknown());
+
+    let mut ctx = ctx
+        .with_help_text("\"val\" argument is the value to be written to the storage slot and must be of type `u64`.")
+        .with_type_annotation(type_engine.id_of_u64());
     let val_exp = ty::TyExpression::type_check(handler, ctx.by_ref(), &arguments[1])?;
-    let ctx = ctx.with_type_annotation(type_engine.id_of_u64());
-    let type_argument = type_arguments.first().map(|targ| {
-        let ctx = ctx.with_type_annotation(type_engine.new_unknown());
-        let initial_type_info = type_engine
-            .to_typeinfo(targ.type_id(), &targ.span())
-            .map_err(|e| handler.emit_err(e.into()))
-            .unwrap_or_else(TypeInfo::ErrorRecovery);
-        let initial_type_id =
-            type_engine.insert(engines, initial_type_info, targ.span().source_id());
-        let type_id = ctx
-            .resolve_type(
-                handler,
-                initial_type_id,
-                &targ.span(),
-                EnforceTypeArguments::Yes,
-                None,
-            )
-            .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
-        GenericArgument::Type(GenericTypeArgument {
-            type_id,
-            initial_type_id,
-            span: span.clone(),
-            call_path_tree: targ
-                .as_type_argument()
-                .unwrap()
-                .call_path_tree
-                .as_ref()
-                .cloned(),
-        })
-    });
+
     let intrinsic_function = ty::TyIntrinsicFunctionKind {
         kind,
         arguments: vec![key_exp, val_exp],
-        type_arguments: type_argument.map_or(vec![], |ta| vec![ta]),
+        type_arguments: vec![],
         span,
     };
+
     Ok((intrinsic_function, type_engine.id_of_bool()))
 }
 
 /// Signature: `__state_load_quad(key: b256, ptr: raw_ptr, slots: u64)`
-/// Description: Reads `slots` number of slots (`b256` each) from storage starting at key `key` and
+/// Description: Reads `slots` number of slots (32 bytes each) from storage starting at key `key` and
 ///              stores them in memory starting at address `ptr`. Returns a Boolean describing
 ///              whether all the storage slots were previously set.
 /// Constraints: None.
 ///
 /// Signature: `__state_store_quad(key: b256, ptr: raw_ptr, slots: u64) -> bool`
-/// Description: Stores `slots` number of slots (`b256` each) starting at address `ptr` in memory
+/// Description: Stores `slots` number of slots (32 bytes each) starting at address `ptr` in memory
 ///              into storage starting at key `key`. Returns a Boolean describing
 ///              whether the first storage slot was previously set.
 /// Constraints: None.
-fn type_check_state_quad(
+fn type_check_state_load_store_quad(
     handler: &Handler,
     ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
@@ -1418,79 +1717,65 @@ fn type_check_state_quad(
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
     let type_engine = ctx.engines.te();
-    let engines = ctx.engines();
 
     if arguments.len() != 3 {
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
             expected: 3,
-            span,
+            actual: arguments.len(),
+            span: span_of_arguments(arguments, &span),
         }));
     }
-    if type_arguments.len() > 1 {
+
+    if !type_arguments.is_empty() {
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
             name: kind.to_string(),
-            expected: 1,
-            span,
+            expected: 0,
+            actual: type_arguments.len(),
+            span: span_of_type_arguments(type_arguments, &span),
         }));
     }
+
+    // `key` argument
     let mut ctx = ctx
-        .with_help_text("")
-        .with_type_annotation(type_engine.new_unknown());
+        .with_help_text(
+            "\"key\" argument is the key into the state storage and must be of type `b256`.",
+        )
+        .with_type_annotation(type_engine.id_of_b256());
     let key_exp = ty::TyExpression::type_check(handler, ctx.by_ref(), &arguments[0])?;
-    let key_ty = type_engine
-        .to_typeinfo(key_exp.return_type, &span)
-        .map_err(|e| handler.emit_err(e.into()))
-        .unwrap_or_else(TypeInfo::ErrorRecovery);
-    if !key_ty.eq(
-        &TypeInfo::B256,
-        &PartialEqWithEnginesContext::new(ctx.engines()),
-    ) {
-        return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
-            name: kind.to_string(),
-            span,
-            hint: "Argument type must be B256, a key into the state storage".to_string(),
-        }));
-    }
-    let mut ctx = ctx.with_type_annotation(type_engine.new_unknown());
-    let val_exp = ty::TyExpression::type_check(handler, ctx.by_ref(), &arguments[1])?;
-    let mut ctx = ctx.with_type_annotation(type_engine.id_of_u64());
-    let number_of_slots_exp = ty::TyExpression::type_check(handler, ctx.by_ref(), &arguments[2])?;
-    let type_argument = type_arguments.first().map(|targ| {
-        let ctx = ctx.with_type_annotation(type_engine.new_unknown());
-        let initial_type_info = type_engine
-            .to_typeinfo(targ.type_id(), &targ.span())
-            .map_err(|e| handler.emit_err(e.into()))
-            .unwrap_or_else(TypeInfo::ErrorRecovery);
-        let initial_type_id =
-            type_engine.insert(engines, initial_type_info, targ.span().source_id());
-        let type_id = ctx
-            .resolve_type(
-                handler,
-                initial_type_id,
-                &targ.span(),
-                EnforceTypeArguments::Yes,
-                None,
-            )
-            .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
-        GenericArgument::Type(GenericTypeArgument {
-            type_id,
-            initial_type_id,
-            span: span.clone(),
-            call_path_tree: targ
-                .as_type_argument()
-                .unwrap()
-                .call_path_tree
-                .as_ref()
-                .cloned(),
+
+    // `ptr` argument
+    let mut ctx = ctx
+        .with_help_text(
+            "\"ptr\" argument is the pointer to the memory location and must be of type `raw_ptr`.",
+        )
+        .with_type_annotation(type_engine.id_of_raw_ptr());
+    let ptr_exp = ty::TyExpression::type_check(handler, ctx.by_ref(), &arguments[1])?;
+
+    // `slots` argument
+    let mut ctx = ctx
+        .with_help_text(match kind {
+            Intrinsic::StateLoadQuad => {
+                "\"slots\" argument is the number of slots to load and must be of type `u64`."
+            }
+            Intrinsic::StateStoreQuad => {
+                "\"slots\" argument is the number of slots to store and must be of type `u64`."
+            }
+            _ => panic!(
+                "Unexpected intrinsic kind in `type_check_state_load_store_quad`: {:?}",
+                kind
+            ),
         })
-    });
+        .with_type_annotation(type_engine.id_of_u64());
+    let slots_exp = ty::TyExpression::type_check(handler, ctx.by_ref(), &arguments[2])?;
+
     let intrinsic_function = ty::TyIntrinsicFunctionKind {
         kind,
-        arguments: vec![key_exp, val_exp, number_of_slots_exp],
-        type_arguments: type_argument.map_or(vec![], |ta| vec![ta]),
+        arguments: vec![key_exp, ptr_exp, slots_exp],
+        type_arguments: vec![],
         span,
     };
+
     Ok((intrinsic_function, type_engine.id_of_bool()))
 }
 
@@ -1510,7 +1795,8 @@ fn type_check_log(
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
             expected: 1,
-            span,
+            actual: arguments.len(),
+            span: span_of_arguments(arguments, &span),
         }));
     }
 
@@ -1556,18 +1842,6 @@ fn type_check_log(
 /// Signature: `__div<T>(lhs: T, rhs: T) -> T`
 /// Description: Divides `lhs` and `rhs` and returns the result.
 /// Constraints: `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
-///
-/// Signature: `__and<T>(lhs: T, rhs: T) -> T`
-/// Description: Bitwise And of `lhs` and `rhs` and returns the result.
-/// Constraints: `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
-///
-/// Signature: `__or<T>(lhs: T, rhs: T) -> T`
-/// Description: Bitwise Or `lhs` and `rhs` and returns the result.
-/// Constraints: `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
-///
-/// Signature: `__xor<T>(lhs: T, rhs: T) -> T`
-/// Description: Bitwise Xor `lhs` and `rhs` and returns the result.
-/// Constraints: `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
 fn type_check_arith_binary_op(
     handler: &Handler,
     mut ctx: TypeCheckContext,
@@ -1582,14 +1856,17 @@ fn type_check_arith_binary_op(
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
             expected: 2,
-            span,
+            actual: arguments.len(),
+            span: span_of_arguments(arguments, &span),
         }));
     }
+
     if !type_arguments.is_empty() {
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
             name: kind.to_string(),
             expected: 0,
-            span,
+            actual: type_arguments.len(),
+            span: span_of_type_arguments(type_arguments, &span),
         }));
     }
 
@@ -1597,7 +1874,9 @@ fn type_check_arith_binary_op(
     let mut ctx = ctx
         .by_ref()
         .with_type_annotation(return_type)
-        .with_help_text("Incorrect argument type");
+        .with_help_text(
+        "Both arguments must be of the same integer type: `u8`, `u16`, `u32`, `u64`, or `u256`.",
+    );
 
     let lhs = &arguments[0];
     let lhs = ty::TyExpression::type_check(handler, ctx.by_ref(), lhs)?;
@@ -1615,6 +1894,17 @@ fn type_check_arith_binary_op(
     ))
 }
 
+/// Signature: `__and<T>(lhs: T, rhs: T) -> T`
+/// Description: Bitwise And of `lhs` and `rhs` and returns the result.
+/// Constraints: `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+///
+/// Signature: `__or<T>(lhs: T, rhs: T) -> T`
+/// Description: Bitwise Or `lhs` and `rhs` and returns the result.
+/// Constraints: `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+///
+/// Signature: `__xor<T>(lhs: T, rhs: T) -> T`
+/// Description: Bitwise Xor `lhs` and `rhs` and returns the result.
+/// Constraints: `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
 fn type_check_bitwise_binary_op(
     handler: &Handler,
     mut ctx: TypeCheckContext,
@@ -1630,14 +1920,17 @@ fn type_check_bitwise_binary_op(
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
             expected: 2,
-            span,
+            actual: arguments.len(),
+            span: span_of_arguments(arguments, &span),
         }));
     }
+
     if !type_arguments.is_empty() {
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
             name: kind.to_string(),
             expected: 0,
-            span,
+            actual: type_arguments.len(),
+            span: span_of_type_arguments(type_arguments, &span),
         }));
     }
 
@@ -1645,16 +1938,15 @@ fn type_check_bitwise_binary_op(
     let mut ctx = ctx
         .by_ref()
         .with_type_annotation(return_type)
-        .with_help_text("Incorrect argument type");
+        .with_help_text("Both arguments must be of the same integer type: `u8`, `u16`, `u32`, `u64`, `u256`, or `b256`.");
 
     let lhs = &arguments[0];
     let lhs = ty::TyExpression::type_check(handler, ctx.by_ref(), lhs)?;
     let rhs = &arguments[1];
     let rhs = ty::TyExpression::type_check(handler, ctx, rhs)?;
 
-    let t_arc = engines.te().get(lhs.return_type);
-    let t = &*t_arc;
-    match t {
+    let return_type_ti = &*engines.te().get(lhs.return_type);
+    match return_type_ti {
         TypeInfo::B256 | TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric => Ok((
             ty::TyIntrinsicFunctionKind {
                 kind,
@@ -1666,20 +1958,20 @@ fn type_check_bitwise_binary_op(
         )),
         _ => Err(handler.emit_err(CompileError::TypeError(
             sway_error::type_error::TypeError::MismatchedType {
-                expected: "unsigned integer or b256".into(),
+                expected: "u8, u16, u32, u64, u256, or b256".into(),
                 received: engines.help_out(return_type).to_string(),
-                help_text: "Incorrect argument type".into(),
+                help_text: "Both arguments must be of the same integer type: `u8`, `u16`, `u32`, `u64`, `u256`, or `b256`.".into(),
                 span,
             },
         ))),
     }
 }
 
-/// Signature: `__lsh<T, U>(lhs: T, rhs: U) -> T`
+/// Signature: `__lsh<T>(lhs: T, rhs: T) -> T`
 /// Description: Logical left shifts the `lhs` by the `rhs` and returns the result.
 /// Constraints: `T` and `U` are an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
 ///
-/// Signature: `__rsh<T, U>(lhs: T, rhs: U) -> T`
+/// Signature: `__rsh<T>(lhs: T, rhs: T) -> T`
 /// Description: Logical right shifts the `lhs` by the `rhs` and returns the result.
 /// Constraints: `T` and `U` are an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
 fn type_check_shift_binary_op(
@@ -1696,14 +1988,17 @@ fn type_check_shift_binary_op(
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
             expected: 2,
-            span,
+            actual: arguments.len(),
+            span: span_of_arguments(arguments, &span),
         }));
     }
+
     if !type_arguments.is_empty() {
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
             name: kind.to_string(),
             expected: 0,
-            span,
+            actual: type_arguments.len(),
+            span: span_of_type_arguments(type_arguments, &span),
         }));
     }
 
@@ -1712,7 +2007,7 @@ fn type_check_shift_binary_op(
     let lhs = ty::TyExpression::type_check(
         handler,
         ctx.by_ref()
-            .with_help_text("Incorrect argument type")
+            .with_help_text("Incorrect argument type.")
             .with_type_annotation(return_type),
         lhs,
     )?;
@@ -1721,14 +2016,13 @@ fn type_check_shift_binary_op(
     let rhs = ty::TyExpression::type_check(
         handler,
         ctx.by_ref()
-            .with_help_text("Incorrect argument type")
+            .with_help_text("Incorrect argument type.")
             .with_type_annotation(engines.te().new_numeric()),
         rhs,
     )?;
 
-    let t_arc = engines.te().get(lhs.return_type);
-    let t = &*t_arc;
-    match t {
+    let return_type_ti = &*engines.te().get(lhs.return_type);
+    match return_type_ti {
         TypeInfo::B256 | TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric => Ok((
             ty::TyIntrinsicFunctionKind {
                 kind,
@@ -1740,9 +2034,9 @@ fn type_check_shift_binary_op(
         )),
         _ => Err(handler.emit_err(CompileError::TypeError(
             sway_error::type_error::TypeError::MismatchedType {
-                expected: "unsigned integer or b256".into(),
+                expected: "u8, u16, u32, u64, u256, or b256".into(),
                 received: engines.help_out(return_type).to_string(),
-                help_text: "Incorrect argument type".into(),
+                help_text: "Incorrect argument type.".into(),
                 span: lhs.span,
             },
         ))),
@@ -1766,7 +2060,8 @@ fn type_check_revert(
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
             expected: 1,
-            span,
+            actual: arguments.len(),
+            span: span_of_arguments(arguments, &span),
         }));
     }
 
@@ -1774,7 +2069,8 @@ fn type_check_revert(
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
             name: kind.to_string(),
             expected: 0,
-            span,
+            actual: type_arguments.len(),
+            span: span_of_type_arguments(type_arguments, &span),
         }));
     }
 
@@ -1809,7 +2105,8 @@ fn type_check_jmp_mem(
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
             expected: 0,
-            span,
+            actual: arguments.len(),
+            span: span_of_arguments(arguments, &span),
         }));
     }
 
@@ -1817,7 +2114,8 @@ fn type_check_jmp_mem(
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
             name: kind.to_string(),
             expected: 0,
-            span,
+            actual: type_arguments.len(),
+            span: span_of_type_arguments(type_arguments, &span),
         }));
     }
 
@@ -1854,14 +2152,16 @@ fn type_check_ptr_ops(
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
             expected: 2,
-            span,
+            actual: arguments.len(),
+            span: span_of_arguments(arguments, &span),
         }));
     }
     if type_arguments.len() != 1 {
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
             name: kind.to_string(),
             expected: 1,
-            span,
+            actual: type_arguments.len(),
+            span: span_of_type_arguments(type_arguments, &span),
         }));
     }
     let targ = type_arguments[0].clone();
@@ -1945,7 +2245,8 @@ fn type_check_smo(
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
             expected: 3,
-            span,
+            actual: arguments.len(),
+            span: span_of_arguments(arguments, &span),
         }));
     }
 
@@ -1953,7 +2254,8 @@ fn type_check_smo(
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
             name: kind.to_string(),
             expected: 1,
-            span,
+            actual: type_arguments.len(),
+            span: span_of_type_arguments(type_arguments, &span),
         }));
     }
 
@@ -2037,7 +2339,8 @@ fn type_check_contract_ret(
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
             expected: 2,
-            span,
+            actual: arguments.len(),
+            span: span_of_arguments(arguments, &span),
         }));
     }
 
@@ -2045,7 +2348,8 @@ fn type_check_contract_ret(
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
             name: kind.to_string(),
             expected: 0,
-            span,
+            actual: type_arguments.len(),
+            span: span_of_type_arguments(type_arguments, &span),
         }));
     }
 

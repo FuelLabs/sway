@@ -1,6 +1,12 @@
 //! Tools related to handling/recovering from Sway compile errors and reporting them to the user.
 
-use crate::{language::parsed::VariableDeclaration, namespace::ModulePath, Engines, Namespace};
+use sway_types::{Span, Spanned};
+
+use crate::{
+    language::parsed::{Expression, VariableDeclaration},
+    namespace::ModulePath,
+    Engines, GenericArgument, Namespace,
+};
 
 /// Acts as the result of parsing `Declaration`s, `Expression`s, etc.
 /// Some `Expression`s need to be able to create `VariableDeclaration`s,
@@ -39,4 +45,24 @@ pub(crate) fn module_can_be_changed(
     // A bit too restrictive, considering the same workspace might be more appropriate,
     // but it's a good start.
     !issue_namespace.module_is_external(absolute_module_path)
+}
+
+// Returns the span covering all the arguments of a function or intrinsic function call.
+// If `arguments` are empty, returns `span`.
+pub(crate) fn span_of_arguments(arguments: &[Expression], span: &Span) -> Span {
+    if arguments.is_empty() {
+        span.clone()
+    } else {
+        Span::join_all(arguments.iter().map(|arg| arg.span()))
+    }
+}
+
+// Returns the span covering all the type arguments of a function or intrinsic function call.
+// If `type_arguments` are empty, returns `span`.
+pub(crate) fn span_of_type_arguments(type_arguments: &[GenericArgument], span: &Span) -> Span {
+    if type_arguments.is_empty() {
+        span.clone()
+    } else {
+        Span::join_all(type_arguments.iter().map(|targ| targ.span()))
+    }
 }

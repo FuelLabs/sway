@@ -1,0 +1,1315 @@
+---
+source: test/src/snapshot/mod.rs
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking
+   Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
+   Compiling library intrinsics_args_type_checking (test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking)
+warning
+ --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/bitwise_binop_intrinsics.sw:4:5
+  |
+2 | 
+3 | struct A {
+4 |     a: u64,
+  |     - This struct field is never accessed.
+5 | }
+6 | 
+  |
+____
+
+warning
+ --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/slice_intrinsics.sw:4:7
+  |
+2 | 
+3 | // slice cannot be consts
+4 | const GLOBAL_ARRAY: [u64; 5] = [1, 2, 3, 4, 5];
+  |       ------------ This declaration is never used.
+5 | const GLOBAL_SLICE: &__slice[u64] = __slice(&GLOBAL_ARRAY, 0, 5);
+6 | 
+  |
+____
+
+warning
+ --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/slice_intrinsics.sw:5:7
+  |
+3 | // slice cannot be consts
+4 | const GLOBAL_ARRAY: [u64; 5] = [1, 2, 3, 4, 5];
+5 | const GLOBAL_SLICE: &__slice[u64] = __slice(&GLOBAL_ARRAY, 0, 5);
+  |       ------------ This declaration is never used.
+6 | 
+7 | pub fn check_args() {
+  |
+____
+
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/dbg_intrinsic.sw:4:13
+  |
+2 | 
+3 | pub fn check_args() {
+4 |     let _ = __dbg();
+  |             ^^^^^^^ "__dbg" intrinsic expects one argument, but none are provided.
+5 |     let _ = __dbg(42u64, 1u32);
+6 |     // TODO: This actually doesn't work. There is no error emitted.
+  |
+____
+
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/dbg_intrinsic.sw:5:19
+  |
+3 | pub fn check_args() {
+4 |     let _ = __dbg();
+5 |     let _ = __dbg(42u64, 1u32);
+  |                   ^^^^^^^^^^^ "__dbg" intrinsic expects one argument, but two are provided.
+6 |     // TODO: This actually doesn't work. There is no error emitted.
+7 |     //       Fix this together with type checking of intrinsics in general:
+  |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:70:13
+   |
+68 | #[cfg(experimental_dynamic_storage = false)]
+69 | fn check_load_word_args() {
+70 |     let _ = __state_load_word();
+   |             ^^^^^^^^^^^^^^^^^^^ "__state_load_word" intrinsic expects one argument, but none are provided.
+71 |     let _ = __state_load_word(b256::zero(), 1u64);
+72 |     let _ = __state_load_word::<b256, Option<bool>>(b256::zero());
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:71:31
+   |
+69 | fn check_load_word_args() {
+70 |     let _ = __state_load_word();
+71 |     let _ = __state_load_word(b256::zero(), 1u64);
+   |                               ^^^^^^^^^^^^^^^^^^ "__state_load_word" intrinsic expects one argument, but two are provided.
+72 |     let _ = __state_load_word::<b256, Option<bool>>(b256::zero());
+73 | }
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:72:33
+   |
+70 |     let _ = __state_load_word();
+71 |     let _ = __state_load_word(b256::zero(), 1u64);
+72 |     let _ = __state_load_word::<b256, Option<bool>>(b256::zero());
+   |                                 ^^^^^^^^^^^^^^^^^^ "__state_load_word" intrinsic expects zero type arguments, but two are provided.
+73 | }
+74 | 
+   |
+____
+
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:5:13
+  |
+3 | #[storage(read, write)]
+4 | pub fn check_args() {
+5 |     let _ = __state_clear();
+  |             ^^^^^^^^^^^^^^^ "__state_clear" intrinsic expects two arguments, but none are provided.
+6 |     let _ = __state_clear(b256::zero());
+7 |     let _ = __state_clear(42u64, 1u64);
+  |
+____
+
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:6:27
+  |
+4 | pub fn check_args() {
+5 |     let _ = __state_clear();
+6 |     let _ = __state_clear(b256::zero());
+  |                           ^^^^^^^^^^^^ "__state_clear" intrinsic expects two arguments, but one is provided.
+7 |     let _ = __state_clear(42u64, 1u64);
+8 |     let _ = __state_clear(b256::zero(), 1u32);
+  |
+____
+
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:7:27
+  |
+5 |     let _ = __state_clear();
+6 |     let _ = __state_clear(b256::zero());
+7 |     let _ = __state_clear(42u64, 1u64);
+  |                           ^^^^^ Mismatched types.
+expected: b256
+found:    u64.
+help: "key" argument is the key into the state storage and must be of type `b256`.
+8 |     let _ = __state_clear(b256::zero(), 1u32);
+9 |     let _ = __state_clear::<b256, Option<bool>>(b256::zero(), 1u64);
+  |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:8:41
+   |
+ 6 |     let _ = __state_clear(b256::zero());
+ 7 |     let _ = __state_clear(42u64, 1u64);
+ 8 |     let _ = __state_clear(b256::zero(), 1u32);
+   |                                         ^^^^ Mismatched types.
+expected: u64
+found:    u32.
+help: "slots" argument is the number of slots to clear and must be of type `u64`.
+ 9 |     let _ = __state_clear::<b256, Option<bool>>(b256::zero(), 1u64);
+10 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:9:29
+   |
+ 7 |     let _ = __state_clear(42u64, 1u64);
+ 8 |     let _ = __state_clear(b256::zero(), 1u32);
+ 9 |     let _ = __state_clear::<b256, Option<bool>>(b256::zero(), 1u64);
+   |                             ^^^^^^^^^^^^^^^^^^ "__state_clear" intrinsic expects zero type arguments, but two are provided.
+10 | 
+11 |     let _ = __state_clear_slots();
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:11:13
+   |
+ 9 |     let _ = __state_clear::<b256, Option<bool>>(b256::zero(), 1u64);
+10 | 
+11 |     let _ = __state_clear_slots();
+   |             ^^^^^^^^^^^^^^^^^^^^^ "__state_clear_slots" intrinsic expects two arguments, but none are provided.
+12 |     let _ = __state_clear_slots(b256::zero());
+13 |     let _ = __state_clear_slots(42u64, 1u64);
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:12:33
+   |
+10 | 
+11 |     let _ = __state_clear_slots();
+12 |     let _ = __state_clear_slots(b256::zero());
+   |                                 ^^^^^^^^^^^^ "__state_clear_slots" intrinsic expects two arguments, but one is provided.
+13 |     let _ = __state_clear_slots(42u64, 1u64);
+14 |     let _ = __state_clear_slots(b256::zero(), 1u32);
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:13:33
+   |
+11 |     let _ = __state_clear_slots();
+12 |     let _ = __state_clear_slots(b256::zero());
+13 |     let _ = __state_clear_slots(42u64, 1u64);
+   |                                 ^^^^^ Mismatched types.
+expected: b256
+found:    u64.
+help: "key" argument is the key into the state storage and must be of type `b256`.
+14 |     let _ = __state_clear_slots(b256::zero(), 1u32);
+15 |     let _ = __state_clear_slots::<b256, Option<bool>>(b256::zero(), 1u64);
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:14:47
+   |
+12 |     let _ = __state_clear_slots(b256::zero());
+13 |     let _ = __state_clear_slots(42u64, 1u64);
+14 |     let _ = __state_clear_slots(b256::zero(), 1u32);
+   |                                               ^^^^ Mismatched types.
+expected: u64
+found:    u32.
+help: "slots" argument is the number of slots to clear and must be of type `u64`.
+15 |     let _ = __state_clear_slots::<b256, Option<bool>>(b256::zero(), 1u64);
+16 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:15:35
+   |
+13 |     let _ = __state_clear_slots(42u64, 1u64);
+14 |     let _ = __state_clear_slots(b256::zero(), 1u32);
+15 |     let _ = __state_clear_slots::<b256, Option<bool>>(b256::zero(), 1u64);
+   |                                   ^^^^^^^^^^^^^^^^^^ "__state_clear_slots" intrinsic expects zero type arguments, but two are provided.
+16 | 
+17 |     let _ = __state_store_word();
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:17:13
+   |
+15 |     let _ = __state_clear_slots::<b256, Option<bool>>(b256::zero(), 1u64);
+16 | 
+17 |     let _ = __state_store_word();
+   |             ^^^^^^^^^^^^^^^^^^^^ "__state_store_word" intrinsic expects two arguments, but none are provided.
+18 |     let _ = __state_store_word(b256::zero());
+19 |     let _ = __state_store_word(42u64, 1u64);
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:18:32
+   |
+16 | 
+17 |     let _ = __state_store_word();
+18 |     let _ = __state_store_word(b256::zero());
+   |                                ^^^^^^^^^^^^ "__state_store_word" intrinsic expects two arguments, but one is provided.
+19 |     let _ = __state_store_word(42u64, 1u64);
+20 |     let _ = __state_store_word(b256::zero(), 1u32);
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:19:32
+   |
+17 |     let _ = __state_store_word();
+18 |     let _ = __state_store_word(b256::zero());
+19 |     let _ = __state_store_word(42u64, 1u64);
+   |                                ^^^^^ Mismatched types.
+expected: b256
+found:    u64.
+help: "key" argument is the key into the state storage and must be of type `b256`.
+20 |     let _ = __state_store_word(b256::zero(), 1u32);
+21 |     let _ = __state_store_word::<b256, Option<bool>>(b256::zero(), 1u64);
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:20:46
+   |
+18 |     let _ = __state_store_word(b256::zero());
+19 |     let _ = __state_store_word(42u64, 1u64);
+20 |     let _ = __state_store_word(b256::zero(), 1u32);
+   |                                              ^^^^ Mismatched types.
+expected: u64
+found:    u32.
+help: "val" argument is the value to be written to the storage slot and must be of type `u64`.
+21 |     let _ = __state_store_word::<b256, Option<bool>>(b256::zero(), 1u64);
+22 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:21:34
+   |
+19 |     let _ = __state_store_word(42u64, 1u64);
+20 |     let _ = __state_store_word(b256::zero(), 1u32);
+21 |     let _ = __state_store_word::<b256, Option<bool>>(b256::zero(), 1u64);
+   |                                  ^^^^^^^^^^^^^^^^^^ "__state_store_word" intrinsic expects zero type arguments, but two are provided.
+22 | 
+23 |     check_load_word_args();
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:25:13
+   |
+23 |     check_load_word_args();
+24 | 
+25 |     let _ = __state_load_quad();
+   |             ^^^^^^^^^^^^^^^^^^^ "__state_load_quad" intrinsic expects three arguments, but none are provided.
+26 |     let _ = __state_load_quad(b256::zero());
+27 |     let _ = __state_load_quad(42u64, __addr_of(0), 1u64);
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:26:31
+   |
+24 | 
+25 |     let _ = __state_load_quad();
+26 |     let _ = __state_load_quad(b256::zero());
+   |                               ^^^^^^^^^^^^ "__state_load_quad" intrinsic expects three arguments, but one is provided.
+27 |     let _ = __state_load_quad(42u64, __addr_of(0), 1u64);
+28 |     let _ = __state_load_quad(b256::zero(), 0u32, 1u64);
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:27:31
+   |
+25 |     let _ = __state_load_quad();
+26 |     let _ = __state_load_quad(b256::zero());
+27 |     let _ = __state_load_quad(42u64, __addr_of(0), 1u64);
+   |                               ^^^^^ Mismatched types.
+expected: b256
+found:    u64.
+help: "key" argument is the key into the state storage and must be of type `b256`.
+28 |     let _ = __state_load_quad(b256::zero(), 0u32, 1u64);
+29 |     let _ = __state_load_quad(b256::zero(), __addr_of(0), 1u32);
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:28:45
+   |
+26 |     let _ = __state_load_quad(b256::zero());
+27 |     let _ = __state_load_quad(42u64, __addr_of(0), 1u64);
+28 |     let _ = __state_load_quad(b256::zero(), 0u32, 1u64);
+   |                                             ^^^^ Mismatched types.
+expected: raw_ptr
+found:    u32.
+help: "ptr" argument is the pointer to the memory location and must be of type `raw_ptr`.
+29 |     let _ = __state_load_quad(b256::zero(), __addr_of(0), 1u32);
+30 |     let _ = __state_load_quad::<b256, Option<bool>>(b256::zero(), __addr_of(0), 1u64);
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:29:59
+   |
+27 |     let _ = __state_load_quad(42u64, __addr_of(0), 1u64);
+28 |     let _ = __state_load_quad(b256::zero(), 0u32, 1u64);
+29 |     let _ = __state_load_quad(b256::zero(), __addr_of(0), 1u32);
+   |                                                           ^^^^ Mismatched types.
+expected: u64
+found:    u32.
+help: "slots" argument is the number of slots to load and must be of type `u64`.
+30 |     let _ = __state_load_quad::<b256, Option<bool>>(b256::zero(), __addr_of(0), 1u64);
+31 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:30:33
+   |
+28 |     let _ = __state_load_quad(b256::zero(), 0u32, 1u64);
+29 |     let _ = __state_load_quad(b256::zero(), __addr_of(0), 1u32);
+30 |     let _ = __state_load_quad::<b256, Option<bool>>(b256::zero(), __addr_of(0), 1u64);
+   |                                 ^^^^^^^^^^^^^^^^^^ "__state_load_quad" intrinsic expects zero type arguments, but two are provided.
+31 | 
+32 |     let _ = __state_store_quad();
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:32:13
+   |
+30 |     let _ = __state_load_quad::<b256, Option<bool>>(b256::zero(), __addr_of(0), 1u64);
+31 | 
+32 |     let _ = __state_store_quad();
+   |             ^^^^^^^^^^^^^^^^^^^^ "__state_store_quad" intrinsic expects three arguments, but none are provided.
+33 |     let _ = __state_store_quad(b256::zero());
+34 |     let _ = __state_store_quad(42u64, __addr_of(0), 1u64);
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:33:32
+   |
+31 | 
+32 |     let _ = __state_store_quad();
+33 |     let _ = __state_store_quad(b256::zero());
+   |                                ^^^^^^^^^^^^ "__state_store_quad" intrinsic expects three arguments, but one is provided.
+34 |     let _ = __state_store_quad(42u64, __addr_of(0), 1u64);
+35 |     let _ = __state_store_quad(b256::zero(), 0u32, 1u64);
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:34:32
+   |
+32 |     let _ = __state_store_quad();
+33 |     let _ = __state_store_quad(b256::zero());
+34 |     let _ = __state_store_quad(42u64, __addr_of(0), 1u64);
+   |                                ^^^^^ Mismatched types.
+expected: b256
+found:    u64.
+help: "key" argument is the key into the state storage and must be of type `b256`.
+35 |     let _ = __state_store_quad(b256::zero(), 0u32, 1u64);
+36 |     let _ = __state_store_quad(b256::zero(), __addr_of(0), 1u32);
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:35:46
+   |
+33 |     let _ = __state_store_quad(b256::zero());
+34 |     let _ = __state_store_quad(42u64, __addr_of(0), 1u64);
+35 |     let _ = __state_store_quad(b256::zero(), 0u32, 1u64);
+   |                                              ^^^^ Mismatched types.
+expected: raw_ptr
+found:    u32.
+help: "ptr" argument is the pointer to the memory location and must be of type `raw_ptr`.
+36 |     let _ = __state_store_quad(b256::zero(), __addr_of(0), 1u32);
+37 |     let _ = __state_store_quad::<b256, Option<bool>>(b256::zero(), __addr_of(0), 1u64);
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:36:60
+   |
+34 |     let _ = __state_store_quad(42u64, __addr_of(0), 1u64);
+35 |     let _ = __state_store_quad(b256::zero(), 0u32, 1u64);
+36 |     let _ = __state_store_quad(b256::zero(), __addr_of(0), 1u32);
+   |                                                            ^^^^ Mismatched types.
+expected: u64
+found:    u32.
+help: "slots" argument is the number of slots to store and must be of type `u64`.
+37 |     let _ = __state_store_quad::<b256, Option<bool>>(b256::zero(), __addr_of(0), 1u64);
+38 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:37:34
+   |
+35 |     let _ = __state_store_quad(b256::zero(), 0u32, 1u64);
+36 |     let _ = __state_store_quad(b256::zero(), __addr_of(0), 1u32);
+37 |     let _ = __state_store_quad::<b256, Option<bool>>(b256::zero(), __addr_of(0), 1u64);
+   |                                  ^^^^^^^^^^^^^^^^^^ "__state_store_quad" intrinsic expects zero type arguments, but two are provided.
+38 | 
+39 |     let _ = __state_load_slot();
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:39:13
+   |
+37 |     let _ = __state_store_quad::<b256, Option<bool>>(b256::zero(), __addr_of(0), 1u64);
+38 | 
+39 |     let _ = __state_load_slot();
+   |             ^^^^^^^^^^^^^^^^^^^ "__state_load_slot" intrinsic expects four arguments, but none are provided.
+40 |     let _ = __state_load_slot(b256::zero());
+41 |     let _ = __state_load_slot(42u64, __addr_of(0), 0u64, 1u64);
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:40:31
+   |
+38 | 
+39 |     let _ = __state_load_slot();
+40 |     let _ = __state_load_slot(b256::zero());
+   |                               ^^^^^^^^^^^^ "__state_load_slot" intrinsic expects four arguments, but one is provided.
+41 |     let _ = __state_load_slot(42u64, __addr_of(0), 0u64, 1u64);
+42 |     let _ = __state_load_slot(b256::zero(), 0u32, 0u64, 1u64);
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:41:31
+   |
+39 |     let _ = __state_load_slot();
+40 |     let _ = __state_load_slot(b256::zero());
+41 |     let _ = __state_load_slot(42u64, __addr_of(0), 0u64, 1u64);
+   |                               ^^^^^ Mismatched types.
+expected: b256
+found:    u64.
+help: "key" argument is the key into the state storage and must be of type `b256`.
+42 |     let _ = __state_load_slot(b256::zero(), 0u32, 0u64, 1u64);
+43 |     let _ = __state_load_slot(b256::zero(), __addr_of(0), 0u32, 1u64);
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:42:45
+   |
+40 |     let _ = __state_load_slot(b256::zero());
+41 |     let _ = __state_load_slot(42u64, __addr_of(0), 0u64, 1u64);
+42 |     let _ = __state_load_slot(b256::zero(), 0u32, 0u64, 1u64);
+   |                                             ^^^^ Mismatched types.
+expected: raw_ptr
+found:    u32.
+help: "ptr" argument is the pointer to the memory location and must be of type `raw_ptr`.
+43 |     let _ = __state_load_slot(b256::zero(), __addr_of(0), 0u32, 1u64);
+44 |     let _ = __state_load_slot(b256::zero(), __addr_of(0), 0u64, 1u32);
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:43:59
+   |
+41 |     let _ = __state_load_slot(42u64, __addr_of(0), 0u64, 1u64);
+42 |     let _ = __state_load_slot(b256::zero(), 0u32, 0u64, 1u64);
+43 |     let _ = __state_load_slot(b256::zero(), __addr_of(0), 0u32, 1u64);
+   |                                                           ^^^^ Mismatched types.
+expected: u64
+found:    u32.
+help: "offset" argument is the byte offset within the storage slot and must be of type `u64`.
+44 |     let _ = __state_load_slot(b256::zero(), __addr_of(0), 0u64, 1u32);
+45 |     let _ = __state_load_slot::<b256, Option<bool>>(b256::zero(), __addr_of(0),  0u64, 1u64);
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:44:65
+   |
+42 |     let _ = __state_load_slot(b256::zero(), 0u32, 0u64, 1u64);
+43 |     let _ = __state_load_slot(b256::zero(), __addr_of(0), 0u32, 1u64);
+44 |     let _ = __state_load_slot(b256::zero(), __addr_of(0), 0u64, 1u32);
+   |                                                                 ^^^^ Mismatched types.
+expected: u64
+found:    u32.
+help: "len" argument is the number of bytes to load from the slot and must be of type `u64`.
+45 |     let _ = __state_load_slot::<b256, Option<bool>>(b256::zero(), __addr_of(0),  0u64, 1u64);
+46 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:45:33
+   |
+43 |     let _ = __state_load_slot(b256::zero(), __addr_of(0), 0u32, 1u64);
+44 |     let _ = __state_load_slot(b256::zero(), __addr_of(0), 0u64, 1u32);
+45 |     let _ = __state_load_slot::<b256, Option<bool>>(b256::zero(), __addr_of(0),  0u64, 1u64);
+   |                                 ^^^^^^^^^^^^^^^^^^ "__state_load_slot" intrinsic expects zero type arguments, but two are provided.
+46 | 
+47 |     let _ = __state_store_slot();
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:47:13
+   |
+45 |     let _ = __state_load_slot::<b256, Option<bool>>(b256::zero(), __addr_of(0),  0u64, 1u64);
+46 | 
+47 |     let _ = __state_store_slot();
+   |             ^^^^^^^^^^^^^^^^^^^^ "__state_store_slot" intrinsic expects three arguments, but none are provided.
+48 |     let _ = __state_store_slot(b256::zero());
+49 |     let _ = __state_store_slot(42u64, __addr_of(0), 1u64);
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:48:32
+   |
+46 | 
+47 |     let _ = __state_store_slot();
+48 |     let _ = __state_store_slot(b256::zero());
+   |                                ^^^^^^^^^^^^ "__state_store_slot" intrinsic expects three arguments, but one is provided.
+49 |     let _ = __state_store_slot(42u64, __addr_of(0), 1u64);
+50 |     let _ = __state_store_slot(b256::zero(), 0u32, 1u64);
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:49:32
+   |
+47 |     let _ = __state_store_slot();
+48 |     let _ = __state_store_slot(b256::zero());
+49 |     let _ = __state_store_slot(42u64, __addr_of(0), 1u64);
+   |                                ^^^^^ Mismatched types.
+expected: b256
+found:    u64.
+help: "key" argument is the key into the state storage and must be of type `b256`.
+50 |     let _ = __state_store_slot(b256::zero(), 0u32, 1u64);
+51 |     let _ = __state_store_slot(b256::zero(), __addr_of(0), 1u32);
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:50:46
+   |
+48 |     let _ = __state_store_slot(b256::zero());
+49 |     let _ = __state_store_slot(42u64, __addr_of(0), 1u64);
+50 |     let _ = __state_store_slot(b256::zero(), 0u32, 1u64);
+   |                                              ^^^^ Mismatched types.
+expected: raw_ptr
+found:    u32.
+help: "ptr" argument is the pointer to the memory location and must be of type `raw_ptr`.
+51 |     let _ = __state_store_slot(b256::zero(), __addr_of(0), 1u32);
+52 |     let _ = __state_store_slot::<b256, Option<bool>>(b256::zero(), __addr_of(0), 1u64);
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:51:60
+   |
+49 |     let _ = __state_store_slot(42u64, __addr_of(0), 1u64);
+50 |     let _ = __state_store_slot(b256::zero(), 0u32, 1u64);
+51 |     let _ = __state_store_slot(b256::zero(), __addr_of(0), 1u32);
+   |                                                            ^^^^ Mismatched types.
+expected: u64
+found:    u32.
+help: "len" argument is the number of bytes to store in the slot and must be of type `u64`.
+52 |     let _ = __state_store_slot::<b256, Option<bool>>(b256::zero(), __addr_of(0), 1u64);
+53 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:52:34
+   |
+50 |     let _ = __state_store_slot(b256::zero(), 0u32, 1u64);
+51 |     let _ = __state_store_slot(b256::zero(), __addr_of(0), 1u32);
+52 |     let _ = __state_store_slot::<b256, Option<bool>>(b256::zero(), __addr_of(0), 1u64);
+   |                                  ^^^^^^^^^^^^^^^^^^ "__state_store_slot" intrinsic expects zero type arguments, but two are provided.
+53 | 
+54 |     let _ = __state_update_slot();
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:54:13
+   |
+52 |     let _ = __state_store_slot::<b256, Option<bool>>(b256::zero(), __addr_of(0), 1u64);
+53 | 
+54 |     let _ = __state_update_slot();
+   |             ^^^^^^^^^^^^^^^^^^^^^ "__state_update_slot" intrinsic expects four arguments, but none are provided.
+55 |     let _ = __state_update_slot(b256::zero());
+56 |     let _ = __state_update_slot(42u64, __addr_of(0), 0u64, 1u64);
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:55:33
+   |
+53 | 
+54 |     let _ = __state_update_slot();
+55 |     let _ = __state_update_slot(b256::zero());
+   |                                 ^^^^^^^^^^^^ "__state_update_slot" intrinsic expects four arguments, but one is provided.
+56 |     let _ = __state_update_slot(42u64, __addr_of(0), 0u64, 1u64);
+57 |     let _ = __state_update_slot(b256::zero(), 0u32, 0u64, 1u64);
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:56:33
+   |
+54 |     let _ = __state_update_slot();
+55 |     let _ = __state_update_slot(b256::zero());
+56 |     let _ = __state_update_slot(42u64, __addr_of(0), 0u64, 1u64);
+   |                                 ^^^^^ Mismatched types.
+expected: b256
+found:    u64.
+help: "key" argument is the key into the state storage and must be of type `b256`.
+57 |     let _ = __state_update_slot(b256::zero(), 0u32, 0u64, 1u64);
+58 |     let _ = __state_update_slot(b256::zero(), __addr_of(0), 0u32, 1u64);
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:57:47
+   |
+55 |     let _ = __state_update_slot(b256::zero());
+56 |     let _ = __state_update_slot(42u64, __addr_of(0), 0u64, 1u64);
+57 |     let _ = __state_update_slot(b256::zero(), 0u32, 0u64, 1u64);
+   |                                               ^^^^ Mismatched types.
+expected: raw_ptr
+found:    u32.
+help: "ptr" argument is the pointer to the memory location and must be of type `raw_ptr`.
+58 |     let _ = __state_update_slot(b256::zero(), __addr_of(0), 0u32, 1u64);
+59 |     let _ = __state_update_slot(b256::zero(), __addr_of(0), 0u64, 1u32);
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:58:61
+   |
+56 |     let _ = __state_update_slot(42u64, __addr_of(0), 0u64, 1u64);
+57 |     let _ = __state_update_slot(b256::zero(), 0u32, 0u64, 1u64);
+58 |     let _ = __state_update_slot(b256::zero(), __addr_of(0), 0u32, 1u64);
+   |                                                             ^^^^ Mismatched types.
+expected: u64
+found:    u32.
+help: "offset" argument is the byte offset within the storage slot and must be of type `u64`. Use `u64::max()` to append.
+59 |     let _ = __state_update_slot(b256::zero(), __addr_of(0), 0u64, 1u32);
+60 |     let _ = __state_update_slot::<b256, Option<bool>>(b256::zero(), __addr_of(0),  0u64, 1u64);
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:59:67
+   |
+57 |     let _ = __state_update_slot(b256::zero(), 0u32, 0u64, 1u64);
+58 |     let _ = __state_update_slot(b256::zero(), __addr_of(0), 0u32, 1u64);
+59 |     let _ = __state_update_slot(b256::zero(), __addr_of(0), 0u64, 1u32);
+   |                                                                   ^^^^ Mismatched types.
+expected: u64
+found:    u32.
+help: "len" argument is the number of bytes to update and must be of type `u64`.
+60 |     let _ = __state_update_slot::<b256, Option<bool>>(b256::zero(), __addr_of(0),  0u64, 1u64);
+61 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:60:35
+   |
+58 |     let _ = __state_update_slot(b256::zero(), __addr_of(0), 0u32, 1u64);
+59 |     let _ = __state_update_slot(b256::zero(), __addr_of(0), 0u64, 1u32);
+60 |     let _ = __state_update_slot::<b256, Option<bool>>(b256::zero(), __addr_of(0),  0u64, 1u64);
+   |                                   ^^^^^^^^^^^^^^^^^^ "__state_update_slot" intrinsic expects zero type arguments, but two are provided.
+61 | 
+62 |     let _ = __state_preload();
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:62:13
+   |
+60 |     let _ = __state_update_slot::<b256, Option<bool>>(b256::zero(), __addr_of(0),  0u64, 1u64);
+61 | 
+62 |     let _ = __state_preload();
+   |             ^^^^^^^^^^^^^^^^^ "__state_preload" intrinsic expects one argument, but none are provided.
+63 |     let _ = __state_preload(b256::zero(), 1u64);
+64 |     let _ = __state_preload::<b256, Option<bool>>(b256::zero());
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:63:29
+   |
+61 | 
+62 |     let _ = __state_preload();
+63 |     let _ = __state_preload(b256::zero(), 1u64);
+   |                             ^^^^^^^^^^^^^^^^^^ "__state_preload" intrinsic expects one argument, but two are provided.
+64 |     let _ = __state_preload::<b256, Option<bool>>(b256::zero());
+65 | }
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/storage_intrinsics.sw:64:31
+   |
+62 |     let _ = __state_preload();
+63 |     let _ = __state_preload(b256::zero(), 1u64);
+64 |     let _ = __state_preload::<b256, Option<bool>>(b256::zero());
+   |                               ^^^^^^^^^^^^^^^^^^ "__state_preload" intrinsic expects zero type arguments, but two are provided.
+65 | }
+66 | 
+   |
+____
+
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/arith_binop_intrinsics.sw:4:13
+  |
+2 | 
+3 | pub fn check_args() {
+4 |     let _ = __add();
+  |             ^^^^^^^ "__add" intrinsic expects two arguments, but none are provided.
+5 |     let _ = __add(42u64);
+6 |     let _ = __add((), 42u64);
+  |
+____
+
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/arith_binop_intrinsics.sw:5:19
+  |
+3 | pub fn check_args() {
+4 |     let _ = __add();
+5 |     let _ = __add(42u64);
+  |                   ^^^^^ "__add" intrinsic expects two arguments, but one is provided.
+6 |     let _ = __add((), 42u64);
+7 |     let _ = __add(42u64, 1u32);
+  |
+____
+
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/arith_binop_intrinsics.sw:6:19
+  |
+4 |     let _ = __add();
+5 |     let _ = __add(42u64);
+6 |     let _ = __add((), 42u64);
+  |                   ^^ Mismatched types.
+expected: {numeric}
+found:    ().
+help: Both arguments must be of the same integer type: `u8`, `u16`, `u32`, `u64`, or `u256`.
+7 |     let _ = __add(42u64, 1u32);
+8 |     let _ = __add::<u64>(42u64, 1u64);
+  |
+____
+
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/arith_binop_intrinsics.sw:7:26
+  |
+5 |     let _ = __add(42u64);
+6 |     let _ = __add((), 42u64);
+7 |     let _ = __add(42u64, 1u32);
+  |                          ^^^^ Mismatched types.
+expected: u64
+found:    u32.
+help: Both arguments must be of the same integer type: `u8`, `u16`, `u32`, `u64`, or `u256`.
+8 |     let _ = __add::<u64>(42u64, 1u64);
+9 |     let _ = __add::<u32>(42, 1);
+  |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/arith_binop_intrinsics.sw:8:21
+   |
+ 6 |     let _ = __add((), 42u64);
+ 7 |     let _ = __add(42u64, 1u32);
+ 8 |     let _ = __add::<u64>(42u64, 1u64);
+   |                     ^^^ "__add" intrinsic expects zero type arguments, but one is provided.
+ 9 |     let _ = __add::<u32>(42, 1);
+10 | }
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/arith_binop_intrinsics.sw:9:21
+   |
+ 7 |     let _ = __add(42u64, 1u32);
+ 8 |     let _ = __add::<u64>(42u64, 1u64);
+ 9 |     let _ = __add::<u32>(42, 1);
+   |                     ^^^ "__add" intrinsic expects zero type arguments, but one is provided.
+10 | }
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/bitwise_binop_intrinsics.sw:13:13
+   |
+11 | 
+12 | pub fn check_args() {
+13 |     let _ = __rsh();
+   |             ^^^^^^^ "__rsh" intrinsic expects two arguments, but none are provided.
+14 |     let _ = __rsh(42u64);
+15 |     let _ = __rsh((), 42u64);
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/bitwise_binop_intrinsics.sw:14:19
+   |
+12 | pub fn check_args() {
+13 |     let _ = __rsh();
+14 |     let _ = __rsh(42u64);
+   |                   ^^^^^ "__rsh" intrinsic expects two arguments, but one is provided.
+15 |     let _ = __rsh((), 42u64);
+16 |     let _ = __rsh(42u64, 1u32);
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/bitwise_binop_intrinsics.sw:15:19
+   |
+13 |     let _ = __rsh();
+14 |     let _ = __rsh(42u64);
+15 |     let _ = __rsh((), 42u64);
+   |                   ^^ Mismatched types.
+expected: u8, u16, u32, u64, u256, or b256
+found:    ().
+help: Incorrect argument type.
+16 |     let _ = __rsh(42u64, 1u32);
+17 |     let _ = __rsh::<u64>(42u64, 1u64);
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/bitwise_binop_intrinsics.sw:17:21
+   |
+15 |     let _ = __rsh((), 42u64);
+16 |     let _ = __rsh(42u64, 1u32);
+17 |     let _ = __rsh::<u64>(42u64, 1u64);
+   |                     ^^^ "__rsh" intrinsic expects zero type arguments, but one is provided.
+18 |     let _ = __rsh::<u32>(42, 1);
+19 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/bitwise_binop_intrinsics.sw:18:21
+   |
+16 |     let _ = __rsh(42u64, 1u32);
+17 |     let _ = __rsh::<u64>(42u64, 1u64);
+18 |     let _ = __rsh::<u32>(42, 1);
+   |                     ^^^ "__rsh" intrinsic expects zero type arguments, but one is provided.
+19 | 
+20 |     let _ = __eq("hi", "ho");
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/bitwise_binop_intrinsics.sw:20:18
+   |
+18 |     let _ = __rsh::<u32>(42, 1);
+19 | 
+20 |     let _ = __eq("hi", "ho");
+   |                  ^^^^ Unsupported argument type to intrinsic "eq".
+21 |     let _ = __eq(false, 11);
+22 |     let _ = __eq(A { a: 1 }, B { a: 1 });
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/bitwise_binop_intrinsics.sw:21:25
+   |
+19 | 
+20 |     let _ = __eq("hi", "ho");
+21 |     let _ = __eq(false, 11);
+   |                         ^^ Mismatched types.
+expected: bool
+found:    {numeric}.
+help: Variable declaration's type annotation does not match up with the assigned expression's type.
+22 |     let _ = __eq(A { a: 1 }, B { a: 1 });
+23 |     let _ = __eq(A { a: 1 }, A { a: 1 });
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/bitwise_binop_intrinsics.sw:22:30
+   |
+20 |     let _ = __eq("hi", "ho");
+21 |     let _ = __eq(false, 11);
+22 |     let _ = __eq(A { a: 1 }, B { a: 1 });
+   |                              ^^^^^^^^^^ This is a intrinsics_args_type_checking::bitwise_binop_intrinsics::B, not a struct.
+23 |     let _ = __eq(A { a: 1 }, A { a: 1 });
+24 |     let _ = __eq((1, 2), (1, 2));
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/bitwise_binop_intrinsics.sw:23:18
+   |
+21 |     let _ = __eq(false, 11);
+22 |     let _ = __eq(A { a: 1 }, B { a: 1 });
+23 |     let _ = __eq(A { a: 1 }, A { a: 1 });
+   |                  ^^^^^^^^^^ Unsupported argument type to intrinsic "eq".
+24 |     let _ = __eq((1, 2), (1, 2));
+25 |     let _ = __eq([1, 2], [1, 2]);
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/bitwise_binop_intrinsics.sw:24:18
+   |
+22 |     let _ = __eq(A { a: 1 }, B { a: 1 });
+23 |     let _ = __eq(A { a: 1 }, A { a: 1 });
+24 |     let _ = __eq((1, 2), (1, 2));
+   |                  ^^^^^^ Unsupported argument type to intrinsic "eq".
+25 |     let _ = __eq([1, 2], [1, 2]);
+26 |     let _ = __eq(B::First, B::First);
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/bitwise_binop_intrinsics.sw:25:18
+   |
+23 |     let _ = __eq(A { a: 1 }, A { a: 1 });
+24 |     let _ = __eq((1, 2), (1, 2));
+25 |     let _ = __eq([1, 2], [1, 2]);
+   |                  ^^^^^^ Unsupported argument type to intrinsic "eq".
+26 |     let _ = __eq(B::First, B::First);
+27 |     let _ = __eq(B::Second(1), B::Second(1));
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/bitwise_binop_intrinsics.sw:26:21
+   |
+24 |     let _ = __eq((1, 2), (1, 2));
+25 |     let _ = __eq([1, 2], [1, 2]);
+26 |     let _ = __eq(B::First, B::First);
+   |                     ^^^^^ Unsupported argument type to intrinsic "eq".
+27 |     let _ = __eq(B::Second(1), B::Second(1));
+28 | }
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/bitwise_binop_intrinsics.sw:27:21
+   |
+25 |     let _ = __eq([1, 2], [1, 2]);
+26 |     let _ = __eq(B::First, B::First);
+27 |     let _ = __eq(B::Second(1), B::Second(1));
+   |                     ^^^^^^ Unsupported argument type to intrinsic "eq".
+28 | }
+   |
+____
+
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/encoding_intrinsics.sw:4:13
+  |
+2 | 
+3 | pub fn check_args() {
+4 |     let _ = __encode_buffer_append();
+  |             ^^^^^^^^^^^^^^^^^^^^^^^^ "__encode_buffer_append" intrinsic expects two arguments, but none are provided.
+5 |     let _ = __encode_buffer_append(42u64);
+6 |     let _ = __encode_buffer_append((), 42u64);
+  |
+____
+
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/encoding_intrinsics.sw:5:36
+  |
+3 | pub fn check_args() {
+4 |     let _ = __encode_buffer_append();
+5 |     let _ = __encode_buffer_append(42u64);
+  |                                    ^^^^^ "__encode_buffer_append" intrinsic expects two arguments, but one is provided.
+6 |     let _ = __encode_buffer_append((), 42u64);
+7 |     let _ = __encode_buffer_append((__addr_of(0), 0u64, 0u64), (1u32, 1u64));
+  |
+____
+
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/encoding_intrinsics.sw:6:36
+  |
+4 |     let _ = __encode_buffer_append();
+5 |     let _ = __encode_buffer_append(42u64);
+6 |     let _ = __encode_buffer_append((), 42u64);
+  |                                    ^^ Mismatched types.
+expected: (raw_ptr, u64, u64)
+found:    ().
+
+7 |     let _ = __encode_buffer_append((__addr_of(0), 0u64, 0u64), (1u32, 1u64));
+8 | 
+  |
+____
+
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/encoding_intrinsics.sw:7:64
+  |
+5 |     let _ = __encode_buffer_append(42u64);
+6 |     let _ = __encode_buffer_append((), 42u64);
+7 |     let _ = __encode_buffer_append((__addr_of(0), 0u64, 0u64), (1u32, 1u64));
+  |                                                                ^^^^^^^^^^^^ Only bool, u8, u16, u32, u64, u256, b256, string arrays and string slices can be used here.
+8 | 
+9 |     let _ = __encode_buffer_empty(42u64);
+  |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/encoding_intrinsics.sw:9:35
+   |
+ 7 |     let _ = __encode_buffer_append((__addr_of(0), 0u64, 0u64), (1u32, 1u64));
+ 8 | 
+ 9 |     let _ = __encode_buffer_empty(42u64);
+   |                                   ^^^^^ "__encode_buffer_empty" intrinsic expects zero arguments, but one is provided.
+10 |     let _ = __encode_buffer_empty((), 42u64);
+11 | }
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/encoding_intrinsics.sw:10:35
+   |
+ 8 | 
+ 9 |     let _ = __encode_buffer_empty(42u64);
+10 |     let _ = __encode_buffer_empty((), 42u64);
+   |                                   ^^^^^^^^^ "__encode_buffer_empty" intrinsic expects zero arguments, but two are provided.
+11 | }
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/slice_intrinsics.sw:47:23
+   |
+45 |     // Cannot get mut ref from an immutable array
+46 |     let immutable_array: [u64; 5] = [1, 2, 3, 4, 5];
+47 |     let _: &mut u64 = __elem_at(&immutable_array, 0);
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Mismatched types.
+expected: &mut u64
+found:    &u64.
+help: Variable declaration's type annotation does not match up with the assigned expression's type.
+48 | 
+49 |     // Cannot get mut slice from an immutable array
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/slice_intrinsics.sw:50:32
+   |
+48 | 
+49 |     // Cannot get mut slice from an immutable array
+50 |     let _: &mut __slice[u64] = __slice(&immutable_array, 0, 5);
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Mismatched types.
+expected: &mut __slice[u64]
+found:    &__slice[u64].
+help: Variable declaration's type annotation does not match up with the assigned expression's type.
+51 | 
+52 |     // Cannot get mut ref from an immutable slice
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/slice_intrinsics.sw:54:23
+   |
+52 |     // Cannot get mut ref from an immutable slice
+53 |     let immutable_slice: &__slice[u64] = __slice(&immutable_array, 0, 5);
+54 |     let _: &mut u64 = __elem_at(immutable_slice, 0);
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Mismatched types.
+expected: &mut u64
+found:    &u64.
+help: Variable declaration's type annotation does not match up with the assigned expression's type.
+55 | }
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/slice_intrinsics.sw:16:13
+   |
+14 |     // Wrong start index
+15 |     let a: [u64; 5] = [1, 2, 3, 4, 5];
+16 |     let _ = __slice(&a, 6, 7);
+   |             ^^^^^^^^^^^^^^^^^ Index out of bounds; the length is 5 but the index is 6.
+17 | 
+18 |     // Wrong end index
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/slice_intrinsics.sw:20:13
+   |
+18 |     // Wrong end index
+19 |     let a: [u64; 5] = [1, 2, 3, 4, 5];
+20 |     let _ = __slice(&a, 0, 6);
+   |             ^^^^^^^^^^^^^^^^^ Index out of bounds; the length is 5 but the index is 6.
+21 | 
+22 |     // Wrong first argument
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/slice_intrinsics.sw:23:21
+   |
+21 | 
+22 |     // Wrong first argument
+23 |     let _ = __slice(0, 0, 0);
+   |                     ^ Unsupported argument type to intrinsic "slice". Hint: Only references to arrays or slices can be used as argument here
+24 | 
+25 |     // Wrong start index
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/slice_intrinsics.sw:26:25
+   |
+24 | 
+25 |     // Wrong start index
+26 |     let _ = __slice(&a, "", 0);
+   |                         ^^ Mismatched types.
+expected: u64
+found:    str.
+
+27 | 
+28 |     // Wrong end index
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/slice_intrinsics.sw:29:28
+   |
+27 | 
+28 |     // Wrong end index
+29 |     let _ = __slice(&a, 0, "");
+   |                            ^^ Mismatched types.
+expected: u64
+found:    str.
+
+30 | 
+31 |     let a: [u64; 5] = [1, 2, 3, 4, 5];
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/slice_intrinsics.sw:35:23
+   |
+33 | 
+34 |     // Wrong first argument
+35 |     let _ = __elem_at(0, 0);
+   |                       ^ Unsupported argument type to intrinsic "elem_at". Hint: Only references to arrays or slices can be used as argument here
+36 | 
+37 |     // Wrong index type
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/slice_intrinsics.sw:38:27
+   |
+36 | 
+37 |     // Wrong index type
+38 |     let _ = __elem_at(&a, "");
+   |                           ^^ Mismatched types.
+expected: u64
+found:    str.
+
+39 | 
+40 |     // Wrong index type
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/slice_intrinsics.sw:41:26
+   |
+39 | 
+40 |     // Wrong index type
+41 |     let _ = __elem_at(s, "");
+   |                          ^^ Mismatched types.
+expected: u64
+found:    str.
+
+42 | }
+43 | 
+   |
+____
+
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/transmute_intrinsic.sw:5:13
+  |
+3 | pub fn check_args() {
+4 |     // Missing type arguments
+5 |     let _ = __transmute(1u64);
+  |             ^^^^^^^^^^^^^^^^^ "__transmute" intrinsic expects two type arguments, but none are provided.
+6 |     let _ = __transmute::<u64>(1u64);
+7 | 
+  |
+____
+
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/transmute_intrinsic.sw:6:27
+  |
+4 |     // Missing type arguments
+5 |     let _ = __transmute(1u64);
+6 |     let _ = __transmute::<u64>(1u64);
+  |                           ^^^ "__transmute" intrinsic expects two type arguments, but one is provided.
+7 | 
+8 |      // Wrong source type
+  |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/transmute_intrinsic.sw:9:36
+   |
+ 7 | 
+ 8 |      // Wrong source type
+ 9 |     let _ = __transmute::<u64, u8>(1u32);
+   |                                    ^^^^ Mismatched types.
+expected: u64
+found:    u32.
+
+10 | 
+11 |     // TODO: This actually doesn't work. There is no error emitted.
+   |
+____
+
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/slice_intrinsics.sw:5:21
+  |
+3 | // slice cannot be consts
+4 | const GLOBAL_ARRAY: [u64; 5] = [1, 2, 3, 4, 5];
+5 | const GLOBAL_SLICE: &__slice[u64] = __slice(&GLOBAL_ARRAY, 0, 5);
+  |                     ^^^^^^^^^^^^^ slices or types containing slices on `const` are not allowed.
+6 | 
+7 | pub fn check_args() {
+  |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/slice_intrinsics.sw:12:24
+   |
+10 |     // slice cannot be consts
+11 |     const LOCAL_ARRAY: [u64; 5] = [1, 2, 3, 4, 5];
+12 |     const LOCAL_SLICE: &__slice[u64] = __slice(&LOCAL_ARRAY, 0, 5);
+   |                        ^^^^^^^^^^^^^ slices or types containing slices on `const` are not allowed.
+13 | 
+14 |     // Wrong start index
+   |
+____
+
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/slice_intrinsics.sw:5:37
+  |
+3 | // slice cannot be consts
+4 | const GLOBAL_ARRAY: [u64; 5] = [1, 2, 3, 4, 5];
+5 | const GLOBAL_SLICE: &__slice[u64] = __slice(&GLOBAL_ARRAY, 0, 5);
+  |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Could not evaluate initializer to a const declaration.
+6 | 
+7 | pub fn check_args() {
+  |
+____
+
+  Aborting due to 97 errors.
+error: Failed to compile intrinsics_args_type_checking

@@ -1589,10 +1589,15 @@ fn const_eval_intrinsic(
         | Intrinsic::IsStrArray
         | Intrinsic::Gtf
         | Intrinsic::StateClear
+        | Intrinsic::StateClearSlots
         | Intrinsic::StateLoadWord
         | Intrinsic::StateStoreWord
         | Intrinsic::StateLoadQuad
         | Intrinsic::StateStoreQuad
+        | Intrinsic::StateLoadSlot
+        | Intrinsic::StateStoreSlot
+        | Intrinsic::StateUpdateSlot
+        | Intrinsic::StatePreload
         | Intrinsic::Log
         | Intrinsic::Revert
         | Intrinsic::JmpMem

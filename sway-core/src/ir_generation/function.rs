@@ -1270,7 +1270,7 @@ impl<'a> FnCompiler<'a> {
                     context,
                 ))
             }
-            Intrinsic::StateClear => {
+            Intrinsic::StateClear | Intrinsic::StateClearSlots => {
                 let key_exp = arguments[0].clone();
                 let number_of_slots_exp = arguments[1].clone();
 
@@ -1288,11 +1288,24 @@ impl<'a> FnCompiler<'a> {
                 .expect_register()
                 .add_metadatum(context, span_md_idx);
 
-                let val = self
-                    .current_block
-                    .append(context)
-                    .state_clear(key_value, number_of_slots_value)
-                    .add_metadatum(context, span_md_idx);
+                let val = match kind {
+                    Intrinsic::StateClear => self
+                        .current_block
+                        .append(context)
+                        .state_clear(key_value, number_of_slots_value)
+                        .add_metadatum(context, span_md_idx),
+                    Intrinsic::StateClearSlots => {
+                        self
+                            .current_block
+                            .append(context)
+                            .state_clear_slots(key_value, number_of_slots_value)
+                            .add_metadatum(context, span_md_idx);
+
+                        // Return unit
+                        ConstantContent::get_unit(context).add_metadatum(context, span_md_idx)
+                    },
+                    _ => unreachable!("`kind` is either `StateClear` or `StateClearSlots`, which is handled in the match arm above"),
+                };
 
                 Ok(TerminatorValue::new(
                     CompiledValue::InRegister(val),
@@ -1353,16 +1366,6 @@ impl<'a> FnCompiler<'a> {
             Intrinsic::StateStoreWord => {
                 let key_exp = &arguments[0];
                 let val_exp = &arguments[1];
-                // Validate that the val_exp is of the right type. We couldn't do it
-                // earlier during type checking as the type arguments may not have been resolved.
-                let val_ty = engines.te().get_unaliased(val_exp.return_type);
-                if !val_ty.is_copy_type() {
-                    return Err(CompileError::IntrinsicUnsupportedArgType {
-                        name: kind.to_string(),
-                        span,
-                        hint: "This argument must be a copy type".to_string(),
-                    });
-                }
 
                 let span_md_idx = md_mgr.span_to_md(context, &span);
 
@@ -1389,23 +1392,32 @@ impl<'a> FnCompiler<'a> {
                     context,
                 ))
             }
+            Intrinsic::StatePreload => {
+                let key_exp = &arguments[0];
+
+                let span_md_idx = md_mgr.span_to_md(context, &span);
+
+                let key_value = return_on_termination_or_extract!(
+                    self.compile_expression_to_memory(context, md_mgr, key_exp)?
+                )
+                .expect_memory()
+                .add_metadatum(context, span_md_idx);
+
+                let val = self
+                    .current_block
+                    .append(context)
+                    .state_preload(key_value)
+                    .add_metadatum(context, span_md_idx);
+
+                Ok(TerminatorValue::new(
+                    CompiledValue::InRegister(val),
+                    context,
+                ))
+            }
             Intrinsic::StateLoadQuad | Intrinsic::StateStoreQuad => {
                 let key_exp = arguments[0].clone();
-                let val_exp = arguments[1].clone();
-                let number_of_slots_exp = arguments[2].clone();
-                // Validate that the val_exp is of the right type. We couldn't do it
-                // earlier during type checking as the type arguments may not have been resolved.
-                let val_ty = engines.te().get_unaliased(val_exp.return_type);
-                if !val_ty.eq(
-                    &TypeInfo::RawUntypedPtr,
-                    &PartialEqWithEnginesContext::new(engines),
-                ) {
-                    return Err(CompileError::IntrinsicUnsupportedArgType {
-                        name: kind.to_string(),
-                        span,
-                        hint: "This argument must be raw_ptr".to_string(),
-                    });
-                }
+                let ptr_exp = arguments[1].clone();
+                let slots_exp = arguments[2].clone();
 
                 let span_md_idx = md_mgr.span_to_md(context, &span);
 
@@ -1415,14 +1427,14 @@ impl<'a> FnCompiler<'a> {
                 .expect_memory()
                 .add_metadatum(context, span_md_idx);
 
-                let val_ptr = return_on_termination_or_extract!(
-                    self.compile_expression_to_register(context, md_mgr, &val_exp)?
+                let ptr_value = return_on_termination_or_extract!(
+                    self.compile_expression_to_register(context, md_mgr, &ptr_exp)?
                 )
                 .expect_register()
                 .add_metadatum(context, span_md_idx);
 
-                let number_of_slots_value = return_on_termination_or_extract!(
-                    self.compile_expression_to_register(context, md_mgr, &number_of_slots_exp)?
+                let slots_value = return_on_termination_or_extract!(
+                    self.compile_expression_to_register(context, md_mgr, &slots_exp)?
                 )
                 .expect_register()
                 .add_metadatum(context, span_md_idx);
@@ -1432,22 +1444,170 @@ impl<'a> FnCompiler<'a> {
                 let val_ptr = self
                     .current_block
                     .append(context)
-                    .cast_ptr(val_ptr, b256_ptr_ty)
+                    .cast_ptr(ptr_value, b256_ptr_ty)
                     .add_metadatum(context, span_md_idx);
 
                 let val = match kind {
                     Intrinsic::StateLoadQuad => self
                         .current_block
                         .append(context)
-                        .state_load_quad_word(val_ptr, key_value, number_of_slots_value)
+                        .state_load_quad_word(val_ptr, key_value, slots_value)
                         .add_metadatum(context, span_md_idx),
                     Intrinsic::StateStoreQuad => self
                         .current_block
                         .append(context)
-                        .state_store_quad_word(val_ptr, key_value, number_of_slots_value)
+                        .state_store_quad_word(val_ptr, key_value, slots_value)
                         .add_metadatum(context, span_md_idx),
                     _ => unreachable!(),
                 };
+
+                Ok(TerminatorValue::new(
+                    CompiledValue::InRegister(val),
+                    context,
+                ))
+            }
+            Intrinsic::StateLoadSlot => {
+                let key_exp = arguments[0].clone();
+                let ptr_exp = arguments[1].clone();
+                let offset_exp = arguments[2].clone();
+                let len_exp = arguments[3].clone();
+
+                let span_md_idx = md_mgr.span_to_md(context, &span);
+
+                let key_value = return_on_termination_or_extract!(
+                    self.compile_expression_to_memory(context, md_mgr, &key_exp)?
+                )
+                .expect_memory()
+                .add_metadatum(context, span_md_idx);
+
+                let ptr_value = return_on_termination_or_extract!(
+                    self.compile_expression_to_register(context, md_mgr, &ptr_exp)?
+                )
+                .expect_register()
+                .add_metadatum(context, span_md_idx);
+
+                let offset_value = return_on_termination_or_extract!(
+                    self.compile_expression_to_register(context, md_mgr, &offset_exp)?
+                )
+                .expect_register()
+                .add_metadatum(context, span_md_idx);
+
+                let len_value = return_on_termination_or_extract!(
+                    self.compile_expression_to_register(context, md_mgr, &len_exp)?
+                )
+                .expect_register()
+                .add_metadatum(context, span_md_idx);
+
+                // Emit the `state_read_slot` IR instruction.
+                self.current_block
+                    .append(context)
+                    .state_read_slot(ptr_value, key_value, offset_value, len_value)
+                    .add_metadatum(context, span_md_idx);
+
+                // Read $err register via an inline asm block: `asm() { err }`.
+                let uint64 = Type::get_uint64(context);
+                let err_val = self
+                    .current_block
+                    .append(context)
+                    .asm_block(
+                        vec![],
+                        vec![],
+                        uint64,
+                        Some(Ident::new_no_span("err".into())),
+                    )
+                    .add_metadatum(context, span_md_idx);
+
+                // Return NOT $err: $err == 0 means slot was set which returns true.
+                let zero = ConstantContent::get_uint(context, 64, 0);
+                let val = self
+                    .current_block
+                    .append(context)
+                    .cmp(Predicate::Equal, err_val, zero)
+                    .add_metadatum(context, span_md_idx);
+
+                Ok(TerminatorValue::new(
+                    CompiledValue::InRegister(val),
+                    context,
+                ))
+            }
+            Intrinsic::StateStoreSlot => {
+                let key_exp = arguments[0].clone();
+                let ptr_exp = arguments[1].clone();
+                let len_exp = arguments[2].clone();
+
+                let span_md_idx = md_mgr.span_to_md(context, &span);
+
+                let key_value = return_on_termination_or_extract!(
+                    self.compile_expression_to_memory(context, md_mgr, &key_exp)?
+                )
+                .expect_memory()
+                .add_metadatum(context, span_md_idx);
+
+                let ptr_value = return_on_termination_or_extract!(
+                    self.compile_expression_to_register(context, md_mgr, &ptr_exp)?
+                )
+                .expect_register()
+                .add_metadatum(context, span_md_idx);
+
+                let len_value = return_on_termination_or_extract!(
+                    self.compile_expression_to_register(context, md_mgr, &len_exp)?
+                )
+                .expect_register()
+                .add_metadatum(context, span_md_idx);
+
+                self.current_block
+                    .append(context)
+                    .state_write_slot(ptr_value, key_value, len_value)
+                    .add_metadatum(context, span_md_idx);
+
+                // Return unit
+                let val = ConstantContent::get_unit(context).add_metadatum(context, span_md_idx);
+
+                Ok(TerminatorValue::new(
+                    CompiledValue::InRegister(val),
+                    context,
+                ))
+            }
+            Intrinsic::StateUpdateSlot => {
+                let key_exp = arguments[0].clone();
+                let ptr_exp = arguments[1].clone();
+                let offset_exp = arguments[2].clone();
+                let len_exp = arguments[3].clone();
+
+                let span_md_idx = md_mgr.span_to_md(context, &span);
+
+                let key_value = return_on_termination_or_extract!(
+                    self.compile_expression_to_memory(context, md_mgr, &key_exp)?
+                )
+                .expect_memory()
+                .add_metadatum(context, span_md_idx);
+
+                let ptr_value = return_on_termination_or_extract!(
+                    self.compile_expression_to_register(context, md_mgr, &ptr_exp)?
+                )
+                .expect_register()
+                .add_metadatum(context, span_md_idx);
+
+                let offset_value = return_on_termination_or_extract!(
+                    self.compile_expression_to_register(context, md_mgr, &offset_exp)?
+                )
+                .expect_register()
+                .add_metadatum(context, span_md_idx);
+
+                let len_value = return_on_termination_or_extract!(
+                    self.compile_expression_to_register(context, md_mgr, &len_exp)?
+                )
+                .expect_register()
+                .add_metadatum(context, span_md_idx);
+
+                // Emit the `state_update_slot` IR instruction.
+                self.current_block
+                    .append(context)
+                    .state_update_slot(ptr_value, key_value, offset_value, len_value)
+                    .add_metadatum(context, span_md_idx);
+
+                // Return unit.
+                let val = ConstantContent::get_unit(context).add_metadatum(context, span_md_idx);
 
                 Ok(TerminatorValue::new(
                     CompiledValue::InRegister(val),
@@ -1493,12 +1653,16 @@ impl<'a> FnCompiler<'a> {
                     Some(log_ty) => {
                         let span_md_idx = md_mgr.span_to_md(context, &span);
 
-                        // The `log` instruction
-                        let val = self
-                            .current_block
+                        // Emit the `log` instruction
+                        self.current_block
                             .append(context)
                             .log(log_val, log_ty, log_id, log_event_data)
                             .add_metadatum(context, span_md_idx);
+
+                        // Return unit
+                        let val =
+                            ConstantContent::get_unit(context).add_metadatum(context, span_md_idx);
+
                         Ok(TerminatorValue::new(
                             CompiledValue::InRegister(val),
                             context,
@@ -1748,11 +1912,14 @@ impl<'a> FnCompiler<'a> {
                 .expect_register()
                 .add_metadatum(context, span_md_idx);
 
-                let val = self
-                    .current_block
+                // Emit the `smo` instruction
+                self.current_block
                     .append(context)
                     .smo(recipient_value, message, user_message_size_val, coins)
                     .add_metadatum(context, span_md_idx);
+
+                // Return unit
+                let val = ConstantContent::get_unit(context).add_metadatum(context, span_md_idx);
 
                 Ok(TerminatorValue::new(
                     CompiledValue::InRegister(val),

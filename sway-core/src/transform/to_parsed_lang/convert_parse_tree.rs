@@ -8,6 +8,7 @@ use crate::{
     decl_engine::{
         parsed_engine::ParsedDeclEngineInsert, parsed_id::ParsedDeclId, ParsedInterfaceDeclId,
     },
+    error::span_of_arguments,
     language::{parsed::*, *},
     transform::{attribute::*, to_parsed_lang::context::Context},
     type_system::*,
@@ -2325,7 +2326,8 @@ fn expr_func_app_to_expression_kind(
                 return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
                     name: Intrinsic::Log.to_string(),
                     expected: 1,
-                    span: span.clone(),
+                    actual: arguments.len(),
+                    span: span_of_arguments(&arguments, &span),
                 }));
             }
 
@@ -2359,7 +2361,8 @@ fn expr_func_app_to_expression_kind(
                 return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
                     name: Intrinsic::Dbg.to_string(),
                     expected: 1,
-                    span,
+                    actual: arguments.len(),
+                    span: span_of_arguments(&arguments, &span),
                 }));
             }
 
@@ -2553,7 +2556,8 @@ fn expr_func_app_to_expression_kind(
                 return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
                     name: Intrinsic::Dbg.to_string(),
                     expected: 1,
-                    span,
+                    actual: arguments.len(),
+                    span: span_of_arguments(&arguments, &span),
                 }));
             }
             return Ok(arguments[0].kind.clone());
