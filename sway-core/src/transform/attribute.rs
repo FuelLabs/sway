@@ -906,7 +906,6 @@ impl Attributes {
                         parens
                             .get()
                             .into_iter()
-                            .cloned()
                             .map(|arg| AttributeArg {
                                 name: arg.name.clone(),
                                 value: arg.value.clone(),
@@ -1112,8 +1111,7 @@ impl Attributes {
             error_attr
                 .args
                 .iter()
-                .filter(|arg| arg.is_error_message())
-                .next_back()
+                .rfind(|arg| arg.is_error_message())
                 .and_then(|arg| arg.get_string_opt(&Handler::default()).ok().flatten())
         })
     }
