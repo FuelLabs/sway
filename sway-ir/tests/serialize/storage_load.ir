@@ -15,8 +15,8 @@ script {
         v1 = const b256 0x7fbd1192666bfac3767b890bd4d048c940879d316071e20c7c8c81bce2ca41c5
         store v1 to v0
         v2 = get_local __ptr u64, value_for_x
-// check: $VAR = state_load_word key $VAR
-        v3 = state_load_word key v0
+// check: $VAR = state_load_word key $VAR, 0
+        v3 = state_load_word key v0, 0
         store v3 to v2
         v4 = get_local __ptr u64, value_for_x
         v5 = load v4
