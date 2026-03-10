@@ -28,18 +28,11 @@ fn main() -> bool {
 // pass: lower-init-aggr
 
 // check: $(ptr_array_init=$VAL) = get_local __ptr [bool; 3], __array_init_0
-// check: $(id_0=$VAL) = const u64 0
-// check: $(ptr_array_0=$VAL) = get_elem_ptr $ptr_array_init, __ptr bool, $id_0
-// check: $(c_false_0=$VAL) = const bool false
-// check: store $c_false_0 to $ptr_array_0
+// check: mem_clear_val $ptr_array_init,
 // check: $(id_1=$VAL) = const u64 1
 // check: $(ptr_array_1=$VAL) = get_elem_ptr $ptr_array_init, __ptr bool, $id_1
 // check: $(c_true_0=$VAL) = const bool true
 // check: store $c_true_0 to $ptr_array_1
-// check: $(id_2=$VAL) = const u64 2
-// check: $(ptr_array_2=$VAL) = get_elem_ptr $ptr_array_init, __ptr bool, $id_2
-// check: $(c_false_0=$VAL) = const bool false
-// check: store $c_false_0 to $ptr_array_2
 // check: $(load_array_init=$VAL) = load $ptr_array_init
 // check: $(ptr_a=$VAL) = get_local __ptr [bool; 3], a
 // check: store $load_array_init to $ptr_a

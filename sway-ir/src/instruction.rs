@@ -222,6 +222,26 @@ impl InitAggrInitializer {
 
         InitAggrInitializer::Value(value)
     }
+
+    pub fn is_runtime_zeroed(&self, context: &Context) -> bool {
+        match self {
+            InitAggrInitializer::Value(val) => val
+                .get_constant(context)
+                .is_some_and(|c| c.is_runtime_zeroed(context)),
+            InitAggrInitializer::NestedInitAggr { load: _, init_aggr } => {
+                let Some(Instruction {
+                    parent: _,
+                    op: InstOp::InitAggr(init_aggr),
+                }) = init_aggr.get_instruction(context).as_ref()
+                else {
+                    panic!("Expected `init_aggr` instruction for nested init aggr");
+                };
+                init_aggr
+                    .initializers(context)
+                    .all(|init| init.is_runtime_zeroed(context))
+            }
+        }
+    }
 }
 
 /// Metadata describing a logged event.
