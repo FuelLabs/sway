@@ -106,7 +106,8 @@ impl ResetKnown {
     fn apply(&self, op: &Op, known_values: &mut KnownValues) {
         // All instruction write to $of and $err somehow.
         // Majority of cases we clear them
-        known_values.remove_reg_and_dependents(&VirtualRegister::Constant(ConstantRegister::Overflow));
+        known_values
+            .remove_reg_and_dependents(&VirtualRegister::Constant(ConstantRegister::Overflow));
         known_values.remove_reg_and_dependents(&VirtualRegister::Constant(ConstantRegister::Error));
 
         match self {
