@@ -401,7 +401,9 @@ impl AbstractInstructionSet {
                         known_values.assign(dst.clone(), KnownRegValue::Const(raw));
 
                         let span = op.owning_span.clone();
-                        if let Ok(v) = VirtualImmediate18::try_new(raw, span.unwrap_or_else(|| Span::dummy())) {
+                        if let Ok(v) =
+                            VirtualImmediate18::try_new(raw, span.unwrap_or_else(Span::dummy))
+                        {
                             op.opcode = Either::Left(VirtualOp::MOVI(dst.clone(), v));
                         }
 
@@ -628,7 +630,7 @@ mod tests {
                 VirtualOp::add(ConstantRegister::FuncArg2, "0", ConstantRegister::Zero).into(),
                 VirtualOp::add(ConstantRegister::FuncArg3, "5", "0").into(),
                 VirtualOp::add(ConstantRegister::FuncArg4, "0", "5").into(),
-                // add when overflow 
+                // add when overflow
                 VirtualOp::not("10", ConstantRegister::Zero).into(),
                 VirtualOp::add("11", "10", ConstantRegister::One).into(),
                 //sub
@@ -665,7 +667,7 @@ mod tests {
                 VirtualOp::exp(ConstantRegister::FuncArg2, "0", ConstantRegister::One).into(),
                 VirtualOp::exp(ConstantRegister::FuncArg3, ConstantRegister::Zero, "0").into(),
                 VirtualOp::exp(ConstantRegister::FuncArg4, ConstantRegister::One, "0").into(),
-                 // exp when overflow
+                // exp when overflow
                 VirtualOp::not("10", ConstantRegister::Zero).into(),
                 VirtualOp::exp("11", "10", "10").into(),
                 // mlog

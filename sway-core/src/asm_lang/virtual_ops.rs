@@ -321,10 +321,7 @@ impl VirtualOp {
         VirtualOp::MROO(a.into(), b.into(), c.into())
     }
 
-    pub fn not(
-        a: impl Into<VirtualRegister>,
-        b: impl Into<VirtualRegister>,
-    ) -> VirtualOp {
+    pub fn not(a: impl Into<VirtualRegister>, b: impl Into<VirtualRegister>) -> VirtualOp {
         VirtualOp::NOT(a.into(), b.into())
     }
 
