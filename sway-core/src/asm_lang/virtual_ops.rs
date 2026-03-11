@@ -253,7 +253,7 @@ impl VirtualOp {
         VirtualOp::MOVE(a.into(), b.into())
     }
 
-    pub fn r#movi(a: impl Into<VirtualRegister>, b: impl Into<VirtualImmediate18>) -> VirtualOp {
+    pub fn movi(a: impl Into<VirtualRegister>, b: impl Into<VirtualImmediate18>) -> VirtualOp {
         VirtualOp::MOVI(a.into(), b.into())
     }
 
@@ -319,6 +319,13 @@ impl VirtualOp {
         c: impl Into<VirtualRegister>,
     ) -> VirtualOp {
         VirtualOp::MROO(a.into(), b.into(), c.into())
+    }
+
+    pub fn not(
+        a: impl Into<VirtualRegister>,
+        b: impl Into<VirtualRegister>,
+    ) -> VirtualOp {
+        VirtualOp::NOT(a.into(), b.into())
     }
 
     pub fn and(
