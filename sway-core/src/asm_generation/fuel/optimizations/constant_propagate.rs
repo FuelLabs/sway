@@ -67,17 +67,16 @@ impl KnownValues {
         }
     }
 
-    /// Clear values that depend on a register having a specific value.
-    fn clear_dependent_on(&mut self, reg: &VirtualRegister) {
-        let mut q = vec![reg.clone()];
+    /// Remove `reg` and other known values that directly or indirectly (recursively) depend on `reg`.
+    fn remove_reg_and_dependents(&mut self, reg: &VirtualRegister) {
+        let mut worklist = vec![reg.clone()];
 
-        while let Some(reg) = q.pop() {
+        while let Some(reg) = worklist.pop() {
             let keys = self
                 .values
                 .extract_if(|_, v| v.depends_on(&reg))
-                .map(|(k, _)| k)
-                .collect::<Vec<_>>();
-            q.extend(keys);
+                .map(|(k, _)| k);
+            worklist.extend(keys);
 
             self.values.remove(&reg);
         }
@@ -85,7 +84,7 @@ impl KnownValues {
 
     /// Insert a known value for a register.
     fn assign(&mut self, dst: VirtualRegister, value: KnownRegValue) {
-        self.clear_dependent_on(&dst);
+        self.remove_reg_and_dependents(&dst);
         self.values.insert(dst, value);
     }
 }
@@ -100,32 +99,24 @@ enum ResetKnown {
     /// Reset non-virtual registers in addition to defs
     DefsAndNonVirtuals,
     /// Reset all known values
-    Full,
+    All,
 }
 
 impl ResetKnown {
     fn apply(&self, op: &Op, known_values: &mut KnownValues) {
         // All instruction write to $of and $err somehow.
         // Majority of cases we clear them
-        known_values.clear_dependent_on(&VirtualRegister::Constant(ConstantRegister::Overflow));
-        known_values
-            .values
-            .remove(&VirtualRegister::Constant(ConstantRegister::Overflow));
-        known_values.clear_dependent_on(&VirtualRegister::Constant(ConstantRegister::Error));
-        known_values
-            .values
-            .remove(&VirtualRegister::Constant(ConstantRegister::Error));
+        known_values.remove_reg_and_dependents(&VirtualRegister::Constant(ConstantRegister::Overflow));
+        known_values.remove_reg_and_dependents(&VirtualRegister::Constant(ConstantRegister::Error));
 
         match self {
             ResetKnown::Nothing => {}
             ResetKnown::Defs => {
                 for d in op.def_registers() {
-                    known_values.clear_dependent_on(d);
-                    known_values.values.remove(d);
+                    known_values.remove_reg_and_dependents(d);
                 }
                 for d in op.def_const_registers() {
-                    known_values.clear_dependent_on(d);
-                    known_values.values.remove(d);
+                    known_values.remove_reg_and_dependents(d);
                 }
             }
             ResetKnown::DefsAndNonVirtuals => {
@@ -134,7 +125,7 @@ impl ResetKnown {
                     .values
                     .retain(|k, _| matches!(k, VirtualRegister::Virtual(_)));
             }
-            ResetKnown::Full => {
+            ResetKnown::All => {
                 known_values.values.clear();
             }
         }
@@ -186,7 +177,7 @@ impl AbstractInstructionSet {
 
             // Replace "JNZ reg LABEL" to
             // - NOOP if the reg is zero, or
-            // - "JMP LABEL" if reg is zero
+            // - "JMP LABEL" if reg is not zero
             if let Either::Right(ControlFlowOp::Jump {
                 to,
                 type_: JumpType::NotZero(reg),
@@ -224,7 +215,7 @@ impl AbstractInstructionSet {
                     known_values.assign($dst.clone(), KnownRegValue::Const($v));
                 };
                 // If the value is one of the operands, we will use MOVE
-                // if is a literal we will use MOVI
+                // if it is a literal we will use MOVI
                 (new_opcode; $dst:ident, $l:ident, $r:ident; left) => {
                     Either::Left(VirtualOp::MOVE($dst.clone(), $l.clone()))
                 };
@@ -235,8 +226,8 @@ impl AbstractInstructionSet {
                     let imm = VirtualImmediate18::try_new($v, Span::dummy()).ok()?;
                     Either::Left(VirtualOp::MOVI($dst.clone(), imm))
                 }};
-                // if left == $initial_value assigns $end_value
-                (gen; $op:ident, $opI:ident; $dst:ident, $l:ident, $r:ident, $lv: ident, $rv:ident; if left is $initial_value:literal assigns $end_value:tt; $($rest:tt)*) => {
+                // if left == $initial_value assign $end_value
+                (gen; $op:ident, $opI:ident; $dst:ident, $l:ident, $r:ident, $lv: ident, $rv:ident; if left is $initial_value:literal assign $end_value:tt; $($rest:tt)*) => {
                     if let (Some(KnownRegValue::Const($initial_value)), _) = (&$lv, &$rv) {
                         let new_opcode = transform_operator!{new_opcode; $dst, $l, $r; $end_value};
                         // The line above can bail so we must run it before we change anything
@@ -246,8 +237,8 @@ impl AbstractInstructionSet {
                     }
                     transform_operator!{gen; $op, $opI; $dst, $l, $r, $lv, $rv; $($rest)*}
                 };
-                // if right == $initial_value assigns $end_value
-                (gen; $op:ident, $opI:ident; $dst:ident, $l:ident, $r:ident, $lv: ident, $rv:ident; if right is $initial_value:literal assigns $end_value:tt; $($rest:tt)*) => {
+                // if right == $initial_value assign $end_value
+                (gen; $op:ident, $opI:ident; $dst:ident, $l:ident, $r:ident, $lv: ident, $rv:ident; if right is $initial_value:literal assign $end_value:tt; $($rest:tt)*) => {
                     if let (_, Some(KnownRegValue::Const($initial_value))) = (&$lv, &$rv) {
                         let new_opcode = transform_operator!{new_opcode; $dst, $l, $r; $end_value};
                         // The line above can bail so we must run it before we change anything
@@ -314,7 +305,7 @@ impl AbstractInstructionSet {
             log(&format!("{op}\n"));
 
             // Propagate constant of some ops
-            // Also transform them if they registers are known
+            // Also transform them if their registers are known
             let reset = match op.opcode.clone() {
                 Either::Left(VirtualOp::MOVI(dst, imm)) => {
                     let imm = KnownRegValue::Const(imm.value() as u64);
@@ -360,72 +351,72 @@ impl AbstractInstructionSet {
                 // algebraic operators
                 Either::Left(VirtualOp::ADD(..)) => transform_operator! {ADD, ADDI;
                     both_known: u64::checked_add;
-                    if left is 0 assigns right;
-                    if right is 0 assigns left;
+                    if left is 0 assign right;
+                    if right is 0 assign left;
                     commutative: true;
                 },
                 Either::Left(VirtualOp::SUB(..)) => transform_operator! {SUB, SUBI;
                     both_known: u64::checked_sub;
-                    if right is 0 assigns left;
+                    if right is 0 assign left;
                 },
                 Either::Left(VirtualOp::MUL(..)) => transform_operator! {MUL, MULI;
                     both_known: u64::checked_mul;
-                    if left is 1 assigns right;
-                    if right is 1 assigns left;
-                    if left is 0 assigns 0;
-                    if right is 0 assigns 0;
+                    if left is 1 assign right;
+                    if right is 1 assign left;
+                    if left is 0 assign 0;
+                    if right is 0 assign 0;
                     commutative: true;
                 },
                 Either::Left(VirtualOp::DIV(..)) => transform_operator! {DIV, DIVI;
                     both_known: u64::checked_div;
-                    if right is 1 assigns left;
-                    if left is 0 assigns 0;
+                    if right is 1 assign left;
+                    if left is 0 assign 0;
                 },
                 Either::Left(VirtualOp::EXP(..)) => transform_operator! {EXP, EXPI;
                     both_known: u64::checked_pow;
-                    if right is 0 assigns 1;
-                    if right is 1 assigns left;
-                    if left is 0 assigns 0;
-                    if left is 1 assigns 1;
+                    if right is 0 assign 1;
+                    if right is 1 assign left;
+                    if left is 0 assign 0;
+                    if left is 1 assign 1;
                 },
                 Either::Left(VirtualOp::MLOG(..)) => transform_operator! {MLOG, None;
                     both_known: u64::checked_ilog;
                 },
                 Either::Left(VirtualOp::MOD(..)) => transform_operator! {MOD, MODI;
                     both_known: u64::checked_rem;
-                    if right is 1 assigns 0;
+                    if right is 1 assign 0;
                 },
                 Either::Left(VirtualOp::MROO(..)) => transform_operator! {MROO, None;
                     both_known: checked_nth_root;
-                    if right is 1 assigns left;
+                    if right is 1 assign left;
                 },
 
                 // bitwise
                 Either::Left(VirtualOp::AND(..)) => transform_operator! {AND, ANDI;
                     both_known: u64_bitand;
-                    if left is 0 assigns 0;
-                    if right is 0 assigns 0;
+                    if left is 0 assign 0;
+                    if right is 0 assign 0;
                      commutative: true;
                 },
                 Either::Left(VirtualOp::OR(..)) => transform_operator! {OR, ORI;
                     both_known: u64_bitor;
-                    if left is 0 assigns right;
-                    if right is 0 assigns left;
+                    if left is 0 assign right;
+                    if right is 0 assign left;
                     commutative: true;
                 },
                 Either::Left(VirtualOp::XOR(..)) => transform_operator! {XOR, XORI;
                     both_known: u64_bitxor;
-                    if left is 0 assigns right;
-                    if right is 0 assigns left;
+                    if left is 0 assign right;
+                    if right is 0 assign left;
                     commutative: true;
                 },
                 Either::Left(VirtualOp::SLL(..)) => transform_operator! {SLL, SLLI;
                     both_known: u64::checked_shl;
-                    if right is 0 assigns left;
+                    if right is 0 assign left;
                 },
                 Either::Left(VirtualOp::SRL(..)) => transform_operator! {SRL, SRLI;
                     both_known: u64::checked_shr;
-                    if right is 0 assigns left;
+                    if right is 0 assign left;
                 },
 
                 // Comparisons
@@ -450,30 +441,30 @@ impl AbstractInstructionSet {
                 None => {
                     match &op.opcode {
                         Either::Left(op) => match op {
-                            VirtualOp::ECAL(_, _, _, _) => ResetKnown::Full,
+                            VirtualOp::ECAL(_, _, _, _) => ResetKnown::All,
                             // TODO: this constraint can be relaxed
-                            _ if op.has_side_effect() => ResetKnown::Full,
+                            _ if op.has_side_effect() => ResetKnown::All,
                             _ => ResetKnown::Defs,
                         },
                         Either::Right(op) => match op {
                             ControlFlowOp::Label(label) => {
                                 if jump_target_labels.contains_key(label) {
-                                    ResetKnown::Full
+                                    ResetKnown::All
                                 } else {
                                     ResetKnown::Defs
                                 }
                             }
                             ControlFlowOp::Jump { type_, .. } => match type_ {
-                                JumpType::Call => ResetKnown::Full,
+                                JumpType::Call => ResetKnown::All,
                                 _ => ResetKnown::Defs,
                             },
                             ControlFlowOp::Comment
                             | ControlFlowOp::ConfigurablesOffsetPlaceholder
                             | ControlFlowOp::DataSectionOffsetPlaceholder => ResetKnown::Defs,
                             ControlFlowOp::PushAll(_) => ResetKnown::DefsAndNonVirtuals,
-                            ControlFlowOp::PopAll(_) => ResetKnown::Full,
-                            ControlFlowOp::JumpToAddr(_) => ResetKnown::Full,
-                            ControlFlowOp::ReturnFromCall { .. } => ResetKnown::Full,
+                            ControlFlowOp::PopAll(_) => ResetKnown::All,
+                            ControlFlowOp::JumpToAddr(_) => ResetKnown::All,
+                            ControlFlowOp::ReturnFromCall { .. } => ResetKnown::All,
                         },
                     }
                 }
