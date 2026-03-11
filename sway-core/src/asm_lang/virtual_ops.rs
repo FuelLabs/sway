@@ -621,7 +621,7 @@ impl VirtualOp {
     }
 
     /// What are the special registers that an OP may set.
-    /// Examples: Error, Overflow, Flags etc...
+    /// Examples: Error, Overflow, Flags, etc.
     pub(crate) fn def_const_registers(&self) -> BTreeSet<&VirtualRegister> {
         use ConstantRegister::*;
         use VirtualOp::*;
