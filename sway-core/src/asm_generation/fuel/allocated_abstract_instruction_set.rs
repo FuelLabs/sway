@@ -206,7 +206,6 @@ impl AllocatedAbstractInstructionSet {
                         .collect::<Vec<_>>();
 
                     let (mask_l, mask_h) = generate_mask(&regs);
-                    // eprintln!("{fn_init_prefix} {:?} {:?} {:?}", regs, mask_l, mask_h);
                     if mask_l.value() != 0 {
                         new_ops.push(AllocatedAbstractOp {
                             opcode: Either::Left(AllocatedInstruction::PSHL(mask_l)),
