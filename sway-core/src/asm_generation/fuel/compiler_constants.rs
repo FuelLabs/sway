@@ -2,6 +2,9 @@
 /// to use. Registers reserved by the compiler are contained within these.
 const NUM_TOTAL_REGISTERS: u8 = 64;
 
+// Registers used by the VM internally as flags and others.
+pub(crate) const FLAGS_REGISTER: u8 = 0xF;
+
 /// This is the number of registers reserved by the compiler. Adjust this number if a new
 /// reservation must be made.
 /// So far, the compiler-reserved registers are:
@@ -11,8 +14,6 @@ const NUM_TOTAL_REGISTERS: u8 = 64;
 /// 4. SCRATCH - used for certain operations which need a register temporarily, such as JMP.
 /// 5. LOCALS_BASE - base register for stack locals.
 /// 6. ARGS - for passing arguments to function calls.
-pub(crate) const FLAGS_REGISTER: u8 = 0xF;
-
 pub(crate) const DATA_SECTION_REGISTER: u8 = NUM_TOTAL_REGISTERS - 1;
 pub(crate) const RETURN_ADDRESS_REGISTER: u8 = NUM_TOTAL_REGISTERS - 2;
 pub(crate) const RETURN_VALUE_REGISTER: u8 = NUM_TOTAL_REGISTERS - 3;
