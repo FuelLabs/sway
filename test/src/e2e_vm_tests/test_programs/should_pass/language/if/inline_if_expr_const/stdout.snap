@@ -7,20 +7,12 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/if/inline_if_expr_const
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert)
    Compiling script inline_if_expr_const (test/src/e2e_vm_tests/test_programs/should_pass/language/if/inline_if_expr_const)
-<<<<<<< HEAD
-    Finished debug [unoptimized + fuel] target(s) [632 B] in ???
-=======
     Finished debug [unoptimized + fuel] target(s) [600 B] in ???
->>>>>>> 80ba6fe31 (update tests)
      Running 1 test, filtered 0 tests
 
 tested -- inline_if_expr_const
 
-<<<<<<< HEAD
-      test test_if_works ... ok (???, 585 gas)
-=======
       test test_if_works ... ok (???, 523 gas)
->>>>>>> 80ba6fe31 (update tests)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
@@ -222,16 +214,6 @@ cfsi i8                       ; [fn end: if_not_const_5] free: locals 8 byte(s),
 poph i530432                  ; [fn end: if_not_const_5]: restore used high registers 40..64
 jal  $zero $$reta i0          ; [fn end: if_not_const_5] return from call
 
-<<<<<<< HEAD
-pshh i524288                  ; [fn init: if_const_true_6]: push used high registers 40..64
-movi $$retv i10               ; [fn end: if_const_true_6] set return value
-poph i524288                  ; [fn end: if_const_true_6]: restore used high registers 40..64
-jal  $zero $$reta i0          ; [fn end: if_const_true_6] return from call
-
-pshh i524288                  ; [fn init: if_const_false_7]: push used high registers 40..64
-movi $$retv i20               ; [fn end: if_const_false_7] set return value
-poph i524288                  ; [fn end: if_const_false_7]: restore used high registers 40..64
-=======
 pshh i528384                  ; [fn init: if_const_true_6]: push used high registers 40..64
 movi $r0 i10                  ; initialize constant into register
 move $$retv $r0               ; [fn end: if_const_true_6] set return value
@@ -242,7 +224,6 @@ pshh i528384                  ; [fn init: if_const_false_7]: push used high regi
 movi $r0 i20                  ; initialize constant into register
 move $$retv $r0               ; [fn end: if_const_false_7] set return value
 poph i528384                  ; [fn end: if_const_false_7]: restore used high registers 40..64
->>>>>>> 80ba6fe31 (update tests)
 jal  $zero $$reta i0          ; [fn end: if_const_false_7] return from call
 
 

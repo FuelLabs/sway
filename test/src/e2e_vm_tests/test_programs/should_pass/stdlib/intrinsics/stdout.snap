@@ -7,20 +7,12 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/stdlib/intrinsics
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-conversions)
    Compiling library intrinsics (test/src/e2e_vm_tests/test_programs/should_pass/stdlib/intrinsics)
-<<<<<<< HEAD
-    Finished debug [unoptimized + fuel] target(s) [1.288 KB] in ???
-=======
     Finished debug [unoptimized + fuel] target(s) [1.304 KB] in ???
->>>>>>> 80ba6fe31 (update tests)
      Running 1 test, filtered 0 tests
 
 tested -- intrinsics
 
-<<<<<<< HEAD
-      test t ... ok (???, 1926 gas)
-=======
       test t ... ok (???, 1798 gas)
->>>>>>> 80ba6fe31 (update tests)
            decoded log values:
 16, log rb: 1515152261580153489
 
@@ -34,20 +26,12 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/stdlib/intrinsics
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-conversions)
    Compiling library intrinsics (test/src/e2e_vm_tests/test_programs/should_pass/stdlib/intrinsics)
-<<<<<<< HEAD
-    Finished debug [unoptimized + fuel] target(s) [1.288 KB] in ???
-=======
     Finished debug [unoptimized + fuel] target(s) [1.304 KB] in ???
->>>>>>> 80ba6fe31 (update tests)
      Running 1 test, filtered 0 tests
 
 tested -- intrinsics
 
-<<<<<<< HEAD
-      test t ... ok (???, 1926 gas)
-=======
       test t ... ok (???, 1798 gas)
->>>>>>> 80ba6fe31 (update tests)
            decoded log values:
 11, log rb: 1515152261580153489
 
