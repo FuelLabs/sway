@@ -9163,6 +9163,7 @@ dependencies = [
  "clap",
  "dirs 5.0.1",
  "either",
+ "expect-test",
  "fuel-abi-types",
  "fuel-ethabi",
  "fuel-etk-asm",
