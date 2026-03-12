@@ -56,7 +56,7 @@ impl AllocatedRegister {
                     panic!("invalid register id")
                 }
                 fuel_asm::RegId::new(id)
-            },
+            }
             AllocatedRegister::Constant(constant) => constant.to_reg_id(),
         }
     }
