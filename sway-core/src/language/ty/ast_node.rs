@@ -52,8 +52,8 @@ impl DebugWithEngines for TyAstNode {
         use TyAstNodeContent::*;
         match &self.content {
             Declaration(typed_decl) => DebugWithEngines::fmt(typed_decl, f, engines),
+            Statement(stmt) => Debug::fmt(stmt, f),
             Expression(exp) => DebugWithEngines::fmt(exp, f, engines),
-            SideEffect(_) => f.write_str(""),
             Error(_, _) => f.write_str("error"),
         }
     }
@@ -63,8 +63,9 @@ impl SubstTypes for TyAstNode {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         match self.content {
             TyAstNodeContent::Declaration(ref mut decl) => decl.subst(ctx),
+            TyAstNodeContent::Statement(ref mut statement) => statement.subst(ctx),
             TyAstNodeContent::Expression(ref mut expr) => expr.subst(ctx),
-            TyAstNodeContent::SideEffect(_) | TyAstNodeContent::Error(_, _) => HasChanges::No,
+            TyAstNodeContent::Error(_, _) => HasChanges::No,
         }
     }
 }
@@ -84,10 +85,12 @@ impl ReplaceDecls for TyAstNode {
                 decl.replace_decls(decl_mapping, handler, ctx)
             }
             TyAstNodeContent::Declaration(_) => Ok(false),
+            TyAstNodeContent::Statement(ref mut statement) => {
+                statement.replace_decls(decl_mapping, handler, ctx)
+            }
             TyAstNodeContent::Expression(ref mut expr) => {
                 expr.replace_decls(decl_mapping, handler, ctx)
             }
-            TyAstNodeContent::SideEffect(_) => Ok(false),
             TyAstNodeContent::Error(_, _) => Ok(false),
         }
     }
@@ -97,10 +100,17 @@ impl UpdateConstantExpression for TyAstNode {
     fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
         match self.content {
             TyAstNodeContent::Declaration(_) => {}
+            TyAstNodeContent::Statement(ref mut statement) => match statement {
+                TyStatement::Let(binding) => {
+                    binding
+                        .value
+                        .update_constant_expression(engines, implementing_type);
+                }
+                TyStatement::Use(_) | TyStatement::Mod(_) => {}
+            },
             TyAstNodeContent::Expression(ref mut expr) => {
                 expr.update_constant_expression(engines, implementing_type)
             }
-            TyAstNodeContent::SideEffect(_) => (),
             TyAstNodeContent::Error(_, _) => (),
         }
     }
@@ -172,6 +182,9 @@ impl MaterializeConstGenerics for TyAstNode {
                     .materialize_const_generics(engines, handler, name, value)?;
                 Ok(())
             }
+            TyAstNodeContent::Statement(statement) => {
+                statement.materialize_const_generics(engines, handler, name, value)
+            }
             TyAstNodeContent::Expression(expr) => {
                 expr.materialize_const_generics(engines, handler, name, value)
             }
@@ -186,7 +199,7 @@ impl TyAstNode {
         match &self.content {
             TyAstNodeContent::Declaration(decl) => decl.visibility(decl_engine).is_public(),
             TyAstNodeContent::Expression(_)
-            | TyAstNodeContent::SideEffect(_)
+            | TyAstNodeContent::Statement(_)
             | TyAstNodeContent::Error(_, _) => false,
         }
     }
@@ -238,7 +251,7 @@ impl TyAstNode {
             TyAstNodeContent::Expression(TyExpression { return_type, .. }) => {
                 (*type_engine.get(*return_type)).clone()
             }
-            TyAstNodeContent::SideEffect(_) => TypeInfo::Tuple(Vec::new()),
+            TyAstNodeContent::Statement(_) => TypeInfo::Tuple(Vec::new()),
             TyAstNodeContent::Error(_, error) => TypeInfo::ErrorRecovery(*error),
         }
     }
@@ -314,7 +327,15 @@ impl TyAstNode {
             TyAstNodeContent::Expression(node) => {
                 node.check_deprecated(engines, handler, allow_deprecated);
             }
-            TyAstNodeContent::SideEffect(_) | TyAstNodeContent::Error(_, _) => {}
+            TyAstNodeContent::Statement(statement) => match statement {
+                TyStatement::Let(binding) => {
+                    binding
+                        .value
+                        .check_deprecated(engines, handler, allow_deprecated);
+                }
+                TyStatement::Use(_) | TyStatement::Mod(_) => {}
+            },
+            TyAstNodeContent::Error(_, _) => {}
         }
     }
 
@@ -358,7 +379,8 @@ impl TyAstNode {
                     | TyDecl::TypeAliasDecl(_) => {}
                 },
                 TyAstNodeContent::Expression(_node) => {}
-                TyAstNodeContent::SideEffect(_) | TyAstNodeContent::Error(_, _) => {}
+                TyAstNodeContent::Statement(_) => {}
+                TyAstNodeContent::Error(_, _) => {}
             };
             Ok(())
         })
@@ -403,9 +425,8 @@ impl TyAstNode {
 #[allow(clippy::large_enum_variant)]
 pub enum TyAstNodeContent {
     Declaration(TyDecl),
+    Statement(TyStatement),
     Expression(TyExpression),
-    // a no-op node used for something that just issues a side effect, like an import statement.
-    SideEffect(TySideEffect),
     Error(Box<[Span]>, #[serde(skip)] ErrorEmitted),
 }
 
@@ -414,8 +435,8 @@ impl PartialEqWithEngines for TyAstNodeContent {
     fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         match (self, other) {
             (Self::Declaration(x), Self::Declaration(y)) => x.eq(y, ctx),
+            (Self::Statement(x), Self::Statement(y)) => x.eq(y, ctx),
             (Self::Expression(x), Self::Expression(y)) => x.eq(y, ctx),
-            (Self::SideEffect(_), Self::SideEffect(_)) => true,
             _ => false,
         }
     }
@@ -429,11 +450,11 @@ impl HashWithEngines for TyAstNodeContent {
             Declaration(decl) => {
                 decl.hash(state, engines);
             }
+            Statement(stmt) => {
+                stmt.hash(state, engines);
+            }
             Expression(exp) => {
                 exp.hash(state, engines);
-            }
-            SideEffect(effect) => {
-                effect.hash(state);
             }
             Error(_, _) => {}
         }
@@ -448,8 +469,8 @@ impl TypeCheckAnalysis for TyAstNodeContent {
     ) -> Result<(), ErrorEmitted> {
         match self {
             TyAstNodeContent::Declaration(node) => node.type_check_analyze(handler, ctx)?,
+            TyAstNodeContent::Statement(node) => node.type_check_analyze(handler, ctx)?,
             TyAstNodeContent::Expression(node) => node.type_check_analyze(handler, ctx)?,
-            TyAstNodeContent::SideEffect(_) => {}
             TyAstNodeContent::Error(_, _) => {}
         }
         Ok(())
@@ -464,8 +485,8 @@ impl TypeCheckFinalization for TyAstNodeContent {
     ) -> Result<(), ErrorEmitted> {
         match self {
             TyAstNodeContent::Declaration(node) => node.type_check_finalize(handler, ctx)?,
+            TyAstNodeContent::Statement(node) => node.type_check_finalize(handler, ctx)?,
             TyAstNodeContent::Expression(node) => node.type_check_finalize(handler, ctx)?,
-            TyAstNodeContent::SideEffect(_) => {}
             TyAstNodeContent::Error(_, _) => {}
         }
         Ok(())
@@ -481,8 +502,8 @@ impl CollectTypesMetadata for TyAstNodeContent {
         use TyAstNodeContent::*;
         match self {
             Declaration(decl) => decl.collect_types_metadata(handler, ctx),
+            Statement(stmt) => stmt.collect_types_metadata(handler, ctx),
             Expression(expr) => expr.collect_types_metadata(handler, ctx),
-            SideEffect(_) => Ok(vec![]),
             Error(_, _) => Ok(vec![]),
         }
     }
@@ -493,7 +514,7 @@ impl GetDeclIdent for TyAstNodeContent {
         match self {
             TyAstNodeContent::Declaration(decl) => decl.get_decl_ident(engines),
             TyAstNodeContent::Expression(_expr) => None, //expr.get_decl_ident(),
-            TyAstNodeContent::SideEffect(_) => None,
+            TyAstNodeContent::Statement(_) => None,
             TyAstNodeContent::Error(_, _) => None,
         }
     }

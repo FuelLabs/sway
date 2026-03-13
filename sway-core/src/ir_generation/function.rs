@@ -401,6 +401,7 @@ impl<'a> FnCompiler<'a> {
                 ty::TyDecl::EnumVariantDecl { .. } => unexpected_decl("enum variant"),
                 ty::TyDecl::TraitTypeDecl { .. } => unexpected_decl("trait type"),
             },
+            ty::TyAstNodeContent::Statement(_) => Ok(None),
             ty::TyAstNodeContent::Expression(te) => {
                 match &te.expression {
                     TyExpressionVariant::ImplicitReturn(exp) => self
@@ -418,9 +419,6 @@ impl<'a> FnCompiler<'a> {
                     }
                 }
             }
-            // a side effect can be () because it just impacts the type system/namespacing.
-            // There should be no new IR generated.
-            ty::TyAstNodeContent::SideEffect(_) => Ok(None),
             ty::TyAstNodeContent::Error(_, _) => {
                 unreachable!("error node found when generating IR");
             }
