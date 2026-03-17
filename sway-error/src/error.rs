@@ -1147,7 +1147,7 @@ pub enum CompileError {
         infos: Vec<(Span, String)>,
         helps: Vec<(Span, String)>,
         bottom_helps: Vec<String>,
-    }
+    },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -3414,13 +3414,13 @@ impl ToDiagnostic for CompileError {
                     issue: Issue::error(
                         source_engine,
                         span.clone(),
-                        format!("This type is not trivially decodable"),
+                        "This type is not trivially decodable".to_string(),
                     ),
                     hints,
                     help: [
                         "For more details on trivial decoding see https://raw.githubusercontent.com/FuelLabs/sway/d71243f17aba2ac1a6af8d0659a573cab7517e38/docs/slides/encoding.md".to_string(),
                     ].into_iter().chain(
-                        bottom_helps.clone().into_iter()
+                        bottom_helps.clone()
                     ).collect(),
                 }
             }
