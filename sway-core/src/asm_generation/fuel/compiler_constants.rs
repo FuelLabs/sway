@@ -1,8 +1,5 @@
-/// The total number of registers available and the number of registers available for the compiler
-/// to use. Registers reserved by the compiler are contained within these.
 const NUM_TOTAL_REGISTERS: u8 = 64;
 
-// Registers used by the VM internally as flags and others.
 pub(crate) const FLAGS_REGISTER: u8 = 0xF;
 
 /// This is the number of registers reserved by the compiler. Adjust this number if a new
