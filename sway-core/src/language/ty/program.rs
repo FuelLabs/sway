@@ -29,6 +29,7 @@ pub struct TyProgram {
     pub storage_slots: Vec<StorageSlot>,
     pub logged_types: Vec<(LogId, TypeId)>,
     pub messages_types: Vec<(MessageId, TypeId)>,
+    pub decls_to_check: Vec<TyDecl>,
 }
 
 fn get_type_not_allowed_error(
