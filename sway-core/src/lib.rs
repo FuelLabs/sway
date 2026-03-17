@@ -1188,10 +1188,6 @@ pub fn compile_to_asm(
         experimental,
     )?;
 
-    if let Ok(t) = ast_res.typed.as_ref() {
-        dbg!(&t.decls_to_check);
-    }
-
     ast_to_asm(handler, engines, &ast_res, build_config, experimental)
 }
 

@@ -1,5 +1,5 @@
 library;
 
 pub struct InnerStruct {
-    pub a: bool,
+    pub a: u64,
 }

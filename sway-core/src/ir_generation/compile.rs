@@ -1,9 +1,19 @@
 use crate::{
-    Engines, PanicOccurrences, PanickingCallOccurrences, TypeInfo, decl_engine::{DeclEngineGet, DeclId, DeclRefFunction}, ir_generation::{
-        KeyedTyFunctionDecl, PanickingFunctionCache, convert::convert_resolved_typeid_no_span
-    }, language::{
-        Visibility, ty::{self, StructDecl, TyDecl}
-    }, metadata::MetadataManager, namespace::ResolvedDeclaration, semantic_analysis::namespace, transform::AttributeKind, type_system::TypeId, types::{LogId, MessageId}
+    decl_engine::{DeclEngineGet, DeclId, DeclRefFunction},
+    ir_generation::{
+        convert::convert_resolved_typeid_no_span, KeyedTyFunctionDecl, PanickingFunctionCache,
+    },
+    language::{
+        ty::{self, StructDecl, TyDecl},
+        Visibility,
+    },
+    metadata::MetadataManager,
+    namespace::ResolvedDeclaration,
+    semantic_analysis::namespace,
+    transform::AttributeKind,
+    type_system::TypeId,
+    types::{LogId, MessageId},
+    Engines, PanicOccurrences, PanickingCallOccurrences, TypeInfo,
 };
 
 use super::{
@@ -13,7 +23,7 @@ use super::{
     CompiledFunctionCache,
 };
 
-use sway_ast::attribute::REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE;
+use sway_ast::{attribute::REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE, Literal};
 use sway_error::{error::CompileError, handler::Handler};
 use sway_ir::{metadata::combine as md_combine, *};
 use sway_types::{Ident, Span, Spanned};
@@ -104,6 +114,7 @@ pub(super) fn compile_predicate(
     panicking_fn_cache: &mut PanickingFunctionCache,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
     compiled_fn_cache: &mut CompiledFunctionCache,
+    decls_to_check: &[TyDecl],
 ) -> Result<Module, Vec<CompileError>> {
     let module = Module::new(context, Kind::Predicate);
 
@@ -138,7 +149,7 @@ pub(super) fn compile_predicate(
         panicking_fn_cache,
         None,
         compiled_fn_cache,
-        &[],
+        decls_to_check,
     )?;
     compile_tests(
         engines,
@@ -164,6 +175,7 @@ pub(super) fn compile_contract(
     abi_entries: &[DeclId<ty::TyFunctionDecl>],
     namespace: &namespace::Namespace,
     declarations: &[ty::TyDecl],
+    decls_to_check: &[TyDecl],
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     panic_occurrences: &mut PanicOccurrences,
@@ -217,7 +229,7 @@ pub(super) fn compile_contract(
             panicking_fn_cache,
             None,
             compiled_fn_cache,
-            &[],
+            decls_to_check,
         )?;
     } else {
         // In the case of the encoding v0, we need to compile individual ABI entries
@@ -602,7 +614,18 @@ pub(super) fn compile_entry_function(
                 for (_, atts) in atts {
                     for att in atts.iter() {
                         for arg in att.args.iter() {
-                            if arg.name.as_str() == REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE && !is_type_trivially_decodable(*decl_id) {
+                            let requires_trivially_decodable = matches!(
+                                &arg.value,
+                                Some(Literal::String(val)) if val.parsed == "true"
+                            ) || matches!(
+                                &arg.value,
+                                Some(Literal::Bool(val)) if val.kind.into()
+                            );
+
+                            if arg.name.as_str() == REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE
+                                && requires_trivially_decodable
+                                && !is_type_trivially_decodable(*decl_id)
+                            {
                                 let mut infos = vec![];
                                 let mut helps = vec![];
                                 let mut bottom_helps = BTreeSet::new();

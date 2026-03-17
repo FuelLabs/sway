@@ -399,6 +399,7 @@ pub fn compile_program<'a>(
             &mut panicking_fn_cache,
             &test_fns,
             &mut compiled_fn_cache,
+            decls_to_check,
         ),
         ty::TyProgramKind::Contract {
             entry_function,
@@ -409,6 +410,7 @@ pub fn compile_program<'a>(
             abi_entries,
             namespace,
             declarations,
+            decls_to_check,
             &logged_types,
             &messages_types,
             panic_occurrences,
