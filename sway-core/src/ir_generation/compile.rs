@@ -1,13 +1,5 @@
 use crate::{
-    decl_engine::{DeclEngineGet, DeclId, DeclRefFunction},
-    ir_generation::{KeyedTyFunctionDecl, PanickingFunctionCache},
-    language::{ty, Visibility},
-    metadata::MetadataManager,
-    namespace::ResolvedDeclaration,
-    semantic_analysis::namespace,
-    type_system::TypeId,
-    types::{LogId, MessageId},
-    Engines, PanicOccurrences, PanickingCallOccurrences,
+    Engines, PanicOccurrences, PanickingCallOccurrences, TypeInfo, decl_engine::{DeclEngineGet, DeclId, DeclRefFunction}, ir_generation::{KeyedTyFunctionDecl, PanickingFunctionCache, convert::convert_resolved_typeid_no_span}, language::{Visibility, ty::{self, TyDecl, TyStructField}}, metadata::MetadataManager, namespace::ResolvedDeclaration, semantic_analysis::namespace, transform::AttributeKind, type_system::TypeId, types::{LogId, MessageId}
 };
 
 use super::{
@@ -17,11 +9,12 @@ use super::{
     CompiledFunctionCache,
 };
 
+use sway_ast::attribute::REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE;
 use sway_error::{error::CompileError, handler::Handler};
 use sway_ir::{metadata::combine as md_combine, *};
 use sway_types::{Ident, Span, Spanned};
 
-use std::{cell::Cell, collections::HashMap, sync::Arc};
+use std::{cell::Cell, collections::{BTreeSet, HashMap}, sync::Arc};
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_script(
@@ -36,6 +29,7 @@ pub(super) fn compile_script(
     panicking_fn_cache: &mut PanickingFunctionCache,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
     compiled_fn_cache: &mut CompiledFunctionCache,
+    decls_to_check: &Vec<TyDecl>,
 ) -> Result<Module, Vec<CompileError>> {
     let module = Module::new(context, Kind::Script);
 
@@ -70,6 +64,7 @@ pub(super) fn compile_script(
         panicking_fn_cache,
         None,
         compiled_fn_cache,
+        decls_to_check,
     )?;
     compile_tests(
         engines,
@@ -135,6 +130,7 @@ pub(super) fn compile_predicate(
         panicking_fn_cache,
         None,
         compiled_fn_cache,
+        &vec![],
     )?;
     compile_tests(
         engines,
@@ -213,6 +209,7 @@ pub(super) fn compile_contract(
             panicking_fn_cache,
             None,
             compiled_fn_cache,
+            &vec![],
         )?;
     } else {
         // In the case of the encoding v0, we need to compile individual ABI entries
@@ -549,7 +546,122 @@ pub(super) fn compile_entry_function(
     panicking_fn_cache: &mut PanickingFunctionCache,
     test_decl_ref: Option<DeclRefFunction>,
     compiled_fn_cache: &mut CompiledFunctionCache,
+    decls_to_check: &Vec<TyDecl>,
 ) -> Result<Function, Vec<CompileError>> {
+
+    let mut is_type_trivially_decodable = |decl_id: DeclId<ty::TyStructDecl>| -> bool {
+        let type_info = TypeInfo::Struct(decl_id);
+        let encoding_id = crate::ir_generation::get_encoding_representation(engines, &type_info);
+
+        let tid = engines.te().insert(engines, type_info, None);
+        let t = convert_resolved_typeid_no_span(
+            engines,
+            context,
+            md_mgr,
+            module,
+            None,
+            tid,
+        ).unwrap();
+        let runtime_id = Some(crate::ir_generation::get_runtime_representation(context, t));
+
+        encoding_id == runtime_id
+    };
+
+    let all_fields_recursive = |decl_id: &DeclId<ty::TyStructDecl>| {
+        let mut fields = vec![];
+        let mut q = vec![*decl_id];
+
+        while let Some(decl_id) = q.pop() {
+            let decl = engines.de().get(&decl_id);
+            fields.extend(
+                decl.fields.iter().cloned()
+            );
+            for field in decl.fields.iter() {
+                match &*engines.te().get(field.type_argument.type_id) {
+                    TypeInfo::Struct(decl_id) => {
+                        let decl = engines.de().get(decl_id);
+                        
+                        // Do not go into std
+                        if decl.call_path.prefixes.get(0).map(|x| x.as_str()) != Some("std") {
+                            q.push(*decl_id);
+                        }
+                    },
+                    _ => {}
+                }
+            }
+        }
+
+        fields
+    };
+
+    // check types
+    for decl in decls_to_check.iter() {
+        match decl {
+            TyDecl::StructDecl(decl) => {
+                let decl_id = decl.decl_id.clone();
+                let decl = engines.de().get_struct(&decl_id);
+                
+                let atts = decl.attributes.all_by_kind(|att| matches!(att.kind, AttributeKind::Require));
+                for (k, atts) in atts {
+                    for att in atts.iter() {
+                        for arg in att.args.iter() {
+                            if arg.name.as_str() == REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE {
+                                if !is_type_trivially_decodable(decl_id) {
+                                    let mut infos = vec![];
+                                    let mut helps = vec![];
+                                    let mut bottom_helps = BTreeSet::new();
+
+                                    for f in all_fields_recursive(&decl_id) {
+                                        let t = engines.te().get(f.type_argument.type_id);
+
+                                        infos.push((
+                                            f.name.span(),
+                                            "This field is not allowing its owner type to be trivially decodable".to_string()
+                                        ));
+
+                                        let type_name = format!("{}", engines.help_out(&*t));
+
+                                        if t.is_bool() {
+                                            helps.push((
+                                                f.name.span(),
+                                                "To make this field trivially decodable try changing its type to TrivialBool.".to_string()
+                                            ));
+                                            bottom_helps.insert("For more info on TrivialBool see: https://raw.githubusercontent.com/FuelLabs/sway/d71243f17aba2ac1a6af8d0659a573cab7517e38/docs/slides/encoding.md".to_string());
+                                        } else if t.is_enum() {
+                                            helps.push((
+                                                f.name.span(),
+                                                format!("To make this field trivially decodable try changing its type to TrivialEnum<{type_name}>")
+                                            ));
+                                            bottom_helps.insert("For more info on TrivialEnum see: https://raw.githubusercontent.com/FuelLabs/sway/d71243f17aba2ac1a6af8d0659a573cab7517e38/docs/slides/encoding.md".to_string());
+                                        } else {
+                                            if type_name.starts_with("std::vec::Vec<") {
+                                                let aray_type_name = type_name.replace("std::vec::Vec<", "[").replace(">", "; 64]");
+                                                helps.push((
+                                                    f.name.span(),
+                                                    format!("Vecs are never trivially decodable, one option is to use arrays instead like {aray_type_name}")
+                                                ));
+                                            }
+                                        }
+                                    }
+
+                                    return Err(vec![
+                                        CompileError::TrivialCheckFailed {
+                                            span: decl.call_path.suffix.span(),
+                                            infos,
+                                            helps,
+                                            bottom_helps: bottom_helps.into_iter().collect(),
+                                        }
+                                    ]);
+                                }
+                            }
+                        }
+                    }                    
+                }
+            },
+            _ => todo!(),
+        }
+    }
+
     let is_entry = true;
     // In the new encoding, the only entry function is the `__entry`,
     // which is not an original entry.
@@ -606,6 +718,7 @@ pub(super) fn compile_tests(
                 panicking_fn_cache,
                 Some(decl_ref.clone()),
                 compiled_fn_cache,
+                &vec![],
             )
         })
         .collect()
