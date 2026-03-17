@@ -1,8 +1,11 @@
 use crate::{
-    Engines, decl_engine::parsed_id::ParsedDeclId, language::{CallPath, parsed::*, ty}, semantic_analysis::*, transform::AttributeKind, type_system::*
+    decl_engine::parsed_id::ParsedDeclId,
+    language::{parsed::*, ty, CallPath},
+    semantic_analysis::*,
+    type_system::*,
+    Engines,
 };
 use ast_elements::type_parameter::GenericTypeParameter;
-use sway_ast::attribute::REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
