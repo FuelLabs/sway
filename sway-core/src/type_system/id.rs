@@ -8,16 +8,9 @@ use sway_error::{
 use sway_types::{BaseIdent, Named, Span, Spanned};
 
 use crate::{
-    decl_engine::{
+    EnforceTypeArguments, decl_engine::{
         DeclEngineGet, DeclEngineGetParsedDecl, DeclEngineInsert, MaterializeConstGenerics,
-    },
-    engine_threading::{DebugWithEngines, DisplayWithEngines, Engines, WithEngines},
-    language::{ty::TyStructDecl, CallPath},
-    namespace::TraitMap,
-    semantic_analysis::TypeCheckContext,
-    type_system::priv_prelude::*,
-    types::{CollectTypesMetadata, CollectTypesMetadataContext, TypeMetadata},
-    EnforceTypeArguments,
+    }, engine_threading::{DebugWithEngines, DisplayWithEngines, Engines, WithEngines}, language::{CallPath, ty::{StructDecl, TyDecl, TyStructDecl}}, namespace::TraitMap, semantic_analysis::TypeCheckContext, type_system::priv_prelude::*, types::{CollectTypesMetadata, CollectTypesMetadataContext, TypeMetadata}
 };
 
 use std::{
@@ -64,13 +57,13 @@ impl From<usize> for TypeId {
 impl CollectTypesMetadata for TypeId {
     fn collect_types_metadata(
         &self,
-        _handler: &Handler,
+        handler: &Handler,
         ctx: &mut CollectTypesMetadataContext,
     ) -> Result<Vec<TypeMetadata>, ErrorEmitted> {
         fn filter_fn(type_info: &TypeInfo) -> bool {
             matches!(
                 type_info,
-                TypeInfo::UnknownGeneric { .. } | TypeInfo::Placeholder(_)
+                TypeInfo::UnknownGeneric { .. } | TypeInfo::Placeholder(_) | TypeInfo::Struct(_)
             )
         }
         let engines = ctx.engines;
@@ -89,6 +82,12 @@ impl CollectTypesMetadata for TypeId {
                         type_param.name().clone(),
                         ctx.call_site_get(self),
                     ));
+                }
+                TypeInfo::Struct(decl) => {
+                    let mut types = TyDecl::StructDecl(StructDecl {
+                        decl_id: *decl
+                    }).collect_types_metadata(handler, ctx)?;
+                    res.append(&mut types);
                 }
                 _ => {}
             }

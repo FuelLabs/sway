@@ -358,6 +358,7 @@ pub enum AttributeKind {
     AbiName,
     Event,
     Indexed,
+    Require,
 }
 
 /// Denotes if an [ItemTraitItem] belongs to an ABI or to a trait.
@@ -392,6 +393,7 @@ impl AttributeKind {
             ABI_NAME_ATTRIBUTE_NAME => AttributeKind::AbiName,
             EVENT_ATTRIBUTE_NAME => AttributeKind::Event,
             INDEXED_ATTRIBUTE_NAME => AttributeKind::Indexed,
+            REQUIRE_ATTRIBUTE_NAME => AttributeKind::Require,
             _ => AttributeKind::Unknown,
         }
     }
@@ -424,6 +426,7 @@ impl AttributeKind {
             AbiName => false,
             Event => false,
             Indexed => false,
+            Require => false,
         }
     }
 }
@@ -469,6 +472,7 @@ impl Attribute {
             AbiName => Multiplicity::exactly(1),
             Event => Multiplicity::zero(),
             Indexed => Multiplicity::zero(),
+            Require => Multiplicity::at_most(2),
         }
     }
 
@@ -528,6 +532,7 @@ impl Attribute {
             AbiName => MustBeIn(vec![ABI_NAME_NAME_ARG_NAME]),
             Event => None,
             Indexed => None,
+            Require => MustBeIn(vec![REQUIRE_ARG_NAME_TRIVIALLY_ENCODABLE, REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE]),
         }
     }
 
@@ -555,6 +560,7 @@ impl Attribute {
             AbiName => Yes,
             Event => No,
             Indexed => No,
+            Require => Yes,
         }
     }
 
@@ -579,6 +585,7 @@ impl Attribute {
             AbiName => false,
             Event => false,
             Indexed => false,
+            Require => false,
         }
     }
 
@@ -636,6 +643,7 @@ impl Attribute {
             AbiName => matches!(item_kind, ItemKind::Struct(_) | ItemKind::Enum(_)),
             Event => matches!(item_kind, ItemKind::Struct(_) | ItemKind::Enum(_)),
             Indexed => false,
+            Require => matches!(item_kind, ItemKind::Struct(_) | ItemKind::Enum(_)),
         }
     }
 
@@ -665,6 +673,7 @@ impl Attribute {
             AbiName => false,
             Event => false,
             Indexed => matches!(struct_or_enum_field, StructOrEnumField::StructField),
+            Require => false,
         }
     }
 
@@ -696,6 +705,7 @@ impl Attribute {
             AbiName => false,
             Event => false,
             Indexed => false,
+            Require => false,
         }
     }
 
@@ -722,6 +732,7 @@ impl Attribute {
             AbiName => false,
             Event => false,
             Indexed => false,
+            Require => false,
         }
     }
 
@@ -747,6 +758,7 @@ impl Attribute {
             AbiName => false,
             Event => false,
             Indexed => false,
+            Require => false,
         }
     }
 
@@ -770,6 +782,7 @@ impl Attribute {
             AbiName => false,
             Event => false,
             Indexed => false,
+            Require => false,
         }
     }
 
@@ -792,6 +805,7 @@ impl Attribute {
             AbiName => false,
             Event => false,
             Indexed => false,
+            Require => false,
         }
     }
 
@@ -852,6 +866,9 @@ impl Attribute {
             ],
             Indexed => vec![
                 "\"indexed\" attribute can only annotate struct fields.",
+            ],
+            Require => vec![
+                "\"require\" attribute can only annotate structs and enums.",
             ],
         };
 
