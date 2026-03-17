@@ -12,7 +12,6 @@ use std::{
     hash::{DefaultHasher, Hasher},
 };
 
-use sway_ast::attribute::REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE;
 use sway_error::error::CompileError;
 use sway_features::ExperimentalFeatures;
 use sway_ir::{
@@ -25,7 +24,12 @@ pub use function::{get_encoding_representation, get_runtime_representation, Memo
 pub(crate) use purity::{check_function_purity, PurityEnv};
 
 use crate::{
-    Engines, PanicOccurrences, PanickingCallOccurrences, TypeId, TypeInfo, engine_threading::HashWithEngines, ir_generation::{convert::convert_resolved_type_id, function::FnCompiler}, language::ty::{self, TyCodeBlock, TyExpression, TyFunctionDecl, TyReassignmentTarget}, metadata::MetadataManager, transform::AttributeKind, types::{LogId, MessageId}
+    engine_threading::HashWithEngines,
+    ir_generation::function::FnCompiler,
+    language::ty::{self, TyCodeBlock, TyExpression, TyFunctionDecl, TyReassignmentTarget},
+    metadata::MetadataManager,
+    types::{LogId, MessageId},
+    Engines, PanicOccurrences, PanickingCallOccurrences, TypeId,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

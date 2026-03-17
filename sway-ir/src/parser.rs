@@ -30,7 +30,6 @@ pub fn parse<'eng>(
 
 mod ir_builder {
     use slotmap::KeyData;
-    use std::{any::TypeId, convert::TryFrom};
     use sway_features::ExperimentalFeatures;
     use sway_types::{ident::Ident, span::Span, u256::U256, SourceEngine};
 

@@ -8,9 +8,19 @@ use sway_error::{
 use sway_types::{BaseIdent, Named, Span, Spanned};
 
 use crate::{
-    EnforceTypeArguments, decl_engine::{
+    decl_engine::{
         DeclEngineGet, DeclEngineGetParsedDecl, DeclEngineInsert, MaterializeConstGenerics,
-    }, engine_threading::{DebugWithEngines, DisplayWithEngines, Engines, WithEngines}, language::{CallPath, ty::{StructDecl, TyDecl, TyStructDecl}}, namespace::TraitMap, semantic_analysis::TypeCheckContext, type_system::priv_prelude::*, types::{CollectTypesMetadata, CollectTypesMetadataContext, TypeMetadata}
+    },
+    engine_threading::{DebugWithEngines, DisplayWithEngines, Engines, WithEngines},
+    language::{
+        ty::{StructDecl, TyDecl, TyStructDecl},
+        CallPath,
+    },
+    namespace::TraitMap,
+    semantic_analysis::TypeCheckContext,
+    type_system::priv_prelude::*,
+    types::{CollectTypesMetadata, CollectTypesMetadataContext, TypeMetadata},
+    EnforceTypeArguments,
 };
 
 use std::{
@@ -84,9 +94,8 @@ impl CollectTypesMetadata for TypeId {
                     ));
                 }
                 TypeInfo::Struct(decl) => {
-                    let mut types = TyDecl::StructDecl(StructDecl {
-                        decl_id: *decl
-                    }).collect_types_metadata(handler, ctx)?;
+                    let mut types = TyDecl::StructDecl(StructDecl { decl_id: *decl })
+                        .collect_types_metadata(handler, ctx)?;
                     res.append(&mut types);
                 }
                 _ => {}

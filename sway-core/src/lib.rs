@@ -27,7 +27,6 @@ pub mod transform;
 pub mod type_system;
 
 use crate::ir_generation::check_function_purity;
-use crate::language::ty::TyDecl;
 use crate::language::{CallPath, CallPathType};
 use crate::query_engine::ModuleCacheEntry;
 use crate::semantic_analysis::namespace::ResolvedDeclaration;
@@ -965,14 +964,13 @@ pub fn parsed_to_ast(
                 TypeMetadata::MessageType(message_id, type_id) => Some((*message_id, *type_id)),
                 _ => None,
             }));
-        
-        typed_program.decls_to_check.extend(
-            types_metadata.iter()
-                .filter_map(|x| match x {
-                    TypeMetadata::CheckDecl(decl) => Some(decl.clone()),
-                    _ => None
-                })
-        );
+
+        typed_program
+            .decls_to_check
+            .extend(types_metadata.iter().filter_map(|x| match x {
+                TypeMetadata::CheckDecl(decl) => Some(decl.clone()),
+                _ => None,
+            }));
 
         let (print_graph, print_graph_url_format) = match build_config {
             Some(cfg) => (
