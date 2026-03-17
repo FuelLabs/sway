@@ -9,7 +9,10 @@ use std::{
 };
 
 use crate::{
-    Engines, abi_generation::abi_str::AbiStrContext, language::ty::{TyDecl, TyExpression, TyExpressionVariant}, type_system::TypeId
+    abi_generation::abi_str::AbiStrContext,
+    language::ty::{TyDecl, TyExpression, TyExpressionVariant},
+    type_system::TypeId,
+    Engines,
 };
 use sha2::{Digest, Sha256};
 use sway_error::{

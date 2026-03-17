@@ -1236,7 +1236,6 @@ impl TypeInfo {
         matches!(self, TypeInfo::Enum(_))
     }
 
-
     pub fn is_tuple(&self) -> bool {
         matches!(self, TypeInfo::Tuple(_))
     }
