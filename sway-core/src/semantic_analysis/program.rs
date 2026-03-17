@@ -109,6 +109,7 @@ impl TyProgram {
             storage_slots: vec![],
             logged_types: vec![],
             messages_types: vec![],
+            decls_to_check: vec![],
         };
 
         Ok(program)

@@ -9,10 +9,7 @@ use std::{
 };
 
 use crate::{
-    abi_generation::abi_str::AbiStrContext,
-    language::ty::{TyExpression, TyExpressionVariant},
-    type_system::TypeId,
-    Engines,
+    Engines, abi_generation::abi_str::AbiStrContext, language::ty::{TyDecl, TyExpression, TyExpressionVariant}, type_system::TypeId
 };
 use sha2::{Digest, Sha256};
 use sway_error::{
@@ -66,6 +63,7 @@ pub enum TypeMetadata {
     LoggedType(LogId, TypeId),
     // An smo with a unique message ID and the type ID of the type of the message data being sent
     MessageType(MessageId, TypeId),
+    CheckDecl(TyDecl),
 }
 
 impl TypeMetadata {

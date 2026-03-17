@@ -1141,6 +1141,13 @@ pub enum CompileError {
     IndexedFieldIsNotFixedSizeABIType { field_name: IdentUnique },
     #[error("Too many indexed fields on event for current metadata format.")]
     IndexedFieldOffsetTooLarge { field_name: IdentUnique },
+    #[error("Trivial Check Failed")]
+    TrivialCheckFailed {
+        span: Span,
+        infos: Vec<(Span, String)>,
+        helps: Vec<(Span, String)>,
+        bottom_helps: Vec<String>,
+    }
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1382,6 +1389,7 @@ impl Spanned for CompileError {
             IndexedFieldIsNotFixedSizeABIType { field_name } => field_name.span(),
             IndexedFieldOffsetTooLarge { field_name } => field_name.span(),
             IncoherentImplDueToOrphanRule { span, .. } => span.clone(),
+            TrivialCheckFailed { span, .. } => span.clone(),
         }
     }
 }
@@ -3387,6 +3395,35 @@ impl ToDiagnostic for CompileError {
                 hints: vec![],
                 help: vec![],
             },
+            TrivialCheckFailed { span, infos, helps, bottom_helps } => {
+                let mut hints = vec![];
+                hints.extend(
+                    infos.iter()
+                    .map(|x| {
+                        Hint::info(source_engine, x.0.clone(), x.1.clone())
+                    })
+                );
+                hints.extend(
+                    helps.iter()
+                    .map(|x| {
+                        Hint::help(source_engine, x.0.clone(), x.1.clone())
+                    })
+                );
+                Diagnostic {
+                    reason: Some(Reason::new(code(1), "Trivial Check Failed".to_string())),
+                    issue: Issue::error(
+                        source_engine,
+                        span.clone(),
+                        format!("This type is not trivially decodable"),
+                    ),
+                    hints,
+                    help: [
+                        "For more details on trivial decoding see https://raw.githubusercontent.com/FuelLabs/sway/d71243f17aba2ac1a6af8d0659a573cab7517e38/docs/slides/encoding.md".to_string(),
+                    ].into_iter().chain(
+                        bottom_helps.clone().into_iter()
+                    ).collect(),
+                }
+            }
             _ => Diagnostic {
                     // TODO: Temporarily we use `self` here to achieve backward compatibility.
                     //       In general, `self` must not be used. All the values for the formatting

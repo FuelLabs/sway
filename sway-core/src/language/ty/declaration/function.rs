@@ -18,6 +18,7 @@ use either::Either;
 use monomorphization::MonomorphizeHelper;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use sway_ir::DebugWithContext;
 use std::{
     collections::BTreeMap,
     fmt,

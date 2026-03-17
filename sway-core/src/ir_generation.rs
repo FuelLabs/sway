@@ -12,6 +12,7 @@ use std::{
     hash::{DefaultHasher, Hasher},
 };
 
+use sway_ast::attribute::REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE;
 use sway_error::error::CompileError;
 use sway_features::ExperimentalFeatures;
 use sway_ir::{
@@ -24,12 +25,7 @@ pub use function::{get_encoding_representation, get_runtime_representation, Memo
 pub(crate) use purity::{check_function_purity, PurityEnv};
 
 use crate::{
-    engine_threading::HashWithEngines,
-    ir_generation::function::FnCompiler,
-    language::ty::{self, TyCodeBlock, TyExpression, TyFunctionDecl, TyReassignmentTarget},
-    metadata::MetadataManager,
-    types::{LogId, MessageId},
-    Engines, PanicOccurrences, PanickingCallOccurrences, TypeId,
+    Engines, PanicOccurrences, PanickingCallOccurrences, TypeId, TypeInfo, engine_threading::HashWithEngines, ir_generation::{convert::convert_resolved_type_id, function::FnCompiler}, language::ty::{self, TyCodeBlock, TyExpression, TyFunctionDecl, TyReassignmentTarget}, metadata::MetadataManager, transform::AttributeKind, types::{LogId, MessageId}
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -345,6 +341,7 @@ pub fn compile_program<'a>(
         logged_types,
         messages_types,
         declarations,
+        decls_to_check,
         ..
     } = program;
 
@@ -384,6 +381,7 @@ pub fn compile_program<'a>(
             &mut panicking_fn_cache,
             &test_fns,
             &mut compiled_fn_cache,
+            decls_to_check,
         ),
         ty::TyProgramKind::Predicate { entry_function, .. } => compile::compile_predicate(
             engines,

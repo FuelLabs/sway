@@ -27,6 +27,7 @@ pub mod transform;
 pub mod type_system;
 
 use crate::ir_generation::check_function_purity;
+use crate::language::ty::TyDecl;
 use crate::language::{CallPath, CallPathType};
 use crate::query_engine::ModuleCacheEntry;
 use crate::semantic_analysis::namespace::ResolvedDeclaration;
@@ -938,6 +939,7 @@ pub fn parsed_to_ast(
             handler,
             &mut CollectTypesMetadataContext::new(engines, experimental, package_name.to_string()),
         );
+
         let types_metadata = match types_metadata_result {
             Ok(types_metadata) => types_metadata,
             Err(error) => {
@@ -963,6 +965,14 @@ pub fn parsed_to_ast(
                 TypeMetadata::MessageType(message_id, type_id) => Some((*message_id, *type_id)),
                 _ => None,
             }));
+        
+        typed_program.decls_to_check.extend(
+            types_metadata.iter()
+                .filter_map(|x| match x {
+                    TypeMetadata::CheckDecl(decl) => Some(decl.clone()),
+                    _ => None
+                })
+        );
 
         let (print_graph, print_graph_url_format) = match build_config {
             Some(cfg) => (
@@ -1179,6 +1189,10 @@ pub fn compile_to_asm(
         None,
         experimental,
     )?;
+
+    if let Ok(t) = ast_res.typed.as_ref() {
+        dbg!(&t.decls_to_check);
+    }
 
     ast_to_asm(handler, engines, &ast_res, build_config, experimental)
 }

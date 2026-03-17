@@ -519,10 +519,17 @@ impl CollectTypesMetadata for TyDecl {
                     return Ok(vec![]);
                 }
             }
+            TyDecl::StructDecl(decl) => {
+                let d = ctx.engines.de().get(&decl.decl_id);
+                if !d.attributes.is_empty() {
+                    vec![TypeMetadata::CheckDecl(TyDecl::StructDecl(decl.clone()))]
+                } else {
+                    vec![]
+                }
+            }
             TyDecl::ErrorRecovery(..)
             | TyDecl::StorageDecl(_)
             | TyDecl::TraitDecl(_)
-            | TyDecl::StructDecl(_)
             | TyDecl::EnumDecl(_)
             | TyDecl::EnumVariantDecl(_)
             | TyDecl::ImplSelfOrTrait(_)
