@@ -582,6 +582,29 @@ impl Attribute {
         }
     }
 
+    pub(crate) fn can_annotate_abi(&self) -> bool {
+        use AttributeKind::*;
+        match self.kind {
+            Unknown => true,
+            DocComment => self.direction == AttributeDirection::Outer,
+            Storage => false,
+            Inline => false,
+            Test => false,
+            Payable => false,
+            Allow => true,
+            Cfg => true,
+            // TODO: Adapt once https://github.com/FuelLabs/sway/issues/6942 is implemented.
+            Deprecated => false,
+            Fallback => false,
+            ErrorType => false,
+            Error => false,
+            Trace => false,
+            AbiName => false,
+            Event => false,
+            Indexed => false,
+        }
+    }
+
     pub(crate) fn can_annotate_item_kind(&self, item_kind: &ItemKind) -> bool {
         // TODO: Except for `DocComment`, we assume outer annotation here.
         //       A separate check emits not-implemented error for all inner attributes.
@@ -928,6 +951,23 @@ impl Attributes {
         }
 
         Attributes {
+            deprecated_attr_index: attributes
+                .iter()
+                .rposition(|attr| attr.kind == AttributeKind::Deprecated),
+            attributes: Arc::new(attributes),
+        }
+    }
+
+    /// Creates new [Attributes] by copying `other`s attributes and retaining
+    /// only those specified by the predicate `f`.
+    pub fn retain_from(other: &Attributes, f: impl Fn(&Attribute) -> bool) -> Self {
+        let attributes = other
+            .attributes
+            .iter()
+            .filter(|attr| f(attr))
+            .cloned()
+            .collect_vec();
+        Self {
             deprecated_attr_index: attributes
                 .iter()
                 .rposition(|attr| attr.kind == AttributeKind::Deprecated),

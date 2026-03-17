@@ -5,7 +5,9 @@ use crate::{
         generate_destructured_struct_var_name, generate_matched_value_var_name,
         generate_tuple_var_name,
     },
-    decl_engine::{parsed_engine::ParsedDeclEngineInsert, parsed_id::ParsedDeclId},
+    decl_engine::{
+        parsed_engine::ParsedDeclEngineInsert, parsed_id::ParsedDeclId, ParsedInterfaceDeclId,
+    },
     language::{parsed::*, *},
     transform::{attribute::*, to_parsed_lang::context::Context},
     type_system::*,
@@ -24,12 +26,13 @@ use sway_ast::{
     ty::TyTupleDescriptor,
     AbiCastArgs, AngleBrackets, AsmBlock, Assignable, Braces, CodeBlockContents, CommaToken,
     DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor, FnArg,
-    FnArgs, FnSignature, GenericArgs, GenericParams, IfCondition, IfExpr, Instruction, Intrinsic,
-    Item, ItemAbi, ItemConfigurable, ItemConst, ItemEnum, ItemFn, ItemImpl, ItemKind, ItemStorage,
-    ItemStruct, ItemTrait, ItemTraitItem, ItemTypeAlias, ItemUse, LitInt, LitIntType,
-    MatchBranchKind, Module, ModuleKind, Parens, PathExpr, PathExprSegment, PathType,
-    PathTypeSegment, Pattern, PatternStructField, PubToken, Punctuated, QualifiedPathRoot,
-    Statement, StatementLet, Submodule, TraitType, Traits, Ty, TypeField, UseTree, WhereClause,
+    FnArgs, FnSignature, GenericArgs, GenericParams, IfCondition, IfExpr, ImplItemParent,
+    Instruction, Intrinsic, Item, ItemAbi, ItemConfigurable, ItemConst, ItemEnum, ItemFn, ItemImpl,
+    ItemImplItem, ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemTraitItem, ItemTypeAlias,
+    ItemUse, LitInt, LitIntType, MatchBranchKind, Module, ModuleKind, Parens, PathExpr,
+    PathExprSegment, PathType, PathTypeSegment, Pattern, PatternStructField, PubToken, Punctuated,
+    QualifiedPathRoot, Statement, StatementLet, Submodule, TraitType, Traits, Ty, TypeField,
+    UseTree, WhereClause,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_error::{convert_parse_tree_error::ConvertParseTreeError, error::CompileError};
@@ -174,10 +177,21 @@ pub fn item_to_ast_nodes(
             decl(trait_decl)
         }
         ItemKind::Impl(item_impl) => {
-            match handle_impl_contract(context, handler, engines, item_impl.clone(), span.clone()) {
-                Ok(contents) if !contents.is_empty() => contents,
-                _ => {
-                    let impl_decl = item_impl_to_declaration(context, handler, engines, item_impl)?;
+            match handle_impl_contract(
+                context,
+                handler,
+                engines,
+                &item_impl,
+                &attributes,
+                span.clone(),
+            )? {
+                Some((abi_decl_id, impl_contract_id)) => vec![
+                    AstNodeContent::Declaration(Declaration::AbiDeclaration(abi_decl_id)),
+                    AstNodeContent::Declaration(Declaration::ImplSelfOrTrait(impl_contract_id)),
+                ],
+                None => {
+                    let impl_decl =
+                        item_impl_to_impl_declaration(context, handler, engines, item_impl)?;
                     decl(impl_decl)
                 }
             }
@@ -763,7 +777,7 @@ fn item_trait_to_trait_declaration(
     Ok(trait_decl_id)
 }
 
-pub fn item_impl_to_declaration(
+pub fn item_impl_to_impl_declaration(
     context: &mut Context,
     handler: &Handler,
     engines: &Engines,
@@ -798,7 +812,7 @@ pub fn item_impl_to_declaration(
             let attributes_error_emitted = handler.append(attributes_handler);
 
             let impl_item = match item.value {
-                sway_ast::ItemImplItem::Fn(fn_item) => item_fn_to_function_declaration(
+                ItemImplItem::Fn(fn_item) => item_fn_to_function_declaration(
                     context,
                     handler,
                     engines,
@@ -809,7 +823,7 @@ pub fn item_impl_to_declaration(
                     None,
                 )
                 .map(ImplItem::Fn),
-                sway_ast::ItemImplItem::Const(const_item) => item_const_to_constant_declaration(
+                ItemImplItem::Const(const_item) => item_const_to_constant_declaration(
                     context,
                     handler,
                     engines,
@@ -819,7 +833,7 @@ pub fn item_impl_to_declaration(
                     false,
                 )
                 .map(ImplItem::Constant),
-                sway_ast::ItemImplItem::Type(type_item) => trait_type_to_trait_type_declaration(
+                ItemImplItem::Type(type_item) => trait_type_to_trait_type_declaration(
                     context, handler, engines, type_item, attributes,
                 )
                 .map(ImplItem::Type),
@@ -892,140 +906,163 @@ pub fn item_impl_to_declaration(
     }
 }
 
+/// Compiler generated declarations for an `impl Contract` block.
+type ImplContractDecls = (ParsedDeclId<AbiDeclaration>, ParsedDeclId<ImplSelfOrTrait>);
+
+// Returns `None` if the given `item_impl` is not a self `impl Contract` item.
+// Otherwise returns the compiler generated declarations for the self `impl Contract` item.
 fn handle_impl_contract(
     context: &mut Context,
     handler: &Handler,
     engines: &Engines,
-    item_impl: ItemImpl,
+    item_impl: &ItemImpl,
+    attributes: &Attributes,
     span: Span,
-) -> Result<Vec<AstNodeContent>, ErrorEmitted> {
+) -> Result<Option<ImplContractDecls>, ErrorEmitted> {
     let implementing_for = {
         let span = item_impl.ty.span();
-        let arg = ty_to_generic_argument(context, handler, engines, item_impl.ty)?;
+        let arg = ty_to_generic_argument(context, handler, engines, item_impl.ty.clone())?;
         arg.as_type_argument()
             .ok_or_else(|| handler.emit_err(CompileError::UnknownType { span }))
             .cloned()?
     };
 
-    // Only handle if this is an impl Contract block
-    if let TypeInfo::Contract = &*engines.te().get(implementing_for.type_id) {
-        // Check if there's an explicit trait being implemented
-        match item_impl.trait_opt {
-            Some((_, _)) => return Ok(vec![]),
-            None => {
-                // Generate ABI name using package name with "Abi" suffix
-                // Package name can contain hyphens, so we replace them with underscores
-                let contract_name = to_upper_camel_case(&context.package_name.replace('-', "_"));
-                let anon_abi_name =
-                    Ident::new_with_override(format!("{contract_name}Abi"), span.clone());
-
-                // Convert the methods to ABI interface
-                let mut interface_surface = Vec::new();
-                for item in &item_impl.contents.inner {
-                    let (_, attributes) = attr_decls_to_attributes(
-                        &item.attributes,
-                        |attr| {
-                            attr.can_annotate_impl_item(
-                                &item.value,
-                                sway_ast::ImplItemParent::Contract,
-                            )
-                        },
-                        item.value.friendly_name(sway_ast::ImplItemParent::Contract),
-                    );
-
-                    match &item.value {
-                        sway_ast::ItemImplItem::Fn(fn_item) => {
-                            let fn_decl = fn_signature_to_trait_fn(
-                                context,
-                                handler,
-                                engines,
-                                fn_item.fn_signature.clone(),
-                                attributes,
-                            )?;
-
-                            // Validate parameters for mutability
-                            let fn_decl_ref = engines.pe().get_trait_fn(&fn_decl);
-                            error_if_self_param_is_not_allowed(
-                                context,
-                                handler,
-                                engines,
-                                &fn_decl_ref.parameters,
-                                "an ABI method signature",
-                            )?;
-
-                            interface_surface.push(TraitItem::TraitFn(fn_decl));
-                        }
-                        _ => continue,
-                    }
-                }
-
-                // Create ABI declaration
-                let abi_decl = AbiDeclaration {
-                    name: anon_abi_name.clone(),
-                    attributes: Attributes::default(),
-                    interface_surface: interface_surface.clone(),
-                    methods: vec![],
-                    supertraits: vec![],
-                    span: span.clone(),
-                };
-
-                // Insert ABI declaration
-                let abi_decl_id = engines.pe().insert(abi_decl);
-                let impl_item_parent = (&*engines.te().get(implementing_for.type_id)).into();
-
-                // Convert original impl items to ImplItems
-                let items = item_impl
-                    .contents
-                    .inner
-                    .into_iter()
-                    .filter_map(|item| {
-                        let (_, attributes) = attr_decls_to_attributes(
-                            &item.attributes,
-                            |attr| attr.can_annotate_impl_item(&item.value, impl_item_parent),
-                            item.value.friendly_name(impl_item_parent),
-                        );
-                        match item.value {
-                            sway_ast::ItemImplItem::Fn(fn_item) => item_fn_to_function_declaration(
-                                context, handler, engines, fn_item, attributes, None, None, None,
-                            )
-                            .ok()
-                            .map(ImplItem::Fn),
-                            _ => None,
-                        }
-                    })
-                    .collect();
-
-                // Convert impl Contract to impl trait
-                let impl_trait = ImplSelfOrTrait {
-                    is_self: false,
-                    impl_type_parameters: vec![],
-                    trait_name: CallPath {
-                        prefixes: vec![],
-                        suffix: anon_abi_name,
-                        callpath_type: CallPathType::Ambiguous,
-                    },
-                    trait_type_arguments: vec![],
-                    trait_decl_ref: Some(crate::decl_engine::ParsedInterfaceDeclId::Abi(
-                        abi_decl_id,
-                    )),
-                    implementing_for,
-                    items,
-                    block_span: span.clone(),
-                };
-
-                let impl_trait_id = engines.pe().insert(impl_trait);
-
-                // Return both declarations as AST nodes
-                return Ok(vec![
-                    AstNodeContent::Declaration(Declaration::AbiDeclaration(abi_decl_id)),
-                    AstNodeContent::Declaration(Declaration::ImplSelfOrTrait(impl_trait_id)),
-                ]);
-            }
-        }
+    // Return if this is not an `impl ... Contract` block.
+    if !matches!(
+        &*engines.te().get(implementing_for.type_id),
+        TypeInfo::Contract
+    ) {
+        return Ok(None);
     }
 
-    // Not a Contract impl, return empty node contents.
-    Ok(vec![])
+    // Return if there's an explicit trait or ABI being implemented.
+    if matches!(item_impl.trait_opt, Some((_, _))) {
+        return Ok(None);
+    }
+
+    let item_impl = item_impl.clone();
+
+    // This is now surely an `impl Contract`.
+
+    // Generate ABI name using package name with "Abi" suffix.
+    // Package name can contain hyphens, so we replace them with underscores.
+    let contract_name = to_upper_camel_case(&context.package_name.replace('-', "_"));
+    let abi_name = Ident::new_with_override(format!("{contract_name}Abi"), span.clone());
+
+    let (interface_surface, items) = item_impl
+        .contents
+        .into_inner()
+        .into_iter()
+        .map(|annotated| {
+            let (attributes_handler, attributes) = attr_decls_to_attributes(
+                &annotated.attributes,
+                |attr| attr.can_annotate_impl_item(&annotated.value, ImplItemParent::Contract),
+                annotated.value.friendly_name(ImplItemParent::Contract),
+            );
+
+            if !cfg_eval(context, handler, &attributes, context.experimental)? {
+                return Ok(None);
+            }
+
+            let attributes_error_emitted = handler.append(attributes_handler);
+
+            let contract_item = match annotated.value {
+                ItemImplItem::Fn(fn_item) => {
+                    let fn_decl = fn_signature_to_trait_fn(
+                        context,
+                        handler,
+                        engines,
+                        fn_item.fn_signature.clone(),
+                        // Take over only the attributes that are allowed on ABI interface methods.
+                        // E.g., `#[inline]` is allowed on ABI method implementations (in the `impl ... Contract` block),
+                        // but not on the ABI interface method itself.
+                        Attributes::retain_from(&attributes, |attr| {
+                            attr.can_annotate_abi_or_trait_item_fn(TraitItemParent::Abi)
+                        }),
+                    )?;
+
+                    error_if_self_param_is_not_allowed(
+                        context,
+                        handler,
+                        engines,
+                        &engines.pe().get_trait_fn(&fn_decl).parameters,
+                        "an ABI method signature",
+                    )?;
+
+                    let abi_fn = TraitItem::TraitFn(fn_decl);
+
+                    let impl_fn = item_fn_to_function_declaration(
+                        context, handler, engines, fn_item, attributes, None, None, None,
+                    )?;
+
+                    let impl_fn = ImplItem::Fn(impl_fn);
+
+                    Some((abi_fn, impl_fn))
+                }
+                ItemImplItem::Const(const_decl) => {
+                    let const_decl = item_const_to_constant_declaration(
+                        context,
+                        handler,
+                        engines,
+                        const_decl,
+                        Visibility::Public,
+                        attributes,
+                        false,
+                    )?;
+
+                    let abi_const = TraitItem::Constant(const_decl);
+                    let impl_const = ImplItem::Constant(const_decl);
+
+                    Some((abi_const, impl_const))
+                }
+                _ => None,
+            };
+
+            match attributes_error_emitted {
+                Some(err) => Err(err),
+                None => Ok(contract_item),
+            }
+        })
+        .collect::<Result<Vec<_>, _>>()?
+        .into_iter()
+        .flatten()
+        .unzip::<_, _, Vec<_>, Vec<_>>();
+
+    // Create ABI declaration.
+    let abi_decl = AbiDeclaration {
+        name: abi_name.clone(),
+        // Take over only the attributes that are allowed on ABI items.
+        attributes: Attributes::retain_from(attributes, |attr| attr.can_annotate_abi()),
+        interface_surface,
+        methods: vec![],
+        supertraits: vec![],
+        span: span.clone(),
+    };
+
+    // Insert ABI declaration.
+    let abi_decl_id = engines.pe().insert(abi_decl);
+
+    // Create impl declaration for the contract implementing the ABI.
+    let impl_contract = ImplSelfOrTrait {
+        // TODO: Add `attributes: attributes.clone()` once https://github.com/FuelLabs/sway/issues/7579 is implemented.
+        is_self: false,
+        impl_type_parameters: vec![],
+        trait_name: CallPath {
+            prefixes: vec![],
+            suffix: abi_name,
+            callpath_type: CallPathType::Ambiguous,
+        },
+        trait_type_arguments: vec![],
+        trait_decl_ref: Some(ParsedInterfaceDeclId::Abi(abi_decl_id)),
+        implementing_for,
+        items,
+        block_span: span,
+    };
+
+    // Insert impl declaration for the contract.
+    let impl_contract_id = engines.pe().insert(impl_contract);
+
+    Ok(Some((abi_decl_id, impl_contract_id)))
 }
 
 fn path_type_to_call_path_and_type_arguments(
