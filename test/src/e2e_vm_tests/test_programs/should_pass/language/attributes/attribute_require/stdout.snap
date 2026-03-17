@@ -1,0 +1,41 @@
+---
+source: test/src/snapshot/mod.rs
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require
+   Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-vec)
+   Compiling script attribute_require (test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require)
+error: Trivial Check Failed
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require/src/main.sw:7:8
+   |
+...
+ 7 | struct MyStruct {
+   |        ^^^^^^^^ This type is not trivially decodable
+ 8 |     a: bool,
+   |     - info: This field is not allowing its owner type to be trivially decodable
+   |     - help: To make this field trivially decodable try changing its type to TrivialBool.
+ 9 |     b: InnerStruct,
+   |     - info: This field is not allowing its owner type to be trivially decodable
+10 |     c: SomeEnum,
+   |     - info: This field is not allowing its owner type to be trivially decodable
+   |     - help: To make this field trivially decodable try changing its type to TrivialEnum<attribute_require::SomeEnum>
+11 |     d: Vec<u64>,
+   |     - info: This field is not allowing its owner type to be trivially decodable
+   |     - help: Vecs are never trivially decodable, one option is to use arrays instead like [u64; 64]
+   |
+  ::: test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require/src/another_file.sw:4:9
+   |
+...
+ 4 |     pub a: bool,
+   |         - info: This field is not allowing its owner type to be trivially decodable
+   |         - help: To make this field trivially decodable try changing its type to TrivialBool.
+   |
+   = help: For more details on trivial decoding see https://raw.githubusercontent.com/FuelLabs/sway/d71243f17aba2ac1a6af8d0659a573cab7517e38/docs/slides/encoding.md
+   = help: For more info on TrivialBool see: https://raw.githubusercontent.com/FuelLabs/sway/d71243f17aba2ac1a6af8d0659a573cab7517e38/docs/slides/encoding.md
+   = help: For more info on TrivialEnum see: https://raw.githubusercontent.com/FuelLabs/sway/d71243f17aba2ac1a6af8d0659a573cab7517e38/docs/slides/encoding.md
+____
+
+  Aborting due to 1 error.
+error: Failed to compile attribute_require
