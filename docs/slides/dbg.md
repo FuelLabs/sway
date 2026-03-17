@@ -6,7 +6,7 @@ marp: true
 <!-- markdownlint-disable -->
 # Sway `__dbg`
 
-- What it does?
+- What it does
 - How it works (High Level)
 - How it works (Low Level)
 - How to customize the `Debug` trait
@@ -65,7 +65,7 @@ impl Debug for u8 {
 }
 ```
 
-All other primitive `impls` live at `sway-lib-std/src/debug.sw`.
+All other primitive `impls` live in `sway-lib-std/src/debug.sw`.
 
 ---
 # How it works (Low Level)
@@ -93,7 +93,7 @@ pub fn print_u8(self, value: u8) {
 
 And `syscall_write` is very similar to `write(2)` (https://man7.org/linux/man-pages/man2/write.2.html), but instead of calling an actual `syscall`, we use `ecal` with the first argument as 1000.
 
-We reserved [0, 1000), to the VM team; [1000, 2000) to the compiler team; And [2000, 3000) to the tooling team. So we can avoid a program having different behavior depending on the interpreter configuration.
+We reserved [0, 1000), for the VM, [1000, 2000) for the compiler and [2000, 3000) for the tooling purposes. This way, we can avoid a program having different behavior depending on the interpreter configuration.
 
 So far, only 1000 is used.
 
@@ -125,7 +125,8 @@ impl EcalHandler for EcalSyscallHandler {
     }
 }
 ```
-Real implementation at `forc-test/src/ecal.rs`
+
+Real implementation in `forc-test/src/ecal.rs`
 
 ---
 
@@ -176,13 +177,13 @@ versus the customized:
 [src/vec.sw:931:13] = [1, 2, 3]
 ```
 
-Different from `AbiEncode`, `Debug` auto implementation works for any primitive data type. Including: `raw_ptr`, `raw_slice`, `refs` etc... So the compiler will generate auto implementation for any type, unless a custom implementation is found.
+Different from `AbiEncode`, `Debug` auto implementation works for any primitive data type, including `raw_ptr`, `raw_slice`, references, etc. So the compiler will generate auto implementation for any type, unless a custom implementation is found.
 
 ---
 # Debug vs Release
 
 `__dbg` will never have any use when running on chain. The VM will never implement the `EcalHandler` as we saw above.
-So deploying binaries with it, would be wasteful.
+So deploying binaries with it would be wasteful.
  
 For this reason we completely strip everything when compiling in `--release` mode. So in release:
 
@@ -198,7 +199,7 @@ let a = 1u8;
 
 ---
 
-But, if there is a strange behavior on release one can really force the compiler using:
+But, if there is a troubleshooting needed in release build, one can force the compiler to emit `__dbg` by using:
 
 ```toml
 [project]

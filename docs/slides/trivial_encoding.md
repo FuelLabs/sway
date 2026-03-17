@@ -160,7 +160,7 @@ enum A { A: ..., B: ..., C: ... }
 
 ---
 
-If a developer is OK with the risks and wants to deal with invalid representation manually, he can force a type by doing:
+If developers are OK with the risks and wants to deal with invalid representation manually, they can force triviality of a type by doing:
 
 ```rust
 pub struct TriviallyDecodable<T> { value: T }

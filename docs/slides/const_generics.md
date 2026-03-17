@@ -25,7 +25,7 @@ impl<T, const N: u64> AbiEncode for [T; N] where T: AbiEncode {
 
 ---
 
-This allowed us to implement all the `std` traits for arrays, string arrays etc...
+This allowed us to implement all the `std` traits for arrays, string arrays etc.
 
 - AbiEncode
 - AbiDecode
@@ -35,11 +35,11 @@ This allowed us to implement all the `std` traits for arrays, string arrays etc.
 - Iterator
 - PartialEq
 - Eq
-- etc...
+- etc.
 
 ---
 
-"const generics" can be used on structs, enums, functions, impls etc...
+"const generics" can be used on structs, enums, functions, impls etc.
 
 ```rust
 struct S<T, const N: u64> {}
