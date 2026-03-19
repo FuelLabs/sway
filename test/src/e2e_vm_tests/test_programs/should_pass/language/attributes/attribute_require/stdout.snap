@@ -15,7 +15,7 @@ error: Type is not trivially decodable
    |        ^^^^^^^^ MyStruct is not trivially decodable.
  8 |     a: bool,
    |     ------- info: MyStruct is not trivially decodable because of this field.
-   |        ---- help: Try changing its type to TrivialBool.
+   |        ---- help: `bool` is never trivially decodable. Try changing its type to TrivialBool.
  9 |     b: u16,
    |     ------ info: MyStruct is not trivially decodable because of this field.
    |        --- help: `u16` is never trivially decodable. Consider using `u64` instead.
@@ -24,17 +24,20 @@ error: Type is not trivially decodable
    |        --- help: `u32` is never trivially decodable. Consider using `u64` instead.
 11 |     d: InnerStruct,
    |     -------------- info: MyStruct is not trivially decodable because of this field.
+   |        ----------- help: Consider changing `InnerStruct` to be trivially decodable.
 12 |     e: EnumThatCanUseTrivialEnum,
    |     ---------------------------- info: MyStruct is not trivially decodable because of this field.
-   |        ------------------------- help: Try changing its type to TrivialEnum<EnumThatCanUseTrivialEnum>.
+   |        ------------------------- help: EnumThatCanUseTrivialEnum can be forced to be trivialle decodable. Consider using TrivialEnum<EnumThatCanUseTrivialEnum>.
 13 |     f: EnumThatCannotUseTrivialEnum,
    |     ------------------------------- info: MyStruct is not trivially decodable because of this field.
-   |        ---------------------------- help: EnumThatCannotUseTrivialEnum is not trivially decodable because some of its variants are not trivially decodable.
+   |        ---------------------------- help: EnumThatCannotUseTrivialEnum cannot be forced to be trivially decodable because some of its variants are not trivially decodable.
 14 |     g: Vec<u64>,
    |     ----------- info: MyStruct is not trivially decodable because of this field.
    |        -------- help: `Vec` is never trivially decodable. Consider using array instead, e.g.: `[u64; 64]`.
+15 |     h: Result<Vec<u64>, u64>,
+   |     ------------------------ info: MyStruct is not trivially decodable because of this field.
 ...
-22 |     A: Vec<u64>,
+23 |     A: Vec<u64>,
    |        -------- info: EnumThatCannotUseTrivialEnum is not trivially decodable because this variant.
    |
   ::: test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require/src/another_file.sw:4:5
@@ -42,7 +45,7 @@ error: Type is not trivially decodable
 ...
  4 |     pub a: bool,
    |     ----------- info: InnerStruct is not trivially decodable because of this field.
-   |            ---- help: Try changing its type to TrivialBool.
+   |            ---- help: `bool` is never trivially decodable. Try changing its type to TrivialBool.
    |
    = help: For more details on trivial decoding see https://raw.githubusercontent.com/FuelLabs/sway/d71243f17aba2ac1a6af8d0659a573cab7517e38/docs/slides/encoding.md
    = help: Enums are never trivially decodable, but when all its variants are, it can be forced using TrivialEnum. For more info see: https://raw.githubusercontent.com/FuelLabs/sway/d71243f17aba2ac1a6af8d0659a573cab7517e38/docs/slides/encoding.md
