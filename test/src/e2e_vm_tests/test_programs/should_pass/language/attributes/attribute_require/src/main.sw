@@ -12,6 +12,7 @@ struct MyStruct {
     e: EnumThatCanUseTrivialEnum,
     f: EnumThatCannotUseTrivialEnum,
     g: Vec<u64>,
+    h: Result<Vec<u64>, u64>,
 }
 
 enum EnumThatCanUseTrivialEnum {
@@ -32,6 +33,7 @@ fn main(s: MyStruct) {
     __log(s.e);
     __log(s.f);
     __log(s.g);
+    __log(s.h);
     __log(EnumThatCanUseTrivialEnum::A);
     __log(EnumThatCannotUseTrivialEnum::A(Vec::new()));
 }
