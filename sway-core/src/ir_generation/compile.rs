@@ -1,6 +1,6 @@
 use crate::{
     Engines, PanicOccurrences, PanickingCallOccurrences, TypeInfo, decl_engine::{DeclEngineGet, DeclId, DeclRefFunction}, ir_generation::{
-        KeyedTyFunctionDecl, PanickingFunctionCache, convert::convert_resolved_typeid_no_span
+        KeyedTyFunctionDecl, PanickingFunctionCache, convert::{convert_resolved_type_info, convert_resolved_typeid_no_span}
     }, language::{
         Visibility, ty::{self, StructDecl, TyDecl}
     }, metadata::MetadataManager, namespace::ResolvedDeclaration, semantic_analysis::namespace, transform::AttributeKind, type_system::TypeId, types::{LogId, MessageId}
@@ -16,7 +16,7 @@ use super::{
 use sway_ast::attribute::REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE;
 use sway_error::{error::CompileError, handler::Handler};
 use sway_ir::{metadata::combine as md_combine, *};
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, Span, Spanned, integer_bits::IntegerBits};
 
 use std::{
     cell::Cell,
@@ -556,13 +556,11 @@ pub(super) fn compile_entry_function(
     compiled_fn_cache: &mut CompiledFunctionCache,
     decls_to_check: &[TyDecl],
 ) -> Result<Function, Vec<CompileError>> {
-    let mut is_type_trivially_decodable = |decl_id: DeclId<ty::TyStructDecl>| -> bool {
-        let type_info = TypeInfo::Struct(decl_id);
-        let encoding_id = crate::ir_generation::get_encoding_representation(engines, &type_info);
+    let mut is_type_trivially_decodable = |type_info: &TypeInfo| -> bool {
+        let encoding_id = crate::ir_generation::get_encoding_representation(engines, type_info);
 
-        let tid = engines.te().insert(engines, type_info, None);
         let t =
-            convert_resolved_typeid_no_span(engines, context, md_mgr, module, None, tid).unwrap();
+            convert_resolved_type_info(engines, context, md_mgr, module, None, type_info, &Span::dummy()).unwrap();
         let runtime_id = Some(crate::ir_generation::get_runtime_representation(context, t));
 
         encoding_id == runtime_id
@@ -574,7 +572,11 @@ pub(super) fn compile_entry_function(
 
         while let Some(decl_id) = q.pop() {
             let decl = engines.de().get(&decl_id);
-            fields.extend(decl.fields.iter().cloned());
+
+            for field in decl.fields.iter() {
+                fields.push((decl.clone(), field.clone()));
+            }
+
             for field in decl.fields.iter() {
                 if let TypeInfo::Struct(decl_id) = &*engines.te().get(field.type_argument.type_id) {
                     let decl = engines.de().get(decl_id);
@@ -602,41 +604,95 @@ pub(super) fn compile_entry_function(
                 for (_, atts) in atts {
                     for att in atts.iter() {
                         for arg in att.args.iter() {
-                            if arg.name.as_str() == REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE && !is_type_trivially_decodable(*decl_id) {
+                            let type_info = TypeInfo::Struct(*decl_id);
+                            if arg.name.as_str() == REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE && !is_type_trivially_decodable(&type_info) {
                                 let mut infos = vec![];
                                 let mut helps = vec![];
                                 let mut bottom_helps = BTreeSet::new();
 
-                                for f in all_fields_recursive(decl_id) {
-                                    let t = engines.te().get(f.type_argument.type_id);
-
-                                    infos.push((
-                                        f.name.span(),
-                                        "This field is not allowing its owner type to be trivially decodable".to_string()
-                                    ));
+                                for (owner, field) in all_fields_recursive(decl_id) {
+                                    let t = engines.te().get(field.type_argument.type_id);
 
                                     let type_name = format!("{}", engines.help_out(&*t));
 
-                                    if t.is_bool() {
-                                        helps.push((
-                                            f.name.span(),
-                                            "To make this field trivially decodable try changing its type to TrivialBool.".to_string()
-                                        ));
-                                        bottom_helps.insert("For more info on TrivialBool see: https://raw.githubusercontent.com/FuelLabs/sway/d71243f17aba2ac1a6af8d0659a573cab7517e38/docs/slides/encoding.md".to_string());
-                                    } else if t.is_enum() {
-                                        helps.push((
-                                            f.name.span(),
-                                            format!("To make this field trivially decodable try changing its type to TrivialEnum<{type_name}>")
-                                        ));
-                                        bottom_helps.insert("For more info on TrivialEnum see: https://raw.githubusercontent.com/FuelLabs/sway/d71243f17aba2ac1a6af8d0659a573cab7517e38/docs/slides/encoding.md".to_string());
-                                    } else if type_name.starts_with("std::vec::Vec<") {
-                                        let aray_type_name = type_name
-                                            .replace("std::vec::Vec<", "[")
-                                            .replace(">", "; 64]");
-                                        helps.push((
-                                            f.name.span(),
-                                            format!("Vecs are never trivially decodable, one option is to use arrays instead like {aray_type_name}")
-                                        ));
+                                    infos.push((
+                                        field.span.clone(),
+                                        format!("{} is not trivially decodable because of this field.",
+                                            owner.call_path.suffix.as_str()
+                                        ),
+                                    ));
+
+                                    match &*t {
+                                        TypeInfo::Boolean => {
+                                            helps.push((
+                                                field.type_argument.span.clone(),
+                                                "Try changing its type to TrivialBool.".to_string()
+                                            ));
+                                            bottom_helps.insert("For more info on TrivialBool see: https://raw.githubusercontent.com/FuelLabs/sway/d71243f17aba2ac1a6af8d0659a573cab7517e38/docs/slides/encoding.md".to_string());
+                                        }
+                                        TypeInfo::UnsignedInteger(IntegerBits::Sixteen) => {
+                                            helps.push((
+                                                field.type_argument.span.clone(),
+                                                "`u16` is never trivially decodable. Consider using `u64` instead.".to_string()
+                                            ));
+                                        }
+                                        TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo) => {
+                                            helps.push((
+                                                field.type_argument.span.clone(),
+                                                "`u32` is never trivially decodable. Consider using `u64` instead.".to_string()
+                                            ));
+                                        }
+                                        TypeInfo::Enum(decl_id) => {
+                                            let decl = engines.de().get(decl_id);
+                                            let non_trivially_decodable_variants = decl.variants.iter()
+                                                .filter(|x| {
+                                                    let type_info = engines.te().get(x.type_argument.type_id);
+                                                    !is_type_trivially_decodable(&*type_info)
+                                                }).collect::<Vec<_>>();
+
+                                            if non_trivially_decodable_variants.is_empty() {
+                                                helps.push((
+                                                    field.type_argument.span.clone(),
+                                                    format!("Try changing its type to TrivialEnum<{}>.",
+                                                        decl.call_path.suffix.as_str()
+                                                    )
+                                                ));
+                                                bottom_helps.insert("For more info on TrivialEnum see: https://raw.githubusercontent.com/FuelLabs/sway/d71243f17aba2ac1a6af8d0659a573cab7517e38/docs/slides/encoding.md".to_string());
+                                            } else {
+                                                helps.push((
+                                                    field.type_argument.span.clone(),
+                                                    format!("{} is not trivially decodable because some of its variants are not trivially decodable.",
+                                                        decl.call_path.suffix.as_str()
+                                                    )
+                                                ));
+
+                                                for variant in non_trivially_decodable_variants {
+                                                    infos.push((
+                                                        variant.type_argument.span.clone(),
+                                                        format!("{} is not trivially decodable because this variant.",
+                                                            decl.call_path.suffix.as_str()
+                                                        ),
+                                                    ));
+                                                }
+                                                bottom_helps.insert("Enums are never trivially decodable, but when all its variants are, it can be forced using TrivialEnum. For more info see: https://raw.githubusercontent.com/FuelLabs/sway/d71243f17aba2ac1a6af8d0659a573cab7517e38/docs/slides/encoding.md".to_string());
+                                            }
+                                        }
+                                        _ => {
+                                            if type_name.starts_with("std::vec::Vec<") {
+                                                let aray_type_name = type_name
+                                                    .replace("std::vec::Vec<", "[")
+                                                    .replace(">", "; 64]");
+                                                helps.push((
+                                                    field.type_argument.span.clone(),
+                                                    format!("`Vec` is never trivially decodable. Consider using array instead, e.g.: `{aray_type_name}`.")
+                                                ));
+                                            } else if type_name.starts_with("std::string::String") {
+                                                helps.push((
+                                                    field.type_argument.span.clone(),
+                                                    format!("`String` is never trivially decodable. Consider using array instead, e.g.: `str[64]`.")
+                                                ));
+                                            }
+                                        }
                                     }
                                 }
 

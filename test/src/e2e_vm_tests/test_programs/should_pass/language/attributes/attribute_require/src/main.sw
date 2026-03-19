@@ -6,20 +6,32 @@ use another_file::InnerStruct;
 #[require(trivially_decodable = "true")]
 struct MyStruct {
     a: bool,
-    b: InnerStruct,
-    c: SomeEnum,
-    d: Vec<u64>,
+    b: u16,
+    c: u32,
+    d: InnerStruct,
+    e: EnumThatCanUseTrivialEnum,
+    f: EnumThatCannotUseTrivialEnum,
+    g: Vec<u64>,
 }
 
-enum SomeEnum {
+enum EnumThatCanUseTrivialEnum {
     A: ()
 }
 
+enum EnumThatCannotUseTrivialEnum {
+    A: Vec<u64>,
+}
+
 fn main(s: MyStruct) {
+    // To disable unused warnings
     __log(s.a);
-    __log(s.b.a);
+    __log(s.b);
     __log(s.c);
     __log(s.d);
-    let a = SomeEnum::A;
-    __log(a);
+    __log(s.d.a);
+    __log(s.e);
+    __log(s.f);
+    __log(s.g);
+    __log(EnumThatCanUseTrivialEnum::A);
+    __log(EnumThatCannotUseTrivialEnum::A(Vec::new()));
 }

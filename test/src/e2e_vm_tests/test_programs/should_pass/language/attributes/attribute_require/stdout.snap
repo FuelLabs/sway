@@ -7,32 +7,45 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-vec)
    Compiling script attribute_require (test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require)
-error: Trivial Check Failed
+error: Type is not trivially decodable
   --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require/src/main.sw:7:8
    |
 ...
  7 | struct MyStruct {
-   |        ^^^^^^^^ This type is not trivially decodable
+   |        ^^^^^^^^ MyStruct is not trivially decodable.
  8 |     a: bool,
-   |     - info: This field is not allowing its owner type to be trivially decodable
-   |     - help: To make this field trivially decodable try changing its type to TrivialBool.
- 9 |     b: InnerStruct,
-   |     - info: This field is not allowing its owner type to be trivially decodable
-10 |     c: SomeEnum,
-   |     - info: This field is not allowing its owner type to be trivially decodable
-   |     - help: To make this field trivially decodable try changing its type to TrivialEnum<attribute_require::SomeEnum>
-11 |     d: Vec<u64>,
-   |     - info: This field is not allowing its owner type to be trivially decodable
-   |     - help: Vecs are never trivially decodable, one option is to use arrays instead like [u64; 64]
+   |     ------- info: MyStruct is not trivially decodable because of this field.
+   |        ---- help: Try changing its type to TrivialBool.
+ 9 |     b: u16,
+   |     ------ info: MyStruct is not trivially decodable because of this field.
+   |        --- help: `u16` is never trivially decodable. Consider using `u64` instead.
+10 |     c: u32,
+   |     ------ info: MyStruct is not trivially decodable because of this field.
+   |        --- help: `u32` is never trivially decodable. Consider using `u64` instead.
+11 |     d: InnerStruct,
+   |     -------------- info: MyStruct is not trivially decodable because of this field.
+12 |     e: EnumThatCanUseTrivialEnum,
+   |     ---------------------------- info: MyStruct is not trivially decodable because of this field.
+   |        ------------------------- help: Try changing its type to TrivialEnum<EnumThatCanUseTrivialEnum>.
+13 |     f: EnumThatCannotUseTrivialEnum,
+   |     ------------------------------- info: MyStruct is not trivially decodable because of this field.
+   |        ---------------------------- help: EnumThatCannotUseTrivialEnum is not trivially decodable because some of its variants are not trivially decodable.
+14 |     g: Vec<u64>,
+   |     ----------- info: MyStruct is not trivially decodable because of this field.
+   |        -------- help: `Vec` is never trivially decodable. Consider using array instead, e.g.: `[u64; 64]`.
+...
+22 |     A: Vec<u64>,
+   |        -------- info: EnumThatCannotUseTrivialEnum is not trivially decodable because this variant.
    |
-  ::: test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require/src/another_file.sw:4:9
+  ::: test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require/src/another_file.sw:4:5
    |
 ...
  4 |     pub a: bool,
-   |         - info: This field is not allowing its owner type to be trivially decodable
-   |         - help: To make this field trivially decodable try changing its type to TrivialBool.
+   |     ----------- info: InnerStruct is not trivially decodable because of this field.
+   |            ---- help: Try changing its type to TrivialBool.
    |
    = help: For more details on trivial decoding see https://raw.githubusercontent.com/FuelLabs/sway/d71243f17aba2ac1a6af8d0659a573cab7517e38/docs/slides/encoding.md
+   = help: Enums are never trivially decodable, but when all its variants are, it can be forced using TrivialEnum. For more info see: https://raw.githubusercontent.com/FuelLabs/sway/d71243f17aba2ac1a6af8d0659a573cab7517e38/docs/slides/encoding.md
    = help: For more info on TrivialBool see: https://raw.githubusercontent.com/FuelLabs/sway/d71243f17aba2ac1a6af8d0659a573cab7517e38/docs/slides/encoding.md
    = help: For more info on TrivialEnum see: https://raw.githubusercontent.com/FuelLabs/sway/d71243f17aba2ac1a6af8d0659a573cab7517e38/docs/slides/encoding.md
 ____
