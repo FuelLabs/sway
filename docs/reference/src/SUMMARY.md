@@ -141,6 +141,7 @@
   - [Structs](./documentation/misc/advanced-concepts/structs.md)
   - [Enums](./documentation/misc/advanced-concepts/enums.md)
   - [Compiler Intrinsics](./documentation/misc/advanced-concepts/compiler-intrinsics.md)
+  - - [Compiler Intrinsics](./documentation/misc/advanced-concepts/trivial-encoding.md)
 - [Known Issues](./documentation/misc/workarounds/index.md)
   - [General](./documentation/misc/workarounds/general.md)
   - [Missing Features](./documentation/misc/workarounds/missing-features.md)
