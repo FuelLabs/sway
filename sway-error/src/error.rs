@@ -3384,11 +3384,11 @@ impl ToDiagnostic for CompileError {
                     })
                 );
                 Diagnostic {
-                    reason: Some(Reason::new(code(1), "Trivial Check Failed".to_string())),
+                    reason: Some(Reason::new(code(1), "Type is not trivially decodable".to_string())),
                     issue: Issue::error(
                         source_engine,
                         span.clone(),
-                        "This type is not trivially decodable".to_string(),
+                        format!("{} is not trivially decodable.", span.as_str()),
                     ),
                     hints,
                     help: [
