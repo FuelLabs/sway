@@ -1,9 +1,21 @@
 use crate::{
-    Engines, PanicOccurrences, PanickingCallOccurrences, TypeInfo, decl_engine::{DeclEngineGet, DeclId, DeclRefFunction}, error::module_can_be_changed, ir_generation::{
-        KeyedTyFunctionDecl, PanickingFunctionCache, convert::{convert_resolved_type_info, convert_resolved_typeid_no_span}
-    }, language::{
-        Visibility, ty::{self, StructDecl, TyDecl}
-    }, metadata::MetadataManager, namespace::ResolvedDeclaration, semantic_analysis::namespace, transform::AttributeKind, type_system::TypeId, types::{LogId, MessageId}
+    decl_engine::{DeclEngineGet, DeclId, DeclRefFunction},
+    error::module_can_be_changed,
+    ir_generation::{
+        convert::{convert_resolved_type_info, convert_resolved_typeid_no_span},
+        KeyedTyFunctionDecl, PanickingFunctionCache,
+    },
+    language::{
+        ty::{self, StructDecl, TyDecl},
+        Visibility,
+    },
+    metadata::MetadataManager,
+    namespace::ResolvedDeclaration,
+    semantic_analysis::namespace,
+    transform::AttributeKind,
+    type_system::TypeId,
+    types::{LogId, MessageId},
+    Engines, PanicOccurrences, PanickingCallOccurrences, TypeInfo,
 };
 
 use super::{
@@ -16,7 +28,7 @@ use super::{
 use sway_ast::attribute::REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE;
 use sway_error::{error::CompileError, handler::Handler};
 use sway_ir::{metadata::combine as md_combine, *};
-use sway_types::{integer_bits::IntegerBits, Ident, Span, Spanned};
+use sway_types::{integer_bits::IntegerBits, Ident, Named, Span, Spanned};
 
 use std::{
     cell::Cell,
@@ -574,71 +586,48 @@ pub(super) fn compile_entry_function(
         encoding_id == runtime_id
     };
 
-    let all_fields_recursive = |decl_id: &DeclId<ty::TyStructDecl>| {
-        let mut fields = vec![];
-        let mut q = vec![*decl_id];
-
-        while let Some(decl_id) = q.pop() {
-            let decl = engines.de().get(&decl_id);
-
-            for field in decl.fields.iter() {
-                fields.push((decl.clone(), field.clone()));
-            }
-
-            for field in decl.fields.iter() {
-                if let TypeInfo::Struct(decl_id) = &*engines.te().get(field.type_argument.type_id) {
-                    let decl = engines.de().get(decl_id);
-
-                    // Do not go into std
-                    if decl.call_path.prefixes.first().map(|x| x.as_str()) != Some("std") {
-                        q.push(*decl_id);
-                    }
-                }
-            }
-        }
-
-        fields
-    };
-
     // check types
     for decl in decls_to_check.iter() {
         match decl {
             TyDecl::StructDecl(StructDecl { decl_id }) => {
-                let decl = engines.de().get_struct(decl_id);
-                let original_pid = decl.span.source_id().map(|x| x.program_id());
+                let has_att_type_info = TypeInfo::Struct(*decl_id);
+                let has_att_decl = engines.de().get_struct(decl_id);
+                let has_att_pid = has_att_decl.span.source_id().map(|x| x.program_id());
 
-                let atts = decl
+                let atts = has_att_decl
                     .attributes
                     .all_by_kind(|att| matches!(att.kind, AttributeKind::Require));
                 for (_, atts) in atts {
                     for att in atts.iter() {
                         for arg in att.args.iter() {
-                            let type_info = TypeInfo::Struct(*decl_id);
                             if arg.name.as_str() == REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE
-                                && !is_type_trivially_decodable(&type_info)
+                                && !is_type_trivially_decodable(&has_att_type_info)
                             {
                                 let mut infos = vec![];
                                 let mut helps = vec![];
                                 let mut bottom_helps = BTreeSet::new();
 
-                                for (owner, field) in all_fields_recursive(decl_id) {
-                                    let t = engines.te().get(field.type_argument.type_id);
+                                for field in has_att_decl.fields.iter() {
+                                    let field_type_info =
+                                        engines.te().get(field.type_argument.type_id);
 
-                                    let type_name = format!("{}", engines.help_out(&*t));
+                                    if is_type_trivially_decodable(&*field_type_info) {
+                                        continue;
+                                    }
+
+                                    let field_type_name =
+                                        format!("{}", engines.help_out(&*field_type_info));
 
                                     infos.push((
                                         field.span.clone(),
-                                        format!(
-                                            "{} is not trivially decodable because of this field.",
-                                            owner.call_path.suffix.as_str()
-                                        ),
+                                        "This field is not trivially decodable.".to_string(),
                                     ));
 
-                                    match &*t {
+                                    match &*field_type_info {
                                         TypeInfo::Boolean => {
                                             helps.push((
                                                 field.type_argument.span.clone(),
-                                                "`bool` is never trivially decodable. Try changing its type to TrivialBool.".to_string(),
+                                                "`bool` is never trivially decodable. Consider using TrivialBool.".to_string(),
                                             ));
                                             bottom_helps.insert("For more info on TrivialBool see: https://raw.githubusercontent.com/FuelLabs/sway/d71243f17aba2ac1a6af8d0659a573cab7517e38/docs/slides/encoding.md".to_string());
                                         }
@@ -655,96 +644,105 @@ pub(super) fn compile_entry_function(
                                             ));
                                         }
                                         TypeInfo::Enum(decl_id) => {
-                                            let decl = engines.de().get(decl_id);
-                                            let decl_pid = decl.span.source_id().map(|x| x.program_id());
+                                            let field_type_decl = engines.de().get(decl_id);
+                                            let field_decl_pid = field_type_decl
+                                                .span
+                                                .source_id()
+                                                .map(|x| x.program_id());
 
-                                             //Only suggest change if the type is in the same workspace
-                                            match (original_pid, decl_pid) {
-                                                (Some(a), Some(b)) if a == b => {
-                                                    let non_trivially_decodable_variants = decl
-                                                        .variants
-                                                        .iter()
-                                                        .filter(|x| {
-                                                            let type_info =
-                                                                engines.te().get(x.type_argument.type_id);
-                                                            !is_type_trivially_decodable(&*type_info)
-                                                        })
-                                                        .collect::<Vec<_>>();
+                                            let non_trivially_decodable_variants = field_type_decl
+                                                .variants
+                                                .iter()
+                                                .filter(|x| {
+                                                    let type_info =
+                                                        engines.te().get(x.type_argument.type_id);
+                                                    !is_type_trivially_decodable(&*type_info)
+                                                })
+                                                .collect::<Vec<_>>();
+                                            let all_variants_are_trivially_decodable =
+                                                non_trivially_decodable_variants.is_empty();
+                                            let same_workspace = match (has_att_pid, field_decl_pid)
+                                            {
+                                                (Some(a), Some(b)) if a == b => true,
+                                                _ => false,
+                                            };
 
-                                                    if non_trivially_decodable_variants.is_empty() {
-                                                        helps.push((
-                                                            field.type_argument.span.clone(),
-                                                            format!(
-                                                                "{} can be forced to be trivialle decodable. Consider using TrivialEnum<{}>.",
-                                                                decl.call_path.suffix.as_str(),
-                                                                decl.call_path.suffix.as_str()
-                                                            ),
-                                                        ));
-                                                        bottom_helps.insert("For more info on TrivialEnum see: https://raw.githubusercontent.com/FuelLabs/sway/d71243f17aba2ac1a6af8d0659a573cab7517e38/docs/slides/encoding.md".to_string());
-                                                    } else {
-                                                        helps.push((
-                                                            field.type_argument.span.clone(),
-                                                            format!("{} cannot be forced to be trivially decodable because some of its variants are not trivially decodable.",
-                                                                decl.call_path.suffix.as_str()
-                                                            )
-                                                        ));
-
-                                                        for variant in non_trivially_decodable_variants {
-                                                            infos.push((
-                                                                variant.type_argument.span.clone(),
-                                                                format!("{} is not trivially decodable because this variant.",
-                                                                    decl.call_path.suffix.as_str()
-                                                                ),
-                                                            ));
-                                                        }
-                                                        bottom_helps.insert("Enums are never trivially decodable, but when all its variants are, it can be forced using TrivialEnum. For more info see: https://raw.githubusercontent.com/FuelLabs/sway/d71243f17aba2ac1a6af8d0659a573cab7517e38/docs/slides/encoding.md".to_string());
-                                                    }
-                                                },
-                                                _ => {}
+                                            match (
+                                                all_variants_are_trivially_decodable,
+                                                same_workspace,
+                                            ) {
+                                                (true, _) => {
+                                                    helps.push((
+                                                    field.type_argument.span.clone(),
+                                                    format!(
+                                                            "`{}` can be forced to be trivialle decodable. Consider using `TrivialEnum<{}>`.",
+                                                            field_type_decl.call_path.suffix.as_str(),
+                                                            field.type_argument.span.as_str(),
+                                                        ),
+                                                    ));
+                                                    bottom_helps.insert("For more info on `TrivialEnum` see: https://raw.githubusercontent.com/FuelLabs/sway/d71243f17aba2ac1a6af8d0659a573cab7517e38/docs/slides/encoding.md".to_string());
+                                                }
+                                                (false, true) => {
+                                                    helps.push((
+                                                        field.type_argument.span.clone(),
+                                                        format!("`{}` has variants that are not trivially decodable. Consider changing them before using `TrivialEnum`.",
+                                                            field_type_decl.call_path.suffix.as_str()
+                                                        )
+                                                    ));
+                                                    bottom_helps.insert("For more info on `TrivialEnum` see: https://raw.githubusercontent.com/FuelLabs/sway/d71243f17aba2ac1a6af8d0659a573cab7517e38/docs/slides/encoding.md".to_string());
+                                                }
+                                                (false, false) => {
+                                                    helps.push((
+                                                        field.type_argument.span.clone(),
+                                                        format!("`{}` has variants that are not trivially decodable.",
+                                                            field_type_decl.call_path.suffix.as_str()
+                                                        )
+                                                    ));
+                                                }
                                             }
                                         }
                                         TypeInfo::Struct(decl_id) => {
                                             let decl = engines.de().get(decl_id);
-                                            let decl_pid = decl.span.source_id().map(|x| x.program_id());
+                                            let decl_pid =
+                                                decl.span.source_id().map(|x| x.program_id());
 
                                             //Only suggest change if the type is in the same workspace
-                                            match (original_pid, decl_pid) {
+                                            match (has_att_pid, decl_pid) {
                                                 (Some(a), Some(b)) if a == b => {
                                                     helps.push((
                                                         field.type_argument.span.clone(),
-                                                        format!("Consider changing `{}` to be trivially decodable.",
+                                                        format!("Consider changing `{}` to make it trivially decodable.",
                                                             field.type_argument.span.as_str()
                                                         ),
                                                     ));
-                                                },
-                                                _ => {
-
                                                 }
+                                                _ => {}
                                             }
 
                                             // special types
-                                            if type_name.starts_with("std::vec::Vec<") {
-                                                let aray_type_name = type_name
+                                            if field_type_name.starts_with("std::vec::Vec<") {
+                                                let aray_type_name = field_type_name
                                                     .replace("std::vec::Vec<", "[")
                                                     .replace(">", "; 64]");
                                                 helps.push((
                                                     field.type_argument.span.clone(),
                                                     format!("`Vec` is never trivially decodable. Consider using array instead, e.g.: `{aray_type_name}`.")
                                                 ));
-                                            } else if type_name.starts_with("std::string::String") {
+                                            } else if field_type_name
+                                                .starts_with("std::string::String")
+                                            {
                                                 helps.push((
                                                     field.type_argument.span.clone(),
                                                     format!("`String` is never trivially decodable. Consider using array instead, e.g.: `str[64]`.")
                                                 ));
                                             }
                                         }
-                                        _ => {
-                                        }
+                                        _ => {}
                                     }
                                 }
 
                                 return Err(vec![CompileError::TrivialCheckFailed {
-                                    span: decl.call_path.suffix.span(),
+                                    span: has_att_decl.call_path.suffix.span(),
                                     infos,
                                     helps,
                                     bottom_helps: bottom_helps.into_iter().collect(),

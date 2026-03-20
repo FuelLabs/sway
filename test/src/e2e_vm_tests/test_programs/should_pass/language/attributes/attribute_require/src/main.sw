@@ -1,18 +1,28 @@
 script;
 
-mod another_file;
-use another_file::InnerStruct;
-
 #[require(trivially_decodable = "true")]
 struct MyStruct {
-    a: bool,
-    b: u16,
-    c: u32,
-    d: InnerStruct,
-    e: EnumThatCanUseTrivialEnum,
-    f: EnumThatCannotUseTrivialEnum,
-    g: Vec<u64>,
-    h: Result<Vec<u64>, u64>,
+    f0: bool,
+    f1: u8,
+    f2: u16,
+    f3: u32,
+    f4: u64,
+    f5: u256,
+    f6: b256,
+    f7: TrivialStruct,
+    f8: NonTrivialStruct,
+    f9: EnumThatCanUseTrivialEnum,
+    f10: EnumThatCannotUseTrivialEnum,
+    f11: Vec<u64>,
+    f12: Result<Vec<u64>, u64>,
+    f13: Result<u64, u64>,
+}
+
+struct TrivialStruct {
+}
+
+struct NonTrivialStruct {
+    pub a: bool,
 }
 
 enum EnumThatCanUseTrivialEnum {
@@ -25,15 +35,22 @@ enum EnumThatCannotUseTrivialEnum {
 
 fn main(s: MyStruct) {
     // To disable unused warnings
-    __log(s.a);
-    __log(s.b);
-    __log(s.c);
-    __log(s.d);
-    __log(s.d.a);
-    __log(s.e);
-    __log(s.f);
-    __log(s.g);
-    __log(s.h);
+    __log(s.f0);
+    __log(s.f1);
+    __log(s.f2);
+    __log(s.f3);
+    __log(s.f4);
+    __log(s.f5);
+    __log(s.f6);
+    __log(s.f7);
+    __log(s.f8.a);
+    __log(s.f9);
+    __log(s.f10);
+    __log(s.f11);
+    __log(s.f12);
+    __log(s.f13);
+
+    let _ = TrivialStruct { };
     __log(EnumThatCanUseTrivialEnum::A);
     __log(EnumThatCannotUseTrivialEnum::A(Vec::new()));
 }

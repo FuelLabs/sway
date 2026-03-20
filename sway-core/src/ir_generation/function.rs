@@ -5985,7 +5985,7 @@ pub fn get_encoding_representation(
             if decl.variants.is_empty() {
                 Some(MemoryRepresentation::Blob {
                     len_in_bytes: 8,
-                    range: None,
+                    range: Some(0..1),
                 })
             } else {
                 let variants = decl
@@ -6000,14 +6000,14 @@ pub fn get_encoding_representation(
                     Some(MemoryRepresentation::And(vec![
                         MemoryRepresentation::Blob {
                             len_in_bytes: 8,
-                            range: None,
+                            range: Some(0..variants.len() as u64),
                         },
                     ]))
                 } else {
                     Some(MemoryRepresentation::And(vec![
                         MemoryRepresentation::Blob {
                             len_in_bytes: 8,
-                            range: None,
+                            range: Some(0..variants.len() as u64),
                         },
                         MemoryRepresentation::Or(variants),
                     ]))
