@@ -1,0 +1,3 @@
+category = "fail"
+
+# check: $()Using intrinsic "__revert" in a predicate is not allowed.

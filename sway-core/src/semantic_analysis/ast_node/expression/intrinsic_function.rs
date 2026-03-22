@@ -10,7 +10,7 @@ use sway_types::{integer_bits::IntegerBits, Spanned};
 use crate::{
     engine_threading::*,
     language::{
-        parsed::{Expression, ExpressionKind},
+        parsed::{Expression, ExpressionKind, TreeType},
         ty::{self, TyIntrinsicFunctionKind},
         Literal,
     },
@@ -1735,7 +1735,7 @@ fn type_check_shift_binary_op(
 
 /// Signature: `__revert(code: u64)`
 /// Description: Reverts with error code `code`.
-/// Constraints: None.
+/// Constraints: Not allowed in predicates (predicates must return bool, not panic).
 fn type_check_revert(
     handler: &Handler,
     mut ctx: TypeCheckContext,
@@ -1745,6 +1745,16 @@ fn type_check_revert(
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
     let type_engine = ctx.engines.te();
+
+    // Forbid __revert in predicates: predicates must evaluate to true/false,
+    // not abort execution. Using revert() in a predicate causes a runtime panic
+    // which should be caught at compile time instead. (Closes #5986)
+    if ctx.kind() == TreeType::Predicate {
+        return Err(handler.emit_err(CompileError::DisallowedIntrinsicInPredicate {
+            intrinsic: kind.to_string(),
+            span,
+        }));
+    }
 
     if arguments.len() != 1 {
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
