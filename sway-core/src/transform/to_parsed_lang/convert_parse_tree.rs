@@ -681,7 +681,10 @@ fn item_trait_to_trait_declaration(
             let (attributes_handler, attributes) = attr_decls_to_attributes(
                 &annotated.attributes,
                 |attr| {
-                    attr.can_annotate_abi_or_trait_interface_item(&annotated.value, TraitItemParent::Trait)
+                    attr.can_annotate_abi_or_trait_interface_item(
+                        &annotated.value,
+                        TraitItemParent::Trait,
+                    )
                 },
                 annotated.value.friendly_name(),
             );
@@ -1017,12 +1020,13 @@ fn handle_impl_contract(
                     //  - keeping only the attributes that are allowed on ABI interface constants,
                     //  - removing the initializer expression.
                     let mut abi_const_decl = (*engines.pe().get_constant(&impl_const_decl)).clone();
-                    abi_const_decl.attributes = Attributes::retain_from(&abi_const_decl.attributes, |attr| {
-                        attr.can_annotate_abi_or_trait_interface_const(TraitItemParent::Abi)
-                    });
+                    abi_const_decl.attributes =
+                        Attributes::retain_from(&abi_const_decl.attributes, |attr| {
+                            attr.can_annotate_abi_or_trait_interface_const(TraitItemParent::Abi)
+                        });
                     abi_const_decl.value = None;
 
-                    let abi_const_decl= engines.pe().insert(abi_const_decl);
+                    let abi_const_decl = engines.pe().insert(abi_const_decl);
 
                     let abi_const = TraitItem::Constant(abi_const_decl);
 

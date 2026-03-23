@@ -740,10 +740,7 @@ impl Attribute {
     ///   fn interface_fn();
     /// }
     /// ```
-    pub(crate) fn can_annotate_abi_or_trait_interface_fn(
-        &self,
-        parent: TraitItemParent,
-    ) -> bool {
+    pub(crate) fn can_annotate_abi_or_trait_interface_fn(&self, parent: TraitItemParent) -> bool {
         use AttributeKind::*;
         match self.kind {
             Unknown => true,
@@ -850,10 +847,7 @@ impl Attribute {
     ///   fn provided_fn() {}
     /// }
     /// ```
-    pub(crate) fn can_annotate_abi_or_trait_provided_fn(
-        &self,
-        parent: TraitItemParent,
-    ) -> bool {
+    pub(crate) fn can_annotate_abi_or_trait_provided_fn(&self, parent: TraitItemParent) -> bool {
         use AttributeKind::*;
         match self.kind {
             Unknown => true,
