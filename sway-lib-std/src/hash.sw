@@ -9,17 +9,31 @@ use ::bytes::*;
 use ::codec::*;
 use ::debug::*;
 
+/// A hasher that accumulates bytes and produces a cryptographic hash.
+///
+/// Use `Hasher` to incrementally feed data and then call `sha256()` or
+/// `keccak256()` to obtain the final digest.
+///
+/// # Examples
+///
+/// ```sway
+/// let mut hasher = Hasher::new();
+/// hasher.write_str("Fuel");
+/// let hash = hasher.sha256();
+/// ```
 pub struct Hasher {
     bytes: Bytes,
 }
 
 impl Hasher {
+    /// Creates a new, empty `Hasher`.
     pub fn new() -> Self {
         Self {
             bytes: Bytes::new(),
         }
     }
 
+    /// Creates a new `Hasher` with pre-allocated capacity for `capacity` bytes.
     pub fn with_capacity(capacity: u64) -> Self {
         Self {
             bytes: Bytes::with_capacity(capacity),
@@ -70,6 +84,9 @@ impl Hasher {
             .append_raw_slice(raw_slice::from_parts::<u8>(str_ptr, str_size));
     }
 
+    /// Computes the SHA-256 hash of all bytes written to this `Hasher`.
+    ///
+    /// Consumes the `Hasher` and returns the 256-bit digest.
     pub fn sha256(self) -> b256 {
         let mut result_buffer = b256::min();
         asm(
@@ -82,6 +99,9 @@ impl Hasher {
         }
     }
 
+    /// Computes the Keccak-256 hash of all bytes written to this `Hasher`.
+    ///
+    /// Consumes the `Hasher` and returns the 256-bit digest.
     pub fn keccak256(self) -> b256 {
         let mut result_buffer = b256::min();
         asm(
@@ -95,7 +115,26 @@ impl Hasher {
     }
 }
 
+/// A trait for types that can be hashed.
+///
+/// Implement `Hash` for a type to allow it to be fed into a `Hasher`.
+/// All primitive integer types, `b256`, `bool`, `str`, tuples, and arrays
+/// already implement `Hash`.
+///
+/// # Examples
+///
+/// ```sway
+/// use std::hash::{Hash, Hasher};
+///
+/// impl Hash for MyStruct {
+///     fn hash(self, ref mut state: Hasher) {
+///         self.field_a.hash(state);
+///         self.field_b.hash(state);
+///     }
+/// }
+/// ```
 pub trait Hash {
+    /// Feeds this value into the given `Hasher`.
     fn hash(self, ref mut state: Hasher);
 }
 
