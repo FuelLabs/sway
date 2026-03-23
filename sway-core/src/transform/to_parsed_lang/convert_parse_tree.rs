@@ -681,7 +681,7 @@ fn item_trait_to_trait_declaration(
             let (attributes_handler, attributes) = attr_decls_to_attributes(
                 &annotated.attributes,
                 |attr| {
-                    attr.can_annotate_abi_or_trait_item(&annotated.value, TraitItemParent::Trait)
+                    attr.can_annotate_abi_or_trait_interface_item(&annotated.value, TraitItemParent::Trait)
                 },
                 annotated.value.friendly_name(),
             );
@@ -730,7 +730,7 @@ fn item_trait_to_trait_declaration(
             .map(|item_fn| {
                 let (attributes_handler, attributes) = attr_decls_to_attributes(
                     &item_fn.attributes,
-                    |attr| attr.can_annotate_abi_or_trait_item_fn(TraitItemParent::Trait),
+                    |attr| attr.can_annotate_abi_or_trait_provided_fn(TraitItemParent::Trait),
                     "provided trait function",
                 );
 
@@ -967,17 +967,17 @@ fn handle_impl_contract(
             let attributes_error_emitted = handler.append(attributes_handler);
 
             let contract_item = match annotated.value {
-                ItemImplItem::Fn(fn_item) => {
+                ItemImplItem::Fn(item_fn) => {
                     let fn_decl = fn_signature_to_trait_fn(
                         context,
                         handler,
                         engines,
-                        fn_item.fn_signature.clone(),
+                        item_fn.fn_signature.clone(),
                         // Take over only the attributes that are allowed on ABI interface methods.
-                        // E.g., `#[inline]` is allowed on ABI method implementations (in the `impl ... Contract` block),
+                        // E.g., `#[inline]` is allowed on ABI methods implementations (in the `impl ... Contract` block),
                         // but not on the ABI interface method itself.
                         Attributes::retain_from(&attributes, |attr| {
-                            attr.can_annotate_abi_or_trait_item_fn(TraitItemParent::Abi)
+                            attr.can_annotate_abi_or_trait_interface_fn(TraitItemParent::Abi)
                         }),
                     )?;
 
@@ -992,26 +992,39 @@ fn handle_impl_contract(
                     let abi_fn = TraitItem::TraitFn(fn_decl);
 
                     let impl_fn = item_fn_to_function_declaration(
-                        context, handler, engines, fn_item, attributes, None, None, None,
+                        context, handler, engines, item_fn, attributes, None, None, None,
                     )?;
 
                     let impl_fn = ImplItem::Fn(impl_fn);
 
                     Some((abi_fn, impl_fn))
                 }
-                ItemImplItem::Const(const_decl) => {
-                    let const_decl = item_const_to_constant_declaration(
+                ItemImplItem::Const(item_const) => {
+                    let impl_const_decl = item_const_to_constant_declaration(
                         context,
                         handler,
                         engines,
-                        const_decl,
+                        item_const,
                         Visibility::Public,
                         attributes,
-                        false,
+                        true,
                     )?;
 
-                    let abi_const = TraitItem::Constant(const_decl);
-                    let impl_const = ImplItem::Constant(const_decl);
+                    let impl_const = ImplItem::Constant(impl_const_decl);
+
+                    // Let's take the implementation of the constant from the `impl Contract` block
+                    // and create a constant declaration in the ABI interface from it by:
+                    //  - keeping only the attributes that are allowed on ABI interface constants,
+                    //  - removing the initializer expression.
+                    let mut abi_const_decl = (*engines.pe().get_constant(&impl_const_decl)).clone();
+                    abi_const_decl.attributes = Attributes::retain_from(&abi_const_decl.attributes, |attr| {
+                        attr.can_annotate_abi_or_trait_interface_const(TraitItemParent::Abi)
+                    });
+                    abi_const_decl.value = None;
+
+                    let abi_const_decl= engines.pe().insert(abi_const_decl);
+
+                    let abi_const = TraitItem::Constant(abi_const_decl);
 
                     Some((abi_const, impl_const))
                 }
@@ -1121,7 +1134,7 @@ fn item_abi_to_abi_declaration(
                     let (attributes_handler, attributes) = attr_decls_to_attributes(
                         &annotated.attributes,
                         |attr| {
-                            attr.can_annotate_abi_or_trait_item(
+                            attr.can_annotate_abi_or_trait_interface_item(
                                 &annotated.value,
                                 TraitItemParent::Abi,
                             )
@@ -1190,7 +1203,7 @@ fn item_abi_to_abi_declaration(
                 .map(|item_fn| {
                     let (attributes_handler, attributes) = attr_decls_to_attributes(
                         &item_fn.attributes,
-                        |attr| attr.can_annotate_abi_or_trait_item_fn(TraitItemParent::Abi),
+                        |attr| attr.can_annotate_abi_or_trait_provided_fn(TraitItemParent::Abi),
                         "provided ABI function",
                     );
 
