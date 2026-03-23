@@ -968,6 +968,7 @@ fn handle_impl_contract(
 
             let contract_item = match annotated.value {
                 ItemImplItem::Fn(fn_item) => {
+                    let interface_item = ItemTraitItem::Fn(fn_item.fn_signature.clone(), None);
                     let fn_decl = fn_signature_to_trait_fn(
                         context,
                         handler,
@@ -977,7 +978,10 @@ fn handle_impl_contract(
                         // E.g., `#[inline]` is allowed on ABI method implementations (in the `impl ... Contract` block),
                         // but not on the ABI interface method itself.
                         Attributes::retain_from(&attributes, |attr| {
-                            attr.can_annotate_abi_or_trait_item_fn(TraitItemParent::Abi)
+                            attr.can_annotate_abi_or_trait_item(
+                                &interface_item,
+                                TraitItemParent::Abi,
+                            )
                         }),
                     )?;
 
@@ -1000,7 +1004,22 @@ fn handle_impl_contract(
                     Some((abi_fn, impl_fn))
                 }
                 ItemImplItem::Const(const_decl) => {
-                    let const_decl = item_const_to_constant_declaration(
+                    let interface_item = ItemTraitItem::Const(const_decl.clone(), None);
+                    let abi_const = item_const_to_constant_declaration(
+                        context,
+                        handler,
+                        engines,
+                        const_decl.clone(),
+                        Visibility::Public,
+                        Attributes::retain_from(&attributes, |attr| {
+                            attr.can_annotate_abi_or_trait_item(
+                                &interface_item,
+                                TraitItemParent::Abi,
+                            )
+                        }),
+                        false,
+                    )?;
+                    let impl_const = item_const_to_constant_declaration(
                         context,
                         handler,
                         engines,
@@ -1010,8 +1029,8 @@ fn handle_impl_contract(
                         false,
                     )?;
 
-                    let abi_const = TraitItem::Constant(const_decl);
-                    let impl_const = ImplItem::Constant(const_decl);
+                    let abi_const = TraitItem::Constant(abi_const);
+                    let impl_const = ImplItem::Constant(impl_const);
 
                     Some((abi_const, impl_const))
                 }
