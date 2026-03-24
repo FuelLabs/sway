@@ -2003,6 +2003,9 @@ fn const_eval_intrinsic(
 
             Ok(Some(Constant::unique(lookup.context, c)))
         }
+        Intrinsic::EnumDiscriminantCount => {
+            todo!();
+        }
     }
 }
 
