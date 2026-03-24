@@ -102,7 +102,7 @@ impl fmt::Display for Intrinsic {
             Intrinsic::RuntimeMemoryId => "runtime_mem_id",
             Intrinsic::EncodingMemoryId => "encoding_mem_id",
             Intrinsic::EnumDiscriminantCount => "enum_discriminant_count",
-                    };
+        };
         write!(f, "{s}")
     }
 }
