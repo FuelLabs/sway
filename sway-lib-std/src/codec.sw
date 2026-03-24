@@ -3768,13 +3768,13 @@ fn trivial_bool_when_valid() {
 #[test(should_revert)]
 fn trivial_bool_when_invalid_is_valid() {
     let slice = encode(TrivialBool { value: 2 });
-    abi_decode::<TrivialBool>(slice).unwrap();
+    let _ = abi_decode::<TrivialBool>(slice).unwrap();
 }
 
 #[test(should_revert)]
 fn trivial_bool_when_invalid_unwrap() {
     let slice = encode(TrivialBool { value: 2 });
-    abi_decode::<TrivialBool>(slice).unwrap();
+    let _ = abi_decode::<TrivialBool>(slice).unwrap();
 }
 
 pub struct TrivialEnum<T> {
@@ -3829,7 +3829,6 @@ enum A {
     B: u64,
 }
 
-
 impl AbiEncode for A {
     fn is_encode_trivial() -> bool {
         true
@@ -3847,7 +3846,18 @@ impl AbiDecode for A
     }
 
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
-        A::A(0)
+        let discriminant = u64::abi_decode(buffer);
+        match discriminant {
+            0 => {
+                let v = u64::abi_decode(buffer);
+                A::A(v)
+            }
+            1 => {
+                let v = u64::abi_decode(buffer);
+                A::B(v)
+            }
+            _ => __revert(0),
+        }
     }
 }
 
@@ -3879,5 +3889,5 @@ fn trivial_enum_when_invalid_is_valid() {
 #[test(should_revert)]
 fn trivial_enum_when_invalid_unwrap() {
     let e = __transmute::<[u8; 16], TrivialEnum<A>>([0u8, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0]);
-    e.unwrap();
+    let _ = e.unwrap();
 }
