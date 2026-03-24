@@ -1,9 +1,7 @@
 use crate::{
     decl_engine::{DeclEngineGet, DeclId, DeclRefFunction},
-    error::module_can_be_changed,
     ir_generation::{
-        convert::{convert_resolved_type_info, convert_resolved_typeid_no_span},
-        KeyedTyFunctionDecl, PanickingFunctionCache,
+        convert::convert_resolved_type_info, KeyedTyFunctionDecl, PanickingFunctionCache,
     },
     language::{
         ty::{self, StructDecl, TyDecl},
@@ -28,7 +26,7 @@ use super::{
 use sway_ast::attribute::REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE;
 use sway_error::{error::CompileError, handler::Handler};
 use sway_ir::{metadata::combine as md_combine, *};
-use sway_types::{integer_bits::IntegerBits, Ident, Named, Span, Spanned};
+use sway_types::{integer_bits::IntegerBits, Ident, Span, Spanned};
 
 use std::{
     cell::Cell,
@@ -611,7 +609,7 @@ pub(super) fn compile_entry_function(
                                     let field_type_info =
                                         engines.te().get(field.type_argument.type_id);
 
-                                    if is_type_trivially_decodable(&*field_type_info) {
+                                    if is_type_trivially_decodable(&field_type_info) {
                                         continue;
                                     }
 
@@ -656,16 +654,13 @@ pub(super) fn compile_entry_function(
                                                 .filter(|x| {
                                                     let type_info =
                                                         engines.te().get(x.type_argument.type_id);
-                                                    !is_type_trivially_decodable(&*type_info)
+                                                    !is_type_trivially_decodable(&type_info)
                                                 })
                                                 .collect::<Vec<_>>();
+
                                             let all_variants_are_trivially_decodable =
                                                 non_trivially_decodable_variants.is_empty();
-                                            let same_workspace = match (has_att_pid, field_decl_pid)
-                                            {
-                                                (Some(a), Some(b)) if a == b => true,
-                                                _ => false,
-                                            };
+                                            let same_workspace = matches!((has_att_pid, field_decl_pid), (Some(a), Some(b)) if a == b);
 
                                             match (
                                                 all_variants_are_trivially_decodable,
@@ -733,7 +728,7 @@ pub(super) fn compile_entry_function(
                                             {
                                                 helps.push((
                                                     field.type_argument.span.clone(),
-                                                    format!("`String` is never trivially decodable. Consider using array instead, e.g.: `str[64]`.")
+                                                    "`String` is never trivially decodable. Consider using array instead, e.g.: `str[64]`.".to_string()
                                                 ));
                                             }
                                         }
