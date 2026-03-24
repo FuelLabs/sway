@@ -145,9 +145,14 @@ impl ty::TyIntrinsicFunctionKind {
             Intrinsic::Alloc => {
                 type_check_alloc(handler, ctx, kind, arguments, type_arguments, span)
             }
-            Intrinsic::EnumDiscriminantCount => {
-                type_check_enum_discriminant_count(arguments, handler, kind, type_arguments, span, ctx)
-            }
+            Intrinsic::EnumDiscriminantCount => type_check_enum_discriminant_count(
+                arguments,
+                handler,
+                kind,
+                type_arguments,
+                span,
+                ctx,
+            ),
         }
     }
 }
@@ -199,7 +204,6 @@ fn type_check_encoding_memory_id(
     };
     Ok((intrinsic_function, ctx.engines.te().id_of_u64()))
 }
-
 
 fn type_check_enum_discriminant_count(
     arguments: &[Expression],
