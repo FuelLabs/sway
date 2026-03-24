@@ -2497,6 +2497,25 @@ impl<'a> FnCompiler<'a> {
                     context,
                 ))
             }
+            Intrinsic::EnumDiscriminantCount => {
+                assert!(type_arguments.len() == 1);
+                assert!(arguments.is_empty());
+
+                let arg = type_arguments[0].as_type_argument().unwrap();
+                let t= engines.te().get(arg.type_id);
+                let count = match &*t {
+                    TypeInfo::Enum(decl_id) => {
+                        let decl = engines.de().get(decl_id);
+                        decl.variants.len()
+                    },
+                    _ => todo!("ICE"),
+                };
+                let val = ConstantContent::get_uint(context, 64, count as u64);
+                Ok(TerminatorValue::new(
+                    CompiledValue::InRegister(val),
+                    context,
+                ))
+            }
         }
     }
 

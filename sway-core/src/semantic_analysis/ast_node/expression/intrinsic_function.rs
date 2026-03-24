@@ -123,11 +123,61 @@ impl ty::TyIntrinsicFunctionKind {
             Intrinsic::Alloc => {
                 type_check_alloc(handler, ctx, kind, arguments, type_arguments, span)
             }
+            Intrinsic::EnumDiscriminantCount => {
+                type_check_enum_discriminant_count(arguments, handler, kind, type_arguments, span, ctx)
+            }
         }
     }
 }
 
 fn type_check_encoding_memory_id(
+    arguments: &[Expression],
+    handler: &Handler,
+    kind: Intrinsic,
+    type_arguments: &[GenericArgument],
+    span: Span,
+    ctx: TypeCheckContext,
+) -> Result<(TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
+    if !arguments.is_empty() {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+            name: kind.to_string(),
+            expected: 0,
+            span,
+        }));
+    }
+
+    if type_arguments.len() != 1 {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
+            name: kind.to_string(),
+            expected: 1,
+            span,
+        }));
+    }
+
+    let targ = &type_arguments[0];
+    let arg = ctx
+        .resolve_type(
+            handler,
+            targ.type_id(),
+            &targ.span(),
+            EnforceTypeArguments::Yes,
+            None,
+        )
+        .unwrap_or_else(|err| ctx.engines.te().id_of_error_recovery(err));
+    let mut final_type_arguments = type_arguments.to_vec();
+    *final_type_arguments[0].type_id_mut() = arg;
+
+    let intrinsic_function = ty::TyIntrinsicFunctionKind {
+        kind,
+        arguments: vec![],
+        type_arguments: final_type_arguments,
+        span: span.clone(),
+    };
+    Ok((intrinsic_function, ctx.engines.te().id_of_u64()))
+}
+
+
+fn type_check_enum_discriminant_count(
     arguments: &[Expression],
     handler: &Handler,
     kind: Intrinsic,
