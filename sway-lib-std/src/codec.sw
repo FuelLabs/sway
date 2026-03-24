@@ -6909,10 +6909,11 @@ fn trivial_bool_when_valid() {
     assert_encoding(b, [0u8, 0, 0, 0, 0, 0, 0, 1]);
 }
 
-#[test(should_revert)]
+#[test]
 fn trivial_bool_when_invalid_is_valid() {
     let slice = encode(TrivialBool { value: 2 });
-    abi_decode::<TrivialBool>(slice).unwrap();
+    let b = abi_decode::<TrivialBool>(slice);
+    assert_eq(b.is_valid(), false, 0);
 }
 
 #[test(should_revert)]

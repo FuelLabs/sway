@@ -189,6 +189,8 @@ fn type_check_enum_discriminant_count(
     span: Span,
     ctx: TypeCheckContext,
 ) -> Result<(TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
+    let type_engine = ctx.engines.te();
+
     if !arguments.is_empty() {
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
@@ -214,7 +216,16 @@ fn type_check_enum_discriminant_count(
             EnforceTypeArguments::Yes,
             None,
         )
-        .unwrap_or_else(|err| ctx.engines.te().id_of_error_recovery(err));
+        .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
+
+    if !matches!(&*type_engine.get_unaliased(arg), TypeInfo::Enum(_)) {
+        return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
+            name: kind.to_string(),
+            span: targ.span(),
+            hint: "Type argument must be an enum".to_string(),
+        }));
+    }
+
     let mut final_type_arguments = type_arguments.to_vec();
     *final_type_arguments[0].type_id_mut() = arg;
 
@@ -224,7 +235,7 @@ fn type_check_enum_discriminant_count(
         type_arguments: final_type_arguments,
         span: span.clone(),
     };
-    Ok((intrinsic_function, ctx.engines.te().id_of_u64()))
+    Ok((intrinsic_function, type_engine.id_of_u64()))
 }
 
 fn type_check_runtime_memory_id(

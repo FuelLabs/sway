@@ -2474,7 +2474,13 @@ impl<'a> FnCompiler<'a> {
                         let decl = engines.de().get(decl_id);
                         decl.variants.len()
                     }
-                    _ => todo!("ICE"),
+                    _ => {
+                        return Err(CompileError::IntrinsicUnsupportedArgType {
+                            name: kind.to_string(),
+                            span: span.clone(),
+                            hint: "Type argument must be an enum".to_string(),
+                        });
+                    }
                 };
                 let val = ConstantContent::get_uint(context, 64, count as u64);
                 Ok(TerminatorValue::new(
