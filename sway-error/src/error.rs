@@ -3388,7 +3388,7 @@ impl ToDiagnostic for CompileError {
                     issue: Issue::error(
                         source_engine,
                         span.clone(),
-                        format!("{} is not trivially decodable.", span.as_str()),
+                        format!("`{}` is not trivially decodable.", span.as_str()),
                     ),
                     hints,
                     help: [
