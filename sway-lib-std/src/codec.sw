@@ -2666,6 +2666,7 @@ where
         result: bool
     };
 
+
     if !result {
         __revert(0);
     }
@@ -2936,4 +2937,187 @@ fn ok_abi_encoding() {
 fn nok_abi_encoding_invalid_bool() {
     let actual = encode(2u8);
     let _ = abi_decode::<bool>(actual);
+}
+
+pub struct TrivialBool {
+    value: u64
+}
+
+impl AbiEncode for TrivialBool {
+    fn is_encode_trivial() -> bool {
+        true
+    }
+
+    fn abi_encode(self, buffer: Buffer) -> Buffer {
+        self.value.abi_encode(buffer)
+    }
+}
+
+impl AbiDecode for TrivialBool {
+    fn is_decode_trivial() -> bool {
+        true
+    }
+
+    fn abi_decode(ref mut buffer: BufferReader) -> Self {
+        let value = u64::abi_decode(buffer);
+        TrivialBool { value }
+    }
+}
+
+pub const INVALID_BOOL_REVERT: u64 = 0u64;
+
+impl TrivialBool {
+    pub fn from(value: bool) -> Self {
+        TrivialBool {
+            value: if value {
+                1
+            } else {
+                0
+            }
+        }
+    }
+
+    fn is_valid(self) -> bool {
+        match self.value {
+            0 => true,
+            1 => true,
+            _ => false,
+        }
+    }
+
+    fn unwrap(self) -> bool {
+        match self.value {
+            0 => false,
+            1 => true,
+            _ => __revert(INVALID_BOOL_REVERT),
+        }
+    }
+}
+
+#[test]
+fn trivial_bool_when_valid() {
+    let b = TrivialBool { value: 0 };
+    assert_eq(b.is_valid(), true, 0);
+    assert_encoding(b, [0u8, 0, 0, 0, 0, 0, 0, 0]);
+
+    let b = TrivialBool { value: 1 };
+    assert_eq(b.is_valid(), true, 0);
+    assert_encoding(b, [0u8, 0, 0, 0, 0, 0, 0, 1]);
+}
+
+#[test(should_revert)]
+fn trivial_bool_when_invalid_is_valid() {
+    let slice = encode(TrivialBool { value: 2 });
+    abi_decode::<TrivialBool>(slice).unwrap();
+}
+
+#[test(should_revert)]
+fn trivial_bool_when_invalid_unwrap() {
+    let slice = encode(TrivialBool { value: 2 });
+    abi_decode::<TrivialBool>(slice).unwrap();
+}
+
+pub struct TrivialEnum<T> {
+    value: T
+}
+
+impl<T> TrivialEnum<T> {
+    pub fn is_valid(self) -> bool {
+        let discriminant = raw_slice::from_parts::<u8>(__addr_of(self.value), 8);
+        let discriminant = abi_decode::<u64>(discriminant);
+        discriminant < __enum_discriminant_count::<T>()
+    }
+
+    pub fn unwrap(self) -> T {
+        let discriminant = raw_slice::from_parts::<u8>(__addr_of(self.value), 8);
+        let discriminant = abi_decode::<u64>(discriminant);
+        if discriminant < __enum_discriminant_count::<T>() {
+            self.value
+        } else {
+            __revert(1)
+        }
+    }
+}
+
+impl<T> AbiEncode for TrivialEnum<T> {
+    fn is_encode_trivial() -> bool {
+        true
+    }
+
+    fn abi_encode(self, buffer: Buffer) -> Buffer {
+        buffer
+    }
+}
+
+
+impl<T> AbiDecode for TrivialEnum<T> 
+where
+    T: AbiDecode
+{
+    fn is_decode_trivial() -> bool {
+        true
+    }
+
+    fn abi_decode(ref mut buffer: BufferReader) -> Self {
+        let value = T::abi_decode(buffer);
+        TrivialEnum { value }
+    }
+}
+
+enum A {
+    A: u64,
+    B: u64,
+}
+
+
+impl AbiEncode for A {
+    fn is_encode_trivial() -> bool {
+        true
+    }
+
+    fn abi_encode(self, buffer: Buffer) -> Buffer {
+        buffer
+    }
+}
+
+impl AbiDecode for A 
+{
+    fn is_decode_trivial() -> bool {
+        true
+    }
+
+    fn abi_decode(ref mut buffer: BufferReader) -> Self {
+        A::A(0)
+    }
+}
+
+impl PartialEq for A {
+    fn eq(self, other: A) -> bool {
+        match (self, other) {
+            (A::A(a), A::A(b)) => a == b,
+            (A::B(a), A::B(b)) => a == b,
+            _ => false,
+        }
+    }
+}
+
+#[test]
+fn trivial_enum_when_valid() {
+    let before = TrivialEnum { value: A::B(1) };
+    let bytes = encode(before);
+    let after = abi_decode::<TrivialEnum<A>>(bytes);
+    let after = after.unwrap();
+    assert_eq(after, A::B(1), 1);
+}
+
+#[test]
+fn trivial_enum_when_invalid_is_valid() {
+    let e = __transmute::<[u8; 16], TrivialEnum<A>>([0u8, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0]);
+    assert_eq(e.is_valid(), false, 0);
+}
+
+#[test(should_revert)]
+fn trivial_enum_when_invalid_unwrap() {
+    let e = __transmute::<[u8; 16], TrivialEnum<A>>([0u8, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0]);
+    e.unwrap();
 }
