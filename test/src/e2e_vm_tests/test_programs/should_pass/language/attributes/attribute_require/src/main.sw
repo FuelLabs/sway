@@ -16,6 +16,10 @@ struct MyStruct {
     f11: Vec<u64>,
     f12: Result<Vec<u64>, u64>,
     f13: Result<u64, u64>,
+
+    f14: (u64, NonTrivialStruct),
+    f15: [NonTrivialStruct; 1],
+    f16: [(u64, NonTrivialStruct); 2],
 }
 
 struct TrivialStruct {
@@ -49,6 +53,9 @@ fn main(s: MyStruct) {
     __log(s.f11);
     __log(s.f12);
     __log(s.f13);
+    __log(s.f14);
+    __log(s.f15);
+    __log(s.f16);
 
     let _ = TrivialStruct { };
     __log(EnumThatCanUseTrivialEnum::A);
