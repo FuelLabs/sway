@@ -12,36 +12,45 @@ error: Type is not trivially decodable
    |
 ...
  4 | struct MyStruct {
-   |        ^^^^^^^^ MyStruct is not trivially decodable.
+   |        ^^^^^^^^ `MyStruct` is not trivially decodable.
  5 |     f0: bool,
-   |     -------- info: This field is not trivially decodable.
+   |     -- info: This field is not trivially decodable.
    |         ---- help: `bool` is never trivially decodable. Consider using TrivialBool.
  6 |     f1: u8,
  7 |     f2: u16,
-   |     ------- info: This field is not trivially decodable.
+   |     -- info: This field is not trivially decodable.
    |         --- help: `u16` is never trivially decodable. Consider using `u64` instead.
  8 |     f3: u32,
-   |     ------- info: This field is not trivially decodable.
+   |     -- info: This field is not trivially decodable.
    |         --- help: `u32` is never trivially decodable. Consider using `u64` instead.
 ...
 13 |     f8: NonTrivialStruct,
-   |     -------------------- info: This field is not trivially decodable.
+   |     -- info: This field is not trivially decodable.
    |         ---------------- help: Consider changing `NonTrivialStruct` to make it trivially decodable.
 14 |     f9: EnumThatCanUseTrivialEnum,
-   |     ----------------------------- info: This field is not trivially decodable.
+   |     -- info: This field is not trivially decodable.
    |         ------------------------- help: `EnumThatCanUseTrivialEnum` can be forced to be trivialle decodable. Consider using `TrivialEnum<EnumThatCanUseTrivialEnum>`.
 15 |     f10: EnumThatCannotUseTrivialEnum,
-   |     --------------------------------- info: This field is not trivially decodable.
+   |     --- info: This field is not trivially decodable.
    |          ---------------------------- help: `EnumThatCannotUseTrivialEnum` has variants that are not trivially decodable. Consider changing them before using `TrivialEnum`.
 16 |     f11: Vec<u64>,
-   |     ------------- info: This field is not trivially decodable.
-   |          -------- help: `Vec` is never trivially decodable. Consider using array instead, e.g.: `[u64; 64]`.
+   |     --- info: This field is not trivially decodable.
 17 |     f12: Result<Vec<u64>, u64>,
-   |     -------------------------- info: This field is not trivially decodable.
+   |     --- info: This field is not trivially decodable.
    |          --------------------- help: `Result` has variants that are not trivially decodable.
 18 |     f13: Result<u64, u64>,
-   |     --------------------- info: This field is not trivially decodable.
+   |     --- info: This field is not trivially decodable.
    |          ---------------- help: `Result` can be forced to be trivialle decodable. Consider using `TrivialEnum<Result<u64, u64>>`.
+19 | 
+20 |     f14: (u64, NonTrivialStruct),
+   |     --- info: This field is not trivially decodable.
+   |                ---------------- help: Consider changing `NonTrivialStruct` to make it trivially decodable.
+21 |     f15: [NonTrivialStruct; 1],
+   |     --- info: This field is not trivially decodable.
+   |           ---------------- help: Consider changing `NonTrivialStruct` to make it trivially decodable.
+22 |     f16: [(u64, NonTrivialStruct); 2],
+   |     --- info: This field is not trivially decodable.
+   |                 ---------------- help: Consider changing `NonTrivialStruct` to make it trivially decodable.
    |
    = help: For more details on trivial decoding see https://raw.githubusercontent.com/FuelLabs/sway/d71243f17aba2ac1a6af8d0659a573cab7517e38/docs/slides/encoding.md
    = help: For more info on TrivialBool see: https://raw.githubusercontent.com/FuelLabs/sway/d71243f17aba2ac1a6af8d0659a573cab7517e38/docs/slides/encoding.md
