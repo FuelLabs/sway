@@ -3426,7 +3426,6 @@ where
         result: bool
     };
 
-
     if !result {
         __revert(0);
     }
@@ -3700,7 +3699,7 @@ fn nok_abi_encoding_invalid_bool() {
 }
 
 pub struct TrivialBool {
-    value: u64
+    value: u64,
 }
 
 impl AbiEncode for TrivialBool {
@@ -3729,11 +3728,7 @@ pub const INVALID_BOOL_REVERT: u64 = 0u64;
 impl TrivialBool {
     pub fn from(value: bool) -> Self {
         TrivialBool {
-            value: if value {
-                1
-            } else {
-                0
-            }
+            value: if value { 1 } else { 0 },
         }
     }
 
@@ -3778,7 +3773,7 @@ fn trivial_bool_when_invalid_unwrap() {
 }
 
 pub struct TrivialEnum<T> {
-    value: T
+    value: T,
 }
 
 impl<T> TrivialEnum<T> {
@@ -3809,10 +3804,9 @@ impl<T> AbiEncode for TrivialEnum<T> {
     }
 }
 
-
-impl<T> AbiDecode for TrivialEnum<T> 
+impl<T> AbiDecode for TrivialEnum<T>
 where
-    T: AbiDecode
+    T: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
         true
@@ -3839,8 +3833,7 @@ impl AbiEncode for A {
     }
 }
 
-impl AbiDecode for A 
-{
+impl AbiDecode for A {
     fn is_decode_trivial() -> bool {
         true
     }
