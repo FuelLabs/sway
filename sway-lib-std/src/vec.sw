@@ -822,17 +822,35 @@ where
         false
     }
     fn abi_encode(self, buffer: Buffer) -> Buffer {
-        let len = self.len;
-        let mut buffer = len.abi_encode(buffer);
+        const IS_ELEM_TRIVIAL = is_encode_trivial::<T>();
 
-        let mut i = 0;
-        while i < len {
-            let item = self.get_unchecked(i);
-            buffer = item.abi_encode(buffer);
-            i += 1;
+        if IS_ELEM_TRIVIAL {
+            // TODO: We need to write the length of the vector,
+            //       and then the raw memory of the vector's contents.
+            //       Currently, we don't have a way to write the plain
+            //       memory content without the length. E.g., writing slice
+            //       will write the length of the vector slice in bytes,
+            //       and then the raw memory, but not the length of the
+            //       vector in number of elements.
+            //
+            //       One possibility to solve this would be to have an intrinsic
+            //       that would allow us to write the raw memory of a particular
+            //       length, without the length prefix. E.g.:
+            //          __encode_buffer_append_raw(buffer, ptr, len)
+            self.as_raw_slice().abi_encode(buffer)
+        } else {
+            let len = self.len;
+            let mut buffer = len.abi_encode(buffer);
+
+            let mut i = 0;
+            while i < len {
+                let item = self.get_unchecked(i);
+                buffer = item.abi_encode(buffer);
+                i += 1;
+            }
+
+            buffer
         }
-
-        buffer
     }
 }
 
@@ -844,18 +862,25 @@ where
         false
     }
     fn abi_decode(ref mut buffer: BufferReader) -> Vec<T> {
-        let len = u64::abi_decode(buffer);
+        const IS_ELEM_TRIVIAL = is_decode_trivial::<T>();
 
-        let mut v = Vec::with_capacity(len);
+        if IS_ELEM_TRIVIAL {
+            // TODO: See the comment in `abi_encode` for the trivial case.
+            Self::from(raw_slice::abi_decode(buffer))
+        } else {
+            let len = u64::abi_decode(buffer);
 
-        let mut i = 0;
-        while i < len {
-            let item = T::abi_decode(buffer);
-            v.push(item);
-            i += 1;
+            let mut v = Vec::with_capacity(len);
+
+            let mut i = 0;
+            while i < len {
+                let item = T::abi_decode(buffer);
+                v.push(item);
+                i += 1;
+            }
+
+            v
         }
-
-        v
     }
 }
 
