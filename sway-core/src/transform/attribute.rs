@@ -582,6 +582,29 @@ impl Attribute {
         }
     }
 
+    pub(crate) fn can_annotate_abi(&self) -> bool {
+        use AttributeKind::*;
+        match self.kind {
+            Unknown => true,
+            DocComment => self.direction == AttributeDirection::Outer,
+            Storage => false,
+            Inline => false,
+            Test => false,
+            Payable => false,
+            Allow => true,
+            Cfg => true,
+            // TODO: Adapt once https://github.com/FuelLabs/sway/issues/6942 is implemented.
+            Deprecated => false,
+            Fallback => false,
+            ErrorType => false,
+            Error => false,
+            Trace => false,
+            AbiName => false,
+            Event => false,
+            Indexed => false,
+        }
+    }
+
     pub(crate) fn can_annotate_item_kind(&self, item_kind: &ItemKind) -> bool {
         // TODO: Except for `DocComment`, we assume outer annotation here.
         //       A separate check emits not-implemented error for all inner attributes.
@@ -668,7 +691,17 @@ impl Attribute {
         }
     }
 
-    pub(crate) fn can_annotate_abi_or_trait_item(
+    /// True if `self` can annotate an *interface* `item` of a trait or ABI.
+    /// E.g.:
+    /// ```ignore
+    /// trait Trait {
+    ///   #[some_attribute]
+    ///   fn interface_fn();
+    ///   #[some_attribute]
+    ///   const INTERFACE_CONST: u64;
+    /// }
+    /// ```
+    pub(crate) fn can_annotate_abi_or_trait_interface_item(
         &self,
         item: &ItemTraitItem,
         parent: TraitItemParent,
@@ -699,6 +732,85 @@ impl Attribute {
         }
     }
 
+    /// True if `self` can annotate an *interface* function of a trait or ABI.
+    /// E.g.:
+    /// ```ignore
+    /// trait Trait {
+    ///   #[some_attribute]
+    ///   fn interface_fn();
+    /// }
+    /// ```
+    pub(crate) fn can_annotate_abi_or_trait_interface_fn(&self, parent: TraitItemParent) -> bool {
+        use AttributeKind::*;
+        match self.kind {
+            Unknown => true,
+            DocComment => self.direction == AttributeDirection::Outer,
+            Storage => true,
+            // Functions in the trait or ABI interface surface cannot be marked as inlined
+            // because they don't have implementation.
+            Inline => false,
+            Test => false,
+            Payable => parent == TraitItemParent::Abi,
+            Allow => true,
+            Cfg => true,
+            // TODO: Change to true once https://github.com/FuelLabs/sway/issues/6942 is implemented.
+            Deprecated => false,
+            Fallback => false,
+            ErrorType => false,
+            Error => false,
+            // Functions in the trait or ABI interface surface cannot be marked as traced
+            // because they don't have implementation.
+            Trace => false,
+            AbiName => false,
+            Event => false,
+            Indexed => false,
+        }
+    }
+
+    /// True if `self` can annotate an *interface* const of a trait or ABI.
+    /// E.g.:
+    /// ```ignore
+    /// trait Trait {
+    ///   #[some_attribute]
+    ///   const INTERFACE_CONST: u64;
+    /// }
+    /// ```
+    pub(crate) fn can_annotate_abi_or_trait_interface_const(
+        &self,
+        _parent: TraitItemParent,
+    ) -> bool {
+        use AttributeKind::*;
+        match self.kind {
+            Unknown => true,
+            DocComment => self.direction == AttributeDirection::Outer,
+            Storage => false,
+            Inline => false,
+            Test => false,
+            Payable => false,
+            Allow => true,
+            Cfg => true,
+            // TODO: Change to true once https://github.com/FuelLabs/sway/issues/6942 is implemented.
+            Deprecated => false,
+            Fallback => false,
+            ErrorType => false,
+            Error => false,
+            Trace => false,
+            AbiName => false,
+            Event => false,
+            Indexed => false,
+        }
+    }
+
+    /// True if `self` can annotate an `item` in an `impl` block.
+    /// E.g.:
+    /// ```ignore
+    /// impl Trait for Type {
+    ///   #[some_attribute]
+    ///   fn impl_fn() {}
+    ///   #[some_attribute]
+    ///   const CONST: u64 = 42;
+    /// }
+    /// ```
     pub(crate) fn can_annotate_impl_item(
         &self,
         item: &ItemImplItem,
@@ -711,7 +823,7 @@ impl Attribute {
             Storage => matches!(item, ItemImplItem::Fn(..)),
             Inline => matches!(item, ItemImplItem::Fn(..)),
             Test => false,
-            Payable => parent == ImplItemParent::Contract,
+            Payable => matches!(item, ItemImplItem::Fn(..)) && parent == ImplItemParent::Contract,
             Allow => true,
             Cfg => true,
             Deprecated => !matches!(item, ItemImplItem::Type(_)),
@@ -725,10 +837,17 @@ impl Attribute {
         }
     }
 
-    pub(crate) fn can_annotate_abi_or_trait_item_fn(
-        &self,
-        abi_or_trait_item: TraitItemParent,
-    ) -> bool {
+    /// True if `self` can annotate a *provided* ABI or trait function.
+    /// E.g.:
+    /// ```ignore
+    /// trait Trait {
+    ///   fn interface_fn();
+    /// } {
+    ///   #[some_attribute]
+    ///   fn provided_fn() {}
+    /// }
+    /// ```
+    pub(crate) fn can_annotate_abi_or_trait_provided_fn(&self, parent: TraitItemParent) -> bool {
         use AttributeKind::*;
         match self.kind {
             Unknown => true,
@@ -736,7 +855,7 @@ impl Attribute {
             Storage => true,
             Inline => true,
             Test => false,
-            Payable => abi_or_trait_item == TraitItemParent::Abi,
+            Payable => parent == TraitItemParent::Abi,
             Allow => true,
             Cfg => true,
             Deprecated => true,
@@ -928,6 +1047,23 @@ impl Attributes {
         }
 
         Attributes {
+            deprecated_attr_index: attributes
+                .iter()
+                .rposition(|attr| attr.kind == AttributeKind::Deprecated),
+            attributes: Arc::new(attributes),
+        }
+    }
+
+    /// Creates new [Attributes] by copying `other`s attributes and retaining
+    /// only those specified by the predicate `f`.
+    pub fn retain_from(other: &Attributes, f: impl Fn(&Attribute) -> bool) -> Self {
+        let attributes = other
+            .attributes
+            .iter()
+            .filter(|attr| f(attr))
+            .cloned()
+            .collect_vec();
+        Self {
             deprecated_attr_index: attributes
                 .iter()
                 .rposition(|attr| attr.kind == AttributeKind::Deprecated),

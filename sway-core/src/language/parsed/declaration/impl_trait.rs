@@ -61,8 +61,11 @@ impl DebugWithEngines for ImplItem {
     }
 }
 
-/// An impl trait, or impl self of methods without a trait.
-/// like `impl MyType { fn foo { .. } }`
+/// An impl trait or impl ABI, or impl self. E.g.:
+/// - `impl MyType { fn foo { .. } }`
+/// - `impl MyTrait for MyType { fn foo { .. } }`
+/// - `impl Contract { fn foo { .. } }`
+/// - `impl MyAbi for Contract { fn foo { .. } }`
 #[derive(Debug, Clone)]
 pub struct ImplSelfOrTrait {
     pub is_self: bool,
