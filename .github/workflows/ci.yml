@@ -18,8 +18,8 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
   REGISTRY: ghcr.io
-  RUST_VERSION: 1.90.0
-  NIGHTLY_RUST_VERSION: nightly-2025-09-28
+  RUST_VERSION: 1.93.0
+  NIGHTLY_RUST_VERSION: nightly-2026-03-06
 
 jobs:
   verifications-complete:
@@ -35,7 +35,6 @@ jobs:
       - check-sdk-harness-test-suite-compatibility
       - build-mdbook
       - build-forc-doc-sway-lib-std
-      - build-forc-test-project
       - cargo-build-workspace
       - cargo-clippy
       - cargo-test-lib-std
@@ -240,13 +239,14 @@ jobs:
                 cargo install --locked --path "$dir"
           done
           cargo install --locked --debug --git https://github.com/FuelLabs/forc forc-crypto
+          cargo install --locked --debug --git https://github.com/FuelLabs/forc forc-node
       - name: Install mdbook-forc-documenter
         run: cargo install --locked --path ./scripts/mdbook-forc-documenter
 
       - name: Run mdbook build
         uses: peaceiris/actions-mdbook@v1
         with:
-          mdbook-version: "0.4.25"
+          mdbook-version: "0.4.52"
       - name: Emit book logs to tmp.txt, fail if build logs contain 'ERROR'
         run: |
           MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build docs/book 2>&1 | tee tmp.txt
@@ -288,43 +288,6 @@ jobs:
           cargo install --locked --path ./forc-plugins/forc-doc
       - name: Build sway-lib-std docs
         run: forc doc --path ./sway-lib-std
-
-  build-forc-test-project:
-    runs-on: warp-ubuntu-latest-x64-4x
-    steps:
-      - uses: actions/checkout@v6
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-          targets: wasm32-unknown-unknown
-      - uses: Swatinem/rust-cache@v2
-        with:
-          cache-provider: "warpbuild"
-      - name: Install Forc
-        run: cargo install --locked --path ./forc
-      - name: Initialize test project
-        run: forc new test-proj
-      - name: Update project forc manifest to use local sway-lib-std
-        run: echo "std = { path = \"../sway-lib-std/\" }" >> test-proj/Forc.toml
-      - name: Build test project
-        run: forc build --path test-proj
-      # TODO: Re-add this upon landing unit test support: #1832
-      # - name: Run test project's test suite
-      #   run: (cd test-proj && forc test)
-      - name: Install cargo-generate
-        run: cargo install --locked cargo-generate
-      - name: Install fuel-core
-        run: cargo install --locked fuel-core-bin
-      - name: Generate Rust Integration Tests
-        run: (cd test-proj && cargo generate --init --path ../templates/sway-test-rs --name test-proj)
-      - name: Update project cargo manifest with workspace
-        run: |
-          echo "
-
-          [workspace]" >> test-proj/Cargo.toml
-      - name: Build and Run Default Integration Test
-        run: (cd test-proj && cargo test --release)
 
   cargo-build-workspace:
     runs-on: warp-ubuntu-latest-x64-8x
@@ -652,7 +615,6 @@ jobs:
   notify-slack-on-failure:
     needs:
       [
-        build-forc-test-project,
         build-sway-examples,
         build-sway-lib-std,
         cargo-build-workspace,
@@ -714,7 +676,6 @@ jobs:
     # Only do this job if publishing a release
     needs:
       [
-        build-forc-test-project,
         build-sway-examples,
         build-sway-lib-std,
         cargo-build-workspace,

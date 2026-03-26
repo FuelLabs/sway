@@ -40,6 +40,26 @@ pub struct AllocatedAbstractInstructionSet {
     pub(crate) ops: Vec<AllocatedAbstractOp>,
 }
 
+fn generate_mask(regs: &[&AllocatedRegister]) -> (VirtualImmediate24, VirtualImmediate24) {
+    let mask = regs.iter().fold((0, 0), |mut accum, reg| {
+        let reg_id = reg.to_reg_id().to_u8();
+        assert!((16..64).contains(&reg_id));
+        let reg_id = reg_id - 16;
+        let (mask_ref, bit) = if reg_id < 24 {
+            (&mut accum.0, reg_id)
+        } else {
+            (&mut accum.1, reg_id - 24)
+        };
+        // Set bit (from the least significant side) of mask_ref.
+        *mask_ref |= 1 << bit;
+        accum
+    });
+    (
+        VirtualImmediate24::try_new(mask.0, Span::dummy()).expect("mask should have fit in 24b"),
+        VirtualImmediate24::try_new(mask.1, Span::dummy()).expect("mask should have fit in 24b"),
+    )
+}
+
 impl AllocatedAbstractInstructionSet {
     pub(crate) fn optimize(self) -> AllocatedAbstractInstructionSet {
         self.remove_redundant_sp_move_to_locbase()
@@ -117,7 +137,7 @@ impl AllocatedAbstractInstructionSet {
     ///
     /// Typically there will be only one of each but the code here allows for nested sections or
     /// even overlapping sections.
-    pub(crate) fn emit_pusha_popa(mut self) -> Self {
+    pub(crate) fn lower_pusha_popa(mut self) -> Self {
         // Gather the sets of used registers per section.  Using a fold here because it's actually
         // simpler to manage.  We use a HashSet to keep track of the active section labels and then
         // build a HashMap of Label to HashSet of registers.
@@ -158,28 +178,6 @@ impl AllocatedAbstractInstructionSet {
                 },
             )
             .0;
-
-        fn generate_mask(regs: &[&AllocatedRegister]) -> (VirtualImmediate24, VirtualImmediate24) {
-            let mask = regs.iter().fold((0, 0), |mut accum, reg| {
-                let reg_id = reg.to_reg_id().to_u8();
-                assert!((16..64).contains(&reg_id));
-                let reg_id = reg_id - 16;
-                let (mask_ref, bit) = if reg_id < 24 {
-                    (&mut accum.0, reg_id)
-                } else {
-                    (&mut accum.1, reg_id - 24)
-                };
-                // Set bit (from the least significant side) of mask_ref.
-                *mask_ref |= 1 << bit;
-                accum
-            });
-            (
-                VirtualImmediate24::try_new(mask.0, Span::dummy())
-                    .expect("mask should have fit in 24b"),
-                VirtualImmediate24::try_new(mask.1, Span::dummy())
-                    .expect("mask should have fit in 24b"),
-            )
-        }
 
         // PUSHA/POPA are abstract instructions that are emitted only by the compiler
         // as a part of a function prologue/epilogue. They cannot be, e.g., defined in
@@ -260,7 +258,7 @@ impl AllocatedAbstractInstructionSet {
 
     /// Runs two passes -- one to get the instruction offsets of the labels and one to replace the
     /// labels in the organizational ops
-    pub(crate) fn realize_labels(
+    pub(crate) fn lower_to_realized_ops(
         mut self,
         data_section: &mut DataSection,
         far_jump_sizes: &FxHashMap<usize, u64>,
@@ -330,7 +328,32 @@ impl AllocatedAbstractInstructionSet {
                     }
                     ControlFlowOp::Comment => continue,
                     ControlFlowOp::Label(..) => continue,
-
+                    ControlFlowOp::JumpToAddr(reg) => {
+                        realized_ops.push(RealizedOp {
+                            opcode: AllocatedInstruction::JMP(reg),
+                            comment,
+                            owning_span,
+                        });
+                    }
+                    ControlFlowOp::ReturnFromCall { zero, reta } => {
+                        assert!(matches!(
+                            zero,
+                            AllocatedRegister::Constant(ConstantRegister::Zero)
+                        ));
+                        assert!(matches!(
+                            reta,
+                            AllocatedRegister::Constant(ConstantRegister::CallReturnAddress)
+                        ));
+                        realized_ops.push(RealizedOp {
+                            opcode: AllocatedInstruction::JAL(
+                                zero,
+                                reta,
+                                VirtualImmediate12::new(0),
+                            ),
+                            comment,
+                            owning_span,
+                        });
+                    }
                     ControlFlowOp::PushAll(_) | ControlFlowOp::PopAll(_) => {
                         unreachable!("still don't belong in organisational ops")
                     }
@@ -396,17 +419,15 @@ impl AllocatedAbstractInstructionSet {
                 JumpType::NotZero(_) => 2,
                 JumpType::Call => 3,
             },
-
+            Either::Right(JumpToAddr(..)) => 1,
+            Either::Right(ReturnFromCall { .. }) => 1,
             Either::Right(Comment) => 0,
-
             Either::Right(DataSectionOffsetPlaceholder) => {
                 // If the placeholder is 32 bits, this is 1. if 64, this should be 2. We use LW
                 // to load the data, which loads a whole word, so for now this is 2.
                 2
             }
-
             Either::Right(ConfigurablesOffsetPlaceholder) => 2,
-
             Either::Right(PushAll(_)) | Either::Right(PopAll(_)) => unreachable!(
                 "fix me, pushall and popall don't really belong in control flow ops \
                         since they're not about control flow"
@@ -468,6 +489,9 @@ impl AllocatedAbstractInstructionSet {
                 "fix me, pushall and popall don't really belong in control flow ops \
                         since they're not about control flow"
             ),
+
+            Either::Right(JumpToAddr(..)) => 1,
+            Either::Right(ReturnFromCall { .. }) => 1,
         }
     }
 

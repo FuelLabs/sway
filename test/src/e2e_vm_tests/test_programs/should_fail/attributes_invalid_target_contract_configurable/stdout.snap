@@ -1,6 +1,5 @@
 ---
 source: test/src/snapshot/mod.rs
-assertion_line: 266
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_fail/attributes_invalid_target_contract_configurable
 exit status: 1

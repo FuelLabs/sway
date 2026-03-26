@@ -50,7 +50,7 @@ impl DapServer {
                 .try_into()
                 .unwrap(),
         )) {
-            Ok(instruction) => vec![
+            Ok(instruction) => [
                 ("Opcode", Some(format!("{:?}", instruction.opcode()))),
                 ("rA", ra(instruction)),
                 ("rB", rb(instruction)),

@@ -1381,7 +1381,7 @@ impl UpdateConstantExpression for TyExpressionVariant {
                 if let Some(impl_const) =
                     find_const_decl_from_impl(implementing_type, engines.de(), decl)
                 {
-                    *decl = Box::new(impl_const);
+                    **decl = impl_const;
                 }
             }
             ConfigurableExpression { .. } => {

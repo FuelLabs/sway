@@ -2890,7 +2890,7 @@ fn expr_to_expression(
         } => {
             let lhs = expr_to_expression(context, handler, engines, *lhs)?;
             let rhs = expr_to_expression(context, handler, engines, *rhs)?;
-            op_call("pow", double_star_token.span(), span, &vec![lhs, rhs])?
+            op_call("pow", double_star_token.span(), span, &[lhs, rhs])?
         }
         Expr::Mul {
             lhs,
@@ -2899,7 +2899,7 @@ fn expr_to_expression(
         } => {
             let lhs = expr_to_expression(context, handler, engines, *lhs)?;
             let rhs = expr_to_expression(context, handler, engines, *rhs)?;
-            op_call("multiply", star_token.span(), span, &vec![lhs, rhs])?
+            op_call("multiply", star_token.span(), span, &[lhs, rhs])?
         }
         Expr::Div {
             lhs,
@@ -2908,7 +2908,7 @@ fn expr_to_expression(
         } => {
             let lhs = expr_to_expression(context, handler, engines, *lhs)?;
             let rhs = expr_to_expression(context, handler, engines, *rhs)?;
-            op_call("divide", forward_slash_token.span(), span, &vec![lhs, rhs])?
+            op_call("divide", forward_slash_token.span(), span, &[lhs, rhs])?
         }
         Expr::Modulo {
             lhs,
@@ -2917,7 +2917,7 @@ fn expr_to_expression(
         } => {
             let lhs = expr_to_expression(context, handler, engines, *lhs)?;
             let rhs = expr_to_expression(context, handler, engines, *rhs)?;
-            op_call("modulo", percent_token.span(), span, &vec![lhs, rhs])?
+            op_call("modulo", percent_token.span(), span, &[lhs, rhs])?
         }
         Expr::Add {
             lhs,
@@ -2926,7 +2926,7 @@ fn expr_to_expression(
         } => {
             let lhs = expr_to_expression(context, handler, engines, *lhs)?;
             let rhs = expr_to_expression(context, handler, engines, *rhs)?;
-            op_call("add", add_token.span(), span, &vec![lhs, rhs])?
+            op_call("add", add_token.span(), span, &[lhs, rhs])?
         }
         Expr::Sub {
             lhs,
@@ -2935,7 +2935,7 @@ fn expr_to_expression(
         } => {
             let lhs = expr_to_expression(context, handler, engines, *lhs)?;
             let rhs = expr_to_expression(context, handler, engines, *rhs)?;
-            op_call("subtract", sub_token.span(), span, &vec![lhs, rhs])?
+            op_call("subtract", sub_token.span(), span, &[lhs, rhs])?
         }
         Expr::Shl {
             lhs,
@@ -2944,7 +2944,7 @@ fn expr_to_expression(
         } => {
             let lhs = expr_to_expression(context, handler, engines, *lhs)?;
             let rhs = expr_to_expression(context, handler, engines, *rhs)?;
-            op_call("lsh", shl_token.span(), span, &vec![lhs, rhs])?
+            op_call("lsh", shl_token.span(), span, &[lhs, rhs])?
         }
         Expr::Shr {
             lhs,
@@ -2953,7 +2953,7 @@ fn expr_to_expression(
         } => {
             let lhs = expr_to_expression(context, handler, engines, *lhs)?;
             let rhs = expr_to_expression(context, handler, engines, *rhs)?;
-            op_call("rsh", shr_token.span(), span, &vec![lhs, rhs])?
+            op_call("rsh", shr_token.span(), span, &[lhs, rhs])?
         }
         Expr::BitAnd {
             lhs,
@@ -2962,7 +2962,7 @@ fn expr_to_expression(
         } => {
             let lhs = expr_to_expression(context, handler, engines, *lhs)?;
             let rhs = expr_to_expression(context, handler, engines, *rhs)?;
-            op_call("binary_and", ampersand_token.span(), span, &vec![lhs, rhs])?
+            op_call("binary_and", ampersand_token.span(), span, &[lhs, rhs])?
         }
         Expr::BitXor {
             lhs,
@@ -2971,7 +2971,7 @@ fn expr_to_expression(
         } => {
             let lhs = expr_to_expression(context, handler, engines, *lhs)?;
             let rhs = expr_to_expression(context, handler, engines, *rhs)?;
-            op_call("binary_xor", caret_token.span(), span, &vec![lhs, rhs])?
+            op_call("binary_xor", caret_token.span(), span, &[lhs, rhs])?
         }
         Expr::BitOr {
             lhs,
@@ -2980,7 +2980,7 @@ fn expr_to_expression(
         } => {
             let lhs = expr_to_expression(context, handler, engines, *lhs)?;
             let rhs = expr_to_expression(context, handler, engines, *rhs)?;
-            op_call("binary_or", pipe_token.span(), span, &vec![lhs, rhs])?
+            op_call("binary_or", pipe_token.span(), span, &[lhs, rhs])?
         }
         Expr::Equal {
             lhs,
@@ -2989,7 +2989,7 @@ fn expr_to_expression(
         } => {
             let lhs = expr_to_expression(context, handler, engines, *lhs)?;
             let rhs = expr_to_expression(context, handler, engines, *rhs)?;
-            op_call("eq", double_eq_token.span(), span, &vec![lhs, rhs])?
+            op_call("eq", double_eq_token.span(), span, &[lhs, rhs])?
         }
         Expr::NotEqual {
             lhs,
@@ -2998,7 +2998,7 @@ fn expr_to_expression(
         } => {
             let lhs = expr_to_expression(context, handler, engines, *lhs)?;
             let rhs = expr_to_expression(context, handler, engines, *rhs)?;
-            op_call("neq", bang_eq_token.span(), span, &vec![lhs, rhs])?
+            op_call("neq", bang_eq_token.span(), span, &[lhs, rhs])?
         }
         Expr::LessThan {
             lhs,
@@ -3007,7 +3007,7 @@ fn expr_to_expression(
         } => {
             let lhs = expr_to_expression(context, handler, engines, *lhs)?;
             let rhs = expr_to_expression(context, handler, engines, *rhs)?;
-            op_call("lt", less_than_token.span(), span, &vec![lhs, rhs])?
+            op_call("lt", less_than_token.span(), span, &[lhs, rhs])?
         }
         Expr::GreaterThan {
             lhs,
@@ -3016,7 +3016,7 @@ fn expr_to_expression(
         } => {
             let lhs = expr_to_expression(context, handler, engines, *lhs)?;
             let rhs = expr_to_expression(context, handler, engines, *rhs)?;
-            op_call("gt", greater_than_token.span(), span, &vec![lhs, rhs])?
+            op_call("gt", greater_than_token.span(), span, &[lhs, rhs])?
         }
         Expr::LessThanEq {
             lhs,
@@ -3025,7 +3025,7 @@ fn expr_to_expression(
         } => {
             let lhs = expr_to_expression(context, handler, engines, *lhs)?;
             let rhs = expr_to_expression(context, handler, engines, *rhs)?;
-            op_call("le", less_than_eq_token.span(), span, &vec![lhs, rhs])?
+            op_call("le", less_than_eq_token.span(), span, &[lhs, rhs])?
         }
         Expr::GreaterThanEq {
             lhs,
@@ -3034,7 +3034,7 @@ fn expr_to_expression(
         } => {
             let lhs = expr_to_expression(context, handler, engines, *lhs)?;
             let rhs = expr_to_expression(context, handler, engines, *rhs)?;
-            op_call("ge", greater_than_eq_token.span(), span, &vec![lhs, rhs])?
+            op_call("ge", greater_than_eq_token.span(), span, &[lhs, rhs])?
         }
         Expr::LogicalAnd { lhs, rhs, .. } => Expression {
             kind: ExpressionKind::LazyOperator(LazyOperatorExpression {
@@ -3079,7 +3079,7 @@ fn expr_to_expression(
                     op_variant.std_name(),
                     op_span,
                     span.clone(),
-                    &vec![
+                    &[
                         assignable_to_expression(context, handler, engines, assignable)?,
                         expr_to_expression(context, handler, engines, *expr)?,
                     ],
