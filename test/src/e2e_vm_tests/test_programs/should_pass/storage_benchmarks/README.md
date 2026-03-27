@@ -17,6 +17,10 @@ The `stored_types` library defines the struct types used across all benchmark pr
 
 The struct sizes to use in benchmarks are taken from real-life Sway projects.
 
+## Results
+
+Historical results are stored in RESULTS.md.
+
 ## Running the benchmarks
 
 ### Prerequisites
