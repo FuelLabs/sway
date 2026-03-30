@@ -2477,7 +2477,7 @@ impl<'a> FnCompiler<'a> {
                         let elems = decl
                             .variants
                             .iter()
-                            .map(|_variant| {
+                            .map(|variant| {
                                 // let codec = namespace.module_from_absolute_path(&[
                                 //     BaseIdent::new_no_span("std".to_string()),
                                 //     BaseIdent::new_no_span("codec".to_string()),
@@ -2526,9 +2526,27 @@ impl<'a> FnCompiler<'a> {
 
                                 // let value = r.get_content(context).as_bool().unwrap();
                                 // dbg!(value);
-                                ConstantContent::new_bool(context, true)
+                                let variant_type_info =
+                                    engines.te().get(variant.type_argument.type_id);
+                                let encoding_representation =
+                                    get_encoding_representation(engines, &variant_type_info);
+                                let runtime_type = convert_resolved_type_id(
+                                    self.engines,
+                                    context,
+                                    md_mgr,
+                                    self.module,
+                                    Some(self),
+                                    variant.type_argument.type_id,
+                                    &variant.type_argument.span,
+                                )?;
+                                let runtime_representation =
+                                    Some(get_runtime_representation(context, runtime_type));
+
+                                let is_decode_trivial =
+                                    encoding_representation == runtime_representation;
+                                Ok(ConstantContent::new_bool(context, is_decode_trivial))
                             })
-                            .collect::<Vec<_>>();
+                            .collect::<Result<Vec<_>, CompileError>>()?;
 
                         let elems_len = ConstantContent::new_uint(context, 64, elems.len() as u64);
                         let elems_len = Constant::unique(context, elems_len);

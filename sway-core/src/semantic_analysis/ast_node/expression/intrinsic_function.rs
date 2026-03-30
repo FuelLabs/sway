@@ -187,7 +187,7 @@ fn type_check_enum_variants_values(
     if arguments.len() != 1 {
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
-            expected: 0,
+            expected: 1,
             span,
         }));
     }
@@ -196,11 +196,6 @@ fn type_check_enum_variants_values(
         let u64_id = ctx.engines.te().id_of_u64();
         let ctx = ctx.by_ref().with_help_text("").with_type_annotation(u64_id);
         ty::TyExpression::type_check(handler, ctx, &arguments[0])?
-    };
-
-    let _value_id = match first_argument_typed_expr.expression {
-        ty::TyExpressionVariant::Literal(Literal::U64(3)) => 3,
-        _ => todo!(),
     };
 
     let arguments = vec![first_argument_typed_expr];
@@ -233,12 +228,13 @@ fn type_check_enum_variants_values(
     let return_type = ctx.engines.te().insert_slice(ctx.engines, elem_type);
 
     match &*ctx.engines.te().get(arg) {
-        TypeInfo::UnknownGeneric { .. } => {}
-        TypeInfo::Enum(_) => {
-            todo!();
-        }
+        TypeInfo::UnknownGeneric { .. } | TypeInfo::Enum(_) => {}
         _ => {
-            todo!()
+            return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
+                name: kind.to_string(),
+                span: span.clone(),
+                hint: "Type argument must be an enum type.".to_string(),
+            }));
         }
     };
 

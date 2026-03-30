@@ -1330,13 +1330,6 @@ impl TypeCheckFinalization for TyExpressionVariant {
                     for expr in kind.arguments.iter_mut() {
                         expr.type_check_finalize(handler, ctx)?;
                     }
-
-                    if let sway_ast::Intrinsic::EnumVariantsValues = kind.kind {
-                        eprintln!(
-                            "type_check_finalize: {:?}",
-                            ctx.engines.help_out(&kind.type_arguments)
-                        );
-                    }
                 }
                 TyExpressionVariant::AbiName(_) => {
                     todo!("")
