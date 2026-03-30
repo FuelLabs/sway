@@ -24,6 +24,7 @@ pub struct TyTraitFn {
     pub parameters: Vec<TyFunctionParameter>,
     pub return_type: GenericTypeArgument,
     pub attributes: transform::Attributes,
+    pub non_concrete_types: usize,
 }
 
 impl TyDeclParsedType for TyTraitFn {
@@ -114,6 +115,7 @@ impl HashWithEngines for TyTraitFn {
             // reliable source of obj v. obj distinction
             span: _,
             attributes: _,
+            non_concrete_types: _,
         } = self;
         let type_engine = engines.te();
         name.hash(state);
@@ -143,5 +145,17 @@ impl MonomorphizeHelper for TyTraitFn {
 
     fn has_self_type_param(&self) -> bool {
         false
+    }
+
+    fn get_non_concrete_types(&mut self) -> usize {
+        self.non_concrete_types
+    }
+    
+    fn set_non_concrete_types(&mut self, count: usize) {
+        if self.non_concrete_types == 0 {
+            assert!(count == 0);
+        }
+
+        self.non_concrete_types = count;
     }
 }

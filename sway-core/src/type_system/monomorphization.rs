@@ -1,14 +1,7 @@
 use crate::{
-    decl_engine::{engine::DeclEngineGetParsedDeclId, DeclEngineInsert, MaterializeConstGenerics},
-    language::{
-        ty::{self, TyExpression},
-        CallPath,
-    },
-    namespace::{ModulePath, ResolvedDeclaration},
-    semantic_analysis::type_resolve::{resolve_type, VisibilityCheck},
-    type_system::ast_elements::create_type_id::CreateTypeId,
-    EnforceTypeArguments, Engines, GenericArgument, Namespace, SubstTypes, SubstTypesContext,
-    TypeId, TypeParameter, TypeSubstMap,
+    EnforceTypeArguments, Engines, GenericArgument, HasChanges, Namespace, SubstTypes, SubstTypesContext, TypeId, TypeParameter, TypeSubstMap, decl_engine::{DeclEngineInsert, MaterializeConstGenerics, engine::DeclEngineGetParsedDeclId}, engine_threading::DebugWithEngines, language::{
+        CallPath, ty::{self, TyExpression}
+    }, namespace::{ModulePath, ResolvedDeclaration}, semantic_analysis::type_resolve::{VisibilityCheck, resolve_type}, type_system::ast_elements::create_type_id::CreateTypeId
 };
 use std::collections::BTreeMap;
 use sway_error::{
@@ -21,6 +14,9 @@ pub(crate) trait MonomorphizeHelper {
     fn name(&self) -> &Ident;
     fn type_parameters(&self) -> &[TypeParameter];
     fn has_self_type_param(&self) -> bool;
+
+    fn get_non_concrete_types(&mut self) -> usize;
+    fn set_non_concrete_types(&mut self, count: usize);
 }
 
 /// Given a `value` of type `T` that is able to be monomorphized and a set
@@ -261,7 +257,7 @@ pub(crate) fn monomorphize_with_modpath<T>(
     subst_ctx: &SubstTypesContext,
 ) -> Result<(), ErrorEmitted>
 where
-    T: MonomorphizeHelper + SubstTypes + MaterializeConstGenerics,
+    T: std::fmt::Debug + MonomorphizeHelper + SubstTypes + MaterializeConstGenerics,
 {
     let type_mapping = prepare_type_subst_map_for_monomorphize(
         handler,
@@ -276,12 +272,28 @@ where
         subst_ctx,
     )?;
 
-    value.subst(&SubstTypesContext::new(
+    let non_concrete_types_before = value.get_non_concrete_types();
+
+    let ctx = SubstTypesContext::new(
         handler,
         engines,
         &type_mapping,
         true,
-    ));
+    );
+    let has_changes = value.subst(&ctx);
+
+    match has_changes {
+        HasChanges::Yes => {
+            assert!(non_concrete_types_before > 0, "{non_concrete_types_before} {:?} {:?}", value, engines.help_out(type_mapping));
+        },
+        _ => {}
+    }
+
+    if non_concrete_types_before == 0 {
+        assert!(matches!(has_changes, HasChanges::No));
+    }
+
+    value.set_non_concrete_types(*ctx.non_concrete_types.borrow());
 
     for (name, expr) in const_generics.iter() {
         let _ = value.materialize_const_generics(engines, handler, name, expr);

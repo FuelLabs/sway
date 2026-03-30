@@ -1290,6 +1290,13 @@ impl SubstTypes for ConstGenericParameter {
             has_changes = HasChanges::Yes;
         }
 
+        match &self.expr {
+            None | Some(ConstGenericExpr::AmbiguousVariableExpression { .. }) => {
+                *ctx.non_concrete_types.borrow_mut() += 1;
+            },
+            _ => {}
+        }
+
         has_changes
     }
 }

@@ -535,7 +535,7 @@ impl<'a> TypeCheckContext<'a> {
         call_site_span: &Span,
     ) -> Result<(), ErrorEmitted>
     where
-        T: MonomorphizeHelper + SubstTypes + MaterializeConstGenerics,
+        T: std::fmt::Debug + MonomorphizeHelper + SubstTypes + MaterializeConstGenerics,
     {
         let mod_path = self.namespace().current_mod_path().clone();
         monomorphize_with_modpath(

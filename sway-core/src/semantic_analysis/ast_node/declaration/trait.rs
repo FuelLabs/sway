@@ -276,6 +276,7 @@ impl TyTraitDecl {
                     attributes,
                     call_path: CallPath::from(name).to_fullpath(ctx.engines(), ctx.namespace()),
                     span,
+                    non_concrete_types: usize::MAX,
                 };
                 Ok(typed_trait_decl)
             })

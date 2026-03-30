@@ -86,6 +86,7 @@ impl ty::TyTraitFn {
                 return_type: new_return_type,
                 purity: *purity,
                 attributes: attributes.clone(),
+                non_concrete_types: usize::MAX,
             };
 
             Ok(trait_fn)
@@ -129,6 +130,7 @@ impl ty::TyTraitFn {
             is_trait_method_dummy: true,
             is_type_check_finalized: true,
             kind: ty::TyFunctionDeclKind::Default,
+            non_concrete_types: usize::MAX,
         }
     }
 }

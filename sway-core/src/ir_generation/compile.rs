@@ -24,9 +24,9 @@ use super::{
 };
 
 use sway_ast::attribute::REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE;
-use sway_error::{error::CompileError, handler::Handler};
+use sway_error::{error::CompileError, handler::{ErrorEmitted, Handler}};
 use sway_ir::{metadata::combine as md_combine, *};
-use sway_types::{integer_bits::IntegerBits, Ident, Span, Spanned};
+use sway_types::{BaseIdent, Ident, Span, Spanned, integer_bits::IntegerBits};
 
 use std::{
     cell::Cell,
@@ -37,7 +37,7 @@ use std::{
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_script(
     engines: &Engines,
-    context: &mut Context,
+    ctx: &mut Context,
     entry_function: &DeclId<ty::TyFunctionDecl>,
     namespace: &namespace::Namespace,
     logged_types_map: &HashMap<TypeId, LogId>,
@@ -47,18 +47,15 @@ pub(super) fn compile_script(
     panicking_fn_cache: &mut PanickingFunctionCache,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
     compiled_fn_cache: &mut CompiledFunctionCache,
-    decls_to_check: &[TyDecl],
+    md_mgr: &mut MetadataManager,
+    module: Module,
 ) -> Result<Module, Vec<CompileError>> {
-    let module = Module::new(context, Kind::Script);
-
-    compile_constants_for_package(engines, context, module, namespace)?;
-
-    let mut md_mgr = MetadataManager::default();
+    compile_constants_for_package(engines, ctx, module, namespace)?;
 
     compile_configurables(
         engines,
-        context,
-        &mut md_mgr,
+        ctx,
+        md_mgr,
         module,
         namespace.current_package_root_module(),
         logged_types_map,
@@ -67,12 +64,13 @@ pub(super) fn compile_script(
         panicking_call_occurrences,
         panicking_fn_cache,
         compiled_fn_cache,
+        namespace,
     )
     .map_err(|err| vec![err])?;
     compile_entry_function(
         engines,
-        context,
-        &mut md_mgr,
+        ctx,
+        md_mgr,
         module,
         entry_function,
         logged_types_map,
@@ -82,12 +80,12 @@ pub(super) fn compile_script(
         panicking_fn_cache,
         None,
         compiled_fn_cache,
-        decls_to_check,
+        namespace,
     )?;
     compile_tests(
         engines,
-        context,
-        &mut md_mgr,
+        ctx,
+        md_mgr,
         module,
         logged_types_map,
         messages_types_map,
@@ -96,6 +94,7 @@ pub(super) fn compile_script(
         panicking_fn_cache,
         test_fns,
         compiled_fn_cache,
+        namespace,
     )?;
 
     Ok(module)
@@ -114,17 +113,14 @@ pub(super) fn compile_predicate(
     panicking_fn_cache: &mut PanickingFunctionCache,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
     compiled_fn_cache: &mut CompiledFunctionCache,
+    md_mgr: &mut MetadataManager,
+    module: Module,
 ) -> Result<Module, Vec<CompileError>> {
-    let module = Module::new(context, Kind::Predicate);
-
     compile_constants_for_package(engines, context, module, namespace)?;
-
-    let mut md_mgr = MetadataManager::default();
-
     compile_configurables(
         engines,
         context,
-        &mut md_mgr,
+        md_mgr,
         module,
         namespace.current_package_root_module(),
         logged_types,
@@ -133,12 +129,13 @@ pub(super) fn compile_predicate(
         panicking_call_occurrences,
         panicking_fn_cache,
         compiled_fn_cache,
+        namespace,
     )
     .map_err(|err| vec![err])?;
     compile_entry_function(
         engines,
         context,
-        &mut md_mgr,
+        md_mgr,
         module,
         entry_function,
         &HashMap::new(),
@@ -148,12 +145,12 @@ pub(super) fn compile_predicate(
         panicking_fn_cache,
         None,
         compiled_fn_cache,
-        &[],
+        namespace,
     )?;
     compile_tests(
         engines,
         context,
-        &mut md_mgr,
+        md_mgr,
         module,
         logged_types,
         messages_types,
@@ -162,6 +159,7 @@ pub(super) fn compile_predicate(
         panicking_fn_cache,
         test_fns,
         compiled_fn_cache,
+        namespace,
     )?;
 
     Ok(module)
@@ -182,17 +180,14 @@ pub(super) fn compile_contract(
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
     engines: &Engines,
     compiled_fn_cache: &mut CompiledFunctionCache,
+    md_mgr: &mut MetadataManager,
+    module: Module,
 ) -> Result<Module, Vec<CompileError>> {
-    let module = Module::new(context, Kind::Contract);
-
     compile_constants_for_package(engines, context, module, namespace)?;
-
-    let mut md_mgr = MetadataManager::default();
-
     compile_configurables(
         engines,
         context,
-        &mut md_mgr,
+        md_mgr,
         module,
         namespace.current_package_root_module(),
         logged_types_map,
@@ -201,6 +196,7 @@ pub(super) fn compile_contract(
         panicking_call_occurrences,
         panicking_fn_cache,
         compiled_fn_cache,
+        namespace,
     )
     .map_err(|err| vec![err])?;
 
@@ -217,7 +213,7 @@ pub(super) fn compile_contract(
         compile_entry_function(
             engines,
             context,
-            &mut md_mgr,
+            md_mgr,
             module,
             entry_function,
             logged_types_map,
@@ -227,7 +223,7 @@ pub(super) fn compile_contract(
             panicking_fn_cache,
             None,
             compiled_fn_cache,
-            &[],
+            namespace,
         )?;
     } else {
         // In the case of the encoding v0, we need to compile individual ABI entries
@@ -235,7 +231,7 @@ pub(super) fn compile_contract(
         for decl in abi_entries {
             compile_encoding_v0_abi_method(
                 context,
-                &mut md_mgr,
+                md_mgr,
                 module,
                 decl,
                 logged_types_map,
@@ -245,6 +241,7 @@ pub(super) fn compile_contract(
                 panicking_fn_cache,
                 engines,
                 compiled_fn_cache,
+                namespace,
             )?;
         }
 
@@ -255,7 +252,7 @@ pub(super) fn compile_contract(
                 if decl.is_fallback() {
                     compile_encoding_v0_abi_method(
                         context,
-                        &mut md_mgr,
+                        md_mgr,
                         module,
                         &decl_id,
                         logged_types_map,
@@ -265,6 +262,7 @@ pub(super) fn compile_contract(
                         panicking_fn_cache,
                         engines,
                         compiled_fn_cache,
+                        namespace,
                     )?;
                 }
             }
@@ -274,7 +272,7 @@ pub(super) fn compile_contract(
     compile_tests(
         engines,
         context,
-        &mut md_mgr,
+        md_mgr,
         module,
         logged_types_map,
         messages_types_map,
@@ -283,6 +281,7 @@ pub(super) fn compile_contract(
         panicking_fn_cache,
         test_fns,
         compiled_fn_cache,
+        namespace,
     )?;
 
     Ok(module)
@@ -291,7 +290,7 @@ pub(super) fn compile_contract(
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_library(
     engines: &Engines,
-    context: &mut Context,
+    ctx: &mut Context,
     namespace: &namespace::Namespace,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
@@ -300,17 +299,14 @@ pub(super) fn compile_library(
     panicking_fn_cache: &mut PanickingFunctionCache,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
     compiled_fn_cache: &mut CompiledFunctionCache,
+    md_mgr: &mut MetadataManager,
+    module: Module,
 ) -> Result<Module, Vec<CompileError>> {
-    let module = Module::new(context, Kind::Library);
-
-    compile_constants_for_package(engines, context, module, namespace)?;
-
-    let mut md_mgr = MetadataManager::default();
-
+    compile_constants_for_package(engines, ctx, module, namespace)?;
     compile_tests(
         engines,
-        context,
-        &mut md_mgr,
+        ctx,
+        md_mgr,
         module,
         logged_types_map,
         messages_types_map,
@@ -319,6 +315,7 @@ pub(super) fn compile_library(
         panicking_fn_cache,
         test_fns,
         compiled_fn_cache,
+        namespace,
     )?;
 
     Ok(module)
@@ -405,6 +402,7 @@ pub(crate) fn compile_configurables(
     panicking_call_occurrences: &mut PanickingCallOccurrences,
     panicking_fn_cache: &mut PanickingFunctionCache,
     compiled_fn_cache: &mut CompiledFunctionCache,
+    namespace: &crate::Namespace,
 ) -> Result<(), CompileError> {
     for decl_name in module_ns.root_items().get_all_declared_symbols() {
         if let Some(ResolvedDeclaration::Typed(ty::TyDecl::ConfigurableDecl(
@@ -588,12 +586,8 @@ pub(super) fn compile_entry_function(
     panicking_fn_cache: &mut PanickingFunctionCache,
     test_decl_ref: Option<DeclRefFunction>,
     compiled_fn_cache: &mut CompiledFunctionCache,
-    decls_to_check: &[TyDecl],
+    namespace: &namespace::Namespace,
 ) -> Result<Function, Vec<CompileError>> {
-    if let Some(value) = run_ir_decl_checks(engines, context, md_mgr, module, decls_to_check) {
-        return value;
-    }
-
     let is_entry = true;
     // In the new encoding, the only entry function is the `__entry`,
     // which is not an original entry.
@@ -620,13 +614,13 @@ pub(super) fn compile_entry_function(
     .map(|f| f.expect("entry point should never contain generics"))
 }
 
-fn run_ir_decl_checks(
+pub fn run_ir_decl_checks(
     engines: &Engines,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
     decls_to_check: &[TyDecl],
-) -> Option<Result<Function, Vec<CompileError>>> {
+) -> Option<Vec<CompileError>> {
     // check types
     for decl in decls_to_check.iter() {
         match decl {
@@ -687,12 +681,13 @@ fn run_ir_decl_checks(
                                     );
                                 }
 
-                                return Some(Err(vec![CompileError::TrivialCheckFailed {
+                                return Some(vec![
+                                    CompileError::TrivialCheckFailed {
                                     span: has_att_decl.call_path.suffix.span(),
                                     infos,
                                     helps,
                                     bottom_helps: bottom_helps.into_iter().collect(),
-                                }]));
+                                }]);
                             }
                         }
                     }
@@ -701,6 +696,7 @@ fn run_ir_decl_checks(
             _ => todo!(),
         }
     }
+
     None
 }
 
@@ -873,6 +869,7 @@ pub(super) fn compile_tests(
     panicking_fn_cache: &mut PanickingFunctionCache,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
     compiled_fn_cache: &mut CompiledFunctionCache,
+    namespace: &crate::Namespace,
 ) -> Result<Vec<Function>, Vec<CompileError>> {
     test_fns
         .iter()
@@ -890,7 +887,7 @@ pub(super) fn compile_tests(
                 panicking_fn_cache,
                 Some(decl_ref.clone()),
                 compiled_fn_cache,
-                &[],
+                namespace,
             )
         })
         .collect()
@@ -1117,6 +1114,7 @@ fn compile_encoding_v0_abi_method(
     panicking_fn_cache: &mut PanickingFunctionCache,
     engines: &Engines,
     compiled_fn_cache: &mut CompiledFunctionCache,
+    namespace: &crate::Namespace,
 ) -> Result<Function, Vec<CompileError>> {
     assert!(
         !context.experimental.new_encoding,
