@@ -1,0 +1,8 @@
+[[package]]
+name = "std"
+source = "path+from-root-71CDE16504A18FC1"
+
+[[package]]
+name = "trivial_bool_and_enum"
+source = "member"
+dependencies = ["std"]
