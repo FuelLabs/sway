@@ -1293,7 +1293,7 @@ impl SubstTypes for ConstGenericParameter {
         match &self.expr {
             None | Some(ConstGenericExpr::AmbiguousVariableExpression { .. }) => {
                 *ctx.non_concrete_types.borrow_mut() += 1;
-            },
+            }
             _ => {}
         }
 

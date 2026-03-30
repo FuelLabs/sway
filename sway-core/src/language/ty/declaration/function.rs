@@ -95,7 +95,6 @@ pub struct TyFunctionDecl {
     /// TODO: See: https://github.com/FuelLabs/sway/issues/7371
     /// !!! WARNING !!!
     pub kind: TyFunctionDeclKind,
-    pub non_concrete_types: usize,
 }
 
 impl TyDeclParsedType for TyFunctionDecl {
@@ -516,7 +515,6 @@ impl HashWithEngines for TyFunctionDecl {
             is_trait_method_dummy: _,
             is_type_check_finalized: _,
             kind: _,
-            non_concrete_types: _,
         } = self;
         name.hash(state);
         body.hash(state, engines);
@@ -592,18 +590,6 @@ impl MonomorphizeHelper for TyFunctionDecl {
 
     fn has_self_type_param(&self) -> bool {
         false
-    }
-
-    fn get_non_concrete_types(&mut self) -> usize {
-        self.non_concrete_types
-    }
-    
-    fn set_non_concrete_types(&mut self, count: usize) {
-        if self.non_concrete_types == 0 {
-            assert!(count == 0);
-        }
-
-        self.non_concrete_types = count;
     }
 }
 
@@ -682,7 +668,6 @@ impl TyFunctionDecl {
                 FunctionDeclarationKind::Test => TyFunctionDeclKind::Test,
                 FunctionDeclarationKind::Main => TyFunctionDeclKind::Main,
             },
-            non_concrete_types: usize::MAX,
         }
     }
 
