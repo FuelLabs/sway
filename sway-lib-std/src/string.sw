@@ -18,7 +18,7 @@ use ::clone::Clone;
 ///
 /// WARNING: As this type is meant to be forward compatible with UTF-8, do *not*
 /// add any mutation functionality or unicode input of any kind until `char` is
-/// implemented, codepoints are *not* guaranteed to fall on byte boundaries
+/// implemented. Currently, codepoints are *not* guaranteed to fall on byte boundaries.
 pub struct String {
     /// The bytes representing the characters of the string.
     bytes: Bytes,

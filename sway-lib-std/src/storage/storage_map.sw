@@ -32,6 +32,56 @@ pub enum StorageMapError<V> {
 /// A persistent key-value pair mapping struct.
 pub struct StorageMap<K, V> {}
 
+// Methods for `StorageMap` that are same regardless of the value
+// of the `experimental_dynamic_storage` feature flag.
+impl<K, V> StorageKey<StorageMap<K, V>>
+where
+    K: Hash,
+{
+    /// Retrieves the `StorageKey` that describes the location in storage of the value
+    /// stored at `key`, regardless of whether a value is actually stored at that location or not.
+    ///
+    /// # Arguments
+    ///
+    /// * `key`: [K] - The key to which the value is paired.
+    ///
+    /// # Returns
+    ///
+    /// * [StorageKey<V>] - Describes the location in storage of the value stored at `key`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// storage {
+    ///     map: StorageMap<u64, bool> = StorageMap {}
+    /// }
+    ///
+    /// fn foo() {
+    ///     let key = 5_u64;
+    ///     let value = true;
+    ///     storage.map.insert(key, value);
+    ///     let retrieved_value = storage.map.get(key).read();
+    ///     assert_eq(value, retrieved_value);
+    /// }
+    /// ```
+    pub fn get(self, key: K) -> StorageKey<V>
+    where
+        K: Hash,
+    {
+        let key = self.get_slot_key(key);
+        StorageKey::<V>::new(key, 0, key)
+    }
+
+    // Note: `StorageMap` is a zero-sized storage type that can be nested
+    //       within other storage types. For example, a `StorageMap<K, StorageMap>`.
+    //       That's why we are **using the `self.field_id`** for getting the storage slot
+    //       for all of the methods of `StorageMap`, and **not the `self.slot`**.
+    fn get_slot_key(self, key: K) -> b256 {
+        sha256((STORAGE_MAP_DOMAIN, key, self.field_id()))
+    }
+}
+
+#[cfg(experimental_dynamic_storage = false)]
 impl<K, V> StorageKey<StorageMap<K, V>>
 where
     K: Hash,
@@ -45,7 +95,7 @@ where
     ///
     /// # Number of Storage Accesses
     ///
-    /// * Reads: `1`
+    /// * Reads: `0` if the `value` occupies full slots, `1` otherwise (to read the existing data that will be partially overwritten)
     /// * Writes: `1`
     ///
     /// # Examples
@@ -60,7 +110,7 @@ where
     ///     let value = true;
     ///     storage.map.insert(key, value);
     ///     let retrieved_value = storage.map.get(key).read();
-    ///     assert(value == retrieved_value);
+    ///     assert_eq(value, retrieved_value);
     /// }
     /// ```
     #[storage(read, write)]
@@ -69,11 +119,10 @@ where
         K: Hash,
     {
         let key = self.get_slot_key(key);
-        write::<V>(key, 0, value);
+        write_quads::<V>(key, 0, value);
     }
 
-    /// Retrieves the `StorageKey` that describes the raw location in storage of the value
-    /// stored at `key`, regardless of whether a value is actually stored at that location or not.
+    /// Clears a value previously stored at `key`.
     ///
     /// # Arguments
     ///
@@ -81,40 +130,7 @@ where
     ///
     /// # Returns
     ///
-    /// * [StorageKey<V>] - Describes the raw location in storage of the value stored at `key`.
-    ///
-    /// # Examples
-    ///
-    /// ```sway
-    /// storage {
-    ///     map: StorageMap<u64, bool> = StorageMap {}
-    /// }
-    ///
-    /// fn foo() {
-    ///     let key = 5_u64;
-    ///     let value = true;
-    ///     storage.map.insert(key, value);
-    ///     let retrieved_value = storage.map.get(key).read();
-    ///     assert(value == retrieved_value);
-    /// }
-    /// ```
-    pub fn get(self, key: K) -> StorageKey<V>
-    where
-        K: Hash,
-    {
-        let key = self.get_slot_key(key);
-        StorageKey::<V>::new(key, 0, key)
-    }
-
-    /// Clears a value previously stored using a key
-    ///
-    /// # Arguments
-    ///
-    /// * `key`: [K] - The key to which the value is paired.
-    ///
-    /// # Returns
-    ///
-    /// * [bool] - Indicates whether there was a value previously stored at `key`.
+    /// * [bool] - `true` if there was a value previously stored at `key`.
     ///
     /// # Number of Storage Accesses
     ///
@@ -142,10 +158,10 @@ where
         K: Hash,
     {
         let key = self.get_slot_key(key);
-        clear::<V>(key, 0)
+        clear_quads::<V>(key, 0)
     }
 
-    /// Inserts a key-value pair into the map if a value does not already exist for the key.
+    /// Inserts a key-value pair into the map if a value does not already exist for the `key`.
     ///
     /// # Arguments
     ///
@@ -154,12 +170,12 @@ where
     ///
     /// # Returns
     ///
-    /// * [Result<V, StorageMapError<V>>] - `Result::Ok(value)` if the value was inserted, or `Result::Err(StorageMapError::OccupiedError(pre_existing_value))` if a value already existed for the key.
+    /// * [Result<V, StorageMapError<V>>] - `Result::Ok(value)` if the `value` was inserted, or `Result::Err(StorageMapError::OccupiedError(pre_existing_value))` if a value already existed for the `key`.
     ///
     /// # Number of Storage Accesses
     ///
-    /// * Reads: `1`
-    /// * Writes: `1`
+    /// * Reads: `1` (to check if a value already exists for the `key`)
+    /// * Writes: `1` if the `value` is inserted, otherwise `0`
     ///
     /// # Examples
     ///
@@ -180,11 +196,11 @@ where
     ///     assert(result == Result::Err(StorageMapError::OccupiedError(value))); // The old value is returned.
     ///
     ///     let retrieved_value = storage.map.get(key).read();
-    ///     assert(value == retrieved_value); // New value was not inserted, as a value already existed.
+    ///     assert_eq(value, retrieved_value); // New value was not inserted, as a value already existed.
     ///
     ///     let key2 = 10_u64;
     ///     let returned_value = storage.map.try_insert(key2, new_value);
-    ///     assert(returned_value == Result::Ok(new_value)); // New value is returned.
+    ///     assert_eq(returned_value, Result::Ok(new_value)); // New value is returned.
     /// }
     /// ```
     #[storage(read, write)]
@@ -194,20 +210,193 @@ where
     {
         let key = self.get_slot_key(key);
 
-        let val = read::<V>(key, 0);
+        let val = read_quads::<V>(key, 0);
 
         match val {
             Option::Some(v) => {
                 Result::Err(StorageMapError::OccupiedError(v))
             },
             Option::None => {
-                write::<V>(key, 0, value);
+                write_quads::<V>(key, 0, value);
                 Result::Ok(value)
             }
         }
     }
+}
 
-    fn get_slot_key(self, key: K) -> b256 {
-        sha256((STORAGE_MAP_DOMAIN, key, self.field_id()))
+#[cfg(experimental_dynamic_storage = true)]
+impl<K, V> StorageKey<StorageMap<K, V>>
+where
+    K: Hash,
+{
+    /// Inserts a key-value pair into the map.
+    ///
+    /// # Arguments
+    ///
+    /// * `key`: [K] - The key to which the value is paired.
+    /// * `value`: [V] - The value to be stored.
+    ///
+    /// # Number of Storage Accesses
+    ///
+    /// * Writes: `1`
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// storage {
+    ///     map: StorageMap<u64, bool> = StorageMap {}
+    /// }
+    ///
+    /// fn foo() {
+    ///     let key = 5_u64;
+    ///     let value = true;
+    ///     storage.map.insert(key, value);
+    ///     let retrieved_value = storage.map.get(key).read();
+    ///     assert_eq(value, retrieved_value);
+    /// }
+    /// ```
+    #[storage(write)]
+    pub fn insert(self, key: K, value: V)
+    where
+        K: Hash,
+    {
+        let key = self.get_slot_key(key);
+        write_slot::<V>(key, value);
+    }
+
+    /// Clears a value previously stored at `key`.
+    ///
+    /// # Arguments
+    ///
+    /// * `key`: [K] - The key to which the value is paired.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] - `true` if there was a value previously stored at `key`.
+    ///
+    /// # Number of Storage Accesses
+    ///
+    /// * Preloads: `1` (to check whether the slot was previously set)
+    /// * Clears: `1`
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// storage {
+    ///     map: StorageMap<u64, bool> = StorageMap {}
+    /// }
+    ///
+    /// fn foo() {
+    ///     let key = 5_u64;
+    ///     let value = true;
+    ///     storage.map.insert(key, value);
+    ///     let removed = storage.map.remove_existed(key);
+    ///     assert(removed);
+    ///     assert(storage.map.get(key).is_none());
+    /// }
+    /// ```
+    #[storage(write)]
+    pub fn remove_existed(self, key: K) -> bool
+    where
+        K: Hash,
+    {
+        let key = self.get_slot_key(key);
+        clear_slots_existed(key, 1)
+    }
+
+    /// Clears a value previously stored at `key`.
+    ///
+    /// # Arguments
+    ///
+    /// * `key`: [K] - The key to which the value is paired.
+    ///
+    /// # Number of Storage Accesses
+    ///
+    /// * Clears: `1`
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// storage {
+    ///     map: StorageMap<u64, bool> = StorageMap {}
+    /// }
+    ///
+    /// fn foo() {
+    ///     let key = 5_u64;
+    ///     let value = true;
+    ///     storage.map.insert(key, value);
+    ///     storage.map.remove(key);
+    ///     assert(storage.map.get(key).is_none());
+    /// }
+    /// ```
+    #[storage(write)]
+    pub fn remove(self, key: K)
+    where
+        K: Hash,
+    {
+        let key = self.get_slot_key(key);
+        clear_slots(key, 1)
+    }
+
+    /// Inserts a key-value pair into the map if a value does not already exist for the `key`.
+    ///
+    /// # Arguments
+    ///
+    /// * `key`: [K] - The key to which the value is paired.
+    /// * `value`: [V] - The value to be stored.
+    ///
+    /// # Returns
+    ///
+    /// * [Result<V, StorageMapError<V>>] - `Result::Ok(value)` if the `value` was inserted, or `Result::Err(StorageMapError::OccupiedError(pre_existing_value))` if a value already existed for the `key`.
+    ///
+    /// # Number of Storage Accesses
+    ///
+    /// * Reads: `1` (to check if a value already exists for the `key`)
+    /// * Writes: `1` if the `value` is inserted, otherwise `0`
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::storage::storage_map::StorageMapError;
+    ///
+    /// storage {
+    ///     map: StorageMap<u64, bool> = StorageMap {}
+    /// }
+    ///
+    /// fn foo() {
+    ///     let key = 5_u64;
+    ///     let value = true;
+    ///     storage.map.insert(key, value);
+    ///
+    ///     let new_value = false;
+    ///     let result = storage.map.try_insert(key, new_value);
+    ///     assert(result == Result::Err(StorageMapError::OccupiedError(value))); // The old value is returned.
+    ///
+    ///     let retrieved_value = storage.map.get(key).read();
+    ///     assert_eq(value, retrieved_value); // New value was not inserted, as a value already existed.
+    ///
+    ///     let key2 = 10_u64;
+    ///     let returned_value = storage.map.try_insert(key2, new_value);
+    ///     assert_eq(returned_value, Result::Ok(new_value)); // New value is returned.
+    /// }
+    /// ```
+    #[storage(read, write)]
+    pub fn try_insert(self, key: K, value: V) -> Result<V, StorageMapError<V>>
+    where
+        K: Hash,
+    {
+        let key = self.get_slot_key(key);
+
+        let val = read_slot::<V>(key, 0);
+
+        match val {
+            Option::Some(v) => {
+                Result::Err(StorageMapError::OccupiedError(v))
+            },
+            Option::None => {
+                write_slot::<V>(key, value);
+                Result::Ok(value)
+            }
+        }
     }
 }

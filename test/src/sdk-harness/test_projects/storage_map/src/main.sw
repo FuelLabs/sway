@@ -266,9 +266,16 @@ impl StorageMapTest for Contract {
         storage.map1.get(key).try_read()
     }
 
+    #[cfg(experimental_dynamic_storage = false)]
     #[storage(write)]
     fn remove_from_u64_to_bool_map(key: u64) -> bool {
         storage.map1.remove(key)
+    }
+
+    #[cfg(experimental_dynamic_storage = true)]
+    #[storage(write)]
+    fn remove_from_u64_to_bool_map(key: u64) -> bool {
+        storage.map1.remove_existed(key)
     }
 
     #[storage(read, write)]
@@ -286,9 +293,16 @@ impl StorageMapTest for Contract {
         storage.map2.get(key).try_read()
     }
 
+    #[cfg(experimental_dynamic_storage = false)]
     #[storage(write)]
     fn remove_from_u64_to_u8_map(key: u64) -> bool {
         storage.map2.remove(key)
+    }
+
+    #[cfg(experimental_dynamic_storage = true)]
+    #[storage(write)]
+    fn remove_from_u64_to_u8_map(key: u64) -> bool {
+        storage.map2.remove_existed(key)
     }
 
     #[storage(read, write)]
@@ -306,9 +320,16 @@ impl StorageMapTest for Contract {
         storage.map3.get(key).try_read()
     }
 
+    #[cfg(experimental_dynamic_storage = false)]
     #[storage(write)]
     fn remove_from_u64_to_u16_map(key: u64) -> bool {
         storage.map3.remove(key)
+    }
+
+    #[cfg(experimental_dynamic_storage = true)]
+    #[storage(write)]
+    fn remove_from_u64_to_u16_map(key: u64) -> bool {
+        storage.map3.remove_existed(key)
     }
 
     #[storage(read, write)]
@@ -326,9 +347,16 @@ impl StorageMapTest for Contract {
         storage.map4.get(key).try_read()
     }
 
+    #[cfg(experimental_dynamic_storage = false)]
     #[storage(write)]
     fn remove_from_u64_to_u32_map(key: u64) -> bool {
         storage.map4.remove(key)
+    }
+
+    #[cfg(experimental_dynamic_storage = true)]
+    #[storage(write)]
+    fn remove_from_u64_to_u32_map(key: u64) -> bool {
+        storage.map4.remove_existed(key)
     }
 
     #[storage(read, write)]
@@ -346,9 +374,16 @@ impl StorageMapTest for Contract {
         storage.map5.get(key).try_read()
     }
 
+    #[cfg(experimental_dynamic_storage = false)]
     #[storage(write)]
     fn remove_from_u64_to_u64_map(key: u64) -> bool {
         storage.map5.remove(key)
+    }
+
+    #[cfg(experimental_dynamic_storage = true)]
+    #[storage(write)]
+    fn remove_from_u64_to_u64_map(key: u64) -> bool {
+        storage.map5.remove_existed(key)
     }
 
     #[storage(read, write)]
@@ -366,9 +401,16 @@ impl StorageMapTest for Contract {
         storage.map6.get(key).try_read()
     }
 
+    #[cfg(experimental_dynamic_storage = false)]
     #[storage(write)]
     fn remove_from_u64_to_tuple_map(key: u64) -> bool {
         storage.map6.remove(key)
+    }
+
+    #[cfg(experimental_dynamic_storage = true)]
+    #[storage(write)]
+    fn remove_from_u64_to_tuple_map(key: u64) -> bool {
+        storage.map6.remove_existed(key)
     }
 
     #[storage(read, write)]
@@ -389,9 +431,16 @@ impl StorageMapTest for Contract {
         storage.map7.get(key).try_read()
     }
 
+    #[cfg(experimental_dynamic_storage = false)]
     #[storage(write)]
     fn remove_from_u64_to_struct_map(key: u64) -> bool {
         storage.map7.remove(key)
+    }
+
+    #[cfg(experimental_dynamic_storage = true)]
+    #[storage(write)]
+    fn remove_from_u64_to_struct_map(key: u64) -> bool {
+        storage.map7.remove_existed(key)
     }
 
     #[storage(read, write)]
@@ -412,9 +461,16 @@ impl StorageMapTest for Contract {
         storage.map8.get(key).try_read()
     }
 
+    #[cfg(experimental_dynamic_storage = false)]
     #[storage(write)]
     fn remove_from_u64_to_enum_map(key: u64) -> bool {
         storage.map8.remove(key)
+    }
+
+    #[cfg(experimental_dynamic_storage = true)]
+    #[storage(write)]
+    fn remove_from_u64_to_enum_map(key: u64) -> bool {
+        storage.map8.remove_existed(key)
     }
 
     #[storage(read, write)]
@@ -432,9 +488,16 @@ impl StorageMapTest for Contract {
         storage.map9.get(key).try_read()
     }
 
+    #[cfg(experimental_dynamic_storage = false)]
     #[storage(write)]
     fn remove_from_u64_to_str_map(key: u64) -> bool {
         storage.map9.remove(key)
+    }
+
+    #[cfg(experimental_dynamic_storage = true)]
+    #[storage(write)]
+    fn remove_from_u64_to_str_map(key: u64) -> bool {
+        storage.map9.remove_existed(key)
     }
 
     #[storage(read, write)]
@@ -455,9 +518,16 @@ impl StorageMapTest for Contract {
         storage.map10.get(key).try_read()
     }
 
+    #[cfg(experimental_dynamic_storage = false)]
     #[storage(write)]
     fn remove_from_u64_to_array_map(key: u64) -> bool {
         storage.map10.remove(key)
+    }
+
+    #[cfg(experimental_dynamic_storage = true)]
+    #[storage(write)]
+    fn remove_from_u64_to_array_map(key: u64) -> bool {
+        storage.map10.remove_existed(key)
     }
 
     #[storage(read, write)]
@@ -478,9 +548,16 @@ impl StorageMapTest for Contract {
         storage.map11.get(key).try_read()
     }
 
+    #[cfg(experimental_dynamic_storage = false)]
     #[storage(write)]
     fn remove_from_bool_to_u64_map(key: bool) -> bool {
         storage.map11.remove(key)
+    }
+
+    #[cfg(experimental_dynamic_storage = true)]
+    #[storage(write)]
+    fn remove_from_bool_to_u64_map(key: bool) -> bool {
+        storage.map11.remove_existed(key)
     }
 
     #[storage(read, write)]
@@ -498,9 +575,16 @@ impl StorageMapTest for Contract {
         storage.map12.get(key).try_read()
     }
 
+    #[cfg(experimental_dynamic_storage = false)]
     #[storage(write)]
     fn remove_from_u8_to_u64_map(key: u8) -> bool {
         storage.map12.remove(key)
+    }
+
+    #[cfg(experimental_dynamic_storage = true)]
+    #[storage(write)]
+    fn remove_from_u8_to_u64_map(key: u8) -> bool {
+        storage.map12.remove_existed(key)
     }
 
     #[storage(read, write)]
@@ -518,9 +602,16 @@ impl StorageMapTest for Contract {
         storage.map13.get(key).try_read()
     }
 
+    #[cfg(experimental_dynamic_storage = false)]
     #[storage(write)]
     fn remove_from_u16_to_u64_map(key: u16) -> bool {
         storage.map13.remove(key)
+    }
+
+    #[cfg(experimental_dynamic_storage = true)]
+    #[storage(write)]
+    fn remove_from_u16_to_u64_map(key: u16) -> bool {
+        storage.map13.remove_existed(key)
     }
 
     #[storage(read, write)]
@@ -538,9 +629,16 @@ impl StorageMapTest for Contract {
         storage.map14.get(key).try_read()
     }
 
+    #[cfg(experimental_dynamic_storage = false)]
     #[storage(write)]
     fn remove_from_u32_to_u64_map(key: u32) -> bool {
         storage.map14.remove(key)
+    }
+
+    #[cfg(experimental_dynamic_storage = true)]
+    #[storage(write)]
+    fn remove_from_u32_to_u64_map(key: u32) -> bool {
+        storage.map14.remove_existed(key)
     }
 
     #[storage(read, write)]
@@ -558,9 +656,16 @@ impl StorageMapTest for Contract {
         storage.map15.get(key).try_read()
     }
 
+    #[cfg(experimental_dynamic_storage = false)]
     #[storage(write)]
     fn remove_from_tuple_to_u64_map(key: (b256, u8, bool)) -> bool {
         storage.map15.remove(key)
+    }
+
+    #[cfg(experimental_dynamic_storage = true)]
+    #[storage(write)]
+    fn remove_from_tuple_to_u64_map(key: (b256, u8, bool)) -> bool {
+        storage.map15.remove_existed(key)
     }
 
     #[storage(read, write)]
@@ -581,9 +686,16 @@ impl StorageMapTest for Contract {
         storage.map16.get(key).try_read()
     }
 
+    #[cfg(experimental_dynamic_storage = false)]
     #[storage(write)]
     fn remove_from_struct_to_u64_map(key: Struct) -> bool {
         storage.map16.remove(key)
+    }
+
+    #[cfg(experimental_dynamic_storage = true)]
+    #[storage(write)]
+    fn remove_from_struct_to_u64_map(key: Struct) -> bool {
+        storage.map16.remove_existed(key)
     }
 
     #[storage(read, write)]
@@ -601,9 +713,16 @@ impl StorageMapTest for Contract {
         storage.map17.get(key).try_read()
     }
 
+    #[cfg(experimental_dynamic_storage = false)]
     #[storage(write)]
     fn remove_from_enum_to_u64_map(key: Enum) -> bool {
         storage.map17.remove(key)
+    }
+
+    #[cfg(experimental_dynamic_storage = true)]
+    #[storage(write)]
+    fn remove_from_enum_to_u64_map(key: Enum) -> bool {
+        storage.map17.remove_existed(key)
     }
 
     #[storage(read, write)]
@@ -621,9 +740,16 @@ impl StorageMapTest for Contract {
         storage.map18.get(key).try_read()
     }
 
+    #[cfg(experimental_dynamic_storage = false)]
     #[storage(write)]
     fn remove_from_str_to_u64_map(key: str[10]) -> bool {
         storage.map18.remove(key)
+    }
+
+    #[cfg(experimental_dynamic_storage = true)]
+    #[storage(write)]
+    fn remove_from_str_to_u64_map(key: str[10]) -> bool {
+        storage.map18.remove_existed(key)
     }
 
     #[storage(read, write)]
@@ -641,9 +767,16 @@ impl StorageMapTest for Contract {
         storage.map19.get(key).try_read()
     }
 
+    #[cfg(experimental_dynamic_storage = false)]
     #[storage(write)]
     fn remove_from_array_to_u64_map(key: [b256; 3]) -> bool {
         storage.map19.remove(key)
+    }
+
+    #[cfg(experimental_dynamic_storage = true)]
+    #[storage(write)]
+    fn remove_from_array_to_u64_map(key: [b256; 3]) -> bool {
+        storage.map19.remove_existed(key)
     }
 
     #[storage(read, write)]

@@ -103,7 +103,7 @@ category = "fail"
 #check: $()write_asm_instructions();
 #nextln: $()Function "write_asm_instructions" writes to the storage.
 #check: $()update_asm_instructions();
-#nextln: $()Function "update_asm_instructions" reads from and writes to the storage.
+#nextln: $()Function "update_asm_instructions" writes to the storage.
 #check: $()clear_asm_instructions();
 #nextln: $()Function "clear_asm_instructions" writes to the storage.
 #check: $()let _ = s.read_intrinsics();
@@ -113,6 +113,6 @@ category = "fail"
 #check: $()let _ = s.clear_intrinsics();
 #nextln: $()Function "clear_intrinsics" writes to the storage.
 #check: $()let _ = s.update_intrinsics();
-#nextln: $()Function "update_intrinsics" reads from and writes to the storage.
+#nextln: $()Function "update_intrinsics" writes to the storage.
 
 #check: $()9 errors.

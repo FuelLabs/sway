@@ -8,11 +8,13 @@ use impls::Enum;
 use std::hash::{Hash, sha256};
 use std::storage::storage_vec::*;
 
+#[cfg(experimental_dynamic_storage = false)]
 storage {
     vec: StorageVec<u64> = StorageVec {},
     vec_of_vec: StorageVec<StorageVec<u64>> = StorageVec {},
 }
 
+#[cfg(experimental_dynamic_storage = false)]
 #[allow(dead_code)] // TODO-DCA: Remove this `allow` once https://github.com/FuelLabs/sway/issues/7462 is fixed.
 #[storage(read)]
 fn assert_empty_vec_next_returns_none_impl<T>(slot_id_preimage: u64) {
@@ -20,6 +22,7 @@ fn assert_empty_vec_next_returns_none_impl<T>(slot_id_preimage: u64) {
     assert(vec.iter().next().is_none());
 }
 
+#[cfg(experimental_dynamic_storage = false)]
 #[allow(dead_code)] // TODO-DCA: Remove this `allow` once https://github.com/FuelLabs/sway/issues/7462 is fixed.
 #[storage(read, write)]
 fn assert_vec_with_elements_next_returns_element_impl<T>(
@@ -56,6 +59,7 @@ where
     assert(element_after_last.is_none());
 }
 
+#[cfg(experimental_dynamic_storage = false)]
 #[allow(dead_code)] // TODO-DCA: Remove this `allow` once https://github.com/FuelLabs/sway/issues/7462 is fixed.
 #[storage(read, write)]
 fn assert_vec_with_elements_for_loop_iteration_impl<T>(
@@ -85,10 +89,16 @@ where
     assert_eq(vec.len(), i);
 }
 
+#[cfg(experimental_dynamic_storage = false)]
 impl Contract {
+    // Note that zero-sized types like, e.g., `()`, `[u64;0]`, or `EmptyStruct`,
+    // by definition of the storage access semantics, cannot be stored in
+    // a `StorageVec<T>`. If the `T` is zero-sized it must be an another
+    // nested storage type, e.g., `StorageVec<StorageMap<u64, b256>>`.
+    // So, in all the tests below, we don't have zero-sized types.
+
     #[storage(read)]
     fn assert_empty_vec_next_returns_none() {
-        assert_empty_vec_next_returns_none_impl::<()>(1);
         assert_empty_vec_next_returns_none_impl::<bool>(2);
         assert_empty_vec_next_returns_none_impl::<u8>(3);
         assert_empty_vec_next_returns_none_impl::<u16>(4);
@@ -96,9 +106,7 @@ impl Contract {
         assert_empty_vec_next_returns_none_impl::<u64>(6);
         assert_empty_vec_next_returns_none_impl::<u256>(7);
         assert_empty_vec_next_returns_none_impl::<[u64; 2]>(8);
-        assert_empty_vec_next_returns_none_impl::<[u64; 0]>(9);
         assert_empty_vec_next_returns_none_impl::<Struct>(10);
-        assert_empty_vec_next_returns_none_impl::<EmptyStruct>(11);
         assert_empty_vec_next_returns_none_impl::<str>(12);
         assert_empty_vec_next_returns_none_impl::<str[6]>(13);
         assert_empty_vec_next_returns_none_impl::<Enum>(14);
@@ -110,8 +118,6 @@ impl Contract {
 
     #[storage(read, write)]
     fn assert_vec_with_elements_next_returns_element() {
-        // TODO: Uncomment the commented tests once https://github.com/FuelLabs/sway/issues/6829 is fixed.
-        // assert_vec_with_elements_next_returns_element_impl::<()>(1);
         assert_vec_with_elements_next_returns_element_impl::<bool>(2);
         assert_vec_with_elements_next_returns_element_impl::<u8>(3);
         assert_vec_with_elements_next_returns_element_impl::<u16>(4);
@@ -119,9 +125,7 @@ impl Contract {
         assert_vec_with_elements_next_returns_element_impl::<u64>(6);
         assert_vec_with_elements_next_returns_element_impl::<u256>(7);
         assert_vec_with_elements_next_returns_element_impl::<[u64; 2]>(8);
-        // assert_vec_with_elements_next_returns_element_impl::<[u64;0]>(9);
         assert_vec_with_elements_next_returns_element_impl::<Struct>(10);
-        // assert_vec_with_elements_next_returns_element_impl::<EmptyStruct>(11);
         assert_vec_with_elements_next_returns_element_impl::<str>(12);
         assert_vec_with_elements_next_returns_element_impl::<str[6]>(13);
         assert_vec_with_elements_next_returns_element_impl::<Enum>(14);
@@ -133,8 +137,6 @@ impl Contract {
 
     #[storage(read, write)]
     fn assert_vec_with_elements_for_loop_iteration() {
-        // TODO: Uncomment the commented tests once https://github.com/FuelLabs/sway/issues/6829 is fixed.
-        // assert_vec_with_elements_for_loop_iteration_impl::<()>(1);
         assert_vec_with_elements_for_loop_iteration_impl::<bool>(2);
         assert_vec_with_elements_for_loop_iteration_impl::<u8>(3);
         assert_vec_with_elements_for_loop_iteration_impl::<u16>(4);
@@ -142,9 +144,7 @@ impl Contract {
         assert_vec_with_elements_for_loop_iteration_impl::<u64>(6);
         assert_vec_with_elements_for_loop_iteration_impl::<u256>(7);
         assert_vec_with_elements_for_loop_iteration_impl::<[u64; 2]>(8);
-        // assert_vec_with_elements_for_loop_iteration_impl::<[u64;0]>(9);
         assert_vec_with_elements_for_loop_iteration_impl::<Struct>(10);
-        // assert_vec_with_elements_for_loop_iteration_impl::<EmptyStruct>(11);
         assert_vec_with_elements_for_loop_iteration_impl::<str>(12);
         assert_vec_with_elements_for_loop_iteration_impl::<str[6]>(13);
         assert_vec_with_elements_for_loop_iteration_impl::<Enum>(14);
@@ -217,30 +217,35 @@ impl Contract {
     }
 }
 
+#[cfg(experimental_dynamic_storage = false)]
 #[test]
 fn empty_vec_next_returns_none() {
     let contract_abi = abi(StorageVecIterTestsAbi, CONTRACT_ID);
     contract_abi.assert_empty_vec_next_returns_none();
 }
 
+#[cfg(experimental_dynamic_storage = false)]
 #[test]
 fn vec_with_elements_next_returns_element() {
     let contract_abi = abi(StorageVecIterTestsAbi, CONTRACT_ID);
     contract_abi.assert_vec_with_elements_next_returns_element();
 }
 
+#[cfg(experimental_dynamic_storage = false)]
 #[test]
 fn vec_with_elements_for_loop_iteration() {
     let contract_abi = abi(StorageVecIterTestsAbi, CONTRACT_ID);
     contract_abi.assert_vec_with_elements_for_loop_iteration();
 }
 
+#[cfg(experimental_dynamic_storage = false)]
 #[test]
 fn storage_vec_field_for_loop_iteration() {
     let contract_abi = abi(StorageVecIterTestsAbi, CONTRACT_ID);
     contract_abi.storage_vec_field_for_loop_iteration();
 }
 
+#[cfg(experimental_dynamic_storage = false)]
 #[test]
 fn storage_vec_field_nested_for_loop_iteration() {
     let contract_abi = abi(StorageVecIterTestsAbi, CONTRACT_ID);

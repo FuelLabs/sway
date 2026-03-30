@@ -4,12 +4,26 @@ use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 use sway_types::{Ident, Span, Spanned};
 
-/// Describes the full storage access including all the subfields
+/// Describes the full storage access including all the subfields.
+/// E.g.: `storage::ns1::ns2.field1.field2` will be represented as
+/// a `TyStorageAccess` with 2 fields in the `fields` vector: `field1` and `field2`.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TyStorageAccess {
+    /// The sequence of field accesses in the storage access expression.
+    /// E.g., for `storage::ns1::ns2.field1.field2`, the fields are `field1` and `field2`.
+    /// Note that the first field is always a field declared in the `storage` declaration,
+    /// and the rest of the fields are struct fields accessed in the storage access expression.
     pub fields: Vec<TyStorageAccessDescriptor>,
-    pub storage_field_names: Vec<String>,
+    /// The full path to the first field in the storage access expression,
+    /// including all the namespace segments and the first field itself,
+    /// without the `storage` keyword.
+    /// E.g., for `storage::ns1::ns2.field1.field2`, the storage field path is `["ns1", "ns2", "field1"]`.
+    pub storage_field_path: Vec<String>,
+    /// The field names in the struct fields access path.
+    /// E.g., for `storage::ns1::ns2.field1.field2.field3`, the struct field names are `["field2", "field3"]`.
     pub struct_field_names: Vec<String>,
+    /// The key in the `in` keyword expression, if specified for the
+    /// first field in `fields`.
     pub key_expression: Option<Box<TyExpression>>,
     pub storage_keyword_span: Span,
 }
@@ -19,8 +33,8 @@ impl PartialEqWithEngines for TyStorageAccess {
     fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         self.fields.len() == other.fields.len()
             && self.fields.eq(&other.fields, ctx)
-            && self.storage_field_names.len() == other.storage_field_names.len()
-            && self.storage_field_names.eq(&other.storage_field_names)
+            && self.storage_field_path.len() == other.storage_field_path.len()
+            && self.storage_field_path.eq(&other.storage_field_path)
             && self.struct_field_names.len() == other.struct_field_names.len()
             && self.struct_field_names.eq(&other.struct_field_names)
             && self.key_expression.eq(&other.key_expression, ctx)
@@ -32,7 +46,7 @@ impl HashWithEngines for TyStorageAccess {
         let TyStorageAccess {
             fields,
             storage_keyword_span,
-            storage_field_names,
+            storage_field_path: storage_field_names,
             struct_field_names,
             key_expression,
         } = self;
@@ -46,7 +60,6 @@ impl HashWithEngines for TyStorageAccess {
 
 impl Spanned for TyStorageAccess {
     fn span(&self) -> Span {
-        // TODO: Use Span::join_all().
         self.fields
             .iter()
             .fold(self.fields[0].span.clone(), |acc, field| {

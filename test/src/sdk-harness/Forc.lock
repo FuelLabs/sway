@@ -322,21 +322,6 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
-name = "storage_vec_nested"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "storage_vec_of_storage_string"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "storage_vec_to_vec"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
 name = "string_slice_predicate"
 source = "member"
 dependencies = ["std"]
@@ -348,61 +333,6 @@ dependencies = ["std"]
 
 [[package]]
 name = "superabi_supertrait"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "svec_array"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "svec_b256"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "svec_bool"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "svec_enum"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "svec_str"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "svec_struct"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "svec_tuple"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "svec_u16"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "svec_u32"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "svec_u64"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "svec_u8"
 source = "member"
 dependencies = ["std"]
 
