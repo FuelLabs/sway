@@ -1,4 +1,4 @@
-use crate::{decl_engine::DeclEngineGet as _, engine_threading::*, has_changes, language::ty::*, type_system::*, types::*};
+use crate::{engine_threading::*, has_changes, language::ty::*, type_system::*, types::*};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -7,7 +7,7 @@ use std::{
 };
 use sway_ast::Intrinsic;
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{Named, Span, Spanned};
+use sway_types::{Span, Spanned};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TyIntrinsicFunctionKind {
@@ -48,7 +48,7 @@ impl SubstTypes for TyIntrinsicFunctionKind {
             Intrinsic::EnumVariantsValues => {
                 let type_args = self.type_arguments.subst(ctx);
                 if matches!(type_args, HasChanges::Yes) {
-                    let type_info = ctx.engines.te().get(self.type_arguments[0].type_id());
+                    let _type_info = ctx.engines.te().get(self.type_arguments[0].type_id());
                     // match  &*type_info {
                     //     TypeInfo::Enum(decl_id) => {
                     //         let decl = ctx.engines.de().get(decl_id);
@@ -56,7 +56,7 @@ impl SubstTypes for TyIntrinsicFunctionKind {
                     //             TyExpression::type_check_function_application(
                     //                 handler,
                     //                 ctx.by_ref(),
-                    //                 TypeBinding { 
+                    //                 TypeBinding {
                     //                     inner: CallPath {
                     //                         prefixes: vec![
                     //                             BaseIdent::new_no_span("std".to_string()),
@@ -81,18 +81,18 @@ impl SubstTypes for TyIntrinsicFunctionKind {
                     //         todo!("{:?}", decl.name());
                     //     },
                     //     _ => {}
-                    // }                    
+                    // }
                 }
 
                 has_changes! {
                     type_args;
                     self.arguments.subst(ctx);
                 }
-            },
+            }
             _ => has_changes! {
                 self.arguments.subst(ctx);
                 self.type_arguments.subst(ctx);
-            }
+            },
         }
     }
 }
