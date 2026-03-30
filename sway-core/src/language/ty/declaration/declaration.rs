@@ -279,7 +279,7 @@ impl HashWithEngines for TyDecl {
 
 impl SubstTypes for TyDecl {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-        match self {
+        let result = match self {
             TyDecl::VariableDecl(ref mut var_decl) => var_decl.subst(ctx),
             TyDecl::FunctionDecl(FunctionDecl {
                 ref mut decl_id, ..
@@ -313,7 +313,13 @@ impl SubstTypes for TyDecl {
             | TyDecl::GenericTypeForFunctionScope(_)
             | TyDecl::ErrorRecovery(..) => HasChanges::No,
             TyDecl::ConstGenericDecl(_) => HasChanges::No,
+        };
+
+        if result.has_changes() {
+            *ctx.non_concrete_types.borrow_mut() += 1;
         }
+
+        result
     }
 }
 

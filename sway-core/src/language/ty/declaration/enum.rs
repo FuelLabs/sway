@@ -28,6 +28,7 @@ pub struct TyEnumDecl {
     pub variants: Vec<TyEnumVariant>,
     pub span: Span,
     pub visibility: Visibility,
+    pub non_concrete_types: usize,
 }
 
 impl TyDeclParsedType for TyEnumDecl {
@@ -61,6 +62,7 @@ impl HashWithEngines for TyEnumDecl {
             // reliable source of obj v. obj distinction
             span: _,
             attributes: _,
+            non_concrete_types: _,
         } = self;
         call_path.hash(state);
         variants.hash(state, engines);
@@ -103,6 +105,18 @@ impl MonomorphizeHelper for TyEnumDecl {
 
     fn has_self_type_param(&self) -> bool {
         false
+    }
+
+    fn get_non_concrete_types(&mut self) -> usize {
+        self.non_concrete_types
+    }
+    
+    fn set_non_concrete_types(&mut self, count: usize) {
+        if self.non_concrete_types == 0 {
+            assert!(count == 0);
+        }
+
+        self.non_concrete_types = count;
     }
 }
 

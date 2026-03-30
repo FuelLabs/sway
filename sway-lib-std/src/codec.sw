@@ -3,6 +3,7 @@ library;
 use ::ops::*;
 use ::raw_ptr::*;
 use ::raw_slice::*;
+use ::slice::*;
 
 pub struct Buffer {
     buffer: (raw_ptr, u64, u64), // ptr, capacity, size
@@ -3016,17 +3017,26 @@ pub struct TrivialEnum<T> {
     value: T,
 }
 
-impl<T> TrivialEnum<T> {
+pub trait EnumCodecValues {
+    fn is_decode_trivial_table() -> &__slice[bool];
+}
+
+impl<T> TrivialEnum<T>
+where
+    T: EnumCodecValues
+{
     pub fn is_valid(self) -> bool {
-        let discriminant = raw_slice::from_parts::<u8>(__addr_of(self.value), 8);
-        let discriminant = abi_decode::<u64>(discriminant);
-        discriminant < __enum_discriminant_count::<T>()
+        let discriminant: raw_slice = raw_slice::from_parts::<u8>(__addr_of(self.value), 8);
+        let discriminant: u64 = abi_decode::<u64>(discriminant);
+        
+        let is_decode_trivial_table = T::is_decode_trivial_table();
+        let a: bool = *__elem_at(is_decode_trivial_table, discriminant);
+        
+        discriminant < is_decode_trivial_table.len() && a
     }
 
     pub fn unwrap(self) -> T {
-        let discriminant = raw_slice::from_parts::<u8>(__addr_of(self.value), 8);
-        let discriminant = abi_decode::<u64>(discriminant);
-        if discriminant < __enum_discriminant_count::<T>() {
+        if self.is_valid() {
             self.value
         } else {
             __revert(1)
@@ -3058,12 +3068,18 @@ where
     }
 }
 
-enum A {
+enum EnumTesting {
     A: u64,
     B: u64,
 }
 
-impl AbiEncode for A {
+impl EnumCodecValues for EnumTesting{
+    fn is_decode_trivial_table() -> &__slice[bool] {
+        __slice(&[true, true], 0, 2)
+    }
+}
+
+impl AbiEncode for EnumTesting {
     fn is_encode_trivial() -> bool {
         true
     }
@@ -3073,7 +3089,7 @@ impl AbiEncode for A {
     }
 }
 
-impl AbiDecode for A {
+impl AbiDecode for EnumTesting {
     fn is_decode_trivial() -> bool {
         true
     }
@@ -3083,22 +3099,22 @@ impl AbiDecode for A {
         match discriminant {
             0 => {
                 let v = u64::abi_decode(buffer);
-                A::A(v)
+                EnumTesting::A(v)
             }
             1 => {
                 let v = u64::abi_decode(buffer);
-                A::B(v)
+                EnumTesting::B(v)
             }
             _ => __revert(0),
         }
     }
 }
 
-impl PartialEq for A {
-    fn eq(self, other: A) -> bool {
+impl PartialEq for EnumTesting {
+    fn eq(self, other: EnumTesting) -> bool {
         match (self, other) {
-            (A::A(a), A::A(b)) => a == b,
-            (A::B(a), A::B(b)) => a == b,
+            (EnumTesting::A(a), EnumTesting::A(b)) => a == b,
+            (EnumTesting::B(a), EnumTesting::B(b)) => a == b,
             _ => false,
         }
     }
@@ -3106,21 +3122,23 @@ impl PartialEq for A {
 
 #[test]
 fn trivial_enum_when_valid() {
-    let before = TrivialEnum { value: A::B(1) };
+    let before = TrivialEnum { value: EnumTesting::B(1) };
     let bytes = encode(before);
-    let after = abi_decode::<TrivialEnum<A>>(bytes);
+    let after = abi_decode::<TrivialEnum<EnumTesting>>(bytes);
+    __log(after.is_valid());
     let after = after.unwrap();
-    assert_eq(after, A::B(1), 1);
+    __log(bytes);
+    assert_eq(after, EnumTesting::B(1), 1);
 }
 
 #[test]
-fn trivial_enum_when_invalid_is_valid() {
-    let e = __transmute::<[u8; 16], TrivialEnum<A>>([0u8, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0]);
+fn trivial_enum_when_invalid_is_valid_returns_false() {
+    let e = __transmute::<[u8; 16], TrivialEnum<EnumTesting>>([0u8, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0]);
     assert_eq(e.is_valid(), false, 0);
 }
 
 #[test(should_revert)]
 fn trivial_enum_when_invalid_unwrap() {
-    let e = __transmute::<[u8; 16], TrivialEnum<A>>([0u8, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0]);
+    let e = __transmute::<[u8; 16], TrivialEnum<EnumTesting>>([0u8, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0]);
     let _ = e.unwrap();
 }

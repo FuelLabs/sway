@@ -4,7 +4,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::Span;
+use sway_types::{BaseIdent, Span};
 use sway_types::{integer_bits::IntegerBits, Spanned};
 
 use crate::{
@@ -145,7 +145,7 @@ impl ty::TyIntrinsicFunctionKind {
             Intrinsic::Alloc => {
                 type_check_alloc(handler, ctx, kind, arguments, type_arguments, span)
             }
-            Intrinsic::EnumDiscriminantCount => type_check_enum_discriminant_count(
+            Intrinsic::EnumVariantsValues => type_check_enum_variants_values(
                 arguments,
                 handler,
                 kind,
@@ -205,21 +205,38 @@ fn type_check_encoding_memory_id(
     Ok((intrinsic_function, ctx.engines.te().id_of_u64()))
 }
 
-fn type_check_enum_discriminant_count(
+fn type_check_enum_variants_values(
     arguments: &[Expression],
     handler: &Handler,
     kind: Intrinsic,
     type_arguments: &[GenericArgument],
     span: Span,
-    ctx: TypeCheckContext,
+    mut ctx: TypeCheckContext,
 ) -> Result<(TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
-    if !arguments.is_empty() {
+    if arguments.len() != 1 {
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
             expected: 0,
+            actual: 1,
             span,
         }));
     }
+
+    let first_argument_typed_expr = {
+        let u64_id = ctx.engines.te().id_of_u64();
+        let ctx = ctx
+            .by_ref()
+            .with_help_text("")
+            .with_type_annotation(u64_id);
+        ty::TyExpression::type_check(handler, ctx, &arguments[0])?
+    };
+
+    let value_id = match first_argument_typed_expr.expression {
+        ty::TyExpressionVariant::Literal(Literal::U64(3)) => 3,
+        _ => todo!(),
+    };
+
+    let mut arguments = vec![first_argument_typed_expr];
 
     if type_arguments.len() != 1 {
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
@@ -239,16 +256,37 @@ fn type_check_enum_discriminant_count(
             None,
         )
         .unwrap_or_else(|err| ctx.engines.te().id_of_error_recovery(err));
+
+    let elem_type = GenericTypeArgument { 
+        type_id: ctx.engines.te().id_of_bool(),
+        initial_type_id: ctx.engines.te().id_of_bool(),
+        span: span.clone(),
+        call_path_tree: None
+    };
+    let return_type = ctx.engines.te().insert_slice(ctx.engines, elem_type);
+    
+    match &*ctx.engines.te().get(arg) {
+        TypeInfo::UnknownGeneric { .. } => {
+        }
+        TypeInfo::Enum(decl_id) => {
+            todo!();
+        },
+        _ => {
+            todo!()
+        }
+    };
+
     let mut final_type_arguments = type_arguments.to_vec();
     *final_type_arguments[0].type_id_mut() = arg;
 
     let intrinsic_function = ty::TyIntrinsicFunctionKind {
         kind,
-        arguments: vec![],
+        arguments,
         type_arguments: final_type_arguments,
         span: span.clone(),
     };
-    Ok((intrinsic_function, ctx.engines.te().id_of_u64()))
+
+    Ok((intrinsic_function, return_type))
 }
 
 fn type_check_runtime_memory_id(
