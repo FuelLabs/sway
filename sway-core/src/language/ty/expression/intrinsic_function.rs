@@ -1,4 +1,4 @@
-use crate::{engine_threading::*, has_changes, language::ty::*, type_system::*, types::*};
+use crate::{decl_engine::DeclEngineGet as _, engine_threading::*, has_changes, language::ty::*, type_system::*, types::*};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -7,7 +7,7 @@ use std::{
 };
 use sway_ast::Intrinsic;
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{Span, Spanned};
+use sway_types::{Named, Span, Spanned};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TyIntrinsicFunctionKind {
@@ -44,9 +44,55 @@ impl HashWithEngines for TyIntrinsicFunctionKind {
 
 impl SubstTypes for TyIntrinsicFunctionKind {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-        has_changes! {
-            self.arguments.subst(ctx);
-            self.type_arguments.subst(ctx);
+        match self.kind {
+            Intrinsic::EnumVariantsValues => {
+                let type_args = self.type_arguments.subst(ctx);
+                if matches!(type_args, HasChanges::Yes) {
+                    let type_info = ctx.engines.te().get(self.type_arguments[0].type_id());
+                    // match  &*type_info {
+                    //     TypeInfo::Enum(decl_id) => {
+                    //         let decl = ctx.engines.de().get(decl_id);
+                    //         let table = decl.variants.iter().map(|variant| {
+                    //             TyExpression::type_check_function_application(
+                    //                 handler,
+                    //                 ctx.by_ref(),
+                    //                 TypeBinding { 
+                    //                     inner: CallPath {
+                    //                         prefixes: vec![
+                    //                             BaseIdent::new_no_span("std".to_string()),
+                    //                             BaseIdent::new_no_span("codec".to_string()),
+                    //                         ],
+                    //                         suffix: BaseIdent::new_no_span("is_decode_trivial".to_string()),
+                    //                         callpath_type: crate::language::CallPathType::Ambiguous,
+                    //                     },
+                    //                     type_arguments: TypeArgs::Prefix(
+                    //                         vec![GenericArgument::Type (
+                    //                             variant.type_argument.clone()
+                    //                         )]
+                    //                     ),
+                    //                     span: Span::dummy(),
+                    //                 },
+                    //                 &[],
+                    //                 Span::dummy(),
+                    //             ).unwrap()
+                    //         });
+                    //         arguments.extend(table);
+                    //         dbg!(arguments.len());
+                    //         todo!("{:?}", decl.name());
+                    //     },
+                    //     _ => {}
+                    // }                    
+                }
+
+                has_changes! {
+                    type_args;
+                    self.arguments.subst(ctx);
+                }
+            },
+            _ => has_changes! {
+                self.arguments.subst(ctx);
+                self.type_arguments.subst(ctx);
+            }
         }
     }
 }

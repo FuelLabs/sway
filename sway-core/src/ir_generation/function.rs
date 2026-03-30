@@ -10,38 +10,26 @@ use super::{
     CompiledFunctionCache,
 };
 use crate::{
-    decl_engine::DeclEngineGet as _,
-    engine_threading::*,
-    ir_generation::{
-        const_eval::{compile_constant_expression, compile_constant_expression_to_constant},
-        KeyedTyFunctionDecl, PanickingFunctionCache,
-    },
-    language::{
+    PanicOccurrence, PanicOccurrences, PanickingCallOccurrence, PanickingCallOccurrences, decl_engine::DeclEngineGet as _, engine_threading::*, ir_generation::{
+        KeyedTyFunctionDecl, PanickingFunctionCache, const_eval::{LookupEnv, compile_constant_expression, compile_constant_expression_to_constant}
+    }, language::{
         ty::{
             self, ProjectionKind, TyConfigurableDecl, TyConstantDecl, TyExpression,
             TyExpressionVariant, TyFunctionDisplay, TyStorageField,
         },
         *,
-    },
-    metadata::MetadataManager,
-    type_system::*,
-    types::*,
-    PanicOccurrence, PanicOccurrences, PanickingCallOccurrence, PanickingCallOccurrences,
+    }, metadata::MetadataManager, namespace, type_system::*, types::*
 };
 
 use indexmap::IndexMap;
 use itertools::Itertools;
 use sway_ast::intrinsics::Intrinsic;
-use sway_error::error::CompileError;
+use sway_error::{error::CompileError, handler::Handler};
 use sway_ir::{Context, *};
 use sway_types::{
-    constants,
-    ident::Ident,
-    integer_bits::IntegerBits,
-    span::{Span, Spanned},
-    u256::U256,
-    Named,
+    BaseIdent, Named, constants, ident::Ident, integer_bits::IntegerBits, span::{Span, Spanned}, u256::U256
 };
+use sway_utils::MappedStack;
 
 use std::convert::TryFrom;
 use std::{
@@ -1779,7 +1767,7 @@ impl<'a> FnCompiler<'a> {
                 let gas = return_on_termination_or_extract!(self.compile_expression_to_register(
                     context,
                     md_mgr,
-                    &arguments[3]
+                    &arguments[3],
                 )?)
                 .expect_register();
 
@@ -1805,13 +1793,13 @@ impl<'a> FnCompiler<'a> {
                 let ptr = return_on_termination_or_extract!(self.compile_expression_to_register(
                     context,
                     md_mgr,
-                    &arguments[0]
+                    &arguments[0],
                 )?)
                 .expect_register();
                 let len = return_on_termination_or_extract!(self.compile_expression_to_register(
                     context,
                     md_mgr,
-                    &arguments[1]
+                    &arguments[1],
                 )?)
                 .expect_register();
                 let r = self
@@ -2463,24 +2451,112 @@ impl<'a> FnCompiler<'a> {
                     context,
                 ))
             }
-            Intrinsic::EnumDiscriminantCount => {
+            Intrinsic::EnumVariantsValues => {
                 assert!(type_arguments.len() == 1);
-                assert!(arguments.is_empty());
+                assert!(arguments.len() >= 1);
 
                 let arg = type_arguments[0].as_type_argument().unwrap();
                 let t = engines.te().get(arg.type_id);
-                let count = match &*t {
+                
+                match &*t {
                     TypeInfo::Enum(decl_id) => {
                         let decl = engines.de().get(decl_id);
-                        decl.variants.len()
+
+                        //assert!(decl.variants.len() == (arguments.len() - 1));
+
+                        let elems = decl.variants.iter()
+                            .map(|variant| {
+                                // let codec = namespace.module_from_absolute_path(&[
+                                //     BaseIdent::new_no_span("std".to_string()),
+                                //     BaseIdent::new_no_span("codec".to_string()),
+                                // ]).unwrap();
+                                // let symbol = BaseIdent::new_no_span("is_decode_trivial".to_string());
+                                // let handler = Handler::default();
+                                // let (is_decode_trivial, _) = codec.resolve_symbol(&handler, engines, &symbol).unwrap();
+                                // let is_decode_trivial = is_decode_trivial.expect_typed();
+                                // let is_decode_trivial = is_decode_trivial.to_fn_ref(&handler, engines).unwrap();
+
+                                // let mut type_subst_map = TypeSubstMap::new();
+                                // type_subst_map.insert(
+                                //     engines.te().insert_unknown(engines),
+                                //     variant.type_argument.type_id,
+                                // );
+                                // let subsctx = SubstTypesContext {
+                                //     handler: &handler,
+                                //     engines,
+                                //     type_subst_map: Some(&type_subst_map),
+                                //     subst_function_body: true,
+                                // };
+                                // let Some(new_fn) = is_decode_trivial.subst_types_and_insert_new(&subsctx) else {
+                                //     todo!()
+                                // };
+                                // eprintln!("final fn: {:#?}", engines.help_out(new_fn.id()));
+                                
+                                // let mut lookup = LookupEnv {
+                                //     engines,
+                                //     context,
+                                //     md_mgr,
+                                //     module: self.module,
+                                //     module_ns: None,
+                                //     function_compiler: Some(self),
+                                //     lookup: |a, b, c| {
+                                //         todo!();
+                                //     },
+                                // };
+                                // let mut known_consts = MappedStack::new();
+                                // let r = crate::ir_generation::const_eval::const_eval_fn_application(
+                                //     &mut lookup,
+                                //     &mut known_consts,
+                                //     &vec![],
+                                //     &new_fn,
+                                //     &Span::dummy(),
+                                // ).unwrap().unwrap();
+
+                                // let value = r.get_content(context).as_bool().unwrap();
+                                // dbg!(value);
+                                ConstantContent::new_bool(context, true)
+                            })
+                            .collect::<Vec<_>>();
+
+                        let elems_len = ConstantContent::new_uint(context, 64, elems.len() as u64);
+                        let elems_len = Constant::unique(context, elems_len);
+                        let elems_len = Value::new_constant(context, elems_len);
+                    
+                        let bool_type = Type::get_bool(context);
+
+                        let array = ConstantContent::new_array(context, bool_type, elems);
+                        let array_type = array.ty;
+                        let array = Constant::unique(context, array);
+
+                        let values_local_name = self.lexical_map.insert_anon();
+                        let values_local = self
+                            .function
+                            .new_local_var(
+                                context,
+                                values_local_name,
+                                array_type,
+                                Some(array),
+                                false,
+                            )
+                            .map_err(|ir_error| {
+                                CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
+                            })?;
+
+                        let values_ptr = self.current_block.append(context)
+                            .get_local(values_local);
+                        let ptr_to_bool = Type::new_typed_pointer(context, bool_type);
+                        let values_ptr = self.current_block.append(context)
+                            .cast_ptr(values_ptr, ptr_to_bool);
+                        
+                        let slice = self.slices_from_ptr_and_len(context, bool_type, values_ptr, elems_len).unwrap();
+
+                        Ok(TerminatorValue::new(
+                            CompiledValue::InRegister(slice),
+                            context,
+                        ))
                     }
-                    _ => todo!("ICE"),
-                };
-                let val = ConstantContent::get_uint(context, 64, count as u64);
-                Ok(TerminatorValue::new(
-                    CompiledValue::InRegister(val),
-                    context,
-                ))
+                    _ => todo!()
+                }
             }
         }
     }
@@ -2761,6 +2837,15 @@ impl<'a> FnCompiler<'a> {
             .binary_op(BinaryOpKind::Sub, end, start);
 
         // compile the slice together
+        let slice = self.slices_from_ptr_and_len(context, elem_ir_type, ptr_to_elem, slice_len)?;
+
+        Ok(TerminatorValue::new(
+            CompiledValue::InRegister(slice),
+            context,
+        ))
+    }
+
+    fn slices_from_ptr_and_len(&mut self, context: &mut Context<'_>, elem_ir_type: Type, ptr_to_elem: Value, slice_len: Value) -> Result<Value, CompileError> {
         let ptr_to_elem_ty = Type::new_typed_pointer(context, elem_ir_type);
         let return_type = Type::get_typed_slice(context, elem_ir_type);
         let slice_as_tuple = self.compile_tuple_from_values(
@@ -2778,13 +2863,9 @@ impl<'a> FnCompiler<'a> {
             return_type,
             Some(Ident::new_no_span("s".into())),
         );
-
-        Ok(TerminatorValue::new(
-            CompiledValue::InRegister(slice),
-            context,
-        ))
+        Ok(slice)
     }
-
+    
     fn compile_return(
         &mut self,
         context: &mut Context,
@@ -3399,7 +3480,7 @@ impl<'a> FnCompiler<'a> {
         let addr = return_on_termination_or_extract!(self.compile_expression_to_register(
             context,
             md_mgr,
-            &call_params.contract_address
+            &call_params.contract_address,
         )?)
         .expect_register();
         let gep_val =
@@ -3468,7 +3549,7 @@ impl<'a> FnCompiler<'a> {
                 return_on_termination_or_extract!(self.compile_expression_to_memory(
                     context,
                     md_mgr,
-                    asset_id_expr
+                    asset_id_expr,
                 )?)
             }
             None => {
@@ -3772,7 +3853,7 @@ impl<'a> FnCompiler<'a> {
         let cond_value = return_on_termination_or_extract!(self.compile_expression_to_register(
             context,
             md_mgr,
-            ast_condition
+            ast_condition,
         )?)
         .expect_register();
         let cond_block = self.current_block;
@@ -4314,7 +4395,7 @@ impl<'a> FnCompiler<'a> {
         let rhs = return_on_termination_or_extract!(self.compile_expression_to_register(
             context,
             md_mgr,
-            &ast_reassignment.rhs
+            &ast_reassignment.rhs,
         )?)
         .expect_register();
 
@@ -4715,7 +4796,7 @@ impl<'a> FnCompiler<'a> {
                     return_on_termination_or_extract!(self.compile_expression_to_register(
                         context,
                         md_mgr,
-                        &contents[0]
+                        &contents[0],
                     )?)
                     .expect_register(),
                 ),
@@ -4874,7 +4955,7 @@ impl<'a> FnCompiler<'a> {
         let struct_val = return_on_termination_or_extract!(self.compile_expression_to_memory(
             context,
             md_mgr,
-            ast_struct_expr
+            ast_struct_expr,
         )?)
         .expect_memory();
 
