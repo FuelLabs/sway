@@ -41,6 +41,7 @@ impl SubstTypes for TyConstGenericDecl {
             self.return_type.subst(ctx);
             if let Some(v) = ctx.get_renamed_const_generic(&self.call_path.suffix) {
                 self.call_path.suffix = v.clone();
+                *ctx.non_concrete_types.borrow_mut() += 1;
                 HasChanges::Yes
             } else {
                 HasChanges::No

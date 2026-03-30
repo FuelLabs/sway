@@ -1,12 +1,7 @@
 use crate::{
-    asm_generation::fuel::compiler_constants::MISMATCHED_SELECTOR_REVERT_CODE,
-    decl_engine::{DeclEngineGet, DeclId},
-    language::{
-        parsed::FunctionDeclarationKind,
-        ty::{self, TyAstNode, TyDecl, TyEnumDecl, TyFunctionDecl, TyStructDecl},
-        Purity,
-    },
-    Engines, TypeInfo, TypeParameter,
+    Engines, TypeInfo, TypeParameter, asm_generation::fuel::compiler_constants::MISMATCHED_SELECTOR_REVERT_CODE, decl_engine::{DeclEngineGet, DeclId, engine}, engine_threading::SpannedWithEngines as _, language::{
+        Purity, parsed::FunctionDeclarationKind, ty::{self, TyAstNode, TyDecl, TyEnumDecl, TyFunctionDecl, TyStructDecl}
+    }
 };
 use itertools::Itertools;
 use std::collections::BTreeMap;
@@ -334,6 +329,54 @@ where
                 .unwrap_or((None, None)),
             _ => (None, None),
         }
+    }
+
+    pub(crate) fn generate_tables(&mut self, engines: &Engines, decl: &TyDecl) -> Option<TyAstNode> {
+        let handler = Handler::default();
+        let Ok(enum_decl_id) = decl.to_enum_id(&handler, engines) else {
+            return None;
+        };
+        let enum_decl = engines.de().get(&enum_decl_id);
+
+        let mut elems = String::new();
+        for i in 0..enum_decl.variants.len() {
+            let type_str = enum_decl.variants[i].type_argument.span.as_str();
+            elems.push_str("is_decode_trivial::<");
+            elems.push_str(type_str);
+            elems.push_str(">()");
+
+            if i < enum_decl.variants.len() - 1 {
+                elems.push_str(",");
+            }
+        }
+
+        let type_parameters = &enum_decl.generic_parameters;
+
+        let type_parameters_declaration_expanded =
+            self.generate_type_parameters_declaration_code(type_parameters, true);
+        let type_parameters_declaration =
+            self.generate_type_parameters_declaration_code(type_parameters, false);
+        let type_parameters_constraints =
+            self.generate_type_parameters_constraints_code(type_parameters, Some("AbiDecode"));
+
+        let name = enum_decl.name().as_raw_ident_str();
+
+        let code = format!("impl{type_parameters_declaration_expanded} EnumCodecValues for {name}{type_parameters_declaration}{type_parameters_constraints} {{
+    #[allow(dead_code)]
+    fn is_decode_trivial_table() -> &__slice[bool] {{
+        __slice(&[{elems}], 0, {len})
+    }}
+}}",
+            len = enum_decl.variants.len(),
+        );
+        let enum_codec_values = self.parse_impl_trait_to_ty_ast_node(
+            engines,
+            decl.span(engines).source_id(),
+            &code,
+            crate::build_config::DbgGeneration::None,
+        ).unwrap();
+        
+        Some(enum_codec_values)
     }
 
     pub(crate) fn generate_contract_entry(

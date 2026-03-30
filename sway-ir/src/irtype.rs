@@ -154,6 +154,11 @@ impl Type {
         Self::get_or_create_unique_type(context, TypeContent::Array(elm_ty, len))
     }
 
+    /// Get slice type
+    pub fn new_typed_slice(context: &mut Context, elm_ty: Type) -> Type {
+        Self::get_or_create_unique_type(context, TypeContent::TypedSlice(elm_ty))
+    }
+
     /// Get union type
     pub fn new_union(context: &mut Context, fields: Vec<Type>) -> Type {
         Self::get_or_create_unique_type(context, TypeContent::Union(fields))

@@ -147,9 +147,11 @@ impl SubstTypes for DeclId<TyFunctionDecl> {
         let decl_engine = ctx.engines.de();
         let mut decl = (*decl_engine.get(self)).clone();
         if decl.subst(ctx).has_changes() {
+            *ctx.non_concrete_types.borrow_mut() += decl.non_concrete_types;
             decl_engine.replace(*self, decl);
             HasChanges::Yes
         } else {
+            *ctx.non_concrete_types.borrow_mut() += decl.non_concrete_types;
             HasChanges::No
         }
     }
@@ -159,9 +161,11 @@ impl SubstTypes for DeclId<TyTraitDecl> {
         let decl_engine = ctx.engines.de();
         let mut decl = (*decl_engine.get(self)).clone();
         if decl.subst(ctx).has_changes() {
+            *ctx.non_concrete_types.borrow_mut() += decl.non_concrete_types;
             decl_engine.replace(*self, decl);
             HasChanges::Yes
         } else {
+            *ctx.non_concrete_types.borrow_mut() += decl.non_concrete_types;
             HasChanges::No
         }
     }
@@ -171,9 +175,11 @@ impl SubstTypes for DeclId<TyTraitFn> {
         let decl_engine = ctx.engines.de();
         let mut decl = (*decl_engine.get(self)).clone();
         if decl.subst(ctx).has_changes() {
+            *ctx.non_concrete_types.borrow_mut() += decl.non_concrete_types;
             decl_engine.replace(*self, decl);
             HasChanges::Yes
         } else {
+            *ctx.non_concrete_types.borrow_mut() += decl.non_concrete_types;
             HasChanges::No
         }
     }
@@ -183,9 +189,11 @@ impl SubstTypes for DeclId<TyImplSelfOrTrait> {
         let decl_engine = ctx.engines.de();
         let mut decl = (*decl_engine.get(self)).clone();
         if decl.subst(ctx).has_changes() {
+            // *ctx.non_concrete_types.borrow_mut() += decl.non_concrete_types;
             decl_engine.replace(*self, decl);
             HasChanges::Yes
         } else {
+            // *ctx.non_concrete_types.borrow_mut() += decl.non_concrete_types;
             HasChanges::No
         }
     }
@@ -195,9 +203,11 @@ impl SubstTypes for DeclId<TyStructDecl> {
         let decl_engine = ctx.engines.de();
         let mut decl = (*decl_engine.get(self)).clone();
         if decl.subst(ctx).has_changes() {
+            *ctx.non_concrete_types.borrow_mut() += decl.non_concrete_types;
             decl_engine.replace(*self, decl);
             HasChanges::Yes
         } else {
+            *ctx.non_concrete_types.borrow_mut() += decl.non_concrete_types;
             HasChanges::No
         }
     }
@@ -207,9 +217,11 @@ impl SubstTypes for DeclId<TyEnumDecl> {
         let decl_engine = ctx.engines.de();
         let mut decl = (*decl_engine.get(self)).clone();
         if decl.subst(ctx).has_changes() {
-            decl_engine.replace(*self, decl);
+            *ctx.non_concrete_types.borrow_mut() += decl.non_concrete_types;
+            decl_engine.replace(*self, decl);            
             HasChanges::Yes
         } else {
+            *ctx.non_concrete_types.borrow_mut() += decl.non_concrete_types;
             HasChanges::No
         }
     }
@@ -219,9 +231,11 @@ impl SubstTypes for DeclId<TyTypeAliasDecl> {
         let decl_engine = ctx.engines.de();
         let mut decl = (*decl_engine.get(self)).clone();
         if decl.subst(ctx).has_changes() {
-            decl_engine.replace(*self, decl);
+            //*ctx.non_concrete_types.borrow_mut() += decl.non_concrete_types;
+            decl_engine.replace(*self, decl);            
             HasChanges::Yes
         } else {
+            //*ctx.non_concrete_types.borrow_mut() += decl.non_concrete_types;
             HasChanges::No
         }
     }
@@ -232,9 +246,11 @@ impl SubstTypes for DeclId<TyTraitType> {
         let decl_engine = ctx.engines.de();
         let mut decl = (*decl_engine.get(self)).clone();
         if decl.subst(ctx).has_changes() {
+            //*ctx.non_concrete_types.borrow_mut() += decl.non_concrete_types;
             decl_engine.replace(*self, decl);
             HasChanges::Yes
         } else {
+            //*ctx.non_concrete_types.borrow_mut() += decl.non_concrete_types;
             HasChanges::No
         }
     }
@@ -257,6 +273,7 @@ impl SubstTypes for DeclId<TyConstantDecl> {
             *self = *decl_engine
                 .insert(decl, decl_engine.get_parsed_decl_id(self).as_ref())
                 .id();
+            *ctx.non_concrete_types.borrow_mut() += 1;
             HasChanges::Yes
         } else {
             HasChanges::No

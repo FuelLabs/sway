@@ -750,7 +750,7 @@ impl ty::TyExpression {
         Ok(exp)
     }
 
-    fn type_check_function_application(
+    pub(crate) fn type_check_function_application(
         handler: &Handler,
         mut ctx: TypeCheckContext,
         mut call_path_binding: TypeBinding<CallPath>,
