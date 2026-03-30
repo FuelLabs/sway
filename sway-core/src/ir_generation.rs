@@ -11,20 +11,24 @@ use std::{
     collections::HashMap,
     hash::{DefaultHasher, Hasher},
 };
-
-use sway_error::{error::CompileError, handler::Handler};
+use sway_error::error::CompileError;
 use sway_features::ExperimentalFeatures;
 use sway_ir::{
     Backtrace, Context, Function, InstOp, InstructionInserter, IrError, Kind, Module, Type,
     TypeContent, Value,
 };
-use sway_types::{BaseIdent, Ident, span::Span};
+use sway_types::{span::Span, Ident};
 
 pub use function::{get_encoding_representation, get_runtime_representation, MemoryRepresentation};
 pub(crate) use purity::{check_function_purity, PurityEnv};
 
 use crate::{
-    Engines, PanicOccurrences, PanickingCallOccurrences, SubstTypesContext, TypeId, TypeSubstMap, engine_threading::HashWithEngines, ir_generation::function::FnCompiler, language::ty::{self, TyCodeBlock, TyExpression, TyFunctionDecl, TyReassignmentTarget}, metadata::MetadataManager, types::{LogId, MessageId}
+    engine_threading::HashWithEngines,
+    ir_generation::function::FnCompiler,
+    language::ty::{self, TyCodeBlock, TyExpression, TyFunctionDecl, TyReassignmentTarget},
+    metadata::MetadataManager,
+    types::{LogId, MessageId},
+    Engines, PanicOccurrences, PanickingCallOccurrences, TypeId,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -369,12 +373,9 @@ pub fn compile_program<'a>(
     let mut compiled_fn_cache = CompiledFunctionCache::default();
     let mut panicking_fn_cache = PanickingFunctionCache::default();
 
-    if let Some(errors) = compile::run_ir_decl_checks(engines, 
-        &mut ctx,
-        &mut md_mgr,
-        module,
-        decls_to_check
-    ) {
+    if let Some(errors) =
+        compile::run_ir_decl_checks(engines, &mut ctx, &mut md_mgr, module, decls_to_check)
+    {
         return Err(errors);
     }
 

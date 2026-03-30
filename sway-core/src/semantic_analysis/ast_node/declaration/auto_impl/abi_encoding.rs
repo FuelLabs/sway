@@ -1,7 +1,13 @@
 use crate::{
-    Engines, TypeInfo, TypeParameter, asm_generation::fuel::compiler_constants::MISMATCHED_SELECTOR_REVERT_CODE, decl_engine::{DeclEngineGet, DeclId, engine}, engine_threading::SpannedWithEngines as _, language::{
-        Purity, parsed::FunctionDeclarationKind, ty::{self, TyAstNode, TyDecl, TyEnumDecl, TyFunctionDecl, TyStructDecl}
-    }
+    asm_generation::fuel::compiler_constants::MISMATCHED_SELECTOR_REVERT_CODE,
+    decl_engine::{DeclEngineGet, DeclId},
+    engine_threading::SpannedWithEngines as _,
+    language::{
+        parsed::FunctionDeclarationKind,
+        ty::{self, TyAstNode, TyDecl, TyEnumDecl, TyFunctionDecl, TyStructDecl},
+        Purity,
+    },
+    Engines, TypeInfo, TypeParameter,
 };
 use itertools::Itertools;
 use std::collections::BTreeMap;
@@ -331,7 +337,11 @@ where
         }
     }
 
-    pub(crate) fn generate_tables(&mut self, engines: &Engines, decl: &TyDecl) -> Option<TyAstNode> {
+    pub(crate) fn generate_tables(
+        &mut self,
+        engines: &Engines,
+        decl: &TyDecl,
+    ) -> Option<TyAstNode> {
         let handler = Handler::default();
         let Ok(enum_decl_id) = decl.to_enum_id(&handler, engines) else {
             return None;
@@ -346,7 +356,7 @@ where
             elems.push_str(">()");
 
             if i < enum_decl.variants.len() - 1 {
-                elems.push_str(",");
+                elems.push(',');
             }
         }
 
@@ -369,13 +379,15 @@ where
 }}",
             len = enum_decl.variants.len(),
         );
-        let enum_codec_values = self.parse_impl_trait_to_ty_ast_node(
-            engines,
-            decl.span(engines).source_id(),
-            &code,
-            crate::build_config::DbgGeneration::None,
-        ).unwrap();
-        
+        let enum_codec_values = self
+            .parse_impl_trait_to_ty_ast_node(
+                engines,
+                decl.span(engines).source_id(),
+                &code,
+                crate::build_config::DbgGeneration::None,
+            )
+            .unwrap();
+
         Some(enum_codec_values)
     }
 

@@ -10,31 +10,41 @@ use super::{
     CompiledFunctionCache,
 };
 use crate::{
-    PanicOccurrence, PanicOccurrences, PanickingCallOccurrence, PanickingCallOccurrences, decl_engine::DeclEngineGet as _, engine_threading::*, ir_generation::{
-        KeyedTyFunctionDecl, PanickingFunctionCache, const_eval::{LookupEnv, compile_constant_expression, compile_constant_expression_to_constant}
-    }, language::{
+    decl_engine::DeclEngineGet as _,
+    engine_threading::*,
+    ir_generation::{
+        const_eval::{compile_constant_expression, compile_constant_expression_to_constant},
+        KeyedTyFunctionDecl, PanickingFunctionCache,
+    },
+    language::{
         ty::{
             self, ProjectionKind, TyConfigurableDecl, TyConstantDecl, TyExpression,
             TyExpressionVariant, TyFunctionDisplay, TyStorageField,
         },
         *,
-    }, metadata::MetadataManager, namespace, type_system::*, types::*
+    },
+    metadata::MetadataManager,
+    type_system::*,
+    types::*,
+    PanicOccurrence, PanicOccurrences, PanickingCallOccurrence, PanickingCallOccurrences,
 };
-
 use indexmap::IndexMap;
 use itertools::Itertools;
-use sway_ast::intrinsics::Intrinsic;
-use sway_error::{error::CompileError, handler::Handler};
-use sway_ir::{Context, *};
-use sway_types::{
-    BaseIdent, Named, constants, ident::Ident, integer_bits::IntegerBits, span::{Span, Spanned}, u256::U256
-};
-use sway_utils::MappedStack;
-
 use std::convert::TryFrom;
 use std::{
     collections::HashMap,
     hash::{DefaultHasher, Hash as _},
+};
+use sway_ast::intrinsics::Intrinsic;
+use sway_error::error::CompileError;
+use sway_ir::{Context, *};
+use sway_types::{
+    constants,
+    ident::Ident,
+    integer_bits::IntegerBits,
+    span::{Span, Spanned},
+    u256::U256,
+    Named,
 };
 
 /// The result of compiling an expression can be in memory, or in an (SSA) register.
@@ -2487,19 +2497,21 @@ impl<'a> FnCompiler<'a> {
             }
             Intrinsic::EnumVariantsValues => {
                 assert!(type_arguments.len() == 1);
-                assert!(arguments.len() >= 1);
+                // assert!(arguments.len() >= 1);
 
                 let arg = type_arguments[0].as_type_argument().unwrap();
                 let t = engines.te().get(arg.type_id);
-                
+
                 match &*t {
                     TypeInfo::Enum(decl_id) => {
                         let decl = engines.de().get(decl_id);
 
                         //assert!(decl.variants.len() == (arguments.len() - 1));
 
-                        let elems = decl.variants.iter()
-                            .map(|variant| {
+                        let elems = decl
+                            .variants
+                            .iter()
+                            .map(|_variant| {
                                 // let codec = namespace.module_from_absolute_path(&[
                                 //     BaseIdent::new_no_span("std".to_string()),
                                 //     BaseIdent::new_no_span("codec".to_string()),
@@ -2525,7 +2537,7 @@ impl<'a> FnCompiler<'a> {
                                 //     todo!()
                                 // };
                                 // eprintln!("final fn: {:#?}", engines.help_out(new_fn.id()));
-                                
+
                                 // let mut lookup = LookupEnv {
                                 //     engines,
                                 //     context,
@@ -2555,7 +2567,7 @@ impl<'a> FnCompiler<'a> {
                         let elems_len = ConstantContent::new_uint(context, 64, elems.len() as u64);
                         let elems_len = Constant::unique(context, elems_len);
                         let elems_len = Value::new_constant(context, elems_len);
-                    
+
                         let bool_type = Type::get_bool(context);
 
                         let array = ConstantContent::new_array(context, bool_type, elems);
@@ -2576,20 +2588,23 @@ impl<'a> FnCompiler<'a> {
                                 CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
                             })?;
 
-                        let values_ptr = self.current_block.append(context)
-                            .get_local(values_local);
+                        let values_ptr = self.current_block.append(context).get_local(values_local);
                         let ptr_to_bool = Type::new_typed_pointer(context, bool_type);
-                        let values_ptr = self.current_block.append(context)
+                        let values_ptr = self
+                            .current_block
+                            .append(context)
                             .cast_ptr(values_ptr, ptr_to_bool);
-                        
-                        let slice = self.slices_from_ptr_and_len(context, bool_type, values_ptr, elems_len).unwrap();
+
+                        let slice = self
+                            .slices_from_ptr_and_len(context, bool_type, values_ptr, elems_len)
+                            .unwrap();
 
                         Ok(TerminatorValue::new(
                             CompiledValue::InRegister(slice),
                             context,
                         ))
                     }
-                    _ => todo!()
+                    _ => todo!(),
                 }
             }
         }
@@ -2879,7 +2894,13 @@ impl<'a> FnCompiler<'a> {
         ))
     }
 
-    fn slices_from_ptr_and_len(&mut self, context: &mut Context<'_>, elem_ir_type: Type, ptr_to_elem: Value, slice_len: Value) -> Result<Value, CompileError> {
+    fn slices_from_ptr_and_len(
+        &mut self,
+        context: &mut Context<'_>,
+        elem_ir_type: Type,
+        ptr_to_elem: Value,
+        slice_len: Value,
+    ) -> Result<Value, CompileError> {
         let ptr_to_elem_ty = Type::new_typed_pointer(context, elem_ir_type);
         let return_type = Type::get_typed_slice(context, elem_ir_type);
         let slice_as_tuple = self.compile_tuple_from_values(
@@ -2899,7 +2920,7 @@ impl<'a> FnCompiler<'a> {
         );
         Ok(slice)
     }
-    
+
     fn compile_return(
         &mut self,
         context: &mut Context,

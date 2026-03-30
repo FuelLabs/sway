@@ -1331,11 +1331,11 @@ impl TypeCheckFinalization for TyExpressionVariant {
                         expr.type_check_finalize(handler, ctx)?;
                     }
 
-                    match kind.kind {
-                        sway_ast::Intrinsic::EnumVariantsValues => {
-                            eprintln!("type_check_finalize: {:?}", ctx.engines.help_out(&kind.type_arguments));
-                        },
-                        _ => {}
+                    if let sway_ast::Intrinsic::EnumVariantsValues = kind.kind {
+                        eprintln!(
+                            "type_check_finalize: {:?}",
+                            ctx.engines.help_out(&kind.type_arguments)
+                        );
                     }
                 }
                 TyExpressionVariant::AbiName(_) => {
