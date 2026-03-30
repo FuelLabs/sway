@@ -4,13 +4,19 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{BaseIdent, Span};
+use sway_types::Span;
 use sway_types::{integer_bits::IntegerBits, Spanned};
 
 use crate::{
-    ast_elements::type_parameter::ConstGenericExpr, decl_engine::DeclEngineGet as _, engine_threading::*, language::{
-        CallPath, Literal, parsed::{Expression, ExpressionKind, MethodName}, ty::{self, TyExpression, TyIntrinsicFunctionKind}
-    }, semantic_analysis::{TypeCheckContext, typed_expression::type_check_method_application}, type_system::*, types::TypeMetadata
+    engine_threading::*,
+    language::{
+        parsed::{Expression, ExpressionKind},
+        ty::{self, TyIntrinsicFunctionKind},
+        Literal,
+    },
+    semantic_analysis::TypeCheckContext,
+    type_system::*,
+    types::TypeMetadata,
 };
 
 impl ty::TyIntrinsicFunctionKind {
@@ -117,14 +123,9 @@ impl ty::TyIntrinsicFunctionKind {
             Intrinsic::Alloc => {
                 type_check_alloc(handler, ctx, kind, arguments, type_arguments, span)
             }
-            Intrinsic::EnumVariantsValues => type_check_enum_variants_values(
-                arguments,
-                handler,
-                kind,
-                type_arguments,
-                span,
-                ctx,
-            ),
+            Intrinsic::EnumVariantsValues => {
+                type_check_enum_variants_values(arguments, handler, kind, type_arguments, span, ctx)
+            }
         }
     }
 }
@@ -193,19 +194,16 @@ fn type_check_enum_variants_values(
 
     let first_argument_typed_expr = {
         let u64_id = ctx.engines.te().id_of_u64();
-        let ctx = ctx
-            .by_ref()
-            .with_help_text("")
-            .with_type_annotation(u64_id);
+        let ctx = ctx.by_ref().with_help_text("").with_type_annotation(u64_id);
         ty::TyExpression::type_check(handler, ctx, &arguments[0])?
     };
 
-    let value_id = match first_argument_typed_expr.expression {
+    let _value_id = match first_argument_typed_expr.expression {
         ty::TyExpressionVariant::Literal(Literal::U64(3)) => 3,
         _ => todo!(),
     };
 
-    let mut arguments = vec![first_argument_typed_expr];
+    let arguments = vec![first_argument_typed_expr];
 
     if type_arguments.len() != 1 {
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
@@ -226,20 +224,19 @@ fn type_check_enum_variants_values(
         )
         .unwrap_or_else(|err| ctx.engines.te().id_of_error_recovery(err));
 
-    let elem_type = GenericTypeArgument { 
+    let elem_type = GenericTypeArgument {
         type_id: ctx.engines.te().id_of_bool(),
         initial_type_id: ctx.engines.te().id_of_bool(),
         span: span.clone(),
-        call_path_tree: None
+        call_path_tree: None,
     };
     let return_type = ctx.engines.te().insert_slice(ctx.engines, elem_type);
-    
+
     match &*ctx.engines.te().get(arg) {
-        TypeInfo::UnknownGeneric { .. } => {
-        }
-        TypeInfo::Enum(decl_id) => {
+        TypeInfo::UnknownGeneric { .. } => {}
+        TypeInfo::Enum(_) => {
             todo!();
-        },
+        }
         _ => {
             todo!()
         }

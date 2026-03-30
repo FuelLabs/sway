@@ -99,18 +99,6 @@ impl MonomorphizeHelper for TyStructDecl {
     fn has_self_type_param(&self) -> bool {
         false
     }
-
-    fn get_non_concrete_types(&mut self) -> usize {
-        self.non_concrete_types
-    }
-    
-    fn set_non_concrete_types(&mut self, count: usize) {
-        if self.non_concrete_types == 0 {
-            assert!(count == 0);
-        }
-
-        self.non_concrete_types = count;
-    }
 }
 
 impl MaterializeConstGenerics for TyStructDecl {
