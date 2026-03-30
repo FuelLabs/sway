@@ -247,7 +247,6 @@ impl ty::TyFunctionDecl {
                         FunctionDeclarationKind::Test => ty::TyFunctionDeclKind::Test,
                         FunctionDeclarationKind::Main => ty::TyFunctionDeclKind::Main,
                     },
-                    non_concrete_types: usize::MAX,
                 };
 
                 Ok(function_decl)

@@ -567,9 +567,7 @@ fn const_eval_typed_expr(
             fn_ref,
             call_path,
             ..
-        } => {
-            const_eval_fn_application(lookup, known_consts, arguments, fn_ref, &call_path.span())?
-        }
+        } => const_eval_fn_application(lookup, known_consts, arguments, fn_ref, &call_path.span())?,
         ty::TyExpressionVariant::ConstantExpression { decl, .. } => {
             let call_path = &decl.call_path;
             let name = &call_path.suffix;
@@ -1041,12 +1039,12 @@ fn const_eval_typed_expr(
     })
 }
 
-pub(crate) fn const_eval_fn_application(
+fn const_eval_fn_application(
     lookup: &mut LookupEnv<'_, '_>,
     known_consts: &mut MappedStack<sway_types::BaseIdent, Constant>,
     arguments: &Vec<(sway_types::BaseIdent, ty::TyExpression)>,
     fn_ref: &crate::decl_engine::DeclRef<crate::decl_engine::DeclId<ty::TyFunctionDecl>>,
-    call_path_span: &Span
+    call_path_span: &Span,
 ) -> Result<Option<Constant>, ConstEvalError> {
     let mut actuals_const: Vec<_> = vec![];
     for arg in arguments {
@@ -1075,7 +1073,7 @@ pub(crate) fn const_eval_fn_application(
     for (name, _) in arguments {
         known_consts.pop(name);
     }
-    Ok(res?)
+    res
 }
 
 // the (constant) value of a codeblock is essentially it's last expression if there is one

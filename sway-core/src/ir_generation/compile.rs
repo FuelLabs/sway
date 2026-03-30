@@ -1,3 +1,9 @@
+use super::{
+    const_eval::{compile_const_decl, LookupEnv},
+    convert::convert_resolved_type_id,
+    function::FnCompiler,
+    CompiledFunctionCache,
+};
 use crate::{
     decl_engine::{DeclEngineGet, DeclId, DeclRefFunction},
     ir_generation::{
@@ -15,24 +21,15 @@ use crate::{
     types::{LogId, MessageId},
     Engines, PanicOccurrences, PanickingCallOccurrences, TypeInfo,
 };
-
-use super::{
-    const_eval::{compile_const_decl, LookupEnv},
-    convert::convert_resolved_type_id,
-    function::FnCompiler,
-    CompiledFunctionCache,
-};
-
-use sway_ast::attribute::REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE;
-use sway_error::{error::CompileError, handler::{ErrorEmitted, Handler}};
-use sway_ir::{metadata::combine as md_combine, *};
-use sway_types::{BaseIdent, Ident, Span, Spanned, integer_bits::IntegerBits};
-
 use std::{
     cell::Cell,
     collections::{BTreeSet, HashMap},
     sync::Arc,
 };
+use sway_ast::attribute::REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE;
+use sway_error::{error::CompileError, handler::Handler};
+use sway_ir::{metadata::combine as md_combine, *};
+use sway_types::{integer_bits::IntegerBits, Ident, Span, Spanned};
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_script(
@@ -64,7 +61,6 @@ pub(super) fn compile_script(
         panicking_call_occurrences,
         panicking_fn_cache,
         compiled_fn_cache,
-        namespace,
     )
     .map_err(|err| vec![err])?;
     compile_entry_function(
@@ -80,7 +76,6 @@ pub(super) fn compile_script(
         panicking_fn_cache,
         None,
         compiled_fn_cache,
-        namespace,
     )?;
     compile_tests(
         engines,
@@ -94,7 +89,6 @@ pub(super) fn compile_script(
         panicking_fn_cache,
         test_fns,
         compiled_fn_cache,
-        namespace,
     )?;
 
     Ok(module)
@@ -129,7 +123,6 @@ pub(super) fn compile_predicate(
         panicking_call_occurrences,
         panicking_fn_cache,
         compiled_fn_cache,
-        namespace,
     )
     .map_err(|err| vec![err])?;
     compile_entry_function(
@@ -145,7 +138,6 @@ pub(super) fn compile_predicate(
         panicking_fn_cache,
         None,
         compiled_fn_cache,
-        namespace,
     )?;
     compile_tests(
         engines,
@@ -159,7 +151,6 @@ pub(super) fn compile_predicate(
         panicking_fn_cache,
         test_fns,
         compiled_fn_cache,
-        namespace,
     )?;
 
     Ok(module)
@@ -196,7 +187,6 @@ pub(super) fn compile_contract(
         panicking_call_occurrences,
         panicking_fn_cache,
         compiled_fn_cache,
-        namespace,
     )
     .map_err(|err| vec![err])?;
 
@@ -223,7 +213,6 @@ pub(super) fn compile_contract(
             panicking_fn_cache,
             None,
             compiled_fn_cache,
-            namespace,
         )?;
     } else {
         // In the case of the encoding v0, we need to compile individual ABI entries
@@ -241,7 +230,6 @@ pub(super) fn compile_contract(
                 panicking_fn_cache,
                 engines,
                 compiled_fn_cache,
-                namespace,
             )?;
         }
 
@@ -262,7 +250,6 @@ pub(super) fn compile_contract(
                         panicking_fn_cache,
                         engines,
                         compiled_fn_cache,
-                        namespace,
                     )?;
                 }
             }
@@ -281,7 +268,6 @@ pub(super) fn compile_contract(
         panicking_fn_cache,
         test_fns,
         compiled_fn_cache,
-        namespace,
     )?;
 
     Ok(module)
@@ -315,7 +301,6 @@ pub(super) fn compile_library(
         panicking_fn_cache,
         test_fns,
         compiled_fn_cache,
-        namespace,
     )?;
 
     Ok(module)
@@ -402,7 +387,6 @@ pub(crate) fn compile_configurables(
     panicking_call_occurrences: &mut PanickingCallOccurrences,
     panicking_fn_cache: &mut PanickingFunctionCache,
     compiled_fn_cache: &mut CompiledFunctionCache,
-    namespace: &crate::Namespace,
 ) -> Result<(), CompileError> {
     for decl_name in module_ns.root_items().get_all_declared_symbols() {
         if let Some(ResolvedDeclaration::Typed(ty::TyDecl::ConfigurableDecl(
@@ -586,7 +570,6 @@ pub(super) fn compile_entry_function(
     panicking_fn_cache: &mut PanickingFunctionCache,
     test_decl_ref: Option<DeclRefFunction>,
     compiled_fn_cache: &mut CompiledFunctionCache,
-    namespace: &namespace::Namespace,
 ) -> Result<Function, Vec<CompileError>> {
     let is_entry = true;
     // In the new encoding, the only entry function is the `__entry`,
@@ -681,8 +664,7 @@ pub fn run_ir_decl_checks(
                                     );
                                 }
 
-                                return Some(vec![
-                                    CompileError::TrivialCheckFailed {
+                                return Some(vec![CompileError::TrivialCheckFailed {
                                     span: has_att_decl.call_path.suffix.span(),
                                     infos,
                                     helps,
@@ -869,7 +851,6 @@ pub(super) fn compile_tests(
     panicking_fn_cache: &mut PanickingFunctionCache,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
     compiled_fn_cache: &mut CompiledFunctionCache,
-    namespace: &crate::Namespace,
 ) -> Result<Vec<Function>, Vec<CompileError>> {
     test_fns
         .iter()
@@ -887,7 +868,6 @@ pub(super) fn compile_tests(
                 panicking_fn_cache,
                 Some(decl_ref.clone()),
                 compiled_fn_cache,
-                namespace,
             )
         })
         .collect()
@@ -1114,7 +1094,6 @@ fn compile_encoding_v0_abi_method(
     panicking_fn_cache: &mut PanickingFunctionCache,
     engines: &Engines,
     compiled_fn_cache: &mut CompiledFunctionCache,
-    namespace: &crate::Namespace,
 ) -> Result<Function, Vec<CompileError>> {
     assert!(
         !context.experimental.new_encoding,
