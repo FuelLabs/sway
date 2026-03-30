@@ -74,6 +74,7 @@ impl ty::TyEnumDecl {
                 span,
                 attributes,
                 visibility,
+                non_concrete_types: usize::MAX,
             };
             Ok(decl)
         })

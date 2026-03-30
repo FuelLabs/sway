@@ -49,7 +49,7 @@ pub enum Intrinsic {
     Alloc, // __alloc<T>(size: u64) -> raw_ptr
     RuntimeMemoryId, // __runtime_mem_id::<T>() -> u64
     EncodingMemoryId, // __encoding_mem_id::<T>() -> u64
-    EnumDiscriminantCount, // __enum_discriminant_count::<T>() -> u64
+    EnumVariantsValues, // __enum_variants_values::<T>(u64) -> u64
 }
 
 impl fmt::Display for Intrinsic {
@@ -101,7 +101,7 @@ impl fmt::Display for Intrinsic {
             Intrinsic::Alloc => "alloc",
             Intrinsic::RuntimeMemoryId => "runtime_mem_id",
             Intrinsic::EncodingMemoryId => "encoding_mem_id",
-            Intrinsic::EnumDiscriminantCount => "enum_discriminant_count",
+            Intrinsic::EnumVariantsValues => "enum_variants_values",
         };
         write!(f, "{s}")
     }
@@ -157,7 +157,7 @@ impl Intrinsic {
             "__alloc" => Alloc,
             "__runtime_mem_id" => RuntimeMemoryId,
             "__encoding_mem_id" => EncodingMemoryId,
-            "__enum_discriminant_count" => EnumDiscriminantCount,
+            "__enum_variants_values" => EnumVariantsValues,
             _ => return None,
         })
     }

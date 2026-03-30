@@ -1014,6 +1014,7 @@ pub(crate) fn monomorphize_method(
     type_arguments: &mut [GenericArgument],
     const_generics: BTreeMap<String, TyExpression>,
 ) -> Result<DeclRefFunction, ErrorEmitted> {
+    //eprintln!("monomorphize_method: {}", decl_ref.name());
     let engines = ctx.engines();
     let decl_engine = engines.de();
     let mut func_decl = (*decl_engine.get_function(&decl_ref)).clone();

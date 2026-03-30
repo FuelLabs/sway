@@ -568,42 +568,7 @@ fn const_eval_typed_expr(
             call_path,
             ..
         } => {
-            let mut actuals_const: Vec<_> = vec![];
-
-            for arg in arguments {
-                let (name, sub_expr) = arg;
-                let eval_expr_opt = const_eval_typed_expr(lookup, known_consts, sub_expr)?;
-                if let Some(sub_const) = eval_expr_opt {
-                    actuals_const.push((name, sub_const));
-                } else {
-                    // If all actual arguments don't evaluate a constant, bail out.
-                    // TODO: Explore if we could continue here and if it'll be useful.
-                    return Err(ConstEvalError::CannotBeEvaluatedToConst {
-                        span: call_path.span(),
-                    });
-                }
-            }
-
-            assert!(actuals_const.len() == arguments.len());
-
-            for (name, cval) in actuals_const.into_iter() {
-                known_consts.push(name.clone(), cval);
-            }
-
-            let function_decl = lookup.engines.de().get_function(fn_ref);
-
-            // save result here to always run the pop below
-            let res = if function_decl.is_trait_method_dummy {
-                Err(ConstEvalError::CompileError)
-            } else {
-                const_eval_codeblock(lookup, known_consts, &function_decl.body)
-            };
-
-            for (name, _) in arguments {
-                known_consts.pop(name);
-            }
-
-            res?
+            const_eval_fn_application(lookup, known_consts, arguments, fn_ref, &call_path.span())?
         }
         ty::TyExpressionVariant::ConstantExpression { decl, .. } => {
             let call_path = &decl.call_path;
@@ -1074,6 +1039,43 @@ fn const_eval_typed_expr(
             });
         }
     })
+}
+
+pub(crate) fn const_eval_fn_application(
+    lookup: &mut LookupEnv<'_, '_>,
+    known_consts: &mut MappedStack<sway_types::BaseIdent, Constant>,
+    arguments: &Vec<(sway_types::BaseIdent, ty::TyExpression)>,
+    fn_ref: &crate::decl_engine::DeclRef<crate::decl_engine::DeclId<ty::TyFunctionDecl>>,
+    call_path_span: &Span
+) -> Result<Option<Constant>, ConstEvalError> {
+    let mut actuals_const: Vec<_> = vec![];
+    for arg in arguments {
+        let (name, sub_expr) = arg;
+        let eval_expr_opt = const_eval_typed_expr(lookup, known_consts, sub_expr)?;
+        if let Some(sub_const) = eval_expr_opt {
+            actuals_const.push((name, sub_const));
+        } else {
+            // If all actual arguments don't evaluate a constant, bail out.
+            // TODO: Explore if we could continue here and if it'll be useful.
+            return Err(ConstEvalError::CannotBeEvaluatedToConst {
+                span: call_path_span.clone(),
+            });
+        }
+    }
+    assert!(actuals_const.len() == arguments.len());
+    for (name, cval) in actuals_const.into_iter() {
+        known_consts.push(name.clone(), cval);
+    }
+    let function_decl = lookup.engines.de().get_function(fn_ref);
+    let res = if function_decl.is_trait_method_dummy {
+        Err(ConstEvalError::CompileError)
+    } else {
+        const_eval_codeblock(lookup, known_consts, &function_decl.body)
+    };
+    for (name, _) in arguments {
+        known_consts.pop(name);
+    }
+    Ok(res?)
 }
 
 // the (constant) value of a codeblock is essentially it's last expression if there is one
@@ -1998,7 +2000,7 @@ fn const_eval_intrinsic(
 
             Ok(Some(Constant::unique(lookup.context, c)))
         }
-        Intrinsic::EnumDiscriminantCount => {
+        Intrinsic::EnumVariantsValues => {
             todo!();
         }
     }
