@@ -1,0 +1,3 @@
+[[package]]
+name = "self_impl_contract_invalid_const_invalid_type"
+source = "member"

@@ -1,0 +1,8 @@
+[[package]]
+name = "attributes_invalid_target_contract_self_impl"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-017D5EC5020162AB"

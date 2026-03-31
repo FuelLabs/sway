@@ -1,4 +1,6 @@
 [project]
+# BEWARE: The project name intentionally contains `-`, in order to test
+#         correct generation of the ABI name.
 name = "contract_abi-auto_impl"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"

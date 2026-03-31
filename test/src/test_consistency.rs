@@ -124,18 +124,15 @@ fn check_test_forc_tomls(all_tests_dir: &Path) -> Result<()> {
             // 'implicit-std' is not explicitly set.
             // Since the default value for 'implicit-std' is `true` we either need to
             // set it explicitly to `false`, or explicitly import local std library.
-            let imported_std = imported_lib(toml, "std");
+            match imported_lib(toml, "std") {
+                Some(lib) => {
+                    // At least one of the libraries is imported.
+                    // Let's check that the local library is imported.
+                    check_local_import(lib, "std")?;
 
-            if imported_std.is_none() {
-                Err(anyhow!("`implicit-std` is `true` by default. Either explicitly set it to `false`, or import the standard library by using, e.g., `std = {{ path = \"../<...>/sway-lib-std\" }}`."))
-            } else {
-                // At least one of the libraries is imported.
-                // Let's check that the local library is imported.
-                if imported_std.is_some() {
-                    check_local_import(imported_std.unwrap(), "std")?;
+                    Ok(())
                 }
-
-                Ok(())
+                None => Err(anyhow!("`implicit-std` is `true` by default. Either explicitly set it to `false`, or import the standard library by using, e.g., `std = {{ path = \"../<...>/sway-lib-std\" }}`."))
             }
         };
 
