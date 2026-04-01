@@ -3023,12 +3023,12 @@ pub trait EnumCodecValues {
 
 impl<T> TrivialEnum<T>
 where
-    T: EnumCodecValues
+    T: EnumCodecValues,
 {
     pub fn is_valid(self) -> bool {
         let discriminant: raw_slice = raw_slice::from_parts::<u8>(__addr_of(self.value), 8);
         let discriminant: u64 = abi_decode::<u64>(discriminant);
-        
+
         let is_decode_trivial_table = T::is_decode_trivial_table();
 
         if discriminant < is_decode_trivial_table.len() {
@@ -3076,7 +3076,7 @@ enum EnumTesting {
     B: u64,
 }
 
-impl EnumCodecValues for EnumTesting{
+impl EnumCodecValues for EnumTesting {
     fn is_decode_trivial_table() -> &__slice[bool] {
         __slice(&[true, true], 0, 2)
     }
@@ -3125,7 +3125,9 @@ impl PartialEq for EnumTesting {
 
 #[test]
 fn trivial_enum_when_valid() {
-    let before = TrivialEnum { value: EnumTesting::B(1) };
+    let before = TrivialEnum {
+        value: EnumTesting::B(1),
+    };
     let bytes = encode(before);
     let after = abi_decode::<TrivialEnum<EnumTesting>>(bytes);
     __log(after.is_valid());
