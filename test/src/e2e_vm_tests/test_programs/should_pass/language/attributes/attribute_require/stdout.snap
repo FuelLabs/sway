@@ -35,6 +35,7 @@ error: Type is not trivially decodable
    |          ---------------------------- help: `EnumThatCannotUseTrivialEnum` has variants that are not trivially decodable. Consider changing them before using `TrivialEnum`.
 16 |     f11: Vec<u64>,
    |     --- info: This field is not trivially decodable.
+   |          -------- help: `Vec` is never trivially decodable. Consider using array instead, e.g.: `[u64; 64]`.
 17 |     f12: Result<Vec<u64>, u64>,
    |     --- info: This field is not trivially decodable.
    |          --------------------- help: `Result` has variants that are not trivially decodable.
@@ -94,6 +95,7 @@ error: Type is not trivially decodable
    |          ---------------------------- help: `EnumThatCannotUseTrivialEnum` has variants that are not trivially decodable. Consider changing them before using `TrivialEnum`.
 16 |     f11: Vec<u64>,
    |     --- info: This field is not trivially decodable.
+   |          -------- help: `Vec` is never trivially decodable. Consider using array instead, e.g.: `[u64; 64]`.
 17 |     f12: Result<Vec<u64>, u64>,
    |     --- info: This field is not trivially decodable.
    |          --------------------- help: `Result` has variants that are not trivially decodable.
