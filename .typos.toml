@@ -21,6 +21,12 @@ extend-ignore-identifiers-re = [
     "CONSTS",
     "cpy",
     "Cpy",
+    "Decodable",
+    "Encodable",
+    "decodable",
+    "encodable",
+    "callee",
+    "Vec",
 ]
 
 extend-ignore-re = [
