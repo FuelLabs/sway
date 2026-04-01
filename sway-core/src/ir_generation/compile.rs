@@ -785,15 +785,16 @@ fn push_help_for_non_trivially_decodable_type(
             }
 
             // special types
-            if type_as_in_src.starts_with("std::vec::Vec<") {
-                let aray_type_name = type_as_in_src
+            let full_type = engines.help_out(type_info).to_string();
+            if full_type.starts_with("std::vec::Vec<") {
+                let aray_type_name = full_type
                     .replace("std::vec::Vec<", "[")
                     .replace(">", "; 64]");
                 helps.push((
                     type_span.clone(),
                     format!("`Vec` is never trivially decodable. Consider using array instead, e.g.: `{aray_type_name}`.")
                 ));
-            } else if type_as_in_src.starts_with("std::string::String") {
+            } else if full_type.starts_with("std::string::String") {
                 helps.push((
                     type_span.clone(),
                     "`String` is never trivially decodable. Consider using array instead, e.g.: `str[64]`.".to_string()
