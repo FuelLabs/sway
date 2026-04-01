@@ -33,7 +33,7 @@ pub struct SomeArgument {
 Possible values are:
 
 - required: compiler will check and error if the check fails;
-- optional: compiler will only warn non-compliances;
+- optional: compiler will only warn non-compliance;
 - any: nothing will be checked.
 
 This attributed can be used directly on types, but also on entry points such as "main" function for scripts and predicates; and contract methods for contracts.
@@ -63,7 +63,7 @@ is no guarantee that the buffer  would have a valid value for its discriminant.
 
 ---
 
-## 3. Work‑arounds for Non‑trivial Types
+## 3. Workaround for Non‑trivial Types
 
 If you need to expose a `bool` or an enum as a public argument, you can either:
 
@@ -88,7 +88,7 @@ pub struct Flag(u8);  // manually validate that value <= 1
    ```
 
    These wrappers automatically provide the guard checks and still let the compiler treat them as trivial.
-   Their usage is veryy similar to `Option<bool>`.
+   Their usage is very similar to `Option<bool>`.
 
    ```sway
    let a: bool = some_argument.a.unwrap();
