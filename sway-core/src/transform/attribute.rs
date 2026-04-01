@@ -612,6 +612,7 @@ impl Attribute {
             AbiName => false,
             Event => false,
             Indexed => false,
+            Require => false,
         }
     }
 
@@ -777,6 +778,7 @@ impl Attribute {
             AbiName => false,
             Event => false,
             Indexed => false,
+            Require => false,
         }
     }
 
@@ -811,6 +813,7 @@ impl Attribute {
             AbiName => false,
             Event => false,
             Indexed => false,
+            Require => false,
         }
     }
 
