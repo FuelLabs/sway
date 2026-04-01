@@ -5,11 +5,22 @@ use super::{
     CompiledFunctionCache,
 };
 use crate::{
-    Engines, PanicOccurrences, PanickingCallOccurrences, TypeInfo, decl_engine::{DeclEngineGet, DeclId, DeclRefFunction}, ir_generation::{
-        KeyedTyFunctionDecl, PanickingFunctionCache, const_eval::compile_constant_expression_to_constant, convert::convert_resolved_type_info
-    }, language::{
-        Visibility, ty::{self, StructDecl, TyDecl}
-    }, metadata::MetadataManager, namespace::ResolvedDeclaration, semantic_analysis::namespace, transform::AttributeKind, type_system::TypeId, types::{CheckDecl, LogId, MessageId}
+    decl_engine::{DeclEngineGet, DeclId, DeclRefFunction},
+    ir_generation::{
+        const_eval::compile_constant_expression_to_constant, convert::convert_resolved_type_info,
+        KeyedTyFunctionDecl, PanickingFunctionCache,
+    },
+    language::{
+        ty::{self, StructDecl, TyDecl},
+        Visibility,
+    },
+    metadata::MetadataManager,
+    namespace::ResolvedDeclaration,
+    semantic_analysis::namespace,
+    transform::AttributeKind,
+    type_system::TypeId,
+    types::{CheckDecl, LogId, MessageId},
+    Engines, PanicOccurrences, PanickingCallOccurrences, TypeInfo,
 };
 use std::{
     cell::Cell,
@@ -596,22 +607,22 @@ pub fn run_ir_decl_checks(
 ) -> Option<Vec<CompileError>> {
     // check types
     for check in decls_to_check.iter() {
-        let is_decode_trivial_table = check.is_decode_trivial_table.iter()
+        let is_decode_trivial_table = check
+            .is_decode_trivial_table
+            .iter()
             .map(|expr| {
                 compile_constant_expression_to_constant(
-                    engines,
-                    context,
-                    md_mgr,
-                    module,
-                    None,
-                    None,
-                    expr
-                ).unwrap().get_content(context).as_bool().unwrap()
-            }).collect::<Vec<_>>();
+                    engines, context, md_mgr, module, None, None, expr,
+                )
+                .unwrap()
+                .get_content(context)
+                .as_bool()
+                .unwrap()
+            })
+            .collect::<Vec<_>>();
 
         match &check.decl {
             TyDecl::StructDecl(StructDecl { decl_id }) => {
-                let has_att_type_info = TypeInfo::Struct(*decl_id);
                 let has_att_decl = engines.de().get_struct(decl_id);
                 let has_att_pid = has_att_decl.span.source_id().map(|x| x.program_id());
 
