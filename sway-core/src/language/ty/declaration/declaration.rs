@@ -1,12 +1,8 @@
 use crate::{
-    decl_engine::*,
-    engine_threading::*,
-    language::{parsed::Declaration, ty::*, Visibility},
-    semantic_analysis::TypeCheckContext,
-    type_system::*,
-    types::*,
+    decl_engine::*, engine_threading::*, language::{CallPath, Visibility, parsed::Declaration, ty::*}, semantic_analysis::TypeCheckContext, transform::AttributeKind, type_system::*, types::*
 };
 use serde::{Deserialize, Serialize};
+use sway_ast::attribute::REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE;
 use std::{
     fmt,
     hash::{Hash, Hasher},
@@ -279,7 +275,7 @@ impl HashWithEngines for TyDecl {
 
 impl SubstTypes for TyDecl {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-        let result = match self {
+        match self {
             TyDecl::VariableDecl(ref mut var_decl) => var_decl.subst(ctx),
             TyDecl::FunctionDecl(FunctionDecl {
                 ref mut decl_id, ..
@@ -313,13 +309,7 @@ impl SubstTypes for TyDecl {
             | TyDecl::GenericTypeForFunctionScope(_)
             | TyDecl::ErrorRecovery(..) => HasChanges::No,
             TyDecl::ConstGenericDecl(_) => HasChanges::No,
-        };
-
-        if result.has_changes() {
-            *ctx.non_concrete_types.borrow_mut() += 1;
         }
-
-        result
     }
 }
 
@@ -526,12 +516,52 @@ impl CollectTypesMetadata for TyDecl {
                 }
             }
             TyDecl::StructDecl(decl) => {
-                let d = ctx.engines.de().get(&decl.decl_id);
-                if !d.attributes.is_empty() {
-                    vec![TypeMetadata::CheckDecl(TyDecl::StructDecl(decl.clone()))]
-                } else {
-                    vec![]
+                let mut meta = vec![];
+
+                let struct_decl = ctx.engines.de().get(&decl.decl_id);
+
+                let atts = struct_decl
+                    .attributes
+                    .all_by_kind(|att| matches!(att.kind, AttributeKind::Require));
+                for (_, atts) in atts {
+                    for att in atts.iter() {
+                        for arg in att.args.iter() {
+                            if arg.name.as_str() == REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE {
+                                let is_decode_trivial_table = struct_decl.fields.iter().map(|field| {
+                                    let id_decode_trivial = TyExpression::type_check_function_application(
+                                        handler,
+                                        ctx.type_check_ctx.by_ref(),
+                                        TypeBinding { 
+                                            inner: CallPath {
+                                                prefixes: vec![
+                                                    BaseIdent::new_no_span("std".into()),
+                                                    BaseIdent::new_no_span("codec".into()),
+                                                ],
+                                                suffix: BaseIdent::new_no_span("is_decode_trivial".into()),
+                                                callpath_type: crate::language::CallPathType::Ambiguous,
+                                            },
+                                            type_arguments: TypeArgs::Regular(vec![
+                                                GenericArgument::Type(
+                                                    field.type_argument.clone()
+                                                )
+                                            ]),
+                                            span: Span::dummy()
+                                        },
+                                        &[],
+                                        Span::dummy(),
+                                    ).unwrap();
+                                    id_decode_trivial
+                                }).collect();
+                                meta.push(TypeMetadata::CheckDecl(CheckDecl {
+                                    decl: TyDecl::StructDecl(decl.clone()),
+                                    is_decode_trivial_table,
+                                }));
+                            }
+                        }
+                    }
                 }
+
+                meta
             }
             TyDecl::ErrorRecovery(..)
             | TyDecl::StorageDecl(_)

@@ -38,7 +38,6 @@ pub struct TyTraitDecl {
     pub attributes: transform::Attributes,
     pub call_path: CallPath,
     pub span: Span,
-    pub non_concrete_types: usize,
 }
 
 impl TyDeclParsedType for TyTraitDecl {
@@ -156,7 +155,6 @@ impl HashWithEngines for TyTraitDecl {
             attributes: _,
             span: _,
             call_path: _,
-            non_concrete_types: _,
         } = self;
         name.hash(state);
         type_parameters.hash(state, engines);

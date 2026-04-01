@@ -109,7 +109,6 @@ impl ty::TyStructDecl {
                 visibility,
                 span,
                 attributes,
-                non_concrete_types: usize::MAX,
             };
 
             Ok(decl)
