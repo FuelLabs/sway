@@ -200,7 +200,11 @@ fn type_check_enum_variants_values(
 
     let _value_id = match first_argument_typed_expr.expression {
         ty::TyExpressionVariant::Literal(Literal::U64(3)) => 3,
-        _ => return Err(handler.emit_err(CompileError::InvalidArgument { span: first_argument_typed_expr.span })),
+        _ => {
+            return Err(handler.emit_err(CompileError::InvalidArgument {
+                span: first_argument_typed_expr.span,
+            }))
+        }
     };
 
     let arguments = vec![first_argument_typed_expr];
