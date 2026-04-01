@@ -29,7 +29,6 @@ pub struct TyStructDecl {
     pub visibility: Visibility,
     pub span: Span,
     pub attributes: transform::Attributes,
-    pub non_concrete_types: usize,
 }
 
 impl TyDeclParsedType for TyStructDecl {
@@ -63,7 +62,6 @@ impl HashWithEngines for TyStructDecl {
             // reliable source of obj v. obj distinction
             span: _,
             attributes: _,
-            non_concrete_types: _,
         } = self;
         call_path.hash(state);
         fields.hash(state, engines);

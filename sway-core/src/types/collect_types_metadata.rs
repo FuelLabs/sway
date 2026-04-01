@@ -9,10 +9,7 @@ use std::{
 };
 
 use crate::{
-    abi_generation::abi_str::AbiStrContext,
-    language::ty::{TyDecl, TyExpression, TyExpressionVariant},
-    type_system::TypeId,
-    Engines,
+    Engines, abi_generation::abi_str::AbiStrContext, language::ty::{TyDecl, TyExpression, TyExpressionVariant}, semantic_analysis::TypeCheckContext, type_system::TypeId
 };
 use sha2::{Digest, Sha256};
 use sway_error::{
@@ -57,6 +54,12 @@ impl MessageId {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct CheckDecl {
+    pub decl: TyDecl,
+    pub is_decode_trivial_table: Vec<TyExpression>,
+}
+
 #[allow(clippy::enum_variant_names)]
 #[derive(Debug, Clone)]
 pub enum TypeMetadata {
@@ -66,7 +69,7 @@ pub enum TypeMetadata {
     LoggedType(LogId, TypeId),
     // An smo with a unique message ID and the type ID of the type of the message data being sent
     MessageType(MessageId, TypeId),
-    CheckDecl(TyDecl),
+    CheckDecl(CheckDecl),
 }
 
 impl TypeMetadata {
@@ -162,6 +165,8 @@ pub struct CollectTypesMetadataContext<'cx> {
     pub(crate) program_name: String,
 
     pub experimental: ExperimentalFeatures,
+
+    pub (crate) type_check_ctx: TypeCheckContext<'cx>,
 }
 
 impl<'cx> CollectTypesMetadataContext<'cx> {
@@ -205,6 +210,7 @@ impl<'cx> CollectTypesMetadataContext<'cx> {
         engines: &'cx Engines,
         experimental: ExperimentalFeatures,
         program_name: String,
+        type_check_ctx: TypeCheckContext<'cx>,
     ) -> Self {
         let mut ctx = Self {
             engines,
@@ -212,6 +218,7 @@ impl<'cx> CollectTypesMetadataContext<'cx> {
             call_site_spans: vec![],
             experimental,
             program_name,
+            type_check_ctx,
         };
         ctx.call_site_push();
         ctx

@@ -24,7 +24,6 @@ pub struct TyTraitFn {
     pub parameters: Vec<TyFunctionParameter>,
     pub return_type: GenericTypeArgument,
     pub attributes: transform::Attributes,
-    pub non_concrete_types: usize,
 }
 
 impl TyDeclParsedType for TyTraitFn {
@@ -115,7 +114,6 @@ impl HashWithEngines for TyTraitFn {
             // reliable source of obj v. obj distinction
             span: _,
             attributes: _,
-            non_concrete_types: _,
         } = self;
         let type_engine = engines.te();
         name.hash(state);

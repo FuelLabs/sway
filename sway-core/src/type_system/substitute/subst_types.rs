@@ -33,7 +33,6 @@ pub struct SubstTypesContext<'a> {
     pub engines: &'a Engines,
     pub type_subst_map: Option<&'a TypeSubstMap>,
     pub subst_function_body: bool,
-    pub non_concrete_types: std::cell::RefCell<usize>,
 }
 
 impl<'a> SubstTypesContext<'a> {
@@ -48,7 +47,6 @@ impl<'a> SubstTypesContext<'a> {
             engines,
             type_subst_map: Some(type_subst_map),
             subst_function_body,
-            non_concrete_types: RefCell::new(0),
         }
     }
 
@@ -58,7 +56,6 @@ impl<'a> SubstTypesContext<'a> {
             engines,
             type_subst_map: None,
             subst_function_body: false,
-            non_concrete_types: RefCell::new(0),
         }
     }
 

@@ -5,21 +5,11 @@ use super::{
     CompiledFunctionCache,
 };
 use crate::{
-    decl_engine::{DeclEngineGet, DeclId, DeclRefFunction},
-    ir_generation::{
-        convert::convert_resolved_type_info, KeyedTyFunctionDecl, PanickingFunctionCache,
-    },
-    language::{
-        ty::{self, StructDecl, TyDecl},
-        Visibility,
-    },
-    metadata::MetadataManager,
-    namespace::ResolvedDeclaration,
-    semantic_analysis::namespace,
-    transform::AttributeKind,
-    type_system::TypeId,
-    types::{LogId, MessageId},
-    Engines, PanicOccurrences, PanickingCallOccurrences, TypeInfo,
+    Engines, PanicOccurrences, PanickingCallOccurrences, TypeInfo, decl_engine::{DeclEngineGet, DeclId, DeclRefFunction}, ir_generation::{
+        KeyedTyFunctionDecl, PanickingFunctionCache, const_eval::compile_constant_expression_to_constant, convert::convert_resolved_type_info
+    }, language::{
+        Visibility, ty::{self, StructDecl, TyDecl}
+    }, metadata::MetadataManager, namespace::ResolvedDeclaration, semantic_analysis::namespace, transform::AttributeKind, type_system::TypeId, types::{CheckDecl, LogId, MessageId}
 };
 use std::{
     cell::Cell,
@@ -602,11 +592,24 @@ pub fn run_ir_decl_checks(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
-    decls_to_check: &[TyDecl],
+    decls_to_check: &[CheckDecl],
 ) -> Option<Vec<CompileError>> {
     // check types
-    for decl in decls_to_check.iter() {
-        match decl {
+    for check in decls_to_check.iter() {
+        let is_decode_trivial_table = check.is_decode_trivial_table.iter()
+            .map(|expr| {
+                compile_constant_expression_to_constant(
+                    engines,
+                    context,
+                    md_mgr,
+                    module,
+                    None,
+                    None,
+                    expr
+                ).unwrap().get_content(context).as_bool().unwrap()
+            }).collect::<Vec<_>>();
+
+        match &check.decl {
             TyDecl::StructDecl(StructDecl { decl_id }) => {
                 let has_att_type_info = TypeInfo::Struct(*decl_id);
                 let has_att_decl = engines.de().get_struct(decl_id);
@@ -619,29 +622,17 @@ pub fn run_ir_decl_checks(
                     for att in atts.iter() {
                         for arg in att.args.iter() {
                             if arg.name.as_str() == REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE
-                                && !is_type_trivially_decodable(
-                                    engines,
-                                    context,
-                                    md_mgr,
-                                    module,
-                                    &has_att_type_info,
-                                )
+                                && !is_decode_trivial_table.iter().all(|x| *x)
                             {
                                 let mut infos = vec![];
                                 let mut helps = vec![];
                                 let mut bottom_helps = BTreeSet::new();
 
-                                for field in has_att_decl.fields.iter() {
+                                for (idx, field) in has_att_decl.fields.iter().enumerate() {
                                     let field_type_info =
                                         engines.te().get(field.type_argument.type_id);
 
-                                    if is_type_trivially_decodable(
-                                        engines,
-                                        context,
-                                        md_mgr,
-                                        module,
-                                        &field_type_info,
-                                    ) {
+                                    if is_decode_trivial_table[idx] {
                                         continue;
                                     }
 

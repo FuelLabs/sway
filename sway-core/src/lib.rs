@@ -29,6 +29,7 @@ pub mod type_system;
 use crate::ir_generation::check_function_purity;
 use crate::language::{CallPath, CallPathType};
 use crate::query_engine::ModuleCacheEntry;
+use crate::semantic_analysis::TypeCheckContext;
 use crate::semantic_analysis::namespace::ResolvedDeclaration;
 use crate::semantic_analysis::type_resolve::{resolve_call_path, VisibilityCheck};
 use crate::source_map::SourceMap;
@@ -881,7 +882,7 @@ pub fn parsed_to_ast(
             },
         )?;
 
-    let typecheck_namespace =
+    let mut typecheck_namespace =
         Namespace::new(handler, engines, initial_namespace, true).map_err(|error| {
             TypeCheckFailed {
                 root_module: None,
@@ -889,16 +890,18 @@ pub fn parsed_to_ast(
                 error,
             }
         })?;
+
     // Type check the program.
+    let mut type_check_ctx = TypeCheckContext::from_root(&mut typecheck_namespace, &mut collection_ctx, engines, experimental)
+        .with_kind(parse_program.kind);
+
     let typed_program_opt = ty::TyProgram::type_check(
         handler,
         engines,
         parse_program,
-        &mut collection_ctx,
-        typecheck_namespace,
         package_name,
         build_config,
-        experimental,
+        &mut type_check_ctx,
     );
 
     let mut typed_program = typed_program_opt?;
@@ -934,9 +937,11 @@ pub fn parsed_to_ast(
     // Skip collecting metadata if we triggered an optimised build from LSP.
     let types_metadata = if !lsp_config.as_ref().is_some_and(|lsp| lsp.optimized_build) {
         // Collect information about the types used in this program
+        let mut collect_ctx = CollectTypesMetadataContext::new(engines, experimental, package_name.to_string(), type_check_ctx);
+
         let types_metadata_result = typed_program.collect_types_metadata(
             handler,
-            &mut CollectTypesMetadataContext::new(engines, experimental, package_name.to_string()),
+            &mut collect_ctx,
         );
 
         let types_metadata = match types_metadata_result {
@@ -968,7 +973,7 @@ pub fn parsed_to_ast(
         typed_program
             .decls_to_check
             .extend(types_metadata.iter().filter_map(|x| match x {
-                TypeMetadata::CheckDecl(decl) => Some(decl.clone()),
+                TypeMetadata::CheckDecl(check_decl) => Some(check_decl.clone()),
                 _ => None,
             }));
 

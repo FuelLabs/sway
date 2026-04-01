@@ -266,7 +266,6 @@ where
         let mut decl = (*decl_engine.get(&self.id)).clone();
         if decl.subst(ctx).has_changes() {
             decl_engine.replace(self.id, decl);
-            *ctx.non_concrete_types.borrow_mut() += 1;
             HasChanges::Yes
         } else {
             HasChanges::No

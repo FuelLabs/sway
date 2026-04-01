@@ -108,7 +108,7 @@ impl CollectTypesMetadata for TypeId {
 impl SubstTypes for TypeId {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         let type_engine = ctx.engines.te();
-        let result = if let Some(matching_id) = ctx
+        if let Some(matching_id) = ctx
             .type_subst_map
             .and_then(|tsm| tsm.find_match(*self, ctx.handler, ctx.engines))
         {
@@ -120,13 +120,7 @@ impl SubstTypes for TypeId {
             }
         } else {
             HasChanges::No
-        };
-
-        if !self.is_concrete(ctx.engines, TreatNumericAs::Abstract) {
-            *ctx.non_concrete_types.borrow_mut() += 1;
         }
-
-        result
     }
 }
 

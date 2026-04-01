@@ -56,16 +56,10 @@ impl TyProgram {
         handler: &Handler,
         engines: &Engines,
         parsed: &ParseProgram,
-        collection_ctx: &mut SymbolCollectionContext,
-        mut namespace: namespace::Namespace,
         package_name: &str,
         build_config: Option<&BuildConfig>,
-        experimental: ExperimentalFeatures,
+        ctx: &mut TypeCheckContext,
     ) -> Result<Self, TypeCheckFailed> {
-        let mut ctx =
-            TypeCheckContext::from_root(&mut namespace, collection_ctx, engines, experimental)
-                .with_kind(parsed.kind);
-
         let ParseProgram { root, kind } = parsed;
 
         let root = ty::TyModule::type_check(

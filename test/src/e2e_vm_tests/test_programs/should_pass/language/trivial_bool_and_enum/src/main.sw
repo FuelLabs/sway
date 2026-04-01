@@ -2,7 +2,7 @@ script;
 
 enum SomeEnum {
     A: u64,
-    B: bool,
+    B: u16,
 }
 
 fn encode_decode(s: SomeEnum) -> SomeEnum {
@@ -10,10 +10,16 @@ fn encode_decode(s: SomeEnum) -> SomeEnum {
     abi_decode::<TrivialEnum<SomeEnum>>(bytes).unwrap()
 }
 
-fn main() {
+#[require(trivially_decodable = "true")]
+struct MyStruct {
+    a: TrivialEnum<SomeEnum>,
 }
 
-
+fn main() {
+    let bytes = encode(SomeEnum::A(1));
+    let s = abi_decode::<MyStruct>(bytes);
+    let e = s.a.unwrap();
+}
 
 #[test]
 fn unwrap_trivial_variant() {
@@ -22,5 +28,5 @@ fn unwrap_trivial_variant() {
 
 #[test(should_revert)]
 fn unwrap_non_trivial_variant() {
-    let _ = encode_decode(SomeEnum::B(true));
+    let _ = encode_decode(SomeEnum::B(2));
 }

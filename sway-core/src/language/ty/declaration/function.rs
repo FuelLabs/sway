@@ -301,7 +301,6 @@ fn rename_const_generics_on_function_inner(
                     engines,
                     type_subst_map: Some(&type_subst_map),
                     subst_function_body: true,
-                    non_concrete_types: std::cell::RefCell::new(0),
                 });
             }
             (GenericArgument::Const(a), TypeParameter::Const(b)) => {
