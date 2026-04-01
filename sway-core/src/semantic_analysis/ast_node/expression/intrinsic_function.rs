@@ -187,7 +187,7 @@ fn type_check_enum_variants_values(
     if arguments.len() != 1 {
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
-            expected: 0,
+            expected: 1,
             span,
         }));
     }
@@ -200,7 +200,7 @@ fn type_check_enum_variants_values(
 
     let _value_id = match first_argument_typed_expr.expression {
         ty::TyExpressionVariant::Literal(Literal::U64(3)) => 3,
-        _ => todo!(),
+        _ => return Err(handler.emit_err(CompileError::InvalidArgument { span: first_argument_typed_expr.span })),
     };
 
     let arguments = vec![first_argument_typed_expr];
@@ -231,16 +231,6 @@ fn type_check_enum_variants_values(
         call_path_tree: None,
     };
     let return_type = ctx.engines.te().insert_slice(ctx.engines, elem_type);
-
-    match &*ctx.engines.te().get(arg) {
-        TypeInfo::UnknownGeneric { .. } => {}
-        TypeInfo::Enum(_) => {
-            todo!();
-        }
-        _ => {
-            todo!()
-        }
-    };
 
     let mut final_type_arguments = type_arguments.to_vec();
     *final_type_arguments[0].type_id_mut() = arg;
