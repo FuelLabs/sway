@@ -29,9 +29,9 @@ pub mod type_system;
 use crate::ir_generation::check_function_purity;
 use crate::language::{CallPath, CallPathType};
 use crate::query_engine::ModuleCacheEntry;
-use crate::semantic_analysis::TypeCheckContext;
 use crate::semantic_analysis::namespace::ResolvedDeclaration;
 use crate::semantic_analysis::type_resolve::{resolve_call_path, VisibilityCheck};
+use crate::semantic_analysis::TypeCheckContext;
 use crate::source_map::SourceMap;
 pub use asm_generation::from_ir::compile_ir_context_to_finalized_asm;
 use asm_generation::FinalizedAsm;
@@ -882,18 +882,21 @@ pub fn parsed_to_ast(
             },
         )?;
 
-    let mut typecheck_namespace =
-        Namespace::new(handler, engines, initial_namespace, true).map_err(|error| {
-            TypeCheckFailed {
-                root_module: None,
-                namespace: collection_ctx.namespace().current_package_ref().clone(),
-                error,
-            }
+    let mut typecheck_namespace = Namespace::new(handler, engines, initial_namespace, true)
+        .map_err(|error| TypeCheckFailed {
+            root_module: None,
+            namespace: collection_ctx.namespace().current_package_ref().clone(),
+            error,
         })?;
 
     // Type check the program.
-    let mut type_check_ctx = TypeCheckContext::from_root(&mut typecheck_namespace, &mut collection_ctx, engines, experimental)
-        .with_kind(parse_program.kind);
+    let mut type_check_ctx = TypeCheckContext::from_root(
+        &mut typecheck_namespace,
+        &mut collection_ctx,
+        engines,
+        experimental,
+    )
+    .with_kind(parse_program.kind);
 
     let typed_program_opt = ty::TyProgram::type_check(
         handler,
@@ -937,12 +940,14 @@ pub fn parsed_to_ast(
     // Skip collecting metadata if we triggered an optimised build from LSP.
     let types_metadata = if !lsp_config.as_ref().is_some_and(|lsp| lsp.optimized_build) {
         // Collect information about the types used in this program
-        let mut collect_ctx = CollectTypesMetadataContext::new(engines, experimental, package_name.to_string(), type_check_ctx);
-
-        let types_metadata_result = typed_program.collect_types_metadata(
-            handler,
-            &mut collect_ctx,
+        let mut collect_ctx = CollectTypesMetadataContext::new(
+            engines,
+            experimental,
+            package_name.to_string(),
+            type_check_ctx,
         );
+
+        let types_metadata_result = typed_program.collect_types_metadata(handler, &mut collect_ctx);
 
         let types_metadata = match types_metadata_result {
             Ok(types_metadata) => types_metadata,
