@@ -3809,7 +3809,7 @@ where
 
 impl<T> AbiEncode for TrivialEnum<T>
 where
-    T: AbiEncode
+    T: AbiEncode,
 {
     fn is_encode_trivial() -> bool {
         true

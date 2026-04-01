@@ -27,8 +27,6 @@ pub(crate) fn instantiate_function_application(
     arguments: Option<&[Expression]>,
     span: Span,
 ) -> Result<ty::TyExpression, ErrorEmitted> {
-    //eprintln!("instantiate_function_application: {:?}", function_decl_ref.name());
-
     let engines = ctx.engines();
     let decl_engine = engines.de();
 
