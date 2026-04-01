@@ -379,14 +379,14 @@ where
 }}",
             len = enum_decl.variants.len(),
         );
-        
-        self
-            .parse_impl_trait_to_ty_ast_node(
-                engines,
-                decl.span(engines).source_id(),
-                &code,
-                crate::build_config::DbgGeneration::None,
-            ).ok()
+
+        self.parse_impl_trait_to_ty_ast_node(
+            engines,
+            decl.span(engines).source_id(),
+            &code,
+            crate::build_config::DbgGeneration::None,
+        )
+        .ok()
     }
 
     pub(crate) fn generate_contract_entry(
