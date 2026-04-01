@@ -3001,10 +3001,10 @@ fn trivial_bool_when_valid() {
     assert_encoding(b, [0u8, 0, 0, 0, 0, 0, 0, 1]);
 }
 
-#[test(should_revert)]
+#[test]
 fn trivial_bool_when_invalid_is_valid() {
-    let slice = encode(TrivialBool { value: 2 });
-    let _ = abi_decode::<TrivialBool>(slice).unwrap();
+    let bytes = encode(TrivialBool { value: 2 });
+    assert_eq(abi_decode::<TrivialBool>(bytes).is_valid(), false, 0);
 }
 
 #[test(should_revert)]
@@ -3030,9 +3030,12 @@ where
         let discriminant: u64 = abi_decode::<u64>(discriminant);
         
         let is_decode_trivial_table = T::is_decode_trivial_table();
-        let a: bool = *__elem_at(is_decode_trivial_table, discriminant);
-        
-        discriminant < is_decode_trivial_table.len() && a
+
+        if discriminant < is_decode_trivial_table.len() {
+            *__elem_at(is_decode_trivial_table, discriminant)
+        } else {
+            false
+        }
     }
 
     pub fn unwrap(self) -> T {

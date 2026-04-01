@@ -501,6 +501,8 @@ pub enum CompileError {
     },
     #[error("This opcode takes an immediate value but none was provided.")]
     MissingImmediate { span: Span },
+    #[error("Invalid argument.")]
+    InvalidArgument { span: Span },
     #[error("This immediate value is invalid.")]
     InvalidImmediateValue { span: Span },
     #[error("Variant \"{variant_name}\" does not exist on enum \"{enum_name}\"")]
@@ -1390,6 +1392,7 @@ impl Spanned for CompileError {
             IndexedFieldOffsetTooLarge { field_name } => field_name.span(),
             IncoherentImplDueToOrphanRule { span, .. } => span.clone(),
             TrivialCheckFailed { span, .. } => span.clone(),
+            InvalidArgument { span } => span.clone(),
         }
     }
 }
