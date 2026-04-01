@@ -87,7 +87,11 @@ script {
         v1904v1 = call big_array_repeat_16(v1903v1)
         v1910v1 = get_local __ptr [u8; 262145], __ret_val15
         v1911v1 = call u8_array_bigger_than_18_bits_17(v1910v1)
+<<<<<<< HEAD
         v190v1 = call arrays_with_const_length_18(), !16
+=======
+        v191v1 = call arrays_with_const_length_18(), !16
+>>>>>>> e60c589ca (update tests)
         v1917v1 = get_local __ptr [u8; 1], array
         v1918v1 = call decode_array_19(v1917v1)
         v775v1 = get_local __ptr [u8; 1], array, !17
@@ -96,8 +100,13 @@ script {
         v778v1 = load v777v1
         v779v1 = const u8 255, !20
         v1759v1 = cmp eq v778v1 v779v1, !29
+<<<<<<< HEAD
         v573v1 = const bool false, !30
         v1763v1 = cmp eq v1759v1 v573v1, !33
+=======
+        v574v1 = const bool false, !30
+        v1763v1 = cmp eq v1759v1 v574v1, !33
+>>>>>>> e60c589ca (update tests)
         cbr v1763v1, assert_eq_42_block0(), assert_eq_42_block1(), !34
 
         assert_eq_42_block0():
@@ -185,6 +194,7 @@ script {
         entry(__ret_value: __ptr [bool; 5]):
         v800v1 = const u64 0
         v801v1 = get_elem_ptr __ret_value, __ptr bool, v800v1, !90
+<<<<<<< HEAD
         v114v1 = const bool true
         store v114v1 to v801v1, !90
         v803v1 = const u64 1
@@ -199,6 +209,22 @@ script {
         v812v1 = const u64 4
         v813v1 = get_elem_ptr __ret_value, __ptr bool, v812v1, !90
         store v114v1 to v813v1, !90
+=======
+        v115v1 = const bool true
+        store v115v1 to v801v1, !90
+        v803v1 = const u64 1
+        v804v1 = get_elem_ptr __ret_value, __ptr bool, v803v1, !90
+        store v115v1 to v804v1, !90
+        v806v1 = const u64 2
+        v807v1 = get_elem_ptr __ret_value, __ptr bool, v806v1, !90
+        store v115v1 to v807v1, !90
+        v809v1 = const u64 3
+        v810v1 = get_elem_ptr __ret_value, __ptr bool, v809v1, !90
+        store v115v1 to v810v1, !90
+        v812v1 = const u64 4
+        v813v1 = get_elem_ptr __ret_value, __ptr bool, v812v1, !90
+        store v115v1 to v813v1, !90
+>>>>>>> e60c589ca (update tests)
         v1894v1 = const unit ()
         ret () v1894v1
     }
@@ -210,8 +236,13 @@ script {
 
         array_init_loop(v815v1: u64):
         v818v1 = get_elem_ptr __ret_value, __ptr bool, v815v1
+<<<<<<< HEAD
         v122v1 = const bool true
         store v122v1 to v818v1, !94
+=======
+        v123v1 = const bool true
+        store v123v1 to v818v1, !94
+>>>>>>> e60c589ca (update tests)
         v820v1 = const u64 1
         v821v1 = add v815v1, v820v1
         v822v1 = const u64 25
@@ -232,8 +263,8 @@ script {
 
     fn arrays_with_const_length_18() -> (), !101 {
         entry():
-        v188v1 = const unit ()
-        ret () v188v1
+        v189v1 = const unit ()
+        ret () v189v1
     }
 
     fn decode_array_19(__ret_value: __ptr [u8; 1]) -> (), !104 {
@@ -244,6 +275,7 @@ script {
         local slice slice_0
 
         entry(__ret_value: __ptr [u8; 1]):
+<<<<<<< HEAD
         v241v1 = get_local __ptr [u8; 1], __array_init_0, !105
         v843v1 = const u64 0
         v844v1 = get_elem_ptr v241v1, __ptr u8, v843v1, !105
@@ -254,6 +286,18 @@ script {
         v1925v1 = call to_slice_20(v1806v1, v1924v1)
         v246v1 = get_local __ptr slice, s, !107
         mem_copy_val v246v1, v1924v1
+=======
+        v242v1 = get_local __ptr [u8; 1], __array_init_0, !105
+        v843v1 = const u64 0
+        v844v1 = get_elem_ptr v242v1, __ptr u8, v843v1, !105
+        v243v1 = const u8 255, !106
+        store v243v1 to v844v1, !105
+        v1806v1 = get_local __ptr [u8; 1], __array_init_0
+        v1924v1 = get_local __ptr slice, __ret_val
+        v1925v1 = call to_slice_20(v1806v1, v1924v1)
+        v247v1 = get_local __ptr slice, s, !107
+        mem_copy_val v247v1, v1924v1
+>>>>>>> e60c589ca (update tests)
         v1780v1 = get_local __ptr slice, s, !115
         v1782v1 = get_local __ptr slice, slice_0, !118
         mem_copy_val v1782v1, v1780v1
@@ -273,11 +317,19 @@ script {
         v1980v1 = const u64 1
         v1981v1 = get_elem_ptr v1786v1, __ptr u64, v1980v1
         store v1968v1 to v1981v1
+<<<<<<< HEAD
         v280v1 = const u64 0
         v1788v1 = get_elem_ptr v1786v1, __ptr ptr, v280v1, !123
         v1789v1 = load v1788v1, !121
         v260v1 = const u64 1
         v1515v1 = asm(size: v260v1, src: v1789v1) -> __ptr [u8; 1] hp, !125 {
+=======
+        v281v1 = const u64 0
+        v1788v1 = get_elem_ptr v1786v1, __ptr ptr, v281v1, !123
+        v1789v1 = load v1788v1, !121
+        v261v1 = const u64 1
+        v1515v1 = asm(size: v261v1, src: v1789v1) -> __ptr [u8; 1] hp, !125 {
+>>>>>>> e60c589ca (update tests)
             aloc   size, !126
             mcp    hp src size, !127
         }
@@ -297,6 +349,7 @@ script {
         local { ptr, u64 } parts_
 
         entry(array: __ptr [u8; 1], __ret_value: __ptr slice):
+<<<<<<< HEAD
         v194v1 = get_local __ptr [u8; 1], array_
         mem_copy_val v194v1, array
         v235v1 = get_local __ptr [u8; 1], array_, !131
@@ -305,6 +358,16 @@ script {
         v1999v1 = const u64 0
         v2000v1 = get_elem_ptr v902v1, __ptr ptr, v1999v1
         store v236v1 to v2000v1
+=======
+        v195v1 = get_local __ptr [u8; 1], array_
+        mem_copy_val v195v1, array
+        v236v1 = get_local __ptr [u8; 1], array_, !131
+        v237v1 = cast_ptr v236v1 to ptr, !132
+        v902v1 = get_local __ptr { ptr, u64 }, parts_, !137
+        v1999v1 = const u64 0
+        v2000v1 = get_elem_ptr v902v1, __ptr ptr, v1999v1
+        store v237v1 to v2000v1
+>>>>>>> e60c589ca (update tests)
         v2002v1 = const u64 1
         v2003v1 = get_elem_ptr v902v1, __ptr u64, v2002v1
         v895v1 = const u64 1, !140
@@ -325,6 +388,7 @@ script {
         local u8 value_
 
         entry(value: u8):
+<<<<<<< HEAD
         v601v1 = get_local __ptr u8, value_
         store value to v601v1
         v742v1 = get_local __ptr u8, value_, !148
@@ -336,12 +400,30 @@ script {
         v1713v1 = get_elem_ptr v1708v1, __ptr u64, v861v1, !153
         v611v1 = const u64 1
         store v611v1 to v1713v1, !154
+=======
+        v602v1 = get_local __ptr u8, value_
+        store value to v602v1
+        v743v1 = get_local __ptr u8, value_, !148
+        v1708v1 = get_local __ptr { __ptr u8, u64 }, __anon_0, !150
+        v858v1 = const u64 0
+        v1711v1 = get_elem_ptr v1708v1, __ptr __ptr u8, v858v1, !151
+        store v743v1 to v1711v1, !152
+        v861v1 = const u64 1
+        v1713v1 = get_elem_ptr v1708v1, __ptr u64, v861v1, !153
+        v612v1 = const u64 1
+        store v612v1 to v1713v1, !154
+>>>>>>> e60c589ca (update tests)
         v1716v1 = get_local __ptr { __ptr u8, u64 }, __anon_0, !148
         v1718v1 = cast_ptr v1716v1 to __ptr slice, !148
         v1931v1 = get_local __ptr slice, __log_arg
         mem_copy_val v1931v1, v1718v1
+<<<<<<< HEAD
         v744v1 = const u64 14454674236531057292
         log __ptr slice v1931v1, v744v1
+=======
+        v745v1 = const u64 14454674236531057292
+        log __ptr slice v1931v1, v745v1
+>>>>>>> e60c589ca (update tests)
         v748v1 = const unit ()
         ret () v748v1
     }
@@ -458,8 +540,13 @@ script {
 !108 = span !10 3147 3171
 !109 = fn_call_path_span !10 3147 3157
 !110 = "test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert/src/codec.sw"
+<<<<<<< HEAD
 !111 = span !110 49688 49698
 !112 = fn_call_path_span !110 49693 49696
+=======
+!111 = span !110 94623 94633
+!112 = fn_call_path_span !110 94628 94631
+>>>>>>> f08e362ca (update tests)
 !113 = "test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert/src/raw_slice.sw"
 !114 = span !113 2922 2926
 !115 = (!108 !109 !111 !112 !114)
@@ -471,10 +558,17 @@ script {
 !121 = (!108 !109 !111 !112)
 !122 = span !113 2928 2929
 !123 = (!108 !109 !111 !112 !122)
+<<<<<<< HEAD
 !124 = span !110 49667 49782
 !125 = (!108 !109 !124)
 !126 = span !110 49714 49723
 !127 = span !110 49737 49752
+=======
+!124 = span !110 94602 94717
+!125 = (!108 !109 !124)
+!126 = span !110 94649 94658
+!127 = span !110 94672 94687
+>>>>>>> f08e362ca (update tests)
 !128 = span !10 3192 3320
 !129 = fn_name_span !10 3195 3203
 !130 = (!128 !129 !48)
@@ -496,7 +590,11 @@ script {
 !146 = fn_name_span !143 584 587
 !147 = (!145 !146)
 !148 = span !143 642 647
+<<<<<<< HEAD
 !149 = span !110 48850 48862
+=======
+!149 = span !110 93785 93797
+>>>>>>> f08e362ca (update tests)
 !150 = (!148 !149)
 !151 = (!148 !149)
 !152 = (!148 !149)

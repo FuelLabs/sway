@@ -6043,7 +6043,7 @@ pub fn get_encoding_representation_by_id(
     get_encoding_representation(engines, &engines.te().get(type_id))
 }
 
-// Range is None here because we cannot guarantee a buffer that is goign to be decoded
+// Range is None here because we cannot guarantee a buffer that is going to be decoded
 // has the correct bytes
 pub fn get_encoding_representation(
     engines: &Engines,
