@@ -3421,7 +3421,7 @@ impl ToDiagnostic for CompileError {
                     ),
                     hints,
                     help: [
-                        "For more details on trivial decoding see https://raw.githubusercontent.com/FuelLabs/sway/d71243f17aba2ac1a6af8d0659a573cab7517e38/docs/slides/encoding.md".to_string(),
+                        "For more details on trivial decoding see https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html".to_string(),
                     ].into_iter().chain(
                         bottom_helps.clone()
                     ).collect(),

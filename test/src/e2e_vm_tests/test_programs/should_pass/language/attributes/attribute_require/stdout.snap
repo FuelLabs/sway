@@ -53,9 +53,9 @@ error: Type is not trivially decodable
    |     --- info: This field is not trivially decodable.
    |                 ---------------- help: Consider changing `NonTrivialStruct` to make it trivially decodable.
    |
-   = help: For more details on trivial decoding see https://raw.githubusercontent.com/FuelLabs/sway/d71243f17aba2ac1a6af8d0659a573cab7517e38/docs/slides/encoding.md
-   = help: For more info on TrivialBool see: https://raw.githubusercontent.com/FuelLabs/sway/d71243f17aba2ac1a6af8d0659a573cab7517e38/docs/slides/encoding.md
-   = help: For more info on `TrivialEnum` see: https://raw.githubusercontent.com/FuelLabs/sway/d71243f17aba2ac1a6af8d0659a573cab7517e38/docs/slides/encoding.md
+   = help: For more details on trivial decoding see https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
+   = help: For more info on TrivialBool see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
+   = help: For more info on `TrivialEnum` see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
 ____
 
   Aborting due to 1 error.
@@ -113,9 +113,9 @@ error: Type is not trivially decodable
    |     --- info: This field is not trivially decodable.
    |                 ---------------- help: Consider changing `NonTrivialStruct` to make it trivially decodable.
    |
-   = help: For more details on trivial decoding see https://raw.githubusercontent.com/FuelLabs/sway/d71243f17aba2ac1a6af8d0659a573cab7517e38/docs/slides/encoding.md
-   = help: For more info on TrivialBool see: https://raw.githubusercontent.com/FuelLabs/sway/d71243f17aba2ac1a6af8d0659a573cab7517e38/docs/slides/encoding.md
-   = help: For more info on `TrivialEnum` see: https://raw.githubusercontent.com/FuelLabs/sway/d71243f17aba2ac1a6af8d0659a573cab7517e38/docs/slides/encoding.md
+   = help: For more details on trivial decoding see https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
+   = help: For more info on TrivialBool see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
+   = help: For more info on `TrivialEnum` see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
 ____
 
   Aborting due to 1 error.

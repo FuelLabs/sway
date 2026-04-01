@@ -703,7 +703,7 @@ fn push_help_for_non_trivially_decodable_type(
                 type_span.clone(),
                 "`bool` is never trivially decodable. Consider using TrivialBool.".to_string(),
             ));
-            bottom_helps.insert("For more info on TrivialBool see: https://raw.githubusercontent.com/FuelLabs/sway/d71243f17aba2ac1a6af8d0659a573cab7517e38/docs/slides/encoding.md".to_string());
+            bottom_helps.insert("For more info on TrivialBool see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html".to_string());
         }
         TypeInfo::UnsignedInteger(IntegerBits::Sixteen) => {
             helps.push((
@@ -744,7 +744,7 @@ fn push_help_for_non_trivially_decodable_type(
                             type_as_in_src,
                         ),
                     ));
-                    bottom_helps.insert("For more info on `TrivialEnum` see: https://raw.githubusercontent.com/FuelLabs/sway/d71243f17aba2ac1a6af8d0659a573cab7517e38/docs/slides/encoding.md".to_string());
+                    bottom_helps.insert("For more info on `TrivialEnum` see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html".to_string());
                 }
                 (false, true) => {
                     helps.push((
@@ -753,7 +753,7 @@ fn push_help_for_non_trivially_decodable_type(
                             field_type_decl.call_path.suffix.as_str()
                         )
                     ));
-                    bottom_helps.insert("For more info on `TrivialEnum` see: https://raw.githubusercontent.com/FuelLabs/sway/d71243f17aba2ac1a6af8d0659a573cab7517e38/docs/slides/encoding.md".to_string());
+                    bottom_helps.insert("For more info on `TrivialEnum` see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html".to_string());
                 }
                 (false, false) => {
                     helps.push((
