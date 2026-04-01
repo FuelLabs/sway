@@ -257,7 +257,6 @@ impl SubstTypes for DeclId<TyConstantDecl> {
             *self = *decl_engine
                 .insert(decl, decl_engine.get_parsed_decl_id(self).as_ref())
                 .id();
-            *ctx.non_concrete_types.borrow_mut() += 1;
             HasChanges::Yes
         } else {
             HasChanges::No
