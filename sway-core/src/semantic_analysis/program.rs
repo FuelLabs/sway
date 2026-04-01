@@ -13,7 +13,6 @@ use crate::{
     BuildConfig, Engines,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_features::ExperimentalFeatures;
 use sway_ir::{Context, Module};
 
 use super::{

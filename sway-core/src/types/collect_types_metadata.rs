@@ -9,7 +9,11 @@ use std::{
 };
 
 use crate::{
-    Engines, abi_generation::abi_str::AbiStrContext, language::ty::{TyDecl, TyExpression, TyExpressionVariant}, semantic_analysis::TypeCheckContext, type_system::TypeId
+    abi_generation::abi_str::AbiStrContext,
+    language::ty::{TyDecl, TyExpression, TyExpressionVariant},
+    semantic_analysis::TypeCheckContext,
+    type_system::TypeId,
+    Engines,
 };
 use sha2::{Digest, Sha256};
 use sway_error::{
@@ -166,7 +170,7 @@ pub struct CollectTypesMetadataContext<'cx> {
 
     pub experimental: ExperimentalFeatures,
 
-    pub (crate) type_check_ctx: TypeCheckContext<'cx>,
+    pub(crate) type_check_ctx: TypeCheckContext<'cx>,
 }
 
 impl<'cx> CollectTypesMetadataContext<'cx> {

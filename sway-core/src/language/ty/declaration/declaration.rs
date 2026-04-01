@@ -1,12 +1,18 @@
 use crate::{
-    decl_engine::*, engine_threading::*, language::{CallPath, Visibility, parsed::Declaration, ty::*}, semantic_analysis::TypeCheckContext, transform::AttributeKind, type_system::*, types::*
+    decl_engine::*,
+    engine_threading::*,
+    language::{parsed::Declaration, ty::*, CallPath, Visibility},
+    semantic_analysis::TypeCheckContext,
+    transform::AttributeKind,
+    type_system::*,
+    types::*,
 };
 use serde::{Deserialize, Serialize};
-use sway_ast::attribute::REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE;
 use std::{
     fmt,
     hash::{Hash, Hasher},
 };
+use sway_ast::attribute::REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE;
 
 use sway_error::{
     error::CompileError,
@@ -531,7 +537,7 @@ impl CollectTypesMetadata for TyDecl {
                                     let id_decode_trivial = TyExpression::type_check_function_application(
                                         handler,
                                         ctx.type_check_ctx.by_ref(),
-                                        TypeBinding { 
+                                        TypeBinding {
                                             inner: CallPath {
                                                 prefixes: vec![
                                                     BaseIdent::new_no_span("std".into()),

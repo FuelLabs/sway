@@ -1,5 +1,3 @@
-use std::cell::RefCell;
-
 use crate::{engine_threading::Engines, type_system::priv_prelude::*};
 use sway_error::handler::Handler;
 use sway_types::Ident;
