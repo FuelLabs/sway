@@ -1,6 +1,6 @@
 # Trivially Encodable & Decodable Types
 
-When a contract calls another contract, all arguments are **encoded** just before the call is actually executed, 
+When a contract calls another contract, all arguments are **encoded** just before the call is actually executed,
 and the callee **decodes** these arguments right before the target method starts.
 This adds a small but non‑negligible gas cost, from hundreds to thousands of gas depending on the complexity of the arguments.
 
@@ -51,14 +51,14 @@ This attributed can be used directly on types, but also on entry points such as 
 | String Arrays | ✅ See * | ✅ See * |  |
 | Vec, Dictionary, String, etc. | ❌ | ❌ | Data Structures are never trivial |
 
-* Only when the feature "str_array_no_padding" is turned on. When the feature toggle is off, only string arrays that its length is multiple of 8.
+Only when the feature "str_array_no_padding" is turned on. When the feature toggle is off, only string arrays that its length is multiple of 8.
 
 ### Why `bool` and `enum` are not trivially decodable
 
 Probably the most surprising non trivial base data type is `bool`. Mainly because `bool` is obviously trivially encodable. But there is no guarantee
 that buffer does not have a value like `2`, that being "transmuted" into a bool would be allow its runtime representation to be `2`, which is **undefined behaviour**.
 
-The same limitation applies to enums. Enums are implemented as "tagged unios" which means that their runtime representation has a discriminant value as `u64`. There
+The same limitation applies to enums. Enums are implemented as "tagged unions" which means that their runtime representation has a discriminant value as `u64`. There
 is no guarantee that the buffer  would have a valid value for its discriminant.
 
 ---
@@ -68,12 +68,13 @@ is no guarantee that the buffer  would have a valid value for its discriminant.
 If you need to expose a `bool` or an enum as a public argument, you can either:
 
 1. **Manual validation** – expose a raw `u64` (or `u8`) and check its value in the callee.
-   ```sway
-   #[trivial(encode = "require", decode = "require")]
-   pub struct Flag(u8);  // manually validate that value <= 1
-   ```
 
-2. **Custom wrappers** – Sway ships with `TrivialBool` and `TrivialEnum<T>` that enforce the bounds at compile time.
+```sway
+#[trivial(encode = "require", decode = "require")]
+pub struct Flag(u8);  // manually validate that value <= 1
+```
+
+1. **Custom wrappers** – Sway ships with `TrivialBool` and `TrivialEnum<T>` that enforce the bounds at compile time.
 
    ```sway
    use sway::primitive::TrivialBool;
