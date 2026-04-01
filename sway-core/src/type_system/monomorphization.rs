@@ -261,7 +261,7 @@ pub(crate) fn monomorphize_with_modpath<T>(
     subst_ctx: &SubstTypesContext,
 ) -> Result<(), ErrorEmitted>
 where
-    T: std::fmt::Debug + MonomorphizeHelper + SubstTypes + MaterializeConstGenerics,
+    T: MonomorphizeHelper + SubstTypes + MaterializeConstGenerics,
 {
     let type_mapping = prepare_type_subst_map_for_monomorphize(
         handler,

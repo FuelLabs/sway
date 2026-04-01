@@ -6951,13 +6951,16 @@ where
     }
 }
 
-impl<T> AbiEncode for TrivialEnum<T> {
+impl<T> AbiEncode for TrivialEnum<T>
+where
+    T: AbiEncode
+{
     fn is_encode_trivial() -> bool {
         true
     }
 
     fn abi_encode(self, buffer: Buffer) -> Buffer {
-        buffer
+        self.value.abi_encode(buffer)
     }
 }
 
