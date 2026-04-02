@@ -6921,6 +6921,14 @@ pub struct TrivialEnum<T> {
     value: T,
 }
 
+impl<T> TrivialEnum<T> {
+    pub fn from(value: T) -> TrivialEnum<T> {
+        TrivialEnum {
+            value
+        }
+    }
+}
+
 pub trait EnumCodecValues {
     fn is_decode_trivial_table() -> &__slice[bool];
 }
