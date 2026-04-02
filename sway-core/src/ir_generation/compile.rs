@@ -701,70 +701,33 @@ fn push_help_for_non_trivially_decodable_type(
         TypeInfo::Boolean => {
             helps.push((
                 type_span.clone(),
-                "`bool` is never trivially decodable. Consider using TrivialBool.".to_string(),
+                "To make this field trivially decodable, consider changing its type to `TrivialBool`.".to_string(),
             ));
-            bottom_helps.insert("For more info on TrivialBool see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html".to_string());
+            bottom_helps.insert("`bool` is never trivially decodable.".to_string());
         }
         TypeInfo::UnsignedInteger(IntegerBits::Sixteen) => {
             helps.push((
                 type_span.clone(),
-                "`u16` is never trivially decodable. Consider using `u64` instead.".to_string(),
+                "To make this field trivially decodable, consider changing its type to `u64`.".to_string(),
             ));
+            bottom_helps.insert("`u16` is never trivially decodable.".to_string());
         }
         TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo) => {
             helps.push((
                 type_span.clone(),
-                "`u32` is never trivially decodable. Consider using `u64` instead.".to_string(),
+                "To make this field trivially decodable, consider changing its type to `u64`.".to_string(),
             ));
+            bottom_helps.insert("`u32` is never trivially decodable.".to_string());
         }
         TypeInfo::Enum(decl_id) => {
-            let field_type_decl = engines.de().get(decl_id);
-            let field_decl_pid = field_type_decl.span.source_id().map(|x| x.program_id());
-
-            let non_trivially_decodable_variants = field_type_decl
-                .variants
-                .iter()
-                .filter(|x| {
-                    let type_info = engines.te().get(x.type_argument.type_id);
-                    !is_type_trivially_decodable(engines, context, md_mgr, module, &type_info)
-                })
-                .collect::<Vec<_>>();
-
-            let all_variants_are_trivially_decodable = non_trivially_decodable_variants.is_empty();
-            let same_workspace =
-                matches!((has_att_pid, field_decl_pid), (Some(a), Some(b)) if a == b);
-
-            match (all_variants_are_trivially_decodable, same_workspace) {
-                (true, _) => {
-                    helps.push((
-                    type_span.clone(),
-                    format!(
-                            "`{}` can be forced to be trivialle decodable. Consider using `TrivialEnum<{}>`.",
-                            field_type_decl.call_path.suffix.as_str(),
-                            type_as_in_src,
-                        ),
-                    ));
-                    bottom_helps.insert("For more info on `TrivialEnum` see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html".to_string());
-                }
-                (false, true) => {
-                    helps.push((
-                        type_span.clone(),
-                        format!("`{}` has variants that are not trivially decodable. Consider changing them before using `TrivialEnum`.",
-                            field_type_decl.call_path.suffix.as_str()
-                        )
-                    ));
-                    bottom_helps.insert("For more info on `TrivialEnum` see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html".to_string());
-                }
-                (false, false) => {
-                    helps.push((
-                        type_span.clone(),
-                        format!(
-                            "`{}` has variants that are not trivially decodable.",
-                            field_type_decl.call_path.suffix.as_str()
-                        ),
-                    ));
-                }
-            }
+            helps.push((
+                type_span.clone(),
+                format!(
+                    "To make this field trivially decodable, consider changing its type to `TrivialEnum<{}>`.",
+                    type_as_in_src,
+                ),
+            ));
+            bottom_helps.insert("Enums are never trivially decodable, but fields can be trivially decodable by wrapping their original type with `TrivialEnum` and their original value can be retrieved later by calling `unwrap`.".to_string());
         }
         TypeInfo::Struct(decl_id) => {
             let decl = engines.de().get(decl_id);

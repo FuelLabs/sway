@@ -150,31 +150,3 @@ impl TyProgram {
         }
     }
 }
-
-impl TypeCheckAnalysis for TyProgram {
-    fn type_check_analyze(
-        &self,
-        handler: &Handler,
-        ctx: &mut TypeCheckAnalysisContext,
-    ) -> Result<(), ErrorEmitted> {
-        for node in self.root_module.all_nodes.iter() {
-            node.type_check_analyze(handler, ctx)?;
-        }
-        Ok(())
-    }
-}
-
-impl TypeCheckFinalization for TyProgram {
-    fn type_check_finalize(
-        &mut self,
-        handler: &Handler,
-        ctx: &mut TypeCheckFinalizationContext,
-    ) -> Result<(), ErrorEmitted> {
-        handler.scope(|handler| {
-            for node in self.root_module.all_nodes.iter_mut() {
-                let _ = node.type_check_finalize(handler, ctx);
-            }
-            Ok(())
-        })
-    }
-}

@@ -11,8 +11,8 @@ struct MyStruct {
     f6: b256,
     f7: TrivialStruct,
     f8: NonTrivialStruct,
-    f9: EnumThatCanUseTrivialEnum,
-    f10: EnumThatCannotUseTrivialEnum,
+    f9: SomeEnum,
+
     f11: Vec<u64>,
     f12: Result<Vec<u64>, u64>,
     f13: Result<u64, u64>,
@@ -29,12 +29,8 @@ struct NonTrivialStruct {
     pub a: bool,
 }
 
-enum EnumThatCanUseTrivialEnum {
+enum SomeEnum {
     A: ()
-}
-
-enum EnumThatCannotUseTrivialEnum {
-    A: Vec<u64>,
 }
 
 fn main(s: MyStruct) {
@@ -49,7 +45,6 @@ fn main(s: MyStruct) {
     __log(s.f7);
     __log(s.f8.a);
     __log(s.f9);
-    __log(s.f10);
     __log(s.f11);
     __log(s.f12);
     __log(s.f13);
@@ -58,6 +53,5 @@ fn main(s: MyStruct) {
     __log(s.f16);
 
     let _ = TrivialStruct { };
-    __log(EnumThatCanUseTrivialEnum::A);
-    __log(EnumThatCannotUseTrivialEnum::A(Vec::new()));
+    __log(SomeEnum::A);
 }
