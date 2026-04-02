@@ -3412,6 +3412,14 @@ impl ToDiagnostic for CompileError {
                         Hint::help(source_engine, x.0.clone(), x.1.clone())
                     })
                 );
+
+                let mut bottom_helps = bottom_helps.clone();
+                if !bottom_helps.is_empty() {
+                    bottom_helps.push(
+                        "For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html".to_string()
+                    )
+                }
+
                 Diagnostic {
                     reason: Some(Reason::new(code(1), "Type is not trivially decodable".to_string())),
                     issue: Issue::error(
@@ -3420,11 +3428,7 @@ impl ToDiagnostic for CompileError {
                         format!("`{}` is not trivially decodable.", span.as_str()),
                     ),
                     hints,
-                    help: [
-                        "For more details on trivial decoding see https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html".to_string(),
-                    ].into_iter().chain(
-                        bottom_helps.clone()
-                    ).collect(),
+                    help: bottom_helps,
                 }
             }
             _ => Diagnostic {

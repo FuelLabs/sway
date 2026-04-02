@@ -7,8 +7,8 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
    Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
-    Finished release [optimized + fuel] target(s) [19.896 KB] in ???
-     Running 29 tests, filtered 0 tests
+    Finished release [optimized + fuel] target(s) [23.288 KB] in ???
+     Running 31 tests, filtered 0 tests
 
 tested -- const_of_contract_call
 
@@ -42,7 +42,7 @@ tested -- const_of_contract_call
       test in_enum_u64_u64 ... ok (???, 1671 gas)
       test in_enum_u64_u64_u64 ... ok (???, 1679 gas)
 
-test result: OK. 29 passed; 0 failed; finished in ???
+test result: OK. 31 passed; 0 failed; finished in ???
 
     Finished in ???
 
@@ -265,6 +265,46 @@ output:
 tested -- const_of_contract_call
 
       test in_enum_u64_u64_u64 ... ok (???, 1534 gas)
+
+test result: OK. 1 passed; 0 failed; finished in ???
+
+    Finished in ???
+
+> Block: ORDER_ARGS_WITHOUT_TRIVIAL_ENUM
+> replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
+
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
+exit status: 0
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
+   Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
+   Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
+    Finished release [optimized + fuel] target(s) [2.344 KB] in ???
+     Running 1 test, filtered 0 tests
+
+tested -- const_of_contract_call
+
+      test order_args_without_trivial_enum ... ok (???, 12266 gas)
+
+test result: OK. 1 passed; 0 failed; finished in ???
+
+    Finished in ???
+
+> Block: ORDER_ARGS_WITH_TRIVIAL_ENUM
+> replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
+
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
+exit status: 0
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
+   Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
+   Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
+    Finished release [optimized + fuel] target(s) [2.624 KB] in ???
+     Running 1 test, filtered 0 tests
+
+tested -- const_of_contract_call
+
+      test order_args_with_trivial_enum ... ok (???, 11987 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
