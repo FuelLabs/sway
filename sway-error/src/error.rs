@@ -9,6 +9,7 @@ use crate::parser_error::{ParseError, ParseErrorKind};
 use crate::type_error::TypeError;
 
 use core::fmt;
+use std::collections::BTreeSet;
 use std::fmt::Formatter;
 use sway_types::style::to_snake_case;
 use sway_types::{BaseIdent, Ident, IdentUnique, SourceEngine, Span, Spanned};
@@ -1129,6 +1130,7 @@ pub enum CompileError {
         span: Span,
         infos: Vec<(Span, String)>,
         helps: Vec<(Span, String)>,
+        never_trivial: BTreeSet<String>,
         bottom_helps: Vec<String>,
     },
 }
@@ -3372,7 +3374,7 @@ impl ToDiagnostic for CompileError {
                     help: vec![],
                 }
             }
-            TrivialCheckFailed { span, infos, helps, bottom_helps } => {
+            TrivialCheckFailed { span, infos, helps, never_trivial, bottom_helps } => {
                 let mut hints = vec![];
                 hints.extend(
                     infos.iter()
@@ -3388,11 +3390,42 @@ impl ToDiagnostic for CompileError {
                 );
 
                 let mut bottom_helps = bottom_helps.clone();
+
+                let mut never_trivial_help = String::new();
+                if !never_trivial.is_empty() {
+                    let len = never_trivial.len();
+                    for (idx, t) in never_trivial.iter().enumerate() {
+                        never_trivial_help.push('`');
+                        never_trivial_help.push_str(t.as_str());
+                                                never_trivial_help.push('`');
+
+                        if idx < len - 1 {
+                            never_trivial_help.push_str(", ");
+                        }
+                    }
+
+                    if len == 1 {
+                        never_trivial_help.push_str(" is never trivially decodable.");
+                    } else {
+                        never_trivial_help.push_str(" are never trivially decodable.");
+                    }
+
+                    bottom_helps.push(never_trivial_help);
+                }
+
                 if !bottom_helps.is_empty() {
                     bottom_helps.push(
                         "For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html".to_string()
                     )
                 }
+
+                hints.push(
+                    Hint::help(
+                        source_engine,
+                        span.clone(),
+                    "Consider the suggestions below to make this struct trivially decodable.".to_string()
+                    )
+                );
 
                 Diagnostic {
                     reason: Some(Reason::new(code(1), "Type is not trivially decodable".to_string())),
