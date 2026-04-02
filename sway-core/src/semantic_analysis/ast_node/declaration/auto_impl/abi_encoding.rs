@@ -212,8 +212,7 @@ where
             .fields
             .iter()
             .map(|x| Self::generate_type(engines, &x.type_argument));
-        let mut is_encode_trivial =
-            "true".to_string();
+        let mut is_encode_trivial = "true".to_string();
         for field_type in fields_types {
             is_encode_trivial.push_str(" && ");
             is_encode_trivial.push_str(&format!("is_encode_trivial::<{}>()", field_type));
@@ -237,8 +236,7 @@ where
             .fields
             .iter()
             .map(|x| Self::generate_type(engines, &x.type_argument));
-        let mut is_decode_trivial =
-            "true".to_string();
+        let mut is_decode_trivial = "true".to_string();
         for field_type in fields_types {
             is_decode_trivial.push_str(" && ");
             is_decode_trivial.push_str(&format!("is_decode_trivial::<{}>()", field_type));
