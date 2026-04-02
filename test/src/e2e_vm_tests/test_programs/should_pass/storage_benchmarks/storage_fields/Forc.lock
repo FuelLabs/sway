@@ -1,0 +1,15 @@
+[[package]]
+name = "std"
+source = "path+from-root-461FC52130F1C811"
+
+[[package]]
+name = "storage_fields"
+source = "member"
+dependencies = [
+    "std",
+    "stored_types",
+]
+
+[[package]]
+name = "stored_types"
+source = "path+from-root-461FC52130F1C811"
