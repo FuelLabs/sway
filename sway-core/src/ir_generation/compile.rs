@@ -638,6 +638,7 @@ pub fn run_ir_decl_checks(
                                 let mut infos = vec![];
                                 let mut helps = vec![];
                                 let mut bottom_helps = BTreeSet::new();
+                                let mut never_trivial = BTreeSet::new();
 
                                 for (idx, field) in has_att_decl.fields.iter().enumerate() {
                                     let field_type_info =
@@ -660,6 +661,7 @@ pub fn run_ir_decl_checks(
                                         has_att_pid,
                                         &mut helps,
                                         &mut bottom_helps,
+                                        &mut never_trivial,
                                         &field.type_argument.span,
                                         &field_type_info,
                                         field.type_argument.span.as_str(),
@@ -670,6 +672,7 @@ pub fn run_ir_decl_checks(
                                     span: has_att_decl.call_path.suffix.span(),
                                     infos,
                                     helps,
+                                    never_trivial,
                                     bottom_helps: bottom_helps.into_iter().collect(),
                                 }]);
                             }
@@ -693,6 +696,7 @@ fn push_help_for_non_trivially_decodable_type(
     has_att_pid: Option<sway_types::ProgramId>,
     helps: &mut Vec<(Span, String)>,
     bottom_helps: &mut BTreeSet<String>,
+    never_trivial: &mut BTreeSet<String>,
     type_span: &Span,
     type_info: &TypeInfo,
     type_as_in_src: &str,
@@ -701,33 +705,33 @@ fn push_help_for_non_trivially_decodable_type(
         TypeInfo::Boolean => {
             helps.push((
                 type_span.clone(),
-                "To make this field trivially decodable, consider changing its type to `TrivialBool`.".to_string(),
+                "Consider changing this type to `TrivialBool`.".to_string(),
             ));
-            bottom_helps.insert("`bool` is never trivially decodable.".to_string());
+            never_trivial.insert("bool".to_string());
         }
         TypeInfo::UnsignedInteger(IntegerBits::Sixteen) => {
             helps.push((
                 type_span.clone(),
-                "To make this field trivially decodable, consider changing its type to `u64`.".to_string(),
+                "Consider changing this type to `u64`.".to_string(),
             ));
-            bottom_helps.insert("`u16` is never trivially decodable.".to_string());
+            never_trivial.insert("u16".to_string());
         }
         TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo) => {
             helps.push((
                 type_span.clone(),
-                "To make this field trivially decodable, consider changing its type to `u64`.".to_string(),
+                "Consider changing this type to `u64`.".to_string(),
             ));
-            bottom_helps.insert("`u32` is never trivially decodable.".to_string());
+            never_trivial.insert("u32".to_string());
         }
-        TypeInfo::Enum(decl_id) => {
+        TypeInfo::Enum(_) => {
             helps.push((
                 type_span.clone(),
                 format!(
-                    "To make this field trivially decodable, consider changing its type to `TrivialEnum<{}>`.",
+                    "Consider wrapping this type like `TrivialEnum<{}>`.",
                     type_as_in_src,
                 ),
             ));
-            bottom_helps.insert("Enums are never trivially decodable, but fields can be trivially decodable by wrapping their original type with `TrivialEnum` and their original value can be retrieved later by calling `unwrap`.".to_string());
+            bottom_helps.insert("Enums are represented as tagged unions and because of that they cannot be trivially decoded. But struct fields can still be trivially decodable by wrapping their original type with `TrivialEnum`, and the original enum value can be retrieved later by calling `unwrap`.".to_string());
         }
         TypeInfo::Struct(decl_id) => {
             let decl = engines.de().get(decl_id);
@@ -776,6 +780,7 @@ fn push_help_for_non_trivially_decodable_type(
                         has_att_pid,
                         helps,
                         bottom_helps,
+                        never_trivial,
                         &item.span,
                         &type_info,
                         item.span.as_str(),
@@ -794,6 +799,7 @@ fn push_help_for_non_trivially_decodable_type(
                     has_att_pid,
                     helps,
                     bottom_helps,
+                    never_trivial,
                     &item.span,
                     &type_info,
                     item.span.as_str(),
