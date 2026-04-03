@@ -1,0 +1,15 @@
+[[package]]
+name = "std"
+source = "path+from-root-6DBD268994607E59"
+
+[[package]]
+name = "storage_fields_partial_access"
+source = "member"
+dependencies = [
+    "std",
+    "stored_types",
+]
+
+[[package]]
+name = "stored_types"
+source = "path+from-root-6DBD268994607E59"
