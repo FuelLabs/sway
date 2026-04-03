@@ -5,11 +5,22 @@ use super::{
     CompiledFunctionCache,
 };
 use crate::{
-    Engines, PanicOccurrences, PanickingCallOccurrences, TypeInfo, decl_engine::{DeclEngineGet, DeclId, DeclRefFunction}, ir_generation::{
-        KeyedTyFunctionDecl, PanickingFunctionCache, const_eval::compile_constant_expression_to_constant, convert::convert_resolved_type_info
-    }, language::{
-        Visibility, ty::{self, StructDecl, TyDecl, TyExpression}
-    }, metadata::MetadataManager, namespace::ResolvedDeclaration, semantic_analysis::namespace, transform::AttributeKind, type_system::TypeId, types::{CheckDecl, LogId, MessageId}
+    decl_engine::{DeclEngineGet, DeclId, DeclRefFunction},
+    ir_generation::{
+        const_eval::compile_constant_expression_to_constant, KeyedTyFunctionDecl,
+        PanickingFunctionCache,
+    },
+    language::{
+        ty::{self, StructDecl, TyDecl},
+        Visibility,
+    },
+    metadata::MetadataManager,
+    namespace::ResolvedDeclaration,
+    semantic_analysis::namespace,
+    transform::AttributeKind,
+    type_system::TypeId,
+    types::{CheckDecl, LogId, MessageId},
+    Engines, PanicOccurrences, PanickingCallOccurrences, TypeInfo,
 };
 use std::{
     cell::Cell,
@@ -571,17 +582,17 @@ pub fn run_ir_decl_checks(
     decls_to_check: &[CheckDecl],
 ) -> Option<Vec<CompileError>> {
     // check types
-    for check in decls_to_check.into_iter() {
+    for check in decls_to_check.iter() {
         let is_decode_trivial_table = check
             .is_decode_trivial_table
             .iter()
             .filter_map(|(key, expr)| {
                 let expr = compile_constant_expression_to_constant(
-                        engines, context, md_mgr, module, None, None, &expr,
-                    )
-                    .ok()?
-                    .get_content(context)
-                    .as_bool()?;
+                    engines, context, md_mgr, module, None, None, expr,
+                )
+                .ok()?
+                .get_content(context)
+                .as_bool()?;
                 Some((key.clone(), expr))
             })
             .collect::<HashMap<String, bool>>();
@@ -622,9 +633,6 @@ pub fn run_ir_decl_checks(
 
                                     push_help_for_non_trivially_decodable_type(
                                         engines,
-                                        context,
-                                        md_mgr,
-                                        module,
                                         has_att_pid,
                                         &mut helps,
                                         &mut bottom_helps,
@@ -632,7 +640,7 @@ pub fn run_ir_decl_checks(
                                         &field.type_argument.span,
                                         &field_type_info,
                                         field.type_argument.span.as_str(),
-                                        &is_decode_trivial_table
+                                        &is_decode_trivial_table,
                                     );
                                 }
 
@@ -658,9 +666,6 @@ pub fn run_ir_decl_checks(
 #[allow(clippy::too_many_arguments)]
 fn push_help_for_non_trivially_decodable_type(
     engines: &Engines,
-    context: &mut Context,
-    md_mgr: &mut MetadataManager,
-    module: Module,
     has_att_pid: Option<sway_types::ProgramId>,
     helps: &mut Vec<(Span, String)>,
     bottom_helps: &mut BTreeSet<String>,
@@ -744,9 +749,6 @@ fn push_help_for_non_trivially_decodable_type(
                 if !*table.get(&fullname).unwrap() {
                     push_help_for_non_trivially_decodable_type(
                         engines,
-                        context,
-                        md_mgr,
-                        module,
                         has_att_pid,
                         helps,
                         bottom_helps,
@@ -765,9 +767,6 @@ fn push_help_for_non_trivially_decodable_type(
             if !*table.get(&fullname).unwrap() {
                 push_help_for_non_trivially_decodable_type(
                     engines,
-                    context,
-                    md_mgr,
-                    module,
                     has_att_pid,
                     helps,
                     bottom_helps,
@@ -775,7 +774,7 @@ fn push_help_for_non_trivially_decodable_type(
                     &item.span,
                     &type_info,
                     item.span.as_str(),
-                    table
+                    table,
                 );
             }
         }
