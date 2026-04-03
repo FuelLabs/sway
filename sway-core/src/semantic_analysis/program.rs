@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use super::symbol_collection_context::SymbolCollectionContext;
 use crate::{
     language::{
         parsed::ParseProgram,
@@ -14,11 +15,6 @@ use crate::{
 };
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{Context, Module};
-
-use super::{
-    symbol_collection_context::SymbolCollectionContext, TypeCheckAnalysis,
-    TypeCheckAnalysisContext, TypeCheckFinalization, TypeCheckFinalizationContext,
-};
 
 #[derive(Clone, Debug)]
 pub struct TypeCheckFailed {

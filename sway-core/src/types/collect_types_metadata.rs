@@ -61,7 +61,7 @@ impl MessageId {
 #[derive(Debug, Clone)]
 pub struct CheckDecl {
     pub decl: TyDecl,
-    pub is_decode_trivial_table:  HashMap<String, TyExpression>,
+    pub is_decode_trivial_table: HashMap<String, TyExpression>,
 }
 
 #[allow(clippy::enum_variant_names)]
