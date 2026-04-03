@@ -2,7 +2,7 @@
 source: test/src/snapshot/mod.rs
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_bool_and_enum
-exit status: 0
+exit status: 1
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_bool_and_enum
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert)
@@ -31,11 +31,21 @@ warning
    |
 ____
 
-  Compiled script "trivial_bool_and_enum" with 2 warnings.
-    Finished debug [unoptimized + fuel] target(s) [2.424 KB] in ???
+error: Type is not trivially decodable
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_bool_and_enum/src/main.sw:14:8
+   |
+...
+14 | struct MyStruct {
+   |        ^^^^^^^^ `MyStruct` is not trivially decodable.
+   |        -------- help: Consider the suggestions below to make this struct trivially decodable.
+   |
+____
+
+  Aborting due to 1 error.
+error: Failed to compile trivial_bool_and_enum
 
 > forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_bool_and_enum --logs
-exit status: 0
+exit status: 1
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_bool_and_enum
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert)
@@ -52,15 +62,15 @@ warning
    |
 ____
 
-  Compiled script "trivial_bool_and_enum" with 1 warning.
-    Finished debug [unoptimized + fuel] target(s) [2.784 KB] in ???
-     Running 2 tests, filtered 0 tests
+error: Type is not trivially decodable
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_bool_and_enum/src/main.sw:14:8
+   |
+...
+14 | struct MyStruct {
+   |        ^^^^^^^^ `MyStruct` is not trivially decodable.
+   |        -------- help: Consider the suggestions below to make this struct trivially decodable.
+   |
+____
 
-tested -- trivial_bool_and_enum
-
-      test unwrap_trivial_variant ... ok (???, 974 gas)
-      test unwrap_non_trivial_variant ... ok (???, 958 gas)
-
-test result: OK. 2 passed; 0 failed; finished in ???
-
-    Finished in ???
+  Aborting due to 1 error.
+error: Failed to compile trivial_bool_and_enum

@@ -51,10 +51,10 @@ script {
         v679v1 = get_local __ptr ptr, ptr_, !15
         store v677v1 to v679v1, !16
         v681v1 = get_local __ptr u64, self_, !23
-        v24v1 = const u64 259972407973131773
+        v24v1 = const u64 14333742065139216717
         store v24v1 to v681v1, !24
         v683v1 = get_local __ptr u64, other_, !25
-        v25v1 = const u64 259972407973131773
+        v25v1 = const u64 14333742065139216717
         store v25v1 to v683v1, !26
         v685v1 = get_local __ptr u64, self_, !29
         v686v1 = load v685v1, !30
@@ -65,10 +65,10 @@ script {
 
         decode_script_data_0_decode_from_raw_ptr_1_is_decode_trivial_2_is_decode_trivial_3_block0():
         v692v1 = get_local __ptr u64, self_0, !41
-        v29v1 = const u64 5122449154416316289
+        v29v1 = const u64 17045370188297990602
         store v29v1 to v692v1, !42
         v694v1 = get_local __ptr u64, other_0, !43
-        v30v1 = const u64 5122449154416316289
+        v30v1 = const u64 17045370188297990602
         store v30v1 to v694v1, !44
         v696v1 = get_local __ptr u64, self_0, !45
         v697v1 = load v696v1, !46
