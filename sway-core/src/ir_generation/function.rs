@@ -5650,7 +5650,6 @@ pub enum MemoryRepresentation {
     },
     Blob {
         len_in_bytes: u64,
-        range: Option<std::ops::Range<u64>>,
     },
     And(Vec<MemoryRepresentation>),
     Or(Vec<MemoryRepresentation>),
@@ -5663,13 +5662,8 @@ impl std::fmt::Debug for MemoryRepresentation {
             Self::Padding { len_in_bytes } => f.write_fmt(format_args!("p{}", len_in_bytes)),
             Self::Blob {
                 len_in_bytes,
-                range,
             } => {
-                if let Some(range) = range {
-                    f.write_fmt(format_args!("b{}^({:?})", len_in_bytes, range))
-                } else {
-                    f.write_fmt(format_args!("b{}", len_in_bytes))
-                }
+                f.write_fmt(format_args!("b{}", len_in_bytes))
             }
             Self::And(items) => {
                 f.write_str("{").unwrap();
@@ -5727,23 +5721,18 @@ pub fn get_runtime_representation(ctx: &Context, t: Type) -> MemoryRepresentatio
         TypeContent::Unit | TypeContent::Never => MemoryRepresentation::And(vec![]),
         TypeContent::Bool => MemoryRepresentation::Blob {
             len_in_bytes: 1,
-            range: Some(0..2),
         },
         TypeContent::Uint(8) => MemoryRepresentation::Blob {
             len_in_bytes: 1,
-            range: None,
         },
         TypeContent::Uint(64) => MemoryRepresentation::Blob {
             len_in_bytes: 8,
-            range: None,
         },
         TypeContent::Uint(256) => MemoryRepresentation::Blob {
             len_in_bytes: 32,
-            range: None,
         },
         TypeContent::B256 => MemoryRepresentation::Blob {
             len_in_bytes: 32,
-            range: None,
         },
         TypeContent::Struct(fields) => {
             let mut items = vec![];
@@ -5804,12 +5793,10 @@ pub fn get_runtime_representation(ctx: &Context, t: Type) -> MemoryRepresentatio
             if ctx.experimental.str_array_no_padding {
                 MemoryRepresentation::Blob {
                     len_in_bytes: *len,
-                    range: None,
                 }
             } else {
                 let item = MemoryRepresentation::Blob {
                     len_in_bytes: *len,
-                    range: None,
                 };
                 let item_len_as_bytes = item.len_in_bytes();
                 if !item_len_as_bytes.is_multiple_of(8) {
@@ -5840,15 +5827,12 @@ pub fn get_runtime_representation(ctx: &Context, t: Type) -> MemoryRepresentatio
         }
         TypeContent::Pointer | TypeContent::TypedPointer(_) => MemoryRepresentation::Blob {
             len_in_bytes: 8,
-            range: None,
         },
         TypeContent::Slice => MemoryRepresentation::Blob {
             len_in_bytes: 16,
-            range: None,
         },
         TypeContent::TypedSlice(_) => MemoryRepresentation::Blob {
             len_in_bytes: 16,
-            range: None,
         },
         x => todo!("{x:#?}"),
     }
@@ -5884,34 +5868,26 @@ pub fn get_encoding_representation(
 ) -> Option<MemoryRepresentation> {
     match type_info {
         TypeInfo::Never => None,
-
         TypeInfo::Boolean => Some(MemoryRepresentation::Blob {
             len_in_bytes: 1,
-            range: None,
         }),
         TypeInfo::UnsignedInteger(IntegerBits::Eight) => Some(MemoryRepresentation::Blob {
             len_in_bytes: 1,
-            range: None,
         }),
         TypeInfo::UnsignedInteger(IntegerBits::Sixteen) => Some(MemoryRepresentation::Blob {
             len_in_bytes: 2,
-            range: None,
         }),
         TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo) => Some(MemoryRepresentation::Blob {
             len_in_bytes: 4,
-            range: None,
         }),
         TypeInfo::UnsignedInteger(IntegerBits::SixtyFour) => Some(MemoryRepresentation::Blob {
             len_in_bytes: 8,
-            range: None,
         }),
         TypeInfo::UnsignedInteger(IntegerBits::V256) => Some(MemoryRepresentation::Blob {
             len_in_bytes: 32,
-            range: None,
         }),
         TypeInfo::B256 => Some(MemoryRepresentation::Blob {
             len_in_bytes: 32,
-            range: None,
         }),
         TypeInfo::Tuple(fields) => {
             let items = fields
@@ -5939,7 +5915,6 @@ pub fn get_encoding_representation(
             if decl.variants.is_empty() {
                 Some(MemoryRepresentation::Blob {
                     len_in_bytes: 8,
-                    range: Some(0..1),
                 })
             } else {
                 let variants = decl
@@ -5954,14 +5929,12 @@ pub fn get_encoding_representation(
                     Some(MemoryRepresentation::And(vec![
                         MemoryRepresentation::Blob {
                             len_in_bytes: 8,
-                            range: Some(0..variants.len() as u64),
                         },
                     ]))
                 } else {
                     Some(MemoryRepresentation::And(vec![
                         MemoryRepresentation::Blob {
                             len_in_bytes: 8,
-                            range: Some(0..variants.len() as u64),
                         },
                         MemoryRepresentation::Or(variants),
                     ]))
@@ -5970,7 +5943,6 @@ pub fn get_encoding_representation(
         }
         TypeInfo::StringArray(len) => Some(MemoryRepresentation::Blob {
             len_in_bytes: len.extract_literal(engines).unwrap(),
-            range: None,
         }),
         TypeInfo::StringSlice => None,
         TypeInfo::Array(item, len) => Some(MemoryRepresentation::Array(
