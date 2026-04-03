@@ -552,11 +552,6 @@ impl TypeEngine {
         )
     }
 
-    // pub(crate) fn insert_unknown(&self, engines: &Engines) -> TypeId {
-    //     let ty = TypeInfo::Unknown;
-    //     self.insert(engines, ty, None)
-    // }
-
     /// Inserts a new [TypeInfo::Array] into the [TypeEngine] and returns
     /// its [TypeId], or returns a [TypeId] of an existing shareable array type
     /// that corresponds to the array given by the `elem_type` and the `length`.
