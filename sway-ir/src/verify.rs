@@ -309,7 +309,9 @@ impl InstructionVerifier<'_, '_> {
                         key,
                         number_of_slots,
                     } => self.verify_state_clear(key, number_of_slots)?,
-                    FuelVmInstruction::StateLoadWord(key) => self.verify_state_load_word(key)?,
+                    FuelVmInstruction::StateLoadWord { key, offset } => {
+                        self.verify_state_load_word(key, offset)?
+                    }
                     FuelVmInstruction::StateLoadQuadWord {
                         load_val: dst_val,
                         key,
@@ -891,13 +893,18 @@ impl InstructionVerifier<'_, '_> {
         }
     }
 
-    fn verify_gtf(&self, index: &Value, _tx_field_id: &u64) -> Result<(), IrError> {
-        // We should perhaps verify that _tx_field_id fits in a twelve bit immediate
+    fn verify_gtf(&self, index: &Value, tx_field_id: &u64) -> Result<(), IrError> {
         if !index.get_type(self.context).is(Type::is_uint, self.context) {
-            Err(IrError::VerifyInvalidGtfIndexType)
-        } else {
-            Ok(())
+            return Err(IrError::VerifyInvalidGtfIndexType);
         }
+
+        const TWELVE_BITS: u64 = 0b1111_1111_1111;
+
+        if *tx_field_id > TWELVE_BITS {
+            return Err(IrError::VerifyInvalidGtfTxFieldIdSize(*tx_field_id));
+        }
+
+        Ok(())
     }
 
     fn verify_int_to_ptr(&self, value: &Value, ty: &Type) -> Result<(), IrError> {
@@ -1144,13 +1151,19 @@ impl InstructionVerifier<'_, '_> {
         Ok(())
     }
 
-    fn verify_state_load_word(&self, key: &Value) -> Result<(), IrError> {
+    fn verify_state_load_word(&self, key: &Value, offset: &u64) -> Result<(), IrError> {
         let key_type = self.get_ptr_type(key, IrError::VerifyStateKeyNonPointer)?;
         if !key_type.is_b256(self.context) {
-            Err(IrError::VerifyStateKeyBadType)
-        } else {
-            Ok(())
+            return Err(IrError::VerifyStateKeyBadType);
         }
+
+        const SIX_BITS: u64 = 0b11_1111;
+
+        if *offset > SIX_BITS {
+            return Err(IrError::VerifyStateLoadWordOffsetSize(*offset));
+        }
+
+        Ok(())
     }
 
     fn verify_state_store_word(&self, dst_val: &Value, key: &Value) -> Result<(), IrError> {

@@ -1,0 +1,8 @@
+[[package]]
+name = "std"
+source = "path+from-root-FA2BC496C8744C39"
+
+[[package]]
+name = "storage_instructions"
+source = "member"
+dependencies = ["std"]

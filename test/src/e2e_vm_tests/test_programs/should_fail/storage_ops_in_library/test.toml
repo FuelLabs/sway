@@ -8,7 +8,7 @@ category = "fail"
 #nextln: $()Function "side_effects" reads from and writes to the storage.
 #check: $()Consider declaring the function "main" as `#[storage(read, write)]`
 
-#check: $()srw v is_set key;
+#check: $()srw v is_set key i0;
 #nextln: $()Contract storage cannot be used in an external context.
 
 #check: $()sww key is_set v;

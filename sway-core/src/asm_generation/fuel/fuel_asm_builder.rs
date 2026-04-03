@@ -447,8 +447,8 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         number_of_slots,
                         StateAccessType::Read,
                     ),
-                    FuelVmInstruction::StateLoadWord(key) => {
-                        self.compile_state_load_word(instr_val, key)
+                    FuelVmInstruction::StateLoadWord { key, offset } => {
+                        self.compile_state_load_word(instr_val, key, offset)
                     }
                     FuelVmInstruction::StateStoreQuadWord {
                         stored_val,
@@ -2191,26 +2191,21 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         &mut self,
         instr_val: &Value,
         key: &Value,
+        offset: &u64,
     ) -> Result<(), CompileError> {
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
-
-        // XXX not required after we have FuelVM specific verifier.
-        if !key
-            .get_type(self.context)
-            .is_none_or(|key_ty| key_ty.is_ptr(self.context))
-        {
-            return Err(CompileError::Internal(
-                "Key value for state load word is not a pointer.",
-                owning_span.unwrap_or_else(Span::dummy),
-            ));
-        }
 
         let key_reg = self.value_to_register(key)?;
         let was_slot_set_reg = self.reg_seqr.next();
         let load_reg = self.reg_seqr.next();
 
         self.cur_bytecode.push(Op {
-            opcode: Either::Left(VirtualOp::SRW(load_reg.clone(), was_slot_set_reg, key_reg)),
+            opcode: Either::Left(VirtualOp::SRW(
+                load_reg.clone(),
+                was_slot_set_reg,
+                key_reg,
+                VirtualImmediate06::new(*offset),
+            )),
             comment: "read single word from contract state".into(),
             owning_span,
         });

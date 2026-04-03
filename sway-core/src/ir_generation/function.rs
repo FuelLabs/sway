@@ -1171,16 +1171,13 @@ impl<'a> FnCompiler<'a> {
                 ))
             }
             Intrinsic::Gtf => {
-                // The index is just a Value
                 let index = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, &arguments[0])?
                 )
                 .expect_register();
 
-                // The tx field ID has to be a compile-time constant because it becomes an
-                // immediate
-
-                let tx_field_id_constant = compile_constant_expression_to_constant(
+                // The tx field ID has to be a compile-time constant, because it becomes an immediate.
+                let Ok(tx_field_id_const) = compile_constant_expression_to_constant(
                     engines,
                     context,
                     md_mgr,
@@ -1188,13 +1185,21 @@ impl<'a> FnCompiler<'a> {
                     None,
                     None,
                     &arguments[1],
-                )?;
-                let tx_field_id = match tx_field_id_constant.get_content(context).value {
+                ) else {
+                    return Err(CompileError::IntrinsicArgNotConstant {
+                        intrinsic: kind.to_string(),
+                        arg: "tx_field_id".to_string(),
+                        expected_type: "u64".to_string(),
+                        span: arguments[1].span.clone(),
+                    });
+                };
+
+                let tx_field_id = match tx_field_id_const.get_content(context).value {
                     ConstantValue::Uint(n) => n,
                     _ => {
                         return Err(CompileError::Internal(
-                            "Transaction field ID for gtf intrinsic is not an integer. \
-                            This should have been in caught in type checking",
+                            "Transaction field ID for \"__gtf\" intrinsic is not an integer. \
+                            This should have been caught in type checking.",
                             span,
                         ))
                     }
@@ -1305,10 +1310,39 @@ impl<'a> FnCompiler<'a> {
                 .expect_memory()
                 .add_metadatum(context, span_md_idx);
 
+                // The offset has to be a compile-time constant, because it becomes an immediate.
+                let Ok(offset_const) = compile_constant_expression_to_constant(
+                    engines,
+                    context,
+                    md_mgr,
+                    self.module,
+                    None,
+                    None,
+                    &arguments[1],
+                ) else {
+                    return Err(CompileError::IntrinsicArgNotConstant {
+                        intrinsic: kind.to_string(),
+                        arg: "offset".to_string(),
+                        expected_type: "u64".to_string(),
+                        span: arguments[1].span.clone(),
+                    });
+                };
+
+                let offset = match offset_const.get_content(context).value {
+                    ConstantValue::Uint(n) => n,
+                    _ => {
+                        return Err(CompileError::Internal(
+                            "Offset for \"__state_load_word\" intrinsic is not an integer. \
+                            This should have been caught in type checking.",
+                            span,
+                        ))
+                    }
+                };
+
                 let val = self
                     .current_block
                     .append(context)
-                    .state_load_word(key_value)
+                    .state_load_word(key_value, offset)
                     .add_metadatum(context, span_md_idx);
 
                 Ok(TerminatorValue::new(

@@ -191,6 +191,7 @@ error: Attribute argument is invalid
   |       ----- help: Valid arguments are:
   |       ----- help:   - program_type
   |       ----- help:   - target
+  |       ----- help:   - experimental_aligned_and_dynamic_storage
   |       ----- help:   - experimental_const_generics
   |       ----- help:   - experimental_new_encoding
   |       ----- help:   - experimental_new_hashing

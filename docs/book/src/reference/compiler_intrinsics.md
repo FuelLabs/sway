@@ -124,13 +124,25 @@ __addr_of<T>(val: T) -> raw_ptr
 
 ---
 
+**Without `aligned_and_dynamic_storage` experimental feature enabled**
+
 ```sway
 __state_load_word(key: b256) -> u64
 ```
 
-**Description:** Reads and returns a single word from storage at key `key`.
+**Description:** Reads and returns a single word from storage at key `key`. If the storage slot at key `key` is not set, zero is returned.
 
 **Constraints:** None.
+
+**With `aligned_and_dynamic_storage` experimental feature enabled**
+
+```sway
+__state_load_word(key: b256, offset: u64) -> u64
+```
+
+**Description:** Reads and returns a single word from storage at key `key` and offset `offset`. If the storage slot at key `key` is not set, zero is returned.
+
+**Constraints:** `offset` must be a valid word offset inside of the storage slot boundaries. E.g., if the storage slot contains four words, the lowest offset is zero, and the highest is three.
 
 ---
 

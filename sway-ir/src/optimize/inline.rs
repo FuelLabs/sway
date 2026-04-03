@@ -547,9 +547,9 @@ fn inline_instruction(
                     map_value(key),
                     map_value(number_of_slots),
                 ),
-                FuelVmInstruction::StateLoadWord(key) => {
-                    new_block.append(context).state_load_word(map_value(key))
-                }
+                FuelVmInstruction::StateLoadWord { key, offset } => new_block
+                    .append(context)
+                    .state_load_word(map_value(key), offset),
                 FuelVmInstruction::StateStoreQuadWord {
                     stored_val,
                     key,

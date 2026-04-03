@@ -1250,8 +1250,8 @@ fn type_check_state_clear(
     Ok((intrinsic_function, type_engine.id_of_bool()))
 }
 
-/// Signature: `__state_load_word(key: b256) -> u64`
-/// Description: Reads and returns a single word from storage at key `key`.
+/// Signature: `__state_load_word(key: b256, offset: u64) -> u64`
+/// Description: Reads and returns a single word from storage at key `key` and offset `offset`.
 /// Constraints: None.
 fn type_check_state_load_word(
     handler: &Handler,
@@ -1263,19 +1263,25 @@ fn type_check_state_load_word(
     let type_engine = ctx.engines.te();
     let engines = ctx.engines();
 
-    if arguments.len() != 1 {
+    let num_of_args: u64 = if ctx.experimental.aligned_and_dynamic_storage {
+        2
+    } else {
+        1
+    };
+    if arguments.len() != num_of_args as usize {
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
-            expected: 1,
+            expected: num_of_args,
             span,
         }));
     }
-    let ctx = ctx
+
+    let mut ctx = ctx
         .with_help_text("")
         .with_type_annotation(type_engine.new_unknown());
-    let exp = ty::TyExpression::type_check(handler, ctx, &arguments[0])?;
+    let key_exp = ty::TyExpression::type_check(handler, ctx.by_ref(), &arguments[0])?;
     let key_ty = type_engine
-        .to_typeinfo(exp.return_type, &span)
+        .to_typeinfo(key_exp.return_type, &span)
         .map_err(|e| handler.emit_err(e.into()))
         .unwrap_or_else(TypeInfo::ErrorRecovery);
     if !key_ty.eq(&TypeInfo::B256, &PartialEqWithEnginesContext::new(engines)) {
@@ -1285,12 +1291,22 @@ fn type_check_state_load_word(
             hint: "Argument type must be B256, a key into the state storage".to_string(),
         }));
     }
+
+    let offset_exp = if num_of_args == 2 {
+        // Type check the second argument which is the offset.
+        let ctx = ctx.with_type_annotation(type_engine.id_of_u64());
+        ty::TyExpression::type_check(handler, ctx, &arguments[1])?
+    } else {
+        ty::TyExpression::u64_literal(0, Span::dummy(), engines)
+    };
+
     let intrinsic_function = ty::TyIntrinsicFunctionKind {
         kind,
-        arguments: vec![exp],
+        arguments: vec![key_exp, offset_exp],
         type_arguments: vec![],
         span,
     };
+
     Ok((intrinsic_function, type_engine.id_of_u64()))
 }
 
