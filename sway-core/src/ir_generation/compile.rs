@@ -1,32 +1,41 @@
-use crate::{
-    decl_engine::{DeclEngineGet, DeclId, DeclRefFunction},
-    ir_generation::{KeyedTyFunctionDecl, PanickingFunctionCache},
-    language::{ty, Visibility},
-    metadata::MetadataManager,
-    namespace::ResolvedDeclaration,
-    semantic_analysis::namespace,
-    type_system::TypeId,
-    types::{LogId, MessageId},
-    Engines, PanicOccurrences, PanickingCallOccurrences,
-};
-
 use super::{
     const_eval::{compile_const_decl, LookupEnv},
     convert::convert_resolved_type_id,
     function::FnCompiler,
     CompiledFunctionCache,
 };
-
+use crate::{
+    decl_engine::{DeclEngineGet, DeclId, DeclRefFunction},
+    ir_generation::{
+        const_eval::compile_constant_expression_to_constant, KeyedTyFunctionDecl,
+        PanickingFunctionCache,
+    },
+    language::{
+        ty::{self, StructDecl, TyDecl},
+        Visibility,
+    },
+    metadata::MetadataManager,
+    namespace::ResolvedDeclaration,
+    semantic_analysis::namespace,
+    transform::AttributeKind,
+    type_system::TypeId,
+    types::{CheckDecl, LogId, MessageId},
+    Engines, PanicOccurrences, PanickingCallOccurrences, TypeInfo,
+};
+use std::{
+    cell::Cell,
+    collections::{BTreeSet, HashMap},
+    sync::Arc,
+};
+use sway_ast::attribute::REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE;
 use sway_error::{error::CompileError, handler::Handler};
 use sway_ir::{metadata::combine as md_combine, *};
-use sway_types::{Ident, Span, Spanned};
-
-use std::{cell::Cell, collections::HashMap, sync::Arc};
+use sway_types::{integer_bits::IntegerBits, Ident, Span, Spanned};
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_script(
     engines: &Engines,
-    context: &mut Context,
+    ctx: &mut Context,
     entry_function: &DeclId<ty::TyFunctionDecl>,
     namespace: &namespace::Namespace,
     logged_types_map: &HashMap<TypeId, LogId>,
@@ -36,17 +45,15 @@ pub(super) fn compile_script(
     panicking_fn_cache: &mut PanickingFunctionCache,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
     compiled_fn_cache: &mut CompiledFunctionCache,
+    md_mgr: &mut MetadataManager,
+    module: Module,
 ) -> Result<Module, Vec<CompileError>> {
-    let module = Module::new(context, Kind::Script);
-
-    compile_constants_for_package(engines, context, module, namespace)?;
-
-    let mut md_mgr = MetadataManager::default();
+    compile_constants_for_package(engines, ctx, module, namespace)?;
 
     compile_configurables(
         engines,
-        context,
-        &mut md_mgr,
+        ctx,
+        md_mgr,
         module,
         namespace.current_package_root_module(),
         logged_types_map,
@@ -59,8 +66,8 @@ pub(super) fn compile_script(
     .map_err(|err| vec![err])?;
     compile_entry_function(
         engines,
-        context,
-        &mut md_mgr,
+        ctx,
+        md_mgr,
         module,
         entry_function,
         logged_types_map,
@@ -73,8 +80,8 @@ pub(super) fn compile_script(
     )?;
     compile_tests(
         engines,
-        context,
-        &mut md_mgr,
+        ctx,
+        md_mgr,
         module,
         logged_types_map,
         messages_types_map,
@@ -101,17 +108,14 @@ pub(super) fn compile_predicate(
     panicking_fn_cache: &mut PanickingFunctionCache,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
     compiled_fn_cache: &mut CompiledFunctionCache,
+    md_mgr: &mut MetadataManager,
+    module: Module,
 ) -> Result<Module, Vec<CompileError>> {
-    let module = Module::new(context, Kind::Predicate);
-
     compile_constants_for_package(engines, context, module, namespace)?;
-
-    let mut md_mgr = MetadataManager::default();
-
     compile_configurables(
         engines,
         context,
-        &mut md_mgr,
+        md_mgr,
         module,
         namespace.current_package_root_module(),
         logged_types,
@@ -125,7 +129,7 @@ pub(super) fn compile_predicate(
     compile_entry_function(
         engines,
         context,
-        &mut md_mgr,
+        md_mgr,
         module,
         entry_function,
         &HashMap::new(),
@@ -139,7 +143,7 @@ pub(super) fn compile_predicate(
     compile_tests(
         engines,
         context,
-        &mut md_mgr,
+        md_mgr,
         module,
         logged_types,
         messages_types,
@@ -168,17 +172,14 @@ pub(super) fn compile_contract(
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
     engines: &Engines,
     compiled_fn_cache: &mut CompiledFunctionCache,
+    md_mgr: &mut MetadataManager,
+    module: Module,
 ) -> Result<Module, Vec<CompileError>> {
-    let module = Module::new(context, Kind::Contract);
-
     compile_constants_for_package(engines, context, module, namespace)?;
-
-    let mut md_mgr = MetadataManager::default();
-
     compile_configurables(
         engines,
         context,
-        &mut md_mgr,
+        md_mgr,
         module,
         namespace.current_package_root_module(),
         logged_types_map,
@@ -203,7 +204,7 @@ pub(super) fn compile_contract(
         compile_entry_function(
             engines,
             context,
-            &mut md_mgr,
+            md_mgr,
             module,
             entry_function,
             logged_types_map,
@@ -220,7 +221,7 @@ pub(super) fn compile_contract(
         for decl in abi_entries {
             compile_encoding_v0_abi_method(
                 context,
-                &mut md_mgr,
+                md_mgr,
                 module,
                 decl,
                 logged_types_map,
@@ -240,7 +241,7 @@ pub(super) fn compile_contract(
                 if decl.is_fallback() {
                     compile_encoding_v0_abi_method(
                         context,
-                        &mut md_mgr,
+                        md_mgr,
                         module,
                         &decl_id,
                         logged_types_map,
@@ -259,7 +260,7 @@ pub(super) fn compile_contract(
     compile_tests(
         engines,
         context,
-        &mut md_mgr,
+        md_mgr,
         module,
         logged_types_map,
         messages_types_map,
@@ -276,7 +277,7 @@ pub(super) fn compile_contract(
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_library(
     engines: &Engines,
-    context: &mut Context,
+    ctx: &mut Context,
     namespace: &namespace::Namespace,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
@@ -285,17 +286,14 @@ pub(super) fn compile_library(
     panicking_fn_cache: &mut PanickingFunctionCache,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
     compiled_fn_cache: &mut CompiledFunctionCache,
+    md_mgr: &mut MetadataManager,
+    module: Module,
 ) -> Result<Module, Vec<CompileError>> {
-    let module = Module::new(context, Kind::Library);
-
-    compile_constants_for_package(engines, context, module, namespace)?;
-
-    let mut md_mgr = MetadataManager::default();
-
+    compile_constants_for_package(engines, ctx, module, namespace)?;
     compile_tests(
         engines,
-        context,
-        &mut md_mgr,
+        ctx,
+        md_mgr,
         module,
         logged_types_map,
         messages_types_map,
@@ -574,6 +572,214 @@ pub(super) fn compile_entry_function(
         compiled_fn_cache,
     )
     .map(|f| f.expect("entry point should never contain generics"))
+}
+
+pub fn run_ir_decl_checks(
+    engines: &Engines,
+    context: &mut Context,
+    md_mgr: &mut MetadataManager,
+    module: Module,
+    decls_to_check: &[CheckDecl],
+) -> Option<Vec<CompileError>> {
+    // check types
+    for check in decls_to_check.iter() {
+        let is_decode_trivial_table = check
+            .is_decode_trivial_table
+            .iter()
+            .filter_map(|(key, expr)| {
+                let expr = compile_constant_expression_to_constant(
+                    engines, context, md_mgr, module, None, None, expr,
+                )
+                .ok()?
+                .get_content(context)
+                .as_bool()?;
+                Some((key.clone(), expr))
+            })
+            .collect::<HashMap<String, bool>>();
+
+        match &check.decl {
+            TyDecl::StructDecl(StructDecl { decl_id }) => {
+                let has_att_decl = engines.de().get_struct(decl_id);
+                let fullname = engines.help_out(TypeInfo::Struct(*decl_id)).to_string();
+                let has_att_pid = has_att_decl.span.source_id().map(|x| x.program_id());
+
+                let atts = has_att_decl
+                    .attributes
+                    .all_by_kind(|att| matches!(att.kind, AttributeKind::Require));
+
+                for (_, atts) in atts {
+                    for att in atts.iter() {
+                        for arg in att.args.iter() {
+                            if arg.name.as_str() == REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE
+                                && !*is_decode_trivial_table.get(&fullname).unwrap()
+                            {
+                                let mut infos = vec![];
+                                let mut helps = vec![];
+                                let mut bottom_helps = BTreeSet::new();
+                                let mut never_trivial = BTreeSet::new();
+
+                                for field in has_att_decl.fields.iter() {
+                                    let tid = field.type_argument.type_id;
+                                    let field_type_info = engines.te().get(tid);
+                                    let fullname = engines.help_out(tid).to_string();
+                                    if *is_decode_trivial_table.get(&fullname).unwrap() {
+                                        continue;
+                                    }
+
+                                    infos.push((
+                                        field.name.span().clone(),
+                                        "This field is not trivially decodable.".to_string(),
+                                    ));
+
+                                    push_help_for_non_trivially_decodable_type(
+                                        engines,
+                                        has_att_pid,
+                                        &mut helps,
+                                        &mut bottom_helps,
+                                        &mut never_trivial,
+                                        &field.type_argument.span,
+                                        &field_type_info,
+                                        field.type_argument.span.as_str(),
+                                        &is_decode_trivial_table,
+                                    );
+                                }
+
+                                return Some(vec![CompileError::TrivialCheckFailed {
+                                    span: has_att_decl.call_path.suffix.span(),
+                                    infos,
+                                    helps,
+                                    never_trivial,
+                                    bottom_helps: bottom_helps.into_iter().collect(),
+                                }]);
+                            }
+                        }
+                    }
+                }
+            }
+            _ => todo!(),
+        }
+    }
+
+    None
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_help_for_non_trivially_decodable_type(
+    engines: &Engines,
+    has_att_pid: Option<sway_types::ProgramId>,
+    helps: &mut Vec<(Span, String)>,
+    bottom_helps: &mut BTreeSet<String>,
+    never_trivial: &mut BTreeSet<String>,
+    type_span: &Span,
+    type_info: &TypeInfo,
+    type_as_in_src: &str,
+    table: &HashMap<String, bool>,
+) {
+    match &type_info {
+        TypeInfo::Boolean => {
+            helps.push((
+                type_span.clone(),
+                "Consider changing this type to `TrivialBool`.".to_string(),
+            ));
+            never_trivial.insert("bool".to_string());
+        }
+        TypeInfo::UnsignedInteger(IntegerBits::Sixteen) => {
+            helps.push((
+                type_span.clone(),
+                "Consider changing this type to `u64`.".to_string(),
+            ));
+            never_trivial.insert("u16".to_string());
+        }
+        TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo) => {
+            helps.push((
+                type_span.clone(),
+                "Consider changing this type to `u64`.".to_string(),
+            ));
+            never_trivial.insert("u32".to_string());
+        }
+        TypeInfo::Enum(_) => {
+            helps.push((
+                type_span.clone(),
+                format!(
+                    "Consider wrapping this type like `TrivialEnum<{}>`.",
+                    type_as_in_src,
+                ),
+            ));
+            bottom_helps.insert("Enums are represented as tagged unions and because of that they cannot be trivially decoded. But struct fields can still be trivially decodable by wrapping their original type with `TrivialEnum`, and the original enum value can be retrieved later by calling `unwrap`.".to_string());
+        }
+        TypeInfo::Struct(decl_id) => {
+            let decl = engines.de().get(decl_id);
+            let decl_pid = decl.span.source_id().map(|x| x.program_id());
+
+            //Only suggest change if the type is in the same workspace
+            match (has_att_pid, decl_pid) {
+                (Some(a), Some(b)) if a == b => {
+                    helps.push((
+                        type_span.clone(),
+                        format!(
+                            "Consider changing `{}` to make it trivially decodable.",
+                            type_as_in_src
+                        ),
+                    ));
+                }
+                _ => {}
+            }
+
+            // special types
+            let full_type = engines.help_out(type_info).to_string();
+            if full_type.starts_with("std::vec::Vec<") {
+                let aray_type_name = full_type
+                    .replace("std::vec::Vec<", "[")
+                    .replace(">", "; 64]");
+                helps.push((
+                    type_span.clone(),
+                    format!("`Vec` is never trivially decodable. Consider using array instead, e.g.: `{aray_type_name}`.")
+                ));
+            } else if full_type.starts_with("std::string::String") {
+                helps.push((
+                    type_span.clone(),
+                    "`String` is never trivially decodable. Consider using array instead, e.g.: `str[64]`.".to_string()
+                ));
+            }
+        }
+        TypeInfo::Tuple(items) => {
+            for item in items {
+                let type_info = engines.te().get(item.type_id);
+                let fullname = engines.help_out(item.type_id).to_string();
+                if !*table.get(&fullname).unwrap() {
+                    push_help_for_non_trivially_decodable_type(
+                        engines,
+                        has_att_pid,
+                        helps,
+                        bottom_helps,
+                        never_trivial,
+                        &item.span,
+                        &type_info,
+                        item.span.as_str(),
+                        table,
+                    );
+                }
+            }
+        }
+        TypeInfo::Array(item, _) => {
+            let type_info = engines.te().get(item.type_id);
+            let fullname = engines.help_out(item.type_id).to_string();
+            if !*table.get(&fullname).unwrap() {
+                push_help_for_non_trivially_decodable_type(
+                    engines,
+                    has_att_pid,
+                    helps,
+                    bottom_helps,
+                    never_trivial,
+                    &item.span,
+                    &type_info,
+                    item.span.as_str(),
+                    table,
+                );
+            }
+        }
+        _ => {}
+    }
 }
 
 #[allow(clippy::too_many_arguments)]

@@ -26,7 +26,7 @@ fn main() -> u64 {
 // check: $(struct_init=$VAL) = get_local __ptr { u64 }, __struct_init_0
 // check: $(a_ptr=$VAL) = get_local __ptr u64, a_
 // check: $(a_loaded=$VAL) = load $a_ptr
-// check: $(init_aggr=$VAL) = init_aggr v109v1 [$a_loaded]
+// check: $(init_aggr=$VAL) = init_aggr v110v1 [$a_loaded]
 
 // check: $(init_aggr_val=$VAL) = load $init_aggr
 // check: $(a___var=$VAL) = get_local __ptr { u64 }, a__

@@ -26,16 +26,16 @@ library {
 script {
     pub entry fn __entry() -> __ptr never, !3 {
         entry():
-        v11v1 = call main_0(), !6
-        v14v1 = const u64 0, !7
-        v15v1 = const u64 0, !8
-        retd v14v1 v15v1, !9
+        v12v1 = call main_0(), !6
+        v15v1 = const u64 0, !7
+        v16v1 = const u64 0, !8
+        retd v15v1 v16v1, !9
     }
 
     entry_orig fn main_0() -> (), !13 {
         entry():
-        v9v1 = const unit ()
-        ret () v9v1
+        v10v1 = const unit ()
+        ret () v10v1
     }
 }
 

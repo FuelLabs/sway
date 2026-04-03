@@ -679,7 +679,8 @@ fn effects_of_intrinsic(intr: &sway_ast::Intrinsic) -> HashSet<Effect> {
         | Dbg
         | Alloc
         | RuntimeMemoryId
-        | EncodingMemoryId => HashSet::new(),
+        | EncodingMemoryId
+        | EnumVariantsValues => HashSet::new(),
     }
 }
 

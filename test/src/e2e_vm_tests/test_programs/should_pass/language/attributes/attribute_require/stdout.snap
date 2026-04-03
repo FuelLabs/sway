@@ -1,0 +1,120 @@
+---
+source: test/src/snapshot/mod.rs
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require
+   Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-vec)
+   Compiling script attribute_require (test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require)
+error: Type is not trivially decodable
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require/src/main.sw:4:8
+   |
+...
+ 4 | struct MyStruct {
+   |        ^^^^^^^^ `MyStruct` is not trivially decodable.
+   |        -------- help: Consider the suggestions below to make this struct trivially decodable.
+ 5 |     f0: bool,
+   |     -- info: This field is not trivially decodable.
+   |         ---- help: Consider changing this type to `TrivialBool`.
+ 6 |     f1: u8,
+ 7 |     f2: u16,
+   |     -- info: This field is not trivially decodable.
+   |         --- help: Consider changing this type to `u64`.
+ 8 |     f3: u32,
+   |     -- info: This field is not trivially decodable.
+   |         --- help: Consider changing this type to `u64`.
+...
+13 |     f8: NonTrivialStruct,
+   |     -- info: This field is not trivially decodable.
+   |         ---------------- help: Consider changing `NonTrivialStruct` to make it trivially decodable.
+14 |     f9: SomeEnum,
+   |     -- info: This field is not trivially decodable.
+   |         -------- help: Consider wrapping this type like `TrivialEnum<SomeEnum>`.
+15 | 
+16 |     f11: Vec<u64>,
+   |     --- info: This field is not trivially decodable.
+   |          -------- help: `Vec` is never trivially decodable. Consider using array instead, e.g.: `[u64; 64]`.
+17 |     f12: Result<Vec<u64>, u64>,
+   |     --- info: This field is not trivially decodable.
+   |          --------------------- help: Consider wrapping this type like `TrivialEnum<Result<Vec<u64>, u64>>`.
+18 |     f13: Result<u64, u64>,
+   |     --- info: This field is not trivially decodable.
+   |          ---------------- help: Consider wrapping this type like `TrivialEnum<Result<u64, u64>>`.
+19 | 
+20 |     f14: (u64, NonTrivialStruct),
+   |     --- info: This field is not trivially decodable.
+   |                ---------------- help: Consider changing `NonTrivialStruct` to make it trivially decodable.
+21 |     f15: [NonTrivialStruct; 1],
+   |     --- info: This field is not trivially decodable.
+   |           ---------------- help: Consider changing `NonTrivialStruct` to make it trivially decodable.
+22 |     f16: [(u64, NonTrivialStruct); 2],
+   |     --- info: This field is not trivially decodable.
+   |                 ---------------- help: Consider changing `NonTrivialStruct` to make it trivially decodable.
+   |
+   = help: Enums are represented as tagged unions and because of that they cannot be trivially decoded. But struct fields can still be trivially decodable by wrapping their original type with `TrivialEnum`, and the original enum value can be retrieved later by calling `unwrap`.
+   = help: `bool`, `u16`, `u32` are never trivially decodable.
+   = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
+____
+
+  Aborting due to 1 error.
+error: Failed to compile attribute_require
+
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require
+   Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-vec)
+   Compiling script attribute_require (test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require)
+error: Type is not trivially decodable
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require/src/main.sw:4:8
+   |
+...
+ 4 | struct MyStruct {
+   |        ^^^^^^^^ `MyStruct` is not trivially decodable.
+   |        -------- help: Consider the suggestions below to make this struct trivially decodable.
+ 5 |     f0: bool,
+   |     -- info: This field is not trivially decodable.
+   |         ---- help: Consider changing this type to `TrivialBool`.
+ 6 |     f1: u8,
+ 7 |     f2: u16,
+   |     -- info: This field is not trivially decodable.
+   |         --- help: Consider changing this type to `u64`.
+ 8 |     f3: u32,
+   |     -- info: This field is not trivially decodable.
+   |         --- help: Consider changing this type to `u64`.
+...
+13 |     f8: NonTrivialStruct,
+   |     -- info: This field is not trivially decodable.
+   |         ---------------- help: Consider changing `NonTrivialStruct` to make it trivially decodable.
+14 |     f9: SomeEnum,
+   |     -- info: This field is not trivially decodable.
+   |         -------- help: Consider wrapping this type like `TrivialEnum<SomeEnum>`.
+15 | 
+16 |     f11: Vec<u64>,
+   |     --- info: This field is not trivially decodable.
+   |          -------- help: `Vec` is never trivially decodable. Consider using array instead, e.g.: `[u64; 64]`.
+17 |     f12: Result<Vec<u64>, u64>,
+   |     --- info: This field is not trivially decodable.
+   |          --------------------- help: Consider wrapping this type like `TrivialEnum<Result<Vec<u64>, u64>>`.
+18 |     f13: Result<u64, u64>,
+   |     --- info: This field is not trivially decodable.
+   |          ---------------- help: Consider wrapping this type like `TrivialEnum<Result<u64, u64>>`.
+19 | 
+20 |     f14: (u64, NonTrivialStruct),
+   |     --- info: This field is not trivially decodable.
+   |                ---------------- help: Consider changing `NonTrivialStruct` to make it trivially decodable.
+21 |     f15: [NonTrivialStruct; 1],
+   |     --- info: This field is not trivially decodable.
+   |           ---------------- help: Consider changing `NonTrivialStruct` to make it trivially decodable.
+22 |     f16: [(u64, NonTrivialStruct); 2],
+   |     --- info: This field is not trivially decodable.
+   |                 ---------------- help: Consider changing `NonTrivialStruct` to make it trivially decodable.
+   |
+   = help: Enums are represented as tagged unions and because of that they cannot be trivially decoded. But struct fields can still be trivially decodable by wrapping their original type with `TrivialEnum`, and the original enum value can be retrieved later by calling `unwrap`.
+   = help: `bool`, `u16`, `u32` are never trivially decodable.
+   = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
+____
+
+  Aborting due to 1 error.
+error: Failed to compile attribute_require

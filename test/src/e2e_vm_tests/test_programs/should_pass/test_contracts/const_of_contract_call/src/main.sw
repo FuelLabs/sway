@@ -139,6 +139,35 @@ abi MyContract {
     /* START ENUM_U64_U64_U64 */
     fn in_enum_u64_u64_u64(v: E3<u64, u64, u64>) -> E3<u64, u64, u64>;
     /* END ENUM_U64_U64_U64 */
+
+     /* START ORDER_ARGS_WITHOUT_TRIVIAL_ENUM */
+    fn order_args_without_trivial_enum(args: OrderArgsWithoutTrivialEnum) -> OrderArgsWithoutTrivialEnum;
+    /* END ORDER_ARGS_WITHOUT_TRIVIAL_ENUM */
+
+    /* START ORDER_ARGS_WITH_TRIVIAL_ENUM */
+    fn order_args_with_trivial_enum(args: OrderArgsWithTrivialEnum) -> OrderArgsWithTrivialEnum;
+    /* END ORDER_ARGS_WITH_TRIVIAL_ENUM */
+}
+
+pub struct OrderArgsWithoutTrivialEnum {
+    pub price: u64,
+    pub quantity: u64,
+    pub order_type: OrderType,
+}
+
+pub struct OrderArgsWithTrivialEnum {
+    pub price: u64,
+    pub quantity: u64,
+    pub order_type: TrivialEnum<OrderType>,
+}
+
+pub enum OrderType {
+    Limit: (u64, u64),
+    Spot: (),
+    FillOrKill: (),
+    PostOnly: (),
+    Market: (),
+    BoundedMarket: (u64, u64),
 }
 
 impl MyContract for Contract {
@@ -257,6 +286,20 @@ impl MyContract for Contract {
     /* START ENUM_U64_U64_U64 */
     fn in_enum_u64_u64_u64(v: E3<u64, u64, u64>) -> E3<u64, u64, u64> { v }
     /* END ENUM_U64_U64_U64 */
+
+    /* START ORDER_ARGS_WITHOUT_TRIVIAL_ENUM */
+    fn order_args_without_trivial_enum(args: OrderArgsWithoutTrivialEnum) -> OrderArgsWithoutTrivialEnum { 
+        __log(args.order_type);
+        args
+    }
+    /* END ORDER_ARGS_WITHOUT_TRIVIAL_ENUM */
+
+    /* START ORDER_ARGS_WITH_TRIVIAL_ENUM */
+    fn order_args_with_trivial_enum(args: OrderArgsWithTrivialEnum) -> OrderArgsWithTrivialEnum { 
+        __log(args.order_type.unwrap());
+        args
+    }
+    /* END ORDER_ARGS_WITH_TRIVIAL_ENUM */
 }
 
 /* START BOOL */
@@ -461,3 +504,27 @@ fn in_enum_u64_u64_u64() {
     let _ = abi(MyContract, CONTRACT_ID).in_enum_u64_u64_u64(E3::A(0));
 }
 /* END ENUM_U64_U64_U64 */
+
+/* START ORDER_ARGS_WITHOUT_TRIVIAL_ENUM */
+#[test]
+fn order_args_without_trivial_enum() {
+    let order_args = OrderArgsWithoutTrivialEnum {
+        price: 0,
+        quantity: 0,
+        order_type: OrderType::Spot,
+    };
+    let _ = abi(MyContract, CONTRACT_ID).order_args_without_trivial_enum(order_args);
+}
+/* END ORDER_ARGS_WITHOUT_TRIVIAL_ENUM */
+
+/* START ORDER_ARGS_WITH_TRIVIAL_ENUM */
+#[test]
+fn order_args_with_trivial_enum() {
+    let order_args = OrderArgsWithTrivialEnum {
+        price: 0,
+        quantity: 0,
+        order_type: TrivialEnum::from(OrderType::Spot),
+    };
+    let _ = abi(MyContract, CONTRACT_ID).order_args_with_trivial_enum(order_args);
+}
+/* END ORDER_ARGS_WITH_TRIVIAL_ENUM */
