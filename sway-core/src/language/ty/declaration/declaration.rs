@@ -9,7 +9,10 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::HashMap, fmt, hash::{Hash, Hasher}, sync::Arc
+    collections::HashMap,
+    fmt,
+    hash::{Hash, Hasher},
+    sync::Arc,
 };
 use sway_ast::attribute::REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE;
 
@@ -532,7 +535,11 @@ impl CollectTypesMetadata for TyDecl {
                     for att in atts.iter() {
                         for arg in att.args.iter() {
                             if arg.name.as_str() == REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE {
-                                let is_decode_trivial_table = generate_is_decode_trivial_table(handler, ctx, decl.decl_id, &struct_decl);
+                                let is_decode_trivial_table = generate_is_decode_trivial_table(
+                                    ctx,
+                                    decl.decl_id,
+                                    &struct_decl,
+                                );
 
                                 meta.push(TypeMetadata::CheckDecl(CheckDecl {
                                     decl: TyDecl::StructDecl(decl.clone()),
@@ -561,12 +568,17 @@ impl CollectTypesMetadata for TyDecl {
     }
 }
 
-fn generate_is_decode_trivial_table(handler: &Handler, ctx: &mut CollectTypesMetadataContext<'_>, decl_id: DeclId<TyStructDecl>, struct_decl: &Arc<TyStructDecl>) -> HashMap<String, TyExpression> {
+fn generate_is_decode_trivial_table(
+    ctx: &mut CollectTypesMetadataContext<'_>,
+    decl_id: DeclId<TyStructDecl>,
+    struct_decl: &Arc<TyStructDecl>,
+) -> HashMap<String, TyExpression> {
     let mut map = HashMap::new();
 
-    let mut types = vec![
-        ctx.engines.te().insert(ctx.engines, TypeInfo::Struct(decl_id), None)
-    ];
+    let mut types = vec![ctx
+        .engines
+        .te()
+        .insert(ctx.engines, TypeInfo::Struct(decl_id), None)];
 
     for tid in struct_decl.fields.iter() {
         types.push(tid.type_argument.type_id);
@@ -588,17 +600,15 @@ fn generate_is_decode_trivial_table(handler: &Handler, ctx: &mut CollectTypesMet
                         suffix: BaseIdent::new_no_span("is_decode_trivial".into()),
                         callpath_type: crate::language::CallPathType::Ambiguous,
                     },
-                    type_arguments: TypeArgs::Regular(vec![
-                        GenericArgument::Type(
-                            GenericTypeArgument {
-                                type_id: tid,
-                                initial_type_id: tid,
-                                span: Span::dummy(),
-                                call_path_tree: None
-                            }
-                        )
-                    ]),
-                    span: Span::dummy()
+                    type_arguments: TypeArgs::Regular(vec![GenericArgument::Type(
+                        GenericTypeArgument {
+                            type_id: tid,
+                            initial_type_id: tid,
+                            span: Span::dummy(),
+                            call_path_tree: None,
+                        },
+                    )]),
+                    span: Span::dummy(),
                 },
                 &[],
                 Span::dummy(),
@@ -609,7 +619,7 @@ fn generate_is_decode_trivial_table(handler: &Handler, ctx: &mut CollectTypesMet
             }
         }
     }
-    
+
     map
 }
 
