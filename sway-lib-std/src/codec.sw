@@ -6923,9 +6923,7 @@ pub struct TrivialEnum<T> {
 
 impl<T> TrivialEnum<T> {
     pub fn from(value: T) -> TrivialEnum<T> {
-        TrivialEnum {
-            value
-        }
+        TrivialEnum { value }
     }
 }
 
