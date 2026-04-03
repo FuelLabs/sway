@@ -529,7 +529,6 @@ fn print_instruction(op: &Instruction) {
         Instruction::SUPD(x) => f("SUPD", x.unpack()),
         Instruction::SUPI(x) => f("SUPI", x.unpack()),
         Instruction::SPLD(x) => f("SPLD", x.unpack()),
-        Instruction::SPCP(x) => f("SPCP", x.unpack()),
         Instruction::TR(x) => f("TR", x.unpack()),
         Instruction::TRO(x) => f("TRO", x.unpack()),
         Instruction::ECK1(x) => f("ECK1", x.unpack()),
