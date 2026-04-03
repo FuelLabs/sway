@@ -9,8 +9,7 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 use std::{
-    fmt,
-    hash::{Hash, Hasher},
+    collections::HashMap, fmt, hash::{Hash, Hasher}, sync::Arc
 };
 use sway_ast::attribute::REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE;
 
@@ -533,31 +532,8 @@ impl CollectTypesMetadata for TyDecl {
                     for att in atts.iter() {
                         for arg in att.args.iter() {
                             if arg.name.as_str() == REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE {
-                                let is_decode_trivial_table = struct_decl.fields.iter().map(|field| {
-                                    let id_decode_trivial = TyExpression::type_check_function_application(
-                                        handler,
-                                        ctx.type_check_ctx.by_ref(),
-                                        TypeBinding {
-                                            inner: CallPath {
-                                                prefixes: vec![
-                                                    BaseIdent::new_no_span("std".into()),
-                                                    BaseIdent::new_no_span("codec".into()),
-                                                ],
-                                                suffix: BaseIdent::new_no_span("is_decode_trivial".into()),
-                                                callpath_type: crate::language::CallPathType::Ambiguous,
-                                            },
-                                            type_arguments: TypeArgs::Regular(vec![
-                                                GenericArgument::Type(
-                                                    field.type_argument.clone()
-                                                )
-                                            ]),
-                                            span: Span::dummy()
-                                        },
-                                        &[],
-                                        Span::dummy(),
-                                    ).unwrap();
-                                    id_decode_trivial
-                                }).collect();
+                                let is_decode_trivial_table = generate_is_decode_trivial_table(handler, ctx, decl.decl_id, &struct_decl);
+
                                 meta.push(TypeMetadata::CheckDecl(CheckDecl {
                                     decl: TyDecl::StructDecl(decl.clone()),
                                     is_decode_trivial_table,
@@ -583,6 +559,58 @@ impl CollectTypesMetadata for TyDecl {
         };
         Ok(metadata)
     }
+}
+
+fn generate_is_decode_trivial_table(handler: &Handler, ctx: &mut CollectTypesMetadataContext<'_>, decl_id: DeclId<TyStructDecl>, struct_decl: &Arc<TyStructDecl>) -> HashMap<String, TyExpression> {
+    let mut map = HashMap::new();
+
+    let mut types = vec![
+        ctx.engines.te().insert(ctx.engines, TypeInfo::Struct(decl_id), None)
+    ];
+
+    for tid in struct_decl.fields.iter() {
+        types.push(tid.type_argument.type_id);
+    }
+
+    for tid in types {
+        for tid in tid.extract_inner_types(ctx.engines, IncludeSelf::Yes) {
+            let fullname = ctx.engines.help_out(tid).to_string();
+            let handler = Handler::default();
+            let expr = TyExpression::type_check_function_application(
+                &handler,
+                ctx.type_check_ctx.by_ref(),
+                TypeBinding {
+                    inner: CallPath {
+                        prefixes: vec![
+                            BaseIdent::new_no_span("std".into()),
+                            BaseIdent::new_no_span("codec".into()),
+                        ],
+                        suffix: BaseIdent::new_no_span("is_decode_trivial".into()),
+                        callpath_type: crate::language::CallPathType::Ambiguous,
+                    },
+                    type_arguments: TypeArgs::Regular(vec![
+                        GenericArgument::Type(
+                            GenericTypeArgument {
+                                type_id: tid,
+                                initial_type_id: tid,
+                                span: Span::dummy(),
+                                call_path_tree: None
+                            }
+                        )
+                    ]),
+                    span: Span::dummy()
+                },
+                &[],
+                Span::dummy(),
+            );
+
+            if let Ok(expr) = expr {
+                map.insert(fullname, expr);
+            }
+        }
+    }
+    
+    map
 }
 
 impl GetDeclIdent for TyDecl {
