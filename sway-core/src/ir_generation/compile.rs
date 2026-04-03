@@ -5,22 +5,11 @@ use super::{
     CompiledFunctionCache,
 };
 use crate::{
-    decl_engine::{DeclEngineGet, DeclId, DeclRefFunction},
-    ir_generation::{
-        const_eval::compile_constant_expression_to_constant, convert::convert_resolved_type_info,
-        KeyedTyFunctionDecl, PanickingFunctionCache,
-    },
-    language::{
-        ty::{self, StructDecl, TyDecl},
-        Visibility,
-    },
-    metadata::MetadataManager,
-    namespace::ResolvedDeclaration,
-    semantic_analysis::namespace,
-    transform::AttributeKind,
-    type_system::TypeId,
-    types::{CheckDecl, LogId, MessageId},
-    Engines, PanicOccurrences, PanickingCallOccurrences, TypeInfo,
+    Engines, PanicOccurrences, PanickingCallOccurrences, TypeInfo, decl_engine::{DeclEngineGet, DeclId, DeclRefFunction}, ir_generation::{
+        KeyedTyFunctionDecl, PanickingFunctionCache, const_eval::compile_constant_expression_to_constant, convert::convert_resolved_type_info
+    }, language::{
+        Visibility, ty::{self, StructDecl, TyDecl, TyExpression}
+    }, metadata::MetadataManager, namespace::ResolvedDeclaration, semantic_analysis::namespace, transform::AttributeKind, type_system::TypeId, types::{CheckDecl, LogId, MessageId}
 };
 use std::{
     cell::Cell,
@@ -533,30 +522,6 @@ pub(super) fn compile_function(
     }
 }
 
-fn is_type_trivially_decodable(
-    engines: &Engines,
-    context: &mut Context,
-    md_mgr: &mut MetadataManager,
-    module: Module,
-    type_info: &TypeInfo,
-) -> bool {
-    let encoding_id = crate::ir_generation::get_encoding_representation(engines, type_info);
-
-    let t = convert_resolved_type_info(
-        engines,
-        context,
-        md_mgr,
-        module,
-        None,
-        type_info,
-        &Span::dummy(),
-    )
-    .unwrap();
-    let runtime_id = Some(crate::ir_generation::get_runtime_representation(context, t));
-
-    encoding_id == runtime_id
-}
-
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_entry_function(
     engines: &Engines,
@@ -606,45 +571,47 @@ pub fn run_ir_decl_checks(
     decls_to_check: &[CheckDecl],
 ) -> Option<Vec<CompileError>> {
     // check types
-    for check in decls_to_check.iter() {
+    for check in decls_to_check.into_iter() {
         let is_decode_trivial_table = check
             .is_decode_trivial_table
             .iter()
-            .map(|expr| {
-                compile_constant_expression_to_constant(
-                    engines, context, md_mgr, module, None, None, expr,
-                )
-                .unwrap()
-                .get_content(context)
-                .as_bool()
-                .unwrap()
+            .filter_map(|(key, expr)| {
+                let expr = compile_constant_expression_to_constant(
+                        engines, context, md_mgr, module, None, None, &expr,
+                    )
+                    .ok()?
+                    .get_content(context)
+                    .as_bool()?;
+                Some((key.clone(), expr))
             })
-            .collect::<Vec<_>>();
+            .collect::<HashMap<String, bool>>();
 
         match &check.decl {
             TyDecl::StructDecl(StructDecl { decl_id }) => {
                 let has_att_decl = engines.de().get_struct(decl_id);
+                let fullname = engines.help_out(TypeInfo::Struct(*decl_id)).to_string();
                 let has_att_pid = has_att_decl.span.source_id().map(|x| x.program_id());
 
                 let atts = has_att_decl
                     .attributes
                     .all_by_kind(|att| matches!(att.kind, AttributeKind::Require));
+
                 for (_, atts) in atts {
                     for att in atts.iter() {
                         for arg in att.args.iter() {
                             if arg.name.as_str() == REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE
-                                && !is_decode_trivial_table.iter().all(|x| *x)
+                                && !*is_decode_trivial_table.get(&fullname).unwrap()
                             {
                                 let mut infos = vec![];
                                 let mut helps = vec![];
                                 let mut bottom_helps = BTreeSet::new();
                                 let mut never_trivial = BTreeSet::new();
 
-                                for (idx, field) in has_att_decl.fields.iter().enumerate() {
-                                    let field_type_info =
-                                        engines.te().get(field.type_argument.type_id);
-
-                                    if is_decode_trivial_table[idx] {
+                                for field in has_att_decl.fields.iter() {
+                                    let tid = field.type_argument.type_id;
+                                    let field_type_info = engines.te().get(tid);
+                                    let fullname = engines.help_out(tid).to_string();
+                                    if *is_decode_trivial_table.get(&fullname).unwrap() {
                                         continue;
                                     }
 
@@ -665,6 +632,7 @@ pub fn run_ir_decl_checks(
                                         &field.type_argument.span,
                                         &field_type_info,
                                         field.type_argument.span.as_str(),
+                                        &is_decode_trivial_table
                                     );
                                 }
 
@@ -700,6 +668,7 @@ fn push_help_for_non_trivially_decodable_type(
     type_span: &Span,
     type_info: &TypeInfo,
     type_as_in_src: &str,
+    table: &HashMap<String, bool>,
 ) {
     match &type_info {
         TypeInfo::Boolean => {
@@ -771,7 +740,8 @@ fn push_help_for_non_trivially_decodable_type(
         TypeInfo::Tuple(items) => {
             for item in items {
                 let type_info = engines.te().get(item.type_id);
-                if !is_type_trivially_decodable(engines, context, md_mgr, module, &type_info) {
+                let fullname = engines.help_out(item.type_id).to_string();
+                if !*table.get(&fullname).unwrap() {
                     push_help_for_non_trivially_decodable_type(
                         engines,
                         context,
@@ -784,13 +754,15 @@ fn push_help_for_non_trivially_decodable_type(
                         &item.span,
                         &type_info,
                         item.span.as_str(),
+                        table,
                     );
                 }
             }
         }
         TypeInfo::Array(item, _) => {
             let type_info = engines.te().get(item.type_id);
-            if !is_type_trivially_decodable(engines, context, md_mgr, module, &type_info) {
+            let fullname = engines.help_out(item.type_id).to_string();
+            if !*table.get(&fullname).unwrap() {
                 push_help_for_non_trivially_decodable_type(
                     engines,
                     context,
@@ -803,6 +775,7 @@ fn push_help_for_non_trivially_decodable_type(
                     &item.span,
                     &type_info,
                     item.span.as_str(),
+                    table
                 );
             }
         }
