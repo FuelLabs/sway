@@ -92,9 +92,9 @@ fuel-core-storage = { version = "0.48", default-features = false }
 fuel-core-types = { version = "0.48", default-features = false }
 
 # Dependencies from the `fuels-rs` repository:
-fuels = "0.76"
-fuels-core = "0.76"
-fuels-accounts = "0.76"
+fuels = "0.77"
+fuels-core = "0.77"
+fuels-accounts = "0.77"
 
 # Dependencies from the `fuel-vm` repository:
 fuel-asm = "0.66"
