@@ -780,6 +780,11 @@ fn clean_output(output: &str) -> String {
         raw.push('\n');
     }
 
+    // Some CI environments surface ANSI styling as literal `\x1b[..` text
+    // rather than raw escape bytes, so strip those as well.
+    let r = Regex::new(r"\\x1b\[[0-9;?]*[ -/]*[@-~]").unwrap();
+    let raw = r.replace_all(&raw, "");
+
     // Remove absolute paths from snapshot tests
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let manifest_dir: PathBuf = PathBuf::from(manifest_dir);
@@ -808,4 +813,20 @@ fn clean_output(output: &str) -> String {
     let result = r.replace(&result, "$1???");
 
     result.to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::clean_output;
+
+    #[test]
+    fn clean_output_removes_literal_ansi_escape_sequences() {
+        let output = "output:\n\\x1b[1;32mBuilding\\x1b[0m foo\n\\x1b[1m\\x1b[91merror\\x1b[0m\n";
+
+        let cleaned = clean_output(output);
+
+        assert!(cleaned.contains("Building foo"));
+        assert!(cleaned.contains("error"));
+        assert!(!cleaned.contains("\\x1b["));
+    }
 }
