@@ -235,6 +235,8 @@ jobs:
         run: cargo install --locked --path ./forc
       - name: Install Forc plugins
         run: |
+          cargo uninstall forc-mcp || true
+          rm -f "${CARGO_HOME:-$HOME/.cargo}/bin/forc-mcp"
           for dir in ./forc-plugins/*/; do
                 cargo install --locked --path "$dir"
           done
@@ -580,10 +582,9 @@ jobs:
       matrix:
         tool:
           - test: cargo test --locked --release -p forc-debug
-          - test: cargo test --locked --release -p forc-mcp -- --test-threads 1
           - test: cargo nextest run --locked --release -p sway-lsp --no-capture --profile ci --config-file sway-lsp/tests/nextest.toml
           - test: cargo test --locked --release -p forc -- --nocapture
-          - test: cargo test --locked --release --workspace --exclude forc-debug --exclude sway-lsp --exclude forc-mcp --exclude forc
+          - test: cargo test --locked --release --workspace --exclude forc-debug --exclude sway-lsp --exclude forc
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
@@ -715,14 +716,6 @@ jobs:
         with:
           toolchain: ${{ env.RUST_VERSION }}
 
-      - name: Link forc-mcp docs into Cargo target
-        run: |
-          set -euo pipefail
-          DOCS_SRC="${{ github.workspace }}/docs/book/src/forc/plugins/forc_mcp/forc_call_tool"
-          DOCS_DST="${{ github.workspace }}/target/docs/book/src/forc/plugins/forc_mcp/forc_call_tool"
-          mkdir -p "$(dirname "$DOCS_DST")"
-          ln -sfn "$DOCS_SRC" "$DOCS_DST"
-
       - name: Publish crate
         uses: FuelLabs/publish-crates@v1
         with:
@@ -850,13 +843,13 @@ jobs:
       - name: Strip release binaries x86_64-linux-gnu
         if: matrix.job.target == 'x86_64-unknown-linux-gnu'
         run: |
-          for BINARY in forc forc-fmt forc-lsp forc-debug forc-doc forc-tx forc-mcp forc-migrate forc-publish; do
+          for BINARY in forc forc-fmt forc-lsp forc-debug forc-doc forc-tx forc-migrate forc-publish; do
             strip "target/${{ matrix.job.target }}/release/$BINARY"
           done
       - name: Strip release binaries aarch64-linux-gnu
         if: matrix.job.target == 'aarch64-unknown-linux-gnu'
         run: |
-          for BINARY in forc forc-fmt forc-lsp forc-debug forc-doc forc-tx forc-mcp forc-migrate forc-publish; do
+          for BINARY in forc forc-fmt forc-lsp forc-debug forc-doc forc-tx forc-migrate forc-publish; do
             docker run --rm -v \
             "$PWD/target:/target:Z" \
             ghcr.io/cross-rs/${{ matrix.job.target }}:main \
@@ -866,7 +859,7 @@ jobs:
       - name: Strip release binaries mac
         if: matrix.job.os == 'macos-latest'
         run: |
-          for BINARY in forc forc-fmt forc-lsp forc-debug forc-doc forc-tx forc-mcp forc-migrate forc-publish; do
+          for BINARY in forc forc-fmt forc-lsp forc-debug forc-doc forc-tx forc-migrate forc-publish; do
             strip -x "target/${{ matrix.job.target }}/release/$BINARY"
           done
 
@@ -880,7 +873,7 @@ jobs:
           ZIP_FILE_NAME=forc-binaries-${{ env.PLATFORM_NAME }}_${{ env.ARCH }}.tar.gz
           echo "ZIP_FILE_NAME=$ZIP_FILE_NAME" >> $GITHUB_ENV
           mkdir -pv ./forc-binaries
-          for BINARY in forc forc-fmt forc-lsp forc-debug forc-doc forc-tx forc-mcp forc-migrate forc-publish; do
+          for BINARY in forc forc-fmt forc-lsp forc-debug forc-doc forc-tx forc-migrate forc-publish; do
             cp "target/${{ matrix.job.target }}/release/$BINARY" ./forc-binaries
           done
           tar -czvf $ZIP_FILE_NAME ./forc-binaries

@@ -1,6 +1,6 @@
 # Branch: `master` on 2026.03.26 `8e643df9de76cb6dbf7972382fed15f820230cff` (Support attributes and constants in self `impl Contract`s (#7580))
 
-```
+```text
 ═══════════════════════════════════════════════════════════════
   Running: storage_fields
 ═══════════════════════════════════════════════════════════════
