@@ -32,6 +32,8 @@ jobs:
 
       - name: Install Forc plugins
         run: |
+          cargo uninstall forc-mcp || true
+          rm -f "${CARGO_HOME:-$HOME/.cargo}/bin/forc-mcp"
           cargo install --locked --debug --git https://github.com/FuelLabs/forc forc-client
           cargo install --locked --debug --git https://github.com/FuelLabs/forc forc-crypto
           cargo install --locked --debug --path ./forc-plugins/forc-debug

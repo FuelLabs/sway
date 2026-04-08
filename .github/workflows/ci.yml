@@ -235,6 +235,8 @@ jobs:
         run: cargo install --locked --path ./forc
       - name: Install Forc plugins
         run: |
+          cargo uninstall forc-mcp || true
+          rm -f "${CARGO_HOME:-$HOME/.cargo}/bin/forc-mcp"
           for dir in ./forc-plugins/*/; do
                 cargo install --locked --path "$dir"
           done
