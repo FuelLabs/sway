@@ -72,7 +72,7 @@ The `storage_vec_s<SIZE>` projects benchmark all public methods of `StorageVec<V
 
 Each project tests 21 operations at 3 element counts (10, 100, 1000):
 
-`push`, `push_many`, `pop`, `get`, `set`, `first`, `last`, `len`, `is_empty`, `swap`, `swap_remove`, `remove`, `insert`, `reverse`, `fill`, `resize_grow`, `resize_shrink`, `store_vec`, `load_vec`, `iter`, `clear`
+`push`, `push_n_elems_into_empty_vec`, `pop`, `get`, `set`, `first`, `last`, `len`, `is_empty`, `swap`, `swap_remove`, `remove`, `insert`, `reverse`, `fill`, `resize_grow`, `resize_shrink`, `store_vec`, `load_vec`, `iter`, `clear`
 
 ### Baseline strategy
 
@@ -80,7 +80,7 @@ Because most operations require a populated `StorageVec`, a single baseline is n
 
 | Baseline | What it measures | Used for |
 |---|---|---|
-| `bench_baseline` | Empty contract method call | `push_many` (full push loop is the operation itself) |
+| `bench_baseline` | Empty contract method call | `push_n_elems_into_empty_vec` (full push loop is the operation itself) |
 | `bench_baseline_n<N>` | Pushing N elements into the StorageVec | All other operations (subtracts setup cost) |
 | `bench_baseline_store_vec_n<N>` | Building a heap `Vec` of N elements | `store_vec` (subtracts heap allocation cost) |
 
@@ -90,7 +90,7 @@ Because most operations require a populated `StorageVec`, a single baseline is n
 bench_<operation>_n<count>
 ```
 
-Examples: `bench_push_n100`, `bench_reverse_n1000`, `bench_push_many_n10`
+Examples: `bench_push_n100`, `bench_reverse_n1000`, `bench_push_n_elems_into_empty_vec_n10`
 
 ## Output
 

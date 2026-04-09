@@ -103,10 +103,10 @@ impl Contract {
         storage.vec.push(STRUCT96_DEFAULT);
     }
 
-    // === push_many ===
+    // === push_n_elems_into_empty_vec ===
 
     #[storage(read, write)]
-    fn push_many_n10() {
+    fn push_n_elems_into_empty_vec_n10() {
         let mut i = 0;
         while i < 10 {
             storage.vec.push(STRUCT96_DEFAULT);
@@ -115,7 +115,7 @@ impl Contract {
     }
 
     #[storage(read, write)]
-    fn push_many_n100() {
+    fn push_n_elems_into_empty_vec_n100() {
         let mut i = 0;
         while i < 100 {
             storage.vec.push(STRUCT96_DEFAULT);
@@ -124,7 +124,7 @@ impl Contract {
     }
 
     #[storage(read, write)]
-    fn push_many_n1000() {
+    fn push_n_elems_into_empty_vec_n1000() {
         let mut i = 0;
         while i < 1000 {
             storage.vec.push(STRUCT96_DEFAULT);
@@ -818,24 +818,24 @@ fn bench_push_n1000() {
     caller.push_n1000();
 }
 
-// === push_many tests ===
+// === push_n_elems_into_empty_vec tests ===
 
 #[test]
-fn bench_push_many_n10() {
+fn bench_push_n_elems_into_empty_vec_n10() {
     let caller = abi(StorageVecS96Abi, CONTRACT_ID);
-    caller.push_many_n10();
+    caller.push_n_elems_into_empty_vec_n10();
 }
 
 #[test]
-fn bench_push_many_n100() {
+fn bench_push_n_elems_into_empty_vec_n100() {
     let caller = abi(StorageVecS96Abi, CONTRACT_ID);
-    caller.push_many_n100();
+    caller.push_n_elems_into_empty_vec_n100();
 }
 
 #[test]
-fn bench_push_many_n1000() {
+fn bench_push_n_elems_into_empty_vec_n1000() {
     let caller = abi(StorageVecS96Abi, CONTRACT_ID);
-    caller.push_many_n1000();
+    caller.push_n_elems_into_empty_vec_n1000();
 }
 
 // === pop tests ===

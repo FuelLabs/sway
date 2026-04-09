@@ -17,7 +17,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 ALL_SIZES=(8 24 32 56 72 88 96)
 COUNTS=(10 100 1000)
-OPS=(push push_many pop get set first last len is_empty swap swap_remove remove insert reverse fill resize_grow resize_shrink store_vec load_vec iter clear)
+OPS=(push push_n_elems_into_empty_vec pop get set first last len is_empty swap swap_remove remove insert reverse fill resize_grow resize_shrink store_vec load_vec iter clear)
 
 # ── Size → type mapping ────────────────────────────────────────────
 
@@ -187,7 +187,7 @@ EOF
                     echo "    fn ${op}_n${n}() {"
                     emit_vec_build "$n" "$default" "$type"
                     echo "        storage.vec.store_vec(v);"
-                elif [[ "$op" == "push_many" ]]; then
+                elif [[ "$op" == "push_n_elems_into_empty_vec" ]]; then
                     echo "    #[storage(read, write)]"
                     echo "    fn ${op}_n${n}() {"
                     emit_populate "$n" "$default"

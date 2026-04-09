@@ -136,11 +136,11 @@ run_project() {
         op=$(echo "$test_name" | sed -E 's/^bench_//; s/_n[0-9]+$//')
 
         # Pick the right baseline.
-        #   push_many  → empty-call baseline (measures the full push loop)
-        #   store_vec  → store_vec baseline  (build heap Vec only)
-        #   everything → populate baseline   (push N elements setup)
+        #   push_n_elems_into_empty_vec  → empty-call baseline (measures the full push loop)
+        #   store_vec                    → store_vec baseline  (build heap Vec only)
+        #   everything                   → populate baseline   (push N elements setup)
         local baseline=0
-        if [[ "$op" == "push_many" ]]; then
+        if [[ "$op" == "push_n_elems_into_empty_vec" ]]; then
             baseline="$empty_call_baseline"
         elif [[ "$op" == "store_vec" ]]; then
             baseline="${store_vec_baseline[$count]:-0}"
