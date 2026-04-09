@@ -916,6 +916,7 @@ pub fn parsed_to_ast(
             error,
         }
     })?;
+
     // Only clear the parsed AST nodes if we are running a regular compilation pipeline.
     // LSP needs these to build its token map, and they are cleared by `clear_program` as
     // part of the LSP garbage collection functionality instead.
@@ -975,13 +976,6 @@ pub fn parsed_to_ast(
                 _ => None,
             }));
 
-        typed_program
-            .decls_to_check
-            .extend(types_metadata.iter().filter_map(|x| match x {
-                TypeMetadata::CheckDecl(check_decl) => Some(check_decl.clone()),
-                _ => None,
-            }));
-
         let (print_graph, print_graph_url_format) = match build_config {
             Some(cfg) => (
                 cfg.print_dca_graph.clone(),
@@ -1026,6 +1020,22 @@ pub fn parsed_to_ast(
         });
     }
 
+    let mut md_mgr = MetadataManager::default();
+
+    // run decl checks
+    let decl_checks = types_metadata.iter()
+        .filter_map(|metadata| match metadata {
+            TypeMetadata::CheckDecl(check_decl) => Some(check_decl.clone()),
+            _ => None,
+        }).collect::<Vec<_>>();
+    if let Some(errors) =
+        ir_generation::compile::run_ir_decl_checks(engines, &mut ctx, &mut md_mgr, module, &decl_checks)
+    {
+        for err in errors {
+            handler.emit_err(err);
+        }
+    }
+
     // CEI pattern analysis
     let cei_analysis_warnings =
         semantic_analysis::cei_pattern_analysis::analyze_program(engines, &typed_program);
@@ -1033,7 +1043,6 @@ pub fn parsed_to_ast(
         handler.emit_warn(warn);
     }
 
-    let mut md_mgr = MetadataManager::default();
     // Check that all storage initializers can be evaluated at compile time.
     typed_program
         .get_typed_program_with_initialized_storage_slots(
