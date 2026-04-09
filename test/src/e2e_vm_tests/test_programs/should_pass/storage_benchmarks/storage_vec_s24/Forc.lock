@@ -1,0 +1,15 @@
+[[package]]
+name = "std"
+source = "path+from-root-AB8BD5695F7F9A3F"
+
+[[package]]
+name = "storage_vec_s24"
+source = "member"
+dependencies = [
+    "std",
+    "stored_types",
+]
+
+[[package]]
+name = "stored_types"
+source = "path+from-root-AB8BD5695F7F9A3F"
