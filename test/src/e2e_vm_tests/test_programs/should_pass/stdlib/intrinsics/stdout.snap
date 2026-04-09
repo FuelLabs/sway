@@ -12,7 +12,7 @@ output:
 
 tested -- intrinsics
 
-      test t ... ok (???, 1788 gas)
+      test t ... ok (???, 1396 gas)
            decoded log values:
 16, log rb: 1515152261580153489
 
@@ -31,7 +31,7 @@ output:
 
 tested -- intrinsics
 
-      test t ... ok (???, 1788 gas)
+      test t ... ok (???, 1396 gas)
            decoded log values:
 11, log rb: 1515152261580153489
 

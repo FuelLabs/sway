@@ -1111,7 +1111,7 @@ output:
 
 tested -- array_repeat
 
-      test test_array_repeat_zero ... ok (???, 5774201 gas)
+      test test_array_repeat_zero ... ok (???, 2887881 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 

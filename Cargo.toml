@@ -41,15 +41,14 @@ iter_over_hash_type = "deny"
 # Internal dependencies in order to propagate `workspace.version`
 #
 
+# Forc
 forc = { path = "forc/", version = "0.70.3" }
 forc-pkg = { path = "forc-pkg/", version = "0.70.3" }
 forc-test = { path = "forc-test/", version = "0.70.3" }
-forc-tracing = "0.71"
 forc-util = { path = "forc-util/", version = "0.70.3" }
 
 # Forc plugins
 forc-plugins = { path = "forc-plugins/", version = "0.70.3" }
-forc-client = "0.71"
 forc-debug = { path = "forc-plugins/forc-debug/", version = "0.70.3" }
 forc-doc = { path = "forc-plugins/forc-doc/", version = "0.70.3" }
 forc-fmt = { path = "forc-plugins/forc-fmt/", version = "0.70.3" }
@@ -58,6 +57,7 @@ forc-migrate = { path = "forc-plugins/forc-migrate/", version = "0.70.3" }
 forc-publish = { path = "forc-plugins/forc-publish/", version = "0.70.3" }
 forc-tx = { path = "forc-plugins/forc-tx/", version = "0.70.3" }
 
+# Sway
 sway-ast = { path = "sway-ast/", version = "0.70.3" }
 sway-core = { path = "sway-core/", version = "0.70.3" }
 sway-error = { path = "sway-error/", version = "0.70.3" }
@@ -67,14 +67,16 @@ sway-parse = { path = "sway-parse/", version = "0.70.3" }
 sway-types = { path = "sway-types/", version = "0.70.3" }
 sway-utils = { path = "sway-utils/", version = "0.70.3" }
 swayfmt = { path = "swayfmt/", version = "0.70.3" }
-
-# Sway IR
 sway-ir = { path = "sway-ir/", version = "0.70.3" }
 sway-ir-macros = { path = "sway-ir/sway-ir-macros", version = "0.70.3" }
 
 #
 # External Fuel dependencies
 #
+
+# Dependencies from the `forc` repository:
+forc-tracing = "0.71"
+forc-client = "0.71"
 
 # Dependencies from the `fuel-abi-types` repository:
 fuel-abi-types = "0.15"
@@ -84,22 +86,21 @@ fuel-abi-types = "0.15"
 # Although ALL versions are "X.Y", we need the complete semver for
 # fuel-core-client as the GitHub Actions workflow parses this value to pull down
 # the correct tarball.
-fuel-core-client = { version = "0.47.1", default-features = false }
-fuel-core-storage = { version = "0.47", default-features = false }
-fuel-core-types = { version = "0.47", default-features = false }
+fuel-core-client = { version = "0.48.0", default-features = false }
+fuel-core-storage = { version = "0.48", default-features = false }
+fuel-core-types = { version = "0.48", default-features = false }
 
 # Dependencies from the `fuels-rs` repository:
-
-fuels = "0.76"
-fuels-core = "0.76"
-fuels-accounts = "0.76"
+fuels = "0.77"
+fuels-core = "0.77"
+fuels-accounts = "0.77"
 
 # Dependencies from the `fuel-vm` repository:
-fuel-asm = "0.65"
-fuel-crypto = "0.65"
-fuel-types = "0.65"
-fuel-tx = "0.65"
-fuel-vm = "0.65"
+fuel-asm = "0.66"
+fuel-crypto = "0.66"
+fuel-types = "0.66"
+fuel-tx = "0.66"
+fuel-vm = "0.66"
 
 #
 # External dependencies
@@ -242,3 +243,4 @@ vte = "0.13"
 walkdir = "2.3"
 whoami = "1.5"
 wiremock = "0.6"
+

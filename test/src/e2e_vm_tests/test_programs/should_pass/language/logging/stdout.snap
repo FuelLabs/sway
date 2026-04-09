@@ -1833,7 +1833,7 @@ ____
 
 tested -- logging
 
-      test call_main ... ok (???, 5340 gas)
+      test call_main ... ok (???, 4619 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 

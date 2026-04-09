@@ -76,7 +76,7 @@ output:
 
 tested -- dbg
 
-      test call_main ... ok (???, 194069 gas)
+      test call_main ... ok (???, 131838 gas)
            debug output:
 [src/main.sw:13:13] () = ()
 [src/main.sw:15:13] true = true

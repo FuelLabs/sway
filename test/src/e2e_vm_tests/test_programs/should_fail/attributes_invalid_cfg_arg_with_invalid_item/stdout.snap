@@ -25,6 +25,7 @@ error: Attribute argument is invalid
   |       - help:   - program_type
   |       - help:   - target
   |       - help:   - experimental_const_generics
+  |       - help:   - experimental_dynamic_storage
   |       - help:   - experimental_new_encoding
   |       - help:   - experimental_new_hashing
   |       - help:   - experimental_references

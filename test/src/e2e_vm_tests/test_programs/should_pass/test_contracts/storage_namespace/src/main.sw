@@ -36,9 +36,16 @@ impl BasicStorage for Contract {
         write(key, 0, value);
     }
 
+    #[cfg(experimental_dynamic_storage = false)]
     #[storage(read)]
     fn intrinsic_load_word(key: b256) -> u64 {
         __state_load_word(key)
+    }
+
+    #[cfg(experimental_dynamic_storage = true)]
+    #[storage(read)]
+    fn intrinsic_load_word(key: b256) -> u64 {
+        __state_load_word(key, 0)
     }
 
     #[storage(write)]
@@ -139,7 +146,7 @@ fn test_storage() {
     write(key, 0, s);
     let s_ = read::<S>(key, 0).unwrap();
     assert(s.x == s_.x && s.y == s_.y && s.z == s_.z);
-    assert(s.t.x == s_.t.x && s.t.y == s_.t.y && s.t.z == s_.t.z && s.t.boolean == s_.t.boolean); 
+    assert(s.t.x == s_.t.x && s.t.y == s_.t.y && s.t.z == s_.t.z && s.t.boolean == s_.t.boolean);
     assert(s.t.int8 == s_.t.int8 && s.t.int16 == s_.t.int16 && s.t.int32 == s_.t.int32);
 
     let boolean: bool = true;
@@ -278,7 +285,7 @@ fn test_storage() {
     assert_eq(storage::my_storage_namespace.c1.read(), C1);
     storage::my_storage_namespace.c1.write(2);
     assert_eq(storage::my_storage_namespace.c1.read(), 2);
-    
+
     assert_eq(storage::my_storage_namespace.const_u256.read(), 0x0000000000000000000000000000000000000000000000000000000001234567u256);
     storage::my_storage_namespace.const_u256.write(0x0000000000000000000000000000000000000000000000000000000012345678u256);
     assert_eq(storage::my_storage_namespace.const_u256.read(), 0x0000000000000000000000000000000000000000000000000000000012345678u256);

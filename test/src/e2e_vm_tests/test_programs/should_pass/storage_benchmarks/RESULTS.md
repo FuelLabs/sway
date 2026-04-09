@@ -1,5 +1,4 @@
-# Branch: `master` on 2026.04.08 `551e37f20aa44e49f2520e333e2934b3d209f820` (Pin tracing-subscriber to 0.3.19 (#7587)
-)
+# Branch: `master` on 2026.04.08 `551e37f20aa44e49f2520e333e2934b3d209f820` (Pin tracing-subscriber to 0.3.19 (#7587))
 
 ```text
 ═══════════════════════════════════════════════════════════════

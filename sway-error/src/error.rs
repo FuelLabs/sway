@@ -931,6 +931,13 @@ pub enum CompileError {
         expected: u64,
         span: Span,
     },
+    #[error("\"__{intrinsic}\" intrinsic's argument \"{arg}\" must be a constant of type `{expected_type}`.")]
+    IntrinsicArgNotConstant {
+        intrinsic: String,
+        arg: String,
+        expected_type: String,
+        span: Span,
+    },
     #[error("Expected string literal")]
     ExpectedStringLiteral { span: Span },
     #[error("\"break\" used outside of a loop")]
@@ -1310,6 +1317,7 @@ impl Spanned for CompileError {
             IntrinsicUnsupportedArgType { span, .. } => span.clone(),
             IntrinsicIncorrectNumArgs { span, .. } => span.clone(),
             IntrinsicIncorrectNumTArgs { span, .. } => span.clone(),
+            IntrinsicArgNotConstant { span, .. } => span.clone(),
             BreakOutsideLoop { span } => span.clone(),
             ContinueOutsideLoop { span } => span.clone(),
             ContractIdValueNotALiteral { span } => span.clone(),
@@ -3307,60 +3315,66 @@ impl ToDiagnostic for CompileError {
                 hints: vec![],
                 help: vec![],
             },
-            MultipleDefinitionsOfConstant { name, old, new } => {
-                Diagnostic {
-                    reason: Some(Reason::new(code(1), "Multiple definitions of constant".into())),
-                    issue: Issue::error(
+            MultipleDefinitionsOfConstant { name, old, new } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Multiple definitions of constant".into())),
+                issue: Issue::error(
+                    source_engine,
+                    new.clone(),
+                    format!("Constant \"{name}\" was already defined"),
+                ),
+                hints: vec![
+                    Hint::error(
                         source_engine,
-                        new.clone(),
-                        format!("Constant \"{name}\" was already defined"),
+                        old.clone(),
+                        "Its first definition is here.".into(),
                     ),
-                    hints: vec![
-                        Hint::error(
-                            source_engine,
-                            old.clone(),
-                            "Its first definition is here.".into(),
-                        ),
-                    ],
-                    help: vec![],
-                }
-            }
-            MethodNotFound { called_method, expected_signature, type_name, matching_methods } => {
-                Diagnostic {
-                    reason: Some(Reason::new(code(1), "Associated function or method is not found".into())),
-                    issue: Issue::error(
+                ],
+                help: vec![],
+            },
+            MethodNotFound { called_method, expected_signature, type_name, matching_methods } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Associated function or method is not found".into())),
+                issue: Issue::error(
+                    source_engine,
+                    called_method.span(),
+                    format!("\"{expected_signature}\" is not found for type \"{type_name}\"."),
+                ),
+                hints: if matching_methods.is_empty() {
+                    vec![]
+                } else {
+                    Hint::multi_help(
                         source_engine,
-                        called_method.span(),
-                        format!("\"{expected_signature}\" is not found for type \"{type_name}\"."),
-                    ),
-                    hints: if matching_methods.is_empty() {
-                        vec![]
-                    } else {
-                        Hint::multi_help(
-                            source_engine,
-                            &called_method.span(),
-                            std::iter::once(
-                                    format!("{} \"{called_method}\" function{} {} implemented for the type:",
-                                        singular_plural(matching_methods.len(), "Only this", "These"),
-                                        plural_s(matching_methods.len()),
-                                        is_are(matching_methods.len()),
-                                    )
+                        &called_method.span(),
+                        std::iter::once(
+                                format!("{} \"{called_method}\" function{} {} implemented for the type:",
+                                    singular_plural(matching_methods.len(), "Only this", "These"),
+                                    plural_s(matching_methods.len()),
+                                    is_are(matching_methods.len()),
                                 )
-                                .chain(matching_methods
-                                    .iter()
-                                    .map(|m| format!("- {m}"))
+                            )
+                            .chain(matching_methods
+                                .iter()
+                                .map(|m| format!("- {m}"))
+                            )
+                            .chain(std::iter::once(
+                                format!("Did you mean to call {}?",
+                                    singular_plural(matching_methods.len(), "that function", "one of those functions"),
                                 )
-                                .chain(std::iter::once(
-                                    format!("Did you mean to call {}?",
-                                        singular_plural(matching_methods.len(), "that function", "one of those functions"),
-                                    )
-                                ))
-                                .collect()
-                        )
-                    },
-                    help: vec![],
-                }
-            }
+                            ))
+                            .collect()
+                    )
+                },
+                help: vec![],
+            },
+            IntrinsicArgNotConstant { intrinsic, arg, expected_type, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Intrinsic argument is not a compile-time constant".into())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("\"__{intrinsic}\" intrinsic's argument \"{arg}\" must be a constant of type `{expected_type}`."),
+                ),
+                hints: vec![],
+                help: vec![],
+            },
             _ => Diagnostic {
                     // TODO: Temporarily we use `self` here to achieve backward compatibility.
                     //       In general, `self` must not be used. All the values for the formatting

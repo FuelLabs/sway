@@ -312,7 +312,7 @@ fn analyse_fn(
                                 continue 'analyse_next_arg;
                             }
                         }
-                        FuelVmInstruction::StateLoadWord(_)
+                        FuelVmInstruction::StateLoadWord { .. }
                         | FuelVmInstruction::StateStoreWord { .. } => {}
                         FuelVmInstruction::StateStoreQuadWord { .. } => {}
                         FuelVmInstruction::WideUnaryOp { result, .. }

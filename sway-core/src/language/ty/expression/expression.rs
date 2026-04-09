@@ -611,6 +611,15 @@ impl MaterializeConstGenerics for TyExpression {
 }
 
 impl TyExpression {
+    pub(crate) fn u64_literal(value: u64, span: Span, engines: &Engines) -> TyExpression {
+        let type_engine = engines.te();
+        TyExpression {
+            expression: TyExpressionVariant::Literal(Literal::U64(value)),
+            return_type: type_engine.id_of_u64(),
+            span,
+        }
+    }
+
     pub(crate) fn error(err: ErrorEmitted, span: Span, engines: &Engines) -> TyExpression {
         let type_engine = engines.te();
         TyExpression {

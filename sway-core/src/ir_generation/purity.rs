@@ -61,7 +61,7 @@ pub(crate) fn check_function_purity(
 
                             match inst {
                                 FuelVmInstruction::StateLoadQuadWord { .. }
-                                | FuelVmInstruction::StateLoadWord(_) => (true, writes),
+                                | FuelVmInstruction::StateLoadWord { .. } => (true, writes),
                                 FuelVmInstruction::StateClear { .. }
                                 | FuelVmInstruction::StateStoreQuadWord { .. }
                                 | FuelVmInstruction::StateStoreWord { .. } => (reads, true),
@@ -180,7 +180,7 @@ pub(crate) fn check_function_purity(
 fn is_store_access_fuel_vm_instruction(inst: &FuelVmInstruction) -> bool {
     matches!(
         inst,
-        FuelVmInstruction::StateLoadWord(_)
+        FuelVmInstruction::StateLoadWord { .. }
             | FuelVmInstruction::StateLoadQuadWord { .. }
             | FuelVmInstruction::StateClear { .. }
             | FuelVmInstruction::StateStoreWord { .. }
@@ -190,7 +190,7 @@ fn is_store_access_fuel_vm_instruction(inst: &FuelVmInstruction) -> bool {
 
 fn store_access_fuel_vm_instruction_to_storage_access(inst: &FuelVmInstruction) -> StorageAccess {
     match inst {
-        FuelVmInstruction::StateLoadWord(_) => StorageAccess::ReadWord,
+        FuelVmInstruction::StateLoadWord { .. } => StorageAccess::ReadWord,
         FuelVmInstruction::StateLoadQuadWord { .. } => StorageAccess::ReadSlots,
         FuelVmInstruction::StateClear { .. } => StorageAccess::Clear,
         FuelVmInstruction::StateStoreWord { .. } => StorageAccess::WriteWord,

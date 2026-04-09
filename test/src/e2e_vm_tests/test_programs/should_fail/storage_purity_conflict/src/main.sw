@@ -102,7 +102,7 @@ const KEY: b256 = 0xfefefefefefefefefefefefefefefefefefefefefefefefefefefefefefe
 
 fn read_storage_word() -> u64 {
     asm (key: KEY, is_set, res) {
-        srw res is_set key;
+        srw res is_set key i0;
         res: u64
     }
 }

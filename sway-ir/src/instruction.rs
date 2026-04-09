@@ -365,8 +365,11 @@ pub enum FuelVmInstruction {
         key: Value,
         number_of_slots: Value,
     },
-    /// Reads and returns single word from a storage slot.
-    StateLoadWord(Value),
+    /// Reads and returns single word from a storage slot at offset `offset`.
+    StateLoadWord {
+        key: Value,
+        offset: u64,
+    },
     /// Stores `number_of_slots` slots (`b256` each) starting at address `stored_val` in memory into
     /// storage starting at key `key`. `key` must be a `b256`.
     StateStoreQuadWord {
@@ -531,7 +534,9 @@ impl InstOp {
             InstOp::Nop => None,
 
             // State load returns a u64, other state ops return a bool.
-            InstOp::FuelVm(FuelVmInstruction::StateLoadWord(_)) => Some(Type::get_uint64(context)),
+            InstOp::FuelVm(FuelVmInstruction::StateLoadWord { .. }) => {
+                Some(Type::get_uint64(context))
+            }
             InstOp::FuelVm(FuelVmInstruction::StateClear { .. })
             | InstOp::FuelVm(FuelVmInstruction::StateLoadQuadWord { .. })
             | InstOp::FuelVm(FuelVmInstruction::StateStoreQuadWord { .. })
@@ -668,7 +673,7 @@ impl InstOp {
                     key,
                     number_of_slots,
                 } => vec![*load_val, *key, *number_of_slots],
-                FuelVmInstruction::StateLoadWord(key) => vec![*key],
+                FuelVmInstruction::StateLoadWord { key, .. } => vec![*key],
                 FuelVmInstruction::StateStoreQuadWord {
                     stored_val,
                     key,
@@ -1001,7 +1006,7 @@ impl InstOp {
                         panic!("Invalid index for StateLoadQuadWord");
                     }
                 }
-                FuelVmInstruction::StateLoadWord(key) => {
+                FuelVmInstruction::StateLoadWord { key, .. } => {
                     if idx == 0 {
                         *key = replacement;
                     } else {
@@ -1238,7 +1243,7 @@ impl InstOp {
                     replace(key);
                     replace(number_of_slots);
                 }
-                FuelVmInstruction::StateLoadWord(key) => {
+                FuelVmInstruction::StateLoadWord { key, .. } => {
                     replace(key);
                 }
                 FuelVmInstruction::StateStoreQuadWord {
@@ -1332,7 +1337,7 @@ impl InstOp {
             | InstOp::ConditionalBranch { .. }
             | InstOp::FuelVm(FuelVmInstruction::Gtf { .. })
             | InstOp::FuelVm(FuelVmInstruction::ReadRegister(_))
-            | InstOp::FuelVm(FuelVmInstruction::StateLoadWord(_))
+            | InstOp::FuelVm(FuelVmInstruction::StateLoadWord { .. })
             | InstOp::GetElemPtr { .. }
             | InstOp::GetLocal(_)
             | InstOp::GetGlobal(_)
@@ -1846,8 +1851,11 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
         )
     }
 
-    pub fn state_load_word(self, key: Value) -> Value {
-        insert_instruction!(self, InstOp::FuelVm(FuelVmInstruction::StateLoadWord(key)))
+    pub fn state_load_word(self, key: Value, offset: u64) -> Value {
+        insert_instruction!(
+            self,
+            InstOp::FuelVm(FuelVmInstruction::StateLoadWord { key, offset })
+        )
     }
 
     pub fn state_store_quad_word(
