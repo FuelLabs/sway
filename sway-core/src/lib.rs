@@ -1023,14 +1023,20 @@ pub fn parsed_to_ast(
     let mut md_mgr = MetadataManager::default();
 
     // run decl checks
-    let decl_checks = types_metadata.iter()
+    let decl_checks = types_metadata
+        .iter()
         .filter_map(|metadata| match metadata {
             TypeMetadata::CheckDecl(check_decl) => Some(check_decl.clone()),
             _ => None,
-        }).collect::<Vec<_>>();
-    if let Some(errors) =
-        ir_generation::compile::run_ir_decl_checks(engines, &mut ctx, &mut md_mgr, module, &decl_checks)
-    {
+        })
+        .collect::<Vec<_>>();
+    if let Some(errors) = ir_generation::compile::run_ir_decl_checks(
+        engines,
+        &mut ctx,
+        &mut md_mgr,
+        module,
+        &decl_checks,
+    ) {
         for err in errors {
             handler.emit_err(err);
         }
