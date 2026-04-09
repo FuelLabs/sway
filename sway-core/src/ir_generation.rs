@@ -344,7 +344,6 @@ pub fn compile_program<'a>(
         logged_types,
         messages_types,
         declarations,
-        decls_to_check,
         ..
     } = program;
 
@@ -372,12 +371,6 @@ pub fn compile_program<'a>(
 
     let mut compiled_fn_cache = CompiledFunctionCache::default();
     let mut panicking_fn_cache = PanickingFunctionCache::default();
-
-    if let Some(errors) =
-        compile::run_ir_decl_checks(engines, &mut ctx, &mut md_mgr, module, decls_to_check)
-    {
-        return Err(errors);
-    }
 
     match kind {
         // Predicates and scripts have the same codegen, their only difference is static

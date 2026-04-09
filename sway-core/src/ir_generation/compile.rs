@@ -579,10 +579,10 @@ pub fn run_ir_decl_checks(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
-    decls_to_check: &[CheckDecl],
+    decls_check: &[CheckDecl],
 ) -> Option<Vec<CompileError>> {
     // check types
-    for check in decls_to_check.iter() {
+    for check in decls_check.iter() {
         let is_decode_trivial_table = check
             .is_decode_trivial_table
             .iter()
