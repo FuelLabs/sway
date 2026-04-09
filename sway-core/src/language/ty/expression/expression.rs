@@ -12,6 +12,7 @@ use crate::{
     types::*,
 };
 use serde::{Deserialize, Serialize};
+use sway_ast::Intrinsic;
 use std::{fmt, hash::Hasher};
 use sway_error::{
     error::CompileError,
