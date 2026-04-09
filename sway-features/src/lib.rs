@@ -175,7 +175,7 @@ features! {
     "https://github.com/FuelLabs/sway/issues/7256",
     str_array_no_padding = false,
     "https://github.com/FuelLabs/sway/issues/7528",
-    aligned_and_dynamic_storage = false,
+    dynamic_storage = false,
     "https://github.com/FuelLabs/sway/issues/7560",
 }
 

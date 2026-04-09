@@ -86,7 +86,7 @@
       "attributes": [
         {
           "arguments": [
-            "experimental_aligned_and_dynamic_storage"
+            "experimental_dynamic_storage"
           ],
           "name": "cfg"
         },

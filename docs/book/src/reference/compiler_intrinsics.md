@@ -124,7 +124,7 @@ __addr_of<T>(val: T) -> raw_ptr
 
 ---
 
-**Without `aligned_and_dynamic_storage` experimental feature enabled**
+**Without `dynamic_storage` experimental feature enabled**
 
 ```sway
 __state_load_word(key: b256) -> u64
@@ -134,7 +134,7 @@ __state_load_word(key: b256) -> u64
 
 **Constraints:** None.
 
-**With `aligned_and_dynamic_storage` experimental feature enabled**
+**With `dynamic_storage` experimental feature enabled**
 
 ```sway
 __state_load_word(key: b256, offset: u64) -> u64

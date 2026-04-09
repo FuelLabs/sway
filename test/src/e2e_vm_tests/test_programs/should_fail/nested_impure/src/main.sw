@@ -20,7 +20,7 @@ fn bar() {
 }
 
 // Explicitly impure.
-#[cfg(experimental_aligned_and_dynamic_storage = false)]
+#[cfg(experimental_dynamic_storage = false)]
 #[storage(read)]
 fn baz() -> u64 {
     let _ = __state_load_word(b256::zero());
@@ -28,7 +28,7 @@ fn baz() -> u64 {
 }
 
 // Explicitly impure.
-#[cfg(experimental_aligned_and_dynamic_storage = true)]
+#[cfg(experimental_dynamic_storage = true)]
 #[storage(read)]
 fn baz() -> u64 {
     let _ = __state_load_word(b256::zero(), 0);

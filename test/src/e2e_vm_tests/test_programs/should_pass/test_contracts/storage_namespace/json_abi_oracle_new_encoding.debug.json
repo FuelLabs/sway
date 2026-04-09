@@ -45,9 +45,7 @@
     {
       "attributes": [
         {
-          "arguments": [
-            "read"
-          ],
+          "arguments": ["read"],
           "name": "storage"
         }
       ],
@@ -63,9 +61,7 @@
     {
       "attributes": [
         {
-          "arguments": [
-            "read"
-          ],
+          "arguments": ["read"],
           "name": "storage"
         }
       ],
@@ -85,15 +81,11 @@
     {
       "attributes": [
         {
-          "arguments": [
-            "experimental_aligned_and_dynamic_storage"
-          ],
+          "arguments": ["experimental_dynamic_storage"],
           "name": "cfg"
         },
         {
-          "arguments": [
-            "read"
-          ],
+          "arguments": ["read"],
           "name": "storage"
         }
       ],
@@ -109,9 +101,7 @@
     {
       "attributes": [
         {
-          "arguments": [
-            "write"
-          ],
+          "arguments": ["write"],
           "name": "storage"
         }
       ],
@@ -131,9 +121,7 @@
     {
       "attributes": [
         {
-          "arguments": [
-            "write"
-          ],
+          "arguments": ["write"],
           "name": "storage"
         }
       ],
@@ -153,9 +141,7 @@
     {
       "attributes": [
         {
-          "arguments": [
-            "write"
-          ],
+          "arguments": ["write"],
           "name": "storage"
         }
       ],
@@ -175,10 +161,7 @@
     {
       "attributes": [
         {
-          "arguments": [
-            "read",
-            "write"
-          ],
+          "arguments": ["read", "write"],
           "name": "storage"
         }
       ],
@@ -216,9 +199,7 @@
       ],
       "metadataTypeId": 0,
       "type": "enum std::option::Option",
-      "typeParameters": [
-        1
-      ]
+      "typeParameters": [1]
     },
     {
       "metadataTypeId": 1,
@@ -263,9 +244,7 @@
       ],
       "metadataTypeId": 4,
       "type": "struct std::vec::RawVec",
-      "typeParameters": [
-        1
-      ]
+      "typeParameters": [1]
     },
     {
       "components": [
@@ -286,9 +265,7 @@
       ],
       "metadataTypeId": 5,
       "type": "struct std::vec::Vec",
-      "typeParameters": [
-        1
-      ]
+      "typeParameters": [1]
     }
   ],
   "panickingCalls": {},

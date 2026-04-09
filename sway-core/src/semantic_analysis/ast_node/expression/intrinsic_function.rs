@@ -1263,7 +1263,7 @@ fn type_check_state_load_word(
     let type_engine = ctx.engines.te();
     let engines = ctx.engines();
 
-    let num_of_args: u64 = if ctx.experimental.aligned_and_dynamic_storage {
+    let num_of_args: u64 = if ctx.experimental.dynamic_storage {
         2
     } else {
         1

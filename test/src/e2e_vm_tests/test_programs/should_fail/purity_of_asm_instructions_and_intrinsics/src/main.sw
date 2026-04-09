@@ -7,7 +7,7 @@ abi Abi {
 struct S { }
 
 impl S {
-    #[cfg(experimental_aligned_and_dynamic_storage = false)]
+    #[cfg(experimental_dynamic_storage = false)]
     fn read_intrinsics(self) -> Self {
         let ptr = asm (p: 0) { p: raw_ptr };
         let _ = __state_load_word(b256::zero());
@@ -16,7 +16,7 @@ impl S {
         self
     }
 
-    #[cfg(experimental_aligned_and_dynamic_storage = true)]
+    #[cfg(experimental_dynamic_storage = true)]
     fn read_intrinsics(self) -> Self {
         let ptr = asm (p: 0) { p: raw_ptr };
         let _ = __state_load_word(b256::zero(), 0);
