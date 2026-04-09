@@ -123,9 +123,6 @@ impl ty::TyIntrinsicFunctionKind {
             Intrinsic::Alloc => {
                 type_check_alloc(handler, ctx, kind, arguments, type_arguments, span)
             }
-            Intrinsic::EnumVariantsValues => {
-                type_check_enum_variants_values(arguments, handler, kind, type_arguments, span, ctx)
-            }
         }
     }
 }
@@ -174,79 +171,6 @@ fn type_check_encoding_memory_id(
         span: span.clone(),
     };
     Ok((intrinsic_function, ctx.engines.te().id_of_u64()))
-}
-
-fn type_check_enum_variants_values(
-    arguments: &[Expression],
-    handler: &Handler,
-    kind: Intrinsic,
-    type_arguments: &[GenericArgument],
-    span: Span,
-    mut ctx: TypeCheckContext,
-) -> Result<(TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
-    if arguments.len() != 1 {
-        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
-            name: kind.to_string(),
-            expected: 1,
-            span,
-        }));
-    }
-
-    let first_argument_typed_expr = {
-        let u64_id = ctx.engines.te().id_of_u64();
-        let ctx = ctx.by_ref().with_help_text("").with_type_annotation(u64_id);
-        ty::TyExpression::type_check(handler, ctx, &arguments[0])?
-    };
-
-    let _value_id = match first_argument_typed_expr.expression {
-        ty::TyExpressionVariant::Literal(Literal::U64(3)) => 3,
-        _ => {
-            return Err(handler.emit_err(CompileError::InvalidArgument {
-                span: first_argument_typed_expr.span,
-            }))
-        }
-    };
-
-    let arguments = vec![first_argument_typed_expr];
-
-    if type_arguments.len() != 1 {
-        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
-            name: kind.to_string(),
-            expected: 1,
-            span,
-        }));
-    }
-
-    let targ = &type_arguments[0];
-    let arg = ctx
-        .resolve_type(
-            handler,
-            targ.type_id(),
-            &targ.span(),
-            EnforceTypeArguments::Yes,
-            None,
-        )
-        .unwrap_or_else(|err| ctx.engines.te().id_of_error_recovery(err));
-
-    let elem_type = GenericTypeArgument {
-        type_id: ctx.engines.te().id_of_bool(),
-        initial_type_id: ctx.engines.te().id_of_bool(),
-        span: span.clone(),
-        call_path_tree: None,
-    };
-    let return_type = ctx.engines.te().insert_slice(ctx.engines, elem_type);
-
-    let mut final_type_arguments = type_arguments.to_vec();
-    *final_type_arguments[0].type_id_mut() = arg;
-
-    let intrinsic_function = ty::TyIntrinsicFunctionKind {
-        kind,
-        arguments,
-        type_arguments: final_type_arguments,
-        span: span.clone(),
-    };
-
-    Ok((intrinsic_function, return_type))
 }
 
 fn type_check_runtime_memory_id(
