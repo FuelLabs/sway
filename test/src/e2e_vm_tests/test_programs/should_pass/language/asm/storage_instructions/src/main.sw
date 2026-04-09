@@ -93,9 +93,6 @@ impl Contract {
     }
 }
 
-#[inline(never)]
-fn poke<T>(_t: T) {}
-
 #[test]
 fn test_srw_empty_slots() {
     let caller = abi(StorageInstructionsAbi, CONTRACT_ID);
