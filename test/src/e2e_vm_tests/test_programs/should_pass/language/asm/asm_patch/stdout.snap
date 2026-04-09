@@ -1,6 +1,5 @@
 ---
 source: test/src/snapshot/mod.rs
-assertion_line: 124
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/asm/asm_patch
 exit status: 0
@@ -81,7 +80,7 @@ output:
 
 
 > fuel-vm run test/src/e2e_vm_tests/test_programs/should_pass/language/asm/asm_patch/out/debug/asm_patch.bin
-Gas: 398
+Gas: 379
 Logs:
 ReturnData {
     id: 0x0000000000000000000000000000000000000000000000000000000000000000,
@@ -98,5 +97,5 @@ ReturnData {
 }
 ScriptResult {
     result: Success,
-    gas_used: 398,
+    gas_used: 379,
 }
