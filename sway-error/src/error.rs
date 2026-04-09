@@ -3388,7 +3388,7 @@ impl ToDiagnostic for CompileError {
                 hints: vec![],
                 help: vec![],
             },
-            TrivialCheckFailed { span, infos, helps, never_trial, bottom_helps } => {
+            TrivialCheckFailed { span, infos, helps, never_trivial, bottom_helps } => {
                 let mut hints = vec![];
                 hints.extend(
                     infos.iter()
