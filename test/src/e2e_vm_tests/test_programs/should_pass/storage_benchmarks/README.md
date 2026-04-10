@@ -36,16 +36,18 @@ cargo build -r -p forc
 
 ```bash
 ./bench.sh                                 # run all benchmark projects
+./bench.sh -h                              # run all with histogram
 ./bench.sh storage_fields                  # run a single project
-./bench.sh storage_fields_partial_access
+./bench.sh -h storage_fields_partial_access # single project with histogram
 ```
 
 ### Run StorageVec benchmarks
 
 ```bash
 ./bench_storage_vec.sh                   # run for all sizes
+./bench_storage_vec.sh -h                # run for all sizes with histogram
 ./bench_storage_vec.sh storage_vec_s8    # run for a single size
-./bench_storage_vec.sh storage_vec_s96
+./bench_storage_vec.sh -h storage_vec_s96 # single size with histogram
 ```
 
 ### Run a benchmark project directly with `forc`
@@ -56,6 +58,26 @@ From the repo root:
 cargo r -r -p forc -- test --release -p test/src/e2e_vm_tests/test_programs/should_pass/storage_benchmarks/storage_fields/
 cargo r -r -p forc -- test --release --no-gas-limit -p test/src/e2e_vm_tests/test_programs/should_pass/storage_benchmarks/storage_vec_s8/
 ```
+
+### Compare results between two commits
+
+Use `perf_diff.sh` to compare gas usage between any two runs recorded in RESULTS.md. Pass any substring of the SHA (typically the first or last few characters):
+
+```bash
+./perf_diff.sh 551e37f 0507c2c
+```
+
+This generates two files named `<last8-before> vs <last8-after>.perf-diff.csv` and `.perf-diff.md`, containing per-benchmark differences and percentage changes. Positive values indicate improvement (lower gas), negative values indicate regression.
+
+### Compute statistics from a perf diff
+
+Use `perf_diff_stats.sh` to compute per-project summary statistics (count, average, median, max, min) for improvements and regressions:
+
+```bash
+./perf_diff_stats.sh "d209f820 vs 223aca40.perf-diff.csv"
+```
+
+This generates a `<name>.perf-diff-stats.md` file with one table per project.
 
 ## StorageVec benchmarks
 
@@ -94,7 +116,7 @@ Examples: `bench_push_n100`, `bench_reverse_n1000`, `bench_push_n_elems_into_emp
 
 ## Output
 
-Both `bench.sh` and `bench_storage_vec.sh` produce two output formats for each project:
+Both `bench.sh` and `bench_storage_vec.sh` produce CSV output for each project by default. Pass `-h` to also print a console histogram.
 
 ### CSV
 

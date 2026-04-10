@@ -30,18 +30,23 @@ fn check_redundant_gitignore_files(all_tests_dir: &Path) -> Result<()> {
             .collect::<Vec<_>>();
         gitignores.sort();
 
-        Err(anyhow!("Redundant .gitignore files.\nTo fix the error, delete these redundant .gitignore files:\n{}", gitignores.join("\n")))
+        Err(anyhow!("Redundant .gitignore files.\nTo fix the error, delete these redundant .gitignore files, or add them to the ACCEPTABLE_GITIGNORES const in `test_consistency.rs`:\n{}", gitignores.join("\n")))
     };
 
     fn find_gitignores(path: &Path, gitignores: &mut Vec<PathBuf>) {
-        const IN_LANGUAGE_TESTS_GITIGNORE: &str = "in_language_tests/.gitignore";
+        const ACCEPTABLE_GITIGNORES: &[&str] = &[
+            REDUCED_STD_LIBS_DIR_NAME,
+            "in_language_tests/.gitignore",
+            "should_pass/storage_benchmarks/.gitignore",
+        ];
 
         if path.is_dir() {
             for entry in std::fs::read_dir(path).unwrap() {
                 let entry = entry.unwrap().path();
                 let entry_name = entry.to_str().unwrap();
-                if entry_name.contains(REDUCED_STD_LIBS_DIR_NAME)
-                    || entry_name.contains(IN_LANGUAGE_TESTS_GITIGNORE)
+                if ACCEPTABLE_GITIGNORES
+                    .iter()
+                    .any(|acc| entry_name.contains(acc))
                 {
                     continue;
                 }
