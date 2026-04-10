@@ -15,10 +15,10 @@ fuel-core = { version = "0.48", default-features = false }
 fuel-core-client = { version = "0.48.0", default-features = false }
 
 # Dependencies from the `fuel-vm` repository:
-fuel-vm = { version = "0.62", features = ["random"] }
+fuel-vm = { version = "0.66", features = ["random"] }
 
 # Dependencies from the `fuels-rs` repository:
-fuels = { version = "0.75", features = ["fuel-core-lib"] }
+fuels = { version = "0.77", features = ["fuel-core-lib"] }
 
 hex = "0.4"
 paste = "1.0"

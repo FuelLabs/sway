@@ -203,7 +203,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v6
 
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
@@ -216,7 +216,7 @@ jobs:
 
       - name: Read and compare versions
         env:
-          PACKAGE_NAMES: "fuel-core-client" # multiple packages can be specified delimited with `,`.
+          PACKAGE_NAMES: "fuel-core-client,fuel-vm,fuels" # multiple packages can be specified delimited with `,`.
         run: |
           .github/workflows/scripts/check-sdk-harness-version.sh
 

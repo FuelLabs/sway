@@ -1,7 +1,8 @@
 use assert_matches::assert_matches;
 use fuels::{prelude::*, tx::Receipt, types::transaction_builders::ScriptTransactionBuilder};
+use std::sync::Arc;
 
-async fn call_script(script_data: Vec<u8>) -> Result<Vec<Receipt>> {
+async fn call_script(script_data: Vec<u8>) -> Result<Arc<Vec<Receipt>>> {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let provider = wallet.provider();
 
@@ -20,9 +21,7 @@ async fn call_script(script_data: Vec<u8>) -> Result<Vec<Receipt>> {
 
     let mut tx =
         ScriptTransactionBuilder::prepare_transfer(wallet_coins, vec![], Default::default())
-            .with_script(std::fs::read(
-                "out/script_data.bin",
-            )?)
+            .with_script(std::fs::read("out/script_data.bin")?)
             .with_script_data(script_data)
             .enable_burn(true);
 
@@ -31,9 +30,11 @@ async fn call_script(script_data: Vec<u8>) -> Result<Vec<Receipt>> {
     let tx = tx.build(provider).await?;
 
     let provider = wallet.provider();
-    let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
-    tx_status
-        .take_receipts_checked(None)
+    let tx_status = provider
+        .send_transaction_and_await_commit(tx)
+        .await
+        .unwrap();
+    tx_status.take_receipts_checked(None)
 }
 
 #[tokio::test]
