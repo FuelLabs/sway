@@ -10,8 +10,7 @@ use std::{
 
 use crate::{
     abi_generation::abi_str::AbiStrContext,
-    language::ty::{TyDecl, TyExpression, TyExpressionVariant},
-    semantic_analysis::TypeCheckContext,
+    language::ty::{TyExpression, TyExpressionVariant},
     type_system::TypeId,
     Engines,
 };
@@ -162,8 +161,6 @@ pub struct CollectTypesMetadataContext<'cx> {
     pub(crate) program_name: String,
 
     pub experimental: ExperimentalFeatures,
-
-    pub(crate) type_check_ctx: TypeCheckContext<'cx>,
 }
 
 impl<'cx> CollectTypesMetadataContext<'cx> {
@@ -207,7 +204,6 @@ impl<'cx> CollectTypesMetadataContext<'cx> {
         engines: &'cx Engines,
         experimental: ExperimentalFeatures,
         program_name: String,
-        type_check_ctx: TypeCheckContext<'cx>,
     ) -> Self {
         let mut ctx = Self {
             engines,
@@ -215,7 +211,6 @@ impl<'cx> CollectTypesMetadataContext<'cx> {
             call_site_spans: vec![],
             experimental,
             program_name,
-            type_check_ctx,
         };
         ctx.call_site_push();
         ctx
