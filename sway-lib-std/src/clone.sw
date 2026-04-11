@@ -37,7 +37,6 @@ impl Clone for u256 {
     }
 }
 
-#[cfg(experimental_const_generics = true)]
 impl<T, const N: u64> Clone for [T; N]
 where
     T: Clone,
@@ -58,7 +57,6 @@ where
     }
 }
 
-#[cfg(experimental_const_generics = true)]
 impl<const N: u64> Clone for str[N] {
     fn clone(self) -> Self {
         let new = [0u8; N];
@@ -69,7 +67,6 @@ impl<const N: u64> Clone for str[N] {
     }
 }
 
-#[cfg(experimental_const_generics = true)]
 #[test]
 fn ok_string_array_clone() {
     use ::assert::*;
@@ -85,7 +82,6 @@ fn ok_string_array_clone() {
     assert(a == b);
 }
 
-#[cfg(experimental_const_generics = true)]
 #[test]
 fn ok_array_clone() {
     use ::assert::*;

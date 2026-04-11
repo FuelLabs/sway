@@ -1592,39 +1592,26 @@ fn generic_params_opt_to_type_parameters_with_parent(
             .parameters
             .into_inner()
             .into_iter()
-            .map(|param| {
-                match param {
-                    GenericParam::Trait { ident } => {
-                        let custom_type = type_engine.new_custom_from_name(engines, ident.clone());
-                        TypeParameter::Type(GenericTypeParameter {
-                            type_id: custom_type,
-                            initial_type_id: custom_type,
-                            name: ident,
-                            trait_constraints: Vec::new(),
-                            trait_constraints_span: Span::dummy(),
-                            is_from_parent,
-                        })
-                    }
-                    GenericParam::Const { ident, .. } => {
-                        // let the compilation continue,
-                        // but error the user for each const generic being used
-                        // if the feature is disabled
-                        if !context.experimental.const_generics {
-                            handler.emit_err(
-                                sway_features::Feature::ConstGenerics
-                                    .error_because_is_disabled(&ident.span()),
-                            );
-                        }
-                        TypeParameter::Const(ConstGenericParameter {
-                            span: ident.span().clone(),
-                            name: ident,
-                            ty: type_engine.id_of_u64(),
-                            is_from_parent,
-                            id: None,
-                            expr: None,
-                        })
-                    }
+            .map(|param| match param {
+                GenericParam::Trait { ident } => {
+                    let custom_type = type_engine.new_custom_from_name(engines, ident.clone());
+                    TypeParameter::Type(GenericTypeParameter {
+                        type_id: custom_type,
+                        initial_type_id: custom_type,
+                        name: ident,
+                        trait_constraints: Vec::new(),
+                        trait_constraints_span: Span::dummy(),
+                        is_from_parent,
+                    })
                 }
+                GenericParam::Const { ident, .. } => TypeParameter::Const(ConstGenericParameter {
+                    span: ident.span().clone(),
+                    name: ident,
+                    ty: type_engine.id_of_u64(),
+                    is_from_parent,
+                    id: None,
+                    expr: None,
+                }),
             })
             .collect(),
         None => vec![],
