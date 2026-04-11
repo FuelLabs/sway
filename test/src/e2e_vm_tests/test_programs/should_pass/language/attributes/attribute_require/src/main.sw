@@ -33,6 +33,11 @@ enum SomeEnum {
     A: ()
 }
 
+abi SomeAbi {
+    #[require(trivially_decodable = "true")]
+    fn some_fn(s: NonTrivialStruct);
+}
+
 fn main(s: MyStruct) {
     // To disable unused warnings
     __log(s.f0);

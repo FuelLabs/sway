@@ -523,53 +523,25 @@ impl CollectTypesMetadata for TyDecl {
                     return Ok(vec![]);
                 }
             }
-            TyDecl::StructDecl(decl) => {
-                let mut meta = vec![];
-
-                let struct_decl = ctx.engines.de().get(&decl.decl_id);
-
-                let atts = struct_decl
-                    .attributes
-                    .all_by_kind(|att| matches!(att.kind, AttributeKind::Require));
-                for (_, atts) in atts {
-                    for att in atts.iter() {
-                        for arg in att.args.iter() {
-                            if arg.name.as_str() == REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE {
-                                let is_decode_trivial_table = generate_is_decode_trivial_table(
-                                    ctx,
-                                    decl.decl_id,
-                                    &struct_decl,
-                                );
-
-                                meta.push(TypeMetadata::CheckDecl(CheckDecl {
-                                    decl: TyDecl::StructDecl(decl.clone()),
-                                    is_decode_trivial_table,
-                                }));
-                            }
-                        }
-                    }
-                }
-
-                meta
-            }
             TyDecl::ErrorRecovery(..)
             | TyDecl::StorageDecl(_)
             | TyDecl::TraitDecl(_)
             | TyDecl::EnumDecl(_)
             | TyDecl::EnumVariantDecl(_)
             | TyDecl::ImplSelfOrTrait(_)
-            | TyDecl::AbiDecl(_)
             | TyDecl::TypeAliasDecl(_)
             | TyDecl::TraitTypeDecl(_)
             | TyDecl::GenericTypeForFunctionScope(_)
+            | TyDecl::AbiDecl(_)
+            | TyDecl::StructDecl(_)
             | TyDecl::ConstGenericDecl(_) => vec![],
         };
         Ok(metadata)
     }
 }
 
-fn generate_is_decode_trivial_table(
-    ctx: &mut CollectTypesMetadataContext<'_>,
+pub fn generate_is_decode_trivial_table(
+    ctx: &mut TypeCheckContext<'_>,
     decl_id: DeclId<TyStructDecl>,
     struct_decl: &Arc<TyStructDecl>,
 ) -> HashMap<String, TyExpression> {
@@ -590,7 +562,7 @@ fn generate_is_decode_trivial_table(
             let handler = Handler::default();
             let expr = TyExpression::type_check_function_application(
                 &handler,
-                ctx.type_check_ctx.by_ref(),
+                ctx.by_ref(),
                 TypeBinding {
                     inner: CallPath {
                         prefixes: vec![

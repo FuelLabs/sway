@@ -57,7 +57,30 @@ error: Type is not trivially decodable
    = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
 ____
 
-  Aborting due to 1 error.
+error: Type is not trivially decodable
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require/src/main.sw:28:8
+   |
+...
+28 | struct NonTrivialStruct {
+   |        ^^^^^^^^^^^^^^^^ `NonTrivialStruct` is not trivially decodable.
+   |        ---------------- help: Consider the suggestions below to make this struct trivially decodable.
+29 |     pub a: bool,
+   |         - info: This field is not trivially decodable.
+   |            ---- help: Consider changing this type to `TrivialBool`.
+30 | }
+31 | 
+32 | enum SomeEnum {
+33 |     A: ()
+...
+37 |     #[require(trivially_decodable = "true")]
+38 |     fn some_fn(s: NonTrivialStruct);
+   |                   ---------------- info: This is the reason `NonTrivialStruct` is being checked
+   |
+   = help: `bool` is never trivially decodable.
+   = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
+____
+
+  Aborting due to 2 errors.
 error: Failed to compile attribute_require
 
 > forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require
@@ -116,5 +139,28 @@ error: Type is not trivially decodable
    = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
 ____
 
-  Aborting due to 1 error.
+error: Type is not trivially decodable
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require/src/main.sw:28:8
+   |
+...
+28 | struct NonTrivialStruct {
+   |        ^^^^^^^^^^^^^^^^ `NonTrivialStruct` is not trivially decodable.
+   |        ---------------- help: Consider the suggestions below to make this struct trivially decodable.
+29 |     pub a: bool,
+   |         - info: This field is not trivially decodable.
+   |            ---- help: Consider changing this type to `TrivialBool`.
+30 | }
+31 | 
+32 | enum SomeEnum {
+33 |     A: ()
+...
+37 |     #[require(trivially_decodable = "true")]
+38 |     fn some_fn(s: NonTrivialStruct);
+   |                   ---------------- info: This is the reason `NonTrivialStruct` is being checked
+   |
+   = help: `bool` is never trivially decodable.
+   = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
+____
+
+  Aborting due to 2 errors.
 error: Failed to compile attribute_require
