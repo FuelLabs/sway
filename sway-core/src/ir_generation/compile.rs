@@ -11,13 +11,12 @@ use crate::{
         PanickingFunctionCache,
     },
     language::{
-        ty::{self, AbiDecl, StructDecl, TyDecl, TyExpression},
+        ty::{self, StructDecl, TyDecl, TyExpression},
         Visibility,
     },
     metadata::MetadataManager,
     namespace::ResolvedDeclaration,
     semantic_analysis::namespace,
-    transform::AttributeKind,
     type_system::TypeId,
     types::{LogId, MessageId},
     Engines, PanicOccurrences, PanickingCallOccurrences, TypeInfo,
@@ -27,7 +26,6 @@ use std::{
     collections::{BTreeSet, HashMap},
     sync::Arc,
 };
-use sway_ast::attribute::REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE;
 use sway_error::{error::CompileError, handler::Handler};
 use sway_ir::{metadata::combine as md_combine, *};
 use sway_types::{integer_bits::IntegerBits, Ident, Named, Span, Spanned};
