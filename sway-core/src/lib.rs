@@ -30,8 +30,8 @@ use crate::decl_engine::{DeclEngineGet as _, DeclId};
 use crate::ir_generation::check_function_purity;
 use crate::ir_generation::compile::CheckDecl;
 use crate::language::ty::{
-    generate_is_decode_trivial_table, StructDecl, TyAstNodeContent, TyDecl, TyExpression,
-    TyStructDecl, TyTraitInterfaceItem,
+    generate_is_decode_trivial_table, StructDecl, TyAstNodeContent, TyDecl, TyStructDecl,
+    TyTraitInterfaceItem,
 };
 use crate::language::{CallPath, CallPathType};
 use crate::query_engine::ModuleCacheEntry;
@@ -70,7 +70,7 @@ use sway_ir::{
     MISC_DEMOTION_NAME, RET_DEMOTION_NAME, SIMPLIFY_CFG_NAME, SROA_NAME,
 };
 use sway_types::span::Source;
-use sway_types::{Named, SourceEngine, SourceLocation, Span};
+use sway_types::{SourceEngine, SourceLocation, Span};
 use sway_utils::{time_expr, PerformanceData, PerformanceMetric};
 use transform::{ArgsExpectValues, Attribute, AttributeKind, Attributes, ExpectedArgs};
 use types::{CollectTypesMetadata, CollectTypesMetadataContext, LogId, TypeMetadata};
@@ -962,12 +962,8 @@ pub fn parsed_to_ast(
     // Skip collecting metadata if we triggered an optimised build from LSP.
     let types_metadata = if !lsp_config.as_ref().is_some_and(|lsp| lsp.optimized_build) {
         // Collect information about the types used in this program
-        let mut collect_ctx = CollectTypesMetadataContext::new(
-            engines,
-            experimental,
-            package_name.to_string(),
-            type_check_ctx,
-        );
+        let mut collect_ctx =
+            CollectTypesMetadataContext::new(engines, experimental, package_name.to_string());
 
         let types_metadata_result = typed_program.collect_types_metadata(handler, &mut collect_ctx);
 
@@ -1122,11 +1118,10 @@ fn run_decl_checks(
                             source: Option<Span>| {
         let struct_decl = type_check_ctx.engines.de().get(&decl_id);
 
-        let check = match (check_attr, has_require_att(&struct_decl.attributes)) {
-            (true, true) => true,
-            (false, _) => true,
-            _ => false,
-        };
+        let check = matches!(
+            (check_attr, has_require_att(&struct_decl.attributes)),
+            (true, true) | (false, _)
+        );
 
         if check {
             let is_decode_trivial_table =
@@ -1148,30 +1143,27 @@ fn run_decl_checks(
             TyAstNodeContent::Declaration(TyDecl::AbiDecl(abi_decl)) => {
                 let decl = type_check_ctx.engines.de().get(&abi_decl.decl_id);
                 for item in decl.interface_surface.iter() {
-                    match item {
-                        TyTraitInterfaceItem::TraitFn(decl_ref) => {
-                            let decl = type_check_ctx.engines.de().get(decl_ref.id());
+                    if let TyTraitInterfaceItem::TraitFn(decl_ref) = item {
+                        let decl = type_check_ctx.engines.de().get(decl_ref.id());
 
-                            if has_require_att(&decl.attributes) {
-                                for p in decl.parameters.iter() {
-                                    let p_type =
-                                        type_check_ctx.engines.te().get(p.type_argument.type_id);
+                        if has_require_att(&decl.attributes) {
+                            for p in decl.parameters.iter() {
+                                let p_type =
+                                    type_check_ctx.engines.te().get(p.type_argument.type_id);
 
-                                    match p_type.as_ref() {
-                                        TypeInfo::Struct(decl_id) => {
-                                            check_struct(
-                                                type_check_ctx,
-                                                *decl_id,
-                                                false,
-                                                Some(p.type_argument.span.clone()),
-                                            );
-                                        }
-                                        _ => continue,
+                                match p_type.as_ref() {
+                                    TypeInfo::Struct(decl_id) => {
+                                        check_struct(
+                                            type_check_ctx,
+                                            *decl_id,
+                                            false,
+                                            Some(p.type_argument.span.clone()),
+                                        );
                                     }
+                                    _ => continue,
                                 }
                             }
                         }
-                        _ => {}
                     }
                 }
             }

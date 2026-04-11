@@ -1,18 +1,15 @@
-use std::{collections::HashMap, sync::Arc};
-
 use crate::{
     decl_engine::*,
     fuel_prelude::fuel_tx::StorageSlot,
     language::{parsed, ty::*, Purity, Visibility},
     namespace::{check_impls_for_overlap, check_orphan_rules_for_impls, TraitMap},
     semantic_analysis::namespace,
-    transform::{AllowDeprecatedState, AttributeKind},
+    transform::AllowDeprecatedState,
     type_system::*,
     types::*,
     Engines,
 };
-
-use sway_ast::attribute::REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE;
+use std::sync::Arc;
 use sway_error::{
     error::{CompileError, TypeNotAllowedReason},
     handler::{ErrorEmitted, Handler},

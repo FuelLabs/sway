@@ -3,7 +3,6 @@ use crate::{
     engine_threading::*,
     language::{parsed::Declaration, ty::*, CallPath, Visibility},
     semantic_analysis::TypeCheckContext,
-    transform::AttributeKind,
     type_system::*,
     types::*,
 };
@@ -14,8 +13,6 @@ use std::{
     hash::{Hash, Hasher},
     sync::Arc,
 };
-use sway_ast::attribute::REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE;
-
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
