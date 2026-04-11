@@ -742,7 +742,7 @@ impl Attribute {
             AbiName => false,
             Event => false,
             Indexed => false,
-            Require => false,
+            Require => parent == TraitItemParent::Abi && matches!(item, ItemTraitItem::Fn(..)),
         }
     }
 

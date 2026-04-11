@@ -58,12 +58,6 @@ impl MessageId {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct CheckDecl {
-    pub decl: TyDecl,
-    pub is_decode_trivial_table: HashMap<String, TyExpression>,
-}
-
 #[allow(clippy::enum_variant_names)]
 #[derive(Debug, Clone)]
 pub enum TypeMetadata {
@@ -73,7 +67,6 @@ pub enum TypeMetadata {
     LoggedType(LogId, TypeId),
     // An smo with a unique message ID and the type ID of the type of the message data being sent
     MessageType(MessageId, TypeId),
-    CheckDecl(CheckDecl),
 }
 
 impl TypeMetadata {

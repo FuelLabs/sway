@@ -11,7 +11,7 @@ use crate::{
         PanickingFunctionCache,
     },
     language::{
-        ty::{self, StructDecl, TyDecl},
+        ty::{self, AbiDecl, StructDecl, TyDecl, TyExpression},
         Visibility,
     },
     metadata::MetadataManager,
@@ -19,7 +19,7 @@ use crate::{
     semantic_analysis::namespace,
     transform::AttributeKind,
     type_system::TypeId,
-    types::{CheckDecl, LogId, MessageId},
+    types::{LogId, MessageId},
     Engines, PanicOccurrences, PanickingCallOccurrences, TypeInfo,
 };
 use std::{
@@ -30,7 +30,7 @@ use std::{
 use sway_ast::attribute::REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE;
 use sway_error::{error::CompileError, handler::Handler};
 use sway_ir::{metadata::combine as md_combine, *};
-use sway_types::{integer_bits::IntegerBits, Ident, Span, Spanned};
+use sway_types::{integer_bits::IntegerBits, Ident, Named, Span, Spanned};
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_script(
@@ -574,13 +574,22 @@ pub(super) fn compile_entry_function(
     .map(|f| f.expect("entry point should never contain generics"))
 }
 
+#[derive(Debug, Clone)]
+pub struct CheckDecl {
+    pub decl: TyDecl,
+    pub is_decode_trivial_table: HashMap<String, TyExpression>,
+    pub source: Option<Span>,
+}
+
 pub fn run_ir_decl_checks(
     engines: &Engines,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
     decls_check: &[CheckDecl],
-) -> Option<Vec<CompileError>> {
+) -> Vec<CompileError> {
+    let mut errors = vec![];
+
     // check types
     for check in decls_check.iter() {
         let is_decode_trivial_table = check
@@ -599,68 +608,89 @@ pub fn run_ir_decl_checks(
 
         match &check.decl {
             TyDecl::StructDecl(StructDecl { decl_id }) => {
-                let has_att_decl = engines.de().get_struct(decl_id);
-                let fullname = engines.help_out(TypeInfo::Struct(*decl_id)).to_string();
-                let has_att_pid = has_att_decl.span.source_id().map(|x| x.program_id());
-
-                let atts = has_att_decl
-                    .attributes
-                    .all_by_kind(|att| matches!(att.kind, AttributeKind::Require));
-
-                for (_, atts) in atts {
-                    for att in atts.iter() {
-                        for arg in att.args.iter() {
-                            if arg.name.as_str() == REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE
-                                && !*is_decode_trivial_table.get(&fullname).unwrap()
-                            {
-                                let mut infos = vec![];
-                                let mut helps = vec![];
-                                let mut bottom_helps = BTreeSet::new();
-                                let mut never_trivial = BTreeSet::new();
-
-                                for field in has_att_decl.fields.iter() {
-                                    let tid = field.type_argument.type_id;
-                                    let field_type_info = engines.te().get(tid);
-                                    let fullname = engines.help_out(tid).to_string();
-                                    if *is_decode_trivial_table.get(&fullname).unwrap() {
-                                        continue;
-                                    }
-
-                                    infos.push((
-                                        field.name.span().clone(),
-                                        "This field is not trivially decodable.".to_string(),
-                                    ));
-
-                                    push_help_for_non_trivially_decodable_type(
-                                        engines,
-                                        has_att_pid,
-                                        &mut helps,
-                                        &mut bottom_helps,
-                                        &mut never_trivial,
-                                        &field.type_argument.span,
-                                        &field_type_info,
-                                        field.type_argument.span.as_str(),
-                                        &is_decode_trivial_table,
-                                    );
-                                }
-
-                                return Some(vec![CompileError::TrivialCheckFailed {
-                                    span: has_att_decl.call_path.suffix.span(),
-                                    infos,
-                                    helps,
-                                    never_trivial,
-                                    bottom_helps: bottom_helps.into_iter().collect(),
-                                }]);
-                            }
-                        }
-                    }
+                let struct_decl = engines.de().get_struct(decl_id);
+                if let Some(mut e) = ir_decl_check_struct(
+                    engines,
+                    &is_decode_trivial_table,
+                    *decl_id,
+                    &struct_decl,
+                    check.source.clone(),
+                ) {
+                    errors.append(&mut e);
                 }
             }
             _ => todo!(),
         }
     }
 
-    None
+    errors
+}
+
+fn ir_decl_check_struct(
+    engines: &Engines,
+    is_decode_trivial_table: &HashMap<String, bool>,
+    struct_decl_id: DeclId<ty::TyStructDecl>,
+    struct_decl: &Arc<ty::TyStructDecl>,
+    source: Option<Span>,
+) -> Option<Vec<CompileError>> {
+    let fullname = engines
+        .help_out(TypeInfo::Struct(struct_decl_id))
+        .to_string();
+
+    if is_decode_trivial_table.get(&fullname) == Some(&true) {
+        return None;
+    }
+
+    let struct_pid = struct_decl.span.source_id().map(|x| x.program_id());
+
+    let mut infos = vec![];
+    let mut helps = vec![];
+    let mut bottom_helps = BTreeSet::new();
+    let mut never_trivial = BTreeSet::new();
+
+    if let Some(source) = source.clone() {
+        infos.push((
+            source,
+            format!(
+                "This is the reason `{}` is being checked",
+                struct_decl.name().span().as_str()
+            ),
+        ));
+    }
+
+    for field in struct_decl.fields.iter() {
+        let tid = field.type_argument.type_id;
+        let field_type_info = engines.te().get(tid);
+        let fullname = engines.help_out(tid).to_string();
+        if *is_decode_trivial_table.get(&fullname).unwrap() {
+            continue;
+        }
+
+        infos.push((
+            field.name.span().clone(),
+            "This field is not trivially decodable.".to_string(),
+        ));
+
+        push_help_for_non_trivially_decodable_type(
+            engines,
+            struct_pid,
+            &mut helps,
+            &mut bottom_helps,
+            &mut never_trivial,
+            &field.type_argument.span,
+            &field_type_info,
+            field.type_argument.span.as_str(),
+            is_decode_trivial_table,
+        );
+    }
+
+    Some(vec![CompileError::TrivialCheckFailed {
+        span: struct_decl.call_path.suffix.span(),
+        infos,
+        helps,
+        never_trivial,
+        bottom_helps: bottom_helps.into_iter().collect(),
+    }])
 }
 
 #[allow(clippy::too_many_arguments)]
