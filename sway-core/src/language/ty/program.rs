@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crate::{
     decl_engine::*,
     fuel_prelude::fuel_tx::StorageSlot,
@@ -11,7 +9,7 @@ use crate::{
     types::*,
     Engines,
 };
-
+use std::sync::Arc;
 use sway_error::{
     error::{CompileError, TypeNotAllowedReason},
     handler::{ErrorEmitted, Handler},

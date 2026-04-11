@@ -9,6 +9,7 @@ use crate::parser_error::{ParseError, ParseErrorKind};
 use crate::type_error::TypeError;
 
 use core::fmt;
+use std::collections::BTreeSet;
 use std::fmt::Formatter;
 use sway_types::style::to_snake_case;
 use sway_types::{BaseIdent, Ident, IdentUnique, SourceEngine, Span, Spanned};
@@ -501,6 +502,8 @@ pub enum CompileError {
     },
     #[error("This opcode takes an immediate value but none was provided.")]
     MissingImmediate { span: Span },
+    #[error("Invalid argument.")]
+    InvalidArgument { span: Span },
     #[error("This immediate value is invalid.")]
     InvalidImmediateValue { span: Span },
     #[error("Variant \"{variant_name}\" does not exist on enum \"{enum_name}\"")]
@@ -1129,6 +1132,14 @@ pub enum CompileError {
     IndexedFieldIsNotFixedSizeABIType { field_name: IdentUnique },
     #[error("Too many indexed fields on event for current metadata format.")]
     IndexedFieldOffsetTooLarge { field_name: IdentUnique },
+    #[error("Trivial Check Failed")]
+    TrivialCheckFailed {
+        span: Span,
+        infos: Vec<(Span, String)>,
+        helps: Vec<(Span, String)>,
+        never_trivial: BTreeSet<String>,
+        bottom_helps: Vec<String>,
+    },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1370,6 +1381,8 @@ impl Spanned for CompileError {
             IndexedFieldIsNotFixedSizeABIType { field_name } => field_name.span(),
             IndexedFieldOffsetTooLarge { field_name } => field_name.span(),
             IncoherentImplDueToOrphanRule { span, .. } => span.clone(),
+            TrivialCheckFailed { span, .. } => span.clone(),
+            InvalidArgument { span } => span.clone(),
         }
     }
 }
@@ -3375,6 +3388,70 @@ impl ToDiagnostic for CompileError {
                 hints: vec![],
                 help: vec![],
             },
+            TrivialCheckFailed { span, infos, helps, never_trivial, bottom_helps } => {
+                let mut hints = vec![];
+                hints.extend(
+                    infos.iter()
+                    .map(|x| {
+                        Hint::info(source_engine, x.0.clone(), x.1.clone())
+                    })
+                );
+                hints.extend(
+                    helps.iter()
+                    .map(|x| {
+                        Hint::help(source_engine, x.0.clone(), x.1.clone())
+                    })
+                );
+
+                let mut bottom_helps = bottom_helps.clone();
+
+                let mut never_trivial_help = String::new();
+                if !never_trivial.is_empty() {
+                    let len = never_trivial.len();
+                    for (idx, t) in never_trivial.iter().enumerate() {
+                        never_trivial_help.push('`');
+                        never_trivial_help.push_str(t.as_str());
+                                                never_trivial_help.push('`');
+
+                        if idx < len - 1 {
+                            never_trivial_help.push_str(", ");
+                        }
+                    }
+
+                    if len == 1 {
+                        never_trivial_help.push_str(" is never trivially decodable.");
+                    } else {
+                        never_trivial_help.push_str(" are never trivially decodable.");
+                    }
+
+                    bottom_helps.push(never_trivial_help);
+                }
+
+                if !bottom_helps.is_empty() {
+                    bottom_helps.push(
+                        "For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html".to_string()
+                    )
+                }
+
+                hints.push(
+                    Hint::help(
+                        source_engine,
+                        span.clone(),
+                    "Consider the suggestions below to make this struct trivially decodable.".to_string()
+                    )
+                );
+
+                Diagnostic {
+                    reason: Some(Reason::new(code(1), "Type is not trivially decodable".to_string())),
+                    issue: Issue::error(
+                        source_engine,
+                        span.clone(),
+                        format!("`{}` is not trivially decodable.", span.as_str()),
+                    ),
+                    hints,
+                    help: bottom_helps,
+                }
+            }
             _ => Diagnostic {
                     // TODO: Temporarily we use `self` here to achieve backward compatibility.
                     //       In general, `self` must not be used. All the values for the formatting

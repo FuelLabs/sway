@@ -1,0 +1,8 @@
+[[package]]
+name = "attribute_require"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-C5664B88CD40B57F"

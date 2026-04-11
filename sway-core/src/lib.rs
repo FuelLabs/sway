@@ -26,11 +26,18 @@ pub mod source_map;
 pub mod transform;
 pub mod type_system;
 
+use crate::decl_engine::{DeclEngineGet as _, DeclId};
 use crate::ir_generation::check_function_purity;
+use crate::ir_generation::compile::CheckDecl;
+use crate::language::ty::{
+    generate_is_decode_trivial_table, StructDecl, TyAstNodeContent, TyDecl, TyStructDecl,
+    TyTraitInterfaceItem,
+};
 use crate::language::{CallPath, CallPathType};
 use crate::query_engine::ModuleCacheEntry;
 use crate::semantic_analysis::namespace::ResolvedDeclaration;
 use crate::semantic_analysis::type_resolve::{resolve_call_path, VisibilityCheck};
+use crate::semantic_analysis::TypeCheckContext;
 use crate::source_map::SourceMap;
 pub use asm_generation::from_ir::compile_ir_context_to_finalized_asm;
 use asm_generation::FinalizedAsm;
@@ -49,6 +56,7 @@ use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use sway_ast::attribute::REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE;
 use sway_ast::AttributeDecl;
 use sway_error::convert_parse_tree_error::ConvertParseTreeError;
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -881,24 +889,29 @@ pub fn parsed_to_ast(
             },
         )?;
 
-    let typecheck_namespace =
-        Namespace::new(handler, engines, initial_namespace, true).map_err(|error| {
-            TypeCheckFailed {
-                root_module: None,
-                namespace: collection_ctx.namespace().current_package_ref().clone(),
-                error,
-            }
+    let mut typecheck_namespace = Namespace::new(handler, engines, initial_namespace, true)
+        .map_err(|error| TypeCheckFailed {
+            root_module: None,
+            namespace: collection_ctx.namespace().current_package_ref().clone(),
+            error,
         })?;
+
     // Type check the program.
+    let mut type_check_ctx = TypeCheckContext::from_root(
+        &mut typecheck_namespace,
+        &mut collection_ctx,
+        engines,
+        experimental,
+    )
+    .with_kind(parse_program.kind);
+
     let typed_program_opt = ty::TyProgram::type_check(
         handler,
         engines,
         parse_program,
-        &mut collection_ctx,
-        typecheck_namespace,
         package_name,
         build_config,
-        experimental,
+        &mut type_check_ctx,
     );
 
     let mut typed_program = typed_program_opt?;
@@ -910,6 +923,7 @@ pub fn parsed_to_ast(
             error,
         }
     })?;
+
     // Only clear the parsed AST nodes if we are running a regular compilation pipeline.
     // LSP needs these to build its token map, and they are cleared by `clear_program` as
     // part of the LSP garbage collection functionality instead.
@@ -931,13 +945,28 @@ pub fn parsed_to_ast(
         }
     };
 
+    let mut ctx = Context::new(engines.se(), experimental, backtrace.into());
+    let module = Module::new(&mut ctx, Kind::Contract);
+    let mut md_mgr = MetadataManager::default();
+
+    // run decl checks
+    run_decl_checks(
+        handler,
+        &typed_program,
+        &mut type_check_ctx,
+        &mut ctx,
+        &mut md_mgr,
+        module,
+    );
+
     // Skip collecting metadata if we triggered an optimised build from LSP.
     let types_metadata = if !lsp_config.as_ref().is_some_and(|lsp| lsp.optimized_build) {
         // Collect information about the types used in this program
-        let types_metadata_result = typed_program.collect_types_metadata(
-            handler,
-            &mut CollectTypesMetadataContext::new(engines, experimental, package_name.to_string()),
-        );
+        let mut collect_ctx =
+            CollectTypesMetadataContext::new(engines, experimental, package_name.to_string());
+
+        let types_metadata_result = typed_program.collect_types_metadata(handler, &mut collect_ctx);
+
         let types_metadata = match types_metadata_result {
             Ok(types_metadata) => types_metadata,
             Err(error) => {
@@ -995,8 +1024,7 @@ pub fn parsed_to_ast(
     };
 
     // Evaluate const declarations, to allow storage slots initialization with consts.
-    let mut ctx = Context::new(engines.se(), experimental, backtrace.into());
-    let module = Module::new(&mut ctx, Kind::Contract);
+
     if let Err(errs) = ir_generation::compile::compile_constants_for_package(
         engines,
         &mut ctx,
@@ -1008,6 +1036,8 @@ pub fn parsed_to_ast(
         });
     }
 
+    let mut md_mgr = MetadataManager::default();
+
     // CEI pattern analysis
     let cei_analysis_warnings =
         semantic_analysis::cei_pattern_analysis::analyze_program(engines, &typed_program);
@@ -1015,7 +1045,6 @@ pub fn parsed_to_ast(
         handler.emit_warn(warn);
     }
 
-    let mut md_mgr = MetadataManager::default();
     // Check that all storage initializers can be evaluated at compile time.
     typed_program
         .get_typed_program_with_initialized_storage_slots(
@@ -1048,6 +1077,112 @@ pub fn parsed_to_ast(
     }
 
     Ok(typed_program)
+}
+
+fn run_decl_checks(
+    handler: &Handler,
+    typed_program: &ty::TyProgram,
+    type_check_ctx: &mut TypeCheckContext<'_>,
+    ir_ctx: &mut Context<'_>,
+    md_mgr: &mut MetadataManager,
+    module: Module,
+) {
+    let mut decl_checks = vec![];
+
+    let nodes = std::iter::once(&typed_program.root_module)
+        .chain(
+            typed_program
+                .root_module
+                .submodules_recursive()
+                .map(|(_, submod)| &*submod.module),
+        )
+        .flat_map(|x| x.all_nodes.iter());
+
+    let has_require_att = |atts: &Attributes| -> bool {
+        let atts = atts.all_by_kind(|att| matches!(att.kind, AttributeKind::Require));
+        for (_, atts) in atts {
+            for att in atts.iter() {
+                for arg in att.args.iter() {
+                    if arg.name.as_str() == REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE {
+                        return true;
+                    }
+                }
+            }
+        }
+        false
+    };
+
+    let mut check_struct = |type_check_ctx: &mut TypeCheckContext<'_>,
+                            decl_id: DeclId<TyStructDecl>,
+                            check_attr: bool,
+                            source: Option<Span>| {
+        let struct_decl = type_check_ctx.engines.de().get(&decl_id);
+
+        let check = matches!(
+            (check_attr, has_require_att(&struct_decl.attributes)),
+            (true, true) | (false, _)
+        );
+
+        if check {
+            let is_decode_trivial_table =
+                generate_is_decode_trivial_table(type_check_ctx, decl_id, &struct_decl);
+            dbg!(&is_decode_trivial_table);
+
+            decl_checks.push(CheckDecl {
+                decl: TyDecl::StructDecl(StructDecl { decl_id }),
+                is_decode_trivial_table,
+                source,
+            });
+        }
+    };
+
+    for node in nodes {
+        match &node.content {
+            TyAstNodeContent::Declaration(TyDecl::StructDecl(struct_decl)) => {
+                check_struct(type_check_ctx, struct_decl.decl_id, true, None);
+            }
+            TyAstNodeContent::Declaration(TyDecl::AbiDecl(abi_decl)) => {
+                let decl = type_check_ctx.engines.de().get(&abi_decl.decl_id);
+                for item in decl.interface_surface.iter() {
+                    if let TyTraitInterfaceItem::TraitFn(decl_ref) = item {
+                        let decl = type_check_ctx.engines.de().get(decl_ref.id());
+
+                        if has_require_att(&decl.attributes) {
+                            for p in decl.parameters.iter() {
+                                let p_type =
+                                    type_check_ctx.engines.te().get(p.type_argument.type_id);
+
+                                match p_type.as_ref() {
+                                    TypeInfo::Struct(decl_id) => {
+                                        check_struct(
+                                            type_check_ctx,
+                                            *decl_id,
+                                            false,
+                                            Some(p.type_argument.span.clone()),
+                                        );
+                                    }
+                                    _ => continue,
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    let errors = ir_generation::compile::run_ir_decl_checks(
+        type_check_ctx.engines,
+        ir_ctx,
+        md_mgr,
+        module,
+        &decl_checks,
+    );
+
+    for err in errors {
+        handler.emit_err(err);
+    }
 }
 
 #[allow(clippy::too_many_arguments)]

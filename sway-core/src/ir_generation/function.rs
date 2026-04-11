@@ -28,9 +28,13 @@ use crate::{
     types::*,
     PanicOccurrence, PanicOccurrences, PanickingCallOccurrence, PanickingCallOccurrences,
 };
-
 use indexmap::IndexMap;
 use itertools::Itertools;
+use std::convert::TryFrom;
+use std::{
+    collections::HashMap,
+    hash::{DefaultHasher, Hash as _},
+};
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::error::CompileError;
 use sway_ir::{Context, *};
@@ -41,12 +45,6 @@ use sway_types::{
     span::{Span, Spanned},
     u256::U256,
     Named,
-};
-
-use std::convert::TryFrom;
-use std::{
-    collections::HashMap,
-    hash::{DefaultHasher, Hash as _},
 };
 
 /// The result of compiling an expression can be in memory, or in an (SSA) register.
@@ -1813,7 +1811,7 @@ impl<'a> FnCompiler<'a> {
                 let gas = return_on_termination_or_extract!(self.compile_expression_to_register(
                     context,
                     md_mgr,
-                    &arguments[3]
+                    &arguments[3],
                 )?)
                 .expect_register();
 
@@ -1839,13 +1837,13 @@ impl<'a> FnCompiler<'a> {
                 let ptr = return_on_termination_or_extract!(self.compile_expression_to_register(
                     context,
                     md_mgr,
-                    &arguments[0]
+                    &arguments[0],
                 )?)
                 .expect_register();
                 let len = return_on_termination_or_extract!(self.compile_expression_to_register(
                     context,
                     md_mgr,
-                    &arguments[1]
+                    &arguments[1],
                 )?)
                 .expect_register();
                 let r = self
@@ -2776,6 +2774,21 @@ impl<'a> FnCompiler<'a> {
             .binary_op(BinaryOpKind::Sub, end, start);
 
         // compile the slice together
+        let slice = self.slices_from_ptr_and_len(context, elem_ir_type, ptr_to_elem, slice_len)?;
+
+        Ok(TerminatorValue::new(
+            CompiledValue::InRegister(slice),
+            context,
+        ))
+    }
+
+    fn slices_from_ptr_and_len(
+        &mut self,
+        context: &mut Context<'_>,
+        elem_ir_type: Type,
+        ptr_to_elem: Value,
+        slice_len: Value,
+    ) -> Result<Value, CompileError> {
         let ptr_to_elem_ty = Type::new_typed_pointer(context, elem_ir_type);
         let return_type = Type::get_typed_slice(context, elem_ir_type);
         let slice_as_tuple = self.compile_tuple_from_values(
@@ -2793,11 +2806,7 @@ impl<'a> FnCompiler<'a> {
             return_type,
             Some(Ident::new_no_span("s".into())),
         );
-
-        Ok(TerminatorValue::new(
-            CompiledValue::InRegister(slice),
-            context,
-        ))
+        Ok(slice)
     }
 
     fn compile_return(
@@ -3414,7 +3423,7 @@ impl<'a> FnCompiler<'a> {
         let addr = return_on_termination_or_extract!(self.compile_expression_to_register(
             context,
             md_mgr,
-            &call_params.contract_address
+            &call_params.contract_address,
         )?)
         .expect_register();
         let gep_val =
@@ -3483,7 +3492,7 @@ impl<'a> FnCompiler<'a> {
                 return_on_termination_or_extract!(self.compile_expression_to_memory(
                     context,
                     md_mgr,
-                    asset_id_expr
+                    asset_id_expr,
                 )?)
             }
             None => {
@@ -3787,7 +3796,7 @@ impl<'a> FnCompiler<'a> {
         let cond_value = return_on_termination_or_extract!(self.compile_expression_to_register(
             context,
             md_mgr,
-            ast_condition
+            ast_condition,
         )?)
         .expect_register();
         let cond_block = self.current_block;
@@ -4329,7 +4338,7 @@ impl<'a> FnCompiler<'a> {
         let rhs = return_on_termination_or_extract!(self.compile_expression_to_register(
             context,
             md_mgr,
-            &ast_reassignment.rhs
+            &ast_reassignment.rhs,
         )?)
         .expect_register();
 
@@ -4730,7 +4739,7 @@ impl<'a> FnCompiler<'a> {
                     return_on_termination_or_extract!(self.compile_expression_to_register(
                         context,
                         md_mgr,
-                        &contents[0]
+                        &contents[0],
                     )?)
                     .expect_register(),
                 ),
@@ -4889,7 +4898,7 @@ impl<'a> FnCompiler<'a> {
         let struct_val = return_on_termination_or_extract!(self.compile_expression_to_memory(
             context,
             md_mgr,
-            ast_struct_expr
+            ast_struct_expr,
         )?)
         .expect_memory();
 
@@ -5575,7 +5584,7 @@ impl MemoryRepresentation {
     pub fn len_in_bytes(&self) -> u64 {
         match self {
             MemoryRepresentation::Padding { len_in_bytes } => *len_in_bytes,
-            MemoryRepresentation::Blob { len_in_bytes } => *len_in_bytes,
+            MemoryRepresentation::Blob { len_in_bytes, .. } => *len_in_bytes,
             MemoryRepresentation::And(items) => items.iter().map(|x| x.len_in_bytes()).sum(),
             MemoryRepresentation::Or(items) => items
                 .iter()
@@ -5713,6 +5722,8 @@ pub fn get_encoding_representation_by_id(
     get_encoding_representation(engines, &engines.te().get(type_id))
 }
 
+// Range is None here because we cannot guarantee a buffer that is going to be decoded
+// has the correct bytes
 pub fn get_encoding_representation(
     engines: &Engines,
     type_info: &TypeInfo,
