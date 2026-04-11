@@ -61,7 +61,6 @@ pub trait Iterator {
 
 // Array Iterator
 
-#[cfg(experimental_const_generics = true)]
 impl<T, const N: u64> [T; N] {
     fn iter(self) -> ArrayIterator<T, N> {
         ArrayIterator {
@@ -71,13 +70,11 @@ impl<T, const N: u64> [T; N] {
     }
 }
 
-#[cfg(experimental_const_generics = true)]
 pub struct ArrayIterator<T, const N: u64> {
     array: [T; N],
     idx: u64,
 }
 
-#[cfg(experimental_const_generics = true)]
 impl<T, const N: u64> Iterator for ArrayIterator<T, N> {
     type Item = T;
     fn next(ref mut self) -> Option<Self::Item> {
@@ -93,7 +90,6 @@ impl<T, const N: u64> Iterator for ArrayIterator<T, N> {
 
 // Tests
 
-#[cfg(experimental_const_generics = true)]
 #[test]
 fn ok_array_iterator_manual() {
     use ::assert::*;
@@ -111,7 +107,6 @@ fn ok_array_iterator_manual() {
     assert(d == None);
 }
 
-#[cfg(experimental_const_generics = true)]
 #[test]
 fn ok_array_iterator_for() {
     use ::assert::*;

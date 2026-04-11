@@ -1,7 +1,7 @@
 ---
 source: test/src/snapshot/mod.rs
 ---
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
@@ -49,7 +49,7 @@ test result: OK. 29 passed; 0 failed; finished in ???
 > Block: ARRAY0
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
@@ -69,7 +69,7 @@ test result: OK. 1 passed; 0 failed; finished in ???
 > Block: ARRAY1
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
@@ -89,7 +89,7 @@ test result: OK. 1 passed; 0 failed; finished in ???
 > Block: ARRAY16
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
@@ -109,7 +109,7 @@ test result: OK. 1 passed; 0 failed; finished in ???
 > Block: ARRAY32
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
@@ -129,7 +129,7 @@ test result: OK. 1 passed; 0 failed; finished in ???
 > Block: ARRAY64
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
@@ -149,7 +149,7 @@ test result: OK. 1 passed; 0 failed; finished in ???
 > Block: ARRAY8
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
@@ -169,7 +169,7 @@ test result: OK. 1 passed; 0 failed; finished in ???
 > Block: B256
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
@@ -189,7 +189,7 @@ test result: OK. 1 passed; 0 failed; finished in ???
 > Block: BOOL
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
@@ -209,7 +209,7 @@ test result: OK. 1 passed; 0 failed; finished in ???
 > Block: ENUM_U64
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
@@ -229,7 +229,7 @@ test result: OK. 1 passed; 0 failed; finished in ???
 > Block: ENUM_U64_U64
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
@@ -249,7 +249,7 @@ test result: OK. 1 passed; 0 failed; finished in ???
 > Block: ENUM_U64_U64_U64
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
@@ -269,7 +269,7 @@ test result: OK. 1 passed; 0 failed; finished in ???
 > Block: STR0
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
@@ -289,7 +289,7 @@ test result: OK. 1 passed; 0 failed; finished in ???
 > Block: STR1
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
@@ -309,7 +309,7 @@ test result: OK. 1 passed; 0 failed; finished in ???
 > Block: STR16
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
@@ -329,7 +329,7 @@ test result: OK. 1 passed; 0 failed; finished in ???
 > Block: STR32
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
@@ -349,7 +349,7 @@ test result: OK. 1 passed; 0 failed; finished in ???
 > Block: STR8
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
@@ -369,7 +369,7 @@ test result: OK. 1 passed; 0 failed; finished in ???
 > Block: STRUCT_U64
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
@@ -389,7 +389,7 @@ test result: OK. 1 passed; 0 failed; finished in ???
 > Block: STRUCT_U64_U64
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
@@ -409,7 +409,7 @@ test result: OK. 1 passed; 0 failed; finished in ???
 > Block: STRUCT_U64_U64_U64
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
@@ -429,7 +429,7 @@ test result: OK. 1 passed; 0 failed; finished in ???
 > Block: TUPLE0
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
@@ -449,7 +449,7 @@ test result: OK. 1 passed; 0 failed; finished in ???
 > Block: TUPLE1
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
@@ -469,7 +469,7 @@ test result: OK. 1 passed; 0 failed; finished in ???
 > Block: TUPLE2
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
@@ -489,7 +489,7 @@ test result: OK. 1 passed; 0 failed; finished in ???
 > Block: TUPLE3
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
@@ -509,7 +509,7 @@ test result: OK. 1 passed; 0 failed; finished in ???
 > Block: TUPLE4
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
@@ -529,7 +529,7 @@ test result: OK. 1 passed; 0 failed; finished in ???
 > Block: U16
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
@@ -549,7 +549,7 @@ test result: OK. 1 passed; 0 failed; finished in ???
 > Block: U256
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
@@ -569,7 +569,7 @@ test result: OK. 1 passed; 0 failed; finished in ???
 > Block: U32
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
@@ -589,7 +589,7 @@ test result: OK. 1 passed; 0 failed; finished in ???
 > Block: U64
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
@@ -609,7 +609,7 @@ test result: OK. 1 passed; 0 failed; finished in ???
 > Block: U8
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call

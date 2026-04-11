@@ -12,7 +12,7 @@ The list of [currently active](https://github.com/FuelLabs/sway/issues/?q=is%3Ai
 
 Each experimental feature has a unique _feature flag_ defined for it. Feature flags are used to early opt-in for a feature, or to opt-out if the feature is already enabled by default, and you want to have the previous compiler behavior.
 
-E.g., a feature flag for the [Const Generics](https://github.com/FuelLabs/sway/issues/6860) feature is `const_generics`.
+E.g., a feature flag for the [New Hashing](https://github.com/FuelLabs/sway/issues/7256) feature is `new_hashing`.
 
 Experimental features can be enabled and disabled using the `Forc.toml`, `forc` CLI, or environment variables.
 

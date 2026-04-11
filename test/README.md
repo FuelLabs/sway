@@ -120,7 +120,8 @@ To manipulate these blocks one can:
 ```toml
 cmds = [
     { repeat = "for-each-block", cmds = [
-        "forc test --path {root} --release --experimental const_generics"
+        "forc test --path {root} --release --experimental new_hashing",
+        "forc test --path {root} --release",
     ] }
 ]
 ```
