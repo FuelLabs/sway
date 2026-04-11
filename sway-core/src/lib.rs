@@ -1126,6 +1126,7 @@ fn run_decl_checks(
         if check {
             let is_decode_trivial_table =
                 generate_is_decode_trivial_table(type_check_ctx, decl_id, &struct_decl);
+            dbg!(&is_decode_trivial_table);
 
             decl_checks.push(CheckDecl {
                 decl: TyDecl::StructDecl(StructDecl { decl_id }),

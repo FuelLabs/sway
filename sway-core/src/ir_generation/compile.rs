@@ -660,6 +660,7 @@ fn ir_decl_check_struct(
         let tid = field.type_argument.type_id;
         let field_type_info = engines.te().get(tid);
         let fullname = engines.help_out(tid).to_string();
+
         if *is_decode_trivial_table.get(&fullname).unwrap() {
             continue;
         }
