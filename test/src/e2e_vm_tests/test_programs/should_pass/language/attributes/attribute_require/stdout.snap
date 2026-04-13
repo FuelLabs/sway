@@ -73,7 +73,7 @@ error: Type is not trivially decodable
 33 |     A: ()
 ...
 37 |     #[require(trivially_decodable = "true")]
-38 |     fn some_fn_1(a: NonTrivialStruct, b: SomeEnum);
+38 |     fn some_fn_1(a: NonTrivialStruct, b: SomeEnum) -> SomeEnum;
    |                     ---------------- info: This is the reason `NonTrivialStruct` is being checked
    |
    = help: `bool` is never trivially decodable.
@@ -87,7 +87,7 @@ error: Type is not trivially decodable
 32 | enum SomeEnum {
    |      ^^^^^^^^ `SomeEnum` is not trivially decodable.
 ...
-38 |     fn some_fn_1(a: NonTrivialStruct, b: SomeEnum);
+38 |     fn some_fn_1(a: NonTrivialStruct, b: SomeEnum) -> SomeEnum;
    |                                          -------- info: This is the reason `SomeEnum` is being checked
    |                                          -------- help: Consider wrapping this type like `TrivialEnum<SomeEnum>`.
    |
@@ -95,7 +95,22 @@ error: Type is not trivially decodable
    = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
 ____
 
-  Aborting due to 3 errors.
+error: Type is not trivially decodable
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require/src/main.sw:32:6
+   |
+...
+32 | enum SomeEnum {
+   |      ^^^^^^^^ `SomeEnum` is not trivially decodable.
+...
+38 |     fn some_fn_1(a: NonTrivialStruct, b: SomeEnum) -> SomeEnum;
+   |                                                       -------- info: This is the reason `SomeEnum` is being checked
+   |                                                       -------- help: Consider wrapping this type like `TrivialEnum<SomeEnum>`.
+   |
+   = help: Enums are represented as tagged unions and because of that they cannot be trivially decoded. But where needed, they can be wrapped by `TrivialEnum`, and their original value can be retrieved later with `unwrap`.
+   = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
+____
+
+  Aborting due to 4 errors.
 error: Failed to compile attribute_require
 
 > forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require
@@ -170,7 +185,7 @@ error: Type is not trivially decodable
 33 |     A: ()
 ...
 37 |     #[require(trivially_decodable = "true")]
-38 |     fn some_fn_1(a: NonTrivialStruct, b: SomeEnum);
+38 |     fn some_fn_1(a: NonTrivialStruct, b: SomeEnum) -> SomeEnum;
    |                     ---------------- info: This is the reason `NonTrivialStruct` is being checked
    |
    = help: `bool` is never trivially decodable.
@@ -184,7 +199,7 @@ error: Type is not trivially decodable
 32 | enum SomeEnum {
    |      ^^^^^^^^ `SomeEnum` is not trivially decodable.
 ...
-38 |     fn some_fn_1(a: NonTrivialStruct, b: SomeEnum);
+38 |     fn some_fn_1(a: NonTrivialStruct, b: SomeEnum) -> SomeEnum;
    |                                          -------- info: This is the reason `SomeEnum` is being checked
    |                                          -------- help: Consider wrapping this type like `TrivialEnum<SomeEnum>`.
    |
@@ -192,5 +207,20 @@ error: Type is not trivially decodable
    = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
 ____
 
-  Aborting due to 3 errors.
+error: Type is not trivially decodable
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require/src/main.sw:32:6
+   |
+...
+32 | enum SomeEnum {
+   |      ^^^^^^^^ `SomeEnum` is not trivially decodable.
+...
+38 |     fn some_fn_1(a: NonTrivialStruct, b: SomeEnum) -> SomeEnum;
+   |                                                       -------- info: This is the reason `SomeEnum` is being checked
+   |                                                       -------- help: Consider wrapping this type like `TrivialEnum<SomeEnum>`.
+   |
+   = help: Enums are represented as tagged unions and because of that they cannot be trivially decoded. But where needed, they can be wrapped by `TrivialEnum`, and their original value can be retrieved later with `unwrap`.
+   = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
+____
+
+  Aborting due to 4 errors.
 error: Failed to compile attribute_require
