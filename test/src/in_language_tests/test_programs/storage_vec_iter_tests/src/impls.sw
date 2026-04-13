@@ -117,27 +117,6 @@ impl TestInstance for str {
     }
 }
 
-#[cfg(experimental_const_generics = false)]
-impl PartialEq for str[6] {
-    fn eq(self, other: Self) -> bool {
-        let mut i = 0;
-        while i < 6 {
-            let ptr_self = __addr_of(self).add::<u8>(i);
-            let ptr_other = __addr_of(other).add::<u8>(i);
-
-            if ptr_self.read::<u8>() != ptr_other.read::<u8>() {
-                return false;
-            }
-
-            i = i + 1;
-        };
-
-        true
-    }
-}
-#[cfg(experimental_const_generics = false)]
-impl Eq for str[6] {}
-
 impl TestInstance for str[6] {
     fn elements(len: u64) -> Vec<Self> {
         let mut res = Vec::new();
@@ -155,15 +134,6 @@ impl TestInstance for str[6] {
         res
     }
 }
-
-#[cfg(experimental_const_generics = false)]
-impl PartialEq for [u64; 2] {
-    fn eq(self, other: Self) -> bool {
-        self[0] == other[0] && self[1] == other[1]
-    }
-}
-#[cfg(experimental_const_generics = false)]
-impl Eq for [u64; 2] {}
 
 impl TestInstance for [u64; 2] {
     fn elements(len: u64) -> Vec<Self> {
@@ -375,11 +345,3 @@ impl TestInstance for [u64; 0] {
     }
 }
 
-#[cfg(experimental_const_generics = false)]
-impl PartialEq for [u64; 0] {
-    fn eq(self, other: Self) -> bool {
-        true
-    }
-}
-#[cfg(experimental_const_generics = false)]
-impl Eq for [u64; 0] {}
