@@ -11,7 +11,7 @@ use crate::{
         PanickingFunctionCache,
     },
     language::{
-        ty::{self, StructDecl, TyDecl, TyExpression},
+        ty::{self, TyEnumDecl, TyExpression, TyStructDecl},
         Visibility,
     },
     metadata::MetadataManager,
@@ -574,9 +574,15 @@ pub(super) fn compile_entry_function(
 
 #[derive(Debug, Clone)]
 pub struct CheckDecl {
-    pub decl: TyDecl,
+    pub decl: CheckDeclType,
     pub is_decode_trivial_table: HashMap<String, TyExpression>,
     pub source: Option<Span>,
+}
+
+#[derive(Debug, Clone)]
+pub enum CheckDeclType {
+    Struct(DeclId<TyStructDecl>),
+    Enum(DeclId<TyEnumDecl>),
 }
 
 pub fn run_ir_decl_checks(
@@ -605,19 +611,46 @@ pub fn run_ir_decl_checks(
             .collect::<HashMap<String, bool>>();
 
         match &check.decl {
-            TyDecl::StructDecl(StructDecl { decl_id }) => {
-                let struct_decl = engines.de().get_struct(decl_id);
-                if let Some(mut e) = ir_decl_check_struct(
+            CheckDeclType::Struct(decl_id) => {
+                let decl = engines.de().get_struct(decl_id);
+                errors.extend(ir_decl_check_struct(
                     engines,
                     &is_decode_trivial_table,
                     *decl_id,
-                    &struct_decl,
+                    &decl,
                     check.source.clone(),
-                ) {
-                    errors.append(&mut e);
-                }
+                ));
             }
-            _ => todo!(),
+            CheckDeclType::Enum(decl_id) => {
+                let decl = engines.de().get(decl_id);
+
+                let mut infos = vec![];
+                let mut helps = vec![];
+                let mut bottom_helps = BTreeSet::new();
+
+                if let Some(source) = check.source.as_ref() {
+                    infos.push((
+                        source.clone(),
+                        format!("This is the reason `{}` is being checked", source.as_str()),
+                    ));
+                    push_help_for_non_trivially_decodable_type_enums(
+                        &mut helps,
+                        &mut bottom_helps,
+                        source,
+                        source.as_str(),
+                    );
+                }
+
+                let error = CompileError::TrivialCheckFailed {
+                    span: decl.call_path.suffix.span(),
+                    can_be_made_trivial: false,
+                    infos,
+                    helps,
+                    never_trivial: BTreeSet::new(),
+                    bottom_helps: bottom_helps.into_iter().collect(),
+                };
+                errors.push(error);
+            }
         }
     }
 
@@ -630,13 +663,13 @@ fn ir_decl_check_struct(
     struct_decl_id: DeclId<ty::TyStructDecl>,
     struct_decl: &Arc<ty::TyStructDecl>,
     source: Option<Span>,
-) -> Option<Vec<CompileError>> {
+) -> Vec<CompileError> {
     let fullname = engines
         .help_out(TypeInfo::Struct(struct_decl_id))
         .to_string();
 
     if is_decode_trivial_table.get(&fullname) == Some(&true) {
-        return None;
+        return vec![];
     }
 
     let struct_pid = struct_decl.span.source_id().map(|x| x.program_id());
@@ -683,13 +716,14 @@ fn ir_decl_check_struct(
         );
     }
 
-    Some(vec![CompileError::TrivialCheckFailed {
+    vec![CompileError::TrivialCheckFailed {
         span: struct_decl.call_path.suffix.span(),
+        can_be_made_trivial: true,
         infos,
         helps,
         never_trivial,
         bottom_helps: bottom_helps.into_iter().collect(),
-    }])
+    }]
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -727,14 +761,12 @@ fn push_help_for_non_trivially_decodable_type(
             never_trivial.insert("u32".to_string());
         }
         TypeInfo::Enum(_) => {
-            helps.push((
-                type_span.clone(),
-                format!(
-                    "Consider wrapping this type like `TrivialEnum<{}>`.",
-                    type_as_in_src,
-                ),
-            ));
-            bottom_helps.insert("Enums are represented as tagged unions and because of that they cannot be trivially decoded. But struct fields can still be trivially decodable by wrapping their original type with `TrivialEnum`, and the original enum value can be retrieved later by calling `unwrap`.".to_string());
+            push_help_for_non_trivially_decodable_type_enums(
+                helps,
+                bottom_helps,
+                type_span,
+                type_as_in_src,
+            );
         }
         TypeInfo::Struct(decl_id) => {
             let decl = engines.de().get(decl_id);
@@ -809,6 +841,22 @@ fn push_help_for_non_trivially_decodable_type(
         }
         _ => {}
     }
+}
+
+pub fn push_help_for_non_trivially_decodable_type_enums(
+    helps: &mut Vec<(Span, String)>,
+    bottom_helps: &mut BTreeSet<String>,
+    type_span: &Span,
+    type_as_in_src: &str,
+) {
+    helps.push((
+        type_span.clone(),
+        format!(
+            "Consider wrapping this type like `TrivialEnum<{}>`.",
+            type_as_in_src,
+        ),
+    ));
+    bottom_helps.insert("Enums are represented as tagged unions and because of that they cannot be trivially decoded. But where needed, they can be wrapped by `TrivialEnum`, and their original value can be retrieved later with `unwrap`.".to_string());
 }
 
 #[allow(clippy::too_many_arguments)]
