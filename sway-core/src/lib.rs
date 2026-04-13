@@ -30,8 +30,7 @@ use crate::decl_engine::{DeclEngineGet as _, DeclId};
 use crate::ir_generation::check_function_purity;
 use crate::ir_generation::compile::{CheckDecl, CheckDeclType};
 use crate::language::ty::{
-    generate_is_decode_trivial_table, TyAstNodeContent, TyDecl, TyStructDecl,
-    TyTraitInterfaceItem,
+    generate_is_decode_trivial_table, TyAstNodeContent, TyDecl, TyStructDecl, TyTraitInterfaceItem,
 };
 use crate::language::{CallPath, CallPathType};
 use crate::query_engine::ModuleCacheEntry;
@@ -1138,6 +1137,23 @@ fn run_decl_checks(
         }
     };
 
+    let check_type = |type_check_ctx: &mut TypeCheckContext<'_>,
+                      p_type: &TypeInfo,
+                      type_span: &Span|
+     -> Option<CheckDecl> {
+        match p_type {
+            TypeInfo::Struct(decl_id) => {
+                check_struct(type_check_ctx, *decl_id, false, Some(type_span.clone()))
+            }
+            TypeInfo::Enum(decl_id) => Some(CheckDecl {
+                decl: CheckDeclType::Enum(*decl_id),
+                is_decode_trivial_table: HashMap::new(),
+                source: Some(type_span.clone()),
+            }),
+            _ => None,
+        }
+    };
+
     for node in nodes {
         match &node.content {
             TyAstNodeContent::Declaration(TyDecl::StructDecl(struct_decl)) => {
@@ -1159,25 +1175,19 @@ fn run_decl_checks(
                                 let p_type =
                                     type_check_ctx.engines.te().get(p.type_argument.type_id);
 
-                                match p_type.as_ref() {
-                                    TypeInfo::Struct(decl_id) => {
-                                        decl_checks.extend(check_struct(
-                                            type_check_ctx,
-                                            *decl_id,
-                                            false,
-                                            Some(p.type_argument.span.clone()),
-                                        ));
-                                    }
-                                    TypeInfo::Enum(decl_id) => {
-                                        decl_checks.push(CheckDecl {
-                                            decl: CheckDeclType::Enum(*decl_id),
-                                            is_decode_trivial_table: HashMap::new(),
-                                            source: Some(p.type_argument.span.clone()),
-                                        });
-                                    }
-                                    _ => continue,
-                                }
+                                decl_checks.extend(check_type(
+                                    type_check_ctx,
+                                    p_type.as_ref(),
+                                    &p.type_argument.span,
+                                ));
                             }
+
+                            let r_type = type_check_ctx.engines.te().get(decl.return_type.type_id);
+                            decl_checks.extend(check_type(
+                                type_check_ctx,
+                                r_type.as_ref(),
+                                &decl.return_type.span,
+                            ));
                         }
                     }
                 }
