@@ -273,7 +273,10 @@ impl PackageWithDeploymentToTest {
         // We are not concerned about gas costs of contract deployments for tests,
         // only the gas costs of test executions. So, we can simply provide the
         // default, built-in, gas costs values here.
-        let params = maxed_consensus_params(GasCostsValues::default(), TestGasLimit::default());
+        let params = maxed_consensus_params(
+            GasCostsSource::BuiltIn.provide_gas_costs()?,
+            TestGasLimit::default(),
+        );
         let storage = vm::storage::MemoryStorage::default();
         let interpreter_params = InterpreterParams::new(gas_price, params.clone());
         let mut interpreter: vm::prelude::Interpreter<_, _, _, vm::interpreter::NotSupportedEcal> =
