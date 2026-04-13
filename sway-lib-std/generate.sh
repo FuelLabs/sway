@@ -9,38 +9,6 @@ remove_generated_code() {
     sed -i "$((START+1)),$((END-1))d" ./src/$2
 }
 
-remove_generated_code "ARRAY_ENCODE" "codec.sw"
-START=1
-END=64
-for ((i=END;i>=START;i--)); do
-    CODE="#[cfg(experimental_const_generics = false)]\nimpl<T> AbiEncode for [T; $i] where T: AbiEncode { fn is_encode_trivial() -> bool { is_encode_trivial::<T>() } fn abi_encode(self, buffer: Buffer) -> Buffer { let mut buffer = buffer; let mut i = 0; while i < $i { buffer = self[i].abi_encode(buffer); i += 1; }; buffer } }"
-    sed -i "s/\/\/ BEGIN ARRAY_ENCODE/\/\/ BEGIN ARRAY_ENCODE\n$CODE/g" ./src/codec.sw
-done
-
-remove_generated_code "ARRAY_DECODE" "codec.sw"
-START=1
-END=64
-for ((i=END;i>=START;i--)); do
-    CODE="#[cfg(experimental_const_generics = false)]\nimpl<T> AbiDecode for [T; $i] where T: AbiDecode { fn is_decode_trivial() -> bool { is_decode_trivial::<T>() } fn abi_decode(ref mut buffer: BufferReader) -> [T; $i] { let first: T = buffer.decode::<T>(); let mut array = [first; $i]; let mut i = 1; while i < $i { array[i] = buffer.decode::<T>(); i += 1; }; array } }"
-    sed -i "s/\/\/ BEGIN ARRAY_DECODE/\/\/ BEGIN ARRAY_DECODE\n$CODE/g" ./src/codec.sw
-done
-
-remove_generated_code "STRARRAY_ENCODE" "codec.sw"
-START=1
-END=64
-for ((i=END;i>=START;i--)); do
-    CODE="#[cfg(experimental_const_generics = false)]\nimpl AbiEncode for str[$i] { fn is_encode_trivial() -> bool { false } fn abi_encode(self, buffer: Buffer) -> Buffer { Buffer { buffer: __encode_buffer_append(buffer.buffer, self) } } }"
-    sed -i "s/\/\/ BEGIN STRARRAY_ENCODE/\/\/ BEGIN STRARRAY_ENCODE\n$CODE/g" ./src/codec.sw
-done
-
-remove_generated_code "STRARRAY_DECODE" "codec.sw"
-START=1
-END=64
-for ((i=END;i>=START;i--)); do
-    CODE="#[cfg(experimental_const_generics = false)]\nimpl AbiDecode for str[$i] { fn is_decode_trivial() -> bool { false } fn abi_decode(ref mut buffer: BufferReader) -> str[$i] { let data = buffer.read_bytes($i); asm(s: data.ptr()) { s: str[$i] } } }"
-    sed -i "s/\/\/ BEGIN STRARRAY_DECODE/\/\/ BEGIN STRARRAY_DECODE\n$CODE/g" ./src/codec.sw
-done
-
 generate_tuple_encode() {
     local CODE="impl<"
 
@@ -245,21 +213,5 @@ generate_tuple_debug "A B C D"
 generate_tuple_debug "A B C"
 generate_tuple_debug "A B"
 generate_tuple_debug "A"
-
-remove_generated_code "STRARRAY_DEBUG" "debug.sw"
-START=1
-END=64
-for ((i=END;i>=START;i--)); do
-    CODE="#[cfg(experimental_const_generics = false)]\nimpl Debug for str[$i] { fn fmt(self, ref mut f: Formatter) { use ::str::*; from_str_array(self).fmt(f); } }"
-    sed -i "s/\/\/ BEGIN STRARRAY_DEBUG/\/\/ BEGIN STRARRAY_DEBUG\n$CODE/g" ./src/debug.sw
-done
-
-remove_generated_code "ARRAY_DEBUG" "debug.sw"
-START=1
-END=64
-for ((i=END;i>=START;i--)); do
-    CODE="#[cfg(experimental_const_generics = false)]\nimpl<T> Debug for [T; $i] where T: Debug { fn fmt(self, ref mut f: Formatter) { let mut f = f.debug_list(); let mut i = 0; while i < $i { f = f.entry(self[i]); i += 1; }; f.finish(); } }"
-    sed -i "s/\/\/ BEGIN ARRAY_DEBUG/\/\/ BEGIN ARRAY_DEBUG\n$CODE/g" ./src/debug.sw
-done
 
 cargo r -p forc-fmt --release -- -p .

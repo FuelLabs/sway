@@ -777,7 +777,6 @@ where
     T3: Eq,
 {}
 
-#[cfg(experimental_const_generics = true)]
 impl<T, const N: u64> PartialEq for [T; N]
 where
     T: PartialEq,
@@ -799,13 +798,11 @@ where
     }
 }
 
-#[cfg(experimental_const_generics = true)]
 impl<T, const N: u64> Eq for [T; N]
 where
     T: Eq,
 {}
 
-#[cfg(experimental_const_generics = true)]
 impl<const N: u64> PartialEq for str[N] {
     fn eq(self, other: Self) -> bool {
         asm(result, left: self, right: other, len: N) {
@@ -815,7 +812,6 @@ impl<const N: u64> PartialEq for str[N] {
     }
 }
 
-#[cfg(experimental_const_generics = true)]
 impl<const N: u64> Eq for str[N] {}
 
 /// Trait to evaluate if one value is greater or less than another of the same type.
@@ -1811,7 +1807,6 @@ fn u64_as_u8(val: u64) -> u8 {
     }
 }
 
-#[cfg(experimental_const_generics = true)]
 #[test]
 fn ok_array_eq() {
     let a = [1, 2, 3];

@@ -9,7 +9,6 @@ marp: true
 `const generics` let you parameterize types and functions with compile‑time constant values, enabling generic code over sizes, indices, or other fixed values.
 
 ```rust
-#[cfg(experimental_const_generics = true)]
 impl<T, const N: u64> AbiEncode for [T; N] where T: AbiEncode {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         let mut buffer = buffer;
