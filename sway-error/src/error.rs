@@ -1147,6 +1147,7 @@ pub enum CompileError {
     #[error("Trivial Check Failed")]
     TrivialCheckFailed {
         span: Span,
+        can_be_made_trivial: bool,
         infos: Vec<(Span, String)>,
         helps: Vec<(Span, String)>,
         never_trivial: BTreeSet<String>,
@@ -3400,7 +3401,7 @@ impl ToDiagnostic for CompileError {
                 hints: vec![],
                 help: vec![],
             },
-            TrivialCheckFailed { span, infos, helps, never_trivial, bottom_helps } => {
+            TrivialCheckFailed { span, can_be_made_trivial, infos, helps, never_trivial, bottom_helps } => {
                 let mut hints = vec![];
                 hints.extend(
                     infos.iter()
@@ -3439,19 +3440,19 @@ impl ToDiagnostic for CompileError {
                     bottom_helps.push(never_trivial_help);
                 }
 
-                if !bottom_helps.is_empty() {
-                    bottom_helps.push(
-                        "For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html".to_string()
-                    )
-                }
-
-                hints.push(
-                    Hint::help(
-                        source_engine,
-                        span.clone(),
-                    "Consider the suggestions below to make this struct trivially decodable.".to_string()
-                    )
+                bottom_helps.push(
+                    "For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html".to_string()
                 );
+
+                if *can_be_made_trivial {
+                    hints.push(
+                        Hint::help(
+                            source_engine,
+                            span.clone(),
+                        "Consider the suggestions below to make this type trivially decodable.".to_string()
+                        )
+                    );
+                }
 
                 Diagnostic {
                     reason: Some(Reason::new(code(1), "Type is not trivially decodable".to_string())),

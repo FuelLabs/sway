@@ -28,9 +28,9 @@ pub mod type_system;
 
 use crate::decl_engine::{DeclEngineGet as _, DeclId};
 use crate::ir_generation::check_function_purity;
-use crate::ir_generation::compile::CheckDecl;
+use crate::ir_generation::compile::{CheckDecl, CheckDeclType};
 use crate::language::ty::{
-    generate_is_decode_trivial_table, StructDecl, TyAstNodeContent, TyDecl, TyStructDecl,
+    generate_is_decode_trivial_table, TyAstNodeContent, TyDecl, TyStructDecl,
     TyTraitInterfaceItem,
 };
 use crate::language::{CallPath, CallPathType};
@@ -1112,10 +1112,11 @@ fn run_decl_checks(
         false
     };
 
-    let mut check_struct = |type_check_ctx: &mut TypeCheckContext<'_>,
-                            decl_id: DeclId<TyStructDecl>,
-                            check_attr: bool,
-                            source: Option<Span>| {
+    let check_struct = move |type_check_ctx: &mut TypeCheckContext<'_>,
+                             decl_id: DeclId<TyStructDecl>,
+                             check_attr: bool,
+                             source: Option<Span>|
+          -> Option<CheckDecl> {
         let struct_decl = type_check_ctx.engines.de().get(&decl_id);
 
         let check = matches!(
@@ -1126,20 +1127,26 @@ fn run_decl_checks(
         if check {
             let is_decode_trivial_table =
                 generate_is_decode_trivial_table(type_check_ctx, decl_id, &struct_decl);
-            dbg!(&is_decode_trivial_table);
 
-            decl_checks.push(CheckDecl {
-                decl: TyDecl::StructDecl(StructDecl { decl_id }),
+            Some(CheckDecl {
+                decl: CheckDeclType::Struct(decl_id),
                 is_decode_trivial_table,
                 source,
-            });
+            })
+        } else {
+            None
         }
     };
 
     for node in nodes {
         match &node.content {
             TyAstNodeContent::Declaration(TyDecl::StructDecl(struct_decl)) => {
-                check_struct(type_check_ctx, struct_decl.decl_id, true, None);
+                decl_checks.extend(check_struct(
+                    type_check_ctx,
+                    struct_decl.decl_id,
+                    true,
+                    None,
+                ));
             }
             TyAstNodeContent::Declaration(TyDecl::AbiDecl(abi_decl)) => {
                 let decl = type_check_ctx.engines.de().get(&abi_decl.decl_id);
@@ -1154,12 +1161,19 @@ fn run_decl_checks(
 
                                 match p_type.as_ref() {
                                     TypeInfo::Struct(decl_id) => {
-                                        check_struct(
+                                        decl_checks.extend(check_struct(
                                             type_check_ctx,
                                             *decl_id,
                                             false,
                                             Some(p.type_argument.span.clone()),
-                                        );
+                                        ));
+                                    }
+                                    TypeInfo::Enum(decl_id) => {
+                                        decl_checks.push(CheckDecl {
+                                            decl: CheckDeclType::Enum(*decl_id),
+                                            is_decode_trivial_table: HashMap::new(),
+                                            source: Some(p.type_argument.span.clone()),
+                                        });
                                     }
                                     _ => continue,
                                 }
