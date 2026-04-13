@@ -231,6 +231,9 @@ impl DapServer {
             }
             None
         });
+        // TODO: (GAS-COSTS) Provide gas costs values here, similar like in `forc test`.
+        //       See: https://github.com/FuelLabs/sway/issues/7472
+        let gas_costs_values = GasCostsSource::BuiltIn.provide_gas_costs()?;
 
         // Construct a TestExecutor for each test and store it
         let executors: Vec<TestExecutor> = entries
@@ -248,9 +251,7 @@ impl DapServer {
                     test_setup.clone(),
                     test_entry,
                     name.clone(),
-                    // TODO: (GAS-COSTS) Provide gas costs values here, similar like in `forc test`.
-                    //       See: https://github.com/FuelLabs/sway/issues/7472
-                    GasCostsSource::BuiltIn.provide_gas_costs().unwrap(),
+                    gas_costs_values.clone(),
                     TestGasLimit::default(),
                 )
                 .ok()
