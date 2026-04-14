@@ -12,8 +12,16 @@
 # for all other tests the populate baseline is subtracted.
 #
 # Usage:
-#   ./bench_storage_vec.sh                   # run all sizes
-#   ./bench_storage_vec.sh storage_vec_s8    # run a single size
+#   ./bench_storage_vec.sh [-h] [<project> ...]
+#
+# Options:
+#   -h   Print a histogram alongside the CSV output.
+#
+# Examples:
+#   ./bench_storage_vec.sh
+#   ./bench_storage_vec.sh -h
+#   ./bench_storage_vec.sh storage_vec_s8
+#   ./bench_storage_vec.sh -h storage_vec_s8
 #
 set -euo pipefail
 
@@ -24,6 +32,16 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../../../../../.." && pwd)"
 BAR_MAX_WIDTH=60
 BAR_CHAR="█"
 # ────────────────────────────────────────────────────────────────────
+
+# ── Parse options ───────────────────────────────────────────────────
+SHOW_HISTOGRAM=false
+while getopts ":h" opt; do
+    case $opt in
+        h) SHOW_HISTOGRAM=true ;;
+        *) echo "Usage: $0 [-h] [<project> ...]" >&2; exit 1 ;;
+    esac
+done
+shift $((OPTIND - 1))
 
 ALL_PROJECTS=(
     storage_vec_s8
@@ -154,54 +172,56 @@ run_project() {
     done
     echo
 
-    # ── Histogram ───────────────────────────────────────────────────
-    echo "--- Histogram ---"
-    echo
+    # ── Histogram (optional) ─────────────────────────────────────────
+    if [[ "$SHOW_HISTOGRAM" == true ]]; then
+        echo "--- Histogram ---"
+        echo
 
-    # Strip bench_ prefix for display.
-    local -a display_names=()
-    for i in "${!names[@]}"; do
-        display_names+=("${names[$i]#bench_}")
-    done
+        # Strip bench_ prefix for display.
+        local -a display_names=()
+        for i in "${!names[@]}"; do
+            display_names+=("${names[$i]#bench_}")
+        done
 
-    # Find the longest display name and the maximum gas value for scaling.
-    local max_name_len=0
-    local max_gas=1
-    local max_gas_len=1
-    for i in "${!display_names[@]}"; do
-        local nlen=${#display_names[$i]}
-        (( nlen > max_name_len )) && max_name_len=$nlen
-        local abs_gas=${adjusted[$i]}
-        (( abs_gas < 0 )) && abs_gas=$(( -abs_gas ))
-        (( abs_gas > max_gas )) && max_gas=$abs_gas
-        local glen=${#adjusted[$i]}
-        (( glen > max_gas_len )) && max_gas_len=$glen
-    done
+        # Find the longest display name and the maximum gas value for scaling.
+        local max_name_len=0
+        local max_gas=1
+        local max_gas_len=1
+        for i in "${!display_names[@]}"; do
+            local nlen=${#display_names[$i]}
+            (( nlen > max_name_len )) && max_name_len=$nlen
+            local abs_gas=${adjusted[$i]}
+            (( abs_gas < 0 )) && abs_gas=$(( -abs_gas ))
+            (( abs_gas > max_gas )) && max_gas=$abs_gas
+            local glen=${#adjusted[$i]}
+            (( glen > max_gas_len )) && max_gas_len=$glen
+        done
 
-    # Dynamically compute bar width to fit within the terminal.
-    local term_width
-    term_width=$(tput cols 2>/dev/null || echo 120)
-    local overhead=$(( 6 + max_name_len + max_gas_len ))
-    local bar_max=$(( term_width - overhead ))
-    (( bar_max < 10 )) && bar_max=10
-    (( bar_max > BAR_MAX_WIDTH )) && bar_max=$BAR_MAX_WIDTH
+        # Dynamically compute bar width to fit within the terminal.
+        local term_width
+        term_width=$(tput cols 2>/dev/null || echo 120)
+        local overhead=$(( 6 + max_name_len + max_gas_len ))
+        local bar_max=$(( term_width - overhead ))
+        (( bar_max < 10 )) && bar_max=10
+        (( bar_max > BAR_MAX_WIDTH )) && bar_max=$BAR_MAX_WIDTH
 
-    for i in "${!display_names[@]}"; do
-        local gas=${adjusted[$i]}
-        local abs_gas=$gas
-        (( abs_gas < 0 )) && abs_gas=0
-        # Scale bar width.
-        local bar_len=$(( abs_gas * bar_max / max_gas ))
-        # Ensure at least 1 char when gas > 0.
-        (( abs_gas > 0 && bar_len == 0 )) && bar_len=1
+        for i in "${!display_names[@]}"; do
+            local gas=${adjusted[$i]}
+            local abs_gas=$gas
+            (( abs_gas < 0 )) && abs_gas=0
+            # Scale bar width.
+            local bar_len=$(( abs_gas * bar_max / max_gas ))
+            # Ensure at least 1 char when gas > 0.
+            (( abs_gas > 0 && bar_len == 0 )) && bar_len=1
 
-        local bar=""
-        for (( b=0; b<bar_len; b++ )); do bar+="$BAR_CHAR"; done
+            local bar=""
+            for (( b=0; b<bar_len; b++ )); do bar+="$BAR_CHAR"; done
 
-        printf "  %-${max_name_len}s │ %s %${max_gas_len}s\n" "${display_names[$i]}" "$bar" "$gas"
-    done
+            printf "  %-${max_name_len}s │ %s %${max_gas_len}s\n" "${display_names[$i]}" "$bar" "$gas"
+        done
 
-    echo
+        echo
+    fi
 }
 
 # ── Main ────────────────────────────────────────────────────────────

@@ -264,7 +264,7 @@ async fn main() -> Result<()> {
                 .map_or(IrCli::default(), |opts| IrCliOpt::from(opts).0),
             perf: cli.perf,
             // Always use the built-in gas costs values when running tests in parallel.
-            gas_costs_values: GasCostsValues::default(),
+            gas_costs_values: GasCostsSource::BuiltIn.provide_gas_costs()?,
             // Ignore options that are not supported when running tests in parallel.
             print_ir: IrCli::none(),
             print_asm: PrintAsm::none(),

@@ -62,63 +62,6 @@ bench_struct552_read,6298
 bench_struct552_write,160931
 bench_struct552_clear,175989
 
---- Histogram (baseline 12198 gas subtracted) ---
-
-  bool_read       │ █    854
-  bool_write      │ █████  16845
-  bool_clear      │ █████  17389
-  u8_read         │ █    836
-  u8_write        │ █████  16865
-  u8_clear        │ █████  17409
-  u16_read        │ █    860
-  u16_write       │ █████  16847
-  u16_clear       │ █████  17409
-  u32_read        │ █    869
-  u32_write       │ █████  16874
-  u32_clear       │ █████  17436
-  u64_read        │ █    878
-  u64_write       │ █████  16892
-  u64_clear       │ █████  17454
-  u256_read       │ █    897
-  u256_write      │ █████  16123
-  u256_clear      │ █████  17417
-  struct24_read   │ █    886
-  struct24_write  │ █████  16939
-  struct24_clear  │ █████  17497
-  struct32_read   │ █    895
-  struct32_write  │ █████  16166
-  struct32_clear  │ █████  17460
-  struct40_read   │ █   1216
-  struct40_write  │ ████████  25443
-  struct40_clear  │ █████████  26854
-  struct48_read   │ █   1225
-  struct48_write  │ ████████  25461
-  struct48_clear  │ █████████  26872
-  struct56_read   │ █   1234
-  struct56_write  │ ████████  25488
-  struct56_clear  │ █████████  26899
-  struct72_read   │ █   1555
-  struct72_write  │ ███████████  33974
-  struct72_clear  │ ████████████  36238
-  struct88_read   │ █   1564
-  struct88_write  │ ███████████  33992
-  struct88_clear  │ ████████████  36256
-  struct96_read   │ █   1571
-  struct96_write  │ ███████████  32597
-  struct96_clear  │ ████████████  36274
-  struct184_read  │ █   2452
-  struct184_write │ ████████████████████  59260
-  struct184_clear │ █████████████████████  64083
-  struct200_read  │ █   2773
-  struct200_write │ ███████████████████████  67746
-  struct200_clear │ █████████████████████████  73422
-  struct224_read  │ █   2782
-  struct224_write │ ██████████████████████  65103
-  struct224_clear │ █████████████████████████  73440
-  struct552_read  │ ██   6298
-  struct552_write │ ██████████████████████████████████████████████████████ 160931
-  struct552_clear │ ████████████████████████████████████████████████████████████ 175989
-
 ═══════════════════════════════════════════════════════════════
   Running: storage_fields_partial_access
 ═══════════════════════════════════════════════════════════════
@@ -216,99 +159,6 @@ bench_struct552_write_struct224_struct96_struct48_struct24,17060
 bench_struct552_read_struct224_struct96_struct48_struct24_u64,1049
 bench_struct552_write_struct224_struct96_struct48_struct24_u64,17029
 
---- Histogram (baseline 12022 gas subtracted) ---
-
-  struct24_read_u64                                        │ █   855
-  struct24_write_u64                                       │ ███████████████ 16846
-  struct32_read_u64                                        │ █   866
-  struct32_write_u64                                       │ ███████████████ 16855
-  struct40_read_u64                                        │ █   875
-  struct40_write_u64                                       │ ███████████████ 16864
-  struct48_read_struct24                                   │ █  1210
-  struct48_write_struct24                                  │ ███████████████████████ 25421
-  struct48_read_struct24_u64                               │ █   915
-  struct48_write_struct24_u64                              │ ███████████████ 16902
-  struct56_read_struct24                                   │ █   907
-  struct56_write_struct24                                  │ ███████████████ 16971
-  struct56_read_struct32                                   │ █  1228
-  struct56_write_struct32                                  │ ███████████████████████ 25454
-  struct56_read_struct24_u64                               │ █   924
-  struct56_write_struct24_u64                              │ ███████████████ 16911
-  struct56_read_struct32_u64                               │ █   933
-  struct56_write_struct32_u64                              │ ███████████████ 16920
-  struct72_read_struct32                                   │ █   925
-  struct72_write_struct32                                  │ ██████████████ 16220
-  struct72_read_struct40                                   │ █  1246
-  struct72_write_struct40                                  │ ███████████████████████ 25467
-  struct72_read_struct32_u64                               │ █   942
-  struct72_write_struct32_u64                              │ ███████████████ 16929
-  struct72_read_struct40_u64                               │ █   951
-  struct72_write_struct40_u64                              │ ███████████████ 16938
-  struct88_read_struct40                                   │ █  1255
-  struct88_write_struct40                                  │ ███████████████████████ 25476
-  struct88_read_u64                                        │ █   884
-  struct88_write_u64                                       │ ███████████████ 16882
-  struct88_read_struct40_u64                               │ █   958
-  struct88_write_struct40_u64                              │ ███████████████ 16947
-  struct96_read_struct48                                   │ █  1264
-  struct96_write_struct48                                  │ ███████████████████████ 25485
-  struct96_read_struct48_struct24                          │ █   954
-  struct96_write_struct48_struct24                         │ ███████████████ 17000
-  struct96_read_struct48_struct24_u64                      │ █   969
-  struct96_write_struct48_struct24_u64                     │ ███████████████ 16958
-  struct184_read_struct96                                  │ █  1539
-  struct184_write_struct96                                 │ █████████████████████████████ 32471
-  struct184_read_struct88                                  │ █  1522
-  struct184_write_struct88                                 │ ███████████████████████████████ 33853
-  struct184_read_struct96_struct48                         │ █  1283
-  struct184_write_struct96_struct48                        │ ███████████████████████ 25450
-  struct184_read_struct88_struct40                         │ █  1274
-  struct184_write_struct88_struct40                        │ ███████████████████████ 25441
-  struct184_read_struct96_struct48_struct24                │ █  1010
-  struct184_write_struct96_struct48_struct24               │ ███████████████ 17020
-  struct184_read_struct88_struct40_u64                     │ █   977
-  struct184_write_struct88_struct40_u64                    │ ███████████████ 16957
-  struct184_read_struct96_struct48_struct24_u64            │ █  1017
-  struct184_write_struct96_struct48_struct24_u64           │ ███████████████ 16997
-  struct200_read_struct96                                  │ █  1550
-  struct200_write_struct96                                 │ █████████████████████████████ 32480
-  struct200_read_u64                                       │ █   865
-  struct200_write_u64                                      │ ███████████████ 16845
-  struct200_read_struct96_struct48                         │ █  1292
-  struct200_write_struct96_struct48                        │ ███████████████████████ 25459
-  struct200_read_struct96_struct48_struct24                │ █  1019
-  struct200_write_struct96_struct48_struct24               │ ███████████████ 17029
-  struct200_read_struct96_struct48_struct24_u64            │ █  1026
-  struct200_write_struct96_struct48_struct24_u64           │ ███████████████ 17006
-  struct224_read_struct96                                  │ █  1568
-  struct224_write_struct96                                 │ █████████████████████████████ 32498
-  struct224_read_struct32                                  │ █   933
-  struct224_write_struct32                                 │ ██████████████ 16174
-  struct224_read_struct96_struct48                         │ █  1301
-  struct224_write_struct96_struct48                        │ ███████████████████████ 25468
-  struct224_read_struct32_u64                              │ █   921
-  struct224_write_struct32_u64                             │ ███████████████ 16901
-  struct224_read_struct96_struct48_struct24                │ █  1028
-  struct224_write_struct96_struct48_struct24               │ ███████████████ 17038
-  struct224_read_struct96_struct48_struct24_u64            │ █  1035
-  struct224_write_struct96_struct48_struct24_u64           │ ███████████████ 17015
-  struct552_read_struct224                                 │ ██  2825
-  struct552_write_struct224                                │ ████████████████████████████████████████████████████████████ 65074
-  struct552_read_struct96                                  │ █  1586
-  struct552_write_struct96                                 │ █████████████████████████████ 32516
-  struct552_read_u64                                       │ █   903
-  struct552_write_u64                                      │ ███████████████ 16854
-  struct552_read_struct224_struct96                        │ █  1641
-  struct552_write_struct224_struct96                       │ █████████████████████████████ 32535
-  struct552_read_struct224_struct32                        │ █  1006
-  struct552_write_struct224_struct32                       │ ██████████████ 16211
-  struct552_read_struct224_struct96_struct48               │ █  1357
-  struct552_write_struct224_struct96_struct48              │ ███████████████████████ 25497
-  struct552_read_struct224_struct96_struct48_struct24      │ █  1050
-  struct552_write_struct224_struct96_struct48_struct24     │ ███████████████ 17060
-  struct552_read_struct224_struct96_struct48_struct24_u64  │ █  1049
-  struct552_write_struct224_struct96_struct48_struct24_u64 │ ███████████████ 17029
-
 ═══════════════════════════════════════════════════════════════
   Running: storage_vec_s8
 ═══════════════════════════════════════════════════════════════
@@ -381,72 +231,6 @@ bench_iter_n1000,1971011
 bench_clear_n10,17353
 bench_clear_n100,17353
 bench_clear_n1000,17353
-
---- Histogram ---
-
-  push_n10                          │ █    34859
-  push_n100                         │ █    38906
-  push_n1000                        │ █    38884
-  push_n_elems_into_empty_vec_n10   │ █   364538
-  push_n_elems_into_empty_vec_n100  │ ██████  3587770
-  push_n_elems_into_empty_vec_n1000 │ ████████████████████████████████████████████████████████████ 35840178
-  pop_n10                           │ █    18840
-  pop_n100                          │ █    18902
-  pop_n1000                         │ █    18913
-  get_n10                           │ █     2697
-  get_n100                          │ █     2739
-  get_n1000                         │ █     2752
-  set_n10                           │ █    18044
-  set_n100                          │ █    18097
-  set_n1000                         │ █    18110
-  first_n10                         │ █     2741
-  first_n100                        │ █     2741
-  first_n1000                       │ █     2730
-  last_n10                          │ █     2759
-  last_n100                         │ █     2772
-  last_n1000                        │ █     2772
-  len_n10                           │ █      841
-  len_n100                          │ █      903
-  len_n1000                         │ █      916
-  is_empty_n10                      │ █      913
-  is_empty_n100                     │ █      902
-  is_empty_n1000                    │ █      902
-  swap_n10                          │ █    36621
-  swap_n100                         │ █    36634
-  swap_n1000                        │ █    36612
-  swap_remove_n10                   │ █    36612
-  swap_remove_n100                  │ █    36603
-  swap_remove_n1000                 │ █    36614
-  remove_n10                        │ █    89627
-  remove_n100                       │ █   884328
-  remove_n1000                      │ ██████████████  8831789
-  insert_n10                        │ █   123218
-  insert_n100                       │ █   922209
-  insert_n1000                      │ ██████████████  8871898
-  reverse_n10                       │ █   177852
-  reverse_n100                      │ ██  1766813
-  reverse_n1000                     │ █████████████████████████████ 17656291
-  fill_n10                          │ █   169253
-  fill_n100                         │ ██  1681527
-  fill_n1000                        │ ████████████████████████████ 16804227
-  resize_grow_n10                   │ █   194195
-  resize_grow_n100                  │ ███  1799381
-  resize_grow_n1000                 │ █████████████████████████████ 17831081
-  resize_shrink_n10                 │ █    18108
-  resize_shrink_n100                │ █    18097
-  resize_shrink_n1000               │ █    18097
-  store_vec_n10                     │ █    65810
-  store_vec_n100                    │ █   333921
-  store_vec_n1000                   │ █████  3076199
-  load_vec_n10                      │ █     2812
-  load_vec_n100                     │ █     9667
-  load_vec_n1000                    │ █    79902
-  iter_n10                          │ █    20698
-  iter_n100                         │ █   198011
-  iter_n1000                        │ ███  1971011
-  clear_n10                         │ █    17353
-  clear_n100                        │ █    17353
-  clear_n1000                       │ █    17353
 
 ═══════════════════════════════════════════════════════════════
   Running: storage_vec_s24
@@ -521,72 +305,6 @@ bench_clear_n10,17354
 bench_clear_n100,17354
 bench_clear_n1000,17354
 
---- Histogram ---
-
-  push_n10                          │ █    47421
-  push_n100                         │ █    38966
-  push_n1000                        │ █    38944
-  push_n_elems_into_empty_vec_n10   │ █   427638
-  push_n_elems_into_empty_vec_n100  │ ██████  4218770
-  push_n_elems_into_empty_vec_n1000 │ ████████████████████████████████████████████████████████████ 42150178
-  pop_n10                           │ █    19190
-  pop_n100                          │ █    18920
-  pop_n1000                         │ █    18933
-  get_n10                           │ █     3045
-  get_n100                          │ █     3067
-  get_n1000                         │ █     2770
-  set_n10                           │ █    26582
-  set_n100                          │ █    26635
-  set_n1000                         │ █    18180
-  first_n10                         │ █     2763
-  first_n100                        │ █     2761
-  first_n1000                       │ █     2750
-  last_n10                          │ █     3087
-  last_n100                         │ █     2790
-  last_n1000                        │ █     2788
-  len_n10                           │ █      861
-  len_n100                          │ █      903
-  len_n1000                         │ █      916
-  is_empty_n10                      │ █      913
-  is_empty_n100                     │ █      902
-  is_empty_n1000                    │ █      902
-  swap_n10                          │ █    45547
-  swap_n100                         │ █    36780
-  swap_n1000                        │ █    36758
-  swap_remove_n10                   │ █    45810
-  swap_remove_n100                  │ █    45489
-  swap_remove_n1000                 │ █    36720
-  remove_n10                        │ █   107820
-  remove_n100                       │ █  1107434
-  remove_n1000                      │ ███████████████ 11063245
-  insert_n10                        │ █   162495
-  insert_n100                       │ █  1145431
-  insert_n1000                      │ ███████████████ 11103470
-  reverse_n10                       │ █   222482
-  reverse_n100                      │ ███  2213113
-  reverse_n1000                     │ ███████████████████████████████ 22119291
-  fill_n10                          │ █   212111
-  fill_n100                         │ ███  2109943
-  fill_n1000                        │ ██████████████████████████████ 21088243
-  resize_grow_n10                   │ █   257215
-  resize_grow_n100                  │ ███  2429401
-  resize_grow_n1000                 │ ██████████████████████████████████ 24131101
-  resize_shrink_n10                 │ █    18128
-  resize_shrink_n100                │ █    18117
-  resize_shrink_n1000               │ █    18117
-  store_vec_n10                     │ █   126728
-  store_vec_n100                    │ █   943119
-  store_vec_n1000                   │ █████████████  9168199
-  load_vec_n10                      │ █     4372
-  load_vec_n100                     │ █    25275
-  load_vec_n1000                    │ █   235978
-  iter_n10                          │ █    22418
-  iter_n100                         │ █   215411
-  iter_n1000                        │ ███  2143011
-  clear_n10                         │ █    17354
-  clear_n100                        │ █    17354
-  clear_n1000                       │ █    17354
-
 ═══════════════════════════════════════════════════════════════
   Running: storage_vec_s32
 ═══════════════════════════════════════════════════════════════
@@ -659,72 +377,6 @@ bench_iter_n1000,1987011
 bench_clear_n10,17354
 bench_clear_n100,17354
 bench_clear_n1000,17354
-
---- Histogram ---
-
-  push_n10                          │ █    38959
-  push_n100                         │ █    38972
-  push_n1000                        │ █    38950
-  push_n_elems_into_empty_vec_n10   │ █   392626
-  push_n_elems_into_empty_vec_n100  │ ██████  3895974
-  push_n_elems_into_empty_vec_n1000 │ ████████████████████████████████████████████████████████████ 38929382
-  pop_n10                           │ █    18878
-  pop_n100                          │ █    18920
-  pop_n1000                         │ █    18933
-  get_n10                           │ █     2733
-  get_n100                          │ █     2755
-  get_n1000                         │ █     2770
-  set_n10                           │ █    18120
-  set_n100                          │ █    18173
-  set_n1000                         │ █    18186
-  first_n10                         │ █     2764
-  first_n100                        │ █     2762
-  first_n1000                       │ █     2751
-  last_n10                          │ █     2777
-  last_n100                         │ █     2790
-  last_n1000                        │ █     2788
-  len_n10                           │ █      861
-  len_n100                          │ █      903
-  len_n1000                         │ █      916
-  is_empty_n10                      │ █      913
-  is_empty_n100                     │ █      902
-  is_empty_n1000                    │ █      902
-  swap_n10                          │ █    35983
-  swap_n100                         │ █    35996
-  swap_n1000                        │ █    35974
-  swap_remove_n10                   │ █    36726
-  swap_remove_n100                  │ █    36717
-  swap_remove_n1000                 │ █    36728
-  remove_n10                        │ █    89972
-  remove_n100                       │ █   888228
-  remove_n1000                      │ █████████████  8871239
-  insert_n10                        │ █   127723
-  insert_n100                       │ █   926237
-  insert_n1000                      │ █████████████  8911476
-  reverse_n10                       │ █   177846
-  reverse_n100                      │ ██  1773917
-  reverse_n1000                     │ ███████████████████████████ 17734495
-  fill_n10                          │ █   169035
-  fill_n100                         │ ██  1686347
-  fill_n1000                        │ █████████████████████████ 16859447
-  resize_grow_n10                   │ █   227031
-  resize_grow_n100                  │ ███  2107401
-  resize_grow_n1000                 │ ████████████████████████████████ 20911101
-  resize_shrink_n10                 │ █    18128
-  resize_shrink_n100                │ █    18117
-  resize_shrink_n1000               │ █    18117
-  store_vec_n10                     │ █   151090
-  store_vec_n100                    │ █  1247819
-  store_vec_n1000                   │ ██████████████████ 12215199
-  load_vec_n10                      │ █     4996
-  load_vec_n100                     │ █    33078
-  load_vec_n1000                    │ █   314018
-  iter_n10                          │ █    20858
-  iter_n100                         │ █   199811
-  iter_n1000                        │ ███  1987011
-  clear_n10                         │ █    17354
-  clear_n100                        │ █    17354
-  clear_n1000                       │ █    17354
 
 ═══════════════════════════════════════════════════════════════
   Running: storage_vec_s56
@@ -799,72 +451,6 @@ bench_clear_n10,17354
 bench_clear_n100,17354
 bench_clear_n1000,17354
 
---- Histogram ---
-
-  push_n10                          │ █    59921
-  push_n100                         │ █    51466
-  push_n1000                        │ █    51444
-  push_n_elems_into_empty_vec_n10   │ █   552638
-  push_n_elems_into_empty_vec_n100  │ ██████  5468770
-  push_n_elems_into_empty_vec_n1000 │ ████████████████████████████████████████████████████████████ 54650178
-  pop_n10                           │ █    19502
-  pop_n100                          │ █    19232
-  pop_n1000                         │ █    19245
-  get_n10                           │ █     3357
-  get_n100                          │ █     3379
-  get_n1000                         │ █     3082
-  set_n10                           │ █    35050
-  set_n100                          │ █    35103
-  set_n1000                         │ █    26648
-  first_n10                         │ █     3077
-  first_n100                        │ █     3075
-  first_n1000                       │ █     3064
-  last_n10                          │ █     3403
-  last_n100                         │ █     3104
-  last_n1000                        │ █     3102
-  len_n10                           │ █      861
-  len_n100                          │ █      903
-  len_n1000                         │ █      916
-  is_empty_n10                      │ █      913
-  is_empty_n100                     │ █      902
-  is_empty_n1000                    │ █      902
-  swap_n10                          │ █    63107
-  swap_n100                         │ █    54340
-  swap_n1000                        │ █    54318
-  swap_remove_n10                   │ █    54904
-  swap_remove_n100                  │ █    54583
-  swap_remove_n1000                 │ █    45814
-  remove_n10                        │ █   143254
-  remove_n100                       │ █  1537968
-  remove_n1000                      │ ████████████████ 15444779
-  insert_n10                        │ █   218895
-  insert_n100                       │ █  1596931
-  insert_n1000                      │ █████████████████ 15505970
-  reverse_n10                       │ █   310282
-  reverse_n100                      │ ███  3091113
-  reverse_n1000                     │ █████████████████████████████████ 30899291
-  fill_n10                          │ █   296791
-  fill_n100                         │ ███  2956743
-  fill_n1000                        │ ████████████████████████████████ 29556243
-  resize_grow_n10                   │ █   382215
-  resize_grow_n100                  │ ████  3679401
-  resize_grow_n1000                 │ ████████████████████████████████████████ 36631101
-  resize_shrink_n10                 │ █    18128
-  resize_shrink_n100                │ █    18117
-  resize_shrink_n1000               │ █    18117
-  store_vec_n10                     │ █   248609
-  store_vec_n100                    │ ██  2161919
-  store_vec_n1000                   │ ███████████████████████ 21356199
-  load_vec_n10                      │ █     7495
-  load_vec_n100                     │ █    56491
-  load_vec_n1000                    │ █   548133
-  iter_n10                          │ █    25558
-  iter_n100                         │ █   246611
-  iter_n1000                        │ ██  2455011
-  clear_n10                         │ █    17354
-  clear_n100                        │ █    17354
-  clear_n1000                       │ █    17354
-
 ═══════════════════════════════════════════════════════════════
   Running: storage_vec_s72
 ═══════════════════════════════════════════════════════════════
@@ -937,72 +523,6 @@ bench_iter_n1000,2613015
 bench_clear_n10,17354
 bench_clear_n100,17354
 bench_clear_n1000,17354
-
---- Histogram ---
-
-  push_n10                          │ █    59921
-  push_n100                         │ █    63966
-  push_n1000                        │ █    63944
-  push_n_elems_into_empty_vec_n10   │ █   615138
-  push_n_elems_into_empty_vec_n100  │ ██████  6093770
-  push_n_elems_into_empty_vec_n1000 │ ████████████████████████████████████████████████████████████ 60900178
-  pop_n10                           │ █    19502
-  pop_n100                          │ █    19544
-  pop_n1000                         │ █    19557
-  get_n10                           │ █     3357
-  get_n100                          │ █     3379
-  get_n1000                         │ █     3394
-  set_n10                           │ █    35050
-  set_n100                          │ █    35103
-  set_n1000                         │ █    35116
-  first_n10                         │ █     3389
-  first_n100                        │ █     3387
-  first_n1000                       │ █     3376
-  last_n10                          │ █     3403
-  last_n100                         │ █     3416
-  last_n1000                        │ █     3414
-  len_n10                           │ █      861
-  len_n100                          │ █      903
-  len_n1000                         │ █      916
-  is_empty_n10                      │ █      913
-  is_empty_n100                     │ █      902
-  is_empty_n1000                    │ █      902
-  swap_n10                          │ █    71887
-  swap_n100                         │ █    71900
-  swap_n1000                        │ █    71878
-  swap_remove_n10                   │ █    54904
-  swap_remove_n100                  │ █    54895
-  swap_remove_n1000                 │ █    54906
-  remove_n10                        │ █   160814
-  remove_n100                       │ █  1749000
-  remove_n1000                      │ █████████████████ 17631311
-  insert_n10                        │ █   236455
-  insert_n100                       │ █  1828931
-  insert_n1000                      │ █████████████████ 17713470
-  reverse_n10                       │ █   354182
-  reverse_n100                      │ ███  3530113
-  reverse_n1000                     │ ██████████████████████████████████ 35289291
-  fill_n10                          │ █   339131
-  fill_n100                         │ ███  3380143
-  fill_n1000                        │ █████████████████████████████████ 33790243
-  resize_grow_n10                   │ █   444715
-  resize_grow_n100                  │ ████  4304401
-  resize_grow_n1000                 │ ██████████████████████████████████████████ 42881101
-  resize_shrink_n10                 │ █    18128
-  resize_shrink_n100                │ █    18117
-  resize_shrink_n1000               │ █    18117
-  store_vec_n10                     │ █   309549
-  store_vec_n100                    │ ██  2771319
-  store_vec_n1000                   │ ███████████████████████████ 27450199
-  load_vec_n10                      │ █     9056
-  load_vec_n100                     │ █    72099
-  load_vec_n1000                    │ █   704210
-  iter_n10                          │ █    27142
-  iter_n100                         │ █   262415
-  iter_n1000                        │ ██  2613015
-  clear_n10                         │ █    17354
-  clear_n100                        │ █    17354
-  clear_n1000                       │ █    17354
 
 ═══════════════════════════════════════════════════════════════
   Running: storage_vec_s88
@@ -1077,72 +597,6 @@ bench_clear_n10,17354
 bench_clear_n100,17354
 bench_clear_n1000,17354
 
---- Histogram ---
-
-  push_n10                          │ █    72421
-  push_n100                         │ █    63966
-  push_n1000                        │ █    63944
-  push_n_elems_into_empty_vec_n10   │ █   677638
-  push_n_elems_into_empty_vec_n100  │ ██████  6718770
-  push_n_elems_into_empty_vec_n1000 │ ████████████████████████████████████████████████████████████ 67150178
-  pop_n10                           │ █    19817
-  pop_n100                          │ █    19547
-  pop_n1000                         │ █    19560
-  get_n10                           │ █     3670
-  get_n100                          │ █     3694
-  get_n1000                         │ █     3397
-  set_n10                           │ █    43518
-  set_n100                          │ █    43571
-  set_n1000                         │ █    35116
-  first_n10                         │ █     3390
-  first_n100                        │ █     3388
-  first_n1000                       │ █     3377
-  last_n10                          │ █     3716
-  last_n100                         │ █     3417
-  last_n1000                        │ █     3415
-  len_n10                           │ █      861
-  len_n100                          │ █      903
-  len_n1000                         │ █      916
-  is_empty_n10                      │ █      913
-  is_empty_n100                     │ █      902
-  is_empty_n1000                    │ █      902
-  swap_n10                          │ █    80669
-  swap_n100                         │ █    71902
-  swap_n1000                        │ █    71880
-  swap_remove_n10                   │ █    63998
-  swap_remove_n100                  │ █    63677
-  swap_remove_n1000                 │ █    54908
-  remove_n10                        │ █   178691
-  remove_n100                       │ █  1968550
-  remove_n1000                      │ █████████████████ 19826811
-  insert_n10                        │ █   275300
-  insert_n100                       │ █  2048481
-  insert_n1000                      │ █████████████████ 19908970
-  reverse_n10                       │ █   398092
-  reverse_n100                      │ ███  3969213
-  reverse_n1000                     │ ███████████████████████████████████ 39680291
-  fill_n10                          │ █   381471
-  fill_n100                         │ ███  3803543
-  fill_n1000                        │ █████████████████████████████████ 38024243
-  resize_grow_n10                   │ █   507215
-  resize_grow_n100                  │ ████  4929401
-  resize_grow_n1000                 │ ███████████████████████████████████████████ 49131101
-  resize_shrink_n10                 │ █    18128
-  resize_shrink_n100                │ █    18117
-  resize_shrink_n1000               │ █    18117
-  store_vec_n10                     │ █   370490
-  store_vec_n100                    │ ███  3380719
-  store_vec_n1000                   │ █████████████████████████████ 33544199
-  load_vec_n10                      │ █    10617
-  load_vec_n100                     │ █    87707
-  load_vec_n1000                    │ █   860286
-  iter_n10                          │ █    28712
-  iter_n100                         │ █   278115
-  iter_n1000                        │ ██  2770015
-  clear_n10                         │ █    17354
-  clear_n100                        │ █    17354
-  clear_n1000                       │ █    17354
-
 ═══════════════════════════════════════════════════════════════
   Running: storage_vec_s96
 ═══════════════════════════════════════════════════════════════
@@ -1215,70 +669,677 @@ bench_iter_n1000,2614015
 bench_clear_n10,17354
 bench_clear_n100,17354
 bench_clear_n1000,17354
+```
 
---- Histogram ---
+# Branch: `master` on 2026.04.10 `0507c2c9a65a147ef2026fda8ac52ba7223aca40` (Update `fuel-vm` and `fuels` dependencies in `sdk-harness` tests (#7591))
 
-  push_n10                          │ █    63959
-  push_n100                         │ █    63972
-  push_n1000                        │ █    63950
-  push_n_elems_into_empty_vec_n10   │ █   642004
-  push_n_elems_into_empty_vec_n100  │ ██████  6395352
-  push_n_elems_into_empty_vec_n1000 │ ████████████████████████████████████████████████████████████ 63928760
-  pop_n10                           │ █    19505
-  pop_n100                          │ █    19547
-  pop_n1000                         │ █    19560
-  get_n10                           │ █     3360
-  get_n100                          │ █     3384
-  get_n1000                         │ █     3397
-  set_n10                           │ █    35056
-  set_n100                          │ █    35109
-  set_n1000                         │ █    35122
-  first_n10                         │ █     3391
-  first_n100                        │ █     3389
-  first_n1000                       │ █     3380
-  last_n10                          │ █     3404
-  last_n100                         │ █     3417
-  last_n1000                        │ █     3415
-  len_n10                           │ █      861
-  len_n100                          │ █      903
-  len_n1000                         │ █      916
-  is_empty_n10                      │ █      913
-  is_empty_n100                     │ █      902
-  is_empty_n1000                    │ █      902
-  swap_n10                          │ █    70483
-  swap_n100                         │ █    70496
-  swap_n1000                        │ █    70474
-  swap_remove_n10                   │ █    54912
-  swap_remove_n100                  │ █    54903
-  swap_remove_n1000                 │ █    54914
-  remove_n10                        │ █   160843
-  remove_n100                       │ █  1749344
-  remove_n1000                      │ ████████████████ 17634805
-  insert_n10                        │ █   240528
-  insert_n100                       │ █  1829287
-  insert_n1000                      │ ████████████████ 17716976
-  reverse_n10                       │ █   352834
-  reverse_n100                      │ ███  3529395
-  reverse_n1000                     │ █████████████████████████████████ 35294873
-  fill_n10                          │ █   337773
-  fill_n100                         │ ███  3379325
-  fill_n1000                        │ ███████████████████████████████ 33794825
-  resize_grow_n10                   │ █   477031
-  resize_grow_n100                  │ ████  4607401
-  resize_grow_n1000                 │ ███████████████████████████████████████████ 45911101
-  resize_shrink_n10                 │ █    18128
-  resize_shrink_n100                │ █    18117
-  resize_shrink_n1000               │ █    18117
-  store_vec_n10                     │ █   394850
-  store_vec_n100                    │ ███  3685419
-  store_vec_n1000                   │ ██████████████████████████████████ 36591199
-  load_vec_n10                      │ █    11241
-  load_vec_n100                     │ █    95512
-  load_vec_n1000                    │ █   938324
-  iter_n10                          │ █    27152
-  iter_n100                         │ █   262515
-  iter_n1000                        │ ██  2614015
-  clear_n10                         │ █    17354
-  clear_n100                        │ █    17354
-  clear_n1000                       │ █    17354
+```text
+═══════════════════════════════════════════════════════════════
+  Running: storage_fields
+═══════════════════════════════════════════════════════════════
+
+--- CSV (baseline 1790 gas subtracted) ---
+test,gas
+bench_bool_read,894
+bench_bool_write,1055
+bench_bool_clear,927
+bench_u8_read,885
+bench_u8_write,1067
+bench_u8_clear,939
+bench_u16_read,907
+bench_u16_write,1064
+bench_u16_clear,942
+bench_u32_read,912
+bench_u32_write,1079
+bench_u32_clear,957
+bench_u64_read,917
+bench_u64_write,1089
+bench_u64_clear,967
+bench_u256_read,921
+bench_u256_write,951
+bench_u256_clear,943
+bench_struct24_read,914
+bench_struct24_write,1111
+bench_struct24_clear,990
+bench_struct32_read,919
+bench_struct32_write,974
+bench_struct32_clear,966
+bench_struct40_read,1658
+bench_struct40_write,2031
+bench_struct40_clear,1789
+bench_struct48_read,1663
+bench_struct48_write,2041
+bench_struct48_clear,1799
+bench_struct56_read,1668
+bench_struct56_write,2056
+bench_struct56_clear,1814
+bench_struct72_read,2407
+bench_struct72_write,2966
+bench_struct72_clear,2603
+bench_struct88_read,2412
+bench_struct88_write,2976
+bench_struct88_clear,2613
+bench_struct96_read,2416
+bench_struct96_write,2784
+bench_struct96_clear,2623
+bench_struct184_read,4587
+bench_struct184_write,5600
+bench_struct184_clear,4874
+bench_struct200_read,5326
+bench_struct200_write,6510
+bench_struct200_clear,5663
+bench_struct224_read,5331
+bench_struct224_write,6206
+bench_struct224_clear,5673
+bench_struct552_read,13452
+bench_struct552_write,16431
+bench_struct552_clear,14252
+
+═══════════════════════════════════════════════════════════════
+  Running: storage_fields_partial_access
+═══════════════════════════════════════════════════════════════
+
+--- CSV (baseline 1737 gas subtracted) ---
+test,gas
+bench_struct24_read_u64,904
+bench_struct24_write_u64,1063
+bench_struct32_read_u64,910
+bench_struct32_write_u64,1068
+bench_struct40_read_u64,915
+bench_struct40_write_u64,1073
+bench_struct48_read_struct24,1663
+bench_struct48_write_struct24,2028
+bench_struct48_read_struct24_u64,934
+bench_struct48_write_struct24_u64,1091
+bench_struct56_read_struct24,934
+bench_struct56_write_struct24,1138
+bench_struct56_read_struct32,1673
+bench_struct56_write_struct32,2046
+bench_struct56_read_struct24_u64,939
+bench_struct56_write_struct24_u64,1096
+bench_struct56_read_struct32_u64,944
+bench_struct56_write_struct32_u64,1101
+bench_struct72_read_struct32,944
+bench_struct72_write_struct32,1012
+bench_struct72_read_struct40,1683
+bench_struct72_write_struct40,2053
+bench_struct72_read_struct32_u64,949
+bench_struct72_write_struct32_u64,1106
+bench_struct72_read_struct40_u64,954
+bench_struct72_write_struct40_u64,1111
+bench_struct88_read_struct40,1688
+bench_struct88_write_struct40,2058
+bench_struct88_read_u64,920
+bench_struct88_write_u64,1083
+bench_struct88_read_struct40_u64,958
+bench_struct88_write_struct40_u64,1116
+bench_struct96_read_struct48,1694
+bench_struct96_write_struct48,2063
+bench_struct96_read_struct48_struct24,957
+bench_struct96_write_struct48_struct24,1151
+bench_struct96_read_struct48_struct24_u64,961
+bench_struct96_write_struct48_struct24_u64,1119
+bench_struct184_read_struct96,2407
+bench_struct184_write_struct96,2722
+bench_struct184_read_struct88,2388
+bench_struct184_write_struct88,2898
+bench_struct184_read_struct96_struct48,1701
+bench_struct184_write_struct96_struct48,2040
+bench_struct184_read_struct88_struct40,1695
+bench_struct184_write_struct88_struct40,2035
+bench_struct184_read_struct96_struct48_struct24,985
+bench_struct184_write_struct96_struct48_struct24,1159
+bench_struct184_read_struct88_struct40_u64,965
+bench_struct184_write_struct88_struct40_u64,1118
+bench_struct184_read_struct96_struct48_struct24_u64,985
+bench_struct184_write_struct96_struct48_struct24_u64,1138
+bench_struct200_read_struct96,2413
+bench_struct200_write_struct96,2727
+bench_struct200_read_u64,909
+bench_struct200_write_u64,1062
+bench_struct200_read_struct96_struct48,1706
+bench_struct200_write_struct96_struct48,2045
+bench_struct200_read_struct96_struct48_struct24,990
+bench_struct200_write_struct96_struct48_struct24,1164
+bench_struct200_read_struct96_struct48_struct24_u64,990
+bench_struct200_write_struct96_struct48_struct24_u64,1143
+bench_struct224_read_struct96,2423
+bench_struct224_write_struct96,2737
+bench_struct224_read_struct32,948
+bench_struct224_write_struct32,986
+bench_struct224_read_struct96_struct48,1711
+bench_struct224_write_struct96_struct48,2050
+bench_struct224_read_struct32_u64,937
+bench_struct224_write_struct32_u64,1090
+bench_struct224_read_struct96_struct48_struct24,995
+bench_struct224_write_struct96_struct48_struct24,1169
+bench_struct224_read_struct96_struct48_struct24_u64,995
+bench_struct224_write_struct96_struct48_struct24_u64,1148
+bench_struct552_read_struct224,5354
+bench_struct552_write_struct224,6189
+bench_struct552_read_struct96,2433
+bench_struct552_write_struct96,2747
+bench_struct552_read_u64,930
+bench_struct552_write_u64,1067
+bench_struct552_read_struct224_struct96,2460
+bench_struct552_write_struct224_struct96,2754
+bench_struct552_read_struct224_struct32,985
+bench_struct552_write_struct224_struct32,1003
+bench_struct552_read_struct224_struct96_struct48,1739
+bench_struct552_write_struct224_struct96_struct48,2063
+bench_struct552_read_struct224_struct96_struct48_struct24,1005
+bench_struct552_write_struct224_struct96_struct48_struct24,1179
+bench_struct552_read_struct224_struct96_struct48_struct24_u64,1001
+bench_struct552_write_struct224_struct96_struct48_struct24_u64,1154
+
+═══════════════════════════════════════════════════════════════
+  Running: storage_vec_s8
+═══════════════════════════════════════════════════════════════
+
+--- CSV (per-count baselines subtracted) ---
+  empty-call baseline: 1727
+  populate baselines : n10=24011  n100=186297  n1000=1822726  
+  store_vec baselines: n10=2307  n100=5638  n1000=38165  
+test,gas
+bench_push_n10,1157
+bench_push_n100,3886
+bench_push_n1000,3874
+bench_push_n_elems_into_empty_vec_n10,22328
+bench_push_n_elems_into_empty_vec_n100,184614
+bench_push_n_elems_into_empty_vec_n1000,1821043
+bench_pop_n10,986
+bench_pop_n100,1019
+bench_pop_n1000,1025
+bench_get_n10,1159
+bench_get_n100,1181
+bench_get_n1000,1188
+bench_set_n10,824
+bench_set_n100,853
+bench_set_n1000,860
+bench_first_n10,1180
+bench_first_n100,1180
+bench_first_n1000,1174
+bench_last_n10,1190
+bench_last_n100,1197
+bench_last_n1000,1197
+bench_len_n10,197
+bench_len_n100,230
+bench_len_n1000,237
+bench_is_empty_n10,235
+bench_is_empty_n100,229
+bench_is_empty_n1000,229
+bench_swap_n10,1577
+bench_swap_n100,1584
+bench_swap_n1000,1572
+bench_swap_remove_n10,1576
+bench_swap_remove_n100,1571
+bench_swap_remove_n1000,1577
+bench_remove_n10,3167
+bench_remove_n100,26768
+bench_remove_n1000,263024
+bench_insert_n10,3813
+bench_insert_n100,30288
+bench_insert_n1000,267882
+bench_reverse_n10,5761
+bench_reverse_n100,52837
+bench_reverse_n1000,523525
+bench_fill_n10,3755
+bench_fill_n100,33187
+bench_fill_n1000,327487
+bench_resize_grow_n10,9577
+bench_resize_grow_n100,101770
+bench_resize_grow_n1000,1010095
+bench_resize_shrink_n10,859
+bench_resize_shrink_n100,853
+bench_resize_shrink_n1000,853
+bench_store_vec_n10,12154
+bench_store_vec_n100,75652
+bench_store_vec_n1000,725215
+bench_load_vec_n10,818
+bench_load_vec_n100,1431
+bench_load_vec_n1000,7774
+bench_iter_n10,10688
+bench_iter_n100,104205
+bench_iter_n1000,1039305
+bench_clear_n10,203
+bench_clear_n100,203
+bench_clear_n1000,203
+
+═══════════════════════════════════════════════════════════════
+  Running: storage_vec_s24
+═══════════════════════════════════════════════════════════════
+
+--- CSV (per-count baselines subtracted) ---
+  empty-call baseline: 1775
+  populate baselines : n10=39084  n100=336595  n1000=3325274  
+  store_vec baselines: n10=2877  n100=10899  n1000=90313  
+test,gas
+bench_push_n10,4118
+bench_push_n100,3931
+bench_push_n1000,3919
+bench_push_n_elems_into_empty_vec_n10,37353
+bench_push_n_elems_into_empty_vec_n100,334864
+bench_push_n_elems_into_empty_vec_n1000,3323543
+bench_pop_n10,1037
+bench_pop_n100,1032
+bench_pop_n1000,1039
+bench_get_n10,1209
+bench_get_n100,1221
+bench_get_n1000,1201
+bench_set_n10,1070
+bench_set_n100,1099
+bench_set_n1000,912
+bench_first_n10,1197
+bench_first_n100,1196
+bench_first_n1000,1190
+bench_last_n10,1230
+bench_last_n100,1210
+bench_last_n1000,1209
+bench_len_n10,207
+bench_len_n100,230
+bench_len_n1000,237
+bench_is_empty_n10,235
+bench_is_empty_n100,229
+bench_is_empty_n1000,229
+bench_swap_n10,1910
+bench_swap_n100,1695
+bench_swap_n1000,1683
+bench_swap_remove_n10,1907
+bench_swap_remove_n100,1874
+bench_swap_remove_n1000,1658
+bench_remove_n10,3881
+bench_remove_n100,35035
+bench_remove_n1000,345991
+bench_insert_n10,7724
+bench_insert_n100,38643
+bench_insert_n1000,350937
+bench_reverse_n10,7426
+bench_reverse_n100,69487
+bench_reverse_n1000,690025
+bench_fill_n10,5118
+bench_fill_n100,46699
+bench_fill_n1000,462499
+bench_resize_grow_n10,24547
+bench_resize_grow_n100,251335
+bench_resize_grow_n1000,2505610
+bench_resize_shrink_n10,874
+bench_resize_shrink_n100,868
+bench_resize_shrink_n1000,868
+bench_store_vec_n10,26567
+bench_store_vec_n100,219800
+bench_store_vec_n1000,2166715
+bench_load_vec_n10,958
+bench_load_vec_n100,2841
+bench_load_vec_n1000,21870
+bench_iter_n10,10948
+bench_iter_n100,106905
+bench_iter_n1000,1065305
+bench_clear_n10,204
+bench_clear_n100,204
+bench_clear_n1000,204
+
+═══════════════════════════════════════════════════════════════
+  Running: storage_vec_s32
+═══════════════════════════════════════════════════════════════
+
+--- CSV (per-count baselines subtracted) ---
+  empty-call baseline: 1778
+  populate baselines : n10=43432  n100=395066  n1000=3911370  
+  store_vec baselines: n10=2882  n100=10908  n1000=90364  
+test,gas
+bench_push_n10,3927
+bench_push_n100,3934
+bench_push_n1000,3922
+bench_push_n_elems_into_empty_vec_n10,41698
+bench_push_n_elems_into_empty_vec_n100,393332
+bench_push_n_elems_into_empty_vec_n1000,3909636
+bench_pop_n10,1009
+bench_pop_n100,1032
+bench_pop_n1000,1039
+bench_get_n10,1181
+bench_get_n100,1193
+bench_get_n1000,1201
+bench_set_n10,879
+bench_set_n100,908
+bench_set_n1000,915
+bench_first_n10,1198
+bench_first_n100,1197
+bench_first_n1000,1191
+bench_last_n10,1203
+bench_last_n100,1210
+bench_last_n1000,1209
+bench_len_n10,207
+bench_len_n100,230
+bench_len_n1000,237
+bench_is_empty_n10,235
+bench_is_empty_n100,229
+bench_is_empty_n1000,229
+bench_swap_n10,1537
+bench_swap_n100,1544
+bench_swap_n1000,1532
+bench_swap_remove_n10,1661
+bench_swap_remove_n100,1656
+bench_swap_remove_n1000,1662
+bench_remove_n10,3421
+bench_remove_n100,29632
+bench_remove_n1000,291988
+bench_insert_n10,6882
+bench_insert_n100,33246
+bench_insert_n1000,296940
+bench_reverse_n10,6189
+bench_reverse_n100,58530
+bench_reverse_n1000,581868
+bench_fill_n10,4021
+bench_fill_n100,37142
+bench_fill_n1000,368342
+bench_resize_grow_n10,31770
+bench_resize_grow_n100,309960
+bench_resize_grow_n1000,3091860
+bench_resize_shrink_n10,874
+bench_resize_shrink_n100,868
+bench_resize_shrink_n1000,868
+bench_store_vec_n10,32331
+bench_store_vec_n100,291975
+bench_store_vec_n1000,2888465
+bench_load_vec_n10,1014
+bench_load_vec_n100,3546
+bench_load_vec_n1000,28918
+bench_iter_n10,10808
+bench_iter_n100,105505
+bench_iter_n1000,1051305
+bench_clear_n10,204
+bench_clear_n100,204
+bench_clear_n1000,204
+
+═══════════════════════════════════════════════════════════════
+  Running: storage_vec_s56
+═══════════════════════════════════════════════════════════════
+
+--- CSV (per-count baselines subtracted) ---
+  empty-call baseline: 1784
+  populate baselines : n10=68243  n100=628104  n1000=6240283  
+  store_vec baselines: n10=2890  n100=10933  n1000=90515  
+test,gas
+bench_push_n10,7033
+bench_push_n100,6846
+bench_push_n1000,6834
+bench_push_n_elems_into_empty_vec_n10,66503
+bench_push_n_elems_into_empty_vec_n100,626364
+bench_push_n_elems_into_empty_vec_n1000,6238543
+bench_pop_n10,1065
+bench_pop_n100,1060
+bench_pop_n1000,1067
+bench_get_n10,1237
+bench_get_n100,1249
+bench_get_n1000,1229
+bench_set_n10,1264
+bench_set_n100,1293
+bench_set_n1000,1106
+bench_first_n10,1226
+bench_first_n100,1225
+bench_first_n1000,1219
+bench_last_n10,1260
+bench_last_n100,1239
+bench_last_n1000,1238
+bench_len_n10,207
+bench_len_n100,230
+bench_len_n1000,237
+bench_is_empty_n10,235
+bench_is_empty_n100,229
+bench_is_empty_n1000,229
+bench_swap_n10,2354
+bench_swap_n100,2139
+bench_swap_n1000,2127
+bench_swap_remove_n10,2158
+bench_swap_remove_n100,2125
+bench_swap_remove_n1000,1909
+bench_remove_n10,4798
+bench_remove_n100,45942
+bench_remove_n1000,456798
+bench_insert_n10,11749
+bench_insert_n100,52658
+bench_insert_n1000,464852
+bench_reverse_n10,9646
+bench_reverse_n100,91687
+bench_reverse_n1000,912025
+bench_fill_n10,7058
+bench_fill_n100,66099
+bench_fill_n1000,656499
+bench_resize_grow_n10,53697
+bench_resize_grow_n100,542835
+bench_resize_grow_n1000,5420610
+bench_resize_shrink_n10,874
+bench_resize_shrink_n100,868
+bench_resize_shrink_n1000,868
+bench_store_vec_n10,55438
+bench_store_vec_n100,508500
+bench_store_vec_n1000,5053715
+bench_load_vec_n10,1241
+bench_load_vec_n100,5660
+bench_load_vec_n1000,50060
+bench_iter_n10,11238
+bench_iter_n100,109705
+bench_iter_n1000,1093305
+bench_clear_n10,204
+bench_clear_n100,204
+bench_clear_n1000,204
+
+═══════════════════════════════════════════════════════════════
+  Running: storage_vec_s72
+═══════════════════════════════════════════════════════════════
+
+--- CSV (per-count baselines subtracted) ---
+  empty-call baseline: 1788
+  populate baselines : n10=82822  n100=773858  n1000=7697787  
+  store_vec baselines: n10=2894  n100=10948  n1000=90616  
+test,gas
+bench_push_n10,7033
+bench_push_n100,9761
+bench_push_n1000,9749
+bench_push_n_elems_into_empty_vec_n10,81078
+bench_push_n_elems_into_empty_vec_n100,772114
+bench_push_n_elems_into_empty_vec_n1000,7696043
+bench_pop_n10,1065
+bench_pop_n100,1088
+bench_pop_n1000,1095
+bench_get_n10,1237
+bench_get_n100,1249
+bench_get_n1000,1257
+bench_set_n10,1264
+bench_set_n100,1293
+bench_set_n1000,1300
+bench_first_n10,1254
+bench_first_n100,1253
+bench_first_n1000,1247
+bench_last_n10,1260
+bench_last_n100,1267
+bench_last_n1000,1266
+bench_len_n10,207
+bench_len_n100,230
+bench_len_n1000,237
+bench_is_empty_n10,235
+bench_is_empty_n100,229
+bench_is_empty_n1000,229
+bench_swap_n10,2576
+bench_swap_n100,2583
+bench_swap_n1000,2571
+bench_swap_remove_n10,2158
+bench_swap_remove_n100,2153
+bench_swap_remove_n1000,2159
+bench_remove_n10,5242
+bench_remove_n100,51298
+bench_remove_n1000,512104
+bench_insert_n10,12193
+bench_insert_n100,61123
+bench_insert_n1000,523267
+bench_reverse_n10,10756
+bench_reverse_n100,102787
+bench_reverse_n1000,1023025
+bench_fill_n10,8028
+bench_fill_n100,75799
+bench_fill_n1000,753499
+bench_resize_grow_n10,68272
+bench_resize_grow_n100,688585
+bench_resize_grow_n1000,6878110
+bench_resize_shrink_n10,874
+bench_resize_shrink_n100,868
+bench_resize_shrink_n1000,868
+bench_store_vec_n10,69873
+bench_store_vec_n100,652850
+bench_store_vec_n1000,6497215
+bench_load_vec_n10,1381
+bench_load_vec_n100,7070
+bench_load_vec_n1000,64156
+bench_iter_n10,11390
+bench_iter_n100,111207
+bench_iter_n1000,1108307
+bench_clear_n10,204
+bench_clear_n100,204
+bench_clear_n1000,204
+
+═══════════════════════════════════════════════════════════════
+  Running: storage_vec_s88
+═══════════════════════════════════════════════════════════════
+
+--- CSV (per-count baselines subtracted) ---
+  empty-call baseline: 1791
+  populate baselines : n10=97400  n100=919611  n1000=9155290  
+  store_vec baselines: n10=2898  n100=10960  n1000=90714  
+test,gas
+bench_push_n10,9948
+bench_push_n100,9761
+bench_push_n1000,9749
+bench_push_n_elems_into_empty_vec_n10,95653
+bench_push_n_elems_into_empty_vec_n100,917864
+bench_push_n_elems_into_empty_vec_n1000,9153543
+bench_pop_n10,1094
+bench_pop_n100,1089
+bench_pop_n1000,1096
+bench_get_n10,1265
+bench_get_n100,1278
+bench_get_n1000,1258
+bench_set_n10,1458
+bench_set_n100,1487
+bench_set_n1000,1300
+bench_first_n10,1254
+bench_first_n100,1253
+bench_first_n1000,1247
+bench_last_n10,1288
+bench_last_n100,1267
+bench_last_n1000,1266
+bench_len_n10,207
+bench_len_n100,230
+bench_len_n1000,237
+bench_is_empty_n10,235
+bench_is_empty_n100,229
+bench_is_empty_n1000,229
+bench_swap_n10,2798
+bench_swap_n100,2583
+bench_swap_n1000,2571
+bench_swap_remove_n10,2408
+bench_swap_remove_n100,2375
+bench_swap_remove_n1000,2159
+bench_remove_n10,5714
+bench_remove_n100,56848
+bench_remove_n1000,567604
+bench_insert_n10,15774
+bench_insert_n100,66673
+bench_insert_n1000,578767
+bench_reverse_n10,11866
+bench_reverse_n100,113887
+bench_reverse_n1000,1134025
+bench_fill_n10,8998
+bench_fill_n100,85499
+bench_fill_n1000,850499
+bench_resize_grow_n10,82847
+bench_resize_grow_n100,834335
+bench_resize_grow_n1000,8335610
+bench_resize_shrink_n10,874
+bench_resize_shrink_n100,868
+bench_resize_shrink_n1000,868
+bench_store_vec_n10,84310
+bench_store_vec_n100,797200
+bench_store_vec_n1000,7940715
+bench_load_vec_n10,1524
+bench_load_vec_n100,8480
+bench_load_vec_n1000,78251
+bench_iter_n10,11530
+bench_iter_n100,112607
+bench_iter_n1000,1122307
+bench_clear_n10,204
+bench_clear_n100,204
+bench_clear_n1000,204
+
+═══════════════════════════════════════════════════════════════
+  Running: storage_vec_s96
+═══════════════════════════════════════════════════════════════
+
+--- CSV (per-count baselines subtracted) ---
+  empty-call baseline: 1793
+  populate baselines : n10=101692  n100=978026  n1000=9741330  
+  store_vec baselines: n10=2901  n100=10972  n1000=90768  
+test,gas
+bench_push_n10,9757
+bench_push_n100,9764
+bench_push_n1000,9752
+bench_push_n_elems_into_empty_vec_n10,99943
+bench_push_n_elems_into_empty_vec_n100,976277
+bench_push_n_elems_into_empty_vec_n1000,9739581
+bench_pop_n10,1066
+bench_pop_n100,1089
+bench_pop_n1000,1096
+bench_get_n10,1238
+bench_get_n100,1251
+bench_get_n1000,1258
+bench_set_n10,1267
+bench_set_n100,1296
+bench_set_n1000,1303
+bench_first_n10,1255
+bench_first_n100,1254
+bench_first_n1000,1249
+bench_last_n10,1260
+bench_last_n100,1267
+bench_last_n1000,1266
+bench_len_n10,207
+bench_len_n100,230
+bench_len_n1000,237
+bench_is_empty_n10,235
+bench_is_empty_n100,229
+bench_is_empty_n1000,229
+bench_swap_n10,2370
+bench_swap_n100,2377
+bench_swap_n1000,2365
+bench_swap_remove_n10,2161
+bench_swap_remove_n100,2156
+bench_swap_remove_n1000,2162
+bench_remove_n10,5254
+bench_remove_n100,51445
+bench_remove_n1000,513601
+bench_insert_n10,14932
+bench_insert_n100,61276
+bench_insert_n1000,524770
+bench_reverse_n10,10574
+bench_reverse_n100,102875
+bench_reverse_n1000,1025813
+bench_fill_n10,7846
+bench_fill_n100,75887
+bench_fill_n1000,756287
+bench_resize_grow_n10,90070
+bench_resize_grow_n100,892960
+bench_resize_grow_n1000,8921860
+bench_resize_shrink_n10,874
+bench_resize_shrink_n100,868
+bench_resize_shrink_n1000,868
+bench_store_vec_n10,90071
+bench_store_vec_n100,869375
+bench_store_vec_n1000,8662465
+bench_load_vec_n10,1580
+bench_load_vec_n100,9185
+bench_load_vec_n1000,85298
+bench_iter_n10,11390
+bench_iter_n100,111207
+bench_iter_n1000,1108307
+bench_clear_n10,204
+bench_clear_n100,204
+bench_clear_n1000,204
 ```
