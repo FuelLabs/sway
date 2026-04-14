@@ -2505,7 +2505,7 @@ checksum = "d9c4f5dac5e15c24eb999c26181a6ca40b39fe946cbe4c263c7209467bc83af2"
 
 [[package]]
 name = "forc"
-version = "0.70.3"
+version = "0.71.0"
 dependencies = [
  "annotate-snippets",
  "ansiterm",
@@ -2543,7 +2543,7 @@ dependencies = [
 
 [[package]]
 name = "forc-debug"
-version = "0.70.3"
+version = "0.71.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -2576,7 +2576,7 @@ dependencies = [
 
 [[package]]
 name = "forc-doc"
-version = "0.70.3"
+version = "0.71.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -2604,7 +2604,7 @@ dependencies = [
 
 [[package]]
 name = "forc-fmt"
-version = "0.70.3"
+version = "0.71.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -2622,7 +2622,7 @@ dependencies = [
 
 [[package]]
 name = "forc-lsp"
-version = "0.70.3"
+version = "0.71.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -2633,7 +2633,7 @@ dependencies = [
 
 [[package]]
 name = "forc-migrate"
-version = "0.70.3"
+version = "0.71.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -2654,7 +2654,7 @@ dependencies = [
 
 [[package]]
 name = "forc-pkg"
-version = "0.70.3"
+version = "0.71.0"
 dependencies = [
  "ansiterm",
  "anyhow",
@@ -2698,7 +2698,7 @@ dependencies = [
 
 [[package]]
 name = "forc-publish"
-version = "0.70.3"
+version = "0.71.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -2727,7 +2727,7 @@ dependencies = [
 
 [[package]]
 name = "forc-test"
-version = "0.70.3"
+version = "0.71.0"
 dependencies = [
  "anyhow",
  "forc-pkg",
@@ -2757,7 +2757,7 @@ dependencies = [
 
 [[package]]
 name = "forc-tx"
-version = "0.70.3"
+version = "0.71.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -2773,7 +2773,7 @@ dependencies = [
 
 [[package]]
 name = "forc-util"
-version = "0.70.3"
+version = "0.71.0"
 dependencies = [
  "annotate-snippets",
  "ansiterm",
@@ -7752,7 +7752,7 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
 name = "sway-ast"
-version = "0.70.3"
+version = "0.71.0"
 dependencies = [
  "extension-trait",
  "num-bigint",
@@ -7764,7 +7764,7 @@ dependencies = [
 
 [[package]]
 name = "sway-core"
-version = "0.70.3"
+version = "0.71.0"
 dependencies = [
  "clap",
  "dirs 5.0.1",
@@ -7812,7 +7812,7 @@ dependencies = [
 
 [[package]]
 name = "sway-error"
-version = "0.70.3"
+version = "0.71.0"
 dependencies = [
  "either",
  "in_definite",
@@ -7825,7 +7825,7 @@ dependencies = [
 
 [[package]]
 name = "sway-features"
-version = "0.70.3"
+version = "0.71.0"
 dependencies = [
  "clap",
  "paste",
@@ -7835,7 +7835,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir"
-version = "0.70.3"
+version = "0.71.0"
 dependencies = [
  "anyhow",
  "downcast-rs",
@@ -7856,7 +7856,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir-macros"
-version = "0.70.3"
+version = "0.71.0"
 dependencies = [
  "itertools 0.13.0",
  "proc-macro2",
@@ -7866,7 +7866,7 @@ dependencies = [
 
 [[package]]
 name = "sway-lsp"
-version = "0.70.3"
+version = "0.71.0"
 dependencies = [
  "anyhow",
  "assert-json-diff",
@@ -7913,7 +7913,7 @@ dependencies = [
 
 [[package]]
 name = "sway-lsp-test-utils"
-version = "0.70.3"
+version = "0.71.0"
 dependencies = [
  "assert-json-diff",
  "futures",
@@ -7928,7 +7928,7 @@ dependencies = [
 
 [[package]]
 name = "sway-parse"
-version = "0.70.3"
+version = "0.71.0"
 dependencies = [
  "assert_matches",
  "extension-trait",
@@ -7947,7 +7947,7 @@ dependencies = [
 
 [[package]]
 name = "sway-types"
-version = "0.70.3"
+version = "0.71.0"
 dependencies = [
  "fuel-asm",
  "fuel-crypto",
@@ -7966,7 +7966,7 @@ dependencies = [
 
 [[package]]
 name = "sway-utils"
-version = "0.70.3"
+version = "0.71.0"
 dependencies = [
  "serde",
  "walkdir",
@@ -7974,7 +7974,7 @@ dependencies = [
 
 [[package]]
 name = "swayfmt"
-version = "0.70.3"
+version = "0.71.0"
 dependencies = [
  "anyhow",
  "forc-tracing",
