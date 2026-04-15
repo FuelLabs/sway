@@ -937,16 +937,18 @@ fn instruction_to_doc<'a>(
                     key,
                     offset,
                     len,
-                } => maybe_constant_to_doc(context, md_namer, namer, len).append(Doc::line(
-                    Doc::text(format!(
-                        "state_read_slot {}, key {}, {}, {}",
-                        namer.name(context, load_val),
-                        namer.name(context, key),
-                        namer.name(context, offset),
-                        namer.name(context, len),
-                    ))
-                    .append(md_namer.md_idx_to_doc(context, metadata)),
-                )),
+                } => maybe_constant_to_doc(context, md_namer, namer, offset)
+                    .append(maybe_constant_to_doc(context, md_namer, namer, len))
+                    .append(Doc::line(
+                        Doc::text(format!(
+                            "state_read_slot {}, key {}, {}, {}",
+                            namer.name(context, load_val),
+                            namer.name(context, key),
+                            namer.name(context, offset),
+                            namer.name(context, len),
+                        ))
+                        .append(md_namer.md_idx_to_doc(context, metadata)),
+                    )),
                 FuelVmInstruction::StateLoadWord { key, offset } => Doc::line(
                     Doc::text(format!(
                         "{} = state_load_word key {}, {}",
@@ -990,16 +992,18 @@ fn instruction_to_doc<'a>(
                     key,
                     offset,
                     len,
-                } => maybe_constant_to_doc(context, md_namer, namer, len).append(Doc::line(
-                    Doc::text(format!(
-                        "state_update_slot {}, key {}, {}, {}",
-                        namer.name(context, stored_val),
-                        namer.name(context, key),
-                        namer.name(context, offset),
-                        namer.name(context, len),
-                    ))
-                    .append(md_namer.md_idx_to_doc(context, metadata)),
-                )),
+                } => maybe_constant_to_doc(context, md_namer, namer, offset)
+                    .append(maybe_constant_to_doc(context, md_namer, namer, len))
+                    .append(Doc::line(
+                        Doc::text(format!(
+                            "state_update_slot {}, key {}, {}, {}",
+                            namer.name(context, stored_val),
+                            namer.name(context, key),
+                            namer.name(context, offset),
+                            namer.name(context, len),
+                        ))
+                        .append(md_namer.md_idx_to_doc(context, metadata)),
+                    )),
                 FuelVmInstruction::StatePreload { key } => Doc::line(
                     Doc::text(format!(
                         "{} = state_preload key {}",
