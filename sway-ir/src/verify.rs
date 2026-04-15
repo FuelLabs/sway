@@ -1220,7 +1220,7 @@ impl InstructionVerifier<'_, '_> {
             return Err(IrError::VerifyStateKeyBadType);
         }
 
-        if !len.get_type(self.context).is(Type::is_uint64, self.context) {
+        if !len.get_type(self.context).is(Type::is_uint, self.context) {
             return Err(IrError::VerifyStateWriteSlotLenBadType);
         }
 
@@ -1246,12 +1246,12 @@ impl InstructionVerifier<'_, '_> {
 
         if !offset
             .get_type(self.context)
-            .is(Type::is_uint64, self.context)
+            .is(Type::is_uint, self.context)
         {
             return Err(IrError::VerifyStateUpdateSlotOffsetBadType);
         }
 
-        if !len.get_type(self.context).is(Type::is_uint64, self.context) {
+        if !len.get_type(self.context).is(Type::is_uint, self.context) {
             return Err(IrError::VerifyStateUpdateSlotLenBadType);
         }
 
