@@ -1197,7 +1197,7 @@ impl InstructionVerifier<'_, '_> {
             return Err(IrError::VerifyStateReadOffsetBadType);
         }
 
-        if !len.get_type(self.context).is(Type::is_uint64, self.context) {
+        if !len.get_type(self.context).is(Type::is_uint, self.context) {
             return Err(IrError::VerifyStateReadLenBadType);
         }
 
