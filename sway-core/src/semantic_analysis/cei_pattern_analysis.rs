@@ -685,8 +685,18 @@ fn effects_of_intrinsic(intr: &sway_ast::Intrinsic) -> HashSet<Effect> {
 
 fn effects_of_asm_op(op: &AsmOp) -> HashSet<Effect> {
     match op.op_name.as_str().to_lowercase().as_str() {
+        // Internally in the VM, all write opcodes read a slot unless it is already cached.
+        // From the CEI perspective, this is an internal VM implementation detail.
+        // What we are interested in CEI is: "does the contract fetch information from the storage"
+        // or "does it change the storage content".
+        // That's why, e.g., the `supd` and `supi` opcodes are only `StorageWrite` and not
+        // also `StorageRead`. From the contract perspective, `supd` and `supi` are only
+        // changing the storage content and not providing it to the contract.
+        // Note that `spld` is not reading the content, but it still provides information
+        // about the storage content, its existence and length. That's why we treat it as
+        // `StorageRead`.
         "scwq" | "sclr" | "sww" | "swwq" | "swrd" | "swri" => HashSet::from([Effect::StorageWrite]),
-        "supd" | "supi" => HashSet::from([Effect::StorageRead, Effect::StorageWrite]),
+        "supd" | "supi" => HashSet::from([Effect::StorageWrite]),
         "srw" | "srwq" | "srdd" | "srdi" | "spld" => HashSet::from([Effect::StorageRead]),
         "tr" | "tro" => HashSet::from([Effect::BalanceTreeReadWrite]),
         "bal" => HashSet::from([Effect::BalanceTreeRead]),
