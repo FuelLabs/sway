@@ -177,6 +177,7 @@ pub(crate) enum VirtualOp {
         VirtualRegister,
     ),
     SCWQ(VirtualRegister, VirtualRegister, VirtualRegister),
+    SCLR(VirtualRegister, VirtualRegister),
     SRW(
         VirtualRegister,
         VirtualRegister,
@@ -189,6 +190,18 @@ pub(crate) enum VirtualOp {
         VirtualRegister,
         VirtualRegister,
     ),
+    SRDD(
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+    ),
+    SRDI(
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        VirtualImmediate06,
+    ),
     SWW(VirtualRegister, VirtualRegister, VirtualRegister),
     SWWQ(
         VirtualRegister,
@@ -196,6 +209,21 @@ pub(crate) enum VirtualOp {
         VirtualRegister,
         VirtualRegister,
     ),
+    SWRD(VirtualRegister, VirtualRegister, VirtualRegister),
+    SWRI(VirtualRegister, VirtualRegister, VirtualImmediate12),
+    SUPD(
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+    ),
+    SUPI(
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        VirtualImmediate06,
+    ),
+    SPLD(VirtualRegister, VirtualRegister),
     TIME(VirtualRegister, VirtualRegister),
     TR(VirtualRegister, VirtualRegister, VirtualRegister),
     TRO(
@@ -476,10 +504,18 @@ impl VirtualOp {
             RVRT(r1) => vec![r1],
             SMO(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             SCWQ(r1, r2, r3) => vec![r1, r2, r3],
+            SCLR(r1, r2) => vec![r1, r2],
             SRW(r1, r2, r3, _i) => vec![r1, r2, r3],
             SRWQ(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            SRDD(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            SRDI(r1, r2, r3, _i) => vec![r1, r2, r3],
             SWW(r1, r2, r3) => vec![r1, r2, r3],
             SWWQ(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            SWRD(r1, r2, r3) => vec![r1, r2, r3],
+            SWRI(r1, r2, _) => vec![r1, r2],
+            SUPD(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            SUPI(r1, r2, r3, _i) => vec![r1, r2, r3],
+            SPLD(r1, r2) => vec![r1, r2],
             TIME(r1, r2) => vec![r1, r2],
             TR(r1, r2, r3) => vec![r1, r2, r3],
             TRO(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
@@ -603,9 +639,17 @@ impl VirtualOp {
             | RVRT(_)
             | SMO(_, _, _, _)
             | SCWQ(_, _, _)
+            | SCLR(_, _)
             | SRWQ(_, _, _, _)
+            | SRDD(_, _, _, _)
+            | SRDI(_, _, _, _)
             | SWW(_, _, _)
             | SWWQ(_, _, _, _)
+            | SWRD(_, _, _)
+            | SWRI(_, _, _)
+            | SUPD(_, _, _, _)
+            | SUPI(_, _, _, _)
+            | SPLD(_, _)
             | TR(_, _, _)
             | TRO(_, _, _, _)
             | ECK1(_, _, _)
@@ -710,10 +754,15 @@ impl VirtualOp {
             | RVRT(_)
             | SMO(_, _, _, _)
             | SCWQ(_, _, _)
+            | SCLR(_, _)
             | SRW(_, _, _, _)
             | SRWQ(_, _, _, _)
             | SWW(_, _, _)
             | SWWQ(_, _, _, _)
+            | SWRD(_, _, _)
+            | SWRI(_, _, _)
+            | SUPD(_, _, _, _)
+            | SUPI(_, _, _, _)
             | TIME(_, _)
             | TR(_, _, _)
             | TRO(_, _, _, _)
@@ -730,6 +779,9 @@ impl VirtualOp {
             | LoadDataId(_, _)
             | AddrDataId(_, _)
             | Undefined => vec![],
+            SRDD(_, _, _, _)
+            | SRDI(_, _, _, _)
+            | SPLD(_, _) => vec![&VirtualRegister::Constant(Error)],
         })
         .into_iter()
         .collect()
@@ -821,10 +873,18 @@ impl VirtualOp {
             RVRT(r1) => vec![r1],
             SMO(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             SCWQ(r1, _r2, r3) => vec![r1, r3],
+            SCLR(r1, r2) => vec![r1, r2],
             SRW(_r1, _r2, r3, _i) => vec![r3],
             SRWQ(r1, _r2, r3, r4) => vec![r1, r3, r4],
+            SRDD(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            SRDI(r1, r2, r3, _i) => vec![r1, r2, r3],
             SWW(r1, _r2, r3) => vec![r1, r3],
             SWWQ(r1, _r2, r3, r4) => vec![r1, r3, r4],
+            SWRD(r1, r2, r3) => vec![r1, r2, r3],
+            SWRI(r1, r2, _i) => vec![r1, r2],
+            SUPD(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            SUPI(r1, r2, r3, _i) => vec![r1, r2, r3],
+            SPLD(_r1, r2) => vec![r2],
             TIME(_r1, r2) => vec![r2],
             TR(r1, r2, r3) => vec![r1, r2, r3],
             TRO(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
@@ -943,11 +1003,19 @@ impl VirtualOp {
             RVRT(r1) => vec![r1],
             SMO(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             SCWQ(r1, _r2, r3) => vec![r1, r3],
+            SCLR(r1, r2) => vec![r1, r2],
             SRW(_r1, _r2, r3, _i) => vec![r3],
             SRWQ(r1, _r2, r3, r4) => vec![r1, r3, r4],
+            SRDD(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            SRDI(r1, r2, r3, _i) => vec![r1, r2, r3],
             SWW(r1, _r2, r3) => vec![r1, r3],
             SWWQ(r1, _r2, r3, r4) => vec![r1, r3, r4],
+            SWRD(r1, r2, r3) => vec![r1, r2, r3],
+            SWRI(r1, r2, _i) => vec![r1, r2],
+            SUPD(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            SUPI(r1, r2, r3, _i) => vec![r1, r2, r3],
             TIME(_r1, r2) => vec![r2],
+            SPLD(_r1, r2) => vec![r2],
             TR(r1, r2, r3) => vec![r1, r2, r3],
             TRO(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
 
@@ -1061,10 +1129,18 @@ impl VirtualOp {
             RVRT(_r1) => vec![],
             SMO(_r1, _r2, _r3, _r4) => vec![],
             SCWQ(_r1, r2, _r3) => vec![r2],
+            SCLR(_r1, _r2) => vec![],
             SRW(r1, r2, _r3, _i) => vec![r1, r2],
             SRWQ(_r1, r2, _r3, _r4) => vec![r2],
+            SRDD(_r1, _r2, _r3, _r4) => vec![],
+            SRDI(_r1, _r2, _r3, _i) => vec![],
             SWW(_r1, r2, _r3) => vec![r2],
             SWWQ(_r1, r2, _r3, _r4) => vec![r2],
+            SWRD(_r1, _r2, _r3) => vec![],
+            SWRI(_r1, _r2, _i) => vec![],
+            SUPD(_r1, _r2, _r3, _r4) => vec![],
+            SUPI(_r1, _r2, _r3, _i) => vec![],
+            SPLD(r1, _r2) => vec![r1],
             TIME(r1, _r2) => vec![r1],
             TR(_r1, _r2, _r3) => vec![],
             TRO(_r1, _r2, _r3, _r4) => vec![],
@@ -1443,6 +1519,10 @@ impl VirtualOp {
                 update_reg(reg_to_reg_map, r2),
                 update_reg(reg_to_reg_map, r3),
             ),
+            SCLR(r1, r2) => Self::SCLR(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+            ),
             SRW(r1, r2, r3, i) => Self::SRW(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
@@ -1455,6 +1535,18 @@ impl VirtualOp {
                 update_reg(reg_to_reg_map, r3),
                 update_reg(reg_to_reg_map, r4),
             ),
+            SRDD(r1, r2, r3, r4) => Self::SRDD(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                update_reg(reg_to_reg_map, r4),
+            ),
+            SRDI(r1, r2, r3, i) => Self::SRDI(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                i.clone(),
+            ),
             SWW(r1, r2, r3) => Self::SWW(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
@@ -1465,6 +1557,32 @@ impl VirtualOp {
                 update_reg(reg_to_reg_map, r2),
                 update_reg(reg_to_reg_map, r3),
                 update_reg(reg_to_reg_map, r4),
+            ),
+            SWRD(r1, r2, r3) => Self::SWRD(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
+            SWRI(r1, r2, i) => Self::SWRI(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                i.clone(),
+            ),
+            SUPD(r1, r2, r3, r4) => Self::SUPD(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                update_reg(reg_to_reg_map, r4),
+            ),
+            SUPI(r1, r2, r3, i) => Self::SUPI(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                i.clone(),
+            ),
+            SPLD(r1, r2) => Self::SPLD(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
             ),
             TIME(r1, r2) => Self::TIME(
                 update_reg(reg_to_reg_map, r1),
@@ -1891,6 +2009,9 @@ impl VirtualOp {
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
             ),
+            SCLR(reg1, reg2) => {
+                AllocatedInstruction::SCLR(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
+            }
             SRW(reg1, reg2, reg3, imm) => AllocatedInstruction::SRW(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
@@ -1903,6 +2024,18 @@ impl VirtualOp {
                 map_reg(&mapping, reg3),
                 map_reg(&mapping, reg4),
             ),
+            SRDD(reg1, reg2, reg3, reg4) => AllocatedInstruction::SRDD(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+                map_reg(&mapping, reg4),
+            ),
+            SRDI(reg1, reg2, reg3, imm) => AllocatedInstruction::SRDI(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+                imm.clone(),
+            ),
             SWW(reg1, reg2, reg3) => AllocatedInstruction::SWW(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
@@ -1914,6 +2047,31 @@ impl VirtualOp {
                 map_reg(&mapping, reg3),
                 map_reg(&mapping, reg4),
             ),
+            SWRD(reg1, reg2, reg3) => AllocatedInstruction::SWRD(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+            ),
+            SWRI(reg1, reg2, imm) => AllocatedInstruction::SWRI(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                imm.clone(),
+            ),
+            SUPD(reg1, reg2, reg3, reg4) => AllocatedInstruction::SUPD(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+                map_reg(&mapping, reg4),
+            ),
+            SUPI(reg1, reg2, reg3, imm) => AllocatedInstruction::SUPI(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+                imm.clone(),
+            ),
+            SPLD(reg1, reg2) => {
+                AllocatedInstruction::SPLD(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
+            }
             TIME(reg1, reg2) => {
                 AllocatedInstruction::TIME(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
             }

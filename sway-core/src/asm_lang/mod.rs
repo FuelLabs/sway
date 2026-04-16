@@ -603,6 +603,10 @@ impl Op {
                 let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
                 VirtualOp::SCWQ(r1, r2, r3)
             }
+            "sclr" => {
+                let (r1, r2) = two_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::SCLR(r1, r2)
+            }
             "srw" => {
                 let (r1, r2, r3, imm) = three_regs_imm_06(handler, args, immediate, whole_op_span)?;
                 VirtualOp::SRW(r1, r2, r3, imm)
@@ -611,6 +615,14 @@ impl Op {
                 let (r1, r2, r3, r4) = four_regs(handler, args, immediate, whole_op_span)?;
                 VirtualOp::SRWQ(r1, r2, r3, r4)
             }
+            "srdd" => {
+                let (r1, r2, r3, r4) = four_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::SRDD(r1, r2, r3, r4)
+            }
+            "srdi" => {
+                let (r1, r2, r3, imm) = three_regs_imm_06(handler, args, immediate, whole_op_span)?;
+                VirtualOp::SRDI(r1, r2, r3, imm)
+            }
             "sww" => {
                 let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
                 VirtualOp::SWW(r1, r2, r3)
@@ -618,6 +630,26 @@ impl Op {
             "swwq" => {
                 let (r1, r2, r3, r4) = four_regs(handler, args, immediate, whole_op_span)?;
                 VirtualOp::SWWQ(r1, r2, r3, r4)
+            }
+            "swrd" => {
+                let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::SWRD(r1, r2, r3)
+            }
+            "swri" => {
+                let (r1, r2, imm) = two_regs_imm_12(handler, args, immediate, whole_op_span)?;
+                VirtualOp::SWRI(r1, r2, imm)
+            }
+            "supd" => {
+                let (r1, r2, r3, r4) = four_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::SUPD(r1, r2, r3, r4)
+            }
+            "supi" => {
+                let (r1, r2, r3, imm) = three_regs_imm_06(handler, args, immediate, whole_op_span)?;
+                VirtualOp::SUPI(r1, r2, r3, imm)
+            }
+            "spld" => {
+                let (r1, r2) = two_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::SPLD(r1, r2)
             }
             "time" => {
                 let (r1, r2) = two_regs(handler, args, immediate, whole_op_span)?;
@@ -1217,10 +1249,18 @@ impl fmt::Display for VirtualOp {
             RVRT(a) => write!(fmtr, "rvrt {a}"),
             SMO(a, b, c, d) => write!(fmtr, "smo {a} {b} {c} {d}"),
             SCWQ(a, b, c) => write!(fmtr, "scwq {a} {b} {c}"),
+            SCLR(a, b) => write!(fmtr, "sclr {a} {b}"),
             SRW(a, b, c, d) => write!(fmtr, "srw {a} {b} {c} {d}"),
             SRWQ(a, b, c, d) => write!(fmtr, "srwq {a} {b} {c} {d}"),
+            SRDD(a, b, c, d) => write!(fmtr, "srdd {a} {b} {c} {d}"),
+            SRDI(a, b, c, d) => write!(fmtr, "srdi {a} {b} {c} {d}"),
             SWW(a, b, c) => write!(fmtr, "sww {a} {b} {c}"),
             SWWQ(a, b, c, d) => write!(fmtr, "swwq {a} {b} {c} {d}"),
+            SWRD(a, b, c) => write!(fmtr, "swrd {a} {b} {c}"),
+            SWRI(a, b, c) => write!(fmtr, "swri {a} {b} {c}"),
+            SUPD(a, b, c, d) => write!(fmtr, "supd {a} {b} {c} {d}"),
+            SUPI(a, b, c, d) => write!(fmtr, "supi {a} {b} {c} {d}"),
+            SPLD(a, b) => write!(fmtr, "spld {a} {b}"),
             TIME(a, b) => write!(fmtr, "time {a} {b}"),
             TR(a, b, c) => write!(fmtr, "tr {a} {b} {c}"),
             TRO(a, b, c, d) => write!(fmtr, "tro {a} {b} {c} {d}"),

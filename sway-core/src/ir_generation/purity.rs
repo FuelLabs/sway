@@ -61,10 +61,15 @@ pub(crate) fn check_function_purity(
 
                             match inst {
                                 FuelVmInstruction::StateLoadQuadWord { .. }
-                                | FuelVmInstruction::StateLoadWord { .. } => (true, writes),
+                                | FuelVmInstruction::StateReadSlot { .. }
+                                | FuelVmInstruction::StateLoadWord { .. }
+                                | FuelVmInstruction::StatePreload { .. } => (true, writes),
                                 FuelVmInstruction::StateClear { .. }
+                                | FuelVmInstruction::StateClearSlots { .. }
                                 | FuelVmInstruction::StateStoreQuadWord { .. }
+                                | FuelVmInstruction::StateWriteSlot { .. }
                                 | FuelVmInstruction::StateStoreWord { .. } => (reads, true),
+                                FuelVmInstruction::StateUpdateSlot { .. } => (true, true),
                                 _ => unreachable!("The FuelVM instruction is checked to be a store access instruction."),
                             }
                         }
@@ -82,8 +87,9 @@ pub(crate) fn check_function_purity(
                                     }
 
                                     match inst {
-                                        "srw" | "srwq" => (true, writes),
-                                        "scwq" | "sww" | "swwq" => (reads, true),
+                                        "srw" | "srwq" | "srdd" | "srdi" | "spld" => (true, writes),
+                                        "scwq" | "sclr" | "sww" | "swwq" | "swrd" | "swri" => (reads, true),
+                                        "supd" | "supi" => (true, true),
                                         _ => unreachable!("The ASM instruction is checked to be a store access instruction."),
                                     }
                                 } else {
@@ -170,7 +176,7 @@ pub(crate) fn check_function_purity(
         // Attributes and effects are in total agreement.
         (Pure, false, false)
         | (Reads, true, false)
-        | (Writes, _, true) // storage(write) allows reading as well 
+        | (Writes, _, true) // storage(write) allows reading as well
         | (ReadsWrites, true, true) => (),
     };
 
@@ -182,9 +188,14 @@ fn is_store_access_fuel_vm_instruction(inst: &FuelVmInstruction) -> bool {
         inst,
         FuelVmInstruction::StateLoadWord { .. }
             | FuelVmInstruction::StateLoadQuadWord { .. }
+            | FuelVmInstruction::StateReadSlot { .. }
             | FuelVmInstruction::StateClear { .. }
+            | FuelVmInstruction::StateClearSlots { .. }
             | FuelVmInstruction::StateStoreWord { .. }
             | FuelVmInstruction::StateStoreQuadWord { .. }
+            | FuelVmInstruction::StateWriteSlot { .. }
+            | FuelVmInstruction::StateUpdateSlot { .. }
+            | FuelVmInstruction::StatePreload { .. }
     )
 }
 
@@ -192,24 +203,47 @@ fn store_access_fuel_vm_instruction_to_storage_access(inst: &FuelVmInstruction) 
     match inst {
         FuelVmInstruction::StateLoadWord { .. } => StorageAccess::ReadWord,
         FuelVmInstruction::StateLoadQuadWord { .. } => StorageAccess::ReadSlots,
+        FuelVmInstruction::StateReadSlot { .. } => StorageAccess::ReadSlots,
         FuelVmInstruction::StateClear { .. } => StorageAccess::Clear,
+        FuelVmInstruction::StateClearSlots { .. } => StorageAccess::Clear,
         FuelVmInstruction::StateStoreWord { .. } => StorageAccess::WriteWord,
         FuelVmInstruction::StateStoreQuadWord { .. } => StorageAccess::WriteSlots,
+        FuelVmInstruction::StateWriteSlot { .. } => StorageAccess::WriteSlots,
+        FuelVmInstruction::StateUpdateSlot { .. } => StorageAccess::WriteSlots,
+        FuelVmInstruction::StatePreload { .. } => StorageAccess::ReadSlots,
         _ => panic!("The FuelVM instruction is not a store access instruction."),
     }
 }
 
 fn is_store_access_asm_instruction(inst: &str) -> bool {
-    matches!(inst, "srw" | "srwq" | "scwq" | "sww" | "swwq")
+    matches!(
+        inst,
+        "srw"
+            | "srwq"
+            | "srdd"
+            | "srdi"
+            | "scwq"
+            | "sclr"
+            | "sww"
+            | "swwq"
+            | "swrd"
+            | "swri"
+            | "supd"
+            | "supi"
+            | "spld"
+    )
 }
 
 fn store_access_asm_instruction_to_storage_access(inst: &str) -> StorageAccess {
     match inst {
         "srw" => StorageAccess::ReadWord,
-        "srwq" => StorageAccess::ReadSlots,
+        "srwq" | "srdd" | "srdi" => StorageAccess::ReadSlots,
         "scwq" => StorageAccess::Clear,
+        "sclr" => StorageAccess::Clear,
         "sww" => StorageAccess::WriteWord,
-        "swwq" => StorageAccess::WriteSlots,
+        "swwq" | "swrd" | "swri" => StorageAccess::WriteSlots,
+        "supd" | "supi" => StorageAccess::WriteSlots,
+        "spld" => StorageAccess::ReadSlots,
         _ => panic!("The ASM instruction \"{inst}\" is not a store access instruction."),
     }
 }

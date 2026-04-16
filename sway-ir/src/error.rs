@@ -70,11 +70,17 @@ pub enum IrError {
     VerifySmoMessageNonPointer(String),
     VerifySmoRecipientBadType,
     VerifyStateAccessNumOfSlots,
-    VerifyStateAccessQuadNonPointer(String),
+    VerifyStateAccessSourceDestNonPointer(String),
+    VerifyStateAccessSourceDestNonUntypedPointer(String),
     VerifyStateDestBadType(String),
     VerifyStateKeyBadType,
     VerifyStateKeyNonPointer(String),
     VerifyStateLoadWordOffsetSize(u64),
+    VerifyStateReadOffsetBadType,
+    VerifyStateReadLenBadType,
+    VerifyStateWriteSlotLenBadType,
+    VerifyStateUpdateSlotOffsetBadType,
+    VerifyStateUpdateSlotLenBadType,
     VerifyStoreMismatchedTypes(Option<Value>),
     VerifyStoreToNonPointer(String),
     VerifyUntypedValuePassedToFunction,
@@ -373,34 +379,61 @@ impl fmt::Display for IrError {
                     "Verification failed: Number of slots for state access must be an integer."
                 )
             }
-            IrError::VerifyStateAccessQuadNonPointer(ty) => {
+            IrError::VerifyStateAccessSourceDestNonPointer(ty) => {
                 write!(
                     f,
                     "Verification failed: \
-                    State quad access must be to or from a pointer, not a {ty}."
+                    State access must be to or from a pointer, not a `{ty}`."
+                )
+            }
+            IrError::VerifyStateAccessSourceDestNonUntypedPointer(ty) => {
+                write!(
+                    f,
+                    "Verification failed: \
+                    State access must be to or from an untyped pointer, not a `{ty}`."
                 )
             }
             IrError::VerifyStateKeyBadType => {
                 write!(
                     f,
-                    "Verification failed: State load or store key must be a b256 pointer."
+                    "Verification failed: State loading or storing key must be a `b256` pointer."
                 )
             }
             IrError::VerifyStateKeyNonPointer(ty) => {
                 write!(
                     f,
-                    "Verification failed: State load or store key must be a pointer, not a {ty}."
+                    "Verification failed: State loading or storing key must be a pointer, not a `{ty}`."
                 )
             }
             IrError::VerifyStateDestBadType(ty) => {
                 write!(
                     f,
-                    "Verification failed: State access operation must be to a {ty} pointer."
+                    "Verification failed: State access operation must be to a `{ty}` pointer."
                 )
             }
             IrError::VerifyStateLoadWordOffsetSize(offset) => write!(
                 f,
                 "Verification failed: 'state_load_word' instruction has offset that does not fit in 6 bits: {offset}."
+            ),
+            IrError::VerifyStateReadOffsetBadType => write!(
+                f,
+                "Verification failed: 'state_read_slot' instruction has an offset argument that is not an integer."
+            ),
+            IrError::VerifyStateReadLenBadType => write!(
+                f,
+                "Verification failed: 'state_read_slot' instruction has a length argument that is not an integer."
+            ),
+            IrError::VerifyStateWriteSlotLenBadType => write!(
+                f,
+                "Verification failed: 'state_write_slot' instruction has a length argument that is not an integer."
+            ),
+            IrError::VerifyStateUpdateSlotOffsetBadType => write!(
+                f,
+                "Verification failed: 'state_update_slot' instruction has an offset argument that is not an integer."
+            ),
+            IrError::VerifyStateUpdateSlotLenBadType => write!(
+                f,
+                "Verification failed: 'state_update_slot' instruction has a length argument that is not an integer."
             ),
             IrError::VerifyStoreMismatchedTypes(_) => {
                 write!(

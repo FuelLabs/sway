@@ -251,8 +251,13 @@ fn hash_fn(
                         | crate::FuelVmInstruction::JmpMem
                         | crate::FuelVmInstruction::Smo { .. }
                         | crate::FuelVmInstruction::StateClear { .. }
+                        | crate::FuelVmInstruction::StateClearSlots { .. }
                         | crate::FuelVmInstruction::StateLoadQuadWord { .. }
+                        | crate::FuelVmInstruction::StateReadSlot { .. }
                         | crate::FuelVmInstruction::StateStoreQuadWord { .. }
+                        | crate::FuelVmInstruction::StateWriteSlot { .. }
+                        | crate::FuelVmInstruction::StateUpdateSlot { .. }
+                        | crate::FuelVmInstruction::StatePreload { .. }
                         | crate::FuelVmInstruction::StateStoreWord { .. } => (),
                         crate::FuelVmInstruction::StateLoadWord { offset, .. } => {
                             offset.hash(state)

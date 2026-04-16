@@ -308,6 +308,10 @@ impl InstructionVerifier<'_, '_> {
                     FuelVmInstruction::StateClear {
                         key,
                         number_of_slots,
+                    }
+                    | FuelVmInstruction::StateClearSlots {
+                        key,
+                        number_of_slots,
                     } => self.verify_state_clear(key, number_of_slots)?,
                     FuelVmInstruction::StateLoadWord { key, offset } => {
                         self.verify_state_load_word(key, offset)?
@@ -321,7 +325,25 @@ impl InstructionVerifier<'_, '_> {
                         stored_val: dst_val,
                         key,
                         number_of_slots,
-                    } => self.verify_state_access_quad(dst_val, key, number_of_slots)?,
+                    } => self.verify_state_load_or_store_quad(dst_val, key, number_of_slots)?,
+                    FuelVmInstruction::StateReadSlot {
+                        load_val,
+                        key,
+                        offset,
+                        len,
+                    } => self.verify_state_read_slot(load_val, key, offset, len)?,
+                    FuelVmInstruction::StateWriteSlot {
+                        stored_val,
+                        key,
+                        len,
+                    } => self.verify_state_write_slot(stored_val, key, len)?,
+                    FuelVmInstruction::StateUpdateSlot {
+                        stored_val,
+                        key,
+                        offset,
+                        len,
+                    } => self.verify_state_update_slot(stored_val, key, offset, len)?,
+                    FuelVmInstruction::StatePreload { key } => self.verify_state_preload(key)?,
                     FuelVmInstruction::StateStoreWord {
                         stored_val: dst_val,
                         key,
@@ -1126,13 +1148,13 @@ impl InstructionVerifier<'_, '_> {
         }
     }
 
-    fn verify_state_access_quad(
+    fn verify_state_load_or_store_quad(
         &self,
         dst_val: &Value,
         key: &Value,
         number_of_slots: &Value,
     ) -> Result<(), IrError> {
-        let dst_ty = self.get_ptr_type(dst_val, IrError::VerifyStateAccessQuadNonPointer)?;
+        let dst_ty = self.get_ptr_type(dst_val, IrError::VerifyStateAccessSourceDestNonPointer)?;
         if !dst_ty.is_b256(self.context) {
             return Err(IrError::VerifyStateDestBadType(
                 dst_ty.as_string(self.context),
@@ -1151,6 +1173,91 @@ impl InstructionVerifier<'_, '_> {
         Ok(())
     }
 
+    fn verify_state_read_slot(
+        &self,
+        load_val: &Value,
+        key: &Value,
+        offset: &Value,
+        len: &Value,
+    ) -> Result<(), IrError> {
+        self.expect_untyped_ptr(
+            load_val,
+            IrError::VerifyStateAccessSourceDestNonUntypedPointer,
+        )?;
+
+        let key_type = self.get_ptr_type(key, IrError::VerifyStateKeyNonPointer)?;
+        if !key_type.is_b256(self.context) {
+            return Err(IrError::VerifyStateKeyBadType);
+        }
+
+        if !offset
+            .get_type(self.context)
+            .is(Type::is_uint, self.context)
+        {
+            return Err(IrError::VerifyStateReadOffsetBadType);
+        }
+
+        if !len.get_type(self.context).is(Type::is_uint, self.context) {
+            return Err(IrError::VerifyStateReadLenBadType);
+        }
+
+        Ok(())
+    }
+
+    fn verify_state_write_slot(
+        &self,
+        stored_val: &Value,
+        key: &Value,
+        len: &Value,
+    ) -> Result<(), IrError> {
+        self.expect_untyped_ptr(
+            stored_val,
+            IrError::VerifyStateAccessSourceDestNonUntypedPointer,
+        )?;
+
+        let key_type = self.get_ptr_type(key, IrError::VerifyStateKeyNonPointer)?;
+        if !key_type.is_b256(self.context) {
+            return Err(IrError::VerifyStateKeyBadType);
+        }
+
+        if !len.get_type(self.context).is(Type::is_uint, self.context) {
+            return Err(IrError::VerifyStateWriteSlotLenBadType);
+        }
+
+        Ok(())
+    }
+
+    fn verify_state_update_slot(
+        &self,
+        stored_val: &Value,
+        key: &Value,
+        offset: &Value,
+        len: &Value,
+    ) -> Result<(), IrError> {
+        self.expect_untyped_ptr(
+            stored_val,
+            IrError::VerifyStateAccessSourceDestNonUntypedPointer,
+        )?;
+
+        let key_type = self.get_ptr_type(key, IrError::VerifyStateKeyNonPointer)?;
+        if !key_type.is_b256(self.context) {
+            return Err(IrError::VerifyStateKeyBadType);
+        }
+
+        if !offset
+            .get_type(self.context)
+            .is(Type::is_uint, self.context)
+        {
+            return Err(IrError::VerifyStateUpdateSlotOffsetBadType);
+        }
+
+        if !len.get_type(self.context).is(Type::is_uint, self.context) {
+            return Err(IrError::VerifyStateUpdateSlotLenBadType);
+        }
+
+        Ok(())
+    }
+
     fn verify_state_load_word(&self, key: &Value, offset: &u64) -> Result<(), IrError> {
         let key_type = self.get_ptr_type(key, IrError::VerifyStateKeyNonPointer)?;
         if !key_type.is_b256(self.context) {
@@ -1166,20 +1273,30 @@ impl InstructionVerifier<'_, '_> {
         Ok(())
     }
 
+    fn verify_state_preload(&self, key: &Value) -> Result<(), IrError> {
+        let key_type = self.get_ptr_type(key, IrError::VerifyStateKeyNonPointer)?;
+        if !key_type.is_b256(self.context) {
+            return Err(IrError::VerifyStateKeyBadType);
+        }
+        Ok(())
+    }
+
     fn verify_state_store_word(&self, dst_val: &Value, key: &Value) -> Result<(), IrError> {
         let key_type = self.get_ptr_type(key, IrError::VerifyStateKeyNonPointer)?;
         if !key_type.is_b256(self.context) {
-            Err(IrError::VerifyStateKeyBadType)
-        } else if !dst_val
-            .get_type(self.context)
-            .is(Type::is_uint, self.context)
-        {
-            Err(IrError::VerifyStateDestBadType(
-                Type::get_uint64(self.context).as_string(self.context),
-            ))
-        } else {
-            Ok(())
+            return Err(IrError::VerifyStateKeyBadType);
         }
+
+        if !dst_val
+            .get_type(self.context)
+            .is(Type::is_uint64, self.context)
+        {
+            return Err(IrError::VerifyStateDestBadType(
+                Type::get_uint64(self.context).as_string(self.context),
+            ));
+        }
+
+        Ok(())
     }
 
     fn verify_store(
@@ -1194,45 +1311,6 @@ impl InstructionVerifier<'_, '_> {
             Err(IrError::VerifyStoreMismatchedTypes(Some(*ins)))
         } else {
             Ok(())
-        }
-    }
-
-    //----------------------------------------------------------------------------------------------
-
-    // This is a really common operation above... calling `Value::get_type()` and then failing when
-    // two don't match.
-    fn opt_ty_not_eq(&self, l_ty: &Option<Type>, r_ty: &Option<Type>) -> bool {
-        l_ty.is_none() || r_ty.is_none() || !l_ty.unwrap().eq(self.context, r_ty.as_ref().unwrap())
-    }
-
-    fn get_ptr_type<F: FnOnce(String) -> IrError>(
-        &self,
-        val: &Value,
-        errfn: F,
-    ) -> Result<Type, IrError> {
-        val.get_type(self.context)
-            .ok_or_else(|| "unknown".to_owned())
-            .and_then(|ptr_ty| {
-                ptr_ty
-                    .get_pointee_type(self.context)
-                    .ok_or_else(|| ptr_ty.as_string(self.context))
-            })
-            .map_err(errfn)
-    }
-
-    // Get the bit size for fixed atomic types, or None for other types.
-    fn type_bit_size(&self, ty: &Type) -> Option<usize> {
-        // Typically we don't want to make assumptions about the size of types in the IR.  This is
-        // here until we reintroduce pointers and don't need to care about type sizes (and whether
-        // they'd fit in a 64 bit register).
-        if ty.is_unit(self.context) || ty.is_bool(self.context) {
-            Some(1)
-        } else if ty.is_uint(self.context) {
-            Some(ty.get_uint_width(self.context).unwrap() as usize)
-        } else if ty.is_b256(self.context) {
-            Some(256)
-        } else {
-            None
         }
     }
 
@@ -1289,5 +1367,65 @@ impl InstructionVerifier<'_, '_> {
             }
         }
         Ok(())
+    }
+
+    //----------------------------------------------------------------------------------------------
+
+    // This is a really common operation above... calling `Value::get_type()` and then failing when
+    // two don't match.
+    fn opt_ty_not_eq(&self, l_ty: &Option<Type>, r_ty: &Option<Type>) -> bool {
+        l_ty.is_none() || r_ty.is_none() || !l_ty.unwrap().eq(self.context, r_ty.as_ref().unwrap())
+    }
+
+    /// Expect `val` to be a **typed** pointer and return the pointee type,
+    /// or an error with the value's type's string representation if not.
+    fn get_ptr_type<F: FnOnce(String) -> IrError>(
+        &self,
+        val: &Value,
+        err_fn: F,
+    ) -> Result<Type, IrError> {
+        val.get_type(self.context)
+            .ok_or_else(|| "unknown".to_owned())
+            .and_then(|ptr_ty| {
+                ptr_ty
+                    .get_pointee_type(self.context)
+                    .ok_or_else(|| ptr_ty.as_string(self.context))
+            })
+            .map_err(err_fn)
+    }
+
+    /// Expect `val` to be an untyped pointer,
+    /// and return an error with the type's string representation if not.
+    fn expect_untyped_ptr<F: FnOnce(String) -> IrError>(
+        &self,
+        val: &Value,
+        err_fn: F,
+    ) -> Result<(), IrError> {
+        val.get_type(self.context)
+            .ok_or_else(|| "unknown".to_owned())
+            .and_then(|ty| {
+                if ty.is_untyped_ptr(self.context) {
+                    Ok(())
+                } else {
+                    Err(ty.as_string(self.context))
+                }
+            })
+            .map_err(err_fn)
+    }
+
+    /// Get the bit size for fixed atomic types, or None for other types.
+    fn type_bit_size(&self, ty: &Type) -> Option<usize> {
+        // Typically we don't want to make assumptions about the size of types in the IR.  This is
+        // here until we reintroduce pointers and don't need to care about type sizes (and whether
+        // they'd fit in a 64 bit register).
+        if ty.is_unit(self.context) || ty.is_bool(self.context) {
+            Some(1)
+        } else if ty.is_uint(self.context) {
+            Some(ty.get_uint_width(self.context).unwrap() as usize)
+        } else if ty.is_b256(self.context) {
+            Some(256)
+        } else {
+            None
+        }
     }
 }
