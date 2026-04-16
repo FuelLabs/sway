@@ -49,7 +49,7 @@ fi
 # ── Find matching commits ───────────────────────────────────────────
 
 # Extract all full SHAs from the heading lines.
-# Heading format: # Branch: `master` on 2026.04.08 `<full-sha>` (...)
+# Heading format: ## Branch: `master` on 2026.04.08 `<full-sha>` (...)
 mapfile -t ALL_SHAS < <(grep -oP '(?<=`)[0-9a-f]{40}(?=`)' "$RESULTS_FILE")
 
 if [[ ${#ALL_SHAS[@]} -eq 0 ]]; then
@@ -111,7 +111,7 @@ parse_commit() {
 
     while IFS= read -r line; do
         # Detect commit heading.
-        if [[ "$line" =~ ^"# Branch:" ]]; then
+        if [[ "$line" =~ ^"## Branch:" ]]; then
             if [[ "$line" == *"$sha"* ]]; then
                 in_commit=true
             elif $in_commit; then
