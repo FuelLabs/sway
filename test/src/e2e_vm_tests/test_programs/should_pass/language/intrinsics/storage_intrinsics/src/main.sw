@@ -5,12 +5,131 @@ const B256_ONE: b256 = 0x0000000000000000000000000000000000000000000000000000000
 const B256_TWO: b256 = 0x0000000000000000000000000000000000000000000000000000000000000002;
 
 impl Contract {
+    // BEGIN: __state_load_word
+
+    // Empty slots can be read at any offset, and should always return 0 and not be marked as set.
+    #[cfg(experimental_dynamic_storage = true)]
+    #[storage(read)]
+    fn state_load_word_empty_slots() {
+        let res = __state_load_word(B256_ZERO, 0);
+        assert_eq(res, 0);
+
+        let res = __state_load_word(B256_ZERO, 42);
+        assert_eq(res, 0);
+    }
+
+    #[cfg(experimental_dynamic_storage = false)]
+    #[storage(read)]
+    fn state_load_word_empty_slots() {
+        let res = __state_load_word(B256_ZERO);
+        assert_eq(res, 0);
+    }
+
+    #[cfg(experimental_dynamic_storage = true)]
+    #[storage(read, write)]
+    fn state_load_word_occupied_slots_valid_offset_quod() {
+        let slots_data = [42u64, 43u64, 44u64, 45u64];
+        let _ = __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
+
+        let res = __state_load_word(B256_ZERO, 0);
+        assert_eq(res, 42);
+
+        let res = __state_load_word(B256_ZERO, 1);
+        assert_eq(res, 43);
+
+        let res = __state_load_word(B256_ZERO, 2);
+        assert_eq(res, 44);
+
+        let res = __state_load_word(B256_ZERO, 3);
+        assert_eq(res, 45);
+    }
+
+    #[cfg(experimental_dynamic_storage = false)]
+    #[storage(read, write)]
+    fn state_load_word_occupied_slots_valid_offset_quod() {
+        let slots_data = [42u64, 43u64, 44u64, 45u64];
+        let _ = __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
+
+        let res = __state_load_word(B256_ZERO);
+        assert_eq(res, 42);
+    }
+
+    #[cfg(experimental_dynamic_storage = true)]
+    #[storage(read, write)]
+    fn state_load_word_occupied_slots_valid_offset_dynamic() {
+        let slots_data = [42u64, 43u64];
+        let _ = __state_store_slot(B256_ZERO, __addr_of(slots_data), 2 * 8);
+
+        let res = __state_load_word(B256_ZERO, 0);
+        assert_eq(res, 42);
+
+        let res = __state_load_word(B256_ZERO, 1);
+        assert_eq(res, 43);
+    }
+
+    #[cfg(experimental_dynamic_storage = false)]
+    #[storage(read, write)]
+    fn state_load_word_occupied_slots_valid_offset_dynamic() {
+        let slots_data = [42u64, 43u64, 44u64, 45u64];
+        let _ = __state_store_slot(B256_ZERO, __addr_of(slots_data), 2 * 8);
+
+        let res = __state_load_word(B256_ZERO);
+        assert_eq(res, 42);
+    }
+
+    // Reading out of slot bounds must revert.
+    #[cfg(experimental_dynamic_storage = true)]
+    #[storage(read, write)]
+    fn state_load_word_occupied_slots_offset_out_of_bounds_quod() {
+        let slots_data = [42u64, 43u64, 44u64, 45u64];
+        let _ = __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
+
+        let res = __state_load_word(B256_ZERO, 4);
+        poke(res);
+    }
+
+    #[cfg(experimental_dynamic_storage = true)]
+    #[storage(read, write)]
+    fn state_load_word_occupied_slots_offset_out_of_bounds_dynamic() {
+        let slots_data = [42u64, 43u64];
+        let _ = __state_store_slot(B256_ZERO, __addr_of(slots_data), 2 * 8);
+
+        let res = __state_load_word(B256_ZERO, 2);
+        poke(res);
+    }
+
+    // END: __state_load_word
+
     // BEGIN: __state_clear
 
     #[storage(write)]
     fn state_clear_empty_slots() {
         let res = __state_clear(B256_ZERO, 1);
         assert_eq(res, false);
+    }
+
+    // If `slots` argument is zero, no slots are cleared, and the return value
+    // is always true.
+    #[storage(write)]
+    fn state_clear_slots_arg_set_to_zero() {
+        let res = __state_clear(B256_ZERO, 0);
+        assert_eq(res, true);
+
+        let slots_data = [42u64; 4];
+        let _ = __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
+
+        let is_set_res = (0u64, 0u64);
+
+        let (is_set, res) = read_first_word_in_quod(B256_ZERO);
+        assert_eq(is_set, 1);
+        assert_eq(res, 42);
+
+        let res = __state_clear(B256_ZERO, 0);
+        assert_eq(res, true);
+
+        let (is_set, res) = read_first_word_in_quod(B256_ZERO);
+        assert_eq(is_set, 1);
+        assert_eq(res, 42);
     }
 
     #[storage(write)]
@@ -63,6 +182,29 @@ impl Contract {
     fn state_clear_slots_empty_slots() {
         let res = __state_clear_slots(B256_ZERO, 1);
         assert_eq(res, ());
+    }
+
+    // If `slots` argument is zero, no slots are cleared.
+    #[storage(write)]
+    fn state_clear_slots_slots_arg_set_to_zero() {
+        let res = __state_clear_slots(B256_ZERO, 0);
+        assert_eq(res, ());
+
+        let slots_data = [42u64; 4];
+        let _ = __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
+
+        let is_set_res = (0u64, 0u64);
+
+        let (is_set, res) = read_first_word_in_quod(B256_ZERO);
+        assert_eq(is_set, 1);
+        assert_eq(res, 42);
+
+        let res = __state_clear_slots(B256_ZERO, 0);
+        assert_eq(res, ());
+
+        let (is_set, res) = read_first_word_in_quod(B256_ZERO);
+        assert_eq(is_set, 1);
+        assert_eq(res, 42);
     }
 
     #[storage(write)]
@@ -416,6 +558,9 @@ fn get_runtime_len(len: u64) -> u64 {
     len
 }
 
+#[inline(never)]
+fn poke<T>(_t: T) { }
+
 // TODO-DCA: Fix false DCA warning for this function as a part of https://github.com/FuelLabs/sway/issues/5921.
 #[storage(read)]
 fn read_first_word_in_quod(slot: b256) -> (u64, u64) {
@@ -429,9 +574,47 @@ fn read_first_word_in_quod(slot: b256) -> (u64, u64) {
 }
 
 #[test]
+fn test_state_load_word_empty_slots() {
+    let caller = abi(StorageIntrinsicsAbi, CONTRACT_ID);
+    caller.state_load_word_empty_slots();
+}
+
+#[test]
+fn test_state_load_word_occupied_slots_valid_offset_quod() {
+    let caller = abi(StorageIntrinsicsAbi, CONTRACT_ID);
+    caller.state_load_word_occupied_slots_valid_offset_quod();
+}
+
+#[test]
+fn test_state_load_word_occupied_slots_valid_offset_dynamic() {
+    let caller = abi(StorageIntrinsicsAbi, CONTRACT_ID);
+    caller.state_load_word_occupied_slots_valid_offset_dynamic();
+}
+
+#[test(should_revert)]
+#[cfg(experimental_dynamic_storage = true)]
+fn test_state_load_word_occupied_slots_offset_out_of_bounds_quod() {
+    let caller = abi(StorageIntrinsicsAbi, CONTRACT_ID);
+    caller.state_load_word_occupied_slots_offset_out_of_bounds_quod();
+}
+
+#[test(should_revert)]
+#[cfg(experimental_dynamic_storage = true)]
+fn test_state_load_word_occupied_slots_offset_out_of_bounds_dynamic() {
+    let caller = abi(StorageIntrinsicsAbi, CONTRACT_ID);
+    caller.state_load_word_occupied_slots_offset_out_of_bounds_dynamic();
+}
+
+#[test]
 fn test_state_clear_empty_slots() {
     let caller = abi(StorageIntrinsicsAbi, CONTRACT_ID);
     caller.state_clear_empty_slots();
+}
+
+#[test]
+fn test_state_clear_slots_arg_set_to_zero() {
+    let caller = abi(StorageIntrinsicsAbi, CONTRACT_ID);
+    caller.state_clear_slots_arg_set_to_zero();
 }
 
 #[test]
@@ -444,6 +627,12 @@ fn test_state_clear_occupied_slots() {
 fn test_state_clear_slots_empty_slots() {
     let caller = abi(StorageIntrinsicsAbi, CONTRACT_ID);
     caller.state_clear_slots_empty_slots();
+}
+
+#[test]
+fn test_state_clear_slots_slots_arg_set_to_zero() {
+    let caller = abi(StorageIntrinsicsAbi, CONTRACT_ID);
+    caller.state_clear_slots_slots_arg_set_to_zero();
 }
 
 #[test]

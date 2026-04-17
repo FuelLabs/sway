@@ -365,7 +365,7 @@ pub enum FuelVmInstruction {
         key: Value,
         number_of_slots: Value,
     },
-    /// Reads and returns single word from a storage slot at offset `offset`.
+    /// Reads and returns single word from a storage slot at `offset`, where `offset` is given in words.
     StateLoadWord {
         key: Value,
         offset: u64,
@@ -1527,6 +1527,21 @@ impl InstOp {
             | InstOp::FuelVm(FuelVmInstruction::WideModularOp { .. })
             | InstOp::InitAggr { .. } => true,
 
+            // Note that some of the below instructions can revert in certain
+            // cases. For the purpose of this function, we don't assume reverts
+            // to be a side-effect, unless `FuelVmInstruction::Revert` is used
+            // directly.
+            // The reason for this is, e.g., being able to eliminate dead code
+            // like:
+            //   let _ = a + b;
+            // If we treat `InstOp::BinaryOp` ADD as having side-effects because
+            // of a potential revert, we couldn't eliminated dead code like the one
+            // above.
+            // The counterintuitive consequence of this decision is that the below
+            // code examples will not revert at runtime, because they will be eliminated
+            // as dead code:
+            //   let _ = 18446744073709551615_u64 + 1_u64;
+            //   let _ = __state_load_word(occupied_slot, 18446744073709551615_u64);
             InstOp::UnaryOp { .. }
             | InstOp::BinaryOp { .. }
             | InstOp::BitCast(..)

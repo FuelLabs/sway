@@ -365,9 +365,9 @@ __state_load_word(key: b256) -> u64
 __state_load_word(key: b256, offset: u64) -> u64
 ```
 
-**Description:** Reads and returns a single word from storage at key `key` and offset `offset`. If the storage slot at key `key` is not set, zero is returned.
+**Description:** Reads and returns a single word from storage at key `key` and offset (in words) `offset`. If the storage slot at key `key` is not set, zero is returned.
 
-**Constraints:** `offset` must be a valid word offset inside of the storage slot boundaries. E.g., if the storage slot contains four words, the lowest offset is zero, and the highest is three.
+**Constraints:** `offset` must be a valid _word_ offset inside of the storage slot boundaries. E.g., if the storage slot contains four words, the lowest offset is zero, and the highest is three.
 
 ---
 
@@ -435,7 +435,9 @@ __state_update_slot(key: b256, ptr: raw_ptr, offset: u64, len: u64)
 __state_clear(key: b256, slots: u64) -> bool
 ```
 
-**Description:** Clears `slots` number of non-dynamic storage slots (32 bytes each) starting at key `key`. Returns a boolean describing whether all the storage slots were previously set. Maps to the `SCWQ` opcode.
+**Description:** Clears `slots` number of non-dynamic storage slots (32 bytes each) starting at key `key`. Returns true if _all_ the storage slots were previously set. Maps to the `SCWQ` opcode.
+
+If `slots` is zero, no slots will be cleared, and the return value will always be true. 
 
 If the return value is not needed, use `__state_clear_slots` instead, for it is less gas consuming.
 
@@ -448,6 +450,8 @@ __state_clear_slots(key: b256, slots: u64)
 ```
 
 **Description:** Clears `slots` number of dynamic storage slots starting at key `key`. Unlike `__state_clear`, it does not report whether slots were previously set, making it less gas consuming. Maps to the `SCLR` opcode.
+
+If `slots` is zero, no slots will be cleared. 
 
 **Constraints:** None.
 
