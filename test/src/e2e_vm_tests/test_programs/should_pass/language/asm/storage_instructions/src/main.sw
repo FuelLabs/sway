@@ -8,7 +8,7 @@ impl Contract {
     // BEGIN: SRW
 
     // Empty slots can be read at any offset, and should always return 0 and not be marked as set.
-    #[storage(read, write)]
+    #[storage(read)]
     fn srw_empty_slots() {
         let is_set_res = (0u64, 0u64);
 
@@ -33,9 +33,9 @@ impl Contract {
 
     // Occupied slots should be readable at the correct offsets, and marked as set.
     #[storage(read, write)]
-    fn srw_occupied_slots_valid_offset() {
+    fn srw_occupied_slots_valid_offset_quod() {
         let slots_data = [42u64, 43u64, 44u64, 45u64];
-        __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
+        let _ = __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
 
         let is_set_res = (0u64, 0u64);
 
@@ -76,16 +76,59 @@ impl Contract {
         assert_eq(res, 45);
     }
 
-    // Reading out of slot bounds must revert.
+    // Occupied slots should be readable at the correct offsets, and marked as set.
     #[storage(read, write)]
-    fn srw_occupied_slots_offset_out_of_bounds() {
-        let slots_data = [42u64, 43u64, 44u64, 45u64];
-        __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
+    fn srw_occupied_slots_valid_offset_dynamic() {
+        let slots_data = [42u64, 43u64];
+        let _ = __state_store_slot(B256_ZERO, __addr_of(slots_data), 2 * 8);
 
         let is_set_res = (0u64, 0u64);
 
-        asm(slot: B256_ZERO, is_set, res, is_set_res: is_set_res) {
+        let (is_set, res) = asm(slot: B256_ZERO, is_set, res, is_set_res: is_set_res) {
+            srw res is_set slot i0;
+            sw is_set_res is_set i0;
+            sw is_set_res res i1;
+            is_set_res: (u64, u64)
+        };
+        assert_eq(is_set, 1);
+        assert_eq(res, 42);
+
+        let (is_set, res) = asm(slot: B256_ZERO, is_set, res, is_set_res: is_set_res) {
+            srw res is_set slot i1;
+            sw is_set_res is_set i0;
+            sw is_set_res res i1;
+            is_set_res: (u64, u64)
+        };
+        assert_eq(is_set, 1);
+        assert_eq(res, 43);
+    }
+
+    // Reading out of slot bounds must revert.
+    #[storage(read, write)]
+    fn srw_occupied_slots_offset_out_of_bounds_quod() {
+        let slots_data = [42u64, 43u64, 44u64, 45u64];
+        let _ = __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
+
+        let is_set_res = (0u64, 0u64);
+
+        let _ = asm(slot: B256_ZERO, is_set, res, is_set_res: is_set_res) {
             srw res is_set slot i4;
+            sw is_set_res is_set i0;
+            sw is_set_res res i1;
+            is_set_res: (u64, u64)
+        };
+    }
+
+    // Reading out of slot bounds must revert.
+    #[storage(read, write)]
+    fn srw_occupied_slots_offset_out_of_bounds_dynamic() {
+        let slots_data = [42u64, 43u64];
+        let _ = __state_store_slot(B256_ZERO, __addr_of(slots_data), 2 * 8);
+
+        let is_set_res = (0u64, 0u64);
+
+        let _ = asm(slot: B256_ZERO, is_set, res, is_set_res: is_set_res) {
+            srw res is_set slot i2;
             sw is_set_res is_set i0;
             sw is_set_res res i1;
             is_set_res: (u64, u64)
@@ -96,17 +139,38 @@ impl Contract {
 
     // BEGIN: SCLR
 
-    #[storage(read, write)]
+    #[storage(write)]
     fn sclr_empty_slots() {
         asm(slot: B256_ZERO, num_of_slots: 2) {
             sclr slot num_of_slots;
         };
     }
 
+    // If `slots` argument is zero, no slots are cleared.
+    #[storage(write)]
+    fn sclr_clear_slots_arg_set_to_zero() {
+        let slots_data = [42u64; 4];
+        let _ = __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
+
+        let is_set_res = (0u64, 0u64);
+
+        let (is_set, res) = read_first_word_in_quod(B256_ZERO);
+        assert_eq(is_set, 1);
+        assert_eq(res, 42);
+
+        asm(slot: B256_ZERO, num_of_slots: 0) {
+            sclr slot num_of_slots;
+        };
+
+        let (is_set, res) = read_first_word_in_quod(B256_ZERO);
+        assert_eq(is_set, 1);
+        assert_eq(res, 42);
+    }
+
     #[storage(read, write)]
     fn sclr_occupied_slots() {
         let slots_data = [42u64; 12]; // Three slots of 4 words each.
-        __state_store_quad(B256_ZERO, __addr_of(slots_data), 3);
+        let _ = __state_store_quad(B256_ZERO, __addr_of(slots_data), 3);
 
         let is_set_res = (0u64, 0u64);
 
@@ -174,7 +238,7 @@ impl Contract {
     #[storage(read, write)]
     fn srdd_occupied_slots() {
         let slots_data = (42u64, 43u64, 44u64, 45u64);
-        __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
+        let _ = __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
 
         let dest = [0u64; 2];
         let is_err = asm(slot: B256_ZERO, res: __addr_of(dest), index: 0, len: dest.len() * 8) {
@@ -202,7 +266,7 @@ impl Contract {
     #[storage(read, write)]
     fn srdd_occupied_slots_out_of_bounds() {
         let slots_data = (42u64, 43u64, 44u64, 45u64);
-        __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
+        let _ = __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
 
         let dest = [0u64; 4];
         let is_err = asm(slot: B256_ZERO, res: __addr_of(dest), index: 0, len: dest.len() * 9) {
@@ -238,7 +302,7 @@ impl Contract {
     #[storage(read, write)]
     fn srdi_occupied_slots() {
         let slots_data = (42u64, 43u64, 44u64, 45u64);
-        __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
+        let _ = __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
 
         let dest = [0u64; 2];
         let is_err = asm(slot: B256_ZERO, res: __addr_of(dest), index: 0) {
@@ -266,7 +330,7 @@ impl Contract {
     #[storage(read, write)]
     fn srdi_occupied_slots_out_of_bounds() {
         let slots_data = (42u64, 43u64, 44u64, 45u64);
-        __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
+        let _ = __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
 
         let dest = [0u64; 4];
         let is_err = asm(slot: B256_ZERO, res: __addr_of(dest), index: 0) {
@@ -410,7 +474,7 @@ impl Contract {
     #[storage(read, write)]
     fn supd_occupied_slots_append() {
         let slots_data = [42u64, 43u64, 44u64, 45u64];
-        __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
+        let _ = __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
 
         let val = [46u64];
         asm(slot: B256_ZERO, src: __addr_of(val), offset: u64::max(), len: 1 * 8) {
@@ -429,7 +493,7 @@ impl Contract {
     #[storage(read, write)]
     fn supd_offset_out_of_bounds() {
         let slots_data = [42u64, 43u64, 44u64, 45u64];
-        __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
+        let _ = __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
 
         let val = [46u64];
         asm(slot: B256_ZERO, src: __addr_of(val), offset: 33, len: 1 * 8) {
@@ -440,7 +504,7 @@ impl Contract {
     #[storage(read, write)]
     fn supd_occupied_slots_overwrite() {
         let slots_data = [42u64, 43u64, 44u64, 45u64];
-        __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
+        let _ = __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
 
         let val = [34u64];
         asm(slot: B256_ZERO, src: __addr_of(val), offset: 8, len: 1 * 8) {
@@ -459,7 +523,7 @@ impl Contract {
     #[storage(read, write)]
     fn supd_occupied_slots_overwrite_and_extend() {
         let slots_data = [42u64, 43u64, 44u64, 45u64];
-        __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
+        let _ = __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
 
         let val = [11u64, 12u64, 13u64];
         asm(slot: B256_ZERO, src: __addr_of(val), offset: 16, len: 3 * 8) {
@@ -499,7 +563,7 @@ impl Contract {
     #[storage(read, write)]
     fn supi_occupied_slots_append() {
         let slots_data = [42u64, 43u64, 44u64, 45u64];
-        __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
+        let _ = __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
 
         let val = [46u64];
         asm(slot: B256_ZERO, src: __addr_of(val), offset: u64::max()) {
@@ -518,7 +582,7 @@ impl Contract {
     #[storage(read, write)]
     fn supi_offset_out_of_bounds() {
         let slots_data = [42u64, 43u64, 44u64, 45u64];
-        __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
+        let _ = __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
 
         let val = [46u64];
         asm(slot: B256_ZERO, src: __addr_of(val), offset: 33) {
@@ -529,7 +593,7 @@ impl Contract {
     #[storage(read, write)]
     fn supi_occupied_slots_overwrite() {
         let slots_data = [42u64, 43u64, 44u64, 45u64];
-        __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
+        let _ = __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
 
         let val = [34u64];
         asm(slot: B256_ZERO, src: __addr_of(val), offset: 8) {
@@ -548,7 +612,7 @@ impl Contract {
     #[storage(read, write)]
     fn supi_occupied_slots_overwrite_and_extend() {
         let slots_data = [42u64, 43u64, 44u64, 45u64];
-        __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
+        let _ = __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
 
         let val = [11u64, 12u64, 13u64];
         asm(slot: B256_ZERO, src: __addr_of(val), offset: 16) {
@@ -568,7 +632,7 @@ impl Contract {
 
     // BEGIN: SPLD
 
-    #[storage(read, write)]
+    #[storage(read)]
     fn spld_empty_slot() {
         let is_not_set_len = (0u64, 0u64);
         let (is_not_set, len) = asm(slot: B256_ZERO, len, is_not_set_len: is_not_set_len) {
@@ -604,7 +668,7 @@ impl Contract {
     #[storage(read, write)]
     fn spld_occupied_slot_quad() {
         let slots_data = [42u64, 43u64, 44u64, 45u64];
-        __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
+        let _ = __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
 
         let is_not_set_len = (0u64, 0u64);
         let (is_not_set, len) = asm(slot: B256_ZERO, len, is_not_set_len: is_not_set_len) {
@@ -638,7 +702,7 @@ impl Contract {
     }
 
     // Preloading different slots must return independent lengths.
-    #[storage(read, write)]
+    #[storage(write)]
     fn spld_different_slots() {
         let val_a = [1u64, 2u64];
         asm(slot: B256_ZERO, src: __addr_of(val_a), len: 2 * 8) {
@@ -694,21 +758,39 @@ fn test_srw_empty_slots() {
 }
 
 #[test]
-fn test_srw_occupied_slots_valid_offsets() {
+fn test_srw_occupied_slots_valid_offsets_quod() {
     let caller = abi(StorageInstructionsAbi, CONTRACT_ID);
-    caller.srw_occupied_slots_valid_offset();
+    caller.srw_occupied_slots_valid_offset_quod();
+}
+
+#[test]
+fn test_srw_occupied_slots_valid_offsets_dynamic() {
+    let caller = abi(StorageInstructionsAbi, CONTRACT_ID);
+    caller.srw_occupied_slots_valid_offset_dynamic();
 }
 
 #[test(should_revert)]
-fn test_srw_occupied_slots_offset_out_of_bounds() {
+fn test_srw_occupied_slots_offset_out_of_bounds_quod() {
     let caller = abi(StorageInstructionsAbi, CONTRACT_ID);
-    caller.srw_occupied_slots_offset_out_of_bounds();
+    caller.srw_occupied_slots_offset_out_of_bounds_quod();
+}
+
+#[test(should_revert)]
+fn test_srw_occupied_slots_offset_out_of_bounds_dynamic() {
+    let caller = abi(StorageInstructionsAbi, CONTRACT_ID);
+    caller.srw_occupied_slots_offset_out_of_bounds_dynamic();
 }
 
 #[test]
 fn test_sclr_empty_slots() {
     let caller = abi(StorageInstructionsAbi, CONTRACT_ID);
     caller.sclr_empty_slots();
+}
+
+#[test]
+fn test_sclr_clear_slots_arg_set_to_zero() {
+    let caller = abi(StorageInstructionsAbi, CONTRACT_ID);
+    caller.sclr_clear_slots_arg_set_to_zero();
 }
 
 #[test]

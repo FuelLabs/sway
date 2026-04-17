@@ -1,4 +1,6 @@
-# Branch: `master` on 2026.04.08 `551e37f20aa44e49f2520e333e2934b3d209f820` (Pin tracing-subscriber to 0.3.19 (#7587))
+# Storage Benchmarks Results
+
+## Branch: `master` on 2026.04.08 `551e37f20aa44e49f2520e333e2934b3d209f820` (Pin tracing-subscriber to 0.3.19 (#7587))
 
 ```text
 ═══════════════════════════════════════════════════════════════
@@ -671,7 +673,7 @@ bench_clear_n100,17354
 bench_clear_n1000,17354
 ```
 
-# Branch: `master` on 2026.04.10 `0507c2c9a65a147ef2026fda8ac52ba7223aca40` (Update `fuel-vm` and `fuels` dependencies in `sdk-harness` tests (#7591))
+## Branch: `master` on 2026.04.10 `0507c2c9a65a147ef2026fda8ac52ba7223aca40` (Update `fuel-vm` and `fuels` dependencies in `sdk-harness` tests (#7591))
 
 ```text
 ═══════════════════════════════════════════════════════════════

@@ -58,6 +58,10 @@ category = "fail"
 #nextln: $()Reading a word from the storage happens here.
 #check: $()let _ = __state_load_quad(b256::zero(), ptr, 1);
 #nextln: $()Reading storage slots happens here.
+#check: $()let _ = __state_load_slot(b256::zero(), ptr, 0, 8);
+#nextln: $()Reading storage slots happens here.
+#check: $()let _ = __state_preload(b256::zero());
+#nextln: $()Reading storage slots happens here.
 #check: $()Consider declaring the function "read_intrinsics" as `#[storage(read)]`
 
 #check: $()error
@@ -68,15 +72,27 @@ category = "fail"
 #nextln: $()Writing a word to the storage happens here.
 #check: $()let _ = __state_store_quad(b256::zero(), ptr, 1);
 #nextln: $()Writing to storage slots happens here.
+#check: $()__state_store_slot(b256::zero(), ptr, 8);
+#nextln: $()Writing to storage slots happens here.
 #check: $()Consider declaring the function "write_intrinsics" as `#[storage(read, write)]`
 
 #check: $()error
 #sameln: $()Storage read-only function cannot write to storage
-#check: $()fn clear_intrinsic(self) -> Self
-#nextln: $()Function "clear_intrinsic" is declared as `#[storage(read)]` and cannot write to storage.
+#check: $()fn clear_intrinsics(self) -> Self
+#nextln: $()Function "clear_intrinsics" is declared as `#[storage(read)]` and cannot write to storage.
 #check: $()let _ = __state_clear(b256::zero(), 1);
 #nextln: $()Clearing the storage happens here.
-#check: $()Consider declaring the function "clear_intrinsic" as `#[storage(read, write)]`
+#check: $()let _ = __state_clear_slots(b256::zero(), 1);
+#nextln: $()Clearing the storage happens here.
+#check: $()Consider declaring the function "clear_intrinsics" as `#[storage(read, write)]`
+
+#check: $()error
+#sameln: $()Storage read-only function cannot write to storage
+#check: $()fn update_intrinsics(self) -> Self
+#nextln: $()Function "update_intrinsics" is declared as `#[storage(read)]` and cannot write to storage.
+#check: $()__state_update_slot(b256::zero(), ptr, 0, 8);
+#nextln: $()Writing to storage slots happens here.
+#check: $()Consider declaring the function "update_intrinsics" as `#[storage(read, write)]`
 
 #check: $()error
 #sameln: $()Pure function cannot access storage
@@ -94,7 +110,9 @@ category = "fail"
 #nextln: $()Function "read_intrinsics" reads from the storage.
 #check: $()let _ = s.write_intrinsics();
 #nextln: $()Function "write_intrinsics" writes to the storage.
-#check: $()let _ = s.clear_intrinsic();
-#nextln: $()Function "clear_intrinsic" writes to the storage.
+#check: $()let _ = s.clear_intrinsics();
+#nextln: $()Function "clear_intrinsics" writes to the storage.
+#check: $()let _ = s.update_intrinsics();
+#nextln: $()Function "update_intrinsics" reads from and writes to the storage.
 
-#check: $()8 errors.
+#check: $()9 errors.

@@ -637,8 +637,15 @@ fn effects_of_expression(engines: &Engines, expr: &ty::TyExpression) -> HashSet<
 fn effects_of_intrinsic(intr: &sway_ast::Intrinsic) -> HashSet<Effect> {
     use sway_ast::Intrinsic::*;
     match intr {
-        StateClear | StateStoreWord | StateStoreQuad => HashSet::from([Effect::StorageWrite]),
-        StateLoadWord | StateLoadQuad => HashSet::from([Effect::StorageRead]),
+        // For the logic behind the effects of state intrinsics, see the comment
+        // for effects of state opcodes in `effects_of_asm_op`.
+        StateClear | StateClearSlots | StateStoreWord | StateStoreQuad | StateStoreSlot => {
+            HashSet::from([Effect::StorageWrite])
+        }
+        StateLoadWord | StateLoadQuad | StateLoadSlot | StatePreload => {
+            HashSet::from([Effect::StorageRead])
+        }
+        StateUpdateSlot => HashSet::from([Effect::StorageWrite]),
         Smo => HashSet::from([Effect::OutputMessage]),
         ContractCall => HashSet::from([Effect::Interaction]),
         Revert

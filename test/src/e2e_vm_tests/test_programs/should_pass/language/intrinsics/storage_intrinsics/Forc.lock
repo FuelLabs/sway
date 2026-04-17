@@ -1,0 +1,8 @@
+[[package]]
+name = "std"
+source = "path+from-root-7CD5BEC4CDAE08E5"
+
+[[package]]
+name = "storage_intrinsics"
+source = "member"
+dependencies = ["std"]

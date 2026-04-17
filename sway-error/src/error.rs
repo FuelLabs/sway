@@ -919,16 +919,28 @@ pub enum CompileError {
         span: Span,
         hint: String,
     },
-    #[error("Call to \"{name}\" expects {expected} argument(s)")]
+    #[error("\"__{name}\" intrinsic expects {} argument{}, but {} {} provided.",
+        num_to_str(*expected),
+        plural_s(*expected),
+        num_to_str_or_none(*actual),
+        is_are(*actual),
+    )]
     IntrinsicIncorrectNumArgs {
         name: String,
-        expected: u64,
+        expected: usize,
+        actual: usize,
         span: Span,
     },
-    #[error("Call to \"{name}\" expects {expected} type arguments")]
+    #[error("\"__{name}\" intrinsic expects {} type argument{}, but {} {} provided.",
+        num_to_str(*expected),
+        plural_s(*expected),
+        num_to_str_or_none(*actual),
+        is_are(*actual),
+    )]
     IntrinsicIncorrectNumTArgs {
         name: String,
-        expected: u64,
+        expected: usize,
+        actual: usize,
         span: Span,
     },
     #[error("\"__{intrinsic}\" intrinsic's argument \"{arg}\" must be a constant of type `{expected_type}`.")]
