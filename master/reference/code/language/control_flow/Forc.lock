@@ -1,0 +1,13 @@
+[[package]]
+name = 'control_flow'
+source = 'member'
+dependencies = ['std']
+
+[[package]]
+name = 'core'
+source = 'path+from-root-AE2967028D5567DA'
+
+[[package]]
+name = 'std'
+source = 'git+https://github.com/fuellabs/sway?tag=v0.31.1#c32b0759d25c0b515cbf535f9fb9b8e6fda38ff2'
+dependencies = ['core']
