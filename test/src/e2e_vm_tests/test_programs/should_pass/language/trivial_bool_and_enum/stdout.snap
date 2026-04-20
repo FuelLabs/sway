@@ -37,7 +37,7 @@ error: Type is not trivially decodable
 ...
 15 | struct MyStruct {
    |        ^^^^^^^^ `MyStruct` is not trivially decodable.
-   |        -------- help: Consider the suggestions below to make this type trivially decodable.
+   |        -------- help: Consider changing `MyStruct` to make it trivially decodable.
    |
    = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
 ____
@@ -69,7 +69,7 @@ error: Type is not trivially decodable
 ...
 15 | struct MyStruct {
    |        ^^^^^^^^ `MyStruct` is not trivially decodable.
-   |        -------- help: Consider the suggestions below to make this type trivially decodable.
+   |        -------- help: Consider changing `MyStruct` to make it trivially decodable.
    |
    = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
 ____
