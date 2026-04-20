@@ -154,5 +154,17 @@ error: Type is not trivially decodable
    = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
 ____
 
-  Aborting due to 8 errors.
+error: Type is not trivially decodable
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require/src/main.sw:50:21
+   |
+...
+50 |     fn some_fn_5(a: [bool; 1]);
+   |                     ^^^^^^^^^ `[bool; 1]` is not trivially decodable.
+   |                      ---- help: Consider changing this type to `TrivialBool`.
+   |
+   = help: `bool` is never trivially decodable.
+   = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
+____
+
+  Aborting due to 9 errors.
 error: Failed to compile attribute_require
