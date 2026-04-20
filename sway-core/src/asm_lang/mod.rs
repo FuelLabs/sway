@@ -124,6 +124,24 @@ pub(crate) struct RealizedOp {
     pub(crate) owning_span: Option<Span>,
 }
 
+pub enum InstructionSuccessor {
+    /// Used for arbritary jumps, ECAL etc.... We cannot guarantee which
+    /// instruction is going to be the next one
+    Unknown,
+    /// Specifically to signal a return from call.
+    /// This exists to allow each use to differentiate this from `Unknown` and empty vec.
+    ReturnFromCall,
+    /// Vast majority of instruction will only have the next instruction,
+    /// but jumps, function calls and other can actually have multiple
+    /// instructions.
+    /// usize here is the index of the instruction. So the next instruction
+    /// is <current index> + 1.
+    ///
+    /// An empty vec is used for revert, contract return and the last instrution.
+    /// Signals that no more instrctions will run.
+    Many(Vec<usize>),
+}
+
 impl Op {
     /// Moves the stack pointer by the given amount (i.e. allocates stack memory)
     pub(crate) fn unowned_stack_allocate_memory(
@@ -767,16 +785,17 @@ impl Op {
         }
     }
 
-    /// Returns a list of indices that represent the successors of `self` in the list of
-    /// instructions `ops`. For most instructions, the successor is simply the next instruction in
-    /// `ops`. The exceptions are jump instructions that can have arbitrary successors and RVRT
-    /// which does not have any successors.
+    /// Returns all successors of `self`.
+    /// For most instructions, the successor is simply the next instruction in
+    /// `ops`, if there is any.
+    /// Exceptions are jump instructions which can have arbitrary successors; RVRT
+    /// which does not have any successors, and ECAL would can do pretty much anything.
     pub(crate) fn successors(
         &self,
         index: usize,
         ops: &[Op],
         label_to_index: &HashMap<Label, usize>,
-    ) -> Vec<usize> {
+    ) -> InstructionSuccessor {
         match &self.opcode {
             Either::Left(virt_op) => virt_op.successors(index, ops),
             Either::Right(org_op) => org_op.successors(index, ops, label_to_index),
@@ -1476,23 +1495,21 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
         index: usize,
         ops: &[Op],
         label_to_index: &HashMap<Label, usize>,
-    ) -> Vec<usize> {
-        use ControlFlowOp::*;
-
+    ) -> InstructionSuccessor {
         let mut next_ops = Vec::new();
 
         match self {
-            Label(_)
-            | Comment
-            | DataSectionOffsetPlaceholder
-            | ConfigurablesOffsetPlaceholder
-            | PushAll(_)
-            | PopAll(_) => {
+            ControlFlowOp::Label(_)
+            | ControlFlowOp::Comment
+            | ControlFlowOp::DataSectionOffsetPlaceholder
+            | ControlFlowOp::ConfigurablesOffsetPlaceholder
+            | ControlFlowOp::PushAll(_)
+            | ControlFlowOp::PopAll(_) => {
                 if index + 1 < ops.len() {
                     next_ops.push(index + 1);
                 }
             }
-            Jump { to, type_, .. } => match type_ {
+            ControlFlowOp::Jump { to, type_, .. } => match type_ {
                 JumpType::Unconditional => {
                     next_ops.push(label_to_index[to]);
                 }
@@ -1508,12 +1525,11 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
                     }
                 }
             },
-            // Impossible to know, so we return empty.
-            JumpToAddr(_) => {}
-            ReturnFromCall { .. } => {}
-        };
+            ControlFlowOp::JumpToAddr(_) => return InstructionSuccessor::Unknown,
+            ControlFlowOp::ReturnFromCall { .. } => return InstructionSuccessor::ReturnFromCall,
+        }
 
-        next_ops
+        InstructionSuccessor::Many(next_ops)
     }
 }
 
