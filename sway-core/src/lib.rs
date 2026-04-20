@@ -26,12 +26,12 @@ pub mod source_map;
 pub mod transform;
 pub mod type_system;
 
-use crate::decl_engine::{DeclEngineGet as _, DeclId};
+use crate::decl_engine::DeclEngineGet as _;
 use crate::engine_threading::SpannedWithEngines;
 use crate::ir_generation::check_function_purity;
-use crate::ir_generation::compile::{CheckDecl};
+use crate::ir_generation::compile::CheckDecl;
 use crate::language::ty::{
-    generate_is_decode_trivial_table, TyAstNodeContent, TyDecl, TyStructDecl, TyTraitInterfaceItem,
+    generate_is_decode_trivial_table, TyAstNodeContent, TyDecl, TyTraitInterfaceItem,
 };
 use crate::language::{CallPath, CallPathType};
 use crate::query_engine::ModuleCacheEntry;
@@ -50,7 +50,6 @@ use itertools::Itertools;
 use metadata::MetadataManager;
 use query_engine::{ModuleCacheKey, ModuleCommonInfo, ParsedModuleInfo, ProgramsCacheEntry};
 use semantic_analysis::program::TypeCheckFailed;
-use sway_types::integer_bits::IntegerBits;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
@@ -70,6 +69,7 @@ use sway_ir::{
     INIT_AGGR_LOWERING_NAME, MEM2REG_NAME, MEMCPYOPT_NAME, MEMCPYPROP_REVERSE_NAME,
     MISC_DEMOTION_NAME, RET_DEMOTION_NAME, SIMPLIFY_CFG_NAME, SROA_NAME,
 };
+use sway_types::integer_bits::IntegerBits;
 use sway_types::span::Source;
 use sway_types::{SourceEngine, SourceLocation, Span};
 use sway_utils::{time_expr, PerformanceData, PerformanceMetric};
@@ -1114,7 +1114,11 @@ fn run_decl_checks(
         false
     };
 
-    let check_type = |ctx: &mut TypeCheckContext<'_>, is_decl: bool, tid: TypeId, type_name_span: Option<Span>| -> Option<CheckDecl> {
+    let check_type = |ctx: &mut TypeCheckContext<'_>,
+                      is_decl: bool,
+                      tid: TypeId,
+                      type_name_span: Option<Span>|
+     -> Option<CheckDecl> {
         let is_decode_trivial_table = match ctx.engines.te().get(tid).as_ref() {
             TypeInfo::Struct(decl_id) => {
                 let struct_decl = ctx.engines.de().get(decl_id);
@@ -1125,7 +1129,9 @@ fn run_decl_checks(
                 );
 
                 if check {
-                    let types = struct_decl.fields.iter() 
+                    let types = struct_decl
+                        .fields
+                        .iter()
                         .map(|field| field.type_argument.type_id)
                         .chain([tid]);
                     Some(generate_is_decode_trivial_table(ctx, types))
@@ -1142,7 +1148,9 @@ fn run_decl_checks(
                 );
 
                 if check {
-                    let types = enum_decl.variants.iter() 
+                    let types = enum_decl
+                        .variants
+                        .iter()
                         .map(|variant| variant.type_argument.type_id)
                         .chain([tid]);
 
@@ -1150,28 +1158,31 @@ fn run_decl_checks(
                 } else {
                     None
                 }
-            },
+            }
             TypeInfo::UnsignedInteger(IntegerBits::Eight)
             | TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
-            | TypeInfo::UnsignedInteger(IntegerBits::V256) 
-            | TypeInfo::B256 => {
-                None
-            },
+            | TypeInfo::UnsignedInteger(IntegerBits::V256)
+            | TypeInfo::B256 => None,
             TypeInfo::Boolean
             | TypeInfo::UnsignedInteger(IntegerBits::Sixteen)
-            | TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo) 
-            | TypeInfo::Tuple(..) 
-            | TypeInfo::Array(..) => {
-                Some(generate_is_decode_trivial_table(ctx, [tid]))
-            },
+            | TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)
+            | TypeInfo::Tuple(..)
+            | TypeInfo::Array(..) => Some(generate_is_decode_trivial_table(ctx, [tid])),
             x => todo!("{x:?}"),
         };
 
         is_decode_trivial_table.map(|is_decode_trivial_table| {
             if is_decl {
-                CheckDecl::Decl { tid, is_decode_trivial_table }
+                CheckDecl::Decl {
+                    tid,
+                    is_decode_trivial_table,
+                }
             } else {
-                CheckDecl::Ref { tid, is_decode_trivial_table, type_name_span: type_name_span.unwrap() }
+                CheckDecl::Ref {
+                    tid,
+                    is_decode_trivial_table,
+                    type_name_span: type_name_span.unwrap(),
+                }
             }
         })
     };
@@ -1182,7 +1193,11 @@ fn run_decl_checks(
                 decl_checks.extend(check_type(
                     type_check_ctx,
                     true,
-                    type_check_ctx.engines.te().insert(type_check_ctx.engines, TypeInfo::Struct(struct_decl.decl_id), None),
+                    type_check_ctx.engines.te().insert(
+                        type_check_ctx.engines,
+                        TypeInfo::Struct(struct_decl.decl_id),
+                        None,
+                    ),
                     None,
                 ));
             }
@@ -1193,8 +1208,15 @@ fn run_decl_checks(
                         let decl = type_check_ctx.engines.de().get(decl_ref.id());
 
                         if has_require_att(&decl.attributes) {
-                            let types = decl.parameters.iter()
-                                .map(|parameter| (parameter.type_argument.type_id, parameter.type_argument.span.clone()))
+                            let types = decl
+                                .parameters
+                                .iter()
+                                .map(|parameter| {
+                                    (
+                                        parameter.type_argument.type_id,
+                                        parameter.type_argument.span.clone(),
+                                    )
+                                })
                                 .chain([(decl.return_type.type_id, decl.return_type.span.clone())]);
 
                             for (tid, reason_being_checked) in types {
@@ -1213,7 +1235,9 @@ fn run_decl_checks(
         }
     }
 
-    let workspace_pid = typed_program.declarations.get(0)
+    let workspace_pid = typed_program
+        .declarations
+        .first()
         .and_then(|x| x.span(type_check_ctx.engines).source_id().cloned())
         .map(|x| x.program_id());
     let errors = ir_generation::compile::run_ir_decl_checks(
