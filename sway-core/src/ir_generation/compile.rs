@@ -11,7 +11,7 @@ use crate::{
         PanickingFunctionCache,
     },
     language::{
-        ty::{self, TyEnumDecl, TyExpression, TyStructDecl},
+        ty::{self, TyExpression},
         Visibility,
     },
     metadata::MetadataManager,
@@ -26,9 +26,12 @@ use std::{
     collections::{BTreeSet, HashMap},
     sync::Arc,
 };
-use sway_error::{error::{CompileError, TrivialCheckFailedData}, handler::Handler};
+use sway_error::{
+    error::{CompileError, TrivialCheckFailedData},
+    handler::Handler,
+};
 use sway_ir::{metadata::combine as md_combine, *};
-use sway_types::{Ident, Named, ProgramId, Span, Spanned, integer_bits::IntegerBits};
+use sway_types::{integer_bits::IntegerBits, Ident, Named, ProgramId, Span, Spanned};
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_script(
@@ -582,23 +585,26 @@ pub enum CheckDecl {
     Decl {
         tid: TypeId,
         is_decode_trivial_table: HashMap<String, TyExpression>,
-    }
+    },
 }
 
 impl CheckDecl {
     pub fn is_decode_trivial_table(&self) -> &HashMap<String, TyExpression> {
         match self {
-            CheckDecl::Ref { is_decode_trivial_table, .. } 
-            | CheckDecl::Decl { is_decode_trivial_table, .. } => {
-                is_decode_trivial_table
-            },
+            CheckDecl::Ref {
+                is_decode_trivial_table,
+                ..
+            }
+            | CheckDecl::Decl {
+                is_decode_trivial_table,
+                ..
+            } => is_decode_trivial_table,
         }
     }
 
     pub fn tid(&self) -> TypeId {
         match self {
-            CheckDecl::Ref { tid, .. } 
-            | CheckDecl::Decl { tid, .. } => *tid,
+            CheckDecl::Ref { tid, .. } | CheckDecl::Decl { tid, .. } => *tid,
         }
     }
 }
@@ -630,9 +636,7 @@ pub fn run_ir_decl_checks(
             .collect::<HashMap<String, bool>>();
 
         let type_info = engines.te().get(check.tid());
-        let fullname = engines
-            .help_out(type_info.as_ref())
-            .to_string();
+        let fullname = engines.help_out(type_info.as_ref()).to_string();
 
         if is_decode_trivial_table.get(&fullname) == Some(&true) {
             continue;
@@ -644,13 +648,15 @@ pub fn run_ir_decl_checks(
             _ => None,
         };
 
-        let type_ref_span = match check {            
+        let type_ref_span = match check {
             CheckDecl::Ref { type_name_span, .. } => Some(type_name_span.clone()),
             _ => None,
         };
 
         let mut error = TrivialCheckFailedData {
-            span: type_ref_span.clone().unwrap_or_else(|| type_decl_span.clone().unwrap()),
+            span: type_ref_span
+                .clone()
+                .unwrap_or_else(|| type_decl_span.clone().unwrap()),
             can_be_made_trivial: None,
             infos: vec![],
             helps: vec![],
@@ -658,14 +664,16 @@ pub fn run_ir_decl_checks(
             bottom_helps: BTreeSet::default(),
         };
 
-        match (type_info.as_ref(), check) {
-            (TypeInfo::Enum(_) | TypeInfo::Struct(_), CheckDecl::Ref { type_name_span, ..}) => {
-                error.infos.push((
-                    type_name_span.clone(),
-                    format!("This is the reason `{}` is being checked", type_name_span.as_str()),
-                ));
-            }
-            _ => {}
+        if let (TypeInfo::Enum(_) | TypeInfo::Struct(_), CheckDecl::Ref { type_name_span, .. }) =
+            (type_info.as_ref(), check)
+        {
+            error.infos.push((
+                type_name_span.clone(),
+                format!(
+                    "This is the reason `{}` is being checked",
+                    type_name_span.as_str()
+                ),
+            ));
         }
 
         push_help_if_non_trivially_decodable_type(
@@ -677,8 +685,11 @@ pub fn run_ir_decl_checks(
             &is_decode_trivial_table,
             &mut error,
         );
-       
-        let errors_count = error.infos.len() + error.helps.len() + error.bottom_helps.len() + error.never_trivial.len();
+
+        let errors_count = error.infos.len()
+            + error.helps.len()
+            + error.bottom_helps.len()
+            + error.never_trivial.len();
         if errors_count > 0 {
             errors.push(CompileError::TrivialCheckFailed(error));
         }
@@ -793,10 +804,7 @@ fn push_help_if_non_trivially_decodable_type(
                 ));
                 error.bottom_helps.insert("Enums are represented as tagged unions and because of that they cannot be trivially decoded. But where needed, they can be wrapped by `TrivialEnum`, and their original value can be retrieved later with `unwrap`.".to_string());
             }
-            TypeInfo::Struct(decl_id) => {
-                let decl = engines.de().get(decl_id);
-                
-
+            TypeInfo::Struct(_) => {
                 // special types
                 let full_type = engines.help_out(type_info).to_string();
                 if full_type.starts_with("std::vec::Vec<") {
@@ -844,8 +852,6 @@ fn push_help_if_non_trivially_decodable_type(
         }
     }
 }
-
-
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_tests(

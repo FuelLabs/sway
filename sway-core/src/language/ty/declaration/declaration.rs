@@ -11,7 +11,6 @@ use std::{
     collections::HashMap,
     fmt,
     hash::{Hash, Hasher},
-    sync::Arc,
 };
 use sway_error::{
     error::CompileError,
