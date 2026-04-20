@@ -1153,13 +1153,15 @@ fn run_decl_checks(
             },
             TypeInfo::UnsignedInteger(IntegerBits::Eight)
             | TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
-            | TypeInfo::UnsignedInteger(IntegerBits::V256) => {
+            | TypeInfo::UnsignedInteger(IntegerBits::V256) 
+            | TypeInfo::B256 => {
                 None
             },
             TypeInfo::Boolean
             | TypeInfo::UnsignedInteger(IntegerBits::Sixteen)
             | TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo) 
-            | TypeInfo::Tuple(_) => {
+            | TypeInfo::Tuple(..) 
+            | TypeInfo::Array(..) => {
                 Some(generate_is_decode_trivial_table(ctx, [tid]))
             },
             x => todo!("{x:?}"),

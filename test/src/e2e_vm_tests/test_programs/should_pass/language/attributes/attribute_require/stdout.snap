@@ -107,40 +107,52 @@ error: Type is not trivially decodable
 ____
 
 error: Type is not trivially decodable
-  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require/src/main.sw:41:29
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require/src/main.sw:41:21
    |
 ...
-41 |     fn some_fn_2(a: u64, b: u32, c: u16, d: u8, e: bool);
-   |                             ^^^ `u32` is not trivially decodable.
-   |                             --- help: Consider changing this type to `u64`.
+41 |     fn some_fn_2(a: u32, b: u16, c: u8, d: bool);
+   |                     ^^^ `u32` is not trivially decodable.
+   |                     --- help: Consider changing this type to `u64`.
    |
    = help: `u32` is never trivially decodable.
    = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
 ____
 
 error: Type is not trivially decodable
-  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require/src/main.sw:41:37
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require/src/main.sw:41:29
    |
 ...
-41 |     fn some_fn_2(a: u64, b: u32, c: u16, d: u8, e: bool);
-   |                                     ^^^ `u16` is not trivially decodable.
-   |                                     --- help: Consider changing this type to `u64`.
+41 |     fn some_fn_2(a: u32, b: u16, c: u8, d: bool);
+   |                             ^^^ `u16` is not trivially decodable.
+   |                             --- help: Consider changing this type to `u64`.
    |
    = help: `u16` is never trivially decodable.
    = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
 ____
 
 error: Type is not trivially decodable
-  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require/src/main.sw:41:52
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require/src/main.sw:41:44
    |
 ...
-41 |     fn some_fn_2(a: u64, b: u32, c: u16, d: u8, e: bool);
-   |                                                    ^^^^ `bool` is not trivially decodable.
-   |                                                    ---- help: Consider changing this type to `TrivialBool`.
+41 |     fn some_fn_2(a: u32, b: u16, c: u8, d: bool);
+   |                                            ^^^^ `bool` is not trivially decodable.
+   |                                            ---- help: Consider changing this type to `TrivialBool`.
    |
    = help: `bool` is never trivially decodable.
    = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
 ____
 
-  Aborting due to 7 errors.
+error: Type is not trivially decodable
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require/src/main.sw:47:21
+   |
+...
+47 |     fn some_fn_4(a: (u64, bool));
+   |                     ^^^^^^^^^^^ `(u64, bool)` is not trivially decodable.
+   |                           ---- help: Consider changing this type to `TrivialBool`.
+   |
+   = help: `bool` is never trivially decodable.
+   = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
+____
+
+  Aborting due to 8 errors.
 error: Failed to compile attribute_require

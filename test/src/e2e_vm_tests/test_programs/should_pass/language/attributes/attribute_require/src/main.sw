@@ -38,7 +38,16 @@ abi SomeAbi {
     fn some_fn_1(a: NonTrivialStruct, b: SomeEnum) -> SomeEnum;
 
     #[require(trivially_decodable = "true")]
-    fn some_fn_2(a: u64, b: u32, c: u16, d: u8, e: bool);
+    fn some_fn_2(a: u32, b: u16, c: u8, d: bool);
+
+    #[require(trivially_decodable = "true")]
+    fn some_fn_3(a: u8, b: u64, c: u256, d: b256);
+
+    #[require(trivially_decodable = "true")]
+    fn some_fn_4(a: (u64, bool));
+
+     #[require(trivially_decodable = "true")]
+    fn some_fn_5(a: [bool; 1]);
 }
 
 fn main(s: MyStruct) {
