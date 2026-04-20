@@ -246,22 +246,12 @@ tested -- const_of_contract_call
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 4a99ce645 (update tests)
     Finished in ???
 
 > Block: ENUM_U64_U64_U64
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
 
-<<<<<<< HEAD
 > forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release
-=======
-=======
->>>>>>> 4a99ce645 (update tests)
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
->>>>>>> f08e362ca (update tests)
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
@@ -281,7 +271,7 @@ test result: OK. 1 passed; 0 failed; finished in ???
 > Block: ORDER_ARGS_WITHOUT_TRIVIAL_ENUM
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
@@ -301,7 +291,7 @@ test result: OK. 1 passed; 0 failed; finished in ???
 > Block: ORDER_ARGS_WITH_TRIVIAL_ENUM
 > replace-file src/main.sw "fn cost_of_in" "fn isolated_cost_of_in"
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release --experimental const_generics
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call

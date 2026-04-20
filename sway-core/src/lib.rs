@@ -27,8 +27,9 @@ pub mod transform;
 pub mod type_system;
 
 use crate::decl_engine::{DeclEngineGet as _, DeclId};
+use crate::engine_threading::SpannedWithEngines;
 use crate::ir_generation::check_function_purity;
-use crate::ir_generation::compile::{CheckDecl, CheckDeclType};
+use crate::ir_generation::compile::{CheckDecl};
 use crate::language::ty::{
     generate_is_decode_trivial_table, TyAstNodeContent, TyDecl, TyStructDecl, TyTraitInterfaceItem,
 };
@@ -49,6 +50,7 @@ use itertools::Itertools;
 use metadata::MetadataManager;
 use query_engine::{ModuleCacheKey, ModuleCommonInfo, ParsedModuleInfo, ProgramsCacheEntry};
 use semantic_analysis::program::TypeCheckFailed;
+use sway_types::integer_bits::IntegerBits;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
@@ -1097,6 +1099,7 @@ fn run_decl_checks(
         )
         .flat_map(|x| x.all_nodes.iter());
 
+    // check if the declaration has the attribute
     let has_require_att = |atts: &Attributes| -> bool {
         let atts = atts.all_by_kind(|att| matches!(att.kind, AttributeKind::Require));
         for (_, atts) in atts {
@@ -1111,56 +1114,73 @@ fn run_decl_checks(
         false
     };
 
-    let check_struct = move |type_check_ctx: &mut TypeCheckContext<'_>,
-                             decl_id: DeclId<TyStructDecl>,
-                             check_attr: bool,
-                             source: Option<Span>|
-          -> Option<CheckDecl> {
-        let struct_decl = type_check_ctx.engines.de().get(&decl_id);
-
-        let check = matches!(
-            (check_attr, has_require_att(&struct_decl.attributes)),
-            (true, true) | (false, _)
-        );
-
-        if check {
-            let is_decode_trivial_table =
-                generate_is_decode_trivial_table(type_check_ctx, decl_id, &struct_decl);
-
-            Some(CheckDecl {
-                decl: CheckDeclType::Struct(decl_id),
-                is_decode_trivial_table,
-                source,
-            })
-        } else {
-            None
-        }
-    };
-
-    let check_type = |type_check_ctx: &mut TypeCheckContext<'_>,
-                      p_type: &TypeInfo,
-                      type_span: &Span|
-     -> Option<CheckDecl> {
-        match p_type {
+    let check_type = |ctx: &mut TypeCheckContext<'_>, is_decl: bool, tid: TypeId, type_name_span: Option<Span>| -> Option<CheckDecl> {
+        let is_decode_trivial_table = match ctx.engines.te().get(tid).as_ref() {
             TypeInfo::Struct(decl_id) => {
-                check_struct(type_check_ctx, *decl_id, false, Some(type_span.clone()))
+                let struct_decl = ctx.engines.de().get(decl_id);
+
+                let check = matches!(
+                    (is_decl, has_require_att(&struct_decl.attributes)),
+                    (true, true) | (false, _)
+                );
+
+                if check {
+                    let types = struct_decl.fields.iter() 
+                        .map(|field| field.type_argument.type_id)
+                        .chain([tid]);
+                    Some(generate_is_decode_trivial_table(ctx, types))
+                } else {
+                    None
+                }
             }
-            TypeInfo::Enum(decl_id) => Some(CheckDecl {
-                decl: CheckDeclType::Enum(*decl_id),
-                is_decode_trivial_table: HashMap::new(),
-                source: Some(type_span.clone()),
-            }),
-            _ => None,
-        }
+            TypeInfo::Enum(decl_id) => {
+                let enum_decl = ctx.engines.de().get(decl_id);
+
+                let check = matches!(
+                    (is_decl, has_require_att(&enum_decl.attributes)),
+                    (true, true) | (false, _)
+                );
+
+                if check {
+                    let types = enum_decl.variants.iter() 
+                        .map(|variant| variant.type_argument.type_id)
+                        .chain([tid]);
+
+                    Some(generate_is_decode_trivial_table(ctx, types))
+                } else {
+                    None
+                }
+            },
+            TypeInfo::UnsignedInteger(IntegerBits::Eight)
+            | TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
+            | TypeInfo::UnsignedInteger(IntegerBits::V256) => {
+                None
+            },
+            TypeInfo::Boolean
+            | TypeInfo::UnsignedInteger(IntegerBits::Sixteen)
+            | TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo) 
+            | TypeInfo::Tuple(_) => {
+                Some(generate_is_decode_trivial_table(ctx, [tid]))
+            },
+            x => todo!("{x:?}"),
+        };
+
+        is_decode_trivial_table.map(|is_decode_trivial_table| {
+            if is_decl {
+                CheckDecl::Decl { tid, is_decode_trivial_table }
+            } else {
+                CheckDecl::Ref { tid, is_decode_trivial_table, type_name_span: type_name_span.unwrap() }
+            }
+        })
     };
 
     for node in nodes {
         match &node.content {
             TyAstNodeContent::Declaration(TyDecl::StructDecl(struct_decl)) => {
-                decl_checks.extend(check_struct(
+                decl_checks.extend(check_type(
                     type_check_ctx,
-                    struct_decl.decl_id,
                     true,
+                    type_check_ctx.engines.te().insert(type_check_ctx.engines, TypeInfo::Struct(struct_decl.decl_id), None),
                     None,
                 ));
             }
@@ -1171,23 +1191,18 @@ fn run_decl_checks(
                         let decl = type_check_ctx.engines.de().get(decl_ref.id());
 
                         if has_require_att(&decl.attributes) {
-                            for p in decl.parameters.iter() {
-                                let p_type =
-                                    type_check_ctx.engines.te().get(p.type_argument.type_id);
+                            let types = decl.parameters.iter()
+                                .map(|parameter| (parameter.type_argument.type_id, parameter.type_argument.span.clone()))
+                                .chain([(decl.return_type.type_id, decl.return_type.span.clone())]);
 
+                            for (tid, reason_being_checked) in types {
                                 decl_checks.extend(check_type(
                                     type_check_ctx,
-                                    p_type.as_ref(),
-                                    &p.type_argument.span,
+                                    false,
+                                    tid,
+                                    Some(reason_being_checked),
                                 ));
                             }
-
-                            let r_type = type_check_ctx.engines.te().get(decl.return_type.type_id);
-                            decl_checks.extend(check_type(
-                                type_check_ctx,
-                                r_type.as_ref(),
-                                &decl.return_type.span,
-                            ));
                         }
                     }
                 }
@@ -1196,12 +1211,16 @@ fn run_decl_checks(
         }
     }
 
+    let workspace_pid = typed_program.declarations.get(0)
+        .and_then(|x| x.span(type_check_ctx.engines).source_id().cloned())
+        .map(|x| x.program_id());
     let errors = ir_generation::compile::run_ir_decl_checks(
         type_check_ctx.engines,
         ir_ctx,
         md_mgr,
         module,
         &decl_checks,
+        workspace_pid,
     );
 
     for err in errors {

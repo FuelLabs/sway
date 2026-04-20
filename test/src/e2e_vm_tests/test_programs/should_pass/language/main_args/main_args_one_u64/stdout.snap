@@ -66,23 +66,13 @@ script {
 !5 = span !4 1558 1559
 !6 = span !0 59 89
 !7 = fn_call_path_span !0 59 77
-<<<<<<< HEAD
-!8 = span !4 91615 91647
-!9 = fn_call_path_span !4 91615 91645
-!10 = span !4 1525 1549
-!11 = (!6 !7 !8 !9 !10)
-!12 = (!6 !7 !8 !9 !10)
-!13 = span !4 91590 91648
-!14 = fn_call_path_span !4 91590 91609
-=======
-!8 = span !4 186186 186218
-!9 = fn_call_path_span !4 186186 186216
+!8 = span !4 91631 91663
+!9 = fn_call_path_span !4 91631 91661
 !10 = span !4 1541 1565
 !11 = (!6 !7 !8 !9 !10)
 !12 = (!6 !7 !8 !9 !10)
-!13 = span !4 186161 186219
-!14 = fn_call_path_span !4 186161 186180
->>>>>>> f08e362ca (update tests)
+!13 = span !4 91606 91664
+!14 = fn_call_path_span !4 91606 91625
 !15 = (!6 !7 !13 !14)
 !16 = span !0 40 90
 !17 = span !0 131 135
@@ -94,11 +84,7 @@ script {
 !23 = span !0 182 189
 !24 = span !0 156 190
 !25 = fn_call_path_span !0 156 173
-<<<<<<< HEAD
-!26 = span !4 49161 49187
-=======
-!26 = span !4 94096 94122
->>>>>>> f08e362ca (update tests)
+!26 = span !4 49177 49203
 !27 = (!24 !25 !26)
 !28 = "test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_one_u64/src/main.sw"
 !29 = span !28 17 21
