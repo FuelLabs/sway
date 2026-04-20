@@ -609,6 +609,7 @@ impl CheckDecl {
     }
 }
 
+/// It is Ok for the function to return check errors. Err is reserved for ICE and other unexpected errors.
 pub fn run_ir_decl_checks(
     engines: &Engines,
     context: &mut Context,
@@ -616,7 +617,7 @@ pub fn run_ir_decl_checks(
     module: Module,
     decls_check: &[CheckDecl],
     workspace_pid: Option<ProgramId>,
-) -> Vec<CompileError> {
+) -> Result<Vec<TrivialCheckFailedData>, CompileError> {
     let mut errors = vec![];
 
     // check types
@@ -684,18 +685,18 @@ pub fn run_ir_decl_checks(
             type_info.as_ref(),
             &is_decode_trivial_table,
             &mut error,
-        );
+        )?;
 
         let errors_count = error.infos.len()
             + error.helps.len()
             + error.bottom_helps.len()
             + error.never_trivial.len();
         if errors_count > 0 {
-            errors.push(CompileError::TrivialCheckFailed(error));
+            errors.push(error);
         }
     }
 
-    errors
+    Ok(errors)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -707,10 +708,18 @@ fn push_help_if_non_trivially_decodable_type(
     type_info: &TypeInfo,
     table: &HashMap<String, bool>,
     error: &mut TrivialCheckFailedData,
-) {
+) -> Result<(), CompileError> {
     let fullname = engines.help_out(type_info).to_string();
-    if *table.get(&fullname).unwrap() {
-        return;
+
+    match table.get(&fullname) {
+        Some(true) => return Ok(()),
+        Some(false) => {}
+        None => {
+            return Err(CompileError::Internal(
+                "Missing type when evaluating encoding triviality",
+                Span::dummy(),
+            ))
+        }
     }
 
     // Check for decls, like an attribute above a struct decl
@@ -757,7 +766,7 @@ fn push_help_if_non_trivially_decodable_type(
                         field_type_info.as_ref(),
                         table,
                         error,
-                    );
+                    )?;
                 }
             }
             TypeInfo::Enum(decl_id) => {
@@ -833,7 +842,7 @@ fn push_help_if_non_trivially_decodable_type(
                         type_info.as_ref(),
                         table,
                         error,
-                    );
+                    )?;
                 }
             }
             TypeInfo::Array(item, _) => {
@@ -846,11 +855,13 @@ fn push_help_if_non_trivially_decodable_type(
                     type_info.as_ref(),
                     table,
                     error,
-                );
+                )?;
             }
             _ => {}
         }
     }
+
+    Ok(())
 }
 
 #[allow(clippy::too_many_arguments)]

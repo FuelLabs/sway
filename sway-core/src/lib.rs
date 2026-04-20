@@ -1168,7 +1168,14 @@ fn run_decl_checks(
             | TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)
             | TypeInfo::Tuple(..)
             | TypeInfo::Array(..) => Some(generate_is_decode_trivial_table(ctx, [tid])),
-            x => todo!("{x:?}"),
+            type_info => {
+                let type_info = ctx.engines.help_out(type_info);
+                handler.emit_err(CompileError::InternalOwned(
+                    format!("Unexpected type: {:?}", type_info),
+                    type_name_span.clone().unwrap_or(Span::dummy()),
+                ));
+                None
+            }
         };
 
         is_decode_trivial_table.map(|is_decode_trivial_table| {
@@ -1240,6 +1247,7 @@ fn run_decl_checks(
         .first()
         .and_then(|x| x.span(type_check_ctx.engines).source_id().cloned())
         .map(|x| x.program_id());
+
     let errors = ir_generation::compile::run_ir_decl_checks(
         type_check_ctx.engines,
         ir_ctx,
@@ -1247,7 +1255,14 @@ fn run_decl_checks(
         module,
         &decl_checks,
         workspace_pid,
-    );
+    )
+    .map(|errors| {
+        errors
+            .into_iter()
+            .map(CompileError::TrivialCheckFailed)
+            .collect()
+    })
+    .unwrap_or_else(|err| vec![err]);
 
     for err in errors {
         handler.emit_err(err);
