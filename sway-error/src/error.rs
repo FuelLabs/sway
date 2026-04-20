@@ -1145,14 +1145,17 @@ pub enum CompileError {
     #[error("Too many indexed fields on event for current metadata format.")]
     IndexedFieldOffsetTooLarge { field_name: IdentUnique },
     #[error("Trivial Check Failed")]
-    TrivialCheckFailed {
-        span: Span,
-        can_be_made_trivial: bool,
-        infos: Vec<(Span, String)>,
-        helps: Vec<(Span, String)>,
-        never_trivial: BTreeSet<String>,
-        bottom_helps: Vec<String>,
-    },
+    TrivialCheckFailed(TrivialCheckFailedData),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TrivialCheckFailedData {
+    pub span: Span,
+    pub can_be_made_trivial: Option<bool>,
+    pub infos: Vec<(Span, String)>,
+    pub helps: Vec<(Span, String)>,
+    pub never_trivial: BTreeSet<String>,
+    pub bottom_helps: BTreeSet<String>,
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1394,7 +1397,7 @@ impl Spanned for CompileError {
             IndexedFieldIsNotFixedSizeABIType { field_name } => field_name.span(),
             IndexedFieldOffsetTooLarge { field_name } => field_name.span(),
             IncoherentImplDueToOrphanRule { span, .. } => span.clone(),
-            TrivialCheckFailed { span, .. } => span.clone(),
+            TrivialCheckFailed(TrivialCheckFailedData { span, .. }) => span.clone(),
             InvalidArgument { span } => span.clone(),
         }
     }
@@ -3401,7 +3404,7 @@ impl ToDiagnostic for CompileError {
                 hints: vec![],
                 help: vec![],
             },
-            TrivialCheckFailed { span, can_be_made_trivial, infos, helps, never_trivial, bottom_helps } => {
+            TrivialCheckFailed(TrivialCheckFailedData { span, can_be_made_trivial, infos, helps, never_trivial, bottom_helps }) => {
                 let mut hints = vec![];
                 hints.extend(
                     infos.iter()
@@ -3416,7 +3419,7 @@ impl ToDiagnostic for CompileError {
                     })
                 );
 
-                let mut bottom_helps = bottom_helps.clone();
+                let mut bottom_helps: Vec<String> = bottom_helps.iter().cloned().collect::<_>();
 
                 let mut never_trivial_help = String::new();
                 if !never_trivial.is_empty() {
@@ -3444,7 +3447,7 @@ impl ToDiagnostic for CompileError {
                     "For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html".to_string()
                 );
 
-                if *can_be_made_trivial {
+                if matches!(can_be_made_trivial, Some(true)) {
                     hints.push(
                         Hint::help(
                             source_engine,

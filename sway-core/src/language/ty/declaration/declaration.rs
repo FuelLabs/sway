@@ -539,19 +539,9 @@ impl CollectTypesMetadata for TyDecl {
 
 pub fn generate_is_decode_trivial_table(
     ctx: &mut TypeCheckContext<'_>,
-    decl_id: DeclId<TyStructDecl>,
-    struct_decl: &Arc<TyStructDecl>,
+    types: impl IntoIterator<Item = TypeId>,
 ) -> HashMap<String, TyExpression> {
     let mut map = HashMap::new();
-
-    let mut types = vec![ctx
-        .engines
-        .te()
-        .insert(ctx.engines, TypeInfo::Struct(decl_id), None)];
-
-    for tid in struct_decl.fields.iter() {
-        types.push(tid.type_argument.type_id);
-    }
 
     for tid in types {
         for tid in tid.extract_inner_types(ctx.engines, IncludeSelf::Yes) {

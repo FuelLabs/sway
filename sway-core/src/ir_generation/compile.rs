@@ -26,9 +26,9 @@ use std::{
     collections::{BTreeSet, HashMap},
     sync::Arc,
 };
-use sway_error::{error::CompileError, handler::Handler};
+use sway_error::{error::{CompileError, TrivialCheckFailedData}, handler::Handler};
 use sway_ir::{metadata::combine as md_combine, *};
-use sway_types::{integer_bits::IntegerBits, Ident, Named, Span, Spanned};
+use sway_types::{Ident, Named, ProgramId, Span, Spanned, integer_bits::IntegerBits};
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_script(
@@ -573,16 +573,34 @@ pub(super) fn compile_entry_function(
 }
 
 #[derive(Debug, Clone)]
-pub struct CheckDecl {
-    pub decl: CheckDeclType,
-    pub is_decode_trivial_table: HashMap<String, TyExpression>,
-    pub source: Option<Span>,
+pub enum CheckDecl {
+    Ref {
+        tid: TypeId,
+        is_decode_trivial_table: HashMap<String, TyExpression>,
+        type_name_span: Span,
+    },
+    Decl {
+        tid: TypeId,
+        is_decode_trivial_table: HashMap<String, TyExpression>,
+    }
 }
 
-#[derive(Debug, Clone)]
-pub enum CheckDeclType {
-    Struct(DeclId<TyStructDecl>),
-    Enum(DeclId<TyEnumDecl>),
+impl CheckDecl {
+    pub fn is_decode_trivial_table(&self) -> &HashMap<String, TyExpression> {
+        match self {
+            CheckDecl::Ref { is_decode_trivial_table, .. } 
+            | CheckDecl::Decl { is_decode_trivial_table, .. } => {
+                is_decode_trivial_table
+            },
+        }
+    }
+
+    pub fn tid(&self) -> TypeId {
+        match self {
+            CheckDecl::Ref { tid, .. } 
+            | CheckDecl::Decl { tid, .. } => *tid,
+        }
+    }
 }
 
 pub fn run_ir_decl_checks(
@@ -591,13 +609,14 @@ pub fn run_ir_decl_checks(
     md_mgr: &mut MetadataManager,
     module: Module,
     decls_check: &[CheckDecl],
+    workspace_pid: Option<ProgramId>,
 ) -> Vec<CompileError> {
     let mut errors = vec![];
 
     // check types
     for check in decls_check.iter() {
         let is_decode_trivial_table = check
-            .is_decode_trivial_table
+            .is_decode_trivial_table()
             .iter()
             .filter_map(|(key, expr)| {
                 let expr = compile_constant_expression_to_constant(
@@ -610,254 +629,223 @@ pub fn run_ir_decl_checks(
             })
             .collect::<HashMap<String, bool>>();
 
-        match &check.decl {
-            CheckDeclType::Struct(decl_id) => {
-                let decl = engines.de().get_struct(decl_id);
-                errors.extend(ir_decl_check_struct(
-                    engines,
-                    &is_decode_trivial_table,
-                    *decl_id,
-                    &decl,
-                    check.source.clone(),
+        let type_info = engines.te().get(check.tid());
+        let fullname = engines
+            .help_out(type_info.as_ref())
+            .to_string();
+
+        if is_decode_trivial_table.get(&fullname) == Some(&true) {
+            continue;
+        }
+
+        let type_decl_span = match type_info.as_ref() {
+            TypeInfo::Enum(decl_id) => Some(engines.de().get(decl_id).name().span().clone()),
+            TypeInfo::Struct(decl_id) => Some(engines.de().get(decl_id).name().span().clone()),
+            _ => None,
+        };
+
+        let type_ref_span = match check {            
+            CheckDecl::Ref { type_name_span, .. } => Some(type_name_span.clone()),
+            _ => None,
+        };
+
+        let mut error = TrivialCheckFailedData {
+            span: type_ref_span.clone().unwrap_or_else(|| type_decl_span.clone().unwrap()),
+            can_be_made_trivial: None,
+            infos: vec![],
+            helps: vec![],
+            never_trivial: BTreeSet::default(),
+            bottom_helps: BTreeSet::default(),
+        };
+
+        match (type_info.as_ref(), check) {
+            (TypeInfo::Enum(_) | TypeInfo::Struct(_), CheckDecl::Ref { type_name_span, ..}) => {
+                error.infos.push((
+                    type_name_span.clone(),
+                    format!("This is the reason `{}` is being checked", type_name_span.as_str()),
                 ));
             }
-            CheckDeclType::Enum(decl_id) => {
-                let decl = engines.de().get(decl_id);
+            _ => {}
+        }
 
-                let mut infos = vec![];
-                let mut helps = vec![];
-                let mut bottom_helps = BTreeSet::new();
-
-                if let Some(source) = check.source.as_ref() {
-                    infos.push((
-                        source.clone(),
-                        format!("This is the reason `{}` is being checked", source.as_str()),
-                    ));
-                    push_help_for_non_trivially_decodable_type_enums(
-                        &mut helps,
-                        &mut bottom_helps,
-                        source,
-                        source.as_str(),
-                    );
-                }
-
-                let error = CompileError::TrivialCheckFailed {
-                    span: decl.call_path.suffix.span(),
-                    can_be_made_trivial: false,
-                    infos,
-                    helps,
-                    never_trivial: BTreeSet::new(),
-                    bottom_helps: bottom_helps.into_iter().collect(),
-                };
-                errors.push(error);
-            }
+        push_help_if_non_trivially_decodable_type(
+            engines,
+            workspace_pid,
+            type_ref_span,
+            type_decl_span,
+            type_info.as_ref(),
+            &is_decode_trivial_table,
+            &mut error,
+        );
+       
+        let errors_count = error.infos.len() + error.helps.len() + error.bottom_helps.len() + error.never_trivial.len();
+        if errors_count > 0 {
+            errors.push(CompileError::TrivialCheckFailed(error));
         }
     }
 
     errors
 }
 
-fn ir_decl_check_struct(
-    engines: &Engines,
-    is_decode_trivial_table: &HashMap<String, bool>,
-    struct_decl_id: DeclId<ty::TyStructDecl>,
-    struct_decl: &Arc<ty::TyStructDecl>,
-    source: Option<Span>,
-) -> Vec<CompileError> {
-    let fullname = engines
-        .help_out(TypeInfo::Struct(struct_decl_id))
-        .to_string();
-
-    if is_decode_trivial_table.get(&fullname) == Some(&true) {
-        return vec![];
-    }
-
-    let struct_pid = struct_decl.span.source_id().map(|x| x.program_id());
-
-    let mut infos = vec![];
-    let mut helps = vec![];
-    let mut bottom_helps = BTreeSet::new();
-    let mut never_trivial = BTreeSet::new();
-
-    if let Some(source) = source.clone() {
-        infos.push((
-            source,
-            format!(
-                "This is the reason `{}` is being checked",
-                struct_decl.name().span().as_str()
-            ),
-        ));
-    }
-
-    for field in struct_decl.fields.iter() {
-        let tid = field.type_argument.type_id;
-        let field_type_info = engines.te().get(tid);
-        let fullname = engines.help_out(tid).to_string();
-
-        if *is_decode_trivial_table.get(&fullname).unwrap() {
-            continue;
-        }
-
-        infos.push((
-            field.name.span().clone(),
-            "This field is not trivially decodable.".to_string(),
-        ));
-
-        push_help_for_non_trivially_decodable_type(
-            engines,
-            struct_pid,
-            &mut helps,
-            &mut bottom_helps,
-            &mut never_trivial,
-            &field.type_argument.span,
-            &field_type_info,
-            field.type_argument.span.as_str(),
-            is_decode_trivial_table,
-        );
-    }
-
-    vec![CompileError::TrivialCheckFailed {
-        span: struct_decl.call_path.suffix.span(),
-        can_be_made_trivial: true,
-        infos,
-        helps,
-        never_trivial,
-        bottom_helps: bottom_helps.into_iter().collect(),
-    }]
-}
-
 #[allow(clippy::too_many_arguments)]
-fn push_help_for_non_trivially_decodable_type(
+fn push_help_if_non_trivially_decodable_type(
     engines: &Engines,
-    has_att_pid: Option<sway_types::ProgramId>,
-    helps: &mut Vec<(Span, String)>,
-    bottom_helps: &mut BTreeSet<String>,
-    never_trivial: &mut BTreeSet<String>,
-    type_span: &Span,
+    workspace_pid: Option<ProgramId>,
+    type_ref_span: Option<Span>,
+    type_decl_span: Option<Span>,
     type_info: &TypeInfo,
-    type_as_in_src: &str,
     table: &HashMap<String, bool>,
+    error: &mut TrivialCheckFailedData,
 ) {
-    match &type_info {
-        TypeInfo::Boolean => {
-            helps.push((
-                type_span.clone(),
-                "Consider changing this type to `TrivialBool`.".to_string(),
-            ));
-            never_trivial.insert("bool".to_string());
-        }
-        TypeInfo::UnsignedInteger(IntegerBits::Sixteen) => {
-            helps.push((
-                type_span.clone(),
-                "Consider changing this type to `u64`.".to_string(),
-            ));
-            never_trivial.insert("u16".to_string());
-        }
-        TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo) => {
-            helps.push((
-                type_span.clone(),
-                "Consider changing this type to `u64`.".to_string(),
-            ));
-            never_trivial.insert("u32".to_string());
-        }
-        TypeInfo::Enum(_) => {
-            push_help_for_non_trivially_decodable_type_enums(
-                helps,
-                bottom_helps,
-                type_span,
-                type_as_in_src,
-            );
-        }
-        TypeInfo::Struct(decl_id) => {
-            let decl = engines.de().get(decl_id);
-            let decl_pid = decl.span.source_id().map(|x| x.program_id());
+    let fullname = engines.help_out(type_info).to_string();
+    if *table.get(&fullname).unwrap() {
+        return;
+    }
 
-            //Only suggest change if the type is in the same workspace
-            match (has_att_pid, decl_pid) {
-                (Some(a), Some(b)) if a == b => {
-                    helps.push((
-                        type_span.clone(),
-                        format!(
-                            "Consider changing `{}` to make it trivially decodable.",
-                            type_as_in_src
-                        ),
-                    ));
+    // Check for decls, like an attribute above a struct decl
+    if let Some(type_decl_span) = type_decl_span {
+        match &type_info {
+            TypeInfo::Struct(decl_id) => {
+                let struct_decl = engines.de().get(decl_id);
+                error.span = struct_decl.call_path.suffix.span().clone();
+
+                //Only suggest change if the decl is in the same workspace
+                let decl_pid = struct_decl.span.source_id().map(|x| x.program_id());
+                match (workspace_pid, decl_pid) {
+                    (Some(a), Some(b)) if a == b => {
+                        error.helps.push((
+                            type_decl_span.clone(),
+                            format!(
+                                "Consider changing `{}` to make it trivially decodable.",
+                                type_decl_span.as_str()
+                            ),
+                        ));
+                    }
+                    _ => {}
                 }
-                _ => {}
-            }
 
-            // special types
-            let full_type = engines.help_out(type_info).to_string();
-            if full_type.starts_with("std::vec::Vec<") {
-                let aray_type_name = full_type
-                    .replace("std::vec::Vec<", "[")
-                    .replace(">", "; 64]");
-                helps.push((
-                    type_span.clone(),
-                    format!("`Vec` is never trivially decodable. Consider using array instead, e.g.: `{aray_type_name}`.")
-                ));
-            } else if full_type.starts_with("std::string::String") {
-                helps.push((
-                    type_span.clone(),
-                    "`String` is never trivially decodable. Consider using array instead, e.g.: `str[64]`.".to_string()
-                ));
-            }
-        }
-        TypeInfo::Tuple(items) => {
-            for item in items {
-                let type_info = engines.te().get(item.type_id);
-                let fullname = engines.help_out(item.type_id).to_string();
-                if !*table.get(&fullname).unwrap() {
-                    push_help_for_non_trivially_decodable_type(
+                for field in struct_decl.fields.iter() {
+                    let field_tid = field.type_argument.type_id;
+                    let field_type_info = engines.te().get(field_tid);
+                    let field_fullname = engines.help_out(field_tid).to_string();
+
+                    if *table.get(&field_fullname).unwrap() {
+                        continue;
+                    }
+
+                    error.infos.push((
+                        field.name.span().clone(),
+                        "This field is not trivially decodable.".to_string(),
+                    ));
+
+                    push_help_if_non_trivially_decodable_type(
                         engines,
-                        has_att_pid,
-                        helps,
-                        bottom_helps,
-                        never_trivial,
-                        &item.span,
-                        &type_info,
-                        item.span.as_str(),
+                        workspace_pid,
+                        Some(field.type_argument.span.clone()),
+                        None,
+                        field_type_info.as_ref(),
                         table,
+                        error,
                     );
                 }
             }
-        }
-        TypeInfo::Array(item, _) => {
-            let type_info = engines.te().get(item.type_id);
-            let fullname = engines.help_out(item.type_id).to_string();
-            if !*table.get(&fullname).unwrap() {
-                push_help_for_non_trivially_decodable_type(
-                    engines,
-                    has_att_pid,
-                    helps,
-                    bottom_helps,
-                    never_trivial,
-                    &item.span,
-                    &type_info,
-                    item.span.as_str(),
-                    table,
-                );
+            TypeInfo::Enum(decl_id) => {
+                let enum_decl = engines.de().get(decl_id);
+                error.span = enum_decl.call_path.suffix.span().clone();
+            }
+            x => {
+                todo!("{:?}", engines.help_out(x));
             }
         }
-        _ => {}
+    }
+
+    // Check when a type is just a ref, like a function argument, or a field inside a decl
+    if let Some(type_ref_span) = type_ref_span {
+        match &type_info {
+            TypeInfo::Boolean => {
+                error.helps.push((
+                    type_ref_span.clone(),
+                    "Consider changing this type to `TrivialBool`.".to_string(),
+                ));
+                error.never_trivial.insert("bool".to_string());
+            }
+            TypeInfo::UnsignedInteger(IntegerBits::Sixteen) => {
+                error.helps.push((
+                    type_ref_span.clone(),
+                    "Consider changing this type to `u64`.".to_string(),
+                ));
+                error.never_trivial.insert("u16".to_string());
+            }
+            TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo) => {
+                error.helps.push((
+                    type_ref_span.clone(),
+                    "Consider changing this type to `u64`.".to_string(),
+                ));
+                error.never_trivial.insert("u32".to_string());
+            }
+            TypeInfo::Enum(_) => {
+                error.helps.push((
+                    type_ref_span.clone(),
+                    format!(
+                        "Consider wrapping this type like `TrivialEnum<{}>`.",
+                        type_ref_span.as_str(),
+                    ),
+                ));
+                error.bottom_helps.insert("Enums are represented as tagged unions and because of that they cannot be trivially decoded. But where needed, they can be wrapped by `TrivialEnum`, and their original value can be retrieved later with `unwrap`.".to_string());
+            }
+            TypeInfo::Struct(decl_id) => {
+                let decl = engines.de().get(decl_id);
+                
+
+                // special types
+                let full_type = engines.help_out(type_info).to_string();
+                if full_type.starts_with("std::vec::Vec<") {
+                    let aray_type_name = full_type
+                        .replace("std::vec::Vec<", "[")
+                        .replace(">", "; 64]");
+                    error.helps.push((
+                        type_ref_span.clone(),
+                        format!("`Vec` is never trivially decodable. Consider using array instead, e.g.: `{aray_type_name}`.")
+                    ));
+                } else if full_type.starts_with("std::string::String") {
+                    error.helps.push((
+                        type_ref_span.clone(),
+                        "`String` is never trivially decodable. Consider using array instead, e.g.: `str[64]`.".to_string()
+                    ));
+                }
+            }
+            TypeInfo::Tuple(items) => {
+                for item in items {
+                    let type_info = engines.te().get(item.type_id);
+                    push_help_if_non_trivially_decodable_type(
+                        engines,
+                        workspace_pid,
+                        Some(item.span.clone()),
+                        None,
+                        type_info.as_ref(),
+                        table,
+                        error,
+                    );
+                }
+            }
+            TypeInfo::Array(item, _) => {
+                let type_info = engines.te().get(item.type_id);
+                push_help_if_non_trivially_decodable_type(
+                    engines,
+                    workspace_pid,
+                    Some(item.span.clone()),
+                    None,
+                    type_info.as_ref(),
+                    table,
+                    error,
+                );
+            }
+            _ => {}
+        }
     }
 }
 
-pub fn push_help_for_non_trivially_decodable_type_enums(
-    helps: &mut Vec<(Span, String)>,
-    bottom_helps: &mut BTreeSet<String>,
-    type_span: &Span,
-    type_as_in_src: &str,
-) {
-    helps.push((
-        type_span.clone(),
-        format!(
-            "Consider wrapping this type like `TrivialEnum<{}>`.",
-            type_as_in_src,
-        ),
-    ));
-    bottom_helps.insert("Enums are represented as tagged unions and because of that they cannot be trivially decoded. But where needed, they can be wrapped by `TrivialEnum`, and their original value can be retrieved later with `unwrap`.".to_string());
-}
+
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_tests(
