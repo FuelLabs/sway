@@ -271,7 +271,7 @@ impl StorableSlice<Bytes> for StorageKey<StorageBytes> {
     ///     assert(retrieved_bytes.is_none());
     /// }
     /// ```
-    #[storage(read, write)]
+    #[storage(write)]
     fn clear(self) {
         clear_slice_slot(self.field_id());
     }

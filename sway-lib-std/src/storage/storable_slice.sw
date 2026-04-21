@@ -440,7 +440,7 @@ pub fn clear_slice(slot: b256) -> bool {
 ///     assert(read_slice_slot(b256::zero()).is_none());
 /// }
 /// ```
-#[storage(read, write)]
+#[storage(write)]
 pub fn clear_slice_slot(slot: b256) {
     __state_clear_slots(slot, 1);
 }

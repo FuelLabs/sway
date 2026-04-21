@@ -253,7 +253,7 @@ impl StorableSlice<String> for StorageKey<StorageString> {
     ///     assert(retrieved_string.is_none());
     /// }
     /// ```
-    #[storage(read, write)]
+    #[storage(write)]
     fn clear(self) {
         clear_slice_slot(self.field_id())
     }
