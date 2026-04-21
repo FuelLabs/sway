@@ -749,8 +749,15 @@ fn push_help_if_non_trivially_decodable_type(
                     let field_type_info = engines.te().get(field_tid);
                     let field_fullname = engines.help_out(field_tid).to_string();
 
-                    if *table.get(&field_fullname).unwrap() {
-                        continue;
+                    match table.get(&field_fullname) {
+                        Some(true) => continue,
+                        Some(false) => {}
+                        None => {
+                            return Err(CompileError::Internal(
+                                "Missing type when evaluating encoding triviality",
+                                Span::dummy(),
+                            ))
+                        }
                     }
 
                     error.infos.push((
@@ -773,9 +780,7 @@ fn push_help_if_non_trivially_decodable_type(
                 let enum_decl = engines.de().get(decl_id);
                 error.span = enum_decl.call_path.suffix.span().clone();
             }
-            x => {
-                todo!("{:?}", engines.help_out(x));
-            }
+            _ => {}
         }
     }
 
