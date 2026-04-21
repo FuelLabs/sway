@@ -257,7 +257,7 @@ impl Contract {
     #[storage(read, write)]
     fn state_store_quad_zero_quads_in_empty_slot() {
         let val: [u8; 0] = [];
-        __state_store_quad(B256_ZERO, __addr_of(val), 0);
+        let _ = __state_store_quad(B256_ZERO, __addr_of(val), 0);
 
         let res = [42u64; 1];
         let is_err = asm(slot: B256_ZERO, res: __addr_of(res), offset: 0) {
@@ -287,7 +287,7 @@ impl Contract {
         let _ = __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
 
         let val: [u8; 0] = [];
-        __state_store_quad(B256_ZERO, __addr_of(val), 0);
+        let _ = __state_store_quad(B256_ZERO, __addr_of(val), 0);
 
         let res = [0u64; 4];
         let is_err = asm(slot: B256_ZERO, res: __addr_of(res), offset: 0) {
@@ -583,6 +583,8 @@ impl Contract {
         assert_eq(res, [42u64, 34u64, 44u64, 45u64]);
     }
 
+    // The index equal to slot length (one after the last byte) has the
+    // append semantics, same as passing `u64::max()`.
     #[storage(read, write)]
     fn state_update_slot_offset_equal_slot_length() {
         let slots_data = [42u64, 43u64, 44u64, 45u64];
@@ -594,7 +596,7 @@ impl Contract {
         let res = [0u64; 5];
         let was_set = __state_load_slot(B256_ZERO, __addr_of(res), 0, 5 * 8);
         assert_eq(was_set, true);
-        assert_eq(res, [42u64, 34u64, 44u64, 45u64, 46u64]);
+        assert_eq(res, [42u64, 43u64, 44u64, 45u64, 46u64]);
     }
 
     #[storage(read, write)]
@@ -885,7 +887,7 @@ fn test_state_update_slot_update_out_of_bounds() {
     caller.state_update_slot_update_out_of_bounds();
 }
 
-#[test(should_revert)]
+#[test]
 fn test_state_update_slot_offset_equal_slot_length() {
     let caller = abi(StorageIntrinsicsAbi, CONTRACT_ID);
     caller.state_update_slot_offset_equal_slot_length();
