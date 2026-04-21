@@ -1037,8 +1037,6 @@ pub fn parsed_to_ast(
         });
     }
 
-    let mut md_mgr = MetadataManager::default();
-
     // CEI pattern analysis
     let cei_analysis_warnings =
         semantic_analysis::cei_pattern_analysis::analyze_program(engines, &typed_program);
