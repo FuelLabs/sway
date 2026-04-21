@@ -322,6 +322,11 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
+name = "storage_vec_of_storage_string"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
 name = "string_slice_predicate"
 source = "member"
 dependencies = ["std"]

@@ -7,12 +7,12 @@ use ::storage::{storage_api::*, storage_key::StorageKey};
 use ::codec::*;
 use ::debug::*;
 
-/// A persistent storage type to store a collection of tightly packed bytes.
+/// A storage type for storing a collection of tightly packed bytes.
 pub struct StorageBytes {}
 
 // Note: `StorageBytes` is a zero-sized storage type that can be nested
 //       within other storage types. For example, a `StorageMap<K, StorageBytes>`.
-//       That's why we are **always using the `self.field_id`** as a storage slot
+//       That's why we **always use the `self.field_id`** as a storage slot
 //       for all of the methods of `StorageBytes`, and **never the `self.slot`**.
 
 #[cfg(experimental_dynamic_storage = false)]
