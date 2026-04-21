@@ -25,6 +25,7 @@ impl StorableSlice<Bytes> for StorageKey<StorageBytes> {
     ///
     /// # Number of Storage Accesses
     ///
+    /// * Reads: `1` (to read the existing data in the slice length slot)
     /// * Writes: `2` (one for the `Bytes` length, and one for the content)
     ///
     /// # Examples

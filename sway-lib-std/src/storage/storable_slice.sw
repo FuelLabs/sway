@@ -54,7 +54,7 @@ pub trait StorableSlice<T> {
     fn write_slice(self, argument: T);
     #[storage(read)]
     fn read_slice(self) -> Option<T>;
-    #[storage(read, write)]
+    #[storage(write)]
     fn clear(self);
     #[storage(read, write)]
     fn clear_existed(self) -> bool;
@@ -79,6 +79,7 @@ pub trait StorableSlice<T> {
 ///
 /// # Number of Storage Accesses
 ///
+/// * Reads: `1` (to read the existing data in the slice length slot)
 /// * Writes: `2` (one for the length of the slice, and one for the slice content)
 ///
 /// # Examples
@@ -133,6 +134,7 @@ pub fn write_slice_quads(slot: b256, slice: raw_slice) {
 ///
 /// # Number of Storage Accesses
 ///
+/// * Reads: `1` (to read the existing data in the slice length slot)
 /// * Writes: `2` (one for the length of the slice, and one for the slice content)
 ///
 /// # Examples

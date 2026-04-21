@@ -225,7 +225,7 @@ pub fn write_slot<T>(slot: b256, value: T) {
 ///
 /// # Number of Storage Accesses
 ///
-/// * Reads: `1`
+/// * Internal preloads: `1`
 /// * Writes: `1`
 ///
 /// # Reverts
@@ -283,7 +283,7 @@ pub fn update_slot<T>(slot: b256, offset: u64, value: T) {
 ///
 /// # Number of Storage Accesses
 ///
-/// * Reads: `1`
+/// * Preloads: `1`
 /// * Writes: `1`
 ///
 /// # Examples
@@ -352,12 +352,12 @@ pub fn read_quads<T>(slot: b256, offset: u64) -> Option<T> {
     // Determine how many slots and where the value is to be read.
     let (offset_slot, number_of_slots, place_in_slot) = slot_calculator::<T>(slot, offset);
 
-    // Allocate a buffer for the result. Its size needs to be a multiple of 32 bytes so we can 
+    // Allocate a buffer for the result. Its size needs to be a multiple of 32 bytes so we can
     // make the 'quad' storage instruction read without overflowing.
     let result_ptr = alloc_bytes(number_of_slots * 32);
 
-    // Read `number_of_slots * 32` bytes starting at storage slot `slot` and return an `Option` 
-    // wrapping the value stored at `result_ptr + offset` if all the slots are valid. Otherwise, 
+    // Read `number_of_slots * 32` bytes starting at storage slot `slot` and return an `Option`
+    // wrapping the value stored at `result_ptr + offset` if all the slots are valid. Otherwise,
     // return `None`.
     if __state_load_quad(offset_slot, result_ptr, number_of_slots)
     {
@@ -641,7 +641,7 @@ pub fn clear_slots(slot: b256, number_of_slots: u64) {
 ///     assert(read_slot::<u64>(b256::zero(), 0).is_none());
 /// }
 /// ```
-#[storage(write)]
+#[storage(read, write)]
 pub fn clear_slots_existed(slot: b256, number_of_slots: u64) -> bool {
     let mut slot_counter = number_of_slots;
     let mut current_slot = slot;

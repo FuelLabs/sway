@@ -295,7 +295,7 @@ where
     ///     assert(storage.map.get(key).is_none());
     /// }
     /// ```
-    #[storage(write)]
+    #[storage(read, write)]
     pub fn remove_existed(self, key: K) -> bool
     where
         K: Hash,

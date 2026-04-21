@@ -417,7 +417,7 @@ impl<T> StorageKey<T> {
     ///
     /// # Number of Storage Accesses
     ///
-    /// * Preloads: `1`
+    /// * Internal preloads: `1`
     /// * Writes: `1`
     ///
     /// # Examples
@@ -561,7 +561,7 @@ impl<T> StorageKey<T> {
     /// }
     /// ```
     #[cfg(experimental_dynamic_storage = true)]
-    #[storage(write)]
+    #[storage(read, write)]
     pub fn clear_existed(self) -> bool {
         const IS_STORAGE_TYPE: bool = __size_of::<T>() == 0;
 
