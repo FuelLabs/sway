@@ -283,7 +283,7 @@ pub fn update_slot<T>(slot: b256, offset: u64, value: T) {
 ///
 /// # Number of Storage Accesses
 ///
-/// * Preloads: `1`
+/// * Internal preloads: `1`
 /// * Writes: `1`
 ///
 /// # Examples
