@@ -893,8 +893,8 @@ impl TypeEngine {
             Some(duplicates) => {
                 let old = duplicates.insert(id, new_tid);
                 assert!(old.is_none());
-            },
-            None => {},
+            }
+            None => {}
         }
 
         new_tid
@@ -2401,7 +2401,7 @@ impl TypeEngine {
         write!(builder, "TypeEngine {{\n{list}\n}}").unwrap();
         builder
     }
-    
+
     pub(crate) fn start_capturing_duplicates(&self) {
         let mut duplicates = self.duplicates.lock().unwrap();
         *duplicates = Some(HashMap::new());
