@@ -15,7 +15,7 @@ use hashbrown::{hash_map::RawEntryMut, HashMap};
 use parking_lot::RwLock;
 use std::{
     hash::{BuildHasher, Hash, Hasher},
-    sync::Arc,
+    sync::{Arc, Mutex},
     time::Instant,
 };
 use sway_error::{
@@ -141,6 +141,7 @@ pub struct TypeEngine {
     singleton_types: RwLock<SingletonTypeSourceInfos>,
     unifications: ConcurrentSlab<Unification>,
     last_replace: RwLock<Instant>,
+    duplicates: Mutex<Option<HashMap<TypeId, TypeId>>>,
 }
 
 pub trait IsConcrete {
@@ -177,6 +178,7 @@ impl Default for TypeEngine {
             singleton_types: RwLock::new(singleton_types),
             unifications: Default::default(),
             last_replace: RwLock::new(Instant::now()),
+            duplicates: Mutex::new(None),
         };
         te.insert_shareable_built_in_types();
         te
@@ -185,12 +187,15 @@ impl Default for TypeEngine {
 
 impl Clone for TypeEngine {
     fn clone(&self) -> Self {
+        let duplicates = self.duplicates.lock().unwrap();
+        let duplicates = duplicates.clone();
         TypeEngine {
             slab: self.slab.clone(),
             shareable_types: RwLock::new(self.shareable_types.read().clone()),
             singleton_types: RwLock::new(self.singleton_types.read().clone()),
             unifications: self.unifications.clone(),
             last_replace: RwLock::new(*self.last_replace.read()),
+            duplicates: Mutex::new(duplicates),
         }
     }
 }
@@ -881,7 +886,18 @@ impl TypeEngine {
     pub fn duplicate(&self, engines: &Engines, id: TypeId) -> TypeId {
         let type_source_info = self.slab.get(id.index());
         let duplicate = TypeInfo::clone(&type_source_info.type_info);
-        self.insert(engines, duplicate, type_source_info.source_id.as_ref())
+        let new_tid = self.insert(engines, duplicate, type_source_info.source_id.as_ref());
+
+        let mut duplicates = self.duplicates.lock().unwrap();
+        match duplicates.as_mut() {
+            Some(duplicates) => {
+                let old = duplicates.insert(id, new_tid);
+                assert!(old.is_none());
+            },
+            None => {},
+        }
+
+        new_tid
     }
 
     /// This method performs two actions, depending on the `replace_at_type_id`.
@@ -2384,5 +2400,15 @@ impl TypeEngine {
         let list = ListDisplay { list };
         write!(builder, "TypeEngine {{\n{list}\n}}").unwrap();
         builder
+    }
+    
+    pub(crate) fn start_capturing_duplicates(&self) {
+        let mut duplicates = self.duplicates.lock().unwrap();
+        *duplicates = Some(HashMap::new());
+    }
+
+    pub(crate) fn end_capturing_duplicates(&self) -> Option<HashMap<TypeId, TypeId>> {
+        let mut duplicates = self.duplicates.lock().unwrap();
+        duplicates.take()
     }
 }
