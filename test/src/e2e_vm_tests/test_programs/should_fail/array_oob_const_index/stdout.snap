@@ -19,62 +19,62 @@ error
 ____
 
 error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/array_oob_const_index/src/main.sw:11:9
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_oob_const_index/src/main.sw:12:9
    |
- 9 | fn literal_index_const_generic<const N: u64>() -> u64 {
-10 |     let ary = [1; N];
-11 |     ary[4] // THIS SHOULD NOT EMIT OUT-OF-BOUNDS-ERROR.
+10 | fn literal_index_const_generic<const N: u64>() -> u64 {
+11 |     let ary = [1; N];
+12 |     ary[4] // THIS SHOULD NOT EMIT OUT-OF-BOUNDS-ERROR.
    |         ^ Index out of bounds; the length is 0 but the index is 4.
-12 | }
-13 | 
+13 | }
+14 | 
    |
 ____
 
 error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/array_oob_const_index/src/main.sw:18:9
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_oob_const_index/src/main.sw:19:9
    |
-16 | fn global_const_index() -> u64 {
-17 |     let ary = [1, 2, 3];
-18 |     ary[GLOBAL_I]
+17 | fn global_const_index() -> u64 {
+18 |     let ary = [1, 2, 3];
+19 |     ary[GLOBAL_I]
    |         ^^^^^^^^ Index out of bounds; the length is 3 but the index is 4.
-19 | }
-20 | 
+20 | }
+21 | 
    |
 ____
 
 error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/array_oob_const_index/src/main.sw:24:9
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_oob_const_index/src/main.sw:26:9
    |
-22 | fn global_const_index_const_generic<const N: u64>() -> u64 {
-23 |     let ary = [1; N];
-24 |     ary[GLOBAL_I] // THIS SHOULD NOT EMIT OUT-OF-BOUNDS-ERROR.
+24 | fn global_const_index_const_generic<const N: u64>() -> u64 {
+25 |     let ary = [1; N];
+26 |     ary[GLOBAL_I] // THIS SHOULD NOT EMIT OUT-OF-BOUNDS-ERROR.
    |         ^^^^^^^^ Index out of bounds; the length is 0 but the index is 4.
-25 | }
-26 | 
+27 | }
+28 | 
    |
 ____
 
 error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/array_oob_const_index/src/main.sw:30:9
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_oob_const_index/src/main.sw:32:9
    |
-28 |     const LOCAL_I: u64 = 4;
-29 |     let ary = [1, 2, 3];
-30 |     ary[LOCAL_I]
+30 |     const LOCAL_I: u64 = 4;
+31 |     let ary = [1, 2, 3];
+32 |     ary[LOCAL_I]
    |         ^^^^^^^ Index out of bounds; the length is 3 but the index is 4.
-31 | }
-32 | 
+33 | }
+34 | 
    |
 ____
 
 error
-  --> test/src/e2e_vm_tests/test_programs/should_fail/array_oob_const_index/src/main.sw:37:9
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_oob_const_index/src/main.sw:40:9
    |
-35 |     const LOCAL_I: u64 = 4;
-36 |     let ary = [1; N];
-37 |     ary[LOCAL_I] // THIS SHOULD NOT EMIT OUT-OF-BOUNDS-ERROR.
+38 |     const LOCAL_I: u64 = 4;
+39 |     let ary = [1; N];
+40 |     ary[LOCAL_I] // THIS SHOULD NOT EMIT OUT-OF-BOUNDS-ERROR.
    |         ^^^^^^^ Index out of bounds; the length is 0 but the index is 4.
-38 | }
-39 | 
+41 | }
+42 | 
    |
 ____
 

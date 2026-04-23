@@ -1,4 +1,4 @@
-// TODO-IG: Add link to GitHub issue.
+// This tests prove that https://github.com/FuelLabs/sway/issues/7600 is fixed.
 library;
 
 trait CopySelf<D> {
@@ -33,7 +33,7 @@ where
         let mut i = 0;
         while i < N {
             self[i] = default;
-            // TODO-IG: Add link to GitHub issue.
+            // TODO: Uncomment this `assert_eq` once https://github.com/FuelLabs/sway/issues/7602 is fixed.
             // assert_eq(self[i], default);
             i += 1;
         }
@@ -82,14 +82,14 @@ fn simple_const_generic_nested_array_reassignment<const A: u64, const B: u64>() 
     array
 }
 
-type ArrayU842 = [u8;42];
+type ArrayU8 = [u8; 3];
 
 #[test]
 fn main() {
     let mut array = [1u8, 2, 3];
     assert_eq(array, array.copy_self(0));
     array.default_self(42);
-    // TODO-IG: Add link to GitHub issue.
+    // TODO: Uncomment this `assert_eq` once https://github.com/FuelLabs/sway/issues/7603 is fixed.
     // assert_eq([42; 3], array);
     assert_eq([42u8; 3], array);
 
@@ -103,12 +103,12 @@ fn main() {
     assert_eq(array_of_array, array_of_array.copy_self(array));
 
     let array = simple_const_generic_array_reassignment::<1>();
-    // TODO-IG: Add link to GitHub issue.
+    // TODO: Uncomment this `assert_eq` once https://github.com/FuelLabs/sway/issues/7603 is fixed.
     // assert_eq([42], array);
     assert_eq([42u8], array);
 
     let array = simple_const_generic_array_reassignment::<3>();
-    // TODO-IG: Add link to GitHub issue.
+    // TODO: Uncomment this `assert_eq` once https://github.com/FuelLabs/sway/issues/7603 is fixed.
     // assert_eq([42, 0, 0], array);
     assert_eq([42u8, 0, 0], array);
 
@@ -124,7 +124,7 @@ fn main() {
     let array = simple_const_generic_nested_array_reassignment::<2, 2>();
     assert_eq([[0, 1], [1, 2]], array);
 
-    // TODO-IG: Add link to GitHub issue.
+    // TODO: Uncomment this code once https://github.com/FuelLabs/sway/issues/7604 is fixed.
     // let array = ArrayU842::construct_self(42u8);
     // assert_eq([42u8, 42, 42], array);
 }
