@@ -1,0 +1,8 @@
+[[package]]
+name = "const_generics_array_in_reassignments"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-8A90963A1BB0B616"
