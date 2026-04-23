@@ -69,15 +69,15 @@ fn simple_const_generic_array_reassignment<const N: u64>() -> [u8; N] {
 
 fn simple_const_generic_nested_array_reassignment<const A: u64, const B: u64>() -> [[u64; A]; B] {
     let mut array = [[0u64; A]; B];
-    let mut a = 0;
-    while a < A {
-        let mut b = 0;
-        while b < B {
-            array[a][b] = a + b;
-            assert_eq(array[a][b], a + b);
-            b += 1;
+    let mut b = 0;
+    while b < B {
+        let mut a = 0;
+        while a < A {
+            array[b][a] = a + b;
+            assert_eq(array[b][a], a + b);
+            a += 1;
         }
-        a += 1;
+        b += 1;
     }
     array
 }
