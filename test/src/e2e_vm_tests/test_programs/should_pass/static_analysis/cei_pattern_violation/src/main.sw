@@ -1,3 +1,4 @@
+// TODO: Replace with snapshot tests in all `cei_pattern_violation` tests once https://github.com/FuelLabs/sway/issues/7606 is fixed.
 contract;
 
 use std::storage::storage_api::{write_quads, write_slot};
