@@ -241,13 +241,13 @@ pub fn write_slot<T>(slot: b256, value: T) {
 ///     let five = 5_u64;
 ///     write_slot(b256::zero(), five);
 ///     update_slot(b256::zero(), 0, five + 1);
-///     update_slot(b256::zero(), 1, five + 2); // Append 7.
+///     update_slot(b256::zero(), 8, five + 2); // Append 7.
 ///     update_slot(b256::zero(), u64::max(), five + 3); // Append 8.
 ///     let stored_six = read_slot::<u64>(b256::zero(), 0).unwrap();
 ///     assert_eq(five + 1, stored_six);
-///     let stored_seven = read_slot::<u64>(b256::zero(), 1).unwrap();
+///     let stored_seven = read_slot::<u64>(b256::zero(), 8).unwrap();
 ///     assert_eq(five + 2, stored_seven);
-///     let stored_eight = read_slot::<u64>(b256::zero(), 2).unwrap();
+///     let stored_eight = read_slot::<u64>(b256::zero(), 16).unwrap();
 ///     assert_eq(five + 3, stored_eight);
 /// }
 /// ```
