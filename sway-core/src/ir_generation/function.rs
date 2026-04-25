@@ -5623,6 +5623,14 @@ impl<'a> FnCompiler<'a> {
         base_type: &Type,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
+        // `storage_field_key` is the `b256` key of the slot of the
+        // field in a storage declaration, given by its path.
+        // Note that all eventual partial accesses to struct fields
+        // on this storage field have the same `storage_field_key`.
+        // E.g., these accesses will all have the same `storage_field_key`:
+        // - `storage.some_struct`
+        // - `storage.some_struct.some_field`
+        // - `storage.some_struct.some_field.some_subfield`
         let storage_field_key = get_storage_key(&storage_field_path, key);
         let (path, field_id) =
             get_storage_field_path_and_field_id(&storage_field_path, &struct_field_names);
@@ -5630,6 +5638,13 @@ impl<'a> FnCompiler<'a> {
         let storage_key = match self.module.get_storage_key(context, &path) {
             Some(storage_key) => *storage_key,
             None => {
+                // If we are accessing the whole storage field, e.g., `storage.some_struct`
+                // the `offset_in_bytes` is always zero.
+                // If we are having a partial access and accessing a part of a struct within
+                // the storage field, e.g., `storage.some_struct.some_field.some_subfield`
+                // `offset_in_bytes` will be the offset of the accessed field, `some_subfield`
+                // in the above example, from the beginning of the `some_struct`, and thus
+                // from the beginning of the storage slot.
                 let offset_in_bytes = match base_type.get_indexed_offset(context, indices) {
                     Some(offset_in_bytes) => {
                         // TODO-MEMLAY: Warning! Here we make an assumption about the memory layout of structs.
@@ -5654,6 +5669,11 @@ impl<'a> FnCompiler<'a> {
                 };
 
                 let storage_key = if context.experimental.dynamic_storage {
+                    // In dynamic storage, the whole storage field content
+                    // is stored in the same slot given by `storage_field_key`.
+                    // Eventual partial access to a struct field will always
+                    // be within the `storage_field_key` slot, at the calculated
+                    // `offset_in_bytes`.
                     StorageKey::new(
                         context,
                         storage_field_key.into(),
@@ -5661,9 +5681,12 @@ impl<'a> FnCompiler<'a> {
                         storage_field_key.into(),
                     )
                 } else {
-                    // Get the actual storage key of the slot, as a `Bytes32`, as well as the offset, in words,
-                    // within that slot. The offset depends on what field of the top level storage
-                    // variable is being accessed.
+                    // In storage based on 32-byte slots, the storage field content
+                    // can potentially span several slots, starting from the
+                    // `storage_field_key`.
+                    // We have to get the actual storage key of the slot,
+                    // as well as the offset, *in words*, within that slot,
+                    // at which the accessed data is stored.
                     let offset_in_words = offset_in_bytes / 8;
 
                     let (slot, offset_within_slot) = {
