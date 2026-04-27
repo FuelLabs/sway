@@ -604,7 +604,7 @@ impl ty::TyExpression {
 
         // TODO: We should be able to remove this after the SemanticDefinition
         // unification solver is working.
-        
+
         // Literals of type Numeric can now be resolved if typed_expression.return_type is
         // an UnsignedInteger or a Numeric
         if let ty::TyExpressionVariant::Literal(lit) = typed_expression.clone().expression {
