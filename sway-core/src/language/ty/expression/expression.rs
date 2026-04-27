@@ -109,23 +109,8 @@ impl TypeCheckAnalysis for TyExpression {
         handler: &Handler,
         ctx: &mut TypeCheckAnalysisContext,
     ) -> Result<(), ErrorEmitted> {
-        match &self.expression {
-            // Check literal "fits" into assigned typed.
-            TyExpressionVariant::Literal(Literal::Numeric(literal_value)) => {
-                let t = ctx.engines.te().get(self.return_type);
-                if let TypeInfo::UnsignedInteger(bits) = &*t {
-                    if bits.would_overflow(*literal_value) {
-                        handler.emit_err(CompileError::TypeError(TypeError::LiteralOverflow {
-                            expected: format!("{:?}", ctx.engines.help_out(t)),
-                            span: self.span.clone(),
-                        }));
-                    }
-                }
-            }
-            TyExpressionVariant::ArrayExplicit { .. } => {
-                self.as_array_unify_elements(handler, ctx.engines);
-            }
-            _ => {}
+        if let TyExpressionVariant::ArrayExplicit { .. } = &self.expression {
+            self.as_array_unify_elements(handler, ctx.engines);
         }
         self.expression.type_check_analyze(handler, ctx)
     }

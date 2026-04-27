@@ -1034,6 +1034,14 @@ pub(crate) fn monomorphize_method(
             .update_constant_expression(engines, implementing_type);
     }
 
+    // solve semantic definition
+    if let Some(sdid) = func_decl.sdid.as_ref() {
+        let sd = ctx.engines().sde().get(*sdid);
+        let mut solver = sd.solver(ctx.engines, handler);
+        solver.push_tid_map(func_decl.tid_map.clone());
+        let _ = solver.solve();
+    }
+
     let decl_ref = decl_engine
         .insert(
             func_decl,

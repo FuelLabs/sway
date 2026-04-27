@@ -1,44 +1,38 @@
-use std::{
-    collections::BTreeSet,
-    sync::{Arc, Mutex},
-};
-
+use crate::{concurrent_slab::ConcurrentSlab, Engines, IncludeSelf, TypeId, TypeInfo};
 use hashbrown::HashMap;
-use sway_error::{error::CompileError, handler::Handler};
-use sway_types::{integer_bits::IntegerBits, Span};
-
-use crate::{
-    engine_threading::{PartialEqWithEngines, PartialEqWithEnginesContext},
-    unify::unifier::{Unifier, UnifyKind},
-    Engines, IncludeSelf, TreatNumericAs, TypeEngine, TypeId, TypeInfo, UnifyCheck,
+use serde::{Deserialize, Serialize};
+use std::{
+    cell::RefCell,
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
 };
+use sway_error::handler::Handler;
+use sway_types::integer_bits::IntegerBits;
 
 pub enum TypeEvent {
     // When a type reachs its non changeable state. It is 100% concrete as it cannot change anymore
     OnNonChangeableState,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct SemanticDefinitionEngine {
-    defs: Vec<Arc<SemanticDefinition>>,
+    defs: ConcurrentSlab<SemanticDefinition>,
 }
 
 impl SemanticDefinitionEngine {
-    pub fn new_def(&mut self) -> SemanticDefinitionId {
-        let def = Arc::new(SemanticDefinition {
-            inner: Mutex::new(SemanticDefinitionInner {
-                events: HashMap::new(),
-                callbacks: Arc::new(Mutex::new(CallbackRegistry { callbacks: vec![] })),
+    pub fn new_semantic_definition(&self) -> SemanticDefinitionId {
+        let id = self.defs.insert(SemanticDefinition {
+            inner: RefCell::new(SemanticDefinitionInner {
                 unifications: vec![],
+                events: BTreeMap::new(),
+                registry: CallbackRegistry { callbacks: vec![] },
             }),
         });
-        let id = SemanticDefinitionId(self.defs.len());
-        self.defs.push(def);
-        id
+        SemanticDefinitionId(id)
     }
 
-    pub fn get(&self, id: SemanticDefinitionId) -> &Arc<SemanticDefinition> {
-        self.defs.get(id.0).expect("invalid SemanticDefinitionId")
+    pub fn get(&self, id: SemanticDefinitionId) -> Arc<SemanticDefinition> {
+        self.defs.get(id.0)
     }
 }
 
@@ -48,6 +42,7 @@ pub struct SemanticDefinitionSolver<'a> {
     def: &'a SemanticDefinition,
     replacements: HashMap<TypeId, TypeId>,
     tid_map: HashMap<TypeId, TypeId>,
+    log: bool,
 }
 
 enum UnificationChange {
@@ -112,20 +107,25 @@ impl<'a> SemanticDefinitionSolver<'a> {
             def,
             mut replacements,
             tid_map,
+            log,
         } = self;
 
+        let mut non_changeable_anymore_worklist = vec![];
+
         // Adjust the semantic definition usind tid_map
-        let mut def = {
-            let def = def.inner.lock().unwrap();
-            SemanticDefinitionInner::clone(&def)
-        };
+        // We cannot change the original SemanticDefinition, as it is shared,
+        // but is ok to access the callbacks as mut, as they are FnMut.
+        let mut def_inner = def.inner.borrow_mut();
+        let mut events = def_inner.events.clone();
+        let mut unifications = def_inner.unifications.clone();
+        let registry = &mut def_inner.registry;
 
         for (k, v) in tid_map {
-            if let Some(events) = def.events.remove(&k) {
-                def.events.insert(v, events);
+            if let Some(actions) = events.remove(&k) {
+                events.insert(v, actions);
             }
 
-            def.unifications.retain_mut(|(l, r)| {
+            unifications.retain_mut(|(l, r)| {
                 if *l == k {
                     *l = v;
                 }
@@ -138,24 +138,22 @@ impl<'a> SemanticDefinitionSolver<'a> {
             });
         }
 
-        // Start solving
-        let mut not_changeable_anymore_worklist = vec![];
-
-        let mut steps = 10;
-        let mut worklist = replacements.iter().map(|x| x.0.clone()).collect::<Vec<_>>();
-        while let Some(tid) = worklist.pop() {
-            // call events on all concretized types
-            for not_changeable_tid in not_changeable_anymore_worklist.drain(..) {
-                if let Some(actions) = def.events.get(&not_changeable_tid).cloned() {
+        // will call OnNonChangeableState on stashed types
+        let call_events = |non_changeable_anymore_stash: &mut Vec<TypeId>,
+                           events: &BTreeMap<TypeId, Vec<InnerTypeEvent>>,
+                           registry: &mut CallbackRegistry| {
+            for not_changeable_tid in non_changeable_anymore_stash.drain(..) {
+                if let Some(actions) = events.get(&not_changeable_tid).cloned() {
                     for action in actions.iter() {
                         match action {
                             InnerTypeEvent::OnNonChangeableState { callback_id } => {
-                                eprintln!(
-                                    "    calling OnNonChangeableState callback for {:?}({:?})",
-                                    not_changeable_tid,
-                                    engines.help_out(not_changeable_tid)
-                                );
-                                let mut registry = def.callbacks.lock().unwrap();
+                                if log {
+                                    eprintln!(
+                                        "    calling OnNonChangeableState callback for {:?}({:?})",
+                                        not_changeable_tid,
+                                        engines.help_out(not_changeable_tid)
+                                    );
+                                }
                                 let cb = &mut registry.callbacks[*callback_id];
                                 match cb {
                                     TypedCallbacks::TypeNonChangeableState { f } => {
@@ -167,26 +165,51 @@ impl<'a> SemanticDefinitionSolver<'a> {
                     }
                 }
             }
+        };
+
+        for (tid, _) in events.iter() {
+            let is_changeable = is_changeable(engines, *tid);
+            if !is_changeable {
+                non_changeable_anymore_worklist.push(*tid);
+            }
+        }
+
+        // Call because tid_map can concretize types
+        // others types can be concrete already also
+        call_events(&mut non_changeable_anymore_worklist, &events, registry);
+
+        // Start solving
+        let mut steps = 10;
+        let mut worklist = replacements.iter().map(|x| *x.0).collect::<Vec<_>>();
+        while let Some(tid) = worklist.pop() {
+            call_events(&mut non_changeable_anymore_worklist, &events, registry);
 
             // try to solve for tid
-
             steps -= 1;
             if steps <= 0 {
-                break;
+                return SolveResult::Incomplete;
             }
-            eprintln!(
-                "current: {tid:?}({:?}); worklist: {worklist:?}",
-                engines.help_out(tid)
-            );
+
+            if log {
+                eprintln!(
+                    "current: {tid:?}({:?}); worklist: {worklist:?}",
+                    engines.help_out(tid)
+                );
+            }
             let tid_is_changeable = is_changeable(engines, tid);
-            eprintln!("    is_changeable: {:?}", tid_is_changeable);
+
+            if log {
+                eprintln!("    is_changeable: {:?}", tid_is_changeable);
+            }
 
             if let Some(replace_tid) = replacements.remove(&tid) {
-                eprintln!(
-                    "    replacement: \n        {tid:?}({:?}) <- {replace_tid:?}({:?})",
-                    engines.help_out(tid),
-                    engines.help_out(replace_tid)
-                );
+                if log {
+                    eprintln!(
+                        "    replacement: \n        {tid:?}({:?}) <- {replace_tid:?}({:?})",
+                        engines.help_out(tid),
+                        engines.help_out(replace_tid)
+                    );
+                }
 
                 let replace_type_info = engines.te().get(replace_tid);
                 let replace_tid_is_changeable = is_changeable(engines, replace_tid);
@@ -195,44 +218,50 @@ impl<'a> SemanticDefinitionSolver<'a> {
                     .replace(engines, tid, replace_type_info.as_ref().clone());
 
                 if tid_is_changeable && !replace_tid_is_changeable {
-                    eprintln!("        {:?} is not changeable anymore", tid);
-                    not_changeable_anymore_worklist.push(tid);
+                    if log {
+                        eprintln!("        {:?} is not changeable anymore", tid);
+                    }
+                    non_changeable_anymore_worklist.push(tid);
                 }
             }
 
-            for (left, right) in def
-                .unifications
-                .iter()
-                .filter(|(a, b)| *a == tid || *b == tid)
-            {
-                eprintln!(
-                    "    unification:\n        {left:?}({:?}) with {right:?}({:?})",
-                    engines.help_out(left),
-                    engines.help_out(right)
-                );
+            for (left, right) in unifications.iter().filter(|(a, b)| *a == tid || *b == tid) {
+                if log {
+                    eprintln!(
+                        "    unification:\n        {left:?}({:?}) with {right:?}({:?})",
+                        engines.help_out(left),
+                        engines.help_out(right)
+                    );
+                }
 
                 let left_is_changeable_before = is_changeable(engines, *left);
                 let right_is_changeable_before = is_changeable(engines, *right);
 
                 match unify(engines, *left, *right) {
                     Some(UnificationChange::LeftChanged) => {
-                        eprintln!(
-                            "        left changed to {:?}({:?})",
-                            left,
-                            engines.help_out(left)
-                        );
+                        if log {
+                            eprintln!(
+                                "        left changed to {:?}({:?})",
+                                left,
+                                engines.help_out(left)
+                            );
+                        }
                         worklist.push(*left);
                     }
                     Some(UnificationChange::RightChanged) => {
-                        eprintln!(
-                            "        right changed to {:?}({:?})",
-                            right,
-                            engines.help_out(right)
-                        );
+                        if log {
+                            eprintln!(
+                                "        right changed to {:?}({:?})",
+                                right,
+                                engines.help_out(right)
+                            );
+                        }
                         worklist.push(*right);
                     }
                     None => {
-                        eprintln!("        no work needed");
+                        if log {
+                            eprintln!("        no work needed");
+                        }
                     }
                 }
 
@@ -240,22 +269,31 @@ impl<'a> SemanticDefinitionSolver<'a> {
                 let right_is_changeable_after = is_changeable(engines, *right);
 
                 if left_is_changeable_before && !left_is_changeable_after {
-                    not_changeable_anymore_worklist.push(*left);
-                    eprintln!("        {:?} is not changeable anymore", left);
+                    non_changeable_anymore_worklist.push(*left);
+                    if log {
+                        eprintln!("        {:?} is not changeable anymore", left);
+                    }
                 }
 
                 if right_is_changeable_before && !right_is_changeable_after {
-                    not_changeable_anymore_worklist.push(*right);
-                    eprintln!("        {:?} is not changeable anymore", right);
+                    non_changeable_anymore_worklist.push(*right);
+                    if log {
+                        eprintln!("        {:?} is not changeable anymore", right);
+                    }
                 }
             }
         }
 
+        assert!(non_changeable_anymore_worklist.is_empty());
+        assert!(worklist.is_empty());
+
         // check solving state
-        eprintln!("checking solving state");
-        let missing_replacements = replacements.len() > 0;
+        if log {
+            eprintln!("checking solving state");
+        }
+        let missing_replacements = !replacements.is_empty();
         let mut still_changeable_types = BTreeSet::new();
-        for (l, r) in def.unifications.iter() {
+        for (l, r) in unifications.iter() {
             if is_changeable(engines, *l) {
                 still_changeable_types.insert(l);
             }
@@ -264,9 +302,16 @@ impl<'a> SemanticDefinitionSolver<'a> {
                 still_changeable_types.insert(r);
             }
         }
+        for (tid, _) in events.iter() {
+            if is_changeable(engines, *tid) {
+                still_changeable_types.insert(tid);
+            }
+        }
 
-        for t in still_changeable_types.iter() {
-            eprintln!("    {:?}({:?}) still changeable", t, engines.help_out(t));
+        if log {
+            for t in still_changeable_types.iter() {
+                eprintln!("    {:?}({:?}) still changeable", t, engines.help_out(t));
+            }
         }
 
         let r = if !missing_replacements && still_changeable_types.is_empty() {
@@ -275,18 +320,16 @@ impl<'a> SemanticDefinitionSolver<'a> {
             SolveResult::Incomplete
         };
 
-        eprintln!("    {r:?}");
+        if log {
+            eprintln!("    {r:?}");
+        }
 
         r
     }
 
-    fn check_solved() -> SolveResult {
-        SolveResult::Solved
-    }
-
     /// Modify the `SemanticDefinition` in place (do not change anything inside the SemanticDefinitionEngine) to
     /// accomodate `get_method_safe_for_unify` and others mechanisms that change TypeId inside decls
-    fn push_tid_map(&mut self, tid_map: HashMap<TypeId, TypeId>) {
+    pub fn push_tid_map(&mut self, tid_map: HashMap<TypeId, TypeId>) {
         self.tid_map = tid_map;
     }
 }
@@ -304,6 +347,7 @@ enum InnerTypeEvent {
 
 enum TypedCallbacks {
     TypeNonChangeableState {
+        #[allow(clippy::type_complexity)]
         f: Box<dyn FnMut(&Engines, &Handler, TypeId)>,
     },
 }
@@ -312,29 +356,29 @@ struct CallbackRegistry {
     callbacks: Vec<TypedCallbacks>,
 }
 
-#[derive(Clone)]
 pub struct SemanticDefinitionInner {
     unifications: Vec<(TypeId, TypeId)>,
-    events: HashMap<TypeId, Vec<InnerTypeEvent>>,
-    callbacks: Arc<Mutex<CallbackRegistry>>,
+    events: BTreeMap<TypeId, Vec<InnerTypeEvent>>,
+    registry: CallbackRegistry,
 }
 
-impl std::fmt::Debug for SemanticDefinitionInner {
+impl std::fmt::Debug for SemanticDefinition {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("SemanticDefinitionInner")
-            .field("unifications", &self.unifications)
-            .field("events", &self.events)
+        let inner = self.inner.borrow();
+
+        f.debug_struct("SemanticDefinition")
+            .field("unifications", &inner.unifications)
+            .field("events", &inner.events)
             .finish()
     }
 }
 
-#[derive(Debug)]
 pub struct SemanticDefinition {
-    inner: Mutex<SemanticDefinitionInner>,
+    inner: RefCell<SemanticDefinitionInner>,
 }
 
 impl SemanticDefinition {
-    fn solver<'a>(
+    pub fn solver<'a>(
         &'a self,
         engines: &'a Engines,
         handler: &'a Handler,
@@ -342,88 +386,81 @@ impl SemanticDefinition {
         SemanticDefinitionSolver {
             engines,
             handler,
-            def: self.clone(),
+            def: self,
             replacements: HashMap::default(),
             tid_map: HashMap::new(),
+            log: false,
         }
     }
 
     pub fn when_type_reaches_non_changeable_state(
         &self,
         tid: TypeId,
-        e: TypeEvent,
         callback: impl 'static + FnMut(&Engines, &Handler, TypeId),
     ) {
-        let mut inner = self.inner.lock().unwrap();
+        let mut inner = self.inner.borrow_mut();
 
         let callback_id = {
-            let mut registry = inner.callbacks.lock().unwrap();
-            registry
+            inner
+                .registry
                 .callbacks
                 .push(TypedCallbacks::TypeNonChangeableState {
                     f: Box::new(callback),
                 });
-            registry.callbacks.len() - 1
+            inner.registry.callbacks.len() - 1
         };
 
         let v = inner.events.entry(tid).or_default();
-        match e {
-            TypeEvent::OnNonChangeableState => {
-                v.push(InnerTypeEvent::OnNonChangeableState { callback_id });
-            }
-        }
+        v.push(InnerTypeEvent::OnNonChangeableState { callback_id });
     }
 
     pub fn push_type_unify(&self, a: TypeId, b: TypeId) {
-        let mut inner = self.inner.lock().unwrap();
+        let mut inner = self.inner.borrow_mut();
         inner.unifications.push((a, b));
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct SemanticDefinitionId(usize);
 
 #[test]
 fn semantic_definition_solve() {
+    use sway_error::error::CompileError;
+    use sway_types::Span;
+
     let engines = Engines::default();
     let handler = Handler::default();
 
-    let mut sde = SemanticDefinitionEngine::default();
-
     // this will be done on TyFunctionDecl::type_check
-    let sdid = sde.new_def();
+    let sdid = engines.sde().new_semantic_definition();
 
     // let a = 0x100;
     // Vec::<u8>::new().push(a);
 
     // this will be on type_check_literal for the RHS
-    let sd = sde.get(sdid);
-    let value = 0x100 as u64;
+    let sd = engines.sde().get(sdid);
+    let value = 0x100_u64;
     let tid0 = engines.te().insert(&engines, TypeInfo::Numeric, None);
-    sd.when_type_reaches_non_changeable_state(
-        tid0,
-        TypeEvent::OnNonChangeableState,
-        move |engines, handler, tid| {
-            let final_type_info = engines.te().get(tid);
-            let max_value = match final_type_info.as_ref() {
-                TypeInfo::UnsignedInteger(IntegerBits::Eight) => u8::MAX as u64,
-                TypeInfo::UnsignedInteger(IntegerBits::Sixteen) => u16::MAX as u64,
-                TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo) => u32::MAX as u64,
-                TypeInfo::UnsignedInteger(IntegerBits::SixtyFour) => u64::MAX as u64,
-                x => {
-                    handler.emit_err(CompileError::InternalOwned(
-                        format!("Invalid final type `{x:?}`"),
-                        Span::dummy(),
-                    ));
-                    return;
-                }
-            };
-
-            if value > max_value {
-                handler.emit_err(CompileError::Internal("Do not fit", Span::dummy()));
+    sd.when_type_reaches_non_changeable_state(tid0, move |engines, handler, tid| {
+        let final_type_info = engines.te().get(tid);
+        let max_value = match final_type_info.as_ref() {
+            TypeInfo::UnsignedInteger(IntegerBits::Eight) => u8::MAX as u64,
+            TypeInfo::UnsignedInteger(IntegerBits::Sixteen) => u16::MAX as u64,
+            TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo) => u32::MAX as u64,
+            TypeInfo::UnsignedInteger(IntegerBits::SixtyFour) => u64::MAX,
+            x => {
+                handler.emit_err(CompileError::InternalOwned(
+                    format!("Invalid final type `{x:?}`"),
+                    Span::dummy(),
+                ));
+                return;
             }
-        },
-    );
+        };
+
+        if value > max_value {
+            handler.emit_err(CompileError::Internal("Do not fit", Span::dummy()));
+        }
+    });
 
     // this will be on type_check_variable_declaration for the LHS
     let tid1 = engines.te().insert(&engines, TypeInfo::Unknown, None);

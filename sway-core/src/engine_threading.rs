@@ -2,6 +2,7 @@ use crate::{
     decl_engine::{parsed_engine::ParsedDeclEngine, DeclEngine},
     language::CallPath,
     query_engine::QueryEngine,
+    semantic_analysis::semantic_definition::SemanticDefinitionEngine,
     type_system::TypeEngine,
     ObservabilityEngine,
 };
@@ -21,6 +22,7 @@ pub struct Engines {
     query_engine: QueryEngine,
     source_engine: SourceEngine,
     obs_engine: Arc<ObservabilityEngine>,
+    semantic_definition_engine: Arc<SemanticDefinitionEngine>,
 }
 
 impl Engines {
@@ -90,6 +92,10 @@ impl Engines {
             thing,
             engines: self,
         }
+    }
+
+    pub(crate) fn sde(&self) -> &SemanticDefinitionEngine {
+        self.semantic_definition_engine.as_ref()
     }
 }
 

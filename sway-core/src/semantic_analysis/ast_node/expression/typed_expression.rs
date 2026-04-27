@@ -47,6 +47,7 @@ use sway_error::{
     convert_parse_tree_error::ConvertParseTreeError,
     error::{CompileError, StructFieldUsageContext},
     handler::{ErrorEmitted, Handler},
+    type_error::TypeError,
     warning::{CompileWarning, Warning},
 };
 use sway_types::{integer_bits::IntegerBits, u256::U256, BaseIdent, Ident, Named, Span, Spanned};
@@ -304,7 +305,7 @@ impl ty::TyExpression {
             // We've already emitted an error for the `::Error` case.
             ExpressionKind::Error(_, err) => Ok(ty::TyExpression::error(*err, span, engines)),
             ExpressionKind::Literal(lit) => {
-                Ok(Self::type_check_literal(engines, lit.clone(), span))
+                Ok(Self::type_check_literal(&ctx, engines, lit.clone(), span))
             }
             ExpressionKind::AmbiguousVariableExpression(name) => {
                 if matches!(
@@ -601,19 +602,33 @@ impl ty::TyExpression {
             )
             .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
 
+        // TODO: We should be able to remove this after the SemanticDefinition
+        // unification solver is working.
+        
         // Literals of type Numeric can now be resolved if typed_expression.return_type is
         // an UnsignedInteger or a Numeric
         if let ty::TyExpressionVariant::Literal(lit) = typed_expression.clone().expression {
             if let Literal::Numeric(_) = lit {
                 match &*type_engine.get(typed_expression.return_type) {
                     TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric => {
-                        typed_expression = Self::resolve_numeric_literal(
+                        let expr = Self::resolve_numeric_literal(
                             handler,
                             ctx,
                             lit,
                             expr_span,
                             typed_expression.return_type,
-                        )?
+                        )?;
+                        typed_expression.expression = expr.expression;
+                        let old_value = engines.te().get(typed_expression.return_type);
+                        let new_value = engines.te().get(expr.return_type);
+
+                        if old_value.is_numeric() {
+                            engines.te().replace(
+                                engines,
+                                typed_expression.return_type,
+                                TypeInfo::clone(new_value.as_ref()),
+                            );
+                        }
                     }
                     _ => {}
                 }
@@ -623,7 +638,12 @@ impl ty::TyExpression {
         Ok(typed_expression)
     }
 
-    fn type_check_literal(engines: &Engines, lit: Literal, span: Span) -> ty::TyExpression {
+    fn type_check_literal(
+        ctx: &TypeCheckContext,
+        engines: &Engines,
+        lit: Literal,
+        span: Span,
+    ) -> ty::TyExpression {
         let type_engine = engines.te();
         let return_type = match &lit {
             Literal::String(_) => type_engine.id_of_string_slice(),
@@ -637,6 +657,49 @@ impl ty::TyExpression {
             Literal::B256(_) => type_engine.id_of_b256(),
             Literal::Binary(_) => type_engine.id_of_raw_slice(),
         };
+
+        let s = span.clone();
+        let l = lit.clone();
+
+        if let Some(sdid) = ctx.get_current_semantic_definition() {
+            let sd = engines.sde().get(sdid);
+            sd.when_type_reaches_non_changeable_state(
+                return_type,
+                move |engines, handler, return_type| {
+                    let return_type_info = engines.te().get(return_type);
+                    let bits = match return_type_info.as_ref() {
+                        TypeInfo::UnsignedInteger(bits @ IntegerBits::Eight) => bits,
+                        TypeInfo::UnsignedInteger(bits @ IntegerBits::Sixteen) => bits,
+                        TypeInfo::UnsignedInteger(bits @ IntegerBits::ThirtyTwo) => bits,
+                        TypeInfo::UnsignedInteger(bits @ IntegerBits::SixtyFour) => bits,
+                        _ => return,
+                    };
+
+                    let literal_value = match &l {
+                        Literal::U8(v) => *v as u64,
+                        Literal::U16(v) => *v as u64,
+                        Literal::U32(v) => *v as u64,
+                        Literal::U64(v) => *v,
+                        Literal::Numeric(v) => *v,
+                        x => {
+                            handler.emit_err(CompileError::InternalOwned(
+                                format!("Invalid final type `{x:?}`"),
+                                Span::dummy(),
+                            ));
+                            return;
+                        }
+                    };
+
+                    if bits.would_overflow(literal_value) {
+                        handler.emit_err(CompileError::TypeError(TypeError::LiteralOverflow {
+                            expected: format!("{:?}", engines.help_out(return_type_info)),
+                            span: s.clone(),
+                        }));
+                    }
+                },
+            );
+        }
+
         ty::TyExpression {
             expression: ty::TyExpressionVariant::Literal(lit),
             return_type,
@@ -3031,46 +3094,38 @@ impl ty::TyExpression {
             Literal::Numeric(num) => match &*type_engine.get(new_type) {
                 TypeInfo::UnsignedInteger(n) => match n {
                     IntegerBits::Eight => (
-                        num.to_string().parse().map(Literal::U8).map_err(|e| {
-                            Literal::handle_parse_int_error(
-                                engines,
-                                e,
-                                TypeInfo::UnsignedInteger(IntegerBits::Eight),
-                                span.clone(),
-                            )
+                        num.to_string().parse().map(Literal::U8).map_err(|_| {
+                            CompileError::TypeError(TypeError::LiteralOverflow {
+                                expected: "u8".to_string(),
+                                span: span.clone(),
+                            })
                         }),
                         new_type,
                     ),
                     IntegerBits::Sixteen => (
-                        num.to_string().parse().map(Literal::U16).map_err(|e| {
-                            Literal::handle_parse_int_error(
-                                engines,
-                                e,
-                                TypeInfo::UnsignedInteger(IntegerBits::Sixteen),
-                                span.clone(),
-                            )
+                        num.to_string().parse().map(Literal::U16).map_err(|_| {
+                            CompileError::TypeError(TypeError::LiteralOverflow {
+                                expected: "u16".to_string(),
+                                span: span.clone(),
+                            })
                         }),
                         new_type,
                     ),
                     IntegerBits::ThirtyTwo => (
-                        num.to_string().parse().map(Literal::U32).map_err(|e| {
-                            Literal::handle_parse_int_error(
-                                engines,
-                                e,
-                                TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo),
-                                span.clone(),
-                            )
+                        num.to_string().parse().map(Literal::U32).map_err(|_| {
+                            CompileError::TypeError(TypeError::LiteralOverflow {
+                                expected: "u32".to_string(),
+                                span: span.clone(),
+                            })
                         }),
                         new_type,
                     ),
                     IntegerBits::SixtyFour => (
-                        num.to_string().parse().map(Literal::U64).map_err(|e| {
-                            Literal::handle_parse_int_error(
-                                engines,
-                                e,
-                                TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-                                span.clone(),
-                            )
+                        num.to_string().parse().map(Literal::U64).map_err(|_| {
+                            CompileError::TypeError(TypeError::LiteralOverflow {
+                                expected: "u64".to_string(),
+                                span: span.clone(),
+                            })
                         }),
                         new_type,
                     ),
@@ -3078,8 +3133,11 @@ impl ty::TyExpression {
                     IntegerBits::V256 => (Ok(Literal::U256(U256::from(num))), new_type),
                 },
                 TypeInfo::Numeric => (
-                    num.to_string().parse().map(Literal::Numeric).map_err(|e| {
-                        Literal::handle_parse_int_error(engines, e, TypeInfo::Numeric, span.clone())
+                    num.to_string().parse().map(Literal::Numeric).map_err(|_| {
+                        CompileError::TypeError(TypeError::LiteralOverflow {
+                            expected: "numeric".to_string(),
+                            span: span.clone(),
+                        })
                     }),
                     type_engine.new_numeric(),
                 ),

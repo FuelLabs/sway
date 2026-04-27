@@ -8,13 +8,14 @@ use crate::{
         ty::*,
         CallPath, Inline, Purity, Trace, Visibility,
     },
-    semantic_analysis::TypeCheckContext,
+    semantic_analysis::{semantic_definition::SemanticDefinitionId, TypeCheckContext},
     transform::{self, AttributeKind},
     type_system::*,
     types::*,
 };
 use ast_elements::type_parameter::ConstGenericExpr;
 use either::Either;
+use hashbrown::HashMap;
 use monomorphization::MonomorphizeHelper;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -95,6 +96,9 @@ pub struct TyFunctionDecl {
     /// TODO: See: https://github.com/FuelLabs/sway/issues/7371
     /// !!! WARNING !!!
     pub kind: TyFunctionDeclKind,
+
+    pub sdid: Option<SemanticDefinitionId>,
+    pub tid_map: HashMap<TypeId, TypeId>,
 }
 
 impl TyDeclParsedType for TyFunctionDecl {
@@ -338,6 +342,8 @@ impl DeclRefFunction {
         let mut method = original.clone();
 
         if let Some(method_implementing_for) = method.implementing_for {
+            engines.te().start_capturing_duplicates();
+
             let mut type_id_type_subst_map = TypeSubstMap::new();
 
             if let Some(TyDecl::ImplSelfOrTrait(t)) = method.implementing_type.clone() {
@@ -413,34 +419,33 @@ impl DeclRefFunction {
                 true,
             ));
 
-            let r = engines
+            method.tid_map = engines.te().end_capturing_duplicates().unwrap();
+
+            let decl_ref = engines
                 .de()
-                .insert(
-                    method.clone(),
-                    engines.de().get_parsed_decl_id(self.id()).as_ref(),
-                )
+                .insert(method, engines.de().get_parsed_decl_id(self.id()).as_ref())
                 .with_parent(decl_engine, self.id().into());
 
             engines.obs().trace(|| {
                 format!(
                     "    after get_method_safe_to_unify: {:?}; {:?}",
                     engines.help_out(type_id),
-                    engines.help_out(r.id())
+                    engines.help_out(decl_ref.id())
                 )
             });
 
-            return r;
+            decl_ref
+        } else {
+            engines.obs().trace(|| {
+                format!(
+                    "    after get_method_safe_to_unify: {:?}; {:?}",
+                    engines.help_out(type_id),
+                    engines.help_out(self.id())
+                )
+            });
+
+            self.clone()
         }
-
-        engines.obs().trace(|| {
-            format!(
-                "    after get_method_safe_to_unify: {:?}; {:?}",
-                engines.help_out(type_id),
-                engines.help_out(self.id())
-            )
-        });
-
-        self.clone()
     }
 }
 
@@ -514,6 +519,8 @@ impl HashWithEngines for TyFunctionDecl {
             is_trait_method_dummy: _,
             is_type_check_finalized: _,
             kind: _,
+            sdid: _,
+            tid_map: _,
         } = self;
         name.hash(state);
         body.hash(state, engines);
@@ -667,6 +674,8 @@ impl TyFunctionDecl {
                 FunctionDeclarationKind::Test => TyFunctionDeclKind::Test,
                 FunctionDeclarationKind::Main => TyFunctionDeclKind::Main,
             },
+            sdid: None,
+            tid_map: Default::default(),
         }
     }
 
