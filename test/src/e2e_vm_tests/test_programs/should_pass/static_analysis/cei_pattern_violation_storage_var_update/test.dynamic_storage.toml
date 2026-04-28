@@ -1,0 +1,5 @@
+category = "compile"
+experimental = { new_encoding = true, dynamic_storage = true }
+
+# check: $()Storage write after external contract interaction in function or method "deposit". Consider making all storage writes before calling another contract
+expected_warnings = 2

@@ -1,0 +1,8 @@
+category = "fail"
+experimental = { new_encoding = true, dynamic_storage = true }
+
+# check: $()const MY_CONST_STRUCT: MyConstStruct = MyConstStruct {};
+# check: $()Instantiation of the struct "MyConstStruct" is missing the field "x".
+
+# check: $()my_struct: MyStruct = MyStruct {},
+# check: $()Instantiation of the struct "MyStruct" is missing the field "x".
