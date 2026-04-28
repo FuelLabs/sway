@@ -69,7 +69,7 @@ pub(crate) fn check_function_purity(
                                 | FuelVmInstruction::StateStoreQuadWord { .. }
                                 | FuelVmInstruction::StateWriteSlot { .. }
                                 | FuelVmInstruction::StateStoreWord { .. } => (reads, true),
-                                FuelVmInstruction::StateUpdateSlot { .. } => (true, true),
+                                FuelVmInstruction::StateUpdateSlot { .. } => (reads, true),
                                 _ => unreachable!("The FuelVM instruction is checked to be a store access instruction."),
                             }
                         }
@@ -89,7 +89,7 @@ pub(crate) fn check_function_purity(
                                     match inst {
                                         "srw" | "srwq" | "srdd" | "srdi" | "spld" => (true, writes),
                                         "scwq" | "sclr" | "sww" | "swwq" | "swrd" | "swri" => (reads, true),
-                                        "supd" | "supi" => (true, true),
+                                        "supd" | "supi" => (reads, true),
                                         _ => unreachable!("The ASM instruction is checked to be a store access instruction."),
                                     }
                                 } else {
@@ -129,7 +129,7 @@ pub(crate) fn check_function_purity(
     // Simple closures for each of the error types.
     let error = |span: Span, needed| {
         // We don't emit errors on the generated `__entry` function
-        // but do on the original entry functions and all other functions.
+        // but do emit on the original entry functions and all other functions.
         if !function.is_entry(context) || function.is_original_entry(context) {
             handler.emit_err(CompileError::StorageAccessMismatched {
                 span,

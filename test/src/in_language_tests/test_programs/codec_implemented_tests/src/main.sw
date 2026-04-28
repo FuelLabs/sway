@@ -1,6 +1,7 @@
 library;
 // Logs every new type defined in the std lib to ensure codec is working for them
 
+#[cfg(experimental_dynamic_storage = false)]
 use std::{
     logging::log,
     address::Address,
@@ -48,7 +49,7 @@ use std::{
     },
 };
 
-
+#[cfg(experimental_dynamic_storage = false)]
 #[test]
 fn test_logging() {
     log(Address::zero());

@@ -30,6 +30,6 @@ impl MyContract for Contract {
         storage.balances.insert(sender, 0);
         // should only report storage write after external contract call
         // should _not_ report storage read after external contract call
-        storage.vec.clear();
+        let _ = storage.vec.clear();
     }
 }

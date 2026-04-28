@@ -251,7 +251,92 @@ impl Contract {
 
     // END: __state_clear_slots
 
+    // BEGIN: __state_store_quad
+
+    // Writing zero quads does not write anything into an empty slot.
+    #[storage(read, write)]
+    fn state_store_quad_zero_quads_in_empty_slot() {
+        let val: [u8; 0] = [];
+        let _ = __state_store_quad(B256_ZERO, __addr_of(val), 0);
+
+        let res = [42u64; 1];
+        let is_err = asm(slot: B256_ZERO, res: __addr_of(res), offset: 0) {
+            srdi res slot offset i0;
+            err
+        };
+        assert_eq(is_err, 1); // Slot does not exists.
+        assert_eq(res, [42u64]); // Memory is not overwritten.
+
+        let is_not_set_len = (0u64, 0u64);
+        let (is_not_set, len) = asm(slot: B256_ZERO, len, is_not_set_len: is_not_set_len) {
+            spld len slot;
+            sw is_not_set_len err i0;
+            sw is_not_set_len len i1;
+            is_not_set_len: (u64, u64)
+        };
+
+        assert_eq(is_not_set, 1); // The slot is not set.
+        assert_eq(len, 0); // The length of the non-set slot is zero.
+    }
+
+    // Writing zero quads does not write anything into an empty slot.
+    #[storage(read, write)]
+    fn state_store_quad_zero_quads_in_occupied_slot() {
+        // Occupy slot.
+        let slots_data = [42u64; 4];
+        let _ = __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
+
+        let val: [u8; 0] = [];
+        let _ = __state_store_quad(B256_ZERO, __addr_of(val), 0);
+
+        let res = [0u64; 4];
+        let is_err = asm(slot: B256_ZERO, res: __addr_of(res), offset: 0) {
+            srdi res slot offset i32;
+            err
+        };
+        assert_eq(is_err, 0); // Slot exists.
+        assert_eq(res, [42u64, 42u64, 42u64, 42u64]); // Slot is not overwritten.
+
+        let is_not_set_len = (0u64, 0u64);
+        let (is_not_set, len) = asm(slot: B256_ZERO, len, is_not_set_len: is_not_set_len) {
+            spld len slot;
+            sw is_not_set_len err i0;
+            sw is_not_set_len len i1;
+            is_not_set_len: (u64, u64)
+        };
+
+        assert_eq(is_not_set, 0); // The slot is still set.
+        assert_eq(len, 32); // The length of the original slot.
+    }
+
+    // END: __state_store_quad
+
     // BEGIN: __state_store_slot
+
+    #[storage(read, write)]
+    fn state_store_slot_zero_size_data() {
+        let val: [u8; 0] = [];
+        __state_store_slot(B256_ZERO, __addr_of(val), 0);
+
+        let res = [42u64; 1];
+        let is_err = asm(slot: B256_ZERO, res: __addr_of(res), offset: 0) {
+            srdi res slot offset i0;
+            err
+        };
+        assert_eq(is_err, 0); // Slot exists.
+        assert_eq(res, [42u64]); // Memory is not overwritten.
+
+        let is_not_set_len = (0u64, 0u64);
+        let (is_not_set, len) = asm(slot: B256_ZERO, len, is_not_set_len: is_not_set_len) {
+            spld len slot;
+            sw is_not_set_len err i0;
+            sw is_not_set_len len i1;
+            is_not_set_len: (u64, u64)
+        };
+
+        assert_eq(is_not_set, 0); // The slot is set, but empty.
+        assert_eq(len, 0); // The length of the slot is zero, although it is set.
+    }
 
     #[storage(read, write)]
     fn state_store_slot_one_word() {
@@ -412,6 +497,15 @@ impl Contract {
         assert_eq(dest, [42u64, 43u64]);
     }
 
+    #[storage(read, write)]
+    fn state_load_slot_out_of_bounds() {
+        let val = [42u64, 43u64];
+        __state_store_slot(B256_ZERO, __addr_of(val), 2 * 8);
+
+        let dest = [0u64; 8];
+        let _ = __state_load_slot(B256_ZERO, __addr_of(dest), 2 * 8 + 1, 1 * 8);
+    }
+
     // END: __state_load_slot
 
     // BEGIN: __state_update_slot
@@ -489,6 +583,31 @@ impl Contract {
         assert_eq(res, [42u64, 34u64, 44u64, 45u64]);
     }
 
+    // The index equal to slot length (one after the last byte) has the
+    // append semantics, same as passing `u64::max()`.
+    #[storage(read, write)]
+    fn state_update_slot_offset_equal_slot_length() {
+        let slots_data = [42u64, 43u64, 44u64, 45u64];
+        __state_store_slot(B256_ZERO, __addr_of(slots_data), 4 * 8);
+
+        let val = [46u64];
+        __state_update_slot(B256_ZERO, __addr_of(val), 32, 1 * 8);
+
+        let res = [0u64; 5];
+        let was_set = __state_load_slot(B256_ZERO, __addr_of(res), 0, 5 * 8);
+        assert_eq(was_set, true);
+        assert_eq(res, [42u64, 43u64, 44u64, 45u64, 46u64]);
+    }
+
+    #[storage(read, write)]
+    fn state_update_slot_update_out_of_bounds() {
+        let slots_data = [42u64, 43u64, 44u64, 45u64];
+        __state_store_slot(B256_ZERO, __addr_of(slots_data), 4 * 8);
+
+        let val = [46u64];
+        __state_update_slot(B256_ZERO, __addr_of(val), 32 + 1, 1 * 8);
+    }
+
     // END: __state_update_slot
 
     // BEGIN: __state_preload
@@ -558,6 +677,7 @@ fn get_runtime_len(len: u64) -> u64 {
     len
 }
 
+// TODO-DCA: Fix false DCA warning for this function as a part of https://github.com/FuelLabs/sway/issues/5921.
 #[inline(never)]
 fn poke<T>(_t: T) { }
 
@@ -642,6 +762,24 @@ fn test_state_clear_slots_occupied_slots() {
 }
 
 #[test]
+fn test_state_store_quad_zero_quads_in_empty_slot() {
+    let caller = abi(StorageIntrinsicsAbi, CONTRACT_ID);
+    caller.state_store_quad_zero_quads_in_empty_slot();
+}
+
+#[test]
+fn test_state_store_quad_zero_quads_in_occupied_slot() {
+    let caller = abi(StorageIntrinsicsAbi, CONTRACT_ID);
+    caller.state_store_quad_zero_quads_in_occupied_slot();
+}
+
+#[test]
+fn test_state_store_slot_zero_size_data() {
+    let caller = abi(StorageIntrinsicsAbi, CONTRACT_ID);
+    caller.state_store_slot_zero_size_data();
+}
+
+#[test]
 fn test_state_store_slot_one_word() {
     let caller = abi(StorageIntrinsicsAbi, CONTRACT_ID);
     caller.state_store_slot_one_word();
@@ -707,6 +845,12 @@ fn test_state_load_slot_runtime_len() {
     caller.state_load_slot_runtime_len();
 }
 
+#[test(should_revert)]
+fn test_state_load_slot_out_of_bounds() {
+    let caller = abi(StorageIntrinsicsAbi, CONTRACT_ID);
+    caller.state_load_slot_out_of_bounds();
+}
+
 #[test]
 fn test_state_update_slot_empty_append() {
     let caller = abi(StorageIntrinsicsAbi, CONTRACT_ID);
@@ -735,6 +879,18 @@ fn test_state_update_slot_overwrite_and_extend() {
 fn test_state_update_slot_runtime_len() {
     let caller = abi(StorageIntrinsicsAbi, CONTRACT_ID);
     caller.state_update_slot_runtime_len();
+}
+
+#[test(should_revert)]
+fn test_state_update_slot_update_out_of_bounds() {
+    let caller = abi(StorageIntrinsicsAbi, CONTRACT_ID);
+    caller.state_update_slot_update_out_of_bounds();
+}
+
+#[test]
+fn test_state_update_slot_offset_equal_slot_length() {
+    let caller = abi(StorageIntrinsicsAbi, CONTRACT_ID);
+    caller.state_update_slot_offset_equal_slot_length();
 }
 
 #[test]

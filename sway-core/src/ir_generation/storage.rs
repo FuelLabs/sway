@@ -20,37 +20,42 @@ enum InByte8Padding {
     Left,
 }
 
-/// Hands out storage keys using storage field names or an existing key.
-/// Basically returns sha256((0u8, "storage::<storage_namespace_name1>::<storage_namespace_name2>.<storage_field_name>"))
-/// or key if defined.
-pub(super) fn get_storage_key(storage_field_names: Vec<String>, key: Option<U256>) -> Bytes32 {
+/// Returns storage key of the `storage` declaration field given by the `storage_field_path`, or the `key`, if `Some`.
+///
+/// If the `key` is `None`, the returned storage key is generated as:
+///     `sha256((0u8, "storage::<namespace_1>::<namespace_2>.<storage_field_name>"))`
+pub(super) fn get_storage_key(storage_field_path: &[String], key: Option<U256>) -> Bytes32 {
     match key {
         Some(key) => key.to_be_bytes().into(),
-        None => hash_storage_key_string(&get_storage_key_string(&storage_field_names)),
+        None => hash_storage_key_string(&get_storage_key_string(storage_field_path)),
     }
 }
 
-pub fn get_storage_key_string(storage_field_names: &[String]) -> String {
-    if storage_field_names.len() == 1 {
+/// Returns the string representation of a `storage` declaration field,
+/// given by the `storage_field_path`. The string representation consists
+/// of the field name preceded by its full namespace path.
+/// E.g., "storage::<namespace_1>::<namespace_2>.<storage_field_name>".
+pub fn get_storage_key_string(storage_field_path: &[String]) -> String {
+    if storage_field_path.len() == 1 {
         format!(
             "{}{}{}",
             sway_utils::constants::STORAGE_TOP_LEVEL_NAMESPACE,
             sway_utils::constants::STORAGE_FIELD_SEPARATOR,
-            storage_field_names.last().unwrap(),
+            storage_field_path.last().unwrap(),
         )
     } else {
         format!(
             "{}{}{}{}{}",
             sway_utils::constants::STORAGE_TOP_LEVEL_NAMESPACE,
             sway_utils::constants::STORAGE_NAMESPACE_SEPARATOR,
-            storage_field_names
+            storage_field_path
                 .iter()
-                .take(storage_field_names.len() - 1)
+                .take(storage_field_path.len() - 1)
                 .cloned()
                 .collect::<Vec<_>>()
                 .join(sway_utils::constants::STORAGE_NAMESPACE_SEPARATOR),
             sway_utils::constants::STORAGE_FIELD_SEPARATOR,
-            storage_field_names.last().unwrap(),
+            storage_field_path.last().unwrap(),
         )
     }
 }
@@ -58,12 +63,12 @@ pub fn get_storage_key_string(storage_field_names: &[String]) -> String {
 /// Hands out unique storage field ids using storage field names and struct field names.
 /// Basically returns sha256((0u8, "storage::<storage_namespace_name1>::<storage_namespace_name2>.<storage_field_name>.<struct_field_name1>.<struct_field_name2>")).
 pub(super) fn get_storage_field_path_and_field_id(
-    storage_field_names: &[String],
+    storage_field_path: &[String],
     struct_field_names: &[String],
 ) -> (String, Bytes32) {
     let path = format!(
         "{}{}",
-        get_storage_key_string(storage_field_names),
+        get_storage_key_string(storage_field_path),
         if struct_field_names.is_empty() {
             "".to_string()
         } else {
@@ -125,23 +130,24 @@ pub(super) fn add_to_b256(x: Bytes32, y: u64) -> Bytes32 {
 /// This behavior matches the behavior of how storage slots are assigned for storage reads and
 /// writes (i.e. how `state_read_*` and `state_write_*` instructions are generated).
 pub fn serialize_to_storage_slots(
-    constant: &Constant,
     context: &Context,
-    storage_field_names: Vec<String>,
+    constant: &Constant,
+    storage_field_path: &[String],
     key: Option<U256>,
-    ty: &Type,
 ) -> Vec<StorageSlot> {
+    let ty = constant.get_content(context).ty;
+
     match &constant.get_content(context).value {
         ConstantValue::Undef => vec![],
         // If not being a part of an aggregate, single byte values like `bool`, `u8`, and unit
         // are stored as a byte at the beginning of the storage slot.
         ConstantValue::Unit if ty.is_unit(context) => vec![StorageSlot::new(
-            get_storage_key(storage_field_names, key),
+            get_storage_key(storage_field_path, key),
             Bytes32::new([0; 32]),
         )],
         ConstantValue::Bool(b) if ty.is_bool(context) => {
             vec![StorageSlot::new(
-                get_storage_key(storage_field_names, key),
+                get_storage_key(storage_field_path, key),
                 Bytes32::new([
                     if *b { 1 } else { 0 },
                     0,
@@ -180,7 +186,7 @@ pub fn serialize_to_storage_slots(
         }
         ConstantValue::Uint(b) if ty.is_uint8(context) => {
             vec![StorageSlot::new(
-                get_storage_key(storage_field_names, key),
+                get_storage_key(storage_field_path, key),
                 Bytes32::new([
                     *b as u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                     0, 0, 0, 0, 0, 0, 0, 0,
@@ -190,7 +196,7 @@ pub fn serialize_to_storage_slots(
         // Similarly, other uint values are stored at the beginning of the storage slot.
         ConstantValue::Uint(n) if ty.is_uint(context) => {
             vec![StorageSlot::new(
-                get_storage_key(storage_field_names, key),
+                get_storage_key(storage_field_path, key),
                 Bytes32::new(
                     n.to_be_bytes()
                         .iter()
@@ -204,13 +210,13 @@ pub fn serialize_to_storage_slots(
         }
         ConstantValue::U256(b) if ty.is_uint_of(context, 256) => {
             vec![StorageSlot::new(
-                get_storage_key(storage_field_names, key),
+                get_storage_key(storage_field_path, key),
                 Bytes32::new(b.to_be_bytes()),
             )]
         }
         ConstantValue::B256(b) if ty.is_b256(context) => {
             vec![StorageSlot::new(
-                get_storage_key(storage_field_names, key),
+                get_storage_key(storage_field_path, key),
                 Bytes32::new(b.to_be_bytes()),
             )]
         }
@@ -225,7 +231,7 @@ pub fn serialize_to_storage_slots(
             let mut packed = serialize_to_words(
                 constant.get_content(context),
                 context,
-                ty,
+                &ty,
                 InByte8Padding::default(),
             );
             packed.extend(vec![
@@ -255,7 +261,7 @@ pub fn serialize_to_storage_slots(
                 );
             }
 
-            let storage_key = get_storage_key(storage_field_names, key);
+            let storage_key = get_storage_key(storage_field_path, key);
             (0..type_size_in_bytes.div_ceil(32))
                 .map(|i| add_to_b256(storage_key, i))
                 .zip((0..packed.len() / 4).map(|i| {

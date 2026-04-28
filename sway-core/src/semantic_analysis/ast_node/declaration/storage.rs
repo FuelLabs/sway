@@ -106,19 +106,7 @@ impl ty::TyStorageField {
             None,
             &self.initializer,
         )
-        .map(|constant| {
-            serialize_to_storage_slots(
-                &constant,
-                context,
-                self.namespace_names
-                    .iter()
-                    .map(|i| i.as_str().to_string())
-                    .chain(vec![self.name.as_str().to_string()])
-                    .collect(),
-                key,
-                &constant.get_content(context).ty,
-            )
-        })
+        .map(|constant| serialize_to_storage_slots(context, &constant, &self.path(), key))
     }
 
     pub(crate) fn get_key_expression_const(
