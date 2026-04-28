@@ -384,7 +384,7 @@ pub enum CompileError {
     },
     #[error("Field \"{field_name}\" has multiple definitions.")]
     StructFieldDuplicated { field_name: Ident, duplicate: Ident },
-    #[error("No function \"{expected_signature}\" found for type \"{type_name}\".{}", 
+    #[error("No function \"{expected_signature}\" found for type \"{type_name}\".{}",
         if matching_methods.is_empty() {
             "".to_string()
         } else {
@@ -1450,7 +1450,7 @@ impl ToDiagnostic for CompileError {
                 help: vec![
                     "Unlike variables, constants cannot be shadowed by other constants or variables.".to_string(),
                     match (shadowing_source, *constant_decl_span != Span::dummy()) {
-                        (LetVar | PatternMatchingStructFieldVar, false) => format!("Consider renaming either the {} \"{name}\" or the constant \"{name}\".", 
+                        (LetVar | PatternMatchingStructFieldVar, false) => format!("Consider renaming either the {} \"{name}\" or the constant \"{name}\".",
                             format!("{shadowing_source}").to_lowercase(),
                         ),
                         (Const, false) => "Consider renaming one of the constants.".to_string(),
@@ -2246,8 +2246,8 @@ impl ToDiagnostic for CompileError {
                 help: vec![
                     "Index operator `[]` can be used only on indexable types.".to_string(),
                     "In Sway, indexable types are:".to_string(),
-                    format!("{}- arrays. E.g., `[u64;3]`.", Indent::Single),
-                    format!("{}- references, direct or indirect, to arrays. E.g., `&[u64;3]` or `&&&[u64;3]`.", Indent::Single),
+                    format!("{}- arrays. E.g., `[u64;3]` or generic `[T;N]`.", Indent::Single),
+                    format!("{}- references, direct or indirect, to arrays. E.g., `&[u64;3]` or `&&&[u8;N]`.", Indent::Single),
                 ],
             },
             FieldAccessOnNonStruct { actually, storage_variable, field_name, span } => Diagnostic {
@@ -3101,7 +3101,7 @@ impl ToDiagnostic for CompileError {
                     String::new()
                 ),
                 hints: vec![],
-                help: vec![format!("Trait{} implemented for types:\n{}", if trait_names.len() > 1 {"s"} else {""}, trait_types_and_spans.iter().enumerate().map(|(e, (type_id, name))| 
+                help: vec![format!("Trait{} implemented for types:\n{}", if trait_names.len() > 1 {"s"} else {""}, trait_types_and_spans.iter().enumerate().map(|(e, (type_id, name))|
                     format!("#{} {} for {}", e, name, type_id.clone())
                 ).collect::<Vec<_>>().join("\n"))],
             },
