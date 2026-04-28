@@ -796,7 +796,7 @@ impl<'a> FnCompiler<'a> {
                 self.compile_storage_access(
                     context,
                     md_mgr,
-                    access.storage_field_names.clone(),
+                    access.storage_field_path.clone(),
                     access.struct_field_names.clone(),
                     key,
                     &access.fields,
@@ -5494,7 +5494,7 @@ impl<'a> FnCompiler<'a> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        storage_field_names: Vec<String>,
+        storage_field_path: Vec<String>,
         struct_field_names: Vec<String>,
         key: Option<U256>,
         fields: &[ty::TyStorageAccessDescriptor],
@@ -5509,7 +5509,7 @@ impl<'a> FnCompiler<'a> {
             &fields[1..],
         )?;
 
-        // Get the IR type of the storage variable.
+        // Get the IR type of the storage field.
         let base_type = convert_resolved_typeid_no_span(
             self.engines,
             context,
@@ -5522,7 +5522,7 @@ impl<'a> FnCompiler<'a> {
         self.compile_get_storage_key(
             context,
             md_mgr,
-            storage_field_names,
+            storage_field_path,
             struct_field_names,
             key,
             &field_indices,
@@ -5616,57 +5616,94 @@ impl<'a> FnCompiler<'a> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        storage_field_names: Vec<String>,
+        storage_field_path: Vec<String>,
         struct_field_names: Vec<String>,
         key: Option<U256>,
         indices: &[u64],
         base_type: &Type,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
+        // `storage_field_key` is the `b256` key of the slot of the
+        // field in a storage declaration, given by its path.
+        // Note that all eventual partial accesses to struct fields
+        // on this storage field have the same `storage_field_key`.
+        // E.g., these accesses will all have the same `storage_field_key`:
+        // - `storage.some_struct`
+        // - `storage.some_struct.some_field`
+        // - `storage.some_struct.some_field.some_subfield`
+        let storage_field_key = get_storage_key(&storage_field_path, key);
         let (path, field_id) =
-            get_storage_field_path_and_field_id(&storage_field_names, &struct_field_names);
+            get_storage_field_path_and_field_id(&storage_field_path, &struct_field_names);
 
         let storage_key = match self.module.get_storage_key(context, &path) {
             Some(storage_key) => *storage_key,
             None => {
-                // Get the actual storage key as a `Bytes32` as well as the offset, in words,
-                // within the slot. The offset depends on what field of the top level storage
-                // variable is being accessed.
-                let (slot, offset_within_slot) = {
-                    let offset_in_words = match base_type.get_indexed_offset(context, indices) {
-                        Some(offset_in_bytes) => {
-                            // TODO-MEMLAY: Warning! Here we make an assumption about the memory layout of structs.
-                            //       The memory layout of structs can be changed in the future.
-                            //       We will not refactor the Storage API at the moment to remove this
-                            //       assumption. It is a questionable effort because we anyhow
-                            //       want to improve and refactor Storage API in the future.
-                            assert!(
-                                offset_in_bytes % 8 == 0,
-                                "Expected struct fields to be aligned to word boundary. The field offset in bytes was {offset_in_bytes}.",
-                            );
-                            offset_in_bytes / 8
-                        }
-                        None => return Err(CompileError::Internal(
-                            "Cannot get the offset within the slot while compiling storage read.",
+                // If we are accessing the whole storage field, e.g., `storage.some_struct`
+                // the `offset_in_bytes` is always zero.
+                // If we are having a partial access and accessing a part of a struct within
+                // the storage field, e.g., `storage.some_struct.some_field.some_subfield`
+                // `offset_in_bytes` will be the offset of the accessed field, `some_subfield`
+                // in the above example, from the beginning of the `some_struct`, and thus
+                // from the beginning of the storage slot.
+                let offset_in_bytes = match base_type.get_indexed_offset(context, indices) {
+                    Some(offset_in_bytes) => {
+                        // TODO-MEMLAY: Warning! Here we make an assumption about the memory layout of structs.
+                        //       The memory layout of structs can be changed in the future.
+                        //       We will not refactor the Storage API at the moment to remove this
+                        //       assumption. It is a questionable effort because we anyhow
+                        //       want to improve and refactor Storage API in the future.
+                        assert!(
+                            offset_in_bytes % 8 == 0,
+                            "Expected struct fields to be aligned to word boundary. The field offset in bytes was {offset_in_bytes}.",
+                        );
+                        offset_in_bytes
+                    }
+                    None => {
+                        return Err(CompileError::Internal(
+                            "Cannot get the offset within the slot while compiling getting of storage key.",
                             md_mgr
                                 .md_to_span(context, span_md_idx)
                                 .unwrap_or_else(Span::dummy),
-                        )),
-                    };
-                    let offset_in_slots = offset_in_words / 4;
-                    let offset_remaining = offset_in_words % 4;
-
-                    // The storage key we need is the storage key of the top level storage variable
-                    // plus the offset, in number of slots, computed above. The offset within this
-                    // particular slot is the remaining offset, in words.
-                    (
-                        add_to_b256(get_storage_key(storage_field_names, key), offset_in_slots),
-                        offset_remaining,
-                    )
+                        ))
+                    }
                 };
 
-                let storage_key =
-                    StorageKey::new(context, slot.into(), offset_within_slot, field_id.into());
+                let storage_key = if context.experimental.dynamic_storage {
+                    // In dynamic storage, the whole storage field content
+                    // is stored in the same slot given by `storage_field_key`.
+                    // Eventual partial access to a struct field will always
+                    // be within the `storage_field_key` slot, at the calculated
+                    // `offset_in_bytes`.
+                    StorageKey::new(
+                        context,
+                        storage_field_key.into(),
+                        offset_in_bytes,
+                        storage_field_key.into(),
+                    )
+                } else {
+                    // In storage based on 32-byte slots, the storage field content
+                    // can potentially span several slots, starting from the
+                    // `storage_field_key`.
+                    // We have to get the actual storage key of the slot,
+                    // as well as the offset, *in words*, within that slot,
+                    // at which the accessed data is stored.
+                    let offset_in_words = offset_in_bytes / 8;
+
+                    let (slot, offset_within_slot) = {
+                        let offset_in_slots = offset_in_words / 4;
+                        let offset_remaining = offset_in_words % 4;
+
+                        // The storage key we need is the storage key of the top level storage variable
+                        // plus the offset, in number of slots, computed above. The offset within this
+                        // particular slot is the remaining offset, in words.
+                        (
+                            add_to_b256(storage_field_key, offset_in_slots),
+                            offset_remaining,
+                        )
+                    };
+
+                    StorageKey::new(context, slot.into(), offset_within_slot, field_id.into())
+                };
 
                 self.module.add_storage_key(context, path, storage_key);
 
@@ -5674,14 +5711,14 @@ impl<'a> FnCompiler<'a> {
             }
         };
 
-        let storage_key = self
+        let get_storage_key_inst = self
             .current_block
             .append(context)
             .get_storage_key(storage_key)
             .add_metadatum(context, span_md_idx);
 
         Ok(TerminatorValue::new(
-            CompiledValue::InMemory(storage_key),
+            CompiledValue::InMemory(get_storage_key_inst),
             context,
         ))
     }

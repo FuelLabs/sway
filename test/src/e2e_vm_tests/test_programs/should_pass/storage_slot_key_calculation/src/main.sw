@@ -17,20 +17,34 @@ storage {
     },
 }
 
-abi TestStorageKeyCalculation {
-    #[storage(read)]
-    fn test_storage_key_calculation();
-}
-
-impl TestStorageKeyCalculation for Contract {
-    #[storage(read)]
+impl Contract {
     fn test_storage_key_calculation() {
         assert_eq(storage.a.slot(), get_storage_field_slot("storage.a"));
         assert_eq(storage.b.slot(), get_storage_field_slot("storage.b"));
-        assert_eq(storage::ns1.a.slot(), get_storage_field_slot("storage::ns1.a"));
-        assert_eq(storage::ns1.b.slot(), get_storage_field_slot("storage::ns1.b"));
-        assert_eq(storage::ns2::ns3.a.slot(), get_storage_field_slot("storage::ns2::ns3.a"));
-        assert_eq(storage::ns2::ns3.b.slot(), get_storage_field_slot("storage::ns2::ns3.b"));
+        assert_eq(
+            storage::ns1
+                .a
+                .slot(),
+            get_storage_field_slot("storage::ns1.a"),
+        );
+        assert_eq(
+            storage::ns1
+                .b
+                .slot(),
+            get_storage_field_slot("storage::ns1.b"),
+        );
+        assert_eq(
+            storage::ns2::ns3
+                .a
+                .slot(),
+            get_storage_field_slot("storage::ns2::ns3.a"),
+        );
+        assert_eq(
+            storage::ns2::ns3
+                .b
+                .slot(),
+            get_storage_field_slot("storage::ns2::ns3.b"),
+        );
     }
 }
 
@@ -46,6 +60,6 @@ fn get_storage_field_slot(field_path: str) -> b256 {
 
 #[test]
 fn test() {
-    let caller = abi(TestStorageKeyCalculation, CONTRACT_ID);
+    let caller = abi(StorageSlotKeyCalculationAbi, CONTRACT_ID);
     caller.test_storage_key_calculation();
 }

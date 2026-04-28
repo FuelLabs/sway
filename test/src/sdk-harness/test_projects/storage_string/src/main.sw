@@ -20,9 +20,16 @@ abi MyContract {
 }
 
 impl MyContract for Contract {
+    #[cfg(experimental_dynamic_storage = false)]
     #[storage(read, write)]
     fn clear_string() -> bool {
         storage.stored_string.clear()
+    }
+
+    #[cfg(experimental_dynamic_storage = true)]
+    #[storage(read, write)]
+    fn clear_string() -> bool {
+        storage.stored_string.clear_existed()
     }
 
     #[storage(read)]

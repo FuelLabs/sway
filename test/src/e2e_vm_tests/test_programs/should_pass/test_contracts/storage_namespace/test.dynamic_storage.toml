@@ -1,4 +1,5 @@
 category = "unit_tests_pass"
+experimental = { new_encoding = true, dynamic_storage = true }
 validate_abi = true
 validate_storage_slots = true
 expected_warnings = 1 # TODO-DCA: Set to zero once https://github.com/FuelLabs/sway/issues/5921 is fixed.

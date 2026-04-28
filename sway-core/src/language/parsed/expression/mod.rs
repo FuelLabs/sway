@@ -363,9 +363,19 @@ impl PartialEqWithEngines for ArrayIndexExpression {
     }
 }
 
+/// A storage access expression of the form `storage[::<namespace_name>]*<.field_name>*`.
+/// E.g.:
+/// - `storage.field`
+/// - `storage::ns1.field`
+/// - `storage::ns1::ns2.field.subfield`
 #[derive(Debug, Clone)]
 pub struct StorageAccessExpression {
+    /// The list of namespace names in the storage access expression, if any.
+    /// E.g.: for `storage::ns1::ns2.field.subfield`, this would be `["ns1", "ns2"]`.
     pub namespace_names: Vec<Ident>,
+    /// The list of field names in the storage access expression.
+    /// There must be at least one field name.
+    /// E.g.: for `storage::ns1::ns2.field.subfield`, this would be `["field", "subfield"]`.
     pub field_names: Vec<Ident>,
     pub storage_keyword_span: Span,
 }

@@ -37,9 +37,21 @@ impl StorageBytesTest for Contract {
         assert(bytes == stored_bytes);
     }
 
+    #[cfg(experimental_dynamic_storage = false)]
     #[storage(read, write)]
     fn clear_stored_bytes() -> bool {
         let cleared = storage.bytes.clear();
+
+        assert(storage.bytes.len() == 0);
+        assert(storage.bytes.read_slice().is_none());
+
+        cleared
+    }
+
+    #[cfg(experimental_dynamic_storage = true)]
+    #[storage(read, write)]
+    fn clear_stored_bytes() -> bool {
+        let cleared = storage.bytes.clear_existed();
 
         assert(storage.bytes.len() == 0);
         assert(storage.bytes.read_slice().is_none());

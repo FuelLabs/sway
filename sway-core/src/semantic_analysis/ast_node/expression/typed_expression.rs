@@ -1229,7 +1229,7 @@ impl ty::TyExpression {
         handler: &Handler,
         ctx: TypeCheckContext,
         namespace_names: &[Ident],
-        checkee: &[Ident],
+        field_names: &[Ident],
         storage_keyword_span: Span,
         span: &Span,
     ) -> Result<Self, ErrorEmitted> {
@@ -1253,45 +1253,46 @@ impl ty::TyExpression {
         // Do all namespace checking here!
         let (storage_access, mut access_type) =
             ctx.namespace().current_module().read(engines, |m| {
-                m.root_items().apply_storage_load(
+                m.root_items().apply_storage_access(
                     handler,
                     ctx.engines,
                     ctx.namespace(),
                     namespace_names,
-                    checkee,
+                    field_names,
                     &storage_fields,
                     storage_keyword_span.clone(),
                 )
             })?;
 
-        // The type of a storage access is `std::storage::storage_key::StorageKey`. This is
-        // the path to it.
+        // The type of a storage access is `std::storage::storage_key::StorageKey<T>`.
+        // This is the path to that struct's module.
         let storage_key_mod_path = vec![
             Ident::new_with_override("std".into(), span.clone()),
             Ident::new_with_override("storage".into(), span.clone()),
             Ident::new_with_override("storage_key".into(), span.clone()),
         ];
-        let storage_key_ident = Ident::new_with_override("StorageKey".into(), span.clone());
+
+        let storage_key_struct_ident = Ident::new_with_override("StorageKey".into(), span.clone());
 
         // Search for the struct declaration with the call path above.
-        let storage_key_decl = resolve_call_path(
+        let storage_key_struct_decl = resolve_call_path(
             handler,
             engines,
             ctx.namespace(),
             &storage_key_mod_path,
-            &storage_key_ident.into(),
+            &storage_key_struct_ident.into(),
             None,
             VisibilityCheck::No,
         )?;
 
-        let storage_key_struct_decl_id = storage_key_decl
+        let storage_key_struct_decl_id = storage_key_struct_decl
             .expect_typed()
             .to_struct_decl(handler, engines)?;
         let mut storage_key_struct_decl =
             (*decl_engine.get_struct(&storage_key_struct_decl_id)).clone();
 
-        // Set the type arguments to `StorageKey` to the `access_type`, which is represents the
-        // type of the data that the `StorageKey` "points" to.
+        // Set the type argument `T` of `StorageKey<T>` to the `access_type`,
+        // which represents the type of the data that the `StorageKey` "points" to.
         let mut type_arguments = vec![GenericArgument::Type(GenericTypeArgument {
             initial_type_id: access_type,
             type_id: access_type,
@@ -1299,7 +1300,7 @@ impl ty::TyExpression {
             call_path_tree: None,
         })];
 
-        // Monomorphize the generic `StorageKey` type given the type argument specified above
+        // Monomorphize the generic `StorageKey<T>` type given the type argument specified above.
         let mut ctx = ctx;
         ctx.monomorphize(
             handler,
@@ -1310,7 +1311,7 @@ impl ty::TyExpression {
             span,
         )?;
 
-        // Update `access_type` to be the type of the monomorphized struct after inserting it
+        // Update the `access_type` to be the type of the monomorphized struct after inserting it
         // into the type engine
         let storage_key_struct_decl_ref = decl_engine.insert(
             storage_key_struct_decl,
