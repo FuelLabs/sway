@@ -1,6 +1,6 @@
 [project]
 authors = ["Fuel Labs <contact@fuel.sh>"]
 license = "Apache-2.0"
-name = "array_bad_index"
+name = "array_invalid_index_type"
 entry = "main.sw"
 implicit-std = false

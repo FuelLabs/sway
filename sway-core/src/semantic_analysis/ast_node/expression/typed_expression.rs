@@ -2778,32 +2778,10 @@ impl ty::TyExpression {
                         actually = (*engines.te().get(referenced_type.type_id)).clone();
                     }
                     match actually {
-                        TypeInfo::Array(elem_ty, array_length)
-                            if array_length.expr().as_literal_val().is_some() =>
-                        {
+                        TypeInfo::Array(elem_ty, array_length) => {
                             parent_rover = symbol;
                             symbol = elem_ty.type_id;
                             symbol_span = index_span.clone();
-
-                            if let Some(index_literal) = index
-                                .expression
-                                .as_literal()
-                                .and_then(|x| x.cast_value_to_u64())
-                            {
-                                // SAFETY: safe by the guard above
-                                let array_length = array_length
-                                    .expr()
-                                    .as_literal_val()
-                                    .expect("unexpected non literal array length")
-                                    as u64;
-                                if index_literal >= array_length {
-                                    return Err(handler.emit_err(CompileError::ArrayOutOfBounds {
-                                        index: index_literal,
-                                        count: array_length,
-                                        span: index.span.clone(),
-                                    }));
-                                }
-                            }
 
                             // `index_span` does not contain the enclosing square brackets.
                             // Which means, if this array index access is the last one before the
@@ -2814,6 +2792,25 @@ impl ty::TyExpression {
                             // TODO: Include the closing square bracket into the error span.
                             // https://github.com/FuelLabs/sway/issues/7023
                             full_span_for_error = Span::join(full_span_for_error, index_span);
+
+                            if let Some(index_literal) = index
+                                .expression
+                                .as_literal()
+                                .and_then(|x| x.cast_value_to_u64())
+                            {
+                                if let Some(array_length) = array_length.expr().as_literal_val() {
+                                    let array_length = array_length as u64;
+                                    if index_literal >= array_length {
+                                        return Err(handler.emit_err(
+                                            CompileError::ArrayOutOfBounds {
+                                                index: index_literal,
+                                                count: array_length,
+                                                span: index.span.clone(),
+                                            },
+                                        ));
+                                    }
+                                }
+                            }
                         }
                         _ => {
                             return Err(handler.emit_err(CompileError::NotIndexable {
