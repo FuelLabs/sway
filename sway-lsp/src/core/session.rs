@@ -1,3 +1,5 @@
+//! Session-scoped LSP operations, compilation helpers, and AST traversal entry points.
+
 use crate::{
     capabilities::{
         self,
@@ -13,7 +15,7 @@ use crate::{
     server_state::{self, CompilationContext, CompiledPrograms, RunnableMap},
     traverse::{
         dependency, lexed_tree::LexedTree, parsed_tree::ParsedTree, typed_tree::TypedTree,
-        ParseContext,
+        with_traversal_thread_pool, ParseContext,
     },
 };
 use forc_pkg as pkg;
@@ -363,41 +365,45 @@ pub fn traverse(
         // We do an extensive traversal of the users program to populate the token_map.
         // Perhaps we should do this for the workspace now as well and not just the workspace member?
         // if program_path == member_path {
-        if program_path
-            .to_str()
-            .unwrap()
-            .contains(SyncWorkspace::LSP_TEMP_PREFIX)
-        {
-            // First, populate our token_map with sway keywords.
-            let lexed_tree = LexedTree::new(&ctx);
-            lexed_tree.collect_module_kinds(lexed);
-            parse_lexed_program(lexed, &ctx, modified_file, |an, _ctx| {
-                lexed_tree.traverse_node(an)
-            });
+        // Keep all traversal work on the larger-stack Rayon pool so semantic token collection
+        // does not inherit the smaller default worker stacks after a successful compile.
+        with_traversal_thread_pool(|| {
+            if program_path
+                .to_str()
+                .unwrap()
+                .contains(SyncWorkspace::LSP_TEMP_PREFIX)
+            {
+                // First, populate our token_map with sway keywords.
+                let lexed_tree = LexedTree::new(&ctx);
+                lexed_tree.collect_module_kinds(lexed);
+                parse_lexed_program(lexed, &ctx, modified_file, |an, _ctx| {
+                    lexed_tree.traverse_node(an)
+                });
 
-            // Next, populate our token_map with un-typed yet parsed ast nodes.
-            let parsed_tree = ParsedTree::new(&ctx);
-            parsed_tree.collect_module_spans(parsed);
-            parse_ast_to_tokens(parsed, &ctx, modified_file, |an, _ctx| {
-                parsed_tree.traverse_node(an)
-            });
+                // Next, populate our token_map with un-typed yet parsed ast nodes.
+                let parsed_tree = ParsedTree::new(&ctx);
+                parsed_tree.collect_module_spans(parsed);
+                parse_ast_to_tokens(parsed, &ctx, modified_file, |an, _ctx| {
+                    parsed_tree.traverse_node(an)
+                });
 
-            // Finally, populate our token_map with typed ast nodes.
-            let typed_tree = TypedTree::new(&ctx);
-            typed_tree.collect_module_spans(&root_module);
-            parse_ast_to_typed_tokens(&root_module, &ctx, modified_file, |node, _ctx| {
-                typed_tree.traverse_node(node);
-            });
-        } else {
-            // Collect tokens from dependencies and the standard library prelude.
-            parse_ast_to_tokens(parsed, &ctx, modified_file, |an, ctx| {
-                dependency::collect_parsed_declaration(an, ctx);
-            });
+                // Finally, populate our token_map with typed ast nodes.
+                let typed_tree = TypedTree::new(&ctx);
+                typed_tree.collect_module_spans(&root_module);
+                parse_ast_to_typed_tokens(&root_module, &ctx, modified_file, |node, _ctx| {
+                    typed_tree.traverse_node(node);
+                });
+            } else {
+                // Collect tokens from dependencies and the standard library prelude.
+                parse_ast_to_tokens(parsed, &ctx, modified_file, |an, ctx| {
+                    dependency::collect_parsed_declaration(an, ctx);
+                });
 
-            parse_ast_to_typed_tokens(&root_module, &ctx, modified_file, |node, ctx| {
-                dependency::collect_typed_declaration(node, ctx);
-            });
-        }
+                parse_ast_to_typed_tokens(&root_module, &ctx, modified_file, |node, ctx| {
+                    dependency::collect_typed_declaration(node, ctx);
+                });
+            }
+        });
 
         // Update the compiled program in the cache.
         let compiled_program = value.expect("value was checked above");
