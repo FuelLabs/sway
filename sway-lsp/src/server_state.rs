@@ -212,6 +212,10 @@ impl ServerState {
         }
     }
 
+    /// Attempts to start the dedicated compilation worker once.
+    ///
+    /// The caller owns the retry policy so thread-spawn failures can be logged and retried
+    /// without duplicating the worker setup logic.
     fn try_spawn_compilation_thread(
         is_compiling: Arc<AtomicBool>,
         retrigger_compilation: Arc<AtomicBool>,
@@ -235,6 +239,11 @@ impl ServerState {
             .map(|_| ())
     }
 
+    /// Runs the long-lived compilation worker loop for the language server.
+    ///
+    /// This owns the queue-driven compile lifecycle after startup succeeds: receive the next
+    /// compilation request, update worker-visible state, perform the compile/traversal work,
+    /// and notify waiters when the queue has been drained.
     fn run_compilation_thread(
         is_compiling: Arc<AtomicBool>,
         retrigger_compilation: Arc<AtomicBool>,
