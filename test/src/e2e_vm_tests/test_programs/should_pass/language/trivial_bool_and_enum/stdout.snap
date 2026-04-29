@@ -1,0 +1,78 @@
+---
+source: test/src/snapshot/mod.rs
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_bool_and_enum
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_bool_and_enum
+   Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert)
+   Compiling script trivial_bool_and_enum (test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_bool_and_enum)
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_bool_and_enum/src/main.sw:9:4
+   |
+ 7 | }
+ 8 | 
+ 9 | fn encode_decode(s: SomeEnum) -> SomeEnum {
+   |    ------------- This function is never called.
+10 |     let bytes = encode(s);
+11 |     abi_decode::<TrivialEnum<SomeEnum>>(bytes).unwrap()
+   |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_bool_and_enum/src/main.sw:22:9
+   |
+20 |     let bytes = encode(SomeEnum::A(1));
+21 |     let s = abi_decode::<MyStruct>(bytes);
+22 |     let e = s.a.unwrap();
+   |         - This declaration is never used.
+23 | }
+24 | 
+   |
+____
+
+error: Type is not trivially decodable
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_bool_and_enum/src/main.sw:15:8
+   |
+...
+15 | struct MyStruct {
+   |        ^^^^^^^^ `MyStruct` is not trivially decodable.
+   |        -------- help: Consider changing `MyStruct` to make it trivially decodable.
+   |
+   = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
+____
+
+  Aborting due to 1 error.
+error: Failed to compile trivial_bool_and_enum
+
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_bool_and_enum --logs
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_bool_and_enum
+   Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert)
+   Compiling script trivial_bool_and_enum (test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_bool_and_enum)
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_bool_and_enum/src/main.sw:22:9
+   |
+20 |     let bytes = encode(SomeEnum::A(1));
+21 |     let s = abi_decode::<MyStruct>(bytes);
+22 |     let e = s.a.unwrap();
+   |         - This declaration is never used.
+23 | }
+24 | 
+   |
+____
+
+error: Type is not trivially decodable
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_bool_and_enum/src/main.sw:15:8
+   |
+...
+15 | struct MyStruct {
+   |        ^^^^^^^^ `MyStruct` is not trivially decodable.
+   |        -------- help: Consider changing `MyStruct` to make it trivially decodable.
+   |
+   = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
+____
+
+  Aborting due to 1 error.
+error: Failed to compile trivial_bool_and_enum
