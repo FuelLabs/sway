@@ -21,9 +21,16 @@ pub fn init(command: TemplateCommand) -> Result<()> {
         .clone()
         .unwrap_or_else(|| format!("{}-template-source", command.project_name));
 
+    let reference = if let Some(rev) = &command.rev {
+        source::git::Reference::Rev(rev.clone())
+    } else if let Some(tag) = &command.tag {
+        source::git::Reference::Tag(tag.clone())
+    } else {
+        source::git::Reference::DefaultBranch
+    };
     let source = source::git::Source {
         repo: Url::from_str(&command.url)?,
-        reference: source::git::Reference::DefaultBranch,
+        reference,
     };
 
     let current_dir = &env::current_dir()?;

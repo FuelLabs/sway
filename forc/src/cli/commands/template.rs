@@ -22,6 +22,14 @@ pub struct Command {
 
     /// The name of the project that will be created
     pub project_name: String,
+
+    /// A git tag to use for the template, e.g. `v0.1.0`.
+    #[clap(long)]
+    pub tag: Option<String>,
+
+    /// A specific git revision (commit hash) to use for the template.
+    #[clap(long)]
+    pub rev: Option<String>,
 }
 
 pub(crate) fn exec(command: Command) -> ForcResult<()> {
