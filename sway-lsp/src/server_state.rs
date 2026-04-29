@@ -43,6 +43,9 @@ use tokio::sync::Notify;
 use tower_lsp::{jsonrpc, Client};
 
 const DEFAULT_SESSION_CACHE_CAPACITY: usize = 4;
+// The dedicated compilation worker needs more headroom than the default thread stack because
+// reparsing can walk deeply nested generated std expressions before control returns to the LSP.
+const COMPILATION_THREAD_STACK_SIZE: usize = 32 * 1024 * 1024;
 
 pub type RunnableMap = DashMap<PathBuf, Vec<Box<dyn Runnable>>>;
 
@@ -183,95 +186,103 @@ impl ServerState {
         let finished_compilation = self.finished_compilation.clone();
         let rx = self.cb_rx.clone();
         let last_compilation_state = self.last_compilation_state.clone();
-        std::thread::spawn(move || {
-            while let Ok(msg) = rx.recv() {
-                match msg {
-                    TaskMessage::CompilationContext(ctx) => {
-                        let uri = &ctx.uri;
-                        let path = uri.to_file_path().unwrap();
-                        let mut engines_clone = ctx.engines.read().clone();
-                        let lsp_mode = Some(LspConfig {
-                            optimized_build: ctx.optimized_build,
-                            file_versions: ctx.file_versions.clone(),
-                        });
+        std::thread::Builder::new()
+            .name("sway-lsp-compile".into())
+            // LSP reparsing can hit deep recursive compiler transforms in std.
+            .stack_size(COMPILATION_THREAD_STACK_SIZE)
+            .spawn(move || {
+                while let Ok(msg) = rx.recv() {
+                    match msg {
+                        TaskMessage::CompilationContext(ctx) => {
+                            let uri = &ctx.uri;
+                            let path = uri.to_file_path().unwrap();
+                            let mut engines_clone = ctx.engines.read().clone();
+                            let lsp_mode = Some(LspConfig {
+                                optimized_build: ctx.optimized_build,
+                                file_versions: ctx.file_versions.clone(),
+                            });
 
-                        let (needs_reprocessing, _) =
-                            needs_reprocessing(&ctx.token_map, &path, lsp_mode.as_ref());
+                            let (needs_reprocessing, _) =
+                                needs_reprocessing(&ctx.token_map, &path, lsp_mode.as_ref());
 
-                        // Perform garbage collection if enabled and if the file has been modified to manage memory usage.
-                        if ctx.gc_options.gc_enabled && needs_reprocessing {
-                            // Call this on the engines clone so we don't clear types that are still in use
-                            // and might be needed in the case cancel compilation was triggered.
-                            if let Err(err) =
-                                session::garbage_collect_module(&mut engines_clone, uri)
-                            {
-                                tracing::error!(
-                                    "Unable to perform garbage collection: {}",
-                                    err.to_string()
-                                );
-                            }
-                        }
-
-                        // Set the is_compiling flag to true so that the wait_for_parsing function knows that we are compiling
-                        is_compiling.store(true, Ordering::SeqCst);
-                        match session::parse_project(
-                            uri,
-                            &engines_clone,
-                            Some(retrigger_compilation.clone()),
-                            &ctx,
-                            lsp_mode.as_ref(),
-                        ) {
-                            Ok(()) => {
-                                // Use the uri to get the metrics for the program
-                                match ctx.compiled_programs.program_from_uri(uri, &engines_clone) {
-                                    Some(program) => {
-                                        // It's very important to check if the workspace AST was reused to determine if we need to overwrite the engines.
-                                        // Because the engines_clone has garbage collection applied. If the workspace AST was reused, we need to keep the old engines
-                                        // as the engines_clone might have cleared some types that are still in use.
-                                        if program.value().metrics.reused_programs == 0 {
-                                            // Commit local changes in the programs, module, and function caches to the shared state.
-                                            // This ensures that any modifications made during compilation are preserved
-                                            // before we swap the engines.
-                                            engines_clone.qe().commit();
-                                            // The compiler did not reuse the workspace AST.
-                                            // We need to overwrite the old engines with the engines clone.
-                                            mem::swap(
-                                                &mut *ctx.engines.write(),
-                                                &mut engines_clone,
-                                            );
-                                        }
-                                        *last_compilation_state.write() =
-                                            LastCompilationState::Success;
-                                    }
-                                    None => {
-                                        *last_compilation_state.write() =
-                                            LastCompilationState::Failed;
-                                    }
+                            // Perform garbage collection if enabled and if the file has been modified to manage memory usage.
+                            if ctx.gc_options.gc_enabled && needs_reprocessing {
+                                // Call this on the engines clone so we don't clear types that are still in use
+                                // and might be needed in the case cancel compilation was triggered.
+                                if let Err(err) =
+                                    session::garbage_collect_module(&mut engines_clone, uri)
+                                {
+                                    tracing::error!(
+                                        "Unable to perform garbage collection: {}",
+                                        err.to_string()
+                                    );
                                 }
                             }
-                            Err(err) => {
-                                tracing::error!("{}", err.to_string());
-                                *last_compilation_state.write() = LastCompilationState::Failed;
+
+                            // Set the is_compiling flag to true so that the wait_for_parsing function knows that we are compiling
+                            is_compiling.store(true, Ordering::SeqCst);
+                            match session::parse_project(
+                                uri,
+                                &engines_clone,
+                                Some(retrigger_compilation.clone()),
+                                &ctx,
+                                lsp_mode.as_ref(),
+                            ) {
+                                Ok(()) => {
+                                    // Use the uri to get the metrics for the program
+                                    match ctx
+                                        .compiled_programs
+                                        .program_from_uri(uri, &engines_clone)
+                                    {
+                                        Some(program) => {
+                                            // It's very important to check if the workspace AST was reused to determine if we need to overwrite the engines.
+                                            // Because the engines_clone has garbage collection applied. If the workspace AST was reused, we need to keep the old engines
+                                            // as the engines_clone might have cleared some types that are still in use.
+                                            if program.value().metrics.reused_programs == 0 {
+                                                // Commit local changes in the programs, module, and function caches to the shared state.
+                                                // This ensures that any modifications made during compilation are preserved
+                                                // before we swap the engines.
+                                                engines_clone.qe().commit();
+                                                // The compiler did not reuse the workspace AST.
+                                                // We need to overwrite the old engines with the engines clone.
+                                                mem::swap(
+                                                    &mut *ctx.engines.write(),
+                                                    &mut engines_clone,
+                                                );
+                                            }
+                                            *last_compilation_state.write() =
+                                                LastCompilationState::Success;
+                                        }
+                                        None => {
+                                            *last_compilation_state.write() =
+                                                LastCompilationState::Failed;
+                                        }
+                                    }
+                                }
+                                Err(err) => {
+                                    tracing::error!("{}", err.to_string());
+                                    *last_compilation_state.write() = LastCompilationState::Failed;
+                                }
+                            }
+
+                            // Reset the flags to false
+                            is_compiling.store(false, Ordering::SeqCst);
+                            retrigger_compilation.store(false, Ordering::SeqCst);
+
+                            // Make sure there isn't any pending compilation work
+                            if rx.is_empty() {
+                                // finished compilation, notify waiters
+                                finished_compilation.notify_waiters();
                             }
                         }
-
-                        // Reset the flags to false
-                        is_compiling.store(false, Ordering::SeqCst);
-                        retrigger_compilation.store(false, Ordering::SeqCst);
-
-                        // Make sure there isn't any pending compilation work
-                        if rx.is_empty() {
-                            // finished compilation, notify waiters
-                            finished_compilation.notify_waiters();
+                        TaskMessage::Terminate => {
+                            // If we receive a terminate message, we need to exit the thread
+                            return;
                         }
                     }
-                    TaskMessage::Terminate => {
-                        // If we receive a terminate message, we need to exit the thread
-                        return;
-                    }
                 }
-            }
-        });
+            })
+            .expect("failed to spawn sway-lsp compilation thread");
     }
 
     /// Spawns a new thread dedicated to checking if the client process is still active,

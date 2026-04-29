@@ -1,5 +1,9 @@
+//! Shared traversal context and execution helpers for AST-to-token passes.
+
 use crate::core::{token::TokenIdent, token_map::TokenMap};
+use rayon::{ThreadPool, ThreadPoolBuilder};
 use rayon_cond::CondIterator;
+use std::sync::OnceLock;
 use sway_core::{namespace::Package, Engines};
 
 pub(crate) mod dependency;
@@ -34,6 +38,29 @@ pub trait Parse {
 
 /// Determines the threshold a collection must meet to be processed in parallel.
 const PARALLEL_THRESHOLD: usize = 8;
+// Typed-token traversal can recurse through large generated std ASTs on Rayon workers.
+const TRAVERSAL_THREAD_STACK_SIZE: usize = 32 * 1024 * 1024;
+
+static TRAVERSAL_THREAD_POOL: OnceLock<ThreadPool> = OnceLock::new();
+
+fn traversal_thread_pool() -> &'static ThreadPool {
+    TRAVERSAL_THREAD_POOL.get_or_init(|| {
+        ThreadPoolBuilder::new()
+            .thread_name(|index| format!("sway-lsp-traverse-{index}"))
+            // Typed-token traversal can recurse deeply through large generated std ASTs.
+            .stack_size(TRAVERSAL_THREAD_STACK_SIZE)
+            .build()
+            .expect("failed to build sway-lsp traversal thread pool")
+    })
+}
+
+/// Runs traversal work on a dedicated Rayon pool with a larger stack than the global pool.
+///
+/// This keeps semantic-token and dependency traversal from aborting the process when
+/// deeply nested generated std ASTs overflow the default worker stack.
+pub fn with_traversal_thread_pool<T: Send>(action: impl FnOnce() -> T + Send) -> T {
+    traversal_thread_pool().install(action)
+}
 
 /// Iterates over items, choosing parallel or sequential execution based on size.
 pub fn adaptive_iter<T, F>(items: &[T], action: F)
