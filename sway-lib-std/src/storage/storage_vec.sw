@@ -1216,7 +1216,7 @@ impl<V> StorageKey<StorageVec<V>> {
     //       2. All `StorageKey<StorageVec<V>>` types will actually share the same
     //          constant value because they have the same path, and are identified
     //          in IR only by path. **This is a known limitation that can lead to
-    //          mis-compilation if 1. is solved before.**
+    //          invalid compilation if 1. is solved before.**
     //       **We can use the below constant only when both above issues are solved.**
     //       Until then, we will have a local `STORES_STORAGE_TYPE` constant in
     //       every method that needs it.
