@@ -16,6 +16,7 @@ use crate::{
     },
     semantic_analysis::{
         ast_node::{AbiMode, ConstShadowingMode},
+        semantic_definition::SemanticDefinitionId,
         Namespace,
     },
     type_system::{GenericArgument, SubstTypes, TypeId, TypeInfo},
@@ -108,6 +109,9 @@ pub struct TypeCheckContext<'a> {
     // In some nested places of the first pass we want to disable the first pass optimizations
     // To disable those optimizations we can set this to false.
     code_block_first_pass: bool,
+
+    // Associated SemanticDefinition
+    sdid: Option<SemanticDefinitionId>,
 }
 
 impl<'a> TypeCheckContext<'a> {
@@ -137,6 +141,7 @@ impl<'a> TypeCheckContext<'a> {
             experimental,
             collecting_unifications: false,
             code_block_first_pass: false,
+            sdid: None,
         }
     }
 
@@ -181,6 +186,7 @@ impl<'a> TypeCheckContext<'a> {
             experimental,
             collecting_unifications: false,
             code_block_first_pass: false,
+            sdid: None,
         }
     }
 
@@ -212,6 +218,7 @@ impl<'a> TypeCheckContext<'a> {
             experimental: self.experimental,
             collecting_unifications: self.collecting_unifications,
             code_block_first_pass: self.code_block_first_pass,
+            sdid: self.sdid,
         }
     }
 
@@ -262,6 +269,7 @@ impl<'a> TypeCheckContext<'a> {
                             experimental: ctx.experimental,
                             collecting_unifications: ctx.collecting_unifications,
                             code_block_first_pass: ctx.code_block_first_pass,
+                            sdid: ctx.sdid,
                         };
                         with_scoped_ctx(&mut ctx)
                     },
@@ -394,6 +402,14 @@ impl<'a> TypeCheckContext<'a> {
     ) -> Self {
         Self {
             const_shadowing_mode,
+            ..self
+        }
+    }
+
+    /// Map this `TypeCheckContext` instance to a new one with a associated semantic definition
+    pub(crate) fn with_semantic_definition(self, sdid: SemanticDefinitionId) -> Self {
+        Self {
+            sdid: Some(sdid),
             ..self
         }
     }
@@ -932,5 +948,9 @@ impl<'a> TypeCheckContext<'a> {
             engines,
         )
         .is_ok()
+    }
+
+    pub(crate) fn get_current_semantic_definition(&self) -> Option<SemanticDefinitionId> {
+        self.sdid
     }
 }

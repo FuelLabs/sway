@@ -61,19 +61,13 @@ where
     }
 }
 
-impl<T> ConcurrentSlab<T>
-where
-    T: Clone,
-{
-    #[allow(dead_code)]
-    pub fn len(&self) -> usize {
+impl<T> ConcurrentSlab<T> {
+    pub fn get(&self, index: usize) -> Arc<T> {
         let inner = self.inner.read();
-        inner.items.len()
-    }
-
-    pub fn values(&self) -> Vec<Arc<T>> {
-        let inner = self.inner.read();
-        inner.items.iter().filter_map(|x| x.clone()).collect()
+        inner.items[index]
+            .as_ref()
+            .expect("invalid slab index for ConcurrentSlab::get")
+            .clone()
     }
 
     pub fn insert(&self, value: T) -> usize {
@@ -92,6 +86,22 @@ where
             inner.items.len() - 1
         }
     }
+}
+
+impl<T> ConcurrentSlab<T>
+where
+    T: Clone,
+{
+    #[allow(dead_code)]
+    pub fn len(&self) -> usize {
+        let inner = self.inner.read();
+        inner.items.len()
+    }
+
+    pub fn values(&self) -> Vec<Arc<T>> {
+        let inner = self.inner.read();
+        inner.items.iter().filter_map(|x| x.clone()).collect()
+    }
 
     pub fn replace(&self, index: usize, new_value: T) -> Option<T> {
         let mut inner = self.inner.write();
@@ -105,14 +115,6 @@ where
         let item = inner.items.get_mut(index)?;
         let old = item.replace(new_value)?;
         Arc::into_inner(old)
-    }
-
-    pub fn get(&self, index: usize) -> Arc<T> {
-        let inner = self.inner.read();
-        inner.items[index]
-            .as_ref()
-            .expect("invalid slab index for ConcurrentSlab::get")
-            .clone()
     }
 
     /// Improve performance by avoiding `Arc::clone`.

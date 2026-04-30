@@ -85,6 +85,15 @@ impl ty::TyFunctionDecl {
         is_in_impl_self: bool,
         implementing_for: Option<TypeId>,
     ) -> Result<Self, ErrorEmitted> {
+        // If functions aren't allowed in this location, return an error.
+        if ctx.functions_disallowed() {
+            return Err(handler.emit_err(CompileError::Unimplemented {
+                feature: "Declaring nested functions".to_string(),
+                help: vec![],
+                span: fn_decl.span.clone(),
+            }));
+        }
+
         let FunctionDeclaration {
             name,
             body: _,
@@ -103,15 +112,6 @@ impl ty::TyFunctionDecl {
 
         let type_engine = ctx.engines.te();
 
-        // If functions aren't allowed in this location, return an error.
-        if ctx.functions_disallowed() {
-            return Err(handler.emit_err(CompileError::Unimplemented {
-                feature: "Declaring nested functions".to_string(),
-                help: vec![],
-                span: span.clone(),
-            }));
-        }
-
         // Warn against non-snake case function names.
         if !is_snake_case(name.as_str()) {
             handler.emit_warn(CompileWarning {
@@ -120,9 +120,12 @@ impl ty::TyFunctionDecl {
             })
         }
 
+        let sdid = ctx.engines.sde().new_semantic_definition();
+
         // create a namespace for the function
         ctx.by_ref()
             .with_const_shadowing_mode(ConstShadowingMode::Sequential)
+            .with_semantic_definition(sdid)
             .disallow_functions()
             .scoped(handler, Some(span.clone()), |ctx| {
                 // Type check the type parameters.
@@ -247,6 +250,8 @@ impl ty::TyFunctionDecl {
                         FunctionDeclarationKind::Test => ty::TyFunctionDeclKind::Test,
                         FunctionDeclarationKind::Main => ty::TyFunctionDeclKind::Main,
                     },
+                    sdid: Some(sdid),
+                    tid_map: HashMap::default(),
                 };
 
                 Ok(function_decl)
@@ -262,6 +267,7 @@ impl ty::TyFunctionDecl {
         // create a namespace for the function
         ctx.by_ref()
             .with_const_shadowing_mode(ConstShadowingMode::Sequential)
+            .with_semantic_definition(*ty_fn_decl.sdid.as_ref().expect("missing semantic definition"))
             .disallow_functions()
             .scoped(handler, Some(fn_decl.span.clone()), |ctx| {
                 let FunctionDeclaration { body, .. } = fn_decl;
@@ -300,8 +306,16 @@ impl ty::TyFunctionDecl {
                     .with_type_annotation(return_type.type_id)
                     .with_function_type_annotation(return_type.type_id);
 
+                ctx.engines.te().start_capturing_duplicates();
                 let body = ty::TyCodeBlock::type_check(handler, ctx.by_ref(), body, true)
                     .unwrap_or_else(|_err| ty::TyCodeBlock::default());
+                let tid_map = ctx.engines.te().end_capturing_duplicates().unwrap();
+                assert!(tid_map.is_empty());
+
+                let sdid = ctx.get_current_semantic_definition().expect("expected semantic definition");
+                let sd = ctx.engines.sde().get(sdid);
+                let solver = sd.solver(ctx.engines, handler);
+                let _ = solver.solve();
 
                 ty_fn_decl.body = body;
                 ty_fn_decl.is_type_check_finalized = true;
@@ -410,6 +424,8 @@ fn test_function_selector_behavior() {
         is_trait_method_dummy: false,
         is_type_check_finalized: true,
         kind: ty::TyFunctionDeclKind::Default,
+        sdid: None,
+        tid_map: HashMap::default(),
     };
 
     let selector_text = decl
@@ -461,6 +477,8 @@ fn test_function_selector_behavior() {
         is_trait_method_dummy: false,
         is_type_check_finalized: true,
         kind: ty::TyFunctionDeclKind::Default,
+        sdid: None,
+        tid_map: HashMap::default(),
     };
 
     let selector_text = decl
