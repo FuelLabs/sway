@@ -19,12 +19,10 @@ const NUM_OF_NESTED_VECTORS: u64 = 7;
 #[allow(dead_code)] // TODO-DCA: Remove this `allow` once https://github.com/FuelLabs/sway/issues/7462 is fixed.
 const NUM_OF_ELEMENTS: u64 = 11;
 
-#[cfg(experimental_dynamic_storage = false)]
 storage {
     //vec_of_vec: StorageVec<StorageVec<u64>> = StorageVec {},
 }
 
-#[cfg(experimental_dynamic_storage = false)]
 #[allow(dead_code)] // TODO-DCA: Remove this `allow` once https://github.com/FuelLabs/sway/issues/7462 is fixed.
 #[storage(read, write)]
 fn assert_push_and_get_impl<T>(
@@ -69,7 +67,6 @@ where
     }
 }
 
-#[cfg(experimental_dynamic_storage = false)]
 impl Contract {
     // Note that zero-sized types like, e.g., `()`, `[u64;0]`, or `EmptyStruct`,
     // by definition of the storage access semantics, cannot be stored in
@@ -112,7 +109,6 @@ impl Contract {
     }
 }
 
-#[cfg(experimental_dynamic_storage = false)]
 #[test]
 fn push_and_get() {
     let contract_abi = abi(StorageVecOfStorageVecContractTestsAbi, CONTRACT_ID);
