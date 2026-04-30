@@ -665,7 +665,8 @@ impl TestInstance for StructA {
 pub struct StructB {
     f_struct_a: StructA,
     f_tuple: (u8, u16, u32, u64, u256),
-    // TODO-IG!: Add link to GitHub issue.
+    // TODO: Uncomment below fields once
+    //       https://github.com/FuelLabs/sway/issues/7616 is resolved.
     // f_array_u8_len_2: ArrayU8Len2,
     // f_array_nested_array_u8_len_2_len_3: ArrayNestedArrayU8Len2Len3,
     f_array_u8_len_2: [u8; 2],
@@ -700,7 +701,8 @@ impl TestInstance for StructB {
                 u64::default(),
                 u256::default(),
             ),
-            // TODO-IG!: Add link to GitHub issue.
+            // TODO: Uncomment below fields and their related code once
+            //       https://github.com/FuelLabs/sway/issues/7616 is resolved.
             // f_array_u8_len_2: ArrayU8Len2::default(count),
             // f_array_nested_array_u8_len_2_len_3: ArrayNestedArrayU8Len2Len3::default(count),
             f_array_u8_len_2: [u8::default(); 2],
@@ -715,7 +717,8 @@ impl TestInstance for StructB {
         let u32_values = u32::instances(count);
         let u64_values = u64::instances(count);
         let u256_values = u256::instances(count);
-        // TODO-IG!: Add link to GitHub issue.
+        // TODO: Uncomment below code
+        //       https://github.com/FuelLabs/sway/issues/7616 is resolved.
         // let array_u8_len_2_values = ArrayU8Len2::instances(count);
         // let array_nested_array_u8_len_2_len_3_values = ArrayNestedArrayU8Len2Len3::instances(count);
 
@@ -733,7 +736,8 @@ impl TestInstance for StructB {
                 ),
                 f_array_u8_len_2: [u8_values.get(i).unwrap(); 2],
                 f_array_nested_array_u8_len_2_len_3: [[u8_values.get(i).unwrap(); 2]; 3],
-                // TODO-IG!: Add link to GitHub issue.
+                // TODO: Uncomment below code
+                //       https://github.com/FuelLabs/sway/issues/7616 is resolved.
                 // f_array_u8_len_2: array_u8_len_2_values.get(i).unwrap(),
                 // f_array_nested_array_u8_len_2_len_3:
                 //     array_nested_array_u8_len_2_len_3_values.get(i).unwrap(),

@@ -1212,7 +1212,7 @@ impl<V> StorageKey<StorageVec<V>> {
     //       declared here as an associated constant. This is currently not possible
     //       because of these two limitations:
     //       1. Having the below `const` uncommented causes compiler panic:
-    //          TODO-IG!: Add link to GitHub issue.
+    //          https://github.com/FuelLabs/sway/issues/7615
     //       2. All `StorageKey<StorageVec<V>>` types will actually share the same
     //          constant value because they have the same path, and are identified
     //          in IR only by path. **This is a known limitation that can lead to
