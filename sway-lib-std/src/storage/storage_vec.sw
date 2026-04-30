@@ -1480,7 +1480,7 @@ impl<V> StorageKey<StorageVec<V>> {
             if index >= len {
                 panic StorageVecError::IndexOutOfBounds(OutOfBounds {
                     length: len,
-                    index
+                    index,
                 });
             }
 
@@ -1506,8 +1506,11 @@ impl<V> StorageKey<StorageVec<V>> {
                     .copy_bytes_to(content_after_removed_ptr, content_after_removed_len);
 
                 // Finally, copy the copy of the trailing content back into the original content.
-                content_after_removed_ptr
-                    .copy_bytes_to(content_ptr.add::<u8>(index_offset), content_after_removed_len);
+                content_after_removed_ptr.copy_bytes_to(
+                    content_ptr
+                        .add::<u8>(index_offset),
+                    content_after_removed_len,
+                );
             }
 
             // 4. Write new content without the removed element to storage.
@@ -1581,7 +1584,7 @@ impl<V> StorageKey<StorageVec<V>> {
             if index >= len {
                 panic StorageVecError::IndexOutOfBounds(OutOfBounds {
                     length: len,
-                    index
+                    index,
                 });
             }
 
@@ -1662,11 +1665,17 @@ impl<V> StorageKey<StorageVec<V>> {
             if index >= len {
                 panic StorageVecError::IndexOutOfBounds(OutOfBounds {
                     length: len,
-                    index
+                    index,
                 });
             }
 
-            __state_update_slot(self.field_id(), __addr_of::<V>(value), index * __size_of::<V>(), __size_of::<V>());
+            __state_update_slot(
+                self
+                    .field_id(),
+                __addr_of::<V>(value),
+                index * __size_of::<V>(),
+                __size_of::<V>(),
+            );
         }
     }
 
@@ -1730,7 +1739,7 @@ impl<V> StorageKey<StorageVec<V>> {
             if index > len {
                 panic StorageVecError::IndexOutOfBounds(OutOfBounds {
                     length: len,
-                    index
+                    index,
                 });
             }
 
@@ -1745,12 +1754,24 @@ impl<V> StorageKey<StorageVec<V>> {
                 let _ = __state_load_slot(self.field_id(), content_ptr, 0, len_in_bytes);
 
                 // 2. Write the `value` at `index`.
-                __state_update_slot(self.field_id(), __addr_of::<V>(value), index_offset, __size_of::<V>());
+                __state_update_slot(
+                    self
+                        .field_id(),
+                    __addr_of::<V>(value),
+                    index_offset,
+                    __size_of::<V>(),
+                );
 
                 // 3. Write the previous content that should come after the inserted `value`.
                 let content_after_index_ptr = content_ptr.add::<u8>(index_offset);
                 let content_after_index_len = len_in_bytes - index_offset;
-                __state_update_slot(self.field_id(), content_after_index_ptr, index_offset + __size_of::<V>(), content_after_index_len);
+                __state_update_slot(
+                    self
+                        .field_id(),
+                    content_after_index_ptr,
+                    index_offset + __size_of::<V>(),
+                    content_after_index_len,
+                );
             }
         }
     }
@@ -1929,8 +1950,7 @@ impl<V> StorageKey<StorageVec<V>> {
             content_ptr
                 .add::<u8>(element2_offset)
                 .copy_bytes_to(content_ptr.add::<u8>(element1_offset), size_of_v);
-            element1_value_ptr
-                .copy_bytes_to(content_ptr.add::<u8>(element2_offset), size_of_v);
+            element1_value_ptr.copy_bytes_to(content_ptr.add::<u8>(element2_offset), size_of_v);
 
             __state_store_slot(self.field_id(), content_ptr, len_in_bytes);
         }
@@ -2101,9 +2121,7 @@ impl<V> StorageKey<StorageVec<V>> {
                 let right_offset = (len - i - 1) * size_of_v;
 
                 // tmp <- left.
-                content_ptr
-                    .add::<u8>(left_offset)
-                    .copy_bytes_to(tmp_ptr, size_of_v);
+                content_ptr.add::<u8>(left_offset).copy_bytes_to(tmp_ptr, size_of_v);
 
                 // right -> left.
                 content_ptr
@@ -2111,8 +2129,7 @@ impl<V> StorageKey<StorageVec<V>> {
                     .copy_bytes_to(content_ptr.add::<u8>(left_offset), size_of_v);
 
                 // tmp -> right.
-                tmp_ptr
-                    .copy_bytes_to(content_ptr.add::<u8>(right_offset), size_of_v);
+                tmp_ptr.copy_bytes_to(content_ptr.add::<u8>(right_offset), size_of_v);
 
                 i += 1;
             }
@@ -2183,8 +2200,7 @@ impl<V> StorageKey<StorageVec<V>> {
 
             let mut i = 0;
             while i < len {
-                value_ptr
-                    .copy_bytes_to(content_ptr.add::<u8>(i * size_of_v), size_of_v);
+                value_ptr.copy_bytes_to(content_ptr.add::<u8>(i * size_of_v), size_of_v);
                 i += 1;
             }
 
@@ -2283,8 +2299,7 @@ impl<V> StorageKey<StorageVec<V>> {
                 let value_ptr = __addr_of::<V>(value);
                 let mut i = len;
                 while i < new_len {
-                    value_ptr
-                        .copy_bytes_to(content_ptr.add::<u8>(i * size_of_v), size_of_v);
+                    value_ptr.copy_bytes_to(content_ptr.add::<u8>(i * size_of_v), size_of_v);
                     i += 1;
                 }
             }
