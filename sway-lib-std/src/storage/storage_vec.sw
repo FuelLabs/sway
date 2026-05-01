@@ -955,19 +955,18 @@ impl<V> StorageKey<StorageVec<V>> {
 
         let size_V_bytes = __size_of::<V>();
 
-        // Handle cases where elements are less than the size of word and pad to the size of a word
-        let slice = if size_V_bytes < 8 {
+        // Handle cases where elements are not aligned to word boundaries and pad them.
+        let slice = if size_V_bytes % 8 != 0 {
             let vec_slice = vec.as_raw_slice();
-            let number_of_words = 8 * vec.len();
+            let size_V_bytes_padded = ((size_V_bytes + 7) / 8) * 8;
+            let number_of_words = size_V_bytes_padded * vec.len();
             let ptr = alloc_bytes(number_of_words);
             let mut i = 0;
             while i < vec.len() {
-                // Insert into raw slice as offsets of 1 word per element
-                // (size_of_word * element)
                 vec_slice
                     .ptr()
                     .add::<V>(i)
-                    .copy_bytes_to(ptr.add_uint_offset(8 * i), size_V_bytes);
+                    .copy_bytes_to(ptr.add_uint_offset(size_V_bytes_padded * i), size_V_bytes);
                 i += 1;
             }
 
@@ -1044,27 +1043,25 @@ impl<V> StorageKey<StorageVec<V>> {
                 // Get the number of storage slots needed based on the size.
                 let size_V_bytes = __size_of::<V>();
 
-                let bytes = if size_V_bytes < 8 {
-                    // Len * size_of_word
-                    len * 8
+                let bytes = if size_V_bytes % 8 != 0 {
+                    let size_V_bytes_padded = ((size_V_bytes + 7) / 8) * 8;
+                    len * size_V_bytes_padded
                 } else {
                     len * size_V_bytes
                 };
 
                 let number_of_slots = (bytes + 31) >> 5;
                 let ptr = alloc_bytes(number_of_slots * 32);
-                // Load the stored slice into the pointer.
                 let _ = __state_load_quad(sha256(self.field_id()), ptr, number_of_slots);
 
-                if size_V_bytes < 8 {
+                if size_V_bytes % 8 != 0 {
                     let len_bytes = len * size_V_bytes;
+                    let size_V_bytes_padded = ((size_V_bytes + 7) / 8) * 8;
                     let new_vec = alloc_bytes(len_bytes);
                     let mut i = 0;
                     while i < len {
-                        // The stored vec is offset with 1 word per element, remove the padding for elements less than the size of a word
-                        // (size_of_word * element)
                         ptr
-                            .add_uint_offset((8 * i))
+                            .add_uint_offset((size_V_bytes_padded * i))
                             .copy_bytes_to(new_vec.add::<V>(i), size_V_bytes);
                         i += 1;
                     }
