@@ -76,14 +76,14 @@ where
     expected_after_insertions.push(inserted_front);
 
     let mut i = 0;
-    while i < middle_index {
+    while i < middle_index - 1 {
         expected_after_insertions.push(expected_values.get(i).unwrap());
         i += 1;
     }
 
     expected_after_insertions.push(inserted_middle);
 
-    let mut i = middle_index;
+    let mut i = middle_index - 1;
     while i < NUM_OF_ELEMENTS {
         expected_after_insertions.push(expected_values.get(i).unwrap());
         i += 1;
