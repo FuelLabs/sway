@@ -15,6 +15,11 @@ pub fn assert_non_zero_sized_type<T>() {
 }
 
 pub type ArrayU8Len2 = [u8; 2];
+pub type ArrayU8Len5 = [u8; 5];
+pub type ArrayU8Len6 = [u8; 6];
+pub type ArrayU8Len8 = [u8; 8];
+pub type ArrayU8Len12 = [u8; 12];
+pub type ArrayU8Len13 = [u8; 13];
 pub type ArrayU64Len3 = [u64; 3];
 pub type ArrayNestedArrayU8Len2Len3 = [ArrayU8Len2; 3];
 
@@ -194,6 +199,28 @@ impl TestInstance for str[2] {
     }
 }
 
+impl TestInstance for str[5] {
+    fn default() -> Self {
+        __to_str_array(".....")
+    }
+
+    fn instances(count: u64) -> Vec<Self> {
+        let mut res = Vec::new();
+        let mut i = 0;
+        while i < count {
+            let string: str[5] = match i % 3 {
+                0 => __to_str_array("a1a1a"),
+                1 => __to_str_array("b2c3b"),
+                2 => __to_str_array("d4e5f"),
+                _ => __to_str_array("....."),
+            };
+            res.push(string);
+            i += 1;
+        }
+        res
+    }
+}
+
 impl TestInstance for str[6] {
     fn default() -> Self {
         __to_str_array("......")
@@ -252,6 +279,28 @@ impl TestInstance for str[12] {
                 1 => __to_str_array("b2c3b2c3b2c3"),
                 2 => __to_str_array("d4e5f6g7h8i9"),
                 _ => __to_str_array("............"),
+            };
+            res.push(string);
+            i += 1;
+        }
+        res
+    }
+}
+
+impl TestInstance for str[13] {
+    fn default() -> Self {
+        __to_str_array(".............")
+    }
+
+    fn instances(count: u64) -> Vec<Self> {
+        let mut res = Vec::new();
+        let mut i = 0;
+        while i < count {
+            let string: str[13] = match i % 3 {
+                0 => __to_str_array("a1a1a1a1a1a1a"),
+                1 => __to_str_array("b2c3b2c3b2c3b"),
+                2 => __to_str_array("d4e5f6g7h8i9j"),
+                _ => __to_str_array("............."),
             };
             res.push(string);
             i += 1;
