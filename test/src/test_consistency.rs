@@ -76,7 +76,7 @@ fn check_test_forc_tomls(all_tests_dir: &Path) -> Result<()> {
         let toml = content.parse::<Table>().unwrap();
 
         // Skip over workspace configs. We want to test only project configs.
-        if content.starts_with("[workspace]") {
+        if toml.contains_key("workspace") {
             continue;
         }
 
