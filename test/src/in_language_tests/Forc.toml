@@ -1,4 +1,12 @@
-# TODO: Enable this workspace `Forc.toml` once https://github.com/FuelLabs/sway/issues/7613 is fixed.
+# TODO: Use this workspace `Forc.toml` once https://github.com/FuelLabs/sway/issues/7613 is fixed.
+#       We might decide to generate this `Forc.toml` file on-the-fly or remove it altogether,
+#       depending on the outcome of https://github.com/FuelLabs/sway/issues/7617.
+#
+#       Currently, we keep it because the `did_open_all_members_in_examples` test in `sway-lsp`
+#       requires it. Note that we still commented out storage tests. With them included, the
+#       `did_open_all_members_in_examples` runs a few minutes, compared to one minute when they
+#       are excluded, and the memory consumption jumps for ~10GB. The root cause is likely the
+#       same as in https://github.com/FuelLabs/sway/issues/7613.
 [workspace]
 members = [
 "test_programs/address_inline_tests",
@@ -31,19 +39,19 @@ members = [
 "test_programs/result_inline_tests",
 "test_programs/revert_inline_tests",
 "test_programs/storage_key_inline_tests",
-"test_programs/storage_vec_fill_contract_tests",
-"test_programs/storage_vec_insert_contract_tests",
-"test_programs/storage_vec_iter_contract_tests",
-"test_programs/storage_vec_load_vec_contract_tests",
-"test_programs/storage_vec_of_storage_vec_contract_tests",
-"test_programs/storage_vec_push_pop_get_len_first_last_is_empty_contract_tests",
-"test_programs/storage_vec_remove_contract_tests",
-"test_programs/storage_vec_resize_contract_tests",
-"test_programs/storage_vec_reverse_contract_tests",
-"test_programs/storage_vec_set_contract_tests",
-"test_programs/storage_vec_store_vec_contract_tests",
-"test_programs/storage_vec_swap_contract_tests",
-"test_programs/storage_vec_swap_remove_contract_tests",
+# "test_programs/storage_vec_fill_contract_tests",
+# "test_programs/storage_vec_insert_contract_tests",
+# "test_programs/storage_vec_iter_contract_tests",
+# "test_programs/storage_vec_load_vec_contract_tests",
+# "test_programs/storage_vec_of_storage_vec_contract_tests",
+# "test_programs/storage_vec_push_pop_get_len_first_last_is_empty_contract_tests",
+# "test_programs/storage_vec_remove_contract_tests",
+# "test_programs/storage_vec_resize_contract_tests",
+# "test_programs/storage_vec_reverse_contract_tests",
+# "test_programs/storage_vec_set_contract_tests",
+# "test_programs/storage_vec_store_vec_contract_tests",
+# "test_programs/storage_vec_swap_contract_tests",
+# "test_programs/storage_vec_swap_remove_contract_tests",
 "test_programs/string_inline_tests",
 "test_programs/time_inline_tests",
 "test_programs/tx_inline_tests",
