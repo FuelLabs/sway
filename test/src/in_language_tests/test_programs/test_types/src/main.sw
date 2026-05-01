@@ -27,6 +27,10 @@ pub trait TestInstance {
     /// Returns a default instance of `Self`.
     fn default() -> Self;
 
+    /// Returns a typical (non-zero, non-default-looking) instance of `Self`.
+    /// Whenever possible, this is different from `default()`.
+    fn typical_value() -> Self;
+
     /// Returns a [Vec] of `count` quasi-random instances of `Self`.
     fn instances(count: u64) -> Vec<Self>;
 } {
@@ -47,6 +51,10 @@ impl TestInstance for bool {
         false
     }
 
+    fn typical_value() -> Self {
+        true
+    }
+
     fn instances(count: u64) -> Vec<Self> {
         let mut res = Vec::new();
         let mut i = 0;
@@ -61,6 +69,10 @@ impl TestInstance for bool {
 impl TestInstance for u8 {
     fn default() -> Self {
         0
+    }
+
+    fn typical_value() -> Self {
+        42u8
     }
 
     fn instances(count: u64) -> Vec<Self> {
@@ -83,6 +95,10 @@ impl TestInstance for u16 {
         0
     }
 
+    fn typical_value() -> Self {
+        42u16
+    }
+
     fn instances(count: u64) -> Vec<Self> {
         let mut res = Vec::new();
         res.push(1);
@@ -101,6 +117,10 @@ impl TestInstance for u16 {
 impl TestInstance for u32 {
     fn default() -> Self {
         0
+    }
+
+    fn typical_value() -> Self {
+        42u32
     }
 
     fn instances(count: u64) -> Vec<Self> {
@@ -123,6 +143,10 @@ impl TestInstance for u64 {
         0
     }
 
+    fn typical_value() -> Self {
+        42u64
+    }
+
     fn instances(count: u64) -> Vec<Self> {
         let mut res = Vec::new();
         res.push(1);
@@ -143,6 +167,10 @@ impl TestInstance for u256 {
         0u256
     }
 
+    fn typical_value() -> Self {
+        0x2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2au256
+    }
+
     fn instances(count: u64) -> Vec<Self> {
         let mut res = Vec::new();
         res.push(0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20u256);
@@ -158,6 +186,10 @@ impl TestInstance for u256 {
 impl TestInstance for str {
     fn default() -> Self {
         ""
+    }
+
+    fn typical_value() -> Self {
+        "hello"
     }
 
     fn instances(count: u64) -> Vec<Self> {
@@ -182,6 +214,10 @@ impl TestInstance for str[2] {
         __to_str_array("..")
     }
 
+    fn typical_value() -> Self {
+        __to_str_array("42")
+    }
+
     fn instances(count: u64) -> Vec<Self> {
         let mut res = Vec::new();
         let mut i = 0;
@@ -202,6 +238,10 @@ impl TestInstance for str[2] {
 impl TestInstance for str[5] {
     fn default() -> Self {
         __to_str_array(".....")
+    }
+
+    fn typical_value() -> Self {
+        __to_str_array("hello")
     }
 
     fn instances(count: u64) -> Vec<Self> {
@@ -226,6 +266,10 @@ impl TestInstance for str[6] {
         __to_str_array("......")
     }
 
+    fn typical_value() -> Self {
+        __to_str_array("fuel42")
+    }
+
     fn instances(count: u64) -> Vec<Self> {
         let mut res = Vec::new();
         let mut i = 0;
@@ -246,6 +290,10 @@ impl TestInstance for str[6] {
 impl TestInstance for str[8] {
     fn default() -> Self {
         __to_str_array("........")
+    }
+
+    fn typical_value() -> Self {
+        __to_str_array("hello_42")
     }
 
     fn instances(count: u64) -> Vec<Self> {
@@ -270,6 +318,10 @@ impl TestInstance for str[12] {
         __to_str_array("............")
     }
 
+    fn typical_value() -> Self {
+        __to_str_array("hello_world!")
+    }
+
     fn instances(count: u64) -> Vec<Self> {
         let mut res = Vec::new();
         let mut i = 0;
@@ -290,6 +342,10 @@ impl TestInstance for str[12] {
 impl TestInstance for str[13] {
     fn default() -> Self {
         __to_str_array(".............")
+    }
+
+    fn typical_value() -> Self {
+        __to_str_array("hello_world42")
     }
 
     fn instances(count: u64) -> Vec<Self> {
@@ -315,6 +371,10 @@ where
 {
     fn default() -> Self {
         [T::default(); N]
+    }
+
+    fn typical_value() -> Self {
+        [T::typical_value(); N]
     }
 
     fn instances(count: u64) -> Vec<Self> {
@@ -349,6 +409,10 @@ impl TestInstance for EmptyStruct {
         EmptyStruct {}
     }
 
+    fn typical_value() -> Self {
+        EmptyStruct {} // Zero-sized type: only one possible value.
+    }
+
     fn instances(count: u64) -> Vec<Self> {
         let mut res = Vec::new();
         let mut i = 0;
@@ -376,6 +440,10 @@ impl Eq for EnumSingleU8 {}
 impl TestInstance for EnumSingleU8 {
     fn default() -> Self {
         EnumSingleU8::A(u8::default())
+    }
+
+    fn typical_value() -> Self {
+        EnumSingleU8::A(42u8)
     }
 
     fn instances(count: u64) -> Vec<Self> {
@@ -408,6 +476,10 @@ impl TestInstance for EnumSingleU64 {
         EnumSingleU64::A(u64::default())
     }
 
+    fn typical_value() -> Self {
+        EnumSingleU64::A(42u64)
+    }
+
     fn instances(count: u64) -> Vec<Self> {
         let values = u64::instances(count);
         let mut res = Vec::new();
@@ -436,6 +508,10 @@ impl Eq for EnumSingleBool {}
 impl TestInstance for EnumSingleBool {
     fn default() -> Self {
         EnumSingleBool::A(bool::default())
+    }
+
+    fn typical_value() -> Self {
+        EnumSingleBool::A(true)
     }
 
     fn instances(count: u64) -> Vec<Self> {
@@ -471,6 +547,10 @@ impl Eq for EnumMultiUnits {}
 impl TestInstance for EnumMultiUnits {
     fn default() -> Self {
         EnumMultiUnits::A
+    }
+
+    fn typical_value() -> Self {
+        EnumMultiUnits::B
     }
 
     fn instances(count: u64) -> Vec<Self> {
@@ -511,6 +591,10 @@ impl TestInstance for EnumMultiOneByte {
         EnumMultiOneByte::A(bool::default())
     }
 
+    fn typical_value() -> Self {
+        EnumMultiOneByte::B(42u8)
+    }
+
     fn instances(count: u64) -> Vec<Self> {
         let bool_values = bool::instances(count);
         let u8_values = u8::instances(count);
@@ -547,6 +631,10 @@ impl Eq for EnumU8AndU64 {}
 impl TestInstance for EnumU8AndU64 {
     fn default() -> Self {
         EnumU8AndU64::A(u8::default())
+    }
+
+    fn typical_value() -> Self {
+        EnumU8AndU64::B(42u64)
     }
 
     fn instances(count: u64) -> Vec<Self> {
@@ -586,6 +674,10 @@ impl Eq for EnumQuadSlotSize {}
 impl TestInstance for EnumQuadSlotSize {
     fn default() -> Self {
         EnumQuadSlotSize::A(u8::default())
+    }
+
+    fn typical_value() -> Self {
+        EnumQuadSlotSize::B((42u64, 43u64, 44u64))
     }
 
     fn instances(count: u64) -> Vec<Self> {
@@ -629,6 +721,10 @@ impl Eq for EnumLargerThanQuadSlot {}
 impl TestInstance for EnumLargerThanQuadSlot {
     fn default() -> Self {
         EnumLargerThanQuadSlot::A(u8::default())
+    }
+
+    fn typical_value() -> Self {
+        EnumLargerThanQuadSlot::B((42u64, 43u64, 44u64, 45u64, 46u64))
     }
 
     fn instances(count: u64) -> Vec<Self> {
@@ -683,6 +779,17 @@ impl TestInstance for StructA {
             f_u32: u32::default(),
             f_u64: u64::default(),
             f_u256: u256::default(),
+        }
+    }
+
+    fn typical_value() -> Self {
+        StructA {
+            f_bool: bool::typical_value(),
+            f_u8: u8::typical_value(),
+            f_u16: u16::typical_value(),
+            f_u32: u32::typical_value(),
+            f_u64: u64::typical_value(),
+            f_u256: u256::typical_value(),
         }
     }
 
@@ -759,6 +866,21 @@ impl TestInstance for StructB {
         }
     }
 
+    fn typical_value() -> Self {
+        StructB {
+            f_struct_a: StructA::typical_value(),
+            f_tuple: (
+                u8::typical_value(),
+                u16::typical_value(),
+                u32::typical_value(),
+                u64::typical_value(),
+                u256::typical_value(),
+            ),
+            f_array_u8_len_2: [u8::typical_value(); 2],
+            f_array_nested_array_u8_len_2_len_3: [[u8::typical_value(); 2]; 3],
+        }
+    }
+
     fn instances(count: u64) -> Vec<Self> {
         let struct_a_values = StructA::instances(count);
         let u8_values = u8::instances(count);
@@ -802,6 +924,10 @@ impl TestInstance for (u8, u32) {
         (u8::default(), u32::default())
     }
 
+    fn typical_value() -> Self {
+        (42u8, 42u32)
+    }
+
     fn instances(count: u64) -> Vec<Self> {
         let u8_values = u8::instances(count);
         let u32_values = u32::instances(count);
@@ -818,6 +944,10 @@ impl TestInstance for (u8, u32) {
 impl TestInstance for b256 {
     fn default() -> Self {
         0u256.as_b256()
+    }
+
+    fn typical_value() -> Self {
+        0x2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2au256.as_b256()
     }
 
     fn instances(count: u64) -> Vec<Self> {
@@ -845,6 +975,13 @@ impl TestInstance for RawPtrNewtype {
             zero: raw_ptr
         };
         RawPtrNewtype { ptr: null_ptr }
+    }
+
+    fn typical_value() -> Self {
+        let null_ptr = asm() {
+            zero: raw_ptr
+        };
+        RawPtrNewtype { ptr: null_ptr.add::<u8>(42) }
     }
 
     fn instances(count: u64) -> Vec<Self> {
@@ -884,6 +1021,13 @@ impl Eq for RawPtrNewtype {}
 impl TestInstance for raw_slice {
     fn default() -> Self {
         raw_slice::from_parts::<u64>(RawPtrNewtype::default().ptr, 0)
+    }
+
+    fn typical_value() -> Self {
+        let null_ptr = asm() {
+            zero: raw_ptr
+        };
+        raw_slice::from_parts::<u8>(null_ptr, 42)
     }
 
     fn instances(count: u64) -> Vec<Self> {
