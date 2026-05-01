@@ -27,12 +27,21 @@ if [[ ! -x "$FORC" ]]; then
     exit 1
 fi
 
+# Projects under test_programs/ that are not test projects and should be skipped.
+EXCLUDED_PROJECTS=(
+    "test_types"
+)
+
 failed=()
 passed=()
 
 while IFS= read -r -d '' forc_toml; do
     project_dir="$(dirname "$forc_toml")"
     project_name="$(basename "$project_dir")"
+
+    if [[ " ${EXCLUDED_PROJECTS[*]} " == *" ${project_name} "* ]]; then
+        continue
+    fi
 
     echo ""
     echo "==> Testing: $project_name"
