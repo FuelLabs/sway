@@ -959,8 +959,8 @@ impl<V> StorageKey<StorageVec<V>> {
         let slice = if size_V_bytes % 8 != 0 {
             let vec_slice = vec.as_raw_slice();
             let size_V_bytes_padded = ((size_V_bytes + 7) / 8) * 8;
-            let number_of_words = size_V_bytes_padded * vec.len();
-            let ptr = alloc_bytes(number_of_words);
+            let number_of_bytes = size_V_bytes_padded * vec.len();
+            let ptr = alloc_bytes(number_of_bytes);
             let mut i = 0;
             while i < vec.len() {
                 vec_slice
@@ -970,7 +970,7 @@ impl<V> StorageKey<StorageVec<V>> {
                 i += 1;
             }
 
-            raw_slice::from_parts::<V>(ptr, number_of_words)
+            raw_slice::from_parts::<u8>(ptr, number_of_bytes)
         } else {
             vec.as_raw_slice()
         };
