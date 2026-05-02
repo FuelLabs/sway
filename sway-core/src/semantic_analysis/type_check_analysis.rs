@@ -61,7 +61,14 @@ impl TypeCheckAnalysisContext<'_> {
     }
 
     pub fn add_edge_from_current(&mut self, to: TyNodeDepGraphNodeId, edge: TyNodeDepGraphEdge) {
-        let from = *self.node_stack.last().unwrap();
+        // node_stack can be empty when an analysis path is reached outside a
+        // top-level item — e.g. an associated const initializer that uses an
+        // intrinsic such as `__size_of::<V>()` (#7615) is visited before any
+        // node is pushed for it. With no current node there's no edge to add;
+        // skip rather than panicking.
+        let Some(&from) = self.node_stack.last() else {
+            return;
+        };
         if !self.dep_graph.contains_edge(from, to) {
             self.dep_graph.add_edge(from, to, edge);
         }
