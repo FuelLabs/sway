@@ -413,6 +413,7 @@ impl Contract {
         let val = [42u64, 43u64];
         let len = get_runtime_len(2 * 8);
         __state_store_slot(B256_ZERO, __addr_of(val), len);
+        assert_eq(len, __state_preload(B256_ZERO));
 
         let res = [0u64; 2];
         let is_err = asm(slot: B256_ZERO, res: __addr_of(res), offset: 0) {
@@ -425,6 +426,7 @@ impl Contract {
         // Overwrite.
         let val = [42u64, 43u64, 44u64, 45u64, 46u64, 47u64, 48u64, 49u64];
         __state_store_slot(B256_ZERO, __addr_of(val), 8 * 8);
+        assert_eq(8 * 8, __state_preload(B256_ZERO));
 
         let res = [0u64; 8];
         let is_err = asm(slot: B256_ZERO, res: __addr_of(res), offset: 0, len: 8 * 8) {
@@ -433,6 +435,11 @@ impl Contract {
         };
         assert_eq(is_err, 0);
         assert_eq(res, [42u64, 43u64, 44u64, 45u64, 46u64, 47u64, 48u64, 49u64]);
+
+        // Truncate to zero.
+        let val: [u64;0] = [];
+        __state_store_slot(B256_ZERO, __addr_of(val), 0);
+        assert_eq(0, __state_preload(B256_ZERO));
     }
 
     // END: __state_store_slot
@@ -599,7 +606,7 @@ impl Contract {
         assert_eq(res, [42u64, 43u64, 44u64, 45u64, 46u64]);
     }
 
-    #[storage(read, write)]
+    #[storage(write)]
     fn state_update_slot_update_out_of_bounds() {
         let slots_data = [42u64, 43u64, 44u64, 45u64];
         __state_store_slot(B256_ZERO, __addr_of(slots_data), 4 * 8);
@@ -678,10 +685,12 @@ fn get_runtime_len(len: u64) -> u64 {
 }
 
 // TODO-DCA: Fix false DCA warning for this function as a part of https://github.com/FuelLabs/sway/issues/5921.
+#[allow(dead_code)]
 #[inline(never)]
 fn poke<T>(_t: T) { }
 
 // TODO-DCA: Fix false DCA warning for this function as a part of https://github.com/FuelLabs/sway/issues/5921.
+#[allow(dead_code)]
 #[storage(read)]
 fn read_first_word_in_quod(slot: b256) -> (u64, u64) {
     let is_set_res = (0u64, 0u64);

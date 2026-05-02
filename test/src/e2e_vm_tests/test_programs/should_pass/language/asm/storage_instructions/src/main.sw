@@ -490,7 +490,7 @@ impl Contract {
         assert_eq(res, [42u64, 43u64, 44u64, 45u64, 46u64]);
     }
 
-    #[storage(read, write)]
+    #[storage(write)]
     fn supd_offset_out_of_bounds() {
         let slots_data = [42u64, 43u64, 44u64, 45u64];
         let _ = __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
@@ -537,6 +537,29 @@ impl Contract {
         };
         assert_eq(is_err, 0);
         assert_eq(res, [42u64, 43u64, 11u64, 12u64, 13u64]);
+    }
+
+    // Updating with zero length content does not change the slot.
+    #[storage(read, write)]
+    fn supd_occupied_slots_update_with_zero_length_content() {
+        let slots_data = [42u64, 43u64, 44u64, 45u64];
+        let _ = __state_store_quad(B256_ZERO, __addr_of(slots_data), 1);
+
+        assert_eq(32, __state_preload(B256_ZERO));
+
+        asm(slot: B256_ZERO, src: asm() { zero: raw_ptr }, offset: 3 * 8, len: 0) {
+            supd slot src offset len;
+        };
+
+        assert_eq(32, __state_preload(B256_ZERO));
+
+        let res = [0u64; 4];
+        let is_err = asm(slot: B256_ZERO, res: __addr_of(res), offset: 0) {
+            srdi res slot offset i32;
+            err
+        };
+        assert_eq(is_err, 0);
+        assert_eq(res, [42u64, 43u64, 44u64, 45u64]);
     }
 
     // END: SUPD
@@ -887,6 +910,12 @@ fn test_supd_occupied_slots_overwrite() {
 fn test_supd_occupied_slots_overwrite_and_extend() {
     let caller = abi(StorageInstructionsAbi, CONTRACT_ID);
     caller.supd_occupied_slots_overwrite_and_extend();
+}
+
+#[test]
+fn test_supd_occupied_slots_update_with_zero_length_content() {
+    let caller = abi(StorageInstructionsAbi, CONTRACT_ID);
+    caller.supd_occupied_slots_update_with_zero_length_content();
 }
 
 #[test]
