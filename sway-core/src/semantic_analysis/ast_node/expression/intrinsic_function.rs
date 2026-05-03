@@ -434,10 +434,12 @@ fn type_check_elem_at(
         _ => None,
     };
     let Some((to_mutable_value, elem_type_type_id)) = elem_type else {
+        let received = type_engine.get(first_argument_type);
+        let hint = format!("Only references to arrays or slices can be used as argument here. Received: {}", engines.help_out(received.as_ref()));
         return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
             name: kind.to_string(),
             span: first_argument_span,
-            hint: "Only references to arrays or slices can be used as argument here".to_string(),
+            hint
         }));
     };
 
@@ -547,43 +549,40 @@ fn type_check_slice(
     }
 
     // first argument can be ref to array or ref to slice
+    let t = type_engine.get(first_argument_type);
     let err = CompileError::IntrinsicUnsupportedArgType {
         name: kind.to_string(),
         span: first_argument_span,
-        hint: "Only references to arrays or slices can be used as argument here".to_string(),
+        hint: format!("Only references to arrays or slices can be used as argument here. Received: {}", engines.help_out(t.as_ref())),
     };
-    let r = match &*type_engine.get(first_argument_type) {
+    let r = match t.as_ref() {
         TypeInfo::Ref {
             referenced_type,
             to_mutable_value,
-        } => match &*type_engine.get(referenced_type.type_id) {
-            TypeInfo::Array(elem_type_arg, array_len)
-                if array_len.expr().as_literal_val().is_some() =>
-            {
-                // SAFETY: safe by the guard above
-                let array_len = array_len
-                    .expr()
-                    .as_literal_val()
-                    .expect("unexpected non literal array length")
-                    as u64;
+        } => match type_engine.get(referenced_type.type_id).as_ref() {
+            TypeInfo::Array(elem_type_arg, array_len) => {
+                // We just do bound checks if the const generic has concrete value
+                if let Some(array_len) = array_len.expr().as_literal_val() {
+                    let array_len = array_len as u64;
 
-                if let Some(v) = start_literal {
-                    if v > array_len {
-                        return Err(handler.emit_err(CompileError::ArrayOutOfBounds {
-                            index: v,
-                            count: array_len,
-                            span,
-                        }));
+                    if let Some(v) = start_literal {
+                        if v > array_len {
+                            return Err(handler.emit_err(CompileError::ArrayOutOfBounds {
+                                index: v,
+                                count: array_len,
+                                span,
+                            }));
+                        }
                     }
-                }
 
-                if let Some(v) = end_literal {
-                    if v > array_len {
-                        return Err(handler.emit_err(CompileError::ArrayOutOfBounds {
-                            index: v,
-                            count: array_len,
-                            span,
-                        }));
+                    if let Some(v) = end_literal {
+                        if v > array_len {
+                            return Err(handler.emit_err(CompileError::ArrayOutOfBounds {
+                                index: v,
+                                count: array_len,
+                                span,
+                            }));
+                        }
                     }
                 }
 

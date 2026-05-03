@@ -74,16 +74,18 @@ If you need to expose a `bool` or an enum as a public argument, you can either:
 pub struct Flag(u8);  // manually validate that value <= 1
 ```
 
-1. **Custom wrappers** – Sway ships with `TrivialBool` and `TrivialEnum<T>` that enforce the bounds at compile time.
+1. **Custom wrappers** – Sway ships with `TrivialBool`, `TrivialEnum<T>` and `TrivialVec<T, N>` that enforce the bounds at compile time.
 
    ```sway
-   use sway::primitive::TrivialBool;
-   use sway::primitive::TrivialEnum;
+   use sway::codec::TrivialBool;
+   use sway::codec::TrivialEnum;
+   use sway::codec::TrivialVec;
 
    #[trivial(encode = "require", decode = "require")]
    pub struct SomeArgument {
        a: TrivialBool,
        b: TrivialEnum<SomeEnum>,
+       c: TrivialVec<u64, 16>,
    }
    ```
 
@@ -93,4 +95,5 @@ pub struct Flag(u8);  // manually validate that value <= 1
    ```sway
    let a: bool = some_argument.a.unwrap();
    let b: SomeEnum = some_argument.b.unwrap();
+   let c: &[u64] = some_argument.c.as_slice();
    ```

@@ -1151,6 +1151,7 @@ pub enum CompileError {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TrivialCheckFailedData {
     pub span: Span,
+    pub problems_qty: usize,
     pub can_be_made_trivial: Option<bool>,
     pub infos: Vec<(Span, String)>,
     pub helps: Vec<(Span, String)>,
@@ -3404,7 +3405,7 @@ impl ToDiagnostic for CompileError {
                 hints: vec![],
                 help: vec![],
             },
-            TrivialCheckFailed(TrivialCheckFailedData { span, can_be_made_trivial, infos, helps, never_trivial, bottom_helps }) => {
+            TrivialCheckFailed(TrivialCheckFailedData { span, can_be_made_trivial, infos, helps, never_trivial, bottom_helps, .. }) => {
                 let mut hints = vec![];
                 hints.extend(
                     infos.iter()

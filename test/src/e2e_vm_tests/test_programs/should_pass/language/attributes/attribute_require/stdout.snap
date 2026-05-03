@@ -5,7 +5,7 @@ source: test/src/snapshot/mod.rs
 exit status: 1
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require
-   Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-vec)
+   Compiling library std (sway-lib-std)
    Compiling script attribute_require (test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require)
 error: Type is not trivially decodable
   --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require/src/main.sw:4:8
@@ -31,9 +31,9 @@ error: Type is not trivially decodable
    |     -- info: This field is not trivially decodable.
    |         -------- help: Consider wrapping this type like `TrivialEnum<SomeEnum>`.
 15 | 
-16 |     f11: Vec<u64>,
+16 |     f11: Vec<Vec<(u64, u64)>>,
    |     --- info: This field is not trivially decodable.
-   |          -------- help: `Vec` is never trivially decodable. Consider using array instead, e.g.: `[u64; 64]`.
+   |          -------------------- help: This type is never trivially decodable. Consider using `[[(u64, u64); 64]; 64]` instead.
 17 |     f12: Result<Vec<u64>, u64>,
    |     --- info: This field is not trivially decodable.
    |          --------------------- help: Consider wrapping this type like `TrivialEnum<Result<Vec<u64>, u64>>`.

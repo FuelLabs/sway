@@ -13,7 +13,7 @@ struct MyStruct {
     f8: NonTrivialStruct,
     f9: SomeEnum,
 
-    f11: Vec<u64>,
+    f11: Vec<Vec<(u64, u64)>>,
     f12: Result<Vec<u64>, u64>,
     f13: Result<u64, u64>,
 

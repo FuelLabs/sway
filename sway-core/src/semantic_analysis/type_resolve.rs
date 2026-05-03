@@ -5,15 +5,9 @@ use sway_error::{
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    ast_elements::type_parameter::{ConstGenericExpr, ConstGenericExprTyDecl},
-    language::{
-        ty::{self, TyDecl, TyTraitItem},
-        CallPath, CallPathType, QualifiedCallPath,
-    },
-    monomorphization::type_decl_opt_to_type_id,
-    namespace::{Module, ModulePath, ResolvedDeclaration, ResolvedTraitImplItem},
-    type_system::SubstTypes,
-    EnforceTypeArguments, Engines, Length, Namespace, SubstTypesContext, TypeId, TypeInfo,
+    EnforceTypeArguments, Engines, Length, Namespace, SubstTypesContext, TypeId, TypeInfo, ast_elements::type_parameter::{ConstGenericExpr, ConstGenericExprTyDecl}, language::{
+        CallPath, CallPathType, QualifiedCallPath, ty::{self, TyDecl, TyTraitItem}
+    }, monomorphization::type_decl_opt_to_type_id, namespace::{Module, ModulePath, ResolvedDeclaration, ResolvedTraitImplItem}, type_system::SubstTypes
 };
 
 use super::namespace::TraitMap;
@@ -61,7 +55,7 @@ fn resolve_length(
             let decl = match resolved_decl {
                 TyDecl::ConstGenericDecl(decl) => ConstGenericExprTyDecl::ConstGenericDecl(decl),
                 TyDecl::ConstantDecl(decl) => ConstGenericExprTyDecl::ConstantDecl(decl),
-                _ => unreachable!(),
+                x => todo!("{x:?} {}", std::backtrace::Backtrace::force_capture()),
             };
 
             Ok(Length(ConstGenericExpr::AmbiguousVariableExpression {

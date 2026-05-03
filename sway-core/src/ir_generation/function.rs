@@ -687,7 +687,7 @@ impl<'a> FnCompiler<'a> {
                 span_md_idx,
             ),
             ty::TyExpressionVariant::ArrayIndex { prefix, index } => {
-                self.compile_array_index(context, md_mgr, prefix, index, span_md_idx)
+                self.compile_indexing(context, md_mgr, prefix, index, span_md_idx)
             }
             ty::TyExpressionVariant::StructExpression { fields, .. } => {
                 self.compile_struct_expr(context, md_mgr, ast_expr, fields, span_md_idx)
@@ -2897,17 +2897,17 @@ impl<'a> FnCompiler<'a> {
     fn ptr_to_first_element(
         &mut self,
         context: &mut Context,
-        first_argument_expr: &TyExpression,
-        first_argument_value: Value,
+        expr: &TyExpression,
+        value: Value,
         md_mgr: &mut MetadataManager,
     ) -> Result<(Value, TypeId), CompileError> {
         let te = self.engines.te();
 
         let err = CompileError::TypeArgumentsNotAllowed {
-            span: first_argument_expr.span.clone(),
+            span: expr.span.clone(),
         };
 
-        let (is_slice, elem_ty) = match &*te.get(first_argument_expr.return_type) {
+        let (is_slice, elem_ty) = match te.get(expr.return_type).as_ref() {
             TypeInfo::Ref {
                 referenced_type, ..
             } => match &*te.get(referenced_type.type_id) {
@@ -2915,6 +2915,7 @@ impl<'a> FnCompiler<'a> {
                 TypeInfo::Slice(elem_ty) => Ok((true, elem_ty.type_id)),
                 _ => Err(err),
             },
+            TypeInfo::Slice(elem_ty) => Ok((true, elem_ty.type_id)),
             _ => Err(err),
         }?;
 
@@ -2922,7 +2923,7 @@ impl<'a> FnCompiler<'a> {
             // Load from the first element of the slice
             let ptr_arg = AsmArg {
                 name: Ident::new_no_span("ptr".into()),
-                initializer: Some(first_argument_value),
+                initializer: Some(value),
             };
             let ptr_out_arg = AsmArg {
                 name: Ident::new_no_span("ptr_out".into()),
@@ -2935,7 +2936,7 @@ impl<'a> FnCompiler<'a> {
                 self.module,
                 Some(self),
                 elem_ty,
-                &first_argument_expr.span.clone(),
+                &expr.span.clone(),
             )?;
             let return_type = Type::new_typed_pointer(context, elem_ir_ty);
             let ptr_to_first_element = self.current_block.append(context).asm_block(
@@ -2946,7 +2947,7 @@ impl<'a> FnCompiler<'a> {
             );
             Ok((ptr_to_first_element, elem_ty))
         } else {
-            Ok((first_argument_value, elem_ty))
+            Ok((value, elem_ty))
         }
     }
 
@@ -5177,32 +5178,33 @@ impl<'a> FnCompiler<'a> {
         ))
     }
 
-    fn compile_array_index(
-        &mut self,
+    fn compile_indexing_arrays(
+         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        array_expr: &ty::TyExpression,
+        prefix_expr: &ty::TyExpression,
         index_expr: &ty::TyExpression,
         span_md_idx: Option<MetadataIndex>,
+        prefix_val: Value,
+        index_val: Value,
     ) -> Result<TerminatorValue, CompileError> {
-        let array_val = return_on_termination_or_extract!(
-            self.compile_expression_to_memory(context, md_mgr, array_expr)?
-        )
-        .expect_memory();
-
-        // Get the array type and confirm it's an array.
-        let array_type = array_val
+        let index_expr_span = index_expr.span.clone();
+        let array_type = prefix_val
             .get_type(context)
             .and_then(|ty| ty.get_pointee_type(context))
             .and_then(|ty| ty.is_array(context).then_some(ty))
             .ok_or_else(|| {
                 CompileError::Internal(
                     "Unsupported array value for index expression.",
-                    array_expr.span.clone(),
+                    prefix_expr.span.clone(),
                 )
             })?;
-
-        let index_expr_span = index_expr.span.clone();
+        let elem_type = array_type.get_array_elem_type(context).ok_or_else(|| {
+            CompileError::Internal(
+                "Array type is already confirmed as an array. Getting the element type can't fail.",
+                prefix_expr.span.clone(),
+            )
+        })?;
 
         // Perform a bounds check if the array index is a constant int.
         if let Ok(ConstantContent {
@@ -5229,24 +5231,66 @@ impl<'a> FnCompiler<'a> {
             }
         }
 
-        let index_val = return_on_termination_or_extract!(
+        let val = self
+            .current_block
+            .append(context)
+            .get_elem_ptr(prefix_val, elem_type, vec![index_val])
+            .add_metadatum(context, span_md_idx);
+        Ok(TerminatorValue::new(CompiledValue::InMemory(val), context))
+    }
+
+    fn compile_indexing_slices(
+        &mut self,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        prefix_expr: &ty::TyExpression,
+        _index_expr: &ty::TyExpression,
+        _span_md_idx: Option<MetadataIndex>,
+        prefix_value: Value,
+        index_value: Value,
+    ) -> Result<TerminatorValue, CompileError> {
+        let (ptr, elem_type_id) = self.ptr_to_first_element(context, prefix_expr, prefix_value, md_mgr)?;
+        let (ptr_to_elem, _) = self.advance_ptr_n_elements(
+            context,
+            md_mgr,
+            prefix_expr,
+            ptr,
+            elem_type_id,
+            index_value,
+        )?;
+
+        Ok(TerminatorValue::new(CompiledValue::InMemory(ptr_to_elem), context))
+    }
+
+    fn compile_indexing(
+        &mut self,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        prefix_expr: &ty::TyExpression,
+        index_expr: &ty::TyExpression,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Result<TerminatorValue, CompileError> {
+        let prefix_value = return_on_termination_or_extract!(
+            self.compile_expression_to_memory(context, md_mgr, prefix_expr)?
+        )
+        .expect_memory();
+        let prefix_type = prefix_value.get_type(context).unwrap();
+
+        let index_value = return_on_termination_or_extract!(
             self.compile_expression_to_register(context, md_mgr, index_expr)?
         )
         .expect_register();
 
-        let elem_type = array_type.get_array_elem_type(context).ok_or_else(|| {
-            CompileError::Internal(
-                "Array type is already confirmed as an array. Getting the element type can't fail.",
-                array_expr.span.clone(),
-            )
-        })?;
-
-        let val = self
-            .current_block
-            .append(context)
-            .get_elem_ptr(array_val, elem_type, vec![index_val])
-            .add_metadatum(context, span_md_idx);
-        Ok(TerminatorValue::new(CompiledValue::InMemory(val), context))
+        match prefix_type.get_content(context) {
+            TypeContent::TypedPointer(p) => {
+                match p.get_content(context) {
+                    TypeContent::Array(..) => self.compile_indexing_arrays(context, md_mgr, prefix_expr, index_expr, span_md_idx, prefix_value, index_value),
+                    _ => todo!(),
+                }
+            },
+            TypeContent::TypedSlice(..) => self.compile_indexing_slices(context, md_mgr, prefix_expr, index_expr, span_md_idx, prefix_value, index_value),
+            _ => todo!(),
+        }
     }
 
     fn compile_struct_expr(

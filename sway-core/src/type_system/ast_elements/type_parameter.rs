@@ -768,6 +768,7 @@ impl GenericTypeParameter {
         let mut impld_item_refs: ItemMap = BTreeMap::new();
         let engines = ctx.engines();
 
+        dbg!(type_parameters);
         handler.scope(|handler| {
             for type_param in type_parameters.iter().filter_map(|x| x.as_type_parameter()) {
                 let GenericTypeParameter {

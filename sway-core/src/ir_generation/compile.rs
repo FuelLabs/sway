@@ -5,21 +5,11 @@ use super::{
     CompiledFunctionCache,
 };
 use crate::{
-    decl_engine::{DeclEngineGet, DeclId, DeclRefFunction},
-    ir_generation::{
-        const_eval::compile_constant_expression_to_constant, KeyedTyFunctionDecl,
-        PanickingFunctionCache,
-    },
-    language::{
-        ty::{self, TyExpression},
-        Visibility,
-    },
-    metadata::MetadataManager,
-    namespace::ResolvedDeclaration,
-    semantic_analysis::namespace,
-    type_system::TypeId,
-    types::{LogId, MessageId},
-    Engines, PanicOccurrences, PanickingCallOccurrences, TypeInfo,
+    Engines, PanicOccurrences, PanickingCallOccurrences, TypeInfo, decl_engine::{DeclEngineGet, DeclId, DeclRefFunction}, ir_generation::{
+        KeyedTyFunctionDecl, PanickingFunctionCache, const_eval::compile_constant_expression_to_constant
+    }, language::{
+        Visibility, ty::{self, TyExpression, TyStructDecl}
+    }, metadata::MetadataManager, namespace::ResolvedDeclaration, semantic_analysis::namespace, type_system::TypeId, types::{LogId, MessageId}
 };
 use std::{
     cell::Cell,
@@ -658,6 +648,7 @@ pub fn run_ir_decl_checks(
             span: type_ref_span
                 .clone()
                 .unwrap_or_else(|| type_decl_span.clone().unwrap()),
+            problems_qty: 0,
             can_be_made_trivial: None,
             infos: vec![],
             helps: vec![],
@@ -687,16 +678,31 @@ pub fn run_ir_decl_checks(
             &mut error,
         )?;
 
-        let errors_count = error.infos.len()
-            + error.helps.len()
-            + error.bottom_helps.len()
-            + error.never_trivial.len();
-        if errors_count > 0 {
+        if error.problems_qty > 0 {
             errors.push(error);
         }
     }
 
     Ok(errors)
+}
+
+// Deal with well-known structs like Vec, String, Bytes
+ fn replace_known_types_with_suggestion(engines: &Engines, replaced: bool, decl_id: &DeclId<TyStructDecl>, original_span: &Span) -> (bool, String) {
+    let decl = engines.de().get(decl_id);
+    let full_call_path = decl.call_path.to_string();
+    if full_call_path == "std::vec::Vec" {
+        let elem_type = decl.generic_parameters.first().and_then(|x| x.as_type_parameter()).unwrap();
+        let elem_type_info = engines.te().get(elem_type.type_id);
+        let (_, suggestion) = if let TypeInfo::Struct(decl_id) = elem_type_info.as_ref() {
+            replace_known_types_with_suggestion(engines, true, &decl_id, &elem_type.span())
+        } else {
+            (true, engines.help_out(elem_type_info.as_ref()).to_string())
+        };
+
+        (true, format!("TrivialVec<{suggestion}, MAX_LEN>"))
+    } else {
+        (replaced, original_span.as_str().to_string())
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -753,6 +759,7 @@ fn push_help_if_non_trivially_decodable_type(
                         continue;
                     }
 
+                    error.problems_qty += 1;
                     error.infos.push((
                         field.name.span().clone(),
                         "This field is not trivially decodable.".to_string(),
@@ -813,21 +820,12 @@ fn push_help_if_non_trivially_decodable_type(
                 ));
                 error.bottom_helps.insert("Enums are represented as tagged unions and because of that they cannot be trivially decoded. But where needed, they can be wrapped by `TrivialEnum`, and their original value can be retrieved later with `unwrap`.".to_string());
             }
-            TypeInfo::Struct(_) => {
-                // special types
-                let full_type = engines.help_out(type_info).to_string();
-                if full_type.starts_with("std::vec::Vec<") {
-                    let aray_type_name = full_type
-                        .replace("std::vec::Vec<", "[")
-                        .replace(">", "; 64]");
+            TypeInfo::Struct(decl_id) => {
+                let (replaced, suggestion) = replace_known_types_with_suggestion(engines, false, decl_id, &type_ref_span);
+                if replaced {
                     error.helps.push((
                         type_ref_span.clone(),
-                        format!("`Vec` is never trivially decodable. Consider using array instead, e.g.: `{aray_type_name}`.")
-                    ));
-                } else if full_type.starts_with("std::string::String") {
-                    error.helps.push((
-                        type_ref_span.clone(),
-                        "`String` is never trivially decodable. Consider using array instead, e.g.: `str[64]`.".to_string()
+                        format!("This type is never trivially decodable. Consider using `{suggestion}` instead.")
                     ));
                 }
             }
@@ -952,10 +950,12 @@ fn compile_fn(
     }
 
     let mut ref_mut_args = rustc_hash::FxHashSet::default();
+    dbg!(ast_fn_decl.name.as_str());
     let mut args = ast_fn_decl
         .parameters
         .iter()
         .map(|param| {
+            dbg!(param.name.as_str(), engines.help_out(param.type_argument.type_id));
             // Convert to an IR type.
             convert_resolved_type_id(
                 engines,

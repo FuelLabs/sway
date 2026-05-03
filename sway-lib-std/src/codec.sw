@@ -3733,7 +3733,7 @@ impl TrivialBool {
         }
     }
 
-    fn is_valid(self) -> bool {
+    pub fn is_valid(self) -> bool {
         match self.value {
             0 => true,
             1 => true,
@@ -3741,7 +3741,7 @@ impl TrivialBool {
         }
     }
 
-    fn unwrap(self) -> bool {
+    pub fn unwrap(self) -> bool {
         match self.value {
             0 => false,
             1 => true,
@@ -3916,3 +3916,84 @@ fn trivial_enum_when_invalid_unwrap() {
     let e = __transmute::<[u8; 16], TrivialEnum<EnumTesting>>([0u8, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0]);
     let _ = e.unwrap();
 }
+
+pub struct TrivialVec<T, const N: u64> {
+    len: u64,
+    items: [T; N],
+}
+
+impl<T, const N: u64> TrivialVec<T, N> {
+    pub fn new() -> Self {
+        const LENGTH: u64 = __size_of::<T>() * N;
+        let array = [0u8; LENGTH];
+        let items: &[T; N] = __transmute::<&[u8; LENGTH], &[T; N]>(&array);
+        Self {
+            items: *items,
+            len: 0,
+        }
+    }
+
+    pub fn len(self) -> u64 {
+        self.len
+    }
+
+    pub fn push(ref mut self, item: T) -> bool {
+        if self.len >= N {
+            false
+        } else {
+            let slot: &mut T = __elem_at(&mut self.items, self.len);
+            *slot = item;
+            self.len += 1;
+            true
+        }
+    }
+
+    pub fn as_slice(self) -> &[T] {
+        __slice(&self.items, 0, self.len)
+    }
+}
+
+impl<T, const N: u64> AbiEncode for TrivialVec<T, N>
+where
+    T: AbiEncode,
+{
+    fn is_encode_trivial() -> bool {
+        T::is_encode_trivial()
+    }
+
+    fn abi_encode(self, buffer: Buffer) -> Buffer {
+        let buffer = self.len.abi_encode(buffer);
+        let buffer = self.items.abi_encode(buffer);
+        buffer
+    }
+}
+
+impl<T, const N: u64> AbiDecode for TrivialVec<T, N>
+where
+    T: AbiDecode,
+{
+    fn is_decode_trivial() -> bool {
+        T::is_decode_trivial()
+    }
+
+    fn abi_decode(ref mut buffer: BufferReader) -> Self {
+        let len = buffer.decode::<u64>();
+        let items = buffer.decode::<[T; N]>();
+        TrivialVec { len, items }
+    }
+}
+
+
+#[test]
+fn trivial_vec_must_work() {
+    let mut v = TrivialVec::<u64, 4>::new();
+    assert_eq(v.push(1), true, 0);
+    assert_eq(v.push(2), true, 1);
+    assert_eq(v.len(), 2, 2);
+
+    let slice = v.as_slice();
+    assert_eq(slice.len(), 2, 3);
+    assert_eq(slice[0], 1, 4);
+    assert_eq(slice[1], 2, 5);
+}
+

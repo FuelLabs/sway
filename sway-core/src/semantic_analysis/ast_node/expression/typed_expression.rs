@@ -661,6 +661,11 @@ impl ty::TyExpression {
                     return_type,
                     ..
                 } = *decl;
+
+                if decl_name.as_str() == "vvvvv" {
+                    dbg!(decl_name.as_str(), return_type, engines.help_out(return_type));
+                }
+
                 ty::TyExpression {
                     return_type,
                     expression: ty::TyExpressionVariant::VariableExpression {
@@ -1184,6 +1189,7 @@ impl ty::TyExpression {
         };
         let mut typed_field_types = Vec::with_capacity(fields.len());
         let mut typed_fields = Vec::with_capacity(fields.len());
+
         for (i, field) in fields.iter().enumerate() {
             let field_type = field_type_opt
                 .as_ref()
@@ -1212,11 +1218,18 @@ impl ty::TyExpression {
             });
             typed_fields.push(typed_field);
         }
+
+        let return_type = ctx.engines.te().insert_tuple(engines, typed_field_types);
+
+        if span.as_str().contains("vvvvv") {
+            dbg!(return_type, engines.help_out(return_type));
+        }
+
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::Tuple {
                 fields: typed_fields,
             },
-            return_type: ctx.engines.te().insert_tuple(engines, typed_field_types),
+            return_type,
             span,
         };
         Ok(exp)
@@ -2200,11 +2213,9 @@ impl ty::TyExpression {
             ty::TyExpression::type_check(handler, ctx, prefix)?
         });
 
-        let mut current_type = type_engine.get_unaliased(current_prefix_te.return_type);
-
-        let prefix_type_id = current_prefix_te.return_type;
+        
         let prefix_span = current_prefix_te.span.clone();
-
+        
         // Create the prefix part of the final array index expression.
         // This might be an expression that directly evaluates to an array type,
         // or an arbitrary number of dereferencing expressions where the last one
@@ -2212,8 +2223,9 @@ impl ty::TyExpression {
         //
         // We will either hit an array at the end or return an error, so the
         // loop cannot be endless.
-        while !current_type.is_array() {
-            match &*current_type {
+        let mut current_type = type_engine.get_unaliased(current_prefix_te.return_type);
+        loop {
+            match current_type.as_ref() {
                 TypeInfo::Ref {
                     referenced_type, ..
                 } => {
@@ -2228,17 +2240,21 @@ impl ty::TyExpression {
                     current_type = type_engine.get_unaliased(referenced_type_id);
                 }
                 TypeInfo::ErrorRecovery(err) => return Err(*err),
-                _ => {
-                    return Err(handler.emit_err(CompileError::NotIndexable {
-                        actually: engines.help_out(prefix_type_id).to_string(),
-                        span: prefix_span,
-                    }))
+                final_type_info => {
+                    current_type = std::sync::Arc::new(final_type_info.clone());
+                    break;
                 }
             };
         }
 
-        let TypeInfo::Array(array_type_argument, _) = &*current_type else {
-            panic!("The current type must be an array.");
+        let array_type_argument = match current_type.as_ref() {
+            TypeInfo::Array(elem_type, _) | TypeInfo::Slice(elem_type) => elem_type,
+            _ => {
+                return Err(handler.emit_err(CompileError::NotIndexable {
+                    actually: engines.help_out(current_type.as_ref()).to_string(),
+                    span: prefix_span,
+                }))
+            }
         };
 
         let index_te = {
