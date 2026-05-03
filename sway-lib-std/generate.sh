@@ -1,12 +1,24 @@
 #! /bin/bash
 
+# Use GNU sed (`gsed` on macOS via `brew install gnu-sed`); BSD sed in-place
+# semantics differ and break the substitutions below.
+SED=${SED:-sed}
+if ! $SED --version >/dev/null 2>&1; then
+    if command -v gsed >/dev/null 2>&1; then
+        SED=gsed
+    else
+        echo "GNU sed is required (install with 'brew install gnu-sed' on macOS)." >&2
+        exit 1
+    fi
+fi
+
 # Needs to exist at least one line between them
 remove_generated_code() {
     START=`grep -n "BEGIN $1" ./src/$2`
     START=${START%:*}
     END=`grep -n "END $1" ./src/$2`
     END=${END%:*}
-    sed -i "$((START+1)),$((END-1))d" ./src/$2
+    $SED -i "$((START+1)),$((END-1))d" ./src/$2
 }
 
 generate_tuple_encode() {
@@ -32,13 +44,17 @@ generate_tuple_encode() {
         CODE="$CODE $element: AbiEncode, "
     done
 
+    # Emit the body as a sequence of `let r = r && ...;` statements rather
+    # than one giant left-deep `&&` chain. Long chains produce a deeply
+    # left-leaning AST that drives recursive compiler / LSP transforms into
+    # stack overflows on real-world tuples.
     ISTRIVIAL=""
     for element in ${elements[@]}
     do
-        ISTRIVIAL="$ISTRIVIAL \&\& is_encode_trivial::<$element>()"
+        ISTRIVIAL="$ISTRIVIAL let r = r \&\& is_encode_trivial::<$element>();"
     done
 
-    CODE="$CODE{ fn is_encode_trivial() -> bool { __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>() $ISTRIVIAL } fn abi_encode(self, buffer: Buffer) -> Buffer { "
+    CODE="$CODE{ fn is_encode_trivial() -> bool { let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>(); $ISTRIVIAL r } fn abi_encode(self, buffer: Buffer) -> Buffer { "
 
     i=0
     for element in ${elements[@]}
@@ -49,7 +65,7 @@ generate_tuple_encode() {
 
     CODE="$CODE buffer } }"
 
-    sed -i "s/\/\/ BEGIN TUPLES_ENCODE/\/\/ BEGIN TUPLES_ENCODE\n$CODE/g" ./src/codec.sw
+    $SED -i "s/\/\/ BEGIN TUPLES_ENCODE/\/\/ BEGIN TUPLES_ENCODE\n$CODE/g" ./src/codec.sw
 }
 
 remove_generated_code "TUPLES_ENCODE" "codec.sw"
@@ -103,13 +119,17 @@ generate_tuple_decode() {
         CODE="$CODE $element: AbiDecode, "
     done
 
+    # Emit the body as a sequence of `let r = r && ...;` statements rather
+    # than one giant left-deep `&&` chain. Long chains produce a deeply
+    # left-leaning AST that drives recursive compiler / LSP transforms into
+    # stack overflows on real-world tuples.
     ISTRIVIAL=""
     for element in ${elements[@]}
     do
-        ISTRIVIAL="$ISTRIVIAL \&\& is_decode_trivial::<$element>()"
+        ISTRIVIAL="$ISTRIVIAL let r = r \&\& is_decode_trivial::<$element>();"
     done
 
-    CODE="$CODE{ fn is_decode_trivial() -> bool { __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>() $ISTRIVIAL } fn abi_decode(ref mut buffer: BufferReader) -> Self { ("
+    CODE="$CODE{ fn is_decode_trivial() -> bool { let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>(); $ISTRIVIAL r } fn abi_decode(ref mut buffer: BufferReader) -> Self { ("
 
     for element in ${elements[@]}
     do
@@ -118,7 +138,7 @@ generate_tuple_decode() {
 
     CODE="$CODE) } }"
 
-    sed -i "s/\/\/ BEGIN TUPLES_DECODE/\/\/ BEGIN TUPLES_DECODE\n$CODE/g" ./src/codec.sw
+    $SED -i "s/\/\/ BEGIN TUPLES_DECODE/\/\/ BEGIN TUPLES_DECODE\n$CODE/g" ./src/codec.sw
 }
 
 remove_generated_code "TUPLES_DECODE" "codec.sw"
@@ -183,7 +203,7 @@ generate_tuple_debug() {
 
     CODE="$CODE f.finish(); } }"
 
-    sed -i "s/\/\/ BEGIN TUPLES_DEBUG/\/\/ BEGIN TUPLES_DEBUG\n$CODE/g" ./src/debug.sw
+    $SED -i "s/\/\/ BEGIN TUPLES_DEBUG/\/\/ BEGIN TUPLES_DEBUG\n$CODE/g" ./src/debug.sw
 }
 
 remove_generated_code "TUPLES_DEBUG" "debug.sw"
