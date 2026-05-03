@@ -1,8 +1,0 @@
-[[package]]
-name = "std"
-source = "path+from-root-D63F86D6205FE44D"
-
-[[package]]
-name = "storage_vec_insert"
-source = "member"
-dependencies = ["std"]
