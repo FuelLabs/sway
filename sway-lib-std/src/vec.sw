@@ -814,6 +814,17 @@ impl<T> From<Vec<T>> for raw_slice {
     }
 }
 
+impl<T> Clone for Vec<T> {
+    fn clone(self) -> Self {
+        let len = self.len;
+        let buf = RawVec::with_capacity(len);
+        if len > 0 {
+            self.buf.ptr.copy_to::<T>(buf.ptr, len);
+        }
+        Self { buf, len }
+    }
+}
+
 impl<T> AbiEncode for Vec<T>
 where
     T: AbiEncode,
@@ -844,6 +855,8 @@ where
     }
 }
 
+
+
 impl<T> AbiDecode for Vec<T>
 where
     T: AbiDecode,
@@ -856,18 +869,7 @@ where
         
         const IS_ELEM_TRIVIAL = is_decode_trivial::<T>();
         if IS_ELEM_TRIVIAL {
-            let len_bytes = len * __size_of::<T>();
-            let ptr = __alloc::<u8>(len_bytes);
-            asm(dst: ptr, src: buffer.ptr, len: len_bytes) {
-                mcp dst src len;
-            };
-            Vec {
-                buf: RawVec {
-                    ptr,
-                    cap: len,
-                },
-                len,
-            }            
+            Self::from(buffer.read_bytes(len * __size_of::<T>()))
         } else {
             let mut v = Vec::with_capacity(len);
 
@@ -913,16 +915,7 @@ impl<T> Iterator for VecIter<T> {
     }
 }
 
-impl<T> Clone for Vec<T> {
-    fn clone(self) -> Self {
-        let len = self.len;
-        let buf = RawVec::with_capacity(len);
-        if len > 0 {
-            self.buf.ptr.copy_to::<T>(buf.ptr, len);
-        }
-        Self { buf, len }
-    }
-}
+
 
 impl<T> PartialEq for Vec<T>
 where
