@@ -1337,8 +1337,10 @@ impl<V> StorageKey<StorageVec<V>> {
             write_slot(self.field_id(), len - 1);
             None
         } else {
-            let len_in_bytes = len * __size_of::<V>();
-            let new_len_in_bytes = len_in_bytes - __size_of::<V>();
+            const SIZE_OF_V: u64 = __size_of::<V>();
+
+            let len_in_bytes = len * SIZE_OF_V;
+            let new_len_in_bytes = len_in_bytes - SIZE_OF_V;
 
             // 1. Get the current slot content.
             let content_ptr = alloc_bytes(len_in_bytes);
@@ -1471,8 +1473,9 @@ impl<V> StorageKey<StorageVec<V>> {
             let _ = __state_clear(b256::zero(), 0);
             panic StorageVecError::MethodDoesNotSupportNestedStorageTypes;
         } else {
-            let size_of_v = __size_of::<V>();
-            let len = __state_preload(self.field_id()) / size_of_v;
+            const SIZE_OF_V: u64 = __size_of::<V>();
+
+            let len = __state_preload(self.field_id()) / SIZE_OF_V;
 
             if index >= len {
                 panic StorageVecError::IndexOutOfBounds(OutOfBounds {
@@ -1481,9 +1484,9 @@ impl<V> StorageKey<StorageVec<V>> {
                 });
             }
 
-            let len_in_bytes = len * size_of_v;
-            let index_offset = index * size_of_v;
-            let new_len_in_bytes = len_in_bytes - size_of_v;
+            let len_in_bytes = len * SIZE_OF_V;
+            let index_offset = index * SIZE_OF_V;
+            let new_len_in_bytes = len_in_bytes - SIZE_OF_V;
 
             // 1. Read current slot content.
             let content_ptr = alloc_bytes(len_in_bytes);
@@ -1493,13 +1496,13 @@ impl<V> StorageKey<StorageVec<V>> {
             let removed_element = content_ptr.add::<u8>(index_offset).read::<V>();
 
             // 3. Shift everything after `index` one element to the left.
-            let content_after_removed_len = len_in_bytes - index_offset - size_of_v;
+            let content_after_removed_len = len_in_bytes - index_offset - SIZE_OF_V;
             if content_after_removed_len > 0 {
                 // We first have to copy the trailing content to a new location,
                 // because memory copying requires non-overlapping memory locations.
                 let content_after_removed_ptr = alloc_bytes(content_after_removed_len);
                 content_ptr
-                    .add::<u8>(index_offset + size_of_v)
+                    .add::<u8>(index_offset + SIZE_OF_V)
                     .copy_bytes_to(content_after_removed_ptr, content_after_removed_len);
 
                 // Finally, copy the copy of the trailing content back into the original content.
@@ -1575,8 +1578,9 @@ impl<V> StorageKey<StorageVec<V>> {
             let _ = __state_clear(b256::zero(), 0);
             panic StorageVecError::MethodDoesNotSupportNestedStorageTypes;
         } else {
-            let size_of_v = __size_of::<V>();
-            let len = __state_preload(self.field_id()) / size_of_v;
+            const SIZE_OF_V: u64 = __size_of::<V>();
+
+            let len = __state_preload(self.field_id()) / SIZE_OF_V;
 
             if index >= len {
                 panic StorageVecError::IndexOutOfBounds(OutOfBounds {
@@ -1585,9 +1589,9 @@ impl<V> StorageKey<StorageVec<V>> {
                 });
             }
 
-            let len_in_bytes = len * size_of_v;
-            let index_offset = index * size_of_v;
-            let new_len_in_bytes = len_in_bytes - size_of_v;
+            let len_in_bytes = len * SIZE_OF_V;
+            let index_offset = index * SIZE_OF_V;
+            let new_len_in_bytes = len_in_bytes - SIZE_OF_V;
 
             // 1. Read current slot content.
             let content_ptr = alloc_bytes(len_in_bytes);
@@ -1599,7 +1603,7 @@ impl<V> StorageKey<StorageVec<V>> {
             // 3. Overwrite element at `index` with the last element (only if `index` is not already the last).
             if index != len - 1 {
                 let last_element_ptr = content_ptr.add::<u8>(new_len_in_bytes);
-                last_element_ptr.copy_bytes_to(content_ptr.add::<u8>(index_offset), size_of_v);
+                last_element_ptr.copy_bytes_to(content_ptr.add::<u8>(index_offset), SIZE_OF_V);
             }
 
             // 4. Write new content without the last element to storage.
@@ -1658,7 +1662,9 @@ impl<V> StorageKey<StorageVec<V>> {
             let _ = __state_clear(b256::zero(), 0);
             panic StorageVecError::MethodDoesNotSupportNestedStorageTypes;
         } else {
-            let len = __state_preload(self.field_id()) / __size_of::<V>();
+            const SIZE_OF_V: u64 = __size_of::<V>();
+
+            let len = __state_preload(self.field_id()) / SIZE_OF_V;
             if index >= len {
                 panic StorageVecError::IndexOutOfBounds(OutOfBounds {
                     length: len,
@@ -1670,8 +1676,8 @@ impl<V> StorageKey<StorageVec<V>> {
                 self
                     .field_id(),
                 __addr_of::<V>(value),
-                index * __size_of::<V>(),
-                __size_of::<V>(),
+                index * SIZE_OF_V,
+                SIZE_OF_V,
             );
         }
     }
@@ -1732,7 +1738,9 @@ impl<V> StorageKey<StorageVec<V>> {
             let _ = __state_clear(b256::zero(), 0);
             panic StorageVecError::MethodDoesNotSupportNestedStorageTypes;
         } else {
-            let len = __state_preload(self.field_id()) / __size_of::<V>();
+            const SIZE_OF_V: u64 = __size_of::<V>();
+
+            let len = __state_preload(self.field_id()) / SIZE_OF_V;
             if index > len {
                 panic StorageVecError::IndexOutOfBounds(OutOfBounds {
                     length: len,
@@ -1743,8 +1751,8 @@ impl<V> StorageKey<StorageVec<V>> {
             if index == len {
                 append_slot(self.field_id(), value);
             } else {
-                let len_in_bytes = len * __size_of::<V>();
-                let index_offset = index * __size_of::<V>();
+                let len_in_bytes = len * SIZE_OF_V;
+                let index_offset = index * SIZE_OF_V;
 
                 // 1. Get the current slot content.
                 let content_ptr = alloc_bytes(len_in_bytes);
@@ -1756,7 +1764,7 @@ impl<V> StorageKey<StorageVec<V>> {
                         .field_id(),
                     __addr_of::<V>(value),
                     index_offset,
-                    __size_of::<V>(),
+                    SIZE_OF_V,
                 );
 
                 // 3. Write the previous content that should come after the inserted `value`.
@@ -1766,7 +1774,7 @@ impl<V> StorageKey<StorageVec<V>> {
                     self
                         .field_id(),
                     content_after_index_ptr,
-                    index_offset + __size_of::<V>(),
+                    index_offset + SIZE_OF_V,
                     content_after_index_len,
                 );
             }
@@ -1910,8 +1918,9 @@ impl<V> StorageKey<StorageVec<V>> {
             let _ = __state_clear(b256::zero(), 0);
             panic StorageVecError::MethodDoesNotSupportNestedStorageTypes;
         } else {
-            let size_of_v = __size_of::<V>();
-            let len = __state_preload(self.field_id()) / size_of_v;
+            const SIZE_OF_V: u64 = __size_of::<V>();
+
+            let len = __state_preload(self.field_id()) / SIZE_OF_V;
 
             if element1_index >= len {
                 panic StorageVecError::IndexOutOfBounds(OutOfBounds {
@@ -1931,23 +1940,23 @@ impl<V> StorageKey<StorageVec<V>> {
                 return;
             }
 
-            let len_in_bytes = len * size_of_v;
-            let element1_offset = element1_index * size_of_v;
-            let element2_offset = element2_index * size_of_v;
+            let len_in_bytes = len * SIZE_OF_V;
+            let element1_offset = element1_index * SIZE_OF_V;
+            let element2_offset = element2_index * SIZE_OF_V;
 
             let content_ptr = alloc_bytes(len_in_bytes);
             let _ = __state_load_slot(self.field_id(), content_ptr, 0, len_in_bytes);
 
             // Copy first element to a temporary.
-            let element1_value_ptr = alloc_bytes(size_of_v);
+            let element1_value_ptr = alloc_bytes(SIZE_OF_V);
             content_ptr
                 .add::<u8>(element1_offset)
-                .copy_bytes_to(element1_value_ptr, size_of_v);
+                .copy_bytes_to(element1_value_ptr, SIZE_OF_V);
 
             content_ptr
                 .add::<u8>(element2_offset)
-                .copy_bytes_to(content_ptr.add::<u8>(element1_offset), size_of_v);
-            element1_value_ptr.copy_bytes_to(content_ptr.add::<u8>(element2_offset), size_of_v);
+                .copy_bytes_to(content_ptr.add::<u8>(element1_offset), SIZE_OF_V);
+            element1_value_ptr.copy_bytes_to(content_ptr.add::<u8>(element2_offset), SIZE_OF_V);
 
             __state_store_slot(self.field_id(), content_ptr, len_in_bytes);
         }
@@ -2097,36 +2106,37 @@ impl<V> StorageKey<StorageVec<V>> {
             let _ = __state_clear(b256::zero(), 0);
             panic StorageVecError::MethodDoesNotSupportNestedStorageTypes;
         } else {
-            let size_of_v = __size_of::<V>();
-            let len = __state_preload(self.field_id()) / size_of_v;
+            const SIZE_OF_V: u64 = __size_of::<V>();
+
+            let len = __state_preload(self.field_id()) / SIZE_OF_V;
 
             if len < 2 {
                 return;
             }
 
-            let len_in_bytes = len * size_of_v;
+            let len_in_bytes = len * SIZE_OF_V;
             let content_ptr = alloc_bytes(len_in_bytes);
             let _ = __state_load_slot(self.field_id(), content_ptr, 0, len_in_bytes);
 
             // Allocate a temporary for swaps.
-            let tmp_ptr = alloc_bytes(size_of_v);
+            let tmp_ptr = alloc_bytes(SIZE_OF_V);
 
             let mid = len / 2;
             let mut i = 0;
             while i < mid {
-                let left_offset = i * size_of_v;
-                let right_offset = (len - i - 1) * size_of_v;
+                let left_offset = i * SIZE_OF_V;
+                let right_offset = (len - i - 1) * SIZE_OF_V;
 
                 // tmp <- left.
-                content_ptr.add::<u8>(left_offset).copy_bytes_to(tmp_ptr, size_of_v);
+                content_ptr.add::<u8>(left_offset).copy_bytes_to(tmp_ptr, SIZE_OF_V);
 
                 // right -> left.
                 content_ptr
                     .add::<u8>(right_offset)
-                    .copy_bytes_to(content_ptr.add::<u8>(left_offset), size_of_v);
+                    .copy_bytes_to(content_ptr.add::<u8>(left_offset), SIZE_OF_V);
 
                 // tmp -> right.
-                tmp_ptr.copy_bytes_to(content_ptr.add::<u8>(right_offset), size_of_v);
+                tmp_ptr.copy_bytes_to(content_ptr.add::<u8>(right_offset), SIZE_OF_V);
 
                 i += 1;
             }
@@ -2183,21 +2193,22 @@ impl<V> StorageKey<StorageVec<V>> {
             let _ = __state_clear(b256::zero(), 0);
             panic StorageVecError::MethodDoesNotSupportNestedStorageTypes;
         } else {
-            let size_of_v = __size_of::<V>();
-            let len = __state_preload(self.field_id()) / size_of_v;
+            const SIZE_OF_V: u64 = __size_of::<V>();
+
+            let len = __state_preload(self.field_id()) / SIZE_OF_V;
 
             if len == 0 {
                 return;
             }
 
-            let len_in_bytes = len * size_of_v;
+            let len_in_bytes = len * SIZE_OF_V;
             let content_ptr = alloc_bytes(len_in_bytes);
 
             let value_ptr = __addr_of::<V>(value);
 
             let mut i = 0;
             while i < len {
-                value_ptr.copy_bytes_to(content_ptr.add::<u8>(i * size_of_v), size_of_v);
+                value_ptr.copy_bytes_to(content_ptr.add::<u8>(i * SIZE_OF_V), SIZE_OF_V);
                 i += 1;
             }
 
@@ -2270,15 +2281,16 @@ impl<V> StorageKey<StorageVec<V>> {
             // is not touched, matching the behavior of `push` and `pop`.
             write_slot(self.field_id(), new_len);
         } else {
-            let size_of_v = __size_of::<V>();
-            let len = __state_preload(self.field_id()) / size_of_v;
+            const SIZE_OF_V: u64 = __size_of::<V>();
+
+            let len = __state_preload(self.field_id()) / SIZE_OF_V;
 
             if new_len == len {
                 return;
             }
 
-            let len_in_bytes = len * size_of_v;
-            let new_len_in_bytes = new_len * size_of_v;
+            let len_in_bytes = len * SIZE_OF_V;
+            let new_len_in_bytes = new_len * SIZE_OF_V;
 
             let content_ptr = alloc_bytes(new_len_in_bytes);
 
@@ -2296,7 +2308,7 @@ impl<V> StorageKey<StorageVec<V>> {
                 let value_ptr = __addr_of::<V>(value);
                 let mut i = len;
                 while i < new_len {
-                    value_ptr.copy_bytes_to(content_ptr.add::<u8>(i * size_of_v), size_of_v);
+                    value_ptr.copy_bytes_to(content_ptr.add::<u8>(i * SIZE_OF_V), SIZE_OF_V);
                     i += 1;
                 }
             }
