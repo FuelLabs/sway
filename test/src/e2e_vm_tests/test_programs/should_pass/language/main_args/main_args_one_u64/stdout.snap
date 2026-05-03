@@ -30,31 +30,31 @@ script {
         local { u64 } args
 
         entry():
-        v104v1 = const u64 0, !5
-        v364v1 = gtf v104v1, 10, !11
-        v365v1 = bitcast v364v1 to ptr, !12
-        v418v1 = cast_ptr v365v1 to __ptr { u64 }, !15
-        v432v1 = get_local __ptr { u64 }, __aggr_memcpy_0
-        mem_copy_val v432v1, v418v1
-        v112v1 = get_local __ptr { u64 }, args, !16
-        mem_copy_val v112v1, v432v1
-        v134v1 = get_local __ptr { u64 }, args, !17
-        v135v1 = const u64 0
-        v136v1 = get_elem_ptr v134v1, __ptr u64, v135v1, !18
-        v137v1 = load v136v1
-        v138v1 = call main_11(v137v1), !21
-        v139v1 = get_local __ptr u64, _result, !22
-        store v138v1 to v139v1, !22
-        v158v1 = get_local __ptr u64, _result, !23
-        v149v1 = const u64 8
-        retd v158v1 v149v1, !27
+        v112v1 = const u64 0, !5
+        v384v1 = gtf v112v1, 10, !11
+        v385v1 = bitcast v384v1 to ptr, !12
+        v442v1 = cast_ptr v385v1 to __ptr { u64 }, !15
+        v456v1 = get_local __ptr { u64 }, __aggr_memcpy_0
+        mem_copy_val v456v1, v442v1
+        v120v1 = get_local __ptr { u64 }, args, !16
+        mem_copy_val v120v1, v456v1
+        v142v1 = get_local __ptr { u64 }, args, !17
+        v143v1 = const u64 0
+        v144v1 = get_elem_ptr v142v1, __ptr u64, v143v1, !18
+        v145v1 = load v144v1
+        v146v1 = call main_11(v145v1), !21
+        v147v1 = get_local __ptr u64, _result, !22
+        store v146v1 to v147v1, !22
+        v166v1 = get_local __ptr u64, _result, !23
+        v157v1 = const u64 8
+        retd v166v1 v157v1, !27
     }
 
     entry_orig fn main_11(baba !29: u64) -> u64, !32 {
         entry(baba: u64):
-        v131v1 = const u64 1, !33
-        v350v1 = add baba, v131v1, !36
-        ret u64 v350v1
+        v139v1 = const u64 1, !33
+        v370v1 = add baba, v139v1, !36
+        ret u64 v370v1
     }
 }
 
@@ -66,13 +66,13 @@ script {
 !5 = span !4 1542 1543
 !6 = span !0 59 89
 !7 = fn_call_path_span !0 59 77
-!8 = span !4 91615 91647
-!9 = fn_call_path_span !4 91615 91645
+!8 = span !4 105941 105973
+!9 = fn_call_path_span !4 105941 105971
 !10 = span !4 1525 1549
 !11 = (!6 !7 !8 !9 !10)
 !12 = (!6 !7 !8 !9 !10)
-!13 = span !4 91590 91648
-!14 = fn_call_path_span !4 91590 91609
+!13 = span !4 105916 105974
+!14 = fn_call_path_span !4 105916 105935
 !15 = (!6 !7 !13 !14)
 !16 = span !0 40 90
 !17 = span !0 131 135
@@ -84,7 +84,7 @@ script {
 !23 = span !0 182 189
 !24 = span !0 156 190
 !25 = fn_call_path_span !0 156 173
-!26 = span !4 49161 49187
+!26 = span !4 56324 56350
 !27 = (!24 !25 !26)
 !28 = "test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_one_u64/src/main.sw"
 !29 = span !28 17 21
