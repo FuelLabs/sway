@@ -823,21 +823,11 @@ where
     }
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         const IS_ELEM_TRIVIAL = is_encode_trivial::<T>();
-
         if IS_ELEM_TRIVIAL {
-            // TODO: We need to write the length of the vector,
-            //       and then the raw memory of the vector's contents.
-            //       Currently, we don't have a way to write the plain
-            //       memory content without the length. E.g., writing slice
-            //       will write the length of the vector slice in bytes,
-            //       and then the raw memory, but not the length of the
-            //       vector in number of elements.
-            //
-            //       One possibility to solve this would be to have an intrinsic
-            //       that would allow us to write the raw memory of a particular
-            //       length, without the length prefix. E.g.:
-            //          __encode_buffer_append_raw(buffer, ptr, len)
-            self.as_raw_slice().abi_encode(buffer)
+            let buffer = self.len.abi_encode(buffer);
+            buffer.append_raw(
+                (self.buf.ptr, self.len * __size_of::<T>())
+            )
         } else {
             let len = self.len;
             let mut buffer = len.abi_encode(buffer);
@@ -862,14 +852,23 @@ where
         false
     }
     fn abi_decode(ref mut buffer: BufferReader) -> Vec<T> {
+        let len = u64::abi_decode(buffer);
+        
         const IS_ELEM_TRIVIAL = is_decode_trivial::<T>();
-
         if IS_ELEM_TRIVIAL {
-            // TODO: See the comment in `abi_encode` for the trivial case.
-            Self::from(raw_slice::abi_decode(buffer))
+            let len_bytes = len * __size_of::<T>();
+            let ptr = __alloc::<u8>(len_bytes);
+            asm(dst: ptr, src: buffer.ptr, len: len_bytes) {
+                mcp dst src len;
+            };
+            Vec {
+                buf: RawVec {
+                    ptr,
+                    cap: len,
+                },
+                len,
+            }            
         } else {
-            let len = u64::abi_decode(buffer);
-
             let mut v = Vec::with_capacity(len);
 
             let mut i = 0;
@@ -956,5 +955,74 @@ where
         }
 
         l.finish();
+    }
+}
+
+struct NonTrivial {
+    v: u64
+}
+
+impl AbiEncode for NonTrivial {
+    fn is_encode_trivial() -> bool {
+        false
+    }
+
+    fn abi_encode(self, buffer: Buffer) -> Buffer {
+        self.v.abi_encode(buffer)
+    }
+}
+
+impl AbiDecode for NonTrivial {
+    fn is_decode_trivial() -> bool {
+        false
+    }
+
+    fn abi_decode(ref mut buffer: BufferReader) -> NonTrivial {
+        Self {
+            v: u64::abi_decode(buffer)
+        }
+    }
+}
+
+impl PartialEq for NonTrivial {
+    fn eq(self, other: Self) -> bool {
+        self.v == other.v
+    }
+}
+
+
+#[test]
+fn vec_encode_trivial() {
+    let mut v1 = Vec::new();
+    v1.push(5u64);
+    v1.push(7u64);
+
+    let bytes = encode(v1);
+    let v2 = abi_decode(bytes);
+
+    if v1 != v2 {
+        __log(v1);
+        __log(v2);
+        __revert(0);
+    }
+}
+
+#[test]
+fn vec_encode_non_trivial() {
+    let mut v1 = Vec::new();
+    v1.push(NonTrivial { v: 5u64 });
+    v1.push(NonTrivial { v: 7u64 });
+
+    let bytes = encode(v1);
+    let v2 = abi_decode::<Vec<NonTrivial>>(bytes);
+    
+    if v1 != v2 {
+        for i in v1.iter() {
+            __log(i.v);
+        }
+        for i in v2.iter() {
+            __log(i.v);
+        }
+        __revert(0);
     }
 }
