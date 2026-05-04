@@ -1,0 +1,13 @@
+{
+  "concreteTypes": [],
+  "configurables": null,
+  "encodingVersion": "1",
+  "errorCodes": {},
+  "functions": [],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "metadataTypes": [],
+  "panickingCalls": {},
+  "programType": "library",
+  "specVersion": "1.2"
+}

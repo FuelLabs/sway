@@ -46,18 +46,19 @@ impl ty::TyStorageDecl {
     ) -> Result<Vec<StorageSlot>, ErrorEmitted> {
         handler.scope(|handler| {
             let mut slot_fields = HashMap::<Bytes32, TyStorageField>::new();
-            let storage_slots = self
+
+            let mut type_sizes_and_slots = self
                 .fields
                 .iter()
-                .map(|f| {
-                    let slots = f.get_initialized_storage_slots(engines, context, md_mgr, module);
+                .map(|field| {
+                    let type_size_and_slots = field.get_initialized_storage_slots(engines, context, md_mgr, module);
 
-                    // Check if slot with same key was already used and throw warning.
-                    if let Ok(slots) = &slots {
-                        for s in slots.iter() {
-                            if let Some(old_field) = slot_fields.insert(*s.key(), f.clone()) {
+                    // Check if the slot with the same key was already used.
+                    if let Ok((_type_size_in_bytes, slots)) = &type_size_and_slots {
+                        for slot in slots.iter() {
+                            if let Some(old_field) = slot_fields.insert(*slot.key(), field.clone()) {
                                 handler.emit_warn(CompileWarning {
-                                    span: f.span(),
+                                    span: field.span(),
                                     warning_content:
                                         sway_error::warning::Warning::DuplicatedStorageKey {
                                             first_field: (&old_field.name).into(),
@@ -65,22 +66,35 @@ impl ty::TyStorageDecl {
                                             first_field_key_is_compiler_generated: old_field
                                                 .key_expression
                                                 .is_none(),
-                                            second_field: (&f.name).into(),
-                                            second_field_full_name: f.full_name(),
-                                            second_field_key_is_compiler_generated: f
+                                            second_field: (&field.name).into(),
+                                            second_field_full_name: field.full_name(),
+                                            second_field_key_is_compiler_generated: field
                                                 .key_expression
                                                 .is_none(),
-                                            key: format!("0x{:x}", s.key()),
+                                            key: format!("0x{:x}", slot.key()),
                                         },
                                 })
                             }
                         }
                     }
-                    slots
+
+                    type_size_and_slots
                 })
-                .filter_map(|s| s.map_err(|e| handler.emit_err(e)).ok())
-                .flatten()
+                .filter_map(|res| res.map_err(|e| handler.emit_err(e)).ok())
                 .collect::<Vec<_>>();
+
+            // TODO: (INIT-STORAGE) Implement initialization of storage fields
+            //       for dynamic storage. For now, we just ignore storage fields
+            //       whose type size is larger than 32 bytes, and don't initialize them.
+            if context.experimental.dynamic_storage {
+                type_sizes_and_slots.retain(|(type_size_in_bytes, _slots)| *type_size_in_bytes <= 32);
+            }
+
+            let storage_slots = type_sizes_and_slots
+                .into_iter()
+                .map(|(_type_size_in_bytes, slots)| slots)
+                .flatten()
+                .collect();
 
             Ok(storage_slots)
         })
@@ -88,13 +102,15 @@ impl ty::TyStorageDecl {
 }
 
 impl ty::TyStorageField {
+    /// Returns a tuple containing the `self` storage field's type size in bytes,
+    /// and the storage slots that contain the value defined in `self.initializer`.
     pub(crate) fn get_initialized_storage_slots(
         &self,
         engines: &Engines,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         module: Module,
-    ) -> Result<Vec<StorageSlot>, CompileError> {
+    ) -> Result<(u64, Vec<StorageSlot>), CompileError> {
         let key =
             Self::get_key_expression_const(&self.key_expression, engines, context, md_mgr, module)?;
         compile_constant_expression_to_constant(

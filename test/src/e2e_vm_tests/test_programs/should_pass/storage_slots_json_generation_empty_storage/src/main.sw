@@ -1,0 +1,5 @@
+contract;
+
+storage { }
+
+impl Contract { }

@@ -32,6 +32,10 @@ struct Cli {
     #[arg(long, visible_alias = "abi")]
     abi_only: bool,
 
+    /// Only run tests with storage slots JSON output validation
+    #[arg(long, visible_alias = "storage")]
+    storage_only: bool,
+
     /// Only run tests with no `std` dependencies
     #[arg(long, visible_alias = "no_std")]
     no_std_only: bool,
@@ -199,6 +203,7 @@ pub struct FilterConfig {
     pub exclude: Option<regex::Regex>,
     pub skip_until: Option<regex::Regex>,
     pub abi_only: bool,
+    pub storage_only: bool,
     pub no_std_only: bool,
     pub contract_only: bool,
     pub first_only: bool,
@@ -291,6 +296,7 @@ async fn main() -> Result<()> {
         exclude: cli.exclude,
         skip_until: cli.skip_until,
         abi_only: cli.abi_only,
+        storage_only: cli.storage_only,
         no_std_only: cli.no_std_only,
         contract_only: cli.contract_only,
         forc_test_only: cli.forc_test_only,
