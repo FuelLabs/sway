@@ -52,12 +52,12 @@ fn nested_vec_trivial() {
 
 #[test]
 fn vec_non_trivial() {
-    let vec = create_vec_trivial(10);
-    let encoded_decoded: Vec<u64> = abi_decode(encode(vec));
+    let vec = create_vec_non_trivial(10);
+    let encoded_decoded: Vec<u32> = abi_decode(encode(vec));
     assert_eq(encoded_decoded, vec);
 
     let encoded_as_alias = encode_allow_alias(&encoded_decoded);
-    let encoded_decoded: Vec<u64> = abi_decode(encoded_as_alias);
+    let encoded_decoded: Vec<u32> = abi_decode(encoded_as_alias);
     assert_eq(encoded_decoded, vec);
 
     log(encoded_decoded);

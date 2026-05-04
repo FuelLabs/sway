@@ -836,9 +836,7 @@ where
         const IS_ELEM_TRIVIAL = is_encode_trivial::<T>();
         if IS_ELEM_TRIVIAL {
             let buffer = self.len.abi_encode(buffer);
-            buffer.append_raw(
-                (self.buf.ptr, self.len * __size_of::<T>())
-            )
+            buffer.append_raw((self.buf.ptr, self.len * __size_of::<T>()))
         } else {
             let len = self.len;
             let mut buffer = len.abi_encode(buffer);
@@ -855,8 +853,6 @@ where
     }
 }
 
-
-
 impl<T> AbiDecode for Vec<T>
 where
     T: AbiDecode,
@@ -866,7 +862,7 @@ where
     }
     fn abi_decode(ref mut buffer: BufferReader) -> Vec<T> {
         let len = u64::abi_decode(buffer);
-        
+
         const IS_ELEM_TRIVIAL = is_decode_trivial::<T>();
         if IS_ELEM_TRIVIAL {
             Self::from(buffer.read_bytes(len * __size_of::<T>()))
@@ -915,8 +911,6 @@ impl<T> Iterator for VecIter<T> {
     }
 }
 
-
-
 impl<T> PartialEq for Vec<T>
 where
     T: PartialEq,
@@ -952,7 +946,7 @@ where
 }
 
 struct NonTrivial {
-    v: u64
+    v: u64,
 }
 
 impl AbiEncode for NonTrivial {
@@ -972,7 +966,7 @@ impl AbiDecode for NonTrivial {
 
     fn abi_decode(ref mut buffer: BufferReader) -> NonTrivial {
         Self {
-            v: u64::abi_decode(buffer)
+            v: u64::abi_decode(buffer),
         }
     }
 }
@@ -982,7 +976,6 @@ impl PartialEq for NonTrivial {
         self.v == other.v
     }
 }
-
 
 #[test]
 fn vec_encode_trivial() {
@@ -1008,7 +1001,7 @@ fn vec_encode_non_trivial() {
 
     let bytes = encode(v1);
     let v2 = abi_decode::<Vec<NonTrivial>>(bytes);
-    
+
     if v1 != v2 {
         for i in v1.iter() {
             __log(i.v);
