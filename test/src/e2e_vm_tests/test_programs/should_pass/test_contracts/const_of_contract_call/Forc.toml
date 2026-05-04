@@ -6,4 +6,4 @@ name = "const_of_contract_call"
 
 [dependencies]
 
-std = { path = "../../../../reduced_std_libs/sway-lib-std-core/" }
+std = { path = "../../../../reduced_std_libs/sway-lib-std-vec/" }
