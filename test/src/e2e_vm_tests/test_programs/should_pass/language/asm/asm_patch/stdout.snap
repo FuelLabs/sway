@@ -80,8 +80,22 @@ output:
 
 
 > fuel-vm run test/src/e2e_vm_tests/test_programs/should_pass/language/asm/asm_patch/out/debug/asm_patch.bin
-Os {
-    code: 2,
-    kind: NotFound,
-    message: "No such file or directory",
+Gas: 379
+Logs:
+ReturnData {
+    id: 0x0000000000000000000000000000000000000000000000000000000000000000,
+    ptr: 10728,
+    len: 8,
+    digest: 0xaf5570f5a1810b7af78caf4bc70a660f0df51e42baf91d4de5b2328de0e83dfc,
+    pc: 10436,
+    is: 10368,
+    data: Some(
+        Bytes(
+            0000000000000000,
+        ),
+    ),
+}
+ScriptResult {
+    result: Success,
+    gas_used: 379,
 }
