@@ -2610,3 +2610,14 @@ fn test_vector_iter() {
     assert(iter.next() == None);
     assert(iter.next() == None);
 }
+
+#[test]
+fn test_main() {
+    let _ = main();
+}
+
+#[test]
+fn test_zst() {
+    let mut v = Vec::new();
+    v.push(());
+}
