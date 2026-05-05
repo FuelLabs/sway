@@ -164,7 +164,12 @@ impl raw_slice {
     /// }
     /// ```
     pub fn len<T>(self) -> u64 {
-        into_parts(self).1 / __size_of::<T>()
+        let len = __size_of::<T>();
+        if len != 0 {
+            into_parts(self).1 / len
+        } else {
+            __revert(999);
+        }
     }
 
     /// Returns the number of elements in the slice when the elements are bytes.
