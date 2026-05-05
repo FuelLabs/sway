@@ -1,0 +1,3 @@
+cmds = [
+    "forc test --path {root} --logs"
+]
