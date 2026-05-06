@@ -466,7 +466,11 @@ fn emit_json_abi(
     json_abi_output_path: &str,
     built_package: &BuiltPackage,
 ) -> Result<()> {
-    tracing::info!("ABI JSON gen {} in {}", relative_test_path.bold(), json_abi_output_path);
+    tracing::info!(
+        "ABI JSON gen {} in {}",
+        relative_test_path.bold(),
+        json_abi_output_path
+    );
     let json_abi = match &built_package.program_abi {
         ProgramABI::Fuel(abi) => serde_json::json!(abi),
         ProgramABI::Evm(abi) => serde_json::json!(abi),
@@ -553,7 +557,11 @@ fn emit_json_storage_slots(
     json_storage_slots_output_path: &str,
     built_package: &BuiltPackage,
 ) -> Result<()> {
-    tracing::info!("Storage slots JSON gen {} in {}", relative_test_path.bold(), json_storage_slots_output_path);
+    tracing::info!(
+        "Storage slots JSON gen {} in {}",
+        relative_test_path.bold(),
+        json_storage_slots_output_path
+    );
     let json_storage_slots = serde_json::json!(built_package.storage_slots);
     let file = std::fs::File::create(json_storage_slots_output_path)?;
     serde_json::to_writer_pretty(&file, &json_storage_slots)?;

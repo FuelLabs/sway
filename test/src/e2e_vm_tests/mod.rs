@@ -843,8 +843,15 @@ impl TestContext {
                     if !pkg.tests.is_empty() {
                         println!();
                     }
-                    if let Some(bytecode_size_without_tests) = pkg.built.bytecode_without_tests.as_ref().map(|bc| bc.bytes.len()) {
-                        perf_data.bytecode_sizes.push(BytecodeSize::new(bytecode_size_without_tests));
+                    if let Some(bytecode_size_without_tests) = pkg
+                        .built
+                        .bytecode_without_tests
+                        .as_ref()
+                        .map(|bc| bc.bytes.len())
+                    {
+                        perf_data
+                            .bytecode_sizes
+                            .push(BytecodeSize::new(bytecode_size_without_tests));
                     }
                     for test in pkg.tests.iter() {
                         perf_data.gas_usages.push(GasUsage::with_unit_test_name(
@@ -853,7 +860,8 @@ impl TestContext {
                         ));
                         if verbose {
                             // "test incorrect_def_modeling ... ok (17.673µs, 59 gas)"
-                            println!("    test {} ... {} ({:?}, {} gas)", 
+                            println!(
+                                "    test {} ... {} ({:?}, {} gas)",
                                 test.name,
                                 if test.passed() { "ok" } else { "nok" },
                                 test.duration,
@@ -880,9 +888,7 @@ impl TestContext {
                                     .unwrap();
                                     let var_value = decoded_log_data.value;
                                     if verbose {
-                                        println!(
-                                            "Decoded log value: {var_value}, log rb: {rb}"
-                                        );
+                                        println!("Decoded log value: {var_value}, log rb: {rb}");
                                     }
                                     decoded_logs.push(var_value);
                                 }
@@ -892,20 +898,18 @@ impl TestContext {
                         if !test.passed() {
                             failed.push(format!(
                                 "{}: Test '{}' failed with state {:?}, expected: {:?}",
-                                pkg.built.descriptor.name,
-                                test.name,
-                                test.state,
-                                test.condition,
+                                pkg.built.descriptor.name, test.name, test.state, test.condition,
                             ));
                         }
                     }
                 }
 
-                let expected_decoded_test_logs = if let Some(expected_decoded_test_logs) = expected_decoded_test_logs.as_ref() {
-                    expected_decoded_test_logs
-                } else {
-                    &vec![]
-                };
+                let expected_decoded_test_logs =
+                    if let Some(expected_decoded_test_logs) = expected_decoded_test_logs.as_ref() {
+                        expected_decoded_test_logs
+                    } else {
+                        &vec![]
+                    };
 
                 if !failed.is_empty() {
                     println!("FAILED!! output:\n{output}");
@@ -929,9 +933,12 @@ impl TestContext {
                 let is_single_package = tested_pkgs.len() == 1;
 
                 if *validate_abi {
-                    for (pinned_name, built_pkg) in tested_pkgs
-                        .iter()
-                        .map(|pkg| (pkg.built.descriptor.pinned.name.as_str(), pkg.built.as_ref())) {
+                    for (pinned_name, built_pkg) in tested_pkgs.iter().map(|pkg| {
+                        (
+                            pkg.built.descriptor.pinned.name.as_str(),
+                            pkg.built.as_ref(),
+                        )
+                    }) {
                         let (result, out) = run_and_capture_output(|| async {
                             harness::test_json_abi(
                                 if is_single_package { name } else { pinned_name },
@@ -950,9 +957,12 @@ impl TestContext {
                 }
 
                 if *validate_storage_slots {
-                    for (pinned_name, built_pkg) in tested_pkgs
-                        .iter()
-                        .map(|pkg| (pkg.built.descriptor.pinned.name.as_str(), pkg.built.as_ref())) {
+                    for (pinned_name, built_pkg) in tested_pkgs.iter().map(|pkg| {
+                        (
+                            pkg.built.descriptor.pinned.name.as_str(),
+                            pkg.built.as_ref(),
+                        )
+                    }) {
                         let (result, out) = run_and_capture_output(|| async {
                             harness::test_json_storage_slots(
                                 if is_single_package { name } else { pinned_name },

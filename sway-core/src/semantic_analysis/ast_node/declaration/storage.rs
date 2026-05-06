@@ -51,12 +51,14 @@ impl ty::TyStorageDecl {
                 .fields
                 .iter()
                 .map(|field| {
-                    let type_size_and_slots = field.get_initialized_storage_slots(engines, context, md_mgr, module);
+                    let type_size_and_slots =
+                        field.get_initialized_storage_slots(engines, context, md_mgr, module);
 
                     // Check if the slot with the same key was already used.
                     if let Ok((_type_size_in_bytes, slots)) = &type_size_and_slots {
                         for slot in slots.iter() {
-                            if let Some(old_field) = slot_fields.insert(*slot.key(), field.clone()) {
+                            if let Some(old_field) = slot_fields.insert(*slot.key(), field.clone())
+                            {
                                 handler.emit_warn(CompileWarning {
                                     span: field.span(),
                                     warning_content:
@@ -87,13 +89,13 @@ impl ty::TyStorageDecl {
             //       for dynamic storage. For now, we just ignore storage fields
             //       whose type size is larger than 32 bytes, and don't initialize them.
             if context.experimental.dynamic_storage {
-                type_sizes_and_slots.retain(|(type_size_in_bytes, _slots)| *type_size_in_bytes <= 32);
+                type_sizes_and_slots
+                    .retain(|(type_size_in_bytes, _slots)| *type_size_in_bytes <= 32);
             }
 
             let storage_slots = type_sizes_and_slots
                 .into_iter()
-                .map(|(_type_size_in_bytes, slots)| slots)
-                .flatten()
+                .flat_map(|(_type_size_in_bytes, slots)| slots)
                 .collect();
 
             Ok(storage_slots)
