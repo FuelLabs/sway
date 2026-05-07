@@ -146,7 +146,7 @@ impl<V> StorageKey<StorageVec<V>> {
     ///
     /// > **_WARNING:_** **If `V` is a nested storage type, `pop` will reduce the vector length and
     /// remove the last element _from the vector_, but the nested content of the removed element
-    /// will remind in the storage.**
+    /// will remain in the storage.**
     ///
     /// # Returns
     ///
@@ -859,7 +859,7 @@ impl<V> StorageKey<StorageVec<V>> {
     ///
     /// > **_WARNING:_** **If `V` is a nested storage type and `new_len` is less than `len`,
     /// `resize` will reduce the vector length and remove the remaining elements _from the vector_,
-    /// but the nested content of those removed elements will remind in the storage.**
+    /// but the nested content of those removed elements will remain in the storage.**
     ///
     /// # Arguments
     ///
@@ -1283,7 +1283,7 @@ impl<V> StorageKey<StorageVec<V>> {
     ///
     /// > **_WARNING:_** **If `V` is a nested storage type, `pop` will reduce the vector length and
     /// remove the last element _from the vector_, but the content of the nested storage type
-    /// will remind in the storage.
+    /// will remain in the storage.
     ///
     /// # Returns
     ///
@@ -2226,7 +2226,7 @@ impl<V> StorageKey<StorageVec<V>> {
     ///
     /// > **_WARNING:_** **If `V` is a nested storage type and `new_len` is less than `len`,
     /// `resize` will reduce the vector length and remove the remaining elements _from the vector_,
-    /// but the nested content of those removed elements will remind in the storage.**
+    /// but the nested content of those removed elements will remain in the storage.**
     ///
     /// # Arguments
     ///
