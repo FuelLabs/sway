@@ -4,10 +4,12 @@ enum MyEnum<V> {
     Foo: u64,
     Bar: bool,
 }
+
 struct MyStruct<T, U> {
     bim: T,
     bam: MyEnum<u64>,
 }
+
 struct MyOtherStruct {
     bom: u64,
 }

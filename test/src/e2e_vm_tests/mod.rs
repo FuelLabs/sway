@@ -642,6 +642,11 @@ impl TestContext {
                             .iter()
                             .map(|built_pkg| {
                                 (
+                                    // TODO: Pinned name will not always work for checking
+                                    //       ABI and storage slots JSON files. We currently
+                                    //       don't have workspaces in tests that would require
+                                    //       these checks, but we should consider how to handle
+                                    //       this in the future when we do.
                                     built_pkg.descriptor.pinned.name.clone(),
                                     built_pkg.as_ref().clone(),
                                 )
@@ -689,7 +694,15 @@ impl TestContext {
                 if *validate_storage_slots {
                     for (name, built_pkg) in &compiled_pkgs {
                         let (result, out) = run_and_capture_output(|| async {
-                            harness::test_json_storage_slots(name, built_pkg, suffix)
+                            harness::test_json_storage_slots(
+                                name,
+                                built_pkg,
+                                experimental.new_encoding,
+                                run_config.update_output_files,
+                                suffix,
+                                *has_experimental_field,
+                                run_config.release,
+                            )
                         })
                         .await;
                         result?;
@@ -821,92 +834,151 @@ impl TestContext {
                     harness::compile_and_run_unit_tests(name, run_config, true).await;
                 *output = out;
 
+                let tested_pkgs = result?;
+
                 let mut decoded_logs = vec![];
+                let mut failed = vec![];
 
-                result.map(|tested_pkgs| {
-                    let mut failed = vec![];
-                    for pkg in tested_pkgs {
-                        if !pkg.tests.is_empty() {
-                            println!();
-                        }
-                        if let Some(bytecode_size_without_tests) = pkg.built.bytecode_without_tests.as_ref().map(|bc| bc.bytes.len()) {
-                            perf_data.bytecode_sizes.push(BytecodeSize::new(bytecode_size_without_tests));
-                        }
-                        for test in pkg.tests.into_iter() {
-                            perf_data.gas_usages.push(GasUsage::with_unit_test_name(
-                                test.name.clone(),
-                                test.gas_used as usize,
-                            ));
-                            if verbose {
-                                // "test incorrect_def_modeling ... ok (17.673µs, 59 gas)"
-                                println!("    test {} ... {} ({:?}, {} gas)", 
-                                    test.name,
-                                    if test.passed() { "ok" } else { "nok" },
-                                    test.duration,
-                                    test.gas_used,
-                                );
-                                for log in test.logs.iter() {
-                                    println!("{log:?}");
-                                }
+                for pkg in tested_pkgs.iter() {
+                    if !pkg.tests.is_empty() {
+                        println!();
+                    }
+                    if let Some(bytecode_size_without_tests) = pkg
+                        .built
+                        .bytecode_without_tests
+                        .as_ref()
+                        .map(|bc| bc.bytes.len())
+                    {
+                        perf_data
+                            .bytecode_sizes
+                            .push(BytecodeSize::new(bytecode_size_without_tests));
+                    }
+                    for test in pkg.tests.iter() {
+                        perf_data.gas_usages.push(GasUsage::with_unit_test_name(
+                            test.name.clone(),
+                            test.gas_used as usize,
+                        ));
+                        if verbose {
+                            // "test incorrect_def_modeling ... ok (17.673µs, 59 gas)"
+                            println!(
+                                "    test {} ... {} ({:?}, {} gas)",
+                                test.name,
+                                if test.passed() { "ok" } else { "nok" },
+                                test.duration,
+                                test.gas_used,
+                            );
+                            for log in test.logs.iter() {
+                                println!("{log:?}");
                             }
+                        }
 
-                            if expected_decoded_test_logs.is_some() {
-                                for log in test.logs.iter() {
-                                    if let Receipt::LogData {
-                                        rb,
-                                        data: Some(data),
-                                        ..
-                                    } = log
-                                    {
-                                        let decoded_log_data = decode_log_data(
-                                            &rb.to_string(),
-                                            data,
-                                            &pkg.built.program_abi,
-                                        )
-                                        .unwrap();
-                                        let var_value = decoded_log_data.value;
-                                        if verbose {
-                                            println!(
-                                                "Decoded log value: {var_value}, log rb: {rb}"
-                                            );
-                                        }
-                                        decoded_logs.push(var_value);
+                        if expected_decoded_test_logs.is_some() {
+                            for log in test.logs.iter() {
+                                if let Receipt::LogData {
+                                    rb,
+                                    data: Some(data),
+                                    ..
+                                } = log
+                                {
+                                    let decoded_log_data = decode_log_data(
+                                        &rb.to_string(),
+                                        data,
+                                        &pkg.built.program_abi,
+                                    )
+                                    .unwrap();
+                                    let var_value = decoded_log_data.value;
+                                    if verbose {
+                                        println!("Decoded log value: {var_value}, log rb: {rb}");
                                     }
+                                    decoded_logs.push(var_value);
                                 }
                             }
+                        }
 
-                            if !test.passed() {
-                                failed.push(format!(
-                                    "{}: Test '{}' failed with state {:?}, expected: {:?}",
-                                    pkg.built.descriptor.name,
-                                    test.name,
-                                    test.state,
-                                    test.condition,
-                                ));
-                            }
+                        if !test.passed() {
+                            failed.push(format!(
+                                "{}: Test '{}' failed with state {:?}, expected: {:?}",
+                                pkg.built.descriptor.name, test.name, test.state, test.condition,
+                            ));
                         }
                     }
+                }
 
-                    let expected_decoded_test_logs = if let Some(expected_decoded_test_logs) = expected_decoded_test_logs.as_ref() {
+                let expected_decoded_test_logs =
+                    if let Some(expected_decoded_test_logs) = expected_decoded_test_logs.as_ref() {
                         expected_decoded_test_logs
                     } else {
                         &vec![]
                     };
 
-                    if !failed.is_empty() {
-                        println!("FAILED!! output:\n{output}");
-                        panic!(
-                            "For {name}\n{} tests failed:\n{}",
-                            failed.len(),
-                            failed.into_iter().collect::<String>()
-                        );
-                    } else if expected_decoded_test_logs != &decoded_logs {
-                        println!("FAILED!! output:\n{output}");
-                        panic!(
-                            "For {name}\ncollected decoded logs: {decoded_logs:?}\nexpected decoded logs: {expected_decoded_test_logs:?}"
-                        );
+                if !failed.is_empty() {
+                    println!("FAILED!! output:\n{output}");
+                    panic!(
+                        "For {name}\n{} tests failed:\n{}",
+                        failed.len(),
+                        failed.into_iter().collect::<String>()
+                    );
+                } else if expected_decoded_test_logs != &decoded_logs {
+                    println!("FAILED!! output:\n{output}");
+                    panic!(
+                        "For {name}\ncollected decoded logs: {decoded_logs:?}\nexpected decoded logs: {expected_decoded_test_logs:?}"
+                    );
+                }
+
+                // TODO: Pinned name will not always work for checking
+                //       ABI and storage slots JSON files. We currently
+                //       don't have workspaces in tests that would require
+                //       these checks, but we should consider how to handle
+                //       this in the future when we do.
+                let is_single_package = tested_pkgs.len() == 1;
+
+                if *validate_abi {
+                    for (pinned_name, built_pkg) in tested_pkgs.iter().map(|pkg| {
+                        (
+                            pkg.built.descriptor.pinned.name.as_str(),
+                            pkg.built.as_ref(),
+                        )
+                    }) {
+                        let (result, out) = run_and_capture_output(|| async {
+                            harness::test_json_abi(
+                                if is_single_package { name } else { pinned_name },
+                                built_pkg,
+                                experimental.new_encoding,
+                                run_config.update_output_files,
+                                suffix,
+                                *has_experimental_field,
+                                run_config.release,
+                            )
+                        })
+                        .await;
+                        output.push_str(&out);
+                        result?;
                     }
-                })?;
+                }
+
+                if *validate_storage_slots {
+                    for (pinned_name, built_pkg) in tested_pkgs.iter().map(|pkg| {
+                        (
+                            pkg.built.descriptor.pinned.name.as_str(),
+                            pkg.built.as_ref(),
+                        )
+                    }) {
+                        let (result, out) = run_and_capture_output(|| async {
+                            harness::test_json_storage_slots(
+                                if is_single_package { name } else { pinned_name },
+                                built_pkg,
+                                experimental.new_encoding,
+                                run_config.update_output_files,
+                                suffix,
+                                *has_experimental_field,
+                                run_config.release,
+                            )
+                        })
+                        .await;
+                        result?;
+                        output.push_str(&out);
+                    }
+                }
             }
 
             category => {
@@ -1040,6 +1112,9 @@ impl TestsInRun {
         }
         if filter_config.abi_only {
             tests_to_run.retain(|t| t.validate_abi);
+        }
+        if filter_config.storage_only {
+            tests_to_run.retain(|t| t.validate_storage_slots);
         }
         if filter_config.contract_only {
             tests_to_run.retain(|t| t.category == TestCategory::RunsWithContract);

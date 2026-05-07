@@ -1,0 +1,80 @@
+{
+  "concreteTypes": [
+    {
+      "concreteTypeId": "634fa13940eb3cd6d09d5895f1e2c01426c417dbb1d7cc2f673b2cf0f8ef7cd6",
+      "type": "struct DeprecatedStruct"
+    },
+    {
+      "concreteTypeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0",
+      "type": "u64"
+    }
+  ],
+  "configurables": [],
+  "encodingVersion": "1",
+  "errorCodes": {},
+  "functions": [
+    {
+      "attributes": [
+        {
+          "arguments": [
+            "always"
+          ],
+          "name": "inline"
+        },
+        {
+          "arguments": [
+            "deprecated"
+          ],
+          "name": "allow"
+        }
+      ],
+      "inputs": [],
+      "name": "deprecated_attribute_preserved_in_abi_as_well",
+      "output": "634fa13940eb3cd6d09d5895f1e2c01426c417dbb1d7cc2f673b2cf0f8ef7cd6"
+    },
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "get_auto_impl_const",
+      "output": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+    },
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "impl_method",
+      "output": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+    },
+    {
+      "attributes": [
+        {
+          "arguments": [
+            "experimental_new_encoding"
+          ],
+          "name": "cfg"
+        }
+      ],
+      "inputs": [],
+      "name": "some_contract_method",
+      "output": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+    },
+    {
+      "attributes": [
+        {
+          "arguments": [
+            "read"
+          ],
+          "name": "storage"
+        }
+      ],
+      "inputs": [],
+      "name": "storage_attribute_preserved",
+      "output": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "metadataTypes": [],
+  "panickingCalls": {},
+  "programType": "contract",
+  "specVersion": "1.2"
+}

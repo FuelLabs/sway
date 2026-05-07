@@ -1,0 +1,8 @@
+[[package]]
+name = "std"
+source = "path+from-root-CB3F69EFDAD943C9"
+
+[[package]]
+name = "storage_slots_json_generation_empty_storage"
+source = "member"
+dependencies = ["std"]
