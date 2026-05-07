@@ -37,7 +37,7 @@ use ::primitive_conversions::{b256::*, u256::*, u64::*};
 ///
 /// # Reverts
 ///
-/// * When the currently existing storage slots being read before writing the `value` have size different than 32 bytes.
+/// * If the currently existing storage slots being read before writing the `value` have size different than 32 bytes.
 ///
 /// # Examples
 ///
@@ -121,7 +121,7 @@ pub fn write_quads<T>(slot: b256, offset: u64, value: T) {
 ///
 /// # Reverts
 ///
-/// * When the currently existing storage slots being read before writing the `value` have size different than 32 bytes.
+/// * If the currently existing storage slots being read before writing the `value` have size different than 32 bytes.
 ///
 /// # Examples
 ///
@@ -435,8 +435,8 @@ pub fn read<T>(slot: b256, offset: u64) -> Option<T> {
 ///
 /// # Reverts
 ///
-/// * When the `offset` is out of bounds of the currently used portion of the slot, if the slot is not empty.
-/// * When the storage slot is not large enough to contain a value of size of `T` at the given `offset`.
+/// * If the `offset` is out of bounds of the currently used portion of the slot, if the slot is not empty.
+/// * If the storage slot is not large enough to contain a value of size of `T` at the given `offset`.
 ///
 /// # Examples
 ///

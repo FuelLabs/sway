@@ -523,22 +523,39 @@ jobs:
         run: forc test --path sway-lib-std --experimental dynamic_storage
       - name: Run Std Unit Tests - ['dynamic_storage' enabled] (Release)
         run: forc test --release --path sway-lib-std --experimental dynamic_storage
+      # TODO: Switch back to `forc test` on the workspace once https://github.com/FuelLabs/sway/issues/7613 is resolved.
+      # - name: Run In Language Unit Tests (Debug)
+      #   run: forc test --error-on-warnings --path test/src/in_language_tests
+      # - name: Run In Language Unit Tests (Release)
+      #   run: forc test --error-on-warnings --release --path test/src/in_language_tests
+      # - name: Run In Language Unit Tests - ['new_hashing' disabled] (Debug)
+      #   run: forc test --error-on-warnings --path test/src/in_language_tests --no-experimental new_hashing
+      # - name: Run In Language Unit Tests - ['new_hashing' disabled] (Release)
+      #   run: forc test --error-on-warnings --release --path test/src/in_language_tests --no-experimental new_hashing
+      # - name: Run In Language Unit Tests - ['str_array_no_padding' enabled] (Debug)
+      #   run: forc test --error-on-warnings --path test/src/in_language_tests --experimental str_array_no_padding
+      # - name: Run In Language Unit Tests - ['str_array_no_padding' enabled] (Release)
+      #   run: forc test --error-on-warnings --release --path test/src/in_language_tests --experimental str_array_no_padding
+      # - name: Run In Language Unit Tests - ['dynamic_storage' enabled] (Debug)
+      #   run: forc test --error-on-warnings --path test/src/in_language_tests --experimental dynamic_storage
+      # - name: Run In Language Unit Tests - ['dynamic_storage' enabled] (Release)
+      #   run: forc test --error-on-warnings --release --path test/src/in_language_tests --experimental dynamic_storage
       - name: Run In Language Unit Tests (Debug)
-        run: forc test --error-on-warnings --path test/src/in_language_tests
+        run: ./test/src/in_language_tests/run_in_language_tests.sh
       - name: Run In Language Unit Tests (Release)
-        run: forc test --error-on-warnings --release --path test/src/in_language_tests
+        run: ./test/src/in_language_tests/run_in_language_tests.sh --release
       - name: Run In Language Unit Tests - ['new_hashing' disabled] (Debug)
-        run: forc test --error-on-warnings --path test/src/in_language_tests --no-experimental new_hashing
+        run: ./test/src/in_language_tests/run_in_language_tests.sh --no-experimental new_hashing
       - name: Run In Language Unit Tests - ['new_hashing' disabled] (Release)
-        run: forc test --error-on-warnings --release --path test/src/in_language_tests --no-experimental new_hashing
+        run: ./test/src/in_language_tests/run_in_language_tests.sh --release --no-experimental new_hashing
       - name: Run In Language Unit Tests - ['str_array_no_padding' enabled] (Debug)
-        run: forc test --error-on-warnings --path test/src/in_language_tests --experimental str_array_no_padding
+        run: ./test/src/in_language_tests/run_in_language_tests.sh --experimental str_array_no_padding
       - name: Run In Language Unit Tests - ['str_array_no_padding' enabled] (Release)
-        run: forc test --error-on-warnings --release --path test/src/in_language_tests --experimental str_array_no_padding
+        run: ./test/src/in_language_tests/run_in_language_tests.sh --release --experimental str_array_no_padding
       - name: Run In Language Unit Tests - ['dynamic_storage' enabled] (Debug)
-        run: forc test --error-on-warnings --path test/src/in_language_tests --experimental dynamic_storage
+        run: ./test/src/in_language_tests/run_in_language_tests.sh --experimental dynamic_storage
       - name: Run In Language Unit Tests - ['dynamic_storage' enabled] (Release)
-        run: forc test --error-on-warnings --release --path test/src/in_language_tests --experimental dynamic_storage
+        run: ./test/src/in_language_tests/run_in_language_tests.sh --release --experimental dynamic_storage
 
   forc-pkg-fuels-deps-check:
     runs-on: ubuntu-latest

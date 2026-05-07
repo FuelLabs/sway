@@ -1,0 +1,6 @@
+category = "compile"
+experimental = { new_encoding = true, dynamic_storage = true }
+expected_warnings = 4
+
+# check: $()Storage read after external contract interaction in function or method "withdraw". Consider making all storage reads before calling another contract
+

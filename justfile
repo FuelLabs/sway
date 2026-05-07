@@ -53,7 +53,9 @@ perf-in-lang filter='':
     #!/usr/bin/env bash
     branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null); [[ "$branch" == "HEAD" || -z "$branch" ]] && branch="unknown-branch"; branch=${branch//\//-};
     outfile="./test/perf_out/$(date '+%m%d%H%M%S')-in-language-gas-usages-release-$branch.csv"
-    cargo r -r -p forc -- test --release --path ./test/src/in_language_tests {{filter}} | ./scripts/perf/extract-gas-usages.sh > "$outfile"
+    # TODO: Switch back to `forc test` on the workspace once https://github.com/FuelLabs/sway/issues/7613 is resolved.
+    # cargo r -r -p forc -- test --release --path ./test/src/in_language_tests {{filter}} | tee /dev/stderr | ./scripts/perf/extract-gas-usages.sh > "$outfile"
+    ./test/src/in_language_tests/run_in_language_tests.sh --release {{filter}} | tee /dev/stderr | ./scripts/perf/extract-gas-usages.sh > "$outfile"
     echo "Gas usages written to:      $outfile"
 
 alias pa := perf-all

@@ -8,12 +8,13 @@ use ::string::String;
 use ::codec::*;
 use ::debug::*;
 
-/// A persistent storage type to store a UTF-8 encoded string as a collection of tightly packed bytes.
+/// A storage type for storing a UTF-8 encoded string,
+/// as a collection of tightly packed bytes.
 pub struct StorageString {}
 
 // Note: `StorageString` is a zero-sized storage type that can be nested
 //       within other storage types. For example, a `StorageMap<K, StorageString>`.
-//       That's why we are **always using the `self.field_id`** as a storage slot
+//       That's why we **always use the `self.field_id`** as a storage slot
 //       for all of the methods of `StorageString`, and **never the `self.slot`**.
 
 #[cfg(experimental_dynamic_storage = false)]
