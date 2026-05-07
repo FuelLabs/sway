@@ -17,8 +17,8 @@ so reading from the slot and offset where a zero-sized type would be stored will
 </ul>
 <h1>Reverts</h1>
 <ul>
-<li>When the <code>offset</code> is out of bounds of the currently used portion of the slot, if the slot is not empty.</li>
-<li>When the storage slot is not large enough to contain a value of size of <code>T</code> at the given <code>offset</code>.</li>
+<li>If the <code>offset</code> is out of bounds of the currently used portion of the slot, if the slot is not empty.</li>
+<li>If the storage slot is not large enough to contain a value of size of <code>T</code> at the given <code>offset</code>.</li>
 </ul>
 <h1>Examples</h1>
 <pre><code class="language-sway">use std::storage::storage_api::{read_slot, append_slot};

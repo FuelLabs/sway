@@ -299,7 +299,7 @@ fn foo() {
     assert_eq(returned_value, Result::Ok(new_value)); // New value is returned.
 }
 </code></pre>
-</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-StorageKey" class="impl has-srclink"><a href="#impl-StorageKey" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../../storage/storage_key/trait.StorageKey.html">StorageKey</a> for StorageKey&lt;StorageVec&lt;V&gt;&gt;</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.push" class="method trait-impl"><a href="#method.push" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.push">push</a>(self, value: V)</h4></div></summary><div class="docblock"><p>Appends the value to the end of the vector.</p>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-StorageKey" class="impl has-srclink"><a href="#impl-StorageKey" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../../storage/storage_key/trait.StorageKey.html">StorageKey</a> for StorageKey&lt;StorageVec&lt;V&gt;&gt;</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.push" class="method trait-impl"><a href="#method.push" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.push">push</a>(self, value: V)</h4></div></summary><div class="docblock"><p>Appends <code>value</code> to the end of the vector.</p>
 <h1>Arguments</h1>
 <ul>
 <li><code>value</code>: [V] - The item being added to the end of the vector.</li>
@@ -313,19 +313,32 @@ fn foo() {
 <pre><code class="language-sway">use std::storage::storage_vec::*;
 
 storage {
-    vec: StorageVec&lt;u64&gt; = StorageVec {}
+    vec: StorageVec&lt;u64&gt; = StorageVec {},
+    vec_of_vec: StorageVec&lt;StorageVec&lt;u64&gt;&gt; = StorageVec {},
 }
 
 fn foo() {
     let five = 5_u64;
     storage.vec.push(five);
-    assert(five == storage.vec.get(0).unwrap().read());
+    assert_eq(five, storage.vec.get(0).unwrap().read());
+
+    storage.vec_of_vec.push(StorageVec {});
+    assert_eq(0, storage.vec_of_vec.get(0).unwrap().len());
 }
 </code></pre>
-</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.pop" class="method trait-impl"><a href="#method.pop" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.pop">pop</a>(self) -&gt; Option&lt;V&gt;</h4></div></summary><div class="docblock"><p>Removes the last element of the vector and returns it, <code>None</code> if empty.</p>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.pop" class="method trait-impl"><a href="#method.pop" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.pop">pop</a>(self) -&gt; Option&lt;V&gt;</h4></div></summary><div class="docblock"><p>Removes the last element of the vector and returns it, or <code>None</code> if the vector is empty,<br />
+or it contains a nested storage type.</p>
+<h1>Additional Information</h1>
+<p><strong>If <code>V</code> is a nested storage type, <code>pop</code> always returns <code>None</code>, even if the vector is not<br />
+empty and the last element got removed.</strong></p>
+<blockquote>
+<p><strong><em>WARNING:</em></strong> <strong>If <code>V</code> is a nested storage type, <code>pop</code> will reduce the vector length and<br />
+remove the last element <em>from the vector</em>, but the nested content of the removed element<br />
+will remain in the storage.</strong></p>
+</blockquote>
 <h1>Returns</h1>
 <ul>
-<li>[Option<!-- raw HTML omitted -->] - The last element <code>V</code> or <code>None</code>.</li>
+<li>[Option<!-- raw HTML omitted -->] - The last element of the vector, or <code>None</code> if the vector is empty, or it contains a nested storage type.</li>
 </ul>
 <h1>Number of Storage Accesses</h1>
 <ul>
@@ -336,27 +349,26 @@ fn foo() {
 <pre><code class="language-sway">use std::storage::storage_vec::*;
 
 storage {
-    vec: StorageVec&lt;u64&gt; = StorageVec {}
+    vec: StorageVec&lt;u64&gt; = StorageVec {},
 }
 
 fn foo() {
     let five = 5_u64;
     storage.vec.push(five);
     let popped_value = storage.vec.pop().unwrap();
-    assert(five == popped_value);
+    assert_eq(five, popped_value);
     let none_value = storage.vec.pop();
     assert(none_value.is_none());
 }
 </code></pre>
-</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.get" class="method trait-impl"><a href="#method.get" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.get">get</a>(self, index: u64) -&gt; Option&lt;StorageKey&lt;V&gt;&gt;</h4></div></summary><div class="docblock"><p>Gets the value in the given index, <code>None</code> if index is out of bounds.</p>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.get" class="method trait-impl"><a href="#method.get" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.get">get</a>(self, index: u64) -&gt; Option&lt;StorageKey&lt;V&gt;&gt;</h4></div></summary><div class="docblock"><p>Gets the value at the given <code>index</code> or <code>None</code> if <code>index</code> is out of bounds.</p>
 <h1>Arguments</h1>
 <ul>
-<li><code>index</code>: [u64] - The index of the vec to retrieve the item from.</li>
+<li><code>index</code>: [u64] - The index to retrieve the item from.</li>
 </ul>
 <h1>Returns</h1>
 <ul>
-<li>[Option&lt;StorageKey<!-- raw HTML omitted -->&gt;] - Describes the raw location in storage of the value stored at<br />
-<code>key</code> or <code>None</code> if out of bounds.</li>
+<li>[Option&lt;StorageKey<!-- raw HTML omitted -->&gt;] - Location in storage of the value stored at <code>index</code> or <code>None</code> if <code>index</code> is out of bounds.</li>
 </ul>
 <h1>Number of Storage Accesses</h1>
 <ul>
@@ -372,25 +384,29 @@ storage {
 fn foo() {
     let five = 5_u64;
     storage.vec.push(five);
-    assert(five == storage.vec.get(0).unwrap().read());
+    assert_eq(five, storage.vec.get(0).unwrap().read());
     assert(storage.vec.get(1).is_none());
 }
 </code></pre>
-</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.remove" class="method trait-impl"><a href="#method.remove" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.remove">remove</a>(self, index: u64) -&gt; V</h4></div></summary><div class="docblock"><p>Removes the element in the given index and moves all the elements in the following indexes<br />
-down one index. Also returns the element.</p>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.remove" class="method trait-impl"><a href="#method.remove" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.remove">remove</a>(self, index: u64) -&gt; V</h4></div></summary><div class="docblock"><p>Removes the element at the given <code>index</code> and moves all the elements at the following indices<br />
+down one index. Returns the removed element.</p>
 <h1>Additional Information</h1>
-<p><strong><em>WARNING:</em></strong> Expensive for larger vecs.</p>
+<p><strong>This method is not supported for nested storage types and will revert if <code>V</code> is a nested storage type.</strong></p>
+<blockquote>
+<p><strong><em>WARNING:</em></strong> Gas consuming for larger vectors.</p>
+</blockquote>
 <h1>Arguments</h1>
 <ul>
-<li><code>index</code>: [u64] - The index of the vec to remove the item from.</li>
+<li><code>index</code>: [u64] - The index to remove the element from.</li>
 </ul>
 <h1>Returns</h1>
 <ul>
-<li>[V] - The element that has been removed at the index.</li>
+<li>[V] - The removed element.</li>
 </ul>
 <h1>Reverts</h1>
 <ul>
-<li>Reverts if index is larger or equal to length of the vec.</li>
+<li>If <code>index</code> is out of bounds.</li>
+<li>If <code>V</code> is a nested storage type, i.e. if it is a zero-sized type.</li>
 </ul>
 <h1>Number of Storage Accesses</h1>
 <ul>
@@ -409,23 +425,27 @@ fn foo() {
     storage.vec.push(10);
     storage.vec.push(15);
     let removed_value = storage.vec.remove(1);
-    assert(10 == removed_value);
-    assert(storage.vec.len() == 2);
+    assert_eq(10, removed_value);
+    assert_eq(storage.vec.len(), 2);
 }
 </code></pre>
-</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.swap_remove" class="method trait-impl"><a href="#method.swap_remove" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.swap_remove">swap_remove</a>(self, index: u64) -&gt; V</h4></div></summary><div class="docblock"><p>Removes the element at the specified index and fills it with the last element.<br />
-This does not preserve ordering and returns the element.</p>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.swap_remove" class="method trait-impl"><a href="#method.swap_remove" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.swap_remove">swap_remove</a>(self, index: u64) -&gt; V</h4></div></summary><div class="docblock"><p>Replaces the element at the given <code>index</code> with the last element, and removes the last element.<br />
+Returns the replaced element.</p>
+<h1>Additional Information</h1>
+<p><strong>This method is not supported for nested storage types and will revert if <code>V</code> is a nested storage type.</strong></p>
+<p>If <code>index</code> is the index of the last element, the last element will be returned and removed from the vector.</p>
 <h1>Arguments</h1>
 <ul>
-<li><code>index</code>: [u64] - The index of the vec to remove the item from.</li>
+<li><code>index</code>: [u64] - The index at which to replace the element with the last element.</li>
 </ul>
 <h1>Returns</h1>
 <ul>
-<li>[V] - The element that has been removed at the index.</li>
+<li>[V] - The replaced element.</li>
 </ul>
 <h1>Reverts</h1>
 <ul>
-<li>Reverts if index is larger or equal to length of the vec.</li>
+<li>If <code>index</code> is out of bounds.</li>
+<li>If <code>V</code> is a nested storage type, i.e. if it is a zero-sized type.</li>
 </ul>
 <h1>Number of Storage Accesses</h1>
 <ul>
@@ -444,24 +464,28 @@ fn foo() {
     storage.vec.push(10);
     storage.vec.push(15);
     let removed_value = storage.vec.swap_remove(0);
-    assert(5 == removed_value);
+    assert_eq(5, removed_value);
     let swapped_value = storage.vec.get(0).unwrap().read();
-    assert(15 == swapped_value);
+    assert_eq(15, swapped_value); // The first element is replaced by the last element.
+    assert_eq(2, vec.len()); // The last element is removed.
 }
 </code></pre>
-</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.set" class="method trait-impl"><a href="#method.set" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.set">set</a>(<br>    self,<br>    index: u64,<br>    value: V,<br>)</h4></div></summary><div class="docblock"><p>Sets or mutates the value at the given index.</p>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.set" class="method trait-impl"><a href="#method.set" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.set">set</a>(<br>    self,<br>    index: u64,<br>    value: V,<br>)</h4></div></summary><div class="docblock"><p>Sets the <code>value</code> at the given <code>index</code>.</p>
+<h1>Additional Information</h1>
+<p><strong>This method is not supported for nested storage types and will revert if <code>V</code> is a nested storage type.</strong></p>
 <h1>Arguments</h1>
 <ul>
-<li><code>index</code>: [u64] - The index of the vec to set the value at</li>
-<li><code>value</code>: [V] - The value to be set</li>
+<li><code>index</code>: [u64] - The index to set the value at.</li>
+<li><code>value</code>: [V] - The value to be set.</li>
 </ul>
 <h1>Reverts</h1>
 <ul>
-<li>Reverts if index is larger than or equal to the length of the vec.</li>
+<li>If <code>index</code> is out of bounds.</li>
+<li>If <code>V</code> is a nested storage type, i.e. if it is a zero-sized type.</li>
 </ul>
 <h1>Number of Storage Accesses</h1>
 <ul>
-<li>Reads: <code>2</code></li>
+<li>Reads: <code>1</code> or <code>2</code> (<code>1</code> to get vector’s length, and <code>0</code> if the <code>value</code> occupies full slots, or <code>1</code> otherwise to read the existing data that will be partially overwritten)</li>
 <li>Writes: <code>1</code></li>
 </ul>
 <h1>Examples</h1>
@@ -474,27 +498,30 @@ storage {
 fn foo() {
     storage.vec.push(5);
     storage.vec.push(10);
-    storage.vec.push(15);
 
-    storage.vec.set(0, 20);
+    storage.vec.set(0, 15);
     let set_value = storage.vec.get(0).unwrap().read();
-    assert(20 == set_value);
+    assert_eq(15, set_value);
 }
 </code></pre>
-</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.insert" class="method trait-impl"><a href="#method.insert" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.insert">insert</a>(<br>    self,<br>    index: u64,<br>    value: V,<br>)</h4></div></summary><div class="docblock"><p>Inserts the value at the given index, moving the current index’s value<br />
-as well as the following index’s value up by one index.</p>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.insert" class="method trait-impl"><a href="#method.insert" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.insert">insert</a>(<br>    self,<br>    index: u64,<br>    value: V,<br>)</h4></div></summary><div class="docblock"><p>Inserts the <code>value</code> at the given <code>index</code>, moving the current value at <code>index</code><br />
+as well as the following indices up by one index.</p>
 <h1>Additional Information</h1>
+<p><strong>This method is not supported for nested storage types and will revert if <code>V</code> is a nested storage type.</strong></p>
+<p>If <code>index</code> is equal to vector’s length, appends the <code>value</code> at the end of the<br />
+vector, effectively acting the same as <code>push</code>.</p>
 <blockquote>
-<p><strong><em>WARNING:</em></strong> Expensive for larger vecs.</p>
+<p><strong><em>WARNING:</em></strong> Gas consuming for larger vectors.</p>
 </blockquote>
 <h1>Arguments</h1>
 <ul>
-<li><code>index</code>: [u64] - The index of the vec to insert the item into.</li>
-<li><code>value</code>: [V] - The value to insert into the vec.</li>
+<li><code>index</code>: [u64] - The index to insert the value into.</li>
+<li><code>value</code>: [V] - The value to insert.</li>
 </ul>
 <h1>Reverts</h1>
 <ul>
-<li>Reverts if index is larger than the length of the vec.</li>
+<li>If <code>index</code> is larger than the length of the vector.</li>
+<li>If <code>V</code> is a nested storage type, i.e. if it is a zero-sized type.</li>
 </ul>
 <h1>Number of Storage Accesses</h1>
 <ul>
@@ -514,15 +541,15 @@ fn foo() {
 
     storage.vec.insert(1, 10);
 
-    assert(5 == storage.vec.get(0).unwrap().read());
-    assert(10 == storage.vec.get(1).unwrap().read());
-    assert(15 == storage.vec.get(2).unwrap().read());
+    assert_eq(5, storage.vec.get(0).unwrap().read());
+    assert_eq(10, storage.vec.get(1).unwrap().read());
+    assert_eq(15, storage.vec.get(2).unwrap().read());
 }
 </code></pre>
 </div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.len" class="method trait-impl"><a href="#method.len" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.len">len</a>(self) -&gt; u64</h4></div></summary><div class="docblock"><p>Returns the length of the vector.</p>
 <h1>Returns</h1>
 <ul>
-<li>[u64] - The stored length of the vector.</li>
+<li>[u64] - The length of the vector.</li>
 </ul>
 <h1>Number of Storage Accesses</h1>
 <ul>
@@ -532,25 +559,25 @@ fn foo() {
 <pre><code class="language-sway">use std::storage::storage_vec::*;
 
 storage {
-    vec: StorageVec&lt;u64&gt; = StorageVec {}
+    vec: StorageVec&lt;u64&gt; = StorageVec {},
 }
 
 fn foo() {
-    assert(0 == storage.vec.len());
+    assert_eq(0, storage.vec.len());
     storage.vec.push(5);
-    assert(1 == storage.vec.len());
+    assert_eq(1, storage.vec.len());
     storage.vec.push(10);
-    assert(2 == storage.vec.len());
+    assert_eq(2, storage.vec.len());
 }
 </code></pre>
-</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.is_empty" class="method trait-impl"><a href="#method.is_empty" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.is_empty">is_empty</a>(self) -&gt; bool</h4></div></summary><div class="docblock"><p>Checks whether the len is zero or not.</p>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.is_empty" class="method trait-impl"><a href="#method.is_empty" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.is_empty">is_empty</a>(self) -&gt; bool</h4></div></summary><div class="docblock"><p>Returns true if the vector is empty, otherwise false.</p>
 <h1>Returns</h1>
 <ul>
-<li>[bool] - Indicates whether the vector is or is not empty.</li>
+<li>[bool] - Indicates whether the vector is empty or not.</li>
 </ul>
 <h1>Number of Storage Accesses</h1>
 <ul>
-<li>Reads: <code>1</code></li>
+<li>Reads: <code>1</code> (to get vector’s length)</li>
 </ul>
 <h1>Examples</h1>
 <pre><code class="language-sway">use std::storage::storage_vec::*;
@@ -560,18 +587,16 @@ storage {
 }
 
 fn foo() {
-    assert(true == storage.vec.is_empty());
-
+    assert(storage.vec.is_empty());
     storage.vec.push(5);
-
-    assert(false == storage.vec.is_empty());
-
+    assert(!storage.vec.is_empty());
     storage.vec.clear();
-
-    assert(true == storage.vec.is_empty());
+    assert(storage.vec.is_empty());
 }
 </code></pre>
-</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.swap" class="method trait-impl"><a href="#method.swap" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.swap">swap</a>(<br>    self,<br>    element1_index: u64,<br>    element2_index: u64,<br>)</h4></div></summary><div class="docblock"><p>Swaps two elements.</p>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.swap" class="method trait-impl"><a href="#method.swap" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.swap">swap</a>(<br>    self,<br>    element1_index: u64,<br>    element2_index: u64,<br>)</h4></div></summary><div class="docblock"><p>Swaps the positions of the two elements at the given indices.</p>
+<h1>Additional Information</h1>
+<p><strong>This method is not supported for nested storage types and will revert if <code>V</code> is a nested storage type.</strong></p>
 <h1>Arguments</h1>
 <ul>
 <li><code>element1_index</code>: [u64] - The index of the first element.</li>
@@ -579,7 +604,8 @@ fn foo() {
 </ul>
 <h1>Reverts</h1>
 <ul>
-<li>If <code>element1_index</code> or <code>element2_index</code> is greater than the length of the vector.</li>
+<li>If <code>element1_index</code> or <code>element2_index</code> is out of bounds.</li>
+<li>If <code>V</code> is a nested storage type, i.e. if it is a zero-sized type.</li>
 </ul>
 <h1>Number of Storage Accesses</h1>
 <ul>
@@ -599,19 +625,19 @@ fn foo() {
     storage.vec.push(15);
 
     storage.vec.swap(0, 2);
-    assert(15 == storage.vec.get(0).unwrap().read());
-    assert(10 == storage.vec.get(1).unwrap().read());
-    assert(5 == storage.vec.get(2).unwrap().read());
+    assert_eq(15, storage.vec.get(0).unwrap().read());
+    assert_eq(10, storage.vec.get(1).unwrap().read());
+    assert_eq(5, storage.vec.get(2).unwrap().read());
 </code></pre>
 </div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.first" class="method trait-impl"><a href="#method.first" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.first">first</a>(self) -&gt; Option&lt;StorageKey&lt;V&gt;&gt;</h4></div></summary><div class="docblock"><p>Returns the first element of the vector, or <code>None</code> if it is empty.</p>
 <h1>Returns</h1>
 <ul>
-<li>[Option&lt;StorageKey<!-- raw HTML omitted -->&gt;] - Describes the raw location in storage of the value stored at<br />
-the start of the vector or zero if the vector is empty.</li>
+<li>[Option&lt;StorageKey<!-- raw HTML omitted -->&gt;] - The location in storage of the value stored at<br />
+the start of the vector, or <code>None</code> if the vector is empty.</li>
 </ul>
 <h1>Number of Storage Accesses</h1>
 <ul>
-<li>Reads: <code>1</code></li>
+<li>Reads: <code>1</code> (to get vector’s length)</li>
 </ul>
 <h1>Examples</h1>
 <pre><code class="language-sway">storage {
@@ -620,21 +646,19 @@ the start of the vector or zero if the vector is empty.</li>
 
 fn foo() {
     assert(storage.vec.first().is_none());
-
     storage.vec.push(5);
-
-    assert(5 == storage.vec.first().unwrap().read());
+    assert_eq(5, storage.vec.first().unwrap().read());
 }
 </code></pre>
 </div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.last" class="method trait-impl"><a href="#method.last" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.last">last</a>(self) -&gt; Option&lt;StorageKey&lt;V&gt;&gt;</h4></div></summary><div class="docblock"><p>Returns the last element of the vector, or <code>None</code> if it is empty.</p>
 <h1>Returns</h1>
 <ul>
-<li>[Option&lt;StorageKey<!-- raw HTML omitted -->&gt;] - Describes the raw location in storage of the value stored at<br />
-the end of the vector or zero if the vector is empty.</li>
+<li>[Option&lt;StorageKey<!-- raw HTML omitted -->&gt;] - The location in storage of the value stored at<br />
+the end of the vector, or <code>None</code> if the vector is empty.</li>
 </ul>
 <h1>Number of Storage Accesses</h1>
 <ul>
-<li>Reads: <code>1</code></li>
+<li>Reads: <code>1</code> (to get vector’s length)</li>
 </ul>
 <h1>Examples</h1>
 <pre><code class="language-sway">storage {
@@ -643,14 +667,14 @@ the end of the vector or zero if the vector is empty.</li>
 
 fn foo() {
     assert(storage.vec.last().is_none());
-
     storage.vec.push(5);
     storage.vec.push(10);
-
-    assert(10 == storage.vec.last().unwrap().read());
+    assert_eq(10, storage.vec.last().unwrap().read());
 }
 </code></pre>
 </div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.reverse" class="method trait-impl"><a href="#method.reverse" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.reverse">reverse</a>(self)</h4></div></summary><div class="docblock"><p>Reverses the order of elements in the vector, in place.</p>
+<h1>Additional Information</h1>
+<p><strong>This method is not supported for nested storage types and will panic if <code>V</code> is a nested storage type.</strong></p>
 <h1>Number of Storage Accesses</h1>
 <ul>
 <li>Reads: <code>1 + (3 * (self.len() / 2))</code></li>
@@ -665,17 +689,24 @@ fn foo() {
     storage.vec.push(5);
     storage.vec.push(10);
     storage.vec.push(15);
+
     storage.vec.reverse();
 
-    assert(15 == storage.vec.get(0).unwrap().read());
-    assert(10 == storage.vec.get(1).unwrap().read());
-    assert(5 == storage.vec.get(2).unwrap().read());
+    assert_eq(15, storage.vec.get(0).unwrap().read());
+    assert_eq(10, storage.vec.get(1).unwrap().read());
+    assert_eq(5, storage.vec.get(2).unwrap().read());
 }
 </code></pre>
-</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.fill" class="method trait-impl"><a href="#method.fill" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.fill">fill</a>(self, value: V)</h4></div></summary><div class="docblock"><p>Fills <code>self</code> with elements by cloning <code>value</code>.</p>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.fill" class="method trait-impl"><a href="#method.fill" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.fill">fill</a>(self, value: V)</h4></div></summary><div class="docblock"><p>Replaces all elements in the vector with <code>value</code>.</p>
+<h1>Additional Information</h1>
+<p><strong>This method is not supported for nested storage types and will revert if <code>V</code> is a nested storage type.</strong></p>
 <h1>Arguments</h1>
 <ul>
 <li><code>value</code>: [V] - Value to copy to each element of the vector.</li>
+</ul>
+<h1>Reverts</h1>
+<ul>
+<li>If <code>V</code> is a nested storage type, i.e. if it is a zero-sized type.</li>
 </ul>
 <h1>Number of Storage Accesses</h1>
 <ul>
@@ -691,22 +722,28 @@ fn foo() {
     storage.vec.push(5);
     storage.vec.push(10);
     storage.vec.push(15);
+
     storage.vec.fill(20);
 
-    assert(20 == storage.vec.get(0).unwrap().read());
-    assert(20 == storage.vec.get(1).unwrap().read());
-    assert(20 == storage.vec.get(2).unwrap().read());
+    assert_eq(20, storage.vec.get(0).unwrap().read());
+    assert_eq(20, storage.vec.get(1).unwrap().read());
+    assert_eq(20, storage.vec.get(2).unwrap().read());
 }
 </code></pre>
 </div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.resize" class="method trait-impl"><a href="#method.resize" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.resize">resize</a>(<br>    self,<br>    new_len: u64,<br>    value: V,<br>)</h4></div></summary><div class="docblock"><p>Resizes <code>self</code> in place so that <code>len</code> is equal to <code>new_len</code>.</p>
 <h1>Additional Information</h1>
 <p>If <code>new_len</code> is greater than <code>len</code>, <code>self</code> is extended by the difference, with each<br />
-additional slot being filled with <code>value</code>. If the <code>new_len</code> is less than <code>len</code>, <code>self</code> is<br />
+additional element being set to <code>value</code>. If the <code>new_len</code> is less than <code>len</code>, <code>self</code> is<br />
 simply truncated.</p>
+<blockquote>
+<p><strong><em>WARNING:</em></strong> <strong>If <code>V</code> is a nested storage type and <code>new_len</code> is less than <code>len</code>,<br />
+<code>resize</code> will reduce the vector length and remove the remaining elements <em>from the vector</em>,<br />
+but the nested content of those removed elements will remain in the storage.</strong></p>
+</blockquote>
 <h1>Arguments</h1>
 <ul>
-<li><code>new_len</code>: [u64] - The new length to expand or truncate to</li>
-<li><code>value</code>: [V] - The value to fill into new slots if the <code>new_len</code> is greater than the current length</li>
+<li><code>new_len</code>: [u64] - The new length to expand or truncate to.</li>
+<li><code>value</code>: [V] - The value to set new elements to, if the <code>new_len</code> is greater than the current length.</li>
 </ul>
 <h1>Number of Storage Accesses</h1>
 <ul>
@@ -721,31 +758,37 @@ simply truncated.</p>
 fn foo() {
     storage.vec.push(5);
     storage.vec.push(10);
+
     storage.vec.resize(4, 20);
 
-    assert(5 == storage.vec.get(0).unwrap().read());
-    assert(10 == storage.vec.get(1).unwrap().read());
-    assert(20 == storage.vec.get(2).unwrap().read());
-    assert(20 == storage.vec.get(3).unwrap().read());
+    assert_eq(5, storage.vec.get(0).unwrap().read());
+    assert_eq(10, storage.vec.get(1).unwrap().read());
+    assert_eq(20, storage.vec.get(2).unwrap().read());
+    assert_eq(20, storage.vec.get(3).unwrap().read());
 
     storage.vec.resize(2, 0);
 
-    assert(5 == storage.vec.get(0).unwrap().read());
-    assert(10 == storage.vec.get(1).unwrap().read());
-    assert(None == storage.vec.get(2));
-    assert(None == storage.vec.get(3));
+    assert_eq(5, storage.vec.get(0).unwrap().read());
+    assert_eq(10, storage.vec.get(1).unwrap().read());
+    assert_eq(None, storage.vec.get(2));
+    assert_eq(None, storage.vec.get(3));
 }
 </code></pre>
-</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.store_vec" class="method trait-impl"><a href="#method.store_vec" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.store_vec">store_vec</a>(<br>    self,<br>    vec: Vec&lt;V&gt;,<br>)</h4></div></summary><div class="docblock"><p>Stores a <code>Vec</code> as a <code>StorageVec</code>.</p>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.store_vec" class="method trait-impl"><a href="#method.store_vec" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.store_vec">store_vec</a>(<br>    self,<br>    vec: Vec&lt;V&gt;,<br>)</h4></div></summary><div class="docblock"><p>Stores given <code>vec</code> as a <code>StorageVec</code>.</p>
 <h1>Additional Information</h1>
 <p>This will overwrite any existing values in the <code>StorageVec</code>.</p>
+<p><strong>This method is not supported for nested storage types and will revert if <code>V</code> is a nested storage type.</strong></p>
 <h1>Arguments</h1>
 <ul>
 <li><code>vec</code>: [Vec<!-- raw HTML omitted -->] - The vector to store in storage.</li>
 </ul>
+<h1>Reverts</h1>
+<ul>
+<li>If <code>V</code> is a nested storage type, i.e. if it is a zero-sized type.</li>
+</ul>
 <h1>Number of Storage Accesses</h1>
 <ul>
-<li>Writes - <code>2</code></li>
+<li>Writes: <code>2</code></li>
 </ul>
 <h1>Examples</h1>
 <pre><code class="language-sway">storage {
@@ -760,25 +803,25 @@ fn foo() {
 
     storage.vec.store_vec(vec);
 
-    assert(5 == storage.vec.get(0).unwrap().read());
-    assert(10 == storage.vec.get(1).unwrap().read());
-    assert(15 == storage.vec.get(2).unwrap().read());
+    assert_eq(5, storage.vec.get(0).unwrap().read());
+    assert_eq(10, storage.vec.get(1).unwrap().read());
+    assert_eq(15, storage.vec.get(2).unwrap().read());
 }
 </code></pre>
-</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.load_vec" class="method trait-impl"><a href="#method.load_vec" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.load_vec">load_vec</a>(self) -&gt; Vec&lt;V&gt;</h4></div></summary><div class="docblock"><p>Load a <code>Vec</code> from the <code>StorageVec</code>.</p>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.load_vec" class="method trait-impl"><a href="#method.load_vec" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.load_vec">load_vec</a>(self) -&gt; Vec&lt;V&gt;</h4></div></summary><div class="docblock"><p>Returns all elements contained in <code>self</code> as a <code>Vec&lt;V&gt;</code>.</p>
 <h1>Additional Information</h1>
-<p>This method does not work for any <code>V</code> type that has a 0 size, such as <code>StorageVec</code> itself. Meaning you cannot use this method on a <code>StorageVec&lt;StorageVec&lt;T&gt;&gt;</code>.</p>
+<p><strong>This method is not supported for nested storage types and will revert if <code>V</code> is a nested storage type.</strong></p>
 <h1>Returns</h1>
 <ul>
-<li>[Option&lt;Vec<!-- raw HTML omitted -->&gt;] - The vector constructed from storage or <code>None</code>.</li>
+<li>[Vec<!-- raw HTML omitted -->] - The vector containing all elements of <code>self</code>.</li>
 </ul>
 <h1>Reverts</h1>
 <ul>
-<li>If the size of type <code>V</code> is 0.</li>
+<li>If <code>V</code> is a nested storage type, i.e. if it is a zero-sized type.</li>
 </ul>
 <h1>Number of Storage Accesses</h1>
 <ul>
-<li>Reads - <code>2</code></li>
+<li>Reads: <code>2</code></li>
 </ul>
 <h1>Examples</h1>
 <pre><code class="language-sway">storage {
@@ -792,17 +835,22 @@ fn foo() {
     vec.push(15);
 
     storage.vec.store_vec(vec);
-    let returned_vec = storage.vec.load_vec();
 
-    assert(5 == returned_vec.get(0).unwrap());
-    assert(10 == returned_vec.get(1).unwrap());
-    assert(15 == returned_vec.get(2).unwrap());
+    let loaded_vec = storage.vec.load_vec();
+
+    assert_eq(5, loaded_vec.get(0).unwrap());
+    assert_eq(10, loaded_vec.get(1).unwrap());
+    assert_eq(15, loaded_vec.get(2).unwrap());
 }
 </code></pre>
 </div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.iter" class="method trait-impl"><a href="#method.iter" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.iter">iter</a>(self) -&gt; StorageVecIter&lt;V&gt;</h4></div></summary><div class="docblock"><p>Returns an [Iterator] to iterate over this <code>StorageVec</code>.</p>
 <h1>Returns</h1>
 <ul>
-<li>[StorageVecIter<!-- raw HTML omitted -->] - The struct which can be iterated over.</li>
+<li>[StorageVecIter<!-- raw HTML omitted -->] - The iterator over this <code>StorageVec</code>.</li>
+</ul>
+<h1>Number of Storage Accesses</h1>
+<ul>
+<li>Reads: <code>1</code>    (to get the vector’s length)</li>
 </ul>
 <h1>Examples</h1>
 <pre><code class="language-sway">storage {
@@ -814,12 +862,13 @@ fn foo() {
     storage.vec.push(10);
     storage.vec.push(15);
 
-    // Get the iterator
     let iter = storage.vec.iter();
 
     assert_eq(5, iter.next().unwrap().read());
     assert_eq(10, iter.next().unwrap().read());
     assert_eq(15, iter.next().unwrap().read());
+
+    let iter = storage.vec.iter();
 
     for elem in storage.vec.iter() {
         let elem_value = elem.read();

@@ -28,7 +28,7 @@ like <code>StorageVec</code>, <code>StorageString</code>, and <code>StorageBytes
 </ul>
 <h1>Reverts</h1>
 <ul>
-<li>When the currently existing storage slots being read before writing the <code>value</code> have size different than 32 bytes.</li>
+<li>If the currently existing storage slots being read before writing the <code>value</code> have size different than 32 bytes.</li>
 </ul>
 <h1>Examples</h1>
 <pre><code class="language-sway">use std::storage::storage_api::{read_quads, write_quads};
