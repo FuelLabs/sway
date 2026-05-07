@@ -10,7 +10,7 @@ pub(crate) fn check() -> Result<()> {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let all_tests_dir = PathBuf::from(format!("{manifest_dir}/src"));
 
-    check_test_forc_tomls(&all_tests_dir)?;
+    check_forc_tomls(&all_tests_dir)?;
 
     check_redundant_gitignore_files(&all_tests_dir)?;
 
@@ -63,10 +63,10 @@ fn check_redundant_gitignore_files(all_tests_dir: &Path) -> Result<()> {
     }
 }
 
-/// Checks that every Forc.toml file has the authors, license,
-/// and the name property properly set and that the std library
-/// is properly imported.
-fn check_test_forc_tomls(all_tests_dir: &Path) -> Result<()> {
+/// Checks that every Forc.toml file:
+/// - has the authors, license, and the name property properly set.
+/// - has the `std` library properly imported.
+fn check_forc_tomls(all_tests_dir: &Path) -> Result<()> {
     let mut forc_tomls = vec![];
     find_test_forc_tomls(&PathBuf::from(all_tests_dir), &mut forc_tomls);
 
@@ -86,6 +86,7 @@ fn check_test_forc_tomls(all_tests_dir: &Path) -> Result<()> {
             .file_name()
             .unwrap()
             .to_string_lossy();
+
         check_test_forc_toml(&content, &toml, &project_name)
             .context(format!("Invalid test Forc.toml: {forc_toml_file_name}"))?;
     }

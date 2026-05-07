@@ -384,8 +384,11 @@ pub(crate) async fn compile_and_run_unit_tests(
     .await
 }
 
+/// `relative_test_path` is the path to the test from `src/e2e_vm_tests/test_programs`,
+/// For example, for `src/e2e_vm_tests/test_programs/should_pass/some_test`,
+/// the `relative_test_path` would be `should_pass/some_test`.
 pub(crate) fn test_json_abi(
-    file_name: &str,
+    relative_test_path: &str,
     built_package: &BuiltPackage,
     experimental_new_encoding: bool,
     update_output_files: bool,
@@ -411,7 +414,7 @@ pub(crate) fn test_json_abi(
     let oracle_path = format!(
         "{}/src/e2e_vm_tests/test_programs/{}/json_abi_oracle{}.{}.json",
         manifest_dir,
-        file_name,
+        relative_test_path,
         experimental_suffix,
         if is_release { "release" } else { "debug" },
     );
@@ -419,12 +422,12 @@ pub(crate) fn test_json_abi(
     let output_path = format!(
         "{}/src/e2e_vm_tests/test_programs/{}/json_abi_output{}.{}.json",
         manifest_dir,
-        file_name,
+        relative_test_path,
         experimental_suffix,
         if is_release { "release" } else { "debug" },
     );
 
-    emit_json_abi(file_name, &output_path, built_package)?;
+    emit_json_abi(relative_test_path, &output_path, built_package)?;
 
     // Update the oracle failing silently
     if update_output_files {
@@ -433,13 +436,13 @@ pub(crate) fn test_json_abi(
 
     if fs::metadata(oracle_path.clone()).is_err() {
         bail!(
-            "JSON ABI oracle file does not exist for this test\nExpected oracle path: {}",
+            "JSON ABI oracle file does not exist for this test.\nExpected oracle path: {}",
             &oracle_path
         );
     }
     if fs::metadata(output_path.clone()).is_err() {
         bail!(
-            "JSON ABI output file does not exist for this test\nExpected output path: {}",
+            "JSON ABI output file does not exist for this test.\nExpected output path: {}",
             &output_path
         );
     }
@@ -459,11 +462,15 @@ pub(crate) fn test_json_abi(
 }
 
 fn emit_json_abi(
-    file_name: &str,
+    relative_test_path: &str,
     json_abi_output_path: &str,
     built_package: &BuiltPackage,
 ) -> Result<()> {
-    tracing::info!("ABI JSON gen {} ...", file_name.bold());
+    tracing::info!(
+        "ABI JSON gen {} in {}",
+        relative_test_path.bold(),
+        json_abi_output_path
+    );
     let json_abi = match &built_package.program_abi {
         ProgramABI::Fuel(abi) => serde_json::json!(abi),
         ProgramABI::Evm(abi) => serde_json::json!(abi),
@@ -474,33 +481,55 @@ fn emit_json_abi(
     Ok(())
 }
 
+/// `relative_test_path` is the path to the test from `src/e2e_vm_tests/test_programs`,
+/// For example, for `src/e2e_vm_tests/test_programs/should_pass/some_test`,
+/// the `relative_test_path` would be `should_pass/some_test`.
 pub(crate) fn test_json_storage_slots(
-    file_name: &str,
+    relative_test_path: &str,
     built_package: &BuiltPackage,
+    experimental_new_encoding: bool,
+    update_output_files: bool,
     suffix: &Option<String>,
+    has_experimental_field: bool,
+    is_release: bool,
 ) -> Result<()> {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
 
-    let experimental_suffix = suffix
-        .as_ref()
-        .unwrap()
-        .strip_prefix("test")
-        .unwrap()
-        .strip_suffix("toml")
-        .unwrap()
-        .trim_end_matches('.');
+    let experimental_suffix = match (has_experimental_field, experimental_new_encoding) {
+        (true, _) => suffix
+            .as_ref()
+            .unwrap()
+            .strip_prefix("test")
+            .unwrap()
+            .strip_suffix("toml")
+            .unwrap()
+            .trim_end_matches('.'),
+        (false, true) => "_new_encoding",
+        (false, false) => "",
+    };
 
     let oracle_path = format!(
-        "{}/src/e2e_vm_tests/test_programs/{}/json_storage_slots_oracle{}.json",
-        manifest_dir, file_name, experimental_suffix,
+        "{}/src/e2e_vm_tests/test_programs/{}/json_storage_slots_oracle{}.{}.json",
+        manifest_dir,
+        relative_test_path,
+        experimental_suffix,
+        if is_release { "release" } else { "debug" },
     );
 
     let output_path = format!(
-        "{}/src/e2e_vm_tests/test_programs/{}/json_storage_slots_output{}.json",
-        manifest_dir, file_name, experimental_suffix,
+        "{}/src/e2e_vm_tests/test_programs/{}/json_storage_slots_output{}.{}.json",
+        manifest_dir,
+        relative_test_path,
+        experimental_suffix,
+        if is_release { "release" } else { "debug" },
     );
 
-    emit_json_storage_slots(file_name, &output_path, built_package)?;
+    emit_json_storage_slots(relative_test_path, &output_path, built_package)?;
+
+    // Update the oracle failing silently
+    if update_output_files {
+        let _ = std::fs::copy(&output_path, &oracle_path);
+    }
 
     if fs::metadata(oracle_path.clone()).is_err() {
         bail!("JSON storage slots oracle file does not exist for this test.\nExpected oracle path: {}", &oracle_path);
@@ -508,9 +537,9 @@ pub(crate) fn test_json_storage_slots(
     if fs::metadata(output_path.clone()).is_err() {
         bail!("JSON storage slots output file does not exist for this test.\nExpected output path: {}", &output_path);
     }
-    let oracle_contents = fs::read_to_string(oracle_path.clone())
+    let oracle_contents = fs::read_to_string(&oracle_path)
         .expect("Something went wrong reading the JSON storage slots oracle file.");
-    let output_contents = fs::read_to_string(output_path.clone())
+    let output_contents = fs::read_to_string(&output_path)
         .expect("Something went wrong reading the JSON storage slots output file.");
     if oracle_contents != output_contents {
         bail!(
@@ -524,11 +553,15 @@ pub(crate) fn test_json_storage_slots(
 }
 
 fn emit_json_storage_slots(
-    file_name: &str,
+    relative_test_path: &str,
     json_storage_slots_output_path: &str,
     built_package: &BuiltPackage,
 ) -> Result<()> {
-    tracing::info!("Storage slots JSON gen {} ...", file_name.bold());
+    tracing::info!(
+        "Storage slots JSON gen {} in {}",
+        relative_test_path.bold(),
+        json_storage_slots_output_path
+    );
     let json_storage_slots = serde_json::json!(built_package.storage_slots);
     let file = std::fs::File::create(json_storage_slots_output_path)?;
     serde_json::to_writer_pretty(&file, &json_storage_slots)?;

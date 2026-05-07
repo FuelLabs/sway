@@ -121,23 +121,25 @@ pub(super) fn add_to_b256(x: Bytes32, y: u64) -> Bytes32 {
     Bytes32::from(res)
 }
 
-/// Given a constant value `constant`, a type `ty`, a state index, and a vector of subfield
-/// indices, serialize the constant into a vector of storage slots. The keys (slots) are
-/// generated using the state index and the subfield indices which are recursively built. The
-/// values are generated such that each subfield gets its own storage slot except for enums and
-/// strings which are spread over successive storage slots (use `serialize_to_words` in this case).
+/// Given a constant value `constant`, and a full `storage_field_path` to the storage field,
+/// serialize the `constant` into a vector of [StorageSlot]s.
+///
+/// Returns a tuple containing the `constant` type size in bytes, and the storage slots.
 ///
 /// This behavior matches the behavior of how storage slots are assigned for storage reads and
-/// writes (i.e. how `state_read_*` and `state_write_*` instructions are generated).
+/// writes, i.e. how `__state_read_*` and `__state_write_*` instructions are generated, and how
+/// `std::storage::storage_api` functions interact with storage slots.
+//  TODO: (INIT-STORAGE) Adapt this function to serialize dynamic storage slots, once the support
+//        for dynamic storage slots initialization is implemented in `fuel_tx`.
 pub fn serialize_to_storage_slots(
     context: &Context,
     constant: &Constant,
     storage_field_path: &[String],
     key: Option<U256>,
-) -> Vec<StorageSlot> {
+) -> (u64, Vec<StorageSlot>) {
     let ty = constant.get_content(context).ty;
 
-    match &constant.get_content(context).value {
+    let slots = match &constant.get_content(context).value {
         ConstantValue::Undef => vec![],
         // If not being a part of an aggregate, single byte values like `bool`, `u8`, and unit
         // are stored as a byte at the beginning of the storage slot.
@@ -232,7 +234,7 @@ pub fn serialize_to_storage_slots(
                 constant.get_content(context),
                 context,
                 &ty,
-                InByte8Padding::default(),
+                InByte8Padding::Right,
             );
             packed.extend(vec![
                 Bytes8::new([0; 8]);
@@ -241,25 +243,7 @@ pub fn serialize_to_storage_slots(
 
             assert!(packed.len().is_multiple_of(4));
 
-            // Return a list of `StorageSlot`s
-            // First get the keys then get the values
-            // TODO-MEMLAY: Warning! Here we make an assumption about the memory layout of
-            //       string arrays, structs, and enum.
-            //       The assumption is that they are rounded to word boundaries
-            //       which will very likely always be the case.
-            //       We will not refactor the Storage API at the moment to remove this
-            //       assumption. It is a questionable effort because we anyhow
-            //       want to improve and refactor Storage API in the future.
             let type_size_in_bytes = ty.size(context).in_bytes();
-
-            if !context.experimental.str_array_no_padding {
-                assert!(
-                    type_size_in_bytes.is_multiple_of(8),
-                    "Expected string arrays, structs, and enums to be aligned to word boundary. The type size in bytes was {} and the type was {}.",
-                    type_size_in_bytes,
-                    ty.as_string(context)
-                );
-            }
 
             let storage_key = get_storage_key(storage_field_path, key);
             (0..type_size_in_bytes.div_ceil(32))
@@ -275,10 +259,14 @@ pub fn serialize_to_storage_slots(
                 .collect()
         }
         _ => vec![],
-    }
+    };
+
+    let type_size_in_bytes = ty.size(context).in_bytes();
+
+    (type_size_in_bytes, slots)
 }
 
-/// Given a constant value `constant` and a type `ty`, serialize the constant into a vector of
+/// Given a constant value `constant` and a type `ty`, serialize the `constant` into a vector of
 /// words and apply the requested padding if needed.
 fn serialize_to_words(
     constant: &ConstantContent,
@@ -335,8 +323,11 @@ fn serialize_to_words(
             let field_tys = ty.get_field_types(context);
             vec.iter()
                 .zip(field_tys.iter())
-                // TODO-MEMLAY: Warning! Again, making an assumption about the memory layout
-                //       of struct fields.
+                // TODO-MEMLAY: Warning! Here we make an assumption about the memory layout of structs.
+                //       The memory layout of structs can change in the future.
+                //       We will not refactor the Storage API at the moment to remove this
+                //       assumption. It is a questionable effort because we anyhow
+                //       want to improve and refactor Storage API in the future.
                 .flat_map(|(f, ty)| serialize_to_words(f, context, ty, InByte8Padding::Right))
                 .collect()
         }
@@ -345,10 +336,11 @@ fn serialize_to_words(
             let constant_size_in_words = constant.ty.size(context).in_words();
             assert!(value_size_in_words >= constant_size_in_words);
 
-            // Add enough left padding to satisfy the actual size of the union
+            // Add enough left padding to satisfy the actual size of the union.
+
             // TODO-MEMLAY: Warning! Here we make an assumption about the memory layout of enums,
             //       that they are left padded.
-            //       The memory layout of enums can be changed in the future.
+            //       The memory layout of enums can change in the future.
             //       We will not refactor the Storage API at the moment to remove this
             //       assumption. It is a questionable effort because we anyhow
             //       want to improve and refactor Storage API in the future.
