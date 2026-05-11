@@ -162,14 +162,20 @@ impl raw_ptr {
     ///     assert(ptr.read::<u64>() == 5);
     /// }
     /// ```
-    pub fn write<T>(self, ref mut val: T) {
-        match __size_of::<T>() {
-            0 => {}
-            size => {
-                asm(dst: self, src: val, size: size) {
-                    mcp dst src size;
-                };
-            }
+    pub fn write<T>(self, val: T) {
+        if __is_reference_type::<T>() {
+            asm(dst: self, src: val, count: __size_of_val(val)) {
+                mcp dst src count;
+            };
+        } else if __size_of::<T>() == 0 {
+        } else if __size_of::<T>() == 1 {
+            asm(ptr: self, val: val) {
+                sb ptr val i0;
+            };
+        } else {
+            asm(ptr: self, val: val) {
+                sw ptr val i0;
+            };
         }
     }
 

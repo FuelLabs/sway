@@ -4068,26 +4068,29 @@ impl<'a> FnCompiler<'a> {
         // Compile the struct expression.
         let compiled_value = return_on_termination_or_extract!(
             self.compile_expression_to_memory(context, md_mgr, exp)?
-        )
-        .expect_memory();
-
-        // Get the variant type.
-        let variant_type = enum_type
-            .get_indexed_type(context, &[1, variant.tag as u64])
-            .ok_or_else(|| {
-                CompileError::Internal(
-                    "Failed to get variant type from enum in `unsigned downcast`.",
-                    exp.span.clone(),
-                )
-            })?;
-
-        // Get the offset to the variant.
-        let val = self.current_block.append(context).get_elem_ptr_with_idcs(
-            compiled_value,
-            variant_type,
-            &[1, variant.tag as u64],
         );
-        Ok(TerminatorValue::new(CompiledValue::InMemory(val), context))
+
+        match enum_type.get_indexed_type(context, &[1, variant.tag as u64]) {
+            Some(variant_type) => {
+                let val = self.current_block.append(context).get_elem_ptr_with_idcs(
+                    compiled_value.expect_memory(),
+                    variant_type,
+                    &[1, variant.tag as u64],
+                );
+                Ok(TerminatorValue::new(CompiledValue::InMemory(val), context))
+            }
+            None => {
+                let ptr = store_to_memory(self, context, compiled_value)
+                    .unwrap()
+                    .expect_memory();
+                let ptr_to_unit_type = Type::new_typed_pointer(context, Type::get_unit(context));
+                let ptr = self
+                    .current_block
+                    .append(context)
+                    .cast_ptr(ptr, ptr_to_unit_type);
+                Ok(TerminatorValue::new(CompiledValue::InMemory(ptr), context))
+            }
+        }
     }
 
     fn compile_enum_tag(
