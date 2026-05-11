@@ -4070,19 +4070,44 @@ impl<'a> FnCompiler<'a> {
             self.compile_expression_to_memory(context, md_mgr, exp)?
         );
 
+        // If the enum has variant data we use that,
+        // if not, it means that all variants are unit, and there is nothing to point to.
+        // So, we create a global var zeroed and we make the ZST pointer point to it. So
+        // in the case of a deref, all ZSTs will have the same value
         match enum_type.get_indexed_type(context, &[1, variant.tag as u64]) {
             Some(variant_type) => {
-                let val = self.current_block.append(context).get_elem_ptr_with_idcs(
-                    compiled_value.expect_memory(),
-                    variant_type,
-                    &[1, variant.tag as u64],
-                );
+                let val = self
+                    .current_block
+                    .append(context)
+                    .get_elem_ptr_with_indices(
+                        compiled_value.expect_memory(),
+                        variant_type,
+                        &[1, variant.tag as u64],
+                    );
                 Ok(TerminatorValue::new(CompiledValue::InMemory(val), context))
             }
             None => {
-                let ptr = store_to_memory(self, context, compiled_value)
-                    .unwrap()
-                    .expect_memory();
+                // we need an addressable zero, if we save an unit it will occupy 0 bytes.
+                let zero_u64_ptr = match self
+                    .module
+                    .get_global_variable(context, &vec!["zero_u64".to_string()])
+                {
+                    Some(var) => var,
+                    None => {
+                        let init = ConstantContent::new_uint(context, 64, 0);
+                        let init = Constant::unique(context, init);
+                        self.module.new_unique_global_var(
+                            context,
+                            "zero_u64".into(),
+                            Type::get_uint64(context),
+                            Some(init),
+                            false,
+                        )
+                    }
+                };
+
+                let ptr = self.current_block.append(context).get_global(zero_u64_ptr);
+
                 let ptr_to_unit_type = Type::new_typed_pointer(context, Type::get_unit(context));
                 let ptr = self
                     .current_block
@@ -5181,7 +5206,7 @@ impl<'a> FnCompiler<'a> {
                 let gep_val = self
                     .current_block
                     .append(context)
-                    .get_elem_ptr_with_idcs(enum_ptr, contents_type, &[1, tag as u64])
+                    .get_elem_ptr_with_indices(enum_ptr, contents_type, &[1, tag as u64])
                     .add_metadatum(context, span_md_idx);
                 self.current_block
                     .append(context)
