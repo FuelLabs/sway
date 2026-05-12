@@ -4092,15 +4092,30 @@ impl<'a> FnCompiler<'a> {
                 match enum_type_info.as_ref() {
                     TypeInfo::Enum(decl_id) => {
                         let decl = self.engines.de().get(decl_id);
-                        let all_unit = decl.variants.iter().all(|x| {
-                            self.engines.te().get(x.type_argument.type_id).is_unit()
-                        });
+                        let all_unit = decl
+                            .variants
+                            .iter()
+                            .all(|x| self.engines.te().get(x.type_argument.type_id).is_unit());
 
                         if !all_unit {
-                            return Err(CompileError::InternalOwned(format!("unsafe downcast cannot find variant data for this case `{}`", self.engines.help_out(exp.return_type)), exp.span.clone()))
+                            return Err(CompileError::InternalOwned(
+                                format!(
+                                    "unsafe downcast cannot find variant data for this case `{}`",
+                                    self.engines.help_out(exp.return_type)
+                                ),
+                                exp.span.clone(),
+                            ));
                         }
-                    },
-                    _ => return Err(CompileError::InternalOwned(format!("unsafe downcast used with `{}`, only enums are supported", self.engines.help_out(exp.return_type)), exp.span.clone()))
+                    }
+                    _ => {
+                        return Err(CompileError::InternalOwned(
+                            format!(
+                                "unsafe downcast used with `{}`, only enums are supported",
+                                self.engines.help_out(exp.return_type)
+                            ),
+                            exp.span.clone(),
+                        ))
+                    }
                 }
 
                 // we need an addressable zero, if we save an unit it will occupy 0 bytes.
@@ -4122,7 +4137,10 @@ impl<'a> FnCompiler<'a> {
                     }
                 };
 
-                let ptr = self.current_block.append(context).get_global(addressable_zero_u64_ptr);
+                let ptr = self
+                    .current_block
+                    .append(context)
+                    .get_global(addressable_zero_u64_ptr);
 
                 let ptr_to_unit_type = Type::new_typed_pointer(context, Type::get_unit(context));
                 let ptr = self
