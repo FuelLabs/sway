@@ -139,6 +139,14 @@ abi MyContract {
     /* START ENUM_U64_U64_U64 */
     fn in_enum_u64_u64_u64(v: E3<u64, u64, u64>) -> E3<u64, u64, u64>;
     /* END ENUM_U64_U64_U64 */
+
+    /* START VEC_TRIVIAL */
+    fn in_vec_trivial(v: Vec<u64>) -> Vec<u64>;
+    /* END VEC_TRIVIAL */
+
+    /* START VEC_NOT_TRIVIAL */
+    fn in_vec_not_trivial(v: Vec<u32>) -> Vec<u32>;
+    /* END VEC_NOT_TRIVIAL */
 }
 
 impl MyContract for Contract {
@@ -257,6 +265,14 @@ impl MyContract for Contract {
     /* START ENUM_U64_U64_U64 */
     fn in_enum_u64_u64_u64(v: E3<u64, u64, u64>) -> E3<u64, u64, u64> { v }
     /* END ENUM_U64_U64_U64 */
+
+    /* START VEC_TRIVIAL */
+    fn in_vec_trivial(v: Vec<u64>) -> Vec<u64> { v }
+    /* END VEC_TRIVIAL */
+
+    /* START VEC_NOT_TRIVIAL */
+    fn in_vec_not_trivial(v: Vec<u32>) -> Vec<u32> { v }
+    /* END VEC_NOT_TRIVIAL */
 }
 
 /* START BOOL */
@@ -461,3 +477,39 @@ fn in_enum_u64_u64_u64() {
     let _ = abi(MyContract, CONTRACT_ID).in_enum_u64_u64_u64(E3::A(0));
 }
 /* END ENUM_U64_U64_U64 */
+
+/* START VEC_TRIVIAL */
+#[test]
+fn in_vec_trivial() {
+    let mut v = Vec::new();
+    v.push(1);
+    v.push(2);
+    v.push(3);
+    v.push(4);
+    v.push(5);
+    v.push(6);
+    v.push(7);
+    v.push(8);
+    v.push(9);
+    v.push(10);
+    let _ = abi(MyContract, CONTRACT_ID).in_vec_trivial(v);
+}
+/* END VEC_TRIVIAL */
+
+/* START VEC_NOT_TRIVIAL */
+#[test]
+fn in_vec_not_trivial() {
+    let mut v = Vec::new();
+    v.push(1);
+    v.push(2);
+    v.push(3);
+    v.push(4);
+    v.push(5);
+    v.push(6);
+    v.push(7);
+    v.push(8);
+    v.push(9);
+    v.push(10);
+    let _ = abi(MyContract, CONTRACT_ID).in_vec_not_trivial(v);
+}
+/* END VEC_NOT_TRIVIAL */
