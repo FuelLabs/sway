@@ -1,7 +1,7 @@
 //! A vector type for dynamically sized arrays outside of storage.
 library;
 
-use ::alloc::{alloc, realloc, alloc_bytes};
+use ::alloc::{alloc, alloc_bytes, realloc};
 use ::assert::assert;
 use ::option::Option::{self, *};
 use ::convert::From;
@@ -864,7 +864,7 @@ where
         let len = u64::abi_decode(buffer);
         const IS_ELEM_TRIVIAL = is_decode_trivial::<T>();
         if IS_ELEM_TRIVIAL {
-            let len_in_bytes = len * __size_of::<T>(); 
+            let len_in_bytes = len * __size_of::<T>();
             let slice = buffer.read_bytes(len_in_bytes);
             let ptr = alloc_bytes(len_in_bytes);
             if len_in_bytes > 0 {
