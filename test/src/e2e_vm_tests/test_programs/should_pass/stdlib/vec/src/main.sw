@@ -2610,3 +2610,283 @@ fn test_vector_iter() {
     assert(iter.next() == None);
     assert(iter.next() == None);
 }
+
+fn test_vector_new_unit() {
+    let mut vector = Vec::new();
+
+    let number0 = ();
+    let number1 = ();
+    let number2 = ();
+    let number3 = ();
+    let number4 = ();
+    let number5 = ();
+    let number6 = ();
+    let number7 = ();
+    let number8 = ();
+
+    assert(vector.len() == 0);
+    assert(vector.capacity() == 0);
+    assert(vector.is_empty());
+
+    vector.push(number0);
+    vector.push(number1);
+    vector.push(number2);
+    vector.push(number3);
+    vector.push(number4);
+
+    assert(vector.len() == 5);
+    assert(vector.capacity() == 8);
+    assert(vector.is_empty() == false);
+
+    match vector.get(0) {
+        Some(val) => assert(val == number0), None => revert(0),
+    }
+
+    // Push after get
+    vector.push(number5);
+    vector.push(number6);
+    vector.push(number7);
+    vector.push(number8);
+
+    match vector.get(4) {
+        Some(val) => assert(val == number4), None => revert(0),
+    }
+
+    match vector.get(6) {
+        Some(val) => assert(val == number6), None => revert(0),
+    }
+
+    assert(vector.len() == 9);
+    assert(vector.capacity() == 16);
+    assert(!vector.is_empty());
+
+    // Test after capacity change
+    match vector.get(4) {
+        Some(val) => assert(val == number4), None => revert(0),
+    }
+
+    match vector.get(6) {
+        Some(val) => assert(val == number6), None => revert(0),
+    }
+
+    vector.clear();
+
+    // Empty after clear
+    assert(vector.len() == 0);
+    assert(vector.capacity() == 16);
+    assert(vector.is_empty() == true);
+
+    match vector.get(0) {
+        Some(_val) => revert(0), None => (),
+    }
+
+    // Make sure pushing again after clear() works
+    vector.push(number0);
+    vector.push(number1);
+    vector.push(number2);
+    vector.push(number3);
+    vector.push(number4);
+
+    assert(vector.len() == 5);
+    assert(vector.capacity() == 16);
+    assert(vector.is_empty() == false);
+
+    match vector.get(4) {
+        Some(val) => assert(val == number4), None => revert(0),
+    }
+
+    // Out of bounds access
+    match vector.get(5) {
+        Some(_val) => revert(0), None => (),
+    }
+
+    // Remove the first
+    let val = vector.remove(0);
+    assert(val == number0);
+    assert(vector.len() == 4);
+    assert(vector.capacity() == 16);
+
+    // Remove the last
+    let val = vector.remove(3);
+    assert(val == number4);
+    assert(vector.len() == 3);
+    assert(vector.capacity() == 16);
+
+    // Remove the middle
+    let val = vector.remove(1);
+    assert(val == number2);
+    assert(vector.len() == 2);
+    assert(vector.capacity() == 16);
+
+    // Check what's left
+    match vector.get(0) {
+        Some(val) => assert(val == number1), None => revert(0),
+    }
+
+    match vector.get(1) {
+        Some(val) => assert(val == number3), None => revert(0),
+    }
+
+    // Renew a `Vec` instead of `vector.clear()` to test the change of capacity after `insert`
+    let mut vector = Vec::new();
+
+    // Insert to empty
+    vector.insert(0, number2);
+    assert(vector.len() == 1);
+    assert(vector.capacity() == 1);
+    match vector.get(0) {
+        Some(val) => assert(val == number2), None => revert(0),
+    }
+
+    // Insert at the first
+    vector.insert(0, number0);
+    assert(vector.len() == 2);
+    assert(vector.capacity() == 2);
+    match vector.get(0) {
+        Some(val) => assert(val == number0), None => revert(0),
+    }
+
+    match vector.get(1) {
+        Some(val) => assert(val == number2), None => revert(0),
+    }
+
+    // Insert at the middle
+    vector.insert(1, number1);
+    assert(vector.len() == 3);
+    assert(vector.capacity() == 4);
+    match vector.get(0) {
+        Some(val) => assert(val == number0), None => revert(0),
+    }
+
+    match vector.get(1) {
+        Some(val) => assert(val == number1), None => revert(0),
+    }
+
+    match vector.get(2) {
+        Some(val) => assert(val == number2), None => revert(0),
+    }
+
+    // Insert at the last
+    vector.insert(3, number3);
+    assert(vector.len() == 4);
+    assert(vector.capacity() == 4);
+    match vector.get(0) {
+        Some(val) => assert(val == number0), None => revert(0),
+    }
+
+    match vector.get(1) {
+        Some(val) => assert(val == number1), None => revert(0),
+    }
+
+    match vector.get(2) {
+        Some(val) => assert(val == number2), None => revert(0),
+    }
+
+    match vector.get(3) {
+        Some(val) => assert(val == number3), None => revert(0),
+    }
+
+    // Test for `pop`
+    vector.clear();
+    vector.push(number0);
+    vector.push(number1);
+    assert(vector.len() == 2);
+    assert(vector.capacity() == 4);
+
+    match vector.pop() {
+        Some(val) => assert(val == number1), None => revert(0),
+    }
+    assert(vector.len() == 1);
+    assert(vector.capacity() == 4);
+
+    match vector.pop() {
+        Some(val) => assert(val == number0), None => revert(0),
+    }
+    assert(vector.len() == 0);
+    assert(vector.capacity() == 4);
+
+    match vector.pop() {
+        Some(_) => revert(0), None => {},
+    }
+    assert(vector.len() == 0);
+    assert(vector.capacity() == 4);
+
+
+    // Test for `set`
+    vector.clear();
+    vector.push(number0);
+    vector.push(number1);
+    vector.push(number2);
+    assert(vector.len() == 3);
+    assert(vector.capacity() == 4);
+    match vector.get(0) {
+        Some(val) => assert(val == number0), None => revert(0),
+    }
+
+    match vector.get(1) {
+        Some(val) => assert(val == number1), None => revert(0),
+    }
+
+    match vector.get(2) {
+        Some(val) => assert(val == number2), None => revert(0),
+    }
+
+    // Set at first
+    vector.set(0, number3);
+
+    assert(vector.len() == 3);
+    assert(vector.capacity() == 4);
+    match vector.get(0) {
+        Some(val) => assert(val == number3), None => revert(0),
+    }
+
+    match vector.get(1) {
+        Some(val) => assert(val == number1), None => revert(0),
+    }
+
+    match vector.get(2) {
+        Some(val) => assert(val == number2), None => revert(0),
+    }
+
+    // Set at middle
+    vector.set(1, number4);
+    assert(vector.len() == 3);
+    assert(vector.capacity() == 4);
+    match vector.get(0) {
+        Some(val) => assert(val == number3), None => revert(0),
+    }
+
+    match vector.get(1) {
+        Some(val) => assert(val == number4), None => revert(0),
+    }
+
+    match vector.get(2) {
+        Some(val) => assert(val == number2), None => revert(0),
+    }
+
+    // Set at last
+    vector.set(2, number5);
+    assert(vector.len() == 3);
+    assert(vector.capacity() == 4);
+    match vector.get(0) {
+        Some(val) => assert(val == number3), None => revert(0),
+    }
+
+    match vector.get(1) {
+        Some(val) => assert(val == number4), None => revert(0),
+    }
+
+    match vector.get(2) {
+        Some(val) => assert(val == number5), None => revert(0),
+    }
+}
+
+#[test]
+fn test_main() {
+    let _ = main();
+}
+
+#[test]
+fn test_zst() {
+    test_vector_new_unit();
+}

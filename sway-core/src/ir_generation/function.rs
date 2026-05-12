@@ -4068,26 +4068,88 @@ impl<'a> FnCompiler<'a> {
         // Compile the struct expression.
         let compiled_value = return_on_termination_or_extract!(
             self.compile_expression_to_memory(context, md_mgr, exp)?
-        )
-        .expect_memory();
-
-        // Get the variant type.
-        let variant_type = enum_type
-            .get_indexed_type(context, &[1, variant.tag as u64])
-            .ok_or_else(|| {
-                CompileError::Internal(
-                    "Failed to get variant type from enum in `unsigned downcast`.",
-                    exp.span.clone(),
-                )
-            })?;
-
-        // Get the offset to the variant.
-        let val = self.current_block.append(context).get_elem_ptr_with_idcs(
-            compiled_value,
-            variant_type,
-            &[1, variant.tag as u64],
         );
-        Ok(TerminatorValue::new(CompiledValue::InMemory(val), context))
+
+        // If the enum has variant data we use that,
+        // if not, it means that all variants are unit, and there is nothing to point to.
+        // So, we create a global var zeroed and we make the ZST pointer point to it. So
+        // in the case of a deref, all ZSTs will have the same value
+        match enum_type.get_indexed_type(context, &[1, variant.tag as u64]) {
+            Some(variant_type) => {
+                let val = self
+                    .current_block
+                    .append(context)
+                    .get_elem_ptr_with_indices(
+                        compiled_value.expect_memory(),
+                        variant_type,
+                        &[1, variant.tag as u64],
+                    );
+                Ok(TerminatorValue::new(CompiledValue::InMemory(val), context))
+            }
+            None => {
+                // Check if we really have the case of enum with all variants as unit
+                let enum_type_info = self.engines.te().get(exp.return_type);
+                match enum_type_info.as_ref() {
+                    TypeInfo::Enum(decl_id) => {
+                        let decl = self.engines.de().get(decl_id);
+                        let all_unit = decl
+                            .variants
+                            .iter()
+                            .all(|x| self.engines.te().get(x.type_argument.type_id).is_unit());
+
+                        if !all_unit {
+                            return Err(CompileError::InternalOwned(
+                                format!(
+                                    "unsafe downcast cannot find variant data for this case `{}`",
+                                    self.engines.help_out(exp.return_type)
+                                ),
+                                exp.span.clone(),
+                            ));
+                        }
+                    }
+                    _ => {
+                        return Err(CompileError::InternalOwned(
+                            format!(
+                                "unsafe downcast used with `{}`, only enums are supported",
+                                self.engines.help_out(exp.return_type)
+                            ),
+                            exp.span.clone(),
+                        ))
+                    }
+                }
+
+                // we need an addressable zero, if we save an unit it will occupy 0 bytes.
+                let addressable_zero_u64_ptr = match self
+                    .module
+                    .get_global_variable(context, &vec!["__ADDRESSABLE_ZERO_U64".to_string()])
+                {
+                    Some(var) => var,
+                    None => {
+                        let init = ConstantContent::new_uint(context, 64, 0);
+                        let init = Constant::unique(context, init);
+                        self.module.new_unique_global_var(
+                            context,
+                            "__ADDRESSABLE_ZERO_U64".into(),
+                            Type::get_uint64(context),
+                            Some(init),
+                            false,
+                        )
+                    }
+                };
+
+                let ptr = self
+                    .current_block
+                    .append(context)
+                    .get_global(addressable_zero_u64_ptr);
+
+                let ptr_to_unit_type = Type::new_typed_pointer(context, Type::get_unit(context));
+                let ptr = self
+                    .current_block
+                    .append(context)
+                    .cast_ptr(ptr, ptr_to_unit_type);
+                Ok(TerminatorValue::new(CompiledValue::InMemory(ptr), context))
+            }
+        }
     }
 
     fn compile_enum_tag(
@@ -5178,7 +5240,7 @@ impl<'a> FnCompiler<'a> {
                 let gep_val = self
                     .current_block
                     .append(context)
-                    .get_elem_ptr_with_idcs(enum_ptr, contents_type, &[1, tag as u64])
+                    .get_elem_ptr_with_indices(enum_ptr, contents_type, &[1, tag as u64])
                     .add_metadatum(context, span_md_idx);
                 self.current_block
                     .append(context)

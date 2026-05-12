@@ -1908,7 +1908,7 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
         self.get_elem_ptr(base, elem_ty, vec![idx_val])
     }
 
-    pub fn get_elem_ptr_with_idcs(self, base: Value, elem_ty: Type, indices: &[u64]) -> Value {
+    pub fn get_elem_ptr_with_indices(self, base: Value, elem_ty: Type, indices: &[u64]) -> Value {
         let idx_vals = indices
             .iter()
             .map(|idx| ConstantContent::get_uint(self.context, 64, *idx))
