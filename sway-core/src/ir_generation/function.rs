@@ -4087,10 +4087,26 @@ impl<'a> FnCompiler<'a> {
                 Ok(TerminatorValue::new(CompiledValue::InMemory(val), context))
             }
             None => {
+                // Check if we really have the case of enum with all variants as unit
+                let enum_type_info = self.engines.te().get(exp.return_type);
+                match enum_type_info.as_ref() {
+                    TypeInfo::Enum(decl_id) => {
+                        let decl = self.engines.de().get(decl_id);
+                        let all_unit = decl.variants.iter().all(|x| {
+                            self.engines.te().get(x.type_argument.type_id).is_unit()
+                        });
+
+                        if !all_unit {
+                            return Err(CompileError::InternalOwned(format!("unsafe downcast cannot find variant data for this case `{}`", self.engines.help_out(exp.return_type)), exp.span.clone()))
+                        }
+                    },
+                    _ => return Err(CompileError::InternalOwned(format!("unsafe downcast used with `{}`, only enums are supported", self.engines.help_out(exp.return_type)), exp.span.clone()))
+                }
+
                 // we need an addressable zero, if we save an unit it will occupy 0 bytes.
-                let zero_u64_ptr = match self
+                let addressable_zero_u64_ptr = match self
                     .module
-                    .get_global_variable(context, &vec!["zero_u64".to_string()])
+                    .get_global_variable(context, &vec!["__ADDRESSABLE_ZERO_U64".to_string()])
                 {
                     Some(var) => var,
                     None => {
@@ -4098,7 +4114,7 @@ impl<'a> FnCompiler<'a> {
                         let init = Constant::unique(context, init);
                         self.module.new_unique_global_var(
                             context,
-                            "zero_u64".into(),
+                            "__ADDRESSABLE_ZERO_U64".into(),
                             Type::get_uint64(context),
                             Some(init),
                             false,
@@ -4106,7 +4122,7 @@ impl<'a> FnCompiler<'a> {
                     }
                 };
 
-                let ptr = self.current_block.append(context).get_global(zero_u64_ptr);
+                let ptr = self.current_block.append(context).get_global(addressable_zero_u64_ptr);
 
                 let ptr_to_unit_type = Type::new_typed_pointer(context, Type::get_unit(context));
                 let ptr = self
