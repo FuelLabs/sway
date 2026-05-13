@@ -2,6 +2,7 @@ library;
 
 use ::ops::*;
 use ::raw_ptr::*;
+use ::error_signals::REVERT_WITH_RAW_SLICE_LEN_ZST;
 
 /// Trait to return a type as a `raw_slice`.
 pub trait AsRawSlice {
@@ -163,8 +164,17 @@ impl raw_slice {
     ///     assert(slice.len::<u64>() == 1);
     /// }
     /// ```
+    ///
+    /// # Reverts
+    ///
+    /// * When `T` is a zero-sized type.
     pub fn len<T>(self) -> u64 {
-        into_parts(self).1 / __size_of::<T>()
+        let len = __size_of::<T>();
+        if len != 0 {
+            into_parts(self).1 / len
+        } else {
+            __revert(REVERT_WITH_RAW_SLICE_LEN_ZST);
+        }
     }
 
     /// Returns the number of elements in the slice when the elements are bytes.

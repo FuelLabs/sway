@@ -1,7 +1,7 @@
 //! A vector type for dynamically sized arrays outside of storage.
 library;
 
-use ::alloc::{alloc, realloc};
+use ::alloc::{alloc, alloc_bytes, realloc};
 use ::assert::assert;
 use ::option::Option::{self, *};
 use ::convert::From;
@@ -814,6 +814,17 @@ impl<T> From<Vec<T>> for raw_slice {
     }
 }
 
+impl<T> Clone for Vec<T> {
+    fn clone(self) -> Self {
+        let len = self.len;
+        let buf = RawVec::with_capacity(len);
+        if len > 0 {
+            self.buf.ptr.copy_to::<T>(buf.ptr, len);
+        }
+        Self { buf, len }
+    }
+}
+
 impl<T> AbiEncode for Vec<T>
 where
     T: AbiEncode,
@@ -822,17 +833,23 @@ where
         false
     }
     fn abi_encode(self, buffer: Buffer) -> Buffer {
-        let len = self.len;
-        let mut buffer = len.abi_encode(buffer);
+        const IS_ELEM_TRIVIAL = is_encode_trivial::<T>();
+        if IS_ELEM_TRIVIAL {
+            let buffer = self.len.abi_encode(buffer);
+            buffer.append_raw((self.buf.ptr, self.len * __size_of::<T>()))
+        } else {
+            let len = self.len;
+            let mut buffer = len.abi_encode(buffer);
 
-        let mut i = 0;
-        while i < len {
-            let item = self.get_unchecked(i);
-            buffer = item.abi_encode(buffer);
-            i += 1;
+            let mut i = 0;
+            while i < len {
+                let item = self.get_unchecked(i);
+                buffer = item.abi_encode(buffer);
+                i += 1;
+            }
+
+            buffer
         }
-
-        buffer
     }
 }
 
@@ -845,17 +862,30 @@ where
     }
     fn abi_decode(ref mut buffer: BufferReader) -> Vec<T> {
         let len = u64::abi_decode(buffer);
+        const IS_ELEM_TRIVIAL = is_decode_trivial::<T>();
+        if IS_ELEM_TRIVIAL {
+            let len_in_bytes = len * __size_of::<T>();
+            let slice = buffer.read_bytes(len_in_bytes);
+            let ptr = alloc_bytes(len_in_bytes);
+            if len_in_bytes > 0 {
+                slice.ptr().copy_to::<T>(ptr, len);
+            }
+            Vec {
+                buf: RawVec { ptr, cap: len },
+                len,
+            }
+        } else {
+            let mut v = Vec::with_capacity(len);
 
-        let mut v = Vec::with_capacity(len);
+            let mut i = 0;
+            while i < len {
+                let item = T::abi_decode(buffer);
+                v.push(item);
+                i += 1;
+            }
 
-        let mut i = 0;
-        while i < len {
-            let item = T::abi_decode(buffer);
-            v.push(item);
-            i += 1;
+            v
         }
-
-        v
     }
 }
 
@@ -886,17 +916,6 @@ impl<T> Iterator for VecIter<T> {
 
         self.index += 1;
         Some(self.values.get_unchecked(self.index - 1))
-    }
-}
-
-impl<T> Clone for Vec<T> {
-    fn clone(self) -> Self {
-        let len = self.len;
-        let buf = RawVec::with_capacity(len);
-        if len > 0 {
-            self.buf.ptr.copy_to::<T>(buf.ptr, len);
-        }
-        Self { buf, len }
     }
 }
 

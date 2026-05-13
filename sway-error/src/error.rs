@@ -1061,7 +1061,7 @@ pub enum CompileError {
     CouldNotGenerateEntryMissingStd { span: Span },
     #[error("Type \"{ty}\" does not implement AbiEncode or AbiDecode.")]
     CouldNotGenerateEntryMissingImpl { ty: String, span: Span },
-    #[error("Only bool, u8, u16, u32, u64, u256, b256, string arrays and string slices can be used here.")]
+    #[error("Only bool, u8, u16, u32, u64, u256, b256, string arrays, string slices and (raw_ptr, u64) can be used here.")]
     EncodingUnsupportedType { span: Span },
     #[error("Configurables need a function named \"abi_decode_in_place\" to be in scope.")]
     ConfigurableMissingAbiDecodeInPlace { span: Span },

@@ -25,6 +25,12 @@ impl Buffer {
             buffer: (ptr, cap, 0),
         }
     }
+
+    pub fn append_raw(self, r: (raw_ptr, u64)) -> Buffer {
+        Buffer {
+            buffer: __encode_buffer_append(self.buffer, r),
+        }
+    }
 }
 
 impl AsRawSlice for Buffer {

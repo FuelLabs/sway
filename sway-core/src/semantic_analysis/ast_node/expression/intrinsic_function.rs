@@ -738,6 +738,28 @@ fn type_check_encode_append(
             | TypeInfo::StringArray(_)
             | TypeInfo::StringSlice
             | TypeInfo::RawUntypedSlice => {}
+            TypeInfo::Tuple(items) => {
+                if items.len() != 2 {
+                    return Err(
+                        handler.emit_err(CompileError::EncodingUnsupportedType { span: item_span })
+                    );
+                }
+
+                let is_ptr = matches!(
+                    engines.te().get(items[0].type_id).as_ref(),
+                    TypeInfo::RawUntypedPtr
+                );
+                let is_u64 = matches!(
+                    engines.te().get(items[1].type_id).as_ref(),
+                    TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
+                );
+
+                if !is_ptr || !is_u64 {
+                    return Err(
+                        handler.emit_err(CompileError::EncodingUnsupportedType { span: item_span })
+                    );
+                }
+            }
             _ => {
                 return Err(
                     handler.emit_err(CompileError::EncodingUnsupportedType { span: item_span })

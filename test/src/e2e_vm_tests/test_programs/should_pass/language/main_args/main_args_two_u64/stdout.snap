@@ -34,80 +34,80 @@ script {
         local mut { ptr } buffer
 
         entry():
-        v123v1 = const u64 0, !5
-        v385v1 = gtf v123v1, 10, !11
-        v386v1 = bitcast v385v1 to ptr, !12
-        v32v1 = const bool true, !13
-        cbr v32v1, decode_script_data_0_decode_from_raw_ptr_1_block0(), decode_script_data_0_decode_from_raw_ptr_1_block1(), !17
+        v130v1 = const u64 0, !5
+        v392v1 = gtf v130v1, 10, !11
+        v393v1 = bitcast v392v1 to ptr, !12
+        v39v1 = const bool true, !13
+        cbr v39v1, decode_script_data_0_decode_from_raw_ptr_1_block0(), decode_script_data_0_decode_from_raw_ptr_1_block1(), !17
 
         decode_script_data_0_decode_from_raw_ptr_1_block0():
-        v435v1 = cast_ptr v386v1 to __ptr { u64, u64 }, !18
-        v475v1 = get_local __ptr { u64, u64 }, __aggr_memcpy_0
-        mem_copy_val v475v1, v435v1
-        v472v1 = get_local __ptr { u64, u64 }, __tmp_block_arg
-        mem_copy_val v472v1, v475v1
-        br decode_script_data_0_decode_from_raw_ptr_1_block2(v472v1), !19
+        v442v1 = cast_ptr v393v1 to __ptr { u64, u64 }, !18
+        v482v1 = get_local __ptr { u64, u64 }, __aggr_memcpy_0
+        mem_copy_val v482v1, v442v1
+        v479v1 = get_local __ptr { u64, u64 }, __tmp_block_arg
+        mem_copy_val v479v1, v482v1
+        br decode_script_data_0_decode_from_raw_ptr_1_block2(v479v1), !19
 
         decode_script_data_0_decode_from_raw_ptr_1_block1():
-        v412v1 = get_local __ptr { ptr }, __struct_init_0, !21
-        v191v1 = const u64 0
-        v414v1 = get_elem_ptr v412v1, __ptr ptr, v191v1, !22
-        store v386v1 to v414v1, !23
-        v417v1 = get_local __ptr { ptr }, buffer, !25
-        mem_copy_val v417v1, v412v1
-        v419v1 = get_local __ptr { ptr }, buffer, !27
-        v422v1 = get_local __ptr { u64, u64 }, __tuple_init_0, !31
-        v80v1 = const u64 0
-        v424v3 = get_elem_ptr v419v1, __ptr ptr, v80v1, !37
-        v449v1 = load v424v3, !38
-        v450v1 = asm(ptr: v449v1, val) -> u64 val, !40 {
+        v419v1 = get_local __ptr { ptr }, __struct_init_0, !21
+        v198v1 = const u64 0
+        v421v1 = get_elem_ptr v419v1, __ptr ptr, v198v1, !22
+        store v393v1 to v421v1, !23
+        v424v1 = get_local __ptr { ptr }, buffer, !25
+        mem_copy_val v424v1, v419v1
+        v426v1 = get_local __ptr { ptr }, buffer, !27
+        v429v1 = get_local __ptr { u64, u64 }, __tuple_init_0, !31
+        v87v1 = const u64 0
+        v431v3 = get_elem_ptr v426v1, __ptr ptr, v87v1, !37
+        v456v1 = load v431v3, !38
+        v457v1 = asm(ptr: v456v1, val) -> u64 val, !40 {
             lw     val ptr i0, !41
         }
-        v452v1 = load v424v3, !42
-        v453v1 = const u64 8, !43
-        v454v1 = add v452v1, v453v1, !44
-        store v454v1 to v424v3, !46
-        v459v1 = load v424v3, !49
-        v460v1 = asm(ptr: v459v1, val) -> u64 val, !50 {
+        v459v1 = load v431v3, !42
+        v460v1 = const u64 8, !43
+        v461v1 = add v459v1, v460v1, !44
+        store v461v1 to v431v3, !46
+        v466v1 = load v431v3, !49
+        v467v1 = asm(ptr: v466v1, val) -> u64 val, !50 {
             lw     val ptr i0, !41
         }
-        v462v1 = load v424v3, !51
-        v463v1 = const u64 8, !52
-        v464v1 = add v462v1, v463v1, !53
-        store v464v1 to v424v3, !54
-        v194v1 = const u64 0
-        v427v1 = get_elem_ptr v422v1, __ptr u64, v194v1, !55
-        store v450v1 to v427v1, !56
-        v197v1 = const u64 1
-        v429v1 = get_elem_ptr v422v1, __ptr u64, v197v1, !57
-        store v460v1 to v429v1, !58
-        v470v1 = get_local __ptr { u64, u64 }, __tmp_block_arg
-        mem_copy_val v470v1, v422v1
-        br decode_script_data_0_decode_from_raw_ptr_1_block2(v470v1), !59
+        v469v1 = load v431v3, !51
+        v470v1 = const u64 8, !52
+        v471v1 = add v469v1, v470v1, !53
+        store v471v1 to v431v3, !54
+        v201v1 = const u64 0
+        v434v1 = get_elem_ptr v429v1, __ptr u64, v201v1, !55
+        store v457v1 to v434v1, !56
+        v204v1 = const u64 1
+        v436v1 = get_elem_ptr v429v1, __ptr u64, v204v1, !57
+        store v467v1 to v436v1, !58
+        v477v1 = get_local __ptr { u64, u64 }, __tmp_block_arg
+        mem_copy_val v477v1, v429v1
+        br decode_script_data_0_decode_from_raw_ptr_1_block2(v477v1), !59
 
-        decode_script_data_0_decode_from_raw_ptr_1_block2(v468v1: __ptr { u64, u64 }):
-        v131v1 = get_local __ptr { u64, u64 }, args, !60
-        mem_copy_val v131v1, v468v1
-        v157v1 = get_local __ptr { u64, u64 }, args, !61
-        v158v1 = const u64 0
-        v159v1 = get_elem_ptr v157v1, __ptr u64, v158v1, !62
-        v160v1 = load v159v1
-        v161v1 = get_local __ptr { u64, u64 }, args, !63
-        v162v1 = const u64 1
-        v163v1 = get_elem_ptr v161v1, __ptr u64, v162v1, !64
-        v164v1 = load v163v1
-        v165v1 = call main_11(v160v1, v164v1), !67
-        v166v1 = get_local __ptr u64, _result, !68
-        store v165v1 to v166v1, !68
-        v185v1 = get_local __ptr u64, _result, !69
-        v176v1 = const u64 8
-        retd v185v1 v176v1, !73
+        decode_script_data_0_decode_from_raw_ptr_1_block2(v475v1: __ptr { u64, u64 }):
+        v138v1 = get_local __ptr { u64, u64 }, args, !60
+        mem_copy_val v138v1, v475v1
+        v164v1 = get_local __ptr { u64, u64 }, args, !61
+        v165v1 = const u64 0
+        v166v1 = get_elem_ptr v164v1, __ptr u64, v165v1, !62
+        v167v1 = load v166v1
+        v168v1 = get_local __ptr { u64, u64 }, args, !63
+        v169v1 = const u64 1
+        v170v1 = get_elem_ptr v168v1, __ptr u64, v169v1, !64
+        v171v1 = load v170v1
+        v172v1 = call main_11(v167v1, v171v1), !67
+        v173v1 = get_local __ptr u64, _result, !68
+        store v172v1 to v173v1, !68
+        v192v1 = get_local __ptr u64, _result, !69
+        v183v1 = const u64 8
+        retd v192v1 v183v1, !73
     }
 
     entry_orig fn main_11(baba !75: u64, keke !76: u64) -> u64, !79 {
         entry(baba: u64, keke: u64):
-        v370v1 = add baba, keke, !82
-        ret u64 v370v1
+        v377v1 = add baba, keke, !82
+        ret u64 v377v1
     }
 }
 
@@ -116,50 +116,50 @@ script {
 !2 = fn_name_span !0 7 14
 !3 = (!1 !2)
 !4 = "test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw"
-!5 = span !4 1542 1543
+!5 = span !4 1695 1696
 !6 = span !0 64 99
 !7 = fn_call_path_span !0 64 82
-!8 = span !4 105941 105973
-!9 = fn_call_path_span !4 105941 105971
-!10 = span !4 1525 1549
+!8 = span !4 106094 106126
+!9 = fn_call_path_span !4 106094 106124
+!10 = span !4 1678 1702
 !11 = (!6 !7 !8 !9 !10)
 !12 = (!6 !7 !8 !9 !10)
-!13 = span !4 58185 58189
-!14 = span !4 105916 105974
-!15 = fn_call_path_span !4 105916 105935
-!16 = span !4 105656 105680
+!13 = span !4 58338 58342
+!14 = span !4 106069 106127
+!15 = fn_call_path_span !4 106069 106088
+!16 = span !4 105809 105833
 !17 = (!6 !7 !14 !15 !16)
 !18 = (!6 !7 !14 !15)
 !19 = (!6 !7 !14 !15)
-!20 = span !4 105789 105809
+!20 = span !4 105942 105962
 !21 = (!6 !7 !14 !15 !20)
 !22 = (!6 !7 !14 !15 !20)
 !23 = (!6 !7 !14 !15 !20)
-!24 = span !4 105772 105810
+!24 = span !4 105925 105963
 !25 = (!6 !7 !14 !15 !24)
-!26 = span !4 105833 105839
+!26 = span !4 105986 105992
 !27 = (!6 !7 !14 !15 !26)
-!28 = span !4 105819 105840
-!29 = fn_call_path_span !4 105819 105832
-!30 = span !4 62245 62291
+!28 = span !4 105972 105993
+!29 = fn_call_path_span !4 105972 105985
+!30 = span !4 62398 62444
 !31 = (!6 !7 !14 !15 !28 !29 !30)
-!32 = span !4 62246 62267
-!33 = fn_call_path_span !4 62246 62259
-!34 = span !4 58261 58289
-!35 = fn_call_path_span !4 58268 58280
-!36 = span !4 625 641
+!32 = span !4 62399 62420
+!33 = fn_call_path_span !4 62399 62412
+!34 = span !4 58414 58442
+!35 = fn_call_path_span !4 58421 58433
+!36 = span !4 778 794
 !37 = (!6 !7 !14 !15 !28 !29 !32 !33 !34 !35 !36)
 !38 = (!6 !7 !14 !15 !28 !29 !32 !33 !34 !35)
-!39 = span !4 2273 2354
+!39 = span !4 2426 2507
 !40 = (!6 !7 !14 !15 !28 !29 !32 !33 !34 !35 !39)
-!41 = span !4 2311 2324
+!41 = span !4 2464 2477
 !42 = (!6 !7 !14 !15 !28 !29 !32 !33 !34 !35)
 !43 = (!6 !7 !14 !15 !28 !29 !32 !33 !34 !35)
 !44 = (!6 !7 !14 !15 !28 !29 !32 !33 !34 !35)
-!45 = span !4 2364 2403
+!45 = span !4 2517 2556
 !46 = (!6 !7 !14 !15 !28 !29 !32 !33 !34 !35 !45)
-!47 = span !4 62269 62290
-!48 = fn_call_path_span !4 62269 62282
+!47 = span !4 62422 62443
+!48 = fn_call_path_span !4 62422 62435
 !49 = (!6 !7 !14 !15 !28 !29 !47 !48 !34 !35)
 !50 = (!6 !7 !14 !15 !28 !29 !47 !48 !34 !35 !39)
 !51 = (!6 !7 !14 !15 !28 !29 !47 !48 !34 !35)
@@ -183,7 +183,7 @@ script {
 !69 = span !0 200 207
 !70 = span !0 174 208
 !71 = fn_call_path_span !0 174 191
-!72 = span !4 56324 56350
+!72 = span !4 56477 56503
 !73 = (!70 !71 !72)
 !74 = "test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_two_u64/src/main.sw"
 !75 = span !74 17 21

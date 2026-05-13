@@ -7,6 +7,7 @@ pub mod slice;
 pub mod ops;
 pub mod never;
 pub mod raw_ptr;
+pub mod error_signals;
 pub mod raw_slice;
 pub mod codec;
 pub mod r#str;
