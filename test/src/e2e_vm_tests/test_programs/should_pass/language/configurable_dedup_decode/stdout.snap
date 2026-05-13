@@ -18,37 +18,37 @@ script {
 
     pub fn abi_decode_in_place_0(ptr !4: ptr, len !5: u64, target !6: ptr) -> (), !9 {
         entry(ptr: ptr, len: u64, target: ptr):
-        v146v1 = asm(src: ptr, target: target, len: len) -> (), !10 {
+        v147v1 = asm(src: ptr, target: target, len: len) -> (), !10 {
             mcp    target src len, !11
         }
-        v224v1 = const unit ()
-        ret () v224v1
+        v225v1 = const unit ()
+        ret () v225v1
     }
 
     pub entry fn __entry() -> __ptr never, !15 {
         local u64 _result
 
         entry():
-        v316v1 = call main_15(), !18
-        v317v1 = get_local __ptr u64, _result, !19
-        store v316v1 to v317v1, !19
-        v336v1 = get_local __ptr u64, _result, !20
-        v327v1 = const u64 8
-        retd v336v1 v327v1, !24
+        v317v1 = call main_15(), !18
+        v318v1 = get_local __ptr u64, _result, !19
+        store v317v1 to v318v1, !19
+        v337v1 = get_local __ptr u64, _result, !20
+        v328v1 = const u64 8
+        retd v337v1 v328v1, !24
     }
 
     entry_orig fn main_15() -> u64, !27 {
         entry():
-        v306v1 = get_config __ptr { u64 }, WRAPPED, !28
-        v307v1 = const u64 0
-        v308v1 = get_elem_ptr v306v1, __ptr u64, v307v1, !29
-        v309v1 = load v308v1
-        v310v1 = get_config __ptr { u64 }, TUPLE, !30
-        v311v1 = const u64 0
-        v312v1 = get_elem_ptr v310v1, __ptr u64, v311v1, !31
-        v313v1 = load v312v1
-        v502v1 = add v309v1, v313v1, !34
-        ret u64 v502v1
+        v307v1 = get_config __ptr { u64 }, WRAPPED, !28
+        v308v1 = const u64 0
+        v309v1 = get_elem_ptr v307v1, __ptr u64, v308v1, !29
+        v310v1 = load v309v1
+        v311v1 = get_config __ptr { u64 }, TUPLE, !30
+        v312v1 = const u64 0
+        v313v1 = get_elem_ptr v311v1, __ptr u64, v312v1, !31
+        v314v1 = load v313v1
+        v503v1 = add v310v1, v314v1, !34
+        ret u64 v503v1
     }
 }
 

@@ -2,91 +2,387 @@
 source: test/src/snapshot/mod.rs
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/optimisations/leaf_fns --release --ir final --asm final | filter-fn leaf_fns leaf_fn
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_pass/optimisations/leaf_fns
+   Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
+warning
+  --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/raw_slice.sw:53:4
+   |
+51 | ///
+52 | /// * [raw_slice] - The newly created `raw_slice`.
+53 | fn from_parts(parts: (raw_ptr, u64)) -> raw_slice {
+   |    ---------- This function is never called.
+54 |     asm(ptr: parts) {
+55 |         ptr: raw_slice
+   |
+____
 
-fn leaf_fn_0_1() -> () {
-    entry():
-    v24v1 = const unit ()
-    ret () v24v1
-}
+warning
+  --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/raw_slice.sw:68:4
+   |
+66 | ///
+67 | /// * [(raw_ptr, u64)] - A tuple of the location in memory of the original `raw_slice` and its length.
+68 | fn into_parts(slice: raw_slice) -> (raw_ptr, u64) {
+   |    ---------- This function is never called.
+69 |     asm(ptr: slice) {
+70 |         ptr: (raw_ptr, u64)
+   |
+____
 
+warning
+    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3402:40
+     |
+3400 | // Tests
+3401 | 
+3402 | fn assert_encoding<T, SLICE>(value: T, expected: SLICE)
+     |                                        -------- This declaration is never used.
+3403 | where
+3404 |     T: AbiEncode,
+     |
+____
 
-fn leaf_fn_6_2(a: u64, b: u64, c: u64, d: u64, e: u64, f: u64) -> u64 {
-    entry(a: u64, b: u64, c: u64, d: u64, e: u64, f: u64):
-    v32v1 = add a, b
-    v33v1 = add v32v1, c
-    v34v1 = add v33v1, d
-    v35v1 = add v34v1, e
-    v36v1 = add v35v1, f
-    ret u64 v36v1
-}
+warning
+    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3436:5
+     |
+3434 | fn assert_encoding_and_decoding<T, SLICE>(
+3435 |     value: T,
+3436 |     expected: SLICE,
+     |     -------- This declaration is never used.
+3437 | )
+3438 | where
+     |
+____
 
+warning
+    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3475:16
+     |
+3473 | }
+3474 | 
+3475 | fn to_slice<T>(array: T) -> raw_slice {
+     |                ----- This declaration is never used.
+3476 |     let len = __size_of::<T>();
+3477 |     raw_slice::from_parts::<u8>(__addr_of(array), len)
+     |
+____
 
-fn leaf_fn_7_4(a: u64, b: u64, c: u64, d: u64, e: u64, f: u64, g: u64) -> u64 {
-    entry(a: u64, b: u64, c: u64, d: u64, e: u64, f: u64, g: u64):
-    v45v1 = add a, b
-    v46v1 = add v45v1, c
-    v47v1 = add v46v1, d
-    v48v1 = add v47v1, e
-    v49v1 = add v48v1, f
-    v50v1 = add v49v1, g
-    ret u64 v50v1
-}
+warning
+    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:1746:22
+     |
+1744 | }
+1745 | 
+1746 | pub fn abi_decode<T>(data: raw_slice) -> T
+     |                      ---- This declaration is never used.
+1747 | where
+1748 |     T: AbiDecode,
+     |
+____
 
+warning
+    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:1893:13
+     |
+1891 |     fn abi_decode(ref mut buffer: BufferReader) -> str {
+1892 |         let len = buffer.read_8_bytes::<u64>();
+1893 |         let data = buffer.read_bytes(len);
+     |             ---- This declaration is never used.
+1894 |         asm(s: (data.ptr(), len)) {
+1895 |             s: str
+     |
+____
 
-fn leaf_fn_caller_5() -> () {
-    entry():
-    v52v1 = const u64 0
-    v53v1 = const u64 1
-    v54v1 = const u64 2
-    v55v1 = const u64 3
-    v56v1 = const u64 4
-    v57v1 = const u64 5
-    v58v1 = call leaf_fn_6_2(v52v1, v53v1, v54v1, v55v1, v56v1, v57v1)
-    v59v1 = const unit ()
-    ret () v59v1
-}
+warning
+    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:1907:13
+     |
+1905 |     }
+1906 |     fn abi_decode(ref mut buffer: BufferReader) -> str[N] {
+1907 |         let data = buffer.read_bytes(N);
+     |             ---- This declaration is never used.
+1908 |         asm(s: data.ptr()) {
+1909 |             s: str[N]
+     |
+____
 
+warning
+    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3322:5
+     |
+3320 | pub fn contract_call<T, TArgs>(
+3321 |     contract_id: b256,
+3322 |     method_name: raw_slice,
+     |     ----------- This declaration is never used.
+3323 |     args: TArgs,
+3324 |     coins: u64,
+     |
+____
 
-pshh i524288                  ; [fn init: leaf_fn_0_1]: push used high registers 40..64
-poph i524288                  ; [fn end: leaf_fn_0_1]: restore used high registers 40..64
-jal  $zero $$reta i0          ; [fn end: leaf_fn_0_1] return from call
+warning
+    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3332:9
+     |
+3330 |     TArgs: AbiEncode,
+3331 | {
+3332 |     let second_parameter = encode(args);
+     |         ---------------- This declaration is never used.
+3333 |     let params = (
+3334 |         contract_id,
+     |
+____
 
-pshh i528384                  ; [fn init: leaf_fn_6_2]: push used high registers 40..64
-add  $r0 $$arg0 $$arg1
-add  $r0 $r0 $$arg2
-add  $r0 $r0 $$arg3
-add  $r0 $r0 $$arg4
-add  $r0 $r0 $$arg5
-move $$retv $r0               ; [fn end: leaf_fn_6_2] set return value
-poph i528384                  ; [fn end: leaf_fn_6_2]: restore used high registers 40..64
-jal  $zero $$reta i0          ; [fn end: leaf_fn_6_2] return from call
+error
+ --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/raw_slice.sw:5:7
+  |
+3 | use ::ops::*;
+4 | use ::raw_ptr::*;
+5 | use ::error_signals::REVERT_WITH_RAW_SLICE_LEN_ZST;
+  |       ^^^^^^^^^^^^^ Module "error_signals" could not be found.
+6 | 
+7 | /// Trait to return a type as a `raw_slice`.
+  |
+____
 
+error
+   --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/raw_slice.sw:176:22
+    |
+174 |             into_parts(self).1 / len
+175 |         } else {
+176 |             __revert(REVERT_WITH_RAW_SLICE_LEN_ZST);
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Variable "REVERT_WITH_RAW_SLICE_LEN_ZST" does not exist in this scope.
+177 |         }
+178 |     }
+    |
+____
 
+error: Associated function or method is not found
+   --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/raw_slice.sw:204:14
+    |
+...
+204 |         self.ptr() == other.ptr() && self.number_of_bytes() == other.number_of_bytes()
+    |              ^^^ "ptr(raw_slice)" is not found for type "raw_slice".
+    |
+____
 
-pshh i531456                  ; [fn init: leaf_fn_7_4]: push used high registers 40..64
-lw   $r0 $$arg5 i0            ; [fn init: leaf_fn_7_4]: load argument 5 (f) from its stack slot
-lw   $r1 $$arg5 i1            ; [fn init: leaf_fn_7_4]: load argument 6 (g) from its stack slot
-add  $r2 $$arg0 $$arg1
-add  $r2 $r2 $$arg2
-add  $r2 $r2 $$arg3
-add  $r2 $r2 $$arg4
-add  $r0 $r2 $r0
-add  $r0 $r0 $r1
-move $$retv $r0               ; [fn end: leaf_fn_7_4] set return value
-poph i531456                  ; [fn end: leaf_fn_7_4]: restore used high registers 40..64
-jal  $zero $$reta i0          ; [fn end: leaf_fn_7_4] return from call
+error: Associated function or method is not found
+   --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/raw_slice.sw:204:20
+    |
+...
+204 |         self.ptr() == other.ptr() && self.number_of_bytes() == other.number_of_bytes()
+    |                    ^^ "eq({unknown}, {unknown}) -> bool" is not found for type "{unknown}".
+    |
+____
 
+error: Associated function or method is not found
+   --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/raw_slice.sw:204:29
+    |
+...
+204 |         self.ptr() == other.ptr() && self.number_of_bytes() == other.number_of_bytes()
+    |                             ^^^ "ptr(raw_slice)" is not found for type "raw_slice".
+    |
+____
 
-pshh i528384                  ; [fn init: leaf_fn_caller_5]: push used high registers 40..64
-move $r0 $$reta               ; [fn init: leaf_fn_caller_5]: save return address
-movi $$arg0 i0                ; [call: leaf_fn_6_2]: pass argument 0
-movi $$arg1 i1                ; [call: leaf_fn_6_2]: pass argument 1
-movi $$arg2 i2                ; [call: leaf_fn_6_2]: pass argument 2
-movi $$arg3 i3                ; [call: leaf_fn_6_2]: pass argument 3
-movi $$arg4 i4                ; [call: leaf_fn_6_2]: pass argument 4
-movi $$arg5 i5                ; [call: leaf_fn_6_2]: pass argument 5
-subi $$tmp $pc i116           ; load far jump target address
-jal  $$reta $$tmp i0          ; [call: leaf_fn_6_2]: call function
-move $$reta $r0               ; [fn end: leaf_fn_caller_5] restore return address
-poph i528384                  ; [fn end: leaf_fn_caller_5]: restore used high registers 40..64
-jal  $zero $$reta i0          ; [fn end: leaf_fn_caller_5] return from call
+error: Associated function or method is not found
+   --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/raw_slice.sw:204:43
+    |
+...
+204 |         self.ptr() == other.ptr() && self.number_of_bytes() == other.number_of_bytes()
+    |                                           ^^^^^^^^^^^^^^^ "number_of_bytes(raw_slice)" is not found for type "raw_slice".
+    |
+____
+
+error: Associated function or method is not found
+   --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/raw_slice.sw:204:61
+    |
+...
+204 |         self.ptr() == other.ptr() && self.number_of_bytes() == other.number_of_bytes()
+    |                                                             ^^ "eq({unknown}, {unknown}) -> bool" is not found for type "{unknown}".
+    |
+____
+
+error: Associated function or method is not found
+   --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/raw_slice.sw:204:70
+    |
+...
+204 |         self.ptr() == other.ptr() && self.number_of_bytes() == other.number_of_bytes()
+    |                                                                      ^^^^^^^^^^^^^^^ "number_of_bytes(raw_slice)" is not found for type "raw_slice".
+    |
+____
+
+error: Associated function or method is not found
+    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:1752:50
+     |
+...
+1752 |         let item: &T = asm(size: size, src: data.ptr()) {
+     |                                                  ^^^ "ptr(raw_slice)" is not found for type "raw_slice".
+     |
+____
+
+error: Associated function or method is not found
+    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:1759:56
+     |
+...
+1759 |         let mut buffer = BufferReader::from_parts(data.ptr(), data.len::<u8>());
+     |                                                        ^^^ "ptr(raw_slice)" is not found for type "raw_slice".
+     |
+____
+
+error: Associated function or method is not found
+    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:1759:56
+     |
+...
+1759 |         let mut buffer = BufferReader::from_parts(data.ptr(), data.len::<u8>());
+     |                                                        ^^^ "ptr(raw_slice) -> raw_ptr" is not found for type "raw_slice".
+     |
+____
+
+error: Associated function or method is not found
+    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:1759:68
+     |
+...
+1759 |         let mut buffer = BufferReader::from_parts(data.ptr(), data.len::<u8>());
+     |                                                                    ^^^ "len(raw_slice) -> u64" is not found for type "raw_slice".
+     |
+____
+
+error: Associated function or method is not found
+    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:1894:22
+     |
+...
+1894 |         asm(s: (data.ptr(), len)) {
+     |                      ^^^ "ptr(raw_slice)" is not found for type "raw_slice".
+     |
+____
+
+error: Associated function or method is not found
+    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:1908:21
+     |
+...
+1908 |         asm(s: data.ptr()) {
+     |                     ^^^ "ptr(raw_slice)" is not found for type "raw_slice".
+     |
+____
+
+error: Associated function or method is not found
+    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3335:28
+     |
+...
+3335 |         asm(a: method_name.ptr()) {
+     |                            ^^^ "ptr(raw_slice)" is not found for type "raw_slice".
+     |
+____
+
+error: Associated function or method is not found
+    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3338:33
+     |
+...
+3338 |         asm(a: second_parameter.ptr()) {
+     |                                 ^^^ "ptr(raw_slice)" is not found for type "raw_slice".
+     |
+____
+
+error: Associated function or method is not found
+    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3412:31
+     |
+...
+3412 |     let expected = raw_slice::from_parts::<u8>(__addr_of(expected), len);
+     |                               ^^^^^^^^^^ "from_parts(raw_ptr, u64)" is not found for type "raw_slice".
+     |
+____
+
+error: Associated function or method is not found
+    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3415:15
+     |
+...
+3415 |     if actual.len::<u8>() != expected.len::<u8>() {
+     |               ^^^ "len(raw_slice)" is not found for type "raw_slice".
+     |
+____
+
+error: Associated function or method is not found
+    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3415:27
+     |
+...
+3415 |     if actual.len::<u8>() != expected.len::<u8>() {
+     |                           ^^ "neq({unknown}, {unknown}) -> bool" is not found for type "{unknown}".
+     |
+____
+
+error: Associated function or method is not found
+    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3415:39
+     |
+...
+3415 |     if actual.len::<u8>() != expected.len::<u8>() {
+     |                                       ^^^ "len({unknown})" is not found for type "{unknown}".
+     |
+____
+
+error: Associated function or method is not found
+    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3421:28
+     |
+...
+3421 |         expected: expected.ptr(),
+     |                            ^^^ "ptr({unknown})" is not found for type "{unknown}".
+     |
+____
+
+error: Associated function or method is not found
+    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3422:24
+     |
+...
+3422 |         actual: actual.ptr(),
+     |                        ^^^ "ptr(raw_slice)" is not found for type "raw_slice".
+     |
+____
+
+error: Associated function or method is not found
+    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3447:31
+     |
+...
+3447 |     let expected = raw_slice::from_parts::<u8>(__addr_of(expected), len);
+     |                               ^^^^^^^^^^ "from_parts(raw_ptr, u64)" is not found for type "raw_slice".
+     |
+____
+
+error: Associated function or method is not found
+    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3450:15
+     |
+...
+3450 |     if actual.len::<u8>() != expected.len::<u8>() {
+     |               ^^^ "len(raw_slice)" is not found for type "raw_slice".
+     |
+____
+
+error: Associated function or method is not found
+    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3450:39
+     |
+...
+3450 |     if actual.len::<u8>() != expected.len::<u8>() {
+     |                                       ^^^ "len({unknown})" is not found for type "{unknown}".
+     |
+____
+
+error: Associated function or method is not found
+    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3456:28
+     |
+...
+3456 |         expected: expected.ptr(),
+     |                            ^^^ "ptr({unknown})" is not found for type "{unknown}".
+     |
+____
+
+error: Associated function or method is not found
+    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3457:24
+     |
+...
+3457 |         actual: actual.ptr(),
+     |                        ^^^ "ptr(raw_slice)" is not found for type "raw_slice".
+     |
+____
+
+error: Associated function or method is not found
+    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3477:16
+     |
+...
+3477 |     raw_slice::from_parts::<u8>(__addr_of(array), len)
+     |                ^^^^^^^^^^ "from_parts(raw_ptr, u64) -> raw_slice" is not found for type "raw_slice".
+     |
+____
+
+  Aborting due to 28 errors.
+error: Failed to compile std
