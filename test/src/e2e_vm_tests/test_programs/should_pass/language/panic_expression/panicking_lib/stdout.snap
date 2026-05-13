@@ -2,773 +2,323 @@
 source: test/src/snapshot/mod.rs
 ---
 > forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_lib --test-threads 1 --logs --reverts
-exit status: 1
+exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_lib
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
-warning
-  --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/raw_slice.sw:53:4
-   |
-51 | ///
-52 | /// * [raw_slice] - The newly created `raw_slice`.
-53 | fn from_parts(parts: (raw_ptr, u64)) -> raw_slice {
-   |    ---------- This function is never called.
-54 |     asm(ptr: parts) {
-55 |         ptr: raw_slice
-   |
-____
+   Compiling library panicking_lib (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_lib)
+    Finished debug [unoptimized + fuel] target(s) [6.664 KB] in ???
+     Running 18 tests, filtered 0 tests
 
-warning
-  --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/raw_slice.sw:68:4
-   |
-66 | ///
-67 | /// * [(raw_ptr, u64)] - A tuple of the location in memory of the original `raw_slice` and its length.
-68 | fn into_parts(slice: raw_slice) -> (raw_ptr, u64) {
-   |    ---------- This function is never called.
-69 |     asm(ptr: slice) {
-70 |         ptr: (raw_ptr, u64)
-   |
-____
+tested -- panicking_lib
 
-warning
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3402:40
-     |
-3400 | // Tests
-3401 | 
-3402 | fn assert_encoding<T, SLICE>(value: T, expected: SLICE)
-     |                                        -------- This declaration is never used.
-3403 | where
-3404 |     T: AbiEncode,
-     |
-____
+      test test_nested_panic_inlined ... ok (???, 1522 gas)
+           revert code: 8000000000001001
+            ├─ panic message: Error E.
+            ├─ panic value:   E([AsciiString { data: "to have" }, AsciiString { data: "strings" }, AsciiString { data: "in error enum variants" }])
+            ├─ panicked:      in panicking_lib::nested_panic_inlined
+            │                  └─ at panicking_lib, src/lib.sw:35:5
+            └─ backtrace:     called in panicking_lib::call_nested_panic_inlined
+                               └─ at panicking_lib, src/lib.sw:46:5
+                              called in panicking_lib::test_nested_panic_inlined
+                               └─ at panicking_lib, src/lib.sw:55:5
+           decoded log values:
+E([AsciiString { data: "to have" }, AsciiString { data: "strings" }, AsciiString { data: "in error enum variants" }]), log rb: 2721958641300806892
+      test test_nested_panic_inlined_same_revert_code ... ok (???, 1522 gas)
+           revert code: 8000000000001801
+            ├─ panic message: Error E.
+            ├─ panic value:   E([AsciiString { data: "to have" }, AsciiString { data: "strings" }, AsciiString { data: "in error enum variants" }])
+            ├─ panicked:      in panicking_lib::nested_panic_inlined
+            │                  └─ at panicking_lib, src/lib.sw:35:5
+            └─ backtrace:     called in panicking_lib::call_nested_panic_inlined
+                               └─ at panicking_lib, src/lib.sw:46:5
+                              called in panicking_lib::test_nested_panic_inlined_same_revert_code
+                               └─ at panicking_lib, src/lib.sw:60:5
+           decoded log values:
+E([AsciiString { data: "to have" }, AsciiString { data: "strings" }, AsciiString { data: "in error enum variants" }]), log rb: 2721958641300806892
+      test test_nested_panic_non_inlined ... ok (???, 1540 gas)
+           revert code: 8080000000002804
+            ├─ panic message: Error E.
+            ├─ panic value:   E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { data: "the best practice" }])
+            ├─ panicked:      in panicking_lib::nested_panic_non_inlined
+            │                  └─ at panicking_lib, src/lib.sw:41:9
+            └─ backtrace:     called in panicking_lib::call_nested_panic_non_inlined
+                               └─ at panicking_lib, src/lib.sw:50:5
+                              called in panicking_lib::test_nested_panic_non_inlined
+                               └─ at panicking_lib, src/lib.sw:65:5
+           decoded log values:
+E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { data: "the best practice" }]), log rb: 2721958641300806892
+      test test_nested_panic_non_inlined_same_revert_code ... ok (???, 1540 gas)
+           revert code: 8080000000003004
+            ├─ panic message: Error E.
+            ├─ panic value:   E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { data: "the best practice" }])
+            ├─ panicked:      in panicking_lib::nested_panic_non_inlined
+            │                  └─ at panicking_lib, src/lib.sw:41:9
+            └─ backtrace:     called in panicking_lib::call_nested_panic_non_inlined
+                               └─ at panicking_lib, src/lib.sw:50:5
+                              called in panicking_lib::test_nested_panic_non_inlined_same_revert_code
+                               └─ at panicking_lib, src/lib.sw:70:5
+           decoded log values:
+E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { data: "the best practice" }]), log rb: 2721958641300806892
+      test test_generic_panic_with_unit ... ok (???, 575 gas)
+           revert code: 8100000000000007
+            ├─ panic value:   ()
+            ├─ panicked:      in panicking_lib::generic_panic
+            │                  └─ at panicking_lib, src/lib.sw:74:5
+            └─ backtrace:     called in panicking_lib::test_generic_panic_with_unit
+                               └─ at panicking_lib, src/lib.sw:83:5
+           decoded log values:
+(), log rb: 3330666440490685604
+      test test_generic_panic_with_unit_same_revert_code ... ok (???, 575 gas)
+           revert code: 8100000000000008
+            ├─ panic value:   ()
+            ├─ panicked:      in panicking_lib::generic_panic
+            │                  └─ at panicking_lib, src/lib.sw:74:5
+            └─ backtrace:     called in panicking_lib::test_generic_panic_with_unit_same_revert_code
+                               └─ at panicking_lib, src/lib.sw:88:5
+           decoded log values:
+(), log rb: 3330666440490685604
+      test test_generic_panic_with_str ... ok (???, 795 gas)
+           revert code: 8180000000000009
+            ├─ panic message: generic panic with string
+            ├─ panicked:      in panicking_lib::generic_panic
+            │                  └─ at panicking_lib, src/lib.sw:74:5
+            └─ backtrace:     called in panicking_lib::test_generic_panic_with_str
+                               └─ at panicking_lib, src/lib.sw:93:5
+           decoded log values:
+AsciiString { data: "generic panic with string" }, log rb: 10098701174489624218
+      test test_generic_panic_with_different_str_same_revert_code ... ok (???, 796 gas)
+           revert code: 818000000000000a
+            ├─ panic message: generic panic different string
+            ├─ panicked:      in panicking_lib::generic_panic
+            │                  └─ at panicking_lib, src/lib.sw:74:5
+            └─ backtrace:     called in panicking_lib::test_generic_panic_with_different_str_same_revert_code
+                               └─ at panicking_lib, src/lib.sw:98:5
+           decoded log values:
+AsciiString { data: "generic panic different string" }, log rb: 10098701174489624218
+      test test_generic_panic_with_error_type_enum_variant ... ok (???, 855 gas)
+           revert code: 820000000000000b
+            ├─ panic message: Error A.
+            ├─ panic value:   A
+            ├─ panicked:      in panicking_lib::generic_panic
+            │                  └─ at panicking_lib, src/lib.sw:74:5
+            └─ backtrace:     called in panicking_lib::test_generic_panic_with_error_type_enum_variant
+                               └─ at panicking_lib, src/lib.sw:103:5
+           decoded log values:
+A, log rb: 2721958641300806892
+      test test_generic_panic_with_error_type_enum_different_variant_same_revert_code ... ok (???, 855 gas)
+           revert code: 820000000000000c
+            ├─ panic message: Error A.
+            ├─ panic value:   A
+            ├─ panicked:      in panicking_lib::generic_panic
+            │                  └─ at panicking_lib, src/lib.sw:74:5
+            └─ backtrace:     called in panicking_lib::test_generic_panic_with_error_type_enum_different_variant_same_revert_code
+                               └─ at panicking_lib, src/lib.sw:108:5
+           decoded log values:
+A, log rb: 2721958641300806892
+      test test_panic_without_arg ... ok (???, 571 gas)
+           revert code: 8280000000000000
+            ├─ panic value:   ()
+            └─ panicked:      in panicking_lib::test_panic_without_arg
+                               └─ at panicking_lib, src/lib.sw:113:5
+           decoded log values:
+(), log rb: 3330666440490685604
+      test test_panic_with_unit ... ok (???, 571 gas)
+           revert code: 8300000000000000
+            ├─ panic value:   ()
+            └─ panicked:      in panicking_lib::test_panic_with_unit
+                               └─ at panicking_lib, src/lib.sw:118:5
+           decoded log values:
+(), log rb: 3330666440490685604
+      test test_panic_with_str ... ok (???, 71 gas)
+           revert code: 8380000000000000
+            ├─ panic message: panic with string
+            └─ panicked:      in panicking_lib::test_panic_with_str
+                               └─ at panicking_lib, src/lib.sw:123:5
+      test test_panic_with_error_type_enum ... ok (???, 985 gas)
+           revert code: 8400000000000000
+            ├─ panic message: Error C.
+            ├─ panic value:   C(true)
+            └─ panicked:      in panicking_lib::test_panic_with_error_type_enum
+                               └─ at panicking_lib, src/lib.sw:128:5
+           decoded log values:
+C(true), log rb: 2721958641300806892
+      test test_panic_with_generic_error_type_enum ... ok (???, 841 gas)
+           revert code: 8480000000000000
+            ├─ panic value:   A(42)
+            └─ panicked:      in panicking_lib::test_panic_with_generic_error_type_enum
+                               └─ at panicking_lib, src/lib.sw:133:5
+           decoded log values:
+A(42), log rb: 12408470889216862137
+      test test_panic_with_nested_generic_error_type ... ok (???, 1195 gas)
+           revert code: 8500000000000000
+            ├─ panic value:   B(B(C(true)))
+            └─ panicked:      in panicking_lib::test_panic_with_nested_generic_error_type
+                               └─ at panicking_lib, src/lib.sw:138:5
+           decoded log values:
+B(B(C(true))), log rb: 14988555917426256081
+      test test_panic_with_generic_error_type_enum_with_abi_encode ... ok (???, 841 gas)
+           revert code: 8580000000000000
+            ├─ panic value:   A(42)
+            └─ panicked:      in panicking_lib::test_panic_with_generic_error_type_enum_with_abi_encode
+                               └─ at panicking_lib, src/lib.sw:143:5
+           decoded log values:
+A(42), log rb: 17388243649088655852
+      test test_panic_with_nested_generic_error_type_enum_with_abi_encode ... ok (???, 1195 gas)
+           revert code: 8600000000000000
+            ├─ panic value:   B(B(C(true)))
+            └─ panicked:      in panicking_lib::test_panic_with_nested_generic_error_type_enum_with_abi_encode
+                               └─ at panicking_lib, src/lib.sw:148:5
+           decoded log values:
+B(B(C(true))), log rb: 3755100321495500961
 
-warning
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3436:5
-     |
-3434 | fn assert_encoding_and_decoding<T, SLICE>(
-3435 |     value: T,
-3436 |     expected: SLICE,
-     |     -------- This declaration is never used.
-3437 | )
-3438 | where
-     |
-____
+test result: OK. 18 passed; 0 failed; finished in ???
 
-warning
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3475:16
-     |
-3473 | }
-3474 | 
-3475 | fn to_slice<T>(array: T) -> raw_slice {
-     |                ----- This declaration is never used.
-3476 |     let len = __size_of::<T>();
-3477 |     raw_slice::from_parts::<u8>(__addr_of(array), len)
-     |
-____
-
-warning
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:1746:22
-     |
-1744 | }
-1745 | 
-1746 | pub fn abi_decode<T>(data: raw_slice) -> T
-     |                      ---- This declaration is never used.
-1747 | where
-1748 |     T: AbiDecode,
-     |
-____
-
-warning
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:1893:13
-     |
-1891 |     fn abi_decode(ref mut buffer: BufferReader) -> str {
-1892 |         let len = buffer.read_8_bytes::<u64>();
-1893 |         let data = buffer.read_bytes(len);
-     |             ---- This declaration is never used.
-1894 |         asm(s: (data.ptr(), len)) {
-1895 |             s: str
-     |
-____
-
-warning
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:1907:13
-     |
-1905 |     }
-1906 |     fn abi_decode(ref mut buffer: BufferReader) -> str[N] {
-1907 |         let data = buffer.read_bytes(N);
-     |             ---- This declaration is never used.
-1908 |         asm(s: data.ptr()) {
-1909 |             s: str[N]
-     |
-____
-
-warning
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3322:5
-     |
-3320 | pub fn contract_call<T, TArgs>(
-3321 |     contract_id: b256,
-3322 |     method_name: raw_slice,
-     |     ----------- This declaration is never used.
-3323 |     args: TArgs,
-3324 |     coins: u64,
-     |
-____
-
-warning
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3332:9
-     |
-3330 |     TArgs: AbiEncode,
-3331 | {
-3332 |     let second_parameter = encode(args);
-     |         ---------------- This declaration is never used.
-3333 |     let params = (
-3334 |         contract_id,
-     |
-____
-
-error
- --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/raw_slice.sw:5:7
-  |
-3 | use ::ops::*;
-4 | use ::raw_ptr::*;
-5 | use ::error_signals::REVERT_WITH_RAW_SLICE_LEN_ZST;
-  |       ^^^^^^^^^^^^^ Module "error_signals" could not be found.
-6 | 
-7 | /// Trait to return a type as a `raw_slice`.
-  |
-____
-
-error
-   --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/raw_slice.sw:176:22
-    |
-174 |             into_parts(self).1 / len
-175 |         } else {
-176 |             __revert(REVERT_WITH_RAW_SLICE_LEN_ZST);
-    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Variable "REVERT_WITH_RAW_SLICE_LEN_ZST" does not exist in this scope.
-177 |         }
-178 |     }
-    |
-____
-
-error: Associated function or method is not found
-   --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/raw_slice.sw:204:14
-    |
-...
-204 |         self.ptr() == other.ptr() && self.number_of_bytes() == other.number_of_bytes()
-    |              ^^^ "ptr(raw_slice)" is not found for type "raw_slice".
-    |
-____
-
-error: Associated function or method is not found
-   --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/raw_slice.sw:204:20
-    |
-...
-204 |         self.ptr() == other.ptr() && self.number_of_bytes() == other.number_of_bytes()
-    |                    ^^ "eq({unknown}, {unknown}) -> bool" is not found for type "{unknown}".
-    |
-____
-
-error: Associated function or method is not found
-   --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/raw_slice.sw:204:29
-    |
-...
-204 |         self.ptr() == other.ptr() && self.number_of_bytes() == other.number_of_bytes()
-    |                             ^^^ "ptr(raw_slice)" is not found for type "raw_slice".
-    |
-____
-
-error: Associated function or method is not found
-   --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/raw_slice.sw:204:43
-    |
-...
-204 |         self.ptr() == other.ptr() && self.number_of_bytes() == other.number_of_bytes()
-    |                                           ^^^^^^^^^^^^^^^ "number_of_bytes(raw_slice)" is not found for type "raw_slice".
-    |
-____
-
-error: Associated function or method is not found
-   --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/raw_slice.sw:204:61
-    |
-...
-204 |         self.ptr() == other.ptr() && self.number_of_bytes() == other.number_of_bytes()
-    |                                                             ^^ "eq({unknown}, {unknown}) -> bool" is not found for type "{unknown}".
-    |
-____
-
-error: Associated function or method is not found
-   --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/raw_slice.sw:204:70
-    |
-...
-204 |         self.ptr() == other.ptr() && self.number_of_bytes() == other.number_of_bytes()
-    |                                                                      ^^^^^^^^^^^^^^^ "number_of_bytes(raw_slice)" is not found for type "raw_slice".
-    |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:1752:50
-     |
-...
-1752 |         let item: &T = asm(size: size, src: data.ptr()) {
-     |                                                  ^^^ "ptr(raw_slice)" is not found for type "raw_slice".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:1759:56
-     |
-...
-1759 |         let mut buffer = BufferReader::from_parts(data.ptr(), data.len::<u8>());
-     |                                                        ^^^ "ptr(raw_slice)" is not found for type "raw_slice".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:1759:56
-     |
-...
-1759 |         let mut buffer = BufferReader::from_parts(data.ptr(), data.len::<u8>());
-     |                                                        ^^^ "ptr(raw_slice) -> raw_ptr" is not found for type "raw_slice".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:1759:68
-     |
-...
-1759 |         let mut buffer = BufferReader::from_parts(data.ptr(), data.len::<u8>());
-     |                                                                    ^^^ "len(raw_slice) -> u64" is not found for type "raw_slice".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:1894:22
-     |
-...
-1894 |         asm(s: (data.ptr(), len)) {
-     |                      ^^^ "ptr(raw_slice)" is not found for type "raw_slice".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:1908:21
-     |
-...
-1908 |         asm(s: data.ptr()) {
-     |                     ^^^ "ptr(raw_slice)" is not found for type "raw_slice".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3335:28
-     |
-...
-3335 |         asm(a: method_name.ptr()) {
-     |                            ^^^ "ptr(raw_slice)" is not found for type "raw_slice".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3338:33
-     |
-...
-3338 |         asm(a: second_parameter.ptr()) {
-     |                                 ^^^ "ptr(raw_slice)" is not found for type "raw_slice".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3412:31
-     |
-...
-3412 |     let expected = raw_slice::from_parts::<u8>(__addr_of(expected), len);
-     |                               ^^^^^^^^^^ "from_parts(raw_ptr, u64)" is not found for type "raw_slice".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3415:15
-     |
-...
-3415 |     if actual.len::<u8>() != expected.len::<u8>() {
-     |               ^^^ "len(raw_slice)" is not found for type "raw_slice".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3415:27
-     |
-...
-3415 |     if actual.len::<u8>() != expected.len::<u8>() {
-     |                           ^^ "neq({unknown}, {unknown}) -> bool" is not found for type "{unknown}".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3415:39
-     |
-...
-3415 |     if actual.len::<u8>() != expected.len::<u8>() {
-     |                                       ^^^ "len({unknown})" is not found for type "{unknown}".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3421:28
-     |
-...
-3421 |         expected: expected.ptr(),
-     |                            ^^^ "ptr({unknown})" is not found for type "{unknown}".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3422:24
-     |
-...
-3422 |         actual: actual.ptr(),
-     |                        ^^^ "ptr(raw_slice)" is not found for type "raw_slice".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3447:31
-     |
-...
-3447 |     let expected = raw_slice::from_parts::<u8>(__addr_of(expected), len);
-     |                               ^^^^^^^^^^ "from_parts(raw_ptr, u64)" is not found for type "raw_slice".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3450:15
-     |
-...
-3450 |     if actual.len::<u8>() != expected.len::<u8>() {
-     |               ^^^ "len(raw_slice)" is not found for type "raw_slice".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3450:39
-     |
-...
-3450 |     if actual.len::<u8>() != expected.len::<u8>() {
-     |                                       ^^^ "len({unknown})" is not found for type "{unknown}".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3456:28
-     |
-...
-3456 |         expected: expected.ptr(),
-     |                            ^^^ "ptr({unknown})" is not found for type "{unknown}".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3457:24
-     |
-...
-3457 |         actual: actual.ptr(),
-     |                        ^^^ "ptr(raw_slice)" is not found for type "raw_slice".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3477:16
-     |
-...
-3477 |     raw_slice::from_parts::<u8>(__addr_of(array), len)
-     |                ^^^^^^^^^^ "from_parts(raw_ptr, u64) -> raw_slice" is not found for type "raw_slice".
-     |
-____
-
-  Aborting due to 28 errors.
-error: Failed to compile std
+    Finished in ???
 
 > forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_lib --release --test-threads 1 --logs --reverts
-exit status: 1
+exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_lib
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
-warning
-  --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/raw_slice.sw:53:4
-   |
-51 | ///
-52 | /// * [raw_slice] - The newly created `raw_slice`.
-53 | fn from_parts(parts: (raw_ptr, u64)) -> raw_slice {
-   |    ---------- This function is never called.
-54 |     asm(ptr: parts) {
-55 |         ptr: raw_slice
-   |
-____
+   Compiling library panicking_lib (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_lib)
+    Finished release [optimized + fuel] target(s) [4.216 KB] in ???
+     Running 18 tests, filtered 0 tests
 
-warning
-  --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/raw_slice.sw:68:4
-   |
-66 | ///
-67 | /// * [(raw_ptr, u64)] - A tuple of the location in memory of the original `raw_slice` and its length.
-68 | fn into_parts(slice: raw_slice) -> (raw_ptr, u64) {
-   |    ---------- This function is never called.
-69 |     asm(ptr: slice) {
-70 |         ptr: (raw_ptr, u64)
-   |
-____
+tested -- panicking_lib
 
-warning
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3402:40
-     |
-3400 | // Tests
-3401 | 
-3402 | fn assert_encoding<T, SLICE>(value: T, expected: SLICE)
-     |                                        -------- This declaration is never used.
-3403 | where
-3404 |     T: AbiEncode,
-     |
-____
+      test test_nested_panic_inlined ... ok (???, 1312 gas)
+           revert code: 8000000000000000
+            ├─ panic message: Error E.
+            ├─ panic value:   E([AsciiString { data: "to have" }, AsciiString { data: "strings" }, AsciiString { data: "in error enum variants" }])
+            └─ panicked:      in panicking_lib::nested_panic_inlined
+                               └─ at panicking_lib, src/lib.sw:35:5
+           decoded log values:
+E([AsciiString { data: "to have" }, AsciiString { data: "strings" }, AsciiString { data: "in error enum variants" }]), log rb: 2721958641300806892
+      test test_nested_panic_inlined_same_revert_code ... ok (???, 1312 gas)
+           revert code: 8000000000000000
+            ├─ panic message: Error E.
+            ├─ panic value:   E([AsciiString { data: "to have" }, AsciiString { data: "strings" }, AsciiString { data: "in error enum variants" }])
+            └─ panicked:      in panicking_lib::nested_panic_inlined
+                               └─ at panicking_lib, src/lib.sw:35:5
+           decoded log values:
+E([AsciiString { data: "to have" }, AsciiString { data: "strings" }, AsciiString { data: "in error enum variants" }]), log rb: 2721958641300806892
+      test test_nested_panic_non_inlined ... ok (???, 1330 gas)
+           revert code: 8080000000000000
+            ├─ panic message: Error E.
+            ├─ panic value:   E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { data: "the best practice" }])
+            └─ panicked:      in panicking_lib::nested_panic_non_inlined
+                               └─ at panicking_lib, src/lib.sw:41:9
+           decoded log values:
+E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { data: "the best practice" }]), log rb: 2721958641300806892
+      test test_nested_panic_non_inlined_same_revert_code ... ok (???, 1330 gas)
+           revert code: 8080000000000000
+            ├─ panic message: Error E.
+            ├─ panic value:   E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { data: "the best practice" }])
+            └─ panicked:      in panicking_lib::nested_panic_non_inlined
+                               └─ at panicking_lib, src/lib.sw:41:9
+           decoded log values:
+E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { data: "the best practice" }]), log rb: 2721958641300806892
+      test test_generic_panic_with_unit ... ok (???, 543 gas)
+           revert code: 8100000000000000
+            ├─ panic value:   ()
+            └─ panicked:      in panicking_lib::generic_panic
+                               └─ at panicking_lib, src/lib.sw:74:5
+           decoded log values:
+(), log rb: 3330666440490685604
+      test test_generic_panic_with_unit_same_revert_code ... ok (???, 543 gas)
+           revert code: 8100000000000000
+            ├─ panic value:   ()
+            └─ panicked:      in panicking_lib::generic_panic
+                               └─ at panicking_lib, src/lib.sw:74:5
+           decoded log values:
+(), log rb: 3330666440490685604
+      test test_generic_panic_with_str ... ok (???, 742 gas)
+           revert code: 8180000000000000
+            ├─ panic message: generic panic with string
+            └─ panicked:      in panicking_lib::generic_panic
+                               └─ at panicking_lib, src/lib.sw:74:5
+           decoded log values:
+AsciiString { data: "generic panic with string" }, log rb: 10098701174489624218
+      test test_generic_panic_with_different_str_same_revert_code ... ok (???, 743 gas)
+           revert code: 8180000000000000
+            ├─ panic message: generic panic different string
+            └─ panicked:      in panicking_lib::generic_panic
+                               └─ at panicking_lib, src/lib.sw:74:5
+           decoded log values:
+AsciiString { data: "generic panic different string" }, log rb: 10098701174489624218
+      test test_generic_panic_with_error_type_enum_variant ... ok (???, 769 gas)
+           revert code: 8200000000000000
+            ├─ panic message: Error A.
+            ├─ panic value:   A
+            └─ panicked:      in panicking_lib::generic_panic
+                               └─ at panicking_lib, src/lib.sw:74:5
+           decoded log values:
+A, log rb: 2721958641300806892
+      test test_generic_panic_with_error_type_enum_different_variant_same_revert_code ... ok (???, 769 gas)
+           revert code: 8200000000000000
+            ├─ panic message: Error A.
+            ├─ panic value:   A
+            └─ panicked:      in panicking_lib::generic_panic
+                               └─ at panicking_lib, src/lib.sw:74:5
+           decoded log values:
+A, log rb: 2721958641300806892
+      test test_panic_without_arg ... ok (???, 542 gas)
+           revert code: 8280000000000000
+            ├─ panic value:   ()
+            └─ panicked:      in panicking_lib::test_panic_without_arg
+                               └─ at panicking_lib, src/lib.sw:113:5
+           decoded log values:
+(), log rb: 3330666440490685604
+      test test_panic_with_unit ... ok (???, 542 gas)
+           revert code: 8300000000000000
+            ├─ panic value:   ()
+            └─ panicked:      in panicking_lib::test_panic_with_unit
+                               └─ at panicking_lib, src/lib.sw:118:5
+           decoded log values:
+(), log rb: 3330666440490685604
+      test test_panic_with_str ... ok (???, 71 gas)
+           revert code: 8380000000000000
+            ├─ panic message: panic with string
+            └─ panicked:      in panicking_lib::test_panic_with_str
+                               └─ at panicking_lib, src/lib.sw:123:5
+      test test_panic_with_error_type_enum ... ok (???, 878 gas)
+           revert code: 8400000000000000
+            ├─ panic message: Error C.
+            ├─ panic value:   C(true)
+            └─ panicked:      in panicking_lib::test_panic_with_error_type_enum
+                               └─ at panicking_lib, src/lib.sw:128:5
+           decoded log values:
+C(true), log rb: 2721958641300806892
+      test test_panic_with_generic_error_type_enum ... ok (???, 773 gas)
+           revert code: 8480000000000000
+            ├─ panic value:   A(42)
+            └─ panicked:      in panicking_lib::test_panic_with_generic_error_type_enum
+                               └─ at panicking_lib, src/lib.sw:133:5
+           decoded log values:
+A(42), log rb: 12408470889216862137
+      test test_panic_with_nested_generic_error_type ... ok (???, 1046 gas)
+           revert code: 8500000000000000
+            ├─ panic value:   B(B(C(true)))
+            └─ panicked:      in panicking_lib::test_panic_with_nested_generic_error_type
+                               └─ at panicking_lib, src/lib.sw:138:5
+           decoded log values:
+B(B(C(true))), log rb: 14988555917426256081
+      test test_panic_with_generic_error_type_enum_with_abi_encode ... ok (???, 773 gas)
+           revert code: 8580000000000000
+            ├─ panic value:   A(42)
+            └─ panicked:      in panicking_lib::test_panic_with_generic_error_type_enum_with_abi_encode
+                               └─ at panicking_lib, src/lib.sw:143:5
+           decoded log values:
+A(42), log rb: 17388243649088655852
+      test test_panic_with_nested_generic_error_type_enum_with_abi_encode ... ok (???, 1046 gas)
+           revert code: 8600000000000000
+            ├─ panic value:   B(B(C(true)))
+            └─ panicked:      in panicking_lib::test_panic_with_nested_generic_error_type_enum_with_abi_encode
+                               └─ at panicking_lib, src/lib.sw:148:5
+           decoded log values:
+B(B(C(true))), log rb: 3755100321495500961
 
-warning
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3436:5
-     |
-3434 | fn assert_encoding_and_decoding<T, SLICE>(
-3435 |     value: T,
-3436 |     expected: SLICE,
-     |     -------- This declaration is never used.
-3437 | )
-3438 | where
-     |
-____
+test result: OK. 18 passed; 0 failed; finished in ???
 
-warning
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3475:16
-     |
-3473 | }
-3474 | 
-3475 | fn to_slice<T>(array: T) -> raw_slice {
-     |                ----- This declaration is never used.
-3476 |     let len = __size_of::<T>();
-3477 |     raw_slice::from_parts::<u8>(__addr_of(array), len)
-     |
-____
-
-warning
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:1746:22
-     |
-1744 | }
-1745 | 
-1746 | pub fn abi_decode<T>(data: raw_slice) -> T
-     |                      ---- This declaration is never used.
-1747 | where
-1748 |     T: AbiDecode,
-     |
-____
-
-warning
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:1893:13
-     |
-1891 |     fn abi_decode(ref mut buffer: BufferReader) -> str {
-1892 |         let len = buffer.read_8_bytes::<u64>();
-1893 |         let data = buffer.read_bytes(len);
-     |             ---- This declaration is never used.
-1894 |         asm(s: (data.ptr(), len)) {
-1895 |             s: str
-     |
-____
-
-warning
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:1907:13
-     |
-1905 |     }
-1906 |     fn abi_decode(ref mut buffer: BufferReader) -> str[N] {
-1907 |         let data = buffer.read_bytes(N);
-     |             ---- This declaration is never used.
-1908 |         asm(s: data.ptr()) {
-1909 |             s: str[N]
-     |
-____
-
-warning
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3322:5
-     |
-3320 | pub fn contract_call<T, TArgs>(
-3321 |     contract_id: b256,
-3322 |     method_name: raw_slice,
-     |     ----------- This declaration is never used.
-3323 |     args: TArgs,
-3324 |     coins: u64,
-     |
-____
-
-warning
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3332:9
-     |
-3330 |     TArgs: AbiEncode,
-3331 | {
-3332 |     let second_parameter = encode(args);
-     |         ---------------- This declaration is never used.
-3333 |     let params = (
-3334 |         contract_id,
-     |
-____
-
-error
- --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/raw_slice.sw:5:7
-  |
-3 | use ::ops::*;
-4 | use ::raw_ptr::*;
-5 | use ::error_signals::REVERT_WITH_RAW_SLICE_LEN_ZST;
-  |       ^^^^^^^^^^^^^ Module "error_signals" could not be found.
-6 | 
-7 | /// Trait to return a type as a `raw_slice`.
-  |
-____
-
-error
-   --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/raw_slice.sw:176:22
-    |
-174 |             into_parts(self).1 / len
-175 |         } else {
-176 |             __revert(REVERT_WITH_RAW_SLICE_LEN_ZST);
-    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Variable "REVERT_WITH_RAW_SLICE_LEN_ZST" does not exist in this scope.
-177 |         }
-178 |     }
-    |
-____
-
-error: Associated function or method is not found
-   --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/raw_slice.sw:204:14
-    |
-...
-204 |         self.ptr() == other.ptr() && self.number_of_bytes() == other.number_of_bytes()
-    |              ^^^ "ptr(raw_slice)" is not found for type "raw_slice".
-    |
-____
-
-error: Associated function or method is not found
-   --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/raw_slice.sw:204:20
-    |
-...
-204 |         self.ptr() == other.ptr() && self.number_of_bytes() == other.number_of_bytes()
-    |                    ^^ "eq({unknown}, {unknown}) -> bool" is not found for type "{unknown}".
-    |
-____
-
-error: Associated function or method is not found
-   --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/raw_slice.sw:204:29
-    |
-...
-204 |         self.ptr() == other.ptr() && self.number_of_bytes() == other.number_of_bytes()
-    |                             ^^^ "ptr(raw_slice)" is not found for type "raw_slice".
-    |
-____
-
-error: Associated function or method is not found
-   --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/raw_slice.sw:204:43
-    |
-...
-204 |         self.ptr() == other.ptr() && self.number_of_bytes() == other.number_of_bytes()
-    |                                           ^^^^^^^^^^^^^^^ "number_of_bytes(raw_slice)" is not found for type "raw_slice".
-    |
-____
-
-error: Associated function or method is not found
-   --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/raw_slice.sw:204:61
-    |
-...
-204 |         self.ptr() == other.ptr() && self.number_of_bytes() == other.number_of_bytes()
-    |                                                             ^^ "eq({unknown}, {unknown}) -> bool" is not found for type "{unknown}".
-    |
-____
-
-error: Associated function or method is not found
-   --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/raw_slice.sw:204:70
-    |
-...
-204 |         self.ptr() == other.ptr() && self.number_of_bytes() == other.number_of_bytes()
-    |                                                                      ^^^^^^^^^^^^^^^ "number_of_bytes(raw_slice)" is not found for type "raw_slice".
-    |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:1752:50
-     |
-...
-1752 |         let item: &T = asm(size: size, src: data.ptr()) {
-     |                                                  ^^^ "ptr(raw_slice)" is not found for type "raw_slice".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:1759:56
-     |
-...
-1759 |         let mut buffer = BufferReader::from_parts(data.ptr(), data.len::<u8>());
-     |                                                        ^^^ "ptr(raw_slice)" is not found for type "raw_slice".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:1759:56
-     |
-...
-1759 |         let mut buffer = BufferReader::from_parts(data.ptr(), data.len::<u8>());
-     |                                                        ^^^ "ptr(raw_slice) -> raw_ptr" is not found for type "raw_slice".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:1759:68
-     |
-...
-1759 |         let mut buffer = BufferReader::from_parts(data.ptr(), data.len::<u8>());
-     |                                                                    ^^^ "len(raw_slice) -> u64" is not found for type "raw_slice".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:1894:22
-     |
-...
-1894 |         asm(s: (data.ptr(), len)) {
-     |                      ^^^ "ptr(raw_slice)" is not found for type "raw_slice".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:1908:21
-     |
-...
-1908 |         asm(s: data.ptr()) {
-     |                     ^^^ "ptr(raw_slice)" is not found for type "raw_slice".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3335:28
-     |
-...
-3335 |         asm(a: method_name.ptr()) {
-     |                            ^^^ "ptr(raw_slice)" is not found for type "raw_slice".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3338:33
-     |
-...
-3338 |         asm(a: second_parameter.ptr()) {
-     |                                 ^^^ "ptr(raw_slice)" is not found for type "raw_slice".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3412:31
-     |
-...
-3412 |     let expected = raw_slice::from_parts::<u8>(__addr_of(expected), len);
-     |                               ^^^^^^^^^^ "from_parts(raw_ptr, u64)" is not found for type "raw_slice".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3415:15
-     |
-...
-3415 |     if actual.len::<u8>() != expected.len::<u8>() {
-     |               ^^^ "len(raw_slice)" is not found for type "raw_slice".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3415:27
-     |
-...
-3415 |     if actual.len::<u8>() != expected.len::<u8>() {
-     |                           ^^ "neq({unknown}, {unknown}) -> bool" is not found for type "{unknown}".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3415:39
-     |
-...
-3415 |     if actual.len::<u8>() != expected.len::<u8>() {
-     |                                       ^^^ "len({unknown})" is not found for type "{unknown}".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3421:28
-     |
-...
-3421 |         expected: expected.ptr(),
-     |                            ^^^ "ptr({unknown})" is not found for type "{unknown}".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3422:24
-     |
-...
-3422 |         actual: actual.ptr(),
-     |                        ^^^ "ptr(raw_slice)" is not found for type "raw_slice".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3447:31
-     |
-...
-3447 |     let expected = raw_slice::from_parts::<u8>(__addr_of(expected), len);
-     |                               ^^^^^^^^^^ "from_parts(raw_ptr, u64)" is not found for type "raw_slice".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3450:15
-     |
-...
-3450 |     if actual.len::<u8>() != expected.len::<u8>() {
-     |               ^^^ "len(raw_slice)" is not found for type "raw_slice".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3450:39
-     |
-...
-3450 |     if actual.len::<u8>() != expected.len::<u8>() {
-     |                                       ^^^ "len({unknown})" is not found for type "{unknown}".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3456:28
-     |
-...
-3456 |         expected: expected.ptr(),
-     |                            ^^^ "ptr({unknown})" is not found for type "{unknown}".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3457:24
-     |
-...
-3457 |         actual: actual.ptr(),
-     |                        ^^^ "ptr(raw_slice)" is not found for type "raw_slice".
-     |
-____
-
-error: Associated function or method is not found
-    --> test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core/src/codec.sw:3477:16
-     |
-...
-3477 |     raw_slice::from_parts::<u8>(__addr_of(array), len)
-     |                ^^^^^^^^^^ "from_parts(raw_ptr, u64) -> raw_slice" is not found for type "raw_slice".
-     |
-____
-
-  Aborting due to 28 errors.
-error: Failed to compile std
+    Finished in ???

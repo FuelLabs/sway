@@ -2,3 +2,14 @@
 source: test/src/snapshot/mod.rs
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_const_eval_string_slices_not_in_bytecode --ir initial | regex '        (v[0-9a-zA-Z_]+ = call call|v[0-9a-zA-Z_]+ = const|v[0-9a-zA-Z_]+ = and|v[0-9a-zA-Z_]+ = or|revert)'
+        v46v1 = const u64 0, !8
+        v47v1 = const u64 0, !9
+        v38v1 = const u64 1
+        v39v1 = call call_return_const_str_0_1(v38v1), !17
+        v40v1 = const u64 9259400833873739776
+        revert v40v1, !18
+        v33v1 = const u64 36028797018963967
+        v34v1 = and __backtrace, v33v1, !22
+        v32v1 = const u64 9223372036854775808
+        v35v1 = or v32v1, v34v1, !22
+        revert v35v1, !22
