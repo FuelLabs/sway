@@ -163,12 +163,16 @@ impl raw_slice {
     ///     assert(slice.len::<u64>() == 1);
     /// }
     /// ```
+    ///
+    /// # Reverts
+    ///
+    /// * When `T` is a zero-sized type.
     pub fn len<T>(self) -> u64 {
         let len = __size_of::<T>();
         if len != 0 {
             into_parts(self).1 / len
         } else {
-            __revert(999);
+            __revert(::error_signals::REVERT_WITH_RAW_SLICE_LEN_ZST);
         }
     }
 

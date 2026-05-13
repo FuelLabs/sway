@@ -42,3 +42,10 @@ pub const FAILED_ASSERT_NE_SIGNAL = 0xffff_ffff_ffff_0005;
 ///
 /// The value is: 18446744073709486086
 pub const REVERT_WITH_LOG_SIGNAL = 0xffff_ffff_ffff_0006;
+
+/// A revert with this value signals that it was caused by a call to `raw_slice::len::<T>` with T having length zero.
+///
+/// # Additional Information
+///
+/// The value is: 18446744073709486086
+pub const REVERT_WITH_RAW_SLICE_LEN_ZST = 0xffff_ffff_ffff_0007;
