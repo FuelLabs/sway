@@ -2,6 +2,7 @@ library;
 
 use ::ops::*;
 use ::raw_ptr::*;
+use ::error_signals::REVERT_WITH_RAW_SLICE_LEN_ZST;
 
 /// Trait to return a type as a `raw_slice`.
 pub trait AsRawSlice {
@@ -172,7 +173,7 @@ impl raw_slice {
         if len != 0 {
             into_parts(self).1 / len
         } else {
-            __revert(::error_signals::REVERT_WITH_RAW_SLICE_LEN_ZST);
+            __revert(REVERT_WITH_RAW_SLICE_LEN_ZST);
         }
     }
 
