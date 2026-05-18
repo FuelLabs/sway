@@ -1328,20 +1328,20 @@ addi $r1 $$locbase i168       ; get offset to local __ptr { ptr }
 sw   $$locbase $r0 i21        ; store word
 addi $r0 $$locbase i440       ; get offset to local __ptr { ptr }
 mcpi $r0 $r1 i8               ; copy memory
-addi $r5 $$locbase i440       ; get offset to local __ptr { ptr }
-addi $r4 $$locbase i248       ; get offset to local __ptr { [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2] }
+addi $r4 $$locbase i440       ; get offset to local __ptr { ptr }
+addi $r3 $$locbase i248       ; get offset to local __ptr { [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2] }
 addi $r0 $$locbase i112       ; get offset to local __ptr [u8; 48]
 mcli $r0 i48                  ; clear memory [u8; 48], 48 bytes
 addi $r1 $$locbase i392       ; get offset to local __ptr [u8; 48]
 mcpi $r1 $r0 i48              ; copy memory
-addi $r3 $$locbase i392       ; get offset to local __ptr [u8; 48]
-movi $r2 i0                   ; move parameter from branch to block argument
+addi $r6 $$locbase i392       ; get offset to local __ptr [u8; 48]
+movi $r5 i0                   ; move parameter from branch to block argument
 movi $r0 i2                   ; initialize constant into register
-lt   $r0 $r2 $r0
+lt   $r0 $r5 $r0
 jnzf $r0 $zero i15
-mcpi $r4 $r3 i48              ; copy memory
+mcpi $r3 $r6 i48              ; copy memory
 addi $r0 $$locbase i344       ; get offset to local __ptr { [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2] }
-mcpi $r0 $r4 i48              ; copy memory
+mcpi $r0 $r3 i48              ; copy memory
 addi $r0 $$locbase i344       ; get offset to local __ptr { [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2] }
 addi $r1 $$locbase i184       ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
 mcpi $r1 $r0 i48              ; copy memory
@@ -1354,20 +1354,20 @@ mcpi $r1 $r0 i8               ; copy memory
 addi $r0 $$locbase i336       ; get offset to local __ptr { u64 }
 movi $r1 i8                   ; initialize constant into register
 retd  $r0 $r1                 ; [entry end: __entry] return slice
-muli $r0 $r2 i24
-add  $r7 $r3 $r0
+muli $r0 $r5 i24
+add  $r7 $r6 $r0
 addi $r9 $$locbase i296       ; get offset to local __ptr { { string<3> }, { u64, ( u64 | u64 ) } }
 addi $r8 $$locbase i176       ; get offset to local __ptr { string<3> }
 addi $r0 $$locbase i320       ; get offset to local __ptr { ptr, u64 }
-mcpi $r0 $r5 i8               ; copy memory
+mcpi $r0 $r4 i8               ; copy memory
 movi $r1 i3                   ; initialize constant into register
 sw   $$locbase $r1 i41        ; store word
 mcpi $$locbase $r0 i16        ; copy memory
 addi $r0 $$locbase i480       ; get offset to local __ptr slice
 mcpi $r0 $$locbase i16        ; copy memory
-lw   $r0 $r5 i0               ; load word
+lw   $r0 $r4 i0               ; load word
 addi $r0 $r0 i3
-sw   $r5 $r0 i0               ; store word
+sw   $r4 $r0 i0               ; store word
 addi $r0 $$locbase i480       ; get offset to local __ptr slice
 addi $r1 $$locbase i448       ; get offset to local __ptr slice
 mcpi $r1 $r0 i16              ; copy memory
@@ -1386,11 +1386,11 @@ lw   $r0 $$locbase i8         ; load word
 addi $r1 $$locbase i32        ; get offset to local __ptr string<3>
 mcpi $r1 $r0 i8               ; copy memory
 mcpi $r8 $r1 i8               ; copy memory
-lw   $r0 $r5 i0               ; load word
+lw   $r0 $r4 i0               ; load word
 lw   $r0 $r0 i0               ; lw val ptr i0
-lw   $r1 $r5 i0               ; load word
+lw   $r1 $r4 i0               ; load word
 addi $r1 $r1 i8
-sw   $r5 $r1 i0               ; store word
+sw   $r4 $r1 i0               ; store word
 eq   $r1 $r0 $zero
 jnzf $r1 $zero i14
 eq   $r0 $r0 $one
@@ -1398,22 +1398,22 @@ jnzf $r0 $zero i1
 rvrt $zero
 addi $r0 $$locbase i96        ; get offset to local __ptr { u64, ( u64 | u64 ) }
 sw   $$locbase $one i12       ; store word
-lw   $r1 $r5 i0               ; load word
+lw   $r1 $r4 i0               ; load word
 lw   $r1 $r1 i0               ; lw val ptr i0
-lw   $r6 $r5 i0               ; load word
-addi $r6 $r6 i8
-sw   $r5 $r6 i0               ; store word
+lw   $r2 $r4 i0               ; load word
+addi $r2 $r2 i8
+sw   $r4 $r2 i0               ; store word
 sw   $$locbase $r1 i13        ; store word
 addi $r1 $$locbase i232       ; get offset to local __ptr { u64, ( u64 | u64 ) }
 mcpi $r1 $r0 i16              ; copy memory
 jmpf $zero i10
 addi $r0 $$locbase i80        ; get offset to local __ptr { u64, ( u64 | u64 ) }
 sw   $$locbase $zero i10      ; store word
-lw   $r1 $r5 i0               ; load word
+lw   $r1 $r4 i0               ; load word
 lw   $r1 $r1 i0               ; lw val ptr i0
-lw   $r6 $r5 i0               ; load word
-addi $r6 $r6 i8
-sw   $r5 $r6 i0               ; store word
+lw   $r2 $r4 i0               ; load word
+addi $r2 $r2 i8
+sw   $r4 $r2 i0               ; store word
 sw   $$locbase $r1 i11        ; store word
 addi $r1 $$locbase i232       ; get offset to local __ptr { u64, ( u64 | u64 ) }
 mcpi $r1 $r0 i16              ; copy memory
@@ -1423,7 +1423,7 @@ mcpi $r0 $r1 i16              ; copy memory
 addi $r0 $$locbase i40        ; get offset to local __ptr { { string<3> }, { u64, ( u64 | u64 ) } }
 mcpi $r0 $r9 i24              ; copy memory
 mcpi $r7 $r0 i24              ; copy memory
-addi $r2 $r2 i1
+addi $r5 $r5 i1
 jmpb $zero i87
 pshh i532472                  ; [fn init: main_32]: push used high registers 40..64
 move $$locbase $sp            ; [fn init: main_32]: set locals base register
@@ -1768,20 +1768,20 @@ data_NonConfigurable_4 .word 18446744073709486084
 0x00000030 SW R59 R52 0x15                                 ;; [95, 239, 64, 21]
 0x00000034 ADDI R52 R59 0x1b8                              ;; [80, 211, 177, 184]
 0x00000038 MCPI R52 R51 0x8                                ;; [96, 211, 48, 8]
-0x0000003c ADDI R47 R59 0x1b8                              ;; [80, 191, 177, 184]
-0x00000040 ADDI R48 R59 0xf8                               ;; [80, 195, 176, 248]
+0x0000003c ADDI R48 R59 0x1b8                              ;; [80, 195, 177, 184]
+0x00000040 ADDI R49 R59 0xf8                               ;; [80, 199, 176, 248]
 0x00000044 ADDI R52 R59 0x70                               ;; [80, 211, 176, 112]
 0x00000048 MCLI R52 0x30                                   ;; [112, 208, 0, 48]
 0x0000004c ADDI R51 R59 0x188                              ;; [80, 207, 177, 136]
 0x00000050 MCPI R51 R52 0x30                               ;; [96, 207, 64, 48]
-0x00000054 ADDI R49 R59 0x188                              ;; [80, 199, 177, 136]
-0x00000058 MOVI R50 0x0                                    ;; [114, 200, 0, 0]
+0x00000054 ADDI R46 R59 0x188                              ;; [80, 187, 177, 136]
+0x00000058 MOVI R47 0x0                                    ;; [114, 188, 0, 0]
 0x0000005c MOVI R52 0x2                                    ;; [114, 208, 0, 2]
-0x00000060 LT R52 R50 R52                                  ;; [22, 211, 45, 0]
+0x00000060 LT R52 R47 R52                                  ;; [22, 210, 253, 0]
 0x00000064 JNZF R52 $zero 0xf                              ;; [118, 208, 0, 15]
-0x00000068 MCPI R48 R49 0x30                               ;; [96, 195, 16, 48]
+0x00000068 MCPI R49 R46 0x30                               ;; [96, 198, 224, 48]
 0x0000006c ADDI R52 R59 0x158                              ;; [80, 211, 177, 88]
-0x00000070 MCPI R52 R48 0x30                               ;; [96, 211, 0, 48]
+0x00000070 MCPI R52 R49 0x30                               ;; [96, 211, 16, 48]
 0x00000074 ADDI R52 R59 0x158                              ;; [80, 211, 177, 88]
 0x00000078 ADDI R51 R59 0xb8                               ;; [80, 207, 176, 184]
 0x0000007c MCPI R51 R52 0x30                               ;; [96, 207, 64, 48]
@@ -1794,20 +1794,20 @@ data_NonConfigurable_4 .word 18446744073709486084
 0x00000098 ADDI R52 R59 0x150                              ;; [80, 211, 177, 80]
 0x0000009c MOVI R51 0x8                                    ;; [114, 204, 0, 8]
 0x000000a0 RETD R52 R51                                    ;; [37, 211, 48, 0]
-0x000000a4 MULI R52 R50 0x18                               ;; [85, 211, 32, 24]
-0x000000a8 ADD R45 R49 R52                                 ;; [16, 183, 29, 0]
+0x000000a4 MULI R52 R47 0x18                               ;; [85, 210, 240, 24]
+0x000000a8 ADD R45 R46 R52                                 ;; [16, 182, 237, 0]
 0x000000ac ADDI R43 R59 0x128                              ;; [80, 175, 177, 40]
 0x000000b0 ADDI R44 R59 0xb0                               ;; [80, 179, 176, 176]
 0x000000b4 ADDI R52 R59 0x140                              ;; [80, 211, 177, 64]
-0x000000b8 MCPI R52 R47 0x8                                ;; [96, 210, 240, 8]
+0x000000b8 MCPI R52 R48 0x8                                ;; [96, 211, 0, 8]
 0x000000bc MOVI R51 0x3                                    ;; [114, 204, 0, 3]
 0x000000c0 SW R59 R51 0x29                                 ;; [95, 239, 48, 41]
 0x000000c4 MCPI R59 R52 0x10                               ;; [96, 239, 64, 16]
 0x000000c8 ADDI R52 R59 0x1e0                              ;; [80, 211, 177, 224]
 0x000000cc MCPI R52 R59 0x10                               ;; [96, 211, 176, 16]
-0x000000d0 LW R52 R47 0x0                                  ;; [93, 210, 240, 0]
+0x000000d0 LW R52 R48 0x0                                  ;; [93, 211, 0, 0]
 0x000000d4 ADDI R52 R52 0x3                                ;; [80, 211, 64, 3]
-0x000000d8 SW R47 R52 0x0                                  ;; [95, 191, 64, 0]
+0x000000d8 SW R48 R52 0x0                                  ;; [95, 195, 64, 0]
 0x000000dc ADDI R52 R59 0x1e0                              ;; [80, 211, 177, 224]
 0x000000e0 ADDI R51 R59 0x1c0                              ;; [80, 207, 177, 192]
 0x000000e4 MCPI R51 R52 0x10                               ;; [96, 207, 64, 16]
@@ -1826,11 +1826,11 @@ data_NonConfigurable_4 .word 18446744073709486084
 0x00000118 ADDI R51 R59 0x20                               ;; [80, 207, 176, 32]
 0x0000011c MCPI R51 R52 0x8                                ;; [96, 207, 64, 8]
 0x00000120 MCPI R44 R51 0x8                                ;; [96, 179, 48, 8]
-0x00000124 LW R52 R47 0x0                                  ;; [93, 210, 240, 0]
+0x00000124 LW R52 R48 0x0                                  ;; [93, 211, 0, 0]
 0x00000128 LW R52 R52 0x0                                  ;; [93, 211, 64, 0]
-0x0000012c LW R51 R47 0x0                                  ;; [93, 206, 240, 0]
+0x0000012c LW R51 R48 0x0                                  ;; [93, 207, 0, 0]
 0x00000130 ADDI R51 R51 0x8                                ;; [80, 207, 48, 8]
-0x00000134 SW R47 R51 0x0                                  ;; [95, 191, 48, 0]
+0x00000134 SW R48 R51 0x0                                  ;; [95, 195, 48, 0]
 0x00000138 EQ R51 R52 $zero                                ;; [19, 207, 64, 0]
 0x0000013c JNZF R51 $zero 0xe                              ;; [118, 204, 0, 14]
 0x00000140 EQ R52 R52 $one                                 ;; [19, 211, 64, 64]
@@ -1838,22 +1838,22 @@ data_NonConfigurable_4 .word 18446744073709486084
 0x00000148 RVRT $zero                                      ;; [54, 0, 0, 0]
 0x0000014c ADDI R52 R59 0x60                               ;; [80, 211, 176, 96]
 0x00000150 SW R59 $one 0xc                                 ;; [95, 236, 16, 12]
-0x00000154 LW R51 R47 0x0                                  ;; [93, 206, 240, 0]
+0x00000154 LW R51 R48 0x0                                  ;; [93, 207, 0, 0]
 0x00000158 LW R51 R51 0x0                                  ;; [93, 207, 48, 0]
-0x0000015c LW R46 R47 0x0                                  ;; [93, 186, 240, 0]
-0x00000160 ADDI R46 R46 0x8                                ;; [80, 186, 224, 8]
-0x00000164 SW R47 R46 0x0                                  ;; [95, 190, 224, 0]
+0x0000015c LW R50 R48 0x0                                  ;; [93, 203, 0, 0]
+0x00000160 ADDI R50 R50 0x8                                ;; [80, 203, 32, 8]
+0x00000164 SW R48 R50 0x0                                  ;; [95, 195, 32, 0]
 0x00000168 SW R59 R51 0xd                                  ;; [95, 239, 48, 13]
 0x0000016c ADDI R51 R59 0xe8                               ;; [80, 207, 176, 232]
 0x00000170 MCPI R51 R52 0x10                               ;; [96, 207, 64, 16]
 0x00000174 JMPF $zero 0xa                                  ;; [116, 0, 0, 10]
 0x00000178 ADDI R52 R59 0x50                               ;; [80, 211, 176, 80]
 0x0000017c SW R59 $zero 0xa                                ;; [95, 236, 0, 10]
-0x00000180 LW R51 R47 0x0                                  ;; [93, 206, 240, 0]
+0x00000180 LW R51 R48 0x0                                  ;; [93, 207, 0, 0]
 0x00000184 LW R51 R51 0x0                                  ;; [93, 207, 48, 0]
-0x00000188 LW R46 R47 0x0                                  ;; [93, 186, 240, 0]
-0x0000018c ADDI R46 R46 0x8                                ;; [80, 186, 224, 8]
-0x00000190 SW R47 R46 0x0                                  ;; [95, 190, 224, 0]
+0x00000188 LW R50 R48 0x0                                  ;; [93, 203, 0, 0]
+0x0000018c ADDI R50 R50 0x8                                ;; [80, 203, 32, 8]
+0x00000190 SW R48 R50 0x0                                  ;; [95, 195, 32, 0]
 0x00000194 SW R59 R51 0xb                                  ;; [95, 239, 48, 11]
 0x00000198 ADDI R51 R59 0xe8                               ;; [80, 207, 176, 232]
 0x0000019c MCPI R51 R52 0x10                               ;; [96, 207, 64, 16]
@@ -1863,7 +1863,7 @@ data_NonConfigurable_4 .word 18446744073709486084
 0x000001ac ADDI R52 R59 0x28                               ;; [80, 211, 176, 40]
 0x000001b0 MCPI R52 R43 0x18                               ;; [96, 210, 176, 24]
 0x000001b4 MCPI R45 R52 0x18                               ;; [96, 183, 64, 24]
-0x000001b8 ADDI R50 R50 0x1                                ;; [80, 203, 32, 1]
+0x000001b8 ADDI R47 R47 0x1                                ;; [80, 190, 240, 1]
 0x000001bc JMPB $zero 0x57                                 ;; [117, 0, 0, 87]
 0x000001c0 PSHH 0x81ff8                                    ;; [150, 8, 31, 248]
 0x000001c4 MOVE R59 $sp                                    ;; [26, 236, 80, 0]

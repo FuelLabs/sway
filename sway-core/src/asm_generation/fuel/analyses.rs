@@ -4,7 +4,7 @@ use either::Either;
 use indexmap::IndexSet;
 use sway_types::FxIndexSet;
 
-use crate::asm_lang::{ControlFlowOp, Label, Op, VirtualRegister};
+use crate::asm_lang::{ControlFlowOp, InstructionSuccessor, Label, Op, VirtualRegister};
 
 /// Given a list of instructions `ops` of a program, do liveness analysis for the full program.
 ///
@@ -84,9 +84,18 @@ pub(crate) fn liveness_analysis(
 
             // Compute live_out(op) = live_in(s_1) UNION live_in(s_2) UNION ..., where s1, s_2, ...
             // are successors of op
-            for s in &op.successors(rev_ix, ops, &label_to_index) {
-                for l in live_in[*s].iter() {
-                    local_modified |= live_out[rev_ix].insert(l.clone());
+            match op.successors(rev_ix, ops, &label_to_index) {
+                InstructionSuccessor::Unknown => {
+                    // TODO we cannot fail here because this is used on register allocation
+                    // so any jumps, ECALs etc..., can potentially generate problems here
+                }
+                InstructionSuccessor::ReturnFromCall => {}
+                InstructionSuccessor::Many(ids) => {
+                    for id in ids {
+                        for l in live_in[id].iter() {
+                            local_modified |= live_out[rev_ix].insert(l.clone());
+                        }
+                    }
                 }
             }
 
