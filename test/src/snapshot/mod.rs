@@ -48,7 +48,7 @@ fn compile_forc_doc() {
 }
 
 fn compile_forc_migrate() {
-    let args = vec!["b", "--release", "-p", "forc-migrate", "-r"];
+    let args = vec!["b", "--release", "-p", "forc-migrate"];
     let o = std::process::Command::new("cargo")
         .args(args)
         .output()
@@ -311,7 +311,9 @@ fn run_cmds(
 
                                 if inside_asm {
                                     if (line.contains("fn init:") || line.contains("entry init"))
-                                        && fns.iter().any(|f| line.contains("init:") && line.contains(f))
+                                        && fns
+                                            .iter()
+                                            .any(|f| line.contains("init:") && line.contains(f))
                                     {
                                         capture_line = true;
 

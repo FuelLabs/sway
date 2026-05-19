@@ -118,9 +118,7 @@ pub(crate) fn type_check_method_application(
         engines,
         args_opt_buf
             .iter()
-            .map(|x| {
-                x.0.as_ref().map(|x| x.return_type.clone())
-            }),
+            .map(|x| x.0.as_ref().map(|x| x.return_type)),
         original_decl
             .parameters
             .iter()
@@ -866,7 +864,6 @@ pub(crate) fn prepare_const_generics_materialization<'a>(
                 _ => {}
             }
         }
-            
     }
     const_generics
 }

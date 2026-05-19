@@ -2205,9 +2205,8 @@ impl ty::TyExpression {
             ty::TyExpression::type_check(handler, ctx, prefix)?
         });
 
-        
         let prefix_span = current_prefix_te.span.clone();
-        
+
         // Create the prefix part of the final array index expression.
         // This might be an expression that directly evaluates to an array type,
         // or an arbitrary number of dereferencing expressions where the last one

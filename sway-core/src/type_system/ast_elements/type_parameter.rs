@@ -99,9 +99,7 @@ impl TypeParameter {
                         },
                         span: span.clone(),
                         return_type: *ty,
-                        value: expr.as_ref().map(|x| {
-                            x.to_ty_expression(ctx.engines)
-                        }),
+                        value: expr.as_ref().map(|x| x.to_ty_expression(ctx.engines)),
                     },
                     id.as_ref(),
                 );

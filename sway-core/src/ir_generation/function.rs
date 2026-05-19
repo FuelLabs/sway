@@ -5178,8 +5178,9 @@ impl<'a> FnCompiler<'a> {
         ))
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn compile_indexing_arrays(
-         &mut self,
+        &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         prefix_expr: &ty::TyExpression,
@@ -5239,6 +5240,7 @@ impl<'a> FnCompiler<'a> {
         Ok(TerminatorValue::new(CompiledValue::InMemory(val), context))
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn compile_indexing_slices(
         &mut self,
         context: &mut Context,
@@ -5249,7 +5251,8 @@ impl<'a> FnCompiler<'a> {
         prefix_value: Value,
         index_value: Value,
     ) -> Result<TerminatorValue, CompileError> {
-        let (ptr, elem_type_id) = self.ptr_to_first_element(context, prefix_expr, prefix_value, md_mgr)?;
+        let (ptr, elem_type_id) =
+            self.ptr_to_first_element(context, prefix_expr, prefix_value, md_mgr)?;
         let (ptr_to_elem, _) = self.advance_ptr_n_elements(
             context,
             md_mgr,
@@ -5259,7 +5262,10 @@ impl<'a> FnCompiler<'a> {
             index_value,
         )?;
 
-        Ok(TerminatorValue::new(CompiledValue::InMemory(ptr_to_elem), context))
+        Ok(TerminatorValue::new(
+            CompiledValue::InMemory(ptr_to_elem),
+            context,
+        ))
     }
 
     fn compile_indexing(
@@ -5270,9 +5276,11 @@ impl<'a> FnCompiler<'a> {
         index_expr: &ty::TyExpression,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
-        let prefix_value = return_on_termination_or_extract!(
-            self.compile_expression_to_memory(context, md_mgr, prefix_expr)?
-        )
+        let prefix_value = return_on_termination_or_extract!(self.compile_expression_to_memory(
+            context,
+            md_mgr,
+            prefix_expr
+        )?)
         .expect_memory();
         let prefix_type = prefix_value.get_type(context).unwrap();
 
@@ -5282,13 +5290,27 @@ impl<'a> FnCompiler<'a> {
         .expect_register();
 
         match prefix_type.get_content(context) {
-            TypeContent::TypedPointer(p) => {
-                match p.get_content(context) {
-                    TypeContent::Array(..) => self.compile_indexing_arrays(context, md_mgr, prefix_expr, index_expr, span_md_idx, prefix_value, index_value),
-                    _ => todo!(),
-                }
+            TypeContent::TypedPointer(p) => match p.get_content(context) {
+                TypeContent::Array(..) => self.compile_indexing_arrays(
+                    context,
+                    md_mgr,
+                    prefix_expr,
+                    index_expr,
+                    span_md_idx,
+                    prefix_value,
+                    index_value,
+                ),
+                _ => todo!(),
             },
-            TypeContent::TypedSlice(..) => self.compile_indexing_slices(context, md_mgr, prefix_expr, index_expr, span_md_idx, prefix_value, index_value),
+            TypeContent::TypedSlice(..) => self.compile_indexing_slices(
+                context,
+                md_mgr,
+                prefix_expr,
+                index_expr,
+                span_md_idx,
+                prefix_value,
+                index_value,
+            ),
             _ => todo!(),
         }
     }

@@ -435,11 +435,14 @@ fn type_check_elem_at(
     };
     let Some((to_mutable_value, elem_type_type_id)) = elem_type else {
         let received = type_engine.get(first_argument_type);
-        let hint = format!("Only references to arrays or slices can be used as argument here. Received: {}", engines.help_out(received.as_ref()));
+        let hint = format!(
+            "Only references to arrays or slices can be used as argument here. Received: {}",
+            engines.help_out(received.as_ref())
+        );
         return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
             name: kind.to_string(),
             span: first_argument_span,
-            hint
+            hint,
         }));
     };
 
@@ -553,7 +556,10 @@ fn type_check_slice(
     let err = CompileError::IntrinsicUnsupportedArgType {
         name: kind.to_string(),
         span: first_argument_span,
-        hint: format!("Only references to arrays or slices can be used as argument here. Received: {}", engines.help_out(t.as_ref())),
+        hint: format!(
+            "Only references to arrays or slices can be used as argument here. Received: {}",
+            engines.help_out(t.as_ref())
+        ),
     };
     let r = match t.as_ref() {
         TypeInfo::Ref {

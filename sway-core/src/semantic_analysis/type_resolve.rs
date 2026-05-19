@@ -5,9 +5,15 @@ use sway_error::{
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    EnforceTypeArguments, Engines, Length, Namespace, SubstTypesContext, TypeId, TypeInfo, ast_elements::type_parameter::{ConstGenericExpr, ConstGenericExprTyDecl}, language::{
-        CallPath, CallPathType, QualifiedCallPath, ty::{self, TyDecl, TyTraitItem}
-    }, monomorphization::type_decl_opt_to_type_id, namespace::{Module, ModulePath, ResolvedDeclaration, ResolvedTraitImplItem}, type_system::SubstTypes
+    ast_elements::type_parameter::{ConstGenericExpr, ConstGenericExprTyDecl},
+    language::{
+        ty::{self, TyDecl, TyTraitItem},
+        CallPath, CallPathType, QualifiedCallPath,
+    },
+    monomorphization::type_decl_opt_to_type_id,
+    namespace::{Module, ModulePath, ResolvedDeclaration, ResolvedTraitImplItem},
+    type_system::SubstTypes,
+    EnforceTypeArguments, Engines, Length, Namespace, SubstTypesContext, TypeId, TypeInfo,
 };
 
 use super::namespace::TraitMap;
