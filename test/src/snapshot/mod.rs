@@ -30,7 +30,7 @@ static FORC_DOC_COMPILATION: Once = Once::new();
 static FORC_MIGRATE_COMPILATION: Once = Once::new();
 
 fn compile_forc() {
-    let args = vec!["b", "-p", "forc"];
+    let args = vec!["b", "-p", "forc", "-r"];
     let o = std::process::Command::new("cargo")
         .args(args)
         .output()
@@ -39,7 +39,7 @@ fn compile_forc() {
 }
 
 fn compile_forc_doc() {
-    let args = vec!["b", "--release", "-p", "forc-doc"];
+    let args = vec!["b", "--release", "-p", "forc-doc", "-r"];
     let o = std::process::Command::new("cargo")
         .args(args)
         .output()
@@ -48,7 +48,7 @@ fn compile_forc_doc() {
 }
 
 fn compile_forc_migrate() {
-    let args = vec!["b", "--release", "-p", "forc-migrate"];
+    let args = vec!["b", "--release", "-p", "forc-migrate", "-r"];
     let o = std::process::Command::new("cargo")
         .args(args)
         .output()
@@ -181,7 +181,7 @@ fn run_cmds(
                         FORC_COMPILATION.call_once(|| {
                             compile_forc();
                         });
-                        format!("target/debug/forc {cmd} 1>&2")
+                        format!("target/release/forc {cmd} 1>&2")
                     } else if let Some(cmd) = cmd.strip_prefix("sub ") {
                         let arg = cmd.trim();
                         if let Some(l) = last_output.take() {

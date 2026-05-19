@@ -864,9 +864,6 @@ impl ReplaceDecls for TyExpressionVariant {
                     // Thus we use the implemented method that already contains all the required type parameters,
                     // including those from the impl trait.
                     if method.is_trait_method_dummy {
-                        eprintln!("ReplaceDecls for FunctionApplication: {} {:?} {:?}", method.name.as_str(), method.type_parameters, 
-                            arguments.iter().map(|x| format!("{:?}", ctx.engines().help_out(x.1.return_type))).collect::<Vec<_>>()
-                        );
                         if let Some(implementing_for) = method.implementing_for {
                             let arguments_types = arguments
                                 .iter()

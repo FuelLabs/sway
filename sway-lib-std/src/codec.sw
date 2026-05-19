@@ -4,6 +4,7 @@ use ::ops::*;
 use ::raw_ptr::*;
 use ::raw_slice::*;
 use ::slice::*;
+use ::error_signals::*;
 
 pub struct Buffer {
     buffer: (raw_ptr, u64, u64), // ptr, capacity, size
@@ -3724,8 +3725,6 @@ impl AbiDecode for TrivialBool {
     }
 }
 
-pub const INVALID_BOOL_REVERT: u64 = 0u64;
-
 impl TrivialBool {
     pub fn from(value: bool) -> Self {
         TrivialBool {
@@ -3745,32 +3744,9 @@ impl TrivialBool {
         match self.value {
             0 => false,
             1 => true,
-            _ => __revert(INVALID_BOOL_REVERT),
+            _ => __revert(REVERT_WITH_TRIVIAL_BOOL_UNWRAP),
         }
     }
-}
-
-#[test]
-fn trivial_bool_when_valid() {
-    let b = TrivialBool { value: 0 };
-    assert_eq(b.is_valid(), true, 0);
-    assert_encoding(b, [0u8, 0, 0, 0, 0, 0, 0, 0]);
-
-    let b = TrivialBool { value: 1 };
-    assert_eq(b.is_valid(), true, 0);
-    assert_encoding(b, [0u8, 0, 0, 0, 0, 0, 0, 1]);
-}
-
-#[test]
-fn trivial_bool_when_invalid_is_valid() {
-    let bytes = encode(TrivialBool { value: 2 });
-    assert_eq(abi_decode::<TrivialBool>(bytes).is_valid(), false, 0);
-}
-
-#[test(should_revert)]
-fn trivial_bool_when_invalid_unwrap() {
-    let slice = encode(TrivialBool { value: 2 });
-    let _ = abi_decode::<TrivialBool>(slice).unwrap();
 }
 
 pub struct TrivialEnum<T> {
@@ -3808,7 +3784,7 @@ where
         if self.is_valid() {
             self.value
         } else {
-            __revert(1)
+            __revert(REVERT_WITH_TRIVIAL_ENUM_UNWRAP)
         }
     }
 }
@@ -3839,161 +3815,3 @@ where
         TrivialEnum { value }
     }
 }
-
-enum EnumTesting {
-    A: u64,
-    B: u64,
-}
-
-impl EnumCodecValues for EnumTesting {
-    fn is_decode_trivial_table() -> &__slice[bool] {
-        __slice(&[true, true], 0, 2)
-    }
-}
-
-impl AbiEncode for EnumTesting {
-    fn is_encode_trivial() -> bool {
-        true
-    }
-
-    fn abi_encode(self, buffer: Buffer) -> Buffer {
-        buffer
-    }
-}
-
-impl AbiDecode for EnumTesting {
-    fn is_decode_trivial() -> bool {
-        true
-    }
-
-    fn abi_decode(ref mut buffer: BufferReader) -> Self {
-        let discriminant = u64::abi_decode(buffer);
-        match discriminant {
-            0 => {
-                let v = u64::abi_decode(buffer);
-                EnumTesting::A(v)
-            }
-            1 => {
-                let v = u64::abi_decode(buffer);
-                EnumTesting::B(v)
-            }
-            _ => __revert(0),
-        }
-    }
-}
-
-impl PartialEq for EnumTesting {
-    fn eq(self, other: EnumTesting) -> bool {
-        match (self, other) {
-            (EnumTesting::A(a), EnumTesting::A(b)) => a == b,
-            (EnumTesting::B(a), EnumTesting::B(b)) => a == b,
-            _ => false,
-        }
-    }
-}
-
-#[test]
-fn trivial_enum_when_valid() {
-    let before = TrivialEnum {
-        value: EnumTesting::B(1),
-    };
-    let bytes = encode(before);
-    let after = abi_decode::<TrivialEnum<EnumTesting>>(bytes);
-    __log(after.is_valid());
-    let after = after.unwrap();
-    __log(bytes);
-    assert_eq(after, EnumTesting::B(1), 1);
-}
-
-#[test]
-fn trivial_enum_when_invalid_is_valid_returns_false() {
-    let e = __transmute::<[u8; 16], TrivialEnum<EnumTesting>>([0u8, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0]);
-    assert_eq(e.is_valid(), false, 0);
-}
-
-#[test(should_revert)]
-fn trivial_enum_when_invalid_unwrap() {
-    let e = __transmute::<[u8; 16], TrivialEnum<EnumTesting>>([0u8, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0]);
-    let _ = e.unwrap();
-}
-
-pub struct TrivialVec<T, const N: u64> {
-    len: u64,
-    items: [T; N],
-}
-
-impl<T, const N: u64> TrivialVec<T, N> {
-    pub fn new() -> Self {
-        const LENGTH: u64 = __size_of::<T>() * N;
-        let array = [0u8; LENGTH];
-        let items: &[T; N] = __transmute::<&[u8; LENGTH], &[T; N]>(&array);
-        Self {
-            items: *items,
-            len: 0,
-        }
-    }
-
-    pub fn len(self) -> u64 {
-        self.len
-    }
-
-    pub fn push(ref mut self, item: T) -> bool {
-        if self.len >= N {
-            false
-        } else {
-            let slot: &mut T = __elem_at(&mut self.items, self.len);
-            *slot = item;
-            self.len += 1;
-            true
-        }
-    }
-
-    pub fn as_slice(self) -> &[T] {
-        __slice(&self.items, 0, self.len)
-    }
-}
-
-impl<T, const N: u64> AbiEncode for TrivialVec<T, N>
-where
-    T: AbiEncode,
-{
-    fn is_encode_trivial() -> bool {
-        T::is_encode_trivial()
-    }
-
-    fn abi_encode(self, buffer: Buffer) -> Buffer {
-        let buffer = self.len.abi_encode(buffer);
-        let buffer = self.items.abi_encode(buffer);
-        buffer
-    }
-}
-
-impl<T, const N: u64> AbiDecode for TrivialVec<T, N>
-where
-    T: AbiDecode,
-{
-    fn is_decode_trivial() -> bool {
-        T::is_decode_trivial()
-    }
-
-    fn abi_decode(ref mut buffer: BufferReader) -> Self {
-        let len = buffer.decode::<u64>();
-        let items = buffer.decode::<[T; N]>();
-        TrivialVec { len, items }
-    }
-}
-
-
-#[test]
-fn trivial_vec_must_work() {
-    let mut v = TrivialVec::<u64, 4>::new();
-    assert_eq(v.push(1), true, 0);
-    assert_eq(v.push(2), true, 1);
-    assert_eq(v.len(), 2, 2);
-
-    let slice = v.as_slice();
-    assert_eq(slice.len(), 2, 3);
-    assert_eq(slice[0], 1, 4);
-    assert_eq(slice[1], 2, 5);
-}
-

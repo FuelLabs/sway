@@ -1,14 +1,50 @@
 ---
 source: test/src/snapshot/mod.rs
 ---
-> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_bool_and_enum
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers
 exit status: 1
 output:
-    Building test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_bool_and_enum
+    Building test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert)
-   Compiling script trivial_bool_and_enum (test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_bool_and_enum)
+   Compiling script trivial_helpers (test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers)
 warning
-  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_bool_and_enum/src/main.sw:9:4
+ --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:5:5
+  |
+3 | 
+4 | enum SomeEnum {
+5 |     A: u64,
+  |     - Enum variant A is never constructed.
+6 |     B: u16,
+7 | }
+  |
+____
+
+warning
+ --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:6:5
+  |
+4 | enum SomeEnum {
+5 |     A: u64,
+6 |     B: u16,
+  |     - Enum variant B is never constructed.
+7 | }
+8 | 
+  |
+____
+
+warning
+ --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:4:6
+  |
+2 | script;
+3 | 
+4 | enum SomeEnum {
+  |      -------- This enum is never used.
+5 |     A: u64,
+6 |     B: u16,
+  |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:9:4
    |
  7 | }
  8 | 
@@ -20,59 +56,916 @@ warning
 ____
 
 warning
-  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_bool_and_enum/src/main.sw:22:9
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:15:8
    |
-20 |     let bytes = encode(SomeEnum::A(1));
-21 |     let s = abi_decode::<MyStruct>(bytes);
-22 |     let e = s.a.unwrap();
-   |         - This declaration is never used.
-23 | }
-24 | 
-   |
-____
-
-error: Type is not trivially decodable
-  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_bool_and_enum/src/main.sw:15:8
-   |
-...
+13 | 
+14 | #[require(trivially_decodable = "true")]
 15 | struct MyStruct {
-   |        ^^^^^^^^ `MyStruct` is not trivially decodable.
-   |        -------- help: Consider changing `MyStruct` to make it trivially decodable.
+   |        -------- This struct is never used.
+16 |     a: TrivialBool,
+17 |     b: TrivialEnum<SomeEnum>,
    |
-   = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
 ____
 
-  Aborting due to 1 error.
-error: Failed to compile trivial_bool_and_enum
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:16:5
+   |
+14 | #[require(trivially_decodable = "true")]
+15 | struct MyStruct {
+16 |     a: TrivialBool,
+   |     - This struct field is never accessed.
+17 |     b: TrivialEnum<SomeEnum>,
+18 |     c: TrivialVec<u64, 1>,
+   |
+____
 
-> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_bool_and_enum --logs
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:17:5
+   |
+15 | struct MyStruct {
+16 |     a: TrivialBool,
+17 |     b: TrivialEnum<SomeEnum>,
+   |     - This struct field is never accessed.
+18 |     c: TrivialVec<u64, 1>,
+19 | }
+   |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:18:5
+   |
+16 |     a: TrivialBool,
+17 |     b: TrivialEnum<SomeEnum>,
+18 |     c: TrivialVec<u64, 1>,
+   |     - This struct field is never accessed.
+19 | }
+20 | 
+   |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:23:4
+   |
+21 | // These methods will be used to check how good the asm generation is
+22 | #[inline(never)]
+23 | fn trivial_vec_new_snapshot() -> TrivialVec<u64, 4> {
+   |    ------------------------ This function is never called.
+24 |     TrivialVec::<u64, 4>::new()
+25 | }
+   |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:43:13
+   |
+41 | 
+42 | fn main() {
+43 |     let mut v: TrivialVec<u64, 1> = TrivialVec::<u64, 1>::new();
+   |             - This declaration is never used.
+44 |     let _ = v.push(1);
+45 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:18:8
+   |
+16 |     a: TrivialBool,
+17 |     b: TrivialEnum<SomeEnum>,
+18 |     c: TrivialVec<u64, 1>,
+   |        ^^^^^^^^^^ Could not find symbol "TrivialVec" in this scope.
+19 | }
+20 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:18:8
+   |
+16 |     a: TrivialBool,
+17 |     b: TrivialEnum<SomeEnum>,
+18 |     c: TrivialVec<u64, 1>,
+   |        ^^^^^^^^^^ Unknown type name "TrivialVec".
+19 | }
+20 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:23:34
+   |
+21 | // These methods will be used to check how good the asm generation is
+22 | #[inline(never)]
+23 | fn trivial_vec_new_snapshot() -> TrivialVec<u64, 4> {
+   |                                  ^^^^^^^^^^ Could not find symbol "TrivialVec" in this scope.
+24 |     TrivialVec::<u64, 4>::new()
+25 | }
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:23:34
+   |
+21 | // These methods will be used to check how good the asm generation is
+22 | #[inline(never)]
+23 | fn trivial_vec_new_snapshot() -> TrivialVec<u64, 4> {
+   |                                  ^^^^^^^^^^ Unknown type name "TrivialVec".
+24 |     TrivialVec::<u64, 4>::new()
+25 | }
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:24:5
+   |
+22 | #[inline(never)]
+23 | fn trivial_vec_new_snapshot() -> TrivialVec<u64, 4> {
+24 |     TrivialVec::<u64, 4>::new()
+   |     ^^^^^^^^^^ Could not find symbol "TrivialVec" in this scope.
+25 | }
+26 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:24:5
+   |
+22 | #[inline(never)]
+23 | fn trivial_vec_new_snapshot() -> TrivialVec<u64, 4> {
+24 |     TrivialVec::<u64, 4>::new()
+   |     ^^^^^^^^^^ Unknown type name "TrivialVec".
+25 | }
+26 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:28:41
+   |
+26 | 
+27 | #[inline(never)]
+28 | fn trivial_vec_push_snapshot(ref mut v: TrivialVec<u64, 4>, item: u64) {
+   |                                         ^^^^^^^^^^ Could not find symbol "TrivialVec" in this scope.
+29 |     let _ = v.push(item);
+30 | }
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:28:41
+   |
+26 | 
+27 | #[inline(never)]
+28 | fn trivial_vec_push_snapshot(ref mut v: TrivialVec<u64, 4>, item: u64) {
+   |                                         ^^^^^^^^^^ Unknown type name "TrivialVec".
+29 |     let _ = v.push(item);
+30 | }
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:33:41
+   |
+31 | 
+32 | #[inline(never)]
+33 | fn trivial_vec_as_slice_snapshot(ref v: TrivialVec<u64, 4>) -> &[u64] {
+   |                                         ^^^^^^^^^^ Could not find symbol "TrivialVec" in this scope.
+34 |     v.as_slice()
+35 | }
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:33:41
+   |
+31 | 
+32 | #[inline(never)]
+33 | fn trivial_vec_as_slice_snapshot(ref v: TrivialVec<u64, 4>) -> &[u64] {
+   |                                         ^^^^^^^^^^ Unknown type name "TrivialVec".
+34 |     v.as_slice()
+35 | }
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:37:45
+   |
+35 | }
+36 | 
+37 | fn encode_tuple_decode_my_struct(ref vvvvv: TrivialVec<u64, 1>) -> MyStruct {
+   |                                             ^^^^^^^^^^ Could not find symbol "TrivialVec" in this scope.
+38 |     let bytes = encode((true, SomeEnum::A(1), vvvvv));
+39 |     abi_decode::<MyStruct>(bytes)
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:37:45
+   |
+35 | }
+36 | 
+37 | fn encode_tuple_decode_my_struct(ref vvvvv: TrivialVec<u64, 1>) -> MyStruct {
+   |                                             ^^^^^^^^^^ Unknown type name "TrivialVec".
+38 |     let bytes = encode((true, SomeEnum::A(1), vvvvv));
+39 |     abi_decode::<MyStruct>(bytes)
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:43:16
+   |
+41 | 
+42 | fn main() {
+43 |     let mut v: TrivialVec<u64, 1> = TrivialVec::<u64, 1>::new();
+   |                ^^^^^^^^^^ Could not find symbol "TrivialVec" in this scope.
+44 |     let _ = v.push(1);
+45 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:43:16
+   |
+41 | 
+42 | fn main() {
+43 |     let mut v: TrivialVec<u64, 1> = TrivialVec::<u64, 1>::new();
+   |                ^^^^^^^^^^ Unknown type name "TrivialVec".
+44 |     let _ = v.push(1);
+45 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:43:37
+   |
+41 | 
+42 | fn main() {
+43 |     let mut v: TrivialVec<u64, 1> = TrivialVec::<u64, 1>::new();
+   |                                     ^^^^^^^^^^ Could not find symbol "TrivialVec" in this scope.
+44 |     let _ = v.push(1);
+45 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:43:37
+   |
+41 | 
+42 | fn main() {
+43 |     let mut v: TrivialVec<u64, 1> = TrivialVec::<u64, 1>::new();
+   |                                     ^^^^^^^^^^ Unknown type name "TrivialVec".
+44 |     let _ = v.push(1);
+45 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:46:5
+   |
+44 |     let _ = v.push(1);
+45 | 
+46 |     encode_tuple_decode_my_struct(v);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Could not find symbol "encode_tuple_decode_my_struct" in this scope.
+47 |     
+48 |     // let a = s.a.unwrap();
+   |
+____
+
+error: Internal compiler error: Missing type when evaluating encoding triviality
+Please file an issue on the repository and include the code that triggered this error.
+____
+
+  Aborting due to 18 errors.
+error: Failed to compile trivial_helpers
+
+> forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers --logs
 exit status: 1
 output:
-    Building test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_bool_and_enum
+    Building test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert)
-   Compiling script trivial_bool_and_enum (test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_bool_and_enum)
+   Compiling script trivial_helpers (test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers)
 warning
-  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_bool_and_enum/src/main.sw:22:9
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:15:8
    |
-20 |     let bytes = encode(SomeEnum::A(1));
-21 |     let s = abi_decode::<MyStruct>(bytes);
-22 |     let e = s.a.unwrap();
-   |         - This declaration is never used.
-23 | }
-24 | 
-   |
-____
-
-error: Type is not trivially decodable
-  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_bool_and_enum/src/main.sw:15:8
-   |
-...
+13 | 
+14 | #[require(trivially_decodable = "true")]
 15 | struct MyStruct {
-   |        ^^^^^^^^ `MyStruct` is not trivially decodable.
-   |        -------- help: Consider changing `MyStruct` to make it trivially decodable.
+   |        -------- This struct is never used.
+16 |     a: TrivialBool,
+17 |     b: TrivialEnum<SomeEnum>,
    |
-   = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
 ____
 
-  Aborting due to 1 error.
-error: Failed to compile trivial_bool_and_enum
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:16:5
+   |
+14 | #[require(trivially_decodable = "true")]
+15 | struct MyStruct {
+16 |     a: TrivialBool,
+   |     - This struct field is never accessed.
+17 |     b: TrivialEnum<SomeEnum>,
+18 |     c: TrivialVec<u64, 1>,
+   |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:17:5
+   |
+15 | struct MyStruct {
+16 |     a: TrivialBool,
+17 |     b: TrivialEnum<SomeEnum>,
+   |     - This struct field is never accessed.
+18 |     c: TrivialVec<u64, 1>,
+19 | }
+   |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:18:5
+   |
+16 |     a: TrivialBool,
+17 |     b: TrivialEnum<SomeEnum>,
+18 |     c: TrivialVec<u64, 1>,
+   |     - This struct field is never accessed.
+19 | }
+20 | 
+   |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:23:4
+   |
+21 | // These methods will be used to check how good the asm generation is
+22 | #[inline(never)]
+23 | fn trivial_vec_new_snapshot() -> TrivialVec<u64, 4> {
+   |    ------------------------ This function is never called.
+24 |     TrivialVec::<u64, 4>::new()
+25 | }
+   |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:43:13
+   |
+41 | 
+42 | fn main() {
+43 |     let mut v: TrivialVec<u64, 1> = TrivialVec::<u64, 1>::new();
+   |             - This declaration is never used.
+44 |     let _ = v.push(1);
+45 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:18:8
+   |
+16 |     a: TrivialBool,
+17 |     b: TrivialEnum<SomeEnum>,
+18 |     c: TrivialVec<u64, 1>,
+   |        ^^^^^^^^^^ Could not find symbol "TrivialVec" in this scope.
+19 | }
+20 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:18:8
+   |
+16 |     a: TrivialBool,
+17 |     b: TrivialEnum<SomeEnum>,
+18 |     c: TrivialVec<u64, 1>,
+   |        ^^^^^^^^^^ Unknown type name "TrivialVec".
+19 | }
+20 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:23:34
+   |
+21 | // These methods will be used to check how good the asm generation is
+22 | #[inline(never)]
+23 | fn trivial_vec_new_snapshot() -> TrivialVec<u64, 4> {
+   |                                  ^^^^^^^^^^ Could not find symbol "TrivialVec" in this scope.
+24 |     TrivialVec::<u64, 4>::new()
+25 | }
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:23:34
+   |
+21 | // These methods will be used to check how good the asm generation is
+22 | #[inline(never)]
+23 | fn trivial_vec_new_snapshot() -> TrivialVec<u64, 4> {
+   |                                  ^^^^^^^^^^ Unknown type name "TrivialVec".
+24 |     TrivialVec::<u64, 4>::new()
+25 | }
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:24:5
+   |
+22 | #[inline(never)]
+23 | fn trivial_vec_new_snapshot() -> TrivialVec<u64, 4> {
+24 |     TrivialVec::<u64, 4>::new()
+   |     ^^^^^^^^^^ Could not find symbol "TrivialVec" in this scope.
+25 | }
+26 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:24:5
+   |
+22 | #[inline(never)]
+23 | fn trivial_vec_new_snapshot() -> TrivialVec<u64, 4> {
+24 |     TrivialVec::<u64, 4>::new()
+   |     ^^^^^^^^^^ Unknown type name "TrivialVec".
+25 | }
+26 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:28:41
+   |
+26 | 
+27 | #[inline(never)]
+28 | fn trivial_vec_push_snapshot(ref mut v: TrivialVec<u64, 4>, item: u64) {
+   |                                         ^^^^^^^^^^ Could not find symbol "TrivialVec" in this scope.
+29 |     let _ = v.push(item);
+30 | }
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:28:41
+   |
+26 | 
+27 | #[inline(never)]
+28 | fn trivial_vec_push_snapshot(ref mut v: TrivialVec<u64, 4>, item: u64) {
+   |                                         ^^^^^^^^^^ Unknown type name "TrivialVec".
+29 |     let _ = v.push(item);
+30 | }
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:33:41
+   |
+31 | 
+32 | #[inline(never)]
+33 | fn trivial_vec_as_slice_snapshot(ref v: TrivialVec<u64, 4>) -> &[u64] {
+   |                                         ^^^^^^^^^^ Could not find symbol "TrivialVec" in this scope.
+34 |     v.as_slice()
+35 | }
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:33:41
+   |
+31 | 
+32 | #[inline(never)]
+33 | fn trivial_vec_as_slice_snapshot(ref v: TrivialVec<u64, 4>) -> &[u64] {
+   |                                         ^^^^^^^^^^ Unknown type name "TrivialVec".
+34 |     v.as_slice()
+35 | }
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:37:45
+   |
+35 | }
+36 | 
+37 | fn encode_tuple_decode_my_struct(ref vvvvv: TrivialVec<u64, 1>) -> MyStruct {
+   |                                             ^^^^^^^^^^ Could not find symbol "TrivialVec" in this scope.
+38 |     let bytes = encode((true, SomeEnum::A(1), vvvvv));
+39 |     abi_decode::<MyStruct>(bytes)
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:37:45
+   |
+35 | }
+36 | 
+37 | fn encode_tuple_decode_my_struct(ref vvvvv: TrivialVec<u64, 1>) -> MyStruct {
+   |                                             ^^^^^^^^^^ Unknown type name "TrivialVec".
+38 |     let bytes = encode((true, SomeEnum::A(1), vvvvv));
+39 |     abi_decode::<MyStruct>(bytes)
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:43:16
+   |
+41 | 
+42 | fn main() {
+43 |     let mut v: TrivialVec<u64, 1> = TrivialVec::<u64, 1>::new();
+   |                ^^^^^^^^^^ Could not find symbol "TrivialVec" in this scope.
+44 |     let _ = v.push(1);
+45 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:43:16
+   |
+41 | 
+42 | fn main() {
+43 |     let mut v: TrivialVec<u64, 1> = TrivialVec::<u64, 1>::new();
+   |                ^^^^^^^^^^ Unknown type name "TrivialVec".
+44 |     let _ = v.push(1);
+45 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:43:37
+   |
+41 | 
+42 | fn main() {
+43 |     let mut v: TrivialVec<u64, 1> = TrivialVec::<u64, 1>::new();
+   |                                     ^^^^^^^^^^ Could not find symbol "TrivialVec" in this scope.
+44 |     let _ = v.push(1);
+45 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:43:37
+   |
+41 | 
+42 | fn main() {
+43 |     let mut v: TrivialVec<u64, 1> = TrivialVec::<u64, 1>::new();
+   |                                     ^^^^^^^^^^ Unknown type name "TrivialVec".
+44 |     let _ = v.push(1);
+45 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:46:5
+   |
+44 |     let _ = v.push(1);
+45 | 
+46 |     encode_tuple_decode_my_struct(v);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Could not find symbol "encode_tuple_decode_my_struct" in this scope.
+47 |     
+48 |     // let a = s.a.unwrap();
+   |
+____
+
+error: Internal compiler error: Missing type when evaluating encoding triviality
+Please file an issue on the repository and include the code that triggered this error.
+____
+
+  Aborting due to 18 errors.
+error: Failed to compile trivial_helpers
+
+The idea os this test is to verify if TrivialVec is as performant as possible.
+
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers --release --ir final --asm final | filter-fn trivial_helpers snapshot
+exit status: 1
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers
+   Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert)
+// IR: Final
+library {
+}
+
+   Compiling script trivial_helpers (test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers)
+warning
+ --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:5:5
+  |
+3 | 
+4 | enum SomeEnum {
+5 |     A: u64,
+  |     - Enum variant A is never constructed.
+6 |     B: u16,
+7 | }
+  |
+____
+
+warning
+ --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:6:5
+  |
+4 | enum SomeEnum {
+5 |     A: u64,
+6 |     B: u16,
+  |     - Enum variant B is never constructed.
+7 | }
+8 | 
+  |
+____
+
+warning
+ --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:4:6
+  |
+2 | script;
+3 | 
+4 | enum SomeEnum {
+  |      -------- This enum is never used.
+5 |     A: u64,
+6 |     B: u16,
+  |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:9:4
+   |
+ 7 | }
+ 8 | 
+ 9 | fn encode_decode(s: SomeEnum) -> SomeEnum {
+   |    ------------- This function is never called.
+10 |     let bytes = encode(s);
+11 |     abi_decode::<TrivialEnum<SomeEnum>>(bytes).unwrap()
+   |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:15:8
+   |
+13 | 
+14 | #[require(trivially_decodable = "true")]
+15 | struct MyStruct {
+   |        -------- This struct is never used.
+16 |     a: TrivialBool,
+17 |     b: TrivialEnum<SomeEnum>,
+   |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:16:5
+   |
+14 | #[require(trivially_decodable = "true")]
+15 | struct MyStruct {
+16 |     a: TrivialBool,
+   |     - This struct field is never accessed.
+17 |     b: TrivialEnum<SomeEnum>,
+18 |     c: TrivialVec<u64, 1>,
+   |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:17:5
+   |
+15 | struct MyStruct {
+16 |     a: TrivialBool,
+17 |     b: TrivialEnum<SomeEnum>,
+   |     - This struct field is never accessed.
+18 |     c: TrivialVec<u64, 1>,
+19 | }
+   |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:18:5
+   |
+16 |     a: TrivialBool,
+17 |     b: TrivialEnum<SomeEnum>,
+18 |     c: TrivialVec<u64, 1>,
+   |     - This struct field is never accessed.
+19 | }
+20 | 
+   |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:23:4
+   |
+21 | // These methods will be used to check how good the asm generation is
+22 | #[inline(never)]
+23 | fn trivial_vec_new_snapshot() -> TrivialVec<u64, 4> {
+   |    ------------------------ This function is never called.
+24 |     TrivialVec::<u64, 4>::new()
+25 | }
+   |
+____
+
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:43:13
+   |
+41 | 
+42 | fn main() {
+43 |     let mut v: TrivialVec<u64, 1> = TrivialVec::<u64, 1>::new();
+   |             - This declaration is never used.
+44 |     let _ = v.push(1);
+45 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:18:8
+   |
+16 |     a: TrivialBool,
+17 |     b: TrivialEnum<SomeEnum>,
+18 |     c: TrivialVec<u64, 1>,
+   |        ^^^^^^^^^^ Could not find symbol "TrivialVec" in this scope.
+19 | }
+20 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:18:8
+   |
+16 |     a: TrivialBool,
+17 |     b: TrivialEnum<SomeEnum>,
+18 |     c: TrivialVec<u64, 1>,
+   |        ^^^^^^^^^^ Unknown type name "TrivialVec".
+19 | }
+20 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:23:34
+   |
+21 | // These methods will be used to check how good the asm generation is
+22 | #[inline(never)]
+23 | fn trivial_vec_new_snapshot() -> TrivialVec<u64, 4> {
+   |                                  ^^^^^^^^^^ Could not find symbol "TrivialVec" in this scope.
+24 |     TrivialVec::<u64, 4>::new()
+25 | }
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:23:34
+   |
+21 | // These methods will be used to check how good the asm generation is
+22 | #[inline(never)]
+23 | fn trivial_vec_new_snapshot() -> TrivialVec<u64, 4> {
+   |                                  ^^^^^^^^^^ Unknown type name "TrivialVec".
+24 |     TrivialVec::<u64, 4>::new()
+25 | }
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:24:5
+   |
+22 | #[inline(never)]
+23 | fn trivial_vec_new_snapshot() -> TrivialVec<u64, 4> {
+24 |     TrivialVec::<u64, 4>::new()
+   |     ^^^^^^^^^^ Could not find symbol "TrivialVec" in this scope.
+25 | }
+26 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:24:5
+   |
+22 | #[inline(never)]
+23 | fn trivial_vec_new_snapshot() -> TrivialVec<u64, 4> {
+24 |     TrivialVec::<u64, 4>::new()
+   |     ^^^^^^^^^^ Unknown type name "TrivialVec".
+25 | }
+26 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:28:41
+   |
+26 | 
+27 | #[inline(never)]
+28 | fn trivial_vec_push_snapshot(ref mut v: TrivialVec<u64, 4>, item: u64) {
+   |                                         ^^^^^^^^^^ Could not find symbol "TrivialVec" in this scope.
+29 |     let _ = v.push(item);
+30 | }
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:28:41
+   |
+26 | 
+27 | #[inline(never)]
+28 | fn trivial_vec_push_snapshot(ref mut v: TrivialVec<u64, 4>, item: u64) {
+   |                                         ^^^^^^^^^^ Unknown type name "TrivialVec".
+29 |     let _ = v.push(item);
+30 | }
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:33:41
+   |
+31 | 
+32 | #[inline(never)]
+33 | fn trivial_vec_as_slice_snapshot(ref v: TrivialVec<u64, 4>) -> &[u64] {
+   |                                         ^^^^^^^^^^ Could not find symbol "TrivialVec" in this scope.
+34 |     v.as_slice()
+35 | }
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:33:41
+   |
+31 | 
+32 | #[inline(never)]
+33 | fn trivial_vec_as_slice_snapshot(ref v: TrivialVec<u64, 4>) -> &[u64] {
+   |                                         ^^^^^^^^^^ Unknown type name "TrivialVec".
+34 |     v.as_slice()
+35 | }
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:37:45
+   |
+35 | }
+36 | 
+37 | fn encode_tuple_decode_my_struct(ref vvvvv: TrivialVec<u64, 1>) -> MyStruct {
+   |                                             ^^^^^^^^^^ Could not find symbol "TrivialVec" in this scope.
+38 |     let bytes = encode((true, SomeEnum::A(1), vvvvv));
+39 |     abi_decode::<MyStruct>(bytes)
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:37:45
+   |
+35 | }
+36 | 
+37 | fn encode_tuple_decode_my_struct(ref vvvvv: TrivialVec<u64, 1>) -> MyStruct {
+   |                                             ^^^^^^^^^^ Unknown type name "TrivialVec".
+38 |     let bytes = encode((true, SomeEnum::A(1), vvvvv));
+39 |     abi_decode::<MyStruct>(bytes)
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:43:16
+   |
+41 | 
+42 | fn main() {
+43 |     let mut v: TrivialVec<u64, 1> = TrivialVec::<u64, 1>::new();
+   |                ^^^^^^^^^^ Could not find symbol "TrivialVec" in this scope.
+44 |     let _ = v.push(1);
+45 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:43:16
+   |
+41 | 
+42 | fn main() {
+43 |     let mut v: TrivialVec<u64, 1> = TrivialVec::<u64, 1>::new();
+   |                ^^^^^^^^^^ Unknown type name "TrivialVec".
+44 |     let _ = v.push(1);
+45 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:43:37
+   |
+41 | 
+42 | fn main() {
+43 |     let mut v: TrivialVec<u64, 1> = TrivialVec::<u64, 1>::new();
+   |                                     ^^^^^^^^^^ Could not find symbol "TrivialVec" in this scope.
+44 |     let _ = v.push(1);
+45 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:43:37
+   |
+41 | 
+42 | fn main() {
+43 |     let mut v: TrivialVec<u64, 1> = TrivialVec::<u64, 1>::new();
+   |                                     ^^^^^^^^^^ Unknown type name "TrivialVec".
+44 |     let _ = v.push(1);
+45 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/trivial_helpers/src/main.sw:46:5
+   |
+44 |     let _ = v.push(1);
+45 | 
+46 |     encode_tuple_decode_my_struct(v);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Could not find symbol "encode_tuple_decode_my_struct" in this scope.
+47 |     
+48 |     // let a = s.a.unwrap();
+   |
+____
+
+error: Internal compiler error: Missing type when evaluating encoding triviality
+Please file an issue on the repository and include the code that triggered this error.
+____
+
+  Aborting due to 18 errors.
+error: Failed to compile trivial_helpers

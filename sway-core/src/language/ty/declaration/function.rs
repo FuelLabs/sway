@@ -947,7 +947,7 @@ impl TyFunctionSig {
                             ident: p.name.clone(),
                             decl: None,
                         };
-                        dbg!(TyFunctionSigTypeParameter::Const(p.expr.clone().unwrap_or(expr)))
+                        TyFunctionSigTypeParameter::Const(p.expr.clone().unwrap_or(expr))
                     }
                 })
                 .collect(),

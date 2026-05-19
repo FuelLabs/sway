@@ -51,13 +51,6 @@ pub(crate) fn instantiate_function_application(
         false,
     )?;
 
-    if call_path_binding.inner.suffix.as_str() == "encode" {
-        eprintln!("call_path_binding: {:?}", call_path_binding);
-        for arg in arguments.iter() {
-            eprintln!("    arg: {:?}", arg);
-        }
-    }
-
     let typed_arguments =
         type_check_arguments(handler, ctx.by_ref(), arguments, &function_decl.parameters)?;
     let typed_arguments_with_names = unify_arguments_and_parameters(
@@ -66,14 +59,6 @@ pub(crate) fn instantiate_function_application(
         typed_arguments,
         &function_decl.parameters,
     )?;
-
-    if call_path_binding.inner.suffix.as_str() == "encode" {
-        eprintln!("call_path_binding: {:?}", call_path_binding);
-        for arg in typed_arguments_with_names.iter() {
-            eprintln!("    arg: {:?}", arg);
-            eprintln!("        type: {}", engines.help_out(arg.1.return_type));
-        }
-    }
 
     // unify function return type with current ctx.type_annotation().
     engines.te().unify_with_generic(
@@ -112,12 +97,7 @@ pub(crate) fn instantiate_function_application(
                 &call_path_binding.span(),
             )?;
 
-             if call_path_binding.inner.suffix.as_str() == "encode" {
-                eprintln!("decl_mapping: {:#?}", engines.help_out(&decl_mapping));
-             }
-
             function_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
-            dbg!(engines.help_out(&function_decl));
         }
 
         let method_sig = TyFunctionSig::from_fn_decl(&function_decl);

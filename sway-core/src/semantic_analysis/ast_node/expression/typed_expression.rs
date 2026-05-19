@@ -662,10 +662,6 @@ impl ty::TyExpression {
                     ..
                 } = *decl;
 
-                if decl_name.as_str() == "vvvvv" {
-                    dbg!(decl_name.as_str(), return_type, engines.help_out(return_type));
-                }
-
                 ty::TyExpression {
                     return_type,
                     expression: ty::TyExpressionVariant::VariableExpression {
@@ -1220,10 +1216,6 @@ impl ty::TyExpression {
         }
 
         let return_type = ctx.engines.te().insert_tuple(engines, typed_field_types);
-
-        if span.as_str().contains("vvvvv") {
-            dbg!(return_type, engines.help_out(return_type));
-        }
 
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::Tuple {

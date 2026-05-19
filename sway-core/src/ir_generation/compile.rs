@@ -950,12 +950,10 @@ fn compile_fn(
     }
 
     let mut ref_mut_args = rustc_hash::FxHashSet::default();
-    dbg!(ast_fn_decl.name.as_str());
     let mut args = ast_fn_decl
         .parameters
         .iter()
         .map(|param| {
-            dbg!(param.name.as_str(), engines.help_out(param.type_argument.type_id));
             // Convert to an IR type.
             convert_resolved_type_id(
                 engines,

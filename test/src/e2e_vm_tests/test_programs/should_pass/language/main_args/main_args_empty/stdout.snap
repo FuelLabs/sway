@@ -26,28 +26,16 @@ library {
 script {
     pub entry fn __entry() -> __ptr never, !3 {
         entry():
-<<<<<<< HEAD
-        v18v1 = call main_0(), !6
-        v21v1 = const u64 0, !7
-        v22v1 = const u64 0, !8
-        retd v21v1 v22v1, !9
-=======
-        v12v1 = call main_0(), !6
-        v15v1 = const u64 0, !7
-        v16v1 = const u64 0, !8
-        retd v15v1 v16v1, !9
->>>>>>> ea8f1c822 (update tests)
+        v20v1 = call main_0(), !6
+        v23v1 = const u64 0, !7
+        v24v1 = const u64 0, !8
+        retd v23v1 v24v1, !9
     }
 
     entry_orig fn main_0() -> (), !13 {
         entry():
-<<<<<<< HEAD
-        v16v1 = const unit ()
-        ret () v16v1
-=======
-        v10v1 = const unit ()
-        ret () v10v1
->>>>>>> ea8f1c822 (update tests)
+        v18v1 = const unit ()
+        ret () v18v1
     }
 }
 
