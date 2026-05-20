@@ -27,8 +27,8 @@ use std::{
     sync::Arc,
 };
 use sway_error::{
-    error::{CompileError, TrivialCheckFailedData},
-    handler::Handler,
+    error::{CompileError, TrivialCheckDiagType, TrivialCheckFailedData},
+    handler::{ErrorEmitted, Handler},
 };
 use sway_ir::{metadata::combine as md_combine, *};
 use sway_types::{integer_bits::IntegerBits, Ident, Named, ProgramId, Span, Spanned};
@@ -581,10 +581,12 @@ pub enum CheckDecl {
         tid: TypeId,
         is_decode_trivial_table: HashMap<String, TyExpression>,
         type_name_span: Span,
+        diag: TrivialCheckDiagType,
     },
     Decl {
         tid: TypeId,
         is_decode_trivial_table: HashMap<String, TyExpression>,
+        diag: TrivialCheckDiagType,
     },
 }
 
@@ -607,21 +609,33 @@ impl CheckDecl {
             CheckDecl::Ref { tid, .. } | CheckDecl::Decl { tid, .. } => *tid,
         }
     }
+    
+    fn diag_type(&self) -> TrivialCheckDiagType {
+        match self {
+            CheckDecl::Ref { diag, .. } | CheckDecl::Decl { diag, .. } => *diag,
+        }
+    }
 }
 
 /// It is Ok for the function to return check errors. Err is reserved for ICE and other unexpected errors.
 pub fn run_ir_decl_checks(
+    handler: &Handler,
     engines: &Engines,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
     decls_check: &[CheckDecl],
     workspace_pid: Option<ProgramId>,
-) -> Result<Vec<TrivialCheckFailedData>, CompileError> {
+) -> Result<Vec<TrivialCheckFailedData>, ErrorEmitted> {
     let mut errors = vec![];
 
     // check types
     for check in decls_check.iter() {
+        let diag = match check.diag_type() {
+            TrivialCheckDiagType::Nothing => continue,
+            diag_type => diag_type,
+        };
+
         let is_decode_trivial_table = check
             .is_decode_trivial_table()
             .iter()
@@ -664,6 +678,7 @@ pub fn run_ir_decl_checks(
             helps: vec![],
             never_trivial: BTreeSet::default(),
             bottom_helps: BTreeSet::default(),
+            diag,
         };
 
         if let (TypeInfo::Enum(_) | TypeInfo::Struct(_), CheckDecl::Ref { type_name_span, .. }) =
@@ -679,6 +694,7 @@ pub fn run_ir_decl_checks(
         }
 
         push_help_if_non_trivially_decodable_type(
+            handler,
             engines,
             workspace_pid,
             type_ref_span,
@@ -726,6 +742,7 @@ fn replace_known_types_with_suggestion(
 
 #[allow(clippy::too_many_arguments)]
 fn push_help_if_non_trivially_decodable_type(
+    handler: &Handler,
     engines: &Engines,
     workspace_pid: Option<ProgramId>,
     type_ref_span: Option<Span>,
@@ -733,17 +750,17 @@ fn push_help_if_non_trivially_decodable_type(
     type_info: &TypeInfo,
     table: &HashMap<String, bool>,
     error: &mut TrivialCheckFailedData,
-) -> Result<(), CompileError> {
+) -> Result<(), ErrorEmitted> {
     let fullname = engines.help_out(type_info).to_string();
 
     match table.get(&fullname) {
         Some(true) => return Ok(()),
         Some(false) => {}
         None => {
-            return Err(CompileError::Internal(
+            return Err(handler.emit_err(CompileError::Internal(
                 "Missing type when evaluating encoding triviality",
                 Span::dummy(),
-            ))
+            )));
         }
     }
 
@@ -785,6 +802,7 @@ fn push_help_if_non_trivially_decodable_type(
                     ));
 
                     push_help_if_non_trivially_decodable_type(
+                        handler,
                         engines,
                         workspace_pid,
                         Some(field.type_argument.span.clone()),
@@ -798,6 +816,7 @@ fn push_help_if_non_trivially_decodable_type(
             TypeInfo::Enum(decl_id) => {
                 let enum_decl = engines.de().get(decl_id);
                 error.span = enum_decl.call_path.suffix.span().clone();
+                error.problems_qty += 1;
             }
             x => {
                 todo!("{:?}", engines.help_out(x));
@@ -814,6 +833,7 @@ fn push_help_if_non_trivially_decodable_type(
                     "Consider changing this type to `TrivialBool`.".to_string(),
                 ));
                 error.never_trivial.insert("bool".to_string());
+                 error.problems_qty += 1;
             }
             TypeInfo::UnsignedInteger(IntegerBits::Sixteen) => {
                 error.helps.push((
@@ -821,6 +841,7 @@ fn push_help_if_non_trivially_decodable_type(
                     "Consider changing this type to `u64`.".to_string(),
                 ));
                 error.never_trivial.insert("u16".to_string());
+                error.problems_qty += 1;
             }
             TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo) => {
                 error.helps.push((
@@ -828,6 +849,7 @@ fn push_help_if_non_trivially_decodable_type(
                     "Consider changing this type to `u64`.".to_string(),
                 ));
                 error.never_trivial.insert("u32".to_string());
+                error.problems_qty += 1;
             }
             TypeInfo::Enum(_) => {
                 error.helps.push((
@@ -838,6 +860,7 @@ fn push_help_if_non_trivially_decodable_type(
                     ),
                 ));
                 error.bottom_helps.insert("Enums are represented as tagged unions and because of that they cannot be trivially decoded. But where needed, they can be wrapped by `TrivialEnum`, and their original value can be retrieved later with `unwrap`.".to_string());
+                error.problems_qty += 1;
             }
             TypeInfo::Struct(decl_id) => {
                 let (replaced, suggestion) =
@@ -847,12 +870,14 @@ fn push_help_if_non_trivially_decodable_type(
                         type_ref_span.clone(),
                         format!("This type is never trivially decodable. Consider using `{suggestion}` instead.")
                     ));
+                    error.problems_qty += 1;
                 }
             }
             TypeInfo::Tuple(items) => {
                 for item in items {
                     let type_info = engines.te().get(item.type_id);
                     push_help_if_non_trivially_decodable_type(
+                        handler,
                         engines,
                         workspace_pid,
                         Some(item.span.clone()),
@@ -866,6 +891,7 @@ fn push_help_if_non_trivially_decodable_type(
             TypeInfo::Array(item, _) => {
                 let type_info = engines.te().get(item.type_id);
                 push_help_if_non_trivially_decodable_type(
+                    handler,
                     engines,
                     workspace_pid,
                     Some(item.span.clone()),

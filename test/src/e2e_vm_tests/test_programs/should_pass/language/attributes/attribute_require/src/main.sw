@@ -1,6 +1,6 @@
 script;
 
-#[require(trivially_decodable = "true")]
+#[require(trivially_decodable = "yes")]
 struct MyStruct {
     f0: bool,
     f1: u8,
@@ -22,6 +22,20 @@ struct MyStruct {
     f16: [(u64, NonTrivialStruct); 2],
 }
 
+#[require(trivially_decodable = "as_warning")]
+#[allow(dead_code)]
+struct MyStructOnlyWarning {
+    #[allow(dead_code)]
+    a: u32
+}
+
+#[require(trivially_decodable = "no")]
+#[allow(dead_code)]
+struct MyStructDisabled {
+    #[allow(dead_code)]
+    a: u32
+}
+
 struct TrivialStruct {
 }
 
@@ -34,19 +48,19 @@ enum SomeEnum {
 }
 
 abi SomeAbi {
-    #[require(trivially_decodable = "true")]
+    #[require(trivially_decodable = "yes")]
     fn some_fn_1(a: NonTrivialStruct, b: SomeEnum) -> SomeEnum;
 
-    #[require(trivially_decodable = "true")]
+    #[require(trivially_decodable = "yes")]
     fn some_fn_2(a: u32, b: u16, c: u8, d: bool);
 
-    #[require(trivially_decodable = "true")]
+    #[require(trivially_decodable = "yes")]
     fn some_fn_3(a: u8, b: u64, c: u256, d: b256);
 
-    #[require(trivially_decodable = "true")]
+    #[require(trivially_decodable = "yes")]
     fn some_fn_4(a: (u64, bool));
 
-     #[require(trivially_decodable = "true")]
+     #[require(trivially_decodable = "yes")]
     fn some_fn_5(a: [bool; 1]);
 }
 

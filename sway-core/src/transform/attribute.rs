@@ -533,7 +533,6 @@ impl Attribute {
             Event => None,
             Indexed => None,
             Require => MustBeIn(vec![
-                REQUIRE_ARG_NAME_TRIVIALLY_ENCODABLE,
                 REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE,
             ]),
         }
@@ -563,6 +562,7 @@ impl Attribute {
             AbiName => Yes,
             Event => No,
             Indexed => No,
+            // require(trivially_decodable = "yes")
             Require => Yes,
         }
     }

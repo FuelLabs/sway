@@ -502,8 +502,6 @@ pub enum CompileError {
     },
     #[error("This opcode takes an immediate value but none was provided.")]
     MissingImmediate { span: Span },
-    #[error("Invalid argument.")]
-    InvalidArgument { span: Span },
     #[error("This immediate value is invalid.")]
     InvalidImmediateValue { span: Span },
     #[error("Variant \"{variant_name}\" does not exist on enum \"{enum_name}\"")]
@@ -1148,6 +1146,13 @@ pub enum CompileError {
     TrivialCheckFailed(TrivialCheckFailedData),
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TrivialCheckDiagType {
+    Nothing,
+    Error,
+    Warning
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TrivialCheckFailedData {
     pub span: Span,
@@ -1157,6 +1162,82 @@ pub struct TrivialCheckFailedData {
     pub helps: Vec<(Span, String)>,
     pub never_trivial: BTreeSet<String>,
     pub bottom_helps: BTreeSet<String>,
+    pub diag: TrivialCheckDiagType,
+}
+
+impl TrivialCheckFailedData {
+    pub fn as_diagnostic(&self, se: &SourceEngine) -> Diagnostic {
+        let mut hints = vec![];
+        hints.extend(
+            self.infos.iter()
+            .map(|x| {
+                Hint::info(se, x.0.clone(), x.1.clone())
+            })
+        );
+        hints.extend(
+            self.helps.iter()
+            .map(|x| {
+                Hint::help(se, x.0.clone(), x.1.clone())
+            })
+        );
+
+        let mut bottom_helps: Vec<String> = self.bottom_helps.iter().cloned().collect::<_>();
+
+        let mut never_trivial_help = String::new();
+        if !self.never_trivial.is_empty() {
+            let len = self.never_trivial.len();
+            for (idx, t) in self.never_trivial.iter().enumerate() {
+                never_trivial_help.push('`');
+                never_trivial_help.push_str(t.as_str());
+                                        never_trivial_help.push('`');
+
+                if idx < len - 1 {
+                    never_trivial_help.push_str(", ");
+                }
+            }
+
+            if len == 1 {
+                never_trivial_help.push_str(" is never trivially decodable.");
+            } else {
+                never_trivial_help.push_str(" are never trivially decodable.");
+            }
+
+            bottom_helps.push(never_trivial_help);
+        }
+
+        bottom_helps.push(
+            "For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html".to_string()
+        );
+
+        if matches!(self.can_be_made_trivial, Some(true)) {
+            hints.push(
+                Hint::help(
+                    se,
+                    self.span.clone(),
+                "Consider the suggestions below to make this type trivially decodable.".to_string()
+                )
+            );
+        }
+
+        Diagnostic {
+            reason: Some(Reason::new(Code::semantic_analysis(1), "Type is not trivially decodable".to_string())),
+            issue: match self.diag {
+                TrivialCheckDiagType::Nothing => unreachable!(),
+                TrivialCheckDiagType::Error => Issue::error(
+                    se,
+                    self.span.clone(),
+                    format!("`{}` is not trivially decodable.", self.span.as_str()),
+                ),
+                TrivialCheckDiagType::Warning => Issue::warning(
+                    se,
+                    self.span.clone(),
+                    format!("`{}` is not trivially decodable.", self.span.as_str()),
+                ),
+            },
+            hints,
+            help: bottom_helps,
+        }
+    }
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1399,7 +1480,6 @@ impl Spanned for CompileError {
             IndexedFieldOffsetTooLarge { field_name } => field_name.span(),
             IncoherentImplDueToOrphanRule { span, .. } => span.clone(),
             TrivialCheckFailed(TrivialCheckFailedData { span, .. }) => span.clone(),
-            InvalidArgument { span } => span.clone(),
         }
     }
 }
@@ -3405,69 +3485,8 @@ impl ToDiagnostic for CompileError {
                 hints: vec![],
                 help: vec![],
             },
-            TrivialCheckFailed(TrivialCheckFailedData { span, can_be_made_trivial, infos, helps, never_trivial, bottom_helps, .. }) => {
-                let mut hints = vec![];
-                hints.extend(
-                    infos.iter()
-                    .map(|x| {
-                        Hint::info(source_engine, x.0.clone(), x.1.clone())
-                    })
-                );
-                hints.extend(
-                    helps.iter()
-                    .map(|x| {
-                        Hint::help(source_engine, x.0.clone(), x.1.clone())
-                    })
-                );
-
-                let mut bottom_helps: Vec<String> = bottom_helps.iter().cloned().collect::<_>();
-
-                let mut never_trivial_help = String::new();
-                if !never_trivial.is_empty() {
-                    let len = never_trivial.len();
-                    for (idx, t) in never_trivial.iter().enumerate() {
-                        never_trivial_help.push('`');
-                        never_trivial_help.push_str(t.as_str());
-                                                never_trivial_help.push('`');
-
-                        if idx < len - 1 {
-                            never_trivial_help.push_str(", ");
-                        }
-                    }
-
-                    if len == 1 {
-                        never_trivial_help.push_str(" is never trivially decodable.");
-                    } else {
-                        never_trivial_help.push_str(" are never trivially decodable.");
-                    }
-
-                    bottom_helps.push(never_trivial_help);
-                }
-
-                bottom_helps.push(
-                    "For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html".to_string()
-                );
-
-                if matches!(can_be_made_trivial, Some(true)) {
-                    hints.push(
-                        Hint::help(
-                            source_engine,
-                            span.clone(),
-                        "Consider the suggestions below to make this type trivially decodable.".to_string()
-                        )
-                    );
-                }
-
-                Diagnostic {
-                    reason: Some(Reason::new(code(1), "Type is not trivially decodable".to_string())),
-                    issue: Issue::error(
-                        source_engine,
-                        span.clone(),
-                        format!("`{}` is not trivially decodable.", span.as_str()),
-                    ),
-                    hints,
-                    help: bottom_helps,
-                }
+            TrivialCheckFailed(data @ TrivialCheckFailedData { span, can_be_made_trivial, infos, helps, never_trivial, bottom_helps, .. }) => {
+                data.as_diagnostic(source_engine)
             }
             _ => Diagnostic {
                     // TODO: Temporarily we use `self` here to achieve backward compatibility.

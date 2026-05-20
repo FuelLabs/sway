@@ -7,6 +7,22 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require
    Compiling library std (sway-lib-std)
    Compiling script attribute_require (test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require)
+warning: Type is not trivially decodable
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require/src/main.sw:27:8
+   |
+...
+27 | struct MyStructOnlyWarning {
+   |        ------------------- `MyStructOnlyWarning` is not trivially decodable.
+   |        ------------------- help: Consider changing `MyStructOnlyWarning` to make it trivially decodable.
+28 |     #[allow(dead_code)]
+29 |     a: u32
+   |     - info: This field is not trivially decodable.
+   |        --- help: Consider changing this type to `u64`.
+   |
+   = help: `u32` is never trivially decodable.
+   = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
+____
+
 error: Type is not trivially decodable
   --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require/src/main.sw:4:8
    |
@@ -54,27 +70,117 @@ error: Type is not trivially decodable
 ____
 
 error: Type is not trivially decodable
-  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require/src/main.sw:28:8
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require/src/main.sw:42:8
    |
 ...
-28 | struct NonTrivialStruct {
+42 | struct NonTrivialStruct {
    |        ^^^^^^^^^^^^^^^^ `NonTrivialStruct` is not trivially decodable.
    |        ---------------- help: Consider changing `NonTrivialStruct` to make it trivially decodable.
-29 |     pub a: bool,
+43 |     pub a: bool,
    |         - info: This field is not trivially decodable.
    |            ---- help: Consider changing this type to `TrivialBool`.
-30 | }
-31 | 
-32 | enum SomeEnum {
-33 |     A: ()
+44 | }
+45 | 
+46 | enum SomeEnum {
+47 |     A: ()
 ...
-37 |     #[require(trivially_decodable = "true")]
-38 |     fn some_fn_1(a: NonTrivialStruct, b: SomeEnum) -> SomeEnum;
+51 |     #[require(trivially_decodable = "yes")]
+52 |     fn some_fn_1(a: NonTrivialStruct, b: SomeEnum) -> SomeEnum;
    |                     ---------------- info: This is the reason `NonTrivialStruct` is being checked
    |
    = help: `bool` is never trivially decodable.
    = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
 ____
 
-  Aborting due to 2 errors.
+error: Type is not trivially decodable
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require/src/main.sw:46:6
+   |
+...
+46 | enum SomeEnum {
+   |      ^^^^^^^^ `SomeEnum` is not trivially decodable.
+...
+52 |     fn some_fn_1(a: NonTrivialStruct, b: SomeEnum) -> SomeEnum;
+   |                                          -------- info: This is the reason `SomeEnum` is being checked
+   |                                          -------- help: Consider wrapping this type like `TrivialEnum<SomeEnum>`.
+   |
+   = help: Enums are represented as tagged unions and because of that they cannot be trivially decoded. But where needed, they can be wrapped by `TrivialEnum`, and their original value can be retrieved later with `unwrap`.
+   = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
+____
+
+error: Type is not trivially decodable
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require/src/main.sw:46:6
+   |
+...
+46 | enum SomeEnum {
+   |      ^^^^^^^^ `SomeEnum` is not trivially decodable.
+...
+52 |     fn some_fn_1(a: NonTrivialStruct, b: SomeEnum) -> SomeEnum;
+   |                                                       -------- info: This is the reason `SomeEnum` is being checked
+   |                                                       -------- help: Consider wrapping this type like `TrivialEnum<SomeEnum>`.
+   |
+   = help: Enums are represented as tagged unions and because of that they cannot be trivially decoded. But where needed, they can be wrapped by `TrivialEnum`, and their original value can be retrieved later with `unwrap`.
+   = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
+____
+
+error: Type is not trivially decodable
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require/src/main.sw:55:21
+   |
+...
+55 |     fn some_fn_2(a: u32, b: u16, c: u8, d: bool);
+   |                     ^^^ `u32` is not trivially decodable.
+   |                     --- help: Consider changing this type to `u64`.
+   |
+   = help: `u32` is never trivially decodable.
+   = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
+____
+
+error: Type is not trivially decodable
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require/src/main.sw:55:29
+   |
+...
+55 |     fn some_fn_2(a: u32, b: u16, c: u8, d: bool);
+   |                             ^^^ `u16` is not trivially decodable.
+   |                             --- help: Consider changing this type to `u64`.
+   |
+   = help: `u16` is never trivially decodable.
+   = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
+____
+
+error: Type is not trivially decodable
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require/src/main.sw:55:44
+   |
+...
+55 |     fn some_fn_2(a: u32, b: u16, c: u8, d: bool);
+   |                                            ^^^^ `bool` is not trivially decodable.
+   |                                            ---- help: Consider changing this type to `TrivialBool`.
+   |
+   = help: `bool` is never trivially decodable.
+   = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
+____
+
+error: Type is not trivially decodable
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require/src/main.sw:61:21
+   |
+...
+61 |     fn some_fn_4(a: (u64, bool));
+   |                     ^^^^^^^^^^^ `(u64, bool)` is not trivially decodable.
+   |                           ---- help: Consider changing this type to `TrivialBool`.
+   |
+   = help: `bool` is never trivially decodable.
+   = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
+____
+
+error: Type is not trivially decodable
+  --> test/src/e2e_vm_tests/test_programs/should_pass/language/attributes/attribute_require/src/main.sw:64:21
+   |
+...
+64 |     fn some_fn_5(a: [bool; 1]);
+   |                     ^^^^^^^^^ `[bool; 1]` is not trivially decodable.
+   |                      ---- help: Consider changing this type to `TrivialBool`.
+   |
+   = help: `bool` is never trivially decodable.
+   = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
+____
+
+  Aborting due to 9 errors.
 error: Failed to compile attribute_require

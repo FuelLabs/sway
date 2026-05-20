@@ -33,7 +33,7 @@ use crate::ir_generation::compile::CheckDecl;
 use crate::language::ty::{
     generate_is_decode_trivial_table, TyAstNodeContent, TyDecl, TyTraitInterfaceItem,
 };
-use crate::language::{CallPath, CallPathType};
+use crate::language::{CallPath, CallPathType, Literal};
 use crate::query_engine::ModuleCacheEntry;
 use crate::semantic_analysis::namespace::ResolvedDeclaration;
 use crate::semantic_analysis::type_resolve::{resolve_call_path, VisibilityCheck};
@@ -79,7 +79,7 @@ use types::{CollectTypesMetadata, CollectTypesMetadataContext, LogId, TypeMetada
 pub use semantic_analysis::namespace::{self, Namespace};
 pub mod types;
 
-use sway_error::error::CompileError;
+use sway_error::error::{CompileError, TrivialCheckDiagType, TrivialCheckFailedData};
 use sway_types::{ident::Ident, span, Spanned};
 pub use type_system::*;
 
@@ -951,7 +951,7 @@ pub fn parsed_to_ast(
     let mut md_mgr = MetadataManager::default();
 
     // run decl checks
-    run_decl_checks(
+    let checks = run_decl_checks(
         handler,
         &typed_program,
         &mut type_check_ctx,
@@ -959,6 +959,17 @@ pub fn parsed_to_ast(
         &mut md_mgr,
         module,
     );
+    match checks {
+        Ok(()) => {}
+        Err(error) => {
+            handler.dedup();
+            return Err(TypeCheckFailed {
+                root_module: Some(Arc::new(typed_program.root_module.clone())),
+                namespace: typed_program.namespace.current_package().clone(),
+                error,
+            });
+        }
+    };
 
     // Skip collecting metadata if we triggered an optimised build from LSP.
     let types_metadata = if !lsp_config.as_ref().is_some_and(|lsp| lsp.optimized_build) {
@@ -1085,7 +1096,7 @@ fn run_decl_checks(
     ir_ctx: &mut Context<'_>,
     md_mgr: &mut MetadataManager,
     module: Module,
-) {
+) -> Result<(), ErrorEmitted> {
     let mut decl_checks = vec![];
 
     let nodes = std::iter::once(&typed_program.root_module)
@@ -1098,24 +1109,42 @@ fn run_decl_checks(
         .flat_map(|x| x.all_nodes.iter());
 
     // check if the declaration has the attribute
-    let has_require_att = |atts: &Attributes| -> bool {
+    let has_require_att = |atts: &Attributes| -> Result<TrivialCheckDiagType, ErrorEmitted> {
         let atts = atts.all_by_kind(|att| matches!(att.kind, AttributeKind::Require));
         for (_, atts) in atts {
             for att in atts.iter() {
                 for arg in att.args.iter() {
                     if arg.name.as_str() == REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE {
-                        return true;
+                        if let Some(v) = arg.value.as_ref() {
+                            match v.as_string() {
+                                Some("yes") => return Ok(TrivialCheckDiagType::Error),
+                                Some("no") => return Ok(TrivialCheckDiagType::Nothing),
+                                Some("as_warning") => return Ok(TrivialCheckDiagType::Warning),
+                                Some(_) => {
+                                    let err = ConvertParseTreeError::InvalidAttributeArgValue {
+                                        span: v.span(),
+                                        arg: arg.name.clone(),
+                                        expected_values: vec!["yes", "no", "as_warning"],
+                                    };
+                                    return Err(handler.emit_err(err.into()));
+                                },
+                                None => unreachable!(),
+                            }
+                        } else {
+                            unreachable!();
+                        }
                     }
                 }
             }
         }
-        false
+        Ok(TrivialCheckDiagType::Nothing)
     };
 
     let check_type = |ctx: &mut TypeCheckContext<'_>,
                       is_decl: bool,
                       tid: TypeId,
-                      type_name_span: Option<Span>|
+                      type_name_span: Option<Span>,
+                      diag_type: TrivialCheckDiagType|
      -> Option<CheckDecl> {
         let is_decode_trivial_table = match ctx.engines.te().get(tid).as_ref() {
             TypeInfo::Struct(decl_id) => {
@@ -1123,7 +1152,7 @@ fn run_decl_checks(
 
                 let check = matches!(
                     (is_decl, has_require_att(&struct_decl.attributes)),
-                    (true, true) | (false, _)
+                    (true, Ok(TrivialCheckDiagType::Error | TrivialCheckDiagType::Warning)) | (false, _)
                 );
 
                 if check {
@@ -1142,7 +1171,7 @@ fn run_decl_checks(
 
                 let check = matches!(
                     (is_decl, has_require_att(&enum_decl.attributes)),
-                    (true, true) | (false, _)
+                    (true, Ok(TrivialCheckDiagType::Error | TrivialCheckDiagType::Warning)) | (false, _)
                 );
 
                 if check {
@@ -1181,12 +1210,14 @@ fn run_decl_checks(
                 CheckDecl::Decl {
                     tid,
                     is_decode_trivial_table,
+                    diag: diag_type,
                 }
             } else {
                 CheckDecl::Ref {
                     tid,
                     is_decode_trivial_table,
                     type_name_span: type_name_span.unwrap(),
+                    diag: diag_type,
                 }
             }
         })
@@ -1195,15 +1226,23 @@ fn run_decl_checks(
     for node in nodes {
         match &node.content {
             TyAstNodeContent::Declaration(TyDecl::StructDecl(struct_decl)) => {
+                // the diagnostics type is controlled by the "root" struct. This means that
+                // a struct with require = "yes", will generate errors, even if a field
+                // is another type with require = "no".
+                let id = struct_decl.decl_id;
+                let struct_decl = type_check_ctx.engines.de().get(&id);
+                let diag_type = has_require_att(&struct_decl.attributes)?;
+
                 decl_checks.extend(check_type(
                     type_check_ctx,
                     true,
                     type_check_ctx.engines.te().insert(
                         type_check_ctx.engines,
-                        TypeInfo::Struct(struct_decl.decl_id),
+                        TypeInfo::Struct(id),
                         None,
                     ),
                     None,
+                    diag_type,
                 ));
             }
             TyAstNodeContent::Declaration(TyDecl::AbiDecl(abi_decl)) => {
@@ -1212,7 +1251,10 @@ fn run_decl_checks(
                     if let TyTraitInterfaceItem::TraitFn(decl_ref) = item {
                         let decl = type_check_ctx.engines.de().get(decl_ref.id());
 
-                        if has_require_att(&decl.attributes) {
+                        // the diagnostics type of the abi function overwrite the attribute, if any,
+                        // of the type being checked.
+                        let diag_type = has_require_att(&decl.attributes)?;
+                        if matches!(diag_type, TrivialCheckDiagType::Error | TrivialCheckDiagType::Warning)  {
                             let types = decl
                                 .parameters
                                 .iter()
@@ -1230,6 +1272,7 @@ fn run_decl_checks(
                                     false,
                                     tid,
                                     Some(reason_being_checked),
+                                    diag_type,
                                 ));
                             }
                         }
@@ -1246,25 +1289,30 @@ fn run_decl_checks(
         .and_then(|x| x.span(type_check_ctx.engines).source_id().cloned())
         .map(|x| x.program_id());
 
-    let errors = ir_generation::compile::run_ir_decl_checks(
+    let problems = ir_generation::compile::run_ir_decl_checks(
+        handler,
         type_check_ctx.engines,
         ir_ctx,
         md_mgr,
         module,
         &decl_checks,
         workspace_pid,
-    )
-    .map(|errors| {
-        errors
-            .into_iter()
-            .map(CompileError::TrivialCheckFailed)
-            .collect()
-    })
-    .unwrap_or_else(|err| vec![err]);
+    )?;
 
-    for err in errors {
-        handler.emit_err(err);
+    for err in problems {
+        match err.diag {
+            TrivialCheckDiagType::Nothing => {},
+            TrivialCheckDiagType::Error => { handler.emit_err(CompileError::TrivialCheckFailed(err)); },
+            TrivialCheckDiagType::Warning => {
+                handler.emit_warn(CompileWarning { 
+                    span: Span::dummy(),
+                    warning_content: Warning::TrivialCheckFailed(err)
+                });
+            },
+        };
     }
+
+    Ok(())
 }
 
 #[allow(clippy::too_many_arguments)]
