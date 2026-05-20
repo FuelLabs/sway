@@ -1,0 +1,59 @@
+name: Run Command on Comment
+
+on:
+  issue_comment:
+    types:
+      - created
+
+jobs:
+  process_comment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if the comment contains the run command
+        id: check_comment
+        run: |
+          commands=echo '${{ github.event.comment.body }}' | grep -oPz '```run_this\n(just .*\n)*```\n' | 
+      - uses: actions/checkout@v3
+        if: steps.check_comment.outputs.commands != ''
+      - name: Install toolchain
+        if: steps.check_comment.outputs.commands != ''
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
+        if: steps.check_comment.outputs.commands != ''
+        with:
+          cache-provider: "warpbuild"
+      - name: Install just
+        if: steps.check_comment.outputs.commands != ''
+        run: cargo install just
+      - name: Execute the commands
+        if: steps.check_comment.outputs.commands != ''
+        id: execute_commands
+        run: |
+          echo "${{ steps.check_comment.outputs.commands }}" | while read line; do
+              echo "[$line]"
+              if [ "$line" = "\`\`\`run_this" ]; then
+                  OUTPUT=""
+              elif [[ "$line" = "\`\`\`" ]]; then
+                  echo "Results:"
+                  echo "\`\`\`" 
+                  echo "$OUTPUT"
+                  echo "\`\`\`" 
+              else
+                  NEWOUTPUT=$(bash -c "$line" 2>&1) 
+                  OUTPUT="$OUTPUT $NEWOUTPUT"
+              fi
+          done
+      - name: Create commit comment
+        if: steps.check_comment.outputs.commands != ''
+        uses: peter-evans/commit-comment@v4
+        with:
+          body: |
+            Running:
+            ${{ steps.check_comment.outputs.commands }}
+            
+            Results:
+            ```
+            ${{ steps.execute_commands.outputs.OUTPUT }}
+            ```
