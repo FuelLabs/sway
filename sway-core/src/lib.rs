@@ -33,7 +33,7 @@ use crate::ir_generation::compile::CheckDecl;
 use crate::language::ty::{
     generate_is_decode_trivial_table, TyAstNodeContent, TyDecl, TyTraitInterfaceItem,
 };
-use crate::language::{CallPath, CallPathType, Literal};
+use crate::language::{CallPath, CallPathType};
 use crate::query_engine::ModuleCacheEntry;
 use crate::semantic_analysis::namespace::ResolvedDeclaration;
 use crate::semantic_analysis::type_resolve::{resolve_call_path, VisibilityCheck};
@@ -79,7 +79,7 @@ use types::{CollectTypesMetadata, CollectTypesMetadataContext, LogId, TypeMetada
 pub use semantic_analysis::namespace::{self, Namespace};
 pub mod types;
 
-use sway_error::error::{CompileError, TrivialCheckDiagType, TrivialCheckFailedData};
+use sway_error::error::{CompileError, TrivialCheckDiagType};
 use sway_types::{ident::Ident, span, Spanned};
 pub use type_system::*;
 
@@ -1127,7 +1127,7 @@ fn run_decl_checks(
                                         expected_values: vec!["yes", "no", "as_warning"],
                                     };
                                     return Err(handler.emit_err(err.into()));
-                                },
+                                }
                                 None => unreachable!(),
                             }
                         } else {
@@ -1152,7 +1152,10 @@ fn run_decl_checks(
 
                 let check = matches!(
                     (is_decl, has_require_att(&struct_decl.attributes)),
-                    (true, Ok(TrivialCheckDiagType::Error | TrivialCheckDiagType::Warning)) | (false, _)
+                    (
+                        true,
+                        Ok(TrivialCheckDiagType::Error | TrivialCheckDiagType::Warning)
+                    ) | (false, _)
                 );
 
                 if check {
@@ -1171,7 +1174,10 @@ fn run_decl_checks(
 
                 let check = matches!(
                     (is_decl, has_require_att(&enum_decl.attributes)),
-                    (true, Ok(TrivialCheckDiagType::Error | TrivialCheckDiagType::Warning)) | (false, _)
+                    (
+                        true,
+                        Ok(TrivialCheckDiagType::Error | TrivialCheckDiagType::Warning)
+                    ) | (false, _)
                 );
 
                 if check {
@@ -1254,7 +1260,10 @@ fn run_decl_checks(
                         // the diagnostics type of the abi function overwrite the attribute, if any,
                         // of the type being checked.
                         let diag_type = has_require_att(&decl.attributes)?;
-                        if matches!(diag_type, TrivialCheckDiagType::Error | TrivialCheckDiagType::Warning)  {
+                        if matches!(
+                            diag_type,
+                            TrivialCheckDiagType::Error | TrivialCheckDiagType::Warning
+                        ) {
                             let types = decl
                                 .parameters
                                 .iter()
@@ -1301,14 +1310,16 @@ fn run_decl_checks(
 
     for err in problems {
         match err.diag {
-            TrivialCheckDiagType::Nothing => {},
-            TrivialCheckDiagType::Error => { handler.emit_err(CompileError::TrivialCheckFailed(err)); },
+            TrivialCheckDiagType::Nothing => {}
+            TrivialCheckDiagType::Error => {
+                handler.emit_err(CompileError::TrivialCheckFailed(err));
+            }
             TrivialCheckDiagType::Warning => {
-                handler.emit_warn(CompileWarning { 
+                handler.emit_warn(CompileWarning {
                     span: Span::dummy(),
-                    warning_content: Warning::TrivialCheckFailed(err)
+                    warning_content: Warning::TrivialCheckFailed(err),
                 });
-            },
+            }
         };
     }
 

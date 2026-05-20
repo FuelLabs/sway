@@ -609,7 +609,7 @@ impl CheckDecl {
             CheckDecl::Ref { tid, .. } | CheckDecl::Decl { tid, .. } => *tid,
         }
     }
-    
+
     fn diag_type(&self) -> TrivialCheckDiagType {
         match self {
             CheckDecl::Ref { diag, .. } | CheckDecl::Decl { diag, .. } => *diag,
@@ -833,7 +833,7 @@ fn push_help_if_non_trivially_decodable_type(
                     "Consider changing this type to `TrivialBool`.".to_string(),
                 ));
                 error.never_trivial.insert("bool".to_string());
-                 error.problems_qty += 1;
+                error.problems_qty += 1;
             }
             TypeInfo::UnsignedInteger(IntegerBits::Sixteen) => {
                 error.helps.push((

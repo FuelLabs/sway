@@ -80,7 +80,7 @@ impl Literal {
             _ => None,
         }
     }
-    
+
     /// Friendly type name string of the [Literal] used for various reportings.
     pub fn friendly_type_name(&self) -> &'static str {
         use Literal::*;

@@ -1150,7 +1150,7 @@ pub enum CompileError {
 pub enum TrivialCheckDiagType {
     Nothing,
     Error,
-    Warning
+    Warning,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1169,16 +1169,14 @@ impl TrivialCheckFailedData {
     pub fn as_diagnostic(&self, se: &SourceEngine) -> Diagnostic {
         let mut hints = vec![];
         hints.extend(
-            self.infos.iter()
-            .map(|x| {
-                Hint::info(se, x.0.clone(), x.1.clone())
-            })
+            self.infos
+                .iter()
+                .map(|x| Hint::info(se, x.0.clone(), x.1.clone())),
         );
         hints.extend(
-            self.helps.iter()
-            .map(|x| {
-                Hint::help(se, x.0.clone(), x.1.clone())
-            })
+            self.helps
+                .iter()
+                .map(|x| Hint::help(se, x.0.clone(), x.1.clone())),
         );
 
         let mut bottom_helps: Vec<String> = self.bottom_helps.iter().cloned().collect::<_>();
@@ -1189,7 +1187,7 @@ impl TrivialCheckFailedData {
             for (idx, t) in self.never_trivial.iter().enumerate() {
                 never_trivial_help.push('`');
                 never_trivial_help.push_str(t.as_str());
-                                        never_trivial_help.push('`');
+                never_trivial_help.push('`');
 
                 if idx < len - 1 {
                     never_trivial_help.push_str(", ");
@@ -1210,17 +1208,18 @@ impl TrivialCheckFailedData {
         );
 
         if matches!(self.can_be_made_trivial, Some(true)) {
-            hints.push(
-                Hint::help(
-                    se,
-                    self.span.clone(),
-                "Consider the suggestions below to make this type trivially decodable.".to_string()
-                )
-            );
+            hints.push(Hint::help(
+                se,
+                self.span.clone(),
+                "Consider the suggestions below to make this type trivially decodable.".to_string(),
+            ));
         }
 
         Diagnostic {
-            reason: Some(Reason::new(Code::semantic_analysis(1), "Type is not trivially decodable".to_string())),
+            reason: Some(Reason::new(
+                Code::semantic_analysis(1),
+                "Type is not trivially decodable".to_string(),
+            )),
             issue: match self.diag {
                 TrivialCheckDiagType::Nothing => unreachable!(),
                 TrivialCheckDiagType::Error => Issue::error(
@@ -3485,9 +3484,7 @@ impl ToDiagnostic for CompileError {
                 hints: vec![],
                 help: vec![],
             },
-            TrivialCheckFailed(data @ TrivialCheckFailedData { span, can_be_made_trivial, infos, helps, never_trivial, bottom_helps, .. }) => {
-                data.as_diagnostic(source_engine)
-            }
+            TrivialCheckFailed(data) => data.as_diagnostic(source_engine),
             _ => Diagnostic {
                     // TODO: Temporarily we use `self` here to achieve backward compatibility.
                     //       In general, `self` must not be used. All the values for the formatting

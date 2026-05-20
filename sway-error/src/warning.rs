@@ -1,7 +1,10 @@
 use crate::{
-    diagnostic::{Code, Diagnostic, Hint, Issue, Reason, ToDiagnostic}, error::TrivialCheckFailedData, formatting::{
-        Enclosing, Indent, did_you_mean_help, first_line, num_to_str, sequence_to_list, sequence_to_str
-    }
+    diagnostic::{Code, Diagnostic, Hint, Issue, Reason, ToDiagnostic},
+    error::TrivialCheckFailedData,
+    formatting::{
+        did_you_mean_help, first_line, num_to_str, sequence_to_list, sequence_to_str, Enclosing,
+        Indent,
+    },
 };
 
 use core::fmt;
@@ -329,7 +332,6 @@ impl fmt::Display for Warning {
                     }
                 ),
             TrivialCheckFailed(_) => {
-                todo!();
                 write!(f, "Trivial Check failed")
             },
         }

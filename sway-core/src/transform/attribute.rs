@@ -532,9 +532,7 @@ impl Attribute {
             AbiName => MustBeIn(vec![ABI_NAME_NAME_ARG_NAME]),
             Event => None,
             Indexed => None,
-            Require => MustBeIn(vec![
-                REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE,
-            ]),
+            Require => MustBeIn(vec![REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE]),
         }
     }
 
