@@ -83,4 +83,4 @@ Available recipes:
 
 We welcome contributions to Sway!
 
-Please see the [Contributing To Sway](https://fuellabs.github.io/sway/master/book/reference/contributing_to_sway.html) section of the Sway book for guidelines and instructions to help you get started.
+Please see the [Contributing To Sway](https://docs.fuel.network/docs/sway/reference/contributing_to_sway/) section of the Sway book for guidelines and instructions to help you get started.
