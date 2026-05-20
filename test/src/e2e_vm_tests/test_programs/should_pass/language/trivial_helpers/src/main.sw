@@ -11,7 +11,7 @@ fn encode_decode(s: SomeEnum) -> SomeEnum {
     abi_decode::<TrivialEnum<SomeEnum>>(bytes).unwrap()
 }
 
-#[require(trivially_decodable = "true")]
+#[require(trivially_decodable = "yes")]
 struct MyStruct {
     a: TrivialBool,
     b: TrivialEnum<SomeEnum>,
