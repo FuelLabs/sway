@@ -61,7 +61,7 @@ fn resolve_length(
             let decl = match resolved_decl {
                 TyDecl::ConstGenericDecl(decl) => ConstGenericExprTyDecl::ConstGenericDecl(decl),
                 TyDecl::ConstantDecl(decl) => ConstGenericExprTyDecl::ConstantDecl(decl),
-                x => todo!("{x:?} {}", std::backtrace::Backtrace::force_capture()),
+                _ => return Err(handler.emit_err(CompileError::Internal("Invalid length", ident.span()))),
             };
 
             Ok(Length(ConstGenericExpr::AmbiguousVariableExpression {
