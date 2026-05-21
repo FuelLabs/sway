@@ -822,7 +822,6 @@ pub(crate) fn prepare_const_generics_materialization<'a>(
     if has_const_generic_parameters {
         for (a, b) in param_types.zip(args_types) {
             let Some(b) = b else {
-                dbg!();
                 continue;
             };
 

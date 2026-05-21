@@ -5311,7 +5311,7 @@ impl<'a> FnCompiler<'a> {
                 prefix_value,
                 index_value,
             ),
-            _ => todo!(),
+            _ => Err(CompileError::Internal("Expression is not indexeable", prefix_expr.span.clone())),
         }
     }
 
