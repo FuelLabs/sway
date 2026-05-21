@@ -653,8 +653,15 @@ pub fn run_ir_decl_checks(
         let type_info = engines.te().get(check.tid());
         let fullname = engines.help_out(type_info.as_ref()).to_string();
 
-        if is_decode_trivial_table.get(&fullname) == Some(&true) {
-            continue;
+        match is_decode_trivial_table.get(&fullname) {
+            Some(true) => continue,
+            Some(false) => {}
+            None => {
+                return Err(handler.emit_err(CompileError::Internal(
+                    "Missing type when evaluating encoding triviality",
+                    Span::dummy(),
+                )));
+            }
         }
 
         let type_decl_span = match type_info.as_ref() {
@@ -791,8 +798,15 @@ fn push_help_if_non_trivially_decodable_type(
                     let field_type_info = engines.te().get(field_tid);
                     let field_fullname = engines.help_out(field_tid).to_string();
 
-                    if *table.get(&field_fullname).unwrap() {
-                        continue;
+                    match table.get(&field_fullname) {
+                        Some(true) => continue,
+                        Some(false) => {}
+                        None => {
+                            return Err(handler.emit_err(CompileError::Internal(
+                                "Missing type when evaluating encoding triviality",
+                                Span::dummy(),
+                            )));
+                        }
                     }
 
                     error.problems_qty += 1;
@@ -818,8 +832,14 @@ fn push_help_if_non_trivially_decodable_type(
                 error.span = enum_decl.call_path.suffix.span().clone();
                 error.problems_qty += 1;
             }
-            x => {
-                todo!("{:?}", engines.help_out(x));
+            type_info => {
+                return Err(handler.emit_err(CompileError::InternalOwned(
+                    format!(
+                        "'{}' not supported. Only structs and enums",
+                        engines.help_out(type_info)
+                    ),
+                    Span::dummy(),
+                )));
             }
         }
     }
