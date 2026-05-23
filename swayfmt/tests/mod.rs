@@ -2114,6 +2114,52 @@ fn empty_if() {
 }
 
 #[test]
+fn empty_if_else_if() {
+    check(
+        indoc! {r#"
+        library;
+        fn test() {
+            if __size_of::<T>() == 0 {    } else if __is_reference_type::<T>() {
+                let i = 42;
+            }
+        }
+        "#},
+        indoc! {r#"
+        library;
+        fn test() {
+            if __size_of::<T>() == 0 {
+            } else if __is_reference_type::<T>() {
+                let i = 42;
+            }
+        }
+        "#},
+    );
+}
+
+#[test]
+fn empty_if_with_else() {
+    check(
+        indoc! {r#"
+        library;
+        fn test() {
+            if some_really_long_condition_name_here() == 0 {    } else {
+                let really_long_variable_name = some_really_long_function_name();
+            }
+        }
+        "#},
+        indoc! {r#"
+        library;
+        fn test() {
+            if some_really_long_condition_name_here() == 0 {
+            } else {
+                let really_long_variable_name = some_really_long_function_name();
+            }
+        }
+        "#},
+    );
+}
+
+#[test]
 fn bug_whitespace_added_after_comment() {
     check(
         indoc! {r#"
