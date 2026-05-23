@@ -159,7 +159,13 @@ fn format_then_block(
             formatter,
         )?;
         if !comments {
-            formatter.shape.block_unindent(&formatter.config);
+            if if_expr.else_opt.is_some()
+                && formatter.shape.code_line.line_style != LineStyle::Inline
+            {
+                writeln!(formatted_code)?;
+            } else {
+                formatter.shape.block_unindent(&formatter.config);
+            }
         }
     }
     if if_expr.else_opt.is_none() {
