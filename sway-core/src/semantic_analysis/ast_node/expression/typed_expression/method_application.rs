@@ -195,6 +195,30 @@ pub(crate) fn type_check_method_application(
         );
     }
 
+    // check for matching mutability of arguments
+    for (index, arg) in args_buf.iter().enumerate() {
+        let param_index = if method.is_contract_call {
+            if index == 0 {
+                continue;
+            }
+            index - 1
+        } else {
+            index
+        };
+        if let Some(param) = method.parameters.get(param_index) {
+            if param.is_self() {
+                continue;
+            }
+            let param_mutability =
+                ty::VariableMutability::new_from_ref_mut(param.is_reference, param.is_mutable);
+            if param_mutability.is_mutable() && arg.gather_mutability().is_immutable() {
+                handler.emit_err(CompileError::ImmutableArgumentToMutableParameter {
+                    span: arg.span.clone(),
+                });
+            }
+        }
+    }
+
     // check the method visibility
     if span.source_id() != method.span.source_id() && method.visibility.is_private() {
         return Err(handler.emit_err(CompileError::CallingPrivateLibraryMethod {
@@ -1043,3 +1067,4 @@ pub(crate) fn monomorphize_method(
 
     Ok(decl_ref)
 }
+

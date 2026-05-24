@@ -633,6 +633,9 @@ impl TyExpression {
     pub(crate) fn gather_mutability(&self) -> VariableMutability {
         match &self.expression {
             TyExpressionVariant::VariableExpression { mutability, .. } => *mutability,
+            TyExpressionVariant::ConstantExpression { .. } => VariableMutability::Immutable,
+            TyExpressionVariant::StructFieldAccess { prefix, .. }
+            | TyExpressionVariant::TupleElemAccess { prefix, .. } => prefix.gather_mutability(),
             _ => VariableMutability::Immutable,
         }
     }
