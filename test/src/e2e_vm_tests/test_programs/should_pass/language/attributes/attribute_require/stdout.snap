@@ -20,7 +20,7 @@ warning: Type is not trivially decodable
    |        --- help: Consider changing this type to `u64`.
    |
    = help: `u32` is never trivially decodable.
-   = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
+   = help: For more info see: https://fuellabs.github.io/sway/v0.71.1/book/advanced/trivial_encoding.html
 ____
 
 error: Type is not trivially decodable
@@ -66,7 +66,7 @@ error: Type is not trivially decodable
    |
    = help: Enums are represented as tagged unions and because of that they cannot be trivially decoded. But where needed, they can be wrapped by `TrivialEnum`, and their original value can be retrieved later with `unwrap`.
    = help: `bool`, `u16`, `u32` are never trivially decodable.
-   = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
+   = help: For more info see: https://fuellabs.github.io/sway/v0.71.1/book/advanced/trivial_encoding.html
 ____
 
 error: Type is not trivially decodable
@@ -89,7 +89,7 @@ error: Type is not trivially decodable
    |                     ---------------- info: This is the reason `NonTrivialStruct` is being checked
    |
    = help: `bool` is never trivially decodable.
-   = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
+   = help: For more info see: https://fuellabs.github.io/sway/v0.71.1/book/advanced/trivial_encoding.html
 ____
 
 error: Type is not trivially decodable
@@ -104,7 +104,7 @@ error: Type is not trivially decodable
    |                                          -------- help: Consider wrapping this type like `TrivialEnum<SomeEnum>`.
    |
    = help: Enums are represented as tagged unions and because of that they cannot be trivially decoded. But where needed, they can be wrapped by `TrivialEnum`, and their original value can be retrieved later with `unwrap`.
-   = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
+   = help: For more info see: https://fuellabs.github.io/sway/v0.71.1/book/advanced/trivial_encoding.html
 ____
 
 error: Type is not trivially decodable
@@ -119,7 +119,7 @@ error: Type is not trivially decodable
    |                                                       -------- help: Consider wrapping this type like `TrivialEnum<SomeEnum>`.
    |
    = help: Enums are represented as tagged unions and because of that they cannot be trivially decoded. But where needed, they can be wrapped by `TrivialEnum`, and their original value can be retrieved later with `unwrap`.
-   = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
+   = help: For more info see: https://fuellabs.github.io/sway/v0.71.1/book/advanced/trivial_encoding.html
 ____
 
 error: Type is not trivially decodable
@@ -131,7 +131,7 @@ error: Type is not trivially decodable
    |                     --- help: Consider changing this type to `u64`.
    |
    = help: `u32` is never trivially decodable.
-   = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
+   = help: For more info see: https://fuellabs.github.io/sway/v0.71.1/book/advanced/trivial_encoding.html
 ____
 
 error: Type is not trivially decodable
@@ -143,7 +143,7 @@ error: Type is not trivially decodable
    |                             --- help: Consider changing this type to `u64`.
    |
    = help: `u16` is never trivially decodable.
-   = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
+   = help: For more info see: https://fuellabs.github.io/sway/v0.71.1/book/advanced/trivial_encoding.html
 ____
 
 error: Type is not trivially decodable
@@ -155,7 +155,7 @@ error: Type is not trivially decodable
    |                                            ---- help: Consider changing this type to `TrivialBool`.
    |
    = help: `bool` is never trivially decodable.
-   = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
+   = help: For more info see: https://fuellabs.github.io/sway/v0.71.1/book/advanced/trivial_encoding.html
 ____
 
 error: Type is not trivially decodable
@@ -167,7 +167,7 @@ error: Type is not trivially decodable
    |                           ---- help: Consider changing this type to `TrivialBool`.
    |
    = help: `bool` is never trivially decodable.
-   = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
+   = help: For more info see: https://fuellabs.github.io/sway/v0.71.1/book/advanced/trivial_encoding.html
 ____
 
 error: Type is not trivially decodable
@@ -179,7 +179,7 @@ error: Type is not trivially decodable
    |                      ---- help: Consider changing this type to `TrivialBool`.
    |
    = help: `bool` is never trivially decodable.
-   = help: For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html
+   = help: For more info see: https://fuellabs.github.io/sway/v0.71.1/book/advanced/trivial_encoding.html
 ____
 
   Aborting due to 9 errors.
