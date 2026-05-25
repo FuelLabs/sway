@@ -1203,8 +1203,13 @@ impl TrivialCheckFailedData {
             bottom_helps.push(never_trivial_help);
         }
 
+        let major = env!("CARGO_PKG_VERSION_MAJOR");
+        let minor = env!("CARGO_PKG_VERSION_MINOR");
+        let patch = env!("CARGO_PKG_VERSION_PATCH");
         bottom_helps.push(
-            "For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html".to_string()
+            format!(
+                "For more info see: https://fuellabs.github.io/sway/v{major}.{minor}.{patch}/book/advanced/trivial_encoding.html",
+            )
         );
 
         if matches!(self.can_be_made_trivial, Some(true)) {
