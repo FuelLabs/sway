@@ -24,7 +24,6 @@ futures.workspace = true
 git2 = { workspace = true, features = ["vendored-libgit2", "vendored-openssl"] }
 gix-url = { workspace = true, features = ["serde"] }
 hex.workspace = true
-ipfs-api-backend-hyper = { workspace = true, features = ["with-builder", "with-send-sync"] }
 once_cell.workspace = true
 petgraph = { workspace = true, features = ["serde-1"] }
 reqwest.workspace = true
@@ -45,6 +44,7 @@ toml = { workspace = true, features = ["parse"] }
 toml_edit.workspace = true
 tracing.workspace = true
 url = { workspace = true, features = ["serde"] }
+urlencoding.workspace = true
 vec1.workspace = true
 walkdir.workspace = true
 

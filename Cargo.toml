@@ -162,7 +162,6 @@ include_dir = "0.7"
 indexmap = "2.5"
 indoc = "2.0"
 insta = "1.40"
-ipfs-api-backend-hyper = "0.6"
 itertools = "0.13"
 lazy_static = "1.4"
 libc = "0.2"
@@ -243,8 +242,3 @@ vte = "0.13"
 walkdir = "2.3"
 whoami = "1.5"
 wiremock = "0.6"
-
-# core2 was yanked (RUSTSEC-2026-0105); multihash 0.17 and older cid releases still require it.
-# Unblocks release `cargo update` between crate publishes and fresh dependency resolution.
-[patch.crates-io]
-core2 = { git = "https://github.com/bbqsrc/core2", rev = "545e84bcb0f235b12e21351e0c69767958efe2a7" }

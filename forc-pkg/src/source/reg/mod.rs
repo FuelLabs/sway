@@ -6,7 +6,7 @@ use crate::{
     manifest::{self, GenericManifestFile, PackageManifestFile},
     source::{
         self,
-        ipfs::{ipfs_client, Cid},
+        ipfs::Cid,
     },
 };
 use anyhow::{anyhow, bail, Context};
@@ -499,7 +499,7 @@ async fn fetch(fetch_id: u64, pinned: &Pinned, ipfs_node: &IPFSNode) -> anyhow::
             let ipfs_result = match ipfs_node {
                 IPFSNode::Local => {
                     println_action_green("Fetching", "with local IPFS node");
-                    cid.fetch_with_client(&ipfs_client(), &path).await
+                    cid.fetch_with_local_node(&path).await
                 }
                 IPFSNode::WithUrl(gateway_url) => {
                     println_action_green(

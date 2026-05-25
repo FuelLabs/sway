@@ -3,12 +3,9 @@ use crate::{
     manifest::{self, PackageManifestFile},
     source,
 };
-use anyhow::Result;
+use anyhow::{Context, Result};
 use flate2::read::GzDecoder;
 use forc_tracing::println_action_green;
-use futures::TryStreamExt;
-use ipfs_api::IpfsApi;
-use ipfs_api_backend_hyper as ipfs_api;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     fmt,
@@ -19,9 +16,6 @@ use tar::Archive;
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Cid(pub(crate) cid::Cid);
-
-/// A client that can interact with local ipfs daemon.
-pub type IpfsClient = ipfs_api::IpfsClient;
 
 /// Package source at a specific content address.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
@@ -37,6 +31,7 @@ impl Pinned {
 
 const IPFS_DIR_NAME: &str = "ipfs";
 const IPFS_CACHE_DIR_NAME: &str = "cache";
+const DEFAULT_LOCAL_IPFS_API: &str = "http://127.0.0.1:5001";
 
 impl FromStr for Cid {
     type Err = <cid::Cid as FromStr>::Err;
@@ -76,18 +71,17 @@ impl source::Fetch for Pinned {
             if !repo_path.exists() {
                 println_action_green(
                     "Fetching",
-                    &format!("{} {}", ansiterm::Style::new().bold().paint(ctx.name), self),
+                    &format!("{} {}", ansiterm::Style::new().bold().paint(ctx.name()), self),
                 );
                 let cid = self.0.clone();
                 let ipfs_node = ctx.ipfs_node().clone();
-                let ipfs_client = ipfs_client();
                 let dest = cache_dir();
 
                 crate::source::reg::block_on_any_runtime(async move {
                     match ipfs_node {
                         source::IPFSNode::Local => {
                             println_action_green("Fetching", "with local IPFS node");
-                            cid.fetch_with_client(&ipfs_client, &dest).await
+                            cid.fetch_with_local_node(&dest).await
                         }
                         source::IPFSNode::WithUrl(ipfs_node_gateway_url) => {
                             println_action_green(
@@ -150,21 +144,36 @@ impl Cid {
 
         Ok(())
     }
-    /// Using local node, fetches the content described by this cid.
-    pub(crate) async fn fetch_with_client(
-        &self,
-        ipfs_client: &IpfsClient,
-        dst: &Path,
-    ) -> Result<()> {
+
+    /// Using a local IPFS node, fetches the content described by this cid.
+    pub(crate) async fn fetch_with_local_node(&self, dst: &Path) -> Result<()> {
         let cid_path = format!("/ipfs/{}", self.0);
+        let api_base = local_ipfs_api_base_url();
+        let url = format!(
+            "{}/api/v0/cat?arg={}",
+            api_base.trim_end_matches('/'),
+            urlencoding::encode(&cid_path)
+        );
+
+        let client = reqwest::Client::new();
+        let response = client
+            .get(&url)
+            .send()
+            .await
+            .with_context(|| format!("failed to request IPFS content from {url}"))?;
+        if !response.status().is_success() {
+            anyhow::bail!(
+                "IPFS API request to {url} failed with status {}",
+                response.status()
+            );
+        }
+
+        let bytes = response
+            .bytes()
+            .await
+            .context("failed to read IPFS API response body")?;
         // Since we are fetching packages as a folder, they are returned as a tar archive.
-        let bytes = ipfs_client
-            .get(&cid_path)
-            .map_ok(|chunk| chunk.to_vec())
-            .try_concat()
-            .await?;
-        // After collecting bytes of the archive, we unpack it to the dst.
-        self.extract_archive(bytes.as_slice(), dst)?;
+        self.extract_archive(bytes.as_ref(), dst)?;
         Ok(())
     }
 
@@ -186,6 +195,35 @@ impl Cid {
         // After collecting and decoding bytes of the archive, we unpack it to the dst.
         self.extract_archive(tar, dst)?;
         Ok(())
+    }
+}
+
+/// Returns the local IPFS HTTP API base URL, matching `IpfsClient::default()` behavior.
+fn local_ipfs_api_base_url() -> String {
+    read_ipfs_api_base_url_from_config().unwrap_or_else(|| DEFAULT_LOCAL_IPFS_API.to_string())
+}
+
+fn read_ipfs_api_base_url_from_config() -> Option<String> {
+    let home = std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE"))?;
+    let api_path = Path::new(&home).join(".ipfs").join("api");
+    let contents = std::fs::read_to_string(api_path).ok()?;
+    parse_ipfs_api_multiaddr(contents.trim())
+}
+
+fn parse_ipfs_api_multiaddr(addr: &str) -> Option<String> {
+    let parts: Vec<&str> = addr.split('/').filter(|part| !part.is_empty()).collect();
+    if parts.len() < 4 {
+        return None;
+    }
+
+    let (protocol, host, transport, port) = (parts[0], parts[1], parts[2], parts[3]);
+    if transport != "tcp" {
+        return None;
+    }
+
+    match protocol {
+        "ip4" | "ip6" | "dns4" | "dns6" => Some(format!("http://{host}:{port}")),
+        _ => None,
     }
 }
 
@@ -243,10 +281,6 @@ fn pkg_cache_dir(cid: &Cid) -> PathBuf {
     cache_dir().join(format!("{}", cid.0))
 }
 
-/// Returns a `IpfsClient` instance ready to be used to make requests to local ipfs node.
-pub(crate) fn ipfs_client() -> IpfsClient {
-    IpfsClient::default()
-}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -348,6 +382,19 @@ mod tests {
         assert_eq!(parsed, expected);
         let serialized = expected.to_string();
         assert_eq!(&serialized, string);
+    }
+
+    #[test]
+    fn test_parse_ipfs_api_multiaddr() {
+        assert_eq!(
+            parse_ipfs_api_multiaddr("/ip4/127.0.0.1/tcp/5001").as_deref(),
+            Some("http://127.0.0.1:5001")
+        );
+        assert_eq!(
+            parse_ipfs_api_multiaddr("/dns4/localhost/tcp/5001").as_deref(),
+            Some("http://localhost:5001")
+        );
+        assert!(parse_ipfs_api_multiaddr("/unix/path").is_none());
     }
 
     #[test]
