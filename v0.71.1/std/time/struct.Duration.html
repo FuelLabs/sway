@@ -1,0 +1,365 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="swaydoc"><meta name="description" content="API documentation for the Sway `Duration` struct in `time`."><meta name="keywords" content="sway, swaylang, sway-lang, Duration"><link rel="icon" href="../../static.files/sway-logo.svg"><title>Duration in time - Sway</title><link rel="stylesheet" type="text/css" href="../../static.files/normalize.css"><link rel="stylesheet" type="text/css" href="../../static.files/swaydoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../static.files/ayu.css"><link rel="stylesheet" href="../../static.files/ayu.min.css"></head><body class="swaydoc struct"><nav class="sidebar"><a class="sidebar-logo" href="../../std/index.html"><div class="logo-container"><img class="sway-logo" src="../../static.files/sway-logo.svg" alt="logo"></div></a><h2 class="location">Struct Duration</h2><div class="sidebar-elems"><section><h3><a href="#fields">Fields</a></h3><ul class="block method"><li><a href="#structfield.seconds">seconds</a></li></ul></section><section><h3><a href="#methods">Methods</a></h3><ul class="block method"><li><a href="#method.seconds">seconds</a></li><li><a href="#method.minutes">minutes</a></li><li><a href="#method.hours">hours</a></li><li><a href="#method.days">days</a></li><li><a href="#method.weeks">weeks</a></li><li><a href="#method.as_seconds">as_seconds</a></li><li><a href="#method.as_minutes">as_minutes</a></li><li><a href="#method.as_hours">as_hours</a></li><li><a href="#method.as_days">as_days</a></li><li><a href="#method.as_weeks">as_weeks</a></li><li><a href="#method.is_zero">is_zero</a></li></ul></section><section><h3><a href="#trait-implementations">Trait Implementations</a></h3><ul class="block method"><li><a href="#impl-AbiEncode">AbiEncode</a></li><li><a href="#impl-AbiDecode">AbiDecode</a></li><li><a href="#impl-Add">Add</a></li><li><a href="#impl-Subtract">Subtract</a></li><li><a href="#impl-PartialEq">PartialEq</a></li><li><a href="#impl-Eq">Eq</a></li><li><a href="#impl-Ord">Ord</a></li><li><a href="#impl-OrdEq">OrdEq</a></li><li><a href="#impl-Hash">Hash</a></li><li><a href="#impl-From&lt;u64&gt;">From&lt;u64&gt;</a></li><li><a href="#impl-Into&lt;u64&gt;">Into&lt;u64&gt;</a></li></ul></section></div></nav><main><div class="width-limiter"><script src="../../search.js" type="text/javascript"></script><script>function onSearchFormSubmit(event){event.preventDefault();const searchQuery=document.getElementById("search-input").value;const url=new URL(window.location.href);if(searchQuery){url.searchParams.set('search',searchQuery);}else{url.searchParams.delete('search');}history.pushState({search:searchQuery},"",url);window.dispatchEvent(new HashChangeEvent("hashchange"));}document.addEventListener('DOMContentLoaded',()=>{const searchbar=document.getElementById("search-input");const searchForm=document.getElementById("search-form");searchbar.addEventListener("keyup",function(event){onSearchFormSubmit(event);});searchbar.addEventListener("search",function(event){onSearchFormSubmit(event);});function onQueryParamsChange(){const searchParams=new URLSearchParams(window.location.search);const query=searchParams.get("search");const searchSection=document.getElementById('search');const mainSection=document.getElementById('main-content');const searchInput=document.getElementById('search-input');if(query){searchInput.value=query;const results=Object.values(SEARCH_INDEX).flat().filter(item=>{const lowerQuery=query.toLowerCase();return item.name.toLowerCase().includes(lowerQuery);});const header=`<h1>Results for ${query}</h1>`;if(results.length>0){const resultList=results.map(item=>{const formattedName=`<span class="type ${item.type_name}">${item.name}</span>`;const name=item.type_name==="module"?[...item.module_info.slice(0,-1),formattedName].join("::"):[...item.module_info,formattedName].join("::");const path=["../..",...item.module_info,item.html_filename].join("/");const left=`<td><span>${name}</span></td>`;const right=`<td><p>${item.preview}</p></td>`;return`<tr onclick="window.location='${path}';">${left}${right}</tr>`;}).join('');searchSection.innerHTML=`${header}<table>${resultList}</table>`;}else{searchSection.innerHTML=`${header}<p>No results found.</p>`;}searchSection.setAttribute("class","search-results");mainSection.setAttribute("class","content hidden");}else{searchSection.setAttribute("class","search-results hidden");mainSection.setAttribute("class","content");}}window.addEventListener('hashchange',onQueryParamsChange);onQueryParamsChange();});</script><nav class="sub"><form id="search-form" class="search-form" onsubmit="onSearchFormSubmit(event)"><div class="search-container"><input id="search-input" class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Search the docs..." type="search"></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1 class="fqn"><span class="in-band">Struct <a class="mod" href="../index.html">std</a><span>::</span><a class="mod" href="index.html">time</a><span>::</span><a class="struct" href="#">Duration</a></span></h1></div><div class="docblock item-decl"><pre class="sway struct"><code>pub struct Duration {
+    /// The underlying seconds of the duration.
+    seconds: u64,
+}</code></pre></div><details class="swaydoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>A duration of time.</p>
+</div></details><h2 id="fields" class="fields small-section-header">Fields<a class="anchor" href="#fields"></a></h2><span id="structfield.seconds" class="structfield small-section-header"><a class="anchor field" href="#structfield.seconds"></a><code>seconds: u64</code></span><div class="docblock"><p>The underlying seconds of the duration.</p>
+</div><h2 id="methods" class="small-section-header">Implementations<a href="#methods" class="anchor"></a></h2><div id="methods-list"><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-Duration" class="impl has-srclink"><a href="#impl-Duration" class="anchor"></a><h3 class="code-header in-band">impl Duration</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="const.ZERO" class="const trait-impl"><a href="#const.ZERO" class="anchor"></a><h4 class="code-header">pub const ZERO: Self = Self { seconds: 0 }</h4></div></summary><div class="docblock"><p>A duration of 0 seconds.</p>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::time::Duration;
+
+fn foo() {
+    let zero_seconds = Duration::ZERO;
+    assert(zero_seconds.as_seconds() == 0u64);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="const.MAX" class="const trait-impl"><a href="#const.MAX" class="anchor"></a><h4 class="code-header">pub const MAX: Self = Self {
+        seconds: u64::max(),
+    }</h4></div></summary><div class="docblock"><p>The maximum duration.</p>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::time::Duration;
+
+fn foo() {
+    let max_duration = Duration::MAX;
+    assert(max_duration.as_seconds() == u64::MAX);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="const.MIN" class="const trait-impl"><a href="#const.MIN" class="anchor"></a><h4 class="code-header">pub const MIN: Self = Self {
+        seconds: u64::min(),
+    }</h4></div></summary><div class="docblock"><p>The minimum duration.</p>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::time::Duration;
+
+fn foo() {
+    let min_duration = Duration::MIN;
+    assert(min_duration.as_seconds() == u64::MIN);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="const.SECOND" class="const trait-impl"><a href="#const.SECOND" class="anchor"></a><h4 class="code-header">pub const SECOND: Self = Self { seconds: 1 }</h4></div></summary><div class="docblock"><p>One second of duration.</p>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::time::Duration;
+
+fn foo() {
+    let 1_second = Duration::SECOND;
+    assert(1_second.as_seconds() == 1);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="const.MINUTE" class="const trait-impl"><a href="#const.MINUTE" class="anchor"></a><h4 class="code-header">pub const MINUTE: Self = Self { seconds: 60 }</h4></div></summary><div class="docblock"><p>One minute of duration.</p>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::time::MINUTE;
+
+ fn foo() {
+    let 1_minute = Duration::MINUTE;
+    assert(1_minute.as_minutes() == 1);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="const.HOUR" class="const trait-impl"><a href="#const.HOUR" class="anchor"></a><h4 class="code-header">pub const HOUR: Self = Self { seconds: 3_600 }</h4></div></summary><div class="docblock"><p>One hour of duration.</p>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::time::Duration;
+
+fn foo() {
+    let 1_hour = Duration::HOUR;
+    assert(1_hour.as_hours() == 1);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="const.DAY" class="const trait-impl"><a href="#const.DAY" class="anchor"></a><h4 class="code-header">pub const DAY: Self = Self {
+        seconds: 86_400,
+    }</h4></div></summary><div class="docblock"><p>One day of duration.</p>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::time::Duration;
+
+fn foo() {
+    let 1_day = Duration::DAY;
+    assert(1_day.as_days() == 1);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="const.WEEK" class="const trait-impl"><a href="#const.WEEK" class="anchor"></a><h4 class="code-header">pub const WEEK: Self = Self {
+        seconds: 604_800,
+    }</h4></div></summary><div class="docblock"><p>1 week of duration.</p>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::time::Duration;
+
+fn foo() {
+    let 1_week = Duration::WEEK;
+    assert(1_week.as_weeks() == 1);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.seconds" class="method trait-impl"><a href="#method.seconds" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.seconds">seconds</a>(seconds: u64) -&gt; Self</h4></div></summary><div class="docblock"><p>Creates a new <code>Duration</code> from a number of seconds.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>seconds</code>: [u64] - The number of seconds from which to create a duration.</li>
+</ul>
+<h1>Returns</h1>
+<ul>
+<li>[Duration] - A new <code>Duration</code> with the specified number of seconds.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::time::Duration;
+
+fn foo() {
+    let 30_seconds = Duration::seconds(30);
+    assert(30_seconds.as_seconds() == 30);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.minutes" class="method trait-impl"><a href="#method.minutes" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.minutes">minutes</a>(minutes: u64) -&gt; Self</h4></div></summary><div class="docblock"><p>Creates a new <code>Duration</code> from a number of minutes.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>minutes</code>: [u64] - The number of minutes from which to create a duration.</li>
+</ul>
+<h1>Returns</h1>
+<ul>
+<li>[Duration] - A new <code>Duration</code> with the specified number of minutes.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::time::Duration;
+
+fn foo() {
+    let 30_minutes = Duration::minutes(30);
+    assert(30_minutes.as_minutes() == 30);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.hours" class="method trait-impl"><a href="#method.hours" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.hours">hours</a>(hours: u64) -&gt; Self</h4></div></summary><div class="docblock"><p>Creates a new <code>Duration</code> from a number of hours.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>hours</code>: [u64] - The number of hours from which to create a duration.</li>
+</ul>
+<h1>Returns</h1>
+<ul>
+<li>[Duration] - A new <code>Duration</code> with the specified number of hours.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::time::Duration;
+
+fn foo() {
+    let 30_hours = Duration::hours(30);
+    assert(30_hours.as_hours() == 30);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.days" class="method trait-impl"><a href="#method.days" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.days">days</a>(days: u64) -&gt; Self</h4></div></summary><div class="docblock"><p>Creates a new <code>Duration</code> from a number of days.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>days</code>: [u64] - The number of days from which to create a duration.</li>
+</ul>
+<h1>Returns</h1>
+<ul>
+<li>[Duration] - A new <code>Duration</code> with the specified number of days.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::time::Duration;
+
+fn foo() {
+    let 30_days = Duration::days(30);
+    assert(30_days.as_days() == 30);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.weeks" class="method trait-impl"><a href="#method.weeks" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.weeks">weeks</a>(weeks: u64) -&gt; Self</h4></div></summary><div class="docblock"><p>Creates a new <code>Duration</code> from a number of weeks.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>weeks</code>: [u64] - The number of weeks from which to create a duration.</li>
+</ul>
+<h1>Returns</h1>
+<ul>
+<li>[Duration] - A new <code>Duration</code> with the specified number of weeks.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::time::Duration;
+
+fn foo() {
+    let 30_weeks = Duration::weeks(30);
+    assert(30_weeks.as_weeks() == 30);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.as_seconds" class="method trait-impl"><a href="#method.as_seconds" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.as_seconds">as_seconds</a>(self) -&gt; u64</h4></div></summary><div class="docblock"><p>Returns the number of seconds in a <code>Duration</code>.</p>
+<h1>Returns</h1>
+<ul>
+<li>[u64] - The number of seconds in a <code>Duration</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::time::Duration;
+
+use fn foo() {
+    let 2_minutes = Duration::minutes(2);
+    let result_seconds = 2_minutes.as_seconds();
+    assert(result_seconds == 120);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.as_minutes" class="method trait-impl"><a href="#method.as_minutes" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.as_minutes">as_minutes</a>(self) -&gt; u64</h4></div></summary><div class="docblock"><p>Returns the number of minutes in a <code>Duration</code>.</p>
+<h1>Additional Information</h1>
+<p><strong>Warning</strong> If the duration is not perfectly divisible by a minute, a rounded value is returned.</p>
+<h1>Returns</h1>
+<ul>
+<li>[u64] - The number of minutes in a <code>Duration</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::time::Duration;
+
+use fn foo() {
+    let 2_hours = Duration::hours(2);
+    let result_minutes = 2_hours.as_minutes();
+    assert(result_minutes == 120);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.as_hours" class="method trait-impl"><a href="#method.as_hours" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.as_hours">as_hours</a>(self) -&gt; u64</h4></div></summary><div class="docblock"><p>Returns the number of hours in a <code>Duration</code>.</p>
+<h1>Additional Information</h1>
+<p><strong>Warning</strong> If the duration is not perfectly divisible by an hour, a rounded value is returned.</p>
+<h1>Returns</h1>
+<ul>
+<li>[u64] - The number of hours in a <code>Duration</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::time::Duration;
+
+use fn foo() {
+    let 2_days = Duration::days(2);
+    let result_hours = 2_days.as_hours();
+    assert(result_hours == 48);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.as_days" class="method trait-impl"><a href="#method.as_days" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.as_days">as_days</a>(self) -&gt; u64</h4></div></summary><div class="docblock"><p>Returns the number of days in a <code>Duration</code>.</p>
+<h1>Additional Information</h1>
+<p><strong>Warning</strong> If the duration is not perfectly divisible by a day, a rounded value is returned.</p>
+<h1>Returns</h1>
+<ul>
+<li>[u64] - The number of days in a <code>Duration</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::time::Duration;
+
+use fn foo() {
+    let 2_weeks = Duration::weeks(2);
+    let result_days = 2_weeks.as_days();
+    assert(result_days == 14);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.as_weeks" class="method trait-impl"><a href="#method.as_weeks" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.as_weeks">as_weeks</a>(self) -&gt; u64</h4></div></summary><div class="docblock"><p>Returns the number of weeks in a <code>Duration</code>.</p>
+<h1>Additional Information</h1>
+<p><strong>Warning</strong> If the duration is not perfectly divisible by a week, a rounded value is returned.</p>
+<h1>Returns</h1>
+<ul>
+<li>[u64] - The number of weeks in a <code>Duration</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::time::Duration;
+
+use fn foo() {
+    let 2_weeks = Duration::weeks(2);
+    let result_weeks = 2_weeks.as_weeks();
+    assert(result_weeks == 2);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.is_zero" class="method trait-impl"><a href="#method.is_zero" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.is_zero">is_zero</a>(self) -&gt; bool</h4></div></summary><div class="docblock"><p>Returns whether the <code>Duration</code> is zero seconds.</p>
+<h1>Returns</h1>
+<ul>
+<li>[bool] - <code>true</code> if the <code>Duration</code> is zero, otherwise <code>false</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::time::Duration;
+
+fn foo() {
+    let zero_duration = Duration::ZERO;
+    assert(zero_duration.is_zero() == true);
+}
+</code></pre>
+</div></details></div></details></div><h2 id="trait-implementations" class="small-section-header">Trait Implementations<a href="#trait-implementations" class="anchor"></a></h2><div id="trait-implementations-list"><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-AbiEncode" class="impl has-srclink"><a href="#impl-AbiEncode" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../codec/trait.AbiEncode.html">AbiEncode</a> for Duration&lt;&gt;</h3></div></summary><div class="impl-items"><div id="method.abi_encode" class="method trait-impl"><a href="#method.abi_encode" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.abi_encode">abi_encode</a>(self, buffer: Buffer) -&gt; Buffer</h4></div><div id="method.is_encode_trivial" class="method trait-impl"><a href="#method.is_encode_trivial" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.is_encode_trivial">is_encode_trivial</a>() -&gt; bool</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-AbiDecode" class="impl has-srclink"><a href="#impl-AbiDecode" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../codec/trait.AbiDecode.html">AbiDecode</a> for Duration&lt;&gt;</h3></div></summary><div class="impl-items"><div id="method.abi_decode" class="method trait-impl"><a href="#method.abi_decode" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.abi_decode">abi_decode</a>(refmut buffer: BufferReader) -&gt; Self</h4></div><div id="method.is_decode_trivial" class="method trait-impl"><a href="#method.is_decode_trivial" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.is_decode_trivial">is_decode_trivial</a>() -&gt; bool</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-Add" class="impl has-srclink"><a href="#impl-Add" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../ops/trait.Add.html">Add</a> for Duration</h3></div></summary><div class="impl-items"><div id="method.add" class="method trait-impl"><a href="#method.add" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.add">add</a>(self, other: Self) -&gt; Self</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-Subtract" class="impl has-srclink"><a href="#impl-Subtract" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../ops/trait.Subtract.html">Subtract</a> for Duration</h3></div></summary><div class="impl-items"><div id="method.subtract" class="method trait-impl"><a href="#method.subtract" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.subtract">subtract</a>(self, other: Self) -&gt; Self</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-PartialEq" class="impl has-srclink"><a href="#impl-PartialEq" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../ops/trait.PartialEq.html">PartialEq</a> for Duration</h3></div></summary><div class="impl-items"><div id="method.eq" class="method trait-impl"><a href="#method.eq" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.eq">eq</a>(self, other: Self) -&gt; bool</h4></div><details class="swaydoc-toggle method-toggle" open><summary><div id="method.neq" class="method trait-impl"><a href="#method.neq" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.neq">neq</a>(self, other: Self) -&gt; bool</h4></div></summary><div class="docblock"><p>Evaluates if two values of the same type are not equal.</p>
+<h1>Additional Information</h1>
+<p>This function is inherited when <code>eq()</code> is implemented.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>other</code>: [Self] - The value of the same type.</li>
+</ul>
+<h1>Returns</h1>
+<ul>
+<li>[bool] - <code>true</code> if the two values are not equal, otherwise <code>false</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">struct MyStruct {
+    val: u64,
+}
+
+impl PartialEq for MyStruct {
+    fn eq(self, other: Self) -&gt; bool {
+         self.val == other.val
+    }
+}
+
+fn foo() {
+    let struct1 = MyStruct { val: 10 };
+    let struct2 = MyStruct { val: 2 };
+    let result = struct1 != struct2;
+    assert(result);
+}
+</code></pre>
+</div></details></div></details><div id="impl-Eq" class="impl has-srclink"><a href="#impl-Eq" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../ops/trait.Eq.html">Eq</a> for Duration</h3></div><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-Ord" class="impl has-srclink"><a href="#impl-Ord" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../ops/trait.Ord.html">Ord</a> for Duration</h3></div></summary><div class="impl-items"><div id="method.gt" class="method trait-impl"><a href="#method.gt" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.gt">gt</a>(self, other: Self) -&gt; bool</h4></div><div id="method.lt" class="method trait-impl"><a href="#method.lt" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.lt">lt</a>(self, other: Self) -&gt; bool</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-OrdEq" class="impl has-srclink"><a href="#impl-OrdEq" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../ops/trait.OrdEq.html">OrdEq</a> for Duration</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.ge" class="method trait-impl"><a href="#method.ge" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.ge">ge</a>(self, other: Self) -&gt; bool</h4></div></summary><div class="docblock"><p>Evaluates if one value of the same type is greater or equal to than another.</p>
+<h1>Additional Information</h1>
+<p>This trait requires that the <code>Ord</code> and <code>Eq</code> traits are implemented.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>other</code>: [Self] - The value of the same type.</li>
+</ul>
+<h1>Returns</h1>
+<ul>
+<li>[bool] - <code>true</code> if <code>self</code> is greater than or equal to <code>other</code>, otherwise <code>false</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">struct MyStruct {
+    val: u64,
+}
+
+impl Eq for MyStruct {
+    fn eq(self, other: Self) -&gt; bool {
+        self.val == other.val
+    }
+}
+
+impl Ord for MyStruct {
+    fn gt(self, other: Self) -&gt; bool {
+        self.val &gt; other.val
+    }
+}
+
+impl OrdEq for MyStruct {}
+
+fn foo() {
+    let struct1 = MyStruct { val: 10 };
+    let struct2 = MyStruct { val: 10 };
+    let result = struct1 &gt;= struct2;
+    assert(result);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.le" class="method trait-impl"><a href="#method.le" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.le">le</a>(self, other: Self) -&gt; bool</h4></div></summary><div class="docblock"><p>Evaluates if one value of the same type is less or equal to than another.</p>
+<h1>Additional Information</h1>
+<p>This trait requires that the <code>Ord</code> and <code>Eq</code> traits are implemented.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>other</code>: [Self] - The value of the same type.</li>
+</ul>
+<h1>Returns</h1>
+<ul>
+<li>[bool] - <code>true</code> if <code>self</code> is less than or equal to <code>other</code>, otherwise <code>false</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">struct MyStruct {
+    val: u64,
+}
+
+impl Eq for MyStruct {
+    fn eq(self, other: Self) -&gt; bool {
+        self.val == other.val
+    }
+}
+
+impl Ord for MyStruct {
+    fn lt(self, other: Self) -&gt; bool {
+        self.val &lt; other.val
+    }
+}
+
+impl OrdEq for MyStruct {}
+
+fn foo() {
+    let struct1 = MyStruct { val: 10 };
+    let struct2 = MyStruct { val: 10 };
+    let result = struct1 &lt;= struct2;
+    assert(result);
+}
+</code></pre>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-Hash" class="impl has-srclink"><a href="#impl-Hash" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../hash/trait.Hash.html">Hash</a> for Duration</h3></div></summary><div class="impl-items"><div id="method.hash" class="method trait-impl"><a href="#method.hash" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.hash">hash</a>(<br>    self,<br>    refmut state: Hasher,<br>)</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-From&lt;u64&gt;" class="impl has-srclink"><a href="#impl-From&lt;u64&gt;" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.From.html">From</a>&lt;u64&gt; for Duration</h3></div></summary><div class="impl-items"><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.from">from</a>(seconds: u64) -&gt; Self</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-Into&lt;u64&gt;" class="impl has-srclink"><a href="#impl-Into&lt;u64&gt;" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.Into.html">Into</a>&lt;u64&gt; for Duration</h3></div></summary><div class="impl-items"><div id="method.into" class="method trait-impl"><a href="#method.into" class="anchor"></a><h4 class="code-header">pub fn <a class="fnname" href="#method.into">into</a>(self) -&gt; u64</h4></div></div></details></div></section><section id="search" class="search-results"></section></div></main><script src="../../static.files/highlight.js"></script><script>hljs.highlightAll();</script></body></html>
