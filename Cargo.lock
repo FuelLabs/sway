@@ -913,13 +913,12 @@ dependencies = [
 
 [[package]]
 name = "cid"
-version = "0.11.1"
+version = "0.11.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3147d8272e8fa0ccd29ce51194dd98f79ddfb8191ba9e3409884e751798acf3a"
+checksum = "21a304f95f84d169a6f31c4d0a30d784643aaa0bbc9c1e449a2c23e963ec4971"
 dependencies = [
- "core2",
  "multibase",
- "multihash 0.19.3",
+ "multihash 0.19.5",
  "unsigned-varint 0.8.0",
 ]
 
@@ -1341,8 +1340,7 @@ checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
 [[package]]
 name = "core2"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b49ba7ef1ad6107f8824dbe97de947cbaac53c44e7f9756a1fba0d37c1eec505"
+source = "git+https://github.com/bbqsrc/core2?rev=545e84bcb0f235b12e21351e0c69767958efe2a7#545e84bcb0f235b12e21351e0c69767958efe2a7"
 dependencies = [
  "memchr",
 ]
@@ -2505,7 +2503,7 @@ checksum = "d9c4f5dac5e15c24eb999c26181a6ca40b39fe946cbe4c263c7209467bc83af2"
 
 [[package]]
 name = "forc"
-version = "0.71.1"
+version = "0.71.2"
 dependencies = [
  "annotate-snippets",
  "ansiterm",
@@ -2543,7 +2541,7 @@ dependencies = [
 
 [[package]]
 name = "forc-debug"
-version = "0.71.1"
+version = "0.71.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -2576,7 +2574,7 @@ dependencies = [
 
 [[package]]
 name = "forc-doc"
-version = "0.71.1"
+version = "0.71.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -2604,7 +2602,7 @@ dependencies = [
 
 [[package]]
 name = "forc-fmt"
-version = "0.71.1"
+version = "0.71.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -2622,7 +2620,7 @@ dependencies = [
 
 [[package]]
 name = "forc-lsp"
-version = "0.71.1"
+version = "0.71.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -2633,7 +2631,7 @@ dependencies = [
 
 [[package]]
 name = "forc-migrate"
-version = "0.71.1"
+version = "0.71.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -2654,7 +2652,7 @@ dependencies = [
 
 [[package]]
 name = "forc-pkg"
-version = "0.71.1"
+version = "0.71.2"
 dependencies = [
  "ansiterm",
  "anyhow",
@@ -2698,7 +2696,7 @@ dependencies = [
 
 [[package]]
 name = "forc-publish"
-version = "0.71.1"
+version = "0.71.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -2727,7 +2725,7 @@ dependencies = [
 
 [[package]]
 name = "forc-test"
-version = "0.71.1"
+version = "0.71.2"
 dependencies = [
  "anyhow",
  "forc-pkg",
@@ -2757,7 +2755,7 @@ dependencies = [
 
 [[package]]
 name = "forc-tx"
-version = "0.71.1"
+version = "0.71.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -2773,7 +2771,7 @@ dependencies = [
 
 [[package]]
 name = "forc-util"
-version = "0.71.1"
+version = "0.71.2"
 dependencies = [
  "annotate-snippets",
  "ansiterm",
@@ -4995,11 +4993,10 @@ dependencies = [
 
 [[package]]
 name = "multihash"
-version = "0.19.3"
+version = "0.19.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6b430e7953c29dd6a09afc29ff0bb69c6e306329ee6794700aee27b76a1aea8d"
+checksum = "577c63b00ad74d57e8c9aa870b5fccebf2fd64a308a5aee9f1bb88e4aea19447"
 dependencies = [
- "core2",
  "unsigned-varint 0.8.0",
 ]
 
@@ -7752,7 +7749,7 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
 name = "sway-ast"
-version = "0.71.1"
+version = "0.71.2"
 dependencies = [
  "extension-trait",
  "num-bigint",
@@ -7764,7 +7761,7 @@ dependencies = [
 
 [[package]]
 name = "sway-core"
-version = "0.71.1"
+version = "0.71.2"
 dependencies = [
  "clap",
  "dirs 5.0.1",
@@ -7812,7 +7809,7 @@ dependencies = [
 
 [[package]]
 name = "sway-error"
-version = "0.71.1"
+version = "0.71.2"
 dependencies = [
  "either",
  "in_definite",
@@ -7825,7 +7822,7 @@ dependencies = [
 
 [[package]]
 name = "sway-features"
-version = "0.71.1"
+version = "0.71.2"
 dependencies = [
  "clap",
  "paste",
@@ -7835,7 +7832,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir"
-version = "0.71.1"
+version = "0.71.2"
 dependencies = [
  "anyhow",
  "downcast-rs",
@@ -7856,7 +7853,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir-macros"
-version = "0.71.1"
+version = "0.71.2"
 dependencies = [
  "itertools 0.13.0",
  "proc-macro2",
@@ -7866,7 +7863,7 @@ dependencies = [
 
 [[package]]
 name = "sway-lsp"
-version = "0.71.1"
+version = "0.71.2"
 dependencies = [
  "anyhow",
  "assert-json-diff",
@@ -7913,7 +7910,7 @@ dependencies = [
 
 [[package]]
 name = "sway-lsp-test-utils"
-version = "0.71.1"
+version = "0.71.2"
 dependencies = [
  "assert-json-diff",
  "futures",
@@ -7928,7 +7925,7 @@ dependencies = [
 
 [[package]]
 name = "sway-parse"
-version = "0.71.1"
+version = "0.71.2"
 dependencies = [
  "assert_matches",
  "extension-trait",
@@ -7947,7 +7944,7 @@ dependencies = [
 
 [[package]]
 name = "sway-types"
-version = "0.71.1"
+version = "0.71.2"
 dependencies = [
  "fuel-asm",
  "fuel-crypto",
@@ -7966,7 +7963,7 @@ dependencies = [
 
 [[package]]
 name = "sway-utils"
-version = "0.71.1"
+version = "0.71.2"
 dependencies = [
  "serde",
  "walkdir",
@@ -7974,7 +7971,7 @@ dependencies = [
 
 [[package]]
 name = "swayfmt"
-version = "0.71.1"
+version = "0.71.2"
 dependencies = [
  "anyhow",
  "forc-tracing",

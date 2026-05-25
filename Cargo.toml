@@ -24,7 +24,7 @@ exclude = ["examples/*", "swayfmt/test_macros", "forc-test/test_data"]
 
 [workspace.package]
 edition = "2021"
-version = "0.71.1"
+version = "0.71.2"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 homepage = "https://fuel.network/"
 license = "Apache-2.0"
@@ -42,33 +42,33 @@ iter_over_hash_type = "deny"
 #
 
 # Forc
-forc = { path = "forc/", version = "0.71.1" }
-forc-pkg = { path = "forc-pkg/", version = "0.71.1" }
-forc-test = { path = "forc-test/", version = "0.71.1" }
-forc-util = { path = "forc-util/", version = "0.71.1" }
+forc = { path = "forc/", version = "0.71.2" }
+forc-pkg = { path = "forc-pkg/", version = "0.71.2" }
+forc-test = { path = "forc-test/", version = "0.71.2" }
+forc-util = { path = "forc-util/", version = "0.71.2" }
 
 # Forc plugins
-forc-plugins = { path = "forc-plugins/", version = "0.71.1" }
-forc-debug = { path = "forc-plugins/forc-debug/", version = "0.71.1" }
-forc-doc = { path = "forc-plugins/forc-doc/", version = "0.71.1" }
-forc-fmt = { path = "forc-plugins/forc-fmt/", version = "0.71.1" }
-forc-lsp = { path = "forc-plugins/forc-lsp/", version = "0.71.1" }
-forc-migrate = { path = "forc-plugins/forc-migrate/", version = "0.71.1" }
-forc-publish = { path = "forc-plugins/forc-publish/", version = "0.71.1" }
-forc-tx = { path = "forc-plugins/forc-tx/", version = "0.71.1" }
+forc-plugins = { path = "forc-plugins/", version = "0.71.2" }
+forc-debug = { path = "forc-plugins/forc-debug/", version = "0.71.2" }
+forc-doc = { path = "forc-plugins/forc-doc/", version = "0.71.2" }
+forc-fmt = { path = "forc-plugins/forc-fmt/", version = "0.71.2" }
+forc-lsp = { path = "forc-plugins/forc-lsp/", version = "0.71.2" }
+forc-migrate = { path = "forc-plugins/forc-migrate/", version = "0.71.2" }
+forc-publish = { path = "forc-plugins/forc-publish/", version = "0.71.2" }
+forc-tx = { path = "forc-plugins/forc-tx/", version = "0.71.2" }
 
 # Sway
-sway-ast = { path = "sway-ast/", version = "0.71.1" }
-sway-core = { path = "sway-core/", version = "0.71.1" }
-sway-error = { path = "sway-error/", version = "0.71.1" }
-sway-features = { path = "sway-features/", version = "0.71.1" }
-sway-lsp = { path = "sway-lsp/", version = "0.71.1" }
-sway-parse = { path = "sway-parse/", version = "0.71.1" }
-sway-types = { path = "sway-types/", version = "0.71.1" }
-sway-utils = { path = "sway-utils/", version = "0.71.1" }
-swayfmt = { path = "swayfmt/", version = "0.71.1" }
-sway-ir = { path = "sway-ir/", version = "0.71.1" }
-sway-ir-macros = { path = "sway-ir/sway-ir-macros", version = "0.71.1" }
+sway-ast = { path = "sway-ast/", version = "0.71.2" }
+sway-core = { path = "sway-core/", version = "0.71.2" }
+sway-error = { path = "sway-error/", version = "0.71.2" }
+sway-features = { path = "sway-features/", version = "0.71.2" }
+sway-lsp = { path = "sway-lsp/", version = "0.71.2" }
+sway-parse = { path = "sway-parse/", version = "0.71.2" }
+sway-types = { path = "sway-types/", version = "0.71.2" }
+sway-utils = { path = "sway-utils/", version = "0.71.2" }
+swayfmt = { path = "swayfmt/", version = "0.71.2" }
+sway-ir = { path = "sway-ir/", version = "0.71.2" }
+sway-ir-macros = { path = "sway-ir/sway-ir-macros", version = "0.71.2" }
 
 #
 # External Fuel dependencies
@@ -116,7 +116,7 @@ axum = "0.8"
 byte-unit = "5.1"
 bytes = "1.7"
 chrono = { version = "0.4", default-features = false }
-cid = "0.11"
+cid = "0.11.3"
 clap = "4.5"
 clap_complete = "4.5"
 clap_complete_fig = "4.5"
@@ -243,3 +243,8 @@ vte = "0.13"
 walkdir = "2.3"
 whoami = "1.5"
 wiremock = "0.6"
+
+# core2 was yanked (RUSTSEC-2026-0105); multihash 0.17 and older cid releases still require it.
+# Unblocks release `cargo update` between crate publishes and fresh dependency resolution.
+[patch.crates-io]
+core2 = { git = "https://github.com/bbqsrc/core2", rev = "545e84bcb0f235b12e21351e0c69767958efe2a7" }
