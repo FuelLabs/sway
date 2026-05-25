@@ -116,7 +116,7 @@ axum = "0.8"
 byte-unit = "5.1"
 bytes = "1.7"
 chrono = { version = "0.4", default-features = false }
-cid = "0.11.3"
+cid = "0.11"
 clap = "4.5"
 clap_complete = "4.5"
 clap_complete_fig = "4.5"
