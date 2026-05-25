@@ -472,7 +472,7 @@ impl Attribute {
             AbiName => Multiplicity::exactly(1),
             Event => Multiplicity::zero(),
             Indexed => Multiplicity::zero(),
-            Require => Multiplicity::at_most(2),
+            Require => Multiplicity::between(1, 2),
         }
     }
 
