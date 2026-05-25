@@ -9,6 +9,7 @@ use crate::parser_error::{ParseError, ParseErrorKind};
 use crate::type_error::TypeError;
 
 use core::fmt;
+use std::collections::BTreeSet;
 use std::fmt::Formatter;
 use sway_types::style::to_snake_case;
 use sway_types::{BaseIdent, Ident, IdentUnique, SourceEngine, Span, Spanned};
@@ -1141,6 +1142,101 @@ pub enum CompileError {
     IndexedFieldIsNotFixedSizeABIType { field_name: IdentUnique },
     #[error("Too many indexed fields on event for current metadata format.")]
     IndexedFieldOffsetTooLarge { field_name: IdentUnique },
+    #[error("Trivial Check Failed")]
+    TrivialCheckFailed(TrivialCheckFailedData),
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TrivialCheckDiagType {
+    Nothing,
+    Error,
+    Warning,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TrivialCheckFailedData {
+    pub span: Span,
+    pub problems_qty: usize,
+    pub can_be_made_trivial: Option<bool>,
+    pub infos: Vec<(Span, String)>,
+    pub helps: Vec<(Span, String)>,
+    pub never_trivial: BTreeSet<String>,
+    pub bottom_helps: BTreeSet<String>,
+    pub diag: TrivialCheckDiagType,
+}
+
+impl TrivialCheckFailedData {
+    pub fn as_diagnostic(&self, se: &SourceEngine) -> Diagnostic {
+        let mut hints = vec![];
+        hints.extend(
+            self.infos
+                .iter()
+                .map(|x| Hint::info(se, x.0.clone(), x.1.clone())),
+        );
+        hints.extend(
+            self.helps
+                .iter()
+                .map(|x| Hint::help(se, x.0.clone(), x.1.clone())),
+        );
+
+        let mut bottom_helps: Vec<String> = self.bottom_helps.iter().cloned().collect::<_>();
+
+        let mut never_trivial_help = String::new();
+        if !self.never_trivial.is_empty() {
+            let len = self.never_trivial.len();
+            for (idx, t) in self.never_trivial.iter().enumerate() {
+                never_trivial_help.push('`');
+                never_trivial_help.push_str(t.as_str());
+                never_trivial_help.push('`');
+
+                if idx < len - 1 {
+                    never_trivial_help.push_str(", ");
+                }
+            }
+
+            if len == 1 {
+                never_trivial_help.push_str(" is never trivially decodable.");
+            } else {
+                never_trivial_help.push_str(" are never trivially decodable.");
+            }
+
+            bottom_helps.push(never_trivial_help);
+        }
+
+        bottom_helps.push(
+            "For more info see: https://fuellabs.github.io/sway/v0.70.3/book/advanced/trivial_encoding.html".to_string()
+        );
+
+        if matches!(self.can_be_made_trivial, Some(true)) {
+            hints.push(Hint::help(
+                se,
+                self.span.clone(),
+                "Consider the suggestions below to make this type trivially decodable.".to_string(),
+            ));
+        }
+
+        Diagnostic {
+            reason: Some(Reason::new(
+                Code::semantic_analysis(1),
+                "Type is not trivially decodable".to_string(),
+            )),
+            issue: match self.diag {
+                TrivialCheckDiagType::Nothing => unreachable!(),
+                TrivialCheckDiagType::Error => Issue::error(
+                    se,
+                    self.span.clone(),
+                    format!("`{}` is not trivially decodable.", self.span.as_str()),
+                ),
+                TrivialCheckDiagType::Warning => Issue::warning(
+                    se,
+                    self.span.clone(),
+                    format!("`{}` is not trivially decodable.", self.span.as_str()),
+                ),
+            },
+            hints,
+            help: bottom_helps,
+        }
+    }
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1382,6 +1478,7 @@ impl Spanned for CompileError {
             IndexedFieldIsNotFixedSizeABIType { field_name } => field_name.span(),
             IndexedFieldOffsetTooLarge { field_name } => field_name.span(),
             IncoherentImplDueToOrphanRule { span, .. } => span.clone(),
+            TrivialCheckFailed(TrivialCheckFailedData { span, .. }) => span.clone(),
         }
     }
 }
@@ -3387,6 +3484,7 @@ impl ToDiagnostic for CompileError {
                 hints: vec![],
                 help: vec![],
             },
+            TrivialCheckFailed(data) => data.as_diagnostic(source_engine),
             _ => Diagnostic {
                     // TODO: Temporarily we use `self` here to achieve backward compatibility.
                     //       In general, `self` must not be used. All the values for the formatting

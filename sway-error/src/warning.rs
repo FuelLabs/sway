@@ -1,5 +1,6 @@
 use crate::{
     diagnostic::{Code, Diagnostic, Hint, Issue, Reason, ToDiagnostic},
+    error::TrivialCheckFailedData,
     formatting::{
         did_you_mean_help, first_line, num_to_str, sequence_to_list, sequence_to_str, Enclosing,
         Indent,
@@ -153,6 +154,7 @@ pub enum Warning {
         last_occurrence: Span,
         previous_occurrences: Vec<Span>,
     },
+    TrivialCheckFailed(TrivialCheckFailedData),
 }
 
 /// Elements that can be deprecated.
@@ -329,6 +331,9 @@ impl fmt::Display for Warning {
                         format!(" {} times", num_to_str(previous_occurrences.len()))
                     }
                 ),
+            TrivialCheckFailed(_) => {
+                write!(f, "Trivial Check failed")
+            },
         }
     }
 }
@@ -649,6 +654,9 @@ impl ToDiagnostic for CompileWarning {
                     format!("{}let _ = {};", Indent::Single, first_line(self.span.as_str(), true)),
                 ],
             },
+            TrivialCheckFailed(data) => {
+                data.as_diagnostic(source_engine)
+            }
            _ => Diagnostic {
                     // TODO: Temporarily we use self here to achieve backward compatibility.
                     //       In general, self must not be used and will not be used once we

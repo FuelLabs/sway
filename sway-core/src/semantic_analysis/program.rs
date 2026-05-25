@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use super::symbol_collection_context::SymbolCollectionContext;
 use crate::{
     language::{
         parsed::ParseProgram,
@@ -13,13 +14,7 @@ use crate::{
     BuildConfig, Engines,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_features::ExperimentalFeatures;
 use sway_ir::{Context, Module};
-
-use super::{
-    symbol_collection_context::SymbolCollectionContext, TypeCheckAnalysis,
-    TypeCheckAnalysisContext, TypeCheckFinalization, TypeCheckFinalizationContext,
-};
 
 #[derive(Clone, Debug)]
 pub struct TypeCheckFailed {
@@ -56,16 +51,10 @@ impl TyProgram {
         handler: &Handler,
         engines: &Engines,
         parsed: &ParseProgram,
-        collection_ctx: &mut SymbolCollectionContext,
-        mut namespace: namespace::Namespace,
         package_name: &str,
         build_config: Option<&BuildConfig>,
-        experimental: ExperimentalFeatures,
+        ctx: &mut TypeCheckContext,
     ) -> Result<Self, TypeCheckFailed> {
-        let mut ctx =
-            TypeCheckContext::from_root(&mut namespace, collection_ctx, engines, experimental)
-                .with_kind(parsed.kind);
-
         let ParseProgram { root, kind } = parsed;
 
         let root = ty::TyModule::type_check(
@@ -154,33 +143,5 @@ impl TyProgram {
                 Ok(())
             }
         }
-    }
-}
-
-impl TypeCheckAnalysis for TyProgram {
-    fn type_check_analyze(
-        &self,
-        handler: &Handler,
-        ctx: &mut TypeCheckAnalysisContext,
-    ) -> Result<(), ErrorEmitted> {
-        for node in self.root_module.all_nodes.iter() {
-            node.type_check_analyze(handler, ctx)?;
-        }
-        Ok(())
-    }
-}
-
-impl TypeCheckFinalization for TyProgram {
-    fn type_check_finalize(
-        &mut self,
-        handler: &Handler,
-        ctx: &mut TypeCheckFinalizationContext,
-    ) -> Result<(), ErrorEmitted> {
-        handler.scope(|handler| {
-            for node in self.root_module.all_nodes.iter_mut() {
-                let _ = node.type_check_finalize(handler, ctx);
-            }
-            Ok(())
-        })
     }
 }
