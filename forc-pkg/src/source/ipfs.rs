@@ -149,15 +149,17 @@ impl Cid {
     pub(crate) async fn fetch_with_local_node(&self, dst: &Path) -> Result<()> {
         let cid_path = format!("/ipfs/{}", self.0);
         let api_base = local_ipfs_api_base_url();
+        // Kubo RPC endpoints require POST. Package sources are directory CIDs, so use
+        // `/get` with `archive=true` (same as the old `ipfs_api::IpfsApi::get` client).
         let url = format!(
-            "{}/api/v0/cat?arg={}",
+            "{}/api/v0/get?arg={}&archive=true&progress=false",
             api_base.trim_end_matches('/'),
             urlencoding::encode(&cid_path)
         );
 
         let client = reqwest::Client::new();
         let response = client
-            .get(&url)
+            .post(&url)
             .send()
             .await
             .with_context(|| format!("failed to request IPFS content from {url}"))?;
