@@ -71,7 +71,11 @@ impl source::Fetch for Pinned {
             if !repo_path.exists() {
                 println_action_green(
                     "Fetching",
-                    &format!("{} {}", ansiterm::Style::new().bold().paint(ctx.name()), self),
+                    &format!(
+                        "{} {}",
+                        ansiterm::Style::new().bold().paint(ctx.name()),
+                        self
+                    ),
                 );
                 let cid = self.0.clone();
                 let ipfs_node = ctx.ipfs_node().clone();
@@ -149,10 +153,10 @@ impl Cid {
     pub(crate) async fn fetch_with_local_node(&self, dst: &Path) -> Result<()> {
         let cid_path = format!("/ipfs/{}", self.0);
         let api_base = local_ipfs_api_base_url();
-        // Kubo RPC endpoints require POST. Package sources are directory CIDs, so use
-        // `/get` with `archive=true` (same as the old `ipfs_api::IpfsApi::get` client).
+        // Kubo RPC endpoints require POST. Published forc packages are stored as a single
+        // gzip-compressed tar blob; `/cat` returns those bytes (same payload gateways serve).
         let url = format!(
-            "{}/api/v0/get?arg={}&archive=true&progress=false",
+            "{}/api/v0/cat?arg={}",
             api_base.trim_end_matches('/'),
             urlencoding::encode(&cid_path)
         );
@@ -174,8 +178,8 @@ impl Cid {
             .bytes()
             .await
             .context("failed to read IPFS API response body")?;
-        // Since we are fetching packages as a folder, they are returned as a tar archive.
-        self.extract_archive(bytes.as_ref(), dst)?;
+        let tar = GzDecoder::new(bytes.as_ref());
+        self.extract_archive(tar, dst)?;
         Ok(())
     }
 
@@ -397,6 +401,63 @@ mod tests {
             Some("http://localhost:5001")
         );
         assert!(parse_ipfs_api_multiaddr("/unix/path").is_none());
+    }
+
+    /// Exercises the Kubo RPC path used in production: POST `/api/v0/cat` (no daemon required).
+    #[tokio::test]
+    async fn test_fetch_with_local_node_post_cat() -> Result<()> {
+        use std::io::Write;
+        use wiremock::matchers::{method, path, query_param};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let mock_server = MockServer::start().await;
+        let cid = create_test_cid();
+        let tar_content =
+            create_test_tar(&[("Forc.toml", "[project]\nname = \"mock-ipfs-pkg\"\n")]);
+        let mut gz = Vec::new();
+        {
+            let mut encoder =
+                flate2::write::GzEncoder::new(&mut gz, flate2::Compression::default());
+            encoder.write_all(&tar_content)?;
+            encoder.finish()?;
+        }
+
+        Mock::given(method("POST"))
+            .and(path("/api/v0/cat"))
+            .and(query_param("arg", format!("/ipfs/{}", cid.0)))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(gz))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+
+        let port = mock_server
+            .uri()
+            .rsplit(':')
+            .next()
+            .and_then(|p| p.parse::<u16>().ok())
+            .expect("mock server port");
+
+        let temp_home = TempDir::new()?;
+        let api_file = temp_home.path().join(".ipfs").join("api");
+        std::fs::create_dir_all(api_file.parent().unwrap())?;
+        std::fs::write(api_file, format!("/ip4/127.0.0.1/tcp/{port}"))?;
+
+        // Wiremock binds a random port; point `~/.ipfs/api` at it for this test only.
+        unsafe { std::env::set_var("HOME", temp_home.path()) };
+
+        let dest = TempDir::new()?;
+        cid.fetch_with_local_node(dest.path()).await?;
+
+        let forc_toml = dest
+            .path()
+            .join(cid.0.to_string())
+            .join("test-project")
+            .join("Forc.toml");
+        assert!(forc_toml.exists());
+        assert!(std::fs::read_to_string(forc_toml)?.contains("mock-ipfs-pkg"));
+
+        mock_server.verify().await;
+        Ok(())
     }
 
     #[test]
