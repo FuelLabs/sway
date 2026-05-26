@@ -1,8 +1,7 @@
 use super::super::abstract_instruction_set::AbstractInstructionSet;
 
 use crate::asm_lang::{
-    virtual_register::ConstantRegister, JumpType, Op, OrganizationalOp, VirtualOp,
-    VirtualRegister,
+    virtual_register::ConstantRegister, JumpType, Op, OrganizationalOp, VirtualOp, VirtualRegister,
 };
 
 use std::collections::HashSet;
