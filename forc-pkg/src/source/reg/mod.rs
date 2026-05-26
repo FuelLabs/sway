@@ -4,10 +4,7 @@ pub mod index_file;
 use super::IPFSNode;
 use crate::{
     manifest::{self, GenericManifestFile, PackageManifestFile},
-    source::{
-        self,
-        ipfs::{ipfs_client, Cid},
-    },
+    source::{self, ipfs::Cid},
 };
 use anyhow::{anyhow, bail, Context};
 use file_location::{location_from_root, Namespace};
@@ -499,7 +496,7 @@ async fn fetch(fetch_id: u64, pinned: &Pinned, ipfs_node: &IPFSNode) -> anyhow::
             let ipfs_result = match ipfs_node {
                 IPFSNode::Local => {
                     println_action_green("Fetching", "with local IPFS node");
-                    cid.fetch_with_client(&ipfs_client(), &path).await
+                    cid.fetch_with_local_node(&path).await
                 }
                 IPFSNode::WithUrl(gateway_url) => {
                     println_action_green(
