@@ -94,7 +94,10 @@ impl AbstractInstructionSet {
         self
     }
 
-    pub(crate) fn remove_redundant_ops(mut self, mut log: impl FnMut(&str),) -> AbstractInstructionSet {
+    pub(crate) fn remove_redundant_ops(
+        mut self,
+        mut log: impl FnMut(&str),
+    ) -> AbstractInstructionSet {
         let mut new_ops = Vec::with_capacity(self.ops.len());
 
         let mut ops = self.ops.iter().peekable();
@@ -112,7 +115,10 @@ impl AbstractInstructionSet {
             // We also need to be sure op is redundant regarding const registers.
             let remove = if remove {
                 if let Some(next_op) = ops.peek() {
-                    op.def_const_registers().intersection(&next_op.use_registers()).count() == 0
+                    op.def_const_registers()
+                        .intersection(&next_op.use_registers())
+                        .count()
+                        == 0
                 } else {
                     // last instruction, we can remove it
                     true
@@ -133,7 +139,6 @@ impl AbstractInstructionSet {
         self
     }
 }
-
 
 #[cfg(test)]
 mod tests {
