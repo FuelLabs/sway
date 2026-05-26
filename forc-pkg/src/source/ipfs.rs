@@ -443,7 +443,15 @@ mod tests {
         std::fs::write(api_file, format!("/ip4/127.0.0.1/tcp/{port}"))?;
 
         // Wiremock binds a random port; point `~/.ipfs/api` at it for this test only.
+        let previous_home = std::env::var_os("HOME");
         unsafe { std::env::set_var("HOME", temp_home.path()) };
+        let _restore_home = scopeguard::guard(previous_home, |previous| {
+            if let Some(home) = previous {
+                unsafe { std::env::set_var("HOME", home) };
+            } else {
+                unsafe { std::env::remove_var("HOME") };
+            }
+        });
 
         let dest = TempDir::new()?;
         cid.fetch_with_local_node(dest.path()).await?;
