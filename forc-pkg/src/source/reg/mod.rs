@@ -4,10 +4,7 @@ pub mod index_file;
 use super::IPFSNode;
 use crate::{
     manifest::{self, GenericManifestFile, PackageManifestFile},
-    source::{
-        self,
-        ipfs::Cid,
-    },
+    source::{self, ipfs::Cid},
 };
 use anyhow::{anyhow, bail, Context};
 use file_location::{location_from_root, Namespace};
