@@ -128,10 +128,10 @@ impl AbstractInstructionSet {
             };
 
             if !remove {
-                log(&format!("    keeping: {}\n", op));
+                log(&format!("keeping: {}\n", op));
                 new_ops.push(op.clone())
             } else {
-                log(&format!("    removing: {}\n", op));
+                log(&format!("removing: {}\n", op));
             }
         }
 
@@ -170,17 +170,17 @@ mod tests {
         );
 
         expect![[r#"
-                removing: noop                                    ; 0
-                keeping: noop                                    ; 1
-                keeping: move $r0 $err                           ; 2
-                keeping: noop                                    ; 3
-                keeping: move $r0 $of                            ; 4
-                removing: move $r0 $r0                            ; 5
-                keeping: move $r1 $r1                            ; 6
-                keeping: move $r0 $err                           ; 7
-                keeping: move $r2 $r2                            ; 8
-                keeping: move $r0 $of                            ; 9
-        "#]]
+removing: noop                                    ; 0
+keeping: noop                                    ; 1
+keeping: move $r0 $err                           ; 2
+keeping: noop                                    ; 3
+keeping: move $r0 $of                            ; 4
+removing: move $r0 $r0                            ; 5
+keeping: move $r1 $r1                            ; 6
+keeping: move $r0 $err                           ; 7
+keeping: move $r2 $r2                            ; 8
+keeping: move $r0 $of                            ; 9
+"#]]
         .assert_eq(&str);
     }
 }
