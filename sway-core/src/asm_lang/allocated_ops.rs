@@ -997,18 +997,13 @@ fn realize_load(
     let offset_words = offset_bytes / 8;
 
     if !has_copy_type {
-        // load the pointer itself into the register. `offset_to_data_section` is in bytes.
-        // The -4 is because $pc is added in the *next* instruction.
-        let pointer_offset_from_current_instr =
-            offset_to_data_section - offset_from_instr_start + offset_bytes - 4;
-
-        // insert the pointer as bytes as a new data section entry at the end of the data
+        // The pointer was pre-inserted during the pointer pre-insertion pass.
         let data_id_for_pointer = data_section
-            .data_id_of_pointer(pointer_offset_from_current_instr)
-            .expect("Pointer offset must be in data_section");
+            .pointer_for_load_site(data_id, offset_from_instr_start)
+            .expect("Pointer for non-copy data must be pre-inserted");
 
-        // now load the pointer we just created into the `dest`ination
-        let mut buf = Vec::with_capacity(2);
+        // Load the pointer value into the destination register.
+        let mut buf = Vec::with_capacity(4);
         buf.append(&mut realize_load(
             dest,
             &data_id_for_pointer,

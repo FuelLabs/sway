@@ -264,6 +264,7 @@ impl AllocatedAbstractInstructionSet {
         far_jump_sizes: &FxHashMap<usize, u64>,
     ) -> Result<(RealizedAbstractInstructionSet, LabeledBlocks), crate::CompileError> {
         let label_offsets = self.resolve_labels(data_section);
+        let worst_ptr_offset = Self::worst_pointer_word_offset(&self.ops, data_section);
         let mut curr_offset = 0;
 
         let mut realized_ops = vec![];
@@ -271,7 +272,9 @@ impl AllocatedAbstractInstructionSet {
             let op_size = far_jump_sizes
                 .get(&op_idx)
                 .copied()
-                .unwrap_or_else(|| Self::instruction_size_not_far_jump(op, data_section));
+                .unwrap_or_else(|| {
+                    Self::instruction_size_not_far_jump(op, data_section, worst_ptr_offset)
+                });
             let AllocatedAbstractOp {
                 opcode,
                 comment,
@@ -394,10 +397,11 @@ impl AllocatedAbstractInstructionSet {
         match op.opcode {
             Either::Right(Label(_)) => 0,
 
-            // Loads from data section may take up to 2 instructions
+            // Loads from data section may take up to 4 instructions
+            // (MOVI + ADD + LW/LB for copy-type, plus ADD $pc for non-copy)
             Either::Left(
                 AllocatedInstruction::LoadDataId(_, _) | AllocatedInstruction::AddrDataId(_, _),
-            ) => 2,
+            ) => 4,
 
             // cfei 0 and cfsi 0 are omitted from asm emission, don't count them for offsets
             Either::Left(AllocatedInstruction::CFEI(ref op))
@@ -435,11 +439,33 @@ impl AllocatedAbstractInstructionSet {
         }
     }
 
+    fn worst_pointer_word_offset(
+        ops: &[AllocatedAbstractOp],
+        data_section: &DataSection,
+    ) -> u64 {
+        let base = data_section.non_configurables_size_in_bytes() as u64;
+        let num_non_copy: u64 = ops
+            .iter()
+            .filter(|op| {
+                matches!(
+                    &op.opcode,
+                    either::Either::Left(AllocatedInstruction::LoadDataId(_, ref id))
+                        if !data_section.has_copy_type(id).unwrap_or(true)
+                )
+            })
+            .count() as u64;
+        (base + num_non_copy.saturating_sub(1) * 8) / 8
+    }
+
     // Actual size of an instruction (units of 4 bytes).
     // Incorrect for far jumps — those are handled separately.
     // Must be called before pointer pre-insertion in to_bytecode_mut;
-    // non-copy size estimates depend on data_section.size_in_bytes() being pointer-free.
-    fn instruction_size_not_far_jump(op: &AllocatedAbstractOp, data_section: &DataSection) -> u64 {
+    // non-copy size estimates depend on non_configurables_size_in_bytes() being pointer-free.
+    fn instruction_size_not_far_jump(
+        op: &AllocatedAbstractOp,
+        data_section: &DataSection,
+        worst_pointer_word_offset: u64,
+    ) -> u64 {
         use ControlFlowOp::*;
         match op.opcode {
             Either::Right(Label(_)) => 0,
@@ -455,8 +481,7 @@ impl AllocatedAbstractInstructionSet {
                     let imm_value = if is_byte { offset_bytes } else { offset_bytes / 8 };
                     if imm_value > consts::TWELVE_BITS { 3 } else { 1 }
                 } else {
-                    let pointer_offset_words = data_section.size_in_bytes() as u64 / 8;
-                    if pointer_offset_words > consts::TWELVE_BITS { 4 } else { 2 }
+                    if worst_pointer_word_offset > consts::TWELVE_BITS { 4 } else { 2 }
                 }
             }
 
@@ -597,6 +622,7 @@ impl AllocatedAbstractInstructionSet {
         data_section: &DataSection,
         far_jump_sizes: &FxHashMap<usize, u64>,
     ) -> LabeledBlocks {
+        let worst_ptr_offset = Self::worst_pointer_word_offset(&self.ops, data_section);
         let mut labelled_blocks = LabeledBlocks::new();
         let mut cur_offset = 0;
         let mut cur_basic_block = None;
@@ -618,7 +644,9 @@ impl AllocatedAbstractInstructionSet {
             let op_size = far_jump_sizes
                 .get(&op_idx)
                 .copied()
-                .unwrap_or_else(|| Self::instruction_size_not_far_jump(op, data_section));
+                .unwrap_or_else(|| {
+                    Self::instruction_size_not_far_jump(op, data_section, worst_ptr_offset)
+                });
             cur_offset += op_size;
         }
 
