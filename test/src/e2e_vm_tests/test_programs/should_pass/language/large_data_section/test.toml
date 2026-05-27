@@ -1,0 +1,7 @@
+# Requires data section >32KB (>4096 words) to exercise the large-offset
+# codegen path in realize_load(). If constant folding or dedup optimizations
+# reduce the data section below this threshold, the test becomes a no-op.
+category = "run"
+expected_result = { action = "return", value = 1 }
+expected_result_new_encoding = { action = "return_data", value = "0000000000000001" }
+validate_abi = false
