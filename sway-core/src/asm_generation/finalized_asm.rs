@@ -1,6 +1,6 @@
 use super::instruction_set::InstructionSet;
 use super::{
-    fuel::{checks, data_section::DataSection},
+    fuel::{checks, compiler_constants::TWELVE_BITS, data_section::DataSection},
     ProgramABI, ProgramKind,
 };
 use crate::asm_generation::fuel::data_section::{Datum, Entry, EntryName};
@@ -120,14 +120,28 @@ fn to_bytecode_mut(
     source_engine: &SourceEngine,
     build_config: &BuildConfig,
 ) -> CompiledBytecode {
-    fn op_size_in_bytes(data_section: &DataSection, item: &AllocatedOp) -> u64 {
+    // Snapshot before pointer pre-insertion mutates the data section.
+    let base_data_section_size = data_section.size_in_bytes() as u64;
+
+    fn op_size_in_bytes(
+        data_section: &DataSection,
+        base_data_section_size: u64,
+        item: &AllocatedOp,
+    ) -> u64 {
         match &item.opcode {
-            AllocatedInstruction::LoadDataId(_reg, data_label)
-                if !data_section
+            AllocatedInstruction::LoadDataId(_reg, data_label) => {
+                let has_copy_type = data_section
                     .has_copy_type(data_label)
-                    .expect("data label references non existent data -- internal error") =>
-            {
-                8
+                    .expect("data label references non existent data -- internal error");
+                if has_copy_type {
+                    let offset_bytes = data_section.data_id_to_offset(data_label) as u64;
+                    let is_byte = data_section.is_byte(data_label).unwrap();
+                    let imm_value = if is_byte { offset_bytes } else { offset_bytes / 8 };
+                    if imm_value > TWELVE_BITS { 12 } else { 4 }
+                } else {
+                    let pointer_offset_words = base_data_section_size / 8;
+                    if pointer_offset_words > TWELVE_BITS { 16 } else { 8 }
+                }
             }
             AllocatedInstruction::AddrDataId(_, _data_id) => 8,
             AllocatedInstruction::ConfigurablesOffsetPlaceholder => 8,
@@ -140,9 +154,9 @@ fn to_bytecode_mut(
 
     // Some instructions may be omitted or expanded into multiple instructions, so we compute,
     // using `op_size_in_bytes`, exactly how many ops will be generated to calculate the offset.
-    let mut offset_to_data_section_in_bytes = ops
-        .iter()
-        .fold(0, |acc, item| acc + op_size_in_bytes(data_section, item));
+    let mut offset_to_data_section_in_bytes = ops.iter().fold(0, |acc, item| {
+        acc + op_size_in_bytes(data_section, base_data_section_size, item)
+    });
 
     // A noop is inserted in ASM generation if required, to word-align the data section.
     let mut ops_padded = Vec::new();
@@ -180,7 +194,8 @@ fn to_bytecode_mut(
             }
             _ => (),
         }
-        offset_from_instr_start += op_size_in_bytes(data_section, op);
+        offset_from_instr_start +=
+            op_size_in_bytes(data_section, base_data_section_size, op);
     }
 
     let mut bytecode = Vec::with_capacity(offset_to_data_section_in_bytes as usize);
@@ -205,7 +220,8 @@ fn to_bytecode_mut(
             offset_from_instr_start,
             data_section,
         );
-        offset_from_instr_start += op_size_in_bytes(data_section, op);
+        offset_from_instr_start +=
+            op_size_in_bytes(data_section, base_data_section_size, op);
 
         match fuel_op {
             FuelAsmData::DatasectionOffset(data) => {

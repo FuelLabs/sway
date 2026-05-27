@@ -435,24 +435,28 @@ impl AllocatedAbstractInstructionSet {
         }
     }
 
-    // Actual size of an instruction.
-    // Note that this return incorrect values for far jumps, they must be handled separately.
-    // The return value is in concrete instructions, i.e. units of 4 bytes.
+    // Actual size of an instruction (units of 4 bytes).
+    // Incorrect for far jumps — those are handled separately.
+    // Must be called before pointer pre-insertion in to_bytecode_mut;
+    // non-copy size estimates depend on data_section.size_in_bytes() being pointer-free.
     fn instruction_size_not_far_jump(op: &AllocatedAbstractOp, data_section: &DataSection) -> u64 {
         use ControlFlowOp::*;
         match op.opcode {
             Either::Right(Label(_)) => 0,
 
-            // A special case for LoadDataId which may be 1 or 2 ops, depending on the source size.
             Either::Left(AllocatedInstruction::LoadDataId(_, ref data_id)) => {
                 let has_copy_type = data_section.has_copy_type(data_id).expect(
                     "Internal miscalculation in data section -- \
                         data id did not match up to any actual data",
                 );
                 if has_copy_type {
-                    1
+                    let offset_bytes = data_section.data_id_to_offset(data_id) as u64;
+                    let is_byte = data_section.is_byte(data_id).unwrap();
+                    let imm_value = if is_byte { offset_bytes } else { offset_bytes / 8 };
+                    if imm_value > consts::TWELVE_BITS { 3 } else { 1 }
                 } else {
-                    2
+                    let pointer_offset_words = data_section.size_in_bytes() as u64 / 8;
+                    if pointer_offset_words > consts::TWELVE_BITS { 4 } else { 2 }
                 }
             }
 

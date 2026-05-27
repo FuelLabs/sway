@@ -301,6 +301,10 @@ impl DataSection {
         })
     }
 
+    pub(crate) fn size_in_bytes(&self) -> usize {
+        self.absolute_idx_to_offset(self.num_entries())
+    }
+
     pub(crate) fn serialize_to_bytes(&self) -> Vec<u8> {
         // not the exact right capacity but serves as a lower bound
         let mut buf = Vec::with_capacity(self.num_entries());
