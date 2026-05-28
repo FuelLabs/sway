@@ -5276,12 +5276,32 @@ impl<'a> FnCompiler<'a> {
         index_expr: &ty::TyExpression,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
-        let prefix_value = return_on_termination_or_extract!(self.compile_expression_to_memory(
-            context,
-            md_mgr,
-            prefix_expr
-        )?)
+        let mut prefix_value = return_on_termination_or_extract!(self
+            .compile_expression_to_memory(context, md_mgr, prefix_expr)?)
         .expect_memory();
+
+        // When the prefix is a reference (e.g. a `ref mut self` argument), the compiled value
+        // is a pointer to the reference, i.e. a pointer to a pointer to the indexed aggregate.
+        // We need to dereference it, peeling off the extra levels of indirection, until we
+        // reach the pointer that actually points to the array or slice.
+        while let Some(TypeContent::TypedPointer(pointee)) = prefix_value
+            .get_type(context)
+            .map(|ty| ty.get_content(context))
+        {
+            if matches!(
+                pointee.get_content(context),
+                TypeContent::TypedPointer(_) | TypeContent::Pointer
+            ) {
+                prefix_value = self
+                    .current_block
+                    .append(context)
+                    .load(prefix_value)
+                    .add_metadatum(context, span_md_idx);
+            } else {
+                break;
+            }
+        }
+
         let prefix_type = prefix_value.get_type(context).unwrap();
 
         let index_value = return_on_termination_or_extract!(
@@ -5300,7 +5320,10 @@ impl<'a> FnCompiler<'a> {
                     prefix_value,
                     index_value,
                 ),
-                _ => todo!(),
+                _ => Err(CompileError::Internal(
+                    "Unsupported array value for index expression.",
+                    prefix_expr.span.clone(),
+                )),
             },
             TypeContent::TypedSlice(..) => self.compile_indexing_slices(
                 context,
