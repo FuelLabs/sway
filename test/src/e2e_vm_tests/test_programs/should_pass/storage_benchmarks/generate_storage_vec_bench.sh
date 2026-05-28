@@ -16,7 +16,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 ALL_SIZES=(8 24 32 56 72 88 96)
-COUNTS=(10 100 1000)
+COUNTS=(10 100 1000 5000)
 OPS=(push push_n_elems_into_empty_vec pop get set first last len is_empty swap swap_remove remove insert reverse fill resize_grow resize_shrink store_vec load_vec iter clear)
 
 # ── Size → type mapping ────────────────────────────────────────────
@@ -133,6 +133,12 @@ EOF
 
     # ── test.toml ───────────────────────────────────────────────────
     echo 'category = "unit_tests_pass"' > "$project_dir/test.toml"
+
+    # ── test.dynamic_storage.toml ────────────────────────────────────
+    {
+        echo 'category = "unit_tests_pass"'
+        echo 'experimental = { new_encoding = true, dynamic_storage = true }'
+    } > "$project_dir/test.dynamic_storage.toml"
 
     # ── src/main.sw ─────────────────────────────────────────────────
     {

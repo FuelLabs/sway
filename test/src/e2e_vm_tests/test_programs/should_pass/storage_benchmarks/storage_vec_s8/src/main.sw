@@ -41,6 +41,15 @@ impl Contract {
         }
     }
 
+    #[storage(read, write)]
+    fn baseline_n5000() {
+        let mut i = 0;
+        while i < 5000 {
+            storage.vec.push(0);
+            i += 1;
+        }
+    }
+
     // === Baselines (build heap Vec of N elements) ===
 
     fn baseline_store_vec_n10() {
@@ -65,6 +74,15 @@ impl Contract {
         let mut v = Vec::<u64>::new();
         let mut i = 0;
         while i < 1000 {
+            v.push(0);
+            i += 1;
+        }
+    }
+
+    fn baseline_store_vec_n5000() {
+        let mut v = Vec::<u64>::new();
+        let mut i = 0;
+        while i < 5000 {
             v.push(0);
             i += 1;
         }
@@ -102,6 +120,16 @@ impl Contract {
         storage.vec.push(0);
     }
 
+    #[storage(read, write)]
+    fn push_n5000() {
+        let mut i = 0;
+        while i < 5000 {
+            storage.vec.push(0);
+            i += 1;
+        }
+        storage.vec.push(0);
+    }
+
     // === push_n_elems_into_empty_vec ===
 
     #[storage(read, write)]
@@ -126,6 +154,15 @@ impl Contract {
     fn push_n_elems_into_empty_vec_n1000() {
         let mut i = 0;
         while i < 1000 {
+            storage.vec.push(0);
+            i += 1;
+        }
+    }
+
+    #[storage(read, write)]
+    fn push_n_elems_into_empty_vec_n5000() {
+        let mut i = 0;
+        while i < 5000 {
             storage.vec.push(0);
             i += 1;
         }
@@ -157,6 +194,16 @@ impl Contract {
     fn pop_n1000() {
         let mut i = 0;
         while i < 1000 {
+            storage.vec.push(0);
+            i += 1;
+        }
+        let _ = storage.vec.pop();
+    }
+
+    #[storage(read, write)]
+    fn pop_n5000() {
+        let mut i = 0;
+        while i < 5000 {
             storage.vec.push(0);
             i += 1;
         }
@@ -195,6 +242,16 @@ impl Contract {
         let _ = storage.vec.get(500).unwrap().try_read();
     }
 
+    #[storage(read, write)]
+    fn get_n5000() {
+        let mut i = 0;
+        while i < 5000 {
+            storage.vec.push(0);
+            i += 1;
+        }
+        let _ = storage.vec.get(2500).unwrap().try_read();
+    }
+
     // === set ===
 
     #[storage(read, write)]
@@ -227,6 +284,16 @@ impl Contract {
         storage.vec.set(500, 0);
     }
 
+    #[storage(read, write)]
+    fn set_n5000() {
+        let mut i = 0;
+        while i < 5000 {
+            storage.vec.push(0);
+            i += 1;
+        }
+        storage.vec.set(2500, 0);
+    }
+
     // === first ===
 
     #[storage(read, write)]
@@ -253,6 +320,16 @@ impl Contract {
     fn first_n1000() {
         let mut i = 0;
         while i < 1000 {
+            storage.vec.push(0);
+            i += 1;
+        }
+        let _ = storage.vec.first().unwrap().try_read();
+    }
+
+    #[storage(read, write)]
+    fn first_n5000() {
+        let mut i = 0;
+        while i < 5000 {
             storage.vec.push(0);
             i += 1;
         }
@@ -291,6 +368,16 @@ impl Contract {
         let _ = storage.vec.last().unwrap().try_read();
     }
 
+    #[storage(read, write)]
+    fn last_n5000() {
+        let mut i = 0;
+        while i < 5000 {
+            storage.vec.push(0);
+            i += 1;
+        }
+        let _ = storage.vec.last().unwrap().try_read();
+    }
+
     // === len ===
 
     #[storage(read, write)]
@@ -317,6 +404,16 @@ impl Contract {
     fn len_n1000() {
         let mut i = 0;
         while i < 1000 {
+            storage.vec.push(0);
+            i += 1;
+        }
+        let _ = storage.vec.len();
+    }
+
+    #[storage(read, write)]
+    fn len_n5000() {
+        let mut i = 0;
+        while i < 5000 {
             storage.vec.push(0);
             i += 1;
         }
@@ -355,6 +452,16 @@ impl Contract {
         let _ = storage.vec.is_empty();
     }
 
+    #[storage(read, write)]
+    fn is_empty_n5000() {
+        let mut i = 0;
+        while i < 5000 {
+            storage.vec.push(0);
+            i += 1;
+        }
+        let _ = storage.vec.is_empty();
+    }
+
     // === swap ===
 
     #[storage(read, write)]
@@ -385,6 +492,16 @@ impl Contract {
             i += 1;
         }
         storage.vec.swap(0, 999);
+    }
+
+    #[storage(read, write)]
+    fn swap_n5000() {
+        let mut i = 0;
+        while i < 5000 {
+            storage.vec.push(0);
+            i += 1;
+        }
+        storage.vec.swap(0, 4999);
     }
 
     // === swap_remove ===
@@ -419,6 +536,16 @@ impl Contract {
         let _ = storage.vec.swap_remove(500);
     }
 
+    #[storage(read, write)]
+    fn swap_remove_n5000() {
+        let mut i = 0;
+        while i < 5000 {
+            storage.vec.push(0);
+            i += 1;
+        }
+        let _ = storage.vec.swap_remove(2500);
+    }
+
     // === remove ===
 
     #[storage(read, write)]
@@ -449,6 +576,16 @@ impl Contract {
             i += 1;
         }
         let _ = storage.vec.remove(500);
+    }
+
+    #[storage(read, write)]
+    fn remove_n5000() {
+        let mut i = 0;
+        while i < 5000 {
+            storage.vec.push(0);
+            i += 1;
+        }
+        let _ = storage.vec.remove(2500);
     }
 
     // === insert ===
@@ -483,6 +620,16 @@ impl Contract {
         storage.vec.insert(500, 0);
     }
 
+    #[storage(read, write)]
+    fn insert_n5000() {
+        let mut i = 0;
+        while i < 5000 {
+            storage.vec.push(0);
+            i += 1;
+        }
+        storage.vec.insert(2500, 0);
+    }
+
     // === reverse ===
 
     #[storage(read, write)]
@@ -509,6 +656,16 @@ impl Contract {
     fn reverse_n1000() {
         let mut i = 0;
         while i < 1000 {
+            storage.vec.push(0);
+            i += 1;
+        }
+        storage.vec.reverse();
+    }
+
+    #[storage(read, write)]
+    fn reverse_n5000() {
+        let mut i = 0;
+        while i < 5000 {
             storage.vec.push(0);
             i += 1;
         }
@@ -547,6 +704,16 @@ impl Contract {
         storage.vec.fill(0);
     }
 
+    #[storage(read, write)]
+    fn fill_n5000() {
+        let mut i = 0;
+        while i < 5000 {
+            storage.vec.push(0);
+            i += 1;
+        }
+        storage.vec.fill(0);
+    }
+
     // === resize_grow ===
 
     #[storage(read, write)]
@@ -579,6 +746,16 @@ impl Contract {
         storage.vec.resize(2000, 0);
     }
 
+    #[storage(read, write)]
+    fn resize_grow_n5000() {
+        let mut i = 0;
+        while i < 5000 {
+            storage.vec.push(0);
+            i += 1;
+        }
+        storage.vec.resize(10000, 0);
+    }
+
     // === resize_shrink ===
 
     #[storage(read, write)]
@@ -609,6 +786,16 @@ impl Contract {
             i += 1;
         }
         storage.vec.resize(500, 0);
+    }
+
+    #[storage(read, write)]
+    fn resize_shrink_n5000() {
+        let mut i = 0;
+        while i < 5000 {
+            storage.vec.push(0);
+            i += 1;
+        }
+        storage.vec.resize(2500, 0);
     }
 
     // === store_vec ===
@@ -646,6 +833,17 @@ impl Contract {
         storage.vec.store_vec(v);
     }
 
+    #[storage(write)]
+    fn store_vec_n5000() {
+        let mut v = Vec::<u64>::new();
+        let mut i = 0;
+        while i < 5000 {
+            v.push(0);
+            i += 1;
+        }
+        storage.vec.store_vec(v);
+    }
+
     // === load_vec ===
 
     #[storage(read, write)]
@@ -672,6 +870,16 @@ impl Contract {
     fn load_vec_n1000() {
         let mut i = 0;
         while i < 1000 {
+            storage.vec.push(0);
+            i += 1;
+        }
+        let _ = storage.vec.load_vec();
+    }
+
+    #[storage(read, write)]
+    fn load_vec_n5000() {
+        let mut i = 0;
+        while i < 5000 {
             storage.vec.push(0);
             i += 1;
         }
@@ -716,6 +924,18 @@ impl Contract {
         }
     }
 
+    #[storage(read, write)]
+    fn iter_n5000() {
+        let mut i = 0;
+        while i < 5000 {
+            storage.vec.push(0);
+            i += 1;
+        }
+        for elem in storage.vec.iter() {
+            let _ = elem.try_read();
+        }
+    }
+
     // === clear ===
 
     #[storage(read, write)]
@@ -742,6 +962,16 @@ impl Contract {
     fn clear_n1000() {
         let mut i = 0;
         while i < 1000 {
+            storage.vec.push(0);
+            i += 1;
+        }
+        let _ = storage.vec.clear();
+    }
+
+    #[storage(read, write)]
+    fn clear_n5000() {
+        let mut i = 0;
+        while i < 5000 {
             storage.vec.push(0);
             i += 1;
         }
@@ -777,6 +1007,12 @@ fn bench_baseline_n1000() {
     caller.baseline_n1000();
 }
 
+#[test]
+fn bench_baseline_n5000() {
+    let caller = abi(StorageVecS8Abi, CONTRACT_ID);
+    caller.baseline_n5000();
+}
+
 // === Baseline tests (store_vec) ===
 
 #[test]
@@ -795,6 +1031,12 @@ fn bench_baseline_store_vec_n100() {
 fn bench_baseline_store_vec_n1000() {
     let caller = abi(StorageVecS8Abi, CONTRACT_ID);
     caller.baseline_store_vec_n1000();
+}
+
+#[test]
+fn bench_baseline_store_vec_n5000() {
+    let caller = abi(StorageVecS8Abi, CONTRACT_ID);
+    caller.baseline_store_vec_n5000();
 }
 
 // === push tests ===
@@ -817,6 +1059,12 @@ fn bench_push_n1000() {
     caller.push_n1000();
 }
 
+#[test]
+fn bench_push_n5000() {
+    let caller = abi(StorageVecS8Abi, CONTRACT_ID);
+    caller.push_n5000();
+}
+
 // === push_n_elems_into_empty_vec tests ===
 
 #[test]
@@ -835,6 +1083,12 @@ fn bench_push_n_elems_into_empty_vec_n100() {
 fn bench_push_n_elems_into_empty_vec_n1000() {
     let caller = abi(StorageVecS8Abi, CONTRACT_ID);
     caller.push_n_elems_into_empty_vec_n1000();
+}
+
+#[test]
+fn bench_push_n_elems_into_empty_vec_n5000() {
+    let caller = abi(StorageVecS8Abi, CONTRACT_ID);
+    caller.push_n_elems_into_empty_vec_n5000();
 }
 
 // === pop tests ===
@@ -857,6 +1111,12 @@ fn bench_pop_n1000() {
     caller.pop_n1000();
 }
 
+#[test]
+fn bench_pop_n5000() {
+    let caller = abi(StorageVecS8Abi, CONTRACT_ID);
+    caller.pop_n5000();
+}
+
 // === get tests ===
 
 #[test]
@@ -875,6 +1135,12 @@ fn bench_get_n100() {
 fn bench_get_n1000() {
     let caller = abi(StorageVecS8Abi, CONTRACT_ID);
     caller.get_n1000();
+}
+
+#[test]
+fn bench_get_n5000() {
+    let caller = abi(StorageVecS8Abi, CONTRACT_ID);
+    caller.get_n5000();
 }
 
 // === set tests ===
@@ -897,6 +1163,12 @@ fn bench_set_n1000() {
     caller.set_n1000();
 }
 
+#[test]
+fn bench_set_n5000() {
+    let caller = abi(StorageVecS8Abi, CONTRACT_ID);
+    caller.set_n5000();
+}
+
 // === first tests ===
 
 #[test]
@@ -915,6 +1187,12 @@ fn bench_first_n100() {
 fn bench_first_n1000() {
     let caller = abi(StorageVecS8Abi, CONTRACT_ID);
     caller.first_n1000();
+}
+
+#[test]
+fn bench_first_n5000() {
+    let caller = abi(StorageVecS8Abi, CONTRACT_ID);
+    caller.first_n5000();
 }
 
 // === last tests ===
@@ -937,6 +1215,12 @@ fn bench_last_n1000() {
     caller.last_n1000();
 }
 
+#[test]
+fn bench_last_n5000() {
+    let caller = abi(StorageVecS8Abi, CONTRACT_ID);
+    caller.last_n5000();
+}
+
 // === len tests ===
 
 #[test]
@@ -955,6 +1239,12 @@ fn bench_len_n100() {
 fn bench_len_n1000() {
     let caller = abi(StorageVecS8Abi, CONTRACT_ID);
     caller.len_n1000();
+}
+
+#[test]
+fn bench_len_n5000() {
+    let caller = abi(StorageVecS8Abi, CONTRACT_ID);
+    caller.len_n5000();
 }
 
 // === is_empty tests ===
@@ -977,6 +1267,12 @@ fn bench_is_empty_n1000() {
     caller.is_empty_n1000();
 }
 
+#[test]
+fn bench_is_empty_n5000() {
+    let caller = abi(StorageVecS8Abi, CONTRACT_ID);
+    caller.is_empty_n5000();
+}
+
 // === swap tests ===
 
 #[test]
@@ -995,6 +1291,12 @@ fn bench_swap_n100() {
 fn bench_swap_n1000() {
     let caller = abi(StorageVecS8Abi, CONTRACT_ID);
     caller.swap_n1000();
+}
+
+#[test]
+fn bench_swap_n5000() {
+    let caller = abi(StorageVecS8Abi, CONTRACT_ID);
+    caller.swap_n5000();
 }
 
 // === swap_remove tests ===
@@ -1017,6 +1319,12 @@ fn bench_swap_remove_n1000() {
     caller.swap_remove_n1000();
 }
 
+#[test]
+fn bench_swap_remove_n5000() {
+    let caller = abi(StorageVecS8Abi, CONTRACT_ID);
+    caller.swap_remove_n5000();
+}
+
 // === remove tests ===
 
 #[test]
@@ -1035,6 +1343,12 @@ fn bench_remove_n100() {
 fn bench_remove_n1000() {
     let caller = abi(StorageVecS8Abi, CONTRACT_ID);
     caller.remove_n1000();
+}
+
+#[test]
+fn bench_remove_n5000() {
+    let caller = abi(StorageVecS8Abi, CONTRACT_ID);
+    caller.remove_n5000();
 }
 
 // === insert tests ===
@@ -1057,6 +1371,12 @@ fn bench_insert_n1000() {
     caller.insert_n1000();
 }
 
+#[test]
+fn bench_insert_n5000() {
+    let caller = abi(StorageVecS8Abi, CONTRACT_ID);
+    caller.insert_n5000();
+}
+
 // === reverse tests ===
 
 #[test]
@@ -1075,6 +1395,12 @@ fn bench_reverse_n100() {
 fn bench_reverse_n1000() {
     let caller = abi(StorageVecS8Abi, CONTRACT_ID);
     caller.reverse_n1000();
+}
+
+#[test]
+fn bench_reverse_n5000() {
+    let caller = abi(StorageVecS8Abi, CONTRACT_ID);
+    caller.reverse_n5000();
 }
 
 // === fill tests ===
@@ -1097,6 +1423,12 @@ fn bench_fill_n1000() {
     caller.fill_n1000();
 }
 
+#[test]
+fn bench_fill_n5000() {
+    let caller = abi(StorageVecS8Abi, CONTRACT_ID);
+    caller.fill_n5000();
+}
+
 // === resize_grow tests ===
 
 #[test]
@@ -1115,6 +1447,12 @@ fn bench_resize_grow_n100() {
 fn bench_resize_grow_n1000() {
     let caller = abi(StorageVecS8Abi, CONTRACT_ID);
     caller.resize_grow_n1000();
+}
+
+#[test]
+fn bench_resize_grow_n5000() {
+    let caller = abi(StorageVecS8Abi, CONTRACT_ID);
+    caller.resize_grow_n5000();
 }
 
 // === resize_shrink tests ===
@@ -1137,6 +1475,12 @@ fn bench_resize_shrink_n1000() {
     caller.resize_shrink_n1000();
 }
 
+#[test]
+fn bench_resize_shrink_n5000() {
+    let caller = abi(StorageVecS8Abi, CONTRACT_ID);
+    caller.resize_shrink_n5000();
+}
+
 // === store_vec tests ===
 
 #[test]
@@ -1155,6 +1499,12 @@ fn bench_store_vec_n100() {
 fn bench_store_vec_n1000() {
     let caller = abi(StorageVecS8Abi, CONTRACT_ID);
     caller.store_vec_n1000();
+}
+
+#[test]
+fn bench_store_vec_n5000() {
+    let caller = abi(StorageVecS8Abi, CONTRACT_ID);
+    caller.store_vec_n5000();
 }
 
 // === load_vec tests ===
@@ -1177,6 +1527,12 @@ fn bench_load_vec_n1000() {
     caller.load_vec_n1000();
 }
 
+#[test]
+fn bench_load_vec_n5000() {
+    let caller = abi(StorageVecS8Abi, CONTRACT_ID);
+    caller.load_vec_n5000();
+}
+
 // === iter tests ===
 
 #[test]
@@ -1197,6 +1553,12 @@ fn bench_iter_n1000() {
     caller.iter_n1000();
 }
 
+#[test]
+fn bench_iter_n5000() {
+    let caller = abi(StorageVecS8Abi, CONTRACT_ID);
+    caller.iter_n5000();
+}
+
 // === clear tests ===
 
 #[test]
@@ -1215,5 +1577,11 @@ fn bench_clear_n100() {
 fn bench_clear_n1000() {
     let caller = abi(StorageVecS8Abi, CONTRACT_ID);
     caller.clear_n1000();
+}
+
+#[test]
+fn bench_clear_n5000() {
+    let caller = abi(StorageVecS8Abi, CONTRACT_ID);
+    caller.clear_n5000();
 }
 
