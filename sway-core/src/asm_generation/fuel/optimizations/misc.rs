@@ -1,6 +1,8 @@
 use super::super::abstract_instruction_set::AbstractInstructionSet;
 
-use crate::asm_lang::{JumpType, Op, OrganizationalOp, VirtualOp, VirtualRegister};
+use crate::asm_lang::{
+    virtual_register::ConstantRegister, JumpType, Op, OrganizationalOp, VirtualOp, VirtualRegister,
+};
 
 use std::collections::HashSet;
 
@@ -101,6 +103,10 @@ impl AbstractInstructionSet {
             let remove = match &op.opcode {
                 Either::Left(VirtualOp::NOOP) => true,
                 Either::Left(VirtualOp::MOVE(a, b)) => a == b,
+                Either::Left(VirtualOp::MCP(_, _, len)) => {
+                    matches!(len, VirtualRegister::Constant(ConstantRegister::Zero))
+                }
+                Either::Left(VirtualOp::MCPI(_, _, imm)) => imm.value() == 0,
                 _ => false,
             };
 
