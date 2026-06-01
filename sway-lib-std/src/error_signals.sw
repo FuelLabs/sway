@@ -47,5 +47,19 @@ pub const REVERT_WITH_LOG_SIGNAL = 0xffff_ffff_ffff_0006;
 ///
 /// # Additional Information
 ///
-/// The value is: 18446744073709486086
+/// The value is: 18446744073709486087
 pub const REVERT_WITH_RAW_SLICE_LEN_ZST = 0xffff_ffff_ffff_0007;
+
+/// A revert with this value signals that it was caused by a call to `TrivialBool::unwrap`.
+///
+/// # Additional Information
+///
+/// The value is: 18446744073709486088
+pub const REVERT_WITH_TRIVIAL_BOOL_UNWRAP = 0xffff_ffff_ffff_0008;
+
+/// A revert with this value signals that it was caused by a call to `TrivialEnum::unwrap`.
+///
+/// # Additional Information
+///
+/// The value is: 18446744073709486089
+pub const REVERT_WITH_TRIVIAL_ENUM_UNWRAP = 0xffff_ffff_ffff_0009;
