@@ -5276,8 +5276,9 @@ impl<'a> FnCompiler<'a> {
         index_expr: &ty::TyExpression,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
-        let mut prefix_value = return_on_termination_or_extract!(self
-            .compile_expression_to_memory(context, md_mgr, prefix_expr)?)
+        let mut prefix_value = return_on_termination_or_extract!(
+            self.compile_expression_to_memory(context, md_mgr, prefix_expr)?
+        )
         .expect_memory();
 
         // When the prefix is a reference (e.g. a `ref mut self` argument), the compiled value
