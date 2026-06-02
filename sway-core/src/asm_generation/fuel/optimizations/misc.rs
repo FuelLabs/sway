@@ -113,23 +113,20 @@ impl AbstractInstructionSet {
             };
 
             // We also need to be sure op is redundant regarding const registers.
-            let remove = if remove {
-                if let Some(next_op) = ops.peek() {
-                    op.def_const_registers()
-                        .intersection(&next_op.use_registers())
-                        .count()
-                        == 0
-                } else {
-                    // last instruction, we can remove it
-                    true
-                }
-            } else {
-                false
-            };
+            let remove = remove
+                && ops
+                    .peek()
+                    .map(|next_op| {
+                        op.def_const_registers()
+                            .intersection(&next_op.use_registers())
+                            .count()
+                            == 0
+                    })
+                    .unwrap_or(true);
 
             if !remove {
                 log(&format!("keeping: {}\n", op));
-                new_ops.push(op.clone())
+                new_ops.push(op.clone());
             } else {
                 log(&format!("removing: {}\n", op));
             }
