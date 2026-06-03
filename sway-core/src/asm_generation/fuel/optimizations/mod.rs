@@ -32,7 +32,7 @@ impl AbstractInstructionSet {
                 .simplify_cfg()
                 .remove_sequential_jumps()
                 .remove_redundant_moves()
-                .remove_redundant_ops(),
+                .remove_redundant_ops(log_nothing),
             // On release builds we can do more iterations
             OptLevel::Opt1 => {
                 for _ in 0..MAX_OPT_ROUNDS {
