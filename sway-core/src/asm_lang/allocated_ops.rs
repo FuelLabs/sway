@@ -1058,11 +1058,9 @@ fn realize_load(
                     fuel_asm::RegId::new(DATA_SECTION_REGISTER),
                 )),
                 if is_byte {
-                    fuel_asm::op::LB::new(dest.to_reg_id(), dest.to_reg_id(), Imm12::new(0))
-                        .into()
+                    fuel_asm::op::LB::new(dest.to_reg_id(), dest.to_reg_id(), Imm12::new(0)).into()
                 } else {
-                    fuel_asm::op::LW::new(dest.to_reg_id(), dest.to_reg_id(), Imm12::new(0))
-                        .into()
+                    fuel_asm::op::LW::new(dest.to_reg_id(), dest.to_reg_id(), Imm12::new(0)).into()
                 },
             ]
         }

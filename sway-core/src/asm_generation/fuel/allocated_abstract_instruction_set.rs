@@ -269,12 +269,9 @@ impl AllocatedAbstractInstructionSet {
 
         let mut realized_ops = vec![];
         for (op_idx, op) in self.ops.iter().enumerate() {
-            let op_size = far_jump_sizes
-                .get(&op_idx)
-                .copied()
-                .unwrap_or_else(|| {
-                    Self::instruction_size_not_far_jump(op, data_section, worst_ptr_offset)
-                });
+            let op_size = far_jump_sizes.get(&op_idx).copied().unwrap_or_else(|| {
+                Self::instruction_size_not_far_jump(op, data_section, worst_ptr_offset)
+            });
             let AllocatedAbstractOp {
                 opcode,
                 comment,
@@ -439,10 +436,7 @@ impl AllocatedAbstractInstructionSet {
         }
     }
 
-    fn worst_pointer_word_offset(
-        ops: &[AllocatedAbstractOp],
-        data_section: &DataSection,
-    ) -> u64 {
+    fn worst_pointer_word_offset(ops: &[AllocatedAbstractOp], data_section: &DataSection) -> u64 {
         let base = data_section.non_configurables_size_in_bytes() as u64;
         let num_non_copy: u64 = ops
             .iter()
@@ -478,10 +472,22 @@ impl AllocatedAbstractInstructionSet {
                 if has_copy_type {
                     let offset_bytes = data_section.data_id_to_offset(data_id) as u64;
                     let is_byte = data_section.is_byte(data_id).unwrap();
-                    let imm_value = if is_byte { offset_bytes } else { offset_bytes / 8 };
-                    if imm_value > consts::TWELVE_BITS { 3 } else { 1 }
+                    let imm_value = if is_byte {
+                        offset_bytes
+                    } else {
+                        offset_bytes / 8
+                    };
+                    if imm_value > consts::TWELVE_BITS {
+                        3
+                    } else {
+                        1
+                    }
                 } else {
-                    if worst_pointer_word_offset > consts::TWELVE_BITS { 4 } else { 2 }
+                    if worst_pointer_word_offset > consts::TWELVE_BITS {
+                        4
+                    } else {
+                        2
+                    }
                 }
             }
 
@@ -641,12 +647,9 @@ impl AllocatedAbstractInstructionSet {
             }
 
             // Update the offset.
-            let op_size = far_jump_sizes
-                .get(&op_idx)
-                .copied()
-                .unwrap_or_else(|| {
-                    Self::instruction_size_not_far_jump(op, data_section, worst_ptr_offset)
-                });
+            let op_size = far_jump_sizes.get(&op_idx).copied().unwrap_or_else(|| {
+                Self::instruction_size_not_far_jump(op, data_section, worst_ptr_offset)
+            });
             cur_offset += op_size;
         }
 

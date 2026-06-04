@@ -148,12 +148,24 @@ fn to_bytecode_mut(
                 if has_copy_type {
                     let offset_bytes = data_section.data_id_to_offset(data_label) as u64;
                     let is_byte = data_section.is_byte(data_label).unwrap();
-                    let imm_value = if is_byte { offset_bytes } else { offset_bytes / 8 };
-                    if imm_value > TWELVE_BITS { 12 } else { 4 }
+                    let imm_value = if is_byte {
+                        offset_bytes
+                    } else {
+                        offset_bytes / 8
+                    };
+                    if imm_value > TWELVE_BITS {
+                        12
+                    } else {
+                        4
+                    }
                 } else {
                     // Use worst-case pointer offset: if any pointer might exceed 12 bits,
                     // all non-copy loads use the large form for consistent sizing.
-                    if worst_pointer_word_offset > TWELVE_BITS { 16 } else { 8 }
+                    if worst_pointer_word_offset > TWELVE_BITS {
+                        16
+                    } else {
+                        8
+                    }
                 }
             }
             AllocatedInstruction::AddrDataId(_, _data_id) => 8,
@@ -204,17 +216,18 @@ fn to_bytecode_mut(
 
                 // The pointer entry will be appended at the end of non_configurables.
                 // Predict its word offset to determine the inner load instruction count.
-                let pointer_word_offset =
-                    (base_non_config_size + num_pointers_inserted * 8) / 8;
-                let inner_instr_bytes =
-                    if pointer_word_offset > TWELVE_BITS { 12 } else { 4 };
+                let pointer_word_offset = (base_non_config_size + num_pointers_inserted * 8) / 8;
+                let inner_instr_bytes = if pointer_word_offset > TWELVE_BITS {
+                    12
+                } else {
+                    4
+                };
 
                 // $pc is read by the ADD instruction that follows the inner load.
                 // The correction accounts for the inner load's instruction count.
-                let pointer_offset_from_current_instr = offset_to_data_section_in_bytes
-                    - offset_from_instr_start
-                    + offset_bytes
-                    - inner_instr_bytes;
+                let pointer_offset_from_current_instr =
+                    offset_to_data_section_in_bytes - offset_from_instr_start + offset_bytes
+                        - inner_instr_bytes;
                 data_section.append_pointer(
                     pointer_offset_from_current_instr,
                     data_label,
@@ -224,8 +237,7 @@ fn to_bytecode_mut(
             }
             _ => (),
         }
-        offset_from_instr_start +=
-            op_size_in_bytes(data_section, worst_pointer_word_offset, op);
+        offset_from_instr_start += op_size_in_bytes(data_section, worst_pointer_word_offset, op);
     }
 
     let mut bytecode = Vec::with_capacity(offset_to_data_section_in_bytes as usize);
@@ -250,8 +262,7 @@ fn to_bytecode_mut(
             offset_from_instr_start,
             data_section,
         );
-        offset_from_instr_start +=
-            op_size_in_bytes(data_section, worst_pointer_word_offset, op);
+        offset_from_instr_start += op_size_in_bytes(data_section, worst_pointer_word_offset, op);
 
         match fuel_op {
             FuelAsmData::DatasectionOffset(data) => {
