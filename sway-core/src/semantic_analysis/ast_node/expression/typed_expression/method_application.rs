@@ -162,61 +162,57 @@ pub(crate) fn type_check_method_application(
             index
         };
 
-        if let (Some(arg), _, false) = arg_opt {
-            if let Some(param) = method.parameters.get(param_index) {
-                if coercion_check.check(arg.return_type, param.type_argument.type_id) {
-                    // If argument type coerces to resolved method parameter type skip second type_check.
-                    args_buf.push_back(arg);
-                    continue;
-                }
+        let param = method.parameters.get(param_index);
+
+        // Reuse the first-pass typed argument when it already coerces to the
+        // resolved parameter type (or there is no matching parameter), otherwise
+        // type check the argument expression again, this time with the type
+        // annotation and throwing out the error.
+        let (arg_typed, _, arg_had_err) = arg_opt;
+        let reuse = !arg_had_err
+            && arg_typed.is_some()
+            && param
+                .map(|param| {
+                    coercion_check
+                        .check(arg_typed.as_ref().unwrap().return_type, param.type_argument.type_id)
+                })
+                .unwrap_or(true);
+
+        let typed_arg = if reuse {
+            arg_typed.unwrap()
+        } else {
+            let ctx = if let Some(param) = param {
+                ctx.by_ref()
+                    .with_help_text(
+                        "Function application argument type must match function parameter type.",
+                    )
+                    .with_type_annotation(param.type_argument.type_id)
             } else {
-                args_buf.push_back(arg);
-                continue;
-            }
-        }
-
-        // We type check the argument expression again this time throwing out the error.
-        let ctx = if let Some(param) = method.parameters.get(param_index) {
-            // We now try to type check it again, this time with the type annotation.
-            ctx.by_ref()
-                .with_help_text(
-                    "Function application argument type must match function parameter type.",
-                )
-                .with_type_annotation(param.type_argument.type_id)
-        } else {
-            ctx.by_ref()
-                .with_help_text("")
-                .with_type_annotation(type_engine.new_unknown())
-        };
-
-        args_buf.push_back(
+                ctx.by_ref()
+                    .with_help_text("")
+                    .with_type_annotation(type_engine.new_unknown())
+            };
             ty::TyExpression::type_check(handler, ctx, arg)
-                .unwrap_or_else(|err| ty::TyExpression::error(err, span.clone(), engines)),
-        );
-    }
-
-    // check for matching mutability of arguments
-    for (index, arg) in args_buf.iter().enumerate() {
-        let param_index = if method.is_contract_call {
-            if index == 0 {
-                continue;
-            }
-            index - 1
-        } else {
-            index
+                .unwrap_or_else(|err| ty::TyExpression::error(err, span.clone(), engines))
         };
-        if let Some(param) = method.parameters.get(param_index) {
-            if param.is_self() {
-                continue;
-            }
-            let param_mutability =
-                ty::VariableMutability::new_from_ref_mut(param.is_reference, param.is_mutable);
-            if param_mutability.is_mutable() && arg.gather_mutability().is_immutable() {
-                handler.emit_err(CompileError::ImmutableArgumentToMutableParameter {
-                    span: arg.span.clone(),
-                });
+
+        // Check that an immutable argument is not passed to a `ref mut` parameter.
+        // This keys off the same source-argument-to-parameter mapping used above,
+        // so it stays correct even when the contract-call receiver is not pushed
+        // into `args_buf`.
+        if let Some(param) = param {
+            if !param.is_self() {
+                let param_mutability =
+                    ty::VariableMutability::new_from_ref_mut(param.is_reference, param.is_mutable);
+                if param_mutability.is_mutable() && typed_arg.gather_mutability().is_immutable() {
+                    handler.emit_err(CompileError::ImmutableArgumentToMutableParameter {
+                        span: typed_arg.span.clone(),
+                    });
+                }
             }
         }
+
+        args_buf.push_back(typed_arg);
     }
 
     // check the method visibility
