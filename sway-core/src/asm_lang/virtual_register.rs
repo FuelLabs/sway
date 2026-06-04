@@ -12,7 +12,11 @@ pub enum VirtualRegister {
 
 impl From<&str> for VirtualRegister {
     fn from(value: &str) -> Self {
-        VirtualRegister::Virtual(value.to_string())
+        if let Some(r) = ConstantRegister::parse_register_name(value) {
+            VirtualRegister::Constant(r)
+        } else {
+            VirtualRegister::Virtual(value.to_string())
+        }
     }
 }
 
