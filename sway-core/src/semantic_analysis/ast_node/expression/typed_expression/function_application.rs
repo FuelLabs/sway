@@ -217,10 +217,7 @@ fn unify_arguments_and_parameters(
 
             // check for matching mutability
             // Only ref mut params require mutable args.
-            if arg.gather_mutability().is_immutable()
-                && param.is_reference
-                && param.is_mutable
-            {
+            if arg.gather_mutability().is_immutable() && param.is_reference && param.is_mutable {
                 handler.emit_err(CompileError::ImmutableArgumentToMutableParameter {
                     span: arg.span.clone(),
                 });
