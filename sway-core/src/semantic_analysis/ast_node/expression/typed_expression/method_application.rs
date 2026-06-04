@@ -15,7 +15,7 @@ use ast_elements::{
     type_argument::GenericTypeArgument,
     type_parameter::{ConstGenericExpr, GenericTypeParameter},
 };
-use ast_node::typed_expression::check_function_arguments_arity;
+use ast_node::typed_expression::{check_arg_mutability, check_function_arguments_arity};
 use indexmap::IndexMap;
 use itertools::izip;
 use std::collections::{BTreeMap, HashMap, VecDeque};
@@ -168,8 +168,8 @@ pub(crate) fn type_check_method_application(
         // resolved parameter type (or there is no matching parameter), otherwise
         // type check the argument expression again, this time with the type
         // annotation and throwing out the error.
-        let (arg_typed, _, arg_had_err) = arg_opt;
-        let reuse = !arg_had_err
+        let (arg_typed, _, needs_recheck) = arg_opt;
+        let reuse = !needs_recheck
             && arg_typed.is_some()
             && param
                 .map(|param| {
@@ -202,13 +202,7 @@ pub(crate) fn type_check_method_application(
         // into `args_buf`.
         if let Some(param) = param {
             if !param.is_self() {
-                let param_mutability =
-                    ty::VariableMutability::new_from_ref_mut(param.is_reference, param.is_mutable);
-                if param_mutability.is_mutable() && typed_arg.gather_mutability().is_immutable() {
-                    handler.emit_err(CompileError::ImmutableArgumentToMutableParameter {
-                        span: typed_arg.span.clone(),
-                    });
-                }
+                check_arg_mutability(handler, param, &typed_arg);
             }
         }
 
