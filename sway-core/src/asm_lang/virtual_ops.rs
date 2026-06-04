@@ -282,6 +282,10 @@ pub(crate) enum VirtualOp {
 }
 
 impl VirtualOp {
+    pub fn noop() -> VirtualOp {
+        VirtualOp::NOOP
+    }
+
     pub fn r#move(a: impl Into<VirtualRegister>, b: impl Into<VirtualRegister>) -> VirtualOp {
         VirtualOp::MOVE(a.into(), b.into())
     }
