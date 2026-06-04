@@ -5,6 +5,7 @@ library;
 
 use std::ops::Eq;
 use std::flags::{disable_panic_on_overflow, enable_panic_on_overflow};
+use std::hash::{Hash, Hasher};
 use std::raw_slice::*;
 
 #[allow(dead_code)] // TODO-DCA: Remove this `allow` once https://github.com/FuelLabs/sway/issues/7462 is fixed.
@@ -437,6 +438,14 @@ impl PartialEq for EnumSingleU8 {
 }
 impl Eq for EnumSingleU8 {}
 
+impl Hash for EnumSingleU8 {
+    fn hash(self, ref mut state: Hasher) {
+        match self {
+            EnumSingleU8::A(v) => { 0_u8.hash(state); v.hash(state); }
+        }
+    }
+}
+
 impl TestInstance for EnumSingleU8 {
     fn default() -> Self {
         EnumSingleU8::A(u8::default())
@@ -471,6 +480,14 @@ impl PartialEq for EnumSingleU64 {
 }
 impl Eq for EnumSingleU64 {}
 
+impl Hash for EnumSingleU64 {
+    fn hash(self, ref mut state: Hasher) {
+        match self {
+            EnumSingleU64::A(v) => { 0_u8.hash(state); v.hash(state); }
+        }
+    }
+}
+
 impl TestInstance for EnumSingleU64 {
     fn default() -> Self {
         EnumSingleU64::A(u64::default())
@@ -504,6 +521,14 @@ impl PartialEq for EnumSingleBool {
     }
 }
 impl Eq for EnumSingleBool {}
+
+impl Hash for EnumSingleBool {
+    fn hash(self, ref mut state: Hasher) {
+        match self {
+            EnumSingleBool::A(v) => { 0_u8.hash(state); v.hash(state); }
+        }
+    }
+}
 
 impl TestInstance for EnumSingleBool {
     fn default() -> Self {
@@ -543,6 +568,16 @@ impl PartialEq for EnumMultiUnits {
     }
 }
 impl Eq for EnumMultiUnits {}
+
+impl Hash for EnumMultiUnits {
+    fn hash(self, ref mut state: Hasher) {
+        match self {
+            EnumMultiUnits::A => { 0_u8.hash(state); }
+            EnumMultiUnits::B => { 1_u8.hash(state); }
+            EnumMultiUnits::C => { 2_u8.hash(state); }
+        }
+    }
+}
 
 impl TestInstance for EnumMultiUnits {
     fn default() -> Self {
@@ -586,6 +621,16 @@ impl PartialEq for EnumMultiOneByte {
 }
 impl Eq for EnumMultiOneByte {}
 
+impl Hash for EnumMultiOneByte {
+    fn hash(self, ref mut state: Hasher) {
+        match self {
+            EnumMultiOneByte::A(v) => { 0_u8.hash(state); v.hash(state); }
+            EnumMultiOneByte::B(v) => { 1_u8.hash(state); v.hash(state); }
+            EnumMultiOneByte::C => { 2_u8.hash(state); }
+        }
+    }
+}
+
 impl TestInstance for EnumMultiOneByte {
     fn default() -> Self {
         EnumMultiOneByte::A(bool::default())
@@ -627,6 +672,15 @@ impl PartialEq for EnumU8AndU64 {
     }
 }
 impl Eq for EnumU8AndU64 {}
+
+impl Hash for EnumU8AndU64 {
+    fn hash(self, ref mut state: Hasher) {
+        match self {
+            EnumU8AndU64::A(v) => { 0_u8.hash(state); v.hash(state); }
+            EnumU8AndU64::B(v) => { 1_u8.hash(state); v.hash(state); }
+        }
+    }
+}
 
 impl TestInstance for EnumU8AndU64 {
     fn default() -> Self {
@@ -670,6 +724,15 @@ impl PartialEq for EnumQuadSlotSize {
     }
 }
 impl Eq for EnumQuadSlotSize {}
+
+impl Hash for EnumQuadSlotSize {
+    fn hash(self, ref mut state: Hasher) {
+        match self {
+            EnumQuadSlotSize::A(v) => { 0_u8.hash(state); v.hash(state); }
+            EnumQuadSlotSize::B(v) => { 1_u8.hash(state); v.0.hash(state); v.1.hash(state); v.2.hash(state); }
+        }
+    }
+}
 
 impl TestInstance for EnumQuadSlotSize {
     fn default() -> Self {
@@ -717,6 +780,15 @@ impl PartialEq for EnumLargerThanQuadSlot {
     }
 }
 impl Eq for EnumLargerThanQuadSlot {}
+
+impl Hash for EnumLargerThanQuadSlot {
+    fn hash(self, ref mut state: Hasher) {
+        match self {
+            EnumLargerThanQuadSlot::A(v) => { 0_u8.hash(state); v.hash(state); }
+            EnumLargerThanQuadSlot::B(v) => { 1_u8.hash(state); v.0.hash(state); v.1.hash(state); v.2.hash(state); v.3.hash(state); v.4.hash(state); }
+        }
+    }
+}
 
 impl TestInstance for EnumLargerThanQuadSlot {
     fn default() -> Self {
@@ -769,6 +841,17 @@ impl PartialEq for StructA {
     }
 }
 impl Eq for StructA {}
+
+impl Hash for StructA {
+    fn hash(self, ref mut state: Hasher) {
+        self.f_bool.hash(state);
+        self.f_u8.hash(state);
+        self.f_u16.hash(state);
+        self.f_u32.hash(state);
+        self.f_u64.hash(state);
+        self.f_u256.hash(state);
+    }
+}
 
 impl TestInstance for StructA {
     fn default() -> Self {
@@ -845,6 +928,19 @@ impl PartialEq for StructB {
     }
 }
 impl Eq for StructB {}
+
+impl Hash for StructB {
+    fn hash(self, ref mut state: Hasher) {
+        self.f_struct_a.hash(state);
+        self.f_tuple.0.hash(state);
+        self.f_tuple.1.hash(state);
+        self.f_tuple.2.hash(state);
+        self.f_tuple.3.hash(state);
+        self.f_tuple.4.hash(state);
+        self.f_array_u8_len_2.hash(state);
+        self.f_array_nested_array_u8_len_2_len_3.hash(state);
+    }
+}
 
 impl TestInstance for StructB {
     fn default() -> Self {
@@ -1017,6 +1113,13 @@ impl PartialEq for RawPtrNewtype {
     }
 }
 impl Eq for RawPtrNewtype {}
+
+impl Hash for RawPtrNewtype {
+    fn hash(self, ref mut state: Hasher) {
+        let ptr_as_u64 = asm(p: self.ptr) { p: u64 };
+        ptr_as_u64.hash(state);
+    }
+}
 
 impl TestInstance for raw_slice {
     fn default() -> Self {

@@ -1158,7 +1158,7 @@ error
 21 | 
 22 |     // Wrong first argument
 23 |     let _ = __slice(0, 0, 0);
-   |                     ^ Unsupported argument type to intrinsic "slice". Hint: Only references to arrays or slices can be used as argument here
+   |                     ^ Unsupported argument type to intrinsic "slice". Hint: Only references to arrays or slices can be used as argument here. Received: {numeric}
 24 | 
 25 |     // Wrong start index
    |
@@ -1200,7 +1200,7 @@ error
 33 | 
 34 |     // Wrong first argument
 35 |     let _ = __elem_at(0, 0);
-   |                       ^ Unsupported argument type to intrinsic "elem_at". Hint: Only references to arrays or slices can be used as argument here
+   |                       ^ Unsupported argument type to intrinsic "elem_at". Hint: Only references to arrays or slices can be used as argument here. Received: {numeric}
 36 | 
 37 |     // Wrong index type
    |

@@ -587,11 +587,11 @@ pub fn checked_nth_root(target: u64, nth_root: u64) -> Option<u64> {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
     use expect_test::expect;
 
-    fn optimise(
+    pub fn optimise(
         ops: impl IntoIterator<Item = Op>,
         f: impl FnOnce(AbstractInstructionSet) -> AbstractInstructionSet,
     ) {

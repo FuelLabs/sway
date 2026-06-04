@@ -153,7 +153,10 @@ impl ty::TyFunctionDecl {
                             },
                             span: const_generic_decl.span.clone(),
                             return_type: const_generic_decl.ty,
-                            value: None,
+                            value: const_generic
+                                .expr
+                                .as_ref()
+                                .map(|x| x.to_ty_expression(ctx.engines)),
                         },
                         Some(id),
                     );

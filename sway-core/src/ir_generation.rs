@@ -11,7 +11,6 @@ use std::{
     collections::HashMap,
     hash::{DefaultHasher, Hasher},
 };
-
 use sway_error::error::CompileError;
 use sway_features::ExperimentalFeatures;
 use sway_ir::{
@@ -359,12 +358,16 @@ pub fn compile_program<'a>(
         .collect();
 
     let mut ctx = Context::new(engines.se(), experimental, backtrace);
-    ctx.program_kind = match kind {
+    let k = match kind {
         ty::TyProgramKind::Script { .. } => Kind::Script,
         ty::TyProgramKind::Predicate { .. } => Kind::Predicate,
         ty::TyProgramKind::Contract { .. } => Kind::Contract,
         ty::TyProgramKind::Library { .. } => Kind::Library,
     };
+    ctx.program_kind = k;
+
+    let module = Module::new(&mut ctx, k);
+    let mut md_mgr = MetadataManager::default();
 
     let mut compiled_fn_cache = CompiledFunctionCache::default();
     let mut panicking_fn_cache = PanickingFunctionCache::default();
@@ -384,6 +387,8 @@ pub fn compile_program<'a>(
             &mut panicking_fn_cache,
             &test_fns,
             &mut compiled_fn_cache,
+            &mut md_mgr,
+            module,
         ),
         ty::TyProgramKind::Predicate { entry_function, .. } => compile::compile_predicate(
             engines,
@@ -397,6 +402,8 @@ pub fn compile_program<'a>(
             &mut panicking_fn_cache,
             &test_fns,
             &mut compiled_fn_cache,
+            &mut md_mgr,
+            module,
         ),
         ty::TyProgramKind::Contract {
             entry_function,
@@ -415,6 +422,8 @@ pub fn compile_program<'a>(
             &test_fns,
             engines,
             &mut compiled_fn_cache,
+            &mut md_mgr,
+            module,
         ),
         ty::TyProgramKind::Library { .. } => compile::compile_library(
             engines,
@@ -427,6 +436,8 @@ pub fn compile_program<'a>(
             &mut panicking_fn_cache,
             &test_fns,
             &mut compiled_fn_cache,
+            &mut md_mgr,
+            module,
         ),
     }?;
 

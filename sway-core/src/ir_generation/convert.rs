@@ -97,7 +97,7 @@ pub(super) fn convert_resolved_typeid_no_span(
     )
 }
 
-fn convert_resolved_type_info(
+pub(super) fn convert_resolved_type_info(
     engines: &Engines,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
