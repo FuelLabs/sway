@@ -173,8 +173,10 @@ pub(crate) fn type_check_method_application(
             && arg_typed.is_some()
             && param
                 .map(|param| {
-                    coercion_check
-                        .check(arg_typed.as_ref().unwrap().return_type, param.type_argument.type_id)
+                    coercion_check.check(
+                        arg_typed.as_ref().unwrap().return_type,
+                        param.type_argument.type_id,
+                    )
                 })
                 .unwrap_or(true);
 
@@ -1063,4 +1065,3 @@ pub(crate) fn monomorphize_method(
 
     Ok(decl_ref)
 }
-
