@@ -16,7 +16,7 @@ normal = ["tower"]
 assert-json-diff.workspace = true
 futures = { workspace = true, features = ["async-await", "std"] }
 lsp-types = { workspace = true, features = ["proposed"] }
-rand.workspace = true
+rand = { workspace = true, features = ["small_rng"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 tokio = { workspace = true, features = ["io-util", "io-std", "macros", "net", "rt-multi-thread", "sync", "time"] }

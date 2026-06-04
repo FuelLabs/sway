@@ -3,6 +3,8 @@ library;
 use ::ops::*;
 use ::raw_ptr::*;
 use ::raw_slice::*;
+use ::slice::*;
+use ::error_signals::*;
 
 pub struct Buffer {
     buffer: (raw_ptr, u64, u64), // ptr, capacity, size
@@ -3696,4 +3698,120 @@ fn ok_abi_encoding() {
 fn nok_abi_encoding_invalid_bool() {
     let actual = encode(2u8);
     let _ = abi_decode::<bool>(actual);
+}
+
+pub struct TrivialBool {
+    value: u64,
+}
+
+impl AbiEncode for TrivialBool {
+    fn is_encode_trivial() -> bool {
+        true
+    }
+
+    fn abi_encode(self, buffer: Buffer) -> Buffer {
+        self.value.abi_encode(buffer)
+    }
+}
+
+impl AbiDecode for TrivialBool {
+    fn is_decode_trivial() -> bool {
+        true
+    }
+
+    fn abi_decode(ref mut buffer: BufferReader) -> Self {
+        let value = u64::abi_decode(buffer);
+        TrivialBool { value }
+    }
+}
+
+impl TrivialBool {
+    pub fn from(value: bool) -> Self {
+        TrivialBool {
+            value: if value { 1 } else { 0 },
+        }
+    }
+
+    pub fn is_valid(self) -> bool {
+        match self.value {
+            0 => true,
+            1 => true,
+            _ => false,
+        }
+    }
+
+    pub fn unwrap(self) -> bool {
+        match self.value {
+            0 => false,
+            1 => true,
+            _ => __revert(REVERT_WITH_TRIVIAL_BOOL_UNWRAP),
+        }
+    }
+}
+
+pub struct TrivialEnum<T> {
+    value: T,
+}
+
+impl<T> TrivialEnum<T> {
+    pub fn from(value: T) -> TrivialEnum<T> {
+        TrivialEnum { value }
+    }
+}
+
+pub trait EnumCodecValues {
+    fn is_decode_trivial_table() -> &__slice[bool];
+}
+
+impl<T> TrivialEnum<T>
+where
+    T: EnumCodecValues,
+{
+    pub fn is_valid(self) -> bool {
+        let discriminant: raw_slice = raw_slice::from_parts::<u8>(__addr_of(self.value), 8);
+        let discriminant: u64 = abi_decode::<u64>(discriminant);
+
+        let is_decode_trivial_table = T::is_decode_trivial_table();
+
+        if discriminant < is_decode_trivial_table.len() {
+            *__elem_at(is_decode_trivial_table, discriminant)
+        } else {
+            false
+        }
+    }
+
+    pub fn unwrap(self) -> T {
+        if self.is_valid() {
+            self.value
+        } else {
+            __revert(REVERT_WITH_TRIVIAL_ENUM_UNWRAP)
+        }
+    }
+}
+
+impl<T> AbiEncode for TrivialEnum<T>
+where
+    T: AbiEncode,
+{
+    fn is_encode_trivial() -> bool {
+        true
+    }
+
+    fn abi_encode(self, buffer: Buffer) -> Buffer {
+        self.value.abi_encode(buffer)
+    }
+}
+
+impl<T> AbiDecode for TrivialEnum<T>
+where
+    T: AbiDecode,
+{
+    fn is_decode_trivial() -> bool {
+        true
+    }
+
+    fn abi_decode(ref mut buffer: BufferReader) -> Self {
+        let value = T::abi_decode(buffer);
+        TrivialEnum { value }
+    }
 }

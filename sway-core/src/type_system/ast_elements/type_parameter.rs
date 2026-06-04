@@ -88,7 +88,7 @@ impl TypeParameter {
                 id,
                 span,
                 ty,
-                ..
+                expr,
             }) => {
                 let decl_ref = ctx.engines.de().insert(
                     TyConstGenericDecl {
@@ -99,7 +99,7 @@ impl TypeParameter {
                         },
                         span: span.clone(),
                         return_type: *ty,
-                        value: None,
+                        value: expr.as_ref().map(|x| x.to_ty_expression(ctx.engines)),
                     },
                     id.as_ref(),
                 );

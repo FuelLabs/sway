@@ -74,6 +74,13 @@ pub enum Literal {
 }
 
 impl Literal {
+    pub fn as_string(&self) -> Option<&str> {
+        match self {
+            Literal::String(v) => Some(v.parsed.as_str()),
+            _ => None,
+        }
+    }
+
     /// Friendly type name string of the [Literal] used for various reportings.
     pub fn friendly_type_name(&self) -> &'static str {
         use Literal::*;

@@ -30,7 +30,7 @@ static FORC_DOC_COMPILATION: Once = Once::new();
 static FORC_MIGRATE_COMPILATION: Once = Once::new();
 
 fn compile_forc() {
-    let args = vec!["b", "--release", "-p", "forc"];
+    let args = vec!["b", "-p", "forc", "-r"];
     let o = std::process::Command::new("cargo")
         .args(args)
         .output()
@@ -39,7 +39,7 @@ fn compile_forc() {
 }
 
 fn compile_forc_doc() {
-    let args = vec!["b", "--release", "-p", "forc-doc"];
+    let args = vec!["b", "--release", "-p", "forc-doc", "-r"];
     let o = std::process::Command::new("cargo")
         .args(args)
         .output()
@@ -311,7 +311,9 @@ fn run_cmds(
 
                                 if inside_asm {
                                     if (line.contains("fn init:") || line.contains("entry init"))
-                                        && fns.iter().any(|f| line.contains(&format!("init: {f}")))
+                                        && fns
+                                            .iter()
+                                            .any(|f| line.contains("init:") && line.contains(f))
                                     {
                                         capture_line = true;
 
