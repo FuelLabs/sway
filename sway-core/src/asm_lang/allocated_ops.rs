@@ -931,7 +931,6 @@ impl AllocatedOp {
                     a,
                     b,
                     data_section,
-                    offset_to_data_section,
                     offset_from_instr_start,
                 ))
             }
@@ -974,7 +973,6 @@ fn realize_load(
     dest: &AllocatedRegister,
     data_id: &DataId,
     data_section: &DataSection,
-    offset_to_data_section: u64,
     offset_from_instr_start: u64,
 ) -> Vec<fuel_asm::Instruction> {
     // if this data is larger than a word, instead of loading the data directly
@@ -1008,7 +1006,6 @@ fn realize_load(
             dest,
             &data_id_for_pointer,
             data_section,
-            offset_to_data_section,
             offset_from_instr_start,
         ));
         // add $pc to the pointer since it is relative to the current instruction.

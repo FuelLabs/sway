@@ -482,12 +482,10 @@ impl AllocatedAbstractInstructionSet {
                     } else {
                         1
                     }
+                } else if worst_pointer_word_offset > consts::TWELVE_BITS {
+                    4
                 } else {
-                    if worst_pointer_word_offset > consts::TWELVE_BITS {
-                        4
-                    } else {
-                        2
-                    }
+                    2
                 }
             }
 
