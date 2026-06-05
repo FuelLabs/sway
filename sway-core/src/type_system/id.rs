@@ -620,10 +620,8 @@ impl TypeId {
 
                 if let ConstGenericExpr::AmbiguousVariableExpression { ident, .. } = &orig_len.0 {
                     if let ConstGenericExpr::Literal { .. } = &len.0 {
-                        const_generic_parameters.insert(
-                            ident.as_str().to_string(),
-                            len.0.to_ty_expression(engines),
-                        );
+                        const_generic_parameters
+                            .insert(ident.as_str().to_string(), len.0.to_ty_expression(engines));
                     }
                 }
             }
