@@ -12,6 +12,14 @@ perf_diff_stats_script="./scripts/perf/perf-diff-stats.sh"
 
 categories=("e2e-gas-usages" "e2e-bytecode-sizes" "in-language-gas-usages" "in-language-bytecode-sizes")
 
+
+# macOS compatibility: gfind from `brew install findutils`
+if [ -x "$(command -v gfind)" ]; then
+    find="gfind"
+else
+    find="find"
+fi
+
 err() {
     echo "ERROR: $*" >&2
     exit 1
@@ -28,8 +36,11 @@ process_category() {
     local category="$1"
 
     # Collect candidates: "*-<category>-*.csv", but skip "-<category>-historical-*.csv".
-    mapfile -t candidates < <(
-        find "$perf_out_dir" -maxdepth 1 -type f -name "*-${category}-*.csv" -printf "%p\n" 2>/dev/null |
+    candidates=()
+    while IFS= read -r line; do
+        candidates+=("$line")
+    done < <(
+        $find "$perf_out_dir" -maxdepth 1 -type f -name "*-${category}-*.csv" -printf "%p\n" 2>/dev/null |
             while IFS= read -r f; do
                 base="$(basename -- "$f")"
 
@@ -50,7 +61,10 @@ process_category() {
     fi
 
     # Sort by timestamp (asc) and take last two paths.
-    mapfile -t sorted_paths < <(
+    sorted_paths=()
+    while IFS= read -r line; do
+        sorted_paths+=("$line")
+    done < <(
         printf "%s\n" "${candidates[@]}" |
             sort -n -k1,1 |
             awk -F'\t' '{print $2}' |
