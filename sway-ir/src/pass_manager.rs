@@ -364,11 +364,25 @@ impl PassManager {
 
     /// Run the `passes` and return true if the `passes` modify the initial `ir`.
     pub fn run(&mut self, ir: &mut Context, passes: &PassGroup) -> Result<bool, IrError> {
-        let mut modified = false;
-        for pass in passes.flatten_pass_group() {
-            modified |= self.actually_run(ir, pass)?;
+        let mut global_modified = false;
+        let passes = passes.flatten_pass_group();
+
+        // run until stabilize
+        for _ in 0..10 {
+            let mut modified = false;
+
+            for pass in passes.iter() {
+                modified |= self.actually_run(ir, *pass)?;
+            }
+
+            if !modified {
+                break;
+            }
+
+            global_modified |= modified;
         }
-        Ok(modified)
+
+        Ok(global_modified)
     }
 
     /// Run the `passes` and return true if the `passes` modify the initial `ir`.
@@ -410,19 +424,34 @@ impl PassManager {
             ir.verify()?;
         }
 
-        let mut modified = false;
-        for pass in passes.flatten_pass_group() {
-            let modified_in_pass = self.actually_run(ir, pass)?;
+        let mut global_modified = false;
+        let passes = passes.flatten_pass_group();
 
-            if print_opts.passes.contains(pass) && (!print_opts.modified_only || modified_in_pass) {
-                print_ir_after_pass(ir, self.lookup_registered_pass(pass).unwrap());
+        for _ in 0..10 {
+            let mut modified = false;
+
+            for pass in passes.iter() {
+                let modified_in_pass = self.actually_run(ir, pass)?;
+
+                if print_opts.passes.contains(*pass)
+                    && (!print_opts.modified_only || modified_in_pass)
+                {
+                    print_ir_after_pass(ir, self.lookup_registered_pass(pass).unwrap());
+                }
+
+                modified |= modified_in_pass;
+                if verify_opts.passes.contains(*pass)
+                    && (!verify_opts.modified_only || modified_in_pass)
+                {
+                    ir.verify()?;
+                }
             }
 
-            modified |= modified_in_pass;
-            if verify_opts.passes.contains(pass) && (!verify_opts.modified_only || modified_in_pass)
-            {
-                ir.verify()?;
+            if !modified {
+                break;
             }
+
+            global_modified |= modified;
         }
 
         if print_opts.r#final {
@@ -433,7 +462,7 @@ impl PassManager {
             ir.verify()?;
         }
 
-        Ok(modified)
+        Ok(global_modified)
     }
 
     /// Get reference to a registered pass.

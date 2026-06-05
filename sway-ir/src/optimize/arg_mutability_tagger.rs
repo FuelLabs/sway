@@ -41,13 +41,16 @@ fn arg_pointee_mutability_tagger(
         }
     }
 
-    let modified = !immutable_args.is_empty();
+    let mut modified = false;
 
     for arg_val in immutable_args {
         let arg = arg_val
             .get_argument_mut(context)
             .expect("arg is an argument");
-        arg.is_immutable = true;
+        if !arg.is_immutable {
+            arg.is_immutable = true;
+            modified = true;
+        }
     }
 
     Ok(modified)

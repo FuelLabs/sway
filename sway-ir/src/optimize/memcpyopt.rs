@@ -34,7 +34,6 @@ pub fn mem_copy_opt(
     modified |= local_copy_prop_prememcpy(context, analyses, function)?;
     modified |= load_store_to_memcopy(context, function)?;
     modified |= local_copy_prop(context, analyses, function)?;
-
     Ok(modified)
 }
 
@@ -43,6 +42,8 @@ fn local_copy_prop_prememcpy(
     analyses: &AnalysisResults,
     function: Function,
 ) -> Result<bool, IrError> {
+    let mut modified = false;
+
     struct InstInfo {
         // The block containing the instruction.
         block: Block,
@@ -234,30 +235,35 @@ fn local_copy_prop_prememcpy(
                 else {
                     panic!("earlier match now fails");
                 };
+
                 if redundant_var.is_mutable(context) {
                     replacement_var.set_mutable(context, true);
                 }
+
+                modified = true;
                 value.replace(
                     context,
                     ValueDatum::Instruction(Instruction {
                         op: InstOp::GetLocal(replacement_var),
                         parent,
                     }),
-                )
+                );
             }
             ReplaceWith::Value(replace_with) => {
                 value_replace.insert(value, replace_with);
             }
         }
     }
-    function.replace_values(context, &value_replace, None);
+
+    modified |= function.replace_values(context, &value_replace, None);
 
     // Delete stores to the replaced local.
     let blocks: Vec<Block> = function.block_iter(context).collect();
     for block in blocks {
-        block.remove_instructions(context, |value| to_delete.contains(&value));
+        modified |= block.remove_instructions(context, |value| to_delete.contains(&value));
     }
-    Ok(true)
+
+    Ok(modified)
 }
 
 // Deconstruct a memcpy into (dst_val_ptr, src_val_ptr, copy_len).

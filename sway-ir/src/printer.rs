@@ -190,18 +190,23 @@ pub fn function_print<W: std::fmt::Write>(
 }
 
 /// Print an instruction to stdout.
-pub fn instruction_print(context: &Context, ins_value: &Value) {
+pub fn instruction_print(s: &mut impl std::fmt::Write, context: &Context, ins_value: &Value) {
     let mut md_namer = MetadataNamer::default();
-    let block = ins_value
-        .get_instruction(context)
-        .expect("Calling instruction printer on non-instruction value")
-        .parent;
-    let function = block.get_function(context);
-    let mut namer = Namer::new(function);
-    println!(
-        "{}",
-        instruction_to_doc(context, &mut md_namer, &mut namer, &block, ins_value).build()
-    );
+
+    if let Some(ins) = ins_value.get_instruction(context) {
+        let block = ins.parent;
+        let function = block.get_function(context);
+        let mut namer = Namer::new(function);
+        let _ = write!(
+            s,
+            "{}",
+            instruction_to_doc(context, &mut md_namer, &mut namer, &block, ins_value).build()
+        );
+    } else if let Some(c) = ins_value.get_constant(context) {
+        let _ = write!(s, "const {c:?}");
+    } else {
+        todo!();
+    }
 }
 
 pub const MODULE_PRINTER_NAME: &str = "module-printer";

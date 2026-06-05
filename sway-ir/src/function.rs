@@ -606,7 +606,9 @@ impl Function {
         context: &mut Context,
         replace_map: &FxHashMap<Value, Value>,
         starting_block: Option<Block>,
-    ) {
+    ) -> bool {
+        let mut modified = false;
+
         let mut block_iter = self.block_iter(context).peekable();
 
         if let Some(ref starting_block) = starting_block {
@@ -618,8 +620,10 @@ impl Function {
         }
 
         for block in block_iter {
-            block.replace_values(context, replace_map);
+            modified |= block.replace_values(context, replace_map);
         }
+
+        modified
     }
 
     pub fn replace_value(
