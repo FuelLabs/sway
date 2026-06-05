@@ -76,7 +76,7 @@ ____
 
 tested -- const_generics
 
-      test run_main ... ok (???, 20003 gas)
+      test run_main ... ok (???, 19815 gas)
            debug output:
 [src/main.sw:110:13] a = [1, 2]
 [src/main.sw:114:13] [C {}].len() = 1
