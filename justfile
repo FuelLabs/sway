@@ -59,7 +59,7 @@ pe2e-o2-against-master:
     git checkout master
     cd ../sway-program-collection && git clean -xfd && just a
     git checkout {{CURRENT_BRANCH}}
-    cd ../sway-program-collection && git clean -xfd && just a && just opd
+    cd ../sway-program-collection && just a && just opd
 
 alias pe2e := perf-e2e
 # collect gas usages and bytecode sizes from E2E tests
