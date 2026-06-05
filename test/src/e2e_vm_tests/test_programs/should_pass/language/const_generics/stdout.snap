@@ -40,7 +40,11 @@ ____
 
 tested -- const_generics
 
+<<<<<<< HEAD
       test run_main ... ok (???, 17769 gas)
+=======
+      test run_main ... ok (???, 19815 gas)
+>>>>>>> a94b693b4 (update tests)
            debug output:
 [src/main.sw:154:13] a = [1, 2]
 [src/main.sw:158:13] [C {}].len() = 1

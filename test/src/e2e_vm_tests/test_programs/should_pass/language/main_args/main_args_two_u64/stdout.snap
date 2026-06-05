@@ -41,6 +41,7 @@ script {
         mem_copy_val v481v1, v484v1
         v140v1 = get_local __ptr { u64, u64 }, args, !16
         mem_copy_val v140v1, v481v1
+<<<<<<< HEAD
         v167v1 = const u64 0
         v168v1 = get_elem_ptr v140v1, __ptr u64, v167v1, !17
         v169v1 = load v168v1
@@ -57,6 +58,27 @@ script {
     entry_orig fn main_11(mut baba !28: u64, mut keke !29: u64) -> u64, !32 {
         entry(mut baba: u64, mut keke: u64):
         v379v1 = add baba, keke, !35
+=======
+        v166v1 = get_local __ptr { u64, u64 }, args, !17
+        v167v1 = const u64 0
+        v168v1 = get_elem_ptr v166v1, __ptr u64, v167v1, !18
+        v169v1 = load v168v1
+        v170v1 = get_local __ptr { u64, u64 }, args, !19
+        v171v1 = const u64 1
+        v172v1 = get_elem_ptr v170v1, __ptr u64, v171v1, !20
+        v173v1 = load v172v1
+        v174v1 = call main_11(v169v1, v173v1), !23
+        v175v1 = get_local __ptr u64, _result, !24
+        store v174v1 to v175v1, !24
+        v194v1 = get_local __ptr u64, _result, !25
+        v185v1 = const u64 8
+        retd v194v1 v185v1, !29
+    }
+
+    entry_orig fn main_11(baba !31: u64, keke !32: u64) -> u64, !35 {
+        entry(baba: u64, keke: u64):
+        v379v1 = add baba, keke, !38
+>>>>>>> a94b693b4 (update tests)
         ret u64 v379v1
     }
 }
@@ -74,6 +96,7 @@ script {
 !10 = span !4 2132 2156
 !11 = (!6 !7 !8 !9 !10)
 !12 = (!6 !7 !8 !9 !10)
+<<<<<<< HEAD
 !13 = span !4 106510 106568
 !14 = fn_call_path_span !4 106510 106529
 !15 = (!6 !7 !13 !14)
@@ -97,6 +120,34 @@ script {
 !33 = span !27 52 63
 !34 = fn_call_path_span !27 57 58
 !35 = (!33 !34)
+=======
+!13 = span !4 106109 106167
+!14 = fn_call_path_span !4 106109 106128
+!15 = (!6 !7 !13 !14)
+!16 = span !0 40 100
+!17 = span !0 141 145
+!18 = span !0 146 147
+!19 = span !0 149 153
+!20 = span !0 154 155
+!21 = span !0 136 156
+!22 = fn_call_path_span !0 136 140
+!23 = (!21 !22)
+!24 = span !0 117 157
+!25 = span !0 200 207
+!26 = span !0 174 208
+!27 = fn_call_path_span !0 174 191
+!28 = span !4 56517 56543
+!29 = (!26 !27 !28)
+!30 = "test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_two_u64/src/main.sw"
+!31 = span !30 17 21
+!32 = span !30 28 32
+!33 = span !30 9 65
+!34 = fn_name_span !30 12 16
+!35 = (!33 !34)
+!36 = span !30 52 63
+!37 = fn_call_path_span !30 57 58
+!38 = (!36 !37)
+>>>>>>> a94b693b4 (update tests)
 
 ;; ASM: Final program
 ;; Program kind: Script
@@ -123,8 +174,13 @@ lw   $r1 $$locbase i6         ; load word
 move $$arg0 $r0               ; [call: main_11]: pass argument 0
 move $$arg1 $r1               ; [call: main_11]: pass argument 1
 jal  $$reta $pc i5            ; [call: main_11]: call function
+<<<<<<< HEAD
 addi $r0 $$locbase i32        ; get offset to local __ptr u64
 sw   $$locbase $$retv i4      ; store word
+=======
+sw   $$locbase $$retv i4      ; store word
+addi $r0 $$locbase i32        ; get offset to local __ptr u64
+>>>>>>> a94b693b4 (update tests)
 movi $r1 i8                   ; initialize constant into register
 retd  $r0 $r1                 ; [entry end: __entry] return slice
 pshh i528384                  ; [fn init: main_11]: push used high registers 40..64
@@ -156,8 +212,13 @@ jal  $zero $$reta i0          ; [fn end: main_11] return from call
 0x00000048 MOVE R58 R52                                    ;; [26, 235, 64, 0]
 0x0000004c MOVE R57 R51                                    ;; [26, 231, 48, 0]
 0x00000050 JAL R62 $pc 0x5                                 ;; [153, 248, 48, 5]
+<<<<<<< HEAD
 0x00000054 ADDI R52 R59 0x20                               ;; [80, 211, 176, 32]
 0x00000058 SW R59 R61 0x4                                  ;; [95, 239, 208, 4]
+=======
+0x00000054 SW R59 R61 0x4                                  ;; [95, 239, 208, 4]
+0x00000058 ADDI R52 R59 0x20                               ;; [80, 211, 176, 32]
+>>>>>>> a94b693b4 (update tests)
 0x0000005c MOVI R51 0x8                                    ;; [114, 204, 0, 8]
 0x00000060 RETD R52 R51                                    ;; [37, 211, 48, 0]
 0x00000064 PSHH 0x81000                                    ;; [150, 8, 16, 0]

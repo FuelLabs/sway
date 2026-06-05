@@ -243,6 +243,7 @@ script {
         local slice data_
         local slice s
 
+<<<<<<< HEAD
         entry(mut __ret_value: __ptr [u8; 1]):
         v247v1 = get_local __ptr [u8; 1], __array_init_0, !104
         v880v1 = const u64 0
@@ -267,6 +268,43 @@ script {
         v1652v1 = asm(size: v266v1, src: v2089v1) -> __ptr [u8; 1] hp, !116 {
             aloc   size, !117
             mcp    hp src size, !118
+=======
+        entry(__ret_value: __ptr [u8; 1]):
+        v244v1 = get_local __ptr [u8; 1], __array_init_0, !105
+        v874v1 = const u64 0
+        v875v1 = get_elem_ptr v244v1, __ptr u8, v874v1, !105
+        v245v1 = const u8 255, !106
+        store v245v1 to v875v1, !105
+        v1919v1 = get_local __ptr [u8; 1], __array_init_0
+        v2037v1 = get_local __ptr slice, __ret_val
+        v2038v1 = call to_slice_20(v1919v1, v2037v1)
+        v249v1 = get_local __ptr slice, s, !107
+        mem_copy_val v249v1, v2037v1
+        v1893v1 = get_local __ptr slice, s, !115
+        v1895v1 = get_local __ptr slice, slice_0, !118
+        mem_copy_val v1895v1, v1893v1
+        v1897v1 = get_local __ptr slice, slice_0, !120
+        v2040v1 = asm(ptr: v1897v1) -> __ptr { ptr, u64 } ptr {
+        }
+        v2076v1 = const u64 0
+        v2077v1 = get_elem_ptr v2040v1, __ptr ptr, v2076v1
+        v2078v1 = load v2077v1
+        v2079v1 = const u64 1
+        v2080v1 = get_elem_ptr v2040v1, __ptr u64, v2079v1
+        v2081v1 = load v2080v1
+        v1899v1 = get_local __ptr { ptr, u64 }, __anon_00, !121
+        v2090v1 = const u64 0
+        v2091v1 = get_elem_ptr v1899v1, __ptr ptr, v2090v1
+        store v2078v1 to v2091v1
+        v2093v1 = const u64 1
+        v2094v1 = get_elem_ptr v1899v1, __ptr u64, v2093v1
+        store v2081v1 to v2094v1
+        v1902v1 = load v2091v1, !121
+        v263v1 = const u64 1
+        v1628v1 = asm(size: v263v1, src: v1902v1) -> __ptr [u8; 1] hp, !123 {
+            aloc   size, !124
+            mcp    hp src size, !125
+>>>>>>> a94b693b4 (update tests)
         }
         v2096v1 = const u64 0
         v2097v1 = get_elem_ptr v1652v1, __ptr u8, v2096v1
@@ -278,13 +316,19 @@ script {
         ret () v2031v1
     }
 
+<<<<<<< HEAD
     fn to_slice_20(mut array: __ptr [u8; 1], mut __ret_value: __ptr slice) -> (), !121 {
         local { ptr, u64 } __anon_0
+=======
+    fn to_slice_20(array: __ptr [u8; 1], __ret_value: __ptr slice) -> (), !128 {
+        local mut slice __aggr_memcpy_0
+>>>>>>> a94b693b4 (update tests)
         local [u8; 1] array_
 
         entry(array: __ptr [u8; 1], mut __ret_value: __ptr slice):
         v197v1 = get_local __ptr [u8; 1], array_
         mem_copy_val v197v1, array
+<<<<<<< HEAD
         v242v1 = cast_ptr v197v1 to ptr, !122
         v929v1 = get_local __ptr { ptr, u64 }, __anon_0, !126
         v883v1 = const u64 0
@@ -301,10 +345,34 @@ script {
     }
 
     pub fn log_47(mut value !138: u8) -> (), !141 {
+=======
+        v238v1 = get_local __ptr [u8; 1], array_, !129
+        v239v1 = cast_ptr v238v1 to ptr, !130
+        v934v1 = get_local __ptr { ptr, u64 }, parts_, !135
+        v2112v1 = const u64 0
+        v2113v1 = get_elem_ptr v934v1, __ptr ptr, v2112v1
+        store v239v1 to v2113v1
+        v2115v1 = const u64 1
+        v2116v1 = get_elem_ptr v934v1, __ptr u64, v2115v1
+        v927v1 = const u64 1, !138
+        store v927v1 to v2116v1
+        v936v1 = get_local __ptr { ptr, u64 }, parts_, !140
+        v2042v1 = asm(ptr: v936v1) -> __ptr slice ptr {
+        }
+        v2071v1 = get_local __ptr slice, __aggr_memcpy_0
+        mem_copy_val v2071v1, v2042v1
+        mem_copy_val __ret_value, v2071v1
+        v2035v1 = const unit ()
+        ret () v2035v1
+    }
+
+    pub fn log_47(value !142: u8) -> (), !145 {
+>>>>>>> a94b693b4 (update tests)
         local { __ptr u8, u64 } __anon_0
         local slice __log_arg
         local u8 value_
 
+<<<<<<< HEAD
         entry(mut value: u8):
         v638v1 = get_local __ptr u8, value_
         store value to v638v1
@@ -323,6 +391,28 @@ script {
         log __ptr slice v2043v1, v781v1
         v785v1 = const unit ()
         ret () v785v1
+=======
+        entry(value: u8):
+        v632v1 = get_local __ptr u8, value_
+        store value to v632v1
+        v773v1 = get_local __ptr u8, value_, !146
+        v1821v1 = get_local __ptr { __ptr u8, u64 }, __anon_0, !148
+        v889v1 = const u64 0
+        v1824v1 = get_elem_ptr v1821v1, __ptr __ptr u8, v889v1, !149
+        store v773v1 to v1824v1, !150
+        v892v1 = const u64 1
+        v1826v1 = get_elem_ptr v1821v1, __ptr u64, v892v1, !151
+        v642v1 = const u64 1
+        store v642v1 to v1826v1, !152
+        v1829v1 = get_local __ptr { __ptr u8, u64 }, __anon_0, !146
+        v1831v1 = cast_ptr v1829v1 to __ptr slice, !146
+        v2044v1 = get_local __ptr slice, __log_arg
+        mem_copy_val v2044v1, v1831v1
+        v775v1 = const u64 14454674236531057292
+        log __ptr slice v2044v1, v775v1
+        v779v1 = const unit ()
+        ret () v779v1
+>>>>>>> a94b693b4 (update tests)
     }
 }
 
@@ -343,6 +433,7 @@ script {
 !14 = span !10 2928 2954
 !15 = fn_call_path_span !10 2928 2952
 !16 = (!14 !15)
+<<<<<<< HEAD
 !17 = span !10 3038 3039
 !18 = span !10 3032 3040
 !19 = span !10 3042 3047
@@ -475,6 +566,144 @@ script {
 !146 = (!142 !143)
 !147 = (!142 !143)
 !148 = (!142 !143)
+=======
+!17 = span !10 3032 3037
+!18 = span !10 3038 3039
+!19 = span !10 3032 3040
+!20 = span !10 3042 3047
+!21 = span !10 3022 3048
+!22 = fn_call_path_span !10 3022 3031
+!23 = "test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert/src/assert.sw"
+!24 = span !23 1863 1871
+!25 = fn_call_path_span !23 1866 1868
+!26 = "test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert/src/ops.sw"
+!27 = span !26 15555 15569
+!28 = fn_call_path_span !26 15560 15562
+!29 = (!21 !22 !24 !25 !27 !28)
+!30 = span !26 12573 12578
+!31 = span !26 15554 15576
+!32 = fn_call_path_span !26 15571 15574
+!33 = (!21 !22 !24 !25 !31 !32)
+!34 = (!21 !22 !24)
+!35 = span !23 1883 1890
+!36 = fn_call_path_span !23 1883 1886
+!37 = (!21 !22 !35 !36)
+!38 = span !23 1900 1907
+!39 = fn_call_path_span !23 1900 1903
+!40 = (!21 !22 !38 !39)
+!41 = span !23 1917 1948
+!42 = fn_call_path_span !23 1917 1923
+!43 = "test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert/src/revert.sw"
+!44 = span !43 757 771
+!45 = (!21 !22 !41 !42 !44)
+!46 = span !10 58 117
+!47 = fn_name_span !10 61 87
+!48 = inline "never"
+!49 = (!46 !47 !48)
+!50 = span !10 107 115
+!51 = span !10 220 282
+!52 = fn_name_span !10 223 250
+!53 = (!51 !52 !48)
+!54 = span !10 271 280
+!55 = span !10 725 855
+!56 = fn_name_span !10 728 756
+!57 = (!55 !56 !48)
+!58 = span !10 778 853
+!59 = span !10 1030 1156
+!60 = fn_name_span !10 1033 1061
+!61 = (!59 !60 !48)
+!62 = span !10 1083 1154
+!63 = span !10 1327 1392
+!64 = fn_name_span !10 1330 1358
+!65 = (!63 !64 !48)
+!66 = span !10 1380 1390
+!67 = span !10 135 194
+!68 = fn_name_span !10 138 162
+!69 = (!67 !68 !48)
+!70 = span !10 183 192
+!71 = span !10 468 530
+!72 = fn_name_span !10 471 496
+!73 = (!71 !72 !48)
+!74 = span !10 518 528
+!75 = span !10 873 1003
+!76 = fn_name_span !10 876 902
+!77 = (!75 !76 !48)
+!78 = span !10 925 1001
+!79 = span !10 1174 1300
+!80 = fn_name_span !10 1177 1203
+!81 = (!79 !80 !48)
+!82 = span !10 1226 1298
+!83 = span !10 1410 1475
+!84 = fn_name_span !10 1413 1439
+!85 = (!83 !84 !48)
+!86 = span !10 1462 1473
+!87 = span !10 1536 1590
+!88 = fn_name_span !10 1539 1557
+!89 = (!87 !88 !48)
+!90 = span !10 1579 1588
+!91 = span !10 1633 1687
+!92 = fn_name_span !10 1636 1652
+!93 = (!91 !92 !48)
+!94 = span !10 1675 1685
+!95 = span !10 1781 1852
+!96 = fn_name_span !10 1784 1812
+!97 = (!95 !96 !48)
+!98 = span !10 1837 1850
+!99 = span !10 1947 2196
+!100 = fn_name_span !10 1950 1974
+!101 = (!99 !100 !48)
+!102 = span !10 3070 3173
+!103 = fn_name_span !10 3073 3085
+!104 = (!102 !103 !48)
+!105 = span !10 3133 3140
+!106 = span !10 3134 3139
+!107 = span !10 3105 3142
+!108 = span !10 3147 3171
+!109 = fn_call_path_span !10 3147 3157
+!110 = "test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert/src/codec.sw"
+!111 = span !110 57044 57054
+!112 = fn_call_path_span !110 57049 57052
+!113 = "test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert/src/raw_slice.sw"
+!114 = span !113 3732 3736
+!115 = (!108 !109 !111 !112 !114)
+!116 = span !113 3721 3737
+!117 = fn_call_path_span !113 3721 3731
+!118 = (!108 !109 !111 !112 !116 !117)
+!119 = span !113 1685 1690
+!120 = (!108 !109 !111 !112 !116 !117 !119)
+!121 = (!108 !109 !111 !112)
+!122 = span !110 57023 57138
+!123 = (!108 !109 !122)
+!124 = span !110 57070 57079
+!125 = span !110 57093 57108
+!126 = span !10 3192 3320
+!127 = fn_name_span !10 3195 3203
+!128 = (!126 !127 !48)
+!129 = span !10 3306 3311
+!130 = span !10 3296 3312
+!131 = span !10 3268 3318
+!132 = fn_call_path_span !10 3268 3289
+!133 = span !113 2403 2446
+!134 = fn_call_path_span !113 2403 2413
+!135 = (!131 !132 !133 !134)
+!136 = span !113 2420 2444
+!137 = fn_call_path_span !113 2426 2427
+!138 = (!131 !132 !136 !137)
+!139 = span !113 1309 1314
+!140 = (!131 !132 !133 !134 !139)
+!141 = "test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert/src/logging.sw"
+!142 = span !141 591 596
+!143 = span !141 577 651
+!144 = fn_name_span !141 584 587
+!145 = (!143 !144)
+!146 = span !141 642 647
+!147 = span !110 56206 56218
+!148 = (!146 !147)
+!149 = (!146 !147)
+!150 = (!146 !147)
+!151 = (!146 !147)
+!152 = (!146 !147)
+>>>>>>> a94b693b4 (update tests)
 
 ;; ASM: Final program
 ;; Program kind: Script
@@ -1056,15 +1285,26 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert)
    Compiling script array_repeat (test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat)
+<<<<<<< HEAD
     Finished release [optimized + fuel] target(s) [1.944 KB] in ???
     script array_repeat
       Bytecode size: 1944 bytes (1.944 KB)
       Bytecode hash: 0xd84e1f0af96e64ef4c4c098c44c52e6494d47aa0b5eee14850b62bbde99640fb
+=======
+    Finished release [optimized + fuel] target(s) [2.04 KB] in ???
+    script array_repeat
+      Bytecode size: 2040 bytes (2.04 KB)
+      Bytecode hash: 0x4f9edafab44fe06af95d8e015a91850559d840696e05d6ae80913d7873a73d54
+>>>>>>> a94b693b4 (update tests)
      Running 1 test, filtered 0 tests
 
 tested -- array_repeat
 
+<<<<<<< HEAD
       test test_array_repeat_zero ... ok (???, 2624891 gas)
+=======
+      test test_array_repeat_zero ... ok (???, 2887161 gas)
+>>>>>>> a94b693b4 (update tests)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
