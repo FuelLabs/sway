@@ -67,6 +67,13 @@ fn local_copy_prop_prememcpy(
 ) -> Result<bool, IrError> {
     let mut modified = false;
 
+    struct InstInfo {
+        // The block containing the instruction.
+        block: Block,
+        // Relative (use only for comparison) position of instruction in `block`.
+        pos: usize,
+    }
+
     // If the analysis result is incomplete we cannot do any safe optimizations here.
     // Calculating the candidates below relies on complete result of an escape analysis.
     let escaped_symbols = match analyses.get_analysis_result(function) {

@@ -364,11 +364,25 @@ impl PassManager {
 
     /// Run the `passes` and return true if the `passes` modify the initial `ir`.
     pub fn run(&mut self, ir: &mut Context, passes: &PassGroup) -> Result<bool, IrError> {
-        let mut modified = false;
-        for pass in passes.flatten_pass_group() {
-            modified |= self.actually_run(ir, pass)?;
+        let mut global_modified = false;
+        let passes = passes.flatten_pass_group();
+
+        // run until stabilize
+        for _ in 0..10 {
+            let mut modified = false;
+
+            for pass in passes.iter() {
+                modified |= self.actually_run(ir, *pass)?;
+            }
+
+            if !modified {
+                break;
+            }
+
+            global_modified |= modified;
         }
-        Ok(modified)
+
+        Ok(global_modified)
     }
 
     /// Run the `passes` and return true if the `passes` modify the initial `ir`.
@@ -439,6 +453,8 @@ impl PassManager {
             if !iter_modified {
                 break;
             }
+
+            global_modified |= modified;
         }
 
         if print_opts.r#final {

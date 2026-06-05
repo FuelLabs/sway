@@ -61,12 +61,13 @@ pub fn ccp(
         }
     }
 
-    // lets walk the dominator tree from the root.
-    let root_block = function.get_entry_block(context);
-
     if dom_region_replacements.is_empty() {
         return Ok(false);
     }
+
+    // lets walk the dominator tree from the root.
+    let root_block = function.get_entry_block(context);
+    let mut modified = false;
 
     let mut stack = vec![(root_block, 0)];
     let mut replacements = FxHashMap::default();
