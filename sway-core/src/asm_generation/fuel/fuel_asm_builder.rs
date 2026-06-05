@@ -2330,7 +2330,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         // XXX not required after we have FuelVM specific verifier.
         if !val
             .get_type(self.context)
-            .and_then(|val_ty| key.get_type(self.context).map(|key_ty| (val_ty, key_ty)))
+            .zip(key.get_type(self.context))
             .is_some_and(|(val_ty, key_ty)| {
                 val_ty.is_ptr(self.context) && key_ty.is_ptr(self.context)
             })

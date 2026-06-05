@@ -372,7 +372,7 @@ impl PassManager {
             let mut modified = false;
 
             for pass in passes.iter() {
-                modified |= self.actually_run(ir, *pass)?;
+                modified |= self.actually_run(ir, pass)?;
             }
 
             if !modified {
