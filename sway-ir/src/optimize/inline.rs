@@ -84,7 +84,7 @@ pub fn fn_inline(
             .fold(HashMap::new(), |mut counts, func| {
                 for (_block, ins) in func.instruction_iter(context) {
                     if let Some(Instruction {
-                        op: InstOp::Call(callee, _args),
+                        op: InstOp::Call(callee, _),
                         ..
                     }) = ins.get_instruction(context)
                     {
@@ -98,7 +98,7 @@ pub fn fn_inline(
             });
 
     const MAX_CALEE_INSTRUCTION_COUNT_TO_INLINE: usize = 12;
-    const MAX_CALLS_COUNT_TO_INLINE: u64 = 2;
+    const MAX_CALLS_COUNT_TO_INLINE: u64 = 1;
     let inline_heuristic = |ctx: &Context, func: &Function, _call_site: &Value| {
         // The encoding code in the `__entry` functions contains pointer patterns that mark
         // escape analysis and referred symbols as incomplete. This effectively forbids optimizations
@@ -118,6 +118,21 @@ pub fn fn_inline(
                 return false;
             }
             None => {}
+        }
+
+        // We do not deal very well with asm blocks, so avoid inlining functions with it
+        let has_asm_block =
+            func.instruction_iter(context)
+                .any(|(_, v)| match v.get_instruction(context) {
+                    Some(Instruction {
+                        op: InstOp::AsmBlock(..),
+                        ..
+                    }) => true,
+                    _ => false,
+                });
+
+        if has_asm_block {
+            return false;
         }
 
         // If the function is called less than the threshold, inline it.
@@ -142,6 +157,7 @@ pub fn fn_inline(
     for function in functions {
         modified |= inline_some_function_calls(context, &function, inline_heuristic)?;
     }
+
     Ok(modified)
 }
 
@@ -164,10 +180,10 @@ pub fn inline_all_function_calls(
 /// - The number of calls made to the function or if the function is called inside a loop.
 /// - A particular call has constant arguments implying further constant folding.
 /// - An attribute request, e.g., #[always_inline], #[never_inline].
-pub fn inline_some_function_calls<F: Fn(&Context, &Function, &Value) -> bool>(
+pub fn inline_some_function_calls(
     context: &mut Context,
     function: &Function,
-    predicate: F,
+    predicate: impl Fn(&Context, &Function, &Value) -> bool,
 ) -> Result<bool, IrError> {
     // Find call sites which passes the predicate.
     // We use a RefCell so that the inliner can modify the value
@@ -176,11 +192,11 @@ pub fn inline_some_function_calls<F: Fn(&Context, &Function, &Value) -> bool>(
         .instruction_iter(context)
         .filter_map(|(block, call_val)| match context.values[call_val.0].value {
             ValueDatum::Instruction(Instruction {
-                op: InstOp::Call(inlined_function, _),
+                op: InstOp::Call(candidate_function, _),
                 ..
-            }) => predicate(context, &inlined_function, &call_val).then_some((
+            }) => predicate(context, &candidate_function, &call_val).then_some((
                 call_val,
-                (call_val, RefCell::new((block, inlined_function))),
+                (call_val, RefCell::new((block, candidate_function))),
             )),
             _ => None,
         })
@@ -188,9 +204,9 @@ pub fn inline_some_function_calls<F: Fn(&Context, &Function, &Value) -> bool>(
 
     for call_site in &call_sites {
         let call_site_in = call_data.get(call_site).unwrap();
-        let (block, inlined_function) = *call_site_in.borrow();
+        let (block, being_inlined) = *call_site_in.borrow();
 
-        if function == &inlined_function {
+        if function == &being_inlined {
             // We can't inline a function into itself.
             continue;
         }
@@ -200,7 +216,7 @@ pub fn inline_some_function_calls<F: Fn(&Context, &Function, &Value) -> bool>(
             *function,
             block,
             *call_site,
-            inlined_function,
+            being_inlined,
             &call_data,
         )?;
     }
