@@ -97,6 +97,8 @@ pub fn fn_inline(
                 counts
             });
 
+    const MAX_CALEE_INSTRUCTION_COUNT_TO_INLINE: usize = 12;
+    const MAX_CALLS_COUNT_TO_INLINE: u64 = 2;
     let inline_heuristic = |ctx: &Context, func: &Function, _call_site: &Value| {
         // The encoding code in the `__entry` functions contains pointer patterns that mark
         // escape analysis and referred symbols as incomplete. This effectively forbids optimizations
@@ -118,14 +120,14 @@ pub fn fn_inline(
             None => {}
         }
 
-        // If the function is called only once then definitely inline it.
-        if call_counts.get(func).copied().unwrap_or(0) == 1 {
+        // If the function is called less than the threshold, inline it.
+        if call_counts.get(func).copied().unwrap_or(0) <= MAX_CALLS_COUNT_TO_INLINE {
             return true;
         }
 
         // If the function is (still) small then also inline it.
-        const MAX_INLINE_INSTRS_COUNT: usize = 12;
-        if func.num_instructions_incl_asm_instructions(ctx) <= MAX_INLINE_INSTRS_COUNT {
+        if func.num_instructions_incl_asm_instructions(ctx) <= MAX_CALEE_INSTRUCTION_COUNT_TO_INLINE
+        {
             return true;
         }
 
