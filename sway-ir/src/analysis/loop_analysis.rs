@@ -39,6 +39,9 @@ impl LoopAnalysis {
 impl DebugWithContext for LoopAnalysis {
     fn fmt_with_context(&self, f: &mut std::fmt::Formatter, context: &Context) -> std::fmt::Result {
         let mut block_to_loops = HashMap::new();
+
+        // This is fine because this is used only for debug
+        #[allow(clippy::iter_over_hash_type)]
         for (block, loops) in self.block_to_loops.iter() {
             block_to_loops.insert(block.get_label(context), loops);
         }
@@ -103,12 +106,17 @@ fn compute_loop_analysis(
     let mut loops = vec![];
 
     for (loop_tail, loop_header) in back_edges {
+        let loop_id = loops.len();
+
         let mut loop_blocks = HashSet::new();
         let mut q = vec![loop_tail];
         while let Some(block) = q.pop() {
             if !loop_blocks.insert(block) {
                 continue;
             }
+
+            // Map blocks to loops
+            block_to_loops.entry(block).or_default().push(loop_id);
 
             if block == loop_header {
                 continue;
@@ -119,13 +127,6 @@ fn compute_loop_analysis(
 
         assert!(loop_blocks.contains(&loop_tail));
         assert!(loop_blocks.contains(&loop_header));
-
-        // Map blocks to loops
-        let loop_id = loops.len();
-
-        for block in loop_blocks.iter() {
-            block_to_loops.entry(*block).or_default().push(loop_id);
-        }
 
         loops.push(Loop {
             blocks: loop_blocks,
