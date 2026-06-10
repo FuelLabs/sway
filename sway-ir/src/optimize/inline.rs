@@ -18,8 +18,8 @@ use crate::{
     metadata::{combine, MetadataIndex},
     value::{Value, ValueContent, ValueDatum},
     variable::LocalVar,
-    AnalysisResults, BlockArgument, DebugWithContext, Instruction, LoopAnalysis, Module, Pass,
-    PassMutability, ScopedPass, LOOP_ANALYSIS_NAME,
+    AnalysisResults, BlockArgument, Instruction, LoopAnalysis, Module, Pass, PassMutability,
+    ScopedPass, LOOP_ANALYSIS_NAME,
 };
 
 pub const FN_INLINE_NAME: &str = "inline";
