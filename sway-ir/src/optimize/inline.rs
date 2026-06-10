@@ -121,37 +121,42 @@ pub fn fn_inline(
             None => {}
         }
 
+        // This is disabled as we have not found it useful at this point
+        // Needs better exploration with other parameters.
+        //
         // We do not deal very well with asm blocks, so avoid inlining functions with
         // asm blocks with more than 1 instructions (normally transmutes)
-        let has_asm_block = func
-            .instruction_iter(ctx)
-            .any(|(_, v)| match v.get_instruction(ctx) {
-                Some(Instruction {
-                    op: InstOp::AsmBlock(block, ..),
-                    ..
-                }) => block.body.len() > 1,
-                _ => false,
-            });
-
-        if has_asm_block {
-            return false;
-        }
+        // let has_asm_block = func
+        //     .instruction_iter(ctx)
+        //     .any(|(_, v)| match v.get_instruction(ctx) {
+        //         Some(Instruction {
+        //             op: InstOp::AsmBlock(block, ..),
+        //             ..
+        //         }) => block.body.len() > 1,
+        //         _ => false,
+        //     });
+        // if has_asm_block {
+        //     return false;
+        // }
 
         // If the function is called less than the threshold, inline it.
         if call_counts.get(func).copied().unwrap_or(0) <= MAX_CALLS_COUNT_TO_INLINE {
             return true;
         }
 
-        let mut threshold = MAX_CALLEE_INSTRUCTION_COUNT_TO_INLINE;
+        let threshold = MAX_CALLEE_INSTRUCTION_COUNT_TO_INLINE;
 
+        // This is disabled as we have not found it useful at this point
+        // Needs better exploration with other parameters.
+        //
         // If call site is inside loops, increase the threshold
-        let call_site_fn = call_site.get_parent_function(ctx).unwrap();
-        let la: &LoopAnalysis = analyses.get_analysis_result(call_site_fn);
-        if let Some(block) = call_site.get_parent_block(ctx) {
-            if la.is_inside_loop(&block) {
-                threshold = MAX_CALLEE_INSTRUCTION_COUNT_TO_INLINE;
-            }
-        }
+        // let call_site_fn = call_site.get_parent_function(ctx).unwrap();
+        // let la: &LoopAnalysis = analyses.get_analysis_result(call_site_fn);
+        // if let Some(block) = call_site.get_parent_block(ctx) {
+        //     if la.is_inside_loop(&block) {
+        //         threshold = MAX_CALLEE_INSTRUCTION_COUNT_TO_INLINE;
+        //     }
+        // }
 
         // If the function is (still) small then also inline it.
         if func.num_instructions_incl_asm_instructions(ctx) <= threshold {
