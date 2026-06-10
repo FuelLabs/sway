@@ -44,8 +44,8 @@ pub struct PostOrder {
 impl AnalysisResultT for PostOrder {}
 
 impl PostOrder {
-    /// If `block` was found by the `PostOrder` analysis,
-    /// so it is reachable from the entry function.
+    /// If `block` was found by the `PostOrder` analysis
+    /// it is reachable from the entry function.
     #[inline(always)]
     pub fn is_reachable(&self, block: &Block) -> bool {
         self.block_to_po.contains_key(block)

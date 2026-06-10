@@ -369,6 +369,7 @@ impl PassManager {
         let passes = passes.flatten_pass_group();
 
         // run until stabilize
+        // 10 here just to avoid infinite running
         for _ in 0..10 {
             let mut modified = false;
 
@@ -403,10 +404,16 @@ impl PassManager {
 
         let mut global_modified = false;
 
+<<<<<<< HEAD
         // Make it easy for tests to run IR verification in all steps
         let force_verify: String =
             std::env::var("SWAY_FORCE_VERIFY_IR").unwrap_or_else(|_| "false".to_string());
         let force_verify: bool = force_verify.parse().unwrap_or(false);
+=======
+        // 10 here just to avoid infinite running
+        for _ in 0..10 {
+            let mut modified = false;
+>>>>>>> ab552eebc (finishing up PR)
 
         for _ in 0..2 {
             let mut iter_modified = false;
