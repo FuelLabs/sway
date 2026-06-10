@@ -61,6 +61,8 @@ ecal $r1 $r0 $zero $zero      ; ecal id fd zero zero
 ecal $r1 $r0 $zero $zero      ; ecal id fd zero zero
 ecal $r1 $r0 $zero $zero      ; ecal id fd zero zero
 ecal $r1 $r0 $zero $zero      ; ecal id fd zero zero
+ecal $r4 $r0 $r1 $r2          ; ecal id fd buf count
+ecal $r3 $r0 $r1 $r2          ; ecal id fd buf count
 ecal $r3 $r0 $r1 $r2          ; ecal id fd buf count
 
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg --release --asm final | sub ecal
@@ -72,19 +74,27 @@ output:
    Compiling library std (sway-lib-std)
    Compiling script dbg (test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg)
 <<<<<<< HEAD
+<<<<<<< HEAD
     Finished debug [unoptimized + fuel] target(s) [36.48 KB] in ???
 =======
     Finished debug [unoptimized + fuel] target(s) [36.664 KB] in ???
 >>>>>>> a94b693b4 (update tests)
+=======
+    Finished debug [unoptimized + fuel] target(s) [37.08 KB] in ???
+>>>>>>> 2c082a4be (update tests)
      Running 1 test, filtered 0 tests
 
 tested -- dbg
 
 <<<<<<< HEAD
+<<<<<<< HEAD
       test call_main ... ok (???, 117840 gas)
 =======
       test call_main ... ok (???, 131571 gas)
 >>>>>>> a94b693b4 (update tests)
+=======
+      test call_main ... ok (???, 131162 gas)
+>>>>>>> 2c082a4be (update tests)
            debug output:
 [src/main.sw:13:13] () = ()
 [src/main.sw:15:13] true = true
