@@ -7,6 +7,90 @@ storage {
     vec: StorageVec<Struct56> = StorageVec {},
 }
 
+#[inline(never)]
+#[storage(read, write)]
+fn populate_n10() {
+    let mut i = 0;
+    while i < 10 {
+        storage.vec.push(STRUCT56_DEFAULT);
+        i += 1;
+    }
+}
+
+#[inline(never)]
+#[storage(read, write)]
+fn populate_n100() {
+    let mut i = 0;
+    while i < 100 {
+        storage.vec.push(STRUCT56_DEFAULT);
+        i += 1;
+    }
+}
+
+#[inline(never)]
+#[storage(read, write)]
+fn populate_n1000() {
+    let mut i = 0;
+    while i < 1000 {
+        storage.vec.push(STRUCT56_DEFAULT);
+        i += 1;
+    }
+}
+
+#[inline(never)]
+#[storage(read, write)]
+fn populate_n5000() {
+    let mut i = 0;
+    while i < 5000 {
+        storage.vec.push(STRUCT56_DEFAULT);
+        i += 1;
+    }
+}
+
+#[inline(never)]
+fn build_vec_n10() -> Vec<Struct56> {
+    let mut v = Vec::<Struct56>::new();
+    let mut i = 0;
+    while i < 10 {
+        v.push(STRUCT56_DEFAULT);
+        i += 1;
+    }
+    v
+}
+
+#[inline(never)]
+fn build_vec_n100() -> Vec<Struct56> {
+    let mut v = Vec::<Struct56>::new();
+    let mut i = 0;
+    while i < 100 {
+        v.push(STRUCT56_DEFAULT);
+        i += 1;
+    }
+    v
+}
+
+#[inline(never)]
+fn build_vec_n1000() -> Vec<Struct56> {
+    let mut v = Vec::<Struct56>::new();
+    let mut i = 0;
+    while i < 1000 {
+        v.push(STRUCT56_DEFAULT);
+        i += 1;
+    }
+    v
+}
+
+#[inline(never)]
+fn build_vec_n5000() -> Vec<Struct56> {
+    let mut v = Vec::<Struct56>::new();
+    let mut i = 0;
+    while i < 5000 {
+        v.push(STRUCT56_DEFAULT);
+        i += 1;
+    }
+    v
+}
+
 impl Contract {
 
     // === Baseline (empty contract method call) ===
@@ -17,117 +101,65 @@ impl Contract {
 
     #[storage(read, write)]
     fn baseline_n10() {
-        let mut i = 0;
-        while i < 10 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n10();
     }
 
     #[storage(read, write)]
     fn baseline_n100() {
-        let mut i = 0;
-        while i < 100 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n100();
     }
 
     #[storage(read, write)]
     fn baseline_n1000() {
-        let mut i = 0;
-        while i < 1000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n1000();
     }
 
     #[storage(read, write)]
     fn baseline_n5000() {
-        let mut i = 0;
-        while i < 5000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n5000();
     }
 
     // === Baselines (build heap Vec of N elements) ===
 
     fn baseline_store_vec_n10() {
-        let mut v = Vec::<Struct56>::new();
-        let mut i = 0;
-        while i < 10 {
-            v.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        let v = build_vec_n10();
     }
 
     fn baseline_store_vec_n100() {
-        let mut v = Vec::<Struct56>::new();
-        let mut i = 0;
-        while i < 100 {
-            v.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        let v = build_vec_n100();
     }
 
     fn baseline_store_vec_n1000() {
-        let mut v = Vec::<Struct56>::new();
-        let mut i = 0;
-        while i < 1000 {
-            v.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        let v = build_vec_n1000();
     }
 
     fn baseline_store_vec_n5000() {
-        let mut v = Vec::<Struct56>::new();
-        let mut i = 0;
-        while i < 5000 {
-            v.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        let v = build_vec_n5000();
     }
 
     // === push ===
 
     #[storage(read, write)]
     fn push_n10() {
-        let mut i = 0;
-        while i < 10 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n10();
         storage.vec.push(STRUCT56_DEFAULT);
     }
 
     #[storage(read, write)]
     fn push_n100() {
-        let mut i = 0;
-        while i < 100 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n100();
         storage.vec.push(STRUCT56_DEFAULT);
     }
 
     #[storage(read, write)]
     fn push_n1000() {
-        let mut i = 0;
-        while i < 1000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n1000();
         storage.vec.push(STRUCT56_DEFAULT);
     }
 
     #[storage(read, write)]
     fn push_n5000() {
-        let mut i = 0;
-        while i < 5000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n5000();
         storage.vec.push(STRUCT56_DEFAULT);
     }
 
@@ -135,79 +167,47 @@ impl Contract {
 
     #[storage(read, write)]
     fn push_n_elems_into_empty_vec_n10() {
-        let mut i = 0;
-        while i < 10 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n10();
     }
 
     #[storage(read, write)]
     fn push_n_elems_into_empty_vec_n100() {
-        let mut i = 0;
-        while i < 100 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n100();
     }
 
     #[storage(read, write)]
     fn push_n_elems_into_empty_vec_n1000() {
-        let mut i = 0;
-        while i < 1000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n1000();
     }
 
     #[storage(read, write)]
     fn push_n_elems_into_empty_vec_n5000() {
-        let mut i = 0;
-        while i < 5000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n5000();
     }
 
     // === pop ===
 
     #[storage(read, write)]
     fn pop_n10() {
-        let mut i = 0;
-        while i < 10 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n10();
         let _ = storage.vec.pop();
     }
 
     #[storage(read, write)]
     fn pop_n100() {
-        let mut i = 0;
-        while i < 100 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n100();
         let _ = storage.vec.pop();
     }
 
     #[storage(read, write)]
     fn pop_n1000() {
-        let mut i = 0;
-        while i < 1000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n1000();
         let _ = storage.vec.pop();
     }
 
     #[storage(read, write)]
     fn pop_n5000() {
-        let mut i = 0;
-        while i < 5000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n5000();
         let _ = storage.vec.pop();
     }
 
@@ -215,41 +215,25 @@ impl Contract {
 
     #[storage(read, write)]
     fn get_n10() {
-        let mut i = 0;
-        while i < 10 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n10();
         let _ = storage.vec.get(5).unwrap().try_read();
     }
 
     #[storage(read, write)]
     fn get_n100() {
-        let mut i = 0;
-        while i < 100 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n100();
         let _ = storage.vec.get(50).unwrap().try_read();
     }
 
     #[storage(read, write)]
     fn get_n1000() {
-        let mut i = 0;
-        while i < 1000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n1000();
         let _ = storage.vec.get(500).unwrap().try_read();
     }
 
     #[storage(read, write)]
     fn get_n5000() {
-        let mut i = 0;
-        while i < 5000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n5000();
         let _ = storage.vec.get(2500).unwrap().try_read();
     }
 
@@ -257,41 +241,25 @@ impl Contract {
 
     #[storage(read, write)]
     fn set_n10() {
-        let mut i = 0;
-        while i < 10 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n10();
         storage.vec.set(5, STRUCT56_DEFAULT);
     }
 
     #[storage(read, write)]
     fn set_n100() {
-        let mut i = 0;
-        while i < 100 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n100();
         storage.vec.set(50, STRUCT56_DEFAULT);
     }
 
     #[storage(read, write)]
     fn set_n1000() {
-        let mut i = 0;
-        while i < 1000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n1000();
         storage.vec.set(500, STRUCT56_DEFAULT);
     }
 
     #[storage(read, write)]
     fn set_n5000() {
-        let mut i = 0;
-        while i < 5000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n5000();
         storage.vec.set(2500, STRUCT56_DEFAULT);
     }
 
@@ -299,41 +267,25 @@ impl Contract {
 
     #[storage(read, write)]
     fn first_n10() {
-        let mut i = 0;
-        while i < 10 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n10();
         let _ = storage.vec.first().unwrap().try_read();
     }
 
     #[storage(read, write)]
     fn first_n100() {
-        let mut i = 0;
-        while i < 100 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n100();
         let _ = storage.vec.first().unwrap().try_read();
     }
 
     #[storage(read, write)]
     fn first_n1000() {
-        let mut i = 0;
-        while i < 1000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n1000();
         let _ = storage.vec.first().unwrap().try_read();
     }
 
     #[storage(read, write)]
     fn first_n5000() {
-        let mut i = 0;
-        while i < 5000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n5000();
         let _ = storage.vec.first().unwrap().try_read();
     }
 
@@ -341,41 +293,25 @@ impl Contract {
 
     #[storage(read, write)]
     fn last_n10() {
-        let mut i = 0;
-        while i < 10 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n10();
         let _ = storage.vec.last().unwrap().try_read();
     }
 
     #[storage(read, write)]
     fn last_n100() {
-        let mut i = 0;
-        while i < 100 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n100();
         let _ = storage.vec.last().unwrap().try_read();
     }
 
     #[storage(read, write)]
     fn last_n1000() {
-        let mut i = 0;
-        while i < 1000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n1000();
         let _ = storage.vec.last().unwrap().try_read();
     }
 
     #[storage(read, write)]
     fn last_n5000() {
-        let mut i = 0;
-        while i < 5000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n5000();
         let _ = storage.vec.last().unwrap().try_read();
     }
 
@@ -383,41 +319,25 @@ impl Contract {
 
     #[storage(read, write)]
     fn len_n10() {
-        let mut i = 0;
-        while i < 10 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n10();
         let _ = storage.vec.len();
     }
 
     #[storage(read, write)]
     fn len_n100() {
-        let mut i = 0;
-        while i < 100 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n100();
         let _ = storage.vec.len();
     }
 
     #[storage(read, write)]
     fn len_n1000() {
-        let mut i = 0;
-        while i < 1000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n1000();
         let _ = storage.vec.len();
     }
 
     #[storage(read, write)]
     fn len_n5000() {
-        let mut i = 0;
-        while i < 5000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n5000();
         let _ = storage.vec.len();
     }
 
@@ -425,41 +345,25 @@ impl Contract {
 
     #[storage(read, write)]
     fn is_empty_n10() {
-        let mut i = 0;
-        while i < 10 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n10();
         let _ = storage.vec.is_empty();
     }
 
     #[storage(read, write)]
     fn is_empty_n100() {
-        let mut i = 0;
-        while i < 100 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n100();
         let _ = storage.vec.is_empty();
     }
 
     #[storage(read, write)]
     fn is_empty_n1000() {
-        let mut i = 0;
-        while i < 1000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n1000();
         let _ = storage.vec.is_empty();
     }
 
     #[storage(read, write)]
     fn is_empty_n5000() {
-        let mut i = 0;
-        while i < 5000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n5000();
         let _ = storage.vec.is_empty();
     }
 
@@ -467,41 +371,25 @@ impl Contract {
 
     #[storage(read, write)]
     fn swap_n10() {
-        let mut i = 0;
-        while i < 10 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n10();
         storage.vec.swap(0, 9);
     }
 
     #[storage(read, write)]
     fn swap_n100() {
-        let mut i = 0;
-        while i < 100 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n100();
         storage.vec.swap(0, 99);
     }
 
     #[storage(read, write)]
     fn swap_n1000() {
-        let mut i = 0;
-        while i < 1000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n1000();
         storage.vec.swap(0, 999);
     }
 
     #[storage(read, write)]
     fn swap_n5000() {
-        let mut i = 0;
-        while i < 5000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n5000();
         storage.vec.swap(0, 4999);
     }
 
@@ -509,41 +397,25 @@ impl Contract {
 
     #[storage(read, write)]
     fn swap_remove_n10() {
-        let mut i = 0;
-        while i < 10 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n10();
         let _ = storage.vec.swap_remove(5);
     }
 
     #[storage(read, write)]
     fn swap_remove_n100() {
-        let mut i = 0;
-        while i < 100 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n100();
         let _ = storage.vec.swap_remove(50);
     }
 
     #[storage(read, write)]
     fn swap_remove_n1000() {
-        let mut i = 0;
-        while i < 1000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n1000();
         let _ = storage.vec.swap_remove(500);
     }
 
     #[storage(read, write)]
     fn swap_remove_n5000() {
-        let mut i = 0;
-        while i < 5000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n5000();
         let _ = storage.vec.swap_remove(2500);
     }
 
@@ -551,41 +423,25 @@ impl Contract {
 
     #[storage(read, write)]
     fn remove_n10() {
-        let mut i = 0;
-        while i < 10 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n10();
         let _ = storage.vec.remove(5);
     }
 
     #[storage(read, write)]
     fn remove_n100() {
-        let mut i = 0;
-        while i < 100 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n100();
         let _ = storage.vec.remove(50);
     }
 
     #[storage(read, write)]
     fn remove_n1000() {
-        let mut i = 0;
-        while i < 1000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n1000();
         let _ = storage.vec.remove(500);
     }
 
     #[storage(read, write)]
     fn remove_n5000() {
-        let mut i = 0;
-        while i < 5000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n5000();
         let _ = storage.vec.remove(2500);
     }
 
@@ -593,41 +449,25 @@ impl Contract {
 
     #[storage(read, write)]
     fn insert_n10() {
-        let mut i = 0;
-        while i < 10 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n10();
         storage.vec.insert(5, STRUCT56_DEFAULT);
     }
 
     #[storage(read, write)]
     fn insert_n100() {
-        let mut i = 0;
-        while i < 100 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n100();
         storage.vec.insert(50, STRUCT56_DEFAULT);
     }
 
     #[storage(read, write)]
     fn insert_n1000() {
-        let mut i = 0;
-        while i < 1000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n1000();
         storage.vec.insert(500, STRUCT56_DEFAULT);
     }
 
     #[storage(read, write)]
     fn insert_n5000() {
-        let mut i = 0;
-        while i < 5000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n5000();
         storage.vec.insert(2500, STRUCT56_DEFAULT);
     }
 
@@ -635,41 +475,25 @@ impl Contract {
 
     #[storage(read, write)]
     fn reverse_n10() {
-        let mut i = 0;
-        while i < 10 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n10();
         storage.vec.reverse();
     }
 
     #[storage(read, write)]
     fn reverse_n100() {
-        let mut i = 0;
-        while i < 100 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n100();
         storage.vec.reverse();
     }
 
     #[storage(read, write)]
     fn reverse_n1000() {
-        let mut i = 0;
-        while i < 1000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n1000();
         storage.vec.reverse();
     }
 
     #[storage(read, write)]
     fn reverse_n5000() {
-        let mut i = 0;
-        while i < 5000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n5000();
         storage.vec.reverse();
     }
 
@@ -677,41 +501,25 @@ impl Contract {
 
     #[storage(read, write)]
     fn fill_n10() {
-        let mut i = 0;
-        while i < 10 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n10();
         storage.vec.fill(STRUCT56_DEFAULT);
     }
 
     #[storage(read, write)]
     fn fill_n100() {
-        let mut i = 0;
-        while i < 100 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n100();
         storage.vec.fill(STRUCT56_DEFAULT);
     }
 
     #[storage(read, write)]
     fn fill_n1000() {
-        let mut i = 0;
-        while i < 1000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n1000();
         storage.vec.fill(STRUCT56_DEFAULT);
     }
 
     #[storage(read, write)]
     fn fill_n5000() {
-        let mut i = 0;
-        while i < 5000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n5000();
         storage.vec.fill(STRUCT56_DEFAULT);
     }
 
@@ -719,41 +527,25 @@ impl Contract {
 
     #[storage(read, write)]
     fn resize_grow_n10() {
-        let mut i = 0;
-        while i < 10 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n10();
         storage.vec.resize(20, STRUCT56_DEFAULT);
     }
 
     #[storage(read, write)]
     fn resize_grow_n100() {
-        let mut i = 0;
-        while i < 100 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n100();
         storage.vec.resize(200, STRUCT56_DEFAULT);
     }
 
     #[storage(read, write)]
     fn resize_grow_n1000() {
-        let mut i = 0;
-        while i < 1000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n1000();
         storage.vec.resize(2000, STRUCT56_DEFAULT);
     }
 
     #[storage(read, write)]
     fn resize_grow_n5000() {
-        let mut i = 0;
-        while i < 5000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n5000();
         storage.vec.resize(10000, STRUCT56_DEFAULT);
     }
 
@@ -761,41 +553,25 @@ impl Contract {
 
     #[storage(read, write)]
     fn resize_shrink_n10() {
-        let mut i = 0;
-        while i < 10 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n10();
         storage.vec.resize(5, STRUCT56_DEFAULT);
     }
 
     #[storage(read, write)]
     fn resize_shrink_n100() {
-        let mut i = 0;
-        while i < 100 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n100();
         storage.vec.resize(50, STRUCT56_DEFAULT);
     }
 
     #[storage(read, write)]
     fn resize_shrink_n1000() {
-        let mut i = 0;
-        while i < 1000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n1000();
         storage.vec.resize(500, STRUCT56_DEFAULT);
     }
 
     #[storage(read, write)]
     fn resize_shrink_n5000() {
-        let mut i = 0;
-        while i < 5000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n5000();
         storage.vec.resize(2500, STRUCT56_DEFAULT);
     }
 
@@ -803,45 +579,25 @@ impl Contract {
 
     #[storage(write)]
     fn store_vec_n10() {
-        let mut v = Vec::<Struct56>::new();
-        let mut i = 0;
-        while i < 10 {
-            v.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        let v = build_vec_n10();
         storage.vec.store_vec(v);
     }
 
     #[storage(write)]
     fn store_vec_n100() {
-        let mut v = Vec::<Struct56>::new();
-        let mut i = 0;
-        while i < 100 {
-            v.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        let v = build_vec_n100();
         storage.vec.store_vec(v);
     }
 
     #[storage(write)]
     fn store_vec_n1000() {
-        let mut v = Vec::<Struct56>::new();
-        let mut i = 0;
-        while i < 1000 {
-            v.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        let v = build_vec_n1000();
         storage.vec.store_vec(v);
     }
 
     #[storage(write)]
     fn store_vec_n5000() {
-        let mut v = Vec::<Struct56>::new();
-        let mut i = 0;
-        while i < 5000 {
-            v.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        let v = build_vec_n5000();
         storage.vec.store_vec(v);
     }
 
@@ -849,41 +605,25 @@ impl Contract {
 
     #[storage(read, write)]
     fn load_vec_n10() {
-        let mut i = 0;
-        while i < 10 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n10();
         let _ = storage.vec.load_vec();
     }
 
     #[storage(read, write)]
     fn load_vec_n100() {
-        let mut i = 0;
-        while i < 100 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n100();
         let _ = storage.vec.load_vec();
     }
 
     #[storage(read, write)]
     fn load_vec_n1000() {
-        let mut i = 0;
-        while i < 1000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n1000();
         let _ = storage.vec.load_vec();
     }
 
     #[storage(read, write)]
     fn load_vec_n5000() {
-        let mut i = 0;
-        while i < 5000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n5000();
         let _ = storage.vec.load_vec();
     }
 
@@ -891,11 +631,7 @@ impl Contract {
 
     #[storage(read, write)]
     fn iter_n10() {
-        let mut i = 0;
-        while i < 10 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n10();
         for elem in storage.vec.iter() {
             let _ = elem.try_read();
         }
@@ -903,11 +639,7 @@ impl Contract {
 
     #[storage(read, write)]
     fn iter_n100() {
-        let mut i = 0;
-        while i < 100 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n100();
         for elem in storage.vec.iter() {
             let _ = elem.try_read();
         }
@@ -915,11 +647,7 @@ impl Contract {
 
     #[storage(read, write)]
     fn iter_n1000() {
-        let mut i = 0;
-        while i < 1000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n1000();
         for elem in storage.vec.iter() {
             let _ = elem.try_read();
         }
@@ -927,11 +655,7 @@ impl Contract {
 
     #[storage(read, write)]
     fn iter_n5000() {
-        let mut i = 0;
-        while i < 5000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n5000();
         for elem in storage.vec.iter() {
             let _ = elem.try_read();
         }
@@ -941,41 +665,25 @@ impl Contract {
 
     #[storage(read, write)]
     fn clear_n10() {
-        let mut i = 0;
-        while i < 10 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n10();
         let _ = storage.vec.clear();
     }
 
     #[storage(read, write)]
     fn clear_n100() {
-        let mut i = 0;
-        while i < 100 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n100();
         let _ = storage.vec.clear();
     }
 
     #[storage(read, write)]
     fn clear_n1000() {
-        let mut i = 0;
-        while i < 1000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n1000();
         let _ = storage.vec.clear();
     }
 
     #[storage(read, write)]
     fn clear_n5000() {
-        let mut i = 0;
-        while i < 5000 {
-            storage.vec.push(STRUCT56_DEFAULT);
-            i += 1;
-        }
+        populate_n5000();
         let _ = storage.vec.clear();
     }
 }
