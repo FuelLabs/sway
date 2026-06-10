@@ -121,14 +121,15 @@ pub fn fn_inline(
             None => {}
         }
 
-        // We do not deal very well with asm blocks, so avoid inlining functions with it
+        // We do not deal very well with asm blocks, so avoid inlining functions with
+        // asm blocks with more than 1 instructions (normally transmutes)
         let has_asm_block = func
             .instruction_iter(ctx)
             .any(|(_, v)| match v.get_instruction(ctx) {
                 Some(Instruction {
-                    op: InstOp::AsmBlock(..),
+                    op: InstOp::AsmBlock(block, ..),
                     ..
-                }) => true,
+                }) => block.body.len() > 1,
                 _ => false,
             });
 
