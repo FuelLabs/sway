@@ -122,19 +122,19 @@ pub fn fn_inline(
         }
 
         // We do not deal very well with asm blocks, so avoid inlining functions with it
-        // let has_asm_block = func
-        //     .instruction_iter(ctx)
-        //     .any(|(_, v)| match v.get_instruction(ctx) {
-        //         Some(Instruction {
-        //             op: InstOp::AsmBlock(..),
-        //             ..
-        //         }) => true,
-        //         _ => false,
-        //     });
+        let has_asm_block = func
+            .instruction_iter(ctx)
+            .any(|(_, v)| match v.get_instruction(ctx) {
+                Some(Instruction {
+                    op: InstOp::AsmBlock(..),
+                    ..
+                }) => true,
+                _ => false,
+            });
 
-        // if has_asm_block {
-        //     return false;
-        // }
+        if has_asm_block {
+            return false;
+        }
 
         // If the function is called less than the threshold, inline it.
         if call_counts.get(func).copied().unwrap_or(0) <= MAX_CALLS_COUNT_TO_INLINE {
