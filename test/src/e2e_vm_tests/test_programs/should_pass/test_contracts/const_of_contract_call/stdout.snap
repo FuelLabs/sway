@@ -10,6 +10,7 @@ output:
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     Finished release [optimized + fuel] target(s) [19.408 KB] in ???
 =======
     Finished release [optimized + fuel] target(s) [24.824 KB] in ???
@@ -20,10 +21,14 @@ output:
 =======
     Finished release [optimized + fuel] target(s) [24.824 KB] in ???
 >>>>>>> b4cdcf291 (update tests)
+=======
+    Finished release [optimized + fuel] target(s) [24.944 KB] in ???
+>>>>>>> 7e62d56dc (fix justfile for mac)
      Running 33 tests, filtered 0 tests
 
 tested -- const_of_contract_call
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -99,6 +104,8 @@ tested -- const_of_contract_call
 <<<<<<< HEAD
 >>>>>>> a94b693b4 (update tests)
 =======
+=======
+>>>>>>> 7e62d56dc (fix justfile for mac)
       test cost_of_in_bool ... ok (???, 1806 gas)
       test cost_of_in_u8 ... ok (???, 1774 gas)
       test cost_of_in_u16 ... ok (???, 1939 gas)
@@ -132,9 +139,12 @@ tested -- const_of_contract_call
       test in_vec_not_trivial ... ok (???, 5940 gas)
       test order_args_without_trivial_enum ... ok (???, 3250 gas)
       test order_args_with_trivial_enum ... ok (???, 3462 gas)
+<<<<<<< HEAD
 >>>>>>> 2c082a4be (update tests)
 =======
 >>>>>>> b4cdcf291 (update tests)
+=======
+>>>>>>> 7e62d56dc (fix justfile for mac)
 
 test result: OK. 33 passed; 0 failed; finished in ???
 
