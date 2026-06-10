@@ -9,6 +9,7 @@ output:
    Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     Finished release [optimized + fuel] target(s) [19.408 KB] in ???
 =======
     Finished release [optimized + fuel] target(s) [24.824 KB] in ???
@@ -16,10 +17,14 @@ output:
 =======
     Finished release [optimized + fuel] target(s) [24.944 KB] in ???
 >>>>>>> 2c082a4be (update tests)
+=======
+    Finished release [optimized + fuel] target(s) [24.824 KB] in ???
+>>>>>>> b4cdcf291 (update tests)
      Running 33 tests, filtered 0 tests
 
 tested -- const_of_contract_call
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
       test cost_of_in_bool ... ok (???, 1736 gas)
@@ -56,6 +61,8 @@ tested -- const_of_contract_call
       test order_args_without_trivial_enum ... ok (???, 3049 gas)
       test order_args_with_trivial_enum ... ok (???, 3213 gas)
 =======
+=======
+>>>>>>> b4cdcf291 (update tests)
       test cost_of_in_bool ... ok (???, 1804 gas)
       test cost_of_in_u8 ... ok (???, 1772 gas)
       test cost_of_in_u16 ... ok (???, 1937 gas)
@@ -89,6 +96,7 @@ tested -- const_of_contract_call
       test in_vec_not_trivial ... ok (???, 6198 gas)
       test order_args_without_trivial_enum ... ok (???, 3248 gas)
       test order_args_with_trivial_enum ... ok (???, 3460 gas)
+<<<<<<< HEAD
 >>>>>>> a94b693b4 (update tests)
 =======
       test cost_of_in_bool ... ok (???, 1806 gas)
@@ -125,6 +133,8 @@ tested -- const_of_contract_call
       test order_args_without_trivial_enum ... ok (???, 3250 gas)
       test order_args_with_trivial_enum ... ok (???, 3462 gas)
 >>>>>>> 2c082a4be (update tests)
+=======
+>>>>>>> b4cdcf291 (update tests)
 
 test result: OK. 33 passed; 0 failed; finished in ???
 

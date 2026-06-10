@@ -1287,6 +1287,7 @@ output:
    Compiling script array_repeat (test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat)
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     Finished release [optimized + fuel] target(s) [1.944 KB] in ???
     script array_repeat
       Bytecode size: 1944 bytes (1.944 KB)
@@ -1303,10 +1304,17 @@ output:
       Bytecode size: 2152 bytes (2.152 KB)
       Bytecode hash: 0x77810750c970c763f9a0d60dba74f0cc41bc81a61944521b3e8c305234423f8b
 >>>>>>> 2c082a4be (update tests)
+=======
+    Finished release [optimized + fuel] target(s) [2.04 KB] in ???
+    script array_repeat
+      Bytecode size: 2040 bytes (2.04 KB)
+      Bytecode hash: 0x4f9edafab44fe06af95d8e015a91850559d840696e05d6ae80913d7873a73d54
+>>>>>>> b4cdcf291 (update tests)
      Running 1 test, filtered 0 tests
 
 tested -- array_repeat
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
       test test_array_repeat_zero ... ok (???, 2624891 gas)
@@ -1316,6 +1324,9 @@ tested -- array_repeat
 =======
       test test_array_repeat_zero ... ok (???, 2887761 gas)
 >>>>>>> 2c082a4be (update tests)
+=======
+      test test_array_repeat_zero ... ok (???, 2887161 gas)
+>>>>>>> b4cdcf291 (update tests)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 

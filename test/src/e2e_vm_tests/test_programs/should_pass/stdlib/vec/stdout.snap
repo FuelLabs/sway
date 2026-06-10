@@ -7,13 +7,13 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec
    Compiling library std (sway-lib-std)
    Compiling script vec (test/src/e2e_vm_tests/test_programs/should_pass/stdlib/vec)
-    Finished debug [unoptimized + fuel] target(s) [155.464 KB] in ???
+    Finished debug [unoptimized + fuel] target(s) [155.208 KB] in ???
      Running 2 tests, filtered 0 tests
 
 tested -- vec
 
-      test test_main ... ok (???, 192273 gas)
-      test test_zst ... ok (???, 11405 gas)
+      test test_main ... ok (???, 193385 gas)
+      test test_zst ... ok (???, 11580 gas)
 
 test result: OK. 2 passed; 0 failed; finished in ???
 

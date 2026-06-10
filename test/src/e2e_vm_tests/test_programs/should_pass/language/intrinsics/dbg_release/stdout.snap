@@ -15,7 +15,6 @@ ecal $r1 $r0 $zero $zero      ; ecal id fd zero zero
 ecal $r1 $r0 $zero $zero      ; ecal id fd zero zero
 ecal $r1 $r0 $zero $zero      ; ecal id fd zero zero
 ecal $r1 $r0 $zero $zero      ; ecal id fd zero zero
-ecal $r0 $r1 $r2 $r4          ; ecal id fd buf count
 ecal $r3 $r0 $r1 $r2          ; ecal id fd buf count
 
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg_release --release --asm final | sub ecal
@@ -43,10 +42,13 @@ ecal $r0 $r1 $zero $zero      ; ecal id fd zero zero
 ecal $r0 $r1 $zero $zero      ; ecal id fd zero zero
 ecal $r0 $r1 $zero $zero      ; ecal id fd zero zero
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> a94b693b4 (update tests)
 =======
 ecal $r5 $r6 $r2 $r4          ; ecal id fd buf count
 >>>>>>> 2c082a4be (update tests)
+=======
+>>>>>>> b4cdcf291 (update tests)
 ecal $r2 $r3 $r0 $r1          ; ecal id fd buf count
 ecal $r2 $r3 $r0 $r1          ; ecal id fd buf count
 ecal $r3 $r4 $$locbase $one   ; ecal id fd buf count
