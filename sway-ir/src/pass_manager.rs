@@ -369,6 +369,7 @@ impl PassManager {
         let passes = passes.flatten_pass_group();
 
         // run until stabilize
+        // 10 here just to avoid infinite running
         for _ in 0..10 {
             let mut modified = false;
 
@@ -428,6 +429,7 @@ impl PassManager {
         let mut global_modified = false;
         let passes = passes.flatten_pass_group();
 
+        // 10 here just to avoid infinite running
         for _ in 0..10 {
             let mut modified = false;
 

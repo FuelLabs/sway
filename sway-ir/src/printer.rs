@@ -190,6 +190,7 @@ pub fn function_print<W: std::fmt::Write>(
 }
 
 /// Print an instruction to stdout.
+/// Incomplete impl is fine here as this is only used for debugging the compiler.
 pub fn instruction_print(s: &mut impl std::fmt::Write, context: &Context, ins_value: &Value) {
     let mut md_namer = MetadataNamer::default();
 

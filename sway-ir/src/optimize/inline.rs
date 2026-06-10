@@ -28,7 +28,7 @@ pub fn create_fn_inline_pass() -> Pass {
     Pass {
         name: FN_INLINE_NAME,
         descr: "Function inlining",
-        deps: vec![LOOP_ANALYSIS_NAME],
+        deps: vec![/*LOOP_ANALYSIS_NAME*/],
         runner: ScopedPass::ModulePass(PassMutability::Transform(fn_inline)),
     }
 }
@@ -75,7 +75,7 @@ pub fn metadata_to_inline(context: &Context, md_idx: Option<MetadataIndex>) -> O
 
 pub fn fn_inline(
     context: &mut Context,
-    analyses: &AnalysisResults,
+    _analyses: &AnalysisResults,
     module: Module,
 ) -> Result<bool, IrError> {
     // Inspect ALL calls and count how often each function is called.
@@ -100,7 +100,7 @@ pub fn fn_inline(
 
     const MAX_CALLEE_INSTRUCTION_COUNT_TO_INLINE: usize = 12;
     const MAX_CALLS_COUNT_TO_INLINE: u64 = 1;
-    let inline_heuristic = |ctx: &Context, func: &Function, call_site: &Value| {
+    let inline_heuristic = |ctx: &Context, func: &Function, _call_site: &Value| {
         // The encoding code in the `__entry` functions contains pointer patterns that mark
         // escape analysis and referred symbols as incomplete. This effectively forbids optimizations
         // like SROA nad DCE. If we inline original entries, like e.g., `main`, the code in them will
@@ -139,6 +139,13 @@ pub fn fn_inline(
         //     return false;
         // }
 
+        // Inline run multiple times. Every time a call is inlined,
+        // its call count decreases. So it is possible that a function
+        // called multiple times, after all inlining ends up being called just once.
+        // At this point this algo will think it makes sense to inline it one last time.
+        //
+        // We need improvement here.
+        //
         // If the function is called less than the threshold, inline it.
         if call_counts.get(func).copied().unwrap_or(0) <= MAX_CALLS_COUNT_TO_INLINE {
             return true;
@@ -154,7 +161,7 @@ pub fn fn_inline(
         // let la: &LoopAnalysis = analyses.get_analysis_result(call_site_fn);
         // if let Some(block) = call_site.get_parent_block(ctx) {
         //     if la.is_inside_loop(&block) {
-        //         threshold = MAX_CALLEE_INSTRUCTION_COUNT_TO_INLINE;
+        //         threshold = MAX_CALLEE_INSTRUCTION_COUNT_TO_INLINE * 2;
         //     }
         // }
 

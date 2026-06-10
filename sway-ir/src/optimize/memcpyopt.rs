@@ -523,6 +523,7 @@ fn local_copy_prop(
         // optimization possible. We could track just the changes and do it
         // all in one go, but that would complicate the algorithm. So I've
         // marked this as a TODO for now (#4600).
+        // 100 here just to avoid infinite recursion.
         for _ in 0..100 {
             available_copies = FxHashSet::default();
             src_to_copies = IndexMap::default();
