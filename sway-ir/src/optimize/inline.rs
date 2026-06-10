@@ -148,7 +148,7 @@ pub fn fn_inline(
         let la: &LoopAnalysis = analyses.get_analysis_result(call_site_fn);
         if let Some(block) = call_site.get_parent_block(ctx) {
             if la.is_inside_loop(&block) {
-                threshold = MAX_CALLEE_INSTRUCTION_COUNT_TO_INLINE;
+                threshold = MAX_CALLEE_INSTRUCTION_COUNT_TO_INLINE + 5;
             }
         }
 

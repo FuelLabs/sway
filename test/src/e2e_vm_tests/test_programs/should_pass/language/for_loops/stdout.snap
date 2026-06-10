@@ -8,6 +8,8 @@ fn just_for_loop_15(vector: __ptr { { ptr, u64 }, u64 }) -> () {
     local mut { u64, ( () | u64 ) } __for_value_opt_1
     local { u64, ( () | u64 ) } __ret_val
     local { { { ptr, u64 }, u64 }, u64 } __struct_init_0
+    local u64 code_
+    local bool condition_
     local mut u64 i
     local u64 n
     local u64 other_
@@ -15,86 +17,102 @@ fn just_for_loop_15(vector: __ptr { { ptr, u64 }, u64 }) -> () {
     local u64 other_1
 
     entry(vector: __ptr { { ptr, u64 }, u64 }):
-    v1132v1 = get_local __ptr u64, i
-    v1133v1 = const u64 0
-    store v1133v1 to v1132v1
-    v1135v1 = get_local __ptr { { { ptr, u64 }, u64 }, u64 }, __struct_init_0
-    v1136v1 = const u64 0
-    v1137v1 = get_elem_ptr v1135v1, __ptr { { ptr, u64 }, u64 }, v1136v1
-    mem_copy_val v1137v1, vector
-    v1139v1 = const u64 1
-    v1140v1 = get_elem_ptr v1135v1, __ptr u64, v1139v1
-    v1141v1 = const u64 0
-    store v1141v1 to v1140v1
-    v1143v1 = get_local __ptr { { { ptr, u64 }, u64 }, u64 }, __for_iterable_2
-    mem_copy_val v1143v1, v1135v1
+    v1210v1 = get_local __ptr u64, i
+    v1211v1 = const u64 0
+    store v1211v1 to v1210v1
+    v1213v1 = get_local __ptr { { { ptr, u64 }, u64 }, u64 }, __struct_init_0
+    v1214v1 = const u64 0
+    v1215v1 = get_elem_ptr v1213v1, __ptr { { ptr, u64 }, u64 }, v1214v1
+    mem_copy_val v1215v1, vector
+    v1217v1 = const u64 1
+    v1218v1 = get_elem_ptr v1213v1, __ptr u64, v1217v1
+    v1219v1 = const u64 0
+    store v1219v1 to v1218v1
+    v1221v1 = get_local __ptr { { { ptr, u64 }, u64 }, u64 }, __for_iterable_2
+    mem_copy_val v1221v1, v1213v1
     br while()
 
     while():
-    v1146v1 = const bool true
-    cbr v1146v1, while_body(), end_while()
+    v1224v1 = const bool true
+    cbr v1224v1, while_body(), end_while()
 
     while_body():
-    v1148v1 = get_local __ptr { { { ptr, u64 }, u64 }, u64 }, __for_iterable_2
-    v1149v1 = get_local __ptr { u64, ( () | u64 ) }, __ret_val
-    v1150v1 = call next_17(v1148v1, v1149v1)
-    v1151v1 = get_local __ptr { u64, ( () | u64 ) }, __for_value_opt_1
-    mem_copy_val v1151v1, v1149v1
-    v1153v1 = get_local __ptr { u64, ( () | u64 ) }, __for_value_opt_1
-    v1154v1 = const u64 0
-    v1155v1 = get_elem_ptr v1153v1, __ptr u64, v1154v1
-    v1156v1 = get_local __ptr u64, other_
-    v1157v1 = const u64 1
-    store v1157v1 to v1156v1
-    v1159v1 = load v1155v1
-    v1160v1 = get_local __ptr u64, other_
-    v1161v1 = load v1160v1
-    v1162v1 = cmp eq v1159v1 v1161v1
-    v1163v1 = const bool false
-    cbr v1162v1, is_none_22_block2(v1163v1), is_none_22_block1()
+    v1226v1 = get_local __ptr { { { ptr, u64 }, u64 }, u64 }, __for_iterable_2
+    v1227v1 = get_local __ptr { u64, ( () | u64 ) }, __ret_val
+    v1228v1 = call next_17(v1226v1, v1227v1)
+    v1229v1 = get_local __ptr { u64, ( () | u64 ) }, __for_value_opt_1
+    mem_copy_val v1229v1, v1227v1
+    v1231v1 = get_local __ptr { u64, ( () | u64 ) }, __for_value_opt_1
+    v1232v1 = const u64 0
+    v1233v1 = get_elem_ptr v1231v1, __ptr u64, v1232v1
+    v1234v1 = get_local __ptr u64, other_
+    v1235v1 = const u64 1
+    store v1235v1 to v1234v1
+    v1237v1 = load v1233v1
+    v1238v1 = get_local __ptr u64, other_
+    v1239v1 = load v1238v1
+    v1240v1 = cmp eq v1237v1 v1239v1
+    v1241v1 = const bool false
+    cbr v1240v1, is_none_22_block2(v1241v1), is_none_22_block1()
 
     is_none_22_block1():
-    v1165v1 = const bool true
-    br is_none_22_block2(v1165v1)
+    v1243v1 = const bool true
+    br is_none_22_block2(v1243v1)
 
-    is_none_22_block2(v1131v1: bool):
-    cbr v1131v1, end_while(), block1()
+    is_none_22_block2(v1209v1: bool):
+    cbr v1209v1, end_while(), block1()
 
     block1():
-    v1168v1 = get_local __ptr { u64, ( () | u64 ) }, __for_value_opt_1
-    v1169v1 = call unwrap_23(v1168v1)
-    v1170v1 = get_local __ptr u64, n
-    store v1169v1 to v1170v1
-    v1172v1 = get_local __ptr u64, i
-    v1173v1 = get_local __ptr u64, n
-    v1174v1 = load v1173v1
-    v1175v1 = load v1172v1
-    v1176v1 = cmp eq v1174v1 v1175v1
-    v1177v1 = call assert_25(v1176v1)
-    v1178v1 = get_local __ptr u64, i
-    v1179v1 = get_local __ptr u64, other_0
-    v1180v1 = const u64 1
-    store v1180v1 to v1179v1
-    v1182v1 = load v1178v1
-    v1183v1 = get_local __ptr u64, other_0
-    v1184v1 = load v1183v1
-    v1185v1 = add v1182v1, v1184v1
-    v1186v1 = get_local __ptr u64, i
-    store v1185v1 to v1186v1
+    v1246v1 = get_local __ptr { u64, ( () | u64 ) }, __for_value_opt_1
+    v1247v1 = call unwrap_23(v1246v1)
+    v1248v1 = get_local __ptr u64, n
+    store v1247v1 to v1248v1
+    v1250v1 = get_local __ptr u64, i
+    v1251v1 = get_local __ptr u64, n
+    v1252v1 = load v1251v1
+    v1253v1 = load v1250v1
+    v1254v1 = cmp eq v1252v1 v1253v1
+    v1255v1 = get_local __ptr bool, condition_
+    store v1254v1 to v1255v1
+    v1257v1 = get_local __ptr bool, condition_
+    v1258v1 = load v1257v1
+    v1259v1 = const bool false
+    v1260v1 = cmp eq v1258v1 v1259v1
+    cbr v1260v1, assert_25_block0(), assert_25_block1()
+
+    assert_25_block0():
+    v1262v1 = get_global __ptr u64, std::error_signals::FAILED_ASSERT_SIGNAL
+    v1263v1 = get_local __ptr u64, code_
+    mem_copy_val v1263v1, v1262v1
+    v1265v1 = get_local __ptr u64, code_
+    v1266v1 = load v1265v1
+    revert v1266v1
+
+    assert_25_block1():
+    v1268v1 = get_local __ptr u64, i
+    v1269v1 = get_local __ptr u64, other_0
+    v1270v1 = const u64 1
+    store v1270v1 to v1269v1
+    v1272v1 = load v1268v1
+    v1273v1 = get_local __ptr u64, other_0
+    v1274v1 = load v1273v1
+    v1275v1 = add v1272v1, v1274v1
+    v1276v1 = get_local __ptr u64, i
+    store v1275v1 to v1276v1
     br while()
 
     end_while():
-    v1189v1 = get_local __ptr u64, i
-    v1190v1 = get_local __ptr u64, other_1
-    v1191v1 = const u64 5
-    store v1191v1 to v1190v1
-    v1193v1 = load v1189v1
-    v1194v1 = get_local __ptr u64, other_1
-    v1195v1 = load v1194v1
-    v1196v1 = cmp eq v1193v1 v1195v1
-    v1197v1 = call assert_25(v1196v1)
-    v1198v1 = const unit ()
-    ret () v1198v1
+    v1279v1 = get_local __ptr u64, i
+    v1280v1 = get_local __ptr u64, other_1
+    v1281v1 = const u64 5
+    store v1281v1 to v1280v1
+    v1283v1 = load v1279v1
+    v1284v1 = get_local __ptr u64, other_1
+    v1285v1 = load v1284v1
+    v1286v1 = cmp eq v1283v1 v1285v1
+    v1287v1 = call assert_25(v1286v1)
+    v1288v1 = const unit ()
+    ret () v1288v1
 }
 
 
@@ -104,10 +122,10 @@ fn just_for_loop_15(vector: __ptr { { ptr, u64 }, u64 }) -> () {
 
 pshh i531456                  ; [fn init: just_for_loop_15]: push used high registers 40..64
 move $$locbase $sp            ; [fn init: just_for_loop_15]: set locals base register
-cfei i136                     ; [fn init: just_for_loop_15]: allocate: locals 136 byte(s), call args 0 slot(s)
+cfei i152                     ; [fn init: just_for_loop_15]: allocate: locals 152 byte(s), call args 0 slot(s)
 move $r0 $$arg0               ; [fn init: just_for_loop_15]: copy argument 0 (vector)
 move $r1 $$reta               ; [fn init: just_for_loop_15]: save return address
-sw   $$locbase $zero i12      ; store word
+sw   $$locbase $zero i14      ; store word
 addi $r2 $$locbase i64        ; get offset to local __ptr { { { ptr, u64 }, u64 }, u64 }
 mcpi $r2 $r0 i24              ; copy memory
 sw   $$locbase $zero i11      ; store word
@@ -115,40 +133,49 @@ mcpi $$locbase $r2 i32        ; copy memory
 addi $r0 $$locbase i48        ; get offset to local __ptr { u64, ( () | u64 ) }
 move $$arg0 $$locbase         ; [call: next_17]: pass argument 0
 move $$arg1 $r0               ; [call: next_17]: pass argument 1
-jal  $$reta $pc i37           ; [call: next_17]: call function
+jal  $$reta $pc i47           ; [call: next_17]: call function
 addi $r2 $$locbase i32        ; get offset to local __ptr { u64, ( () | u64 ) }
 mcpi $r2 $r0 i16              ; copy memory
-sw   $$locbase $one i14       ; store word
+sw   $$locbase $one i16       ; store word
 lw   $r0 $$locbase i4         ; load word
-lw   $r2 $$locbase i14        ; load word
+lw   $r2 $$locbase i16        ; load word
 eq   $r0 $r0 $r2
 movi $r2 i0                   ; move parameter from branch to block argument
 jnzf $r0 $zero i1
 movi $r2 i1                   ; move parameter from branch to block argument
-jnzf $r2 $zero i15
+jnzf $r2 $zero i25
 addi $r0 $$locbase i32        ; get offset to local __ptr { u64, ( () | u64 ) }
 move $$arg0 $r0               ; [call: unwrap_23]: pass argument 0
-jal  $$reta $pc i110          ; [call: unwrap_23]: call function
-sw   $$locbase $$retv i13     ; store word
-lw   $r0 $$locbase i13        ; load word
-lw   $r2 $$locbase i12        ; load word
+jal  $$reta $pc i120          ; [call: unwrap_23]: call function
+sw   $$locbase $$retv i15     ; store word
+lw   $r0 $$locbase i15        ; load word
+lw   $r2 $$locbase i14        ; load word
 eq   $r0 $r0 $r2
-move $$arg0 $r0               ; [call: assert_25]: pass argument 0
-jal  $$reta $pc i121          ; [call: assert_25]: call function
-sw   $$locbase $one i15       ; store word
-lw   $r0 $$locbase i12        ; load word
-lw   $r2 $$locbase i15        ; load word
+addi $r2 $$locbase i104       ; get offset to local __ptr bool
+sb   $r2 $r0 i0               ; store byte
+addi $r0 $$locbase i104       ; get offset to local __ptr bool
+lb   $r0 $r0 i0               ; load byte
+eq   $r0 $r0 $zero
+jnzf $r0 $zero i6
+sw   $$locbase $one i17       ; store word
+lw   $r0 $$locbase i14        ; load word
+lw   $r2 $$locbase i17        ; load word
 add  $r0 $r0 $r2
-sw   $$locbase $r0 i12        ; store word
-jmpb $zero i27
-movi $r0 i5                   ; initialize constant into register
-sw   $$locbase $r0 i16        ; store word
+sw   $$locbase $r0 i14        ; store word
+jmpb $zero i31
+addr $r0 data_NonConfigurable_0; get std::error_signals::FAILED_ASSERT_SIGNAL's address in data section
+addi $r1 $$locbase i96        ; get offset to local __ptr u64
+mcpi $r1 $r0 i8               ; copy memory
 lw   $r0 $$locbase i12        ; load word
-lw   $r2 $$locbase i16        ; load word
+rvrt $r0
+movi $r0 i5                   ; initialize constant into register
+sw   $$locbase $r0 i18        ; store word
+lw   $r0 $$locbase i14        ; load word
+lw   $r2 $$locbase i18        ; load word
 eq   $r0 $r0 $r2
 move $$arg0 $r0               ; [call: assert_25]: pass argument 0
 jal  $$reta $pc i108          ; [call: assert_25]: call function
-cfsi i136                     ; [fn end: just_for_loop_15] free: locals 136 byte(s), call args 0 slot(s)
+cfsi i152                     ; [fn end: just_for_loop_15] free: locals 152 byte(s), call args 0 slot(s)
 move $$reta $r1               ; [fn end: just_for_loop_15] restore return address
 poph i531456                  ; [fn end: just_for_loop_15]: restore used high registers 40..64
 jal  $zero $$reta i0          ; [fn end: just_for_loop_15] return from call
