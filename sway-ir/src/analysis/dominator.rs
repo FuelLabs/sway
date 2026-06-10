@@ -1,6 +1,6 @@
 use crate::{
-    block::Block, AnalysisResult, AnalysisResultT, AnalysisResults, BranchToWithArgs, Context,
-    Function, IrError, Pass, PassMutability, ScopedPass, Value,
+    block::Block, AnalysisResult, AnalysisResultT, AnalysisResults, Context, Function, IrError,
+    Pass, PassMutability, ScopedPass, Value,
 };
 use indexmap::IndexSet;
 /// Dominator tree and related algorithms.
@@ -43,6 +43,15 @@ pub struct PostOrder {
 }
 impl AnalysisResultT for PostOrder {}
 
+impl PostOrder {
+    /// If `block` was found by the `PostOrder` analysis,
+    /// so it is reachable from the entry function.
+    #[inline(always)]
+    pub fn is_reachable(&self, block: &Block) -> bool {
+        self.block_to_po.contains_key(block)
+    }
+}
+
 pub const POSTORDER_NAME: &str = "postorder";
 
 pub fn create_postorder_pass() -> Pass {
@@ -62,42 +71,44 @@ pub fn compute_post_order_pass(
     Ok(Box::new(compute_post_order(context, &function)))
 }
 
+fn post_order(
+    context: &Context,
+    block: Block,
+    result: &mut PostOrder,
+    visited: &mut FxHashSet<Block>,
+    counter: &mut usize,
+) {
+    if !visited.insert(block) {
+        return;
+    }
+
+    for successor in block.successors(context) {
+        post_order(context, successor.block, result, visited, counter);
+    }
+
+    result.block_to_po.insert(block, *counter);
+    result.po_to_block.push(block);
+    *counter += 1;
+}
+
 /// Compute the post-order traversal of the CFG.
 ///
 /// **BEWARE: Unreachable blocks aren't part of the result.**
 pub fn compute_post_order(context: &Context, function: &Function) -> PostOrder {
-    let mut res = PostOrder {
+    let mut result = PostOrder {
         block_to_po: FxHashMap::default(),
         po_to_block: Vec::default(),
     };
-    let entry = function.get_entry_block(context);
 
     let mut counter = 0;
-    let mut on_stack = FxHashSet::<Block>::default();
-    fn post_order(
-        context: &Context,
-        n: Block,
-        res: &mut PostOrder,
-        on_stack: &mut FxHashSet<Block>,
-        counter: &mut usize,
-    ) {
-        if on_stack.contains(&n) {
-            return;
-        }
-        on_stack.insert(n);
-        for BranchToWithArgs { block: n_succ, .. } in n.successors(context) {
-            post_order(context, n_succ, res, on_stack, counter);
-        }
-        res.block_to_po.insert(n, *counter);
-        res.po_to_block.push(n);
-        *counter += 1;
-    }
-    post_order(context, entry, &mut res, &mut on_stack, &mut counter);
+    let mut visited = FxHashSet::<Block>::default();
+    let entry = function.get_entry_block(context);
+    post_order(context, entry, &mut result, &mut visited, &mut counter);
 
     // We could assert the whole thing, but it'd be expensive.
-    assert!(res.po_to_block.last().unwrap() == &entry);
+    assert!(result.po_to_block.last().unwrap() == &entry);
 
-    res
+    result
 }
 
 pub const DOMINATORS_NAME: &str = "dominators";
@@ -107,56 +118,96 @@ pub fn create_dominators_pass() -> Pass {
         name: DOMINATORS_NAME,
         descr: "Dominator tree computation",
         deps: vec![POSTORDER_NAME],
-        runner: ScopedPass::FunctionPass(PassMutability::Analysis(compute_dom_tree)),
+        runner: ScopedPass::FunctionPass(PassMutability::Analysis(compute_dom_tree_pass)),
     }
 }
 
+// Find the nearest common dominator of two blocks,
+// using the partially computed dominator tree.
+fn nearest_common_dominator_of_two_blocks(
+    po: &PostOrder,
+    dom_tree: &FxIndexMap<Block, DomTreeNode>,
+    mut block_a: Block,
+    mut block_b: Block,
+) -> Block {
+    while block_a != block_b {
+        while po.block_to_po[&block_a] < po.block_to_po[&block_b] {
+            block_a = dom_tree[&block_a].parent.unwrap();
+        }
+        while po.block_to_po[&block_b] < po.block_to_po[&block_a] {
+            block_b = dom_tree[&block_b].parent.unwrap();
+        }
+    }
+    block_a
+}
+
 /// Compute the dominator tree for the CFG.
-fn compute_dom_tree(
+fn compute_dom_tree_pass(
     context: &Context,
     analyses: &AnalysisResults,
     function: Function,
 ) -> Result<AnalysisResult, IrError> {
     let po: &PostOrder = analyses.get_analysis_result(function);
-    let mut dom_tree = DomTree::default();
-    let entry = function.get_entry_block(context);
+    let domtree = compute_dom_tree(context, function, po)?;
+    Ok(Box::new(domtree))
+}
+
+pub(crate) fn compute_dom_tree(
+    context: &Context<'_>,
+    function: Function,
+    po: &PostOrder,
+) -> Result<DomTree, IrError> {
+    let mut dom_tree = FxIndexMap::default();
 
     // This is to make the algorithm happy. It'll be changed to None later.
-    dom_tree.0.insert(entry, DomTreeNode::new(Some(entry)));
+    let entry = function.get_entry_block(context);
+    dom_tree.insert(entry, DomTreeNode::new(Some(entry)));
+
     // initialize the dominators tree. This allows us to do dom_tree[b] fearlessly.
     // Note that we just previously initialized "entry", so we skip that here.
-    for b in po.po_to_block.iter().take(po.po_to_block.len() - 1) {
-        dom_tree.0.insert(*b, DomTreeNode::new(None));
+    for block in po.po_to_block.iter().take(po.po_to_block.len() - 1) {
+        dom_tree.insert(*block, DomTreeNode::new(None));
     }
+
     let mut changed = true;
 
     while changed {
         changed = false;
+
         // For all nodes, b, in reverse postorder (except start node)
-        for b in po.po_to_block.iter().rev().skip(1) {
-            // new_idom <- first (processed) predecessor of b (pick one)
-            let mut new_idom = b
+        for block in po.po_to_block.iter().rev().skip(1) {
+            let current_block_po = po.block_to_po[block];
+
+            // new_idom <- first (processed) predecessor of `block` (pick one)
+            let mut new_idom = block
                 .pred_iter(context)
-                .find(|p| {
-                    // "p" may not be reachable, and hence not in dom_tree.
-                    po.block_to_po
-                        .get(p)
-                        .is_some_and(|p_po| *p_po > po.block_to_po[b])
+                .find(|pred| {
+                    // "pred" may not be reachable, and hence not in the cfg.
+                    let Some(pred_po) = po.block_to_po.get(pred) else {
+                        return false;
+                    };
+                    *pred_po > current_block_po
                 })
                 .cloned()
                 .unwrap();
+
             let picked_pred = new_idom;
-            // for all other (reachable) predecessors, p, of b:
-            for p in b
+
+            // for all other (reachable) predecessors, `pred` of `block`:
+            // if doms[pred] already calculated
+            // then new_idom is the common dominator of both
+            for pred in block
                 .pred_iter(context)
-                .filter(|p| **p != picked_pred && po.block_to_po.contains_key(p))
+                .filter(|p| **p != picked_pred && po.is_reachable(p))
             {
-                if dom_tree.0[p].parent.is_some() {
-                    // if doms[p] already calculated
-                    new_idom = intersect(po, &dom_tree, *p, new_idom);
+                if dom_tree[pred].parent.is_some() {
+                    new_idom =
+                        nearest_common_dominator_of_two_blocks(po, &dom_tree, *pred, new_idom);
                 }
             }
-            let b_node = dom_tree.0.get_mut(b).unwrap();
+
+            // update doms[block] if needed
+            let b_node = dom_tree.get_mut(block).unwrap();
             match b_node.parent {
                 Some(idom) if idom == new_idom => {}
                 _ => {
@@ -167,38 +218,18 @@ fn compute_dom_tree(
         }
     }
 
-    // Find the nearest common dominator of two blocks,
-    // using the partially computed dominator tree.
-    fn intersect(
-        po: &PostOrder,
-        dom_tree: &DomTree,
-        mut finger1: Block,
-        mut finger2: Block,
-    ) -> Block {
-        while finger1 != finger2 {
-            while po.block_to_po[&finger1] < po.block_to_po[&finger2] {
-                finger1 = dom_tree.0[&finger1].parent.unwrap();
-            }
-            while po.block_to_po[&finger2] < po.block_to_po[&finger1] {
-                finger2 = dom_tree.0[&finger2].parent.unwrap();
-            }
-        }
-        finger1
-    }
-
     // Fix the root.
-    dom_tree.0.get_mut(&entry).unwrap().parent = None;
+    dom_tree.get_mut(&entry).unwrap().parent = None;
+
     // Build the children.
-    let child_parent: Vec<_> = dom_tree
-        .0
-        .iter()
-        .filter_map(|(n, n_node)| n_node.parent.map(|n_parent| (*n, n_parent)))
-        .collect();
-    for (child, parent) in child_parent {
-        dom_tree.0.get_mut(&parent).unwrap().children.push(child);
+    for block in po.po_to_block.iter() {
+        let Some(parent) = dom_tree[block].parent else {
+            continue;
+        };
+        dom_tree[&parent].children.push(*block);
     }
 
-    Ok(Box::new(dom_tree))
+    Ok(DomTree(dom_tree))
 }
 
 impl DomTree {

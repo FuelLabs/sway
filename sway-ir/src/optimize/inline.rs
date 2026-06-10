@@ -18,7 +18,8 @@ use crate::{
     metadata::{combine, MetadataIndex},
     value::{Value, ValueContent, ValueDatum},
     variable::LocalVar,
-    AnalysisResults, BlockArgument, Instruction, Module, Pass, PassMutability, ScopedPass,
+    AnalysisResults, BlockArgument, DebugWithContext, Instruction, LoopAnalysis, Module, Pass,
+    PassMutability, ScopedPass, LOOP_ANALYSIS_NAME,
 };
 
 pub const FN_INLINE_NAME: &str = "inline";
@@ -27,7 +28,7 @@ pub fn create_fn_inline_pass() -> Pass {
     Pass {
         name: FN_INLINE_NAME,
         descr: "Function inlining",
-        deps: vec![],
+        deps: vec![LOOP_ANALYSIS_NAME],
         runner: ScopedPass::ModulePass(PassMutability::Transform(fn_inline)),
     }
 }
@@ -74,7 +75,7 @@ pub fn metadata_to_inline(context: &Context, md_idx: Option<MetadataIndex>) -> O
 
 pub fn fn_inline(
     context: &mut Context,
-    _: &AnalysisResults,
+    analyses: &AnalysisResults,
     module: Module,
 ) -> Result<bool, IrError> {
     // Inspect ALL calls and count how often each function is called.
@@ -97,9 +98,9 @@ pub fn fn_inline(
                 counts
             });
 
-    const MAX_CALEE_INSTRUCTION_COUNT_TO_INLINE: usize = 12;
+    const MAX_CALLEE_INSTRUCTION_COUNT_TO_INLINE: usize = 12;
     const MAX_CALLS_COUNT_TO_INLINE: u64 = 1;
-    let inline_heuristic = |ctx: &Context, func: &Function, _call_site: &Value| {
+    let inline_heuristic = |ctx: &Context, func: &Function, call_site: &Value| {
         // The encoding code in the `__entry` functions contains pointer patterns that mark
         // escape analysis and referred symbols as incomplete. This effectively forbids optimizations
         // like SROA nad DCE. If we inline original entries, like e.g., `main`, the code in them will
@@ -121,28 +122,38 @@ pub fn fn_inline(
         }
 
         // We do not deal very well with asm blocks, so avoid inlining functions with it
-        let has_asm_block =
-            func.instruction_iter(context)
-                .any(|(_, v)| match v.get_instruction(context) {
-                    Some(Instruction {
-                        op: InstOp::AsmBlock(..),
-                        ..
-                    }) => true,
-                    _ => false,
-                });
+        // let has_asm_block = func
+        //     .instruction_iter(ctx)
+        //     .any(|(_, v)| match v.get_instruction(ctx) {
+        //         Some(Instruction {
+        //             op: InstOp::AsmBlock(..),
+        //             ..
+        //         }) => true,
+        //         _ => false,
+        //     });
 
-        if has_asm_block {
-            return false;
-        }
+        // if has_asm_block {
+        //     return false;
+        // }
 
         // If the function is called less than the threshold, inline it.
         if call_counts.get(func).copied().unwrap_or(0) <= MAX_CALLS_COUNT_TO_INLINE {
             return true;
         }
 
+        let mut threshold = MAX_CALLEE_INSTRUCTION_COUNT_TO_INLINE;
+
+        // If call site is inside loops, increase the threshold
+        let call_site_fn = call_site.get_parent_function(ctx).unwrap();
+        let la: &LoopAnalysis = analyses.get_analysis_result(call_site_fn);
+        if let Some(block) = call_site.get_parent_block(ctx) {
+            if la.is_inside_loop(&block) {
+                threshold *= 2;
+            }
+        }
+
         // If the function is (still) small then also inline it.
-        if func.num_instructions_incl_asm_instructions(ctx) <= MAX_CALEE_INSTRUCTION_COUNT_TO_INLINE
-        {
+        if func.num_instructions_incl_asm_instructions(ctx) <= threshold {
             return true;
         }
 
@@ -183,23 +194,31 @@ pub fn inline_all_function_calls(
 pub fn inline_some_function_calls(
     context: &mut Context,
     function: &Function,
-    predicate: impl Fn(&Context, &Function, &Value) -> bool,
+    should_inline: impl Fn(&Context, &Function, &Value) -> bool,
 ) -> Result<bool, IrError> {
     // Find call sites which passes the predicate.
     // We use a RefCell so that the inliner can modify the value
     // when it moves other instructions (which could be in call_date) after an inline.
     let (call_sites, call_data): (Vec<_>, FxHashMap<_, _>) = function
         .instruction_iter(context)
-        .filter_map(|(block, call_val)| match context.values[call_val.0].value {
-            ValueDatum::Instruction(Instruction {
-                op: InstOp::Call(candidate_function, _),
-                ..
-            }) => predicate(context, &candidate_function, &call_val).then_some((
-                call_val,
-                (call_val, RefCell::new((block, candidate_function))),
-            )),
-            _ => None,
-        })
+        .filter_map(
+            |(block, call_site)| match context.values[call_site.0].value {
+                ValueDatum::Instruction(Instruction {
+                    op: InstOp::Call(candidate_function, _),
+                    ..
+                }) => {
+                    if should_inline(context, &candidate_function, &call_site) {
+                        Some((
+                            call_site,
+                            (call_site, RefCell::new((block, candidate_function))),
+                        ))
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            },
+        )
         .unzip();
 
     for call_site in &call_sites {

@@ -26,6 +26,7 @@ sway-types.workspace = true
 sway-utils.workspace = true
 
 [dev-dependencies]
+expect-test.workspace = true
 insta.workspace = true
 vte.workspace = true
 
