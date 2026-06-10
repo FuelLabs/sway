@@ -1277,17 +1277,12 @@ impl<V> StorageKey<StorageVec<V>> {
 
         // Slot 0's element area begins at byte 8 (after the length header).
         // All other slots' element areas begin at byte 0.
-        let offset_in_slot = index_in_chunk * SIZE_OF_V + if chunk_number == 0 {
-            8
-        } else {
-            0
-        };
+        let offset_in_slot = index_in_chunk * SIZE_OF_V + if chunk_number == 0 { 8 } else { 0 };
 
         let mut slot = self.field_id();
         if chunk_number > 0 {
             add_u64_to_b256(slot, chunk_number);
         }
-
         (slot, offset_in_slot)
     }
 
@@ -1350,9 +1345,7 @@ impl<V> StorageKey<StorageVec<V>> {
             // requires the offset to be within the currently used size. Writing the length
             // first establishes those 8 bytes so subsequent updates to the same slot at
             // offset ≥ 8 are valid.
-            __state_update_slot(self.field_id(), __addr_of(new_len), 0, 8);
-
-            // Compute which slot and offset to write the new element.
+            __state_update_slot(self.field_id(), __addr_of(new_len), 0, 8); // Compute which slot and offset to write the new element.
             let (elem_slot, elem_offset) = self.get_slot_and_offset_of_elem(len);
             __state_update_slot(elem_slot, __addr_of(value), elem_offset, SIZE_OF_V);
         }
@@ -1631,7 +1624,12 @@ impl<V> StorageKey<StorageVec<V>> {
             };
             let bytes_after_removed = end_of_removed_slot_data - (removed_offset + SIZE_OF_V);
             if bytes_after_removed > 0 {
-                let _ = __state_load_slot(removed_slot, buf, removed_offset + SIZE_OF_V, bytes_after_removed);
+                let _ = __state_load_slot(
+                    removed_slot,
+                    buf,
+                    removed_offset + SIZE_OF_V,
+                    bytes_after_removed,
+                );
                 __state_update_slot(removed_slot, buf, removed_offset, bytes_after_removed);
             }
 
@@ -2036,7 +2034,12 @@ impl<V> StorageKey<StorageVec<V>> {
                         }
                     } else {
                         // The insert chunk was partial; all elements stay within insert_slot.
-                        __state_update_slot(insert_slot, buf, insert_offset + SIZE_OF_V, elems_to_shift * SIZE_OF_V);
+                        __state_update_slot(
+                            insert_slot,
+                            buf,
+                            insert_offset + SIZE_OF_V,
+                            elems_to_shift * SIZE_OF_V,
+                        );
                     }
                 }
             }
@@ -2689,7 +2692,6 @@ impl<V> StorageKey<StorageVec<V>> {
             let _ = __state_clear(b256::zero(), 0);
             panic StorageVecError::MethodDoesNotSupportNestedStorageTypes;
         } else {
-
             let len = vec.len();
 
             // Write the length header first so that subsequent `__state_update_slot` calls
@@ -2700,27 +2702,20 @@ impl<V> StorageKey<StorageVec<V>> {
                 return;
             }
 
-            let (elements_ptr, elements_bytes) = vec.as_raw_slice().into_parts();
+            let (elements_ptr, elements_bytes) = vec.as_raw_slice().into_parts(); // Every slot holds the same number of elements. The element area of each
+// slot is CHUNK_MAX_SIZE bytes, so `slot_elem_bytes` is the maximum byte
+// count for that area. Note: `slot_elem_bytes <= CHUNK_MAX_SIZE` always,
+// since we floor-divide then multiply back.
 
-            // Every slot holds the same number of elements. The element area of each
-            // slot is CHUNK_MAX_SIZE bytes, so `slot_elem_bytes` is the maximum byte
-            // count for that area. Note: `slot_elem_bytes <= CHUNK_MAX_SIZE` always,
-            // since we floor-divide then multiply back.
-
-            // TODO: Move `SIZE_OF_V` to the top of `else`, like in all other methods,
-            //       once https://github.com/FuelLabs/sway/issues/7650 is fixed.
+// TODO: Move `SIZE_OF_V` to the top of `else`, like in all other methods,
+//       once https://github.com/FuelLabs/sway/issues/7650 is fixed.
             const SIZE_OF_V: u64 = __size_of::<V>();
             const ELEMS_PER_SLOT: u64 = CHUNK_MAX_SIZE / SIZE_OF_V;
-            const SLOT_ELEM_BYTES: u64 = ELEMS_PER_SLOT * SIZE_OF_V;
-
+            const SLOT_ELEM_BYTES: u64 = ELEMS_PER_SLOT * SIZE_OF_V; // All elements fit in the first slot (after the 8-byte header).
             if elements_bytes <= SLOT_ELEM_BYTES {
-                // All elements fit in the first slot (after the 8-byte header).
                 __state_update_slot(self.field_id(), elements_ptr, 8, elements_bytes);
-            } else {
-                // Write the first slot's full element area into slot 0 (at byte offset 8).
-                __state_update_slot(self.field_id(), elements_ptr, 8, SLOT_ELEM_BYTES);
-
-                // Write the remaining elements into subsequent chunk slots.
+            } else { // Write the first slot's full element area into slot 0 (at byte offset 8).
+                __state_update_slot(self.field_id(), elements_ptr, 8, SLOT_ELEM_BYTES); // Write the remaining elements into subsequent chunk slots.
                 let mut bytes_written = SLOT_ELEM_BYTES;
                 let mut chunk_number: u64 = 1;
                 while bytes_written < elements_bytes {
@@ -2734,7 +2729,12 @@ impl<V> StorageKey<StorageVec<V>> {
                     let mut chunk_slot = self.field_id();
                     add_u64_to_b256(chunk_slot, chunk_number);
 
-                    __state_store_slot(chunk_slot, elements_ptr.add::<u8>(bytes_written), chunk_bytes);
+                    __state_store_slot(
+                        chunk_slot,
+                        elements_ptr
+                            .add::<u8>(bytes_written),
+                        chunk_bytes,
+                    );
 
                     bytes_written += chunk_bytes;
                     chunk_number += 1;
@@ -2832,7 +2832,13 @@ impl<V> StorageKey<StorageVec<V>> {
                     let mut chunk_slot = self.field_id();
                     add_u64_to_b256(chunk_slot, chunk_number);
 
-                    let _ = __state_load_slot(chunk_slot, elements_ptr.add::<u8>(bytes_read), 0, chunk_bytes);
+                    let _ = __state_load_slot(
+                        chunk_slot,
+                        elements_ptr
+                            .add::<u8>(bytes_read),
+                        0,
+                        chunk_bytes,
+                    );
 
                     bytes_read += chunk_bytes;
                     chunk_number += 1;
