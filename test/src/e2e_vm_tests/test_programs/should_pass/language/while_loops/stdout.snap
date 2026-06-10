@@ -4,17 +4,9 @@ source: test/src/snapshot/mod.rs
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/while_loops --ir final --asm final | filter-fn while_loops call_too_big_to_be_inlined_three_times
 
 fn call_too_big_to_be_inlined_three_times_8() -> () {
-    local u64 code_
-    local u64 code_0
-    local bool condition_
-    local bool condition_0
     local mut u64 counter
     local u64 other_
     local u64 other_0
-    local u64 other_00
-    local u64 other_1
-    local u64 self_00
-    local u64 self_1
 
     entry():
     v221v1 = call too_big_to_be_inlined_9()
@@ -46,63 +38,12 @@ fn call_too_big_to_be_inlined_three_times_8() -> () {
     v243v1 = add v240v1, v242v1
     v244v1 = get_local __ptr u64, counter
     store v243v1 to v244v1
-    v246v1 = get_local __ptr u64, self_1
-    v247v1 = const u64 1
-    store v247v1 to v246v1
-    v249v1 = get_local __ptr u64, other_1
-    v250v1 = const u64 1
-    store v250v1 to v249v1
-    v252v1 = get_local __ptr u64, self_1
-    v253v1 = load v252v1
-    v254v1 = get_local __ptr u64, other_1
-    v255v1 = load v254v1
-    v256v1 = cmp eq v253v1 v255v1
-    v257v1 = get_local __ptr bool, condition_
-    store v256v1 to v257v1
-    v259v1 = get_local __ptr bool, condition_
-    v260v1 = load v259v1
-    v261v1 = const bool false
-    v262v1 = cmp eq v260v1 v261v1
-    cbr v262v1, assert_4_block0(), assert_4_block1()
-
-    assert_4_block0():
-    v264v1 = get_global __ptr u64, std::error_signals::FAILED_ASSERT_SIGNAL
-    v265v1 = get_local __ptr u64, code_
-    mem_copy_val v265v1, v264v1
-    v267v1 = get_local __ptr u64, code_
-    v268v1 = load v267v1
-    revert v268v1
-
-    assert_4_block1():
-    v270v1 = get_local __ptr u64, self_00
-    v271v1 = const u64 1
-    store v271v1 to v270v1
-    v273v1 = get_local __ptr u64, other_00
-    v274v1 = const u64 1
-    store v274v1 to v273v1
-    v276v1 = get_local __ptr u64, self_00
-    v277v1 = load v276v1
-    v278v1 = get_local __ptr u64, other_00
-    v279v1 = load v278v1
-    v280v1 = cmp eq v277v1 v279v1
-    v281v1 = get_local __ptr bool, condition_0
-    store v280v1 to v281v1
-    v283v1 = get_local __ptr bool, condition_0
-    v284v1 = load v283v1
-    v285v1 = cmp eq v284v1 v261v1
-    cbr v285v1, assert_4_block05(), while()
-
-    assert_4_block05():
-    v287v1 = get_global __ptr u64, std::error_signals::FAILED_ASSERT_SIGNAL
-    v288v1 = get_local __ptr u64, code_0
-    mem_copy_val v288v1, v287v1
-    v290v1 = get_local __ptr u64, code_0
-    v291v1 = load v290v1
-    revert v291v1
+    v246v1 = call too_big_to_be_inlined_9()
+    br while()
 
     end_while():
-    v293v1 = const unit ()
-    ret () v293v1
+    v248v1 = const unit ()
+    ret () v248v1
 }
 
 
@@ -111,56 +52,26 @@ fn call_too_big_to_be_inlined_three_times_8() -> () {
 
 pshh i531456                  ; [fn init: call_too_big_to_be_inlined_three_times_8]: push used high registers 40..64
 move $$locbase $sp            ; [fn init: call_too_big_to_be_inlined_three_times_8]: set locals base register
-cfei i88                      ; [fn init: call_too_big_to_be_inlined_three_times_8]: allocate: locals 88 byte(s), call args 0 slot(s)
+cfei i24                      ; [fn init: call_too_big_to_be_inlined_three_times_8]: allocate: locals 24 byte(s), call args 0 slot(s)
 move $r0 $$reta               ; [fn init: call_too_big_to_be_inlined_three_times_8]: save return address
-jal  $$reta $pc i53           ; [call: too_big_to_be_inlined_9]: call function
-jal  $$reta $pc i52           ; [call: too_big_to_be_inlined_9]: call function
-sw   $$locbase $zero i4       ; store word
+jal  $$reta $pc i21           ; [call: too_big_to_be_inlined_9]: call function
+jal  $$reta $pc i20           ; [call: too_big_to_be_inlined_9]: call function
+sw   $$locbase $zero i0       ; store word
 movi $r1 i10                  ; initialize constant into register
-sw   $$locbase $r1 i5         ; store word
-lw   $r1 $$locbase i4         ; load word
-lw   $r2 $$locbase i5         ; load word
+sw   $$locbase $r1 i1         ; store word
+lw   $r1 $$locbase i0         ; load word
+lw   $r2 $$locbase i1         ; load word
 lt   $r1 $r1 $r2
 jnzf $r1 $zero i1
-jmpf $zero i39
-sw   $$locbase $one i6        ; store word
-lw   $r1 $$locbase i4         ; load word
-lw   $r2 $$locbase i6         ; load word
+jmpf $zero i7
+sw   $$locbase $one i2        ; store word
+lw   $r1 $$locbase i0         ; load word
+lw   $r2 $$locbase i2         ; load word
 add  $r1 $r1 $r2
-sw   $$locbase $r1 i4         ; store word
-sw   $$locbase $one i10       ; store word
-sw   $$locbase $one i8        ; store word
-lw   $r1 $$locbase i10        ; load word
-lw   $r2 $$locbase i8         ; load word
-eq   $r1 $r1 $r2
-addi $r2 $$locbase i16        ; get offset to local __ptr bool
-sb   $r2 $r1 i0               ; store byte
-addi $r1 $$locbase i16        ; get offset to local __ptr bool
-lb   $r1 $r1 i0               ; load byte
-eq   $r1 $r1 $zero
-jnzf $r1 $zero i18
-sw   $$locbase $one i9        ; store word
-sw   $$locbase $one i7        ; store word
-lw   $r1 $$locbase i9         ; load word
-lw   $r2 $$locbase i7         ; load word
-eq   $r1 $r1 $r2
-addi $r2 $$locbase i24        ; get offset to local __ptr bool
-sb   $r2 $r1 i0               ; store byte
-addi $r1 $$locbase i24        ; get offset to local __ptr bool
-lb   $r1 $r1 i0               ; load byte
-eq   $r1 $r1 $zero
-jnzf $r1 $zero i1
-jmpb $zero i33
-addr $r0 data_NonConfigurable_0; get std::error_signals::FAILED_ASSERT_SIGNAL's address in data section
-addi $r1 $$locbase i8         ; get offset to local __ptr u64
-mcpi $r1 $r0 i8               ; copy memory
-lw   $r0 $$locbase i1         ; load word
-rvrt $r0
-addr $r0 data_NonConfigurable_0; get std::error_signals::FAILED_ASSERT_SIGNAL's address in data section
-mcpi $$locbase $r0 i8         ; copy memory
-lw   $r0 $$locbase i0         ; load word
-rvrt $r0
-cfsi i88                      ; [fn end: call_too_big_to_be_inlined_three_times_8] free: locals 88 byte(s), call args 0 slot(s)
+sw   $$locbase $r1 i0         ; store word
+jal  $$reta $pc i6            ; [call: too_big_to_be_inlined_9]: call function
+jmpb $zero i12
+cfsi i24                      ; [fn end: call_too_big_to_be_inlined_three_times_8] free: locals 24 byte(s), call args 0 slot(s)
 move $$reta $r0               ; [fn end: call_too_big_to_be_inlined_three_times_8] restore return address
 poph i531456                  ; [fn end: call_too_big_to_be_inlined_three_times_8]: restore used high registers 40..64
 jal  $zero $$reta i0          ; [fn end: call_too_big_to_be_inlined_three_times_8] return from call
