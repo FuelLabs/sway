@@ -1586,7 +1586,9 @@ impl<V> StorageKey<StorageVec<V>> {
                 });
             }
 
-            const SIZE_OF_V: u64 = __size_of::<V>(); // TODO-IG!: Report this bug.
+            // TODO: Move `SIZE_OF_V` to the top of `else`, like in all other methods,
+            //       once https://github.com/FuelLabs/sway/issues/7650 is fixed.
+            const SIZE_OF_V: u64 = __size_of::<V>();
             const ELEMS_PER_SLOT: u64 = CHUNK_MAX_SIZE / SIZE_OF_V;
 
             let removed_chunk = index / ELEMS_PER_SLOT;
@@ -1937,7 +1939,9 @@ impl<V> StorageKey<StorageVec<V>> {
             let (insert_slot, insert_offset) = self.get_slot_and_offset_of_elem(index);
 
             if index < len {
-                const SIZE_OF_V: u64 = __size_of::<V>(); // TODO-IG!: Report this bug.
+                // TODO: Move `SIZE_OF_V` to the top of `else`, like in all other methods,
+                //       once https://github.com/FuelLabs/sway/issues/7650 is fixed.
+                const SIZE_OF_V: u64 = __size_of::<V>();
                 const ELEMS_PER_SLOT: u64 = CHUNK_MAX_SIZE / SIZE_OF_V;
 
                 let insert_chunk = index / ELEMS_PER_SLOT;
@@ -2038,7 +2042,9 @@ impl<V> StorageKey<StorageVec<V>> {
             }
 
             // Write the new value at the insert position.
-            const SIZE_OF_V: u64 = __size_of::<V>(); // TODO-IG!: Report this bug.
+            // TODO: Move `SIZE_OF_V` to the top of `else`, like in all other methods,
+            //       once https://github.com/FuelLabs/sway/issues/7650 is fixed.
+            const SIZE_OF_V: u64 = __size_of::<V>();
             __state_update_slot(insert_slot, __addr_of(value), insert_offset, SIZE_OF_V);
         }
     }
@@ -2700,7 +2706,10 @@ impl<V> StorageKey<StorageVec<V>> {
             // slot is CHUNK_MAX_SIZE bytes, so `slot_elem_bytes` is the maximum byte
             // count for that area. Note: `slot_elem_bytes <= CHUNK_MAX_SIZE` always,
             // since we floor-divide then multiply back.
-            const SIZE_OF_V: u64 = __size_of::<V>(); // TODO-IG!: Report this bug.
+
+            // TODO: Move `SIZE_OF_V` to the top of `else`, like in all other methods,
+            //       once https://github.com/FuelLabs/sway/issues/7650 is fixed.
+            const SIZE_OF_V: u64 = __size_of::<V>();
             const ELEMS_PER_SLOT: u64 = CHUNK_MAX_SIZE / SIZE_OF_V;
             const SLOT_ELEM_BYTES: u64 = ELEMS_PER_SLOT * SIZE_OF_V;
 
@@ -2793,7 +2802,10 @@ impl<V> StorageKey<StorageVec<V>> {
             }
 
             // Every slot holds the same number of elements (same calculation as in `store_vec`).
-            const SIZE_OF_V: u64 = __size_of::<V>(); // TODO-IG!: Report this bug.
+
+            // TODO: Move `SIZE_OF_V` to the top of `else`, like in all other methods,
+            //       once https://github.com/FuelLabs/sway/issues/7650 is fixed.
+            const SIZE_OF_V: u64 = __size_of::<V>();
             const ELEMS_PER_SLOT: u64 = CHUNK_MAX_SIZE / SIZE_OF_V;
             const SLOT_ELEM_BYTES: u64 = ELEMS_PER_SLOT * SIZE_OF_V;
 
