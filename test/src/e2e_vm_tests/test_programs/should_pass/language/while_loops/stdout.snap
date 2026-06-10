@@ -1,0 +1,159 @@
+---
+source: test/src/snapshot/mod.rs
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/while_loops --ir final --asm final | filter-fn while_loops simple_while
+
+fn simple_while_1() -> () {
+    local mut u64 counter
+    local u64 other_
+    local u64 other_0
+    local u64 other_1
+
+    entry():
+    v170v1 = get_local __ptr u64, counter
+    v171v1 = const u64 0
+    store v171v1 to v170v1
+    br while()
+
+    while():
+    v174v1 = get_local __ptr u64, counter
+    v175v1 = get_local __ptr u64, other_
+    v176v1 = const u64 10
+    store v176v1 to v175v1
+    v178v1 = load v174v1
+    v179v1 = get_local __ptr u64, other_
+    v180v1 = load v179v1
+    v181v1 = cmp lt v178v1 v180v1
+    cbr v181v1, while_body(), end_while()
+
+    while_body():
+    v183v1 = get_local __ptr u64, counter
+    v184v1 = get_local __ptr u64, other_0
+    v185v1 = const u64 1
+    store v185v1 to v184v1
+    v187v1 = load v183v1
+    v188v1 = get_local __ptr u64, other_0
+    v189v1 = load v188v1
+    v190v1 = add v187v1, v189v1
+    v191v1 = get_local __ptr u64, counter
+    store v190v1 to v191v1
+    br while()
+
+    end_while():
+    v194v1 = get_local __ptr u64, counter
+    v195v1 = get_local __ptr u64, other_1
+    v196v1 = const u64 10
+    store v196v1 to v195v1
+    v198v1 = load v194v1
+    v199v1 = get_local __ptr u64, other_1
+    v200v1 = load v199v1
+    v201v1 = cmp eq v198v1 v200v1
+    v202v1 = call assert_4(v201v1)
+    v203v1 = const unit ()
+    ret () v203v1
+}
+
+
+fn simple_while_2_8() -> () {
+    local mut u64 counter
+    local u64 other_
+    local u64 other_0
+
+    entry():
+    v221v1 = call too_big_to_be_inlined_9()
+    v222v1 = get_local __ptr u64, counter
+    v223v1 = const u64 0
+    store v223v1 to v222v1
+    br while()
+
+    while():
+    v226v1 = get_local __ptr u64, counter
+    v227v1 = get_local __ptr u64, other_
+    v228v1 = const u64 10
+    store v228v1 to v227v1
+    v230v1 = load v226v1
+    v231v1 = get_local __ptr u64, other_
+    v232v1 = load v231v1
+    v233v1 = cmp lt v230v1 v232v1
+    cbr v233v1, while_body(), end_while()
+
+    while_body():
+    v235v1 = get_local __ptr u64, counter
+    v236v1 = get_local __ptr u64, other_0
+    v237v1 = const u64 1
+    store v237v1 to v236v1
+    v239v1 = load v235v1
+    v240v1 = get_local __ptr u64, other_0
+    v241v1 = load v240v1
+    v242v1 = add v239v1, v241v1
+    v243v1 = get_local __ptr u64, counter
+    store v242v1 to v243v1
+    v245v1 = call too_big_to_be_inlined_9()
+    br while()
+
+    end_while():
+    v247v1 = const unit ()
+    ret () v247v1
+}
+
+
+
+
+
+pshh i531456                  ; [fn init: simple_while_1]: push used high registers 40..64
+move $$locbase $sp            ; [fn init: simple_while_1]: set locals base register
+cfei i32                      ; [fn init: simple_while_1]: allocate: locals 32 byte(s), call args 0 slot(s)
+move $r0 $$reta               ; [fn init: simple_while_1]: save return address
+sw   $$locbase $zero i0       ; store word
+movi $r1 i10                  ; initialize constant into register
+sw   $$locbase $r1 i1         ; store word
+lw   $r1 $$locbase i0         ; load word
+lw   $r2 $$locbase i1         ; load word
+lt   $r1 $r1 $r2
+jnzf $r1 $zero i8
+movi $r1 i10                  ; initialize constant into register
+sw   $$locbase $r1 i3         ; store word
+lw   $r1 $$locbase i0         ; load word
+lw   $r2 $$locbase i3         ; load word
+eq   $r1 $r1 $r2
+move $$arg0 $r1               ; [call: assert_4]: pass argument 0
+jal  $$reta $pc i12           ; [call: assert_4]: call function
+jmpf $zero i6
+sw   $$locbase $one i2        ; store word
+lw   $r1 $$locbase i0         ; load word
+lw   $r2 $$locbase i2         ; load word
+add  $r1 $r1 $r2
+sw   $$locbase $r1 i0         ; store word
+jmpb $zero i18
+cfsi i32                      ; [fn end: simple_while_1] free: locals 32 byte(s), call args 0 slot(s)
+move $$reta $r0               ; [fn end: simple_while_1] restore return address
+poph i531456                  ; [fn end: simple_while_1]: restore used high registers 40..64
+jal  $zero $$reta i0          ; [fn end: simple_while_1] return from call
+
+
+
+
+pshh i531456                  ; [fn init: simple_while_2_8]: push used high registers 40..64
+move $$locbase $sp            ; [fn init: simple_while_2_8]: set locals base register
+cfei i24                      ; [fn init: simple_while_2_8]: allocate: locals 24 byte(s), call args 0 slot(s)
+move $r0 $$reta               ; [fn init: simple_while_2_8]: save return address
+jal  $$reta $pc i20           ; [call: too_big_to_be_inlined_9]: call function
+sw   $$locbase $zero i0       ; store word
+movi $r1 i10                  ; initialize constant into register
+sw   $$locbase $r1 i1         ; store word
+lw   $r1 $$locbase i0         ; load word
+lw   $r2 $$locbase i1         ; load word
+lt   $r1 $r1 $r2
+jnzf $r1 $zero i1
+jmpf $zero i7
+sw   $$locbase $one i2        ; store word
+lw   $r1 $$locbase i0         ; load word
+lw   $r2 $$locbase i2         ; load word
+add  $r1 $r1 $r2
+sw   $$locbase $r1 i0         ; store word
+jal  $$reta $pc i6            ; [call: too_big_to_be_inlined_9]: call function
+jmpb $zero i12
+cfsi i24                      ; [fn end: simple_while_2_8] free: locals 24 byte(s), call args 0 slot(s)
+move $$reta $r0               ; [fn end: simple_while_2_8] restore return address
+poph i531456                  ; [fn end: simple_while_2_8]: restore used high registers 40..64
+jal  $zero $$reta i0          ; [fn end: simple_while_2_8] return from call
