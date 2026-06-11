@@ -303,11 +303,7 @@ fn insert_after_span(
     if !is_empty_block(formatted_code, insertion_index) {
         // There can be cases where comments are at the end.
         // If so, we try to 'pin' our comment's indentation to the previous line instead.
-        if formatted_code[insertion_index + indent.len()..]
-            .chars()
-            .next()
-            == Some('}')
-        {
+        if formatted_code[insertion_index + indent.len()..].starts_with('}') {
             // It could be possible that the first comment found here is a Trailing,
             // then a Newlined.
             // We want all subsequent newlined comments to follow the indentation of the
