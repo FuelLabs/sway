@@ -1480,19 +1480,20 @@ impl<V> StorageKey<StorageVec<V>> {
 
         const STORES_STORAGE_TYPE: bool = __size_of::<V>() == 0;
 
-        let (field_id, offset) = if STORES_STORAGE_TYPE {
+        let (slot, offset, field_id) = if STORES_STORAGE_TYPE {
             // For nested storage types, we want to use a unique `field_id`
             // set to `sha256((index, self.field_id())` to ensure every
             // nested storage type element will use it and store its content
             // in a different slot.
-            (sha256((index, self.field_id())), 0)
+            (self.field_id(), 0, sha256((index, self.field_id())))
         } else {
             // For non-zero-sized types, their values are stored across chunk slots.
             // `get_slot_and_offset_of_elem` computes the exact slot and byte offset.
-            self.get_slot_and_offset_of_elem(index)
+            let (elem_slot, elem_offset) = self.get_slot_and_offset_of_elem(index);
+            (elem_slot, elem_offset, elem_slot)
         };
 
-        Some(StorageKey::<V>::new(field_id, offset, field_id))
+        Some(StorageKey::<V>::new(slot, offset, field_id))
     }
 
     /// Removes the element at the given `index` and moves all the elements at the following indices
@@ -2904,14 +2905,13 @@ impl<V> Iterator for StorageVecIter<V> {
             return None;
         }
 
-        let storage_vec_field_id = self.values.field_id();
-
         const STORES_STORAGE_TYPE: bool = __size_of::<V>() == 0;
 
         let (slot, offset, field_id) = if STORES_STORAGE_TYPE {
             // For nested storage types, each element has a unique `field_id`
             // set to `sha256((index, storage_vec_field_id))` to ensure each
             // nested storage type element stores its content in a different slot.
+            let storage_vec_field_id = self.values.field_id();
             (storage_vec_field_id, 0, sha256((self.index, storage_vec_field_id)))
         } else {
             // For non-zero-sized types, values are spread across chunk slots.
