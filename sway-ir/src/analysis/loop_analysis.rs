@@ -49,11 +49,12 @@ impl DebugWithContext for LoopAnalysis {
 
         let mut loops = BTreeMap::new();
         for (idx, l) in self.loops.iter().enumerate() {
-            let blocks = l
+            let mut blocks = l
                 .blocks
                 .iter()
                 .map(|x| x.get_label(context))
                 .collect::<Vec<_>>();
+            blocks.sort();
             loops.insert(idx, blocks);
         }
 
@@ -252,8 +253,8 @@ ret () v202v1
                 },
                 loops: {
                     0: [
-                        "while_body",
                         "while",
+                        "while_body",
                     ],
                 },
             }"#]]
@@ -394,11 +395,11 @@ ret () v1198v1
                 },
                 loops: {
                     0: [
-                        "is_none_22_block1",
                         "block1",
-                        "while_body",
-                        "while",
+                        "is_none_22_block1",
                         "is_none_22_block2",
+                        "while",
+                        "while_body",
                     ],
                 },
             }"#]]
