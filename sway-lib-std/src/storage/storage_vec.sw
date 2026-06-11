@@ -65,6 +65,11 @@ pub struct StorageVec<V> {}
 ///  - `StorageVec<StorageMap<u64, b256>>`
 ///  - `StorageMap<u64, StorageVec<b256>>`
 ///
+/// **The size of `V` must be less than or equal to 1024 bytes.**
+/// Having size of `V` be larger than 1024 bytes is considered an
+/// undefined behavior and can lead to unexpected results, most
+/// likely to run-time reverts.
+///
 /// **Some `StorageVec` methods are not supported for
 /// nested storage types and will panic if used with nested
 /// storage types.** E.g., `StorageVec<StorageString>::remove`
