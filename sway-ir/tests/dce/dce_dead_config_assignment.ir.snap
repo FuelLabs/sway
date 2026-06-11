@@ -1,0 +1,35 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+contract {
+    CONFIG = config u64, abi_decode_in_place_0, 0x00000000000004d2
+
+    pub fn abi_decode_in_place_0(__ptr: u64, len: u64, target: u64) -> () {
+        entry(__ptr: u64, len: u64, target: u64):
+        v4v1 = const unit ()
+        ret () v4v1
+    }
+
+    pub entry fn assign_config_call_pass_config<28892dec>() -> () {
+-         local u64 x
+- 
+        entry():
+-         v6v1 = get_config __ptr u64, CONFIG
+-         v7v1 = load v6v1
+-         v8v1 = get_local __ptr u64, x
+-         store v7v1 to v8v1
+        v10v1 = get_config __ptr u64, CONFIG
+        v11v1 = load v10v1
+        v12v1 = call poke_0(v11v1)
+        v13v1 = const unit ()
+        ret () v13v1
+    }
+
+    fn poke_0(_x: u64) -> () {
+        entry(_x: u64):
+        v16v1 = const unit ()
+        ret () v16v1
+    }
+}

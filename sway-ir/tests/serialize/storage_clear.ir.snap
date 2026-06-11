@@ -1,0 +1,20 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    fn main() -> () {
+        local b256 key_for_x
+
+        entry():
+        v1v1 = get_local __ptr b256, key_for_x
+        v2v1 = const b256 0x7fbd1192666bfac3767b890bd4d048c940879d316071e20c7c8c81bce2ca41c5
+        store v2v1 to v1v1
+        v4v1 = const u64 1
+        v5v1 = state_clear key v1v1, v4v1
+        state_clear_slots key v1v1, v4v1
+        v7v1 = const unit ()
+        ret () v7v1
+    }
+}

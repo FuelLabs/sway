@@ -1,0 +1,23 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    entry fn main() -> bool {
++         local u256 __wide_lhs
++         local u256 __wide_rhs
++ 
+        entry():
++         v5v1 = get_local __ptr u256, __wide_lhs
+        v1v1 = const u256 0x0000000000000000000000000000000000000000000000000000000000000001
++         store v1v1 to v5v1
++         v7v1 = get_local __ptr u256, __wide_rhs
+        v2v1 = const u256 0x0000000000000000000000000000000000000000000000000000000000000002
+-         v3v1 = cmp eq v1v1 v2v1
+-         ret bool v3v1
++         store v2v1 to v7v1
++         v9v1 = wide cmp eq v5v1 v7v1
++         ret bool v9v1
+    }
+}

@@ -1,0 +1,30 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    entry fn main() -> u64 {
+        entry():
+        v1v1 = const u64 42
+        ret u64 v1v1
+    }
+
+-     fn foo(e: b256) -> bool {
+-         entry(e: b256):
++     fn foo(e: __ptr b256) -> bool {
++         entry(e: __ptr b256):
++         v11v1 = load e
+        v4v1 = const bool false
+        ret bool v4v1
+    }
+
+-     fn bar(i: b256, j: u64) -> bool {
+-         entry(i: b256, j: u64):
++     fn bar(i: __ptr b256, j: u64) -> bool {
++         entry(i: __ptr b256, j: u64):
++         v13v1 = load i
+        v8v1 = const bool false
+        ret bool v8v1
+    }
+}
