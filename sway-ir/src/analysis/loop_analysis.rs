@@ -91,9 +91,9 @@ fn compute_loop_analysis(
 
     for block in po.po_to_block.iter() {
         for branch in block.successors(context) {
-            let sucessor = branch.block;
-            if dom_tree.dominates(sucessor, *block) {
-                back_edges.push((*block, sucessor));
+            let successor = branch.block;
+            if dom_tree.dominates(successor, *block) {
+                back_edges.push((*block, successor));
             }
         }
     }
