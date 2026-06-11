@@ -58,10 +58,16 @@ perf-in-lang filter='':
     ./test/src/in_language_tests/run_in_language_tests.sh --release {{filter}} | tee /dev/stderr | ./scripts/perf/extract-gas-usages.sh > "$outfile"
     echo "Gas usages written to:      $outfile"
 
-alias pa := perf-all
-# collect gas usages and bytecode sizes from all tests (E2E and in-language)
+alias pst := perf-storage
+# run storage benchmarks (storage fields and StorageVec), optionally filtered by project name substring
 [group('performance')]
-perf-all filter='': (perf-e2e filter) (perf-in-lang filter)
+perf-storage filter='':
+    ./test/src/e2e_vm_tests/test_programs/should_pass/storage_benchmarks/bench.sh "{{filter}}"
+
+alias pa := perf-all
+# collect gas usages and bytecode sizes from all tests (E2E, in-language, and storage)
+[group('performance')]
+perf-all filter='': (perf-e2e filter) (perf-in-lang filter) (perf-storage filter)
 
 alias pd := perf-diff
 # generate performance diff between two CSV files

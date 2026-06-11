@@ -1,15 +1,22 @@
 #!/usr/bin/env bash
 #
-# Compares gas usage between two benchmark runs recorded in RESULTS.md.
+# Compares gas usage between two benchmark runs saved in the `perf_out`
+# folder by bench.sh or bench_storage_vec.sh.
 #
 # Usage:
-#   ./perf_diff.sh <before-sha-substring> <after-sha-substring>
+#   ./perf_diff.sh <before-file> <after-file>
 #
-# The script searches RESULTS.md for commits whose full SHA contains
-# the given substrings and produces two output files:
+# Example:
+#   ./perf_diff.sh perf_out/0611120000-master.storage_vec.txt \
+#                  perf_out/0611140000-my_branch.storage_vec.txt
 #
-#   <last8-before> vs <last8-after>.perf-diff.csv
-#   <last8-before> vs <last8-after>.perf-diff.md
+# Both files must be of the same kind (fields, storage_vec, or all);
+# mixing kinds is an error.
+#
+# Produces two output files in the `perf_out` folder:
+#
+#   <before-timestamp> vs <after-timestamp>.perf-diff.csv
+#   <before-timestamp> vs <after-timestamp>.perf-diff.md
 #
 # Both files contain: Project, Bench, Before, After, Difference, Percentage
 #
@@ -19,110 +26,77 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-RESULTS_FILE="$SCRIPT_DIR/RESULTS.md"
+OUT_DIR="$SCRIPT_DIR/perf_out"
 
 # ── Argument validation ─────────────────────────────────────────────
 
 if [[ $# -ne 2 ]]; then
-    echo "Usage: $0 <before-sha-substring> <after-sha-substring>" >&2
+    echo "Usage: $0 <before-file> <after-file>" >&2
     exit 1
 fi
 
-BEFORE_PATTERN="$1"
-AFTER_PATTERN="$2"
+BEFORE_FILE="$1"
+AFTER_FILE="$2"
 
-if [[ -z "$BEFORE_PATTERN" || -z "$AFTER_PATTERN" ]]; then
-    echo "ERROR: both SHA substrings must be non-empty." >&2
+for f in "$BEFORE_FILE" "$AFTER_FILE"; do
+    if [[ ! -f "$f" ]]; then
+        echo "ERROR: file not found: $f" >&2
+        exit 1
+    fi
+done
+
+if [[ "$(realpath "$BEFORE_FILE")" == "$(realpath "$AFTER_FILE")" ]]; then
+    echo "ERROR: the two files must be different." >&2
     exit 1
 fi
 
-if [[ "$BEFORE_PATTERN" == "$AFTER_PATTERN" ]]; then
-    echo "ERROR: the two SHA substrings must be different." >&2
-    exit 1
-fi
-
-if [[ ! -f "$RESULTS_FILE" ]]; then
-    echo "ERROR: RESULTS.md not found at $RESULTS_FILE" >&2
-    exit 1
-fi
-
-# ── Find matching commits ───────────────────────────────────────────
-
-# Extract all full SHAs from the heading lines.
-# Heading format: ## Branch: `master` on 2026.04.08 `<full-sha>` (...)
-mapfile -t ALL_SHAS < <(grep -oP '(?<=`)[0-9a-f]{40}(?=`)' "$RESULTS_FILE")
-
-if [[ ${#ALL_SHAS[@]} -eq 0 ]]; then
-    echo "ERROR: no commit SHAs found in RESULTS.md." >&2
-    exit 1
-fi
-
-find_sha() {
-    local pattern="$1"
+# Extract the timestamp and kind (fields|storage_vec|all) from a perf
+# output file name of the form: MMDDHHMMSS-<branch>.<kind>.txt
+# Sets PARSED_TIMESTAMP and PARSED_KIND.
+parse_file_name() {
+    local file="$1"
     local label="$2"
-    local -a matches=()
-
-    for sha in "${ALL_SHAS[@]}"; do
-        if [[ "$sha" == *"$pattern"* ]]; then
-            matches+=("$sha")
-        fi
-    done
-
-    if [[ ${#matches[@]} -eq 0 ]]; then
-        echo "ERROR: no commit matching '$pattern' found in RESULTS.md." >&2
-        echo "Available commits:" >&2
-        printf "  %s\n" "${ALL_SHAS[@]}" >&2
+    local base
+    base="$(basename "$file")"
+    if [[ ! "$base" =~ ^([0-9]{10})-.+\.(fields|storage_vec|all)\.txt$ ]]; then
+        echo "ERROR: $label file name does not match the scheme MMDDHHMMSS-<branch>.<fields|storage_vec|all>.txt: $base" >&2
         exit 1
     fi
-
-    if [[ ${#matches[@]} -gt 1 ]]; then
-        echo "ERROR: '$pattern' matches multiple commits ($label):" >&2
-        printf "  %s\n" "${matches[@]}" >&2
-        exit 1
-    fi
-
-    echo "${matches[0]}"
+    PARSED_TIMESTAMP="${BASH_REMATCH[1]}"
+    PARSED_KIND="${BASH_REMATCH[2]}"
 }
 
-BEFORE_SHA=$(find_sha "$BEFORE_PATTERN" "before")
-AFTER_SHA=$(find_sha "$AFTER_PATTERN" "after")
+parse_file_name "$BEFORE_FILE" "before"
+BEFORE_TIMESTAMP="$PARSED_TIMESTAMP"
+BEFORE_KIND="$PARSED_KIND"
 
-if [[ "$BEFORE_SHA" == "$AFTER_SHA" ]]; then
-    echo "ERROR: both patterns resolve to the same commit: $BEFORE_SHA" >&2
+parse_file_name "$AFTER_FILE" "after"
+AFTER_TIMESTAMP="$PARSED_TIMESTAMP"
+AFTER_KIND="$PARSED_KIND"
+
+if [[ "$BEFORE_KIND" != "$AFTER_KIND" ]]; then
+    echo "ERROR: cannot compare different benchmark kinds: $BEFORE_KIND vs $AFTER_KIND." >&2
     exit 1
 fi
 
-BEFORE_SHORT="${BEFORE_SHA: -8}"
-AFTER_SHORT="${AFTER_SHA: -8}"
+# Strip directory and .txt extension to get the run name.
+BEFORE_NAME="$(basename "$BEFORE_FILE" .txt)"
+AFTER_NAME="$(basename "$AFTER_FILE" .txt)"
 
-echo "Before: $BEFORE_SHA (…$BEFORE_SHORT)"
-echo "After:  $AFTER_SHA (…$AFTER_SHORT)"
+echo "Before: $BEFORE_FILE"
+echo "After:  $AFTER_FILE"
 echo
 
-# ── Parse benchmark data for a commit ───────────────────────────────
+# ── Parse benchmark data from a perf output file ────────────────────
 
-# parse_commit <sha>
+# parse_perf_file <file>
 # Outputs lines: project,bench_name,gas
-parse_commit() {
-    local sha="$1"
-    local in_commit=false
+parse_perf_file() {
+    local file="$1"
     local in_csv=false
     local current_project=""
 
     while IFS= read -r line; do
-        # Detect commit heading.
-        if [[ "$line" =~ ^"## Branch:" ]]; then
-            if [[ "$line" == *"$sha"* ]]; then
-                in_commit=true
-            elif $in_commit; then
-                # We've moved past our commit's section.
-                break
-            fi
-            continue
-        fi
-
-        $in_commit || continue
-
         # Detect project name from "Running: <project>" lines.
         if [[ "$line" =~ Running:[[:space:]]+(.+) ]]; then
             current_project="${BASH_REMATCH[1]}"
@@ -139,14 +113,14 @@ parse_commit() {
 
         # End of CSV block.
         if $in_csv; then
-            if [[ -z "$line" || "$line" == '```' || "$line" == ---* || "$line" == ═* ]]; then
+            if [[ -z "$line" || "$line" == ---* || "$line" == ═* ]]; then
                 in_csv=false
                 continue
             fi
             # Output: project,bench_name,gas
             echo "${current_project},${line}"
         fi
-    done < "$RESULTS_FILE"
+    done < "$file"
 }
 
 # ── Collect data ────────────────────────────────────────────────────
@@ -163,7 +137,7 @@ while IFS=, read -r project bench gas; do
         KEYS+=("$local_key")
         SEEN_KEYS["$local_key"]=1
     fi
-done < <(parse_commit "$BEFORE_SHA")
+done < <(parse_perf_file "$BEFORE_FILE")
 
 while IFS=, read -r project bench gas; do
     local_key="${project},${bench}"
@@ -172,18 +146,19 @@ while IFS=, read -r project bench gas; do
         KEYS+=("$local_key")
         SEEN_KEYS["$local_key"]=1
     fi
-done < <(parse_commit "$AFTER_SHA")
+done < <(parse_perf_file "$AFTER_FILE")
 
 if [[ ${#KEYS[@]} -eq 0 ]]; then
-    echo "ERROR: no benchmark data found for the given commits." >&2
+    echo "ERROR: no benchmark data found in the given files." >&2
     exit 1
 fi
 
 # ── Compute diffs and generate output ───────────────────────────────
 
-OUT_BASE="${BEFORE_SHORT} vs ${AFTER_SHORT}"
-CSV_FILE="$SCRIPT_DIR/${OUT_BASE}.perf-diff.csv"
-MD_FILE="$SCRIPT_DIR/${OUT_BASE}.perf-diff.md"
+mkdir -p "$OUT_DIR"
+OUT_BASE="${BEFORE_TIMESTAMP} vs ${AFTER_TIMESTAMP}"
+CSV_FILE="$OUT_DIR/${OUT_BASE}.perf-diff.csv"
+MD_FILE="$OUT_DIR/${OUT_BASE}.perf-diff.md"
 
 # CSV output
 {
@@ -216,10 +191,10 @@ MD_FILE="$SCRIPT_DIR/${OUT_BASE}.perf-diff.md"
 
 # MD output
 {
-    echo "# Performance diff: …${BEFORE_SHORT} vs …${AFTER_SHORT}"
+    echo "# Performance diff: ${BEFORE_NAME} vs ${AFTER_NAME}"
     echo
-    echo "- **Before**: \`${BEFORE_SHA}\`"
-    echo "- **After**:  \`${AFTER_SHA}\`"
+    echo "- **Before**: \`${BEFORE_NAME}\`"
+    echo "- **After**:  \`${AFTER_NAME}\`"
     echo
     echo "Difference = -(After - Before). Positive = improvement, negative = regression."
     echo
