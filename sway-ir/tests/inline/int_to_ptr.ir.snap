@@ -1,0 +1,29 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    fn a(b: u64, __ret_value: __ptr b256) -> __ptr b256 {
+        entry(b: u64, __ret_value: __ptr b256):
+        v3v1 = int_to_ptr b to __ptr b256
+        mem_copy_val __ret_value, v3v1
+        ret __ptr b256 __ret_value
+    }
+
+    fn main() -> __ptr b256 {
+        local b256 __ret_val_a
+
+        entry():
+        v6v1 = get_local __ptr b256, __ret_val_a
+        v7v1 = const u64 11
+-         v8v1 = call a(v7v1, v6v1)
+-         ret __ptr b256 v8v1
++         v8v3 = int_to_ptr v7v1 to __ptr b256
++         mem_copy_val v6v1, v8v3
++         br block0(v6v1)
++ 
++         block0(v10v1: __ptr b256):
++         ret __ptr b256 v10v1
+    }
+}

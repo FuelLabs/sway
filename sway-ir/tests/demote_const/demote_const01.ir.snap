@@ -1,0 +1,17 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    entry fn main() -> { u64, bool } {
++         local { u64, bool } __const = const { u64, bool } { u64 42, bool false }
++ 
+        entry():
+-         v1v1 = const { u64, bool } { u64 42, bool false }
+-         ret { u64, bool } v1v1
++         v3v1 = get_local __ptr { u64, bool }, __const
++         v4v1 = load v3v1
++         ret { u64, bool } v4v1
+    }
+}

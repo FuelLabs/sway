@@ -7686,6 +7686,7 @@ dependencies = [
  "downcast-rs",
  "filecheck",
  "indexmap 2.14.0",
+ "insta",
  "itertools 0.13.0",
  "once_cell",
  "peg",
@@ -7697,6 +7698,7 @@ dependencies = [
  "sway-ir-macros",
  "sway-types",
  "sway-utils",
+ "vte 0.13.1",
 ]
 
 [[package]]

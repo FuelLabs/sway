@@ -1,0 +1,18 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    fn main() -> () {
+        local b256 addr_a = const b256 0x1111111111111111111111111111111111111111111111111111111111111111
+        local b256 addr_b
+
+        entry():
+        v1v1 = get_local __ptr b256, addr_a
+        v2v1 = get_local __ptr b256, addr_b
+        mem_copy_val v2v1, v1v1
+        v4v1 = const unit ()
+        ret () v4v1
+    }
+}
