@@ -16,7 +16,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 ALL_SIZES=(8 24 32 56 72 88 96)
-COUNTS=(10 100 1000)
+COUNTS=(10 100 1000 5000)
 OPS=(push push_n_elems_into_empty_vec pop get set first last len is_empty swap swap_remove remove insert reverse fill resize_grow resize_shrink store_vec load_vec iter clear)
 
 # ── Size → type mapping ────────────────────────────────────────────
@@ -41,29 +41,68 @@ needs_stored_types() {
 
 # ── Helpers ─────────────────────────────────────────────────────────
 
-# Emit the populate loop (push N elements into storage.vec)
-emit_populate() {
-    local n="$1" default="$2"
-    cat <<SWAY
-        let mut i = 0;
-        while i < ${n} {
-            storage.vec.push(${default});
-            i += 1;
-        }
+# Emit the module-level populate helper functions, one per count.
+#
+# The populate loop is factored into `#[inline(never)]` helpers so that
+# every benchmark method pays exactly the same gas for populating the
+# vector. If the loop is written out in each method instead, the
+# optimizer can compile it slightly differently in different methods
+# (e.g. inlining `push` in some of them but not in others), which makes
+# the per-count baseline subtraction in bench_storage_vec.sh attribute
+# leftover O(N) populate cost to the measured operation.
+emit_populate_helpers() {
+    local default="$1"
+    local n
+    for n in "${COUNTS[@]}"; do
+        cat <<SWAY
+
+#[inline(never)]
+#[storage(read, write)]
+fn populate_n${n}() {
+    let mut i = 0;
+    while i < ${n} {
+        storage.vec.push(${default});
+        i += 1;
+    }
+}
 SWAY
+    done
 }
 
-# Emit the heap-vec build loop (build Vec<T> of N elements on the heap)
-emit_vec_build() {
-    local n="$1" default="$2" type="$3"
-    cat <<SWAY
-        let mut v = Vec::<${type}>::new();
-        let mut i = 0;
-        while i < ${n} {
-            v.push(${default});
-            i += 1;
-        }
+# Emit the module-level heap-vec build helper functions, one per count.
+# Factored into `#[inline(never)]` helpers for the same reason as the
+# populate helpers: the store_vec baseline subtraction relies on the
+# build loop costing the same in every method.
+emit_vec_build_helpers() {
+    local default="$1" type="$2"
+    local n
+    for n in "${COUNTS[@]}"; do
+        cat <<SWAY
+
+#[inline(never)]
+fn build_vec_n${n}() -> Vec<${type}> {
+    let mut v = Vec::<${type}>::new();
+    let mut i = 0;
+    while i < ${n} {
+        v.push(${default});
+        i += 1;
+    }
+    v
+}
 SWAY
+    done
+}
+
+# Emit the populate call (push N elements into storage.vec)
+emit_populate() {
+    local n="$1"
+    echo "        populate_n${n}();"
+}
+
+# Emit the heap-vec build call (build Vec<T> of N elements on the heap)
+emit_vec_build() {
+    local n="$1"
+    echo "        let v = build_vec_n${n}();"
 }
 
 # Emit the operation-specific line(s) after the populate setup
@@ -134,6 +173,12 @@ EOF
     # ── test.toml ───────────────────────────────────────────────────
     echo 'category = "unit_tests_pass"' > "$project_dir/test.toml"
 
+    # ── test.dynamic_storage.toml ────────────────────────────────────
+    {
+        echo 'category = "unit_tests_pass"'
+        echo 'experimental = { new_encoding = true, dynamic_storage = true }'
+    } > "$project_dir/test.dynamic_storage.toml"
+
     # ── src/main.sw ─────────────────────────────────────────────────
     {
         echo "contract;"
@@ -146,6 +191,8 @@ EOF
         echo "storage {"
         echo "    vec: StorageVec<${type}> = StorageVec {},"
         echo "}"
+        emit_populate_helpers "$default"
+        emit_vec_build_helpers "$default" "$type"
         echo ""
         echo "impl Contract {"
 
@@ -162,7 +209,7 @@ EOF
             echo ""
             echo "    #[storage(read, write)]"
             echo "    fn baseline_n${n}() {"
-            emit_populate "$n" "$default"
+            emit_populate "$n"
             echo "    }"
         done
 
@@ -172,7 +219,7 @@ EOF
         for n in "${COUNTS[@]}"; do
             echo ""
             echo "    fn baseline_store_vec_n${n}() {"
-            emit_vec_build "$n" "$default" "$type"
+            emit_vec_build "$n"
             echo "    }"
         done
 
@@ -185,16 +232,16 @@ EOF
                 if [[ "$op" == "store_vec" ]]; then
                     echo "    #[storage(write)]"
                     echo "    fn ${op}_n${n}() {"
-                    emit_vec_build "$n" "$default" "$type"
+                    emit_vec_build "$n"
                     echo "        storage.vec.store_vec(v);"
                 elif [[ "$op" == "push_n_elems_into_empty_vec" ]]; then
                     echo "    #[storage(read, write)]"
                     echo "    fn ${op}_n${n}() {"
-                    emit_populate "$n" "$default"
+                    emit_populate "$n"
                 else
                     echo "    #[storage(read, write)]"
                     echo "    fn ${op}_n${n}() {"
-                    emit_populate "$n" "$default"
+                    emit_populate "$n"
                     emit_op_tail "$op" "$n" "$default"
                 fi
                 echo "    }"

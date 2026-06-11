@@ -486,6 +486,9 @@ fn bench_struct32_clear() {
 
 // === Struct40 (40 bytes) ===
 
+// TODO: (INIT-STORAGE) Enable the read benchmarks once we implement
+//       initialization of dynamic storage slots for types larger than 32 bytes.
+#[cfg(experimental_dynamic_storage = false)]
 #[test]
 fn bench_struct40_read() {
     let caller = abi(StorageFieldsAbi, CONTRACT_ID);
@@ -506,6 +509,7 @@ fn bench_struct40_clear() {
 
 // === Struct48 (48 bytes) ===
 
+#[cfg(experimental_dynamic_storage = false)]
 #[test]
 fn bench_struct48_read() {
     let caller = abi(StorageFieldsAbi, CONTRACT_ID);
@@ -526,6 +530,7 @@ fn bench_struct48_clear() {
 
 // === Struct56 (56 bytes) ===
 
+#[cfg(experimental_dynamic_storage = false)]
 #[test]
 fn bench_struct56_read() {
     let caller = abi(StorageFieldsAbi, CONTRACT_ID);
@@ -546,6 +551,7 @@ fn bench_struct56_clear() {
 
 // === Struct72 (72 bytes) ===
 
+#[cfg(experimental_dynamic_storage = false)]
 #[test]
 fn bench_struct72_read() {
     let caller = abi(StorageFieldsAbi, CONTRACT_ID);
@@ -565,7 +571,7 @@ fn bench_struct72_clear() {
 }
 
 // === Struct88 (88 bytes) ===
-
+#[cfg(experimental_dynamic_storage = false)]
 #[test]
 fn bench_struct88_read() {
     let caller = abi(StorageFieldsAbi, CONTRACT_ID);
@@ -586,6 +592,7 @@ fn bench_struct88_clear() {
 
 // === Struct96 (96 bytes) ===
 
+#[cfg(experimental_dynamic_storage = false)]
 #[test]
 fn bench_struct96_read() {
     let caller = abi(StorageFieldsAbi, CONTRACT_ID);
@@ -606,6 +613,7 @@ fn bench_struct96_clear() {
 
 // === Struct184 (184 bytes) ===
 
+#[cfg(experimental_dynamic_storage = false)]
 #[test]
 fn bench_struct184_read() {
     let caller = abi(StorageFieldsAbi, CONTRACT_ID);
@@ -626,6 +634,7 @@ fn bench_struct184_clear() {
 
 // === Struct200 (200 bytes) ===
 
+#[cfg(experimental_dynamic_storage = false)]
 #[test]
 fn bench_struct200_read() {
     let caller = abi(StorageFieldsAbi, CONTRACT_ID);
@@ -646,6 +655,7 @@ fn bench_struct200_clear() {
 
 // === Struct224 (224 bytes) ===
 
+#[cfg(experimental_dynamic_storage = false)]
 #[test]
 fn bench_struct224_read() {
     let caller = abi(StorageFieldsAbi, CONTRACT_ID);
@@ -666,6 +676,7 @@ fn bench_struct224_clear() {
 
 // === Struct552 (552 bytes) ===
 
+#[cfg(experimental_dynamic_storage = false)]
 #[test]
 fn bench_struct552_read() {
     let caller = abi(StorageFieldsAbi, CONTRACT_ID);

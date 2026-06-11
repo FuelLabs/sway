@@ -821,6 +821,7 @@ impl TestInstance for EnumLargerThanQuadSlot {
     }
 }
 
+// Size: 5 * 8 + 32 = 72 bytes
 pub struct StructA {
     f_bool: bool,
     f_u8: u8,
@@ -901,6 +902,7 @@ impl TestInstance for StructA {
     }
 }
 
+// Size: 72 + (4 * 8 + 32) + 8 + 8 = 152 bytes
 pub struct StructB {
     f_struct_a: StructA,
     f_tuple: (u8, u16, u32, u64, u256),
@@ -912,6 +914,7 @@ pub struct StructB {
     f_array_nested_array_u8_len_2_len_3: [[u8; 2]; 3],
 }
 
+// Size: 152 * 2 = 304 bytes
 pub type ArrayStructBLen2 = [StructB; 2];
 
 impl PartialEq for StructB {
