@@ -1351,7 +1351,9 @@ impl<V> StorageKey<StorageVec<V>> {
             // requires the offset to be within the currently used size. Writing the length
             // first establishes those 8 bytes so subsequent updates to the same slot at
             // offset ≥ 8 are valid.
-            __state_update_slot(self.field_id(), __addr_of(new_len), 0, 8); // Compute which slot and offset to write the new element.
+            __state_update_slot(self.field_id(), __addr_of(new_len), 0, 8);
+
+            // Compute which slot and offset to write the new element.
             let (elem_slot, elem_offset) = self.get_slot_and_offset_of_elem(len);
             __state_update_slot(elem_slot, __addr_of(value), elem_offset, SIZE_OF_V);
         }
@@ -2717,20 +2719,27 @@ impl<V> StorageKey<StorageVec<V>> {
                 return;
             }
 
-            let (elements_ptr, elements_bytes) = vec.as_raw_slice().into_parts(); // Every slot holds the same number of elements. The element area of each
-// slot is CHUNK_MAX_SIZE bytes, so `slot_elem_bytes` is the maximum byte
-// count for that area. Note: `slot_elem_bytes <= CHUNK_MAX_SIZE` always,
-// since we floor-divide then multiply back.
+            let (elements_ptr, elements_bytes) = vec.as_raw_slice().into_parts();
 
-// TODO: Move `SIZE_OF_V` to the top of `else`, like in all other methods,
-//       once https://github.com/FuelLabs/sway/issues/7650 is fixed.
+            // Every slot holds the same number of elements. The element area of each
+            // slot is CHUNK_MAX_SIZE bytes, so `slot_elem_bytes` is the maximum byte
+            // count for that area. Note: `slot_elem_bytes <= CHUNK_MAX_SIZE` always,
+            // since we floor-divide then multiply back.
+
+            // TODO: Move `SIZE_OF_V` to the top of `else`, like in all other methods,
+            //       once https://github.com/FuelLabs/sway/issues/7650 is fixed.
             const SIZE_OF_V: u64 = __size_of::<V>();
             const ELEMS_PER_SLOT: u64 = CHUNK_MAX_SIZE / SIZE_OF_V;
-            const SLOT_ELEM_BYTES: u64 = ELEMS_PER_SLOT * SIZE_OF_V; // All elements fit in the first slot (after the 8-byte header).
+            const SLOT_ELEM_BYTES: u64 = ELEMS_PER_SLOT * SIZE_OF_V;
+
+            // All elements fit in the first slot (after the 8-byte header).
             if elements_bytes <= SLOT_ELEM_BYTES {
                 __state_update_slot(field_id, elements_ptr, 8, elements_bytes);
-            } else { // Write the first slot's full element area into slot 0 (at byte offset 8).
-                __state_update_slot(field_id, elements_ptr, 8, SLOT_ELEM_BYTES); // Write the remaining elements into subsequent chunk slots.
+            } else {
+                // Write the first slot's full element area into slot 0 (at byte offset 8).
+                __state_update_slot(field_id, elements_ptr, 8, SLOT_ELEM_BYTES);
+
+                // Write the remaining elements into subsequent chunk slots.
                 let mut bytes_written = SLOT_ELEM_BYTES;
                 let mut chunk_number: u64 = 1;
                 while bytes_written < elements_bytes {
