@@ -1284,7 +1284,6 @@ impl<V> StorageKey<StorageVec<V>> {
         } else {
             offset_in_slot + 8
         };
-
         (slot, offset_in_slot)
     }
 
