@@ -123,32 +123,32 @@ fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
                     for line in lines {
                         snapshot.push_str("+ ");
                         snapshot.push_str(line);
-                        snapshot.push_str("\n");
+                        snapshot.push('\n');
                     }
                 }
                 prettydiff::basic::DiffOp::Replace(removed, inserted) => {
                     for line in removed {
                         snapshot.push_str("- ");
                         snapshot.push_str(line);
-                        snapshot.push_str("\n");
+                        snapshot.push('\n');
                     }
                     for line in inserted {
                         snapshot.push_str("+ ");
                         snapshot.push_str(line);
-                        snapshot.push_str("\n");
+                        snapshot.push('\n');
                     }
                 }
                 prettydiff::basic::DiffOp::Remove(removed) => {
                     for line in removed {
                         snapshot.push_str("- ");
                         snapshot.push_str(line);
-                        snapshot.push_str("\n");
+                        snapshot.push('\n');
                     }
                 }
                 prettydiff::basic::DiffOp::Equal(lines) => {
                     for line in lines {
                         snapshot.push_str(line);
-                        snapshot.push_str("\n");
+                        snapshot.push('\n');
                     }
                 }
             }
