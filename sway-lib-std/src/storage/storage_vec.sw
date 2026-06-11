@@ -1490,7 +1490,8 @@ impl<V> StorageKey<StorageVec<V>> {
             // set to `sha256((index, self.field_id())` to ensure every
             // nested storage type element will use it and store its content
             // in a different slot.
-            (self.field_id(), 0, sha256((index, self.field_id())))
+            let field_id = self.field_id();
+            (field_id, 0, sha256((index, field_id)))
         } else {
             // For non-zero-sized types, their values are stored across chunk slots.
             // `get_slot_and_offset_of_elem` computes the exact slot and byte offset.
@@ -1651,8 +1652,9 @@ impl<V> StorageKey<StorageVec<V>> {
             let mut prev_slot = removed_slot;
             let mut prev_slot_last_elem_offset = removed_slot_elem_start + (ELEMS_PER_SLOT - 1) * SIZE_OF_V;
             let mut chunk = removed_chunk + 1;
+            let field_id = self.field_id();
             while chunk <= last_chunk {
-                let mut cur_slot = self.field_id();
+                let mut cur_slot = field_id;
                 add_u64_to_b256(cur_slot, chunk);
 
                 let elems_in_cur_slot: u64 = if chunk < last_chunk {
@@ -1682,7 +1684,7 @@ impl<V> StorageKey<StorageVec<V>> {
 
             // 4. Update the length header.
             let new_len = len - 1;
-            __state_update_slot(self.field_id(), __addr_of(new_len), 0, 8);
+            __state_update_slot(field_id, __addr_of(new_len), 0, 8);
 
             removed_element
         }
@@ -1928,6 +1930,7 @@ impl<V> StorageKey<StorageVec<V>> {
             panic StorageVecError::MethodDoesNotSupportNestedStorageTypes;
         } else {
             let len = self.len();
+            let field_id = self.field_id();
 
             if index > len {
                 panic StorageVecError::IndexOutOfBounds(OutOfBounds {
@@ -1938,7 +1941,7 @@ impl<V> StorageKey<StorageVec<V>> {
 
             // Update the length header first, before touching any elements.
             let new_len = len + 1;
-            __state_update_slot(self.field_id(), __addr_of(new_len), 0, 8);
+            __state_update_slot(field_id, __addr_of(new_len), 0, 8);
 
             // Compute the insert position once; used both for shifting and for the final write.
             let (insert_slot, insert_offset) = self.get_slot_and_offset_of_elem(index);
@@ -1962,7 +1965,7 @@ impl<V> StorageKey<StorageVec<V>> {
                     // carry element that will arrive from the preceding chunk.
                     // old_last_chunk >= 1 (since old_last_chunk > insert_chunk >= 0),
                     // so its element area starts at byte 0.
-                    let mut old_last_slot = self.field_id();
+                    let mut old_last_slot = field_id;
                     add_u64_to_b256(old_last_slot, old_last_chunk);
 
                     let elems_in_old_last = len - old_last_chunk * ELEMS_PER_SLOT;
@@ -1971,7 +1974,7 @@ impl<V> StorageKey<StorageVec<V>> {
                     if new_last_chunk > old_last_chunk {
                         // Sub-case A: old_last_chunk was full (elems_in_old_last == ELEMS_PER_SLOT).
                         // Its last element overflows to the brand-new last chunk slot.
-                        let mut new_last_slot = self.field_id();
+                        let mut new_last_slot = field_id;
                         add_u64_to_b256(new_last_slot, new_last_chunk);
 
                         let remaining_bytes = (ELEMS_PER_SLOT - 1) * SIZE_OF_V;
@@ -1995,7 +1998,7 @@ impl<V> StorageKey<StorageVec<V>> {
                     while chunk > insert_chunk {
                         // chunk >= 1 (since chunk > insert_chunk >= 0),
                         // guarantees that element area always starts at byte 0.
-                        let mut cur_slot = self.field_id();
+                        let mut cur_slot = field_id;
                         add_u64_to_b256(cur_slot, chunk);
 
                         let _ = __state_load_slot(cur_slot, buf, 0, ELEMS_PER_SLOT * SIZE_OF_V);
@@ -2031,7 +2034,7 @@ impl<V> StorageKey<StorageVec<V>> {
                     if new_last_chunk > insert_chunk {
                         // The insert chunk was full (len is a multiple of ELEMS_PER_SLOT), so the
                         // last element overflows into the brand-new next chunk.
-                        let mut new_last_slot = self.field_id();
+                        let mut new_last_slot = field_id;
                         add_u64_to_b256(new_last_slot, new_last_chunk);
 
                         let remaining_bytes = (elems_to_shift - 1) * SIZE_OF_V;
@@ -2263,15 +2266,16 @@ impl<V> StorageKey<StorageVec<V>> {
 
         const STORES_STORAGE_TYPE: bool = __size_of::<V>() == 0;
 
+        let field_id = self.field_id();
         let (slot, offset, field_id) = if STORES_STORAGE_TYPE {
             // Nested storage types are stored at a unique `field_id`
             // set to `sha256((0, self.field_id())` to ensure every
             // nested storage type element will use it and store its content
             // in a different slot. The offset within that dedicated slot is 0.
-            (self.field_id(), 0, sha256((0, self.field_id())))
+            (field_id, 0, sha256((0, field_id)))
         } else {
             // Element 0 is always in slot 0 at byte offset 8 (after the length header).
-            (self.field_id(), 8, self.field_id())
+            (field_id, 8, field_id)
         };
 
         Some(StorageKey::<V>::new(slot, offset, field_id))
@@ -2315,7 +2319,8 @@ impl<V> StorageKey<StorageVec<V>> {
         let (slot, offset, field_id) = if STORES_STORAGE_TYPE {
             // Nested storage types are stored at a unique `field_id`
             // set to `sha256((len - 1, self.field_id())`.
-            (self.field_id(), 0, sha256((len - 1, self.field_id())))
+            let field_id = self.field_id();
+            (field_id, 0, sha256((len - 1, field_id)))
         } else {
             let (elem_slot, elem_offset) = self.get_slot_and_offset_of_elem(len - 1);
             (elem_slot, elem_offset, elem_slot)
@@ -2508,6 +2513,8 @@ impl<V> StorageKey<StorageVec<V>> {
                 i += 1;
             }
 
+            let field_id = self.field_id();
+
             // Chunk 0: element area starts at byte 8 (after the length header), so we
             // must use __state_update_slot to avoid clobbering the header.
             // If chunk 0 is also the last chunk, write only the elements that exist.
@@ -2516,14 +2523,14 @@ impl<V> StorageKey<StorageVec<V>> {
             } else {
                 ELEMS_PER_SLOT
             };
-            __state_update_slot(self.field_id(), buf, 8, elems_in_chunk0 * SIZE_OF_V);
+            __state_update_slot(field_id, buf, 8, elems_in_chunk0 * SIZE_OF_V);
 
             if last_chunk > 0 {
                 // Chunks 1 through last_chunk-1 (if any):
                 // all are full, so we can write them in a single call each.
                 let mut chunk = 1u64;
                 while chunk < last_chunk {
-                    let mut slot = self.field_id();
+                    let mut slot = field_id;
                     add_u64_to_b256(slot, chunk);
 
                     __state_store_slot(slot, buf, ELEMS_PER_SLOT * SIZE_OF_V);
@@ -2531,7 +2538,7 @@ impl<V> StorageKey<StorageVec<V>> {
                 }
 
                 // Last chunk: may be partial.
-                let mut last_slot = self.field_id();
+                let mut last_slot = field_id;
                 add_u64_to_b256(last_slot, last_chunk);
 
                 let elems_in_last = len - last_chunk * ELEMS_PER_SLOT;
@@ -2700,10 +2707,11 @@ impl<V> StorageKey<StorageVec<V>> {
             panic StorageVecError::MethodDoesNotSupportNestedStorageTypes;
         } else {
             let len = vec.len();
+            let field_id = self.field_id();
 
             // Write the length header first so that subsequent `__state_update_slot` calls
             // targeting slot 0 at offset ≥ 8 have a valid base.
-            __state_update_slot(self.field_id(), __addr_of(len), 0, 8);
+            __state_update_slot(field_id, __addr_of(len), 0, 8);
 
             if len == 0 {
                 return;
@@ -2718,11 +2726,13 @@ impl<V> StorageKey<StorageVec<V>> {
 //       once https://github.com/FuelLabs/sway/issues/7650 is fixed.
             const SIZE_OF_V: u64 = __size_of::<V>();
             const ELEMS_PER_SLOT: u64 = CHUNK_MAX_SIZE / SIZE_OF_V;
-            const SLOT_ELEM_BYTES: u64 = ELEMS_PER_SLOT * SIZE_OF_V; // All elements fit in the first slot (after the 8-byte header).
+            const SLOT_ELEM_BYTES: u64 = ELEMS_PER_SLOT * SIZE_OF_V;
+
+            // All elements fit in the first slot (after the 8-byte header).
             if elements_bytes <= SLOT_ELEM_BYTES {
-                __state_update_slot(self.field_id(), elements_ptr, 8, elements_bytes);
+                __state_update_slot(field_id, elements_ptr, 8, elements_bytes);
             } else { // Write the first slot's full element area into slot 0 (at byte offset 8).
-                __state_update_slot(self.field_id(), elements_ptr, 8, SLOT_ELEM_BYTES); // Write the remaining elements into subsequent chunk slots.
+                __state_update_slot(field_id, elements_ptr, 8, SLOT_ELEM_BYTES); // Write the remaining elements into subsequent chunk slots.
                 let mut bytes_written = SLOT_ELEM_BYTES;
                 let mut chunk_number: u64 = 1;
                 while bytes_written < elements_bytes {
@@ -2733,7 +2743,7 @@ impl<V> StorageKey<StorageVec<V>> {
                         remaining_bytes
                     };
 
-                    let mut chunk_slot = self.field_id();
+                    let mut chunk_slot = field_id;
                     add_u64_to_b256(chunk_slot, chunk_number);
 
                     __state_store_slot(
@@ -2819,12 +2829,13 @@ impl<V> StorageKey<StorageVec<V>> {
             let elements_bytes = len * SIZE_OF_V;
             let elements_ptr = alloc_bytes(elements_bytes);
 
+            let field_id = self.field_id();
             if elements_bytes <= SLOT_ELEM_BYTES {
                 // All elements fit in the first slot (starting at byte offset 8).
-                let _ = __state_load_slot(self.field_id(), elements_ptr, 8, elements_bytes);
+                let _ = __state_load_slot(field_id, elements_ptr, 8, elements_bytes);
             } else {
                 // Load the first slot's full element area from slot 0 (starting at byte offset 8).
-                let _ = __state_load_slot(self.field_id(), elements_ptr, 8, SLOT_ELEM_BYTES);
+                let _ = __state_load_slot(field_id, elements_ptr, 8, SLOT_ELEM_BYTES);
 
                 // Load the remaining elements from subsequent chunk slots.
                 let mut bytes_read = SLOT_ELEM_BYTES;
@@ -2836,7 +2847,7 @@ impl<V> StorageKey<StorageVec<V>> {
                         elements_bytes - bytes_read
                     };
 
-                    let mut chunk_slot = self.field_id();
+                    let mut chunk_slot = field_id;
                     add_u64_to_b256(chunk_slot, chunk_number);
 
                     let _ = __state_load_slot(
