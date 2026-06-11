@@ -1273,16 +1273,18 @@ impl<V> StorageKey<StorageVec<V>> {
         const ELEMS_PER_SLOT: u64 = CHUNK_MAX_SIZE / SIZE_OF_V;
 
         let chunk_number = index / ELEMS_PER_SLOT;
-        let index_in_chunk = index % ELEMS_PER_SLOT;
+        let offset_in_slot = (index % ELEMS_PER_SLOT) * SIZE_OF_V;
 
         // Slot 0's element area begins at byte 8 (after the length header).
         // All other slots' element areas begin at byte 0.
-        let offset_in_slot = index_in_chunk * SIZE_OF_V + if chunk_number == 0 { 8 } else { 0 };
-
         let mut slot = self.field_id();
-        if chunk_number > 0 {
+        let offset_in_slot = if chunk_number > 0 {
             add_u64_to_b256(slot, chunk_number);
-        }
+            offset_in_slot
+        } else {
+            offset_in_slot + 8
+        };
+
         (slot, offset_in_slot)
     }
 
