@@ -242,17 +242,17 @@ ret () v202v1
         expect_test::expect![[r#"
             LoopAnalysis {
                 block_to_loops: {
-                    "while": [
+                    "while_body": [
                         0,
                     ],
-                    "while_body": [
+                    "while": [
                         0,
                     ],
                 },
                 loops: {
                     0: [
-                        "while",
                         "while_body",
+                        "while",
                     ],
                 },
             }"#]]
@@ -375,29 +375,29 @@ ret () v1198v1
         expect_test::expect![[r#"
             LoopAnalysis {
                 block_to_loops: {
-                    "is_none_22_block2": [
-                        0,
-                    ],
-                    "block1": [
-                        0,
-                    ],
                     "while": [
-                        0,
-                    ],
-                    "is_none_22_block1": [
                         0,
                     ],
                     "while_body": [
                         0,
                     ],
+                    "block1": [
+                        0,
+                    ],
+                    "is_none_22_block1": [
+                        0,
+                    ],
+                    "is_none_22_block2": [
+                        0,
+                    ],
                 },
                 loops: {
                     0: [
+                        "while_body",
                         "block1",
+                        "is_none_22_block1",
                         "is_none_22_block2",
                         "while",
-                        "while_body",
-                        "is_none_22_block1",
                     ],
                 },
             }"#]]
