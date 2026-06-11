@@ -81,7 +81,7 @@ impl AbstractInstructionSet {
                 break;
             }
 
-            // Replace the dead moves with NOPs, as it's cheaper.
+            // Replace the dead moves with NOOPs, as it's cheaper.
             for idx in dead_moves {
                 self.ops[idx] = Op {
                     opcode: Either::Left(VirtualOp::NOOP),
@@ -94,12 +94,14 @@ impl AbstractInstructionSet {
         self
     }
 
-    pub(crate) fn remove_redundant_ops(mut self) -> AbstractInstructionSet {
-        self.ops.retain(|op| {
-            // It is easier to think in terms of operations we want to remove
-            // than the operations we want to retain ;-)
-            #[allow(clippy::match_like_matches_macro)]
-            // Keep the `match` for adding more ops in the future.
+    pub(crate) fn remove_redundant_ops(
+        mut self,
+        mut log: impl FnMut(&str),
+    ) -> AbstractInstructionSet {
+        let mut new_ops = Vec::with_capacity(self.ops.len());
+
+        let mut ops = self.ops.iter().peekable();
+        while let Some(op) = ops.next() {
             let remove = match &op.opcode {
                 Either::Left(VirtualOp::NOOP) => true,
                 Either::Left(VirtualOp::MOVE(a, b)) => a == b,
@@ -110,9 +112,72 @@ impl AbstractInstructionSet {
                 _ => false,
             };
 
-            !remove
-        });
+            // We also need to be sure op is redundant regarding const registers.
+            let remove = remove
+                && ops
+                    .peek()
+                    .map(|next_op| {
+                        op.def_const_registers()
+                            .intersection(&next_op.use_registers())
+                            .count()
+                            == 0
+                    })
+                    .unwrap_or(true);
 
+            if !remove {
+                log(&format!("keeping: {}\n", op));
+                new_ops.push(op.clone());
+            } else {
+                log(&format!("removing: {}\n", op));
+            }
+        }
+
+        self.ops = new_ops;
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use expect_test::expect;
+
+    #[test]
+    fn remove_redundant_ops() {
+        let mut str = String::new();
+        let capture = |s: &str| {
+            str.push_str(s);
+        };
+        super::super::constant_propagate::tests::optimise(
+            [
+                // NOOP
+                VirtualOp::noop().into(),
+                VirtualOp::noop().into(),
+                VirtualOp::r#move("0", "err").into(),
+                VirtualOp::noop().into(),
+                VirtualOp::r#move("0", "of").into(),
+                // MOVE with same registers
+                VirtualOp::r#move("0", "0").into(),
+                VirtualOp::r#move("1", "1").into(),
+                VirtualOp::r#move("0", "err").into(),
+                VirtualOp::r#move("2", "2").into(),
+                VirtualOp::r#move("0", "of").into(),
+            ],
+            |ops| ops.remove_redundant_ops(capture),
+        );
+
+        expect![[r#"
+removing: noop                                    ; 0
+keeping: noop                                    ; 1
+keeping: move $r0 $err                           ; 2
+keeping: noop                                    ; 3
+keeping: move $r0 $of                            ; 4
+removing: move $r0 $r0                            ; 5
+keeping: move $r1 $r1                            ; 6
+keeping: move $r0 $err                           ; 7
+keeping: move $r2 $r2                            ; 8
+keeping: move $r0 $of                            ; 9
+"#]]
+        .assert_eq(&str);
     }
 }

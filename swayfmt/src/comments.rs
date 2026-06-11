@@ -7,7 +7,6 @@ use crate::{
     },
     Format, Formatter, FormatterError,
 };
-use ropey::Rope;
 use std::{fmt::Write, ops::Range};
 use sway_ast::token::{Comment, CommentKind};
 use sway_types::{Span, Spanned};
@@ -263,7 +262,7 @@ fn collect_extra_newlines(unformatted_span: Span, comments_found: &Vec<Comment>)
 
 /// Check if a block is empty. When formatted without comments, empty code blocks are formatted into "{}", which is what this check is for.
 fn is_empty_block(formatted_code: &FormattedCode, end: usize) -> bool {
-    formatted_code.chars().nth(end - 1) == Some('{') && formatted_code.chars().nth(end) == Some('}')
+    end > 0 && formatted_code[..end].ends_with('{') && formatted_code[end..].starts_with('}')
 }
 
 /// Main driver of writing comments. This function is a no-op if the block of code is empty.
@@ -285,10 +284,15 @@ fn insert_after_span(
     extra_newlines: Vec<usize>,
 ) -> Result<usize, FormatterError> {
     let mut comment_str = String::new();
+    let insertion_index = from.end + offset;
+
+    if !formatted_code.is_char_boundary(insertion_index) {
+        return Err(FormatterError::CommentError);
+    }
 
     // We want to anchor the comment to the next line, and here,
     // we make the assumption here that comments will never be right before the final leaf span.
-    let mut indent = formatted_code[from.end + offset..]
+    let mut indent = formatted_code[insertion_index..]
         .chars()
         .take_while(|c| c.is_whitespace())
         .collect::<String>();
@@ -296,10 +300,10 @@ fn insert_after_span(
     // In the case of empty blocks, we do not know the indentation of comments at that time.
     // Writing comments in empty blocks has to be deferred to `write_comments` instead, which will
     // contain the Formatter's indentation context.
-    if !is_empty_block(formatted_code, from.end) {
+    if !is_empty_block(formatted_code, insertion_index) {
         // There can be cases where comments are at the end.
         // If so, we try to 'pin' our comment's indentation to the previous line instead.
-        if formatted_code.chars().nth(from.end + offset + indent.len()) == Some('}') {
+        if formatted_code[insertion_index + indent.len()..].starts_with('}') {
             // It could be possible that the first comment found here is a Trailing,
             // then a Newlined.
             // We want all subsequent newlined comments to follow the indentation of the
@@ -309,7 +313,7 @@ fn insert_after_span(
                 .any(|c| c.comment_kind == CommentKind::Newlined)
             {
                 // Find and assign the indentation of the previous line to `indent`.
-                let prev_line = formatted_code[..from.end + offset]
+                let prev_line = formatted_code[..insertion_index]
                     .trim_end()
                     .chars()
                     .rev()
@@ -350,11 +354,11 @@ fn insert_after_span(
                     }
                 }
                 CommentKind::Inlined => {
-                    if !formatted_code[..from.end].ends_with(' ') {
+                    if !formatted_code[..insertion_index].ends_with(' ') {
                         write!(comment_str, " ")?;
                     }
                     write!(comment_str, "{}", comment.span().as_str())?;
-                    if !formatted_code[from.end + offset..].starts_with([' ', '\n']) {
+                    if !formatted_code[insertion_index..].starts_with([' ', '\n']) {
                         write!(comment_str, " ")?;
                     }
                 }
@@ -364,28 +368,19 @@ fn insert_after_span(
             };
         }
 
-        let mut src_rope = Rope::from_str(formatted_code);
-
         // We do a sanity check here to ensure that we don't insert an extra newline
         // if the place at which we're going to insert comments already ends with '\n'.
-        if let Some(char) = src_rope.get_char(from.end + offset) {
+        if let Some(char) = formatted_code[insertion_index..].chars().next() {
             if char == '\n' && comment_str.ends_with('\n') {
                 comment_str.pop();
             }
         };
 
         // Insert the actual comment(s).
-        src_rope
-            .try_insert(from.end + offset, &comment_str)
-            .map_err(|_| FormatterError::CommentError)?;
-
-        formatted_code.clear();
-        formatted_code.push_str(&src_rope.to_string());
+        formatted_code.insert_str(insertion_index, &comment_str);
     }
 
-    // In order to handle special characters, we return the number of characters rather than
-    // the size of the string.
-    Ok(comment_str.chars().count())
+    Ok(comment_str.len())
 }
 
 #[cfg(test)]
