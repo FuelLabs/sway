@@ -26,8 +26,8 @@ sway-types.workspace = true
 sway-utils.workspace = true
 
 [dev-dependencies]
-vte.workspace = true
 insta.workspace = true
+vte.workspace = true
 
 [lints]
 workspace = true
