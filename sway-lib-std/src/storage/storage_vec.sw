@@ -2726,8 +2726,7 @@ impl<V> StorageKey<StorageVec<V>> {
 //       once https://github.com/FuelLabs/sway/issues/7650 is fixed.
             const SIZE_OF_V: u64 = __size_of::<V>();
             const ELEMS_PER_SLOT: u64 = CHUNK_MAX_SIZE / SIZE_OF_V;
-            const SLOT_ELEM_BYTES: u64 = ELEMS_PER_SLOT * SIZE_OF_V;
-// All elements fit in the first slot (after the 8-byte header).
+            const SLOT_ELEM_BYTES: u64 = ELEMS_PER_SLOT * SIZE_OF_V; // All elements fit in the first slot (after the 8-byte header).
             if elements_bytes <= SLOT_ELEM_BYTES {
                 __state_update_slot(field_id, elements_ptr, 8, elements_bytes);
             } else { // Write the first slot's full element area into slot 0 (at byte offset 8).
