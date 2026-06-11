@@ -38,7 +38,7 @@ impl LoopAnalysis {
 
 impl DebugWithContext for LoopAnalysis {
     fn fmt_with_context(&self, f: &mut std::fmt::Formatter, context: &Context) -> std::fmt::Result {
-        let mut block_to_loops = HashMap::new();
+        let mut block_to_loops = BTreeMap::new();
 
         let mut keys = self.block_to_loops.keys().collect::<Vec<_>>();
         keys.sort_by_key(|b| b.0);
@@ -376,12 +376,6 @@ ret () v1198v1
         expect_test::expect![[r#"
             LoopAnalysis {
                 block_to_loops: {
-                    "while": [
-                        0,
-                    ],
-                    "while_body": [
-                        0,
-                    ],
                     "block1": [
                         0,
                     ],
@@ -391,14 +385,20 @@ ret () v1198v1
                     "is_none_22_block2": [
                         0,
                     ],
+                    "while": [
+                        0,
+                    ],
+                    "while_body": [
+                        0,
+                    ],
                 },
                 loops: {
                     0: [
-                        "block1",
-                        "is_none_22_block2",
-                        "while",
-                        "while_body",
                         "is_none_22_block1",
+                        "block1",
+                        "while_body",
+                        "while",
+                        "is_none_22_block2",
                     ],
                 },
             }"#]]
