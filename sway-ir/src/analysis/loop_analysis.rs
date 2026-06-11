@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use crate::{
     AnalysisResult, AnalysisResultT, AnalysisResults, Block, Context, DebugWithContext, DomTree,
@@ -40,13 +40,14 @@ impl DebugWithContext for LoopAnalysis {
     fn fmt_with_context(&self, f: &mut std::fmt::Formatter, context: &Context) -> std::fmt::Result {
         let mut block_to_loops = HashMap::new();
 
-        // This is fine because this is used only for debug
-        #[allow(clippy::iter_over_hash_type)]
-        for (block, loops) in self.block_to_loops.iter() {
+        let mut keys = self.block_to_loops.keys().collect::<Vec<_>>();
+        keys.sort_by_key(|b| b.0);
+        for block in keys {
+            let loops = self.block_to_loops.get(block).expect("key not found");
             block_to_loops.insert(block.get_label(context), loops);
         }
 
-        let mut loops = HashMap::new();
+        let mut loops = BTreeMap::new();
         for (idx, l) in self.loops.iter().enumerate() {
             let blocks = l
                 .blocks
@@ -242,10 +243,10 @@ ret () v202v1
         expect_test::expect![[r#"
             LoopAnalysis {
                 block_to_loops: {
-                    "while_body": [
+                    "while": [
                         0,
                     ],
-                    "while": [
+                    "while_body": [
                         0,
                     ],
                 },
@@ -393,11 +394,11 @@ ret () v1198v1
                 },
                 loops: {
                     0: [
-                        "while_body",
                         "block1",
-                        "is_none_22_block1",
                         "is_none_22_block2",
                         "while",
+                        "while_body",
+                        "is_none_22_block1",
                     ],
                 },
             }"#]]
