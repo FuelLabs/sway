@@ -28,7 +28,8 @@ fn create_reduced_std_libs(std_lib_src_dir: &str, reduced_libs_dir: &str) -> Res
     let std_lib_src_dir = Path::new(std_lib_src_dir);
     let reduced_libs_dir = Path::new(reduced_libs_dir);
 
-    for reduced_lib_dir in get_reduced_libs(reduced_libs_dir)? {
+    let reduced_libs = get_reduced_libs(reduced_libs_dir).context("get reduced libs")?;
+    for reduced_lib_dir in reduced_libs {
         let reduced_lib_config = reduced_lib_dir.join("reduced_lib.config");
 
         if !reduced_lib_config.exists() {
@@ -38,12 +39,13 @@ fn create_reduced_std_libs(std_lib_src_dir: &str, reduced_libs_dir: &str) -> Res
             ));
         }
 
-        let modules = get_modules_from_config(&reduced_lib_config)?;
+        let modules =
+            get_modules_from_config(&reduced_lib_config).context("get modules from config")?;
         for module in modules {
             let std_lib_module_path = std_lib_src_dir.join(&module);
             let reduced_lib_module_path = reduced_lib_dir.join("src").join(&module);
 
-            copy_module(&std_lib_module_path, &reduced_lib_module_path)?;
+            copy_module(&std_lib_module_path, &reduced_lib_module_path).context("copy module")?;
         }
     }
 
@@ -53,9 +55,9 @@ fn create_reduced_std_libs(std_lib_src_dir: &str, reduced_libs_dir: &str) -> Res
 fn get_reduced_libs(reduced_libs_dir: &Path) -> Result<Vec<PathBuf>> {
     let mut reduced_libs = Vec::new();
 
-    let entries = fs::read_dir(reduced_libs_dir)?;
+    let entries = fs::read_dir(reduced_libs_dir).context("reading reduced libs dir")?;
     for entry in entries.flatten() {
-        if entry.metadata()?.is_dir() {
+        if entry.metadata().context("entry metadata failed")?.is_dir() {
             reduced_libs.push(entry.path())
         }
     }

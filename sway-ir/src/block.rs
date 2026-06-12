@@ -420,11 +420,19 @@ impl Block {
     ///
     /// For every instruction within the block, any reference to `old_val` is replaced with
     /// `new_val`.
-    pub fn replace_values(&self, context: &mut Context, replace_map: &FxHashMap<Value, Value>) {
+    pub fn replace_values(
+        &self,
+        context: &mut Context,
+        replace_map: &FxHashMap<Value, Value>,
+    ) -> bool {
+        let mut modified = false;
+
         for ins_idx in 0..context.blocks[self.0].instructions.len() {
             let ins = context.blocks[self.0].instructions[ins_idx];
-            ins.replace_instruction_values(context, replace_map);
+            modified |= ins.replace_instruction_values(context, replace_map);
         }
+
+        modified
     }
 
     /// Remove an instruction from this block.
@@ -458,9 +466,17 @@ impl Block {
     }
 
     /// Remove instructions from block that satisfy a given predicate.
-    pub fn remove_instructions<T: Fn(Value) -> bool>(&self, context: &mut Context, pred: T) {
+    pub fn remove_instructions<T: Fn(Value) -> bool>(
+        &self,
+        context: &mut Context,
+        pred: T,
+    ) -> bool {
         let ins = &mut context.blocks[self.0].instructions;
+        let qty_before = ins.len();
         ins.retain(|value| !pred(*value));
+        let qty_after = ins.len();
+
+        qty_before != qty_after
     }
 
     /// Clear the current instruction list and take the one provided.

@@ -17,7 +17,7 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 
-CHANGES=$(git status --porcelain | wc -l)
+CHANGES=$(git status --porcelain | wc -l | xargs)
 
 BOLD_RED='\033[1;31m'
 BOLD_GREEN="\033[1;32m"
@@ -67,14 +67,14 @@ $grep --include \*.sw -Hno "// AUTO-CONTRACT-ID" . -R | while read line ; do
     CONTRACT_ARGS=($($sed "$SED_COMMAND" $FILE))
     CONTRACT_ARGS=$(join_by " " ${CONTRACT_ARGS[@]:6})
 
-    if [[ $CONTRACT_ARGS ]]; then 
+    if [[ $CONTRACT_ARGS ]]; then
         PROJ=$(realpath "$FOLDER/..")
         echo -e "${BOLD_WHITE}$PROJ${NC}"
 
         pushd "$FOLDER/.." >> /dev/null
         CONTRACT_ID=$(cargo r -p forc --release -- contract-id --path $CONTRACT_ARGS 2> /dev/null | $grep -oP '0x[a-zA-Z0-9]{64}')
 
-        if [[ $CONTRACT_ID ]]; then 
+        if [[ $CONTRACT_ID ]]; then
             popd >> /dev/null
 
             SED_EXPR="${LINE}s/0x[a-zA-Z0-9]*/$CONTRACT_ID/g"
@@ -84,7 +84,7 @@ $grep --include \*.sw -Hno "// AUTO-CONTRACT-ID" . -R | while read line ; do
             if [ $? -eq 0 ]; then
               # no diff, continue
               echo -e "    ${BOLD_GREEN}no changes needed${NC} ($CONTRACT_ID)"
-            else 
+            else
               # diff detected, check we are clean to update files, if not abort
               if [[ "$INTERACTIVELY" == "0" ]]; then
                 # Don´t change anything if git is dirty

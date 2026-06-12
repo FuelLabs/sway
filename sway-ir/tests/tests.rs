@@ -155,11 +155,6 @@ fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
         }
         run_insta(&path, clean_output(&snapshot));
 
-        assert!(
-            r,
-            "Pass returned false (no changes made to {}).",
-            path.display()
-        );
         ir.verify().unwrap_or_else(|err| {
             println!("{err}");
             panic!();
@@ -295,9 +290,9 @@ fn inline() {
 
         if params.contains(&"all") {
             // Just inline everything, replacing all CALL instructions.
-            funcs.into_iter().fold(false, |acc, func| {
-                opt::inline_all_function_calls(ir, &func).unwrap() || acc
-            })
+            funcs
+                .into_iter()
+                .any(|func| opt::inline_all_function_calls(ir, &func).unwrap())
         } else {
             // Get the parameters from the first line.  See the inline/README.md for details.  If
             // there aren't any found then there won't be any constraints and it'll be the

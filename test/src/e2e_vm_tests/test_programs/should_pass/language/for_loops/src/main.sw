@@ -1,22 +1,24 @@
 script;
 
+#[inline(never)]
+fn just_for_loop(vector: Vec<u64>) {
+    let mut i = 0;
+    for n in vector.iter() {
+        assert(n == i);
+        i += 1;
+    }
+    assert(i == 5);
+}
+
 fn test_simple_for() {
     let mut vector = Vec::new();
-
     vector.push(0);
     vector.push(1);
     vector.push(2);
     vector.push(3);
     vector.push(4);
 
-    let mut i = 0;
-
-    for n in vector.iter() {
-        assert(n == i);
-        i += 1;
-    }
-
-    assert(i == 5);
+    just_for_loop(vector);
 }
 
 fn test_for_pattern_tuple() {

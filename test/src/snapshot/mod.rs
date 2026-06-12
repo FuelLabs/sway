@@ -696,7 +696,7 @@ fn patch_file(object: &object::File, endian: gimli::RunTimeEndian, bin_file_path
                 };
 
                 let code = std::fs::read_to_string(&path).unwrap();
-                let line = line.checked_sub(1).unwrap_or_default();
+                let line = line.saturating_sub(1);
                 let line = code.lines().nth(line as usize).unwrap();
 
                 if let Some((_, rest)) = line.split_once("// PATCH: ") {

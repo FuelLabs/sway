@@ -1,7 +1,7 @@
 ---
 source: sway-ir/tests/tests.rs
 ---
-Modified: true
+Modified: false
 
 script {
     entry fn main() -> u64 {

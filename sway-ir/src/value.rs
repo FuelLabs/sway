@@ -115,7 +115,12 @@ impl Value {
 
     /// If this value is an instruction and if any of its parameters is `old_val` then replace them
     /// with `new_val`.
-    pub fn replace_instruction_value(&self, context: &mut Context, old_val: Value, new_val: Value) {
+    pub fn replace_instruction_value(
+        &self,
+        context: &mut Context,
+        old_val: Value,
+        new_val: Value,
+    ) -> bool {
         self.replace_instruction_values(context, &FxHashMap::from_iter([(old_val, new_val)]))
     }
 
@@ -125,11 +130,13 @@ impl Value {
         &self,
         context: &mut Context,
         replace_map: &FxHashMap<Value, Value>,
-    ) {
+    ) -> bool {
         if let ValueDatum::Instruction(instruction) =
             &mut context.values.get_mut(self.0).unwrap().value
         {
-            instruction.op.replace_values(replace_map);
+            instruction.op.replace_values(replace_map)
+        } else {
+            false
         }
     }
 

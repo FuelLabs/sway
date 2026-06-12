@@ -1,0 +1,77 @@
+---
+source: test/src/snapshot/mod.rs
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/while_loops --ir final --asm final | filter-fn while_loops call_too_big_to_be_inlined_three_times
+
+fn call_too_big_to_be_inlined_three_times_8() -> () {
+    local mut u64 counter
+    local u64 other_
+    local u64 other_0
+
+    entry():
+    v221v1 = call too_big_to_be_inlined_9()
+    v222v1 = call too_big_to_be_inlined_9()
+    v223v1 = get_local __ptr u64, counter
+    v224v1 = const u64 0
+    store v224v1 to v223v1
+    br while()
+
+    while():
+    v227v1 = get_local __ptr u64, counter
+    v228v1 = get_local __ptr u64, other_
+    v229v1 = const u64 10
+    store v229v1 to v228v1
+    v231v1 = load v227v1
+    v232v1 = get_local __ptr u64, other_
+    v233v1 = load v232v1
+    v234v1 = cmp lt v231v1 v233v1
+    cbr v234v1, while_body(), end_while()
+
+    while_body():
+    v236v1 = get_local __ptr u64, counter
+    v237v1 = get_local __ptr u64, other_0
+    v238v1 = const u64 1
+    store v238v1 to v237v1
+    v240v1 = load v236v1
+    v241v1 = get_local __ptr u64, other_0
+    v242v1 = load v241v1
+    v243v1 = add v240v1, v242v1
+    v244v1 = get_local __ptr u64, counter
+    store v243v1 to v244v1
+    v246v1 = call too_big_to_be_inlined_9()
+    br while()
+
+    end_while():
+    v248v1 = const unit ()
+    ret () v248v1
+}
+
+
+
+
+
+pshh i531456                  ; [fn init: call_too_big_to_be_inlined_three_times_8]: push used high registers 40..64
+move $$locbase $sp            ; [fn init: call_too_big_to_be_inlined_three_times_8]: set locals base register
+cfei i24                      ; [fn init: call_too_big_to_be_inlined_three_times_8]: allocate: locals 24 byte(s), call args 0 slot(s)
+move $r0 $$reta               ; [fn init: call_too_big_to_be_inlined_three_times_8]: save return address
+jal  $$reta $pc i21           ; [call: too_big_to_be_inlined_9]: call function
+jal  $$reta $pc i20           ; [call: too_big_to_be_inlined_9]: call function
+sw   $$locbase $zero i0       ; store word
+movi $r1 i10                  ; initialize constant into register
+sw   $$locbase $r1 i1         ; store word
+lw   $r1 $$locbase i0         ; load word
+lw   $r2 $$locbase i1         ; load word
+lt   $r1 $r1 $r2
+jnzf $r1 $zero i1
+jmpf $zero i7
+sw   $$locbase $one i2        ; store word
+lw   $r1 $$locbase i0         ; load word
+lw   $r2 $$locbase i2         ; load word
+add  $r1 $r1 $r2
+sw   $$locbase $r1 i0         ; store word
+jal  $$reta $pc i6            ; [call: too_big_to_be_inlined_9]: call function
+jmpb $zero i12
+cfsi i24                      ; [fn end: call_too_big_to_be_inlined_three_times_8] free: locals 24 byte(s), call args 0 slot(s)
+move $$reta $r0               ; [fn end: call_too_big_to_be_inlined_three_times_8] restore return address
+poph i531456                  ; [fn end: call_too_big_to_be_inlined_three_times_8]: restore used high registers 40..64
+jal  $zero $$reta i0          ; [fn end: call_too_big_to_be_inlined_three_times_8] return from call

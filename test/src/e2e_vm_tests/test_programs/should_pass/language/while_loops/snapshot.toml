@@ -1,0 +1,3 @@
+cmds = [
+    "forc build --path {root} --ir final --asm final | filter-fn {name} call_too_big_to_be_inlined_three_times"
+]

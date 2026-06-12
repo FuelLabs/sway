@@ -1,0 +1,3 @@
+cmds = [
+    "forc build --path {root} --ir final --asm final | filter-fn {name} just_for_loop"
+]

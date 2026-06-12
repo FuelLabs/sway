@@ -90,7 +90,7 @@ pub fn rename(
                 existing.append(&mut v);
                 // Sort the TextEdits by their range in reverse order so the client applies edits
                 // from the end of the document to the beginning, preventing issues with offset changes.
-                existing.sort_unstable_by(|a, b| b.range.start.cmp(&a.range.start));
+                existing.sort_unstable_by_key(|b| std::cmp::Reverse(b.range.start));
             })
             .or_insert(v);
         map

@@ -1,12 +1,18 @@
 script;
 
-fn main() -> bool {
+#[inline(never)]
+fn simple_while() {
     let mut counter = 0;
     // test standard while loop:
     while counter < 10 {
         counter = counter + 1;
     }
     assert(counter == 10);
+}
+
+fn main() -> bool {
+    simple_while();
+    call_too_big_to_be_inlined_three_times();
 
     // test early exit from loop with manual "break" (by invalidating the condition):
     let mut counter_2 = 0;
@@ -40,4 +46,22 @@ fn main() -> bool {
     let _result = while true { break; };
 
     true
+}
+
+fn too_big_to_be_inlined() {
+    assert(1 == 1);
+    assert(1 == 1);
+}
+
+// The call inside the loop will be inlined.
+#[inline(never)]
+fn call_too_big_to_be_inlined_three_times() {
+    too_big_to_be_inlined();
+    too_big_to_be_inlined();
+
+    let mut counter = 0;
+    while counter < 10 {
+        counter = counter + 1;
+        too_big_to_be_inlined();
+    }
 }

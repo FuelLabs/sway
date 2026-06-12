@@ -27,7 +27,7 @@ pub fn create_fn_inline_pass() -> Pass {
     Pass {
         name: FN_INLINE_NAME,
         descr: "Function inlining",
-        deps: vec![],
+        deps: vec![/*LOOP_ANALYSIS_NAME*/],
         runner: ScopedPass::ModulePass(PassMutability::Transform(fn_inline)),
     }
 }
@@ -74,7 +74,7 @@ pub fn metadata_to_inline(context: &Context, md_idx: Option<MetadataIndex>) -> O
 
 pub fn fn_inline(
     context: &mut Context,
-    _: &AnalysisResults,
+    _analyses: &AnalysisResults,
     module: Module,
 ) -> Result<bool, IrError> {
     // Inspect ALL calls and count how often each function is called.
@@ -84,7 +84,7 @@ pub fn fn_inline(
             .fold(HashMap::new(), |mut counts, func| {
                 for (_block, ins) in func.instruction_iter(context) {
                     if let Some(Instruction {
-                        op: InstOp::Call(callee, _args),
+                        op: InstOp::Call(callee, _),
                         ..
                     }) = ins.get_instruction(context)
                     {
@@ -97,6 +97,8 @@ pub fn fn_inline(
                 counts
             });
 
+    const MAX_CALLEE_INSTRUCTION_COUNT_TO_INLINE: usize = 12;
+    const MAX_CALLS_COUNT_TO_INLINE: u64 = 1;
     let inline_heuristic = |ctx: &Context, func: &Function, _call_site: &Value| {
         // The encoding code in the `__entry` functions contains pointer patterns that mark
         // escape analysis and referred symbols as incomplete. This effectively forbids optimizations
@@ -118,14 +120,52 @@ pub fn fn_inline(
             None => {}
         }
 
-        // If the function is called only once then definitely inline it.
-        if call_counts.get(func).copied().unwrap_or(0) == 1 {
+        // This is disabled as we have not found it useful at this point
+        // Needs better exploration with other parameters.
+        //
+        // We do not deal very well with asm blocks, so avoid inlining functions with
+        // asm blocks with more than 1 instructions (normally transmutes)
+        // let has_asm_block = func
+        //     .instruction_iter(ctx)
+        //     .any(|(_, v)| match v.get_instruction(ctx) {
+        //         Some(Instruction {
+        //             op: InstOp::AsmBlock(block, ..),
+        //             ..
+        //         }) => block.body.len() > 1,
+        //         _ => false,
+        //     });
+        // if has_asm_block {
+        //     return false;
+        // }
+
+        // Inline run multiple times. Every time a call is inlined,
+        // its call count decreases. So it is possible that a function
+        // called multiple times, after all inlining ends up being called just once.
+        // At this point this algo will think it makes sense to inline it one last time.
+        //
+        // We need improvement here.
+        //
+        // If the function is called less than the threshold, inline it.
+        if call_counts.get(func).copied().unwrap_or(0) <= MAX_CALLS_COUNT_TO_INLINE {
             return true;
         }
 
+        let threshold = MAX_CALLEE_INSTRUCTION_COUNT_TO_INLINE;
+
+        // This is disabled as we have not found it useful at this point
+        // Needs better exploration with other parameters.
+        //
+        // If call site is inside loops, increase the threshold
+        // let call_site_fn = call_site.get_parent_function(ctx).unwrap();
+        // let la: &LoopAnalysis = analyses.get_analysis_result(call_site_fn);
+        // if let Some(block) = call_site.get_parent_block(ctx) {
+        //     if la.is_inside_loop(&block) {
+        //         threshold = MAX_CALLEE_INSTRUCTION_COUNT_TO_INLINE * 2;
+        //     }
+        // }
+
         // If the function is (still) small then also inline it.
-        const MAX_INLINE_INSTRS_COUNT: usize = 12;
-        if func.num_instructions_incl_asm_instructions(ctx) <= MAX_INLINE_INSTRS_COUNT {
+        if func.num_instructions_incl_asm_instructions(ctx) <= threshold {
             return true;
         }
 
@@ -140,6 +180,7 @@ pub fn fn_inline(
     for function in functions {
         modified |= inline_some_function_calls(context, &function, inline_heuristic)?;
     }
+
     Ok(modified)
 }
 
@@ -162,33 +203,41 @@ pub fn inline_all_function_calls(
 /// - The number of calls made to the function or if the function is called inside a loop.
 /// - A particular call has constant arguments implying further constant folding.
 /// - An attribute request, e.g., #[always_inline], #[never_inline].
-pub fn inline_some_function_calls<F: Fn(&Context, &Function, &Value) -> bool>(
+pub fn inline_some_function_calls(
     context: &mut Context,
     function: &Function,
-    predicate: F,
+    should_inline: impl Fn(&Context, &Function, &Value) -> bool,
 ) -> Result<bool, IrError> {
     // Find call sites which passes the predicate.
     // We use a RefCell so that the inliner can modify the value
     // when it moves other instructions (which could be in call_date) after an inline.
     let (call_sites, call_data): (Vec<_>, FxHashMap<_, _>) = function
         .instruction_iter(context)
-        .filter_map(|(block, call_val)| match context.values[call_val.0].value {
-            ValueDatum::Instruction(Instruction {
-                op: InstOp::Call(inlined_function, _),
-                ..
-            }) => predicate(context, &inlined_function, &call_val).then_some((
-                call_val,
-                (call_val, RefCell::new((block, inlined_function))),
-            )),
-            _ => None,
-        })
+        .filter_map(
+            |(block, call_site)| match context.values[call_site.0].value {
+                ValueDatum::Instruction(Instruction {
+                    op: InstOp::Call(candidate_function, _),
+                    ..
+                }) => {
+                    if should_inline(context, &candidate_function, &call_site) {
+                        Some((
+                            call_site,
+                            (call_site, RefCell::new((block, candidate_function))),
+                        ))
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            },
+        )
         .unzip();
 
     for call_site in &call_sites {
         let call_site_in = call_data.get(call_site).unwrap();
-        let (block, inlined_function) = *call_site_in.borrow();
+        let (block, being_inlined) = *call_site_in.borrow();
 
-        if function == &inlined_function {
+        if function == &being_inlined {
             // We can't inline a function into itself.
             continue;
         }
@@ -198,7 +247,7 @@ pub fn inline_some_function_calls<F: Fn(&Context, &Function, &Value) -> bool>(
             *function,
             block,
             *call_site,
-            inlined_function,
+            being_inlined,
             &call_data,
         )?;
     }

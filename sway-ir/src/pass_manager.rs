@@ -4,14 +4,15 @@ use crate::{
     create_dom_fronts_pass, create_dominators_pass, create_escaped_symbols_pass,
     create_fn_dedup_debug_profile_pass, create_fn_dedup_release_profile_pass,
     create_fn_inline_pass, create_globals_dce_pass, create_init_aggr_lowering_pass,
-    create_mem2reg_pass, create_memcpyopt_pass, create_memcpyprop_reverse_pass,
-    create_misc_demotion_pass, create_module_printer_pass, create_module_verifier_pass,
-    create_postorder_pass, create_ret_demotion_pass, create_simplify_cfg_pass, create_sroa_pass,
-    Context, Function, IrError, Module, ARG_DEMOTION_NAME, ARG_POINTEE_MUTABILITY_TAGGER_NAME,
-    CCP_NAME, CONST_DEMOTION_NAME, CONST_FOLDING_NAME, CSE_NAME, DCE_NAME,
-    FN_DEDUP_DEBUG_PROFILE_NAME, FN_DEDUP_RELEASE_PROFILE_NAME, FN_INLINE_NAME, GLOBALS_DCE_NAME,
-    INIT_AGGR_LOWERING_NAME, MEM2REG_NAME, MEMCPYOPT_NAME, MEMCPYPROP_REVERSE_NAME,
-    MISC_DEMOTION_NAME, RET_DEMOTION_NAME, SIMPLIFY_CFG_NAME, SROA_NAME,
+    create_loop_analysis_pass, create_mem2reg_pass, create_memcpyopt_pass,
+    create_memcpyprop_reverse_pass, create_misc_demotion_pass, create_module_printer_pass,
+    create_module_verifier_pass, create_postorder_pass, create_ret_demotion_pass,
+    create_simplify_cfg_pass, create_sroa_pass, Context, Function, IrError, Module,
+    ARG_DEMOTION_NAME, ARG_POINTEE_MUTABILITY_TAGGER_NAME, CCP_NAME, CONST_DEMOTION_NAME,
+    CONST_FOLDING_NAME, CSE_NAME, DCE_NAME, FN_DEDUP_DEBUG_PROFILE_NAME,
+    FN_DEDUP_RELEASE_PROFILE_NAME, FN_INLINE_NAME, GLOBALS_DCE_NAME, INIT_AGGR_LOWERING_NAME,
+    MEM2REG_NAME, MEMCPYOPT_NAME, MEMCPYPROP_REVERSE_NAME, MISC_DEMOTION_NAME, RET_DEMOTION_NAME,
+    SIMPLIFY_CFG_NAME, SROA_NAME,
 };
 use downcast_rs::{impl_downcast, Downcast};
 use rustc_hash::FxHashMap;
@@ -364,11 +365,26 @@ impl PassManager {
 
     /// Run the `passes` and return true if the `passes` modify the initial `ir`.
     pub fn run(&mut self, ir: &mut Context, passes: &PassGroup) -> Result<bool, IrError> {
-        let mut modified = false;
-        for pass in passes.flatten_pass_group() {
-            modified |= self.actually_run(ir, pass)?;
+        let mut global_modified = false;
+        let passes = passes.flatten_pass_group();
+
+        // run until stabilize
+        // 10 here just to avoid infinite running
+        for _ in 0..10 {
+            let mut modified = false;
+
+            for pass in passes.iter() {
+                modified |= self.actually_run(ir, pass)?;
+            }
+
+            if !modified {
+                break;
+            }
+
+            global_modified |= modified;
         }
-        Ok(modified)
+
+        Ok(global_modified)
     }
 
     /// Run the `passes` and return true if the `passes` modify the initial `ir`.
@@ -410,19 +426,35 @@ impl PassManager {
             ir.verify()?;
         }
 
-        let mut modified = false;
-        for pass in passes.flatten_pass_group() {
-            let modified_in_pass = self.actually_run(ir, pass)?;
+        let mut global_modified = false;
+        let passes = passes.flatten_pass_group();
 
-            if print_opts.passes.contains(pass) && (!print_opts.modified_only || modified_in_pass) {
-                print_ir_after_pass(ir, self.lookup_registered_pass(pass).unwrap());
+        // 10 here just to avoid infinite running
+        for _ in 0..10 {
+            let mut modified = false;
+
+            for pass in passes.iter() {
+                let modified_in_pass = self.actually_run(ir, pass)?;
+
+                if print_opts.passes.contains(*pass)
+                    && (!print_opts.modified_only || modified_in_pass)
+                {
+                    print_ir_after_pass(ir, self.lookup_registered_pass(pass).unwrap());
+                }
+
+                modified |= modified_in_pass;
+                if verify_opts.passes.contains(*pass)
+                    && (!verify_opts.modified_only || modified_in_pass)
+                {
+                    ir.verify()?;
+                }
             }
 
-            modified |= modified_in_pass;
-            if verify_opts.passes.contains(pass) && (!verify_opts.modified_only || modified_in_pass)
-            {
-                ir.verify()?;
+            if !modified {
+                break;
             }
+
+            global_modified |= modified;
         }
 
         if print_opts.r#final {
@@ -433,7 +465,7 @@ impl PassManager {
             ir.verify()?;
         }
 
-        Ok(modified)
+        Ok(global_modified)
     }
 
     /// Get reference to a registered pass.
@@ -500,6 +532,7 @@ pub fn register_known_passes(pm: &mut PassManager) {
     pm.register(create_escaped_symbols_pass());
     pm.register(create_module_printer_pass());
     pm.register(create_module_verifier_pass());
+    pm.register(create_loop_analysis_pass());
 
     // Lowering passes.
     pm.register(create_init_aggr_lowering_pass());
