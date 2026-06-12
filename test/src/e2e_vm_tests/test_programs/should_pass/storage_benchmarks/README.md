@@ -18,10 +18,6 @@ The `stored_types` library defines the struct types used across all benchmark pr
 
 The struct sizes to use in benchmarks are taken from real-life Sway projects.
 
-## Results
-
-Historical results are stored in RESULTS.md.
-
 ## Running the benchmarks
 
 ### Prerequisites
@@ -32,23 +28,41 @@ Build the Sway toolchain in release mode (from the repo root):
 cargo build -r -p forc
 ```
 
+### Run all benchmarks
+
+```bash
+./bench.sh                # run storage field benchmarks, then StorageVec benchmarks
+./bench.sh storage_vec    # run only the projects whose names contain "storage_vec"
+```
+
+From the repo root, the same can be run via `just`:
+
+```bash
+just perf-storage              # or: just pst
+just perf-storage storage_vec  # or: just pst storage_vec
+```
+
 ### Run storage field benchmarks
 
 ```bash
-./bench.sh                                 # run all benchmark projects
-./bench.sh -h                              # run all with histogram
-./bench.sh storage_fields                  # run a single project
-./bench.sh -h storage_fields_partial_access # single project with histogram
+./bench_storage_fields.sh                  # run all benchmark projects
+./bench_storage_fields.sh storage_fields   # run a single project
 ```
 
 ### Run StorageVec benchmarks
 
 ```bash
 ./bench_storage_vec.sh                   # run for all sizes
-./bench_storage_vec.sh -h                # run for all sizes with histogram
 ./bench_storage_vec.sh storage_vec_s8    # run for a single size
-./bench_storage_vec.sh -h storage_vec_s96 # single size with histogram
 ```
+
+All scripts print their results to the console and also save them to a file in the `perf_out` folder, named:
+
+```
+MMDDHHMMSS-<branch name>.<fields|storage_vec|all>.txt
+```
+
+where `<branch name>` is the normalized name of the current git branch (`/` and other special characters replaced with `_`). `bench.sh` saves the combined results of both benchmark kinds (storage fields first) into a single `.all.txt` file.
 
 ### Run a benchmark project directly with `forc`
 
@@ -59,22 +73,24 @@ cargo r -r -p forc -- test --release -p test/src/e2e_vm_tests/test_programs/shou
 cargo r -r -p forc -- test --release --no-gas-limit -p test/src/e2e_vm_tests/test_programs/should_pass/storage_benchmarks/storage_vec_s8/
 ```
 
-### Compare results between two commits
+### Compare results between two runs
 
-Use `perf_diff.sh` to compare gas usage between any two runs recorded in RESULTS.md. Pass any substring of the SHA (typically the first or last few characters):
+Use `perf_diff.sh` to compare gas usage between any two perf output files saved in the `perf_out` folder:
 
 ```bash
-./perf_diff.sh 551e37f 0507c2c
+./perf_diff.sh perf_out/0611120000-master.storage_vec.txt perf_out/0611140000-my_branch.storage_vec.txt
 ```
 
-This generates two files named `<last8-before> vs <last8-after>.perf-diff.csv` and `.perf-diff.md`, containing per-benchmark differences and percentage changes. Positive values indicate improvement (lower gas), negative values indicate regression.
+Both files must be of the same kind (`fields`, `storage_vec`, or `all`); mixing kinds is an error.
+
+This generates two files in the `perf_out` folder, named `<before-timestamp> vs <after-timestamp>.perf-diff.csv` and `.perf-diff.md`, containing per-benchmark differences and percentage changes. Positive values indicate improvement (lower gas), negative values indicate regression.
 
 ### Compute statistics from a perf diff
 
 Use `perf_diff_stats.sh` to compute per-project summary statistics (count, average, median, max, min) for improvements and regressions:
 
 ```bash
-./perf_diff_stats.sh "d209f820 vs 223aca40.perf-diff.csv"
+./perf_diff_stats.sh "perf_out/<before-timestamp> vs <after-timestamp>.perf-diff.csv"
 ```
 
 This generates a `<name>.perf-diff-stats.md` file with one table per project.
@@ -116,25 +132,11 @@ Examples: `bench_push_n100`, `bench_reverse_n1000`, `bench_push_n_elems_into_emp
 
 ## Output
 
-Both `bench.sh` and `bench_storage_vec.sh` produce CSV output for each project by default. Pass `-h` to also print a console histogram.
-
-### CSV
-
-Comma-separated values with columns `test,gas` where gas is the cost with the appropriate baseline subtracted:
+Both `bench.sh` and `bench_storage_vec.sh` produce CSV output for each project, as comma-separated values with columns `test,gas` where gas is the cost with the appropriate baseline subtracted:
 
 ```
 test,gas
 bench_bool_read,854
 bench_bool_write,16845
 ...
-```
-
-### Histogram
-
-A visual bar chart printed to the console, showing relative gas costs:
-
-```
-  bench_bool_read  │ █ 854
-  bench_bool_write │ █████ 16845
-  ...
 ```
