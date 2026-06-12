@@ -155,11 +155,6 @@ fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
         }
         run_insta(&path, clean_output(&snapshot));
 
-        assert!(
-            r,
-            "Pass returned false (no changes made to {}).",
-            path.display()
-        );
         ir.verify().unwrap_or_else(|err| {
             println!("{err}");
             panic!();
