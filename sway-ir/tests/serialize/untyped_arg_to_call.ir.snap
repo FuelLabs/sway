@@ -1,0 +1,20 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    fn main() -> bool {
+        entry():
+        v1v1 = const bool true
+        v2v1 = call a(v1v1)
+        v3v1 = call a(v2v1)
+        ret bool v3v1
+    }
+
+    fn a(x: bool) -> bool {
+        entry(x: bool):
+        v6v1 = const bool true
+        ret bool v6v1
+    }
+}

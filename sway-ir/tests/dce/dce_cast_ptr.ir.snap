@@ -1,0 +1,34 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    entry fn main() -> u64 {
+        local u64 S
+-         local u64 dummy
+
+        entry():
+        br block0()
+
+        block0():
+        v3v1 = get_local __ptr u64, S
+        v2v1 = const u64 123
+        store v2v1 to v3v1
+        v5v1 = cast_ptr v3v1 to __ptr u8
+        v6v1 = ptr_to_int v5v1 to u64
+        v7v1 = add v6v1, v2v1
+        v8v1 = sub v7v1, v2v1
+        v9v1 = call test(v8v1)
+        ret u64 v9v1
+    }
+
+    fn test(arg: u64) -> u64 {
+        entry(arg: u64):
+        br block0(arg)
+
+        block0(v12v1: __ptr u64):
+        v14v1 = load v12v1
+        ret u64 v14v1
+    }
+}

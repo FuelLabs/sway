@@ -1,0 +1,17 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+contract {
+-     global X : u64 = const u64 11
+- 
+    pub entry fn main() -> u64 {
+        local u64 x
+
+        entry():
+        v1v1 = get_local __ptr u64, x
+        v2v1 = load v1v1
+        ret u64 v2v1
+    }
+}

@@ -1,0 +1,18 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    entry fn main() -> u64 {
+        entry():
+        v2v1 = asm() -> () {
+        }
+        v3v1 = asm() -> () zero {
+        }
+        v4v1 = asm() -> u64 zero {
+        }
+        v5v1 = const u64 0
+        ret u64 v5v1
+    }
+}

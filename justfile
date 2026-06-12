@@ -93,6 +93,7 @@ perf-diff-latest format='md':
 alias psh := perf-snapshot-historical
 # collect historic gas usages from a snapshot test that has a `forc test` output
 [linux]
+[macos]
 [group('performance')]
 perf-snapshot-historical path revision_range='' format='csv' open='':
     #!/usr/bin/env bash

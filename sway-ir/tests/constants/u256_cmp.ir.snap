@@ -1,0 +1,14 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    fn main() -> bool {
+        entry():
+-         v1v1 = const u256 0x0000000000000000000000000000000000000000000000000000000000000000
+-         v3v1 = cmp eq v1v1 v1v1
++         v3v1 = const bool true
+        ret bool v3v1
+    }
+}

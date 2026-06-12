@@ -1,0 +1,14 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    fn main() -> bool {
+-         local u64 i
+- 
+        entry():
+        v1v1 = const bool false
+        ret bool v1v1
+    }
+}

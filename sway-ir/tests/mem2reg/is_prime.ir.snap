@@ -1,0 +1,350 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    fn main() -> bool, !1 {
+        entry():
+        v1v1 = const u64 64, !2
+        v2v1 = call check_prime_4(v1v1), !3
+        v3v1 = const bool false, !4
+        v4v1 = call eq_3(v2v1, v3v1), !5
+        v5v1 = call assert_0(v4v1), !7
+        v6v1 = const u64 8, !8
+        v7v1 = call check_prime_4(v6v1), !3
+        v8v1 = const bool false, !9
+        v9v1 = call eq_3(v7v1, v8v1), !10
+        v10v1 = call assert_0(v9v1), !7
+        v11v1 = const u64 7, !11
+        v12v1 = call check_prime_4(v11v1), !3
+        v13v1 = const bool true, !12
+        v14v1 = call eq_3(v12v1, v13v1), !13
+        v15v1 = call assert_0(v14v1), !7
+        v16v1 = const u64 11, !14
+        v17v1 = call check_prime_4(v16v1), !3
+        v18v1 = const bool true, !15
+        v19v1 = call eq_3(v17v1, v18v1), !16
+        v20v1 = call assert_0(v19v1), !7
+        v21v1 = const u64 13, !17
+        v22v1 = call check_prime_4(v21v1), !3
+        v23v1 = const bool true, !18
+        v24v1 = call eq_3(v22v1, v23v1), !19
+        v25v1 = call assert_0(v24v1), !7
+        v26v1 = const u64 2, !20
+        v27v1 = call check_prime_4(v26v1), !3
+        v28v1 = const bool true, !21
+        v29v1 = call eq_3(v27v1, v28v1), !22
+        v30v1 = call assert_0(v29v1), !7
+        v31v1 = const u64 3, !23
+        v32v1 = call check_prime_4(v31v1), !3
+        v33v1 = const bool true, !24
+        v34v1 = call eq_3(v32v1, v33v1), !25
+        v35v1 = call assert_0(v34v1), !7
+        v36v1 = const u64 1, !26
+        v37v1 = call check_prime_4(v36v1), !3
+        v38v1 = const bool false, !27
+        v39v1 = call eq_3(v37v1, v38v1), !28
+        v40v1 = call assert_0(v39v1), !7
+        v41v1 = const u64 0, !29
+        v42v1 = call check_prime_4(v41v1), !3
+        v43v1 = const bool false, !30
+        v44v1 = call eq_3(v42v1, v43v1), !31
+        v45v1 = call assert_0(v44v1), !7
+        v46v1 = const u64 11, !32
+        v47v1 = call check_prime_4(v46v1), !3
+        v48v1 = const u64 17, !33
+        v49v1 = call check_prime_4(v48v1), !3
+        v50v1 = call eq_3(v47v1, v49v1), !34
+        v51v1 = call assert_0(v50v1), !7
+        v52v1 = const u64 12, !35
+        v53v1 = call check_prime_4(v52v1), !3
+        v54v1 = const bool false, !36
+        v55v1 = call eq_3(v53v1, v54v1), !37
+        v56v1 = call assert_0(v55v1), !7
+        v57v1 = const u64 18, !38
+        v58v1 = call check_prime_4(v57v1), !3
+        v59v1 = const bool false, !39
+        v60v1 = call eq_3(v58v1, v59v1), !40
+        v61v1 = call assert_0(v60v1), !7
+        v62v1 = const u64 12, !41
+        v63v1 = call check_prime_4(v62v1), !3
+        v64v1 = const u64 18, !42
+        v65v1 = call check_prime_4(v64v1), !3
+        v66v1 = call eq_3(v63v1, v65v1), !43
+        v67v1 = call assert_0(v66v1), !7
+        v68v1 = const bool true, !44
+        ret bool v68v1
+    }
+
+    fn assert_0(condition !45: bool) -> (), !7 {
+        entry(condition: bool):
+        v72v1 = call not_1(condition), !46
+        cbr v72v1, block0(), block1(), !46
+
+        block0():
+        v74v1 = const u64 0, !47
+        v75v1 = call revert_2(v74v1), !49
+        v76v1 = const unit ()
+        br block2(v76v1)
+
+        block1():
+        v78v1 = const unit ()
+        br block2(v78v1)
+
+        block2(v71v1: ()):
+        v80v1 = const unit ()
+        ret () v80v1
+    }
+
+    fn not_1(self !51: bool) -> bool, !52 {
+        entry(self: bool):
+        v83v1 = const bool false, !53
+        v84v1 = cmp eq self v83v1
+        ret bool v84v1
+    }
+
+    fn revert_2(code !54: u64) -> (), !49 {
+        entry(code: u64):
+        revert code, !55
+    }
+
+    fn eq_3(self !56: bool, other !57: bool) -> bool, !58 {
+        entry(self: bool, other: bool):
+        v90v1 = cmp eq self other
+        ret bool v90v1
+    }
+
+    fn check_prime_4(n !59: u64) -> bool, !3 {
+        local u64 i
+        local bool is_not_prime
+
+        entry(n: u64):
+        v96v1 = const u64 0, !60
+        v97v1 = call eq_5(n, v96v1), !61
+        cbr v97v1, block1(v97v1), block0(), !62
+
+        block0():
+        v99v1 = const u64 1, !63
+        v100v1 = call eq_5(n, v99v1), !64
+        br block1(v100v1), !62
+
+        block1(v93v1: bool):
+        cbr v93v1, block2(), block3(), !62
+
+        block2():
+        v103v1 = const bool false, !65
+        br block7(v103v1)
+
+        block3():
+        v105v1 = get_local __ptr bool, is_not_prime, !66
+-         v106v1 = const bool false, !67
+-         store v106v1 to v105v1, !66
+-         v108v1 = get_local __ptr u64, i, !68
+-         v109v1 = const u64 2, !69
+-         store v109v1 to v108v1, !68
+-         br while()
++         v108v1 = get_local __ptr u64, i, !67
++         v109v1 = const u64 2, !68
++         v106v1 = const bool false, !69
++         br while(v109v1, v106v1)
+
+-         while():
++         while(v163v1: u64, v166v1: bool):
+        v112v1 = get_local __ptr u64, i, !70
+-         v113v1 = load v112v1, !70
+-         v114v1 = call lt_8(v113v1, n), !71
++         v114v1 = call lt_8(v163v1, n), !71
+        cbr v114v1, while_body(), end_while()
+
+        while_body():
+        v116v1 = get_local __ptr u64, i, !72
+-         v117v1 = load v116v1, !72
+-         v118v1 = call modulo_6(n, v117v1), !73
++         v118v1 = call modulo_6(n, v163v1), !73
+        v119v1 = const u64 0, !74
+        v120v1 = call eq_5(v118v1, v119v1), !75
+        cbr v120v1, block4(), block5(), !75
+
+        end_while():
+        v122v1 = get_local __ptr bool, is_not_prime, !76
+-         v123v1 = load v122v1, !76
+-         v124v1 = call not_9(v123v1), !77
++         v124v1 = call not_9(v166v1), !77
+        br block7(v124v1)
+
+        block4():
+        v126v1 = get_local __ptr bool, is_not_prime, !78
+-         v127v1 = const bool true, !79
+-         store v127v1 to v126v1, !78
+-         v129v1 = get_local __ptr u64, i, !80
+-         store n to v129v1, !80
++         v129v1 = get_local __ptr u64, i, !79
+        v131v1 = const unit ()
+-         br block6(v131v1)
++         v127v1 = const bool true, !80
++         br block6(v131v1, n, v127v1)
+
+        block5():
+        v133v1 = const unit ()
+-         br block6(v133v1)
++         br block6(v133v1, v163v1, v166v1)
+
+-         block6(v94v1: ()):
++         block6(v94v1: (), v164v1: u64, v165v1: bool):
+        v135v1 = get_local __ptr u64, i, !81
+        v136v1 = get_local __ptr u64, i, !82
+-         v137v1 = load v136v1, !82
+        v138v1 = const u64 1, !83
+-         v139v1 = call add_7(v137v1, v138v1), !84
+-         store v139v1 to v135v1, !81
+-         br while()
++         v139v1 = call add_7(v164v1, v138v1), !84
++         br while(v139v1, v165v1)
+
+        block7(v95v1: bool):
+        ret bool v95v1
+    }
+
+    fn eq_5(self !85: u64, other !86: u64) -> bool, !87 {
+        entry(self: u64, other: u64):
+        v145v1 = cmp eq self other
+        ret bool v145v1
+    }
+
+    fn modulo_6(self !88: u64, other !89: u64) -> u64, !90 {
+        entry(self: u64, other: u64):
+        v149v1 = asm(r1: self, r2: other, r3) -> u64 r3, !91 {
+            mod    r3 r1 r2, !92
+        }
+        ret u64 v149v1
+    }
+
+    fn add_7(self !93: u64, other !94: u64) -> u64, !95 {
+        entry(self: u64, other: u64):
+        v153v1 = add self, other
+        ret u64 v153v1
+    }
+
+    fn lt_8(self !96: u64, other !97: u64) -> bool, !98 {
+        entry(self: u64, other: u64):
+        v157v1 = asm(r1: self, r2: other, r3) -> bool r3, !99 {
+            lt     r3 r1 r2, !100
+        }
+        ret bool v157v1
+    }
+
+    fn not_9(self !51: bool) -> bool, !52 {
+        entry(self: bool):
+        v160v1 = const bool false, !53
+        v161v1 = cmp eq self v160v1
+        ret bool v161v1
+    }
+}
+
+!0 = "sway/test/src/e2e_vm_tests/test_programs/should_pass/language/is_prime/src/main.sw"
+!1 = span !0 395 930
+!2 = span !0 438 440
+!3 = span !0 48 393
+!4 = span !0 445 450
+!5 = span !0 426 450
+!6 = "sway/sway-lib-std/src/assert.sw"
+!7 = span !6 308 387
+!8 = span !0 476 477
+!9 = span !0 482 487
+!10 = span !0 464 487
+!11 = span !0 513 514
+!12 = span !0 519 523
+!13 = span !0 501 523
+!14 = span !0 549 551
+!15 = span !0 556 560
+!16 = span !0 537 560
+!17 = span !0 586 588
+!18 = span !0 593 597
+!19 = span !0 574 597
+!20 = span !0 623 624
+!21 = span !0 629 633
+!22 = span !0 611 633
+!23 = span !0 659 660
+!24 = span !0 665 669
+!25 = span !0 647 669
+!26 = span !0 695 696
+!27 = span !0 701 706
+!28 = span !0 683 706
+!29 = span !0 732 733
+!30 = span !0 738 743
+!31 = span !0 720 743
+!32 = span !0 770 772
+!33 = span !0 789 791
+!34 = span !0 758 792
+!35 = span !0 818 820
+!36 = span !0 825 830
+!37 = span !0 806 830
+!38 = span !0 856 858
+!39 = span !0 863 868
+!40 = span !0 844 868
+!41 = span !0 894 896
+!42 = span !0 913 915
+!43 = span !0 882 916
+!44 = span !0 924 928
+!45 = span !6 322 331
+!46 = span !6 348 358
+!47 = span !6 376 377
+!48 = "sway/sway-lib-std/src/revert.sw"
+!49 = span !48 172 219
+!50 = "sway/sway-lib-std/src/ops.sw"
+!51 = span !50 2706 2710
+!52 = span !50 2699 2753
+!53 = span !50 2741 2746
+!54 = span !48 186 190
+!55 = span !48 203 217
+!56 = span !50 2923 2927
+!57 = span !50 2929 2934
+!58 = span !50 2917 2983
+!59 = span !0 63 64
+!60 = span !0 93 94
+!61 = span !0 88 94
+!62 = span !0 88 104
+!63 = span !0 103 104
+!64 = span !0 98 104
+!65 = span !0 115 120
+!66 = span !0 142 171
+- !67 = span !0 165 170
+- !68 = span !0 180 194
+- !69 = span !0 192 193
++ !67 = span !0 180 194
++ !68 = span !0 192 193
++ !69 = span !0 165 170
+!70 = span !0 209 210
+!71 = span !0 209 214
+!72 = span !0 237 238
+!73 = span !0 233 238
+!74 = span !0 242 243
+!75 = span !0 233 243
+!76 = span !0 373 385
+!77 = span !0 372 385
+!78 = span !0 262 281
+- !79 = span !0 277 281
+- !80 = span !0 299 304
++ !79 = span !0 299 304
++ !80 = span !0 277 281
+!81 = span !0 342 351
+!82 = span !0 346 347
+!83 = span !0 350 351
+!84 = span !0 346 351
+!85 = span !50 3015 3019
+!86 = span !50 3021 3026
+!87 = span !50 3009 3075
+!88 = span !50 2001 2005
+!89 = span !50 2007 2012
+!90 = span !50 1991 2130
+!91 = span !50 2038 2124
+!92 = span !50 2081 2093
+!93 = span !50 117 121
+!94 = span !50 123 128
+!95 = span !50 110 178
+!96 = span !50 3993 3997
+!97 = span !50 3999 4004
+!98 = span !50 3987 4122
+!99 = span !50 4030 4116
+!100 = span !50 4073 4084

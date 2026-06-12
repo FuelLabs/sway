@@ -1,0 +1,32 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    entry fn main() -> () {
++         local b256 __ret_val
++ 
+        entry():
+-         v1v1 = call a()
++         v11v1 = get_local __ptr b256, __ret_val
++         v12v1 = call a(v11v1)
++         v13v1 = load v11v1
+        v2v1 = const unit ()
+        ret () v2v1
+    }
+
+-     fn a() -> b256 {
++     fn a(__ret_value: __ptr b256) -> () {
+        local b256 __const = const b256 0x2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b
+
+-         entry():
++         entry(__ret_value: __ptr b256):
+        v4v1 = get_local __ptr b256, __const
+        v5v1 = load v4v1
+-         ret b256 v5v1
++         store v5v1 to __ret_value
++         v9v1 = const unit ()
++         ret () v9v1
+    }
+}

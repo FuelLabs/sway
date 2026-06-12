@@ -1,0 +1,95 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    pub entry fn __entry() -> __ptr slice {
+        local mut slice __aggr_memcpy_0
+        local { u64, u64 } __anon_0
+        local slice __ret_value
+
+        entry():
+        v1v1 = get_local __ptr slice, __ret_value
+        v2v1 = call main_0()
+        v3v1 = get_local __ptr { u64, u64 }, __anon_0
+        v4v1 = const u64 0
+        v5v1 = get_elem_ptr v3v1, __ptr u64, v4v1
+        v6v1 = const u64 0
+        store v6v1 to v5v1
+        v8v1 = const u64 1
+        v9v1 = get_elem_ptr v3v1, __ptr u64, v8v1
+        v10v1 = const u64 0
+        store v10v1 to v9v1
+        v12v1 = asm(s: v3v1) -> __ptr slice s {
+        }
+        v13v1 = get_local __ptr slice, __aggr_memcpy_0
+        mem_copy_val v13v1, v12v1
+        mem_copy_val v1v1, v13v1
+        ret __ptr slice v1v1
+    }
+
+    entry_orig fn main_0() -> () {
+        local { b256 } __ret_val
+
+        entry():
+        v17v1 = get_local __ptr { b256 }, __ret_val
+        v18v1 = call wrapper_1(v17v1)
+        v19v1 = const unit ()
+        ret () v19v1
+    }
+
+    fn wrapper_1(__ret_value: __ptr { b256 }) -> () {
+        local { u64, ( () | { b256 } ) } __matched_value_4
+        local { u64, ( () | { b256 } ) } __ret_val
+        local { u64, ( () | { b256 } ) } self_
+
+        entry(__ret_value: __ptr { b256 }):
+-         v22v1 = get_local __ptr { u64, ( () | { b256 } ) }, __ret_val
++         v22v1 = get_local __ptr { u64, ( () | { b256 } ) }, __matched_value_4
+        v23v1 = call return_option_5(v22v1)
+-         v24v1 = get_local __ptr { u64, ( () | { b256 } ) }, self_
+-         mem_copy_val v24v1, v22v1
+-         v26v1 = get_local __ptr { u64, ( () | { b256 } ) }, self_
++         v24v1 = get_local __ptr { u64, ( () | { b256 } ) }, __matched_value_4
++         v26v1 = get_local __ptr { u64, ( () | { b256 } ) }, __matched_value_4
+        v27v1 = get_local __ptr { u64, ( () | { b256 } ) }, __matched_value_4
+-         mem_copy_val v27v1, v26v1
+-         v29v1 = get_local __ptr { u64, ( () | { b256 } ) }, self_
++         v29v1 = get_local __ptr { u64, ( () | { b256 } ) }, __matched_value_4
+        v30v1 = const u64 0
+        v31v1 = get_elem_ptr v29v1, __ptr u64, v30v1
+        v32v1 = load v31v1
+        v33v1 = const u64 1
+        v34v1 = cmp eq v32v1 v33v1
+        cbr v34v1, unwrap_2_block0(), unwrap_2_block1()
+
+        unwrap_2_block0():
+        v36v1 = get_local __ptr { u64, ( () | { b256 } ) }, __matched_value_4
+        v37v1 = const u64 1
+        v38v1 = const u64 1
+        v39v1 = get_elem_ptr v36v1, __ptr { b256 }, v37v1, v38v1
+        mem_copy_val __ret_value, v39v1
+        v41v1 = const unit ()
+        ret () v41v1
+
+        unwrap_2_block1():
+        v43v1 = const u64 0
+        revert v43v1
+    }
+
+    fn return_option_5(__ret_value: __ptr { u64, ( () | { b256 } ) }) -> () {
+        local { u64, ( () | { b256 } ) } __anon_0
+
+        entry(__ret_value: __ptr { u64, ( () | { b256 } ) }):
+        v46v1 = get_local __ptr { u64, ( () | { b256 } ) }, __anon_0
+        v47v1 = const u64 0
+-         v48v1 = get_elem_ptr v46v1, __ptr u64, v47v1
++         v48v1 = get_elem_ptr __ret_value, __ptr u64, v47v1
+        v49v1 = const u64 0
+        store v49v1 to v48v1
+-         mem_copy_val __ret_value, v46v1
+        v52v1 = const unit ()
+        ret () v52v1
+    }
+}

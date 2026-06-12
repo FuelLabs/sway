@@ -1,0 +1,93 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    entry fn main() -> () {
+        entry():
+-         v1v1 = call test_function1()
+-         v2v1 = call test_function2()
+-         v3v1 = call test_function3()
++         v1v3 = call testf()
++         v7v1 = const unit ()
++         br block0(v7v1)
++ 
++         block0(v18v1: ()):
++         v2v3 = call testf()
++         v10v1 = const bool true
++         br block1(v10v1)
++ 
++         block1(v20v1: bool):
++         v3v3 = call testf()
++         v13v1 = const u64 0
++         br block2(v13v1)
++ 
++         block2(v22v1: u64):
+        v4v1 = const unit ()
+        ret () v4v1
+    }
+
+    fn test_function1() -> () {
+        entry():
+        v6v1 = call testf()
+        v7v1 = const unit ()
+        ret () v7v1
+    }
+
+    fn test_function2() -> bool {
+        entry():
+        v9v1 = call testf()
+        v10v1 = const bool true
+        ret bool v10v1
+    }
+
+    fn test_function3() -> u64 {
+        entry():
+        v12v1 = call testf()
+        v13v1 = const u64 0
+        ret u64 v13v1
+    }
+
+    fn testf() -> () {
+        entry():
+        v15v1 = asm(r1, r2) -> () {
+            movi   r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+            addi   r1 r2 i1
+        }
+        v16v1 = const unit ()
+        ret () v16v1
+    }
+}

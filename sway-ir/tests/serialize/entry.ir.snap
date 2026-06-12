@@ -1,0 +1,18 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    entry fn foo() -> u64 {
+        entry():
+    }
+
+    pub entry fn bar() -> u64 {
+        entry():
+    }
+
+    pub fn baz() -> u64 {
+        entry():
+    }
+}
