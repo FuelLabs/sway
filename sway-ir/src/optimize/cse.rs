@@ -13,7 +13,7 @@ use std::{
 
 use crate::{
     AnalysisResults, BinaryOpKind, Context, DebugWithContext, DomTree, Function, InstOp, IrError,
-    Pass, PassMutability, PostOrder, Predicate, ScopedPass, Type, UnaryOpKind, Value,
+    LocalVar, Pass, PassMutability, PostOrder, Predicate, ScopedPass, Type, UnaryOpKind, Value,
     DOMINATORS_NAME, POSTORDER_NAME,
 };
 
@@ -60,6 +60,9 @@ enum Expr {
     BitCast(ValueNumber, Type),
     CastPtr(ValueNumber, Type),
     Cmp(Predicate, ValueNumber, ValueNumber),
+    // A local's address is invariant within a function, so two `get_local` of the
+    // same local are always congruent regardless of program point.
+    GetLocal(LocalVar),
     GetElemPtr {
         base: ValueNumber,
         elem_ptr_ty: Type,
@@ -101,7 +104,7 @@ fn instr_to_expr(context: &Context, vntable: &VNTable, instr: Value) -> Option<E
         InstOp::ConditionalBranch { .. } => None,
         InstOp::ContractCall { .. } => None,
         InstOp::FuelVm(_) => None,
-        InstOp::GetLocal(_) => None,
+        InstOp::GetLocal(local) => Some(Expr::GetLocal(*local)),
         InstOp::GetGlobal(_) => None,
         InstOp::GetConfig(_, _) => None,
         InstOp::GetStorageKey(_) => None,
