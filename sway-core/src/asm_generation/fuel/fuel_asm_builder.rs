@@ -87,6 +87,13 @@ pub struct FuelAsmBuilder<'ir, 'eng> {
     // In progress VM bytecode ops.
     pub(super) cur_bytecode: Vec<Op>,
 
+    // Per-block cache of `$locbase + byte_offset` addresses already materialized into
+    // a virtual register earlier in the *current* block. A later `get_local` whose
+    // offset is within a 12-bit immediate of a cached one can be derived with a single
+    // `addi` instead of a `movi`+`add` pair. Reset at the start of every block so every
+    // cached register provably dominates its reuse. See `materialize_local_addr`.
+    pub(super) local_addr_cache: Vec<(u64, VirtualRegister)>,
+
     // Instructions that will be appended after globals allocation, but before the entry function is called.
     pub(super) before_entries: Vec<Op>,
 }
@@ -323,6 +330,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             non_entries: Vec::new(),
             cur_bytecode: Vec::new(),
             before_entries: vec![],
+            local_addr_cache: Vec::new(),
         }
     }
 
@@ -351,6 +359,13 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 ));
             }
         }
+
+        // Reset the local-address cache for this block. Every cached register must be
+        // defined earlier in this same block so it dominates any reuse. Seed it with the
+        // locals base register (offset 0), which is live throughout the function.
+        self.local_addr_cache.clear();
+        self.local_addr_cache
+            .push((0, self.locals_base_reg().clone()));
 
         let module = block.get_function(self.context).get_module(self.context);
         let fn_name = block.get_function(self.context).get_name(self.context);
@@ -1389,11 +1404,12 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                             comment: "get absolute byte offset to local".into(),
                             owning_span,
                         });
+                        self.local_addr_cache.push((byte_offs, instr_reg.clone()));
                     } else {
-                        self.immediate_to_reg(
+                        self.materialize_local_addr(
                             byte_offs,
                             instr_reg.clone(),
-                            Some(&base_reg),
+                            &base_reg,
                             format!(
                                 "get offset to local {}",
                                 local_var.get_type(self.context).as_string(self.context)
@@ -2615,6 +2631,63 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     span.unwrap_or(Span::dummy()),
                 )
             })
+    }
+
+    /// Materialize the address `$locbase + byte_offs` of a stack local into `reg`.
+    ///
+    /// If some address `$locbase + m` was already materialized into a register earlier
+    /// in the current block and `byte_offs - m` fits in a 12-bit immediate, the address
+    /// is derived with a single `addi reg, cached, (byte_offs - m)` instead of the
+    /// `movi`+`add` pair that a from-base materialization of a large offset requires.
+    /// `byte_offs` must be `<= EIGHTEEN_BITS`. The result is added to the cache so later
+    /// nearby locals can chain off it. Reuse is sound because the cache is reset per
+    /// block, so every cached register is defined earlier in this same block.
+    fn materialize_local_addr<S: Into<String>>(
+        &mut self,
+        byte_offs: u64,
+        reg: VirtualRegister,
+        base_reg: &VirtualRegister,
+        comment: S,
+        span: Option<Span>,
+    ) {
+        // Find the cached address with the smallest non-negative delta to `byte_offs`
+        // that still fits in a 12-bit ADDI immediate.
+        let best = self
+            .local_addr_cache
+            .iter()
+            .filter(|(off, _)| *off <= byte_offs && byte_offs - *off <= compiler_constants::TWELVE_BITS)
+            .max_by_key(|(off, _)| *off)
+            .map(|(off, r)| (*off, r.clone()));
+
+        match best {
+            // An exact hit (delta 0) means the same address is already live; just move it.
+            Some((off, cached)) if off == byte_offs => {
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::MOVE(reg.clone(), cached)),
+                    comment: comment.into(),
+                    owning_span: span,
+                });
+            }
+            // A nearby base is live: derive with a single ADDI.
+            Some((off, cached)) => {
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::ADDI(
+                        reg.clone(),
+                        cached,
+                        VirtualImmediate12::new(byte_offs - off),
+                    )),
+                    comment: comment.into(),
+                    owning_span: span,
+                });
+            }
+            // Nothing nearby (the seeded offset-0 base is always present, so this only
+            // happens when `byte_offs > TWELVE_BITS`): fall back to MOVI+ADD.
+            None => {
+                self.immediate_to_reg(byte_offs, reg.clone(), Some(base_reg), comment, span);
+            }
+        }
+
+        self.local_addr_cache.push((byte_offs, reg));
     }
 
     pub(super) fn immediate_to_reg<S: Into<String>>(
