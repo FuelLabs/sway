@@ -4,8 +4,9 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     combine_indices, get_gep_referred_symbols, get_loaded_ptr_values, get_stored_ptr_values,
-    pointee_size, AnalysisResults, Constant, ConstantValue, Context, EscapedSymbols, Function,
-    InstOp, IrError, LocalVar, Pass, PassMutability, ScopedPass, Symbol, Type, Value,
+    escaped_or_unconfined_symbols, pointee_size, AnalysisResults, Constant, ConstantValue, Context,
+    EscapedSymbols, Function, InstOp, IrError, LocalVar, Pass, PassMutability, ScopedPass, Symbol,
+    Type, Value,
     ESCAPED_SYMBOLS_NAME,
 };
 
@@ -449,78 +450,6 @@ fn profitability(context: &Context, function: Function, candidates: &mut FxHashS
     }
 }
 
-/// Compute the set of local symbols whose address is fully *confined*: every transitive
-/// use of the local's pointer (and of any `get_elem_ptr`/`cast_ptr` derived from it) is a
-/// direct local-memory access — a `load`, the destination of a `store`, a `mem_copy`
-/// source/destination, or a `mem_clear`. In particular the address is never used as a
-/// *stored value*, converted with `ptr_to_int`, or passed to a call / asm / return.
-///
-/// A confined local's address therefore never enters memory or integer form, so no
-/// untraceable pointer (one derived from a loaded address or an external integer) can
-/// alias it. This lets SROA run on such locals even when the function's escape analysis is
-/// `Incomplete`, without that incompleteness threatening correctness.
-fn confined_local_symbols(context: &Context, function: Function) -> FxHashSet<Symbol> {
-    // Build (in one pass) a map from each value to the instructions that use it as an
-    // operand, and a map from each local to its `get_local` pointer values.
-    let mut users: FxHashMap<Value, Vec<Value>> = FxHashMap::default();
-    let mut get_locals: FxHashMap<LocalVar, Vec<Value>> = FxHashMap::default();
-    for (_, inst) in function.instruction_iter(context) {
-        let op = &inst.get_instruction(context).unwrap().op;
-        if let InstOp::GetLocal(l) = op {
-            get_locals.entry(*l).or_default().push(inst);
-        }
-        for opd in op.get_operands() {
-            users.entry(opd).or_default().push(inst);
-        }
-    }
-
-    // For each local, seed a worklist with the value(s) producing a pointer to it and
-    // follow the pointer forward, requiring every use to be a safe local-memory access.
-    let mut confined = FxHashSet::default();
-    'locals: for (_, local) in function.locals_iter(context) {
-        let sym = Symbol::Local(*local);
-
-        // The `get_local` values that produce a pointer to this local.
-        let mut worklist: Vec<Value> = get_locals.get(local).cloned().unwrap_or_default();
-
-        let mut seen: FxHashSet<Value> = worklist.iter().copied().collect();
-        while let Some(ptr) = worklist.pop() {
-            let Some(ptr_users) = users.get(&ptr) else {
-                continue;
-            };
-            for user in ptr_users {
-                match &user.get_instruction(context).unwrap().op {
-                    // Deriving a sub-pointer keeps it within the local; follow it.
-                    InstOp::GetElemPtr { base, .. } if *base == ptr => {
-                        if seen.insert(*user) {
-                            worklist.push(*user);
-                        }
-                    }
-                    InstOp::CastPtr(src, _) if *src == ptr => {
-                        if seen.insert(*user) {
-                            worklist.push(*user);
-                        }
-                    }
-                    // Pure local-memory accesses: safe.
-                    InstOp::Load(_) => {}
-                    InstOp::MemCopyBytes { .. }
-                    | InstOp::MemCopyVal { .. }
-                    | InstOp::MemClearVal { .. } => {}
-                    // Storing *into* the local is safe; storing the address itself leaks.
-                    InstOp::Store { stored_val, .. } if *stored_val != ptr => {}
-                    // Anything else (store-as-value, ptr_to_int, call, asm, ret, ...) may
-                    // let the address escape untraceably: the local is not confined.
-                    _ => continue 'locals,
-                }
-            }
-        }
-
-        confined.insert(sym);
-    }
-
-    confined
-}
-
 /// Only the following aggregates can be scalarised:
 /// 1. Does not escape.
 /// 2. Is always accessed via a scalar (register sized) field.
@@ -533,44 +462,23 @@ fn candidate_symbols(
     escaped_symbols: &EscapedSymbols,
     function: Function,
 ) -> FxHashSet<Symbol> {
-    // When escape analysis is `Complete`, any local not in the escaped set is safe.
-    //
-    // When it is `Incomplete` (e.g. the function loads an address it cannot trace to a
-    // symbol, a common pattern in the generated `__entry`/encoding code), we used to bail
-    // out entirely, leaving large aggregates un-scalarized. Instead, fall back to a
-    // *confinement* check: a local whose address provably never leaves the realm of
-    // direct local-memory accesses (gep / load / store-into / memcpy) cannot be aliased
-    // by any untraceable pointer, so it is still safe to scalarize. See
-    // `confined_local_symbols`.
-    let mut candidates: FxHashSet<Symbol> = match escaped_symbols {
-        EscapedSymbols::Complete(escaped_symbols) => function
-            .locals_iter(context)
-            .filter_map(|(_, l)| {
-                let sym = Symbol::Local(*l);
-                (!escaped_symbols.contains(&sym)
-                    && l.get_type(context)
-                        .get_pointee_type(context)
-                        .is_some_and(|pointee_ty| is_processable_aggregate(context, pointee_ty)))
-                .then_some(sym)
-            })
-            .collect(),
-        EscapedSymbols::Incomplete(_) => {
-            let confined = confined_local_symbols(context, function);
-            function
-                .locals_iter(context)
-                .filter_map(|(_, l)| {
-                    let sym = Symbol::Local(*l);
-                    (confined.contains(&sym)
-                        && l.get_type(context)
-                            .get_pointee_type(context)
-                            .is_some_and(|pointee_ty| {
-                                is_processable_aggregate(context, pointee_ty)
-                            }))
-                    .then_some(sym)
-                })
-                .collect()
-        }
-    };
+    // A local is a candidate if it is a processable aggregate that does not escape.
+    // When escape analysis is `Incomplete` (e.g. the generated `__entry`/encoding code
+    // loads addresses it cannot trace), `escaped_or_unconfined_symbols` falls back to
+    // confinement so that provably-confined locals — which no untraceable pointer can
+    // alias — are still scalarized instead of bailing on the whole function.
+    let escaped_symbols = escaped_or_unconfined_symbols(context, function, escaped_symbols);
+    let mut candidates: FxHashSet<Symbol> = function
+        .locals_iter(context)
+        .filter_map(|(_, l)| {
+            let sym = Symbol::Local(*l);
+            (!escaped_symbols.contains(&sym)
+                && l.get_type(context)
+                    .get_pointee_type(context)
+                    .is_some_and(|pointee_ty| is_processable_aggregate(context, pointee_ty)))
+            .then_some(sym)
+        })
+        .collect();
 
     // We walk the function to remove from `candidates`, any local that is
     // 1. accessed by a bigger-than-register sized load / store.

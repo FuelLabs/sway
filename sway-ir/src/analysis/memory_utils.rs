@@ -3,7 +3,7 @@
 //! Any transformations involving such symbols are unsafe.
 
 use indexmap::IndexSet;
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashMap, FxHashSet};
 use sway_types::{FxIndexMap, FxIndexSet};
 
 use crate::{
@@ -388,6 +388,104 @@ pub enum EscapedSymbols {
 }
 
 impl AnalysisResultT for EscapedSymbols {}
+
+/// Compute the set of local symbols whose address is fully *confined*: every transitive
+/// use of the local's pointer (and of any `get_elem_ptr`/`cast_ptr` derived from it) is a
+/// direct local-memory access — a `load`, the destination of a `store`, a `mem_copy`
+/// source/destination, or a `mem_clear`. In particular the address is never used as a
+/// *stored value*, converted with `ptr_to_int`, or passed to a call / asm / return.
+///
+/// A confined local's address therefore never enters memory or integer form, so no
+/// untraceable pointer (one derived from a loaded address or an external integer) can
+/// alias it. Transformations that rely on knowing all of a symbol's accesses (SROA,
+/// memcpy copy-propagation, dead-store elimination) may therefore treat a confined local
+/// as non-escaping even when the function's escape analysis is `Incomplete`.
+pub fn confined_local_symbols(context: &Context, function: Function) -> FxHashSet<Symbol> {
+    // One pass: map each value to its using instructions, and each local to its
+    // `get_local` pointer values.
+    let mut users: FxHashMap<Value, Vec<Value>> = FxHashMap::default();
+    let mut get_locals: FxHashMap<LocalVar, Vec<Value>> = FxHashMap::default();
+    for (_, inst) in function.instruction_iter(context) {
+        let op = &inst.get_instruction(context).unwrap().op;
+        if let InstOp::GetLocal(l) = op {
+            get_locals.entry(*l).or_default().push(inst);
+        }
+        for opd in op.get_operands() {
+            users.entry(opd).or_default().push(inst);
+        }
+    }
+
+    let mut confined = FxHashSet::default();
+    'locals: for (_, local) in function.locals_iter(context) {
+        let mut worklist: Vec<Value> = get_locals.get(local).cloned().unwrap_or_default();
+        let mut seen: FxHashSet<Value> = worklist.iter().copied().collect();
+        while let Some(ptr) = worklist.pop() {
+            let Some(ptr_users) = users.get(&ptr) else {
+                continue;
+            };
+            for user in ptr_users {
+                match &user.get_instruction(context).unwrap().op {
+                    // Deriving a sub-pointer keeps it within the local; follow it.
+                    InstOp::GetElemPtr { base, .. } if *base == ptr => {
+                        if seen.insert(*user) {
+                            worklist.push(*user);
+                        }
+                    }
+                    InstOp::CastPtr(src, _) if *src == ptr => {
+                        if seen.insert(*user) {
+                            worklist.push(*user);
+                        }
+                    }
+                    // Pure local-memory accesses: safe.
+                    InstOp::Load(_) => {}
+                    InstOp::MemCopyBytes { .. }
+                    | InstOp::MemCopyVal { .. }
+                    | InstOp::MemClearVal { .. } => {}
+                    // Storing *into* the local is safe; storing the address itself leaks.
+                    InstOp::Store { stored_val, .. } if *stored_val != ptr => {}
+                    // Anything else (store-as-value, ptr_to_int, call, asm, ret, ...) may
+                    // let the address escape untraceably: the local is not confined.
+                    _ => continue 'locals,
+                }
+            }
+        }
+        confined.insert(Symbol::Local(*local));
+    }
+    confined
+}
+
+/// Return the set of symbols that a memory transformation must treat as escaping
+/// (i.e. cannot freely move loads/stores across).
+///
+/// - When escape analysis is `Complete`, that is exactly the escaped set.
+/// - When it is `Incomplete`, fall back to confinement: treat every symbol *except* a
+///   provably-confined local as escaping. This lets passes still operate on the confined
+///   locals (which cannot be aliased by the untraceable pointers that caused the
+///   incompleteness) while remaining conservative for everything else.
+pub fn escaped_or_unconfined_symbols(
+    context: &Context,
+    function: Function,
+    escaped: &EscapedSymbols,
+) -> FxHashSet<Symbol> {
+    match escaped {
+        EscapedSymbols::Complete(syms) => syms.clone(),
+        EscapedSymbols::Incomplete(_) => {
+            let confined = confined_local_symbols(context, function);
+            let mut result: FxHashSet<Symbol> = function
+                .locals_iter(context)
+                .map(|(_, l)| Symbol::Local(*l))
+                .filter(|s| !confined.contains(s))
+                .collect();
+            // Arguments are never "confined locals"; keep them conservative.
+            for (_, arg) in function.args_iter(context) {
+                for sym in get_referred_symbols(context, *arg).consume().1 {
+                    result.insert(sym);
+                }
+            }
+            result
+        }
+    }
+}
 
 pub fn compute_escaped_symbols_pass(
     context: &Context,
