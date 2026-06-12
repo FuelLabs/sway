@@ -1,0 +1,35 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    entry fn main() -> u256 {
++         local u256 __wide_lhs
++         local u256 __wide_lhs0
++         local mut u256 __wide_result
++         local mut u256 __wide_result0
++         local u256 __wide_rhs
++ 
+        entry():
++         v9v1 = get_local __ptr u256, __wide_lhs
+        v1v1 = const u256 0x0000000000000000000000000000000000000000000000000000000000000001
++         store v1v1 to v9v1
++         v11v1 = get_local __ptr u256, __wide_rhs
+        v2v1 = const u256 0x0000000000000000000000000000000000000000000000000000000000000002
+-         v3v1 = add v1v1, v2v1
++         store v2v1 to v11v1
++         v7v1 = get_local __ptr u256, __wide_result
++         wide add v9v1, v11v1 to v7v1
++         v8v1 = load v7v1
++         v16v1 = get_local __ptr u256, __wide_lhs0
++         store v1v1 to v16v1
++         v14v1 = get_local __ptr u256, __wide_result0
+        v4v1 = const u64 2
+-         v5v1 = lsh v1v1, v4v1
+-         ret u256 v3v1
++         wide lsh v16v1, v4v1 to v14v1
++         v15v1 = load v14v1
++         ret u256 v8v1
+    }
+}

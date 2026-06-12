@@ -1,0 +1,30 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    fn main() -> () {
+        local u256 a
+
+        entry():
+        v1v1 = get_local __ptr u256, a
+        wide add v1v1, v1v1 to v1v1
+        wide sub v1v1, v1v1 to v1v1
+        wide mul v1v1, v1v1 to v1v1
+        wide div v1v1, v1v1 to v1v1
+        wide mod v1v1, v1v1 to v1v1
+        v7v1 = const u64 2
+        wide lsh v1v1, v7v1 to v1v1
+        wide rsh v1v1, v7v1 to v1v1
+        wide not v1v1 to v1v1
+        wide and v1v1, v1v1 to v1v1
+        wide or v1v1, v1v1 to v1v1
+        wide xor v1v1, v1v1 to v1v1
+        v14v1 = wide cmp eq v1v1 v1v1
+        v15v1 = wide cmp lt v1v1 v1v1
+        v16v1 = wide cmp gt v1v1 v1v1
+        v17v1 = const unit ()
+        ret () v17v1
+    }
+}

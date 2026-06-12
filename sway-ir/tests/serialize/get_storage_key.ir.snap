@@ -1,0 +1,52 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+contract {
+    storage_key storage.a = 0xeb7ceb95f655d60faa3ae0cd0de1ff1af784e38a3b25a88f2be480f15478907f
+    storage_key storage.a.b = 0xeb7ceb95f655d60faa3ae0cd0de1ff1af784e38a3b25a88f2be480f15478907f : 0 : 0x9cb84a7467ade86aea47c23daff70a989ae56e1466ffbb2e04aba9255b262fc6
+    storage_key storage.b = 0x1111111111111111111111111111111111111111111111111111111111111111
+    storage_key storage.c = 0x2222222222222222222222222222222222222222222222222222222222222222 : 2
+    storage_key storage::n1.a = 0xbde9a42c506e6c3dd71dcf63c89e2d066b3fea525afe68f1ddc47d58bad97337
+    storage_key storage::n1::n2.a = 0xdf79747c92e7208309fd8865d0fd592109b7bf72667bccfcaaabf9b12ac8c5d3 : 3
+    storage_key storage::n1::n2.a.b.c = 0x8888888888888888888888888888888888888888888888888888888888888888 : 2
+
+    pub entry fn all_in_one<0e615b65>() -> () {
+        local { b256, u64, b256 } __tmp_arg
+        local { b256, u64, b256 } __tmp_arg0
+        local { b256, u64, b256 } __tmp_arg1
+        local { b256, u64, b256 } __tmp_arg2
+        local { b256, u64, b256 } __tmp_arg3
+
+        entry():
+        v1v1 = get_storage_key __ptr { b256, u64, b256 }, storage.a
+        v2v1 = get_local __ptr { b256, u64, b256 }, __tmp_arg
+        mem_copy_val v2v1, v1v1
+        v4v1 = call poke_0(v2v1)
+        v5v1 = get_storage_key __ptr { b256, u64, b256 }, storage.a.b
+        v6v1 = get_local __ptr { b256, u64, b256 }, __tmp_arg0
+        mem_copy_val v6v1, v5v1
+        v8v1 = call poke_0(v6v1)
+        v9v1 = get_storage_key __ptr { b256, u64, b256 }, storage::n1.a
+        v10v1 = get_local __ptr { b256, u64, b256 }, __tmp_arg1
+        mem_copy_val v10v1, v9v1
+        v12v1 = call poke_0(v10v1)
+        v13v1 = get_storage_key __ptr { b256, u64, b256 }, storage::n1::n2.a
+        v14v1 = get_local __ptr { b256, u64, b256 }, __tmp_arg2
+        mem_copy_val v14v1, v13v1
+        v16v1 = call poke_0(v14v1)
+        v17v1 = get_storage_key __ptr { b256, u64, b256 }, storage::n1::n2.a.b.c
+        v18v1 = get_local __ptr { b256, u64, b256 }, __tmp_arg3
+        mem_copy_val v18v1, v17v1
+        v20v1 = call poke_0(v18v1)
+        v21v1 = const unit ()
+        ret () v21v1
+    }
+
+    fn poke_0(_t: __ptr { b256, u64, b256 }) -> () {
+        entry(_t: __ptr { b256, u64, b256 }):
+        v24v1 = const unit ()
+        ret () v24v1
+    }
+}

@@ -1,0 +1,80 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    fn id_from_foo(b: u64) -> u64, !0 {
+        entry(b: u64):
+        ret u64 b
+    }
+
+    fn foo(b: u64) -> u64 {
+        entry(b: u64):
+        v4v1 = call id_from_foo(b)
+        v5v1 = call foo(v4v1)
+        ret u64 v5v1
+    }
+
+    fn id_from_ping(b: u64) -> u64, !0 {
+        entry(b: u64):
+        ret u64 b
+    }
+
+    fn id_from_pong(b: u64) -> u64, !0 {
+        entry(b: u64):
+        ret u64 b
+    }
+
+    fn main() -> u64 {
+        entry():
+        v11v1 = const u64 11
+-         v12v1 = call foo(v11v1)
+-         v13v1 = call ping(v12v1)
+-         v14v1 = add v12v1, v13v1
++         v12v3 = call id_from_foo(v11v1)
++         v25v1 = call foo(v12v3)
++         br block0(v25v1)
++ 
++         block0(v24v1: u64):
++         v13v3 = call id_from_ping(v24v1)
++         v28v1 = call pong(v13v3)
++         br block1(v28v1)
++ 
++         block1(v27v1: u64):
++         v14v1 = add v24v1, v27v1
+        ret u64 v14v1
+    }
+
+    fn ping(b: u64) -> u64 {
+        entry(b: u64):
+        v17v1 = call id_from_ping(b)
+-         v18v1 = call pong(v17v1)
+-         ret u64 v18v1
++         v18v3 = call id_from_pong(v17v1)
++         v31v1 = call ping(v18v3)
++         br block0(v31v1)
++ 
++         block0(v30v1: u64):
++         ret u64 v30v1
+    }
+
+    fn pong(b: u64) -> u64 {
+        entry(b: u64):
+        v21v1 = call id_from_pong(b)
+-         v22v1 = call ping(v21v1)
+-         ret u64 v22v1
++         v34v1 = call id_from_ping(v21v1)
++         v35v1 = call id_from_pong(v34v1)
++         v36v1 = call ping(v35v1)
++         br ping_block0(v36v1)
++ 
++         ping_block0(v22v3: u64):
++         br block0(v22v3)
++ 
++         block0(v33v1: u64):
++         ret u64 v33v1
+    }
+}
+
+!0 = inline "never"

@@ -1,0 +1,21 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    entry fn main() -> u256 {
+        local u256 x
+        local u256 y
+        local u256 z
+
+        entry():
+        v1v1 = get_local __ptr u256, x
+        v2v1 = get_local __ptr u256, y
+        v3v1 = get_local __ptr u256, z
+        mem_copy_val v3v1, v1v1
+        wide add v1v1, v2v1 to v3v1
+        v6v1 = load v3v1
+        ret u256 v6v1
+    }
+}

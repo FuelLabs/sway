@@ -1,0 +1,21 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    fn main() -> bool {
+        entry():
+        v1v1 = const u64 11
+        v3v1 = const u64 0
+        v4v1 = add v1v1, v3v1
+        v5v1 = add v1v1, v3v1
+        v6v1 = sub v1v1, v4v1
+        v2v1 = const u64 11
+-         v7v1 = sub v2v1, v5v1
+-         v8v1 = cmp eq v6v1 v7v1
++         v7v1 = sub v2v1, v4v1
++         v8v1 = cmp eq v6v1 v6v1
+        ret bool v8v1
+    }
+}

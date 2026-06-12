@@ -1,0 +1,25 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    entry fn main() -> bool {
++         local b256 __asm_arg
++         local b256 __asm_arg0
++ 
+        entry():
++         v5v1 = get_local __ptr b256, __asm_arg
+        v1v1 = const b256 0x2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b
++         store v1v1 to v5v1
++         v7v1 = get_local __ptr b256, __asm_arg0
+        v2v1 = const b256 0x2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c
+-         v3v1 = asm(r1: v1v1, r2: v2v1, r3, r4) -> bool r4 {
++         store v2v1 to v7v1
++         v3v1 = asm(r1: v5v1, r2: v7v1, r3, r4) -> bool r4 {
+            addi   r3 zero i32
+            meq    r4 r1 r2 r3
+        }
+        ret bool v3v1
+    }
+}

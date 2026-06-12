@@ -1,0 +1,24 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    fn main() -> (), !1 {
+        entry():
+        v1v1 = const unit ()
+        ret () v1v1
+    }
+
+    fn my_test_func() -> (), !4 {
+        entry():
+        v3v1 = const unit ()
+        ret () v3v1
+    }
+}
+
+!0 = "a string\\n"
+!1 = span !0 9 21
+!2 = span !0 307 341
+!3 = decl_index 4
+!4 = (!2 !3)
