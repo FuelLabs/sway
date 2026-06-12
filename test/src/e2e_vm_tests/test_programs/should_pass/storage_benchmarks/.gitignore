@@ -1,2 +1,3 @@
 *.perf-diff.*
 *.perf-diff-stats.*
+perf_out/*.txt
