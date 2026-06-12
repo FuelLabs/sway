@@ -65,7 +65,8 @@ use sway_features::ExperimentalFeatures;
 use sway_ir::{
     create_o1_pass_group, register_known_passes, Context, Kind, Module, PassGroup, PassManager,
     PrintPassesOpts, VerifyPassesOpts, ARG_DEMOTION_NAME, ARG_POINTEE_MUTABILITY_TAGGER_NAME,
-    CONST_DEMOTION_NAME, DCE_NAME, FN_DEDUP_DEBUG_PROFILE_NAME, FN_INLINE_NAME, GLOBALS_DCE_NAME,
+    CONST_DEMOTION_NAME, CONST_FOLDING_NAME, CSE_NAME, DCE_NAME, FN_DEDUP_DEBUG_PROFILE_NAME,
+    FN_INLINE_NAME, GLOBALS_DCE_NAME,
     INIT_AGGR_LOWERING_NAME, MEM2REG_NAME, MEMCPYOPT_NAME, MEMCPYPROP_REVERSE_NAME,
     MISC_DEMOTION_NAME, RET_DEMOTION_NAME, SIMPLIFY_CFG_NAME, SROA_NAME,
 };
@@ -1603,6 +1604,18 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         match build_config.optimization_level {
             OptLevel::Opt1 => {
                 pass_group.append_pass(MEMCPYPROP_REVERSE_NAME);
+                pass_group.append_pass(SROA_NAME);
+                pass_group.append_pass(MEM2REG_NAME);
+                pass_group.append_pass(DCE_NAME);
+
+                // Second cleanup round. The demotion + memcpyopt passes above introduce
+                // new aggregate temporaries (e.g. `__aggr_memcpy`) and `get_local`s; a
+                // further CSE/const-fold/SROA/mem2reg sweep collapses the resulting
+                // redundant address computations and copy chains.
+                pass_group.append_pass(CSE_NAME);
+                pass_group.append_pass(CONST_FOLDING_NAME);
+                pass_group.append_pass(SIMPLIFY_CFG_NAME);
+                pass_group.append_pass(MEMCPYOPT_NAME);
                 pass_group.append_pass(SROA_NAME);
                 pass_group.append_pass(MEM2REG_NAME);
                 pass_group.append_pass(DCE_NAME);
