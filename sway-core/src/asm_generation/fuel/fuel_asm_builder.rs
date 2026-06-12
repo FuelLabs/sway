@@ -2651,11 +2651,16 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         span: Option<Span>,
     ) {
         // Find the cached address with the smallest non-negative delta to `byte_offs`
-        // that still fits in a 12-bit ADDI immediate.
+        // that still fits in a 12-bit ADDI immediate (i.e. the largest `off <= byte_offs`
+        // in range). Any in-range entry is correct, but the nearest offset is usually a
+        // sibling field of the same aggregate, whose live range already overlaps — this
+        // measured better across the corpus than reusing the most recent base.
         let best = self
             .local_addr_cache
             .iter()
-            .filter(|(off, _)| *off <= byte_offs && byte_offs - *off <= compiler_constants::TWELVE_BITS)
+            .filter(|(off, _)| {
+                *off <= byte_offs && byte_offs - *off <= compiler_constants::TWELVE_BITS
+            })
             .max_by_key(|(off, _)| *off)
             .map(|(off, r)| (*off, r.clone()));
 
