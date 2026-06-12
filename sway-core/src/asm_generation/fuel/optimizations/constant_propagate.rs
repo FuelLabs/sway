@@ -1,6 +1,7 @@
 use super::super::abstract_instruction_set::AbstractInstructionSet;
 use crate::asm_lang::{
-    ConstantRegister, ControlFlowOp, JumpType, Label, Op, VirtualImmediate18, VirtualOp,
+    ConstantRegister, ControlFlowOp, JumpType, Label, Op, VirtualImmediate12, VirtualImmediate18,
+    VirtualOp,
     VirtualRegister,
 };
 use either::Either;
@@ -449,6 +450,20 @@ impl AbstractInstructionSet {
                 Either::Left(VirtualOp::LT(..)) => transform_operator! {LT, None;
                     both_known: u64_lt;
                 },
+
+                // Fold `movi $len, N; mcp $dst $src $len` into `mcpi $dst $src N` when the
+                // byte-length register holds a constant that fits a 12-bit immediate. The
+                // now-unused `movi` is removed by the following DCE pass. Such register-
+                // length `mcp`s come from hand-written `asm { mcp ... }` blocks in std
+                // (codec, clone, bytes, raw_ptr) where the length is a compile-time constant.
+                Either::Left(VirtualOp::MCP(dst, src, len)) => {
+                    if let Some(c) = known_values.resolve(&len).and_then(|r| r.value()) {
+                        if let Ok(imm) = VirtualImmediate12::try_new(c, Span::dummy()) {
+                            op.opcode = Either::Left(VirtualOp::MCPI(dst.clone(), src.clone(), imm));
+                        }
+                    }
+                    None
+                }
                 _ => None,
             };
 
