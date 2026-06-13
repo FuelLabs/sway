@@ -219,7 +219,7 @@ impl Entry {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum DataIdEntryKind {
     NonConfigurable,
     Configurable,
@@ -235,7 +235,7 @@ impl fmt::Display for DataIdEntryKind {
 }
 
 /// An address which refers to a value in the data section of the asm.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct DataId {
     pub(crate) idx: u32,
     pub(crate) kind: DataIdEntryKind,
@@ -252,7 +252,7 @@ impl fmt::Display for DataId {
 pub struct DataSection {
     pub non_configurables: Vec<Entry>,
     pub configurables: Vec<Entry>,
-    pub(crate) pointer_id: FxHashMap<u64, DataId>,
+    pub(crate) source_to_pointer: FxHashMap<(DataId, u64), DataId>,
 }
 
 impl DataSection {
@@ -301,6 +301,10 @@ impl DataSection {
         })
     }
 
+    pub(crate) fn non_configurables_size_in_bytes(&self) -> usize {
+        self.absolute_idx_to_offset(self.non_configurables.len())
+    }
+
     pub(crate) fn serialize_to_bytes(&self) -> Vec<u8> {
         // not the exact right capacity but serves as a lower bound
         let mut buf = Vec::with_capacity(self.num_entries());
@@ -330,21 +334,32 @@ impl DataSection {
     /// offsets of previous data).
     /// `pointer_value` is in _bytes_ and refers to the offset from instruction start or
     /// relative to the current (load) instruction.
-    pub(crate) fn append_pointer(&mut self, pointer_value: u64) -> DataId {
+    pub(crate) fn append_pointer(
+        &mut self,
+        pointer_value: u64,
+        source_data_id: &DataId,
+        load_site_offset: u64,
+    ) -> DataId {
         // The 'pointer' is just a literal 64 bit address.
         let data_id = self.insert_data_value(Entry::new_word(
             pointer_value,
             EntryName::NonConfigurable,
             None,
         ));
-        self.pointer_id.insert(pointer_value, data_id.clone());
+        self.source_to_pointer
+            .insert((source_data_id.clone(), load_site_offset), data_id.clone());
         data_id
     }
 
-    /// Get the [DataId] for a pointer, if it exists.
-    /// The pointer must've been inserted with append_pointer.
-    pub(crate) fn data_id_of_pointer(&self, pointer_value: u64) -> Option<DataId> {
-        self.pointer_id.get(&pointer_value).cloned()
+    /// Get the pointer [DataId] for a non-copy load at a specific instruction offset.
+    pub(crate) fn pointer_for_load_site(
+        &self,
+        source_data_id: &DataId,
+        load_site_offset: u64,
+    ) -> Option<DataId> {
+        self.source_to_pointer
+            .get(&(source_data_id.clone(), load_site_offset))
+            .cloned()
     }
 
     /// Given any data in the form of a [Literal] (using this type mainly because it includes type

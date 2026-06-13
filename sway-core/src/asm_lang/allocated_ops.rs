@@ -13,7 +13,8 @@ use super::*;
 use crate::{
     asm_generation::fuel::{
         compiler_constants::{
-            DATA_SECTION_REGISTER, LOWER_ALLOCATABLE_REGISTER, UPPER_ALLOCATABLE_REGISTER,
+            DATA_SECTION_REGISTER, EIGHTEEN_BITS, LOWER_ALLOCATABLE_REGISTER,
+            UPPER_ALLOCATABLE_REGISTER,
         },
         data_section::{DataId, DataSection},
     },
@@ -21,7 +22,7 @@ use crate::{
 };
 use fuel_vm::fuel_asm::{
     op::{ADD, MOVI},
-    Imm18,
+    Imm12, Imm18,
 };
 use std::fmt::{self, Write};
 use sway_types::span::Span;
@@ -930,7 +931,6 @@ impl AllocatedOp {
                     a,
                     b,
                     data_section,
-                    offset_to_data_section,
                     offset_from_instr_start,
                 ))
             }
@@ -947,6 +947,11 @@ fn addr_of(
     data_section: &DataSection,
 ) -> Vec<fuel_asm::Instruction> {
     let offset_bytes = data_section.data_id_to_offset(data_id) as u64;
+    assert!(
+        offset_bytes <= EIGHTEEN_BITS,
+        "Data section offset {offset_bytes} bytes exceeds 18-bit MOVI immediate limit. \
+         Data section too large."
+    );
     vec![
         fuel_asm::Instruction::MOVI(MOVI::new(
             dest.to_reg_id(),
@@ -968,7 +973,6 @@ fn realize_load(
     dest: &AllocatedRegister,
     data_id: &DataId,
     data_section: &DataSection,
-    offset_to_data_section: u64,
     offset_from_instr_start: u64,
 ) -> Vec<fuel_asm::Instruction> {
     // if this data is larger than a word, instead of loading the data directly
@@ -990,36 +994,18 @@ fn realize_load(
     );
     let offset_words = offset_bytes / 8;
 
-    let imm = VirtualImmediate12::try_new(
-        if is_byte { offset_bytes } else { offset_words },
-        Span::new(" ".into(), 0, 0, None).unwrap(),
-    );
-    let offset = match imm {
-        Ok(value) => value,
-        Err(_) => panic!(
-            "Unable to offset into the data section more than 2^12 bits. \
-                                Unsupported data section length: {offset_words} words."
-        ),
-    };
-
     if !has_copy_type {
-        // load the pointer itself into the register. `offset_to_data_section` is in bytes.
-        // The -4 is because $pc is added in the *next* instruction.
-        let pointer_offset_from_current_instr =
-            offset_to_data_section - offset_from_instr_start + offset_bytes - 4;
-
-        // insert the pointer as bytes as a new data section entry at the end of the data
+        // The pointer was pre-inserted during the pointer pre-insertion pass.
         let data_id_for_pointer = data_section
-            .data_id_of_pointer(pointer_offset_from_current_instr)
-            .expect("Pointer offset must be in data_section");
+            .pointer_for_load_site(data_id, offset_from_instr_start)
+            .expect("Pointer for non-copy data must be pre-inserted");
 
-        // now load the pointer we just created into the `dest`ination
-        let mut buf = Vec::with_capacity(2);
+        // Load the pointer value into the destination register.
+        let mut buf = Vec::with_capacity(4);
         buf.append(&mut realize_load(
             dest,
             &data_id_for_pointer,
             data_section,
-            offset_to_data_section,
             offset_from_instr_start,
         ));
         // add $pc to the pointer since it is relative to the current instruction.
@@ -1032,19 +1018,48 @@ fn realize_load(
             .into(),
         );
         buf
-    } else if is_byte {
-        vec![fuel_asm::op::LB::new(
-            dest.to_reg_id(),
-            fuel_asm::RegId::new(DATA_SECTION_REGISTER),
-            offset.value().into(),
-        )
-        .into()]
     } else {
-        vec![fuel_asm::op::LW::new(
-            dest.to_reg_id(),
-            fuel_asm::RegId::new(DATA_SECTION_REGISTER),
-            offset.value().into(),
-        )
-        .into()]
+        let imm_value = if is_byte { offset_bytes } else { offset_words };
+        let imm = VirtualImmediate12::try_new(imm_value, Span::dummy());
+
+        if let Ok(offset) = imm {
+            if is_byte {
+                vec![fuel_asm::op::LB::new(
+                    dest.to_reg_id(),
+                    fuel_asm::RegId::new(DATA_SECTION_REGISTER),
+                    offset.value().into(),
+                )
+                .into()]
+            } else {
+                vec![fuel_asm::op::LW::new(
+                    dest.to_reg_id(),
+                    fuel_asm::RegId::new(DATA_SECTION_REGISTER),
+                    offset.value().into(),
+                )
+                .into()]
+            }
+        } else {
+            assert!(
+                offset_bytes <= EIGHTEEN_BITS,
+                "Data section offset {offset_bytes} bytes exceeds 18-bit MOVI immediate limit. \
+                 Data section too large ({offset_words} words)."
+            );
+            vec![
+                fuel_asm::Instruction::MOVI(MOVI::new(
+                    dest.to_reg_id(),
+                    Imm18::new(offset_bytes.try_into().unwrap()),
+                )),
+                fuel_asm::Instruction::ADD(ADD::new(
+                    dest.to_reg_id(),
+                    dest.to_reg_id(),
+                    fuel_asm::RegId::new(DATA_SECTION_REGISTER),
+                )),
+                if is_byte {
+                    fuel_asm::op::LB::new(dest.to_reg_id(), dest.to_reg_id(), Imm12::new(0)).into()
+                } else {
+                    fuel_asm::op::LW::new(dest.to_reg_id(), dest.to_reg_id(), Imm12::new(0)).into()
+                },
+            ]
+        }
     }
 }

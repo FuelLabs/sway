@@ -12,7 +12,7 @@ output:
 
 tested -- vec
 
-      test test_main ... ok (???, 193893 gas)
+      test test_main ... ok (???, 193897 gas)
       test test_zst ... ok (???, 11791 gas)
 
 test result: OK. 2 passed; 0 failed; finished in ???
