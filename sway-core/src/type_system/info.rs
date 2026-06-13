@@ -848,6 +848,10 @@ impl TypeInfo {
         matches!(self, TypeInfo::Boolean)
     }
 
+    pub(crate) fn is_numeric(&self) -> bool {
+        matches!(self, TypeInfo::Numeric)
+    }
+
     /// maps a type to a name that is used when constructing function selectors
     pub(crate) fn to_selector_name(
         &self,

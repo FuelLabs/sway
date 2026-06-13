@@ -1,5 +1,3 @@
-use sway_types::Spanned;
-
 use crate::{
     decl_engine::{parsed_id::ParsedDeclId, DeclId},
     language::{
@@ -9,12 +7,13 @@ use crate::{
     semantic_analysis::symbol_collection_context::SymbolCollectionContext,
     Engines,
 };
-use sway_error::handler::{ErrorEmitted, Handler};
-
 use crate::{
     semantic_analysis::{AbiMode, TypeCheckContext},
     type_system::*,
 };
+use hashbrown::HashMap;
+use sway_error::handler::{ErrorEmitted, Handler};
+use sway_types::Spanned;
 
 impl ty::TyTraitFn {
     pub(crate) fn collect(
@@ -129,6 +128,8 @@ impl ty::TyTraitFn {
             is_trait_method_dummy: true,
             is_type_check_finalized: true,
             kind: ty::TyFunctionDeclKind::Default,
+            sdid: None,
+            tid_map: HashMap::default(),
         }
     }
 }

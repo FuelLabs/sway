@@ -19,3 +19,4 @@ pub use namespace::Namespace;
 pub(crate) use type_check_analysis::*;
 pub use type_check_context::TypeCheckContext;
 pub(crate) use type_check_finalization::*;
+pub mod semantic_definition;
