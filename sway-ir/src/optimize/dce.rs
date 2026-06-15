@@ -76,10 +76,17 @@ fn is_removable_store(
         | InstOp::Store { dst_val_ptr, .. } => {
             let syms = get_referred_symbols(context, dst_val_ptr);
             match syms {
-                ReferredSymbols::Complete(syms) => syms.iter().all(|sym| {
-                    !escaped_symbols.contains(sym)
-                        && num_symbol_loaded.get(sym).map_or(0, |uses| *uses) == 0
-                }),
+                // An empty (but complete) symbol set means the destination resolves to no
+                // tracked local/arg — e.g. a heap or external pointer — which we cannot prove
+                // dead. Only remove when there is at least one tracked symbol and all such
+                // symbols are non-escaping and never loaded.
+                ReferredSymbols::Complete(syms) => {
+                    !syms.is_empty()
+                        && syms.iter().all(|sym| {
+                            !escaped_symbols.contains(sym)
+                                && num_symbol_loaded.get(sym).map_or(0, |uses| *uses) == 0
+                        })
+                }
                 // We cannot guarantee that the destination is not used.
                 ReferredSymbols::Incomplete(_) => false,
             }

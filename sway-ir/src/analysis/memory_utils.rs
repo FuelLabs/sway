@@ -7,10 +7,91 @@ use rustc_hash::FxHashSet;
 use sway_types::{FxIndexMap, FxIndexSet};
 
 use crate::{
-    AnalysisResult, AnalysisResultT, AnalysisResults, BlockArgument, Context, FuelVmInstruction,
-    Function, InitAggr, InstOp, Instruction, IrError, LocalVar, Pass, PassMutability, ScopedPass,
-    Type, Value, ValueDatum,
+    AnalysisResult, AnalysisResultT, AnalysisResults, AsmArg, AsmBlock, BlockArgument, Context,
+    FuelVmInstruction, Function, InitAggr, InstOp, Instruction, IrError, LocalVar, Pass,
+    PassMutability, ScopedPass, Type, Value, ValueDatum,
 };
+
+/// The well-known input-reading `asm` idioms emitted by the encoding/codec. Their results
+/// provably cannot point at the current function's stack locals: they read the contract
+/// call frame / calldata via the frame pointer (`fp`), which lies below the stack region,
+/// and an internal (`JAL`) call shares that frame. Recognizing them keeps escape analysis
+/// `Complete` for the generated `__entry`/decode code instead of bailing on the opaque asm.
+enum AsmPtr {
+    /// `asm() -> ptr fp {}` — the frame pointer (call-frame / input region; non-stack).
+    FrameExternal,
+    /// `asm(p: x) -> ptr p {}` — identity pointer reinterpret; the result is `x`.
+    Forward(Value),
+    /// `asm(p: x, v) -> u64 v { lw v p i0 }` — one word loaded from `x`.
+    LoadFrom(Value),
+}
+
+/// Is `val` derived solely from the frame pointer (contract call frame / calldata), via
+/// offsets, identity reinterprets, pointer casts, and loads of frame data? Such memory is
+/// caller-provided input that can never hold this function's stack addresses, so a value
+/// *loaded from* it is safe to treat as external. This deliberately excludes heap (`Alloc`)
+/// pointers — a stack address can be round-tripped through the heap, so heap loads are not
+/// safe to forward.
+fn is_frame_rooted(context: &Context, val: Value, visited: &mut FxHashSet<Value>) -> bool {
+    if !visited.insert(val) {
+        return false; // cycle: conservatively not provably frame-rooted
+    }
+    let Some(inst) = val.get_instruction(context) else {
+        return false;
+    };
+    match &inst.op {
+        InstOp::AsmBlock(asm, args) => match classify_asm_ptr(asm, args) {
+            Some(AsmPtr::FrameExternal) => true,
+            Some(AsmPtr::Forward(x)) => is_frame_rooted(context, x, visited),
+            Some(AsmPtr::LoadFrom(p)) => is_frame_rooted(context, p, visited),
+            None => false,
+        },
+        InstOp::BinaryOp {
+            arg1,
+            arg2,
+            op: crate::BinaryOpKind::Add | crate::BinaryOpKind::Sub,
+        } => is_frame_rooted(context, *arg1, visited) || is_frame_rooted(context, *arg2, visited),
+        InstOp::CastPtr(x, _) => is_frame_rooted(context, *x, visited),
+        // A pointer loaded from frame memory points within the frame (e.g. a slice's data
+        // pointer that points into the input buffer).
+        InstOp::Load(p) => is_frame_rooted(context, *p, visited),
+        _ => false,
+    }
+}
+
+fn classify_asm_ptr(asm: &AsmBlock, asm_args: &[AsmArg]) -> Option<AsmPtr> {
+    let ret = asm.return_name.as_ref()?;
+    // Frame pointer: no inputs, empty body, returns the `fp` reserved register.
+    if asm.args_names.is_empty() && asm.body.is_empty() && ret.as_str() == "fp" {
+        return Some(AsmPtr::FrameExternal);
+    }
+    let arg_value = |name: &str| -> Option<Value> {
+        asm_args
+            .iter()
+            .find(|a| a.name.as_str() == name)
+            .and_then(|a| a.initializer)
+    };
+    // Identity reinterpret: empty body, return register is one of the inputs.
+    if asm.body.is_empty() {
+        if let Some(v) = arg_value(ret.as_str()) {
+            return Some(AsmPtr::Forward(v));
+        }
+    }
+    // Single load of a word at offset 0: `lw RET PTR i0`, where RET is the return register.
+    if asm.body.len() == 1 {
+        let ins = &asm.body[0];
+        if ins.op_name.as_str() == "lw"
+            && ins.args.len() == 3
+            && ins.args[0].as_str() == ret.as_str()
+            && ins.immediate.as_ref().map(|i| i.as_str()) == Some("i0")
+        {
+            if let Some(v) = arg_value(ins.args[1].as_str()) {
+                return Some(AsmPtr::LoadFrom(v));
+            }
+        }
+    }
+    None
+}
 
 pub const ESCAPED_SYMBOLS_NAME: &str = "escaped-symbols";
 
@@ -319,6 +400,79 @@ fn get_symbols(context: &Context, val: Value, gep_only: bool) -> ReferredSymbols
                 gep_only,
                 is_complete,
             ),
+            // Pointer/offset arithmetic: the referred symbols are those of the operands,
+            // mirroring how GEP is traced to its base. Integer offsets bottom out at
+            // constants (no symbol); a pointer operand is traced; anything opaque (a load,
+            // call, unrecognized asm) recurses to its own handler and conservatively marks
+            // the result incomplete. Covers all binary/unary ops so address computations
+            // (add/sub/mul/and/shifts for indexing and alignment) don't force a bail.
+            ValueDatum::Instruction(Instruction {
+                op: InstOp::BinaryOp { arg1, arg2, .. },
+                ..
+            }) if !gep_only => {
+                get_symbols_rec(context, symbols, visited, arg1, gep_only, is_complete);
+                get_symbols_rec(context, symbols, visited, arg2, gep_only, is_complete);
+            }
+            ValueDatum::Instruction(Instruction {
+                op: InstOp::UnaryOp { arg, .. },
+                ..
+            }) if !gep_only => {
+                get_symbols_rec(context, symbols, visited, arg, gep_only, is_complete);
+            }
+            // An integer address obtained from a pointer: trace the pointer.
+            ValueDatum::Instruction(Instruction {
+                op: InstOp::PtrToInt(ptr_value, _),
+                ..
+            }) if !gep_only => {
+                get_symbols_rec(context, symbols, visited, ptr_value, gep_only, is_complete)
+            }
+            // Recognize the codec's input-reading `asm` idioms (frame-pointer reads,
+            // identity reinterprets, calldata word loads). Their results are rooted at the
+            // frame pointer and so cannot alias this function's stack locals.
+            ValueDatum::Instruction(Instruction {
+                op: InstOp::AsmBlock(ref asm, ref asm_args),
+                ..
+            }) if !gep_only => match classify_asm_ptr(asm, asm_args) {
+                // Frame pointer: external (non-stack); contributes no symbol, stays complete.
+                Some(AsmPtr::FrameExternal) => (),
+                // Identity: the result is the input pointer; follow it.
+                Some(AsmPtr::Forward(v)) => {
+                    get_symbols_rec(context, symbols, visited, v, gep_only, is_complete)
+                }
+                // A word loaded from `p`. If `p` is frame-rooted (calldata/input), the loaded
+                // value is caller-provided content and cannot be a stack address, so it is
+                // external too. Loads from non-frame memory (e.g. heap) might yield a
+                // round-tripped stack address, so stay conservative there.
+                Some(AsmPtr::LoadFrom(p)) => {
+                    let mut v = FxHashSet::default();
+                    if !is_frame_rooted(context, p, &mut v) {
+                        *is_complete = false;
+                    }
+                }
+                None => *is_complete = false,
+            },
+            // A freshly heap-allocated pointer refers to no stack local/arg. (DCE's
+            // dead-store removal explicitly requires a non-empty symbol set, so marking
+            // heap pointers as an empty-but-complete set does not let heap stores be
+            // dropped.)
+            ValueDatum::Instruction(Instruction {
+                op: InstOp::Alloc { .. },
+                ..
+            }) if !gep_only => (),
+            // A pointer returned from a call can only be derived from the call's pointer
+            // arguments, or from heap/globals (which carry no stack symbol) — never from a
+            // fresh local of the callee (that would dangle). So its referred symbols are a
+            // subset of the arguments' symbols; over-approximate with their union. This is
+            // sound and needs no interprocedural summary. Note this correctly keeps a
+            // pointer returned into an *immutable* arg associated with that arg's symbols.
+            ValueDatum::Instruction(Instruction {
+                op: InstOp::Call(_, ref args),
+                ..
+            }) if !gep_only => {
+                for arg in args {
+                    get_symbols_rec(context, symbols, visited, *arg, gep_only, is_complete);
+                }
+            }
             ValueDatum::Argument(arg) => {
                 get_argument_symbols(context, symbols, visited, arg, gep_only, is_complete)
             }
