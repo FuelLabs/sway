@@ -1,0 +1,3 @@
+library;
+
+pub fn quix() {}
