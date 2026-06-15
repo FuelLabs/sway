@@ -1536,10 +1536,13 @@ mod ir_builder {
                         .append(context)
                         .get_global(*self.globals_map.get(&global_name).unwrap())
                         .add_metadatum(context, opt_metadata),
-                    IrAstOperation::GetConfig(name) => block
-                        .append(context)
-                        .get_config(self.module, name)
-                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::GetConfig(name) => {
+                        let config = self.module.get_config(context, &name).unwrap();
+                        block
+                            .append(context)
+                            .get_config(config)
+                            .add_metadatum(context, opt_metadata)
+                    }
                     IrAstOperation::GetStorageKey(path) => block
                         .append(context)
                         .get_storage_key(*self.storage_keys_map.get(&path).unwrap())
@@ -1743,14 +1746,10 @@ mod ir_builder {
                     .find(|x| x.get_name(context) == fn_name)
                     .unwrap();
 
-                if let Some(ConfigContent::V1 { decode_fn, .. }) = context
-                    .modules
-                    .get_mut(self.module.0)
-                    .unwrap()
-                    .configs
-                    .get_mut(&configurable_name)
-                {
-                    decode_fn.replace(f);
+                if let Some(config) = self.module.get_config(context, &configurable_name) {
+                    if let ConfigContent::V1 { decode_fn, .. } = config.get_content(context) {
+                        decode_fn.replace(f);
+                    }
                 }
             }
 

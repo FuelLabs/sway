@@ -4475,10 +4475,14 @@ impl<'a> FnCompiler<'a> {
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
         let name = decl.call_path.suffix.as_str();
+        let config = self
+            .module
+            .get_config(context, name)
+            .expect("the configurable declaration must have a corresponding config in the module");
         let val = self
             .current_block
             .append(context)
-            .get_config(self.module, name.to_string())
+            .get_config(config)
             .add_metadatum(context, span_md_idx);
         Ok(TerminatorValue::new(CompiledValue::InMemory(val), context))
     }
@@ -4518,17 +4522,12 @@ impl<'a> FnCompiler<'a> {
                 .get_global(global_val)
                 .add_metadatum(context, span_md_idx);
             Ok(TerminatorValue::new(CompiledValue::InMemory(val), context))
-        } else if self
+        } else if let Some(config) = self
             .module
             .get_config(context, &call_path.suffix.to_string())
-            .is_some()
         {
-            let name = call_path.suffix.to_string();
-            let config_val = Value::new_instruction(
-                context,
-                self.current_block,
-                InstOp::GetConfig(self.module, name),
-            );
+            let config_val =
+                Value::new_instruction(context, self.current_block, InstOp::GetConfig(config));
             Ok(TerminatorValue::new(
                 CompiledValue::InMemory(config_val),
                 context,

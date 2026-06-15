@@ -19,7 +19,7 @@ use crate::{
     pretty::DebugWithContext,
     value::{Value, ValueDatum},
     variable::LocalVar,
-    AsmInstruction, ConstantContent, GlobalVar, Module, StorageKey,
+    AsmInstruction, Config, ConstantContent, GlobalVar, StorageKey,
 };
 
 #[derive(Debug, Clone, DebugWithContext)]
@@ -99,7 +99,7 @@ pub enum InstOp {
     /// Return a pointer to a global variable.
     GetGlobal(GlobalVar),
     /// Return a pointer to a configurable.
-    GetConfig(Module, String),
+    GetConfig(Config),
     /// Return a pointer to a storage key.
     GetStorageKey(StorageKey),
     /// Translate a pointer from a base to a nested element in an aggregate type.
@@ -554,10 +554,7 @@ impl InstOp {
             InstOp::GetElemPtr { elem_ptr_ty, .. } => Some(*elem_ptr_ty),
             InstOp::GetLocal(local_var) => Some(local_var.get_type(context)),
             InstOp::GetGlobal(global_var) => Some(global_var.get_type(context)),
-            InstOp::GetConfig(module, name) => Some(match module.get_config(context, name)? {
-                crate::ConfigContent::V0 { ptr_ty, .. } => *ptr_ty,
-                crate::ConfigContent::V1 { ptr_ty, .. } => *ptr_ty,
-            }),
+            InstOp::GetConfig(config) => Some(config.get_type(context)),
             InstOp::GetStorageKey(storage_key) => Some(storage_key.get_type(context)),
             InstOp::Alloc { ty: _, count: _ } => Some(Type::get_ptr(context)),
 
@@ -674,7 +671,7 @@ impl InstOp {
                 // `GetGlobal` returns an SSA `Value` but does not take any as an operand.
                 vec![]
             }
-            InstOp::GetConfig(_, _) => {
+            InstOp::GetConfig(_) => {
                 // `GetConfig` returns an SSA `Value` but does not take any as an operand.
                 vec![]
             }
@@ -919,7 +916,7 @@ impl InstOp {
                 // `GetGlobal` returns an SSA `Value` but does not take any as an operand.
                 panic!("Invalid index for GetGlobal");
             }
-            InstOp::GetConfig(_, _) => {
+            InstOp::GetConfig(_) => {
                 // `GetConfig` returns an SSA `Value` but does not take any as an operand.
                 panic!("Invalid index for GetConfig");
             }
@@ -1317,7 +1314,7 @@ impl InstOp {
             }
             InstOp::GetLocal(_) => (),
             InstOp::GetGlobal(_) => (),
-            InstOp::GetConfig(_, _) => (),
+            InstOp::GetConfig(_) => (),
             InstOp::GetStorageKey(_) => (),
             InstOp::GetElemPtr {
                 base,
@@ -1556,7 +1553,7 @@ impl InstOp {
             | InstOp::GetElemPtr { .. }
             | InstOp::GetLocal(_)
             | InstOp::GetGlobal(_)
-            | InstOp::GetConfig(_, _)
+            | InstOp::GetConfig(_)
             | InstOp::GetStorageKey(_)
             | InstOp::IntToPtr(..)
             | InstOp::Load(_)
@@ -1925,8 +1922,8 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
         insert_instruction!(self, InstOp::GetGlobal(global_var))
     }
 
-    pub fn get_config(self, module: Module, name: String) -> Value {
-        insert_instruction!(self, InstOp::GetConfig(module, name))
+    pub fn get_config(self, config: Config) -> Value {
+        insert_instruction!(self, InstOp::GetConfig(config))
     }
 
     pub fn alloc(self, ty: Type, count: Value) -> Value {
