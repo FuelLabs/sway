@@ -16,7 +16,7 @@ use crate::{
     value::{Value, ValueDatum},
     variable::LocalVar,
     AnalysisResult, AnalysisResultT, AnalysisResults, BinaryOpKind, Block, BlockArgument,
-    BranchToWithArgs, Doc, GlobalVar, InitAggr, LogEventData, Module, Pass, PassMutability,
+    BranchToWithArgs, Config, Doc, GlobalVar, InitAggr, LogEventData, Module, Pass, PassMutability,
     ScopedPass, StorageKey, TypeContent, TypeOption, UnaryOpKind,
 };
 
@@ -376,7 +376,7 @@ impl InstructionVerifier<'_, '_> {
                 } => self.verify_get_elem_ptr(&ins, base, elem_ptr_ty, indices)?,
                 InstOp::GetLocal(local_var) => self.verify_get_local(local_var)?,
                 InstOp::GetGlobal(global_var) => self.verify_get_global(global_var)?,
-                InstOp::GetConfig(_, name) => self.verify_get_config(self.cur_module, name)?,
+                InstOp::GetConfig(config) => self.verify_get_config(config)?,
                 InstOp::GetStorageKey(storage_key) => self.verify_get_storage_key(storage_key)?,
                 InstOp::IntToPtr(value, ty) => self.verify_int_to_ptr(value, ty)?,
                 InstOp::Load(ptr) => self.verify_load(ptr)?,
@@ -895,8 +895,12 @@ impl InstructionVerifier<'_, '_> {
         }
     }
 
-    fn verify_get_config(&self, module: Module, name: &str) -> Result<(), IrError> {
-        if !self.context.modules[module.0].configs.contains_key(name) {
+    fn verify_get_config(&self, config: &Config) -> Result<(), IrError> {
+        if !self.context.modules[self.cur_module.0]
+            .configs
+            .values()
+            .any(|c| c == config)
+        {
             Err(IrError::VerifyGetNonExistentConfigPointer)
         } else {
             Ok(())

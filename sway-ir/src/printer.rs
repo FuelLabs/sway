@@ -236,7 +236,7 @@ fn module_to_doc<'a>(
             module
                 .configs
                 .values()
-                .map(|value| config_to_doc(context, value, md_namer))
+                .map(|value| config_to_doc(context, value.get_content(context), md_namer))
                 .collect(),
         ),
     ))
@@ -1176,16 +1176,13 @@ fn instruction_to_doc<'a>(
                     .append(md_namer.md_idx_to_doc(context, metadata)),
                 )
             }
-            InstOp::GetConfig(_, name) => Doc::line(
-                match block.get_module(context).get_config(context, name).unwrap() {
-                    ConfigContent::V0 { name, ptr_ty, .. }
-                    | ConfigContent::V1 { name, ptr_ty, .. } => Doc::text(format!(
-                        "{} = get_config {}, {}",
-                        namer.name(context, ins_value),
-                        ptr_ty.as_string(context),
-                        name,
-                    )),
-                }
+            InstOp::GetConfig(config) => Doc::line(
+                Doc::text(format!(
+                    "{} = get_config {}, {}",
+                    namer.name(context, ins_value),
+                    config.get_type(context).as_string(context),
+                    config.get_name(context),
+                ))
                 .append(md_namer.md_idx_to_doc(context, metadata)),
             ),
             InstOp::GetStorageKey(storage_key) => {

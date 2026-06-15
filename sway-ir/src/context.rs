@@ -18,7 +18,8 @@ use crate::{
     module::{Kind, ModuleContent, ModuleIterator},
     value::ValueContent,
     variable::LocalVarContent,
-    Constant, ConstantContent, GlobalVarContent, StorageKeyContent, Type, TypeContent,
+    ConfigContent, Constant, ConstantContent, GlobalVarContent, StorageKeyContent, Type,
+    TypeContent,
 };
 
 // Copy of `sway_core::build_config::Backtrace`, which cannot
@@ -45,6 +46,7 @@ pub struct Context<'eng> {
     pub(crate) values: SlotMap<DefaultKey, ValueContent>,
     pub(crate) local_vars: SlotMap<DefaultKey, LocalVarContent>,
     pub(crate) global_vars: SlotMap<DefaultKey, GlobalVarContent>,
+    pub(crate) configs: SlotMap<DefaultKey, ConfigContent>,
     pub(crate) storage_keys: SlotMap<DefaultKey, StorageKeyContent>,
     pub(crate) types: SlotMap<DefaultKey, TypeContent>,
     pub(crate) type_map: FxHashMap<TypeContent, Type>,
@@ -78,6 +80,7 @@ impl<'eng> Context<'eng> {
             values: Default::default(),
             local_vars: Default::default(),
             global_vars: Default::default(),
+            configs: Default::default(),
             storage_keys: Default::default(),
             types: Default::default(),
             type_map: Default::default(),

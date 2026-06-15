@@ -195,7 +195,7 @@ fn analyse_fn(
                     | InstOp::BitCast(_, _)
                     | InstOp::GetLocal(_)
                     | InstOp::GetGlobal(_)
-                    | InstOp::GetConfig(_, _)
+                    | InstOp::GetConfig(_)
                     | InstOp::GetStorageKey(_)
                     | InstOp::IntToPtr(_, _)
                     | InstOp::Alloc { .. }

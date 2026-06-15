@@ -281,7 +281,7 @@ fn hash_fn(
                     .lookup_global_variable_name(context, global)
                     .unwrap()
                     .hash(state),
-                crate::InstOp::GetConfig(_, name) => name.hash(state),
+                crate::InstOp::GetConfig(config) => config.get_name(context).hash(state),
                 crate::InstOp::GetStorageKey(storage_key) => function
                     .get_module(context)
                     .lookup_storage_key_path(context, storage_key)
@@ -377,7 +377,7 @@ pub fn dedup_fns(
 
     // Replace config decode fns
     for config in module.iter_configs(context) {
-        if let crate::ConfigContent::V1 { decode_fn, .. } = config {
+        if let crate::ConfigContent::V1 { decode_fn, .. } = config.get_content(context) {
             let f = decode_fn.get();
 
             let Some(callee_hash) = eq_class.function_hash_map.get(&f) else {

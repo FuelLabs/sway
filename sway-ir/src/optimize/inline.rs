@@ -655,7 +655,7 @@ fn inline_instruction(
             InstOp::GetStorageKey(storage_key) => {
                 new_block.append(context).get_storage_key(storage_key)
             }
-            InstOp::GetConfig(module, name) => new_block.append(context).get_config(module, name),
+            InstOp::GetConfig(config) => new_block.append(context).get_config(config),
             InstOp::Alloc { ty, count } => new_block.append(context).alloc(ty, map_value(count)),
             InstOp::IntToPtr(value, ty) => {
                 new_block.append(context).int_to_ptr(map_value(value), ty)

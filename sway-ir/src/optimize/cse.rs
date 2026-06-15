@@ -12,8 +12,8 @@ use std::{
 };
 
 use crate::{
-    AnalysisResults, BinaryOpKind, Context, DebugWithContext, DomTree, Function, GlobalVar, InstOp,
-    IrError, LocalVar, Module, Pass, PassMutability, PostOrder, Predicate, ScopedPass, StorageKey,
+    AnalysisResults, BinaryOpKind, Config, Context, DebugWithContext, DomTree, Function, GlobalVar,
+    InstOp, IrError, LocalVar, Pass, PassMutability, PostOrder, Predicate, ScopedPass, StorageKey,
     Type, UnaryOpKind, Value, DOMINATORS_NAME, POSTORDER_NAME,
 };
 
@@ -66,7 +66,7 @@ enum Expr {
     // and the same is with `get_global`, `get_config` and `get_storage_key`.
     GetLocal(LocalVar),
     GetGlobal(GlobalVar),
-    GetConfig(Module, String),
+    GetConfig(Config),
     GetStorageKey(StorageKey),
     GetElemPtr {
         base: ValueNumber,
@@ -111,7 +111,7 @@ fn instr_to_expr(context: &Context, vntable: &VNTable, instr: Value) -> Option<E
         InstOp::FuelVm(_) => None,
         InstOp::GetLocal(local) => Some(Expr::GetLocal(*local)),
         InstOp::GetGlobal(global) => Some(Expr::GetGlobal(*global)),
-        InstOp::GetConfig(module, config) => Some(Expr::GetConfig(*module, config.clone())),
+        InstOp::GetConfig(config) => Some(Expr::GetConfig(*config)),
         InstOp::GetStorageKey(storage_key) => Some(Expr::GetStorageKey(*storage_key)),
         InstOp::GetElemPtr {
             base,
