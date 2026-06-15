@@ -12,7 +12,9 @@ use std::{
 };
 
 use crate::{
-    AnalysisResults, BinaryOpKind, Context, DOMINATORS_NAME, DebugWithContext, DomTree, Function, GlobalVar, InstOp, IrError, LocalVar, Module, POSTORDER_NAME, Pass, PassMutability, PostOrder, Predicate, ScopedPass, StorageKey, Type, UnaryOpKind, Value
+    AnalysisResults, BinaryOpKind, Context, DebugWithContext, DomTree, Function, GlobalVar, InstOp,
+    IrError, LocalVar, Module, Pass, PassMutability, PostOrder, Predicate, ScopedPass, StorageKey,
+    Type, UnaryOpKind, Value, DOMINATORS_NAME, POSTORDER_NAME,
 };
 
 pub const CSE_NAME: &str = "cse";
