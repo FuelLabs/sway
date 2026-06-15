@@ -15,7 +15,6 @@ library {
 script {
     pub entry fn __entry() -> __ptr never, !3 {
         local bool IS_TRIVIAL
-        local never __ret_value
         local { ptr } __struct_init_0
         local { u64 } __struct_init_00
         local { u64 } __tmp_arg
@@ -46,7 +45,6 @@ script {
         local u64 v
 
         entry():
-        v872v1 = get_local __ptr never, __ret_value
         v148v1 = const u64 0, !5
         v716v1 = gtf v148v1, 10, !11
         v717v1 = bitcast v716v1 to ptr, !12
@@ -159,65 +157,64 @@ script {
         v805v1 = get_elem_ptr v804v1, __ptr ptr, v113v1, !139
         store v802v1 to v805v1, !140
         v807v1 = get_local __ptr u64, v, !142
-        v808v1 = load v807v1, !143
         v216v1 = const u64 0
-        v812v1 = get_elem_ptr v777v1, __ptr u64, v216v1, !144
-        store v808v1 to v812v1, !145
+        v812v1 = get_elem_ptr v777v1, __ptr u64, v216v1, !143
+        mem_copy_val v812v1, v807v1
         v845v1 = get_local __ptr { u64 }, __tmp_block_arg
         mem_copy_val v845v1, v777v1
         v213v1 = const u64 0
-        v816v1 = get_elem_ptr v772v1, __ptr { u64 }, v213v1, !146
+        v816v1 = get_elem_ptr v772v1, __ptr { u64 }, v213v1, !144
         mem_copy_val v816v1, v845v1
         v849v1 = get_local __ptr { { u64 } }, __tmp_block_arg0
         mem_copy_val v849v1, v772v1
         v855v1 = get_local __ptr { { u64 } }, __tmp_block_arg1
         mem_copy_val v855v1, v849v1
-        br decode_script_data_0_decode_from_raw_ptr_1_block2(v855v1), !147
+        br decode_script_data_0_decode_from_raw_ptr_1_block2(v855v1), !145
 
         decode_script_data_0_decode_from_raw_ptr_1_block2(v851v1: __ptr { { u64 } }):
         v859v1 = get_local __ptr { { u64 } }, __tmp_block_arg2
         mem_copy_val v859v1, v851v1
         v863v1 = get_local __ptr { { u64 } }, __tmp_block_arg3
         mem_copy_val v863v1, v859v1
-        v156v1 = get_local __ptr { { u64 } }, args, !148
+        v156v1 = get_local __ptr { { u64 } }, args, !146
         mem_copy_val v156v1, v863v1
-        v180v1 = get_local __ptr { { u64 } }, args, !149
+        v180v1 = get_local __ptr { { u64 } }, args, !147
         v181v1 = const u64 0
-        v182v1 = get_elem_ptr v180v1, __ptr { u64 }, v181v1, !150
+        v182v1 = get_elem_ptr v180v1, __ptr { u64 }, v181v1, !148
         v869v1 = get_local __ptr { u64 }, __tmp_arg
         mem_copy_val v869v1, v182v1
         v871v1 = call main_15(v869v1)
-        v185v1 = get_local __ptr u64, _result, !151
-        store v871v1 to v185v1, !151
-        v204v1 = get_local __ptr u64, _result, !152
-        v205v3 = get_local __ptr __ptr u64, item_, !155
-        store v204v1 to v205v3, !155
-        v834v1 = get_local __ptr bool, IS_TRIVIAL, !157
-        v190v1 = const bool true, !158
-        store v190v1 to v834v1, !159
-        v836v1 = get_local __ptr u64, size, !161
+        v185v1 = get_local __ptr u64, _result, !149
+        store v871v1 to v185v1, !149
+        v204v1 = get_local __ptr u64, _result, !150
+        v205v3 = get_local __ptr __ptr u64, item_, !153
+        store v204v1 to v205v3, !153
+        v834v1 = get_local __ptr bool, IS_TRIVIAL, !155
+        v190v1 = const bool true, !156
+        store v190v1 to v834v1, !157
+        v836v1 = get_local __ptr u64, size, !159
         v195v1 = const u64 8
-        store v195v1 to v836v1, !162
-        v838v1 = get_local __ptr __ptr u64, item_, !164
-        v839v1 = load v838v1, !155
-        v840v1 = get_local __ptr u64, size, !166
-        v841v1 = load v840v1, !155
-        retd v839v1 v841v1, !168
+        store v195v1 to v836v1, !160
+        v838v1 = get_local __ptr __ptr u64, item_, !162
+        v839v1 = load v838v1, !153
+        v840v1 = get_local __ptr u64, size, !164
+        v841v1 = load v840v1, !153
+        retd v839v1 v841v1, !166
     }
 
-    entry_orig fn main_15(baba: __ptr { u64 }) -> u64, !172 {
+    entry_orig fn main_15(baba: __ptr { u64 }) -> u64, !170 {
         local u64 other_
 
         entry(baba: __ptr { u64 }):
         v174v1 = const u64 0
-        v175v1 = get_elem_ptr baba, __ptr u64, v174v1, !173
-        v690v1 = get_local __ptr u64, other_, !176
-        v177v1 = const u64 1, !177
-        store v177v1 to v690v1, !176
-        v693v1 = load v175v1, !176
-        v694v1 = get_local __ptr u64, other_, !179
-        v695v1 = load v694v1, !176
-        v696v1 = add v693v1, v695v1, !176
+        v175v1 = get_elem_ptr baba, __ptr u64, v174v1, !171
+        v690v1 = get_local __ptr u64, other_, !174
+        v177v1 = const u64 1, !175
+        store v177v1 to v690v1, !174
+        v693v1 = load v175v1, !174
+        v694v1 = get_local __ptr u64, other_, !177
+        v695v1 = load v694v1, !174
+        v696v1 = add v693v1, v695v1, !174
         ret u64 v696v1
     }
 }
@@ -365,42 +362,40 @@ script {
 !140 = (!6 !7 !13 !14 !88 !89 !96 !97 !103 !104 !108 !109 !113 !114 !136)
 !141 = span !4 2606 2607
 !142 = (!6 !7 !13 !14 !88 !89 !96 !97 !103 !104 !108 !109 !113 !114 !141)
-!143 = (!6 !7 !13 !14 !88 !89 !96 !97 !103 !104 !108 !109 !113 !114)
-!144 = (!6 !7 !13 !14 !88 !89 !96 !97 !99)
-!145 = (!6 !7 !13 !14 !88 !89 !96 !97 !99)
-!146 = (!6 !7 !13 !14 !88 !89 !92)
-!147 = (!6 !7 !13 !14)
-!148 = span !0 40 104
-!149 = span !0 145 149
-!150 = span !0 150 151
-!151 = span !0 121 153
-!152 = span !0 196 203
-!153 = span !0 170 204
-!154 = fn_call_path_span !0 170 187
-!155 = (!153 !154)
-!156 = span !4 56401 56450
-!157 = (!153 !154 !156)
-!158 = span !4 56426 56450
-!159 = (!153 !154 !156)
-!160 = span !4 56480 56508
-!161 = (!153 !154 !160)
-!162 = (!153 !154 !160)
-!163 = span !4 56532 56536
-!164 = (!153 !154 !163)
-!165 = span !4 56538 56542
-!166 = (!153 !154 !165)
-!167 = span !4 56517 56543
-!168 = (!153 !154 !167)
-!169 = "test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_ref/src/main.sw"
-!170 = span !169 46 99
-!171 = fn_name_span !169 49 53
-!172 = (!170 !171)
-!173 = span !169 33 41
-!174 = span !169 85 97
-!175 = fn_call_path_span !169 94 95
-!176 = (!174 !175)
-!177 = span !169 96 97
-!178 = span !27 1328 1333
-!179 = (!174 !175 !178)
+!143 = (!6 !7 !13 !14 !88 !89 !96 !97 !99)
+!144 = (!6 !7 !13 !14 !88 !89 !92)
+!145 = (!6 !7 !13 !14)
+!146 = span !0 40 104
+!147 = span !0 145 149
+!148 = span !0 150 151
+!149 = span !0 121 153
+!150 = span !0 196 203
+!151 = span !0 170 204
+!152 = fn_call_path_span !0 170 187
+!153 = (!151 !152)
+!154 = span !4 56401 56450
+!155 = (!151 !152 !154)
+!156 = span !4 56426 56450
+!157 = (!151 !152 !154)
+!158 = span !4 56480 56508
+!159 = (!151 !152 !158)
+!160 = (!151 !152 !158)
+!161 = span !4 56532 56536
+!162 = (!151 !152 !161)
+!163 = span !4 56538 56542
+!164 = (!151 !152 !163)
+!165 = span !4 56517 56543
+!166 = (!151 !152 !165)
+!167 = "test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_ref/src/main.sw"
+!168 = span !167 46 99
+!169 = fn_name_span !167 49 53
+!170 = (!168 !169)
+!171 = span !167 33 41
+!172 = span !167 85 97
+!173 = fn_call_path_span !167 94 95
+!174 = (!172 !173)
+!175 = span !167 96 97
+!176 = span !27 1328 1333
+!177 = (!172 !173 !176)
 
     Finished debug [unoptimized + fuel] target(s) [480 B] in ???

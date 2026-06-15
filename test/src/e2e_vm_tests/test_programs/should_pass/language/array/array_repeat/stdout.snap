@@ -272,6 +272,7 @@ script {
         v2093v1 = const u64 1
         v2094v1 = get_elem_ptr v1899v1, __ptr u64, v2093v1
         store v2081v1 to v2094v1
+<<<<<<< HEAD
         v283v1 = const u64 0
         v1901v1 = get_elem_ptr v1899v1, __ptr ptr, v283v1, !119
         v1902v1 = load v1901v1, !113
@@ -279,6 +280,13 @@ script {
         v1628v1 = asm(size: v263v1, src: v1902v1) -> __ptr [u8; 1] hp, !121 {
             aloc   size, !122
             mcp    hp src size, !123
+=======
+        v1902v1 = load v2091v1, !121
+        v263v1 = const u64 1
+        v1628v1 = asm(size: v263v1, src: v1902v1) -> __ptr [u8; 1] hp, !123 {
+            aloc   size, !124
+            mcp    hp src size, !125
+>>>>>>> b44aa383e (memcpyopt also considering memclear and memcpy_val and opt manager running multiple passes)
         }
         v2096v1 = const u64 0
         v2097v1 = get_elem_ptr v1628v1, __ptr u8, v2096v1
@@ -290,7 +298,11 @@ script {
         ret () v2028v1
     }
 
+<<<<<<< HEAD
     fn to_slice_20(array: __ptr [u8; 1], __ret_value: __ptr slice) -> (), !126 {
+=======
+    fn to_slice_20(array: __ptr [u8; 1], __ret_value: __ptr slice) -> (), !128 {
+>>>>>>> b44aa383e (memcpyopt also considering memclear and memcpy_val and opt manager running multiple passes)
         local mut slice __aggr_memcpy_0
         local [u8; 1] array_
         local { ptr, u64 } parts_
@@ -298,16 +310,29 @@ script {
         entry(array: __ptr [u8; 1], __ret_value: __ptr slice):
         v197v1 = get_local __ptr [u8; 1], array_
         mem_copy_val v197v1, array
+<<<<<<< HEAD
         v239v1 = cast_ptr v197v1 to ptr, !127
         v934v1 = get_local __ptr { ptr, u64 }, parts_, !132
+=======
+        v238v1 = get_local __ptr [u8; 1], array_, !129
+        v239v1 = cast_ptr v238v1 to ptr, !130
+        v934v1 = get_local __ptr { ptr, u64 }, parts_, !135
+>>>>>>> b44aa383e (memcpyopt also considering memclear and memcpy_val and opt manager running multiple passes)
         v2112v1 = const u64 0
         v2113v1 = get_elem_ptr v934v1, __ptr ptr, v2112v1
         store v239v1 to v2113v1
         v2115v1 = const u64 1
         v2116v1 = get_elem_ptr v934v1, __ptr u64, v2115v1
+<<<<<<< HEAD
         v927v1 = const u64 1, !135
         store v927v1 to v2116v1
         v2042v1 = asm(ptr: v934v1) -> __ptr slice ptr {
+=======
+        v927v1 = const u64 1, !138
+        store v927v1 to v2116v1
+        v936v1 = get_local __ptr { ptr, u64 }, parts_, !140
+        v2042v1 = asm(ptr: v936v1) -> __ptr slice ptr {
+>>>>>>> b44aa383e (memcpyopt also considering memclear and memcpy_val and opt manager running multiple passes)
         }
         v2071v1 = get_local __ptr slice, __aggr_memcpy_0
         mem_copy_val v2071v1, v2042v1
@@ -316,7 +341,11 @@ script {
         ret () v2035v1
     }
 
+<<<<<<< HEAD
     pub fn log_47(value !137: u8) -> (), !140 {
+=======
+    pub fn log_47(value !142: u8) -> (), !145 {
+>>>>>>> b44aa383e (memcpyopt also considering memclear and memcpy_val and opt manager running multiple passes)
         local { __ptr u8, u64 } __anon_0
         local slice __log_arg
         local u8 value_
@@ -324,6 +353,7 @@ script {
         entry(value: u8):
         v632v1 = get_local __ptr u8, value_
         store value to v632v1
+<<<<<<< HEAD
         v1821v1 = get_local __ptr { __ptr u8, u64 }, __anon_0, !143
         v889v1 = const u64 0
         v1824v1 = get_elem_ptr v1821v1, __ptr __ptr u8, v889v1, !144
@@ -334,6 +364,19 @@ script {
         store v642v1 to v1826v1, !147
         v1829v1 = get_local __ptr { __ptr u8, u64 }, __anon_0, !141
         v1831v1 = cast_ptr v1829v1 to __ptr slice, !141
+=======
+        v773v1 = get_local __ptr u8, value_, !146
+        v1821v1 = get_local __ptr { __ptr u8, u64 }, __anon_0, !148
+        v889v1 = const u64 0
+        v1824v1 = get_elem_ptr v1821v1, __ptr __ptr u8, v889v1, !149
+        store v773v1 to v1824v1, !150
+        v892v1 = const u64 1
+        v1826v1 = get_elem_ptr v1821v1, __ptr u64, v892v1, !151
+        v642v1 = const u64 1
+        store v642v1 to v1826v1, !152
+        v1829v1 = get_local __ptr { __ptr u8, u64 }, __anon_0, !146
+        v1831v1 = cast_ptr v1829v1 to __ptr slice, !146
+>>>>>>> b44aa383e (memcpyopt also considering memclear and memcpy_val and opt manager running multiple passes)
         v2044v1 = get_local __ptr slice, __log_arg
         mem_copy_val v2044v1, v1831v1
         v775v1 = const u64 14454674236531057292
@@ -456,6 +499,7 @@ script {
 !110 = "test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert/src/codec.sw"
 !111 = span !110 57044 57054
 !112 = fn_call_path_span !110 57049 57052
+<<<<<<< HEAD
 !113 = (!108 !109 !111 !112)
 !114 = "test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert/src/raw_slice.sw"
 !115 = span !114 3721 3737
@@ -491,6 +535,48 @@ script {
 !145 = (!141 !142)
 !146 = (!141 !142)
 !147 = (!141 !142)
+=======
+!113 = "test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert/src/raw_slice.sw"
+!114 = span !113 3732 3736
+!115 = (!108 !109 !111 !112 !114)
+!116 = span !113 3721 3737
+!117 = fn_call_path_span !113 3721 3731
+!118 = (!108 !109 !111 !112 !116 !117)
+!119 = span !113 1685 1690
+!120 = (!108 !109 !111 !112 !116 !117 !119)
+!121 = (!108 !109 !111 !112)
+!122 = span !110 57023 57138
+!123 = (!108 !109 !122)
+!124 = span !110 57070 57079
+!125 = span !110 57093 57108
+!126 = span !10 3192 3320
+!127 = fn_name_span !10 3195 3203
+!128 = (!126 !127 !48)
+!129 = span !10 3306 3311
+!130 = span !10 3296 3312
+!131 = span !10 3268 3318
+!132 = fn_call_path_span !10 3268 3289
+!133 = span !113 2403 2446
+!134 = fn_call_path_span !113 2403 2413
+!135 = (!131 !132 !133 !134)
+!136 = span !113 2420 2444
+!137 = fn_call_path_span !113 2426 2427
+!138 = (!131 !132 !136 !137)
+!139 = span !113 1309 1314
+!140 = (!131 !132 !133 !134 !139)
+!141 = "test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert/src/logging.sw"
+!142 = span !141 591 596
+!143 = span !141 577 651
+!144 = fn_name_span !141 584 587
+!145 = (!143 !144)
+!146 = span !141 642 647
+!147 = span !110 56206 56218
+!148 = (!146 !147)
+!149 = (!146 !147)
+!150 = (!146 !147)
+!151 = (!146 !147)
+!152 = (!146 !147)
+>>>>>>> b44aa383e (memcpyopt also considering memclear and memcpy_val and opt manager running multiple passes)
 
 ;; ASM: Final program
 ;; Program kind: Script
@@ -1088,15 +1174,26 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert)
    Compiling script array_repeat (test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat)
+<<<<<<< HEAD
     Finished release [optimized + fuel] target(s) [2.056 KB] in ???
     script array_repeat
       Bytecode size: 2056 bytes (2.056 KB)
       Bytecode hash: 0x295e83963e956e7e7283b4438e3d0dbf87e3ef27d5c8b9e9a728c152f66e41f5
+=======
+    Finished release [optimized + fuel] target(s) [2.04 KB] in ???
+    script array_repeat
+      Bytecode size: 2040 bytes (2.04 KB)
+      Bytecode hash: 0x4f9edafab44fe06af95d8e015a91850559d840696e05d6ae80913d7873a73d54
+>>>>>>> b44aa383e (memcpyopt also considering memclear and memcpy_val and opt manager running multiple passes)
      Running 1 test, filtered 0 tests
 
 tested -- array_repeat
 
+<<<<<<< HEAD
       test test_array_repeat_zero ... ok (???, 2625625 gas)
+=======
+      test test_array_repeat_zero ... ok (???, 2887161 gas)
+>>>>>>> b44aa383e (memcpyopt also considering memclear and memcpy_val and opt manager running multiple passes)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 

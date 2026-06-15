@@ -80,8 +80,17 @@ fn local_copy_prop_prememcpy(
                     instr_info_map.insert(inst, info());
                 }
             }
+            // Instructions that "write" to symbols
             Instruction {
                 op: InstOp::Store { dst_val_ptr, .. },
+                ..
+            }
+            | Instruction {
+                op: InstOp::MemCopyVal { dst_val_ptr, .. },
+                ..
+            }
+            | Instruction {
+                op: InstOp::MemClearVal { dst_val_ptr },
                 ..
             } => {
                 if let Some(local) = get_referred_symbol(context, *dst_val_ptr) {
@@ -151,6 +160,7 @@ fn local_copy_prop_prememcpy(
                     let dst_local_stores = stores_map.get(&dst_local).unwrap_or(&temp_empty1);
                     let src_local_stores = stores_map.get(&src_local).unwrap_or(&temp_empty2);
                     let dst_local_loads = loads_map.get(&dst_local).unwrap_or(&temp_empty3);
+
                     // This must be the only store of dst_local.
                     if dst_local_stores.len() != 1 || dst_local_stores[0] != instr_val
                         ||
@@ -257,6 +267,7 @@ fn local_copy_prop_prememcpy(
     for block in blocks {
         block.remove_instructions(context, |value| to_delete.contains(&value));
     }
+
     Ok(true)
 }
 

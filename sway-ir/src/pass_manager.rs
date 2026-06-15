@@ -411,17 +411,23 @@ impl PassManager {
         }
 
         let mut modified = false;
-        for pass in passes.flatten_pass_group() {
-            let modified_in_pass = self.actually_run(ir, pass)?;
 
-            if print_opts.passes.contains(pass) && (!print_opts.modified_only || modified_in_pass) {
-                print_ir_after_pass(ir, self.lookup_registered_pass(pass).unwrap());
-            }
+        for _ in 0..2 {
+            for pass in passes.flatten_pass_group() {
+                let modified_in_pass = self.actually_run(ir, pass)?;
 
-            modified |= modified_in_pass;
-            if verify_opts.passes.contains(pass) && (!verify_opts.modified_only || modified_in_pass)
-            {
-                ir.verify()?;
+                if print_opts.passes.contains(pass)
+                    && (!print_opts.modified_only || modified_in_pass)
+                {
+                    print_ir_after_pass(ir, self.lookup_registered_pass(pass).unwrap());
+                }
+
+                modified |= modified_in_pass;
+                if verify_opts.passes.contains(pass)
+                    && (!verify_opts.modified_only || modified_in_pass)
+                {
+                    ir.verify()?;
+                }
             }
         }
 
