@@ -21,75 +21,73 @@ fn return_match_on_str_slice_8(param: __ptr slice) -> u64 {
     local slice __matched_value_1
 
     entry(param: __ptr slice):
-    v329v1 = get_local __ptr slice, __matched_value_1
-    mem_copy_val v329v1, param
-    v331v1 = get_global __ptr string<5>, __const_global
-    v332v1 = cast_ptr v331v1 to ptr
-    v333v1 = get_local __ptr { ptr, u64 }, __anon_0
-    v334v1 = const u64 0
-    v335v1 = get_elem_ptr v333v1, __ptr ptr, v334v1
-    store v332v1 to v335v1
-    v337v1 = const u64 1
-    v338v1 = get_elem_ptr v333v1, __ptr u64, v337v1
-    v339v1 = const u64 5
-    store v339v1 to v338v1
-    v341v1 = get_local __ptr slice, __anon_1
-    mem_copy_bytes v341v1, v333v1, 16
-    v343v1 = get_local __ptr slice, __anon_1
-    v344v1 = call eq_9(param, v343v1)
-    v345v1 = const u64 1
-    cbr v344v1, block8(v345v1), block1()
+    v324v1 = get_local __ptr slice, __matched_value_1
+    mem_copy_val v324v1, param
+    v326v1 = get_global __ptr string<5>, __const_global
+    v327v1 = cast_ptr v326v1 to ptr
+    v328v1 = get_local __ptr { ptr, u64 }, __anon_0
+    v329v1 = const u64 0
+    v330v1 = get_elem_ptr v328v1, __ptr ptr, v329v1
+    store v327v1 to v330v1
+    v332v1 = const u64 1
+    v333v1 = get_elem_ptr v328v1, __ptr u64, v332v1
+    v334v1 = const u64 5
+    store v334v1 to v333v1
+    v336v1 = get_local __ptr slice, __anon_1
+    mem_copy_bytes v336v1, v328v1, 16
+    v338v1 = get_local __ptr slice, __anon_1
+    v339v1 = call eq_9(param, v338v1)
+    v340v1 = const u64 1
+    cbr v339v1, block8(v340v1), block1()
 
     block1():
-    v347v1 = get_local __ptr slice, __matched_value_1
-    v348v1 = get_global __ptr string<7>, __const_global0
-    v349v1 = cast_ptr v348v1 to ptr
-    v350v1 = get_local __ptr { ptr, u64 }, __anon_2
-    v351v1 = const u64 0
-    v352v1 = get_elem_ptr v350v1, __ptr ptr, v351v1
-    store v349v1 to v352v1
-    v354v1 = const u64 1
-    v355v1 = get_elem_ptr v350v1, __ptr u64, v354v1
-    v356v1 = const u64 7
-    store v356v1 to v355v1
-    v358v1 = get_local __ptr slice, __anon_3
-    mem_copy_bytes v358v1, v350v1, 16
-    v360v1 = get_local __ptr slice, __anon_3
-    v361v1 = call eq_9(v347v1, v360v1)
-    v362v1 = const u64 2
-    cbr v361v1, block7(v362v1), block3()
+    v342v1 = get_global __ptr string<7>, __const_global0
+    v343v1 = cast_ptr v342v1 to ptr
+    v344v1 = get_local __ptr { ptr, u64 }, __anon_2
+    v345v1 = const u64 0
+    v346v1 = get_elem_ptr v344v1, __ptr ptr, v345v1
+    store v343v1 to v346v1
+    v348v1 = const u64 1
+    v349v1 = get_elem_ptr v344v1, __ptr u64, v348v1
+    v350v1 = const u64 7
+    store v350v1 to v349v1
+    v352v1 = get_local __ptr slice, __anon_3
+    mem_copy_bytes v352v1, v344v1, 16
+    v354v1 = get_local __ptr slice, __anon_3
+    v355v1 = call eq_9(v324v1, v354v1)
+    v356v1 = const u64 2
+    cbr v355v1, block7(v356v1), block3()
 
     block3():
-    v364v1 = get_local __ptr slice, __matched_value_1
-    v365v1 = get_global __ptr string<5>, __const_global1
-    v366v1 = cast_ptr v365v1 to ptr
-    v367v1 = get_local __ptr { ptr, u64 }, __anon_4
-    v368v1 = const u64 0
-    v369v1 = get_elem_ptr v367v1, __ptr ptr, v368v1
-    store v366v1 to v369v1
-    v371v1 = const u64 1
-    v372v1 = get_elem_ptr v367v1, __ptr u64, v371v1
-    v373v1 = const u64 5
-    store v373v1 to v372v1
-    v375v1 = get_local __ptr slice, __anon_5
-    mem_copy_bytes v375v1, v367v1, 16
-    v377v1 = get_local __ptr slice, __anon_5
-    v378v1 = call eq_9(v364v1, v377v1)
-    v379v1 = const u64 3
-    cbr v378v1, block6(v379v1), block5()
+    v358v1 = get_global __ptr string<5>, __const_global1
+    v359v1 = cast_ptr v358v1 to ptr
+    v360v1 = get_local __ptr { ptr, u64 }, __anon_4
+    v361v1 = const u64 0
+    v362v1 = get_elem_ptr v360v1, __ptr ptr, v361v1
+    store v359v1 to v362v1
+    v364v1 = const u64 1
+    v365v1 = get_elem_ptr v360v1, __ptr u64, v364v1
+    v366v1 = const u64 5
+    store v366v1 to v365v1
+    v368v1 = get_local __ptr slice, __anon_5
+    mem_copy_bytes v368v1, v360v1, 16
+    v370v1 = get_local __ptr slice, __anon_5
+    v371v1 = call eq_9(v324v1, v370v1)
+    v372v1 = const u64 3
+    cbr v371v1, block6(v372v1), block5()
 
     block5():
-    v381v1 = const u64 1000
-    br block6(v381v1)
+    v374v1 = const u64 1000
+    br block6(v374v1)
 
-    block6(v326v1: u64):
-    br block7(v326v1)
+    block6(v321v1: u64):
+    br block7(v321v1)
 
-    block7(v327v1: u64):
-    br block8(v327v1)
+    block7(v322v1: u64):
+    br block8(v322v1)
 
-    block8(v328v1: u64):
-    ret u64 v328v1
+    block8(v323v1: u64):
+    ret u64 v323v1
 }
 
 
@@ -104,43 +102,41 @@ move $r0 $$arg0               ; [fn init: return_match_on_str_slice_8]: copy arg
 move $r1 $$reta               ; [fn init: return_match_on_str_slice_8]: save return address
 addi $r2 $$locbase i96        ; get offset to local __ptr slice
 mcpi $r2 $$arg0 i16           ; copy memory
-addr $r2 data_NonConfigurable_7; get __const_global's address in data section
-sw   $$locbase $r2 i0         ; store word
-movi $r2 i5                   ; initialize constant into register
-sw   $$locbase $r2 i1         ; store word
-addi $r2 $$locbase i16        ; get offset to local __ptr slice
-mcpi $r2 $$locbase i16        ; copy memory
-addi $r2 $$locbase i16        ; get offset to local __ptr slice
+addr $r3 data_NonConfigurable_7; get __const_global's address in data section
+sw   $$locbase $r3 i0         ; store word
+movi $r3 i5                   ; initialize constant into register
+sw   $$locbase $r3 i1         ; store word
+addi $r3 $$locbase i16        ; get offset to local __ptr slice
+mcpi $r3 $$locbase i16        ; copy memory
+addi $r3 $$locbase i16        ; get offset to local __ptr slice
 move $$arg0 $r0               ; [call: eq_9]: pass argument 0
-move $$arg1 $r2               ; [call: eq_9]: pass argument 1
-jal  $$reta $pc i39           ; [call: eq_9]: call function
+move $$arg1 $r3               ; [call: eq_9]: pass argument 1
+jal  $$reta $pc i37           ; [call: eq_9]: call function
 movi $r0 i1                   ; move parameter from branch to block argument
-jnzf $$retv $zero i31
-addi $r0 $$locbase i96        ; get offset to local __ptr slice
-addr $r2 data_NonConfigurable_9; get __const_global0's address in data section
+jnzf $$retv $zero i29
+addr $r0 data_NonConfigurable_9; get __const_global0's address in data section
 addi $r3 $$locbase i32        ; get offset to local __ptr { ptr, u64 }
-sw   $$locbase $r2 i4         ; store word
-movi $r2 i7                   ; initialize constant into register
-sw   $$locbase $r2 i5         ; store word
-addi $r2 $$locbase i48        ; get offset to local __ptr slice
-mcpi $r2 $r3 i16              ; copy memory
-addi $r2 $$locbase i48        ; get offset to local __ptr slice
-move $$arg0 $r0               ; [call: eq_9]: pass argument 0
-move $$arg1 $r2               ; [call: eq_9]: pass argument 1
-jal  $$reta $pc i24           ; [call: eq_9]: call function
+sw   $$locbase $r0 i4         ; store word
+movi $r0 i7                   ; initialize constant into register
+sw   $$locbase $r0 i5         ; store word
+addi $r0 $$locbase i48        ; get offset to local __ptr slice
+mcpi $r0 $r3 i16              ; copy memory
+addi $r0 $$locbase i48        ; get offset to local __ptr slice
+move $$arg0 $r2               ; [call: eq_9]: pass argument 0
+move $$arg1 $r0               ; [call: eq_9]: pass argument 1
+jal  $$reta $pc i23           ; [call: eq_9]: call function
 movi $r0 i2                   ; move parameter from branch to block argument
-jnzf $$retv $zero i16
-addi $r0 $$locbase i96        ; get offset to local __ptr slice
-addr $r2 data_NonConfigurable_10; get __const_global1's address in data section
+jnzf $$retv $zero i15
+addr $r0 data_NonConfigurable_10; get __const_global1's address in data section
 addi $r3 $$locbase i64        ; get offset to local __ptr { ptr, u64 }
-sw   $$locbase $r2 i8         ; store word
-movi $r2 i5                   ; initialize constant into register
-sw   $$locbase $r2 i9         ; store word
-addi $r2 $$locbase i80        ; get offset to local __ptr slice
-mcpi $r2 $r3 i16              ; copy memory
-addi $r2 $$locbase i80        ; get offset to local __ptr slice
-move $$arg0 $r0               ; [call: eq_9]: pass argument 0
-move $$arg1 $r2               ; [call: eq_9]: pass argument 1
+sw   $$locbase $r0 i8         ; store word
+movi $r0 i5                   ; initialize constant into register
+sw   $$locbase $r0 i9         ; store word
+addi $r0 $$locbase i80        ; get offset to local __ptr slice
+mcpi $r0 $r3 i16              ; copy memory
+addi $r0 $$locbase i80        ; get offset to local __ptr slice
+move $$arg0 $r2               ; [call: eq_9]: pass argument 0
+move $$arg1 $r0               ; [call: eq_9]: pass argument 1
 jal  $$reta $pc i9            ; [call: eq_9]: call function
 movi $r0 i3                   ; move parameter from branch to block argument
 jnzf $$retv $zero i1
