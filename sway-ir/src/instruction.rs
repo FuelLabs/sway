@@ -100,6 +100,7 @@ pub enum InstOp {
     GetGlobal(GlobalVar),
     /// Return a pointer to a configurable.
     GetConfig(Module, String),
+    /// Return a pointer to a storage key.
     GetStorageKey(StorageKey),
     /// Translate a pointer from a base to a nested element in an aggregate type.
     GetElemPtr {
