@@ -57,7 +57,6 @@ whoami.workspace = true
 [dev-dependencies]
 completest-pty.workspace = true
 rexpect.workspace = true
-expect-test.workspace = true
 
 [lints]
 workspace = true
