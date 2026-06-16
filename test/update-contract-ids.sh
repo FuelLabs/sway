@@ -17,7 +17,7 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 
-CHANGES=$(git status --porcelain | wc -l)
+CHANGES=$(git status --porcelain | wc -l | xargs)
 
 BOLD_RED='\033[1;31m'
 BOLD_GREEN="\033[1;32m"
