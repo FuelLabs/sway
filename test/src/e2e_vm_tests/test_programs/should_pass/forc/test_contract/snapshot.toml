@@ -1,0 +1,5 @@
+cmds = [
+    "forc test --logs --path {root}",
+    "forc test --raw-logs --path {root}",
+    "forc test --logs --raw-logs --path {root}",
+]
