@@ -573,7 +573,7 @@ async fn can_get_predicate_address() {
 
     // Setup predicate.
     let hex_predicate_address: &str =
-        "0x84e415afe6efb105d20afcc3977f7e2d2a29ba7ae14aee0517c74c1a92da39fe"; // AUTO-PREDICATE-ID auth_predicate test/src/sdk-harness --output-directory test/src/sdk-harness/out
+        "0x9b58a6d21eae9e75c6a1cbe9798ddcfda696454d1871b92506293363950d7259"; // AUTO-PREDICATE-ID auth_predicate test/src/sdk-harness --release --output-directory test/src/sdk-harness/out
     let predicate_address =
         Address::from_str(hex_predicate_address).expect("failed to create Address from string");
     let predicate_data = AuthPredicateEncoder::default()
@@ -696,7 +696,7 @@ async fn when_incorrect_predicate_address_passed() {
 async fn can_get_predicate_address_in_message() {
     // Setup predicate address.
     let hex_predicate_address: &str =
-        "0x84e415afe6efb105d20afcc3977f7e2d2a29ba7ae14aee0517c74c1a92da39fe"; // AUTO-PREDICATE-ID auth_predicate test/src/sdk-harness --output-directory test/src/sdk-harness/out
+        "0x9b58a6d21eae9e75c6a1cbe9798ddcfda696454d1871b92506293363950d7259"; // AUTO-PREDICATE-ID auth_predicate test/src/sdk-harness --release --output-directory test/src/sdk-harness/out
     let predicate_address =
         Address::from_str(hex_predicate_address).expect("failed to create Address from string");
 
