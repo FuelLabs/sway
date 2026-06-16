@@ -54,5 +54,8 @@ url.workspace = true
 walkdir.workspace = true
 whoami.workspace = true
 
+[dev-dependencies]
+completest-pty.workspace = true
+
 [lints]
 workspace = true
