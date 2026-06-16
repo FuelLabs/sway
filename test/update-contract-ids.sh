@@ -84,13 +84,12 @@ get_new_contract_id() {
     LINE=${PARTS[1]}
     DIR=$(dirname $FILE)
 
-    >&2 echo -e "${BOLD_WHITE}$DIR${NC}"
+    >&2 echo -e "${BOLD_WHITE}$FILE${NC}"
 
     SED_COMMAND="${LINE}"'!d'
     CONTRACT_ARGS=($($sed "$SED_COMMAND" $FILE))
     CONTRACT_ARGS=($(return_only_after_item "AUTO-CONTRACT-ID" "${CONTRACT_ARGS[@]}"))
     CONTRACT_ARGS=$(join_by " " ${CONTRACT_ARGS[@]})
-    >&2 echo -e "    $CONTRACT_ARGS"
 
     if [[ $CONTRACT_ARGS ]]; then
         PROJ=$(realpath "$FILE")
