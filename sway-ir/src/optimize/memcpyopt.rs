@@ -191,11 +191,11 @@ fn local_copy_prop_prememcpy(
                     let any_escape = escaped_symbols.contains(&dst_local)
                         || escaped_symbols.contains(&src_local);
 
-                    // Check 5. are both types different?
+                    // Check 5. We don't deal part copies, types must be the same.
                     let types_different =
                         dst_local.get_type(context) != src_local.get_type(context);
 
-                    // Check 6. is dst arg?
+                    // Check 6. We don't replace the destination when it's an arg.
                     let is_arg = matches!(dst_local, Symbol::Arg(_));
 
                     if more_than_one_write
