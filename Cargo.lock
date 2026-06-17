@@ -2458,7 +2458,6 @@ dependencies = [
  "fuel-abi-types",
  "fuel-asm",
  "hex",
- "rexpect",
  "serde",
  "serde_json",
  "sway-core",

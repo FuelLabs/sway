@@ -410,18 +410,27 @@ impl PassManager {
             ir.verify()?;
         }
 
-        let mut modified = false;
-        for pass in passes.flatten_pass_group() {
-            let modified_in_pass = self.actually_run(ir, pass)?;
+        let mut global_modified = false;
 
-            if print_opts.passes.contains(pass) && (!print_opts.modified_only || modified_in_pass) {
-                print_ir_after_pass(ir, self.lookup_registered_pass(pass).unwrap());
+        for _ in 0..2 {
+            let mut iter_modified = false;
+
+            for pass in passes.flatten_pass_group() {
+                let modified = self.actually_run(ir, pass)?;
+                iter_modified |= modified;
+
+                if print_opts.passes.contains(pass) && (!print_opts.modified_only || modified) {
+                    print_ir_after_pass(ir, self.lookup_registered_pass(pass).unwrap());
+                }
+
+                if verify_opts.passes.contains(pass) && (!verify_opts.modified_only || modified) {
+                    ir.verify()?;
+                }
             }
 
-            modified |= modified_in_pass;
-            if verify_opts.passes.contains(pass) && (!verify_opts.modified_only || modified_in_pass)
-            {
-                ir.verify()?;
+            global_modified |= iter_modified;
+            if !iter_modified {
+                break;
             }
         }
 
@@ -433,7 +442,7 @@ impl PassManager {
             ir.verify()?;
         }
 
-        Ok(modified)
+        Ok(global_modified)
     }
 
     /// Get reference to a registered pass.
