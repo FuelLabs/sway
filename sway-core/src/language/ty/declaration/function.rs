@@ -232,8 +232,7 @@ fn rename_const_generics_on_function(
     engines: &Engines,
     impl_self_or_trait: &TyImplSelfOrTrait,
     function: &mut TyFunctionDecl,
-) -> HasChanges
-{
+) -> HasChanges {
     let from = impl_self_or_trait.implementing_for.initial_type_id;
     let to = impl_self_or_trait.implementing_for.type_id;
 
@@ -283,8 +282,7 @@ fn rename_const_generics_on_function_inner(
     function: &mut TyFunctionDecl,
     type_arguments: &[GenericArgument],
     generic_parameters: &[TypeParameter],
-) -> HasChanges
-{
+) -> HasChanges {
     let mut has_changes = HasChanges::No;
     for a in type_arguments.iter().zip(generic_parameters.iter()) {
         match (a.0, a.1) {
@@ -301,12 +299,13 @@ fn rename_const_generics_on_function_inner(
                         .clone(),
                     b.name.clone(),
                 );
-                has_changes = has_changes | function.subst_inner(&SubstTypesContext {
-                    handler,
-                    engines,
-                    type_subst_map: Some(&type_subst_map),
-                    subst_function_body: true,
-                });
+                has_changes = has_changes
+                    | function.subst_inner(&SubstTypesContext {
+                        handler,
+                        engines,
+                        type_subst_map: Some(&type_subst_map),
+                        subst_function_body: true,
+                    });
             }
             (GenericArgument::Const(a), TypeParameter::Const(b)) => {
                 engines
@@ -350,12 +349,13 @@ impl DeclRefFunction {
             let mut has_changes = HasChanges::No;
             if let Some(TyDecl::ImplSelfOrTrait(t)) = &method.implementing_type {
                 let impl_self_or_trait = &*engines.de().get(&t.decl_id);
-                has_changes = has_changes | rename_const_generics_on_function(
-                    handler,
-                    engines,
-                    impl_self_or_trait,
-                    &mut method,
-                );
+                has_changes = has_changes
+                    | rename_const_generics_on_function(
+                        handler,
+                        engines,
+                        impl_self_or_trait,
+                        &mut method,
+                    );
 
                 let mut type_id_type_parameters = vec![];
                 let mut const_generic_parameters = BTreeMap::default();
@@ -425,16 +425,15 @@ impl DeclRefFunction {
             method_type_subst_map.extend(&type_id_type_subst_map);
             method_type_subst_map.insert(method_implementing_for, type_id);
 
-            has_changes = has_changes | method
-                .subst(&SubstTypesContext::new(
+            has_changes = has_changes
+                | method.subst(&SubstTypesContext::new(
                     handler,
                     engines,
                     &method_type_subst_map,
                     true,
                 ));
 
-            let decl_ref = if has_changes.has_changes()
-            {
+            let decl_ref = if has_changes.has_changes() {
                 engines
                     .de()
                     .insert(
