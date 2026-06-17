@@ -1,11 +1,9 @@
-use crate::{type_system::*, Engines};
+use crate::type_system::*;
 use serde::{Deserialize, Serialize};
 use std::{
     fmt,
     hash::{Hash, Hasher},
-    num::{IntErrorKind, ParseIntError},
 };
-use sway_error::error::CompileError;
 use sway_types::{integer_bits::IntegerBits, span, u256::U256};
 
 #[derive(Debug, Clone, Eq, Serialize, Deserialize)]
@@ -147,32 +145,6 @@ impl fmt::Display for Literal {
 }
 
 impl Literal {
-    #[allow(clippy::wildcard_in_or_patterns)]
-    pub(crate) fn handle_parse_int_error(
-        engines: &Engines,
-        e: ParseIntError,
-        ty: TypeInfo,
-        span: sway_types::Span,
-    ) -> CompileError {
-        match e.kind() {
-            IntErrorKind::PosOverflow => CompileError::IntegerTooLarge {
-                ty: engines.help_out(ty).to_string(),
-                span,
-            },
-            IntErrorKind::NegOverflow => CompileError::IntegerTooSmall {
-                ty: engines.help_out(ty).to_string(),
-                span,
-            },
-            IntErrorKind::InvalidDigit => CompileError::IntegerContainsInvalidDigit {
-                ty: engines.help_out(ty).to_string(),
-                span,
-            },
-            IntErrorKind::Zero | IntErrorKind::Empty | _ => {
-                CompileError::Internal("Called incorrect internal sway-core on literal type.", span)
-            }
-        }
-    }
-
     pub(crate) fn to_typeinfo(&self) -> TypeInfo {
         match self {
             Literal::String(_) => TypeInfo::StringSlice,

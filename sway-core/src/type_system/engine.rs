@@ -15,7 +15,7 @@ use hashbrown::{hash_map::RawEntryMut, HashMap};
 use parking_lot::RwLock;
 use std::{
     hash::{BuildHasher, Hash, Hasher},
-    sync::Arc,
+    sync::{Arc, Mutex},
     time::Instant,
 };
 use sway_error::{
@@ -141,6 +141,7 @@ pub struct TypeEngine {
     singleton_types: RwLock<SingletonTypeSourceInfos>,
     unifications: ConcurrentSlab<Unification>,
     last_replace: RwLock<Instant>,
+    duplicates: Mutex<Vec<HashMap<TypeId, TypeId>>>,
 }
 
 pub trait IsConcrete {
@@ -177,6 +178,7 @@ impl Default for TypeEngine {
             singleton_types: RwLock::new(singleton_types),
             unifications: Default::default(),
             last_replace: RwLock::new(Instant::now()),
+            duplicates: Mutex::new(vec![]),
         };
         te.insert_shareable_built_in_types();
         te
@@ -185,12 +187,15 @@ impl Default for TypeEngine {
 
 impl Clone for TypeEngine {
     fn clone(&self) -> Self {
+        let duplicates = self.duplicates.lock().unwrap();
+        let duplicates = duplicates.clone();
         TypeEngine {
             slab: self.slab.clone(),
             shareable_types: RwLock::new(self.shareable_types.read().clone()),
             singleton_types: RwLock::new(self.singleton_types.read().clone()),
             unifications: self.unifications.clone(),
             last_replace: RwLock::new(*self.last_replace.read()),
+            duplicates: Mutex::new(duplicates),
         }
     }
 }
@@ -219,7 +224,7 @@ macro_rules! type_engine_shareable_built_in_types {
     // The actual recursion step that generates the `id_of_<type>` functions.
     (@step $idx:expr, ($ty_name:ident, $ti:expr, $ti_pat:pat), $(($tail_ty_name:ident, $tail_ti:expr, $tail_ti_pat:pat),)*) => {
         paste::paste! {
-            pub const fn [<id_of_ $ty_name>](&self) -> TypeId {
+            pub fn [<id_of_ $ty_name>](&self) -> TypeId {
                 TypeId::new($idx)
             }
         }
@@ -230,7 +235,7 @@ macro_rules! type_engine_shareable_built_in_types {
     // The entry point. Invoking the macro matches this arm.
     ($(($ty_name:ident, $ti:expr, $ti_pat:pat),)*) => {
         // The `unit` type is a special case. It will be inserted in the slab as the first type.
-        pub(crate) const fn id_of_unit(&self) -> TypeId {
+        pub(crate) fn id_of_unit(&self) -> TypeId {
             TypeId::new(0)
         }
 
@@ -239,7 +244,7 @@ macro_rules! type_engine_shareable_built_in_types {
         // providing the proof of the error being emitted, although that proof is actually
         // not needed to obtain the type id, nor is used within this method at all.
         #[allow(unused_variables)]
-        pub(crate) const fn id_of_error_recovery(&self, error_emitted: ErrorEmitted) -> TypeId {
+        pub(crate) fn id_of_error_recovery(&self, error_emitted: ErrorEmitted) -> TypeId {
             TypeId::new(1)
         }
 
@@ -881,7 +886,14 @@ impl TypeEngine {
     pub fn duplicate(&self, engines: &Engines, id: TypeId) -> TypeId {
         let type_source_info = self.slab.get(id.index());
         let duplicate = TypeInfo::clone(&type_source_info.type_info);
-        self.insert(engines, duplicate, type_source_info.source_id.as_ref())
+        let new_tid = self.insert(engines, duplicate, type_source_info.source_id.as_ref());
+
+        let mut duplicates = self.duplicates.lock().unwrap();
+        if let Some(duplicates) = duplicates.last_mut() {
+            let _ = duplicates.insert(id, new_tid);
+        }
+
+        new_tid
     }
 
     /// This method performs two actions, depending on the `replace_at_type_id`.
@@ -2384,5 +2396,15 @@ impl TypeEngine {
         let list = ListDisplay { list };
         write!(builder, "TypeEngine {{\n{list}\n}}").unwrap();
         builder
+    }
+
+    pub(crate) fn start_capturing_duplicates(&self) {
+        let mut duplicates = self.duplicates.lock().unwrap();
+        duplicates.push(HashMap::new());
+    }
+
+    pub(crate) fn end_capturing_duplicates(&self) -> Option<HashMap<TypeId, TypeId>> {
+        let mut duplicates = self.duplicates.lock().unwrap();
+        duplicates.pop()
     }
 }

@@ -43,7 +43,7 @@ error
 49 | 
 50 |     // Literal too big
 51 |     let mut a = [8u8, 8, 18446744073709551615];
-   |                          ^^^^^^^^^^^^^^^^^^^^ Literal value is too large for type u8.
+   |                          ^^^^^^^^^^^^^^^^^^^^ Literal would overflow because its value does not fit into "u8"
 52 | }
    |
 ____
