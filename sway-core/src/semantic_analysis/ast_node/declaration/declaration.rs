@@ -114,10 +114,10 @@ impl TyDecl {
                     Ok(res) => res,
                     Err(err) => return Ok(ty::TyDecl::ErrorRecovery(span, err)),
                 };
-                let typed_const_decl: ty::TyDecl = decl_engine
-                    .insert(const_decl.clone(), Some(&decl_id))
-                    .into();
-                ctx.insert_symbol(handler, const_decl.name().clone(), typed_const_decl.clone())?;
+                let name = const_decl.name().clone();
+                let typed_const_decl: ty::TyDecl =
+                    decl_engine.insert(const_decl, Some(&decl_id)).into();
+                ctx.insert_symbol(handler, name, typed_const_decl.clone())?;
                 typed_const_decl
             }
             parsed::Declaration::ConfigurableDeclaration(decl_id) => {
@@ -142,9 +142,10 @@ impl TyDecl {
                     Ok(res) => res,
                     Err(err) => return Ok(ty::TyDecl::ErrorRecovery(span, err)),
                 };
+                let name = type_decl.name().clone();
                 let typed_type_decl: ty::TyDecl =
-                    decl_engine.insert(type_decl.clone(), Some(&decl_id)).into();
-                ctx.insert_symbol(handler, type_decl.name().clone(), typed_type_decl.clone())?;
+                    decl_engine.insert(type_decl, Some(&decl_id)).into();
+                ctx.insert_symbol(handler, name, typed_type_decl.clone())?;
                 typed_type_decl
             }
             parsed::Declaration::EnumDeclaration(decl_id) => {
@@ -154,15 +155,14 @@ impl TyDecl {
                     Ok(res) => res,
                     Err(err) => return Ok(ty::TyDecl::ErrorRecovery(span, err)),
                 };
-                let call_path = enum_decl.call_path.clone();
-                let decl: ty::TyDecl = decl_engine.insert(enum_decl, Some(&decl_id)).into();
-                ctx.insert_symbol(handler, call_path.suffix, decl.clone())?;
-
-                decl
+                let name = enum_decl.call_path.suffix.clone();
+                let typed_enum_decl: ty::TyDecl =
+                    decl_engine.insert(enum_decl, Some(&decl_id)).into();
+                ctx.insert_symbol(handler, name, typed_enum_decl.clone())?;
+                typed_enum_decl
             }
             parsed::Declaration::EnumVariantDeclaration(_decl) => {
-                // Type-checked above as part of the containing enum.
-                unreachable!()
+                unreachable!("Type-checked above as part of the containing enum.")
             }
             parsed::Declaration::FunctionDeclaration(decl_id) => {
                 let fn_decl = engines.pe().get_function(&decl_id);
@@ -222,6 +222,7 @@ impl TyDecl {
                     .items
                     .iter_mut()
                     .for_each(|item| item.replace_implementing_type(engines, decl.clone()));
+
                 ctx.insert_symbol(handler, name, decl.clone())?;
                 decl
             }
@@ -352,12 +353,9 @@ impl TyDecl {
                             return Ok(ty::TyDecl::ErrorRecovery(span, err));
                         }
                     };
-                let call_path = decl.call_path.clone();
+                let name = decl.call_path.suffix.clone();
                 let decl: ty::TyDecl = decl_engine.insert(decl, Some(&decl_id)).into();
-
-                // insert the struct decl into namespace
-                ctx.insert_symbol(handler, call_path.suffix, decl.clone())?;
-
+                ctx.insert_symbol(handler, name, decl.clone())?;
                 decl
             }
             parsed::Declaration::AbiDeclaration(decl_id) => {
@@ -505,10 +503,11 @@ impl TyDecl {
                     attributes,
                     storage_keyword,
                 };
+
                 let decl_ref = decl_engine.insert(decl, Some(&decl_id));
+
                 // insert the storage declaration into the symbols
                 // if there already was one, return an error that duplicate storage
-
                 // declarations are not allowed
                 ctx.namespace_mut()
                     .current_module_mut()
@@ -516,6 +515,7 @@ impl TyDecl {
                         m.current_items_mut()
                             .set_storage_declaration(handler, decl_ref.clone())
                     })?;
+
                 decl_ref.into()
             }
             parsed::Declaration::TypeAliasDeclaration(decl_id) => {
@@ -546,7 +546,6 @@ impl TyDecl {
 
                 let decl: ty::TyDecl = decl_engine.insert(decl, Some(&decl_id)).into();
 
-                // insert the type alias name and decl into namespace
                 ctx.insert_symbol(handler, name, decl.clone())?;
                 decl
             }

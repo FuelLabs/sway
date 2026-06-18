@@ -146,14 +146,18 @@ impl ty::TyConfigurableDecl {
                 decode_fn_decl.name.as_str(),
                 &span,
             )?;
-            decode_fn_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
-            let decode_fn_ref = engines
-                .de()
-                .insert(
-                    decode_fn_decl,
-                    engines.de().get_parsed_decl_id(&decode_fn_id).as_ref(),
-                )
-                .with_parent(engines.de(), decode_fn_id.into());
+
+            let decode_fn_ref = if decode_fn_decl.replace_decls(&decl_mapping, handler, &mut ctx)? {
+                engines
+                    .de()
+                    .insert(
+                        decode_fn_decl,
+                        engines.de().get_parsed_decl_id(&decode_fn_id).as_ref(),
+                    )
+                    .with_parent(engines.de(), decode_fn_id.into())
+            } else {
+                decode_fn_ref
+            };
 
             (value, Some(decode_fn_ref))
         } else {

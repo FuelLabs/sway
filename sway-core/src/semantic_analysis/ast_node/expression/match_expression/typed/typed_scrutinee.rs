@@ -6,10 +6,10 @@ use sway_error::{
     error::{CompileError, StructFieldUsageContext},
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
-    decl_engine::{DeclEngineGetParsedDeclId, DeclEngineInsert},
+    decl_engine::{DeclEngineGetParsedDeclId, DeclEngineInsert, DeclRef},
     language::{
         parsed::*,
         ty::{self, StructAccessInfo, TyDecl, TyScrutinee, TyStructDecl, TyStructField},
@@ -225,7 +225,7 @@ fn type_check_struct(
     let mut struct_decl = (*decl_engine.get_struct(&struct_id)).clone();
 
     // monomorphize the struct definition
-    ctx.monomorphize(
+    let has_changes = ctx.monomorphize(
         handler,
         &mut struct_decl,
         &mut [],
@@ -233,6 +233,8 @@ fn type_check_struct(
         EnforceTypeArguments::No,
         &struct_name.span(),
     )?;
+
+    let struct_decl = struct_decl; // remove mutability
 
     let (struct_can_be_changed, is_public_struct_access) =
         StructAccessInfo::get_info(ctx.engines(), &struct_decl, ctx.namespace()).into();
@@ -412,10 +414,15 @@ fn type_check_struct(
         Ok(())
     })?;
 
-    let struct_ref = decl_engine.insert(
-        struct_decl,
-        decl_engine.get_parsed_decl_id(&struct_id).as_ref(),
-    );
+    let struct_ref = if has_changes.has_changes() {
+        decl_engine.insert(
+            struct_decl,
+            decl_engine.get_parsed_decl_id(&struct_id).as_ref(),
+        )
+    } else {
+        DeclRef::new(struct_decl.name().clone(), struct_id, struct_decl.span())
+    };
+
     let typed_scrutinee = ty::TyScrutinee {
         type_id: type_engine.insert_struct(engines, *struct_ref.id()),
         span,
@@ -505,7 +512,7 @@ fn type_check_enum(
     let variant_name = call_path.suffix.clone();
 
     // monomorphize the enum definition
-    ctx.monomorphize(
+    let has_changes = ctx.monomorphize(
         handler,
         &mut enum_decl,
         &mut [],
@@ -513,6 +520,8 @@ fn type_check_enum(
         EnforceTypeArguments::No,
         &callsite_span,
     )?;
+
+    let enum_decl = enum_decl; // remove mutability
 
     // check to see if the variant exists and grab it if it does
     let variant = enum_decl
@@ -522,16 +531,21 @@ fn type_check_enum(
     // type check the nested scrutinee
     let typed_value = ty::TyScrutinee::type_check(handler, ctx, value)?;
 
-    let enum_ref = decl_engine.insert(enum_decl, decl_engine.get_parsed_decl_id(&enum_id).as_ref());
+    let enum_ref = if has_changes.has_changes() {
+        decl_engine.insert(enum_decl, decl_engine.get_parsed_decl_id(&enum_id).as_ref())
+    } else {
+        DeclRef::new(enum_decl.name().clone(), enum_id, enum_decl.span())
+    };
+
     let typed_scrutinee = ty::TyScrutinee {
+        type_id: type_engine.insert_enum(engines, *enum_ref.id()),
         variant: ty::TyScrutineeVariant::EnumScrutinee {
-            enum_ref: enum_ref.clone(),
+            enum_ref,
             variant: Box::new(variant),
             call_path_decl,
             value: Box::new(typed_value),
             instantiation_call_path: call_path,
         },
-        type_id: type_engine.insert_enum(engines, *enum_ref.id()),
         span,
     };
 

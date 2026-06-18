@@ -4,6 +4,7 @@ use crate::{
     engine_threading::Engines,
     language::ty::{self, TyDecl, TyExpression},
     semantic_analysis::TypeCheckContext,
+    HasChanges,
 };
 
 use super::DeclMapping;
@@ -53,17 +54,26 @@ pub(crate) trait ReplaceFunctionImplementingType {
 }
 
 pub(crate) trait UpdateConstantExpression {
-    fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl);
+    fn update_constant_expression(
+        &mut self,
+        engines: &Engines,
+        implementing_type: &TyDecl,
+    ) -> HasChanges;
 }
 
 impl<T: UpdateConstantExpression + Clone> UpdateConstantExpression for std::sync::Arc<T> {
-    fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
+    fn update_constant_expression(
+        &mut self,
+        engines: &Engines,
+        implementing_type: &TyDecl,
+    ) -> HasChanges {
         if let Some(item) = std::sync::Arc::get_mut(self) {
-            item.update_constant_expression(engines, implementing_type);
+            item.update_constant_expression(engines, implementing_type)
         } else {
             let mut item = self.as_ref().clone();
-            item.update_constant_expression(engines, implementing_type);
+            let has_changes = item.update_constant_expression(engines, implementing_type);
             *self = std::sync::Arc::new(item);
+            has_changes
         }
     }
 }

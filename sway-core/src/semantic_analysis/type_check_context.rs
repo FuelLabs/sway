@@ -9,7 +9,7 @@ use crate::{
         ty::{self, TyDecl, TyExpression},
         CallPath, QualifiedCallPath, Visibility,
     },
-    monomorphization::{monomorphize_with_modpath, MonomorphizeHelper},
+    monomorphization::{monomorphize_with_mod_path, MonomorphizeHelper},
     namespace::{
         IsExtendingExistingImpl, IsImplSelf, ModulePath, ResolvedDeclaration,
         ResolvedTraitImplItem, TraitMap,
@@ -19,7 +19,8 @@ use crate::{
         Namespace,
     },
     type_system::{GenericArgument, SubstTypes, TypeId, TypeInfo},
-    EnforceTypeArguments, SubstTypesContext, TraitConstraint, TypeParameter, TypeSubstMap,
+    EnforceTypeArguments, HasChanges, SubstTypesContext, TraitConstraint, TypeParameter,
+    TypeSubstMap,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_features::ExperimentalFeatures;
@@ -524,7 +525,6 @@ impl<'a> TypeCheckContext<'a> {
 
     // Provide some convenience functions around the inner context.
 
-    /// Short-hand for calling the `monomorphize` function in the type engine
     pub(crate) fn monomorphize<T>(
         &mut self,
         handler: &Handler,
@@ -533,12 +533,12 @@ impl<'a> TypeCheckContext<'a> {
         const_generics: BTreeMap<String, TyExpression>,
         enforce_type_arguments: EnforceTypeArguments,
         call_site_span: &Span,
-    ) -> Result<(), ErrorEmitted>
+    ) -> Result<HasChanges, ErrorEmitted>
     where
         T: MonomorphizeHelper + SubstTypes + MaterializeConstGenerics,
     {
         let mod_path = self.namespace().current_mod_path().clone();
-        monomorphize_with_modpath(
+        monomorphize_with_mod_path(
             handler,
             self.engines(),
             self.namespace(),

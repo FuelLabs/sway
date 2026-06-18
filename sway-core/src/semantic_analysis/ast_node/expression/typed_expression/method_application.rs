@@ -134,7 +134,7 @@ pub(crate) fn type_check_method_application(
         const_generics,
     )?;
 
-    let mut method = (*decl_engine.get_function(&fn_ref)).clone();
+    let method = &*decl_engine.get_function(&fn_ref);
 
     // unify method return type with current ctx.type_annotation().
     type_engine.unify_with_generic(
@@ -456,7 +456,7 @@ pub(crate) fn type_check_method_application(
     check_function_arguments_arity(
         handler,
         args_buf.len(),
-        &method,
+        method,
         &call_path,
         is_method_call_syntax_used,
     )?;
@@ -679,7 +679,7 @@ pub(crate) fn type_check_method_application(
     let mut method_return_type_id = method.return_type.type_id;
 
     let method_ident: IdentUnique = method.name.clone().into();
-    let method_sig = TyFunctionSig::from_fn_decl(&method);
+    let method_sig = TyFunctionSig::from_fn_decl(method);
 
     if let Some(cached_fn_ref) =
         ctx.engines()
@@ -688,6 +688,9 @@ pub(crate) fn type_check_method_application(
     {
         fn_ref = cached_fn_ref;
     } else {
+        let mut method = method.clone();
+
+        let mut has_changes = HasChanges::No;
         if let Some(TyDecl::ImplSelfOrTrait(t)) = &method.implementing_type {
             let t = &engines.de().get(&t.decl_id).implementing_for;
             if let TypeInfo::Custom {
@@ -745,14 +748,14 @@ pub(crate) fn type_check_method_application(
                     subst_type_arguments.into_iter(),
                 );
 
-                method.subst(&SubstTypesContext::new(
+                has_changes = method.subst(&SubstTypesContext::new(
                     handler,
                     engines,
                     &type_subst,
                     !ctx.code_block_first_pass(),
                 ));
             }
-        }
+        };
 
         if !ctx.code_block_first_pass() {
             // Handle the trait constraints. This includes checking to see if the trait
@@ -768,19 +771,26 @@ pub(crate) fn type_check_method_application(
             .ok();
 
             if let Some(decl_mapping) = decl_mapping {
-                method.replace_decls(&decl_mapping, handler, &mut ctx)?;
+                if method.replace_decls(&decl_mapping, handler, &mut ctx)? {
+                    has_changes = HasChanges::Yes;
+                }
             }
         }
 
         let method_sig = TyFunctionSig::from_fn_decl(&method);
 
         method_return_type_id = method.return_type.type_id;
-        decl_engine.replace(*fn_ref.id(), method.clone());
+        let method_is_type_check_finalized = method.is_type_check_finalized;
+        let method_is_trait_method_dummy = method.is_trait_method_dummy;
+
+        if has_changes.has_changes() {
+            decl_engine.replace(*fn_ref.id(), method);
+        }
 
         if !ctx.code_block_first_pass()
             && method_sig.is_concrete(engines)
-            && method.is_type_check_finalized
-            && !method.is_trait_method_dummy
+            && method_is_type_check_finalized
+            && !method_is_trait_method_dummy
         {
             ctx.engines()
                 .qe()
@@ -1025,7 +1035,7 @@ pub(crate) fn monomorphize_method(
     let mut func_decl = (*decl_engine.get_function(&decl_ref)).clone();
 
     // monomorphize the function declaration
-    ctx.monomorphize(
+    let mut has_changes = ctx.monomorphize(
         handler,
         &mut func_decl,
         type_arguments,
@@ -1035,17 +1045,27 @@ pub(crate) fn monomorphize_method(
     )?;
 
     if let Some(implementing_type) = &func_decl.implementing_type {
-        func_decl
-            .body
-            .update_constant_expression(engines, implementing_type);
+        has_changes = has_changes
+            | func_decl
+                .body
+                .update_constant_expression(engines, implementing_type);
     }
 
-    let decl_ref = decl_engine
-        .insert(
-            func_decl,
-            decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
-        )
-        .with_parent(decl_engine, (*decl_ref.id()).into());
+    // TODO: This change of not re-inserting already inserted declarations
+    //       breaks the recursion detection. This will be addressed separately.
+    //       For now, we want to benefit from performance optimization coming
+    //       from avoid re-inserts.
+    //       For details see: https://github.com/FuelLabs/sway/issues/7658
+    let decl_ref = if has_changes.has_changes() {
+        decl_engine
+            .insert(
+                func_decl,
+                decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
+            )
+            .with_parent(decl_engine, (*decl_ref.id()).into())
+    } else {
+        decl_ref
+    };
 
     Ok(decl_ref)
 }

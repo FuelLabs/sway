@@ -1,5 +1,6 @@
 ---
 source: test/src/snapshot/mod.rs
+assertion_line: 124
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/unused_return_value
 exit status: 0
@@ -58,5 +59,17 @@ warning: Returned value is ignored
    = help:   let _ = B {...;
 ____
 
-  Compiled library "unused_return_value" with 4 warnings.
+warning: Returned value is ignored
+  --> test/src/e2e_vm_tests/test_programs/should_pass/unused_return_value/src/main.sw:28:5
+   |
+...
+28 |     poke(b.very_long_field_name.very_long_field_name);
+   |     ------------------------------------------------- This returns a value which is not assigned to anything and is ignored.
+   |     ------------------------------------------------- help: The returned value has type "u64".
+   |
+   = help: If you want to intentionally ignore the returned value, use `let _ = ...`:
+   = help:   let _ = poke(b.very_long_field_name.very_long_field_name);
+____
+
+  Compiled library "unused_return_value" with 5 warnings.
     Finished debug [unoptimized + fuel] target(s) [32 B] in ???

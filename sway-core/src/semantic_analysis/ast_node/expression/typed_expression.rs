@@ -1306,6 +1306,11 @@ impl ty::TyExpression {
         })];
 
         // Monomorphize the generic `StorageKey<T>` type given the type argument specified above.
+        // Note that `storage_key_struct_decl` will always be the generic one, `StorageKey<T>`,
+        // and that the `storage` access always has concrete type `T`. This means that the below
+        // monomorphization will always have changes, and we always need to insert the monomorphized
+        // `TyStructDecl` into the `DeclEngine` (although same monomorphizations might already be
+        // inserted :-().
         let mut ctx = ctx;
         ctx.monomorphize(
             handler,
@@ -1317,7 +1322,7 @@ impl ty::TyExpression {
         )?;
 
         // Update the `access_type` to be the type of the monomorphized struct after inserting it
-        // into the type engine
+        // into the type engine.
         let storage_key_struct_decl_ref = decl_engine.insert(
             storage_key_struct_decl,
             decl_engine

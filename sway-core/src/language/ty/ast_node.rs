@@ -94,14 +94,18 @@ impl ReplaceDecls for TyAstNode {
 }
 
 impl UpdateConstantExpression for TyAstNode {
-    fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
+    fn update_constant_expression(
+        &mut self,
+        engines: &Engines,
+        implementing_type: &TyDecl,
+    ) -> HasChanges {
         match self.content {
-            TyAstNodeContent::Declaration(_) => {}
+            TyAstNodeContent::Declaration(_) => HasChanges::No,
             TyAstNodeContent::Expression(ref mut expr) => {
                 expr.update_constant_expression(engines, implementing_type)
             }
-            TyAstNodeContent::SideEffect(_) => (),
-            TyAstNodeContent::Error(_, _) => (),
+            TyAstNodeContent::SideEffect(_) => HasChanges::No,
+            TyAstNodeContent::Error(_, _) => HasChanges::No,
         }
     }
 }
