@@ -161,10 +161,15 @@ impl MaterializeConstGenerics for TyAstNode {
                 let decl = engines.de().get(&constant_decl.decl_id);
 
                 let mut decl = TyConstantDecl::clone(&*decl);
-                let has_changes = decl.materialize_const_generics(engines, handler, name, value)?;
+                let mut has_changes = decl.materialize_const_generics(engines, handler, name, value)?;
 
-                let r = engines.de().insert(decl, None);
+                let r = engines.de().insert(decl, None); // TODO: Add `parsed_decl_id`.
                 *constant_decl = ConstantDecl { decl_id: *r.id() };
+
+                // TODO: Deliberately using `mut has_changes` above and changing it here.
+                //       This will be changed when we inspect returned `HasChanges` and
+                //       remove additional not needed `DeclEngine::insert` calls.
+                has_changes |= HasChanges::Yes;
 
                 Ok(has_changes)
             }
@@ -243,7 +248,6 @@ impl TyAstNode {
     }
 
     pub(crate) fn type_info(&self, type_engine: &TypeEngine) -> TypeInfo {
-        // return statement should be ()
         match &self.content {
             TyAstNodeContent::Declaration(_) => TypeInfo::Tuple(Vec::new()),
             TyAstNodeContent::Expression(TyExpression { return_type, .. }) => {

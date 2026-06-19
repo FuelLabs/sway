@@ -1250,7 +1250,10 @@ fn type_check_trait_implementation(
             TyImplItem::Fn(decl_ref) => {
                 let mut method = (*decl_engine.get_function(decl_ref)).clone();
 
-                let mut has_changes = impl_type_parameters.is_empty().into();
+                // If we have `impl_type_parameters`, the `method.type_parameters`
+                // will be changed below, otherwise not. I.e., if `impl_type_parameters`
+                // are not empty, we will have changes.
+                let mut has_changes = (!impl_type_parameters.is_empty()).into();
 
                 // We need to add impl type parameters to the method's type parameters
                 // so that in-line monomorphization can complete.
