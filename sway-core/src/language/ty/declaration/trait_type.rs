@@ -1,6 +1,6 @@
 use crate::{
     engine_threading::*, has_changes, language::parsed::TraitTypeDeclaration,
-    language::ty::TyDeclParsedType, transform, type_system::*,
+    language::ty::TyDeclParsedType, transform, type_system::*, HasChanges,
 };
 use serde::{Deserialize, Serialize};
 use std::{

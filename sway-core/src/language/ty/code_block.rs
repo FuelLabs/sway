@@ -1,6 +1,6 @@
 use crate::{
     decl_engine::*, engine_threading::*, language::ty::*, semantic_analysis::TypeCheckContext,
-    transform::AllowDeprecatedState, type_system::*,
+    transform::AllowDeprecatedState, type_system::*, HasChanges,
 };
 use serde::{Deserialize, Serialize};
 use std::hash::Hasher;
@@ -61,9 +61,9 @@ impl ReplaceDecls for TyCodeBlock {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
-    ) -> Result<bool, ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
         handler.scope(|handler| {
-            let mut has_changes = false;
+            let mut has_changes = HasChanges::No;
             for node in self.contents.iter_mut() {
                 if let Ok(r) = node.replace_decls(decl_mapping, handler, ctx) {
                     has_changes |= r;
@@ -80,10 +80,9 @@ impl UpdateConstantExpression for TyCodeBlock {
         engines: &Engines,
         implementing_type: &TyDecl,
     ) -> HasChanges {
-        self.contents
-            .iter_mut()
-            .map(|ast_node| ast_node.update_constant_expression(engines, implementing_type))
-            .fold(HasChanges::No, |acc, x| acc | x)
+        self.contents.iter_mut().fold(HasChanges::No, |acc, x| {
+            acc | x.update_constant_expression(engines, implementing_type)
+        })
     }
 }
 
@@ -94,9 +93,11 @@ impl MaterializeConstGenerics for TyCodeBlock {
         handler: &Handler,
         name: &str,
         value: &TyExpression,
-    ) -> Result<(), ErrorEmitted> {
-        self.contents
-            .iter_mut()
-            .try_for_each(|x| x.materialize_const_generics(engines, handler, name, value))
+    ) -> Result<HasChanges, ErrorEmitted> {
+        let mut has_changes = HasChanges::No;
+        for x in self.contents.iter_mut() {
+            has_changes |= x.materialize_const_generics(engines, handler, name, value)?;
+        }
+        Ok(has_changes)
     }
 }

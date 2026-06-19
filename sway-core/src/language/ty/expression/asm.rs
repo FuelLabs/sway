@@ -1,4 +1,4 @@
-use crate::{engine_threading::*, language::ty::*, type_system::*};
+use crate::{engine_threading::*, language::ty::*, type_system::*, HasChanges};
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 use sway_types::Ident;

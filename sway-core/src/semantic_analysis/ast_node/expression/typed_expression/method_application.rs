@@ -10,6 +10,7 @@ use crate::{
     },
     semantic_analysis::*,
     type_system::*,
+    HasChanges,
 };
 use ast_elements::{
     type_argument::GenericTypeArgument,
@@ -771,9 +772,7 @@ pub(crate) fn type_check_method_application(
             .ok();
 
             if let Some(decl_mapping) = decl_mapping {
-                if method.replace_decls(&decl_mapping, handler, &mut ctx)? {
-                    has_changes = HasChanges::Yes;
-                }
+                has_changes |= method.replace_decls(&decl_mapping, handler, &mut ctx)?;
             }
         }
 
@@ -1045,10 +1044,9 @@ pub(crate) fn monomorphize_method(
     )?;
 
     if let Some(implementing_type) = &func_decl.implementing_type {
-        has_changes = has_changes
-            | func_decl
-                .body
-                .update_constant_expression(engines, implementing_type);
+        has_changes |= func_decl
+            .body
+            .update_constant_expression(engines, implementing_type);
     }
 
     // TODO: This change of not re-inserting already inserted declarations

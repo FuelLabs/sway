@@ -17,6 +17,7 @@ use crate::{
     namespace::TraitMap,
     semantic_analysis::{GenericShadowingMode, TypeCheckContext},
     type_system::priv_prelude::*,
+    HasChanges,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -982,27 +983,27 @@ impl MaterializeConstGenerics for ConstGenericExprTyDecl {
         handler: &sway_error::handler::Handler,
         name: &str,
         value: &crate::language::ty::TyExpression,
-    ) -> Result<(), sway_error::handler::ErrorEmitted> {
+    ) -> Result<HasChanges, sway_error::handler::ErrorEmitted> {
         match self {
             ConstGenericExprTyDecl::ConstGenericDecl(decl) => {
                 let mut decl = TyConstGenericDecl::clone(&*engines.de().get(&decl.decl_id));
-                decl.materialize_const_generics(engines, handler, name, value)?;
+                let has_changes = decl.materialize_const_generics(engines, handler, name, value)?;
 
                 let decl_ref = engines.de().insert(decl, None); // TODO improve parsed_decl_id
                 *self = ConstGenericExprTyDecl::ConstGenericDecl(ConstGenericDecl {
                     decl_id: *decl_ref.id(),
                 });
-                Ok(())
+                Ok(has_changes)
             }
             ConstGenericExprTyDecl::ConstantDecl(decl) => {
                 let mut decl = TyConstantDecl::clone(&*engines.de().get(&decl.decl_id));
-                decl.materialize_const_generics(engines, handler, name, value)?;
+                let has_changes = decl.materialize_const_generics(engines, handler, name, value)?;
 
                 let decl_ref = engines.de().insert(decl, None); // TODO improve parsed_decl_id
                 *self = ConstGenericExprTyDecl::ConstantDecl(ConstantDecl {
                     decl_id: *decl_ref.id(),
                 });
-                Ok(())
+                Ok(has_changes)
             }
         }
     }

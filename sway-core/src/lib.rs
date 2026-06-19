@@ -15,6 +15,7 @@ mod concurrent_slab;
 mod control_flow_analysis;
 mod debug_generation;
 pub mod decl_engine;
+pub mod has_changes;
 pub mod ir_generation;
 pub mod language;
 pub mod marker_traits;
@@ -79,6 +80,7 @@ use types::{CollectTypesMetadata, CollectTypesMetadataContext, LogId, TypeMetada
 pub use semantic_analysis::namespace::{self, Namespace};
 pub mod types;
 
+pub use has_changes::HasChanges;
 use sway_error::error::{CompileError, TrivialCheckDiagType};
 use sway_types::{ident::Ident, span, Spanned};
 pub use type_system::*;

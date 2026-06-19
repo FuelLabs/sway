@@ -279,25 +279,23 @@ where
     let mut has_changes = HasChanges::No;
 
     let ctx = SubstTypesContext::new(handler, engines, &type_mapping, true);
-    has_changes = has_changes | value.subst(&ctx);
+    has_changes |= value.subst(&ctx);
 
-    // TODO: This is a workaround until we implement `materialize_const_generics`
-    //       that returns `HasChanges`.
-    let mut const_generic_materialization_has_changes = HasChanges::No;
     for (name, expr) in const_generics.iter() {
-        let _ = value.materialize_const_generics(engines, handler, name, expr);
-        const_generic_materialization_has_changes = HasChanges::Yes;
+        if let Ok(materialization_has_changes) =
+            value.materialize_const_generics(engines, handler, name, expr)
+        {
+            has_changes |= materialization_has_changes;
+        }
     }
-    has_changes = has_changes | const_generic_materialization_has_changes;
 
-    // TODO: This is a workaround until we implement `materialize_const_generics`
-    //       that returns `HasChanges`.
-    let mut const_generic_materialization_has_changes = HasChanges::No;
     for (name, expr) in type_mapping.const_generics_materialization.iter() {
-        let _ = value.materialize_const_generics(engines, handler, name, expr);
-        const_generic_materialization_has_changes = HasChanges::Yes;
+        if let Ok(materialization_has_changes) =
+            value.materialize_const_generics(engines, handler, name, expr)
+        {
+            has_changes |= materialization_has_changes;
+        }
     }
-    has_changes = has_changes | const_generic_materialization_has_changes;
 
     Ok(has_changes)
 }

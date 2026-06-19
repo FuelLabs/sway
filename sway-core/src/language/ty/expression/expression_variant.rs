@@ -8,6 +8,7 @@ use crate::{
         TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext,
     },
     type_system::*,
+    HasChanges,
 };
 use ast_elements::type_parameter::GenericTypeParameter;
 use indexmap::IndexMap;
@@ -835,18 +836,18 @@ impl ReplaceDecls for TyExpressionVariant {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
-    ) -> Result<bool, ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
         handler.scope(|handler| {
             use TyExpressionVariant::*;
             match self {
-                Literal(..) => Ok(false),
+                Literal(..) => Ok(HasChanges::No),
                 FunctionApplication {
                     ref mut fn_ref,
                     ref mut arguments,
                     call_path,
                     ..
                 } => {
-                    let mut has_changes = false;
+                    let mut has_changes = HasChanges::No;
 
                     has_changes |= fn_ref.replace_decls(decl_mapping, handler, ctx)?;
 
@@ -928,9 +929,12 @@ impl ReplaceDecls for TyExpressionVariant {
 
                     inner_decl_mapping.extend(decl_mapping);
 
-                    if method.replace_decls(&inner_decl_mapping, handler, ctx)? {
+                    if method
+                        .replace_decls(&inner_decl_mapping, handler, ctx)?
+                        .has_changes()
+                    {
                         decl_engine.replace(*fn_ref.id(), method);
-                        has_changes = true;
+                        has_changes = HasChanges::Yes;
                     }
 
                     Ok(has_changes)
@@ -944,10 +948,10 @@ impl ReplaceDecls for TyExpressionVariant {
                 ConfigurableExpression { decl, .. } => {
                     decl.replace_decls(decl_mapping, handler, ctx)
                 }
-                ConstGenericExpression { .. } => Ok(false),
-                VariableExpression { .. } => Ok(false),
+                ConstGenericExpression { .. } => Ok(HasChanges::No),
+                VariableExpression { .. } => Ok(HasChanges::No),
                 Tuple { fields } => {
-                    let mut has_changes = false;
+                    let mut has_changes = HasChanges::No;
                     for item in fields.iter_mut() {
                         if let Ok(r) = item.replace_decls(decl_mapping, handler, ctx) {
                             has_changes |= r;
@@ -959,7 +963,7 @@ impl ReplaceDecls for TyExpressionVariant {
                     elem_type: _,
                     contents,
                 } => {
-                    let mut has_changes = false;
+                    let mut has_changes = HasChanges::No;
                     for expr in contents.iter_mut() {
                         if let Ok(r) = expr.replace_decls(decl_mapping, handler, ctx) {
                             has_changes |= r;
@@ -977,7 +981,7 @@ impl ReplaceDecls for TyExpressionVariant {
                     Ok(has_changes)
                 }
                 ArrayIndex { prefix, index } => {
-                    let mut has_changes = false;
+                    let mut has_changes = HasChanges::No;
                     if let Ok(r) = (*prefix).replace_decls(decl_mapping, handler, ctx) {
                         has_changes |= r;
                     }
@@ -992,7 +996,7 @@ impl ReplaceDecls for TyExpressionVariant {
                     instantiation_span: _,
                     call_path_binding: _,
                 } => {
-                    let mut has_changes = false;
+                    let mut has_changes = HasChanges::No;
                     for field in fields.iter_mut() {
                         if let Ok(r) = field.replace_decls(decl_mapping, handler, ctx) {
                             has_changes |= r;
@@ -1001,14 +1005,14 @@ impl ReplaceDecls for TyExpressionVariant {
                     Ok(has_changes)
                 }
                 CodeBlock(block) => block.replace_decls(decl_mapping, handler, ctx),
-                FunctionParameter => Ok(false),
+                FunctionParameter => Ok(HasChanges::No),
                 MatchExp { desugared, .. } => desugared.replace_decls(decl_mapping, handler, ctx),
                 IfExp {
                     condition,
                     then,
                     r#else,
                 } => {
-                    let mut has_changes = false;
+                    let mut has_changes = HasChanges::No;
                     if let Ok(r) = condition.replace_decls(decl_mapping, handler, ctx) {
                         has_changes |= r;
                     }
@@ -1023,7 +1027,7 @@ impl ReplaceDecls for TyExpressionVariant {
                     }
                     Ok(has_changes)
                 }
-                AsmExpression { .. } => Ok(false),
+                AsmExpression { .. } => Ok(HasChanges::No),
                 StructFieldAccess { prefix, .. } => {
                     prefix.replace_decls(decl_mapping, handler, ctx)
                 }
@@ -1038,13 +1042,13 @@ impl ReplaceDecls for TyExpressionVariant {
                     if let Some(ref mut contents) = contents {
                         contents.replace_decls(decl_mapping, handler, ctx)
                     } else {
-                        Ok(false)
+                        Ok(HasChanges::No)
                     }
                 }
                 AbiCast { address, .. } => address.replace_decls(decl_mapping, handler, ctx),
-                StorageAccess { .. } => Ok(false),
+                StorageAccess { .. } => Ok(HasChanges::No),
                 IntrinsicFunction(TyIntrinsicFunctionKind { arguments, .. }) => {
-                    let mut has_changes = false;
+                    let mut has_changes = HasChanges::No;
                     for expr in arguments.iter_mut() {
                         if let Ok(r) = expr.replace_decls(decl_mapping, handler, ctx) {
                             has_changes |= r;
@@ -1054,12 +1058,12 @@ impl ReplaceDecls for TyExpressionVariant {
                 }
                 EnumTag { exp } => exp.replace_decls(decl_mapping, handler, ctx),
                 UnsafeDowncast { exp, .. } => exp.replace_decls(decl_mapping, handler, ctx),
-                AbiName(_) => Ok(false),
+                AbiName(_) => Ok(HasChanges::No),
                 WhileLoop {
                     ref mut condition,
                     ref mut body,
                 } => {
-                    let mut has_changes = false;
+                    let mut has_changes = HasChanges::No;
                     if let Ok(r) = condition.replace_decls(decl_mapping, handler, ctx) {
                         has_changes |= r;
                     }
@@ -1071,8 +1075,8 @@ impl ReplaceDecls for TyExpressionVariant {
                 ForLoop { ref mut desugared } => {
                     desugared.replace_decls(decl_mapping, handler, ctx)
                 }
-                Break => Ok(false),
-                Continue => Ok(false),
+                Break => Ok(HasChanges::No),
+                Continue => Ok(HasChanges::No),
                 Reassignment(reassignment) => {
                     reassignment.replace_decls(decl_mapping, handler, ctx)
                 }
@@ -1377,12 +1381,10 @@ impl UpdateConstantExpression for TyExpressionVariant {
         match self {
             Literal(..) => HasChanges::No,
             FunctionApplication { .. } => HasChanges::No,
-            LazyOperator { lhs, rhs, .. } => {
-                has_changes!(
-                    (*lhs).update_constant_expression(engines, implementing_type);
-                    (*rhs).update_constant_expression(engines, implementing_type);
-                )
-            }
+            LazyOperator { lhs, rhs, .. } => has_changes! {
+                (*lhs).update_constant_expression(engines, implementing_type);
+                (*rhs).update_constant_expression(engines, implementing_type);
+            },
             ConstantExpression { ref mut decl, .. } => {
                 if let Some(impl_const) =
                     find_const_decl_from_impl(implementing_type, engines.de(), decl)
@@ -1398,41 +1400,32 @@ impl UpdateConstantExpression for TyExpressionVariant {
             }
             ConstGenericExpression { .. } => HasChanges::No,
             VariableExpression { .. } => HasChanges::No,
-            Tuple { fields } => fields
-                .iter_mut()
-                .map(|field| field.update_constant_expression(engines, implementing_type))
-                .fold(HasChanges::No, |acc, x| acc | x),
+            Tuple { fields } => fields.iter_mut().fold(HasChanges::No, |acc, x| {
+                acc | x.update_constant_expression(engines, implementing_type)
+            }),
             ArrayExplicit {
                 contents,
                 elem_type: _,
-            } => contents
-                .iter_mut()
-                .map(|elem| elem.update_constant_expression(engines, implementing_type))
-                .fold(HasChanges::No, |acc, x| acc | x),
+            } => contents.iter_mut().fold(HasChanges::No, |acc, x| {
+                acc | x.update_constant_expression(engines, implementing_type)
+            }),
             ArrayRepeat {
                 elem_type: _,
                 value,
                 length,
-            } => {
-                has_changes!(
-                    value.update_constant_expression(engines, implementing_type);
-                    length.update_constant_expression(engines, implementing_type);
-                )
-            }
-            ArrayIndex { prefix, index } => {
-                has_changes!(
-                    (*prefix).update_constant_expression(engines, implementing_type);
-                    (*index).update_constant_expression(engines, implementing_type);
-                )
-            }
-            StructExpression { fields, .. } => fields
-                .iter_mut()
-                .map(|field| {
-                    field
-                        .value
-                        .update_constant_expression(engines, implementing_type)
-                })
-                .fold(HasChanges::No, |acc, x| acc | x),
+            } => has_changes! {
+                value.update_constant_expression(engines, implementing_type);
+                length.update_constant_expression(engines, implementing_type);
+            },
+            ArrayIndex { prefix, index } => has_changes! {
+                (*prefix).update_constant_expression(engines, implementing_type);
+                (*index).update_constant_expression(engines, implementing_type);
+            },
+            StructExpression { fields, .. } => fields.iter_mut().fold(HasChanges::No, |acc, x| {
+                acc | x
+                    .value
+                    .update_constant_expression(engines, implementing_type)
+            }),
             CodeBlock(block) => block.update_constant_expression(engines, implementing_type),
             FunctionParameter => HasChanges::No,
             MatchExp { desugared, .. } => {
@@ -1448,8 +1441,7 @@ impl UpdateConstantExpression for TyExpressionVariant {
                     then.update_constant_expression(engines, implementing_type);
                 );
                 if let Some(ref mut r#else) = r#else {
-                    has_changes =
-                        has_changes | r#else.update_constant_expression(engines, implementing_type);
+                    has_changes |= r#else.update_constant_expression(engines, implementing_type);
                 }
                 has_changes
             }
@@ -1464,13 +1456,10 @@ impl UpdateConstantExpression for TyExpressionVariant {
                 enum_ref: _,
                 contents,
                 ..
-            } => {
-                if let Some(ref mut contents) = contents {
-                    contents.update_constant_expression(engines, implementing_type)
-                } else {
-                    HasChanges::No
-                }
-            }
+            } => contents
+                .as_mut()
+                .map(|contents| contents.update_constant_expression(engines, implementing_type))
+                .unwrap_or(HasChanges::No),
             AbiCast { address, .. } => {
                 address.update_constant_expression(engines, implementing_type)
             }
@@ -1484,12 +1473,10 @@ impl UpdateConstantExpression for TyExpressionVariant {
             WhileLoop {
                 ref mut condition,
                 ref mut body,
-            } => {
-                has_changes!(
-                    condition.update_constant_expression(engines, implementing_type);
-                    body.update_constant_expression(engines, implementing_type);
-                )
-            }
+            } => has_changes! {
+                condition.update_constant_expression(engines, implementing_type);
+                body.update_constant_expression(engines, implementing_type);
+            },
             ForLoop { ref mut desugared } => {
                 desugared.update_constant_expression(engines, implementing_type)
             }

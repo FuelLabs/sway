@@ -5,6 +5,7 @@ use crate::{
         DebugWithEngines, Engines, PartialEqWithEngines, PartialEqWithEnginesContext,
     },
     type_system::priv_prelude::*,
+    HasChanges,
 };
 use std::{collections::BTreeMap, fmt};
 use sway_error::handler::Handler;

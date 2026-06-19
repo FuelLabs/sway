@@ -17,6 +17,7 @@ use sway_types::{Ident, Named, Span, Spanned};
 use crate::{
     decl_engine::{parsed_id::ParsedDeclId, *},
     engine_threading::*,
+    has_changes,
     language::{
         parsed::*,
         ty::{
@@ -33,6 +34,7 @@ use crate::{
         TypeCheckFinalization, TypeCheckFinalizationContext,
     },
     type_system::*,
+    HasChanges,
 };
 
 impl TyImplSelfOrTrait {
@@ -1248,11 +1250,7 @@ fn type_check_trait_implementation(
             TyImplItem::Fn(decl_ref) => {
                 let mut method = (*decl_engine.get_function(decl_ref)).clone();
 
-                let mut has_changes = if impl_type_parameters.is_empty() {
-                    HasChanges::No
-                } else {
-                    HasChanges::Yes
-                };
+                let mut has_changes = impl_type_parameters.is_empty().into();
 
                 // We need to add impl type parameters to the method's type parameters
                 // so that in-line monomorphization can complete.
@@ -1278,17 +1276,14 @@ fn type_check_trait_implementation(
                     has_changes = HasChanges::Yes;
                 }
 
-                if method.replace_decls(&decl_mapping, handler, &mut ctx)? {
-                    has_changes = HasChanges::Yes;
-                };
+                has_changes |= method.replace_decls(&decl_mapping, handler, &mut ctx)?;
 
-                has_changes = has_changes
-                    | method.subst(&SubstTypesContext::new(
-                        handler,
-                        engines,
-                        &trait_type_mapping,
-                        !ctx.code_block_first_pass(),
-                    ));
+                has_changes |= method.subst(&SubstTypesContext::new(
+                    handler,
+                    engines,
+                    &trait_type_mapping,
+                    !ctx.code_block_first_pass(),
+                ));
 
                 let decl_ref = if has_changes.has_changes() {
                     decl_engine
@@ -1305,19 +1300,15 @@ fn type_check_trait_implementation(
             }
             TyImplItem::Constant(decl_ref) => {
                 let mut const_decl = (*decl_engine.get_constant(decl_ref)).clone();
-                let mut has_changes =
-                    if const_decl.replace_decls(&decl_mapping, handler, &mut ctx)? {
-                        HasChanges::Yes
-                    } else {
-                        HasChanges::No
-                    };
-                has_changes = has_changes
-                    | const_decl.subst(&SubstTypesContext::new(
+                let has_changes = has_changes! {
+                    const_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
+                    const_decl.subst(&SubstTypesContext::new(
                         handler,
                         engines,
                         &trait_type_mapping,
                         !ctx.code_block_first_pass(),
                     ));
+                };
 
                 let decl_ref = if has_changes.has_changes() {
                     decl_engine.insert(

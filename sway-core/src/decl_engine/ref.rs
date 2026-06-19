@@ -29,6 +29,7 @@ use crate::{
     },
     semantic_analysis::TypeCheckContext,
     type_system::*,
+    HasChanges,
 };
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
@@ -279,7 +280,7 @@ impl ReplaceDecls for DeclRefFunction {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
-    ) -> Result<bool, ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
         let engines = ctx.engines();
         let decl_engine = engines.de();
 
@@ -295,9 +296,9 @@ impl ReplaceDecls for DeclRefFunction {
             return Ok(
                 if let AssociatedItemDeclId::Function(new_decl_ref) = new_decl_ref {
                     self.id = new_decl_ref;
-                    true
+                    HasChanges::Yes
                 } else {
-                    false
+                    HasChanges::No
                 },
             );
         }
@@ -313,14 +314,14 @@ impl ReplaceDecls for DeclRefFunction {
                 return Ok(
                     if let AssociatedItemDeclId::Function(new_decl_ref) = new_decl_ref {
                         self.id = new_decl_ref;
-                        true
+                        HasChanges::Yes
                     } else {
-                        false
+                        HasChanges::No
                     },
                 );
             }
         }
-        Ok(false)
+        Ok(HasChanges::No)
     }
 }
 

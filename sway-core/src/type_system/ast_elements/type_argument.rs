@@ -1,7 +1,7 @@
 use super::type_parameter::ConstGenericExpr;
 use crate::{
     decl_engine::MaterializeConstGenerics, engine_threading::*, language::CallPathTree,
-    type_system::priv_prelude::*,
+    type_system::priv_prelude::*, HasChanges,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -102,7 +102,7 @@ impl MaterializeConstGenerics for GenericTypeArgument {
         handler: &sway_error::handler::Handler,
         name: &str,
         value: &crate::language::ty::TyExpression,
-    ) -> Result<(), sway_error::handler::ErrorEmitted> {
+    ) -> Result<HasChanges, sway_error::handler::ErrorEmitted> {
         self.type_id
             .materialize_const_generics(engines, handler, name, value)
     }
@@ -302,19 +302,22 @@ impl MaterializeConstGenerics for GenericArgument {
         handler: &sway_error::handler::Handler,
         name: &str,
         value: &crate::language::ty::TyExpression,
-    ) -> Result<(), sway_error::handler::ErrorEmitted> {
+    ) -> Result<HasChanges, sway_error::handler::ErrorEmitted> {
+        let mut has_changes = HasChanges::No;
         match self {
             GenericArgument::Type(arg) => {
-                arg.materialize_const_generics(engines, handler, name, value)?;
+                has_changes |= arg.materialize_const_generics(engines, handler, name, value)?;
             }
             GenericArgument::Const(arg) => {
                 arg.expr = match arg.expr.clone() {
                     ConstGenericExpr::AmbiguousVariableExpression { ident, mut decl } => {
                         if let Some(decl) = decl.as_mut() {
-                            decl.materialize_const_generics(engines, handler, name, value)?;
+                            has_changes |=
+                                decl.materialize_const_generics(engines, handler, name, value)?;
                         }
 
                         if ident.as_str() == name {
+                            has_changes = HasChanges::Yes;
                             ConstGenericExpr::Literal {
                                 val: value
                                     .extract_literal_value()
@@ -324,6 +327,10 @@ impl MaterializeConstGenerics for GenericArgument {
                                 span: value.span.clone(),
                             }
                         } else {
+                            // If the `decl` got changed, `has_changes` already reflects that.
+                            // Otherwise, this newly created `ConstGenericExpr` is same as
+                            // the original `arg.expr` and there is no need for setting the
+                            // `has_changes` to `Yes`.
                             ConstGenericExpr::AmbiguousVariableExpression { ident, decl }
                         }
                     }
@@ -331,7 +338,7 @@ impl MaterializeConstGenerics for GenericArgument {
                 };
             }
         }
-        Ok(())
+        Ok(has_changes)
     }
 }
 
