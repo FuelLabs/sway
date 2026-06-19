@@ -20,6 +20,7 @@ const NUM_OF_ELEMENTS: u64 = 11;
 
 #[allow(dead_code)] // TODO-DCA: Remove this `allow` once https://github.com/FuelLabs/sway/issues/7462 is fixed.
 #[storage(read, write)]
+#[inline(never)]
 fn assert_push_pop_get_len_first_last_is_empty_impl<T>(
     slot_id_preimage: u64,
 )

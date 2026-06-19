@@ -21,6 +21,7 @@ storage {
 
 #[allow(dead_code)] // TODO-DCA: Remove this `allow` once https://github.com/FuelLabs/sway/issues/7462 is fixed.
 #[storage(read)]
+#[inline(never)]
 fn assert_empty_vec_next_returns_none_impl<T>(slot_id_preimage: u64) {
     let vec: StorageKey<StorageVec<T>> = StorageKey::new(sha256(slot_id_preimage), 0, sha256(slot_id_preimage + 100));
     assert(vec.iter().next().is_none());
@@ -28,6 +29,7 @@ fn assert_empty_vec_next_returns_none_impl<T>(slot_id_preimage: u64) {
 
 #[allow(dead_code)] // TODO-DCA: Remove this `allow` once https://github.com/FuelLabs/sway/issues/7462 is fixed.
 #[storage(read, write)]
+#[inline(never)]
 fn assert_vec_with_elements_next_returns_element_impl<T>(
     slot_id_preimage: u64,
 )
@@ -64,6 +66,7 @@ where
 
 #[allow(dead_code)] // TODO-DCA: Remove this `allow` once https://github.com/FuelLabs/sway/issues/7462 is fixed.
 #[storage(read, write)]
+#[inline(never)]
 fn assert_vec_with_elements_for_loop_iteration_impl<T>(
     slot_id_preimage: u64,
 )
