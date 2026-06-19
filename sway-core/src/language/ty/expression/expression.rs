@@ -432,7 +432,8 @@ impl MaterializeConstGenerics for TyExpression {
             TyExpressionVariant::CodeBlock(block) => {
                 let mut has_changes = HasChanges::No;
                 for node in block.contents.iter_mut() {
-                    has_changes |= node.materialize_const_generics(engines, handler, name, value)?;
+                    has_changes |=
+                        node.materialize_const_generics(engines, handler, name, value)?;
                 }
                 Ok(has_changes)
             }
@@ -459,12 +460,15 @@ impl MaterializeConstGenerics for TyExpression {
                         .insert(name.to_string(), value.clone());
 
                     let mut new_decl = TyFunctionDecl::clone(&*fn_decl);
-                    if new_decl.subst_inner(&SubstTypesContext {
-                        handler,
-                        engines,
-                        type_subst_map: Some(&type_subst_map),
-                        subst_function_body: true,
-                    }).has_changes() {
+                    if new_decl
+                        .subst_inner(&SubstTypesContext {
+                            handler,
+                            engines,
+                            type_subst_map: Some(&type_subst_map),
+                            subst_function_body: true,
+                        })
+                        .has_changes()
+                    {
                         *fn_ref = engines.de().insert(new_decl, None);
                         has_changes = HasChanges::Yes;
                     }
@@ -478,7 +482,8 @@ impl MaterializeConstGenerics for TyExpression {
                 }
 
                 for (_, expr) in arguments {
-                    has_changes |= expr.materialize_const_generics(engines, handler, name, value)?;
+                    has_changes |=
+                        expr.materialize_const_generics(engines, handler, name, value)?;
                 }
                 Ok(has_changes)
             }
@@ -537,7 +542,8 @@ impl MaterializeConstGenerics for TyExpression {
                 let mut has_changes =
                     elem_type.materialize_const_generics(engines, handler, name, value)?;
                 for item in contents.iter_mut() {
-                    has_changes |= item.materialize_const_generics(engines, handler, name, value)?;
+                    has_changes |=
+                        item.materialize_const_generics(engines, handler, name, value)?;
                 }
                 Ok(has_changes)
             }
@@ -614,8 +620,9 @@ impl MaterializeConstGenerics for TyExpression {
             TyExpressionVariant::StructExpression { fields, .. } => {
                 let mut has_changes = HasChanges::No;
                 for f in fields {
-                    has_changes |=
-                        f.value.materialize_const_generics(engines, handler, name, value)?;
+                    has_changes |= f
+                        .value
+                        .materialize_const_generics(engines, handler, name, value)?;
                 }
                 Ok(has_changes)
             }

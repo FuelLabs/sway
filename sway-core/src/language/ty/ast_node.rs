@@ -1,8 +1,16 @@
 use crate::{
-    HasChanges, decl_engine::*, engine_threading::*, has_changes, language::ty::*, semantic_analysis::{
+    decl_engine::*,
+    engine_threading::*,
+    has_changes,
+    language::ty::*,
+    semantic_analysis::{
         TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext, TypeCheckFinalization,
         TypeCheckFinalizationContext,
-    }, transform::{AllowDeprecatedState, AttributeKind}, type_system::*, types::*
+    },
+    transform::{AllowDeprecatedState, AttributeKind},
+    type_system::*,
+    types::*,
+    HasChanges,
 };
 use serde::{Deserialize, Serialize};
 use std::{

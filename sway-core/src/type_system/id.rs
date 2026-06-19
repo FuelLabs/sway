@@ -139,7 +139,8 @@ impl MaterializeConstGenerics for TypeId {
                 Length(ConstGenericExpr::AmbiguousVariableExpression { ident, decl }),
             ) => {
                 let mut elem_type = element_type.clone();
-                has_changes |= elem_type.materialize_const_generics(engines, handler, name, value)?;
+                has_changes |=
+                    elem_type.materialize_const_generics(engines, handler, name, value)?;
 
                 if ident.as_str() == name {
                     let val = match &value.expression {
