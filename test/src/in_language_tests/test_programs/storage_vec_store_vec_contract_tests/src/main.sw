@@ -20,6 +20,7 @@ const NUM_OF_ELEMENTS: u64 = 11;
 
 #[allow(dead_code)] // TODO-DCA: Remove this `allow` once https://github.com/FuelLabs/sway/issues/7462 is fixed.
 #[storage(write)]
+#[inline(never)]
 fn assert_store_vec_impl<T>(
     slot_id_preimage: u64,
 )

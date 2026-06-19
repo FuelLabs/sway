@@ -10,6 +10,7 @@ use std::storage::storage_map::*;
 #[allow(dead_code)] // TODO-DCA: Remove this `allow` once https://github.com/FuelLabs/sway/issues/7462 is fixed.
 #[cfg(experimental_dynamic_storage = false)]
 #[storage(read, write)]
+#[inline(never)]
 fn assert_remove_remove_existed_impl<K, V>(map: StorageKey<StorageMap<K, V>>, key: K)
 where
     K: Hash,
@@ -25,6 +26,7 @@ where
 #[allow(dead_code)] // TODO-DCA: Remove this `allow` once https://github.com/FuelLabs/sway/issues/7462 is fixed.
 #[cfg(experimental_dynamic_storage = true)]
 #[storage(read, write)]
+#[inline(never)]
 fn assert_remove_remove_existed_impl<K, V>(map: StorageKey<StorageMap<K, V>>, key: K)
 where
     K: Hash,
@@ -43,6 +45,7 @@ where
 
 #[allow(dead_code)] // TODO-DCA: Remove this `allow` once https://github.com/FuelLabs/sway/issues/7462 is fixed.
 #[storage(read, write)]
+#[inline(never)]
 fn assert_insert_try_insert_get_remove_impl<K, V>(slot_id_preimage: u64, key1: K, key2: K, key3: K)
 where
     K: Hash,

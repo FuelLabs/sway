@@ -9,6 +9,7 @@ use std::hash::{Hash, sha256};
 #[allow(dead_code)] // TODO-DCA: Remove this `allow` once https://github.com/FuelLabs/sway/issues/7462 is fixed.
 #[cfg(experimental_dynamic_storage = false)]
 #[storage(read, write)]
+#[inline(never)]
 fn assert_clear_clear_existed_impl<T>(key: StorageKey<T>)
 where
     T: Eq + TestInstance + AbiEncode,
@@ -23,6 +24,7 @@ where
 #[allow(dead_code)] // TODO-DCA: Remove this `allow` once https://github.com/FuelLabs/sway/issues/7462 is fixed.
 #[cfg(experimental_dynamic_storage = true)]
 #[storage(read, write)]
+#[inline(never)]
 fn assert_clear_clear_existed_impl<T>(key: StorageKey<T>)
 where
     T: Eq + TestInstance + AbiEncode,
@@ -41,6 +43,7 @@ where
 
 #[allow(dead_code)] // TODO-DCA: Remove this `allow` once https://github.com/FuelLabs/sway/issues/7462 is fixed.
 #[storage(read, write)]
+#[inline(never)]
 fn assert_write_read_try_read_clear_clear_existed_impl<T>(slot_id_preimage: u64)
 where
     T: Eq + TestInstance + AbiEncode,
