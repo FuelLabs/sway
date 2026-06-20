@@ -13,12 +13,12 @@ pub struct ConcurrentSlabMetrics {
     pub length: usize,
     pub capacity: usize,
     /// Approximate memory usage of the content of the slab [Vec].
-    pub slab_memory_usage: usize,
+    pub memory_usage: usize,
     /// Approximate memory usage of the total content of elements of type `T`
     /// the slab slots point to via `Arc<T>`. **This does not
     /// include any additional memory allocated by individual `T` elements,
     /// just the raw size of each `T`.**
-    pub slab_content_memory_usage: usize,
+    pub content_memory_usage: usize,
     pub free_slots_length: usize,
     pub free_slots_capacity: usize,
 }

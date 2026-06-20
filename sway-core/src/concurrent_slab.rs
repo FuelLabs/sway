@@ -154,8 +154,8 @@ where
             slab,
             length: inner.items.len(),
             capacity: inner.items.capacity(),
-            slab_memory_usage: inner.items.capacity() * size_of::<Option<Arc<T>>>(),
-            slab_content_memory_usage: inner.items.len() * size_of::<T>(),
+            memory_usage: inner.items.capacity() * size_of::<Option<Arc<T>>>(),
+            content_memory_usage: (inner.items.len() - inner.free_list.len()) * size_of::<T>(),
             free_slots_length: inner.free_list.len(),
             free_slots_capacity: inner.free_list.capacity(),
         }
