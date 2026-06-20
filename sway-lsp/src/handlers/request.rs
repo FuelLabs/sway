@@ -21,7 +21,7 @@ use std::{
     path::{Path, PathBuf},
 };
 use sway_types::{Ident, Spanned};
-use sway_utils::PerformanceData;
+use sway_utils::PerformanceMetrics;
 use tower_lsp::jsonrpc::Result;
 use tracing::metadata::LevelFilter;
 
@@ -510,7 +510,7 @@ pub fn handle_visualize(
 }
 
 /// This method is triggered by the test suite to request the latest compilation metrics.
-pub(crate) fn metrics(state: &ServerState) -> Result<Option<Vec<(String, PerformanceData)>>> {
+pub(crate) fn metrics(state: &ServerState) -> Result<Option<Vec<(String, PerformanceMetrics)>>> {
     let mut metrics = vec![];
     for item in state.compiled_programs.iter() {
         let path = state

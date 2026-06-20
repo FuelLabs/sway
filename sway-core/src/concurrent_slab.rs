@@ -1,5 +1,6 @@
 use parking_lot::RwLock;
 use std::{fmt, sync::Arc};
+use sway_utils::ConcurrentSlabMetrics;
 
 #[derive(Debug, Clone)]
 pub struct Inner<T> {
@@ -145,5 +146,18 @@ where
 
         inner.free_list.clear();
         inner.free_list.shrink_to(0);
+    }
+
+    pub fn metrics(&self, slab: String) -> ConcurrentSlabMetrics {
+        let inner = self.inner.read();
+        ConcurrentSlabMetrics {
+            slab,
+            length: inner.items.len(),
+            capacity: inner.items.capacity(),
+            memory_usage: inner.items.capacity() * size_of::<Option<Arc<T>>>(),
+            content_memory_usage: (inner.items.len() - inner.free_list.len()) * size_of::<T>(),
+            free_slots_length: inner.free_list.len(),
+            free_slots_capacity: inner.free_list.capacity(),
+        }
     }
 }

@@ -73,7 +73,7 @@ use sway_ir::{
 use sway_types::integer_bits::IntegerBits;
 use sway_types::span::Source;
 use sway_types::{SourceEngine, SourceLocation, Span};
-use sway_utils::{time_expr, PerformanceData, PerformanceMetric};
+use sway_utils::{time_expr, CompilationPhaseMetrics, PerformanceMetrics};
 use transform::{ArgsExpectValues, Attribute, AttributeKind, Attributes, ExpectedArgs};
 use types::{CollectTypesMetadata, CollectTypesMetadataContext, LogId, TypeMetadata};
 
@@ -1342,7 +1342,7 @@ pub fn compile_to_ast(
     check_should_abort(handler, retrigger_compilation.clone())?;
 
     let query_engine = engines.qe();
-    let mut metrics = PerformanceData::default();
+    let mut metrics = PerformanceMetrics::default();
     if let Some(config) = build_config {
         let path = config.canonical_root_module();
         let include_tests = config.include_tests;

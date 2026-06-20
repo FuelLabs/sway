@@ -51,7 +51,7 @@ use sway_core::{set_bytecode_configurables_offset, DbgGeneration, IrCli, PrintAs
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_features::ExperimentalFeatures;
 use sway_types::{Ident, ProgramId, Span, Spanned};
-use sway_utils::{constants, time_expr, PerformanceData, PerformanceMetric};
+use sway_utils::{constants, time_expr, CompilationPhaseMetrics, PerformanceMetrics};
 use tracing::{debug, info};
 
 type GraphIx = u32;
@@ -183,7 +183,7 @@ pub struct CompiledPackage {
     pub bytecode: BuiltPackageBytecode,
     pub namespace: namespace::Package,
     pub warnings: Vec<CompileWarning>,
-    pub metrics: PerformanceData,
+    pub metrics: PerformanceMetrics,
 }
 
 /// Compiled contract dependency parts relevant to calculating a contract's ID.
@@ -1696,7 +1696,7 @@ pub fn compile(
     experimental: ExperimentalFeatures,
     dbg_generation: DbgGeneration,
 ) -> Result<CompiledPackage> {
-    let mut metrics = PerformanceData::default();
+    let mut metrics = PerformanceMetrics::default();
 
     let entry_path = pkg.manifest_file.entry_path();
     let sway_build_config = sway_build_config(
@@ -1919,10 +1919,13 @@ pub fn compile(
     }
 
     metrics.bytecode_size = compiled.bytecode.len();
+    metrics.decl_engine = engines.de().metrics();
+
     let bytecode = BuiltPackageBytecode {
         bytes: compiled.bytecode,
         entries,
     };
+
     let compiled_package = CompiledPackage {
         source_map: source_map.clone(),
         program_abi,
@@ -1933,6 +1936,7 @@ pub fn compile(
         warnings,
         metrics,
     };
+
     if sway_build_config.profile {
         report_assembly_information(&asm, &compiled_package);
     }
@@ -2511,7 +2515,7 @@ pub fn build(
 
             if let Some(outfile) = profile.metrics_outfile {
                 let path = Path::new(&outfile);
-                let metrics_json = serde_json::to_string(&compiled_without_tests.metrics)
+                let metrics_json = serde_json::to_string_pretty(&compiled_without_tests.metrics)
                     .expect("JSON serialization failed");
                 fs::write(path, metrics_json)?;
             }
@@ -2594,7 +2598,7 @@ pub fn build(
         if let Some(outfile) = profile.metrics_outfile {
             let path = Path::new(&outfile);
             let metrics_json =
-                serde_json::to_string(&compiled.metrics).expect("JSON serialization failed");
+                serde_json::to_string_pretty(&compiled.metrics).expect("JSON serialization failed");
             fs::write(path, metrics_json)?;
         }
 
