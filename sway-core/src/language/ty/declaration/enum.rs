@@ -5,7 +5,7 @@ use crate::{
     has_changes,
     language::{
         parsed::EnumDeclaration,
-        ty::{self, TyDeclParsedType, TyExpression},
+        ty::{TyDeclParsedType, TyExpression},
         CallPath, Visibility,
     },
     transform,
