@@ -1,17 +1,39 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct PerformanceMetric {
+pub struct CompilationPhaseMetrics {
     pub phase: String,
     pub elapsed: f64,
     pub memory_usage: Option<u64>,
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct ConcurrentSlabMetrics {
+    pub slab: String,
+    pub length: usize,
+    pub capacity: usize,
+    /// Approximate memory usage of the content of the slab [Vec].
+    pub slab_memory_usage: usize,
+    /// Approximate memory usage of the total content of elements of type `T`
+    /// the slab slots point to via `Arc<T>`. **This does not
+    /// include any additional memory allocated by individual `T` elements,
+    /// just the raw size of each `T`.**
+    pub slab_content_memory_usage: usize,
+    pub free_slots_length: usize,
+    pub free_slots_capacity: usize,
+}
+
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
-pub struct PerformanceData {
+pub struct DeclEngineMetrics {
+    pub slabs: Vec<ConcurrentSlabMetrics>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+pub struct PerformanceMetrics {
     pub bytecode_size: usize,
-    pub metrics: Vec<PerformanceMetric>,
     pub reused_programs: u64,
+    pub compilation_phases: Vec<CompilationPhaseMetrics>,
+    pub decl_engine: DeclEngineMetrics,
 }
 
 #[derive(serde::Serialize, Clone)]
@@ -53,7 +75,7 @@ macro_rules! time_expr {
                     #[cfg(target_os = "macos")]
                     let memory_usage = None;
 
-                    $data.metrics.push(PerformanceMetric {
+                    $data.compilation_phases.push(CompilationPhaseMetrics {
                         phase: $key.to_string(),
                         elapsed: elapsed.as_secs_f64(),
                         memory_usage,

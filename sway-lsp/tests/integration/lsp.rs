@@ -17,7 +17,7 @@ use sway_lsp::{
     lsp_ext::{ShowAstParams, VisualizeParams},
     server_state::ServerState,
 };
-use sway_utils::PerformanceData;
+use sway_utils::PerformanceMetrics;
 use tower::{Service, ServiceExt};
 use tower_lsp::{
     jsonrpc::{Id, Request, Response},
@@ -271,7 +271,7 @@ pub(crate) async fn visualize_request(server: &ServerState, uri: &Url, graph_kin
 
 pub(crate) async fn metrics_request(
     service: &mut LspService<ServerState>,
-) -> Vec<(String, PerformanceData)> {
+) -> Vec<(String, PerformanceMetrics)> {
     let request = Request::build("sway/metrics").id(1).finish();
     let result = call_request(service, request.clone())
         .await

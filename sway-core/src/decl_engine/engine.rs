@@ -4,6 +4,7 @@ use std::{
     fmt::Write,
     sync::Arc,
 };
+use sway_utils::DeclEngineMetrics;
 
 use sway_types::{Named, ProgramId, SourceId, Spanned};
 
@@ -788,5 +789,27 @@ impl DeclEngine {
         }
         write!(builder, "DeclEngine {{\n{list}\n}}").unwrap();
         builder
+    }
+
+    pub fn metrics(&self) -> DeclEngineMetrics {
+        DeclEngineMetrics {
+            slabs: vec![
+                self.function_slab.metrics("function_slab".into()),
+                self.struct_slab.metrics("struct_slab".into()),
+                self.enum_slab.metrics("enum_slab".into()),
+                self.trait_slab.metrics("trait_slab".into()),
+                self.trait_fn_slab.metrics("trait_fn_slab".into()),
+                self.trait_type_slab.metrics("trait_type_slab".into()),
+                self.impl_self_or_trait_slab
+                    .metrics("impl_self_or_trait_slab".into()),
+                self.storage_slab.metrics("storage_slab".into()),
+                self.abi_slab.metrics("abi_slab".into()),
+                self.constant_slab.metrics("constant_slab".into()),
+                self.configurable_slab.metrics("configurable_slab".into()),
+                self.const_generics_slab
+                    .metrics("const_generics_slab".into()),
+                self.type_alias_slab.metrics("type_alias_slab".into()),
+            ],
+        }
     }
 }
