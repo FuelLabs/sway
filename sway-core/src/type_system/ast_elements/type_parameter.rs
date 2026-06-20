@@ -987,22 +987,34 @@ impl MaterializeConstGenerics for ConstGenericExprTyDecl {
         match self {
             ConstGenericExprTyDecl::ConstGenericDecl(decl) => {
                 let mut decl = TyConstGenericDecl::clone(&*engines.de().get(&decl.decl_id));
-                let has_changes = decl.materialize_const_generics(engines, handler, name, value)?;
+                let mut has_changes =
+                    decl.materialize_const_generics(engines, handler, name, value)?;
 
                 let decl_ref = engines.de().insert(decl, None); // TODO improve parsed_decl_id
                 *self = ConstGenericExprTyDecl::ConstGenericDecl(ConstGenericDecl {
                     decl_id: *decl_ref.id(),
                 });
+
+                // TODO: Deliberately using `mut has_changes` above and changing it here.
+                //       This will be changed when we inspect returned `HasChanges` and
+                //       remove additional not needed `DeclEngine::insert` calls.
+                has_changes |= HasChanges::Yes;
+
                 Ok(has_changes)
             }
             ConstGenericExprTyDecl::ConstantDecl(decl) => {
                 let mut decl = TyConstantDecl::clone(&*engines.de().get(&decl.decl_id));
-                let has_changes = decl.materialize_const_generics(engines, handler, name, value)?;
+                let mut has_changes =
+                    decl.materialize_const_generics(engines, handler, name, value)?;
 
                 let decl_ref = engines.de().insert(decl, None); // TODO improve parsed_decl_id
                 *self = ConstGenericExprTyDecl::ConstantDecl(ConstantDecl {
                     decl_id: *decl_ref.id(),
                 });
+
+                // TODO: See above.
+                has_changes |= HasChanges::Yes;
+
                 Ok(has_changes)
             }
         }

@@ -60,6 +60,8 @@ impl MaterializeConstGenerics for TyConstGenericDecl {
         let mut has_changes = HasChanges::No;
         if self.call_path.suffix.as_str() == name {
             match self.value.as_ref() {
+                // If the const generic already has value,
+                // it must be the same as the `value`.
                 Some(v) => {
                     assert!(
                         v.extract_literal_value()

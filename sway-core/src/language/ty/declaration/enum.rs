@@ -3,7 +3,11 @@ use crate::{
     decl_engine::MaterializeConstGenerics,
     engine_threading::*,
     has_changes,
-    language::{parsed::EnumDeclaration, ty::TyDeclParsedType, CallPath, Visibility},
+    language::{
+        parsed::EnumDeclaration,
+        ty::{self, TyDeclParsedType, TyExpression},
+        CallPath, Visibility,
+    },
     transform,
     type_system::*,
     HasChanges,
@@ -113,7 +117,7 @@ impl MaterializeConstGenerics for TyEnumDecl {
         engines: &Engines,
         handler: &Handler,
         name: &str,
-        value: &crate::language::ty::TyExpression,
+        value: &TyExpression,
     ) -> Result<HasChanges, ErrorEmitted> {
         let mut has_changes = HasChanges::No;
         for p in self.generic_parameters.iter_mut() {

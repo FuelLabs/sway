@@ -161,7 +161,8 @@ impl MaterializeConstGenerics for TyAstNode {
                 let decl = engines.de().get(&constant_decl.decl_id);
 
                 let mut decl = TyConstantDecl::clone(&*decl);
-                let mut has_changes = decl.materialize_const_generics(engines, handler, name, value)?;
+                let mut has_changes =
+                    decl.materialize_const_generics(engines, handler, name, value)?;
 
                 let r = engines.de().insert(decl, None); // TODO: Add `parsed_decl_id`.
                 *constant_decl = ConstantDecl { decl_id: *r.id() };
