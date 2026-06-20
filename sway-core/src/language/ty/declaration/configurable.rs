@@ -6,6 +6,7 @@ use crate::{
     semantic_analysis::TypeCheckContext,
     transform,
     type_system::*,
+    HasChanges,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -103,11 +104,11 @@ impl ReplaceDecls for TyConfigurableDecl {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
-    ) -> Result<bool, ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
         if let Some(expr) = &mut self.value {
             expr.replace_decls(decl_mapping, handler, ctx)
         } else {
-            Ok(false)
+            Ok(HasChanges::No)
         }
     }
 }

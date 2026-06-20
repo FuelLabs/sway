@@ -147,7 +147,10 @@ impl ty::TyConfigurableDecl {
                 &span,
             )?;
 
-            let decode_fn_ref = if decode_fn_decl.replace_decls(&decl_mapping, handler, &mut ctx)? {
+            let decode_fn_ref = if decode_fn_decl
+                .replace_decls(&decl_mapping, handler, &mut ctx)?
+                .has_changes()
+            {
                 engines
                     .de()
                     .insert(

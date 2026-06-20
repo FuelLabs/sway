@@ -1,6 +1,7 @@
 use crate::{
     decl_engine::*,
     engine_threading::*,
+    has_changes,
     language::ty::*,
     semantic_analysis::{
         TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext, TypeCheckFinalization,
@@ -9,6 +10,7 @@ use crate::{
     transform::{AllowDeprecatedState, AttributeKind},
     type_system::*,
     types::*,
+    HasChanges,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -75,7 +77,7 @@ impl ReplaceDecls for TyAstNode {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
-    ) -> Result<bool, ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
         match self.content {
             TyAstNodeContent::Declaration(TyDecl::VariableDecl(ref mut decl)) => {
                 decl.body.replace_decls(decl_mapping, handler, ctx)
@@ -83,12 +85,12 @@ impl ReplaceDecls for TyAstNode {
             TyAstNodeContent::Declaration(TyDecl::ConstantDecl(ref mut decl)) => {
                 decl.replace_decls(decl_mapping, handler, ctx)
             }
-            TyAstNodeContent::Declaration(_) => Ok(false),
+            TyAstNodeContent::Declaration(_) => Ok(HasChanges::No),
             TyAstNodeContent::Expression(ref mut expr) => {
                 expr.replace_decls(decl_mapping, handler, ctx)
             }
-            TyAstNodeContent::SideEffect(_) => Ok(false),
-            TyAstNodeContent::Error(_, _) => Ok(false),
+            TyAstNodeContent::SideEffect(_) => Ok(HasChanges::No),
+            TyAstNodeContent::Error(_, _) => Ok(HasChanges::No),
         }
     }
 }
@@ -153,33 +155,44 @@ impl MaterializeConstGenerics for TyAstNode {
         handler: &Handler,
         name: &str,
         value: &TyExpression,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
         match &mut self.content {
             TyAstNodeContent::Declaration(TyDecl::ConstantDecl(constant_decl)) => {
                 let decl = engines.de().get(&constant_decl.decl_id);
 
                 let mut decl = TyConstantDecl::clone(&*decl);
-                decl.materialize_const_generics(engines, handler, name, value)?;
+                let mut has_changes =
+                    decl.materialize_const_generics(engines, handler, name, value)?;
 
-                let r = engines.de().insert(decl, None);
+                let r = engines.de().insert(decl, None); // TODO: Add `parsed_decl_id`.
                 *constant_decl = ConstantDecl { decl_id: *r.id() };
 
-                Ok(())
+                // TODO: Deliberately using `mut has_changes` above and changing it here.
+                //       This will be changed when we inspect returned `HasChanges` and
+                //       remove additional not needed `DeclEngine::insert` calls.
+                has_changes |= HasChanges::Yes;
+
+                Ok(has_changes)
             }
             TyAstNodeContent::Declaration(TyDecl::VariableDecl(decl)) => {
-                decl.body
-                    .materialize_const_generics(engines, handler, name, value)?;
-                decl.return_type
-                    .materialize_const_generics(engines, handler, name, value)?;
-                decl.type_ascription
-                    .type_id
-                    .materialize_const_generics(engines, handler, name, value)?;
-                Ok(())
+                let has_changes = has_changes! {
+                    decl
+                        .body
+                        .materialize_const_generics(engines, handler, name, value)?;
+                    decl
+                        .return_type
+                        .materialize_const_generics(engines, handler, name, value)?;
+                    decl
+                        .type_ascription
+                        .type_id
+                        .materialize_const_generics(engines, handler, name, value)?;
+                };
+                Ok(has_changes)
             }
             TyAstNodeContent::Expression(expr) => {
                 expr.materialize_const_generics(engines, handler, name, value)
             }
-            _ => Ok(()),
+            _ => Ok(HasChanges::No),
         }
     }
 }
@@ -236,7 +249,6 @@ impl TyAstNode {
     }
 
     pub(crate) fn type_info(&self, type_engine: &TypeEngine) -> TypeInfo {
-        // return statement should be ()
         match &self.content {
             TyAstNodeContent::Declaration(_) => TypeInfo::Tuple(Vec::new()),
             TyAstNodeContent::Expression(TyExpression { return_type, .. }) => {

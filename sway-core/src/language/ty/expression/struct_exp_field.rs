@@ -4,6 +4,7 @@ use crate::{
     language::ty::*,
     semantic_analysis::{TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext},
     type_system::*,
+    HasChanges,
 };
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
@@ -43,7 +44,7 @@ impl ReplaceDecls for TyStructExpressionField {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
-    ) -> Result<bool, ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
         self.value.replace_decls(decl_mapping, handler, ctx)
     }
 }

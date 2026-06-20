@@ -14,6 +14,7 @@ use crate::{
     language::{parsed::TraitFn, ty::*, Purity},
     transform,
     type_system::*,
+    HasChanges,
 };
 
 #[derive(Clone, Debug)]

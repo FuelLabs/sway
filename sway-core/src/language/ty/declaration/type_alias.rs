@@ -4,6 +4,7 @@ use crate::{
     language::{parsed::TypeAliasDeclaration, ty::TyDeclParsedType, CallPath, Visibility},
     transform,
     type_system::*,
+    HasChanges,
 };
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};

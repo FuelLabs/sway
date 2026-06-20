@@ -102,7 +102,10 @@ pub(crate) fn instantiate_function_application(
             )?;
 
             let mut new_function_decl = TyFunctionDecl::clone(&*function_decl);
-            if new_function_decl.replace_decls(&decl_mapping, handler, &mut ctx)? {
+            if new_function_decl
+                .replace_decls(&decl_mapping, handler, &mut ctx)?
+                .has_changes()
+            {
                 let return_type_id = new_function_decl.return_type.type_id;
                 let is_type_check_finalized = new_function_decl.is_type_check_finalized;
                 let is_trait_method_dummy = new_function_decl.is_trait_method_dummy;

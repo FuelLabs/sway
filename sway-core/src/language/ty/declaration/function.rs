@@ -12,6 +12,7 @@ use crate::{
     transform::{self, AttributeKind},
     type_system::*,
     types::*,
+    HasChanges,
 };
 use ast_elements::type_parameter::ConstGenericExpr;
 use either::Either;
@@ -184,12 +185,15 @@ impl MaterializeConstGenerics for TyFunctionDecl {
         handler: &Handler,
         name: &str,
         value: &TyExpression,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
+        let mut has_changes = HasChanges::No;
         for tp in self.type_parameters.iter_mut() {
             match tp {
-                TypeParameter::Type(p) => p
-                    .type_id
-                    .materialize_const_generics(engines, handler, name, value)?,
+                TypeParameter::Type(p) => {
+                    has_changes |= p
+                        .type_id
+                        .materialize_const_generics(engines, handler, name, value)?;
+                }
                 TypeParameter::Const(p) if p.name.as_str() == name => match p.expr.as_ref() {
                     Some(v) => {
                         assert!(
@@ -203,6 +207,7 @@ impl MaterializeConstGenerics for TyFunctionDecl {
                     }
                     None => {
                         p.expr = Some(ConstGenericExpr::from_ty_expression(handler, value)?);
+                        has_changes = HasChanges::Yes;
                     }
                 },
                 _ => {}
@@ -210,16 +215,19 @@ impl MaterializeConstGenerics for TyFunctionDecl {
         }
 
         for param in self.parameters.iter_mut() {
-            param
+            has_changes |= param
                 .type_argument
                 .type_id
                 .materialize_const_generics(engines, handler, name, value)?;
         }
-        self.return_type
+        has_changes |= self
+            .return_type
             .type_id
             .materialize_const_generics(engines, handler, name, value)?;
-        self.body
-            .materialize_const_generics(engines, handler, name, value)
+        has_changes |= self
+            .body
+            .materialize_const_generics(engines, handler, name, value)?;
+        Ok(has_changes)
     }
 }
 
@@ -299,13 +307,12 @@ fn rename_const_generics_on_function_inner(
                         .clone(),
                     b.name.clone(),
                 );
-                has_changes = has_changes
-                    | function.subst_inner(&SubstTypesContext {
-                        handler,
-                        engines,
-                        type_subst_map: Some(&type_subst_map),
-                        subst_function_body: true,
-                    });
+                has_changes |= function.subst_inner(&SubstTypesContext {
+                    handler,
+                    engines,
+                    type_subst_map: Some(&type_subst_map),
+                    subst_function_body: true,
+                });
             }
             (GenericArgument::Const(a), TypeParameter::Const(b)) => {
                 engines
@@ -349,13 +356,12 @@ impl DeclRefFunction {
             let mut has_changes = HasChanges::No;
             if let Some(TyDecl::ImplSelfOrTrait(t)) = &method.implementing_type {
                 let impl_self_or_trait = &*engines.de().get(&t.decl_id);
-                has_changes = has_changes
-                    | rename_const_generics_on_function(
-                        handler,
-                        engines,
-                        impl_self_or_trait,
-                        &mut method,
-                    );
+                has_changes |= rename_const_generics_on_function(
+                    handler,
+                    engines,
+                    impl_self_or_trait,
+                    &mut method,
+                );
 
                 let mut type_id_type_parameters = vec![];
                 let mut const_generic_parameters = BTreeMap::default();
@@ -425,13 +431,12 @@ impl DeclRefFunction {
             method_type_subst_map.extend(&type_id_type_subst_map);
             method_type_subst_map.insert(method_implementing_for, type_id);
 
-            has_changes = has_changes
-                | method.subst(&SubstTypesContext::new(
-                    handler,
-                    engines,
-                    &method_type_subst_map,
-                    true,
-                ));
+            has_changes |= method.subst(&SubstTypesContext::new(
+                handler,
+                engines,
+                &method_type_subst_map,
+                true,
+            ));
 
             let decl_ref = if has_changes.has_changes() {
                 engines
@@ -554,7 +559,7 @@ impl HashWithEngines for TyFunctionDecl {
 
 impl SubstTypes for TyFunctionDecl {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
-        let changes = if ctx.subst_function_body {
+        let mut has_changes = if ctx.subst_function_body {
             has_changes! {
                 self.type_parameters.subst(ctx);
                 self.parameters.subst(ctx);
@@ -573,17 +578,16 @@ impl SubstTypes for TyFunctionDecl {
 
         if let Some(map) = ctx.type_subst_map.as_ref() {
             let handler = Handler::default();
-            // TODO: This is a workaround until we implement `materialize_const_generics`
-            //       that returns `HasChanges`.
-            let mut const_generic_materialization_has_changes = HasChanges::No;
             for (name, value) in &map.const_generics_materialization {
-                let _ = self.materialize_const_generics(ctx.engines, &handler, name, value);
-                const_generic_materialization_has_changes = HasChanges::Yes;
+                if let Ok(materialization_has_changes) =
+                    self.materialize_const_generics(ctx.engines, &handler, name, value)
+                {
+                    has_changes |= materialization_has_changes;
+                }
             }
-            changes | const_generic_materialization_has_changes
-        } else {
-            changes
         }
+
+        has_changes
     }
 }
 
@@ -593,7 +597,7 @@ impl ReplaceDecls for TyFunctionDecl {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
-    ) -> Result<bool, ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
         let mut func_ctx = ctx.by_ref().with_self_type(self.implementing_for);
         self.body
             .replace_decls(decl_mapping, handler, &mut func_ctx)
