@@ -254,19 +254,28 @@ fn unify_arguments_and_parameters(
             }
 
             // check for matching mutability
-            let param_mutability =
-                ty::VariableMutability::new_from_ref_mut(param.is_reference, param.is_mutable);
-            if arg.gather_mutability().is_immutable() && param_mutability.is_mutable() {
-                handler.emit_err(CompileError::ImmutableArgumentToMutableParameter {
-                    span: arg.span.clone(),
-                });
-            }
+            check_arg_mutability(handler, param, &arg);
 
             typed_arguments_and_names.push((param.name.clone(), arg));
         }
 
         Ok(typed_arguments_and_names)
     })
+}
+
+/// Emits an error if an immutable `arg` is passed to a `ref mut` `param`.
+pub(crate) fn check_arg_mutability(
+    handler: &Handler,
+    param: &ty::TyFunctionParameter,
+    arg: &ty::TyExpression,
+) {
+    let param_mutability =
+        ty::VariableMutability::new_from_ref_mut(param.is_reference, param.is_mutable);
+    if param_mutability.is_mutable() && arg.gather_mutability().is_immutable() {
+        handler.emit_err(CompileError::ImmutableArgumentToMutableParameter {
+            span: arg.span.clone(),
+        });
+    }
 }
 
 pub(crate) fn check_function_arguments_arity(

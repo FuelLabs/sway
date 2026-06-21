@@ -31,7 +31,8 @@ impl Hasher {
     /// Note that the length of `bytes` is not appended to the
     /// `Hasher`, just the content.
     pub fn write(ref mut self, bytes: Bytes) {
-        self.bytes.append(bytes);
+        let mut b = bytes;
+        self.bytes.append(b);
     }
 
     /// Appends bytes from the `slice` to this `Hasher`.
