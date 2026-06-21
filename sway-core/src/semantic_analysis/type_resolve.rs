@@ -379,8 +379,7 @@ pub fn resolve_call_path(
     // Otherwise, check the visibility modifier
     if !decl.visibility(engines).is_public() && is_self_type == IsSelfType::No {
         handler.emit_err(CompileError::ImportPrivateSymbol {
-            name: call_path.suffix.clone(),
-            span: call_path.suffix.span(),
+            name: (&call_path.suffix).into(),
         });
     }
 
@@ -538,8 +537,7 @@ fn decl_to_type_info(
             }
             _ => {
                 return Err(handler.emit_err(CompileError::SymbolNotFound {
-                    name: symbol.clone(),
-                    span: symbol.span(),
+                    name: symbol.into(),
                 }))
             }
         }),

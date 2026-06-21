@@ -123,7 +123,7 @@ pub enum CompileError {
     #[error("Function \"{name}\" was already defined in scope.")]
     MultipleDefinitionsOfFunction { name: Ident, span: Span },
     #[error("Name \"{name}\" is defined multiple times.")]
-    MultipleDefinitionsOfName { name: Ident, span: Span },
+    MultipleDefinitionsOfName { name: IdentUnique },
     #[error("Constant \"{name}\" was already defined in scope.")]
     MultipleDefinitionsOfConstant { name: Ident, new: Span, old: Span },
     #[error("Type \"{name}\" was already defined in scope.")]
@@ -214,7 +214,7 @@ pub enum CompileError {
     #[error("Cannot pass immutable argument to mutable parameter.")]
     ImmutableArgumentToMutableParameter { span: Span },
     #[error("ref mut or mut parameter is not allowed for contract ABI function.")]
-    RefMutableNotAllowedInContractAbi { param_name: Ident, span: Span },
+    RefMutableNotAllowedInContractAbi { param_name: IdentUnique },
     #[error("Reference to a mutable value cannot reference a constant.")]
     RefMutCannotReferenceConstant {
         /// Constant, as accessed in code. E.g.:
@@ -323,7 +323,7 @@ pub enum CompileError {
         "Enum with name \"{name}\" could not be found in this scope. Perhaps you need to import \
          it?"
     )]
-    EnumNotFound { name: Ident, span: Span },
+    EnumNotFound { name: IdentUnique },
     /// This error is used only for error recovery and is not emitted as a compiler
     /// error to the final compilation output. The compiler emits the cumulative error
     /// [CompileError::StructInstantiationMissingFields] given below, and that one also
@@ -453,7 +453,7 @@ pub enum CompileError {
     #[error("This is a {actually}, not a type alias")]
     DeclIsNotATypeAlias { actually: String, span: Span },
     #[error("Could not find symbol \"{name}\" in this scope.")]
-    SymbolNotFound { name: Ident, span: Span },
+    SymbolNotFound { name: IdentUnique },
     #[error("Found multiple bindings for \"{name}\" in this scope.")]
     SymbolWithMultipleBindings {
         name: Ident,
@@ -461,7 +461,7 @@ pub enum CompileError {
         span: Span,
     },
     #[error("Symbol \"{name}\" is private.")]
-    ImportPrivateSymbol { name: Ident, span: Span },
+    ImportPrivateSymbol { name: IdentUnique },
     #[error("Module \"{name}\" is private.")]
     ImportPrivateModule { name: Ident, span: Span },
     #[error(
@@ -879,7 +879,7 @@ pub enum CompileError {
     #[error(
         "Unrecognized contract ABI method parameter \"{param_name}\". The only available parameters are \"gas\", \"coins\", and \"asset_id\""
     )]
-    UnrecognizedContractParam { param_name: String, span: Span },
+    UnrecognizedContractParam { param_name: IdentUnique },
     #[error("Attempting to specify a contract method parameter for a non-contract function call")]
     CallParamForNonContractCallMethod { span: Span },
     #[error("Storage field \"{field_name}\" does not exist.")]
@@ -1270,7 +1270,7 @@ impl Spanned for CompileError {
             PredicateMainDoesNotReturnBool(span) => span.clone(),
             NoScriptMainFunction(span) => span.clone(),
             MultipleDefinitionsOfFunction { span, .. } => span.clone(),
-            MultipleDefinitionsOfName { span, .. } => span.clone(),
+            MultipleDefinitionsOfName { name } => name.span(),
             MultipleDefinitionsOfConstant { new: span, .. } => span.clone(),
             MultipleDefinitionsOfType { span, .. } => span.clone(),
             MultipleDefinitionsOfMatchArmVariable { duplicate, .. } => duplicate.clone(),
@@ -1281,7 +1281,7 @@ impl Spanned for CompileError {
             AssignmentViaNonMutableReference { span, .. } => span.clone(),
             MutableParameterNotSupported { span, .. } => span.clone(),
             ImmutableArgumentToMutableParameter { span } => span.clone(),
-            RefMutableNotAllowedInContractAbi { span, .. } => span.clone(),
+            RefMutableNotAllowedInContractAbi { param_name } => param_name.span(),
             RefMutCannotReferenceConstant { span, .. } => span.clone(),
             RefMutCannotReferenceImmutableVariable { span, .. } => span.clone(),
             MethodRequiresMutableSelf { span, .. } => span.clone(),
@@ -1312,9 +1312,9 @@ impl Spanned for CompileError {
             NotAStruct { span, .. } => span.clone(),
             NotIndexable { span, .. } => span.clone(),
             FieldAccessOnNonStruct { span, .. } => span.clone(),
-            SymbolNotFound { span, .. } => span.clone(),
+            SymbolNotFound { name } => name.span(),
             SymbolWithMultipleBindings { span, .. } => span.clone(),
-            ImportPrivateSymbol { span, .. } => span.clone(),
+            ImportPrivateSymbol { name } => name.span(),
             ImportPrivateModule { span, .. } => span.clone(),
             NoElseBranch { span, .. } => span.clone(),
             NotAType { span, .. } => span.clone(),
@@ -1412,7 +1412,7 @@ impl Spanned for CompileError {
             AbiAsSupertrait { span, .. } => span.clone(),
             SupertraitImplRequired { span, .. } => span.clone(),
             ContractCallParamRepeated { span, .. } => span.clone(),
-            UnrecognizedContractParam { span, .. } => span.clone(),
+            UnrecognizedContractParam { param_name } => param_name.span(),
             CallParamForNonContractCallMethod { span, .. } => span.clone(),
             StorageFieldDoesNotExist { field_name, .. } => field_name.span(),
             InvalidStorageOnlyTypeDecl { span, .. } => span.clone(),
@@ -1423,7 +1423,7 @@ impl Spanned for CompileError {
             ConvertParseTree { error } => error.span(),
             Lex { error } => error.span(),
             Parse { error } => error.span.clone(),
-            EnumNotFound { span, .. } => span.clone(),
+            EnumNotFound { name } => name.span(),
             TupleIndexOutOfBounds { span, .. } => span.clone(),
             NonConstantDeclValue { span, .. } => span.clone(),
             StorageDeclarationInNonContract { span, .. } => span.clone(),

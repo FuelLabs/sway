@@ -551,12 +551,12 @@ impl GenericTypeParameter {
     pub(crate) fn type_check_type_params(
         handler: &Handler,
         mut ctx: TypeCheckContext,
-        generic_params: Vec<TypeParameter>,
-        self_type_param: Option<GenericTypeParameter>,
+        generic_params: &[TypeParameter],
+        self_type_param: Option<&GenericTypeParameter>,
     ) -> Result<Vec<TypeParameter>, ErrorEmitted> {
         let mut new_generic_params: Vec<TypeParameter> = vec![];
 
-        if let Some(self_type_param) = self_type_param.clone() {
+        if let Some(self_type_param) = self_type_param {
             self_type_param.insert_self_type_into_namespace(handler, ctx.by_ref());
         }
 
@@ -652,7 +652,7 @@ impl GenericTypeParameter {
     fn type_check(
         handler: &Handler,
         ctx: TypeCheckContext,
-        type_parameter: GenericTypeParameter,
+        type_parameter: &GenericTypeParameter,
     ) -> Result<TypeParameter, ErrorEmitted> {
         let type_engine = ctx.engines.te();
 
@@ -675,7 +675,7 @@ impl GenericTypeParameter {
             trait_constraints: _,
             parent,
             is_from_type_parameter: _,
-        } = &*type_engine.get(type_id)
+        } = &*type_engine.get(*type_id)
         {
             *parent
         } else {
@@ -686,18 +686,18 @@ impl GenericTypeParameter {
         // This order is required because a trait constraint may depend on its own type parameter.
         let type_id = type_engine.new_unknown_generic(
             name.clone(),
-            VecSet(trait_constraints_with_supertraits.clone()),
+            VecSet(trait_constraints_with_supertraits),
             parent,
             true,
         );
 
         let type_parameter = GenericTypeParameter {
-            name,
+            name: name.clone(),
             type_id,
-            initial_type_id,
-            trait_constraints,
+            initial_type_id: *initial_type_id,
+            trait_constraints: trait_constraints.clone(),
             trait_constraints_span: trait_constraints_span.clone(),
-            is_from_parent,
+            is_from_parent: *is_from_parent,
         };
 
         // Insert the type parameter into the namespace

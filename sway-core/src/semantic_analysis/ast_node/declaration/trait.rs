@@ -74,7 +74,7 @@ impl TyTraitDecl {
     pub(crate) fn type_check(
         handler: &Handler,
         ctx: TypeCheckContext,
-        trait_decl: TraitDeclaration,
+        trait_decl: &TraitDeclaration,
     ) -> Result<Self, ErrorEmitted> {
         let TraitDeclaration {
             name,
@@ -111,7 +111,7 @@ impl TyTraitDecl {
                     handler,
                     ctx.by_ref(),
                     type_parameters,
-                    Some(self_type_param.clone()),
+                    Some(&self_type_param),
                 )?;
 
                 // Recursively make the interface surfaces and methods of the
@@ -120,7 +120,7 @@ impl TyTraitDecl {
                     handler,
                     ctx.by_ref(),
                     self_type,
-                    &supertraits,
+                    supertraits,
                     &SupertraitOf::Trait,
                 )?;
 
@@ -135,7 +135,7 @@ impl TyTraitDecl {
                         TraitItem::TraitFn(_) => None,
                         TraitItem::Constant(_) => None,
                         TraitItem::Type(decl_id) => {
-                            let type_decl = engines.pe().get_trait_type(&decl_id).as_ref().clone();
+                            let type_decl = &*engines.pe().get_trait_type(&decl_id);
                             let type_decl =
                                 ty::TyTraitType::type_check(handler, ctx.by_ref(), type_decl)?;
 
@@ -153,8 +153,7 @@ impl TyTraitDecl {
                     if let Some(decl_name) = decl_name {
                         if !ids.insert(decl_name.clone()) {
                             handler.emit_err(CompileError::MultipleDefinitionsOfName {
-                                name: decl_name.clone(),
-                                span: decl_name.span(),
+                                name: decl_name.into(),
                             });
                         }
                     }
@@ -169,7 +168,7 @@ impl TyTraitDecl {
                     self_type,
                     vec![],
                     &dummy_interface_surface,
-                    &span,
+                    span,
                     None,
                     IsImplSelf::No,
                     IsExtendingExistingImpl::No,
@@ -177,12 +176,12 @@ impl TyTraitDecl {
                 )?;
                 let mut dummy_interface_surface = vec![];
 
-                for item in interface_surface.into_iter() {
+                for item in interface_surface.iter() {
                     let decl_name = match item {
                         TraitItem::TraitFn(decl_id) => {
-                            let method = engines.pe().get_trait_fn(&decl_id);
+                            let method = engines.pe().get_trait_fn(decl_id);
                             let method = ty::TyTraitFn::type_check(handler, ctx.by_ref(), &method)?;
-                            let decl_ref = decl_engine.insert(method.clone(), Some(&decl_id));
+                            let decl_ref = decl_engine.insert(method.clone(), Some(decl_id));
                             dummy_interface_surface.push(ty::TyImplItem::Fn(
                                 decl_engine
                                     .insert(
@@ -195,11 +194,11 @@ impl TyTraitDecl {
                             Some(method.name.clone())
                         }
                         TraitItem::Constant(decl_id) => {
-                            let const_decl = engines.pe().get_constant(&decl_id).as_ref().clone();
+                            let const_decl = &*engines.pe().get_constant(decl_id);
                             let const_decl =
                                 ty::TyConstantDecl::type_check(handler, ctx.by_ref(), const_decl)?;
                             let decl_ref =
-                                ctx.engines.de().insert(const_decl.clone(), Some(&decl_id));
+                                ctx.engines.de().insert(const_decl.clone(), Some(decl_id));
                             new_interface_surface
                                 .push(ty::TyTraitInterfaceItem::Constant(decl_ref.clone()));
 
@@ -223,8 +222,7 @@ impl TyTraitDecl {
                     if let Some(decl_name) = decl_name {
                         if !ids.insert(decl_name.clone()) {
                             handler.emit_err(CompileError::MultipleDefinitionsOfName {
-                                name: decl_name.clone(),
-                                span: decl_name.span(),
+                                name: decl_name.into(),
                             });
                         }
                     }
@@ -239,7 +237,7 @@ impl TyTraitDecl {
                     self_type,
                     vec![],
                     &dummy_interface_surface,
-                    &span,
+                    span,
                     None,
                     IsImplSelf::No,
                     IsExtendingExistingImpl::Yes,
@@ -248,8 +246,8 @@ impl TyTraitDecl {
 
                 // Type check the items.
                 let mut new_items = vec![];
-                for method_decl_id in methods.into_iter() {
-                    let method = engines.pe().get_function(&method_decl_id);
+                for method_decl_id in methods.iter() {
+                    let method = engines.pe().get_function(method_decl_id);
                     let method = ty::TyFunctionDecl::type_check(
                         handler,
                         ctx.by_ref(),
@@ -260,7 +258,7 @@ impl TyTraitDecl {
                     )
                     .unwrap_or_else(|_| ty::TyFunctionDecl::error(&method));
                     new_items.push(ty::TyTraitItem::Fn(
-                        decl_engine.insert(method, Some(&method_decl_id)),
+                        decl_engine.insert(method, Some(method_decl_id)),
                     ));
                 }
 
@@ -270,11 +268,12 @@ impl TyTraitDecl {
                     self_type: TypeParameter::Type(self_type_param),
                     interface_surface: new_interface_surface,
                     items: new_items,
-                    supertraits,
-                    visibility,
-                    attributes,
-                    call_path: CallPath::from(name).to_fullpath(ctx.engines(), ctx.namespace()),
-                    span,
+                    supertraits: supertraits.clone(),
+                    visibility: *visibility,
+                    attributes: attributes.clone(),
+                    call_path: CallPath::from(name.clone())
+                        .to_fullpath(ctx.engines(), ctx.namespace()),
+                    span: span.clone(),
                 };
                 Ok(typed_trait_decl)
             })

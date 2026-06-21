@@ -33,7 +33,7 @@ impl ty::TyVariableDecl {
     pub fn type_check(
         handler: &Handler,
         ctx: TypeCheckContext,
-        var_decl: VariableDeclaration,
+        var_decl: &VariableDeclaration,
     ) -> Result<Self, ErrorEmitted> {
         let engines = &ctx.engines();
         let type_engine = engines.te();
@@ -94,7 +94,7 @@ impl ty::TyVariableDecl {
                 .namespace()
                 .current_module()
                 .current_items()
-                .check_symbols_unique_while_collecting_unifications(&var_decl.name.clone())
+                .check_symbols_unique_while_collecting_unifications(&var_decl.name)
                 .ok();
 
             if let Some(ResolvedDeclaration::Typed(ty::TyDecl::VariableDecl(variable_decl))) =

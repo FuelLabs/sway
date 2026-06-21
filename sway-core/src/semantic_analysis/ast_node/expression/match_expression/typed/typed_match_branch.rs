@@ -27,7 +27,7 @@ impl ty::TyMatchBranch {
         handler: &Handler,
         mut ctx: TypeCheckContext,
         typed_value: &ty::TyExpression,
-        branch: MatchBranch,
+        branch: &MatchBranch,
     ) -> Result<(ty::TyMatchBranch, ty::TyScrutinee), ErrorEmitted> {
         let MatchBranch {
             scrutinee,
@@ -159,7 +159,7 @@ impl ty::TyMatchBranch {
                     type_annotation,
                     None,
                 ));
-                ty::TyExpression::type_check(handler, branch_ctx, &result)?
+                ty::TyExpression::type_check(handler, branch_ctx, result)?
             };
 
             // Check if return type is Never if it is we don't unify as it would replace the Unknown annotation with Never.
@@ -216,7 +216,7 @@ impl ty::TyMatchBranch {
                 matched_or_variant_index_vars: or_variant_vars,
                 condition,
                 result: new_result,
-                span: branch_span,
+                span: branch_span.clone(),
             };
 
             Ok((typed_branch, typed_scrutinee))

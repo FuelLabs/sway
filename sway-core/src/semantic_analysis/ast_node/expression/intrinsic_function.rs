@@ -24,7 +24,7 @@ impl ty::TyIntrinsicFunctionKind {
     pub(crate) fn type_check(
         handler: &Handler,
         ctx: TypeCheckContext,
-        kind_binding: TypeBinding<Intrinsic>,
+        kind_binding: &TypeBinding<Intrinsic>,
         arguments: &[Expression],
         span: Span,
     ) -> Result<(Self, TypeId), ErrorEmitted> {
@@ -34,6 +34,7 @@ impl ty::TyIntrinsicFunctionKind {
             ..
         } = kind_binding;
         let type_arguments = type_arguments.as_slice();
+        let kind = *kind;
         match kind {
             Intrinsic::SizeOfVal => {
                 type_check_size_of_val(handler, ctx, kind, arguments, type_arguments, span)
