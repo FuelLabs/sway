@@ -1,0 +1,8 @@
+[[package]]
+name = "std"
+source = "path+from-root-BCE5F39600308AA6"
+
+[[package]]
+name = "type_alias_array_const_generics"
+source = "member"
+dependencies = ["std"]
