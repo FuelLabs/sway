@@ -519,7 +519,13 @@ fn block_to_doc(
                 block
                     .arg_iter(context)
                     .map(|arg_val| {
-                        Doc::text(namer.name(context, arg_val)).append(Doc::text(format!(
+                        Doc::text(if arg_val.get_argument(context).unwrap().is_immutable {
+                            ""
+                        } else {
+                            "mut "
+                        })
+                        .append(Doc::text(namer.name(context, arg_val)))
+                        .append(Doc::text(format!(
                             ": {}",
                             arg_val.get_type(context).unwrap().as_string(context)
                         )))

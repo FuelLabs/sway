@@ -420,11 +420,19 @@ impl Block {
     ///
     /// For every instruction within the block, any reference to `old_val` is replaced with
     /// `new_val`.
-    pub fn replace_values(&self, context: &mut Context, replace_map: &FxHashMap<Value, Value>) {
+    pub fn replace_values(
+        &self,
+        context: &mut Context,
+        replace_map: &FxHashMap<Value, Value>,
+    ) -> bool {
+        let mut modified = false;
+
         for ins_idx in 0..context.blocks[self.0].instructions.len() {
             let ins = context.blocks[self.0].instructions[ins_idx];
-            ins.replace_instruction_values(context, replace_map);
+            modified |= ins.replace_instruction_values(context, replace_map);
         }
+
+        modified
     }
 
     /// Remove an instruction from this block.
@@ -433,10 +441,13 @@ impl Block {
     /// extra checks should probably be performed here to avoid corruption! Ideally we use get a
     /// user/uses system implemented.  Using `Vec::remove()` is also O(n) which we may want to
     /// avoid someday.
-    pub fn remove_instruction(&self, context: &mut Context, instr_val: Value) {
+    pub fn remove_instruction(&self, context: &mut Context, instr_val: Value) -> bool {
         let ins = &mut context.blocks[self.0].instructions;
         if let Some(pos) = ins.iter().position(|iv| *iv == instr_val) {
             ins.remove(pos);
+            true
+        } else {
+            false
         }
     }
 
@@ -458,9 +469,18 @@ impl Block {
     }
 
     /// Remove instructions from block that satisfy a given predicate.
-    pub fn remove_instructions<T: Fn(Value) -> bool>(&self, context: &mut Context, pred: T) {
+    pub fn remove_instructions<T: Fn(Value) -> bool>(
+        &self,
+        context: &mut Context,
+        pred: T,
+    ) -> bool {
         let ins = &mut context.blocks[self.0].instructions;
+
+        let len_before = ins.len();
         ins.retain(|value| !pred(*value));
+        let len_after = ins.len();
+
+        len_before != len_after
     }
 
     /// Clear the current instruction list and take the one provided.

@@ -55,7 +55,7 @@ script {
     }
 
     entry_orig fn main_11(baba !28: u64, keke !29: u64) -> u64, !32 {
-        entry(baba: u64, keke: u64):
+        entry(mut baba: u64, mut keke: u64):
         v379v1 = add baba, keke, !35
         ret u64 v379v1
     }

@@ -18,6 +18,6 @@ fn main() {
 // check: call revert_0($value)
 
 // check: fn revert_0($(foo=$ID)
-// check: entry($foo: u64):
+// check: entry(mut $foo: u64):
 // checj: revert $foo
-// check: } 
+// check: }

@@ -17,7 +17,7 @@ script {
     WRAPPED = config { u64 }, abi_decode_in_place_0, 0x0000000000000001, !2
 
     pub fn abi_decode_in_place_0(ptr !4: ptr, len !5: u64, target !6: ptr) -> (), !9 {
-        entry(ptr: ptr, len: u64, target: ptr):
+        entry(mut ptr: ptr, mut len: u64, mut target: ptr):
         v149v1 = asm(src: ptr, target: target, len: len) -> (), !10 {
             mcp    target src len, !11
         }

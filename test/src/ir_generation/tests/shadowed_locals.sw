@@ -19,7 +19,7 @@ fn main() -> u64 {
 // check: $(true=$VAL) = const bool true
 // check: store $true to $a_var
 
-// check: $ID($(int_val=$VAL): u64):
+// check: $ID(mut $(int_val=$VAL): u64):
 // check: $(a__var=$VAL) = get_local __ptr u64, a_
 // check: store $int_val to $a__var
 

@@ -23,7 +23,7 @@ fn main() {
 // check: call $(f_method=$ID)($a_var)
 
 // check: fn $f_method(self $MD: __ptr { u64 }) -> ()
-// check: entry(self: __ptr { u64 }):
+// check: entry(mut self: __ptr { u64 }):
 
 // check: $(idx_0=$VAL) = const u64 0
 // check: $(a_ptr=$VAL) = get_elem_ptr $VAL, __ptr u64, $idx_0
