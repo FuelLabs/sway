@@ -179,7 +179,7 @@ mod ir_builder {
                 }
 
             rule block_arg() -> (IrAstTy, String, Option<MdIdxRef>)
-                = name:id() mdi:metadata_idx()? ":" _ ty:ast_ty() {
+                = m:("mut" _)? _ name:id() mdi:metadata_idx()? ":" _ ty:ast_ty() {
                     (ty, name, mdi)
                 }
 
@@ -1267,7 +1267,6 @@ mod ir_builder {
                                         block: irblock,
                                         idx,
                                         ty,
-                                        // TODO: Support immutable flag on block arguments.
                                         is_immutable: false,
                                     },
                                 )
@@ -1280,9 +1279,9 @@ mod ir_builder {
                 }));
 
             for block in fn_decl.blocks {
-                for (idx, arg) in block.args.iter().enumerate() {
+                for (idx, (_, name, _)) in block.args.iter().enumerate() {
                     arg_map.insert(
-                        arg.1.clone(),
+                        name.clone(),
                         named_blocks[&block.label].get_arg(context, idx).unwrap(),
                     );
                 }

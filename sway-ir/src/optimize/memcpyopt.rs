@@ -34,8 +34,30 @@ pub fn mem_copy_opt(
     modified |= local_copy_prop_prememcpy(context, analyses, function)?;
     modified |= load_store_to_memcopy(context, function)?;
     modified |= local_copy_prop(context, analyses, function)?;
-
     Ok(modified)
+}
+
+struct InstInfo {
+    // The block containing the instruction.
+    block: Block,
+    // Relative (use only for comparison) position of instruction in `block`.
+    pos: usize,
+}
+
+// If the source is an Arg, we replace uses of destination with Arg.
+// Otherwise (`get_local`), we replace the local symbol in-place.
+enum ReplaceWith {
+    InPlaceLocal(LocalVar),
+    Value(Value),
+}
+
+// If we have A replaces B and B replaces C, then A must replace C also.
+// Recursively searches for the final replacement for the `local`.
+// Returns `None` if the `local` cannot be replaced.
+fn get_replace_with(candidates: &FxHashMap<Symbol, Symbol>, local: &Symbol) -> Option<Symbol> {
+    candidates
+        .get(local)
+        .map(|replace_with| get_replace_with(candidates, replace_with).unwrap_or(*replace_with))
 }
 
 fn local_copy_prop_prememcpy(
@@ -43,12 +65,7 @@ fn local_copy_prop_prememcpy(
     analyses: &AnalysisResults,
     function: Function,
 ) -> Result<bool, IrError> {
-    struct InstInfo {
-        // The block containing the instruction.
-        block: Block,
-        // Relative (use only for comparison) position of instruction in `block`.
-        pos: usize,
-    }
+    let mut modified = false;
 
     // If the analysis result is incomplete we cannot do any safe optimizations here.
     // Calculating the candidates below relies on complete result of an escape analysis.
@@ -214,22 +231,6 @@ fn local_copy_prop_prememcpy(
         })
         .collect();
 
-    // If we have A replaces B and B replaces C, then A must replace C also.
-    // Recursively searches for the final replacement for the `local`.
-    // Returns `None` if the `local` cannot be replaced.
-    fn get_replace_with(candidates: &FxHashMap<Symbol, Symbol>, local: &Symbol) -> Option<Symbol> {
-        candidates
-            .get(local)
-            .map(|replace_with| get_replace_with(candidates, replace_with).unwrap_or(*replace_with))
-    }
-
-    // If the source is an Arg, we replace uses of destination with Arg.
-    // Otherwise (`get_local`), we replace the local symbol in-place.
-    enum ReplaceWith {
-        InPlaceLocal(LocalVar),
-        Value(Value),
-    }
-
     // Because we can't borrow context for both iterating and replacing, do it in 2 steps.
     // `replaces` are the original GetLocal instructions with the corresponding replacements
     // of their arguments.
@@ -265,31 +266,35 @@ fn local_copy_prop_prememcpy(
                 else {
                     panic!("earlier match now fails");
                 };
-                if redundant_var.is_mutable(context) {
+
+                if redundant_var.is_mutable(context) && !replacement_var.is_mutable(context) {
+                    modified = true;
                     replacement_var.set_mutable(context, true);
                 }
-                value.replace(
+
+                modified |= value.replace(
                     context,
                     ValueDatum::Instruction(Instruction {
                         op: InstOp::GetLocal(replacement_var),
                         parent,
                     }),
-                )
+                );
             }
             ReplaceWith::Value(replace_with) => {
                 value_replace.insert(value, replace_with);
             }
         }
     }
-    function.replace_values(context, &value_replace, None);
+
+    modified |= function.replace_values(context, &value_replace, None);
 
     // Delete stores to the replaced local.
     let blocks: Vec<Block> = function.block_iter(context).collect();
     for block in blocks {
-        block.remove_instructions(context, |value| to_delete.contains(&value));
+        modified |= block.remove_instructions(context, |value| to_delete.contains(&value));
     }
 
-    Ok(true)
+    Ok(modified)
 }
 
 // Deconstruct a memcpy into (dst_val_ptr, src_val_ptr, copy_len).
@@ -474,6 +479,7 @@ fn local_copy_prop(
             if escaped_symbols.contains(&src_sym) {
                 return false;
             }
+
             for memcpy in dest_to_copies
                 .get(&src_sym)
                 .iter()
@@ -481,6 +487,7 @@ fn local_copy_prop(
             {
                 let (dst_ptr_memcpy, src_ptr_memcpy, copy_len) =
                     deconstruct_memcpy(context, *memcpy).expect("Expected copy instruction");
+
                 // If the location where we're loading from exactly matches the destination of
                 // the memcpy, just load from the source pointer of the memcpy.
                 // TODO: In both the arms below, we check that the pointer type

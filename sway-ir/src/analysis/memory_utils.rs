@@ -748,6 +748,19 @@ pub fn must_alias(context: &Context, val1: Value, len1: u64, val2: Value, len2: 
 
 /// For a pointer argument `ptr_val`, what's the size of its pointee.
 pub fn pointee_size(context: &Context, ptr_val: Value) -> u64 {
+    if ptr_val
+        .get_type(context)
+        .unwrap()
+        .get_pointee_type(context)
+        .is_none()
+    {
+        eprintln!(
+            "pointee_size: {}, \n{}",
+            ptr_val.get_type(context).unwrap().as_string(context),
+            std::backtrace::Backtrace::force_capture(),
+        );
+    }
+
     ptr_val
         .get_type(context)
         .unwrap()

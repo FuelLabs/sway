@@ -55,5 +55,5 @@ fn main() -> bool {
 // check: $(other_pred=$VAL) = call $ID($other_val)
 // check: br $block1
 
-// check: $block1($(res=$VAL): bool):
+// check: $block1(mut $(res=$VAL): bool):
 // check: ret bool $res

@@ -85,10 +85,10 @@ script {
         v46v1 = const bool true, !58
         br decode_script_data_0_decode_from_raw_ptr_1_is_decode_trivial_2_is_decode_trivial_3_is_decode_trivial_5_is_decode_trivial_6_block1(v46v1), !59
 
-        decode_script_data_0_decode_from_raw_ptr_1_is_decode_trivial_2_is_decode_trivial_3_is_decode_trivial_5_is_decode_trivial_6_block1(v703v1: bool):
+        decode_script_data_0_decode_from_raw_ptr_1_is_decode_trivial_2_is_decode_trivial_3_is_decode_trivial_5_is_decode_trivial_6_block1(mut v703v1: bool):
         br decode_script_data_0_decode_from_raw_ptr_1_is_decode_trivial_2_is_decode_trivial_3_block1(v703v1), !60
 
-        decode_script_data_0_decode_from_raw_ptr_1_is_decode_trivial_2_is_decode_trivial_3_block1(v706v1: bool):
+        decode_script_data_0_decode_from_raw_ptr_1_is_decode_trivial_2_is_decode_trivial_3_block1(mut v706v1: bool):
         v753v1 = get_local __ptr bool, r_, !62
         store v706v1 to v753v1, !63
         v755v1 = get_local __ptr bool, r_, !65
@@ -171,7 +171,7 @@ script {
         mem_copy_val v855v1, v849v1
         br decode_script_data_0_decode_from_raw_ptr_1_block2(v855v1), !145
 
-        decode_script_data_0_decode_from_raw_ptr_1_block2(v851v1: __ptr { { u64 } }):
+        decode_script_data_0_decode_from_raw_ptr_1_block2(mut v851v1: __ptr { { u64 } }):
         v859v1 = get_local __ptr { { u64 } }, __tmp_block_arg2
         mem_copy_val v859v1, v851v1
         v863v1 = get_local __ptr { { u64 } }, __tmp_block_arg3

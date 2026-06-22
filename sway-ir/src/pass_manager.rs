@@ -380,28 +380,6 @@ impl PassManager {
         print_opts: &PrintPassesOpts,
         verify_opts: &VerifyPassesOpts,
     ) -> Result<bool, IrError> {
-        // Empty IRs are result of compiling dependencies. We don't want to print those.
-        fn ir_is_empty(ir: &Context) -> bool {
-            ir.functions.is_empty()
-                && ir.blocks.is_empty()
-                && ir.values.is_empty()
-                && ir.local_vars.is_empty()
-        }
-
-        fn print_ir_after_pass(ir: &Context, pass: &Pass) {
-            if !ir_is_empty(ir) {
-                println!("// IR: [{}] {}", pass.name, pass.descr);
-                println!("{ir}");
-            }
-        }
-
-        fn print_initial_or_final_ir(ir: &Context, initial_or_final: &'static str) {
-            if !ir_is_empty(ir) {
-                println!("// IR: {initial_or_final}");
-                println!("{ir}");
-            }
-        }
-
         if print_opts.initial {
             print_initial_or_final_ir(ir, "Initial");
         }
@@ -412,11 +390,30 @@ impl PassManager {
 
         let mut global_modified = false;
 
+        // Make it easy for tests to run IR verification in all steps
+        let force_verify: String =
+            std::env::var("SWAY_VERIFY_FORCE").unwrap_or_else(|_| "false".to_string());
+        let force_verify: bool = force_verify.parse().unwrap_or(false);
+
         for _ in 0..2 {
             let mut iter_modified = false;
 
             for pass in passes.flatten_pass_group() {
+                // Save IR before optimisation only when forcing verification
+                let mut ir_before = String::new();
+                if force_verify {
+                    ir_before = ir.to_string();
+                }
+
+                // run the pass
                 let modified = self.actually_run(ir, pass)?;
+
+                // Save IR after optimisation only when forcing verification
+                let mut ir_after = String::new();
+                if force_verify {
+                    ir_after = ir.to_string();
+                }
+
                 iter_modified |= modified;
 
                 if print_opts.passes.contains(pass) && (!print_opts.modified_only || modified) {
@@ -425,6 +422,20 @@ impl PassManager {
 
                 if verify_opts.passes.contains(pass) && (!verify_opts.modified_only || modified) {
                     ir.verify()?;
+                }
+
+                if force_verify {
+                    // Verify IR
+                    ir.verify()?;
+
+                    // Verify pass correctly return modified
+                    let ir_modified = ir_before != ir_after;
+                    if modified != ir_modified {
+                        panic!(
+                            "{pass} returned {modified} but their IR comparison says {}",
+                            ir_modified
+                        );
+                    }
                 }
             }
 
@@ -459,6 +470,28 @@ impl PassManager {
             .join("\n");
 
         format!("Valid pass names are:\n\n{summary}",)
+    }
+}
+
+// Empty IRs are result of compiling dependencies. We don't want to print those.
+fn ir_is_empty(ir: &Context) -> bool {
+    ir.functions.is_empty()
+        && ir.blocks.is_empty()
+        && ir.values.is_empty()
+        && ir.local_vars.is_empty()
+}
+
+fn print_ir_after_pass(ir: &Context, pass: &Pass) {
+    if !ir_is_empty(ir) {
+        println!("// IR: [{}] {}", pass.name, pass.descr);
+        println!("{ir}");
+    }
+}
+
+fn print_initial_or_final_ir(ir: &Context, initial_or_final: &'static str) {
+    if !ir_is_empty(ir) {
+        println!("// IR: {initial_or_final}");
+        println!("{ir}");
     }
 }
 

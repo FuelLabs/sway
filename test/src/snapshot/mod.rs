@@ -388,6 +388,7 @@ fn run_cmds(
 
                     let o = duct::cmd!("bash", "-c", cmd.clone())
                         .dir(repo_root.clone())
+                        .env("SWAY_VERIFY_FORCE", "true")
                         .stderr_to_stdout()
                         .stdout_capture();
 

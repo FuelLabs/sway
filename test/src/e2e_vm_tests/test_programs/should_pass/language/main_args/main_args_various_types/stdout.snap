@@ -72,7 +72,7 @@ script {
         v217v1 = const u64 0, !33
         br decode_script_data_0_decode_from_raw_ptr_1_abi_decode_15_abi_decode_16_while(v217v1), !34
 
-        decode_script_data_0_decode_from_raw_ptr_1_abi_decode_15_abi_decode_16_while(v4141v1: u64):
+        decode_script_data_0_decode_from_raw_ptr_1_abi_decode_15_abi_decode_16_while(mut v4141v1: u64):
         v235v1 = const u64 2
         v4243v1 = cmp lt v4141v1 v235v1, !37
         cbr v4243v1, decode_script_data_0_decode_from_raw_ptr_1_abi_decode_15_abi_decode_16_while_body(), decode_script_data_0_decode_from_raw_ptr_1_abi_decode_15_abi_decode_16_end_while(), !38
@@ -192,7 +192,7 @@ script {
         v426v1 = const u64 0, !137
         revert v426v1, !139
 
-        decode_script_data_0_decode_from_raw_ptr_1_abi_decode_15_abi_decode_16_decode_18_abi_decode_19_abi_decode_26_block5(v4446v1: __ptr { u64, ( u64 | u64 ) }):
+        decode_script_data_0_decode_from_raw_ptr_1_abi_decode_15_abi_decode_16_decode_18_abi_decode_19_abi_decode_26_block5(mut v4446v1: __ptr { u64, ( u64 | u64 ) }):
         v1171v1 = const u64 0
         v4368v1 = get_elem_ptr v4262v1, __ptr { string<3> }, v1171v1, !140
         mem_copy_val v4368v1, v4265v1
@@ -284,7 +284,7 @@ script {
         local [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2] self_2
         local { { ptr, u64, u64 } } self_3
 
-        entry(ops: __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2], __ret_value: __ptr { u64 }):
+        entry(ops: __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2], mut __ret_value: __ptr { u64 }):
         v506v1 = get_local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2], ops_
         mem_copy_val v506v1, ops
         v3847v1 = get_local __ptr { { ptr, u64, u64 } }, __struct_init_00, !162
@@ -319,7 +319,7 @@ script {
         v598v1 = const u64 0, !178
         br encode_allow_alias_33_abi_encode_46_while(v598v1), !179
 
-        encode_allow_alias_33_abi_encode_46_while(v3779v1: u64):
+        encode_allow_alias_33_abi_encode_46_while(mut v3779v1: u64):
         v604v1 = const u64 2
         v3876v1 = cmp lt v3779v1 v604v1, !182
         cbr v3876v1, encode_allow_alias_33_abi_encode_46_while_body(), encode_allow_alias_33_abi_encode_46_end_while(), !183
@@ -365,7 +365,7 @@ script {
         v3952v1 = cmp gt v3951v1 v3946v1, !214
         cbr v3952v1, encode_allow_alias_33_abi_encode_46_abi_encode_47_abi_encode_48_abi_encode_49_block1(), encode_allow_alias_33_abi_encode_46_abi_encode_47_abi_encode_48_abi_encode_49_block0(v3944v1, v3946v1), !215
 
-        encode_allow_alias_33_abi_encode_46_abi_encode_47_abi_encode_48_abi_encode_49_block0(v3781v1: ptr, v3782v1: u64):
+        encode_allow_alias_33_abi_encode_46_abi_encode_47_abi_encode_48_abi_encode_49_block0(mut v3781v1: ptr, mut v3782v1: u64):
         v3959v1 = get_local __ptr string<3>, __anon_10, !216
         mem_copy_val v3959v1, v3932v1
         v3961v1 = add v3781v1, v3948v1, !217
@@ -471,7 +471,7 @@ script {
         v819v1 = const u64 14757395258967588866, !238
         revert v819v1, !272
 
-        encode_allow_alias_33_abi_encode_46_abi_encode_47_abi_encode_50_block5(v4457v1: __ptr { { ptr, u64, u64 } }):
+        encode_allow_alias_33_abi_encode_46_abi_encode_47_abi_encode_50_block5(mut v4457v1: __ptr { { ptr, u64, u64 } }):
         v4055v1 = get_local __ptr { { ptr, u64, u64 } }, buffer______, !274
         mem_copy_val v4055v1, v4457v1
         v4060v1 = get_local __ptr { { ptr, u64, u64 } }, buffer___, !276
@@ -653,7 +653,7 @@ script {
         local { { ptr, u64, u64 } } __struct_init_0
         local { { ptr, u64, u64 } } buffer_
 
-        entry(self: u64, buffer: __ptr { { ptr, u64, u64 } }, __ret_value: __ptr { { ptr, u64, u64 } }):
+        entry(mut self: u64, buffer: __ptr { { ptr, u64, u64 } }, mut __ret_value: __ptr { { ptr, u64, u64 } }):
         v724v1 = get_local __ptr { { ptr, u64, u64 } }, buffer_
         mem_copy_val v724v1, buffer
         v726v1 = get_local __ptr { { ptr, u64, u64 } }, __struct_init_0, !365
@@ -679,7 +679,7 @@ script {
         v749v1 = cmp gt v748v1 v739v1
         cbr v749v1, block1(), block0(v736v1, v739v1)
 
-        block0(v746v1: ptr, v747v1: u64):
+        block0(mut v746v1: ptr, mut v747v1: u64):
         v757v1 = add v746v1, v742v1
         v758v1 = cast_ptr v757v1 to __ptr u64
         store self to v758v1

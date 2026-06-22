@@ -1036,7 +1036,7 @@ fn compile_fn(
                 }
                 (
                     // Convert the name.
-                    param.name.as_str().into(),
+                    param.name.as_str().to_string(),
                     // Convert the type further to a pointer if it's a reference.
                     if param.is_reference {
                         Type::new_typed_pointer(context, ty)

@@ -144,7 +144,7 @@ script {
         local slice __log_arg
         local u64 item_
 
-        entry(item: u64):
+        entry(mut item: u64):
         v18v1 = get_local __ptr u64, item_
         store item to v18v1
         v1536v1 = get_local __ptr { __ptr u64, u64 }, __anon_0, !76
@@ -172,7 +172,7 @@ script {
         local { { ptr, u64, u64 } } __struct_init_0
         local { { ptr, u64, u64 } } buffer_
 
-        entry(self: u64, buffer: __ptr { { ptr, u64, u64 } }, __ret_value: __ptr { { ptr, u64, u64 } }):
+        entry(mut self: u64, buffer: __ptr { { ptr, u64, u64 } }, mut __ret_value: __ptr { { ptr, u64, u64 } }):
         v46v1 = get_local __ptr { { ptr, u64, u64 } }, buffer_
         mem_copy_val v46v1, buffer
         v48v1 = get_local __ptr { { ptr, u64, u64 } }, __struct_init_0, !85
@@ -198,7 +198,7 @@ script {
         v71v1 = cmp gt v70v1 v61v1
         cbr v71v1, block1(), block0(v58v1, v61v1)
 
-        block0(v68v1: ptr, v69v1: u64):
+        block0(mut v68v1: ptr, mut v69v1: u64):
         v79v1 = add v68v1, v64v1
         v80v1 = cast_ptr v79v1 to __ptr u64
         store self to v80v1
@@ -239,7 +239,7 @@ script {
         local { ptr, u64, u64 } __anon_0
         local { { ptr, u64, u64 } } __struct_init_0
 
-        entry(__ret_value: __ptr { { ptr, u64, u64 } }):
+        entry(mut __ret_value: __ptr { { ptr, u64, u64 } }):
         v101v1 = get_local __ptr { { ptr, u64, u64 } }, __struct_init_0, !90
         v102v1 = const u64 1024
         v103v1 = asm(cap: v102v1) -> ptr hp {
@@ -273,7 +273,7 @@ script {
         local { ptr, u64 } __anon_1
         local { { ptr, u64, u64 } } self_
 
-        entry(self: __ptr { { ptr, u64, u64 } }, __ret_value: __ptr slice):
+        entry(self: __ptr { { ptr, u64, u64 } }, mut __ret_value: __ptr slice):
         v124v1 = get_local __ptr { { ptr, u64, u64 } }, self_
         mem_copy_val v124v1, self
         v127v1 = const u64 0
@@ -303,7 +303,7 @@ script {
     }
 
     pub fn push_11(self !94: __ptr { { ptr, u64 }, u64 }, value !95: u64) -> (), !98 {
-        entry(self: __ptr { { ptr, u64 }, u64 }, value: u64):
+        entry(mut self: __ptr { { ptr, u64 }, u64 }, mut value: u64):
         v211v1 = const u64 1
         v212v1 = get_elem_ptr self, __ptr u64, v211v1, !99
         v213v1 = load v212v1
@@ -328,7 +328,7 @@ script {
         v1723v1 = mul v243v1, v1718v1, !117
         br grow_13_block2(v1723v1), !107
 
-        grow_13_block2(v1696v1: u64):
+        grow_13_block2(mut v1696v1: u64):
         v338v1 = const u64 0
         v1729v1 = get_elem_ptr v216v1, __ptr ptr, v338v1, !119
         v1730v1 = load v1729v1, !107
@@ -350,7 +350,7 @@ script {
         }
         br grow_13_realloc_15_block5(v1752v1), !143
 
-        grow_13_realloc_15_block5(v1703v1: ptr):
+        grow_13_realloc_15_block5(mut v1703v1: ptr):
         store v1703v1 to v1729v1, !145
         store v1696v1 to v218v1, !147
         br block2()
@@ -460,20 +460,20 @@ script {
         v532v1 = const bool false, !170
         br encode_allow_alias_22_is_encode_trivial_23_is_encode_trivial_24_block9(v532v1), !171
 
-        encode_allow_alias_22_is_encode_trivial_23_is_encode_trivial_24_block9(v2771v1: bool):
+        encode_allow_alias_22_is_encode_trivial_23_is_encode_trivial_24_block9(mut v2771v1: bool):
         cbr v2771v1, encode_allow_alias_22_is_encode_trivial_23_is_encode_trivial_24_block10(), encode_allow_alias_22_is_encode_trivial_23_is_encode_trivial_24_block11(v2771v1), !173
 
         encode_allow_alias_22_is_encode_trivial_23_is_encode_trivial_24_block10():
         br encode_allow_alias_22_is_encode_trivial_23_is_encode_trivial_24_block11(v532v1), !174
 
-        encode_allow_alias_22_is_encode_trivial_23_is_encode_trivial_24_block11(v2774v1: bool):
+        encode_allow_alias_22_is_encode_trivial_23_is_encode_trivial_24_block11(mut v2774v1: bool):
         cbr v2774v1, encode_allow_alias_22_is_encode_trivial_23_is_encode_trivial_24_block12(), encode_allow_alias_22_is_encode_trivial_23_is_encode_trivial_24_block13(v2774v1), !176
 
         encode_allow_alias_22_is_encode_trivial_23_is_encode_trivial_24_block12():
         v524v1 = const bool true, !177
         br encode_allow_alias_22_is_encode_trivial_23_is_encode_trivial_24_block13(v524v1), !178
 
-        encode_allow_alias_22_is_encode_trivial_23_is_encode_trivial_24_block13(v2777v1: bool):
+        encode_allow_alias_22_is_encode_trivial_23_is_encode_trivial_24_block13(mut v2777v1: bool):
         cbr v2777v1, encode_allow_alias_22_block0(), encode_allow_alias_22_block1(), !179
 
         encode_allow_alias_22_block0():
@@ -535,7 +535,7 @@ script {
         v2878v1 = cmp gt v2877v1 v2873v1, !210
         cbr v2878v1, encode_allow_alias_22_abi_encode_37_abi_encode_38_block1(), encode_allow_alias_22_abi_encode_37_abi_encode_38_block0(v2871v1, v2873v1), !211
 
-        encode_allow_alias_22_abi_encode_37_abi_encode_38_block0(v2780v1: ptr, v2781v1: u64):
+        encode_allow_alias_22_abi_encode_37_abi_encode_38_block0(mut v2780v1: ptr, mut v2781v1: u64):
         v2885v1 = get_local __ptr u64, __anon_1, !212
         mem_copy_val v2885v1, v2856v1
         v626v1 = const u64 4
@@ -600,7 +600,7 @@ script {
         }
         br encode_allow_alias_22_abi_encode_37_abi_encode_38_block0(v2883v1, v2882v1), !249
 
-        encode_allow_alias_22_abi_encode_37_abi_encode_39_block0(v2783v1: ptr, v2784v1: u64):
+        encode_allow_alias_22_abi_encode_37_abi_encode_39_block0(mut v2783v1: ptr, mut v2784v1: u64):
         v2937v1 = get_local __ptr u64, __anon_10, !250
         mem_copy_val v2937v1, v2908v1
         v696v1 = const u64 6
@@ -666,7 +666,7 @@ script {
         }
         br encode_allow_alias_22_abi_encode_37_abi_encode_39_block0(v2935v1, v2934v1), !288
 
-        encode_allow_alias_22_abi_encode_37_abi_encode_40_block0(v2786v1: ptr, v2787v1: u64):
+        encode_allow_alias_22_abi_encode_37_abi_encode_40_block0(mut v2786v1: ptr, mut v2787v1: u64):
         v2989v1 = add v2786v1, v2979v1, !289
         v2990v1 = cast_ptr v2989v1 to __ptr u8, !290
         store v2961v1 to v2990v1, !291
@@ -759,7 +759,7 @@ script {
         }
         br encode_allow_alias_22_abi_encode_37_abi_encode_40_block0(v2987v1, v2986v1), !346
 
-        encode_allow_alias_22_abi_encode_37_abi_encode_41_append_raw_42_block0(v2790v1: ptr, v2791v1: u64):
+        encode_allow_alias_22_abi_encode_37_abi_encode_41_append_raw_42_block0(mut v2790v1: ptr, mut v2791v1: u64):
         v3077v1 = get_local __ptr { ptr, u64 }, __anon_21, !347
         mem_copy_val v3077v1, v3048v1
         v3079v1 = add v2790v1, v3062v1, !348
@@ -840,7 +840,7 @@ script {
         }
         br encode_allow_alias_22_abi_encode_37_abi_encode_41_append_raw_42_block0(v3075v1, v3074v1), !387
 
-        encode_allow_alias_22_abi_encode_37_abi_encode_43_block0(v2794v1: ptr, v2795v1: u64):
+        encode_allow_alias_22_abi_encode_37_abi_encode_43_block0(mut v2794v1: ptr, mut v2795v1: u64):
         v3135v1 = get_local __ptr slice, __anon_22, !388
         mem_copy_val v3135v1, v3981v1
         v3137v1 = add v2794v1, v3118v1, !389
@@ -912,7 +912,7 @@ script {
         }
         br encode_allow_alias_22_abi_encode_37_abi_encode_43_block0(v3133v1, v3132v1), !424
 
-        encode_allow_alias_22_abi_encode_37_abi_encode_44_block0(v2797v1: ptr, v2798v1: u64):
+        encode_allow_alias_22_abi_encode_37_abi_encode_44_block0(mut v2797v1: ptr, mut v2798v1: u64):
         v3186v1 = get_local __ptr u256, __anon_14, !425
         mem_copy_val v3186v1, v3159v1
         v3188v1 = add v2797v1, v3175v1, !426
@@ -957,7 +957,7 @@ script {
         }
         br encode_allow_alias_22_abi_encode_37_abi_encode_44_block0(v3184v1, v3183v1), !444
 
-        encode_allow_alias_22_block2(v3738v1: __ptr slice):
+        encode_allow_alias_22_block2(mut v3738v1: __ptr slice):
         v3852v1 = get_local __ptr slice, __log_arg
         mem_copy_val v3852v1, v3738v1
         v1059v1 = const u64 4579537983717831593
@@ -1041,7 +1041,7 @@ script {
         v1256v1 = const u64 14757395258967588866, !470
         revert v1256v1, !471
 
-        encode_allow_alias_52_abi_encode_57_block5(v3766v1: __ptr { { ptr, u64, u64 } }):
+        encode_allow_alias_52_abi_encode_57_block5(mut v3766v1: __ptr { { ptr, u64, u64 } }):
         v3826v1 = get_local __ptr slice, __log_arg
         v3827v1 = call as_raw_slice_7(v3766v1, v3826v1)
         v1287v1 = const u64 5087777005172090899
