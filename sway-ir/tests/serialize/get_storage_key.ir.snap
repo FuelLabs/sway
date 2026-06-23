@@ -45,7 +45,7 @@ contract {
     }
 
     fn poke_0(_t: __ptr { b256, u64, b256 }) -> () {
-        entry(_t: __ptr { b256, u64, b256 }):
+        entry(mut _t: __ptr { b256, u64, b256 }):
         v24v1 = const unit ()
         ret () v24v1
     }

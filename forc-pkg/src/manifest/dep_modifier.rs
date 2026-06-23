@@ -182,7 +182,6 @@ fn resolve_dependency(
 ) -> Result<(String, Dependency)> {
     let dep_spec: DepSpec = raw.parse()?;
     let dep_name = dep_spec.name;
-
     let mut details = DependencyDetails {
         version: dep_spec.version_req.clone(),
         namespace: None,
@@ -201,7 +200,9 @@ fn resolve_dependency(
         Dependency::Simple(version)
     } else if details.is_source_empty() {
         if let Some(member) = member_manifests.get(&dep_name) {
-            if member.dir() == package_dir {
+            let canonical_member_dir = member.dir().canonicalize().unwrap();
+            let canonical_package_dir = package_dir.canonicalize().unwrap();
+            if canonical_member_dir == canonical_package_dir {
                 bail!("cannot add `{}` as a dependency to itself", dep_name);
             }
 
@@ -433,7 +434,7 @@ mod tests {
         source_files: Vec<(&str, &str)>,
     ) -> Result<(TempDir, PackageManifestFile)> {
         let temp_dir = tempdir()?;
-        let base_path = temp_dir.path();
+        let base_path = temp_dir.path().canonicalize().unwrap();
 
         // Create package structure
         fs::create_dir_all(base_path.join("src"))?;
@@ -446,7 +447,7 @@ mod tests {
             entry = "main.sw"
             license = "MIT"
             name = "{name}"
-            
+
             [dependencies]
         "#
         );
@@ -472,7 +473,7 @@ mod tests {
         members: Vec<(&str, Vec<(&str, &str)>)>,
     ) -> Result<(TempDir, WorkspaceManifestFile)> {
         let temp_dir = tempdir()?;
-        let base_path = temp_dir.path();
+        let base_path = temp_dir.path().canonicalize().unwrap();
 
         // Create workspace Forc.toml
         let mut workspace_toml = "[workspace]\nmembers = [".to_string();
@@ -500,7 +501,7 @@ mod tests {
                 entry = "main.sw"
                 license = "MIT"
                 name = "{name}"
-                
+
                 [dependencies]
             "#
             );
@@ -582,7 +583,7 @@ mod tests {
         ])
         .unwrap();
 
-        let base_path = temp_dir.path();
+        let base_path = temp_dir.path().canonicalize().unwrap();
 
         let expected_path = base_path.join("pkg1/Forc.toml");
 
@@ -605,7 +606,7 @@ mod tests {
         ])
         .unwrap();
 
-        let base_path = temp_dir.path();
+        let base_path = temp_dir.path().canonicalize().unwrap();
 
         let manifest_file = ManifestFile::from_dir(base_path).unwrap();
         let members = manifest_file.member_manifests().unwrap();
@@ -633,7 +634,7 @@ mod tests {
         ])
         .unwrap();
 
-        let base_path = temp_dir.path();
+        let base_path = temp_dir.path().canonicalize().unwrap();
 
         let manifest_file = ManifestFile::from_dir(base_path).unwrap();
         let members = manifest_file.member_manifests().unwrap();
@@ -900,7 +901,7 @@ mod tests {
         ])
         .unwrap();
 
-        let base_path = temp_dir.path();
+        let base_path = temp_dir.path().canonicalize().unwrap();
         let package_dir = base_path.join("pkg2");
 
         let dep = "pkg1";
@@ -937,14 +938,13 @@ mod tests {
         ])
         .unwrap();
 
-        let base_path = temp_dir.path();
+        let base_path = temp_dir.path().canonicalize().unwrap();
         let package_dir = base_path.join("pkg1");
         let dep = "pkg1";
         let resp = format!("cannot add `{dep}` as a dependency to itself");
 
         let manifest_file = ManifestFile::from_dir(base_path).unwrap();
         let members = manifest_file.member_manifests().unwrap();
-
         let opts = ModifyOpts {
             dependencies: vec![dep.to_string()],
             package: Some("package-1".to_string()),
