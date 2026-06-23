@@ -82,7 +82,7 @@ pub fn modify_dependencies(opts: ModifyOpts) -> Result<()> {
                     dependency,
                     &opts,
                     &member_manifests,
-                    &old_package_manifest.dir().to_path_buf(),
+                    old_package_manifest.dir(),
                 )?;
 
                 section.add_deps_manifest_table(
