@@ -22,6 +22,6 @@ pub fn code_lens(runnables: &RunnableMap, url: &Url) -> Vec<CodeLens> {
         })
         .unwrap_or_default();
     // Sort the results
-    result.sort_by(|a, b| a.range.start.line.cmp(&b.range.start.line));
+    result.sort_by_key(|a| a.range.start.line);
     result
 }
