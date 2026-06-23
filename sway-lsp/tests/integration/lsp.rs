@@ -505,8 +505,8 @@ pub(crate) async fn references_request(server: &ServerState, uri: &Url) {
         create_location(3, 5, 9),
         create_location(14, 8, 12),
     ];
-    response.sort_by(|a, b| a.range.start.cmp(&b.range.start));
-    expected.sort_by(|a, b| a.range.start.cmp(&b.range.start));
+    response.sort_by_key(|a| a.range.start);
+    expected.sort_by_key(|a| a.range.start);
     assert_eq!(expected, response);
 }
 
