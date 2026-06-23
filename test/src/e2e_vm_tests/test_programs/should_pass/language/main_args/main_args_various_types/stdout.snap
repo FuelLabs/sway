@@ -224,7 +224,7 @@ script {
         retd v1137v1 v1147v1, !154
     }
 
-    entry_orig fn main_32(ops: __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2], __ret_value: __ptr { u64 }) -> (), !157 {
+    entry_orig fn main_32(mut ops: __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2], mut __ret_value: __ptr { u64 }) -> (), !157 {
         local mut { ptr, u64, u64 } __aggr_memcpy_0
         local mut { ptr, u64, u64 } __aggr_memcpy_00
         local mut { ptr, u64, u64 } __aggr_memcpy_01
@@ -645,7 +645,7 @@ script {
         revert v1118v1, !360
     }
 
-    pub fn abi_encode_51(self !361: u64, buffer: __ptr { { ptr, u64, u64 } }, __ret_value: __ptr { { ptr, u64, u64 } }) -> (), !364 {
+    pub fn abi_encode_51(mut self !361: u64, mut buffer: __ptr { { ptr, u64, u64 } }, mut __ret_value: __ptr { { ptr, u64, u64 } }) -> (), !364 {
         local mut { ptr, u64, u64 } __aggr_memcpy_0
         local mut { ptr, u64, u64 } __aggr_memcpy_00
         local { ptr, u64, u64 } __anon_0
@@ -715,7 +715,7 @@ script {
         br block0(v754v1, v753v1)
     }
 
-    fn eq_str_3_57(a: __ptr string<3>, b: __ptr slice) -> bool, !368 {
+    fn eq_str_3_57(mut a: __ptr string<3>, mut b: __ptr slice) -> bool, !368 {
         local { ptr, u64 } __tuple_1_
         local string<3> a_
         local slice self_

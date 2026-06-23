@@ -39,4 +39,4 @@ fn main() -> u64 {
 // check: $(tag_matches=$VAL) = call $(eq_fn=$ID)($b_val_tag, $zero)
 // check: cbr $tag_matches
 
-// check: fn $eq_fn(self $MD: u64, other $MD: u64) -> bool
+// check: fn $eq_fn(mut self $MD: u64, mut other $MD: u64) -> bool

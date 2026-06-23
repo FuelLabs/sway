@@ -20,7 +20,7 @@ test result: OK. 1 passed; 0 failed; finished in ???
 
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/if/inline_if_expr_const --ir initial | filter-fn inline_if_expr_const if_
 
-fn if_not_const_5(cond: bool) -> u64 {
+fn if_not_const_5(mut cond: bool) -> u64 {
     local bool cond_
 
     entry(mut cond: bool):
@@ -109,7 +109,7 @@ fn if_const_generic_9() -> u64 {
 
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/if/inline_if_expr_const --ir final --asm final | filter-fn inline_if_expr_const if_
 
-fn if_not_const_5(cond: bool) -> u64 {
+fn if_not_const_5(mut cond: bool) -> u64 {
     local bool cond_
 
     entry(mut cond: bool):

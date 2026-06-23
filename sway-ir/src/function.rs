@@ -24,6 +24,12 @@ use crate::{
 };
 use crate::{Constant, InstOp};
 
+#[derive(Clone, Debug)]
+pub enum IrMutability {
+    Mutable,
+    Immutable,
+}
+
 /// A wrapper around an [ECS](https://github.com/orlp/slotmap) handle into the
 /// [`Context`].
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
@@ -41,7 +47,7 @@ pub struct FunctionContent {
     //       a premature optimization, considering that even for large
     //       project we compile <1500 functions.
     pub abi_errors_display: String,
-    pub arguments: Vec<(String, Value)>,
+    pub arguments: Vec<(IrMutability, String, Value)>,
     pub return_type: Type,
     pub blocks: Vec<Block>,
     pub module: Module,
@@ -73,7 +79,7 @@ impl Function {
         module: Module,
         name: String,
         abi_errors_display: String,
-        args: Vec<(String, Type, Option<MetadataIndex>)>,
+        args: Vec<(IrMutability, String, Type, Option<MetadataIndex>)>,
         return_type: Type,
         selector: Option<[u8; 4]>,
         is_public: bool,
@@ -116,8 +122,9 @@ impl Function {
         let arguments: Vec<_> = args
             .into_iter()
             .enumerate()
-            .map(|(idx, (name, ty, arg_metadata))| {
+            .map(|(idx, (mutability, name, ty, arg_metadata))| {
                 (
+                    mutability,
                     name,
                     Value::new_argument(
                         context,
@@ -138,7 +145,7 @@ impl Function {
             .unwrap()
             .arguments
             .clone_from(&arguments);
-        let (_, arg_vals): (Vec<_>, Vec<_>) = arguments.iter().cloned().unzip();
+        let arg_vals = arguments.iter().map(|x| x.2).collect();
         context.blocks.get_mut(entry_block.0).unwrap().args = arg_vals;
 
         func
@@ -387,7 +394,7 @@ impl Function {
         context.functions[self.0]
             .arguments
             .iter()
-            .find_map(|(arg_name, val)| (arg_name == name).then_some(val))
+            .find_map(|(_, arg_name, val)| (arg_name == name).then_some(val))
             .copied()
     }
 
@@ -395,12 +402,20 @@ impl Function {
     ///
     /// NOTE: `arg` must be a `BlockArgument` value with the correct index otherwise `add_arg` will
     /// panic.
-    pub fn add_arg<S: Into<String>>(&self, context: &mut Context, name: S, arg: Value) {
+    pub fn add_arg<S: Into<String>>(
+        &self,
+        context: &mut Context,
+        m: IrMutability,
+        name: S,
+        arg: Value,
+    ) {
         match context.values[arg.0].value {
             ValueDatum::Argument(BlockArgument { idx, .. })
                 if idx == context.functions[self.0].arguments.len() =>
             {
-                context.functions[self.0].arguments.push((name.into(), arg));
+                context.functions[self.0]
+                    .arguments
+                    .push((m, name.into(), arg));
             }
             _ => panic!("Inconsistent function argument being added"),
         }
@@ -411,17 +426,20 @@ impl Function {
         context.functions[self.0]
             .arguments
             .iter()
-            .find_map(|(name, arg_val)| (arg_val == value).then_some(name))
+            .find_map(|(_, name, arg_val)| (arg_val == value).then_some(name))
     }
 
     /// Return an iterator for each of the function arguments.
-    pub fn args_iter<'a>(&self, context: &'a Context) -> impl Iterator<Item = &'a (String, Value)> {
+    pub fn args_iter<'a>(
+        &self,
+        context: &'a Context,
+    ) -> impl Iterator<Item = &'a (IrMutability, String, Value)> {
         context.functions[self.0].arguments.iter()
     }
 
     /// Is argument `i` marked immutable?
     pub fn is_arg_immutable(&self, context: &Context, i: usize) -> bool {
-        if let Some((_, val)) = context.functions[self.0].arguments.get(i) {
+        if let Some((_, _, val)) = context.functions[self.0].arguments.get(i) {
             if let ValueDatum::Argument(arg) = &context.values[val.0].value {
                 return arg.is_immutable;
             }

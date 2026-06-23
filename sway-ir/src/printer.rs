@@ -436,18 +436,25 @@ fn function_to_doc<'a>(
             function
                 .arguments
                 .iter()
-                .map(|(name, arg_val)| {
+                .map(|(m, name, arg_val)| {
                     if let ValueContent {
                         value: ValueDatum::Argument(BlockArgument { ty, .. }),
                         metadata,
                         ..
                     } = &context.values[arg_val.0]
                     {
-                        Doc::text(name)
-                            .append(
-                                Doc::Space.and(md_namer.md_idx_to_doc_no_comma(context, metadata)),
-                            )
-                            .append(Doc::text(format!(": {}", ty.as_string(context))))
+                        Doc::text(match m {
+                            crate::IrMutability::Mutable => "mut ",
+                            crate::IrMutability::Immutable => "",
+                        })
+                        .append(
+                            Doc::text(name)
+                                .append(
+                                    Doc::Space
+                                        .and(md_namer.md_idx_to_doc_no_comma(context, metadata)),
+                                )
+                                .append(Doc::text(format!(": {}", ty.as_string(context)))),
+                        )
                     } else {
                         unreachable!("Unexpected non argument value for function arguments.")
                     }
