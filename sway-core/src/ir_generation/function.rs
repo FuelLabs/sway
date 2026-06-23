@@ -217,11 +217,8 @@ impl<'a> FnCompiler<'a> {
         panicking_fn_cache: &'a mut PanickingFunctionCache,
         compiled_fn_cache: &'a mut CompiledFunctionCache,
     ) -> Self {
-        let lexical_map = LexicalMap::from_iter(
-            function
-                .args_iter(context)
-                .map(|(name, _value)| name.clone()),
-        );
+        let lexical_map =
+            LexicalMap::from_iter(function.args_iter(context).map(|(_, name, _)| name.clone()));
         FnCompiler {
             engines,
             module,
@@ -267,7 +264,7 @@ impl<'a> FnCompiler<'a> {
         // Function arguments, like all locals need to be in memory, so that their addresses
         // can be taken. So we create locals for each argument and store the value there.
         let entry = self.function.get_entry_block(context);
-        for (arg_name, arg_value) in self
+        for (_, arg_name, arg_value) in self
             .function
             .args_iter(context)
             .cloned()
@@ -279,6 +276,7 @@ impl<'a> FnCompiler<'a> {
                 local_name.clone(),
                 arg_value.get_type(context).unwrap(),
                 None,
+                // TODO We should consider is this is mutable or not here.
                 false,
             );
             if self.ref_mut_args.contains(&arg_name) {
@@ -4748,7 +4746,8 @@ impl<'a> FnCompiler<'a> {
                         // Now look for an argument with the required name
                         self.function
                             .args_iter(context)
-                            .find_map(|(arg_name, arg_val)| (arg_name == name).then_some(*arg_val)))
+                            // TODO should we check mutability here?
+                            .find_map(|(_, arg_name, arg_val)| (arg_name == name).then_some(*arg_val)))
                     .ok_or_else(|| {
                         CompileError::InternalOwned(
                             format!("Variable not found: {name}."),

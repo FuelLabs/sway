@@ -202,7 +202,7 @@ script {
         retd v839v1 v841v1, !166
     }
 
-    entry_orig fn main_15(baba: __ptr { u64 }) -> u64, !170 {
+    entry_orig fn main_15(mut baba: __ptr { u64 }) -> u64, !170 {
         local u64 other_
 
         entry(baba: __ptr { u64 }):

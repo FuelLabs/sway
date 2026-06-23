@@ -22,7 +22,7 @@ fn main() {
 // check: $(a_var=$VAL) = get_local __ptr { u64 }, a
 // check: call $(f_method=$ID)($a_var)
 
-// check: fn $f_method(self $MD: __ptr { u64 }) -> ()
+// check: fn $f_method(mut self $MD: __ptr { u64 }) -> ()
 // check: entry(mut self: __ptr { u64 }):
 
 // check: $(idx_0=$VAL) = const u64 0

@@ -11,7 +11,7 @@ output:
 
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/match_expressions_all --ir final --asm final --release | filter-fn match_expressions_all return_match_on_str_slice
 
-fn return_match_on_str_slice_8(param: __ptr slice) -> u64 {
+fn return_match_on_str_slice_8(mut param: __ptr slice) -> u64 {
     local { ptr, u64 } __anon_0
     local slice __anon_1
     local { ptr, u64 } __anon_2

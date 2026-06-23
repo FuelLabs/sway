@@ -418,7 +418,7 @@ impl FuelAsmBuilder<'_, '_> {
         let fn_name = function.get_name(self.context);
         let uses_stack =
             function.num_args(self.context) > compiler_constants::NUM_ARG_REGISTERS as usize;
-        for (idx, (arg_name, arg_val)) in function.args_iter(self.context).enumerate() {
+        for (idx, (_, arg_name, arg_val)) in function.args_iter(self.context).enumerate() {
             let load_arg =
                 uses_stack && (idx >= compiler_constants::NUM_ARG_REGISTERS as usize - 1);
             let arg_reg = if !load_arg {
@@ -482,7 +482,7 @@ impl FuelAsmBuilder<'_, '_> {
             // A special case for when there's only a single arg, its value (or address) is placed
             // directly in the base register.
             1 => {
-                let (_, val) = function.args_iter(self.context).next().unwrap();
+                let (_, _, val) = function.args_iter(self.context).next().unwrap();
                 let single_arg_reg = self.reg_seqr.next();
                 match self.program_kind {
                     ProgramKind::Contract => {
@@ -533,7 +533,7 @@ impl FuelAsmBuilder<'_, '_> {
                 // Successively load each argument. The asm generated depends on the arg type size
                 // and whether the offset fits in a 12-bit immediate.
                 let mut arg_word_offset = 0;
-                for (name, val) in function.args_iter(self.context) {
+                for (_, name, val) in function.args_iter(self.context) {
                     let current_arg_reg = self.reg_seqr.next();
 
                     // The function arg type might be a pointer, but the value in the struct will

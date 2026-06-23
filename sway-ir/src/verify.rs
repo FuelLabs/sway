@@ -96,7 +96,9 @@ impl Context<'_> {
         if function.num_args(self) != entry_block.num_args(self) {
             return Err(IrError::VerifyBlockArgMalformed);
         }
-        for ((_, func_arg), block_arg) in function.args_iter(self).zip(entry_block.arg_iter(self)) {
+        for ((_, _, func_arg), block_arg) in
+            function.args_iter(self).zip(entry_block.arg_iter(self))
+        {
             if func_arg != block_arg {
                 return Err(IrError::VerifyBlockArgMalformed);
             }
@@ -629,7 +631,7 @@ impl InstructionVerifier<'_, '_> {
         let callee_arg_types = callee_content
             .arguments
             .iter()
-            .map(|(_, arg_val)| {
+            .map(|(_, _, arg_val)| {
                 if let ValueDatum::Argument(BlockArgument { ty, .. }) =
                     &self.context.values[arg_val.0].value
                 {

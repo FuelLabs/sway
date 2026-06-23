@@ -139,7 +139,7 @@ script {
         ret u64 v1377v1
     }
 
-    fn local_log_1(item !69: u64) -> (), !73 {
+    fn local_log_1(mut item !69: u64) -> (), !73 {
         local { __ptr u64, u64 } __anon_0
         local slice __log_arg
         local u64 item_
@@ -164,7 +164,7 @@ script {
         ret () v165v1
     }
 
-    pub fn abi_encode_5(self !81: u64, buffer: __ptr { { ptr, u64, u64 } }, __ret_value: __ptr { { ptr, u64, u64 } }) -> (), !84 {
+    pub fn abi_encode_5(mut self !81: u64, mut buffer: __ptr { { ptr, u64, u64 } }, mut __ret_value: __ptr { { ptr, u64, u64 } }) -> (), !84 {
         local mut { ptr, u64, u64 } __aggr_memcpy_0
         local mut { ptr, u64, u64 } __aggr_memcpy_00
         local { ptr, u64, u64 } __anon_0
@@ -234,7 +234,7 @@ script {
         br block0(v76v1, v75v1)
     }
 
-    pub fn new_6(__ret_value: __ptr { { ptr, u64, u64 } }) -> (), !89 {
+    pub fn new_6(mut __ret_value: __ptr { { ptr, u64, u64 } }) -> (), !89 {
         local mut { ptr, u64, u64 } __aggr_memcpy_0
         local { ptr, u64, u64 } __anon_0
         local { { ptr, u64, u64 } } __struct_init_0
@@ -268,7 +268,7 @@ script {
         ret () v3808v1
     }
 
-    pub fn as_raw_slice_7(self: __ptr { { ptr, u64, u64 } }, __ret_value: __ptr slice) -> (), !93 {
+    pub fn as_raw_slice_7(mut self: __ptr { { ptr, u64, u64 } }, mut __ret_value: __ptr slice) -> (), !93 {
         local mut slice __aggr_memcpy_00
         local { ptr, u64 } __anon_1
         local { { ptr, u64, u64 } } self_
@@ -302,7 +302,7 @@ script {
         ret () v3821v1
     }
 
-    pub fn push_11(self !94: __ptr { { ptr, u64 }, u64 }, value !95: u64) -> (), !98 {
+    pub fn push_11(mut self !94: __ptr { { ptr, u64 }, u64 }, mut value !95: u64) -> (), !98 {
         entry(mut self: __ptr { { ptr, u64 }, u64 }, mut value: u64):
         v211v1 = const u64 1
         v212v1 = get_elem_ptr self, __ptr u64, v211v1, !99
@@ -374,7 +374,7 @@ script {
         ret () v479v1
     }
 
-    fn local_log_21(item: __ptr { u64, u64, u64, u8, { { ptr, u64 }, u64 }, slice, u256 }) -> (), !160 {
+    fn local_log_21(mut item: __ptr { u64, u64, u64, u8, { { ptr, u64 }, u64 }, slice, u256 }) -> (), !160 {
         local mut { ptr, u64, u64 } __aggr_memcpy_0
         local mut { ptr, u64, u64 } __aggr_memcpy_00
         local mut { ptr, u64, u64 } __aggr_memcpy_01
@@ -966,7 +966,7 @@ script {
         ret () v1063v1
     }
 
-    fn local_log_46(item: __ptr { u64 }) -> (), !445 {
+    fn local_log_46(mut item: __ptr { u64 }) -> (), !445 {
         local { __ptr { u64 }, u64 } __anon_0
         local slice __log_arg
         local { u64 } item_
@@ -991,7 +991,7 @@ script {
         ret () v1162v1
     }
 
-    fn local_log_51(item: __ptr { u64, ( { u64 } | () ) }) -> (), !451 {
+    fn local_log_51(mut item: __ptr { u64, ( { u64 } | () ) }) -> (), !451 {
         local slice __log_arg
         local { u64, ( { u64 } | () ) } __matched_value_1
         local { { ptr, u64, u64 } } __tmp_block_arg
@@ -1050,7 +1050,7 @@ script {
         ret () v1291v1
     }
 
-    fn local_log_58(item: __ptr {  }) -> (), !472 {
+    fn local_log_58(mut item: __ptr {  }) -> (), !472 {
         local slice __log_arg
         local { { ptr, u64, u64 } } buffer
         local { { ptr, u64, u64 } } buffer_

@@ -54,4 +54,4 @@ fn main() -> u64 {
 // check: $block2(mut $(res=$VAL): u64):
 // check: ret u64 $res
 
-// check: fn $eq_fn(self $MD: u64, other $MD: u64) -> bool
+// check: fn $eq_fn(mut self $MD: u64, mut other $MD: u64) -> bool

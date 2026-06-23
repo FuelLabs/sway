@@ -10,7 +10,7 @@ fn leaf_fn_0_1() -> () {
 }
 
 
-fn leaf_fn_6_2(a: u64, b: u64, c: u64, d: u64, e: u64, f: u64) -> u64 {
+fn leaf_fn_6_2(mut a: u64, mut b: u64, mut c: u64, mut d: u64, mut e: u64, mut f: u64) -> u64 {
     entry(mut a: u64, mut b: u64, mut c: u64, mut d: u64, mut e: u64, mut f: u64):
     v32v1 = add a, b
     v33v1 = add v32v1, c
@@ -21,7 +21,7 @@ fn leaf_fn_6_2(a: u64, b: u64, c: u64, d: u64, e: u64, f: u64) -> u64 {
 }
 
 
-fn leaf_fn_7_4(a: u64, b: u64, c: u64, d: u64, e: u64, f: u64, g: u64) -> u64 {
+fn leaf_fn_7_4(mut a: u64, mut b: u64, mut c: u64, mut d: u64, mut e: u64, mut f: u64, mut g: u64) -> u64 {
     entry(mut a: u64, mut b: u64, mut c: u64, mut d: u64, mut e: u64, mut f: u64, mut g: u64):
     v45v1 = add a, b
     v46v1 = add v45v1, c
