@@ -9,7 +9,7 @@ script {
         v2v1 = const bool true
         br block(v2v1)
 
-        block(v1v1: bool):
+        block(mut v1v1: bool):
         v4v1 = const bool false
         v5v1 = cmp eq v1v1 v4v1
         v6v1 = cmp eq v4v1 v5v1
@@ -21,7 +21,7 @@ script {
         v9v1 = const bool true
         br block(v9v1)
 
-        block(v8v1: bool):
+        block(mut v8v1: bool):
         v11v1 = const bool false
         v12v1 = cmp eq v8v1 v11v1
         v13v1 = cmp eq v11v1 v12v1
@@ -31,7 +31,7 @@ script {
     }
 
     fn three_blocks_four_instrs(b: bool) -> bool {
-        entry(b: bool):
+        entry(mut b: bool):
         v18v1 = const bool false
         v19v1 = cmp eq b v18v1
         cbr v19v1, then_block(), else_block()
@@ -46,7 +46,7 @@ script {
     }
 
     fn three_blocks_five_instrs(b: bool) -> bool {
-        entry(b: bool):
+        entry(mut b: bool):
         v26v1 = const bool false
         v27v1 = cmp eq b v26v1
         v28v1 = cmp eq b v27v1
@@ -67,13 +67,13 @@ script {
 +         v2v1 = const bool true
 +         br two_blocks_four_instrs_block(v2v1)
 + 
-+         two_blocks_four_instrs_block(v34v3: bool):
++         two_blocks_four_instrs_block(mut v34v3: bool):
 +         v4v1 = const bool false
 +         v41v1 = cmp eq v34v3 v4v1
 +         v42v1 = cmp eq v4v1 v41v1
 +         br block0(v42v1)
 + 
-+         block0(v39v1: bool):
++         block0(mut v39v1: bool):
         v35v1 = call two_blocks_five_instrs()
         v36v1 = call three_blocks_four_instrs()
         v37v1 = call three_blocks_five_instrs()

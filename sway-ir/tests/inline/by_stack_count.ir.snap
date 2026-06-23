@@ -79,23 +79,23 @@ script {
 +         v1v1 = const u64 11
 +         br block0(v1v1)
 + 
-+         block0(v23v1: u64):
++         block0(mut v23v1: u64):
 +         v3v1 = const u64 22
 +         br block1(v3v1)
 + 
-+         block1(v24v1: u64):
++         block1(mut v24v1: u64):
         v17v1 = call three_locals()
 -         v18v1 = call two_struct_locals()
 +         v7v1 = const u64 44
 +         br block2(v7v1)
 + 
-+         block2(v25v1: u64):
++         block2(mut v25v1: u64):
         v19v1 = call three_struct_locals()
 -         v20v1 = call two_mixed_locals()
 +         v11v1 = const u64 66
 +         br block3(v11v1)
 + 
-+         block3(v26v1: u64):
++         block3(mut v26v1: u64):
         v21v1 = call three_mixed_locals()
         ret u64 v21v1
     }

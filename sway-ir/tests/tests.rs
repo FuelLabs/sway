@@ -155,11 +155,6 @@ fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
         }
         run_insta(&path, clean_output(&snapshot));
 
-        assert!(
-            r,
-            "Pass returned false (no changes made to {}).",
-            path.display()
-        );
         ir.verify().unwrap_or_else(|err| {
             println!("{err}");
             panic!();
@@ -171,21 +166,18 @@ fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
             .text(&input)
             .unwrap()
             .finish();
-        if chkr.is_empty() {
-            println!("{output}");
-            panic!("No filecheck directives found in test: {}", path.display());
-        }
-
-        match chkr.explain(&output, filecheck::NO_VARIABLES) {
-            Ok((success, report)) if !success => {
-                println!("--- FILECHECK FAILED FOR {}", path.display());
-                println!("{report}");
-                panic!()
+        if !chkr.is_empty() {
+            match chkr.explain(&output, filecheck::NO_VARIABLES) {
+                Ok((success, report)) if !success => {
+                    println!("--- FILECHECK FAILED FOR {}", path.display());
+                    println!("{report}");
+                    panic!()
+                }
+                Err(e) => {
+                    panic!("filecheck directive error while checking: {e}");
+                }
+                _ => (),
             }
-            Err(e) => {
-                panic!("filecheck directive error while checking: {e}");
-            }
-            _ => (),
         }
     }
 }

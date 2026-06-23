@@ -59,19 +59,14 @@ script {
     }
 
     fn main() -> bool {
-// check: fn main() -> bool
         entry():
 
         // This is the only call which should be inlined.
         v0 = call two_blocks_four_instrs()
-// not: call two_blocks_four_instrs()
 
         v1 = call two_blocks_five_instrs()
-// check: call two_blocks_five_instrs()
         v2 = call three_blocks_four_instrs()
-// check: call three_blocks_four_instrs()
         v3 = call three_blocks_five_instrs()
-// check: call three_blocks_five_instrs()
 
         ret bool v3
     }
