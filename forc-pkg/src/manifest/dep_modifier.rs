@@ -178,7 +178,7 @@ fn resolve_dependency(
     raw: &str,
     opts: &ModifyOpts,
     member_manifests: &BTreeMap<String, PackageManifestFile>,
-    package_dir: &PathBuf,
+    package_dir: &Path,
 ) -> Result<(String, Dependency)> {
     let dep_spec: DepSpec = raw.parse()?;
     let dep_name = dep_spec.name;
