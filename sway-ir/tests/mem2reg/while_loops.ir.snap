@@ -20,7 +20,7 @@ script {
 +         br while(v4v1)
 
 -         while():
-+         while(v153v1: u64):
++         while(mut v153v1: u64):
         v7v1 = get_local __ptr u64, counter, !4
 -         v8v1 = load v7v1, !4
         v9v1 = const u64 10, !5
@@ -58,7 +58,7 @@ script {
 +         br while0(v25v1, v28v1)
 
 -         while0():
-+         while0(v155v1: u64, v157v1: u64):
++         while0(mut v155v1: u64, mut v157v1: u64):
         v31v1 = get_local __ptr u64, counter_2, !20
 -         v32v1 = load v31v1, !20
         v33v1 = const u64 10, !21
@@ -110,9 +110,9 @@ script {
 -         br block5(v63v1)
 +         br block5(v63v1, v55v1, v61v1)
 
--         block5(v1v1: ()):
+-         block5(mut v1v1: ()):
 -         br while0()
-+         block5(v1v1: (), v154v1: u64, v156v1: u64):
++         block5(mut v1v1: (), mut v154v1: u64, mut v156v1: u64):
 +         br while0(v154v1, v156v1)
 
         block6():
@@ -123,7 +123,7 @@ script {
 +         v69v1 = call eq_5(v157v1, v68v1), !42
         br block7(v69v1), !29
 
-        block7(v2v1: bool):
+        block7(mut v2v1: bool):
         v71v1 = call assert_2(v2v1), !15
         v72v1 = get_local __ptr u64, counter_4, !43
 -         v73v1 = const u64 0, !44
@@ -138,7 +138,7 @@ script {
 +         br while8(v76v1, v73v1)
 
 -         while8():
-+         while8(v159v1: u64, v160v1: u64):
++         while8(mut v159v1: u64, mut v160v1: u64):
         v79v1 = get_local __ptr u64, counter_4, !47
 -         v80v1 = load v79v1, !47
         v81v1 = const u64 7, !48
@@ -166,7 +166,7 @@ script {
         br while14()
 
 -         while11():
-+         while11(v158v1: u64):
++         while11(mut v158v1: u64):
         v96v1 = get_local __ptr u64, counter_5, !56
 -         v97v1 = load v96v1, !56
         v98v1 = const u64 11, !57
@@ -214,14 +214,14 @@ script {
 
 -     fn add_0(self !72: u64, other !73: u64) -> u64, !74 {
 +     fn add_0(self !71: u64, other !72: u64) -> u64, !73 {
-        entry(self: u64, other: u64):
+        entry(mut self: u64, mut other: u64):
         v125v1 = add self, other
         ret u64 v125v1
     }
 
 -     fn lt_1(self !75: u64, other !76: u64) -> bool, !77 {
 +     fn lt_1(self !74: u64, other !75: u64) -> bool, !76 {
-        entry(self: u64, other: u64):
+        entry(mut self: u64, mut other: u64):
 -         v129v1 = asm(r1: self, r2: other, r3) -> bool r3, !78 {
 -             lt     r3 r1 r2, !79
 +         v129v1 = asm(r1: self, r2: other, r3) -> bool r3, !77 {
@@ -232,7 +232,7 @@ script {
 
 -     fn assert_2(condition !80: bool) -> (), !15 {
 +     fn assert_2(condition !79: bool) -> (), !15 {
-        entry(condition: bool):
+        entry(mut condition: bool):
 -         v133v1 = call not_3(condition), !81
 -         cbr v133v1, block0(), block1(), !81
 +         v133v1 = call not_3(condition), !80
@@ -250,14 +250,14 @@ script {
         v139v1 = const unit ()
         br block2(v139v1)
 
-        block2(v132v1: ()):
+        block2(mut v132v1: ()):
         v141v1 = const unit ()
         ret () v141v1
     }
 
 -     fn not_3(self !85: bool) -> bool, !86 {
 +     fn not_3(self !84: bool) -> bool, !85 {
-        entry(self: bool):
+        entry(mut self: bool):
 -         v144v1 = const bool false, !87
 +         v144v1 = const bool false, !86
         v145v1 = cmp eq self v144v1
@@ -266,14 +266,14 @@ script {
 
 -     fn revert_4(code !88: u64) -> (), !84 {
 +     fn revert_4(code !87: u64) -> (), !83 {
-        entry(code: u64):
+        entry(mut code: u64):
 -         revert code, !89
 +         revert code, !88
     }
 
 -     fn eq_5(self !90: u64, other !91: u64) -> bool, !92 {
 +     fn eq_5(self !89: u64, other !90: u64) -> bool, !91 {
-        entry(self: u64, other: u64):
+        entry(mut self: u64, mut other: u64):
         v151v1 = cmp eq self other
         ret bool v151v1
     }

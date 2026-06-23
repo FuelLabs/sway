@@ -21,7 +21,7 @@ script {
         local b256 __const = const b256 0x2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b
 
 -         entry():
-+         entry(__ret_value: __ptr b256):
++         entry(mut __ret_value: __ptr b256):
         v4v1 = get_local __ptr b256, __const
         v5v1 = load v4v1
 -         ret b256 v5v1

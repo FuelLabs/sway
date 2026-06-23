@@ -12,7 +12,7 @@ script {
 -         br block0(v4v1)
 +         br block0()
 
--         block0(v1v1: bool):
+-         block0(mut v1v1: bool):
 +         block0():
         v6v1 = const bool false
 -         v7v1 = cmp eq v1v1 v6v1
