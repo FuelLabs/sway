@@ -7,7 +7,7 @@ script {
     fn a(b: bool) -> u64 {
         local u64 x
 
-        entry(b: bool):
+        entry(mut b: bool):
         v3v1 = get_local __ptr u64, x
         v4v1 = const u64 10
         store v4v1 to v3v1
@@ -22,7 +22,7 @@ script {
         v10v1 = const u64 1
         br block2(v10v1)
 
-        block2(v2v1: u64):
+        block2(mut v2v1: u64):
         ret u64 v2v1
     }
 
@@ -50,10 +50,10 @@ script {
 +         v10v1 = const u64 1
 +         br a_block2(v10v1)
 + 
-+         a_block2(v17v3: u64):
++         a_block2(mut v17v3: u64):
 +         br block0(v17v3)
 + 
-+         block0(v23v1: u64):
++         block0(mut v23v1: u64):
         v18v1 = get_local __ptr u64, x
 -         store v17v1 to v18v1
 +         store v23v1 to v18v1
