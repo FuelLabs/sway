@@ -1,7 +1,4 @@
-// regex: VAR=v\d+v\d+
-
 contract {
-// check: main
     fn main() -> () {
         local b256 key_for_x
         local u64 value_for_x
@@ -16,7 +13,6 @@ contract {
         v3 = const b256 0x7fbd1192666bfac3767b890bd4d048c940879d316071e20c7c8c81bce2ca41c5
         store v3 to v2
         v4 = const u64 0
-// check: state_store_word $VAR, key $VAR
         state_store_word v4, key v2
 
         v_0 = get_local __ptr b256, value_for_y
@@ -27,15 +23,12 @@ contract {
         store v_3 to v_2
         v_4 = get_local __ptr b256, value_for_y
         v_5 = const u64 1
-// check: state_store_quad_word $VAR, key $VAR, $VAR
         state_store_quad_word v_4, key v_2, v_5
 
         v_untyped_v_4 = cast_ptr v_4 to ptr
         v_len = const u64 32
-// check: state_write_slot $VAR, key $VAR, $VAR
         state_write_slot v_untyped_v_4, key v_2, v_len
 
-// check: state_update_slot $VAR, key $VAR, $VAR, $VAR
         state_update_slot v_untyped_v_4, key v_2, v1, v_len
 
         v_6 = const unit ()

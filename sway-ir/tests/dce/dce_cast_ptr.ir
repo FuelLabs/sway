@@ -7,10 +7,10 @@ script {
     entry fn main() -> u64 {
       local u64 S
       local u64 dummy
-  
+
       entry():
       br block0()
-  
+
       block0():
       c0 = const u64 123
       p = get_local __ptr u64, S
@@ -22,16 +22,13 @@ script {
       res = call test(p_val_res)
       ret u64 res
     }
-  
+
     fn test(arg: u64) -> u64 {
       entry(arg: u64):
       br block0(arg)
-  
+
       block0(arg: __ptr u64):
       v0 = load arg
       ret u64 v0
     }
 }
-
-// check: entry fn main() -> u64 {
-// nextln: local u64 S

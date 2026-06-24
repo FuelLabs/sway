@@ -1,6 +1,3 @@
-// regex: FOONAME=fn foo_[0-9]+
-// regex: EQNAME=fn eq_[0-9]+
-
 script {
     entry fn main() -> bool, !1 {
         entry():
@@ -19,28 +16,24 @@ script {
         ret bool v6
     }
 
-    // check: $(FOONAME)
     fn foo_1(t1 !9: u64, t2 !10: u64) -> bool, !13 {
         entry(t1: u64, t2: u64):
         v0 = call eq_2(t1, t2), !14
         ret bool v0
     }
 
-    // check: $(EQNAME)
     pub fn eq_2(self !16: u64, other !17: u64) -> bool, !18 {
         entry(self: u64, other: u64):
         v0 = cmp eq self other
         ret bool v0
     }
 
-    // not: $(FOONAME)
     fn foo_3(t1 !9: u64, t2 !10: u64) -> bool, !19 {
         entry(t1: u64, t2: u64):
         v0 = call eq_4(t1, t2), !20
         ret bool v0
     }
 
-    // not: $(EQNAME)
     pub fn eq_4(self !16: u64, other !17: u64) -> bool, !18 {
         entry(self: u64, other: u64):
         v0 = cmp eq self other

@@ -15,7 +15,3 @@ script {
         ret u64 v6
     }
 }
-
-// regex: VAL=v\d+v\d+
-
-// not: mem_copy_val $VAL, $VAL

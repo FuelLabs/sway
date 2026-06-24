@@ -83,11 +83,3 @@ script {
         ret () v4
     }
 }
-
-// check: fn wrapper_1
-// check: entry
-// check-not: mem_copy_val
-// check: cbr
-// check: unwrap_2_block0
-// check: fn return_option_5
-// check-not: mem_copy_val

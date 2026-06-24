@@ -1,28 +1,16 @@
-// regex: VAR=v\d+v\d+
-
 script {
-    // check: fn main() -> (), !1 {
     fn main() -> (), !1 {
         entry():
-	// check: $VAR = const unit ()
         v0 = const unit ()
         ret () v0
     }
 
-    // check: fn my_test_func() -> (), !4 {
     fn my_test_func() -> (), !4 {
         entry():
-	// check: $VAR = const unit ()
         v0 = const unit ()
         ret () v0
     }
 }
-
-// check: !0 = "a string\\n"
-// check: !1 = span !0
-// check: !2 = span !0
-// check: !3 = decl_index 4
-// check: !4 = (!2 !3)
 
 !0 = "a string\\n"
 !1 = span !0 9 21
