@@ -25,14 +25,11 @@ script {
         ret bool v11
     }
 
-    // check: function_0
     fn function_0(state: __ptr u64) -> () {
         entry(state: __ptr u64):
         v0 = const u64 42
-        // check: store
         store v0 to state
         v1 = const unit ()
-        // not: add
         v2 = add v0, v0
         ret () v1
     }

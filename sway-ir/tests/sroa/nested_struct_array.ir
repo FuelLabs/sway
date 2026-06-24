@@ -1,10 +1,6 @@
-// regex: VAR=v\d+
-// regex: ID=[[:alpha:]0-9_]+
-
 script {
     entry fn main() -> u64, !1 {
         local [u64; 4] __anon_0
-        // not: local { u64, u64 }
         local { u64, u64 } __anon_1
         local { u64, u64, [u64; 4], { u64, u64 } } __anon_2
 

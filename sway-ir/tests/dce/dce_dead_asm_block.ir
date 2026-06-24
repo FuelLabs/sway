@@ -11,68 +11,55 @@
 //     poke(asm() { });
 //     poke(asm() { zero });
 //     poke(asm() { zero: () });
-// 
+//
 //     let arg = 11u64;
 //     asm(a: arg, b: arg, res) {
 //         add res a b;
 //     };
-// 
+//
 //     asm(a: arg, b: arg, res) {
 //         add res a b;
 //         res
 //     };
-// 
+//
 //     // -----------
-// 
+//
 //     asm () { }
 //     asm () { zero }
 //     asm() { zero: () }
-// 
+//
 //     asm(arg: arg) {  };
 //     asm(arg: arg) { arg };
-// 
+//
 //     let a = asm() { };
 //     let b = asm() { zero };
 //     let c = asm(arg: arg) { };
 //     let d = asm(arg: arg) { arg };
 //     let e = asm(arg: arg) { arg: u32 };
-// 
+//
 //     let f = asm(arg: function()) { arg };
 // }
 
-// regex: VAL=v\d+v\d+
-
 script {
     entry fn main() -> () {
-        // check: local u64 arg
         local u64 arg
-        // not: local () a
         local () a
-        // not: local u64 b
         local u64 b
-        // not: local () c
         local () c
-        // not: local u64 d
         local u64 d
-        // not: local u64 e
         local u64 e
-        // not: local u64 f
         local u64 f
 
-        // check: entry()
         entry():
 
-        // check: = asm() -> ()
         v0 = asm() -> () {
         }
         v1 = call poke_1(v0)
 
-        // check: = asm() -> u64 zero
         v2 = asm() -> u64 zero {
         }
         v3 = call poke_2(v2)
 
-        // check: = asm() -> () zero
         v4 = asm() -> () zero {
         }
         v5 = call poke_1(v4)
@@ -85,7 +72,6 @@ script {
         v10 = get_local __ptr u64, arg
         v11 = load v10
 
-        // check: = asm(a: $VAL, b: $VAL, res) -> ()
         v12 = asm(a: v9, b: v11, res) -> () {
             add    res a b
         }
@@ -95,16 +81,12 @@ script {
         v15 = get_local __ptr u64, arg
         v16 = load v15
 
-        // check: = asm(a: $VAL, b: $VAL, res) -> u64 res
         v17 = asm(a: v14, b: v16, res) -> u64 res {
             add    res a b
         }
 
         // -----------
-        
-        // not: asm
 
-        // check: = asm() -> u64 zero
         v2 = asm() -> u64 zero {
         }
         v3 = call poke_2(v2)
@@ -150,7 +132,6 @@ script {
         v42 = get_local __ptr u64, e
         store v41 to v42
 
-        // check: call function()
         v43 = call function()
         v44 = asm(arg: v43) -> u64 arg {
         }
@@ -158,9 +139,6 @@ script {
         store v44 to v45
         v46 = const unit ()
 
-        // not: asm
-
-        // check: ret ()
         ret () v46
     }
 

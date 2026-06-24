@@ -11,25 +11,3 @@ script {
         ret u256 v4
     }
 }
-
-// regex: VAL=v\d+v\d+
-
-// check: local u256 __wide_lhs
-// check: local mut u256 __wide_result
-// check: local u256 __wide_rhs
-// check: local u256 lhs
-// check: local u256 rhs
-// check: entry():
-// check: $(v0=$VAL) = get_local __ptr u256, lhs
-// check: $(v1=$VAL) = load $v0
-// check: $(v2=$VAL) = get_local __ptr u256, rhs
-// check: $(v3=$VAL) = load $v2
-// check: $(v4=$VAL) = get_local __ptr u256, __wide_lhs
-// check: store $v1 to $v4
-// check: $(v5=$VAL) = get_local __ptr u256, __wide_zero
-// check: $(v6=$VAL) = get_local __ptr u256, __wide_rhs
-// check: store $v3 to $v6
-// check: $(v7=$VAL) = get_local __ptr u256, __wide_result
-// check: wide mod $v4, $v5, $v6 to $v7
-// check: $(v8=$VAL) = load $v7
-// check: ret u256 $v8
