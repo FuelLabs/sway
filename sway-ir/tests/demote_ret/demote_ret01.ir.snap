@@ -24,7 +24,7 @@ script {
 
 -     fn c(p: bool, q: bool) -> b256 {
 -         entry(mut p: bool, mut q: bool):
-+     fn c(p: bool, q: bool, __ret_value: __ptr b256) -> () {
++     fn c(p: bool, q: bool, mut __ret_value: __ptr b256) -> () {
 +         local b256 __ret_val
 +         local b256 __ret_val0
 +         local b256 __ret_val1
@@ -67,7 +67,7 @@ script {
     }
 
 -     fn a() -> b256 {
-+     fn a(__ret_value: __ptr b256) -> () {
++     fn a(mut __ret_value: __ptr b256) -> () {
         local b256 twobee = const b256 0x2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b
 
 -         entry():
@@ -81,7 +81,7 @@ script {
     }
 
 -     fn b() -> b256 {
-+     fn b(__ret_value: __ptr b256) -> () {
++     fn b(mut __ret_value: __ptr b256) -> () {
         local b256 dada = const b256 0xdadadadadadadadadadadadadadadadadadadadadadadadadadadadadadadada
 
 -         entry():
