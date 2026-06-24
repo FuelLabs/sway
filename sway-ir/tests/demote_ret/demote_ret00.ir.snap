@@ -17,7 +17,7 @@ script {
     }
 
 -     fn a() -> b256 {
-+     fn a(__ret_value: __ptr b256) -> () {
++     fn a(mut __ret_value: __ptr b256) -> () {
         local b256 __const = const b256 0x2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b
 
 -         entry():
