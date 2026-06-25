@@ -48,8 +48,8 @@ script {
         retd v156v1 v166v1, !25
     }
 
-    entry_orig fn main_11(baba !27: u64) -> u64, !30 {
-        entry(baba: u64):
+    entry_orig fn main_11(mut baba !27: u64) -> u64, !30 {
+        entry(mut baba: u64):
         v148v1 = const u64 1, !31
         v379v1 = add baba, v148v1, !34
         ret u64 v379v1

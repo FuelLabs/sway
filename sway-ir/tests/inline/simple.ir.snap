@@ -5,7 +5,7 @@ Modified: true
 
 script {
     fn a(b: u64) -> u64 {
-        entry(b: u64):
+        entry(mut b: u64):
         ret u64 b
     }
 
@@ -15,13 +15,13 @@ script {
 -         v4v1 = call a(v3v1)
 +         br block0(v3v1)
 + 
-+         block0(v8v1: u64):
++         block0(mut v8v1: u64):
         v5v1 = const u64 22
 -         v6v1 = call a(v5v1)
 -         ret u64 v6v1
 +         br block1(v5v1)
 + 
-+         block1(v9v1: u64):
++         block1(mut v9v1: u64):
 +         ret u64 v9v1
     }
 }

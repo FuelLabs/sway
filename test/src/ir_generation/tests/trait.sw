@@ -41,7 +41,7 @@ fn main() -> bool {
 // check: $(res=$VAL) = call $(pred_or=$ID)($foo_val, $bar_val)
 // check: ret bool $res
 
-// check: fn $pred_or(self $MD: { bool }, other $MD: { bool }) -> bool
+// check: fn $pred_or(mut self $MD: { bool }, mut other $MD: { bool }) -> bool
 // check: store self to $VAL
 // check: store other to $VAL
 // check: $(self_ptr=$VAL) = get_local __ptr { bool }, self_
@@ -55,5 +55,5 @@ fn main() -> bool {
 // check: $(other_pred=$VAL) = call $ID($other_val)
 // check: br $block1
 
-// check: $block1($(res=$VAL): bool):
+// check: $block1(mut $(res=$VAL): bool):
 // check: ret bool $res

@@ -472,7 +472,7 @@ fn type_correction(ctx: &mut Context) -> Result<(), IrError> {
                 match &instr.get_instruction(ctx).unwrap().op {
                     InstOp::Call(callee, actual_params) => {
                         let formal_params: Vec<_> = callee.args_iter(ctx).collect();
-                        for (param_idx, (actual_param, (_, formal_param))) in
+                        for (param_idx, (actual_param, (_, _, formal_param))) in
                             actual_params.iter().zip(formal_params.iter()).enumerate()
                         {
                             let actual_ty = actual_param.get_type(ctx).unwrap();

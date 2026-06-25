@@ -223,7 +223,7 @@ pub fn cse(
 
     // Function arg values map to themselves.
     for arg in function.args_iter(context) {
-        vntable.value_map.insert(arg.1, ValueNumber::Number(arg.1));
+        vntable.value_map.insert(arg.2, ValueNumber::Number(arg.2));
     }
 
     // Map all other arg values map to Top.

@@ -1035,8 +1035,10 @@ fn compile_fn(
                     ref_mut_args.insert(param.name.as_str().to_owned());
                 }
                 (
+                    // TODO: We can improve here. Setting all arguments as mutable for now.
+                    IrMutability::Mutable,
                     // Convert the name.
-                    param.name.as_str().into(),
+                    param.name.as_str().to_string(),
                     // Convert the type further to a pointer if it's a reference.
                     if param.is_reference {
                         Type::new_typed_pointer(context, ty)
@@ -1054,6 +1056,8 @@ fn compile_fn(
     let keyed_decl = KeyedTyFunctionDecl::new(ast_fn_decl, engines);
     if context.backtrace != Backtrace::None && panicking_fn_cache.can_panic(&keyed_decl, engines) {
         args.push((
+            //TODO This may not need to be mutable
+            IrMutability::Mutable,
             FnCompiler::BACKTRACE_FN_ARG_NAME.to_string(),
             Type::new_uint(context, 64),
             None,

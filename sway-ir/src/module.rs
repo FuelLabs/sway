@@ -174,13 +174,18 @@ impl Module {
     /// Removed a function from the module.  Returns true if function was found and removed.
     ///
     /// **Use with care!  Be sure the function is not an entry point nor called at any stage.**
-    pub fn remove_function(&self, context: &mut Context, function: &Function) {
-        context
+    pub fn remove_function(&self, context: &mut Context, function: &Function) -> bool {
+        let fns = &mut context
             .modules
             .get_mut(self.0)
             .expect("Module must exist in context.")
-            .functions
-            .retain(|mod_fn| mod_fn != function);
+            .functions;
+
+        let len_before = fns.len();
+        fns.retain(|mod_fn| mod_fn != function);
+        let len_after = fns.len();
+
+        len_before != len_after
     }
 
     pub fn iter_configs<'a>(&'a self, context: &'a Context) -> impl Iterator<Item = Config> + 'a {

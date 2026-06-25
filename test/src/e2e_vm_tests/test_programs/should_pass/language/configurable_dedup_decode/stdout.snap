@@ -16,8 +16,8 @@ script {
     TUPLE = config { u64 }, abi_decode_in_place_0, 0x0000000000000002, !1
     WRAPPED = config { u64 }, abi_decode_in_place_0, 0x0000000000000001, !2
 
-    pub fn abi_decode_in_place_0(ptr !4: ptr, len !5: u64, target !6: ptr) -> (), !9 {
-        entry(ptr: ptr, len: u64, target: ptr):
+    pub fn abi_decode_in_place_0(mut ptr !4: ptr, mut len !5: u64, mut target !6: ptr) -> (), !9 {
+        entry(mut ptr: ptr, mut len: u64, mut target: ptr):
         v149v1 = asm(src: ptr, target: target, len: len) -> (), !10 {
             mcp    target src len, !11
         }

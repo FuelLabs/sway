@@ -29,6 +29,7 @@ pub fn parse<'eng>(
 // -------------------------------------------------------------------------------------------------
 
 mod ir_builder {
+    use crate::function::IrMutability;
     use slotmap::KeyData;
     use sway_features::ExperimentalFeatures;
     use sway_types::{ident::Ident, span::Span, u256::U256, SourceEngine};
@@ -178,9 +179,9 @@ mod ir_builder {
                     string_to_hex::<4>(s)
                 }
 
-            rule block_arg() -> (IrAstTy, String, Option<MdIdxRef>)
-                = name:id() mdi:metadata_idx()? ":" _ ty:ast_ty() {
-                    (ty, name, mdi)
+            rule block_arg() -> (IrMutability, IrAstTy, String, Option<MdIdxRef>)
+                = m:("mut" _)? _ name:id() mdi:metadata_idx()? ":" _ ty:ast_ty() {
+                    (if m.is_some() { IrMutability::Mutable } else { IrMutability::Immutable }, ty, name, mdi)
                 }
 
             rule fn_local() -> (IrAstTy, String, Option<IrAstOperation>, bool)
@@ -870,7 +871,7 @@ mod ir_builder {
     #[derive(Debug)]
     struct IrAstFnDecl {
         name: String,
-        args: Vec<(IrAstTy, String, Option<MdIdxRef>)>,
+        args: Vec<(IrMutability, IrAstTy, String, Option<MdIdxRef>)>,
         ret_type: IrAstTy,
         is_public: bool,
         metadata: Option<MdIdxRef>,
@@ -885,7 +886,7 @@ mod ir_builder {
     #[derive(Debug)]
     struct IrAstBlock {
         label: String,
-        args: Vec<(IrAstTy, String, Option<MdIdxRef>)>,
+        args: Vec<(IrMutability, IrAstTy, String, Option<MdIdxRef>)>,
         instructions: Vec<IrAstInstruction>,
     }
 
@@ -1209,11 +1210,16 @@ mod ir_builder {
             let convert_md_idx = |opt_md_idx: &Option<MdIdxRef>| {
                 opt_md_idx.and_then(|mdi| self.md_map.get(&mdi).copied())
             };
-            let args: Vec<(String, Type, Option<MetadataIndex>)> = fn_decl
+            let args: Vec<(IrMutability, String, Type, Option<MetadataIndex>)> = fn_decl
                 .args
                 .iter()
-                .map(|(ty, name, md_idx)| {
-                    (name.into(), ty.to_ir_type(context), convert_md_idx(md_idx))
+                .map(|(mutability, ty, name, md_idx)| {
+                    (
+                        mutability.clone(),
+                        name.into(),
+                        ty.to_ir_type(context),
+                        convert_md_idx(md_idx),
+                    )
                 })
                 .collect();
             let ret_type = fn_decl.ret_type.to_ir_type(context);
@@ -1259,7 +1265,7 @@ mod ir_builder {
                             func.get_entry_block(context)
                         } else {
                             let irblock = func.create_block(context, Some(block.label.clone()));
-                            for (idx, (arg_ty, _, md)) in block.args.iter().enumerate() {
+                            for (idx, (_, arg_ty, _, md)) in block.args.iter().enumerate() {
                                 let ty = arg_ty.to_ir_type(context);
                                 let arg = Value::new_argument(
                                     context,
@@ -1267,7 +1273,6 @@ mod ir_builder {
                                         block: irblock,
                                         idx,
                                         ty,
-                                        // TODO: Support immutable flag on block arguments.
                                         is_immutable: false,
                                     },
                                 )
@@ -1280,9 +1285,9 @@ mod ir_builder {
                 }));
 
             for block in fn_decl.blocks {
-                for (idx, arg) in block.args.iter().enumerate() {
+                for (idx, (_, _, name, _)) in block.args.iter().enumerate() {
                     arg_map.insert(
-                        arg.1.clone(),
+                        name.clone(),
                         named_blocks[&block.label].get_arg(context, idx).unwrap(),
                     );
                 }

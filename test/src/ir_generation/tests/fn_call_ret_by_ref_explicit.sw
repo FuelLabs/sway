@@ -46,7 +46,7 @@ fn main() -> u64 {
 
 // fn a()...
 //
-// check: fn $a_func($ID $MD: bool, $ID $MD: u64, $ID $MD: u64, $(ret_val_arg=$ID): __ptr { u64, u64, u64 }) -> ()
+// check: fn $a_func(mut $ID $MD: bool, mut $ID $MD: u64, mut $ID $MD: u64, mut $(ret_val_arg=$ID): __ptr { u64, u64, u64 }) -> ()
 // check: cbr $ID, $(block_0=$ID)(), $(block_1=$ID)()
 
 // check: $block_0():

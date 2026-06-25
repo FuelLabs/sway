@@ -20,10 +20,10 @@ test result: OK. 1 passed; 0 failed; finished in ???
 
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/if/inline_if_expr_const --ir initial | filter-fn inline_if_expr_const if_
 
-fn if_not_const_5(cond: bool) -> u64 {
+fn if_not_const_5(mut cond: bool) -> u64 {
     local bool cond_
 
-    entry(cond: bool):
+    entry(mut cond: bool):
     v80v1 = get_local __ptr bool, cond_
     store cond to v80v1
     v82v1 = get_local __ptr bool, cond_
@@ -38,7 +38,7 @@ fn if_not_const_5(cond: bool) -> u64 {
     v87v1 = const u64 20
     br block2(v87v1)
 
-    block2(v79v1: u64):
+    block2(mut v79v1: u64):
     ret u64 v79v1
 }
 
@@ -82,7 +82,7 @@ fn if_const_generic_8() -> u64 {
     v107v1 = const u64 20
     br block2(v107v1)
 
-    block2(v100v1: u64):
+    block2(mut v100v1: u64):
     ret u64 v100v1
 }
 
@@ -102,17 +102,17 @@ fn if_const_generic_9() -> u64 {
     v117v1 = const u64 20
     br block2(v117v1)
 
-    block2(v110v1: u64):
+    block2(mut v110v1: u64):
     ret u64 v110v1
 }
 
 
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/if/inline_if_expr_const --ir final --asm final | filter-fn inline_if_expr_const if_
 
-fn if_not_const_5(cond: bool) -> u64 {
+fn if_not_const_5(mut cond: bool) -> u64 {
     local bool cond_
 
-    entry(cond: bool):
+    entry(mut cond: bool):
     v99v1 = get_local __ptr bool, cond_
     store cond to v99v1
     v101v1 = get_local __ptr bool, cond_
@@ -124,7 +124,7 @@ fn if_not_const_5(cond: bool) -> u64 {
     v105v1 = const u64 20
     br block2(v105v1)
 
-    block2(v98v1: u64):
+    block2(mut v98v1: u64):
     ret u64 v98v1
 }
 
@@ -166,7 +166,7 @@ fn if_const_generic_8() -> u64 {
     v126v1 = const u64 20
     br block2(v126v1)
 
-    block2(v112v1: u64):
+    block2(mut v112v1: u64):
     ret u64 v112v1
 }
 
@@ -194,7 +194,7 @@ fn if_const_generic_9() -> u64 {
     v143v1 = const u64 20
     br block2(v143v1)
 
-    block2(v129v1: u64):
+    block2(mut v129v1: u64):
     ret u64 v129v1
 }
 

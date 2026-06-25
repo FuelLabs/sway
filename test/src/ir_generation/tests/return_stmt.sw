@@ -25,4 +25,4 @@ fn main() -> u64 {
 // check: $(unit_val=$VAL) = const unit ()
 // check: br $(block2=$ID)($unit_val)
 
-// check: $block2($VAL: ()):
+// check: $block2(mut $VAL: ()):

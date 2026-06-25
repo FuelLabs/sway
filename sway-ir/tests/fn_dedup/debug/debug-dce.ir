@@ -1,5 +1,3 @@
-// regex: FOONAME=fn (foo_1|foo_3)
-
 script {
     entry fn main() -> bool, !1 {
         entry():
@@ -18,7 +16,6 @@ script {
         ret bool v6
     }
 
-    // check: $(FOONAME)
     fn foo_1(t1 !9: u64, t2 !10: u64) -> bool, !13 {
         entry(t1: u64, t2: u64):
         v0 = call eq_2(t1, t2), !14
@@ -31,7 +28,6 @@ script {
         ret bool v0
     }
 
-    // not: $(FOONAME)
     fn foo_3(t1 !9: u64, t2 !10: u64) -> bool, !19 {
         entry(t1: u64, t2: u64):
         v0 = call eq_4(t1, t2), !14

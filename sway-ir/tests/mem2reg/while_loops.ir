@@ -1,6 +1,3 @@
-// regex: VAR=v\d+v\d+
-// regex: ID=[[:alpha:]0-9_]+
-
 script {
     fn main() -> bool, !1 {
         local u64 counter
@@ -10,104 +7,66 @@ script {
         local u64 counter_5
         local () result
 
-        // check: entry()
         entry():
-        // check: $(v0=$VAR) = get_local __ptr u64, counter
         v0 = get_local __ptr u64, counter, !2
         v1 = const u64 0, !3
-        // not: store $VAR to $v0
         store v1 to v0, !2
         br while()
 
-        // check: while($(v3=$VAR): u64):
         while():
-        // check: $(v2=$VAR) = get_local __ptr u64, counter
         v2 = get_local __ptr u64, counter, !4
-        // not: load $v2
         v3 = load v2, !4
         v4 = const u64 10, !5
-        // check: call lt_1($v3, $VAR)
         v5 = call lt_1(v3, v4), !6
         cbr v5, while_body(), end_while()
 
-        // check: while_body():
         while_body():
         v6 = get_local __ptr u64, counter, !7
-        // check: $(v7=$VAR) = get_local __ptr u64, counter
         v7 = get_local __ptr u64, counter, !8
-        // not: load $v7
         v8 = load v7, !8
         v9 = const u64 1, !9
-        // check: call add_0($v3, $VAR)
         v10 = call add_0(v8, v9), !10
         store v10 to v6, !7
         br while()
 
-        // check: end_while():
         end_while():
-        // check: $(v11=$VAR) = get_local __ptr u64, counter
         v11 = get_local __ptr u64, counter, !11
-        // not: load $v11
         v12 = load v11, !11
-        // check: $(v13=$VAR) = const u64 10
         v13 = const u64 10, !12
-        // check: call eq_5($v3, $v13)
         v14 = call eq_5(v12, v13), !13
         v15 = call assert_2(v14), !15
-        // check: $(v16=$VAR) = get_local __ptr u64, counter_2
         v16 = get_local __ptr u64, counter_2, !16
         v17 = const u64 0, !17
-        // not: store $VAR to $v16
         store v17 to v16, !16
-        // check: $(v18=$VAR) = get_local __ptr u64, counter_3
         v18 = get_local __ptr u64, counter_3, !18
         v19 = const u64 0, !19
-        // not: store $VAR to $v18
         store v19 to v18, !18
         br while0()
 
-        // check: while0($(p1=$VAR): u64, $(p2=$VAR): u64):
         while0():
-        // check: $(v20=$VAR) = get_local __ptr u64, counter_2
         v20 = get_local __ptr u64, counter_2, !20
-        // not: load $v20
         v21 = load v20, !20
-        // check: $(v22=$VAR) = const u64 10
         v22 = const u64 10, !21
-        // check: call lt_1($p1, $v22)
         v23 = call lt_1(v21, v22), !22
         cbr v23, while_body1(), end_while2()
 
-        // check while_body1():
         while_body1():
-        // check: $(v24=$VAR) = get_local __ptr u64, counter_2
         v24 = get_local __ptr u64, counter_2, !23
-        // not: load $v24
         v25 = load v24, !23
-        // check: $(v26=$VAR) = const u64 3
         v26 = const u64 3, !24
-        // call eq_5($p1, $v26)
         v27 = call eq_5(v25, v26), !25
         cbr v27, block3(), block4(), !25
 
-        // check: end_while2():
         end_while2():
-        // check: $(v28=$VAR) = get_local __ptr u64, counter_2
         v28 = get_local __ptr u64, counter_2, !26
-        // not: load $v28
         v29 = load v28, !26
-        // check: $(v30=$VAR) = const u64 10
         v30 = const u64 10, !27
-        // call eq_5($p1, $v30)
         v31 = call eq_5(v29, v30), !28
         cbr v31, block6(), block7(v31), !29
 
-        // check: block3():
         block3():
-        // check: $(v32=$VAR) = get_local __ptr u64, counter_2
         v32 = get_local __ptr u64, counter_2, !30
         v33 = const u64 10, !31
-        // not: store $VAR to $v32
         store v33 to v32, !30
         v34 = const unit ()
         br block5(v34)

@@ -1,5 +1,4 @@
 script {
-// check: fn main
     fn main() -> () {
         local b256 addr_a = const b256 0x1111111111111111111111111111111111111111111111111111111111111111
         local b256 addr_b

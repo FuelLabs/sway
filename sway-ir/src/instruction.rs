@@ -39,7 +39,7 @@ impl Instruction {
         self.op.get_type(context)
     }
     /// Replace `old_val` with `new_val` if it is referenced by this instruction's arguments.
-    pub fn replace_values(&mut self, replace_map: &FxHashMap<Value, Value>) {
+    pub fn replace_values(&mut self, replace_map: &FxHashMap<Value, Value>) -> bool {
         self.op.replace_values(replace_map)
     }
     /// Get the function containing this instruction
@@ -1264,16 +1264,20 @@ impl InstOp {
     }
 
     /// Replace `old_val` with `new_val` if it is referenced by this instruction's arguments.
-    pub fn replace_values(&mut self, replace_map: &FxHashMap<Value, Value>) {
-        let replace = |val: &mut Value| {
+    pub fn replace_values(&mut self, replace_map: &FxHashMap<Value, Value>) -> bool {
+        let mut modified = false;
+
+        let mut replace = |val: &mut Value| {
             while let Some(new_val) = replace_map.get(val) {
                 *val = *new_val;
+                modified = true;
             }
         };
+
         match self {
             InstOp::AsmBlock(_, args) => args
                 .iter_mut()
-                .for_each(|asm_arg| asm_arg.initializer.iter_mut().for_each(replace)),
+                .for_each(|asm_arg| asm_arg.initializer.iter_mut().for_each(&mut replace)),
             InstOp::BitCast(value, _) => replace(value),
             InstOp::UnaryOp { op: _, arg } => {
                 replace(arg);
@@ -1283,9 +1287,9 @@ impl InstOp {
                 replace(arg2);
             }
             InstOp::Branch(block) => {
-                block.args.iter_mut().for_each(replace);
+                block.args.iter_mut().for_each(&mut replace);
             }
-            InstOp::Call(_, args) => args.iter_mut().for_each(replace),
+            InstOp::Call(_, args) => args.iter_mut().for_each(&mut replace),
             InstOp::CastPtr(val, _ty) => replace(val),
             InstOp::Cmp(_, lhs_val, rhs_val) => {
                 replace(lhs_val);
@@ -1297,8 +1301,8 @@ impl InstOp {
                 false_block,
             } => {
                 replace(cond_value);
-                true_block.args.iter_mut().for_each(replace);
-                false_block.args.iter_mut().for_each(replace);
+                true_block.args.iter_mut().for_each(&mut replace);
+                false_block.args.iter_mut().for_each(&mut replace);
             }
             InstOp::ContractCall {
                 params,
@@ -1322,7 +1326,7 @@ impl InstOp {
                 indices,
             } => {
                 replace(base);
-                indices.iter_mut().for_each(replace);
+                indices.iter_mut().for_each(&mut replace);
             }
             InstOp::Alloc { ty: _, count } => replace(count),
             InstOp::IntToPtr(value, _) => replace(value),
@@ -1488,11 +1492,11 @@ impl InstOp {
                 initializers,
             }) => {
                 replace(aggr_ptr);
-                initializers.iter_mut().for_each(|init| {
-                    replace(init);
-                });
+                initializers.iter_mut().for_each(&mut replace);
             }
         }
+
+        modified
     }
 
     pub fn may_have_side_effect(&self) -> bool {

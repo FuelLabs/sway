@@ -319,7 +319,7 @@ pub fn inline_function_call(
             .iter()
             .zip(passed_vals.iter())
         {
-            value_map.insert(arg_val.1, *passed_val);
+            value_map.insert(arg_val.2, *passed_val);
         }
     }
 

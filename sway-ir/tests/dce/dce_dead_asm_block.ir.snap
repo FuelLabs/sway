@@ -93,13 +93,13 @@ script {
     }
 
     fn poke_1(_x: ()) -> () {
-        entry(_x: ()):
+        entry(mut _x: ()):
         v59v1 = const unit ()
         ret () v59v1
     }
 
     fn poke_2(_x: u64) -> () {
-        entry(_x: u64):
+        entry(mut _x: u64):
         v62v1 = const unit ()
         ret () v62v1
     }
