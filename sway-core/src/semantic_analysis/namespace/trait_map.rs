@@ -386,8 +386,7 @@ impl TraitMap {
                             {
                                 // duplicate method name
                                 handler.emit_err(CompileError::MultipleDefinitionsOfName {
-                                    name: decl_ref.name().clone(),
-                                    span: decl_ref.span(),
+                                    name: decl_ref.name().into(),
                                 });
                             }
                         }
@@ -1523,8 +1522,7 @@ impl TraitMap {
                 },
             )),
             Ordering::Less => Err(handler.emit_err(CompileError::SymbolNotFound {
-                name: symbol.clone(),
-                span: symbol.span(),
+                name: symbol.into(),
             })),
             Ordering::Equal => Ok(candidates.values().next().unwrap().clone()),
         }

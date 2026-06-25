@@ -45,7 +45,7 @@ impl ty::TyConfigurableDecl {
     pub fn type_check(
         handler: &Handler,
         mut ctx: TypeCheckContext,
-        decl: ConfigurableDeclaration,
+        decl: &ConfigurableDeclaration,
     ) -> Result<Self, ErrorEmitted> {
         let type_engine = ctx.engines.te();
         let engines = ctx.engines();
@@ -53,12 +53,14 @@ impl ty::TyConfigurableDecl {
         let ConfigurableDeclaration {
             name,
             span,
-            mut type_ascription,
+            type_ascription,
             value,
             attributes,
             visibility,
             block_keyword_span,
         } = decl;
+
+        let mut type_ascription = type_ascription.clone();
 
         type_ascription.type_id = ctx
             .resolve_type(
@@ -87,8 +89,8 @@ impl ty::TyConfigurableDecl {
                 .with_type_annotation(type_engine.id_of_raw_slice())
                 .with_help_text("Configurables must evaluate to slices.");
 
-            let value = value.map(|value| {
-                ty::TyExpression::type_check(handler, ctx.by_ref(), &value)
+            let value = value.as_ref().map(|value| {
+                ty::TyExpression::type_check(handler, ctx.by_ref(), value)
                     .unwrap_or_else(|err| ty::TyExpression::error(err, name.span(), engines))
             });
 
@@ -144,7 +146,7 @@ impl ty::TyConfigurableDecl {
                 ctx.by_ref(),
                 &decode_fn_decl.type_parameters,
                 decode_fn_decl.name.as_str(),
-                &span,
+                span,
             )?;
 
             let decode_fn_ref = if decode_fn_decl
@@ -173,26 +175,25 @@ impl ty::TyConfigurableDecl {
             expression's type.",
                 );
 
-            let value = value.map(|value| {
-                ty::TyExpression::type_check(handler, ctx.by_ref(), &value)
+            let value = value.as_ref().map(|value| {
+                ty::TyExpression::type_check(handler, ctx.by_ref(), value)
                     .unwrap_or_else(|err| ty::TyExpression::error(err, name.span(), engines))
             });
 
             (value, None)
         };
 
-        let mut call_path: CallPath = name.into();
-        call_path = call_path.to_fullpath(engines, ctx.namespace());
+        let call_path = CallPath::ident_to_fullpath(name.clone(), ctx.namespace());
 
         Ok(ty::TyConfigurableDecl {
             call_path,
-            attributes,
+            attributes: attributes.clone(),
             return_type: type_ascription.type_id,
             type_ascription,
-            span,
+            span: span.clone(),
             value,
             decode_fn,
-            visibility,
+            visibility: *visibility,
         })
     }
 

@@ -7,7 +7,7 @@ use sway_types::{Span, Spanned};
 use crate::{
     decl_engine::parsed_id::ParsedDeclId,
     language::{
-        parsed::{self, Declaration, TraitTypeDeclaration},
+        parsed::{Declaration, TraitTypeDeclaration},
         ty::{self, TyTraitType},
     },
     semantic_analysis::{
@@ -36,9 +36,9 @@ impl ty::TyTraitType {
     pub(crate) fn type_check(
         handler: &Handler,
         ctx: TypeCheckContext,
-        trait_type: parsed::TraitTypeDeclaration,
+        trait_type: &TraitTypeDeclaration,
     ) -> Result<Self, ErrorEmitted> {
-        let parsed::TraitTypeDeclaration {
+        let TraitTypeDeclaration {
             name,
             attributes,
             ty_opt,
@@ -48,7 +48,8 @@ impl ty::TyTraitType {
         let engines = ctx.engines();
         let type_engine = engines.te();
 
-        let ty = if let Some(mut ty) = ty_opt {
+        let ty_opt = ty_opt.as_ref().cloned();
+        let ty = ty_opt.map(|mut ty| {
             *ty.type_id_mut() = ctx
                 .resolve_type(
                     handler,
@@ -58,28 +59,29 @@ impl ty::TyTraitType {
                     None,
                 )
                 .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
-            Some(ty)
-        } else {
-            None
-        };
+            ty
+        });
 
         if let Some(implementing_type) = ctx.self_type() {
             Ok(ty::TyTraitType {
-                name,
-                attributes,
+                name: name.clone(),
+                attributes: attributes.clone(),
                 ty,
                 implementing_type,
-                span,
+                span: span.clone(),
             })
         } else {
-            Err(handler.emit_err(CompileError::Internal("Self type not provided.", span)))
+            Err(handler.emit_err(CompileError::Internal(
+                "Self type not provided.",
+                span.clone(),
+            )))
         }
     }
 
     /// Used to create a stubbed out constant when the constant fails to
     /// compile, preventing cascading namespace errors.
-    pub(crate) fn error(engines: &Engines, decl: parsed::TraitTypeDeclaration) -> TyTraitType {
-        let parsed::TraitTypeDeclaration {
+    pub(crate) fn error(engines: &Engines, decl: TraitTypeDeclaration) -> TyTraitType {
+        let TraitTypeDeclaration {
             name,
             attributes,
             ty_opt,

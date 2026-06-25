@@ -32,8 +32,8 @@ use sway_types::{Ident, Span};
 pub(crate) fn type_check_method_application(
     handler: &Handler,
     mut ctx: TypeCheckContext,
-    mut method_name_binding: TypeBinding<MethodName>,
-    contract_call_params: Vec<StructExpressionField>,
+    method_name_binding: &TypeBinding<MethodName>,
+    contract_call_params: &[StructExpressionField],
     arguments: &[Expression],
     span: Span,
 ) -> Result<ty::TyExpression, ErrorEmitted> {
@@ -96,12 +96,8 @@ pub(crate) fn type_check_method_application(
             None => type_engine.new_unknown(),
         })
         .collect::<Vec<_>>();
-    let method_result = resolve_method_name(
-        handler,
-        ctx.by_ref(),
-        &method_name_binding,
-        &arguments_types,
-    );
+    let method_result =
+        resolve_method_name(handler, ctx.by_ref(), method_name_binding, &arguments_types);
 
     // In case resolve_method_name fails throw argument errors.
     let (original_decl_ref, method_target) = if let Err(e) = method_result {
@@ -127,6 +123,8 @@ pub(crate) fn type_check_method_application(
         original_decl.type_parameters.iter(),
     );
 
+    let mut method_name_binding = method_name_binding.clone();
+
     let mut fn_ref = monomorphize_method(
         handler,
         ctx.by_ref(),
@@ -134,6 +132,9 @@ pub(crate) fn type_check_method_application(
         method_name_binding.type_arguments.to_vec_mut(),
         const_generics,
     )?;
+
+    // Remove mutability.
+    let method_name_binding = method_name_binding;
 
     let method = &*decl_engine.get_function(&fn_ref);
 
@@ -259,8 +260,7 @@ pub(crate) fn type_check_method_application(
                 }
                 _ => {
                     handler.emit_err(CompileError::UnrecognizedContractParam {
-                        param_name: param.name.to_string(),
-                        span: param.name.span().clone(),
+                        param_name: (&param.name).into(),
                     });
                 }
             };
@@ -445,7 +445,7 @@ pub(crate) fn type_check_method_application(
         };
         Some(ty::ContractCallParams {
             func_selector,
-            contract_address: contract_address.clone(),
+            contract_address,
             contract_caller: Box::new(contract_caller.unwrap()),
         })
     } else {
@@ -466,13 +466,12 @@ pub(crate) fn type_check_method_application(
     let arguments = method
         .parameters
         .iter()
-        .map(|m| m.name.clone())
-        .zip(args_buf)
-        .collect::<Vec<_>>();
+        .map(|m| &m.name)
+        .zip(args_buf.iter());
 
     // unify the types of the arguments with the types of the parameters from the function declaration
     let arguments =
-        unify_arguments_and_parameters(handler, ctx.by_ref(), &arguments, &method.parameters)?;
+        unify_arguments_and_parameters(handler, ctx.by_ref(), arguments, &method.parameters)?;
 
     if ctx.experimental.new_encoding && method.is_contract_call {
         fn call_contract_call(
@@ -643,14 +642,15 @@ pub(crate) fn type_check_method_application(
                 }
                 let implementing_type_parameters = implementing_for.get_type_parameters(engines);
                 if let Some(implementing_type_parameters) = implementing_type_parameters {
-                    for p in method.type_parameters.clone() {
-                        let Some(p) = p.as_type_parameter() else {
+                    for type_param in method.type_parameters.iter() {
+                        let Some(type_param) = type_param.as_type_parameter() else {
                             continue;
                         };
 
-                        if p.is_from_parent {
-                            if let Some(impl_type_param) =
-                                names_index.get(&p.name).and_then(|type_param_index| {
+                        if type_param.is_from_parent {
+                            if let Some(impl_type_param) = names_index
+                                .get(&type_param.name)
+                                .and_then(|type_param_index| {
                                     implementing_type_parameters.get(*type_param_index)
                                 })
                             {
@@ -661,7 +661,7 @@ pub(crate) fn type_check_method_application(
                                     type_engine.unify_with_generic(
                                         handler,
                                         engines,
-                                        p.type_id,
+                                        type_param.type_id,
                                         impl_type_param.type_id,
                                         &call_path.span(),
                                         "Function type parameter does not match up with implementing type type parameter.",
@@ -878,10 +878,10 @@ pub(crate) fn prepare_const_generics_materialization<'a>(
 
 /// Unifies the types of the arguments with the types of the parameters. Returns
 /// a list of the arguments with the names of the corresponding parameters.
-fn unify_arguments_and_parameters(
+fn unify_arguments_and_parameters<'a>(
     handler: &Handler,
     ctx: TypeCheckContext,
-    arguments: &[(BaseIdent, ty::TyExpression)],
+    arguments: impl Iterator<Item = (&'a BaseIdent, &'a ty::TyExpression)>,
     parameters: &[ty::TyFunctionParameter],
 ) -> Result<Vec<(Ident, ty::TyExpression)>, ErrorEmitted> {
     let type_engine = ctx.engines.te();
@@ -889,7 +889,7 @@ fn unify_arguments_and_parameters(
     let mut typed_arguments_and_names = vec![];
 
     handler.scope(|handler| {
-        for ((_, arg), param) in arguments.iter().zip(parameters.iter()) {
+        for ((_, arg), param) in arguments.zip(parameters.iter()) {
             // unify the type of the argument with the type of the param
             let unify_res = handler.scope(|handler| {
                 type_engine.unify_with_generic(

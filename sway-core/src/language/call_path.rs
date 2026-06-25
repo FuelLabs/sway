@@ -420,7 +420,7 @@ impl CallPath {
     /// This function is intended to be used while typechecking the identifier declaration, i.e.,
     /// before the identifier is added to the environment.
     pub fn ident_to_fullpath(suffix: Ident, namespace: &Namespace) -> CallPath {
-        let mut res: Self = suffix.clone().into();
+        let mut res: Self = suffix.into();
         for mod_path in namespace.current_mod_path() {
             res.prefixes.push(mod_path.clone())
         }

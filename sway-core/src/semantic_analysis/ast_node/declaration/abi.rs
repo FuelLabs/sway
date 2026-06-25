@@ -59,7 +59,7 @@ impl ty::TyAbiDecl {
     pub(crate) fn type_check(
         handler: &Handler,
         ctx: TypeCheckContext,
-        abi_decl: AbiDeclaration,
+        abi_decl: &AbiDeclaration,
     ) -> Result<Self, ErrorEmitted> {
         let engines = ctx.engines();
         let AbiDeclaration {
@@ -96,7 +96,7 @@ impl ty::TyAbiDecl {
                     handler,
                     ctx.by_ref(),
                     self_type_id,
-                    &supertraits,
+                    supertraits,
                     &SupertraitOf::Abi(span.clone()),
                 )?;
 
@@ -110,7 +110,7 @@ impl ty::TyAbiDecl {
                             &Handler::default(),
                             self_type_id,
                             &mod_path,
-                            &method_name.clone(),
+                            method_name,
                             ctx.type_annotation(),
                             &[],
                             None,
@@ -129,20 +129,19 @@ impl ty::TyAbiDecl {
                         }
                     };
 
-                for item in interface_surface.into_iter() {
+                for item in interface_surface.iter() {
                     let decl_name = match item {
                         TraitItem::TraitFn(decl_id) => {
-                            let method = engines.pe().get_trait_fn(&decl_id);
+                            let method = &*engines.pe().get_trait_fn(decl_id);
                             // check that a super-trait does not define a method
                             // with the same name as the current interface method
                             error_on_shadowing_superabi_method(&method.name, ctx);
-                            let method = ty::TyTraitFn::type_check(handler, ctx.by_ref(), &method)?;
+                            let method = ty::TyTraitFn::type_check(handler, ctx.by_ref(), method)?;
                             for param in &method.parameters {
                                 if param.is_reference || param.is_mutable {
                                     handler.emit_err(
                                         CompileError::RefMutableNotAllowedInContractAbi {
-                                            param_name: param.name.clone(),
-                                            span: param.name.span(),
+                                            param_name: (&param.name).into(),
                                         },
                                     );
                                 }
@@ -151,26 +150,26 @@ impl ty::TyAbiDecl {
                             let method_name = method.name.clone();
 
                             new_interface_surface.push(ty::TyTraitInterfaceItem::TraitFn(
-                                ctx.engines.de().insert(method, Some(&decl_id)),
+                                ctx.engines.de().insert(method, Some(decl_id)),
                             ));
 
                             method_name
                         }
                         TraitItem::Constant(decl_id) => {
-                            let const_decl = engines.pe().get_constant(&decl_id).as_ref().clone();
+                            let const_decl = &*engines.pe().get_constant(decl_id);
                             let const_decl =
                                 ty::TyConstantDecl::type_check(handler, ctx.by_ref(), const_decl)?;
 
                             let const_name = const_decl.call_path.suffix.clone();
 
-                            let decl_ref = ctx.engines.de().insert(const_decl, Some(&decl_id));
+                            let decl_ref = ctx.engines.de().insert(const_decl, Some(decl_id));
                             new_interface_surface
-                                .push(ty::TyTraitInterfaceItem::Constant(decl_ref.clone()));
+                                .push(ty::TyTraitInterfaceItem::Constant(decl_ref));
 
                             const_name
                         }
                         TraitItem::Type(decl_id) => {
-                            let type_decl = engines.pe().get_trait_type(&decl_id).as_ref().clone();
+                            let type_decl = &*engines.pe().get_trait_type(decl_id);
                             handler.emit_err(CompileError::AssociatedTypeNotSupportedInAbi {
                                 span: type_decl.span.clone(),
                             });
@@ -178,9 +177,8 @@ impl ty::TyAbiDecl {
                                 ty::TyTraitType::type_check(handler, ctx.by_ref(), type_decl)?;
 
                             let type_name = type_decl.name.clone();
-                            let decl_ref = ctx.engines().de().insert(type_decl, Some(&decl_id));
-                            new_interface_surface
-                                .push(ty::TyTraitInterfaceItem::Type(decl_ref.clone()));
+                            let decl_ref = ctx.engines().de().insert(type_decl, Some(decl_id));
+                            new_interface_surface.push(ty::TyTraitInterfaceItem::Type(decl_ref));
 
                             type_name
                         }
@@ -191,16 +189,15 @@ impl ty::TyAbiDecl {
 
                     if !ids.insert(decl_name.clone()) {
                         handler.emit_err(CompileError::MultipleDefinitionsOfName {
-                            name: decl_name.clone(),
-                            span: decl_name.span(),
+                            name: decl_name.into(),
                         });
                     }
                 }
 
                 // Type check the items.
                 let mut new_items = vec![];
-                for method_id in methods.into_iter() {
-                    let method = engines.pe().get_function(&method_id);
+                for method_id in methods.iter() {
+                    let method = engines.pe().get_function(method_id);
                     let method = ty::TyFunctionDecl::type_check(
                         handler,
                         ctx.by_ref(),
@@ -214,19 +211,17 @@ impl ty::TyAbiDecl {
                     for param in method.parameters.iter() {
                         if param.is_reference || param.is_mutable {
                             handler.emit_err(CompileError::RefMutableNotAllowedInContractAbi {
-                                param_name: param.name.clone(),
-                                span: param.name.span(),
+                                param_name: (&param.name).into(),
                             });
                         }
                     }
                     if !ids.insert(method.name.clone()) {
                         handler.emit_err(CompileError::MultipleDefinitionsOfName {
-                            name: method.name.clone(),
-                            span: method.name.span(),
+                            name: (&method.name).into(),
                         });
                     }
                     new_items.push(TyTraitItem::Fn(
-                        ctx.engines.de().insert(method, Some(&method_id)),
+                        ctx.engines.de().insert(method, Some(method_id)),
                     ));
                 }
 
@@ -235,11 +230,11 @@ impl ty::TyAbiDecl {
                 // the ABI user, only the contract methods can use supertrait methods
                 let abi_decl = ty::TyAbiDecl {
                     interface_surface: new_interface_surface,
-                    supertraits,
+                    supertraits: supertraits.clone(),
                     items: new_items,
-                    name,
-                    span,
-                    attributes,
+                    name: name.clone(),
+                    span: span.clone(),
+                    attributes: attributes.clone(),
                 };
 
                 abi_decl.forbid_const_generics(handler, engines)?;

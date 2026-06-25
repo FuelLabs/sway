@@ -28,14 +28,14 @@ impl ty::TyAstNode {
         ctx: &mut SymbolCollectionContext,
         node: &AstNode,
     ) -> Result<(), ErrorEmitted> {
-        match node.content.clone() {
+        match &node.content {
             AstNodeContent::UseStatement(stmt) => {
-                collect_use_statement(handler, engines, ctx, &stmt);
+                collect_use_statement(handler, engines, ctx, stmt);
             }
             AstNodeContent::IncludeStatement(_i) => (),
             AstNodeContent::Declaration(decl) => ty::TyDecl::collect(handler, engines, ctx, decl)?,
             AstNodeContent::Expression(expr) => {
-                ty::TyExpression::collect(handler, engines, ctx, &expr)?
+                ty::TyExpression::collect(handler, engines, ctx, expr)?
             }
             AstNodeContent::Error(_spans, _err) => (),
         };
@@ -53,16 +53,16 @@ impl ty::TyAstNode {
         let engines = ctx.engines();
 
         let node = ty::TyAstNode {
-            content: match node.content.clone() {
+            content: match &node.content {
                 AstNodeContent::UseStatement(stmt) => {
-                    handle_use_statement(&mut ctx, &stmt, handler);
+                    handle_use_statement(&mut ctx, stmt, handler);
                     ty::TyAstNodeContent::SideEffect(ty::TySideEffect {
                         side_effect: ty::TySideEffectVariant::UseStatement(ty::TyUseStatement {
-                            alias: stmt.alias,
-                            call_path: stmt.call_path,
-                            span: stmt.span,
+                            alias: stmt.alias.clone(),
+                            call_path: stmt.call_path.clone(),
+                            span: stmt.span.clone(),
                             is_relative_to_package_root: stmt.is_relative_to_package_root,
-                            import_type: stmt.import_type,
+                            import_type: stmt.import_type.clone(),
                         }),
                     })
                 }
@@ -70,8 +70,8 @@ impl ty::TyAstNode {
                     ty::TyAstNodeContent::SideEffect(ty::TySideEffect {
                         side_effect: ty::TySideEffectVariant::IncludeStatement(
                             ty::TyIncludeStatement {
-                                mod_name: i.mod_name,
-                                span: i.span,
+                                mod_name: i.mod_name.clone(),
+                                span: i.span.clone(),
                                 visibility: i.visibility,
                             },
                         ),
@@ -94,11 +94,13 @@ impl ty::TyAstNode {
                                 .with_type_annotation(type_engine.new_unknown());
                         }
                     }
-                    let inner = ty::TyExpression::type_check(handler, ctx, &expr)
+                    let inner = ty::TyExpression::type_check(handler, ctx, expr)
                         .unwrap_or_else(|err| ty::TyExpression::error(err, expr.span(), engines));
                     ty::TyAstNodeContent::Expression(inner)
                 }
-                AstNodeContent::Error(spans, err) => ty::TyAstNodeContent::Error(spans, err),
+                AstNodeContent::Error(spans, err) => {
+                    ty::TyAstNodeContent::Error(spans.clone(), *err)
+                }
             },
             span: node.span.clone(),
         };
@@ -144,7 +146,7 @@ fn collect_use_statement(
 
     let _ = match stmt.import_type {
         ImportType::Star => {
-            // try a standard starimport first
+            // try a standard star import first
             let star_import_handler = Handler::default();
             let import = ctx.star_import(&star_import_handler, engines, &path, stmt.reexport);
             if import.is_ok() {

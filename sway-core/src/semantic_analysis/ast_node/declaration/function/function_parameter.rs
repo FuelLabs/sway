@@ -14,7 +14,7 @@ impl ty::TyFunctionParameter {
     pub(crate) fn type_check(
         handler: &Handler,
         ctx: TypeCheckContext,
-        parameter: FunctionParameter,
+        parameter: &FunctionParameter,
     ) -> Result<Self, ErrorEmitted> {
         let type_engine = ctx.engines.te();
 
@@ -23,8 +23,10 @@ impl ty::TyFunctionParameter {
             is_reference,
             is_mutable,
             mutability_span,
-            mut type_argument,
+            type_argument,
         } = parameter;
+
+        let mut type_argument = type_argument.clone();
 
         type_argument.type_id = ctx
             .resolve_type(
@@ -43,7 +45,7 @@ impl ty::TyFunctionParameter {
             None,
         )?;
 
-        let mutability = ty::VariableMutability::new_from_ref_mut(is_reference, is_mutable);
+        let mutability = ty::VariableMutability::new_from_ref_mut(*is_reference, *is_mutable);
         if mutability == ty::VariableMutability::Mutable {
             return Err(
                 handler.emit_err(CompileError::MutableParameterNotSupported {
@@ -54,10 +56,10 @@ impl ty::TyFunctionParameter {
         }
 
         let typed_parameter = ty::TyFunctionParameter {
-            name,
-            is_reference,
-            is_mutable,
-            mutability_span,
+            name: name.clone(),
+            is_reference: *is_reference,
+            is_mutable: *is_mutable,
+            mutability_span: mutability_span.clone(),
             type_argument,
         };
 

@@ -52,8 +52,8 @@ impl ty::TyMatchExpression {
     pub(crate) fn type_check(
         handler: &Handler,
         ctx: TypeCheckContext,
-        typed_value: ty::TyExpression,
-        branches: Vec<MatchBranch>,
+        typed_value: &ty::TyExpression,
+        branches: &[MatchBranch],
         span: Span,
     ) -> Result<(ty::TyMatchExpression, Vec<ty::TyScrutinee>), ErrorEmitted> {
         // type check all of the branches
@@ -63,16 +63,13 @@ impl ty::TyMatchExpression {
             ctx.with_help_text("all branches of a match statement must return the same type");
 
         handler.scope(|handler| {
-            for branch in branches.into_iter() {
-                let (typed_branch, typed_scrutinee) = match ty::TyMatchBranch::type_check(
-                    handler,
-                    ctx.by_ref(),
-                    &typed_value,
-                    branch,
-                ) {
-                    Ok(res) => res,
-                    Err(_) => continue,
-                };
+            for branch in branches.iter() {
+                let (typed_branch, typed_scrutinee) =
+                    match ty::TyMatchBranch::type_check(handler, ctx.by_ref(), typed_value, branch)
+                    {
+                        Ok(res) => res,
+                        Err(_) => continue,
+                    };
                 typed_branches.push(typed_branch);
                 typed_scrutinees.push(typed_scrutinee);
             }

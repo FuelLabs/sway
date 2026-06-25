@@ -31,7 +31,7 @@ impl ty::TyEnumDecl {
     pub fn type_check(
         handler: &Handler,
         mut ctx: TypeCheckContext,
-        decl: EnumDeclaration,
+        decl: &EnumDeclaration,
     ) -> Result<Self, ErrorEmitted> {
         let EnumDeclaration {
             name,
@@ -57,24 +57,24 @@ impl ty::TyEnumDecl {
             let mut variants_buf = vec![];
             for variant in variants {
                 variants_buf.push(
-                    match ty::TyEnumVariant::type_check(handler, ctx.by_ref(), variant.clone()) {
+                    match ty::TyEnumVariant::type_check(handler, ctx.by_ref(), variant) {
                         Ok(res) => res,
                         Err(_) => continue,
                     },
                 );
             }
 
-            let call_path = CallPath::ident_to_fullpath(name, ctx.namespace());
+            let call_path = CallPath::ident_to_fullpath(name.clone(), ctx.namespace());
 
-            // create the enum decl
             let decl = ty::TyEnumDecl {
                 call_path,
                 generic_parameters: new_type_parameters,
                 variants: variants_buf,
-                span,
-                attributes,
-                visibility,
+                span: span.clone(),
+                attributes: attributes.clone(),
+                visibility: *visibility,
             };
+
             Ok(decl)
         })
     }
@@ -84,10 +84,10 @@ impl ty::TyEnumVariant {
     pub(crate) fn type_check(
         handler: &Handler,
         ctx: TypeCheckContext,
-        variant: EnumVariant,
+        variant: &EnumVariant,
     ) -> Result<Self, ErrorEmitted> {
         let type_engine = ctx.engines.te();
-        let mut type_argument = variant.type_argument;
+        let mut type_argument = variant.type_argument.clone();
         type_argument.type_id = ctx
             .resolve_type(
                 handler,
@@ -101,8 +101,8 @@ impl ty::TyEnumVariant {
             name: variant.name.clone(),
             type_argument,
             tag: variant.tag,
-            span: variant.span,
-            attributes: variant.attributes,
+            span: variant.span.clone(),
+            attributes: variant.attributes.clone(),
         })
     }
 }
