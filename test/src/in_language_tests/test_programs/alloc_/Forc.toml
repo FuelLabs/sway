@@ -1,0 +1,8 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "alloc.sw"
+license = "Apache-2.0"
+name = "alloc_"
+
+[dependencies]
+std = { path = "../../../../../sway-lib-std" }

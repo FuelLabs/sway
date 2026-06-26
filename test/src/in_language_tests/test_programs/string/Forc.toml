@@ -1,0 +1,8 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "string.sw"
+license = "Apache-2.0"
+name = "string"
+
+[dependencies]
+std = { path = "../../../../../sway-lib-std" }

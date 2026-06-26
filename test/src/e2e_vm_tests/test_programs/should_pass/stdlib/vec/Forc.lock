@@ -1,8 +1,0 @@
-[[package]]
-name = "std"
-source = "path+from-root-E8B33641BFB485A7"
-
-[[package]]
-name = "vec"
-source = "member"
-dependencies = ["std"]

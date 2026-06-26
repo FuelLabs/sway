@@ -1504,47 +1504,6 @@ impl Shift for u8 {
     }
 }
 
-/////////////////////////////////////////////////
-// Internal Helpers
-/////////////////////////////////////////////////
-
-/// Build a single b256 value from a tuple of 4 u64 values.
-fn compose(words: (u64, u64, u64, u64)) -> b256 {
-    asm(r1: words) {
-        r1: b256
-    }
-}
-
-/// Get a tuple of 4 u64 values from a single b256 value.
-fn decompose(val: b256) -> (u64, u64, u64, u64) {
-    asm(r1: val) {
-        r1: (u64, u64, u64, u64)
-    }
-}
-
-#[test]
-fn test_compose() {
-    let expected: b256 = 0x0000000000000001_0000000000000002_0000000000000003_0000000000000004;
-    let composed = compose((1, 2, 3, 4));
-    if composed.neq(expected) {
-        __revert(0)
-    }
-}
-
-#[test]
-fn test_decompose() {
-    let initial: b256 = 0x0000000000000001_0000000000000002_0000000000000003_0000000000000004;
-    let expected = (1, 2, 3, 4);
-    let decomposed = decompose(initial);
-    if decomposed.0.neq(expected.0)
-        && decomposed.1.neq(expected.1)
-        && decomposed.2.neq(expected.2)
-        && decomposed.3.neq(expected.3)
-    {
-        __revert(0)
-    }
-}
-
 use ::str::*;
 
 impl PartialEq for str {
@@ -1804,30 +1763,5 @@ fn u8_as_u64(val: u8) -> u64 {
 fn u64_as_u8(val: u64) -> u8 {
     asm(input: val) {
         input: u8
-    }
-}
-
-#[test]
-fn ok_array_eq() {
-    let a = [1, 2, 3];
-    let b = [1, 2, 3];
-    let c = [1, 1, 1];
-
-    if !a.eq(a) {
-        __revert(0);
-    }
-
-    if !a.eq(b) {
-        __revert(0);
-    }
-    if !b.eq(a) {
-        __revert(0);
-    }
-
-    if a.eq(c) {
-        __revert(0);
-    }
-    if c.eq(a) {
-        __revert(0);
     }
 }

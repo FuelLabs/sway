@@ -1,8 +1,0 @@
-[[package]]
-name = "assert_eq"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "std"
-source = "path+from-root-DFF03713D0FC77C9"

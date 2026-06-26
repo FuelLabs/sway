@@ -66,33 +66,3 @@ impl<const N: u64> Clone for str[N] {
         }
     }
 }
-
-#[test]
-fn ok_string_array_clone() {
-    use ::assert::*;
-    use ::debug::*;
-
-    let a = __to_str_array("abc");
-    let b = a.clone();
-
-    let _ = __dbg((a, b));
-
-    assert(a == __to_str_array("abc"));
-    assert(b == __to_str_array("abc"));
-    assert(a == b);
-}
-
-#[test]
-fn ok_array_clone() {
-    use ::assert::*;
-    use ::debug::*;
-
-    let a = [1, 2, 3];
-    let b = a.clone();
-
-    let _ = __dbg((a, b));
-
-    assert(a == [1, 2, 3]);
-    assert(b == [1, 2, 3]);
-    assert(a == b);
-}
