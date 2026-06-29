@@ -2,7 +2,7 @@
 
 # Run `forc test` individually for each project under test_programs/.
 #
-# Usage: ./run_in_language_tests.sh [--parallel] [--filter REGEX] [extra `forc test` args, e.g. --release --experimental ...]
+# Usage: ./run_in_language_tests.sh [--sequential] [--print-output] [--filter REGEX] [extra `forc test` args, e.g. --release --experimental ...]
 #
 # Note: --error-on-warnings arg is always passed to `forc test`.
 #       When --filter is provided, projects are selected if either:
@@ -10,15 +10,22 @@
 #       - any *.sw file in the project matches REGEX.
 #
 # Run modes:
-#   Default (sequential): projects are run one after another and the full
-#       `forc test` output (compilation and tests output) is printed. This mode
-#       must remain the default because tooling extracts gas costs from this output.
-#   --parallel: projects are run concurrently and only a concise per-project
+#   Default (parallel): projects are run concurrently and only a concise per-project
 #       result is printed (green check mark on success, red cross mark on failure).
-#       The full output of failing projects is printed at the end. Intended for
-#       CI and local "do all tests pass?" checks where speed matters.
-#       Concurrency defaults to half of the available CPU cores (at least 1) and
-#       can be overridden via the PARALLEL_JOBS environment variable.
+#       The full output of failing projects is printed at the end. This is the
+#       default because it is fast, which suits CI and local "do all tests pass?"
+#       checks. Concurrency defaults to half of the available CPU cores (at least 1)
+#       and can be overridden via the PARALLEL_JOBS environment variable.
+#       (For backward compatibility, an explicit `--parallel` is still accepted.)
+#   --sequential: projects are run one after another and the full `forc test` output
+#       (compilation and tests output) is printed as it runs.
+#
+# --print-output: print the full `forc test` output of every project at the end,
+#       in a stable (sorted) order. This makes the otherwise concise --parallel
+#       mode usable for gas-usage extraction: run with `--parallel --print-output`
+#       and pipe the output into `scripts/perf/extract-gas-usages.sh`. In the
+#       default sequential mode the full output is already printed, so this flag
+#       has no additional effect there.
 #
 # The script continues even when individual test projects fail, and exits with
 # a non-zero code at the end if any project failed.
@@ -27,13 +34,23 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEST_PROGRAMS_DIR="$SCRIPT_DIR/test_programs"
 
 FILTER_REGEX=""
-PARALLEL=false
+PARALLEL=true
+PRINT_OUTPUT=false
 FORC_TEST_ARGS=()
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        --sequential)
+            PARALLEL=false
+            shift
+            ;;
         --parallel)
+            # Parallel is now the default; accepted for backward compatibility.
             PARALLEL=true
+            shift
+            ;;
+        --print-output)
+            PRINT_OUTPUT=true
             shift
             ;;
         --filter)
@@ -84,6 +101,25 @@ failed=()
 passed=()
 
 start_time=$SECONDS
+
+# The package name (suite) as printed by `forc test` when run on a workspace.
+# When `forc test` is run on a single package (as this script does, via `--path`),
+# it does NOT print the `tested -- <suite>` line that the gas-usage extraction relies
+# on to prefix test names with their suite. We therefore emit that line ourselves,
+# using the package `name` from `Forc.toml` (falling back to the directory name).
+suite_name() {
+    local project_dir="$1"
+    local project_name="$2"
+    local name
+    name="$(grep -E '^[[:space:]]*name[[:space:]]*=' "$project_dir/Forc.toml" 2>/dev/null \
+        | head -n1 \
+        | sed -E 's/^[[:space:]]*name[[:space:]]*=[[:space:]]*"?([^"]*)"?[[:space:]]*$/\1/')"
+    if [[ -n "$name" ]]; then
+        printf '%s' "$name"
+    else
+        printf '%s' "$project_name"
+    fi
+}
 
 should_run_project() {
     local project_name="$1"
@@ -168,7 +204,16 @@ if [[ "$PARALLEL" == true ]]; then
         local project_dir="$2"
         local log_file="$logs_dir/$project_name.log"
 
-        if "$FORC" test --error-on-warnings "${FORC_TEST_ARGS[@]}" --path "$project_dir" > "$log_file" 2>&1; then
+        # Emit the `tested -- <suite>` line into the log so it is self-contained and
+        # gas-usage extraction can prefix test names with their suite when the logs
+        # are later printed (see `suite_name` above for why this is needed).
+        {
+            echo ""
+            echo "tested -- $(suite_name "$project_dir" "$project_name")"
+            echo ""
+        } > "$log_file"
+
+        if "$FORC" test --error-on-warnings "${FORC_TEST_ARGS[@]}" --path "$project_dir" >> "$log_file" 2>&1; then
             printf '%b %s\n' "${GREEN}✓${NC}" "$project_name"
             echo "pass" > "$logs_dir/$project_name.status"
         else
@@ -200,8 +245,20 @@ if [[ "$PARALLEL" == true ]]; then
         fi
     done
 
-    # Print the full output of any failing project to aid debugging on CI.
-    if [[ ${#failed[@]} -gt 0 ]]; then
+    if [[ "$PRINT_OUTPUT" == true ]]; then
+        # Print the full output of every project (in stable order) so that the
+        # otherwise concise parallel mode can be piped into gas-usage extraction.
+        # Each log already starts with its `tested -- <suite>` line.
+        echo ""
+        echo "================================================"
+        echo "Full output of all test projects:"
+        echo "================================================"
+        for project_name in "${project_names[@]}"; do
+            echo ""
+            cat "$logs_dir/$project_name.log" 2>/dev/null
+        done
+    elif [[ ${#failed[@]} -gt 0 ]]; then
+        # Print the full output of any failing project to aid debugging on CI.
         echo ""
         echo "================================================"
         echo "Output of failing test projects:"
@@ -213,15 +270,20 @@ if [[ "$PARALLEL" == true ]]; then
         done
     fi
 else
-    # Sequential mode (default): run projects one by one and print the full
-    # `forc test` output. This mode must stay the default because tooling
-    # extracts gas costs from this output.
+    # Sequential mode (opt-in via --sequential): run projects one by one and
+    # print the full `forc test` output as it runs.
     for i in "${!project_names[@]}"; do
         project_name="${project_names[$i]}"
         project_dir="${project_dirs[$i]}"
 
         echo ""
         echo "==> Testing: $project_name"
+
+        # Emit the `tested -- <suite>` line so that gas-usage extraction can prefix
+        # test names with their suite (see `suite_name` above for why this is needed).
+        echo ""
+        echo "tested -- $(suite_name "$project_dir" "$project_name")"
+        echo ""
 
         if "$FORC" test --error-on-warnings "${FORC_TEST_ARGS[@]}" --path "$project_dir"; then
             passed+=("$project_name")
