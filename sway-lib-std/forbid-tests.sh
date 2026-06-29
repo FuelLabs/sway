@@ -19,13 +19,18 @@ cd "$SCRIPT_DIR"
 #
 # We assume that `#[` and `test` always appear on the same line, and treat
 # that as enough to denote a test. Whitespace is allowed anywhere within the
-# attribute (e.g. `#  [   test ]`). The leading `^\s*` anchor also ensures the
-# attribute is not behind a `//` comment, since a comment would put `//`
-# before the `#`.
+# attribute (e.g. `#  [   test ]`). The leading `^[[:space:]]*` anchor also
+# ensures the attribute is not behind a `//` comment, since a comment would
+# put `//` before the `#`.
+#
+# We use the POSIX `[[:space:]]` class rather than the `\s` shorthand: `\s`
+# is a GNU extension that BSD/macOS `grep` does not support, so a pattern
+# using `\s` would silently fail to match (and forbidden tests would slip
+# through) when running this script locally on macOS.
 #
 # `grep` exits with 1 when there are no matches. We invert that here:
 # no matches means no forbidden tests, which is the success case.
-FOUND="$(grep -rn --include='*.sw' -E '^\s*#\s*\[\s*test' src || true)"
+FOUND="$(grep -rn --include='*.sw' -E '^[[:space:]]*#[[:space:]]*\[[[:space:]]*test' src || true)"
 
 if [[ -n "$FOUND" ]]; then
     count="$(printf '%s\n' "$FOUND" | wc -l)"
