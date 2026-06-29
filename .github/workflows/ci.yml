@@ -510,21 +510,21 @@ jobs:
       - name: Forbid Std Unit Tests in sway-lib-std # All `std` tests must live in the in-language tests.
         run: ./sway-lib-std/forbid-tests.sh
       - name: Run In Language Unit Tests (Debug)
-        run: ./test/src/in_language_tests/run_in_language_tests.sh --parallel
+        run: ./test/src/in_language_tests/run_in_language_tests.sh
       - name: Run In Language Unit Tests (Release)
-        run: ./test/src/in_language_tests/run_in_language_tests.sh --parallel --release
+        run: ./test/src/in_language_tests/run_in_language_tests.sh --release
       - name: Run In Language Unit Tests - ['new_hashing' disabled] (Debug)
-        run: ./test/src/in_language_tests/run_in_language_tests.sh --parallel --no-experimental new_hashing --filter 'hash|sha256|keccak256'
+        run: ./test/src/in_language_tests/run_in_language_tests.sh --no-experimental new_hashing --filter 'hash|sha256|keccak256'
       - name: Run In Language Unit Tests - ['new_hashing' disabled] (Release)
-        run: ./test/src/in_language_tests/run_in_language_tests.sh --parallel --release --no-experimental new_hashing --filter 'hash|sha256|keccak256'
+        run: ./test/src/in_language_tests/run_in_language_tests.sh --release --no-experimental new_hashing --filter 'hash|sha256|keccak256'
       - name: Run In Language Unit Tests - ['str_array_no_padding' enabled] (Debug)
-        run: ./test/src/in_language_tests/run_in_language_tests.sh --parallel --experimental str_array_no_padding --filter 'str\['
+        run: ./test/src/in_language_tests/run_in_language_tests.sh --experimental str_array_no_padding --filter 'str\['
       - name: Run In Language Unit Tests - ['str_array_no_padding' enabled] (Release)
-        run: ./test/src/in_language_tests/run_in_language_tests.sh --parallel --release --experimental str_array_no_padding --filter 'str\['
+        run: ./test/src/in_language_tests/run_in_language_tests.sh --release --experimental str_array_no_padding --filter 'str\['
       - name: Run In Language Unit Tests - ['dynamic_storage' enabled] (Debug)
-        run: ./test/src/in_language_tests/run_in_language_tests.sh --parallel --experimental dynamic_storage --filter 'storage'
+        run: ./test/src/in_language_tests/run_in_language_tests.sh --experimental dynamic_storage --filter 'storage'
       - name: Run In Language Unit Tests - ['dynamic_storage' enabled] (Release)
-        run: ./test/src/in_language_tests/run_in_language_tests.sh --parallel --release --experimental dynamic_storage --filter 'storage'
+        run: ./test/src/in_language_tests/run_in_language_tests.sh --release --experimental dynamic_storage --filter 'storage'
 
   forc-pkg-fuels-deps-check:
     runs-on: ubuntu-latest

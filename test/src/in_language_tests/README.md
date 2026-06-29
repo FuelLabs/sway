@@ -9,11 +9,15 @@ the workspace [`Forc.toml`](./Forc.toml).
 Use [`run_in_language_tests.sh`](./run_in_language_tests.sh):
 
 ```sh
-# Run all test projects (concise per-project results; fastest for "do all tests pass?").
-./run_in_language_tests.sh --parallel
+# Run all test projects (parallel by default; concise per-project results, fastest
+# for "do all tests pass?").
+./run_in_language_tests.sh
 
 # Run only the projects matching a regex (matches project dir names and *.sw contents).
-./run_in_language_tests.sh --parallel --filter '^alloc_$'
+./run_in_language_tests.sh --filter '^alloc_$'
+
+# Run sequentially, printing the full `forc test` output as it runs.
+./run_in_language_tests.sh --sequential
 ```
 
 Extra arguments are forwarded to `forc test` (e.g. `--release`, `--experimental ...`).
