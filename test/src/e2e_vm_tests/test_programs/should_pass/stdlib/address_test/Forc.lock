@@ -1,8 +1,0 @@
-[[package]]
-name = "address_test"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "std"
-source = "path+from-root-E4CD281CB63A3D38"

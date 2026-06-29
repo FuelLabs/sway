@@ -23,11 +23,6 @@
 # The script continues even when individual test projects fail, and exits with
 # a non-zero code at the end if any project failed.
 
-# TODO: This is a workaround for the issue of `forc test` process getting killed
-#       when running tests on a workspace with large number of projects.
-#       Remove this file and switch to using `forc test` on the entire workspace
-#       once https://github.com/FuelLabs/sway/issues/7613 is resolved.
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEST_PROGRAMS_DIR="$SCRIPT_DIR/test_programs"
 
@@ -80,9 +75,9 @@ if [[ ! -x "$FORC" ]]; then
     exit 1
 fi
 
-# Projects under test_programs/ that are not test projects and should be skipped.
+# Project directory names under test_programs/ to skip.
+# Currently empty, but left for possible future use.
 EXCLUDED_PROJECTS=(
-    "test_types"
 )
 
 failed=()
@@ -129,7 +124,9 @@ while IFS= read -r -d '' forc_toml; do
 
     project_names+=("$project_name")
     project_dirs+=("$project_dir")
-done < <(find "$TEST_PROGRAMS_DIR" -mindepth 2 -maxdepth 2 -name "Forc.toml" -print0 | sort -z)
+# Projects may be nested in grouping folders (e.g. `storage/`, `storage/storage_vec/`),
+# so discover `Forc.toml` at any depth, skipping build output (`out/`) directories.
+done < <(find "$TEST_PROGRAMS_DIR" -mindepth 2 -name "Forc.toml" -not -path "*/out/*" -print0 | sort -z)
 
 if [[ "$PARALLEL" == true ]]; then
     # Parallel mode: run all projects concurrently, capturing each project's

@@ -1,8 +1,0 @@
-[[package]]
-name = "b512_struct_alignment"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "std"
-source = "path+from-root-256496B8DB2C55DE"

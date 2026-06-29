@@ -3,12 +3,12 @@
 pub mod integration;
 
 use crate::integration::{code_actions, lsp};
-use forc_pkg::manifest::{GenericManifestFile, ManifestFile};
+use forc_pkg::manifest::{GenericManifestFile, ManifestFile, PackageManifestFile};
 use lsp_types::*;
 use rayon::prelude::*;
 use std::{
     fs, panic,
-    path::PathBuf,
+    path::{Path, PathBuf},
     process::{Command, Stdio},
     sync::Mutex,
 };
@@ -46,6 +46,20 @@ pub(crate) struct Rename<'a> {
     req_line: u32,
     req_char: u32,
     new_name: &'a str,
+}
+
+/// Returns the path to the entry file (e.g. `<package>/src/main.sw`) of the
+/// package whose `Forc.toml` is located at `manifest_path`.
+///
+/// The entry file name is read from the package's `Forc.toml` and is not
+/// necessarily `main.sw`.
+///
+/// Panics if the `Forc.toml` is missing, cannot be parsed, or does not define
+/// a project entry.
+fn package_entry_path(manifest_path: &Path) -> PathBuf {
+    PackageManifestFile::from_file(manifest_path)
+        .unwrap_or_else(|err| panic!("Failed to load `Forc.toml` from {manifest_path:?}: {err}"))
+        .entry_path()
 }
 
 async fn open(server: &ServerState, entry_point: PathBuf) -> Url {
@@ -206,11 +220,10 @@ fn did_open_all_members_in_examples() {
             // Open all workspace members and assert that we are able to return semantic tokens for each workspace member.
             for (name, package_manifest) in &member_manifests {
                 eprintln!("compiling {name:?}");
-                let dir = package_manifest.path().parent().unwrap();
 
                 // If the workspace is not initialized, we need to initialize it
                 // Otherwise, we can just open the file
-                let path = dir.join("src/main.sw");
+                let path = package_entry_path(package_manifest.path());
                 let uri = if service.inner().sync_workspaces.is_empty() {
                     init_and_open(&mut service, path).await
                 } else {

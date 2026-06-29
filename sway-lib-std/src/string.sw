@@ -308,12 +308,6 @@ impl From<String> for str {
     }
 }
 
-#[test]
-fn test_string_str() {
-    let string = String::from_ascii_str("Fuel");
-    assert_eq(string.as_str(), "Fuel");
-}
-
 impl AsRawSlice for String {
     /// Returns a raw slice to all of the elements in the string.
     fn as_raw_slice(self) -> raw_slice {
