@@ -1056,8 +1056,7 @@ fn compile_fn(
     let keyed_decl = KeyedTyFunctionDecl::new(ast_fn_decl, engines);
     if context.backtrace != Backtrace::None && panicking_fn_cache.can_panic(&keyed_decl, engines) {
         args.push((
-            //TODO This may not need to be mutable
-            IrMutability::Mutable,
+            IrMutability::Immutable,
             FnCompiler::BACKTRACE_FN_ARG_NAME.to_string(),
             Type::new_uint(context, 64),
             None,

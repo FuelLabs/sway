@@ -4733,27 +4733,41 @@ impl<'a> FnCompiler<'a> {
                     .expect("All local symbols must be in the lexical symbol map.");
 
                 // First look for a local variable with the required name
-                let lhs_val = self
-                    .function
-                    .get_local_var(context, name)
-                    .map(|var| {
+                let local_var = self.function.get_local_var(context, name);
+                let lhs_val = if let Some(local_var) = local_var {
+                    if local_var.is_mutable(context) {
                         self.current_block
                             .append(context)
-                            .get_local(var)
+                            .get_local(local_var)
                             .add_metadatum(context, span_md_idx)
-                    })
-                    .or_else(||
-                        // Now look for an argument with the required name
-                        self.function
-                            .args_iter(context)
-                            // TODO should we check mutability here?
-                            .find_map(|arg| (&arg.name == name).then_some(arg.value)))
-                    .ok_or_else(|| {
-                        CompileError::InternalOwned(
+                    } else {
+                        return Err(CompileError::InternalOwned(
+                            format!("Local var `{name}` is not mutable."),
+                            base_name.span(),
+                        ));
+                    }
+                } else {
+                    // Not a local var, check is an argument
+                    let Some(arg) = self
+                        .function
+                        .args_iter(context)
+                        .find_map(|arg| (&arg.name == name).then_some(arg.value))
+                    else {
+                        return Err(CompileError::InternalOwned(
                             format!("Variable not found: {name}."),
                             base_name.span(),
-                        )
-                    })?;
+                        ));
+                    };
+
+                    if arg.get_argument(context).unwrap().is_immutable {
+                        return Err(CompileError::InternalOwned(
+                            format!("Func arg `{name}` is not mutable."),
+                            base_name.span(),
+                        ));
+                    } else {
+                        arg
+                    }
+                };
 
                 if indices.is_empty() {
                     if self.ref_mut_args.contains(name) {
