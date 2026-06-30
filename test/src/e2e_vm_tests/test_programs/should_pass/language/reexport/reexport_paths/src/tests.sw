@@ -121,7 +121,7 @@ pub fn run_all_tests() -> u64 {
     assert(items_1_trait_teststruct_1_res);
 
 
-    let hasher = mk_hasher();
+    let mut hasher = mk_hasher();
     teststruct_1.hash(hasher);
 
 
