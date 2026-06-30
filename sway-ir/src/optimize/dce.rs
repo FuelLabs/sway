@@ -152,7 +152,7 @@ pub fn dce(
     if let NumSymbolLoaded::Known(known_num_symbol_loaded) = &mut num_symbol_loaded {
         for sym in function
             .args_iter(context)
-            .flat_map(|arg| get_gep_referred_symbols(context, arg.2))
+            .flat_map(|arg| get_gep_referred_symbols(context, arg.value))
         {
             known_num_symbol_loaded
                 .entry(sym)

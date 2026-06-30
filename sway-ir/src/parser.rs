@@ -1265,7 +1265,9 @@ mod ir_builder {
                             func.get_entry_block(context)
                         } else {
                             let irblock = func.create_block(context, Some(block.label.clone()));
-                            for (idx, (_, arg_ty, _, md)) in block.args.iter().enumerate() {
+                            for (idx, (immutability, arg_ty, _, md)) in
+                                block.args.iter().enumerate()
+                            {
                                 let ty = arg_ty.to_ir_type(context);
                                 let arg = Value::new_argument(
                                     context,
@@ -1273,7 +1275,10 @@ mod ir_builder {
                                         block: irblock,
                                         idx,
                                         ty,
-                                        is_immutable: false,
+                                        is_immutable: match immutability {
+                                            IrMutability::Immutable => true,
+                                            IrMutability::Mutable => false,
+                                        },
                                     },
                                 )
                                 .add_metadatum(context, convert_md_idx(md));

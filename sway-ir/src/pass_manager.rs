@@ -392,7 +392,7 @@ impl PassManager {
 
         // Make it easy for tests to run IR verification in all steps
         let force_verify: String =
-            std::env::var("SWAY_VERIFY_FORCE").unwrap_or_else(|_| "false".to_string());
+            std::env::var("SWAY_FORCE_VERIFY_IR").unwrap_or_else(|_| "false".to_string());
         let force_verify: bool = force_verify.parse().unwrap_or(false);
 
         for _ in 0..2 {
@@ -400,19 +400,21 @@ impl PassManager {
 
             for pass in passes.flatten_pass_group() {
                 // Save IR before optimisation only when forcing verification
-                let mut ir_before = String::new();
-                if force_verify {
-                    ir_before = ir.to_string();
-                }
+                let ir_before = if force_verify {
+                    ir.to_string()
+                } else {
+                    String::new()
+                };
 
                 // run the pass
                 let modified = self.actually_run(ir, pass)?;
 
                 // Save IR after optimisation only when forcing verification
-                let mut ir_after = String::new();
-                if force_verify {
-                    ir_after = ir.to_string();
-                }
+                let ir_after = if force_verify {
+                    ir.to_string()
+                } else {
+                    String::new()
+                };
 
                 iter_modified |= modified;
 
@@ -431,10 +433,11 @@ impl PassManager {
                     // Verify pass correctly return modified
                     let ir_modified = ir_before != ir_after;
                     if modified != ir_modified {
-                        panic!(
-                            "{pass} returned {modified} but their IR comparison says {}",
-                            ir_modified
-                        );
+                        return Err(IrError::InvalidPassModified {
+                            pass: pass.to_string(),
+                            returned: modified,
+                            comparison: ir_modified,
+                        });
                     }
                 }
             }

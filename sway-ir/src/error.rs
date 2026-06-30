@@ -90,6 +90,12 @@ pub enum IrError {
     VerifyInitAggrUnknownInitializerType(usize),
     VerifyInitAggrMismatchedStructFieldType(usize, String, String),
     VerifyInitAggrMismatchedArrayElementType(usize, String, String),
+
+    InvalidPassModified {
+        pass: String,
+        returned: bool,
+        comparison: bool,
+    },
 }
 impl IrError {
     pub(crate) fn get_problematic_value(&self) -> Option<&Value> {
@@ -573,6 +579,13 @@ impl fmt::Display for IrError {
                 write!(
                     f,
                     "Verification failed: init_aggr instruction has an initializer with a type mismatch for array element at index {idx}. Expected element type: {element_ty}, found initializer type: {initializer_ty}."
+                )
+            }
+
+            IrError::InvalidPassModified { pass, returned, comparison } => {
+                write!(
+                    f,
+                    "Verification failed: {pass} returned `modified: {returned}` but its IR comparison says `{comparison}`",
                 )
             }
         }

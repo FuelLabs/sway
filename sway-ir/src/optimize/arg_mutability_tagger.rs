@@ -29,14 +29,14 @@ fn arg_pointee_mutability_tagger(
     let mut immutable_args = vec![];
     for f in module.function_iter(context) {
         assert!(fn_mutability.is_analyzed(f));
-        for (arg_idx, (_, _arg_name, arg_val)) in f.args_iter(context).enumerate() {
+        for (arg_idx, arg) in f.args_iter(context).enumerate() {
             let is_immutable = matches!(
                 fn_mutability.get_mutability(f, arg_idx),
                 ArgPointeeMutability::Immutable
             );
             if is_immutable {
                 // Tag the argument as immutable
-                immutable_args.push(*arg_val);
+                immutable_args.push(arg.value);
             }
         }
     }
@@ -143,8 +143,8 @@ fn analyse_fn(
 
     let mut arg_mutabilities = function
         .args_iter(ctx)
-        .map(|(_, _arg_name, arg)| {
-            if arg.get_type(ctx).is_some_and(|t| t.is_ptr(ctx)) {
+        .map(|arg| {
+            if arg.value.get_type(ctx).is_some_and(|t| t.is_ptr(ctx)) {
                 has_atleast_one_pointer_arg = true;
                 // Assume that pointer arguments are not mutable by default.
                 ArgPointeeMutability::Immutable
@@ -162,7 +162,7 @@ fn analyse_fn(
 
     let def_use = compute_def_use_chains(ctx, function);
 
-    'analyse_next_arg: for (arg_idx, (_, _arg_name, arg)) in function.args_iter(ctx).enumerate() {
+    'analyse_next_arg: for (arg_idx, arg) in function.args_iter(ctx).enumerate() {
         if matches!(
             arg_mutabilities[arg_idx],
             ArgPointeeMutability::NotAPointer | ArgPointeeMutability::Mutable
@@ -174,8 +174,8 @@ fn analyse_fn(
         let mut in_worklist = FxHashSet::default();
         let mut worklist = vec![];
         // Start with the argument value itself.
-        in_worklist.insert(*arg);
-        worklist.push(*arg);
+        in_worklist.insert(arg.value);
+        worklist.push(arg.value);
 
         while let Some(value) = worklist.pop() {
             in_worklist.remove(&value);

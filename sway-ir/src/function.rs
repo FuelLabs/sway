@@ -35,6 +35,13 @@ pub enum IrMutability {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub struct Function(pub slotmap::DefaultKey);
 
+#[derive(Clone)]
+pub struct FunctionArgContent {
+    pub mutability: IrMutability,
+    pub name: String,
+    pub value: Value,
+}
+
 #[doc(hidden)]
 pub struct FunctionContent {
     pub name: String,
@@ -47,7 +54,7 @@ pub struct FunctionContent {
     //       a premature optimization, considering that even for large
     //       project we compile <1500 functions.
     pub abi_errors_display: String,
-    pub arguments: Vec<(IrMutability, String, Value)>,
+    pub arguments: Vec<FunctionArgContent>,
     pub return_type: Type,
     pub blocks: Vec<Block>,
     pub module: Module,
@@ -122,11 +129,11 @@ impl Function {
         let arguments: Vec<_> = args
             .into_iter()
             .enumerate()
-            .map(|(idx, (mutability, name, ty, arg_metadata))| {
-                (
+            .map(
+                |(idx, (mutability, name, ty, arg_metadata))| FunctionArgContent {
                     mutability,
                     name,
-                    Value::new_argument(
+                    value: Value::new_argument(
                         context,
                         BlockArgument {
                             block: entry_block,
@@ -136,16 +143,18 @@ impl Function {
                         },
                     )
                     .add_metadatum(context, arg_metadata),
-                )
-            })
+                },
+            )
             .collect();
+
         context
             .functions
             .get_mut(func.0)
             .unwrap()
             .arguments
             .clone_from(&arguments);
-        let arg_vals = arguments.iter().map(|x| x.2).collect();
+
+        let arg_vals = arguments.iter().map(|x| x.value).collect();
         context.blocks.get_mut(entry_block.0).unwrap().args = arg_vals;
 
         func
@@ -394,8 +403,7 @@ impl Function {
         context.functions[self.0]
             .arguments
             .iter()
-            .find_map(|(_, arg_name, val)| (arg_name == name).then_some(val))
-            .copied()
+            .find_map(|arg| (arg.name == name).then_some(arg.value))
     }
 
     /// Append an extra argument to the function signature.
@@ -405,7 +413,7 @@ impl Function {
     pub fn add_arg<S: Into<String>>(
         &self,
         context: &mut Context,
-        m: IrMutability,
+        mutability: IrMutability,
         name: S,
         arg: Value,
     ) {
@@ -415,7 +423,11 @@ impl Function {
             {
                 context.functions[self.0]
                     .arguments
-                    .push((m, name.into(), arg));
+                    .push(FunctionArgContent {
+                        mutability,
+                        name: name.into(),
+                        value: arg,
+                    });
             }
             _ => panic!("Inconsistent function argument being added"),
         }
@@ -426,21 +438,21 @@ impl Function {
         context.functions[self.0]
             .arguments
             .iter()
-            .find_map(|(_, name, arg_val)| (arg_val == value).then_some(name))
+            .find_map(|arg| (arg.value == *value).then_some(&arg.name))
     }
 
     /// Return an iterator for each of the function arguments.
     pub fn args_iter<'a>(
         &self,
         context: &'a Context,
-    ) -> impl Iterator<Item = &'a (IrMutability, String, Value)> {
+    ) -> impl Iterator<Item = &'a FunctionArgContent> {
         context.functions[self.0].arguments.iter()
     }
 
     /// Is argument `i` marked immutable?
     pub fn is_arg_immutable(&self, context: &Context, i: usize) -> bool {
-        if let Some((_, _, val)) = context.functions[self.0].arguments.get(i) {
-            if let ValueDatum::Argument(arg) = &context.values[val.0].value {
+        if let Some(arg) = context.functions[self.0].arguments.get(i) {
+            if let ValueDatum::Argument(arg) = &context.values[arg.value.0].value {
                 return arg.is_immutable;
             }
         }

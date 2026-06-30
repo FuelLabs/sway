@@ -314,12 +314,12 @@ pub fn inline_function_call(
         ..
     }) = &context.values[call_site.0].value
     {
-        for (arg_val, passed_val) in context.functions[inlined_function.0]
+        for (arg, passed_val) in context.functions[inlined_function.0]
             .arguments
             .iter()
             .zip(passed_vals.iter())
         {
-            value_map.insert(arg_val.2, *passed_val);
+            value_map.insert(arg.value, *passed_val);
         }
     }
 

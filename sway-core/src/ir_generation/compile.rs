@@ -1038,7 +1038,7 @@ fn compile_fn(
                     // TODO: We can improve here. Setting all arguments as mutable for now.
                     IrMutability::Mutable,
                     // Convert the name.
-                    param.name.as_str().to_string(),
+                    param.name.to_string(),
                     // Convert the type further to a pointer if it's a reference.
                     if param.is_reference {
                         Type::new_typed_pointer(context, ty)

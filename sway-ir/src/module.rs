@@ -171,7 +171,7 @@ impl Module {
             .map(|(key, _)| key.as_str())
     }
 
-    /// Removed a function from the module.  Returns true if function was found and removed.
+    /// Removes a function from the module.  Returns true if function was found and removed.
     ///
     /// **Use with care!  Be sure the function is not an entry point nor called at any stage.**
     pub fn remove_function(&self, context: &mut Context, function: &Function) -> bool {

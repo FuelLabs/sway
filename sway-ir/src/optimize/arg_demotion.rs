@@ -49,8 +49,8 @@ fn fn_arg_demotion(context: &mut Context, function: Function) -> Result<bool, Ir
     let candidate_args = function
         .args_iter(context)
         .enumerate()
-        .filter_map(|(idx, (_, _name, arg_val))| {
-            arg_val.get_type(context).and_then(|ty| {
+        .filter_map(|(idx, arg)| {
+            arg.value.get_type(context).and_then(|ty| {
                 super::target_fuel::is_demotable_type(context, &ty).then_some((idx, ty))
             })
         })
@@ -121,8 +121,8 @@ fn demote_fn_signature(context: &mut Context, function: &Function, arg_idcs: &[(
 
             // Set both function and block arg to the new one.
             entry_block.set_arg(context, new_blk_arg_val);
-            let (_, _name, fn_arg_val) = &mut context.functions[function.0].arguments[*arg_idx];
-            *fn_arg_val = new_blk_arg_val;
+            let arg = &mut context.functions[function.0].arguments[*arg_idx];
+            arg.value = new_blk_arg_val;
 
             (blk_arg_val, new_blk_arg_val)
         })

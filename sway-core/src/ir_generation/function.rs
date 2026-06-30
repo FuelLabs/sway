@@ -218,7 +218,7 @@ impl<'a> FnCompiler<'a> {
         compiled_fn_cache: &'a mut CompiledFunctionCache,
     ) -> Self {
         let lexical_map =
-            LexicalMap::from_iter(function.args_iter(context).map(|(_, name, _)| name.clone()));
+            LexicalMap::from_iter(function.args_iter(context).map(|arg| arg.name.clone()));
         FnCompiler {
             engines,
             module,
@@ -264,26 +264,26 @@ impl<'a> FnCompiler<'a> {
         // Function arguments, like all locals need to be in memory, so that their addresses
         // can be taken. So we create locals for each argument and store the value there.
         let entry = self.function.get_entry_block(context);
-        for (_, arg_name, arg_value) in self
+        for arg in self
             .function
             .args_iter(context)
             .cloned()
             .collect::<Vec<_>>()
         {
-            let local_name = self.lexical_map.insert(arg_name.as_str().to_owned());
+            let local_name = self.lexical_map.insert(arg.name.as_str().to_owned());
             let local_var = self.function.new_unique_local_var(
                 context,
                 local_name.clone(),
-                arg_value.get_type(context).unwrap(),
+                arg.value.get_type(context).unwrap(),
                 None,
-                // TODO We should consider is this is mutable or not here.
+                // TODO We should consider if this is mutable or not here.
                 false,
             );
-            if self.ref_mut_args.contains(&arg_name) {
+            if self.ref_mut_args.contains(&arg.name) {
                 self.ref_mut_args.insert(local_name);
             }
             let local_val = entry.append(context).get_local(local_var);
-            entry.append(context).store(local_val, arg_value);
+            entry.append(context).store(local_val, arg.value);
         }
         match self.compile_code_block(context, md_mgr, ast_block)?.value {
             // Final value must always be in a register, not in memory.
@@ -4747,7 +4747,7 @@ impl<'a> FnCompiler<'a> {
                         self.function
                             .args_iter(context)
                             // TODO should we check mutability here?
-                            .find_map(|(_, arg_name, arg_val)| (arg_name == name).then_some(*arg_val)))
+                            .find_map(|arg| (&arg.name == name).then_some(arg.value)))
                     .ok_or_else(|| {
                         CompileError::InternalOwned(
                             format!("Variable not found: {name}."),
