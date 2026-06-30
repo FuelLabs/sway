@@ -28,24 +28,3 @@ script {
         ret b256 v0
     }
 }
-
-// regex: ID=[[:alpha:]_0-9]+
-
-// check: fn a(p: bool, $(a_arg=$ID): __ptr b256, $(b_arg=$ID): __ptr b256) -> b256 {
-// check: local b256 $(tmp_blk_arg=$ID)
-
-// check: entry(p: bool, $a_arg: __ptr b256, $b_arg: __ptr b256):
-// check: $(load_a_val=$ID) = load $a_arg
-// check: $(load_b_val=$ID) = load $b_arg
-// check: $(get_local_val=$ID) = get_local __ptr b256, $tmp_blk_arg
-// check: store $load_a_val to $get_local_val
-// check: cbr p, block2($get_local_val), block1()
-
-// check: block1():
-// check: $(get_local_val=$ID) = get_local __ptr b256, $tmp_blk_arg
-// check: store $load_b_val to $get_local_val
-// check: br block2($get_local_val)
-
-// check: block2($(block2_arg=$ID): __ptr b256):
-// check: $(load_val=$ID) = load $block2_arg
-// check: ret b256 $load_val

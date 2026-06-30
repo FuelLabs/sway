@@ -7,11 +7,3 @@ script {
         ret bool v2
     }
 }
-
-// regex: VAL=v\d+v\d+
-
-// check: $(v0=$VAL) = get_local __ptr u256, __wide_lhs
-// check: $(v1=$VAL) = const u256 0x0000000000000000000000000000000000000000000000000000000000000001
-// check: store $v1 to $v0
-// check: $(v2=$VAL) = get_local __ptr u256, __wide_result
-// check: wide not $v0 to $v2

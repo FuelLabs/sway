@@ -1,5 +1,3 @@
-// regex: ID=[[:alpha:]_0-9]+
-
 script {
     fn main() -> u256 {
         entry():
@@ -24,10 +22,6 @@ script {
         v18 = not v17
         v19 = not v18
         v20 = xor v19, v6
-// check: entry
-// nextln: $ID = const u256 0x0000000000000000000000000000000000000000000000000000000000000002
-// check-not: const
-// check: ret
         ret u256 v20
     }
 }

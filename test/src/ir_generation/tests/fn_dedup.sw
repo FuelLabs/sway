@@ -26,9 +26,8 @@ fn main() {
 
 // ::check-ir::
 // regex: NUM=[0-9]+
-// check: fn getter_$NUM(self !$NUM: { u64 }, b !$NUM: u64) -> u64, !$NUM {
-// not: fn getter_$NUM(self !$NUM: { u64 }, b !$NUM: u64) -> u64, !$NUM {
+// check: fn getter_$NUM(mut self !$NUM: { u64 }, mut b !$NUM: u64) -> u64, !$NUM {
+// not: fn getter_$NUM(mut self !$NUM: { u64 }, mut b !$NUM: u64) -> u64, !$NUM {
 
-// check: fn func_$NUM(u !$NUM: u64) -> u64, !$NUM {
-// not: fn func_$NUM(u !$NUM: u64) -> u64, !$NUM {
-
+// check: fn func_$NUM(mut u !$NUM: u64) -> u64, !$NUM {
+// not: fn func_$NUM(mut u !$NUM: u64) -> u64, !$NUM {

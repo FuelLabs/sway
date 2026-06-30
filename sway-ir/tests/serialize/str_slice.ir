@@ -4,7 +4,6 @@ script {
         local slice __anon_1
         local slice a
         local string<3> __anon_2
-// check: local slice a
 
         entry():
         v0 = const string<3> "abc"
@@ -15,7 +14,7 @@ script {
         v3 = const u64 0
         v4 = get_elem_ptr v2, __ptr u64, v3
         store v1 to v4, !2
-        
+
         v5 = const u64 1
         v6 = get_elem_ptr v2, __ptr u64, v5
         v7 = const u64 3
@@ -27,7 +26,7 @@ script {
         v9 = load v8
         v10 = get_local __ptr slice, a, !3
         store v9 to v10, !3
-        
+
         v11 = get_local __ptr slice, a, !4
         v12 = load v11
         ret slice v12

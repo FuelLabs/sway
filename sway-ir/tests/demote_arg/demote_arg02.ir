@@ -42,26 +42,3 @@ script {
         ret () v1
     }
 }
-
-// regex: ID=[[:alpha:]_0-9]+
-
-// check: fn main
-// check: local b256 $(tmp_arg0=$ID)
-// check: local b256 $(tmp_arg1=$ID)
-
-// check: $(tmp_arg0_ptr=$ID) = get_local __ptr b256, $tmp_arg0
-// check: call foo($tmp_arg0_ptr, $ID)
-
-// check: $(tmp_arg1_ptr=$ID) = get_local __ptr b256, $tmp_arg1
-// check: call foo($tmp_arg1_ptr, $ID)
-
-// check: fn bar
-// check: local b256 $(tmp_arg0=$ID)
-// check: local b256 $(tmp_arg1=$ID)
-
-// check: $(tmp_arg0_ptr=$ID) = get_local __ptr b256, $tmp_arg0
-// check: call foo($tmp_arg0_ptr, $ID)
-
-// check: $(tmp_arg1_ptr=$ID) = get_local __ptr b256, $tmp_arg1
-// check: call foo($tmp_arg1_ptr, $ID)
-

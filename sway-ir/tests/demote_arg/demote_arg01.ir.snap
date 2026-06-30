@@ -21,9 +21,9 @@ script {
     }
 
 -     fn foo(x: b256, y: u64) -> () {
--         entry(x: b256, y: u64):
+-         entry(mut x: b256, mut y: u64):
 +     fn foo(x: __ptr b256, y: u64) -> () {
-+         entry(x: __ptr b256, y: u64):
++         entry(mut x: __ptr b256, mut y: u64):
 +         v14v1 = load x
         v9v1 = const u64 0
         log u64 y, v9v1

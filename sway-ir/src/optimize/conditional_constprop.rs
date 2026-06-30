@@ -24,6 +24,8 @@ pub fn ccp(
     analyses: &AnalysisResults,
     function: Function,
 ) -> Result<bool, IrError> {
+    let mut modified = false;
+
     let dom_tree: &DomTree = analyses.get_analysis_result(function);
 
     // In the set of blocks dominated by `key`, replace all uses of `val.0` with `val.1`.
@@ -76,8 +78,9 @@ pub fn ccp(
             if let Some(cur_replacement) = cur_replacement_opt {
                 replacements.insert(cur_replacement.0, cur_replacement.1);
             }
+
             // walk the current block.
-            block.replace_values(context, &replacements);
+            modified |= block.replace_values(context, &replacements);
         }
 
         // walk children.
@@ -95,5 +98,5 @@ pub fn ccp(
         }
     }
 
-    Ok(true)
+    Ok(modified)
 }

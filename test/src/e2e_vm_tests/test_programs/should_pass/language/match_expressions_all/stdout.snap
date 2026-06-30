@@ -11,7 +11,7 @@ output:
 
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/match_expressions_all --ir final --asm final --release | filter-fn match_expressions_all return_match_on_str_slice
 
-fn return_match_on_str_slice_8(param: __ptr slice) -> u64 {
+fn return_match_on_str_slice_8(mut param: __ptr slice) -> u64 {
     local { ptr, u64 } __anon_0
     local slice __anon_1
     local { ptr, u64 } __anon_2
@@ -20,7 +20,7 @@ fn return_match_on_str_slice_8(param: __ptr slice) -> u64 {
     local slice __anon_5
     local slice __matched_value_1
 
-    entry(param: __ptr slice):
+    entry(mut param: __ptr slice):
     v263v1 = get_local __ptr slice, __matched_value_1
     mem_copy_val v263v1, param
     v265v1 = get_global __ptr string<5>, __const_global
@@ -77,13 +77,13 @@ fn return_match_on_str_slice_8(param: __ptr slice) -> u64 {
     v310v1 = const u64 1000
     br block6(v310v1)
 
-    block6(v260v1: u64):
+    block6(mut v260v1: u64):
     br block7(v260v1)
 
-    block7(v261v1: u64):
+    block7(mut v261v1: u64):
     br block8(v261v1)
 
-    block8(v262v1: u64):
+    block8(mut v262v1: u64):
     ret u64 v262v1
 }
 

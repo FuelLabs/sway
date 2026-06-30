@@ -22,7 +22,7 @@ fn main() -> bool {
 // check: $block0():
 // check: br $(block1=$ID)($VAL)
 
-// check: $block1($VAL: bool):
+// check: $block1(mut $VAL: bool):
 // check: br $while
 
 // check: $end_while():

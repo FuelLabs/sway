@@ -7,6 +7,7 @@ script {
         ret () v2
     }
 
+    // For the single propagation since `b` was mutable it must now make `a` mutable.
     fn test_single() -> b256 {
         local b256 a = const b256 0x0000000000000000000000000000000000000000000000000000000000000000
         local mut b256 b
@@ -20,6 +21,8 @@ script {
         ret b256 v3
     }
 
+
+    // For the double propagation since `c` was mutable is must now make `a` mutable.
     fn test_double() -> b256 {
         local b256 a = const b256 0x0000000000000000000000000000000000000000000000000000000000000000
         local b256 b
@@ -37,34 +40,3 @@ script {
         ret b256 v5
     }
 }
-
-// regex: VAL=v\d+v\d+
-
-// For the single propagation since `b` was mutable it must now make `a` mutable.
-
-// check: fn test_single()
-// check: local mut b256 a = const b256 0x0000000000000000000000000000000000000000000000000000000000000000
-
-// Now dead:
-// check: $VAL = get_local __ptr b256, a
-
-// check: $(a_loc=$VAL) = get_local __ptr b256, a
-// check: $(a_val=$VAL) = load $a_loc
-// check: ret b256 $a_val
-
-// For the double propagation since `c` was mutable is must now make `a` mutable.
-
-// check: fn test_double()
-// check: local mut b256 a = const b256 0x0000000000000000000000000000000000000000000000000000000000000000
-
-// Now dead:
-// check: $VAL = get_local __ptr b256, a
-// check: $VAL = get_local __ptr b256, a
-
-// check: $(a_loc=$VAL) = get_local __ptr b256, a
-
-// Also dead.
-// check: $VAL = load $VAL
-
-// check: $(a_val=$VAL) = load $a_loc
-// check: ret b256 $a_val

@@ -313,6 +313,7 @@ pub fn dedup_fns(
     ignore_metadata: bool,
 ) -> Result<bool, IrError> {
     let mut modified = false;
+
     let eq_class = &mut EqClass {
         hash_set_map: FxHashMap::default(),
         function_hash_map: FxHashMap::default(),
@@ -361,11 +362,9 @@ pub fn dedup_fns(
             dups_to_delete.push(*callee);
             replacements.push((inst, args.clone(), callee_rep));
         }
-        if !replacements.is_empty() {
-            modified = true;
-        }
+
         for (inst, args, callee_rep) in replacements {
-            inst.replace(
+            modified |= inst.replace(
                 context,
                 crate::ValueDatum::Instruction(Instruction {
                     op: InstOp::Call(*callee_rep, args.clone()),
@@ -401,7 +400,7 @@ pub fn dedup_fns(
 
     // Remove replaced functions
     for function in dups_to_delete {
-        module.remove_function(context, &function);
+        modified |= module.remove_function(context, &function);
     }
 
     Ok(modified)
