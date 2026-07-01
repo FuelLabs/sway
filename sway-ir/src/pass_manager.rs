@@ -372,13 +372,12 @@ impl PassManager {
     }
 
     /// Run the `passes` and return true if the `passes` modify the initial `ir`.
-    /// The IR states are printed and verified according to the options provided.
+    /// The IR states are printed according to the options provided and verified.
     pub fn run_with_print_verify(
         &mut self,
         ir: &mut Context,
         passes: &PassGroup,
         print_opts: &PrintPassesOpts,
-        verify_opts: &VerifyPassesOpts,
     ) -> Result<bool, IrError> {
         // Empty IRs are result of compiling dependencies. We don't want to print those.
         fn ir_is_empty(ir: &Context) -> bool {
@@ -406,9 +405,8 @@ impl PassManager {
             print_initial_or_final_ir(ir, "Initial");
         }
 
-        if verify_opts.initial {
-            ir.verify()?;
-        }
+        // Verify before we start
+        ir.verify()?;
 
         let mut global_modified = false;
 
@@ -423,9 +421,8 @@ impl PassManager {
                     print_ir_after_pass(ir, self.lookup_registered_pass(pass).unwrap());
                 }
 
-                if verify_opts.passes.contains(pass) && (!verify_opts.modified_only || modified) {
-                    ir.verify()?;
-                }
+                // Verify after each pass
+                ir.verify()?;
             }
 
             global_modified |= iter_modified;
@@ -436,10 +433,6 @@ impl PassManager {
 
         if print_opts.r#final {
             print_initial_or_final_ir(ir, "Final");
-        }
-
-        if verify_opts.r#final {
-            ir.verify()?;
         }
 
         Ok(global_modified)
