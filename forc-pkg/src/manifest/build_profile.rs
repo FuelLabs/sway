@@ -17,8 +17,6 @@ pub struct BuildProfile {
     #[serde(default)]
     pub print_ir: IrCli,
     #[serde(default)]
-    pub verify_ir: IrCli,
-    #[serde(default)]
     pub print_asm: PrintAsm,
     #[serde(default)]
     pub print_bytecode: bool,
@@ -57,7 +55,6 @@ impl BuildProfile {
             print_dca_graph: None,
             print_dca_graph_url_format: None,
             print_ir: IrCli::default(),
-            verify_ir: IrCli::default(),
             print_asm: PrintAsm::default(),
             print_bytecode: false,
             print_bytecode_spans: false,
@@ -81,7 +78,6 @@ impl BuildProfile {
             print_dca_graph: None,
             print_dca_graph_url_format: None,
             print_ir: IrCli::default(),
-            verify_ir: IrCli::default(),
             print_asm: PrintAsm::default(),
             print_bytecode: false,
             print_bytecode_spans: false,
@@ -168,7 +164,6 @@ mod tests {
             print_dca_graph: Some("dca_graph".into()),
             print_dca_graph_url_format: Some("print_dca_graph_url_format".into()),
             print_ir: IrCli::r#final(),
-            verify_ir: IrCli::none(),
             print_asm: PrintAsm::all(),
             print_bytecode: true,
             print_bytecode_spans: false,

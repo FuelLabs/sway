@@ -290,7 +290,6 @@ pub struct DumpOpts {
 pub struct BuildOpts {
     pub pkg: PkgOpts,
     pub print: PrintOpts,
-    pub verify_ir: IrCli,
     pub minify: MinifyOpts,
     pub dump: DumpOpts,
     /// If set, generates a JSON file containing the hex-encoded script binary.
@@ -1582,7 +1581,6 @@ pub fn sway_build_config(
         build_profile.print_bytecode_spans,
     )
     .with_print_ir(build_profile.print_ir.clone())
-    .with_verify_ir(build_profile.verify_ir.clone())
     .with_include_tests(build_profile.include_tests)
     .with_time_phases(build_profile.time_phases)
     .with_profile(build_profile.profile)
@@ -2125,7 +2123,6 @@ fn build_profile_from_opts(
     let BuildOpts {
         pkg,
         print,
-        verify_ir,
         time_phases,
         profile: profile_opt,
         build_profile,
@@ -2165,7 +2162,6 @@ fn build_profile_from_opts(
             .clone_from(&print.dca_graph_url_format);
     }
     profile.print_ir |= print.ir.clone();
-    profile.verify_ir |= verify_ir.clone();
     profile.print_asm |= print.asm;
     profile.print_bytecode |= print.bytecode;
     profile.print_bytecode_spans |= print.bytecode_spans;
