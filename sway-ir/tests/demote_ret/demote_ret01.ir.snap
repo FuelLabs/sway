@@ -23,13 +23,13 @@ script {
     }
 
 -     fn c(p: bool, q: bool) -> b256 {
--         entry(p: bool, q: bool):
-+     fn c(p: bool, q: bool, __ret_value: __ptr b256) -> () {
+-         entry(mut p: bool, mut q: bool):
++     fn c(p: bool, q: bool, mut __ret_value: __ptr b256) -> () {
 +         local b256 __ret_val
 +         local b256 __ret_val0
 +         local b256 __ret_val1
 + 
-+         entry(p: bool, q: bool, __ret_value: __ptr b256):
++         entry(mut p: bool, mut q: bool, mut __ret_value: __ptr b256):
         cbr p, block0(), block1()
 
         block0():
@@ -59,7 +59,7 @@ script {
 +         v49v1 = load v47v1
 +         br block5(v49v1)
 
-        block5(v10v1: b256):
+        block5(mut v10v1: b256):
 -         ret b256 v10v1
 +         store v10v1 to __ret_value
 +         v28v1 = const unit ()
@@ -67,11 +67,11 @@ script {
     }
 
 -     fn a() -> b256 {
-+     fn a(__ret_value: __ptr b256) -> () {
++     fn a(mut __ret_value: __ptr b256) -> () {
         local b256 twobee = const b256 0x2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b
 
 -         entry():
-+         entry(__ret_value: __ptr b256):
++         entry(mut __ret_value: __ptr b256):
         v20v1 = get_local __ptr b256, twobee
         v21v1 = load v20v1
 -         ret b256 v21v1
@@ -81,11 +81,11 @@ script {
     }
 
 -     fn b() -> b256 {
-+     fn b(__ret_value: __ptr b256) -> () {
++     fn b(mut __ret_value: __ptr b256) -> () {
         local b256 dada = const b256 0xdadadadadadadadadadadadadadadadadadadadadadadadadadadadadadadada
 
 -         entry():
-+         entry(__ret_value: __ptr b256):
++         entry(mut __ret_value: __ptr b256):
         v23v1 = get_local __ptr b256, dada
         v24v1 = load v23v1
 -         ret b256 v24v1

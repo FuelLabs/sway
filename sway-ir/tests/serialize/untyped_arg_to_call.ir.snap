@@ -13,7 +13,7 @@ script {
     }
 
     fn a(x: bool) -> bool {
-        entry(x: bool):
+        entry(mut x: bool):
         v6v1 = const bool true
         ret bool v6v1
     }

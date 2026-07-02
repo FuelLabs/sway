@@ -30,9 +30,3 @@ script {
         ret b256 v0
     }
 }
-
-// check: entry fn main() -> () {
-// not: local b256 x
-// check: entry():
-// not: get_local __ptr b256, x
-// check: ret ()

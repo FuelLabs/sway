@@ -15,12 +15,12 @@ script {
         v4v1 = const bool true
         br block(v4v1)
 
-        block(v3v1: bool):
+        block(mut v3v1: bool):
         ret bool v3v1
     }
 
     fn three_blocks(b: bool) -> bool {
-        entry(b: bool):
+        entry(mut b: bool):
         cbr b, then_block(), else_block()
 
         then_block():
@@ -40,14 +40,14 @@ script {
 +         v1v1 = const bool false
 +         br block0(v1v1)
 + 
-+         block0(v17v1: bool):
++         block0(mut v17v1: bool):
 +         v4v1 = const bool true
 +         br two_blocks_block(v4v1)
 + 
-+         two_blocks_block(v14v3: bool):
++         two_blocks_block(mut v14v3: bool):
 +         br block1(v14v3)
 + 
-+         block1(v18v1: bool):
++         block1(mut v18v1: bool):
 +         v15v1 = call three_blocks(v18v1)
         ret bool v15v1
     }

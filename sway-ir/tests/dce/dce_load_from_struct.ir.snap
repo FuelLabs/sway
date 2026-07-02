@@ -34,7 +34,7 @@ script {
     fn take_struct_2(_x: { u64, u64 }) -> { u64, u64 } {
         local { u64, u64 } __anon_0
 
-        entry(_x: { u64, u64 }):
+        entry(mut _x: { u64, u64 }):
         v21v1 = get_local __ptr { u64, u64 }, __anon_0
         v22v1 = load v21v1
         ret { u64, u64 } v22v1

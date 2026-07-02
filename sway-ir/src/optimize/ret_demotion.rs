@@ -7,7 +7,8 @@
 /// The return value is mem_copied to the new argument instead of being returned by value.
 use crate::{
     AnalysisResults, BlockArgument, ConstantContent, Context, Function, InstOp, Instruction,
-    InstructionInserter, IrError, Module, Pass, PassMutability, ScopedPass, Type, Value,
+    InstructionInserter, IrError, IrMutability, Module, Pass, PassMutability, ScopedPass, Type,
+    Value,
 };
 
 pub const RET_DEMOTION_NAME: &str = "ret-demotion";
@@ -77,7 +78,7 @@ pub fn ret_val_demotion(
                     is_immutable: false,
                 },
             );
-            function.add_arg(context, "__ret_value", ptr_arg_val);
+            function.add_arg(context, IrMutability::Mutable, "__ret_value", ptr_arg_val);
             entry_block.add_arg(context, ptr_arg_val);
             ptr_arg_val
         };

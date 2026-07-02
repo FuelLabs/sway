@@ -13,17 +13,17 @@ script {
 +         v7v1 = const unit ()
 +         br block0(v7v1)
 + 
-+         block0(v18v1: ()):
++         block0(mut v18v1: ()):
 +         v2v3 = call testf()
 +         v10v1 = const bool true
 +         br block1(v10v1)
 + 
-+         block1(v20v1: bool):
++         block1(mut v20v1: bool):
 +         v3v3 = call testf()
 +         v13v1 = const u64 0
 +         br block2(v13v1)
 + 
-+         block2(v22v1: u64):
++         block2(mut v22v1: u64):
         v4v1 = const unit ()
         ret () v4v1
     }

@@ -217,11 +217,8 @@ impl<'a> FnCompiler<'a> {
         panicking_fn_cache: &'a mut PanickingFunctionCache,
         compiled_fn_cache: &'a mut CompiledFunctionCache,
     ) -> Self {
-        let lexical_map = LexicalMap::from_iter(
-            function
-                .args_iter(context)
-                .map(|(name, _value)| name.clone()),
-        );
+        let lexical_map =
+            LexicalMap::from_iter(function.args_iter(context).map(|arg| arg.name.clone()));
         FnCompiler {
             engines,
             module,
@@ -267,25 +264,26 @@ impl<'a> FnCompiler<'a> {
         // Function arguments, like all locals need to be in memory, so that their addresses
         // can be taken. So we create locals for each argument and store the value there.
         let entry = self.function.get_entry_block(context);
-        for (arg_name, arg_value) in self
+        for arg in self
             .function
             .args_iter(context)
             .cloned()
             .collect::<Vec<_>>()
         {
-            let local_name = self.lexical_map.insert(arg_name.as_str().to_owned());
+            let local_name = self.lexical_map.insert(arg.name.as_str().to_owned());
             let local_var = self.function.new_unique_local_var(
                 context,
                 local_name.clone(),
-                arg_value.get_type(context).unwrap(),
+                arg.value.get_type(context).unwrap(),
                 None,
+                // TODO We should consider if this is mutable or not here.
                 false,
             );
-            if self.ref_mut_args.contains(&arg_name) {
+            if self.ref_mut_args.contains(&arg.name) {
                 self.ref_mut_args.insert(local_name);
             }
             let local_val = entry.append(context).get_local(local_var);
-            entry.append(context).store(local_val, arg_value);
+            entry.append(context).store(local_val, arg.value);
         }
         match self.compile_code_block(context, md_mgr, ast_block)?.value {
             // Final value must always be in a register, not in memory.
@@ -4735,26 +4733,42 @@ impl<'a> FnCompiler<'a> {
                     .expect("All local symbols must be in the lexical symbol map.");
 
                 // First look for a local variable with the required name
-                let lhs_val = self
-                    .function
-                    .get_local_var(context, name)
-                    .map(|var| {
-                        self.current_block
-                            .append(context)
-                            .get_local(var)
-                            .add_metadatum(context, span_md_idx)
-                    })
-                    .or_else(||
-                        // Now look for an argument with the required name
-                        self.function
-                            .args_iter(context)
-                            .find_map(|(arg_name, arg_val)| (arg_name == name).then_some(*arg_val)))
-                    .ok_or_else(|| {
-                        CompileError::InternalOwned(
+                let local_var = self.function.get_local_var(context, name);
+                let lhs_val = if let Some(local_var) = local_var {
+                    // TODO This check breaks some tests
+                    // if local_var.is_mutable(context) {
+                    self.current_block
+                        .append(context)
+                        .get_local(local_var)
+                        .add_metadatum(context, span_md_idx)
+                    // } else {
+                    //     return Err(CompileError::InternalOwned(
+                    //         format!("Local var `{name}` is not mutable."),
+                    //         base_name.span(),
+                    //     ));
+                    // }
+                } else {
+                    // Not a local var, check is an argument
+                    let Some(arg) = self
+                        .function
+                        .args_iter(context)
+                        .find_map(|arg| (&arg.name == name).then_some(arg.value))
+                    else {
+                        return Err(CompileError::InternalOwned(
                             format!("Variable not found: {name}."),
                             base_name.span(),
-                        )
-                    })?;
+                        ));
+                    };
+
+                    if arg.get_argument(context).unwrap().is_immutable {
+                        return Err(CompileError::InternalOwned(
+                            format!("Func arg `{name}` is not mutable."),
+                            base_name.span(),
+                        ));
+                    } else {
+                        arg
+                    }
+                };
 
                 if indices.is_empty() {
                     if self.ref_mut_args.contains(name) {

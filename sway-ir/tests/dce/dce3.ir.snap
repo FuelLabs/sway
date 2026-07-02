@@ -31,7 +31,7 @@ script {
     }
 
     fn function_0(state: __ptr u64) -> () {
-        entry(state: __ptr u64):
+        entry(mut state: __ptr u64):
         v18v1 = const u64 42
         store v18v1 to state
 -         v21v1 = add v18v1, v18v1

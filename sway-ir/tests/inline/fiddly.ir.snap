@@ -5,7 +5,7 @@ Modified: true
 
 script {
     fn not(v: bool) -> bool {
-        entry(v: bool):
+        entry(mut v: bool):
         cbr v, block0(), block1()
 
         block0():
@@ -16,7 +16,7 @@ script {
         v6v1 = const bool true
         br block2(v6v1)
 
-        block2(v2v1: bool):
+        block2(mut v2v1: bool):
         ret bool v2v1
     }
 
@@ -35,13 +35,13 @@ script {
 +         v6v1 = const bool true
 +         br not_block2(v6v1)
 + 
-+         not_block2(v12v3: bool):
++         not_block2(mut v12v3: bool):
 +         br block01(v12v3)
 + 
-+         block01(v18v1: bool):
++         block01(mut v18v1: bool):
 +         cbr v18v1, block1(v18v1), block0(v18v1)
 + 
-        block0(v9v1: bool):
+        block0(mut v9v1: bool):
         v14v1 = const bool false
 -         v15v1 = call not(v14v1)
 -         br block1(v15v1)
@@ -53,13 +53,13 @@ script {
 +         not_block14():
 +         br not_block25(v6v1)
 + 
-+         not_block25(v15v3: bool):
++         not_block25(mut v15v3: bool):
 +         br block2(v15v3)
 + 
-+         block2(v23v1: bool):
++         block2(mut v23v1: bool):
 +         br block1(v23v1)
 + 
-        block1(v10v1: bool):
+        block1(mut v10v1: bool):
         ret bool v10v1
     }
 }

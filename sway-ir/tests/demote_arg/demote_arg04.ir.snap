@@ -38,26 +38,26 @@ script {
 -         cbr v16v1, block1(v9v1, v17v1, v11v1), block2(v13v1, v17v1, v15v1)
 +         cbr v16v1, block1(v30v1, v17v1, v32v1), block2(v38v1, v17v1, v40v1)
 
--         block1(v1v1: b256, v2v1: bool, v3v1: b256):
+-         block1(mut v1v1: b256, mut v2v1: bool, mut v3v1: b256):
 -         br block3(v3v1)
-+         block1(v26v1: __ptr b256, v2v1: bool, v28v1: __ptr b256):
++         block1(mut v26v1: __ptr b256, mut v2v1: bool, mut v28v1: __ptr b256):
 +         v27v1 = load v26v1
 +         v29v1 = load v28v1
 +         v44v1 = get_local __ptr b256, __tmp_block_arg3
 +         store v29v1 to v44v1
 +         br block3(v44v1)
 
--         block2(v4v1: b256, v5v1: bool, v6v1: b256):
+-         block2(mut v4v1: b256, mut v5v1: bool, mut v6v1: b256):
 -         br block3(v6v1)
-+         block2(v34v1: __ptr b256, v5v1: bool, v36v1: __ptr b256):
++         block2(mut v34v1: __ptr b256, mut v5v1: bool, mut v36v1: __ptr b256):
 +         v35v1 = load v34v1
 +         v37v1 = load v36v1
 +         v46v1 = get_local __ptr b256, __tmp_block_arg3
 +         store v37v1 to v46v1
 +         br block3(v46v1)
 
--         block3(v7v1: b256):
-+         block3(v42v1: __ptr b256):
+-         block3(mut v7v1: b256):
++         block3(mut v42v1: __ptr b256):
 +         v43v1 = load v42v1
         v21v1 = get_local __ptr b256, tmp
 -         store v7v1 to v21v1

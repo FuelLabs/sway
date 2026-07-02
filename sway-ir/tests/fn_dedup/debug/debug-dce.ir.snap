@@ -18,31 +18,31 @@ script {
         v8v1 = call foo_3(v6v1, v7v1), !8
         br block1(v8v1), !5
 
-        block1(v1v1: bool):
+        block1(mut v1v1: bool):
         ret bool v1v1
     }
 
 -     fn foo_1(t1 !9: u64, t2 !10: u64) -> bool, !13 {
 +     fn foo_3(t1 !9: u64, t2 !10: u64) -> bool, !13 {
-        entry(t1: u64, t2: u64):
+        entry(mut t1: u64, mut t2: u64):
 -         v13v1 = call eq_2(t1, t2), !14
 -         ret bool v13v1
 -     }
 - 
 -     pub fn eq_2(self !16: u64, other !17: u64) -> bool, !18 {
--         entry(self: u64, other: u64):
+-         entry(mut self: u64, mut other: u64):
 -         v17v1 = cmp eq self other
 -         ret bool v17v1
 -     }
 - 
 -     fn foo_3(t1 !9: u64, t2 !10: u64) -> bool, !19 {
--         entry(t1: u64, t2: u64):
+-         entry(mut t1: u64, mut t2: u64):
         v21v1 = call eq_4(t1, t2), !14
         ret bool v21v1
     }
 
     pub fn eq_4(self !16: u64, other !17: u64) -> bool, !18 {
-        entry(self: u64, other: u64):
+        entry(mut self: u64, mut other: u64):
         v25v1 = cmp eq self other
         ret bool v25v1
     }
