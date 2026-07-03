@@ -124,18 +124,14 @@ impl Ed25519 {
 impl From<B512> for Ed25519 {
     fn from(bits: B512) -> Self {
         Self {
-            bits: asm(bits: bits.bits()) {
-                bits: [u8; 64]
-            },
+            bits: __transmute::<[b256; 2], [u8; 64]>(bits.bits()),
         }
     }
 }
 impl From<(b256, b256)> for Ed25519 {
     fn from(components: (b256, b256)) -> Self {
         Self {
-            bits: asm(components: components) {
-                components: [u8; 64]
-            },
+            bits: __transmute::<(b256, b256), [u8; 64]>(components),
         }
     }
 }

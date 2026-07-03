@@ -35,7 +35,7 @@ script {
         v20v1 = ptr_to_int v19v1 to u64
         br block2(v20v1)
 
-        block2(mut v1v1: u64):
+        block2(v1v1: u64):
         v22v1 = int_to_ptr v1v1 to __ptr u64
         v23v1 = const u64 42
         store v23v1 to v22v1

@@ -22,9 +22,7 @@ impl b256 {
     /// }
     /// ```
     pub fn as_u256(self) -> u256 {
-        asm(input: self) {
-            input: u256
-        }
+        __transmute::<b256, u256>(self)
     }
 }
 
@@ -79,9 +77,7 @@ impl From<u256> for b256 {
     /// }
     /// ```
     fn from(num: u256) -> Self {
-        asm(input: num) {
-            input: b256
-        }
+        __transmute::<u256, b256>(num)
     }
 }
 
@@ -105,8 +101,6 @@ impl From<(u64, u64, u64, u64)> for b256 {
     /// }
     /// ```
     fn from(nums: (u64, u64, u64, u64)) -> Self {
-        asm(nums: nums) {
-            nums: b256
-        }
+        __transmute::<(u64, u64, u64, u64), b256>(nums)
     }
 }

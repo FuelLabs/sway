@@ -276,9 +276,7 @@ impl String {
         let ptr = self.bytes.ptr();
         let str_size = self.bytes.len();
 
-        asm(s: (ptr, str_size)) {
-            s: str
-        }
+        __transmute::<(raw_ptr, u64), str>((ptr, str_size))
     }
 }
 
@@ -417,9 +415,7 @@ impl Clone for String {
 
 impl Debug for String {
     fn fmt(self, ref mut f: Formatter) {
-        let s = asm(s: (self.bytes.ptr(), self.bytes.len())) {
-            s: str
-        };
+        let s = __transmute::<(raw_ptr, u64), str>((self.bytes.ptr(), self.bytes.len()));
         f.print_string_quotes();
         f.print_str(s);
         f.print_string_quotes();

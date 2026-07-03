@@ -4,16 +4,12 @@ use ::raw_ptr::*;
 
 impl<T> &__slice[T] {
     pub fn ptr(self) -> raw_ptr {
-        let (ptr, _) = asm(s: self) {
-            s: (raw_ptr, u64)
-        };
+        let (ptr, _) = __transmute::<&__slice[T], (raw_ptr, u64)>(self);
         ptr
     }
 
     pub fn len(self) -> u64 {
-        let (_, len) = asm(s: self) {
-            s: (raw_ptr, u64)
-        };
+        let (_, len) = __transmute::<&__slice[T], (raw_ptr, u64)>(self);
         len
     }
 }

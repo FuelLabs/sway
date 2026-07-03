@@ -137,9 +137,7 @@ impl Formatter {
         let mut i = 79;
         while true {
             let rem = value % 10;
-            let (_, _, _, digit) = asm(rem: rem) {
-                rem: (u64, u64, u64, u64)
-            };
+            let (_, _, _, digit) = __transmute::<u256, (u64, u64, u64, u64)>(rem);
             let digit = asm(v: digit % 10) {
                 v: u8
             };
@@ -172,9 +170,7 @@ impl Formatter {
         let mut i = 65;
         while true {
             let rem = value % 16;
-            let (_, _, _, digit) = asm(rem: rem) {
-                rem: (u64, u64, u64, u64)
-            };
+            let (_, _, _, digit) = __transmute::<u256, (u64, u64, u64, u64)>(rem);
             let digit = asm(v: digit % 16) {
                 v: u8
             };
@@ -349,9 +345,7 @@ impl Debug for u256 {
 
 impl Debug for b256 {
     fn fmt(self, ref mut f: Formatter) {
-        f.print_u256_as_hex(asm(s: self) {
-            s: u256
-        }, true);
+        f.print_u256_as_hex(__transmute::<b256, u256>(self), true);
     }
 }
 

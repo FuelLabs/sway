@@ -92,7 +92,7 @@ script {
         v78v1 = const unit ()
         br block2(v78v1)
 
-        block2(mut v71v1: ()):
+        block2(v71v1: ()):
         v80v1 = const unit ()
         ret () v80v1
     }
@@ -129,7 +129,7 @@ script {
         v100v1 = call eq_5(n, v99v1), !64
         br block1(v100v1), !62
 
-        block1(mut v93v1: bool):
+        block1(v93v1: bool):
         cbr v93v1, block2(), block3(), !62
 
         block2():
@@ -190,8 +190,8 @@ script {
 -         br block6(v133v1)
 +         br block6(v133v1, v163v1, v166v1)
 
--         block6(mut v94v1: ()):
-+         block6(mut v94v1: (), mut v164v1: u64, mut v165v1: bool):
+-         block6(v94v1: ()):
++         block6(v94v1: (), mut v164v1: u64, mut v165v1: bool):
         v135v1 = get_local __ptr u64, i, !81
         v136v1 = get_local __ptr u64, i, !82
 -         v137v1 = load v136v1, !82
@@ -202,7 +202,7 @@ script {
 +         v139v1 = call add_7(v164v1, v138v1), !84
 +         br while(v139v1, v165v1)
 
-        block7(mut v95v1: bool):
+        block7(v95v1: bool):
         ret bool v95v1
     }
 

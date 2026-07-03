@@ -9,7 +9,7 @@ script {
         v2v1 = const bool true
         br block(v2v1)
 
-        block(mut v1v1: bool):
+        block(v1v1: bool):
         v4v1 = const bool false
         v5v1 = cmp eq v1v1 v4v1
         v6v1 = cmp eq v4v1 v5v1
@@ -21,7 +21,7 @@ script {
         v9v1 = const bool true
         br block(v9v1)
 
-        block(mut v8v1: bool):
+        block(v8v1: bool):
         v11v1 = const bool false
         v12v1 = cmp eq v8v1 v11v1
         v13v1 = cmp eq v11v1 v12v1

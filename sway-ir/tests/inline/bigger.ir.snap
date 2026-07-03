@@ -22,7 +22,7 @@ script {
         v10v1 = const u64 1
         br block2(v10v1)
 
-        block2(mut v2v1: u64):
+        block2(v2v1: u64):
         ret u64 v2v1
     }
 

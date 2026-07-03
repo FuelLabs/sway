@@ -83,9 +83,7 @@ impl u64 {
             ptr: raw_ptr
         };
 
-        let rs = asm(parts: (ptr, 8)) {
-            parts: raw_slice
-        };
+        let rs = __transmute::<(raw_ptr, u64), raw_slice>((ptr, 8));
 
         Bytes::from(rs)
     }
@@ -232,9 +230,7 @@ impl u64 {
             ptr: raw_ptr
         };
 
-        let rs = asm(parts: (ptr, 8)) {
-            parts: raw_slice
-        };
+        let rs = __transmute::<(raw_ptr, u64), raw_slice>((ptr, 8));
 
         Bytes::from(rs)
     }

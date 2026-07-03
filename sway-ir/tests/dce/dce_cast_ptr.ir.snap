@@ -27,7 +27,7 @@ script {
         entry(mut arg: u64):
         br block0(arg)
 
-        block0(mut v12v1: __ptr u64):
+        block0(v12v1: __ptr u64):
         v14v1 = load v12v1
         ret u64 v14v1
     }
