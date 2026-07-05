@@ -10,7 +10,7 @@ script {
         v6v1 = const u64 0
         br while(v6v1, v5v1)
 
-        while(mut v3v1: u64, mut v4v1: u64):
+        while(v3v1: u64, v4v1: u64):
 -         v8v1 = cmp lt v3v1 v4v1
 +         v8v1 = cmp lt v3v1 v5v1
         cbr v8v1, while_body(), end_while()

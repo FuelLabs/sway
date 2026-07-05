@@ -11,17 +11,17 @@ script {
         v6v1 = cmp eq v4v1 v5v1
 -         br block0(v6v1)
 - 
--         block0(mut v1v1: bool):
+-         block0(v1v1: bool):
         v8v1 = const u64 22
         v9v1 = cmp eq v8v1 v5v1
 -         br block1(v9v1)
 - 
--         block1(mut v2v1: bool):
+-         block1(v2v1: bool):
         v11v1 = const u64 33
         v12v1 = cmp eq v11v1 v5v1
 -         br block2(v12v1)
 - 
--         block2(mut v3v1: bool):
+-         block2(v3v1: bool):
 -         ret bool v3v1
 +         ret bool v12v1
     }

@@ -15,7 +15,7 @@ script {
         v4v1 = const bool true
         br block(v4v1)
 
-        block(mut v3v1: bool):
+        block(v3v1: bool):
         ret bool v3v1
     }
 

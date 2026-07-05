@@ -18,7 +18,7 @@ script {
         v8v1 = call foo_3(v6v1, v7v1), !8
         br block1(v8v1), !5
 
-        block1(mut v1v1: bool):
+        block1(v1v1: bool):
         ret bool v1v1
     }
 

@@ -110,9 +110,9 @@ script {
 -         br block5(v63v1)
 +         br block5(v63v1, v55v1, v61v1)
 
--         block5(mut v1v1: ()):
+-         block5(v1v1: ()):
 -         br while0()
-+         block5(mut v1v1: (), mut v154v1: u64, mut v156v1: u64):
++         block5(v1v1: (), mut v154v1: u64, mut v156v1: u64):
 +         br while0(v154v1, v156v1)
 
         block6():
@@ -123,7 +123,7 @@ script {
 +         v69v1 = call eq_5(v157v1, v68v1), !42
         br block7(v69v1), !29
 
-        block7(mut v2v1: bool):
+        block7(v2v1: bool):
         v71v1 = call assert_2(v2v1), !15
         v72v1 = get_local __ptr u64, counter_4, !43
 -         v73v1 = const u64 0, !44
@@ -250,7 +250,7 @@ script {
         v139v1 = const unit ()
         br block2(v139v1)
 
-        block2(mut v132v1: ()):
+        block2(v132v1: ()):
         v141v1 = const unit ()
         ret () v141v1
     }

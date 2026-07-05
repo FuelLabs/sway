@@ -9,11 +9,11 @@ script {
         v3v1 = const bool true, !2
         cbr v3v1, block1(v3v1), block0(v3v1), !3
 
-        block0(mut v1v1: bool):
+        block0(v1v1: bool):
         v5v1 = call f(), !4
         br block1(v5v1), !3
 
-        block1(mut v2v1: bool):
+        block1(v2v1: bool):
         ret bool v2v1
     }
 
