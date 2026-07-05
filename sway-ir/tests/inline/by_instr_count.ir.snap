@@ -15,7 +15,7 @@ script {
         v4v1 = const u64 22
         br block(v4v1)
 
-        block(mut v3v1: u64):
+        block(v3v1: u64):
         ret u64 v3v1
     }
 
@@ -59,7 +59,7 @@ script {
         v32v1 = cmp eq v30v1 v31v1
         br block(v32v1)
 
-        block(mut v23v1: bool):
+        block(v23v1: bool):
         ret bool v23v1
     }
 

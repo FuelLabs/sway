@@ -1,4 +1,5 @@
 use std::{
+    any::Any,
     panic::catch_unwind,
     path::{Path, PathBuf},
 };
@@ -63,6 +64,8 @@ fn clean_output(output: &str) -> String {
 }
 
 fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
+    let mut err: Option<Box<dyn Any + Send>> = None;
+
     let source_engine = SourceEngine::default();
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let dir: PathBuf = format!("{manifest_dir}/tests/{sub_dir}").into();
@@ -98,7 +101,7 @@ fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
         let r = opt_fn(first_line, &mut ir);
         let after = ir.to_string();
 
-        fn run_insta(file: &Path, snapshot: String) {
+        fn run_insta(file: &Path, snapshot: String, r: &mut Option<Box<dyn Any + Send>>) {
             let root = file.parent().unwrap();
             let test_name = file.file_name().unwrap().to_str().unwrap();
 
@@ -109,9 +112,11 @@ fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
 
             let scope = insta.bind_to_scope();
 
-            let _ = catch_unwind(|| {
+            if let Err(err) = catch_unwind(|| {
                 insta::assert_snapshot!(test_name, snapshot);
-            });
+            }) {
+                *r = Some(err);
+            }
             drop(scope);
         }
 
@@ -153,7 +158,7 @@ fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
                 }
             }
         }
-        run_insta(&path, clean_output(&snapshot));
+        run_insta(&path, clean_output(&snapshot), &mut err);
 
         ir.verify().unwrap_or_else(|err| {
             println!("{err}");
@@ -179,6 +184,10 @@ fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
                 _ => (),
             }
         }
+    }
+
+    if let Some(err) = err {
+        panic!("Snapshot test failed: {err:?}");
     }
 }
 

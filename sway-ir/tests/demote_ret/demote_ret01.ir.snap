@@ -59,7 +59,7 @@ script {
 +         v49v1 = load v47v1
 +         br block5(v49v1)
 
-        block5(mut v10v1: b256):
+        block5(v10v1: b256):
 -         ret b256 v10v1
 +         store v10v1 to __ret_value
 +         v28v1 = const unit ()
