@@ -49,7 +49,6 @@ pub fn init_aggr_lowering<'a, 'b>(
             .match_ptr_type(context)
             .expect("`root_aggr_ptr` must be a pointer");
 
-        // TODO: (INIT-AGGR) Think of other possible optimizations that bring benefits, if any.
         let _ = lower_mostly_zeroed_aggregate(
             context,
             *root_init_aggr,
@@ -347,11 +346,7 @@ fn lower_to_stores<'a, 'b>(
             }
 
             match as_repeat_array(initializers) {
-                // If we have zero-initialized the root aggregate, `skip_zeroes` will
-                // skip initializing those elements again. But the below code for repeated
-                // values does not write to the root directly, but to a temporary, leading
-                // to uninitialized values being accessed.
-                Some((initializer, length)) if !skip_zeroes => {
+                Some((initializer, length)) => {
                     let repeated_value = match initializer {
                         InitAggrInitializer::Value(value) => value,
                         InitAggrInitializer::NestedInitAggr {
@@ -372,6 +367,7 @@ fn lower_to_stores<'a, 'b>(
 
                             // Store the nested aggregate into its original temporary, and not into the root aggregate.
                             // Essentially, we are treating the nested `init_aggr` as a root for the rest of the lowering.
+                            // Also, note that we are **not optimizing that new root for being an almost zero aggregate**.
                             let mut gep_indices: Vec<u64> = vec![];
 
                             let nested_aggr_type = nested_aggr_ptr
@@ -385,7 +381,9 @@ fn lower_to_stores<'a, 'b>(
                                 nested_aggr_ptr,
                                 &mut gep_indices,
                                 &nested_ia_initializers,
-                                skip_zeroes,
+                                // `skip_zeros` is false, because we are not optimizing this
+                                // temporary for potentially being an almost-zero aggregate.
+                                false,
                             );
 
                             // Remove the `nested_init_aggr` and adapt its associated `load`
