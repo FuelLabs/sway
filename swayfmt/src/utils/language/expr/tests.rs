@@ -265,6 +265,16 @@ intermediate_whitespace
 let i = 42;
 }");
 
+fmt_test_expr!(empty_if_else_if
+"if __size_of::<T>() == 0 {
+} else if __is_reference_type::<T>() {
+    let i = 42;
+}",
+intermediate_whitespace
+"if __size_of::<T>() == 0 {    } else if __is_reference_type::<T>() {
+let i = 42;
+}");
+
 fmt_test_expr!(basic_for_loop
 "for iter in [0, 1, 7, 8, 15] {
     let i = 42;
