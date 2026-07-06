@@ -463,8 +463,7 @@ impl Items {
                         _,
                     ) => {
                         handler.emit_err(CompileError::MultipleDefinitionsOfName {
-                            name: name.clone(),
-                            span: name.span(),
+                            name: (&name).into(),
                         });
                     }
                     _ => {}
@@ -642,8 +641,7 @@ impl Items {
                         _,
                     ) => {
                         handler.emit_err(CompileError::MultipleDefinitionsOfName {
-                            name: name.clone(),
-                            span: name.span(),
+                            name: (&name).into(),
                         });
                     }
                     // generic parameter shadowing another generic parameter
@@ -778,10 +776,7 @@ impl Items {
         self.symbols
             .get(name)
             .cloned()
-            .ok_or_else(|| CompileError::SymbolNotFound {
-                name: name.clone(),
-                span: name.span(),
-            })
+            .ok_or_else(|| CompileError::SymbolNotFound { name: name.into() })
     }
 
     pub(crate) fn check_symbols_unique_while_collecting_unifications(
@@ -792,10 +787,7 @@ impl Items {
             .read()
             .get(&name.into())
             .cloned()
-            .ok_or_else(|| CompileError::SymbolNotFound {
-                name: name.clone(),
-                span: name.span(),
-            })
+            .ok_or_else(|| CompileError::SymbolNotFound { name: name.into() })
     }
 
     pub(crate) fn clear_symbols_unique_while_collecting_unifications(&self) {

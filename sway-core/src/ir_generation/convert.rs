@@ -176,7 +176,7 @@ pub(super) fn convert_resolved_type_info(
                 elem_type.type_id,
                 span,
             )?;
-            Type::new_array(context, elem_type, len as u64)
+            Type::new_array(context, elem_type, len)
         }
 
         TypeInfo::Tuple(fields) => {

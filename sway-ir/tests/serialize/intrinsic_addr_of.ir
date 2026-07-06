@@ -1,18 +1,12 @@
-// regex: VAR=v\d+v\d+
-
 script {
-  // check: main() -> u64
   fn main() -> u64 {
         local { u64, ( { b256 } | { b256 } ) } sender
 
         entry():
-        // check: = get_local
         v0 = get_local __ptr { u64, ( { b256 } | { b256 } ) }, sender
         v1 = const { u64, ( { b256 } | { b256 } ) } { u64 0, { b256 } { b256 0x0100000000000000000000000000000000000000000000000000000000000010 } }
         store v1 to v0
-        // check: $(arg0=$VAR) = get_local
         v2 = get_local __ptr { u64, ( { b256 } | { b256 } ) }, sender
-        // check: ptr_to_int $arg0
         v3 = ptr_to_int v2 to u64
         ret u64 v3
     }

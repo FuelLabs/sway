@@ -20,7 +20,7 @@ script {
     }
 
     fn less_three_blocks(b: bool) -> u64 {
-        entry(b: bool):
+        entry(mut b: bool):
         cbr b, then_block(), else_block()
 
         then_block():
@@ -64,7 +64,7 @@ script {
     }
 
     fn more_three_blocks(b: bool) -> bool {
-        entry(b: bool):
+        entry(mut b: bool):
         cbr b, then_block(), else_block()
 
         then_block():
@@ -91,14 +91,14 @@ script {
 +         v1v1 = const u64 11
 +         br block0(v1v1)
 + 
-+         block0(v57v1: u64):
++         block0(mut v57v1: u64):
 +         v4v1 = const u64 22
 +         br less_two_blocks_block(v4v1)
 + 
-+         less_two_blocks_block(v50v3: u64):
++         less_two_blocks_block(mut v50v3: u64):
 +         br block1(v50v3)
 + 
-+         block1(v58v1: u64):
++         block1(mut v58v1: u64):
         v51v1 = const bool true
 -         v52v1 = call less_three_blocks(v51v1)
 +         cbr v51v1, less_three_blocks_then_block(), less_three_blocks_else_block()
@@ -111,7 +111,7 @@ script {
 +         v11v1 = const u64 44
 +         br block2(v11v1)
 + 
-+         block2(v61v1: u64):
++         block2(mut v61v1: u64):
         v53v1 = call more_one_block()
         v54v1 = call more_two_blocks()
         v55v1 = call more_three_blocks(v54v1)

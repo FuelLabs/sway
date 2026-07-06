@@ -5,7 +5,7 @@ Modified: true
 
 script {
     fn test1(p: u64) -> u64 {
-        entry(p: u64):
+        entry(mut p: u64):
         v2v1 = const u64 100
         v3v1 = cmp eq v2v1 p
         cbr v3v1, get_0_block0(), get_0_block1()
@@ -23,7 +23,7 @@ script {
     }
 
     fn must_not_optimize(p: u64) -> u64 {
-        entry(p: u64):
+        entry(mut p: u64):
         v12v1 = const u64 100
         v13v1 = cmp eq v12v1 p
         cbr v13v1, get_0_block0(), get_0_block0()

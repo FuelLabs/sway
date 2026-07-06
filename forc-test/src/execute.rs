@@ -85,9 +85,8 @@ impl TestExecutor {
             .add_unsigned_coin_input(secret_key, utxo_id, amount, asset_id, tx_pointer)
             .maturity(maturity);
 
-        let mut output_index = 1;
         // Insert contract ids into tx input
-        for contract_id in test_setup.contract_ids() {
+        for (output_index, contract_id) in (1..).zip(test_setup.contract_ids()) {
             tx_builder
                 .add_input(tx::Input::contract(
                     tx::UtxoId::new(tx::Bytes32::zeroed(), 0),
@@ -101,7 +100,6 @@ impl TestExecutor {
                     balance_root: fuel_tx::Bytes32::zeroed(),
                     state_root: tx::Bytes32::zeroed(),
                 }));
-            output_index += 1;
         }
 
         let consensus_params = tx_builder.get_params().clone();

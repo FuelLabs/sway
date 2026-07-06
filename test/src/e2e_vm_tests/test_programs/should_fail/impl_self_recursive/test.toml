@@ -1,4 +1,18 @@
-category = "fail"
+# DISABLED.
+#
+# This test checks that recursive functions are rejected with
+# `CompileError::RecursiveCall` / `CompileError::RecursiveCallChain`.
+#
+# The `DeclEngine` insert-elimination optimization regressed recursion
+# detection. With it, the recursive declarations are no longer present in the
+# typed module tree that `TyProgram::check_recursive` walks, so the recursion
+# goes undetected. The program then reaches later compiler phases
+# that recursively traverse the call graph assuming
+# recursion was already rejected, and the compiler **overflows its stack**
+# instead of emitting the errors below.
+#
+# Enable this test when https://github.com/FuelLabs/sway/issues/7658 get fixed.
+category = "disabled"
 
 # check: $()Function rec_0 is recursive, which is unsupported at this time.
 

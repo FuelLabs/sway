@@ -18,9 +18,3 @@ script {
         ret bool v224v1
     }
 }
-
-// regex: VAL=v\d+v\d+
-
-// not: local { u64 }
-// not: get_local __ptr { u64 }
-// not: mem_clear_val $VAL

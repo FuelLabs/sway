@@ -24,7 +24,7 @@ script {
     }
 
     fn test(arg: u64) -> u64 {
-        entry(arg: u64):
+        entry(mut arg: u64):
         br block0(arg)
 
         block0(v12v1: __ptr u64):

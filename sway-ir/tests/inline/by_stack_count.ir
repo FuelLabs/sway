@@ -63,36 +63,21 @@ script {
     }
 
     fn main() -> u64 {
-// check: fn main() -> u64
         entry():
 
         v0 = call one_local()
-// not: call one_local()
-// check: const u64 11
 
         v1 = call two_locals()
-// not: call two_locals()
-// check: const u64 22
 
         v2 = call three_locals()
-// check: call three_locals()
-// not: const u64 33
 
         v3 = call two_struct_locals()
-// not: call two_struct_locals()
-// check: const u64 44
 
         v4 = call three_struct_locals()
-// check: call three_struct_locals()
-// not: const u64 55
 
         v5 = call two_mixed_locals()
-// not: call two_mixed_locals()
-// check: const u64 66
 
         v6 = call three_mixed_locals()
-// check: call three_mixed_locals()
-// not: const u64 77
 
         ret u64 v6
     }

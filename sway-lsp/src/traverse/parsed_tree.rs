@@ -399,7 +399,7 @@ impl Parse for IntrinsicFunctionExpression {
         ctx.tokens.insert(
             ctx.ident(&self.name),
             Token::from_parsed(
-                ParsedAstToken::Intrinsic(self.kind_binding.inner.clone()),
+                ParsedAstToken::Intrinsic(self.kind_binding.inner),
                 SymbolKind::Intrinsic,
             ),
         );

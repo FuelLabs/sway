@@ -2,12 +2,12 @@
 //!
 //! A module also has a 'kind' corresponding to the different Sway module types.
 
-use std::{cell::Cell, collections::BTreeMap};
+use std::collections::BTreeMap;
 
 use crate::{
     context::Context,
     function::{Function, FunctionIterator},
-    Constant, GlobalVar, MetadataIndex, StorageKey, Type,
+    Config, ConfigContent, Constant, GlobalVar, StorageKey, Type,
 };
 
 /// A wrapper around an [ECS](https://github.com/orlp/slotmap) handle into the
@@ -20,27 +20,8 @@ pub struct ModuleContent {
     pub kind: Kind,
     pub functions: Vec<Function>,
     pub global_variables: BTreeMap<Vec<String>, GlobalVar>,
-    pub configs: BTreeMap<String, ConfigContent>,
+    pub configs: BTreeMap<String, Config>,
     pub storage_keys: BTreeMap<String, StorageKey>,
-}
-
-#[derive(Clone, Debug)]
-pub enum ConfigContent {
-    V0 {
-        name: String,
-        ty: Type,
-        ptr_ty: Type,
-        constant: Constant,
-        opt_metadata: Option<MetadataIndex>,
-    },
-    V1 {
-        name: String,
-        ty: Type,
-        ptr_ty: Type,
-        encoded_bytes: Vec<u8>,
-        decode_fn: Cell<Function>,
-        opt_metadata: Option<MetadataIndex>,
-    },
 }
 
 /// The different 'kinds' of Sway module: `Contract`, `Library`, `Predicate` or `Script`.
@@ -149,13 +130,20 @@ impl Module {
     }
 
     /// Add a config value to this module.
-    pub fn add_config(&self, context: &mut Context, name: String, content: ConfigContent) {
-        context.modules[self.0].configs.insert(name, content);
+    pub fn add_config(
+        &self,
+        context: &mut Context,
+        name: String,
+        content: ConfigContent,
+    ) -> Config {
+        let config = Config::new(context, content);
+        context.modules[self.0].configs.insert(name, config);
+        config
     }
 
-    /// Get a named config content from this module, if found.
-    pub fn get_config<'a>(&self, context: &'a Context, name: &str) -> Option<&'a ConfigContent> {
-        context.modules[self.0].configs.get(name)
+    /// Get a named config from this module, if found.
+    pub fn get_config(&self, context: &Context, name: &str) -> Option<Config> {
+        context.modules[self.0].configs.get(name).copied()
     }
 
     /// Add a storage key value to this module.
@@ -183,23 +171,25 @@ impl Module {
             .map(|(key, _)| key.as_str())
     }
 
-    /// Removed a function from the module.  Returns true if function was found and removed.
+    /// Removes a function from the module.  Returns true if function was found and removed.
     ///
     /// **Use with care!  Be sure the function is not an entry point nor called at any stage.**
-    pub fn remove_function(&self, context: &mut Context, function: &Function) {
-        context
+    pub fn remove_function(&self, context: &mut Context, function: &Function) -> bool {
+        let fns = &mut context
             .modules
             .get_mut(self.0)
             .expect("Module must exist in context.")
-            .functions
-            .retain(|mod_fn| mod_fn != function);
+            .functions;
+
+        let len_before = fns.len();
+        fns.retain(|mod_fn| mod_fn != function);
+        let len_after = fns.len();
+
+        len_before != len_after
     }
 
-    pub fn iter_configs<'a>(
-        &'a self,
-        context: &'a Context,
-    ) -> impl Iterator<Item = &'a ConfigContent> + 'a {
-        context.modules[self.0].configs.values()
+    pub fn iter_configs<'a>(&'a self, context: &'a Context) -> impl Iterator<Item = Config> + 'a {
+        context.modules[self.0].configs.values().copied()
     }
 }
 

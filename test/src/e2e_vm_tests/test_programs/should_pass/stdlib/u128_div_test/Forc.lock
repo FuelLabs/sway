@@ -1,8 +1,0 @@
-[[package]]
-name = "std"
-source = "path+from-root-3A4875D7645CAB22"
-
-[[package]]
-name = "u128_div_test"
-source = "member"
-dependencies = ["std"]

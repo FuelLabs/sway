@@ -10,16 +10,3 @@ script {
         ret bool v2
     }
 }
-
-// regex: VAL=v\d+v\d+
-// regex: ID=[[:alpha:]0-9_]+
-
-// check: $(arg_0=$VAL) = get_local __ptr b256, $ID
-// check: $(cval_0=$VAL) = const b256 0x2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b
-// check: store $cval_0 to $arg_0
-
-// check: $(arg_1=$VAL) = get_local __ptr b256, __asm_arg0
-// check: $(cval_1=$VAL) = const b256 0x2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c
-// check: store $cval_1 to $arg_1
-
-// check: $VAL = asm(r1: $arg_0, r2: $arg_1, r3, r4) -> bool r4

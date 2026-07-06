@@ -15,6 +15,7 @@ mod concurrent_slab;
 mod control_flow_analysis;
 mod debug_generation;
 pub mod decl_engine;
+pub mod has_changes;
 pub mod ir_generation;
 pub mod language;
 pub mod marker_traits;
@@ -72,13 +73,14 @@ use sway_ir::{
 use sway_types::integer_bits::IntegerBits;
 use sway_types::span::Source;
 use sway_types::{SourceEngine, SourceLocation, Span};
-use sway_utils::{time_expr, PerformanceData, PerformanceMetric};
+use sway_utils::{time_expr, CompilationPhaseMetrics, PerformanceMetrics};
 use transform::{ArgsExpectValues, Attribute, AttributeKind, Attributes, ExpectedArgs};
 use types::{CollectTypesMetadata, CollectTypesMetadataContext, LogId, TypeMetadata};
 
 pub use semantic_analysis::namespace::{self, Namespace};
 pub mod types;
 
+pub use has_changes::HasChanges;
 use sway_error::error::{CompileError, TrivialCheckDiagType};
 use sway_types::{ident::Ident, span, Spanned};
 pub use type_system::*;
@@ -1340,7 +1342,7 @@ pub fn compile_to_ast(
     check_should_abort(handler, retrigger_compilation.clone())?;
 
     let query_engine = engines.qe();
-    let mut metrics = PerformanceData::default();
+    let mut metrics = PerformanceMetrics::default();
     if let Some(config) = build_config {
         let path = config.canonical_root_module();
         let include_tests = config.include_tests;

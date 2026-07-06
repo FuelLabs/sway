@@ -805,8 +805,7 @@ impl Namespace {
                         };
                     } else {
                         return Err(handler.emit_err(CompileError::SymbolNotFound {
-                            name: variant_name.clone(),
-                            span: variant_name.span(),
+                            name: variant_name.into(),
                         }));
                     }
                 }
@@ -873,8 +872,7 @@ impl Namespace {
                         };
                     } else {
                         return Err(handler.emit_err(CompileError::SymbolNotFound {
-                            name: variant_name.clone(),
-                            span: variant_name.span(),
+                            name: variant_name.into(),
                         }));
                     }
                 } else {
@@ -947,17 +945,11 @@ impl Namespace {
             }
         } else {
             // Symbol not found
-            return Err(handler.emit_err(CompileError::SymbolNotFound {
-                name: item.clone(),
-                span: item.span(),
-            }));
+            return Err(handler.emit_err(CompileError::SymbolNotFound { name: item.into() }));
         };
 
         if !ignore_visibility && !src_visibility.is_public() {
-            handler.emit_err(CompileError::ImportPrivateSymbol {
-                name: item.clone(),
-                span: item.span(),
-            });
+            handler.emit_err(CompileError::ImportPrivateSymbol { name: item.into() });
         }
 
         Ok((decl, path))

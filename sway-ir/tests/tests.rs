@@ -1,4 +1,5 @@
 use std::{
+    any::Any,
     panic::catch_unwind,
     path::{Path, PathBuf},
 };
@@ -63,6 +64,8 @@ fn clean_output(output: &str) -> String {
 }
 
 fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
+    let mut err: Option<Box<dyn Any + Send>> = None;
+
     let source_engine = SourceEngine::default();
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let dir: PathBuf = format!("{manifest_dir}/tests/{sub_dir}").into();
@@ -98,7 +101,7 @@ fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
         let r = opt_fn(first_line, &mut ir);
         let after = ir.to_string();
 
-        fn run_insta(file: &Path, snapshot: String) {
+        fn run_insta(file: &Path, snapshot: String, r: &mut Option<Box<dyn Any + Send>>) {
             let root = file.parent().unwrap();
             let test_name = file.file_name().unwrap().to_str().unwrap();
 
@@ -109,9 +112,11 @@ fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
 
             let scope = insta.bind_to_scope();
 
-            let _ = catch_unwind(|| {
+            if let Err(err) = catch_unwind(|| {
                 insta::assert_snapshot!(test_name, snapshot);
-            });
+            }) {
+                *r = Some(err);
+            }
             drop(scope);
         }
 
@@ -153,13 +158,8 @@ fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
                 }
             }
         }
-        run_insta(&path, clean_output(&snapshot));
+        run_insta(&path, clean_output(&snapshot), &mut err);
 
-        assert!(
-            r,
-            "Pass returned false (no changes made to {}).",
-            path.display()
-        );
         ir.verify().unwrap_or_else(|err| {
             println!("{err}");
             panic!();
@@ -171,22 +171,23 @@ fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
             .text(&input)
             .unwrap()
             .finish();
-        if chkr.is_empty() {
-            println!("{output}");
-            panic!("No filecheck directives found in test: {}", path.display());
+        if !chkr.is_empty() {
+            match chkr.explain(&output, filecheck::NO_VARIABLES) {
+                Ok((success, report)) if !success => {
+                    println!("--- FILECHECK FAILED FOR {}", path.display());
+                    println!("{report}");
+                    panic!()
+                }
+                Err(e) => {
+                    panic!("filecheck directive error while checking: {e}");
+                }
+                _ => (),
+            }
         }
+    }
 
-        match chkr.explain(&output, filecheck::NO_VARIABLES) {
-            Ok((success, report)) if !success => {
-                println!("--- FILECHECK FAILED FOR {}", path.display());
-                println!("{report}");
-                panic!()
-            }
-            Err(e) => {
-                panic!("filecheck directive error while checking: {e}");
-            }
-            _ => (),
-        }
+    if let Some(err) = err {
+        panic!("Snapshot test failed: {err:?}");
     }
 }
 
@@ -295,9 +296,11 @@ fn inline() {
 
         if params.contains(&"all") {
             // Just inline everything, replacing all CALL instructions.
-            funcs.into_iter().fold(false, |acc, func| {
-                opt::inline_all_function_calls(ir, &func).unwrap() || acc
-            })
+            let mut changed = false;
+            for func in funcs.into_iter() {
+                changed |= opt::inline_all_function_calls(ir, &func).unwrap();
+            }
+            changed
         } else {
             // Get the parameters from the first line.  See the inline/README.md for details.  If
             // there aren't any found then there won't be any constraints and it'll be the

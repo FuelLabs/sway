@@ -30,19 +30,13 @@ script {
     }
 
     fn main() -> bool {
-// check: fn main() -> bool
         entry():
 
         v0 = call one_block()
-// not: call one_block()
-// check: const bool false
 
         v1 = call two_blocks()
-// not: call two_blocks()
-// check: const bool true
 
         v2 = call three_blocks(v1)
-// check: call three_blocks
         ret bool v2
     }
 }

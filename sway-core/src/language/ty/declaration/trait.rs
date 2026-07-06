@@ -16,6 +16,7 @@ use crate::{
     },
     transform,
     type_system::*,
+    HasChanges,
 };
 use monomorphization::MonomorphizeHelper;
 use serde::{Deserialize, Serialize};
@@ -173,8 +174,8 @@ impl MaterializeConstGenerics for TyTraitDecl {
         _handler: &Handler,
         _name: &str,
         _value: &crate::language::ty::TyExpression,
-    ) -> Result<(), ErrorEmitted> {
-        Ok(())
+    ) -> Result<HasChanges, ErrorEmitted> {
+        Ok(HasChanges::No)
     }
 }
 

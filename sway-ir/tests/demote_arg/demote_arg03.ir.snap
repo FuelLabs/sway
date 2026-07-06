@@ -31,12 +31,12 @@ script {
     }
 
 -     fn a(p: bool, a: b256, b: b256) -> b256 {
--         entry(p: bool, a: b256, b: b256):
+-         entry(mut p: bool, mut a: b256, mut b: b256):
 -         cbr p, block2(a), block1()
 +     fn a(p: bool, a: __ptr b256, b: __ptr b256) -> b256 {
 +         local b256 __tmp_block_arg
 
-+         entry(p: bool, a: __ptr b256, b: __ptr b256):
++         entry(mut p: bool, mut a: __ptr b256, mut b: __ptr b256):
 +         v20v1 = load a
 +         v21v1 = load b
 +         v29v1 = get_local __ptr b256, __tmp_block_arg

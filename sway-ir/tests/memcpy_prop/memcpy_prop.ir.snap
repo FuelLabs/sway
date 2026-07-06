@@ -44,7 +44,7 @@ script {
         local { u64, ( () | { b256 } ) } __ret_val
         local { u64, ( () | { b256 } ) } self_
 
-        entry(__ret_value: __ptr { b256 }):
+        entry(mut __ret_value: __ptr { b256 }):
 -         v22v1 = get_local __ptr { u64, ( () | { b256 } ) }, __ret_val
 +         v22v1 = get_local __ptr { u64, ( () | { b256 } ) }, __matched_value_4
         v23v1 = call return_option_5(v22v1)
@@ -81,7 +81,7 @@ script {
     fn return_option_5(__ret_value: __ptr { u64, ( () | { b256 } ) }) -> () {
         local { u64, ( () | { b256 } ) } __anon_0
 
-        entry(__ret_value: __ptr { u64, ( () | { b256 } ) }):
+        entry(mut __ret_value: __ptr { u64, ( () | { b256 } ) }):
         v46v1 = get_local __ptr { u64, ( () | { b256 } ) }, __anon_0
         v47v1 = const u64 0
 -         v48v1 = get_elem_ptr v46v1, __ptr u64, v47v1

@@ -17,7 +17,7 @@ fn main() {
 // check: $(value=$VAL) = const u64 42
 // check: call revert_0($value)
 
-// check: fn revert_0($(foo=$ID)
-// check: entry($foo: u64):
+// check: fn revert_0(mut $(foo=$ID)
+// check: entry(mut $foo: u64):
 // checj: revert $foo
-// check: } 
+// check: }

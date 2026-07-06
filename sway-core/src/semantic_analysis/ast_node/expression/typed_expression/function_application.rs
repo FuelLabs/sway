@@ -83,9 +83,13 @@ pub(crate) fn instantiate_function_application(
     {
         cached_fn_ref
     } else {
-        let mut function_decl = TyFunctionDecl::clone(&*function_decl);
-
-        if !ctx.code_block_first_pass() {
+        let (
+            method_sig,
+            return_type_id,
+            is_type_check_finalized,
+            is_trait_method_dummy,
+            new_decl_ref,
+        ) = if !ctx.code_block_first_pass() {
             // Handle the trait constraints. This includes checking to see if the trait
             // constraints are satisfied and replacing old decl ids based on the
             // constraint with new decl ids based on the new type.
@@ -97,22 +101,56 @@ pub(crate) fn instantiate_function_application(
                 &call_path_binding.span(),
             )?;
 
-            function_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
-        }
+            let mut new_function_decl = TyFunctionDecl::clone(&*function_decl);
+            if new_function_decl
+                .replace_decls(&decl_mapping, handler, &mut ctx)?
+                .has_changes()
+            {
+                let return_type_id = new_function_decl.return_type.type_id;
+                let is_type_check_finalized = new_function_decl.is_type_check_finalized;
+                let is_trait_method_dummy = new_function_decl.is_trait_method_dummy;
 
-        let method_sig = TyFunctionSig::from_fn_decl(&function_decl);
+                let method_sig = TyFunctionSig::from_fn_decl(&new_function_decl);
 
-        function_return_type_id = function_decl.return_type.type_id;
-        let function_is_type_check_finalized = function_decl.is_type_check_finalized;
-        let function_is_trait_method_dummy = function_decl.is_trait_method_dummy;
-        let new_decl_ref = decl_engine
-            .insert(
-                function_decl,
-                decl_engine
-                    .get_parsed_decl_id(function_decl_ref.id())
-                    .as_ref(),
+                let new_decl_ref = decl_engine
+                    .insert(
+                        new_function_decl,
+                        decl_engine
+                            .get_parsed_decl_id(function_decl_ref.id())
+                            .as_ref(),
+                    )
+                    .with_parent(decl_engine, (*function_decl_ref.id()).into());
+                (
+                    method_sig,
+                    return_type_id,
+                    is_type_check_finalized,
+                    is_trait_method_dummy,
+                    new_decl_ref,
+                )
+            } else {
+                let method_sig = TyFunctionSig::from_fn_decl(&new_function_decl);
+                (
+                    method_sig,
+                    new_function_decl.return_type.type_id,
+                    new_function_decl.is_type_check_finalized,
+                    new_function_decl.is_trait_method_dummy,
+                    function_decl_ref,
+                )
+            }
+        } else {
+            let method_sig = TyFunctionSig::from_fn_decl(&function_decl);
+            (
+                method_sig,
+                function_decl.return_type.type_id,
+                function_decl.is_type_check_finalized,
+                function_decl.is_trait_method_dummy,
+                function_decl_ref,
             )
-            .with_parent(decl_engine, (*function_decl_ref.id()).into());
+        };
+
+        function_return_type_id = return_type_id;
+        let function_is_type_check_finalized = is_type_check_finalized;
+        let function_is_trait_method_dummy = is_trait_method_dummy;
 
         if !ctx.code_block_first_pass()
             && method_sig.is_concrete(engines)

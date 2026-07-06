@@ -314,12 +314,12 @@ pub fn inline_function_call(
         ..
     }) = &context.values[call_site.0].value
     {
-        for (arg_val, passed_val) in context.functions[inlined_function.0]
+        for (arg, passed_val) in context.functions[inlined_function.0]
             .arguments
             .iter()
             .zip(passed_vals.iter())
         {
-            value_map.insert(arg_val.1, *passed_val);
+            value_map.insert(arg.value, *passed_val);
         }
     }
 
@@ -655,7 +655,7 @@ fn inline_instruction(
             InstOp::GetStorageKey(storage_key) => {
                 new_block.append(context).get_storage_key(storage_key)
             }
-            InstOp::GetConfig(module, name) => new_block.append(context).get_config(module, name),
+            InstOp::GetConfig(config) => new_block.append(context).get_config(config),
             InstOp::Alloc { ty, count } => new_block.append(context).alloc(ty, map_value(count)),
             InstOp::IntToPtr(value, ty) => {
                 new_block.append(context).int_to_ptr(map_value(value), ty)

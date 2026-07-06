@@ -27,7 +27,7 @@ script {
     }
 
     fn foo(b: bool) -> bool {
-        entry(b: bool):
+        entry(mut b: bool):
         v17v1 = const u64 100
         cbr b, block0(), block1(v17v1)
 
@@ -40,7 +40,7 @@ script {
     }
 
     fn bar(b: bool) -> bool {
-        entry(b: bool):
+        entry(mut b: bool):
         v24v1 = const u64 100
         cbr b, block0(), block2(v24v1)
 
@@ -56,7 +56,7 @@ script {
     }
 
     fn baz(b: bool) -> bool {
-        entry(b: bool):
+        entry(mut b: bool):
         v33v1 = const u64 100
         cbr b, block0(), block2(v33v1)
 

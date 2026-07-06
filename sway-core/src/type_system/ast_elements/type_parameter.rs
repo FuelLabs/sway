@@ -17,6 +17,7 @@ use crate::{
     namespace::TraitMap,
     semantic_analysis::{GenericShadowingMode, TypeCheckContext},
     type_system::priv_prelude::*,
+    HasChanges,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -550,12 +551,12 @@ impl GenericTypeParameter {
     pub(crate) fn type_check_type_params(
         handler: &Handler,
         mut ctx: TypeCheckContext,
-        generic_params: Vec<TypeParameter>,
-        self_type_param: Option<GenericTypeParameter>,
+        generic_params: &[TypeParameter],
+        self_type_param: Option<&GenericTypeParameter>,
     ) -> Result<Vec<TypeParameter>, ErrorEmitted> {
         let mut new_generic_params: Vec<TypeParameter> = vec![];
 
-        if let Some(self_type_param) = self_type_param.clone() {
+        if let Some(self_type_param) = self_type_param {
             self_type_param.insert_self_type_into_namespace(handler, ctx.by_ref());
         }
 
@@ -651,7 +652,7 @@ impl GenericTypeParameter {
     fn type_check(
         handler: &Handler,
         ctx: TypeCheckContext,
-        type_parameter: GenericTypeParameter,
+        type_parameter: &GenericTypeParameter,
     ) -> Result<TypeParameter, ErrorEmitted> {
         let type_engine = ctx.engines.te();
 
@@ -674,7 +675,7 @@ impl GenericTypeParameter {
             trait_constraints: _,
             parent,
             is_from_type_parameter: _,
-        } = &*type_engine.get(type_id)
+        } = &*type_engine.get(*type_id)
         {
             *parent
         } else {
@@ -685,18 +686,18 @@ impl GenericTypeParameter {
         // This order is required because a trait constraint may depend on its own type parameter.
         let type_id = type_engine.new_unknown_generic(
             name.clone(),
-            VecSet(trait_constraints_with_supertraits.clone()),
+            VecSet(trait_constraints_with_supertraits),
             parent,
             true,
         );
 
         let type_parameter = GenericTypeParameter {
-            name,
+            name: name.clone(),
             type_id,
-            initial_type_id,
-            trait_constraints,
+            initial_type_id: *initial_type_id,
+            trait_constraints: trait_constraints.clone(),
             trait_constraints_span: trait_constraints_span.clone(),
-            is_from_parent,
+            is_from_parent: *is_from_parent,
         };
 
         // Insert the type parameter into the namespace
@@ -982,27 +983,39 @@ impl MaterializeConstGenerics for ConstGenericExprTyDecl {
         handler: &sway_error::handler::Handler,
         name: &str,
         value: &crate::language::ty::TyExpression,
-    ) -> Result<(), sway_error::handler::ErrorEmitted> {
+    ) -> Result<HasChanges, sway_error::handler::ErrorEmitted> {
         match self {
             ConstGenericExprTyDecl::ConstGenericDecl(decl) => {
                 let mut decl = TyConstGenericDecl::clone(&*engines.de().get(&decl.decl_id));
-                decl.materialize_const_generics(engines, handler, name, value)?;
+                let mut has_changes =
+                    decl.materialize_const_generics(engines, handler, name, value)?;
 
                 let decl_ref = engines.de().insert(decl, None); // TODO improve parsed_decl_id
                 *self = ConstGenericExprTyDecl::ConstGenericDecl(ConstGenericDecl {
                     decl_id: *decl_ref.id(),
                 });
-                Ok(())
+
+                // TODO: Deliberately using `mut has_changes` above and changing it here.
+                //       This will be changed when we inspect returned `HasChanges` and
+                //       remove additional not needed `DeclEngine::insert` calls.
+                has_changes |= HasChanges::Yes;
+
+                Ok(has_changes)
             }
             ConstGenericExprTyDecl::ConstantDecl(decl) => {
                 let mut decl = TyConstantDecl::clone(&*engines.de().get(&decl.decl_id));
-                decl.materialize_const_generics(engines, handler, name, value)?;
+                let mut has_changes =
+                    decl.materialize_const_generics(engines, handler, name, value)?;
 
                 let decl_ref = engines.de().insert(decl, None); // TODO improve parsed_decl_id
                 *self = ConstGenericExprTyDecl::ConstantDecl(ConstantDecl {
                     decl_id: *decl_ref.id(),
                 });
-                Ok(())
+
+                // TODO: See above.
+                has_changes |= HasChanges::Yes;
+
+                Ok(has_changes)
             }
         }
     }

@@ -152,7 +152,7 @@ pub fn dce(
     if let NumSymbolLoaded::Known(known_num_symbol_loaded) = &mut num_symbol_loaded {
         for sym in function
             .args_iter(context)
-            .flat_map(|arg| get_gep_referred_symbols(context, arg.1))
+            .flat_map(|arg| get_gep_referred_symbols(context, arg.value))
         {
             known_num_symbol_loaded
                 .entry(sym)
@@ -242,6 +242,7 @@ pub fn dce(
         {
             continue;
         }
+
         // Process dead's operands.
         let opds = get_operands(dead, context);
         for opd in opds {
@@ -295,8 +296,6 @@ pub fn dce(
             let count = num_local_uses.get_mut(&local).unwrap();
             *count -= 1;
         }
-
-        modified = true;
     }
 
     // Remove all dead instructions and arguments.
@@ -308,32 +307,47 @@ pub fn dce(
                 .arg_iter(context)
                 .map(|arg| cemetery.contains(arg))
                 .collect_vec();
+
             for pred in block.pred_iter(context).cloned().collect_vec() {
                 let params = pred
                     .get_succ_params_mut(context, &block)
                     .expect("Invalid IR");
                 let mut index = 0;
+
                 // Remove parameters passed to a dead argument.
+                let params_len_before = params.len();
                 params.retain(|_| {
                     let retain = !dead_args[index];
                     index += 1;
                     retain
                 });
+                let params_len_after = params.len();
+                modified |= params_len_before != params_len_after;
             }
+
             // Remove the dead argument itself.
             let mut index = 0;
+            let block_args_len_before = context.blocks[block.0].args.len();
             context.blocks[block.0].args.retain(|_| {
                 let retain = !dead_args[index];
                 index += 1;
                 retain
             });
+            let block_args_len_after = context.blocks[block.0].args.len();
+            modified |= block_args_len_before != block_args_len_after;
+
             // Update the self-index stored in each arg.
             for (arg_idx, arg) in block.arg_iter(context).cloned().enumerate().collect_vec() {
                 let arg = arg.get_argument_mut(context).unwrap();
-                arg.idx = arg_idx;
+
+                if arg.idx != arg_idx {
+                    arg.idx = arg_idx;
+                    modified = true;
+                }
             }
         }
-        block.remove_instructions(context, |inst| cemetery.contains(&inst));
+
+        modified |= block.remove_instructions(context, |inst| cemetery.contains(&inst));
     }
 
     let local_removals: Vec<_> = function
@@ -342,9 +356,9 @@ pub fn dce(
             (num_local_uses.get(local).cloned().unwrap_or(0) == 0).then_some(name.clone())
         })
         .collect();
+
     if !local_removals.is_empty() {
-        modified = true;
-        function.remove_locals(context, &local_removals);
+        modified |= function.remove_locals(context, &local_removals);
     }
 
     Ok(modified)
@@ -365,7 +379,7 @@ pub fn globals_dce(
 
     // config decode fns
     for config in context.modules[module.0].configs.iter() {
-        if let crate::ConfigContent::V1 { decode_fn, .. } = config.1 {
+        if let crate::ConfigContent::V1 { decode_fn, .. } = config.1.get_content(context) {
             grow_called_function_used_globals_set(
                 context,
                 decode_fn.get(),

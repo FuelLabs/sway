@@ -1,10 +1,5 @@
-// regex: VAR=v\d+
-// regex: ID=[[:alpha:]0-9_]+
-
 script {
-    // check: entry fn main()
     entry fn main() -> u64, !1 {
-        // not: local { u64, u64 }
         local { u64, u64 } __anon_0
 
         entry():

@@ -22,21 +22,21 @@ script {
     }
 
     fn foo_1(t1 !9: u64, t2 !10: u64) -> bool, !13 {
-        entry(t1: u64, t2: u64):
+        entry(mut t1: u64, mut t2: u64):
 -         v13v1 = call eq_2(t1, t2), !14
 +         v13v1 = call eq_4(t1, t2), !14
         ret bool v13v1
     }
 
 -     pub fn eq_2(self !16: u64, other !17: u64) -> bool, !18 {
--         entry(self: u64, other: u64):
+-         entry(mut self: u64, mut other: u64):
 -         v17v1 = cmp eq self other
 -         ret bool v17v1
 -     }
 - 
 -     fn foo_3(t1 !9: u64, t2 !10: u64) -> bool, !19 {
 +     fn foo_3(t1 !9: u64, t2 !10: u64) -> bool, !15 {
-        entry(t1: u64, t2: u64):
+        entry(mut t1: u64, mut t2: u64):
 -         v21v1 = call eq_4(t1, t2), !20
 +         v21v1 = call eq_4(t1, t2), !16
         ret bool v21v1
@@ -44,7 +44,7 @@ script {
 
 -     pub fn eq_4(self !16: u64, other !17: u64) -> bool, !18 {
 +     pub fn eq_4(self !18: u64, other !19: u64) -> bool, !20 {
-        entry(self: u64, other: u64):
+        entry(mut self: u64, mut other: u64):
         v25v1 = cmp eq self other
         ret bool v25v1
     }

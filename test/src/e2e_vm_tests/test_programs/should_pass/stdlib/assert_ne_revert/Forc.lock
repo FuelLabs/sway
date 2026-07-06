@@ -1,8 +1,0 @@
-[[package]]
-name = "assert_ne_revert"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "std"
-source = "path+from-root-57A6C488795FD4D0"

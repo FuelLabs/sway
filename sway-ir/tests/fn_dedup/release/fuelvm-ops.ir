@@ -1,6 +1,5 @@
 script {
 
-    // check: fn main
     entry fn main() -> u64 {
         entry():
             v0 = call foo()
@@ -11,7 +10,6 @@ script {
             ret u64 v2
     }
 
-    // check: fn foo
     fn foo() -> u64 {
         entry():
             v0 = const u64 0
@@ -26,7 +24,6 @@ script {
             ret u64 v4
     }
 
-    // not: fn foo_dup
     fn foo_dup() -> u64 {
         entry():
             v0 = const u64 0
@@ -41,7 +38,6 @@ script {
             ret u64 v4
     }
 
-    // check: fn bar
     fn bar() -> u64 {
         entry():
             v0 = const u64 0

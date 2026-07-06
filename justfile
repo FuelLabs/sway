@@ -47,16 +47,23 @@ perf-e2e filter='':
     cargo r -r -p test -- --release --kind e2e --perf-only --perf {{filter}}
 
 alias pil := perf-in-lang
-# collect gas usages from in-language tests
+# collect gas usages and bytecode sizes from in-language tests
 [group('performance')]
 perf-in-lang filter='':
     #!/usr/bin/env bash
     branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null); [[ "$branch" == "HEAD" || -z "$branch" ]] && branch="unknown-branch"; branch=${branch//\//-};
-    outfile="./test/perf_out/$(date '+%m%d%H%M%S')-in-language-gas-usages-release-$branch.csv"
-    # TODO: Switch back to `forc test` on the workspace once https://github.com/FuelLabs/sway/issues/7613 is resolved.
-    # cargo r -r -p forc -- test --release --path ./test/src/in_language_tests {{filter}} | tee /dev/stderr | ./scripts/perf/extract-gas-usages.sh > "$outfile"
-    ./test/src/in_language_tests/run_in_language_tests.sh --release {{filter}} | tee /dev/stderr | ./scripts/perf/extract-gas-usages.sh > "$outfile"
-    echo "Gas usages written to:      $outfile"
+    ts="$(date '+%m%d%H%M%S')"
+    gas_outfile="./test/perf_out/$ts-in-language-gas-usages-release-$branch.csv"
+    size_outfile="./test/perf_out/$ts-in-language-bytecode-sizes-release-$branch.csv"
+    filter_args=(); [[ -n "{{filter}}" ]] && filter_args=(--filter "{{filter}}");
+    # Capture the test run output once and feed it to both extractors, so the
+    # (expensive) test run happens only once.
+    tmp="$(mktemp)"; trap 'rm -f "$tmp"' EXIT
+    ./test/src/in_language_tests/run_in_language_tests.sh --print-output "${filter_args[@]}" --release | tee /dev/stderr > "$tmp"
+    ./scripts/perf/extract-gas-usages.sh < "$tmp" > "$gas_outfile"
+    ./scripts/perf/extract-bytecode-sizes.sh < "$tmp" > "$size_outfile"
+    echo "Gas usages written to:      $gas_outfile"
+    echo "Bytecode sizes written to:  $size_outfile"
 
 alias pst := perf-storage
 # run storage benchmarks (storage fields and StorageVec), optionally filtered by project name substring

@@ -129,7 +129,7 @@ impl ty::TyFunctionDecl {
                 let new_type_parameters = GenericTypeParameter::type_check_type_params(
                     handler,
                     ctx.by_ref(),
-                    type_parameters.clone(),
+                    type_parameters,
                     None,
                 )?;
 
@@ -188,7 +188,7 @@ impl ty::TyFunctionDecl {
                             let param = match ty::TyFunctionParameter::type_check(
                                 handler,
                                 ctx.by_ref(),
-                                parameter.clone(),
+                                parameter,
                             ) {
                                 Ok(val) => val,
                                 Err(_) => continue,

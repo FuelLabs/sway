@@ -4,9 +4,9 @@
 // abi Abi {
 //     fn assign_config_call_pass_config();
 // }
-// 
+//
 // configurable { CONFIG: u64 = 1234 }
-// 
+//
 // impl Abi for Contract {
 //    fn assign_config_call_pass_config() {
 //        let x = CONFIG;
@@ -44,13 +44,3 @@ contract {
         ret () v0
     }
 }
-
-// regex: VAL=v\d+v\d+
-
-// check: pub entry fn assign_config_call_pass_config
-// nextln: entry():
-// nextln: $(v0=$VAL) = get_config __ptr u64, CONFIG
-// nextln: $(v1=$VAL) = load $v0
-// nextln: $(v2=$VAL) = call poke_0($v1)
-// not: store
-// check: ret ()

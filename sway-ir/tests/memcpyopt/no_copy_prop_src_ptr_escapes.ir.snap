@@ -1,7 +1,7 @@
 ---
 source: sway-ir/tests/tests.rs
 ---
-Modified: true
+Modified: false
 
 script {
     entry fn main() -> u64 {
@@ -19,7 +19,7 @@ script {
     }
 
     fn escape(a: __ptr u64) -> u64 {
-        entry(a: __ptr u64):
+        entry(mut a: __ptr u64):
         v9v1 = const u64 0
         store v9v1 to a
         ret u64 v9v1

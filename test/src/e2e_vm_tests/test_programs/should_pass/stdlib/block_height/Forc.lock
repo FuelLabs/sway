@@ -1,8 +1,0 @@
-[[package]]
-name = "block_height"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "std"
-source = "path+from-root-F04660A5553D7A09"
