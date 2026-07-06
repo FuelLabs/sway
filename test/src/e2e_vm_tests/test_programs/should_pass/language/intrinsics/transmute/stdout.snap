@@ -9,19 +9,19 @@ fn transmute_by_reference_7(mut __ret_value: __ptr u256) -> () {
     local __ptr u256 v
 
     entry(mut __ret_value: __ptr u256):
-    v790v1 = get_local __ptr [u8; 32], __array_init_0
-    mem_clear_val v790v1
-    v792v1 = get_local __ptr [u8; 32], bytes
-    mem_copy_val v792v1, v790v1
-    v794v1 = get_local __ptr [u8; 32], bytes
-    v795v1 = cast_ptr v794v1 to __ptr u256
-    v796v1 = get_local __ptr __ptr u256, v
-    store v795v1 to v796v1
-    v798v1 = get_local __ptr __ptr u256, v
-    v799v1 = load v798v1
-    mem_copy_val __ret_value, v799v1
-    v801v1 = const unit ()
-    ret () v801v1
+    v706v1 = get_local __ptr [u8; 32], __array_init_0
+    mem_clear_val v706v1
+    v708v1 = get_local __ptr [u8; 32], bytes
+    mem_copy_val v708v1, v706v1
+    v710v1 = get_local __ptr [u8; 32], bytes
+    v711v1 = cast_ptr v710v1 to __ptr u256
+    v712v1 = get_local __ptr __ptr u256, v
+    store v711v1 to v712v1
+    v714v1 = get_local __ptr __ptr u256, v
+    v715v1 = load v714v1
+    mem_copy_val __ret_value, v715v1
+    v717v1 = const unit ()
+    ret () v717v1
 }
 
 

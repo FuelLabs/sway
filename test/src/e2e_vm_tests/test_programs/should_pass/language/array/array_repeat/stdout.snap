@@ -1,6 +1,5 @@
 ---
 source: test/src/snapshot/mod.rs
-assertion_line: 111
 ---
 > forc build  --path test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat --ir final --asm final --bytecode --release
 exit status: 0
@@ -54,57 +53,57 @@ script {
         local [u8; 1] array
 
         entry():
-        v1927v1 = get_local __ptr [u8; 5], __ret_val
-        v1928v1 = call array_repeat_zero_small_u8_1(v1927v1)
-        v1934v1 = get_local __ptr [u64; 5], __ret_val0
-        v1935v1 = call array_repeat_zero_small_u16_2(v1934v1)
-        v1937v1 = get_local __ptr [u64; 5], __ret_val1
-        v1938v1 = call array_repeat_zero_small_u16_2(v1937v1)
-        v1940v1 = get_local __ptr [u64; 5], __ret_val2
-        v1941v1 = call array_repeat_zero_small_u16_2(v1940v1)
-        v1947v1 = get_local __ptr [u256; 5], __ret_val3
-        v1948v1 = call array_repeat_zero_small_u256_5(v1947v1)
-        v1954v1 = get_local __ptr [b256; 5], __ret_val4
-        v1955v1 = call array_repeat_zero_small_b256_6(v1954v1)
-        v1961v1 = get_local __ptr [bool; 5], __ret_val5
-        v1962v1 = call array_repeat_zero_small_bool_7(v1961v1)
-        v1968v1 = get_local __ptr [u8; 25], __ret_val6
-        v1969v1 = call array_repeat_zero_big_u8_8(v1968v1)
-        v1975v1 = get_local __ptr [u64; 25], __ret_val7
-        v1976v1 = call array_repeat_zero_big_u32_10(v1975v1)
-        v1978v1 = get_local __ptr [u64; 25], __ret_val8
-        v1979v1 = call array_repeat_zero_big_u32_10(v1978v1)
-        v1981v1 = get_local __ptr [u64; 25], __ret_val9
-        v1982v1 = call array_repeat_zero_big_u32_10(v1981v1)
-        v1988v1 = get_local __ptr [u256; 25], __ret_val10
-        v1989v1 = call array_repeat_zero_big_u256_12(v1988v1)
-        v1995v1 = get_local __ptr [b256; 25], __ret_val11
-        v1996v1 = call array_repeat_zero_big_b256_13(v1995v1)
-        v2002v1 = get_local __ptr [bool; 25], __ret_val12
-        v2003v1 = call array_repeat_zero_big_bool_14(v2002v1)
-        v2009v1 = get_local __ptr [bool; 5], __ret_val13
-        v2010v1 = call small_array_repeat_15(v2009v1)
-        v2016v1 = get_local __ptr [bool; 25], __ret_val14
-        v2017v1 = call big_array_repeat_16(v2016v1)
-        v2023v1 = get_local __ptr [u8; 262145], __ret_val15
-        v2024v1 = call u8_array_bigger_than_18_bits_17(v2023v1)
+        v1913v1 = get_local __ptr [u8; 5], __ret_val
+        v1914v1 = call array_repeat_zero_small_u8_1(v1913v1)
+        v1920v1 = get_local __ptr [u64; 5], __ret_val0
+        v1921v1 = call array_repeat_zero_small_u16_2(v1920v1)
+        v1923v1 = get_local __ptr [u64; 5], __ret_val1
+        v1924v1 = call array_repeat_zero_small_u16_2(v1923v1)
+        v1926v1 = get_local __ptr [u64; 5], __ret_val2
+        v1927v1 = call array_repeat_zero_small_u16_2(v1926v1)
+        v1933v1 = get_local __ptr [u256; 5], __ret_val3
+        v1934v1 = call array_repeat_zero_small_u256_5(v1933v1)
+        v1940v1 = get_local __ptr [b256; 5], __ret_val4
+        v1941v1 = call array_repeat_zero_small_b256_6(v1940v1)
+        v1947v1 = get_local __ptr [bool; 5], __ret_val5
+        v1948v1 = call array_repeat_zero_small_bool_7(v1947v1)
+        v1954v1 = get_local __ptr [u8; 25], __ret_val6
+        v1955v1 = call array_repeat_zero_big_u8_8(v1954v1)
+        v1961v1 = get_local __ptr [u64; 25], __ret_val7
+        v1962v1 = call array_repeat_zero_big_u32_10(v1961v1)
+        v1964v1 = get_local __ptr [u64; 25], __ret_val8
+        v1965v1 = call array_repeat_zero_big_u32_10(v1964v1)
+        v1967v1 = get_local __ptr [u64; 25], __ret_val9
+        v1968v1 = call array_repeat_zero_big_u32_10(v1967v1)
+        v1974v1 = get_local __ptr [u256; 25], __ret_val10
+        v1975v1 = call array_repeat_zero_big_u256_12(v1974v1)
+        v1981v1 = get_local __ptr [b256; 25], __ret_val11
+        v1982v1 = call array_repeat_zero_big_b256_13(v1981v1)
+        v1988v1 = get_local __ptr [bool; 25], __ret_val12
+        v1989v1 = call array_repeat_zero_big_bool_14(v1988v1)
+        v1995v1 = get_local __ptr [bool; 5], __ret_val13
+        v1996v1 = call small_array_repeat_15(v1995v1)
+        v2002v1 = get_local __ptr [bool; 25], __ret_val14
+        v2003v1 = call big_array_repeat_16(v2002v1)
+        v2009v1 = get_local __ptr [u8; 262145], __ret_val15
+        v2010v1 = call u8_array_bigger_than_18_bits_17(v2009v1)
         v193v1 = call arrays_with_const_length_18(), !16
-        v2030v1 = get_local __ptr [u8; 1], array
-        v2031v1 = call decode_array_19(v2030v1)
+        v2016v1 = get_local __ptr [u8; 1], array
+        v2017v1 = call decode_array_19(v2016v1)
         v807v1 = const u64 0, !17
-        v808v1 = get_elem_ptr v2030v1, __ptr u8, v807v1, !18
+        v808v1 = get_elem_ptr v2016v1, __ptr u8, v807v1, !18
         v809v1 = load v808v1
         v810v1 = const u8 255, !19
-        v1872v1 = cmp eq v809v1 v810v1, !28
+        v1858v1 = cmp eq v809v1 v810v1, !28
         v328v1 = const bool false, !29
-        v1876v1 = cmp eq v1872v1 v328v1, !32
-        cbr v1876v1, assert_eq_44_block0(), assert_eq_44_block1(), !33
+        v1862v1 = cmp eq v1858v1 v328v1, !32
+        cbr v1862v1, assert_eq_44_block0(), assert_eq_44_block1(), !33
 
         assert_eq_44_block0():
-        v1883v1 = call log_47(v809v1), !36
-        v1885v1 = call log_47(v810v1), !39
-        v903v1 = const u64 18446744073709486083
-        revert v903v1, !44
+        v1869v1 = call log_47(v809v1), !36
+        v1871v1 = call log_47(v810v1), !39
+        v891v1 = const u64 18446744073709486083
+        revert v891v1, !44
 
         assert_eq_44_block1():
         v813v1 = const unit ()
@@ -114,71 +113,71 @@ script {
     fn array_repeat_zero_small_u8_1(mut __ret_value: __ptr [u8; 5]) -> (), !48 {
         entry(mut __ret_value: __ptr [u8; 5]):
         mem_clear_val __ret_value, !49
-        v1925v1 = const unit ()
-        ret () v1925v1
+        v1911v1 = const unit ()
+        ret () v1911v1
     }
 
     fn array_repeat_zero_small_u16_2(mut __ret_value: __ptr [u64; 5]) -> (), !52 {
         entry(mut __ret_value: __ptr [u64; 5]):
         mem_clear_val __ret_value, !53
-        v1932v1 = const unit ()
-        ret () v1932v1
+        v1918v1 = const unit ()
+        ret () v1918v1
     }
 
     fn array_repeat_zero_small_u256_5(mut __ret_value: __ptr [u256; 5]) -> (), !56 {
         entry(mut __ret_value: __ptr [u256; 5]):
         mem_clear_val __ret_value, !57
-        v1945v1 = const unit ()
-        ret () v1945v1
+        v1931v1 = const unit ()
+        ret () v1931v1
     }
 
     fn array_repeat_zero_small_b256_6(mut __ret_value: __ptr [b256; 5]) -> (), !60 {
         entry(mut __ret_value: __ptr [b256; 5]):
         mem_clear_val __ret_value, !61
-        v1952v1 = const unit ()
-        ret () v1952v1
+        v1938v1 = const unit ()
+        ret () v1938v1
     }
 
     fn array_repeat_zero_small_bool_7(mut __ret_value: __ptr [bool; 5]) -> (), !64 {
         entry(mut __ret_value: __ptr [bool; 5]):
         mem_clear_val __ret_value, !65
-        v1959v1 = const unit ()
-        ret () v1959v1
+        v1945v1 = const unit ()
+        ret () v1945v1
     }
 
     fn array_repeat_zero_big_u8_8(mut __ret_value: __ptr [u8; 25]) -> (), !68 {
         entry(mut __ret_value: __ptr [u8; 25]):
         mem_clear_val __ret_value, !69
-        v1966v1 = const unit ()
-        ret () v1966v1
+        v1952v1 = const unit ()
+        ret () v1952v1
     }
 
     fn array_repeat_zero_big_u32_10(mut __ret_value: __ptr [u64; 25]) -> (), !72 {
         entry(mut __ret_value: __ptr [u64; 25]):
         mem_clear_val __ret_value, !73
-        v1973v1 = const unit ()
-        ret () v1973v1
+        v1959v1 = const unit ()
+        ret () v1959v1
     }
 
     fn array_repeat_zero_big_u256_12(mut __ret_value: __ptr [u256; 25]) -> (), !76 {
         entry(mut __ret_value: __ptr [u256; 25]):
         mem_clear_val __ret_value, !77
-        v1986v1 = const unit ()
-        ret () v1986v1
+        v1972v1 = const unit ()
+        ret () v1972v1
     }
 
     fn array_repeat_zero_big_b256_13(mut __ret_value: __ptr [b256; 25]) -> (), !80 {
         entry(mut __ret_value: __ptr [b256; 25]):
         mem_clear_val __ret_value, !81
-        v1993v1 = const unit ()
-        ret () v1993v1
+        v1979v1 = const unit ()
+        ret () v1979v1
     }
 
     fn array_repeat_zero_big_bool_14(mut __ret_value: __ptr [bool; 25]) -> (), !84 {
         entry(mut __ret_value: __ptr [bool; 25]):
         mem_clear_val __ret_value, !85
-        v2000v1 = const unit ()
-        ret () v2000v1
+        v1986v1 = const unit ()
+        ret () v1986v1
     }
 
     fn small_array_repeat_15(mut __ret_value: __ptr [bool; 5]) -> (), !88 {
@@ -199,8 +198,8 @@ script {
         v843v1 = const u64 4
         v844v1 = get_elem_ptr __ret_value, __ptr bool, v843v1, !89
         store v117v1 to v844v1, !89
-        v2007v1 = const unit ()
-        ret () v2007v1
+        v1993v1 = const unit ()
+        ret () v1993v1
     }
 
     fn big_array_repeat_16(mut __ret_value: __ptr [bool; 25]) -> (), !92 {
@@ -219,15 +218,15 @@ script {
         cbr v854v1, array_init_loop(v852v1), array_init_loop_exit()
 
         array_init_loop_exit():
-        v2014v1 = const unit ()
-        ret () v2014v1
+        v2000v1 = const unit ()
+        ret () v2000v1
     }
 
     fn u8_array_bigger_than_18_bits_17(mut __ret_value: __ptr [u8; 262145]) -> (), !96 {
         entry(mut __ret_value: __ptr [u8; 262145]):
         mem_clear_val __ret_value, !97
-        v2021v1 = const unit ()
-        ret () v2021v1
+        v2007v1 = const unit ()
+        ret () v2007v1
     }
 
     fn arrays_with_const_length_18() -> (), !100 {
@@ -245,45 +244,45 @@ script {
 
         entry(mut __ret_value: __ptr [u8; 1]):
         v244v1 = get_local __ptr [u8; 1], __array_init_0, !104
-        v874v1 = const u64 0
-        v875v1 = get_elem_ptr v244v1, __ptr u8, v874v1, !104
+        v864v1 = const u64 0
+        v865v1 = get_elem_ptr v244v1, __ptr u8, v864v1, !104
         v245v1 = const u8 255, !105
-        store v245v1 to v875v1, !104
-        v2037v1 = get_local __ptr slice, __ret_val
-        v2038v1 = call to_slice_20(v244v1, v2037v1)
+        store v245v1 to v865v1, !104
+        v2023v1 = get_local __ptr slice, __ret_val
+        v2024v1 = call to_slice_20(v244v1, v2023v1)
         v249v1 = get_local __ptr slice, s, !106
-        mem_copy_val v249v1, v2037v1
-        v1895v1 = get_local __ptr slice, slice_0, !115
-        mem_copy_val v1895v1, v249v1
-        v2040v1 = asm(ptr: v1895v1) -> __ptr { ptr, u64 } ptr {
+        mem_copy_val v249v1, v2023v1
+        v1881v1 = get_local __ptr slice, slice_0, !115
+        mem_copy_val v1881v1, v249v1
+        v2026v1 = asm(ptr: v1881v1) -> __ptr { ptr, u64 } ptr {
         }
+        v2062v1 = const u64 0
+        v2063v1 = get_elem_ptr v2026v1, __ptr ptr, v2062v1
+        v2064v1 = load v2063v1
+        v2065v1 = const u64 1
+        v2066v1 = get_elem_ptr v2026v1, __ptr u64, v2065v1
+        v2067v1 = load v2066v1
+        v1885v1 = get_local __ptr { ptr, u64 }, __anon_00, !116
         v2076v1 = const u64 0
-        v2077v1 = get_elem_ptr v2040v1, __ptr ptr, v2076v1
-        v2078v1 = load v2077v1
+        v2077v1 = get_elem_ptr v1885v1, __ptr ptr, v2076v1
+        store v2064v1 to v2077v1
         v2079v1 = const u64 1
-        v2080v1 = get_elem_ptr v2040v1, __ptr u64, v2079v1
-        v2081v1 = load v2080v1
-        v1899v1 = get_local __ptr { ptr, u64 }, __anon_00, !116
-        v2090v1 = const u64 0
-        v2091v1 = get_elem_ptr v1899v1, __ptr ptr, v2090v1
-        store v2078v1 to v2091v1
-        v2093v1 = const u64 1
-        v2094v1 = get_elem_ptr v1899v1, __ptr u64, v2093v1
-        store v2081v1 to v2094v1
-        v1902v1 = load v2091v1, !116
+        v2080v1 = get_elem_ptr v1885v1, __ptr u64, v2079v1
+        store v2067v1 to v2080v1
+        v1888v1 = load v2077v1, !116
         v263v1 = const u64 1
-        v1628v1 = asm(size: v263v1, src: v1902v1) -> __ptr [u8; 1] hp, !118 {
+        v1614v1 = asm(size: v263v1, src: v1888v1) -> __ptr [u8; 1] hp, !118 {
             aloc   size, !119
             mcp    hp src size, !120
         }
-        v2096v1 = const u64 0
-        v2097v1 = get_elem_ptr v1628v1, __ptr u8, v2096v1
-        v2098v1 = load v2097v1
-        v2103v1 = const u64 0
-        v2104v1 = get_elem_ptr __ret_value, __ptr u8, v2103v1
-        store v2098v1 to v2104v1
-        v2028v1 = const unit ()
-        ret () v2028v1
+        v2082v1 = const u64 0
+        v2083v1 = get_elem_ptr v1614v1, __ptr u8, v2082v1
+        v2084v1 = load v2083v1
+        v2089v1 = const u64 0
+        v2090v1 = get_elem_ptr __ret_value, __ptr u8, v2089v1
+        store v2084v1 to v2090v1
+        v2014v1 = const unit ()
+        ret () v2014v1
     }
 
     fn to_slice_20(mut array: __ptr [u8; 1], mut __ret_value: __ptr slice) -> (), !123 {
@@ -295,21 +294,21 @@ script {
         v197v1 = get_local __ptr [u8; 1], array_
         mem_copy_val v197v1, array
         v239v1 = cast_ptr v197v1 to ptr, !124
-        v934v1 = get_local __ptr { ptr, u64 }, parts_, !129
-        v2112v1 = const u64 0
-        v2113v1 = get_elem_ptr v934v1, __ptr ptr, v2112v1
-        store v239v1 to v2113v1
-        v2115v1 = const u64 1
-        v2116v1 = get_elem_ptr v934v1, __ptr u64, v2115v1
-        v927v1 = const u64 1, !132
-        store v927v1 to v2116v1
-        v2042v1 = asm(ptr: v934v1) -> __ptr slice ptr {
+        v922v1 = get_local __ptr { ptr, u64 }, parts_, !129
+        v2098v1 = const u64 0
+        v2099v1 = get_elem_ptr v922v1, __ptr ptr, v2098v1
+        store v239v1 to v2099v1
+        v2101v1 = const u64 1
+        v2102v1 = get_elem_ptr v922v1, __ptr u64, v2101v1
+        v915v1 = const u64 1, !132
+        store v915v1 to v2102v1
+        v2028v1 = asm(ptr: v922v1) -> __ptr slice ptr {
         }
-        v2071v1 = get_local __ptr slice, __aggr_memcpy_0
-        mem_copy_val v2071v1, v2042v1
-        mem_copy_val __ret_value, v2071v1
-        v2035v1 = const unit ()
-        ret () v2035v1
+        v2057v1 = get_local __ptr slice, __aggr_memcpy_0
+        mem_copy_val v2057v1, v2028v1
+        mem_copy_val __ret_value, v2057v1
+        v2021v1 = const unit ()
+        ret () v2021v1
     }
 
     pub fn log_47(mut value !134: u8) -> (), !137 {
@@ -320,19 +319,19 @@ script {
         entry(mut value: u8):
         v632v1 = get_local __ptr u8, value_
         store value to v632v1
-        v1821v1 = get_local __ptr { __ptr u8, u64 }, __anon_0, !140
-        v889v1 = const u64 0
-        v1824v1 = get_elem_ptr v1821v1, __ptr __ptr u8, v889v1, !141
-        store v632v1 to v1824v1, !142
-        v892v1 = const u64 1
-        v1826v1 = get_elem_ptr v1821v1, __ptr u64, v892v1, !143
+        v1807v1 = get_local __ptr { __ptr u8, u64 }, __anon_0, !140
+        v877v1 = const u64 0
+        v1810v1 = get_elem_ptr v1807v1, __ptr __ptr u8, v877v1, !141
+        store v632v1 to v1810v1, !142
+        v880v1 = const u64 1
+        v1812v1 = get_elem_ptr v1807v1, __ptr u64, v880v1, !143
         v642v1 = const u64 1
-        store v642v1 to v1826v1, !144
-        v1831v1 = cast_ptr v1821v1 to __ptr slice, !138
-        v2044v1 = get_local __ptr slice, __log_arg
-        mem_copy_val v2044v1, v1831v1
+        store v642v1 to v1812v1, !144
+        v1817v1 = cast_ptr v1807v1 to __ptr slice, !138
+        v2030v1 = get_local __ptr slice, __log_arg
+        mem_copy_val v2030v1, v1817v1
         v775v1 = const u64 14454674236531057292
-        log __ptr slice v2044v1, v775v1
+        log __ptr slice v2030v1, v775v1
         v779v1 = const unit ()
         ret () v779v1
     }

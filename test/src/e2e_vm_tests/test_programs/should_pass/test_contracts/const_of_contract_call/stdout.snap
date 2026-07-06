@@ -7,7 +7,7 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-vec)
    Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
-    Finished release [optimized + fuel] target(s) [21.68 KB] in ???
+    Finished release [optimized + fuel] target(s) [21.712 KB] in ???
      Running 33 tests, filtered 0 tests
 
 tested -- const_of_contract_call
@@ -25,24 +25,24 @@ tested -- const_of_contract_call
       test cost_of_in_str_16 ... ok (???, 2070 gas)
       test cost_of_in_str_32 ... ok (???, 2080 gas)
       test cost_of_in_array_0 ... ok (???, 1567 gas)
-      test cost_of_in_array_1 ... ok (???, 1619 gas)
+      test cost_of_in_array_1 ... ok (???, 1622 gas)
       test cost_of_in_array_8 ... ok (???, 2127 gas)
       test cost_of_in_array_16 ... ok (???, 1659 gas)
       test cost_of_in_array_32 ... ok (???, 1708 gas)
       test cost_of_in_array_64 ... ok (???, 1801 gas)
       test cost_of_in_tuple_0 ... ok (???, 1580 gas)
-      test cost_of_in_tuple_1 ... ok (???, 1634 gas)
+      test cost_of_in_tuple_1 ... ok (???, 1637 gas)
       test cost_of_in_tuple_2 ... ok (???, 1652 gas)
       test cost_of_in_tuple_3 ... ok (???, 1660 gas)
       test cost_of_in_tuple_4 ... ok (???, 1668 gas)
-      test in_struct_u64 ... ok (???, 1622 gas)
+      test in_struct_u64 ... ok (???, 1625 gas)
       test in_struct_u64_u64 ... ok (???, 1647 gas)
       test in_struct_u64_u64_u64 ... ok (???, 1663 gas)
       test in_enum_u64 ... ok (???, 1699 gas)
       test in_enum_u64_u64 ... ok (???, 1701 gas)
       test in_enum_u64_u64_u64 ... ok (???, 1714 gas)
-      test in_vec_trivial ... ok (???, 2822 gas)
-      test in_vec_not_trivial ... ok (???, 5979 gas)
+      test in_vec_trivial ... ok (???, 2823 gas)
+      test in_vec_not_trivial ... ok (???, 5980 gas)
       test order_args_without_trivial_enum ... ok (???, 3165 gas)
       test order_args_with_trivial_enum ... ok (???, 3346 gas)
 
@@ -79,12 +79,12 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-vec)
    Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
-    Finished release [optimized + fuel] target(s) [648 B] in ???
+    Finished release [optimized + fuel] target(s) [656 B] in ???
      Running 1 test, filtered 0 tests
 
 tested -- const_of_contract_call
 
-      test isolated_cost_of_in_array_1 ... ok (???, 1440 gas)
+      test isolated_cost_of_in_array_1 ... ok (???, 1443 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
@@ -419,12 +419,12 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-vec)
    Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
-    Finished release [optimized + fuel] target(s) [648 B] in ???
+    Finished release [optimized + fuel] target(s) [656 B] in ???
      Running 1 test, filtered 0 tests
 
 tested -- const_of_contract_call
 
-      test in_struct_u64 ... ok (???, 1440 gas)
+      test in_struct_u64 ... ok (???, 1443 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
@@ -499,12 +499,12 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-vec)
    Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
-    Finished release [optimized + fuel] target(s) [648 B] in ???
+    Finished release [optimized + fuel] target(s) [656 B] in ???
      Running 1 test, filtered 0 tests
 
 tested -- const_of_contract_call
 
-      test isolated_cost_of_in_tuple_1 ... ok (???, 1440 gas)
+      test isolated_cost_of_in_tuple_1 ... ok (???, 1443 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
@@ -679,12 +679,12 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-vec)
    Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
-    Finished release [optimized + fuel] target(s) [1.88 KB] in ???
+    Finished release [optimized + fuel] target(s) [1.888 KB] in ???
      Running 1 test, filtered 0 tests
 
 tested -- const_of_contract_call
 
-      test in_vec_not_trivial ... ok (???, 4908 gas)
+      test in_vec_not_trivial ... ok (???, 4909 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
@@ -704,7 +704,7 @@ output:
 
 tested -- const_of_contract_call
 
-      test in_vec_trivial ... ok (???, 2498 gas)
+      test in_vec_trivial ... ok (???, 2499 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
