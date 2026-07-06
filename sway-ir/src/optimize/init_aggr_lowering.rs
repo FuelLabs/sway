@@ -107,23 +107,29 @@ fn lower_mostly_zeroed_aggregate<'a, 'b>(
     root_aggr_ptr: Value,
     initializers: &[InitAggrInitializer],
 ) -> bool {
-    // This function computes, recursively, the total size of an aggregate type,
-    // and the size of its zero-initialized fields.
+    /// Computes, recursively, the total size of a type `ty`,
+    /// and the size of its zero-initialized fields.
+    /// The top-level call will always pass an aggregate type `ty`
+    /// that can be initialized with `init_aggr` (array or struct).
+    /// The recursion ends either when we reach leaf non-aggregate types
+    /// or aggregates that are initialized with a [Value] which is
+    /// not an `init_aggr`, or enums which are also not initialized with
+    /// `init_aggr`.
     fn compute_relative_sizes(
         context: &Context,
         ty: Type,
-        inits: &[InitAggrInitializer],
+        initializers: &[InitAggrInitializer],
     ) -> Option<(u64, u64)> {
-        match ty.get_content(context).clone() {
+        match ty.get_content(context) {
             TypeContent::Array(elem_type, length) => {
                 assert_eq!(
-                    length as usize,
-                    inits.len(),
+                    *length as usize,
+                    initializers.len(),
                     "`init_aggr` initializers must match the length of the array type"
                 );
 
                 let (mut total_size, mut zero_size) = (0u64, 0u64);
-                for init in inits {
+                for init in initializers.into_iter() {
                     let init_values = match init {
                         InitAggrInitializer::Value(_) => {
                             if elem_type.is_aggregate(context) {
@@ -142,7 +148,7 @@ fn lower_mostly_zeroed_aggregate<'a, 'b>(
                         }
                     };
                     let (elem_total_size, elem_zero_size) =
-                        compute_relative_sizes(context, elem_type, &init_values)?;
+                        compute_relative_sizes(context, *elem_type, &init_values)?;
                     total_size += elem_total_size;
                     zero_size += elem_zero_size;
                 }
@@ -151,12 +157,12 @@ fn lower_mostly_zeroed_aggregate<'a, 'b>(
             TypeContent::Struct(field_types) => {
                 assert_eq!(
                     field_types.len(),
-                    inits.len(),
+                    initializers.len(),
                     "`init_aggr` initializers must match the number of fields in the struct type"
                 );
 
                 let (mut total_size, mut zero_size) = (0u64, 0u64);
-                for (init, field_type) in inits.iter().zip(field_types) {
+                for (init, field_type) in initializers.into_iter().zip(field_types) {
                     let init_values = match init {
                         InitAggrInitializer::Value(_) => {
                             if field_type.is_aggregate(context) {
@@ -175,7 +181,7 @@ fn lower_mostly_zeroed_aggregate<'a, 'b>(
                         }
                     };
                     let (field_total_size, field_zero_size) =
-                        compute_relative_sizes(context, field_type, &init_values)?;
+                        compute_relative_sizes(context, *field_type, &init_values)?;
                     total_size += field_total_size;
                     zero_size += field_zero_size;
                 }
@@ -184,7 +190,7 @@ fn lower_mostly_zeroed_aggregate<'a, 'b>(
             _ => {
                 let size = ty.size(context).in_bytes();
                 let is_zero_init = matches!(
-                    inits.first(),
+                    initializers.first(),
                     Some(InitAggrInitializer::Value(value))
                         if value.get_constant(context).is_some_and(|c| c.is_runtime_zeroed(context))
                 );
@@ -199,6 +205,7 @@ fn lower_mostly_zeroed_aggregate<'a, 'b>(
         // Could not compute sizes.
         return false;
     };
+
     let zero_ratio = zero_size as f64 / total_size as f64;
     if zero_ratio < 0.30 {
         // Not mostly zeroed.
