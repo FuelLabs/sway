@@ -220,7 +220,7 @@ fn lower_mostly_zeroed_aggregate<'a, 'b>(
         init_aggr: Value,
         init_aggrs: &mut FxHashMap<Value, usize>,
     ) {
-        // All init_aggrs are initially marked with index 0 (unknown).
+        // All `init_aggr`s are initially marked with index 0 (unknown).
         init_aggrs.insert(init_aggr, 0);
         let Some(Instruction {
             parent: _,
@@ -239,8 +239,13 @@ fn lower_mostly_zeroed_aggregate<'a, 'b>(
             }
         }
     }
+
     let mut init_aggrs = FxHashMap::<Value, usize>::default();
     collect_init_aggrs(context, init_aggr, &mut init_aggrs);
+
+    // 2. Get the actual indices of `init_aggr`s increased by 1 so that 0 remains as "unknown".
+    //    "Unknown" we can have only if a particular nested `init_aggr` is not in the same
+    //    block as root `init_aggregate` which can never be the case.
     let parent_block = init_aggr
         .get_parent_block(context)
         .expect("`init_aggr` is an instruction and must have a parent block");
@@ -249,21 +254,25 @@ fn lower_mostly_zeroed_aggregate<'a, 'b>(
             init_aggrs.insert(inst, inst_idx + 1);
         }
     }
-    // 2. Find the earliest instruction index among those `init_aggr`s.
-    let earliest_aggr_init_inst = init_aggrs
+
+    // 3. Find the earliest instruction index among those `init_aggr`s.
+    let (earliest_aggr_init_inst, earliest_aggr_init_inst_idx)  = init_aggrs
         .iter()
         .min_by(|(_inst1, index1), (_inst2, index2)| index1.cmp(index2))
-        .map(|(inst, _index)| *inst)
-        .expect("There should be at least one init_aggr");
-    // 3. We start with index 1. If a `init_aggr` is at index 0, it means that
-    //    it is in a different block than the others, and we cannot lower it this way.
-    let earliest_aggr_init_inst_idx = init_aggrs
-        .get(&earliest_aggr_init_inst)
-        .expect("`earliest_aggr_init_inst` must be in `init_aggrs`");
-    if *earliest_aggr_init_inst_idx == 0 {
-        // Cannot lower.
-        return false;
-    }
+        .map(|(inst, index)| (*inst, *index))
+        .expect("there must be at least one `init_aggr` because we included the root `init_aggr`");
+
+    // We do not consider cases like, e.g., this one, as nested `init_argg`s:
+    //   S {
+    //      x: if condition {
+    //          (0, 1)
+    //      } else {
+    //          (1, 0)
+    //      }
+    //   }
+    // All nested `init_aggr`s of a particular root will always be in the same
+    // block as the root.
+    assert_ne!(earliest_aggr_init_inst_idx, 0, "all nested `init_aggr`s must be in the same block as their root");
 
     // Perform the lowering:
     // 1. `mem_clear_val` for the entire aggregate.
@@ -286,10 +295,13 @@ fn lower_mostly_zeroed_aggregate<'a, 'b>(
     true
 }
 
-/// This is the default lowering, run if there are no any optimizations that we can perform.
+/// If `skip_zeros` is false, this is the default lowering, run if there are no any optimizations that we can perform.
 /// It will flatten the aggregate structure and `store` initial values into individual fields.
 /// Array fields might be an exception, depending on the size and the way the array is declared,
 /// they might be lowered to `memcpy`s or even loops.
+///
+/// If `skip_zeros` is true, we are performing a lowering of only non-zero fields, knowing that the whole aggregate
+/// is already initialized with `mem_clear_val`.
 ///
 /// This function is called recursively for nested `init_aggr`s, starting from a `root_init_aggr`
 /// whose aggregate pointer is `root_aggr_ptr`.
@@ -298,6 +310,8 @@ fn lower_mostly_zeroed_aggregate<'a, 'b>(
 /// - `aggr_type`: The type of the aggregate initialized by the current `init_aggr`.
 /// - `root_aggr_ptr`: The pointer to the root aggregate that is being initialized.
 /// - `gep_indices`: The GEP indices to reach the position in the root aggregate where `init_aggr` initializes.
+/// - `initializers`: The initializers to initialize the current `init_aggr`.
+/// - `skip_zeros`: Whether to skip initializing zero values, because the root aggregate has already been initialized with `mem_clear_val`.
 ///
 /// Returns `true` if the lowering was performed, `false` otherwise.
 fn lower_to_stores<'a, 'b>(
