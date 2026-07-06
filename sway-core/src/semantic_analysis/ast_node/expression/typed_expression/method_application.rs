@@ -10,6 +10,7 @@ use crate::{
     },
     semantic_analysis::*,
     type_system::*,
+    HasChanges,
 };
 use ast_elements::{
     type_argument::GenericTypeArgument,
@@ -31,8 +32,8 @@ use sway_types::{Ident, Span};
 pub(crate) fn type_check_method_application(
     handler: &Handler,
     mut ctx: TypeCheckContext,
-    mut method_name_binding: TypeBinding<MethodName>,
-    contract_call_params: Vec<StructExpressionField>,
+    method_name_binding: &TypeBinding<MethodName>,
+    contract_call_params: &[StructExpressionField],
     arguments: &[Expression],
     span: Span,
 ) -> Result<ty::TyExpression, ErrorEmitted> {
@@ -95,12 +96,8 @@ pub(crate) fn type_check_method_application(
             None => type_engine.new_unknown(),
         })
         .collect::<Vec<_>>();
-    let method_result = resolve_method_name(
-        handler,
-        ctx.by_ref(),
-        &method_name_binding,
-        &arguments_types,
-    );
+    let method_result =
+        resolve_method_name(handler, ctx.by_ref(), method_name_binding, &arguments_types);
 
     // In case resolve_method_name fails throw argument errors.
     let (original_decl_ref, method_target) = if let Err(e) = method_result {
@@ -118,13 +115,15 @@ pub(crate) fn type_check_method_application(
         engines,
         args_opt_buf
             .iter()
-            .map(|x| x.0.as_ref().unwrap().return_type),
+            .map(|x| x.0.as_ref().map(|x| x.return_type)),
         original_decl
             .parameters
             .iter()
             .map(|x| x.type_argument.type_id),
         original_decl.type_parameters.iter(),
     );
+
+    let mut method_name_binding = method_name_binding.clone();
 
     let mut fn_ref = monomorphize_method(
         handler,
@@ -134,7 +133,10 @@ pub(crate) fn type_check_method_application(
         const_generics,
     )?;
 
-    let mut method = (*decl_engine.get_function(&fn_ref)).clone();
+    // Remove mutability.
+    let method_name_binding = method_name_binding;
+
+    let method = &*decl_engine.get_function(&fn_ref);
 
     // unify method return type with current ctx.type_annotation().
     type_engine.unify_with_generic(
@@ -258,8 +260,7 @@ pub(crate) fn type_check_method_application(
                 }
                 _ => {
                     handler.emit_err(CompileError::UnrecognizedContractParam {
-                        param_name: param.name.to_string(),
-                        span: param.name.span().clone(),
+                        param_name: (&param.name).into(),
                     });
                 }
             };
@@ -444,7 +445,7 @@ pub(crate) fn type_check_method_application(
         };
         Some(ty::ContractCallParams {
             func_selector,
-            contract_address: contract_address.clone(),
+            contract_address,
             contract_caller: Box::new(contract_caller.unwrap()),
         })
     } else {
@@ -456,7 +457,7 @@ pub(crate) fn type_check_method_application(
     check_function_arguments_arity(
         handler,
         args_buf.len(),
-        &method,
+        method,
         &call_path,
         is_method_call_syntax_used,
     )?;
@@ -465,13 +466,12 @@ pub(crate) fn type_check_method_application(
     let arguments = method
         .parameters
         .iter()
-        .map(|m| m.name.clone())
-        .zip(args_buf)
-        .collect::<Vec<_>>();
+        .map(|m| &m.name)
+        .zip(args_buf.iter());
 
     // unify the types of the arguments with the types of the parameters from the function declaration
     let arguments =
-        unify_arguments_and_parameters(handler, ctx.by_ref(), &arguments, &method.parameters)?;
+        unify_arguments_and_parameters(handler, ctx.by_ref(), arguments, &method.parameters)?;
 
     if ctx.experimental.new_encoding && method.is_contract_call {
         fn call_contract_call(
@@ -642,14 +642,15 @@ pub(crate) fn type_check_method_application(
                 }
                 let implementing_type_parameters = implementing_for.get_type_parameters(engines);
                 if let Some(implementing_type_parameters) = implementing_type_parameters {
-                    for p in method.type_parameters.clone() {
-                        let Some(p) = p.as_type_parameter() else {
+                    for type_param in method.type_parameters.iter() {
+                        let Some(type_param) = type_param.as_type_parameter() else {
                             continue;
                         };
 
-                        if p.is_from_parent {
-                            if let Some(impl_type_param) =
-                                names_index.get(&p.name).and_then(|type_param_index| {
+                        if type_param.is_from_parent {
+                            if let Some(impl_type_param) = names_index
+                                .get(&type_param.name)
+                                .and_then(|type_param_index| {
                                     implementing_type_parameters.get(*type_param_index)
                                 })
                             {
@@ -660,7 +661,7 @@ pub(crate) fn type_check_method_application(
                                     type_engine.unify_with_generic(
                                         handler,
                                         engines,
-                                        p.type_id,
+                                        type_param.type_id,
                                         impl_type_param.type_id,
                                         &call_path.span(),
                                         "Function type parameter does not match up with implementing type type parameter.",
@@ -679,7 +680,7 @@ pub(crate) fn type_check_method_application(
     let mut method_return_type_id = method.return_type.type_id;
 
     let method_ident: IdentUnique = method.name.clone().into();
-    let method_sig = TyFunctionSig::from_fn_decl(&method);
+    let method_sig = TyFunctionSig::from_fn_decl(method);
 
     if let Some(cached_fn_ref) =
         ctx.engines()
@@ -688,6 +689,9 @@ pub(crate) fn type_check_method_application(
     {
         fn_ref = cached_fn_ref;
     } else {
+        let mut method = method.clone();
+
+        let mut has_changes = HasChanges::No;
         if let Some(TyDecl::ImplSelfOrTrait(t)) = &method.implementing_type {
             let t = &engines.de().get(&t.decl_id).implementing_for;
             if let TypeInfo::Custom {
@@ -745,14 +749,14 @@ pub(crate) fn type_check_method_application(
                     subst_type_arguments.into_iter(),
                 );
 
-                method.subst(&SubstTypesContext::new(
+                has_changes = method.subst(&SubstTypesContext::new(
                     handler,
                     engines,
                     &type_subst,
                     !ctx.code_block_first_pass(),
                 ));
             }
-        }
+        };
 
         if !ctx.code_block_first_pass() {
             // Handle the trait constraints. This includes checking to see if the trait
@@ -768,19 +772,24 @@ pub(crate) fn type_check_method_application(
             .ok();
 
             if let Some(decl_mapping) = decl_mapping {
-                method.replace_decls(&decl_mapping, handler, &mut ctx)?;
+                has_changes |= method.replace_decls(&decl_mapping, handler, &mut ctx)?;
             }
         }
 
         let method_sig = TyFunctionSig::from_fn_decl(&method);
 
         method_return_type_id = method.return_type.type_id;
-        decl_engine.replace(*fn_ref.id(), method.clone());
+        let method_is_type_check_finalized = method.is_type_check_finalized;
+        let method_is_trait_method_dummy = method.is_trait_method_dummy;
+
+        if has_changes.has_changes() {
+            decl_engine.replace(*fn_ref.id(), method);
+        }
 
         if !ctx.code_block_first_pass()
             && method_sig.is_concrete(engines)
-            && method.is_type_check_finalized
-            && !method.is_trait_method_dummy
+            && method_is_type_check_finalized
+            && !method_is_trait_method_dummy
         {
             ctx.engines()
                 .qe()
@@ -810,8 +819,8 @@ pub(crate) fn type_check_method_application(
 
 pub(crate) fn prepare_const_generics_materialization<'a>(
     engines: &crate::Engines,
-    mut args_types: impl Iterator<Item = TypeId>,
-    mut param_types: impl Iterator<Item = TypeId>,
+    args_types: impl Iterator<Item = Option<TypeId>>,
+    param_types: impl Iterator<Item = TypeId>,
     mut type_parameters: impl Iterator<Item = &'a TypeParameter>,
 ) -> BTreeMap<String, TyExpression> {
     let mut const_generics = BTreeMap::new();
@@ -820,42 +829,48 @@ pub(crate) fn prepare_const_generics_materialization<'a>(
         type_parameters.any(|x| matches!(x, TypeParameter::Const(_)));
 
     if has_const_generic_parameters {
-        let a = engines.te().get(param_types.next().unwrap());
-        let b = engines.te().get(args_types.next().unwrap());
-        match (&*a, &*b) {
-            (
-                TypeInfo::Array(
-                    _,
-                    Length(ConstGenericExpr::AmbiguousVariableExpression { ident, .. }),
-                ),
-                TypeInfo::Array(_, Length(ConstGenericExpr::Literal { val, .. })),
-            ) => {
-                const_generics.insert(
-                    ident.as_str().to_string(),
-                    TyExpression {
-                        expression: ty::TyExpressionVariant::Literal(Literal::U64(*val as u64)),
-                        return_type: engines.te().id_of_u64(),
-                        span: Span::dummy(),
-                    },
-                );
+        for (a, b) in param_types.zip(args_types) {
+            let Some(b) = b else {
+                continue;
+            };
+
+            let a = engines.te().get(a);
+            let b = engines.te().get(b);
+            match (a.as_ref(), b.as_ref()) {
+                (
+                    TypeInfo::Array(
+                        _,
+                        Length(ConstGenericExpr::AmbiguousVariableExpression { ident, .. }),
+                    ),
+                    TypeInfo::Array(_, Length(ConstGenericExpr::Literal { val, .. })),
+                ) => {
+                    const_generics.insert(
+                        ident.as_str().to_string(),
+                        TyExpression {
+                            expression: ty::TyExpressionVariant::Literal(Literal::U64(*val as u64)),
+                            return_type: engines.te().id_of_u64(),
+                            span: Span::dummy(),
+                        },
+                    );
+                }
+                (
+                    TypeInfo::StringArray(Length(ConstGenericExpr::AmbiguousVariableExpression {
+                        ident,
+                        ..
+                    })),
+                    TypeInfo::StringArray(Length(ConstGenericExpr::Literal { val, .. })),
+                ) => {
+                    const_generics.insert(
+                        ident.as_str().to_string(),
+                        TyExpression {
+                            expression: ty::TyExpressionVariant::Literal(Literal::U64(*val as u64)),
+                            return_type: engines.te().id_of_u64(),
+                            span: Span::dummy(),
+                        },
+                    );
+                }
+                _ => {}
             }
-            (
-                TypeInfo::StringArray(Length(ConstGenericExpr::AmbiguousVariableExpression {
-                    ident,
-                    ..
-                })),
-                TypeInfo::StringArray(Length(ConstGenericExpr::Literal { val, .. })),
-            ) => {
-                const_generics.insert(
-                    ident.as_str().to_string(),
-                    TyExpression {
-                        expression: ty::TyExpressionVariant::Literal(Literal::U64(*val as u64)),
-                        return_type: engines.te().id_of_u64(),
-                        span: Span::dummy(),
-                    },
-                );
-            }
-            _ => {}
         }
     }
     const_generics
@@ -863,10 +878,10 @@ pub(crate) fn prepare_const_generics_materialization<'a>(
 
 /// Unifies the types of the arguments with the types of the parameters. Returns
 /// a list of the arguments with the names of the corresponding parameters.
-fn unify_arguments_and_parameters(
+fn unify_arguments_and_parameters<'a>(
     handler: &Handler,
     ctx: TypeCheckContext,
-    arguments: &[(BaseIdent, ty::TyExpression)],
+    arguments: impl Iterator<Item = (&'a BaseIdent, &'a ty::TyExpression)>,
     parameters: &[ty::TyFunctionParameter],
 ) -> Result<Vec<(Ident, ty::TyExpression)>, ErrorEmitted> {
     let type_engine = ctx.engines.te();
@@ -874,7 +889,7 @@ fn unify_arguments_and_parameters(
     let mut typed_arguments_and_names = vec![];
 
     handler.scope(|handler| {
-        for ((_, arg), param) in arguments.iter().zip(parameters.iter()) {
+        for ((_, arg), param) in arguments.zip(parameters.iter()) {
             // unify the type of the argument with the type of the param
             let unify_res = handler.scope(|handler| {
                 type_engine.unify_with_generic(
@@ -1019,7 +1034,7 @@ pub(crate) fn monomorphize_method(
     let mut func_decl = (*decl_engine.get_function(&decl_ref)).clone();
 
     // monomorphize the function declaration
-    ctx.monomorphize(
+    let mut has_changes = ctx.monomorphize(
         handler,
         &mut func_decl,
         type_arguments,
@@ -1029,17 +1044,26 @@ pub(crate) fn monomorphize_method(
     )?;
 
     if let Some(implementing_type) = &func_decl.implementing_type {
-        func_decl
+        has_changes |= func_decl
             .body
             .update_constant_expression(engines, implementing_type);
     }
 
-    let decl_ref = decl_engine
-        .insert(
-            func_decl,
-            decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
-        )
-        .with_parent(decl_engine, (*decl_ref.id()).into());
+    // TODO: This change of not re-inserting already inserted declarations
+    //       breaks the recursion detection. This will be addressed separately.
+    //       For now, we want to benefit from performance optimization coming
+    //       from avoid re-inserts.
+    //       For details see: https://github.com/FuelLabs/sway/issues/7658
+    let decl_ref = if has_changes.has_changes() {
+        decl_engine
+            .insert(
+                func_decl,
+                decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
+            )
+            .with_parent(decl_engine, (*decl_ref.id()).into())
+    } else {
+        decl_ref
+    };
 
     Ok(decl_ref)
 }

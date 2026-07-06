@@ -1,0 +1,6 @@
+cmds = [
+    "forc build --path {root}",
+    "forc test --path {root} --logs",
+    "echo The idea os this test is to verify if TrivialVec is as performant as possible.",
+    "forc build --path {root} --release --ir final --asm final | filter-fn {name} snapshot"
+]

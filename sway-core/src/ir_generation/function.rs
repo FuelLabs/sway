@@ -28,9 +28,13 @@ use crate::{
     types::*,
     PanicOccurrence, PanicOccurrences, PanickingCallOccurrence, PanickingCallOccurrences,
 };
-
 use indexmap::IndexMap;
 use itertools::Itertools;
+use std::convert::TryFrom;
+use std::{
+    collections::HashMap,
+    hash::{DefaultHasher, Hash as _},
+};
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::error::CompileError;
 use sway_ir::{Context, *};
@@ -41,12 +45,6 @@ use sway_types::{
     span::{Span, Spanned},
     u256::U256,
     Named,
-};
-
-use std::convert::TryFrom;
-use std::{
-    collections::HashMap,
-    hash::{DefaultHasher, Hash as _},
 };
 
 /// The result of compiling an expression can be in memory, or in an (SSA) register.
@@ -219,11 +217,8 @@ impl<'a> FnCompiler<'a> {
         panicking_fn_cache: &'a mut PanickingFunctionCache,
         compiled_fn_cache: &'a mut CompiledFunctionCache,
     ) -> Self {
-        let lexical_map = LexicalMap::from_iter(
-            function
-                .args_iter(context)
-                .map(|(name, _value)| name.clone()),
-        );
+        let lexical_map =
+            LexicalMap::from_iter(function.args_iter(context).map(|arg| arg.name.clone()));
         FnCompiler {
             engines,
             module,
@@ -269,25 +264,26 @@ impl<'a> FnCompiler<'a> {
         // Function arguments, like all locals need to be in memory, so that their addresses
         // can be taken. So we create locals for each argument and store the value there.
         let entry = self.function.get_entry_block(context);
-        for (arg_name, arg_value) in self
+        for arg in self
             .function
             .args_iter(context)
             .cloned()
             .collect::<Vec<_>>()
         {
-            let local_name = self.lexical_map.insert(arg_name.as_str().to_owned());
+            let local_name = self.lexical_map.insert(arg.name.as_str().to_owned());
             let local_var = self.function.new_unique_local_var(
                 context,
                 local_name.clone(),
-                arg_value.get_type(context).unwrap(),
+                arg.value.get_type(context).unwrap(),
                 None,
+                // TODO We should consider if this is mutable or not here.
                 false,
             );
-            if self.ref_mut_args.contains(&arg_name) {
+            if self.ref_mut_args.contains(&arg.name) {
                 self.ref_mut_args.insert(local_name);
             }
             let local_val = entry.append(context).get_local(local_var);
-            entry.append(context).store(local_val, arg_value);
+            entry.append(context).store(local_val, arg.value);
         }
         match self.compile_code_block(context, md_mgr, ast_block)?.value {
             // Final value must always be in a register, not in memory.
@@ -689,7 +685,7 @@ impl<'a> FnCompiler<'a> {
                 span_md_idx,
             ),
             ty::TyExpressionVariant::ArrayIndex { prefix, index } => {
-                self.compile_array_index(context, md_mgr, prefix, index, span_md_idx)
+                self.compile_indexing(context, md_mgr, prefix, index, span_md_idx)
             }
             ty::TyExpressionVariant::StructExpression { fields, .. } => {
                 self.compile_struct_expr(context, md_mgr, ast_expr, fields, span_md_idx)
@@ -796,7 +792,7 @@ impl<'a> FnCompiler<'a> {
                 self.compile_storage_access(
                     context,
                     md_mgr,
-                    access.storage_field_names.clone(),
+                    access.storage_field_path.clone(),
                     access.struct_field_names.clone(),
                     key,
                     &access.fields,
@@ -1171,16 +1167,13 @@ impl<'a> FnCompiler<'a> {
                 ))
             }
             Intrinsic::Gtf => {
-                // The index is just a Value
                 let index = return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, &arguments[0])?
                 )
                 .expect_register();
 
-                // The tx field ID has to be a compile-time constant because it becomes an
-                // immediate
-
-                let tx_field_id_constant = compile_constant_expression_to_constant(
+                // The tx field ID has to be a compile-time constant, because it becomes an immediate.
+                let Ok(tx_field_id_const) = compile_constant_expression_to_constant(
                     engines,
                     context,
                     md_mgr,
@@ -1188,13 +1181,21 @@ impl<'a> FnCompiler<'a> {
                     None,
                     None,
                     &arguments[1],
-                )?;
-                let tx_field_id = match tx_field_id_constant.get_content(context).value {
+                ) else {
+                    return Err(CompileError::IntrinsicArgNotConstant {
+                        intrinsic: kind.to_string(),
+                        arg: "tx_field_id".to_string(),
+                        expected_type: "u64".to_string(),
+                        span: arguments[1].span.clone(),
+                    });
+                };
+
+                let tx_field_id = match tx_field_id_const.get_content(context).value {
                     ConstantValue::Uint(n) => n,
                     _ => {
                         return Err(CompileError::Internal(
-                            "Transaction field ID for gtf intrinsic is not an integer. \
-                            This should have been in caught in type checking",
+                            "Transaction field ID for \"__gtf\" intrinsic is not an integer. \
+                            This should have been caught in type checking.",
                             span,
                         ))
                     }
@@ -1265,7 +1266,7 @@ impl<'a> FnCompiler<'a> {
                     context,
                 ))
             }
-            Intrinsic::StateClear => {
+            Intrinsic::StateClear | Intrinsic::StateClearSlots => {
                 let key_exp = arguments[0].clone();
                 let number_of_slots_exp = arguments[1].clone();
 
@@ -1283,11 +1284,24 @@ impl<'a> FnCompiler<'a> {
                 .expect_register()
                 .add_metadatum(context, span_md_idx);
 
-                let val = self
-                    .current_block
-                    .append(context)
-                    .state_clear(key_value, number_of_slots_value)
-                    .add_metadatum(context, span_md_idx);
+                let val = match kind {
+                    Intrinsic::StateClear => self
+                        .current_block
+                        .append(context)
+                        .state_clear(key_value, number_of_slots_value)
+                        .add_metadatum(context, span_md_idx),
+                    Intrinsic::StateClearSlots => {
+                        self
+                            .current_block
+                            .append(context)
+                            .state_clear_slots(key_value, number_of_slots_value)
+                            .add_metadatum(context, span_md_idx);
+
+                        // Return unit
+                        ConstantContent::get_unit(context).add_metadatum(context, span_md_idx)
+                    },
+                    _ => unreachable!("`kind` is either `StateClear` or `StateClearSlots`, which is handled in the match arm above"),
+                };
 
                 Ok(TerminatorValue::new(
                     CompiledValue::InRegister(val),
@@ -1305,10 +1319,39 @@ impl<'a> FnCompiler<'a> {
                 .expect_memory()
                 .add_metadatum(context, span_md_idx);
 
+                // The offset has to be a compile-time constant, because it becomes an immediate.
+                let Ok(offset_const) = compile_constant_expression_to_constant(
+                    engines,
+                    context,
+                    md_mgr,
+                    self.module,
+                    None,
+                    None,
+                    &arguments[1],
+                ) else {
+                    return Err(CompileError::IntrinsicArgNotConstant {
+                        intrinsic: kind.to_string(),
+                        arg: "offset".to_string(),
+                        expected_type: "u64".to_string(),
+                        span: arguments[1].span.clone(),
+                    });
+                };
+
+                let offset = match offset_const.get_content(context).value {
+                    ConstantValue::Uint(n) => n,
+                    _ => {
+                        return Err(CompileError::Internal(
+                            "Offset for \"__state_load_word\" intrinsic is not an integer. \
+                            This should have been caught in type checking.",
+                            span,
+                        ))
+                    }
+                };
+
                 let val = self
                     .current_block
                     .append(context)
-                    .state_load_word(key_value)
+                    .state_load_word(key_value, offset)
                     .add_metadatum(context, span_md_idx);
 
                 Ok(TerminatorValue::new(
@@ -1319,16 +1362,6 @@ impl<'a> FnCompiler<'a> {
             Intrinsic::StateStoreWord => {
                 let key_exp = &arguments[0];
                 let val_exp = &arguments[1];
-                // Validate that the val_exp is of the right type. We couldn't do it
-                // earlier during type checking as the type arguments may not have been resolved.
-                let val_ty = engines.te().get_unaliased(val_exp.return_type);
-                if !val_ty.is_copy_type() {
-                    return Err(CompileError::IntrinsicUnsupportedArgType {
-                        name: kind.to_string(),
-                        span,
-                        hint: "This argument must be a copy type".to_string(),
-                    });
-                }
 
                 let span_md_idx = md_mgr.span_to_md(context, &span);
 
@@ -1355,23 +1388,32 @@ impl<'a> FnCompiler<'a> {
                     context,
                 ))
             }
+            Intrinsic::StatePreload => {
+                let key_exp = &arguments[0];
+
+                let span_md_idx = md_mgr.span_to_md(context, &span);
+
+                let key_value = return_on_termination_or_extract!(
+                    self.compile_expression_to_memory(context, md_mgr, key_exp)?
+                )
+                .expect_memory()
+                .add_metadatum(context, span_md_idx);
+
+                let val = self
+                    .current_block
+                    .append(context)
+                    .state_preload(key_value)
+                    .add_metadatum(context, span_md_idx);
+
+                Ok(TerminatorValue::new(
+                    CompiledValue::InRegister(val),
+                    context,
+                ))
+            }
             Intrinsic::StateLoadQuad | Intrinsic::StateStoreQuad => {
                 let key_exp = arguments[0].clone();
-                let val_exp = arguments[1].clone();
-                let number_of_slots_exp = arguments[2].clone();
-                // Validate that the val_exp is of the right type. We couldn't do it
-                // earlier during type checking as the type arguments may not have been resolved.
-                let val_ty = engines.te().get_unaliased(val_exp.return_type);
-                if !val_ty.eq(
-                    &TypeInfo::RawUntypedPtr,
-                    &PartialEqWithEnginesContext::new(engines),
-                ) {
-                    return Err(CompileError::IntrinsicUnsupportedArgType {
-                        name: kind.to_string(),
-                        span,
-                        hint: "This argument must be raw_ptr".to_string(),
-                    });
-                }
+                let ptr_exp = arguments[1].clone();
+                let slots_exp = arguments[2].clone();
 
                 let span_md_idx = md_mgr.span_to_md(context, &span);
 
@@ -1381,14 +1423,14 @@ impl<'a> FnCompiler<'a> {
                 .expect_memory()
                 .add_metadatum(context, span_md_idx);
 
-                let val_ptr = return_on_termination_or_extract!(
-                    self.compile_expression_to_register(context, md_mgr, &val_exp)?
+                let ptr_value = return_on_termination_or_extract!(
+                    self.compile_expression_to_register(context, md_mgr, &ptr_exp)?
                 )
                 .expect_register()
                 .add_metadatum(context, span_md_idx);
 
-                let number_of_slots_value = return_on_termination_or_extract!(
-                    self.compile_expression_to_register(context, md_mgr, &number_of_slots_exp)?
+                let slots_value = return_on_termination_or_extract!(
+                    self.compile_expression_to_register(context, md_mgr, &slots_exp)?
                 )
                 .expect_register()
                 .add_metadatum(context, span_md_idx);
@@ -1398,22 +1440,170 @@ impl<'a> FnCompiler<'a> {
                 let val_ptr = self
                     .current_block
                     .append(context)
-                    .cast_ptr(val_ptr, b256_ptr_ty)
+                    .cast_ptr(ptr_value, b256_ptr_ty)
                     .add_metadatum(context, span_md_idx);
 
                 let val = match kind {
                     Intrinsic::StateLoadQuad => self
                         .current_block
                         .append(context)
-                        .state_load_quad_word(val_ptr, key_value, number_of_slots_value)
+                        .state_load_quad_word(val_ptr, key_value, slots_value)
                         .add_metadatum(context, span_md_idx),
                     Intrinsic::StateStoreQuad => self
                         .current_block
                         .append(context)
-                        .state_store_quad_word(val_ptr, key_value, number_of_slots_value)
+                        .state_store_quad_word(val_ptr, key_value, slots_value)
                         .add_metadatum(context, span_md_idx),
                     _ => unreachable!(),
                 };
+
+                Ok(TerminatorValue::new(
+                    CompiledValue::InRegister(val),
+                    context,
+                ))
+            }
+            Intrinsic::StateLoadSlot => {
+                let key_exp = arguments[0].clone();
+                let ptr_exp = arguments[1].clone();
+                let offset_exp = arguments[2].clone();
+                let len_exp = arguments[3].clone();
+
+                let span_md_idx = md_mgr.span_to_md(context, &span);
+
+                let key_value = return_on_termination_or_extract!(
+                    self.compile_expression_to_memory(context, md_mgr, &key_exp)?
+                )
+                .expect_memory()
+                .add_metadatum(context, span_md_idx);
+
+                let ptr_value = return_on_termination_or_extract!(
+                    self.compile_expression_to_register(context, md_mgr, &ptr_exp)?
+                )
+                .expect_register()
+                .add_metadatum(context, span_md_idx);
+
+                let offset_value = return_on_termination_or_extract!(
+                    self.compile_expression_to_register(context, md_mgr, &offset_exp)?
+                )
+                .expect_register()
+                .add_metadatum(context, span_md_idx);
+
+                let len_value = return_on_termination_or_extract!(
+                    self.compile_expression_to_register(context, md_mgr, &len_exp)?
+                )
+                .expect_register()
+                .add_metadatum(context, span_md_idx);
+
+                // Emit the `state_read_slot` IR instruction.
+                self.current_block
+                    .append(context)
+                    .state_read_slot(ptr_value, key_value, offset_value, len_value)
+                    .add_metadatum(context, span_md_idx);
+
+                // Read $err register via an inline asm block: `asm() { err }`.
+                let uint64 = Type::get_uint64(context);
+                let err_val = self
+                    .current_block
+                    .append(context)
+                    .asm_block(
+                        vec![],
+                        vec![],
+                        uint64,
+                        Some(Ident::new_no_span("err".into())),
+                    )
+                    .add_metadatum(context, span_md_idx);
+
+                // Return NOT $err: $err == 0 means slot was set which returns true.
+                let zero = ConstantContent::get_uint(context, 64, 0);
+                let val = self
+                    .current_block
+                    .append(context)
+                    .cmp(Predicate::Equal, err_val, zero)
+                    .add_metadatum(context, span_md_idx);
+
+                Ok(TerminatorValue::new(
+                    CompiledValue::InRegister(val),
+                    context,
+                ))
+            }
+            Intrinsic::StateStoreSlot => {
+                let key_exp = arguments[0].clone();
+                let ptr_exp = arguments[1].clone();
+                let len_exp = arguments[2].clone();
+
+                let span_md_idx = md_mgr.span_to_md(context, &span);
+
+                let key_value = return_on_termination_or_extract!(
+                    self.compile_expression_to_memory(context, md_mgr, &key_exp)?
+                )
+                .expect_memory()
+                .add_metadatum(context, span_md_idx);
+
+                let ptr_value = return_on_termination_or_extract!(
+                    self.compile_expression_to_register(context, md_mgr, &ptr_exp)?
+                )
+                .expect_register()
+                .add_metadatum(context, span_md_idx);
+
+                let len_value = return_on_termination_or_extract!(
+                    self.compile_expression_to_register(context, md_mgr, &len_exp)?
+                )
+                .expect_register()
+                .add_metadatum(context, span_md_idx);
+
+                self.current_block
+                    .append(context)
+                    .state_write_slot(ptr_value, key_value, len_value)
+                    .add_metadatum(context, span_md_idx);
+
+                // Return unit
+                let val = ConstantContent::get_unit(context).add_metadatum(context, span_md_idx);
+
+                Ok(TerminatorValue::new(
+                    CompiledValue::InRegister(val),
+                    context,
+                ))
+            }
+            Intrinsic::StateUpdateSlot => {
+                let key_exp = arguments[0].clone();
+                let ptr_exp = arguments[1].clone();
+                let offset_exp = arguments[2].clone();
+                let len_exp = arguments[3].clone();
+
+                let span_md_idx = md_mgr.span_to_md(context, &span);
+
+                let key_value = return_on_termination_or_extract!(
+                    self.compile_expression_to_memory(context, md_mgr, &key_exp)?
+                )
+                .expect_memory()
+                .add_metadatum(context, span_md_idx);
+
+                let ptr_value = return_on_termination_or_extract!(
+                    self.compile_expression_to_register(context, md_mgr, &ptr_exp)?
+                )
+                .expect_register()
+                .add_metadatum(context, span_md_idx);
+
+                let offset_value = return_on_termination_or_extract!(
+                    self.compile_expression_to_register(context, md_mgr, &offset_exp)?
+                )
+                .expect_register()
+                .add_metadatum(context, span_md_idx);
+
+                let len_value = return_on_termination_or_extract!(
+                    self.compile_expression_to_register(context, md_mgr, &len_exp)?
+                )
+                .expect_register()
+                .add_metadatum(context, span_md_idx);
+
+                // Emit the `state_update_slot` IR instruction.
+                self.current_block
+                    .append(context)
+                    .state_update_slot(ptr_value, key_value, offset_value, len_value)
+                    .add_metadatum(context, span_md_idx);
+
+                // Return unit.
+                let val = ConstantContent::get_unit(context).add_metadatum(context, span_md_idx);
 
                 Ok(TerminatorValue::new(
                     CompiledValue::InRegister(val),
@@ -1459,12 +1649,16 @@ impl<'a> FnCompiler<'a> {
                     Some(log_ty) => {
                         let span_md_idx = md_mgr.span_to_md(context, &span);
 
-                        // The `log` instruction
-                        let val = self
-                            .current_block
+                        // Emit the `log` instruction
+                        self.current_block
                             .append(context)
                             .log(log_val, log_ty, log_id, log_event_data)
                             .add_metadatum(context, span_md_idx);
+
+                        // Return unit
+                        let val =
+                            ConstantContent::get_unit(context).add_metadatum(context, span_md_idx);
+
                         Ok(TerminatorValue::new(
                             CompiledValue::InRegister(val),
                             context,
@@ -1714,11 +1908,14 @@ impl<'a> FnCompiler<'a> {
                 .expect_register()
                 .add_metadatum(context, span_md_idx);
 
-                let val = self
-                    .current_block
+                // Emit the `smo` instruction
+                self.current_block
                     .append(context)
                     .smo(recipient_value, message, user_message_size_val, coins)
                     .add_metadatum(context, span_md_idx);
+
+                // Return unit
+                let val = ConstantContent::get_unit(context).add_metadatum(context, span_md_idx);
 
                 Ok(TerminatorValue::new(
                     CompiledValue::InRegister(val),
@@ -1779,7 +1976,7 @@ impl<'a> FnCompiler<'a> {
                 let gas = return_on_termination_or_extract!(self.compile_expression_to_register(
                     context,
                     md_mgr,
-                    &arguments[3]
+                    &arguments[3],
                 )?)
                 .expect_register();
 
@@ -1805,13 +2002,13 @@ impl<'a> FnCompiler<'a> {
                 let ptr = return_on_termination_or_extract!(self.compile_expression_to_register(
                     context,
                     md_mgr,
-                    &arguments[0]
+                    &arguments[0],
                 )?)
                 .expect_register();
                 let len = return_on_termination_or_extract!(self.compile_expression_to_register(
                     context,
                     md_mgr,
-                    &arguments[1]
+                    &arguments[1],
                 )?)
                 .expect_register();
                 let r = self
@@ -1855,534 +2052,7 @@ impl<'a> FnCompiler<'a> {
                 Ok(TerminatorValue::new(buffer, context))
             }
             Intrinsic::EncodeBufferAppend => {
-                assert!(arguments.len() == 2);
-
-                let buffer = &arguments[0];
-                let buffer = return_on_termination_or_extract!(
-                    self.compile_expression_to_register(context, md_mgr, buffer)?
-                )
-                .expect_register();
-
-                let (ptr, cap, len) = self.compile_buffer_into_parts(context, buffer)?;
-
-                // Append item
-                let item = &arguments[1];
-                let item_span = item.span.clone();
-                let item_type = engines.te().get(item.return_type);
-                let item = return_on_termination_or_extract!(
-                    self.compile_expression_to_register(context, md_mgr, item)?
-                )
-                .expect_register();
-
-                fn increase_len(
-                    current_block: &mut Block,
-                    context: &mut Context,
-                    len: Value,
-                    step: u64,
-                ) -> Value {
-                    assert!(len.get_type(context).unwrap().is_uint64(context));
-
-                    let step = Value::new_u64_constant(context, step);
-                    current_block
-                        .append(context)
-                        .binary_op(BinaryOpKind::Add, len, step)
-                }
-
-                fn append_with_store(
-                    current_block: &mut Block,
-                    context: &mut Context,
-                    addr: Value,
-                    len: Value,
-                    item: Value,
-                ) -> Value {
-                    assert!(addr.get_type(context).unwrap().is_ptr(context));
-                    assert!(addr
-                        .get_type(context)
-                        .unwrap()
-                        .get_pointee_type(context)
-                        .unwrap()
-                        .eq(context, &item.get_type(context).unwrap()));
-
-                    let _ = current_block.append(context).store(addr, item);
-
-                    let step = Value::new_u64_constant(context, 1);
-                    current_block
-                        .append(context)
-                        .binary_op(BinaryOpKind::Add, len, step)
-                }
-
-                fn append_u64(
-                    current_block: &mut Block,
-                    context: &mut Context,
-                    addr: Value,
-                    len: Value,
-                    item: Value,
-                ) -> Value {
-                    assert!(addr.get_type(context).unwrap().is_ptr(context));
-                    assert!(addr
-                        .get_type(context)
-                        .unwrap()
-                        .get_pointee_type(context)
-                        .unwrap()
-                        .is_uint64(context));
-                    assert!(item.get_type(context).unwrap().is_uint64(context));
-
-                    let _ = current_block.append(context).store(addr, item);
-
-                    let step = Value::new_u64_constant(context, 8);
-                    current_block
-                        .append(context)
-                        .binary_op(BinaryOpKind::Add, len, step)
-                }
-
-                fn append_with_memcpy(
-                    s: &mut FnCompiler<'_>,
-                    context: &mut Context,
-                    item: Value,
-                    ptr: Value,
-                    len: Value,
-                    offset: u64,
-                ) -> Result<Value, CompileError> {
-                    // save to local and offset
-                    let item_ptr = store_to_memory(s, context, CompiledValue::InRegister(item))?
-                        .expect_memory();
-
-                    let offset_value = Value::new_u64_constant(context, offset);
-                    let item_ptr = calc_addr_as_ptr(
-                        &mut s.current_block,
-                        context,
-                        item_ptr,
-                        offset_value,
-                        Type::get_uint8(context),
-                    );
-
-                    // now copy bytes
-                    let addr = calc_addr_as_ptr(
-                        &mut s.current_block,
-                        context,
-                        ptr,
-                        len,
-                        Type::get_uint8(context),
-                    );
-                    s.current_block
-                        .append(context)
-                        .mem_copy_bytes(addr, item_ptr, 8 - offset);
-                    Ok(increase_len(&mut s.current_block, context, len, 8 - offset))
-                }
-
-                fn grow_if_needed(
-                    s: &mut FnCompiler<'_>,
-                    context: &mut Context,
-                    ptr: Value,
-                    cap: Value,
-                    len: Value,
-                    needed_size: Value,
-                ) -> (Value, Value) {
-                    assert!(ptr.get_type(context).unwrap().is_ptr(context));
-                    assert!(cap.get_type(context).unwrap().is_uint64(context));
-
-                    let ptr_ty = Type::get_ptr(context);
-
-                    // merge block has two arguments: ptr, cap
-                    let merge_block = s.function.create_block(context, None);
-                    let merge_block_ptr = Value::new_argument(
-                        context,
-                        BlockArgument {
-                            block: merge_block,
-                            idx: 0,
-                            ty: ptr_ty,
-                            is_immutable: false,
-                        },
-                    );
-                    merge_block.add_arg(context, merge_block_ptr);
-                    let merge_block_cap = Value::new_argument(
-                        context,
-                        BlockArgument {
-                            block: merge_block,
-                            idx: 1,
-                            ty: Type::get_uint64(context),
-                            is_immutable: false,
-                        },
-                    );
-                    merge_block.add_arg(context, merge_block_cap);
-
-                    let true_block_begin = s.function.create_block(context, None);
-                    let false_block_begin = s.function.create_block(context, None);
-
-                    // if len + needed_size > cap
-                    let needed_cap = s.current_block.append(context).binary_op(
-                        BinaryOpKind::Add,
-                        len,
-                        needed_size,
-                    );
-                    let needs_realloc = s.current_block.append(context).cmp(
-                        Predicate::GreaterThan,
-                        needed_cap,
-                        cap,
-                    );
-                    s.current_block.append(context).conditional_branch(
-                        needs_realloc,
-                        true_block_begin,
-                        false_block_begin,
-                        vec![],
-                        vec![],
-                    );
-
-                    // needs realloc block
-                    // new_cap = (cap * 2) + needed_size
-                    // aloc new_cap
-                    // mcp hp old_ptr len
-                    // hp: ptr u8
-                    s.current_block = true_block_begin;
-                    let u8 = Type::get_uint8(context);
-                    let ptr_u8 = Type::new_typed_pointer(context, u8);
-
-                    let two = Value::new_u64_constant(context, 2);
-                    let new_cap_part =
-                        s.current_block
-                            .append(context)
-                            .binary_op(BinaryOpKind::Mul, cap, two);
-                    let new_cap = s.current_block.append(context).binary_op(
-                        BinaryOpKind::Add,
-                        new_cap_part,
-                        needed_size,
-                    );
-                    let new_ptr = s.current_block.append(context).asm_block(
-                        vec![
-                            AsmArg {
-                                name: Ident::new_no_span("new_cap".into()),
-                                initializer: Some(new_cap),
-                            },
-                            AsmArg {
-                                name: Ident::new_no_span("old_ptr".into()),
-                                initializer: Some(ptr),
-                            },
-                            AsmArg {
-                                name: Ident::new_no_span("len".into()),
-                                initializer: Some(len),
-                            },
-                        ],
-                        vec![
-                            AsmInstruction {
-                                op_name: Ident::new_no_span("aloc".into()),
-                                args: vec![Ident::new_no_span("new_cap".into())],
-                                immediate: None,
-                                metadata: None,
-                            },
-                            AsmInstruction {
-                                op_name: Ident::new_no_span("mcp".into()),
-                                args: vec![
-                                    Ident::new_no_span("hp".into()),
-                                    Ident::new_no_span("old_ptr".into()),
-                                    Ident::new_no_span("len".into()),
-                                ],
-                                immediate: None,
-                                metadata: None,
-                            },
-                        ],
-                        ptr_u8,
-                        Some(Ident::new_no_span("hp".into())),
-                    );
-
-                    s.current_block
-                        .append(context)
-                        .branch(merge_block, vec![new_ptr, new_cap]);
-
-                    // dont need realloc block
-                    s.current_block = false_block_begin;
-                    s.current_block
-                        .append(context)
-                        .branch(merge_block, vec![ptr, cap]);
-
-                    s.current_block = merge_block;
-
-                    assert!(merge_block_ptr.get_type(context).unwrap().is_ptr(context));
-                    assert!(merge_block_cap
-                        .get_type(context)
-                        .unwrap()
-                        .is_uint64(context));
-
-                    (merge_block_ptr, merge_block_cap)
-                }
-
-                // Grow the buffer if needed
-                let (ptr, cap) = match &*item_type {
-                    TypeInfo::Boolean => {
-                        let needed_size = Value::new_u64_constant(context, 1);
-                        grow_if_needed(self, context, ptr, cap, len, needed_size)
-                    }
-                    TypeInfo::UnsignedInteger(IntegerBits::Eight) => {
-                        let needed_size = Value::new_u64_constant(context, 1);
-                        grow_if_needed(self, context, ptr, cap, len, needed_size)
-                    }
-                    TypeInfo::UnsignedInteger(IntegerBits::Sixteen) => {
-                        let needed_size = Value::new_u64_constant(context, 2);
-                        grow_if_needed(self, context, ptr, cap, len, needed_size)
-                    }
-                    TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo) => {
-                        let needed_size = Value::new_u64_constant(context, 4);
-                        grow_if_needed(self, context, ptr, cap, len, needed_size)
-                    }
-                    TypeInfo::UnsignedInteger(IntegerBits::SixtyFour) => {
-                        let needed_size = Value::new_u64_constant(context, 8);
-                        grow_if_needed(self, context, ptr, cap, len, needed_size)
-                    }
-                    TypeInfo::UnsignedInteger(IntegerBits::V256) | TypeInfo::B256 => {
-                        let needed_size = Value::new_u64_constant(context, 32);
-                        grow_if_needed(self, context, ptr, cap, len, needed_size)
-                    }
-                    TypeInfo::StringArray(length) => {
-                        let value = length.expr().as_literal_val().unwrap() as u64;
-                        let needed_size = Value::new_u64_constant(context, value);
-                        grow_if_needed(self, context, ptr, cap, len, needed_size)
-                    }
-                    TypeInfo::StringSlice | TypeInfo::RawUntypedSlice => {
-                        let uint64 = Type::get_uint64(context);
-                        let u64_u64_type = Type::new_struct(context, vec![uint64, uint64]);
-
-                        // convert "item" to { u64, u64 }
-                        let item = self.current_block.append(context).asm_block(
-                            vec![AsmArg {
-                                name: Ident::new_no_span("item".into()),
-                                initializer: Some(item),
-                            }],
-                            vec![],
-                            u64_u64_type,
-                            Some(Ident::new_no_span("item".into())),
-                        );
-
-                        // save item to local _anon
-                        let name = self.lexical_map.insert_anon();
-                        let item_local = self
-                            .function
-                            .new_local_var(context, name, u64_u64_type, None, false)
-                            .map_err(|ir_error| {
-                                CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
-                            })?;
-                        let ptr_to_local_item =
-                            self.current_block.append(context).get_local(item_local);
-                        self.current_block
-                            .append(context)
-                            .store(ptr_to_local_item, item);
-
-                        // _anon.1 = len
-                        let needed_size = self.current_block.append(context).get_elem_ptr_with_idx(
-                            ptr_to_local_item,
-                            uint64,
-                            1,
-                        );
-                        let needed_size = self.current_block.append(context).load(needed_size);
-                        let eight = Value::new_u64_constant(context, 8);
-                        let needed_size = self.current_block.append(context).binary_op(
-                            BinaryOpKind::Add,
-                            needed_size,
-                            eight,
-                        );
-
-                        grow_if_needed(self, context, ptr, cap, len, needed_size)
-                    }
-                    _ => return Err(CompileError::EncodingUnsupportedType { span: item_span }),
-                };
-
-                // Append the value into the buffer
-                let new_len = match &*item_type {
-                    TypeInfo::Boolean => {
-                        assert!(item.get_type(context).unwrap().is_bool(context));
-                        let addr = calc_addr_as_ptr(
-                            &mut self.current_block,
-                            context,
-                            ptr,
-                            len,
-                            Type::get_bool(context),
-                        );
-                        append_with_store(&mut self.current_block, context, addr, len, item)
-                    }
-                    TypeInfo::UnsignedInteger(IntegerBits::Eight) => {
-                        assert!(item.get_type(context).unwrap().is_uint8(context),);
-                        let addr = calc_addr_as_ptr(
-                            &mut self.current_block,
-                            context,
-                            ptr,
-                            len,
-                            Type::get_uint8(context),
-                        );
-                        append_with_store(&mut self.current_block, context, addr, len, item)
-                    }
-                    TypeInfo::UnsignedInteger(IntegerBits::Sixteen) => {
-                        assert!(item.get_type(context).unwrap().is_uint64(context));
-                        append_with_memcpy(self, context, item, ptr, len, 6)?
-                    }
-                    TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo) => {
-                        assert!(item.get_type(context).unwrap().is_uint64(context));
-                        append_with_memcpy(self, context, item, ptr, len, 4)?
-                    }
-                    TypeInfo::UnsignedInteger(IntegerBits::SixtyFour) => {
-                        assert!(item.get_type(context).unwrap().is_uint64(context));
-                        let addr = calc_addr_as_ptr(
-                            &mut self.current_block,
-                            context,
-                            ptr,
-                            len,
-                            Type::get_uint64(context),
-                        );
-                        append_u64(&mut self.current_block, context, addr, len, item)
-                    }
-                    TypeInfo::UnsignedInteger(IntegerBits::V256) | TypeInfo::B256 => {
-                        // Save to local and return ptr to local
-                        let item_ptr =
-                            store_to_memory(self, context, CompiledValue::InRegister(item))?
-                                .expect_memory();
-                        let addr = calc_addr_as_ptr(
-                            &mut self.current_block,
-                            context,
-                            ptr,
-                            len,
-                            Type::get_uint8(context),
-                        );
-                        self.current_block
-                            .append(context)
-                            .mem_copy_bytes(addr, item_ptr, 32);
-                        increase_len(&mut self.current_block, context, len, 32)
-                    }
-                    TypeInfo::StringArray(length) => {
-                        let string_len = length.expr().as_literal_val().unwrap() as u64;
-                        // Save to local and return ptr to local
-                        let item_ptr =
-                            store_to_memory(self, context, CompiledValue::InRegister(item))?
-                                .expect_memory();
-                        let addr = calc_addr_as_ptr(
-                            &mut self.current_block,
-                            context,
-                            ptr,
-                            len,
-                            Type::get_uint8(context),
-                        );
-                        self.current_block
-                            .append(context)
-                            .mem_copy_bytes(addr, item_ptr, string_len);
-                        increase_len(&mut self.current_block, context, len, string_len)
-                    }
-                    TypeInfo::StringSlice | TypeInfo::RawUntypedSlice => {
-                        let uint64 = Type::get_uint64(context);
-
-                        let item_ptr =
-                            store_to_memory(self, context, CompiledValue::InRegister(item))?
-                                .expect_memory();
-                        let addr = calc_addr_as_ptr(
-                            &mut self.current_block,
-                            context,
-                            ptr,
-                            len,
-                            Type::get_uint8(context),
-                        );
-
-                        // asm(item_ptr = item_ptr, len = len, addr = addr, data_ptr, item_len, new_len) {
-                        //     lw item_len item_ptr i1;
-                        //     sw addr item_len i0;
-                        //     addi addr addr i8;
-                        //     lw data_ptr item_ptr i0;
-                        //     mcp addr data_ptr item_len;
-                        //     addi new_len len i8
-                        //     add new_len new_len item_len
-                        //     new_len: u64
-                        // }
-                        let addr_ident = Ident::new_no_span("addr".into());
-                        let len_ident = Ident::new_no_span("len".into());
-                        let item_ptr_ident = Ident::new_no_span("item_ptr".into());
-                        let data_ptr_ident = Ident::new_no_span("data_ptr".into());
-                        let item_len_ident = Ident::new_no_span("item_len".into());
-                        let new_len_ident = Ident::new_no_span("new_len".into());
-                        self.current_block.append(context).asm_block(
-                            vec![
-                                AsmArg {
-                                    name: item_ptr_ident.clone(),
-                                    initializer: Some(item_ptr),
-                                },
-                                AsmArg {
-                                    name: len_ident.clone(),
-                                    initializer: Some(len),
-                                },
-                                AsmArg {
-                                    name: addr_ident.clone(),
-                                    initializer: Some(addr),
-                                },
-                                AsmArg {
-                                    name: data_ptr_ident.clone(),
-                                    initializer: None,
-                                },
-                                AsmArg {
-                                    name: item_len_ident.clone(),
-                                    initializer: None,
-                                },
-                                AsmArg {
-                                    name: new_len_ident.clone(),
-                                    initializer: None,
-                                },
-                            ],
-                            vec![
-                                // load data len
-                                AsmInstruction {
-                                    op_name: Ident::new_no_span("lw".into()),
-                                    args: vec![item_len_ident.clone(), item_ptr_ident.clone()],
-                                    immediate: Some(Ident::new_no_span("i1".into())),
-                                    metadata: None,
-                                },
-                                // append len
-                                AsmInstruction {
-                                    op_name: Ident::new_no_span("sw".into()),
-                                    args: vec![addr_ident.clone(), item_len_ident.clone()],
-                                    immediate: Some(Ident::new_no_span("i0".into())),
-                                    metadata: None,
-                                },
-                                // advance addr
-                                AsmInstruction {
-                                    op_name: Ident::new_no_span("addi".into()),
-                                    args: vec![addr_ident.clone(), addr_ident.clone()],
-                                    immediate: Some(Ident::new_no_span("i8".into())),
-                                    metadata: None,
-                                },
-                                // load data ptr
-                                AsmInstruction {
-                                    op_name: Ident::new_no_span("lw".into()),
-                                    args: vec![data_ptr_ident.clone(), item_ptr_ident.clone()],
-                                    immediate: Some(Ident::new_no_span("i0".into())),
-                                    metadata: None,
-                                },
-                                // mcp data
-                                AsmInstruction {
-                                    op_name: Ident::new_no_span("mcp".into()),
-                                    args: vec![addr_ident, data_ptr_ident, item_len_ident.clone()],
-                                    immediate: None,
-                                    metadata: None,
-                                },
-                                // increase len
-                                AsmInstruction {
-                                    op_name: Ident::new_no_span("addi".into()),
-                                    args: vec![new_len_ident.clone(), len_ident],
-                                    immediate: Some(Ident::new_no_span("i8".into())),
-                                    metadata: None,
-                                },
-                                AsmInstruction {
-                                    op_name: Ident::new_no_span("add".into()),
-                                    args: vec![
-                                        new_len_ident.clone(),
-                                        new_len_ident.clone(),
-                                        item_len_ident,
-                                    ],
-                                    immediate: None,
-                                    metadata: None,
-                                },
-                            ],
-                            uint64,
-                            Some(new_len_ident),
-                        )
-                    }
-                    _ => return Err(CompileError::EncodingUnsupportedType { span: item_span }),
-                };
-
-                let buffer = self.compile_to_encode_buffer(context, ptr, cap, new_len)?;
-
-                Ok(TerminatorValue::new(buffer, context))
+                self.compile_encode_buffer_append(context, md_mgr, arguments, engines)
             }
             Intrinsic::EncodeBufferAsRawSlice => {
                 assert!(arguments.len() == 1);
@@ -2466,6 +2136,685 @@ impl<'a> FnCompiler<'a> {
         }
     }
 
+    fn compile_encode_buffer_append(
+        &mut self,
+        context: &mut Context<'_>,
+        md_mgr: &mut MetadataManager,
+        arguments: &[TyExpression],
+        engines: &Engines,
+    ) -> Result<TerminatorValue, CompileError> {
+        assert!(arguments.len() == 2);
+
+        let buffer = &arguments[0];
+        let buffer = return_on_termination_or_extract!(
+            self.compile_expression_to_register(context, md_mgr, buffer)?
+        )
+        .expect_register();
+
+        let (ptr, cap, len) = self.compile_buffer_into_parts(context, buffer)?;
+
+        // Append item
+        let item = &arguments[1];
+        let item_span = item.span.clone();
+        let item_type = engines.te().get(item.return_type);
+        let item = return_on_termination_or_extract!(
+            self.compile_expression_to_register(context, md_mgr, item)?
+        )
+        .expect_register();
+
+        fn increase_len(
+            current_block: &mut Block,
+            context: &mut Context,
+            len: Value,
+            step: u64,
+        ) -> Value {
+            assert!(len.get_type(context).unwrap().is_uint64(context));
+
+            let step = Value::new_u64_constant(context, step);
+            current_block
+                .append(context)
+                .binary_op(BinaryOpKind::Add, len, step)
+        }
+
+        fn append_with_store(
+            current_block: &mut Block,
+            context: &mut Context,
+            addr: Value,
+            len: Value,
+            item: Value,
+        ) -> Value {
+            assert!(addr.get_type(context).unwrap().is_ptr(context));
+            assert!(addr
+                .get_type(context)
+                .unwrap()
+                .get_pointee_type(context)
+                .unwrap()
+                .eq(context, &item.get_type(context).unwrap()));
+
+            let _ = current_block.append(context).store(addr, item);
+
+            let step = Value::new_u64_constant(context, 1);
+            current_block
+                .append(context)
+                .binary_op(BinaryOpKind::Add, len, step)
+        }
+
+        fn append_u64(
+            current_block: &mut Block,
+            context: &mut Context,
+            addr: Value,
+            len: Value,
+            item: Value,
+        ) -> Value {
+            assert!(addr.get_type(context).unwrap().is_ptr(context));
+            assert!(addr
+                .get_type(context)
+                .unwrap()
+                .get_pointee_type(context)
+                .unwrap()
+                .is_uint64(context));
+            assert!(item.get_type(context).unwrap().is_uint64(context));
+
+            let _ = current_block.append(context).store(addr, item);
+
+            let step = Value::new_u64_constant(context, 8);
+            current_block
+                .append(context)
+                .binary_op(BinaryOpKind::Add, len, step)
+        }
+
+        fn append_with_memcpy(
+            s: &mut FnCompiler<'_>,
+            context: &mut Context,
+            item: Value,
+            ptr: Value,
+            len: Value,
+            offset: u64,
+        ) -> Result<Value, CompileError> {
+            // save to local and offset
+            let item_ptr =
+                store_to_memory(s, context, CompiledValue::InRegister(item))?.expect_memory();
+
+            let offset_value = Value::new_u64_constant(context, offset);
+            let item_ptr = calc_addr_as_ptr(
+                &mut s.current_block,
+                context,
+                item_ptr,
+                offset_value,
+                Type::get_uint8(context),
+            );
+
+            // now copy bytes
+            let addr = calc_addr_as_ptr(
+                &mut s.current_block,
+                context,
+                ptr,
+                len,
+                Type::get_uint8(context),
+            );
+            s.current_block
+                .append(context)
+                .mem_copy_bytes(addr, item_ptr, 8 - offset);
+            Ok(increase_len(&mut s.current_block, context, len, 8 - offset))
+        }
+
+        fn grow_if_needed(
+            s: &mut FnCompiler<'_>,
+            context: &mut Context,
+            ptr: Value,
+            cap: Value,
+            len: Value,
+            needed_size: Value,
+        ) -> (Value, Value) {
+            assert!(ptr.get_type(context).unwrap().is_ptr(context));
+            assert!(cap.get_type(context).unwrap().is_uint64(context));
+
+            let ptr_ty = Type::get_ptr(context);
+
+            // merge block has two arguments: ptr, cap
+            let merge_block = s.function.create_block(context, None);
+            let merge_block_ptr = Value::new_argument(
+                context,
+                BlockArgument {
+                    block: merge_block,
+                    idx: 0,
+                    ty: ptr_ty,
+                    is_immutable: false,
+                },
+            );
+            merge_block.add_arg(context, merge_block_ptr);
+            let merge_block_cap = Value::new_argument(
+                context,
+                BlockArgument {
+                    block: merge_block,
+                    idx: 1,
+                    ty: Type::get_uint64(context),
+                    is_immutable: false,
+                },
+            );
+            merge_block.add_arg(context, merge_block_cap);
+
+            let true_block_begin = s.function.create_block(context, None);
+            let false_block_begin = s.function.create_block(context, None);
+
+            // if len + needed_size > cap
+            let needed_cap =
+                s.current_block
+                    .append(context)
+                    .binary_op(BinaryOpKind::Add, len, needed_size);
+            let needs_realloc =
+                s.current_block
+                    .append(context)
+                    .cmp(Predicate::GreaterThan, needed_cap, cap);
+            s.current_block.append(context).conditional_branch(
+                needs_realloc,
+                true_block_begin,
+                false_block_begin,
+                vec![],
+                vec![],
+            );
+
+            // needs realloc block
+            // new_cap = (cap * 2) + needed_size
+            // aloc new_cap
+            // mcp hp old_ptr len
+            // hp: ptr u8
+            s.current_block = true_block_begin;
+            let u8 = Type::get_uint8(context);
+            let ptr_u8 = Type::new_typed_pointer(context, u8);
+
+            let two = Value::new_u64_constant(context, 2);
+            let new_cap_part =
+                s.current_block
+                    .append(context)
+                    .binary_op(BinaryOpKind::Mul, cap, two);
+            let new_cap = s.current_block.append(context).binary_op(
+                BinaryOpKind::Add,
+                new_cap_part,
+                needed_size,
+            );
+            let new_ptr = s.current_block.append(context).asm_block(
+                vec![
+                    AsmArg {
+                        name: Ident::new_no_span("new_cap".into()),
+                        initializer: Some(new_cap),
+                    },
+                    AsmArg {
+                        name: Ident::new_no_span("old_ptr".into()),
+                        initializer: Some(ptr),
+                    },
+                    AsmArg {
+                        name: Ident::new_no_span("len".into()),
+                        initializer: Some(len),
+                    },
+                ],
+                vec![
+                    AsmInstruction {
+                        op_name: Ident::new_no_span("aloc".into()),
+                        args: vec![Ident::new_no_span("new_cap".into())],
+                        immediate: None,
+                        metadata: None,
+                    },
+                    AsmInstruction {
+                        op_name: Ident::new_no_span("mcp".into()),
+                        args: vec![
+                            Ident::new_no_span("hp".into()),
+                            Ident::new_no_span("old_ptr".into()),
+                            Ident::new_no_span("len".into()),
+                        ],
+                        immediate: None,
+                        metadata: None,
+                    },
+                ],
+                ptr_u8,
+                Some(Ident::new_no_span("hp".into())),
+            );
+
+            s.current_block
+                .append(context)
+                .branch(merge_block, vec![new_ptr, new_cap]);
+
+            // dont need realloc block
+            s.current_block = false_block_begin;
+            s.current_block
+                .append(context)
+                .branch(merge_block, vec![ptr, cap]);
+
+            s.current_block = merge_block;
+
+            assert!(merge_block_ptr.get_type(context).unwrap().is_ptr(context));
+            assert!(merge_block_cap
+                .get_type(context)
+                .unwrap()
+                .is_uint64(context));
+
+            (merge_block_ptr, merge_block_cap)
+        }
+
+        // Grow the buffer if needed
+        let (ptr, cap) = match &*item_type {
+            TypeInfo::Boolean => {
+                let needed_size = Value::new_u64_constant(context, 1);
+                grow_if_needed(self, context, ptr, cap, len, needed_size)
+            }
+            TypeInfo::UnsignedInteger(IntegerBits::Eight) => {
+                let needed_size = Value::new_u64_constant(context, 1);
+                grow_if_needed(self, context, ptr, cap, len, needed_size)
+            }
+            TypeInfo::UnsignedInteger(IntegerBits::Sixteen) => {
+                let needed_size = Value::new_u64_constant(context, 2);
+                grow_if_needed(self, context, ptr, cap, len, needed_size)
+            }
+            TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo) => {
+                let needed_size = Value::new_u64_constant(context, 4);
+                grow_if_needed(self, context, ptr, cap, len, needed_size)
+            }
+            TypeInfo::UnsignedInteger(IntegerBits::SixtyFour) => {
+                let needed_size = Value::new_u64_constant(context, 8);
+                grow_if_needed(self, context, ptr, cap, len, needed_size)
+            }
+            TypeInfo::UnsignedInteger(IntegerBits::V256) | TypeInfo::B256 => {
+                let needed_size = Value::new_u64_constant(context, 32);
+                grow_if_needed(self, context, ptr, cap, len, needed_size)
+            }
+            TypeInfo::StringArray(length) => {
+                let value = length.expr().as_literal_val().unwrap() as u64;
+                let needed_size = Value::new_u64_constant(context, value);
+                grow_if_needed(self, context, ptr, cap, len, needed_size)
+            }
+            TypeInfo::StringSlice | TypeInfo::RawUntypedSlice => {
+                let uint64 = Type::get_uint64(context);
+                let u64_u64_type = Type::new_struct(context, vec![uint64, uint64]);
+
+                // convert "item" to { u64, u64 }
+                let item = self.current_block.append(context).asm_block(
+                    vec![AsmArg {
+                        name: Ident::new_no_span("item".into()),
+                        initializer: Some(item),
+                    }],
+                    vec![],
+                    u64_u64_type,
+                    Some(Ident::new_no_span("item".into())),
+                );
+
+                // save item to local _anon
+                let name = self.lexical_map.insert_anon();
+                let item_local = self
+                    .function
+                    .new_local_var(context, name, u64_u64_type, None, false)
+                    .map_err(|ir_error| {
+                        CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
+                    })?;
+                let ptr_to_local_item = self.current_block.append(context).get_local(item_local);
+                self.current_block
+                    .append(context)
+                    .store(ptr_to_local_item, item);
+
+                // _anon.1 => len
+                let needed_size = self.current_block.append(context).get_elem_ptr_with_idx(
+                    ptr_to_local_item,
+                    uint64,
+                    1,
+                );
+                let needed_size = self.current_block.append(context).load(needed_size);
+                let eight = Value::new_u64_constant(context, 8);
+                let needed_size = self.current_block.append(context).binary_op(
+                    BinaryOpKind::Add,
+                    needed_size,
+                    eight,
+                );
+
+                grow_if_needed(self, context, ptr, cap, len, needed_size)
+            }
+            TypeInfo::Tuple(items) => {
+                if items.len() != 2 {
+                    return Err(CompileError::EncodingUnsupportedType { span: item_span });
+                }
+
+                let is_ptr = matches!(
+                    engines.te().get(items[0].type_id).as_ref(),
+                    TypeInfo::RawUntypedPtr
+                );
+                let is_u64 = matches!(
+                    engines.te().get(items[1].type_id).as_ref(),
+                    TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
+                );
+
+                if !is_ptr || !is_u64 {
+                    return Err(CompileError::EncodingUnsupportedType { span: item_span });
+                }
+
+                let raw_ptr = Type::get_ptr(context);
+                let uint64 = Type::get_uint64(context);
+                let raw_ptr_u64_type = Type::new_struct(context, vec![raw_ptr, uint64]);
+
+                // save item to local _anon
+                let name = self.lexical_map.insert_anon();
+                let item_local = self
+                    .function
+                    .new_local_var(context, name, raw_ptr_u64_type, None, false)
+                    .map_err(|ir_error| {
+                        CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
+                    })?;
+                let ptr_to_local_item = self.current_block.append(context).get_local(item_local);
+                self.current_block
+                    .append(context)
+                    .store(ptr_to_local_item, item);
+
+                // _anon.1 => len
+                let needed_size = self.current_block.append(context).get_elem_ptr_with_idx(
+                    ptr_to_local_item,
+                    uint64,
+                    1,
+                );
+                let needed_size = self.current_block.append(context).load(needed_size);
+                grow_if_needed(self, context, ptr, cap, len, needed_size)
+            }
+            _ => return Err(CompileError::EncodingUnsupportedType { span: item_span }),
+        };
+
+        // Append the value into the buffer
+        let new_len = match &*item_type {
+            TypeInfo::Boolean => {
+                assert!(item.get_type(context).unwrap().is_bool(context));
+                let addr = calc_addr_as_ptr(
+                    &mut self.current_block,
+                    context,
+                    ptr,
+                    len,
+                    Type::get_bool(context),
+                );
+                append_with_store(&mut self.current_block, context, addr, len, item)
+            }
+            TypeInfo::UnsignedInteger(IntegerBits::Eight) => {
+                assert!(item.get_type(context).unwrap().is_uint8(context),);
+                let addr = calc_addr_as_ptr(
+                    &mut self.current_block,
+                    context,
+                    ptr,
+                    len,
+                    Type::get_uint8(context),
+                );
+                append_with_store(&mut self.current_block, context, addr, len, item)
+            }
+            TypeInfo::UnsignedInteger(IntegerBits::Sixteen) => {
+                assert!(item.get_type(context).unwrap().is_uint64(context));
+                append_with_memcpy(self, context, item, ptr, len, 6)?
+            }
+            TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo) => {
+                assert!(item.get_type(context).unwrap().is_uint64(context));
+                append_with_memcpy(self, context, item, ptr, len, 4)?
+            }
+            TypeInfo::UnsignedInteger(IntegerBits::SixtyFour) => {
+                assert!(item.get_type(context).unwrap().is_uint64(context));
+                let addr = calc_addr_as_ptr(
+                    &mut self.current_block,
+                    context,
+                    ptr,
+                    len,
+                    Type::get_uint64(context),
+                );
+                append_u64(&mut self.current_block, context, addr, len, item)
+            }
+            TypeInfo::UnsignedInteger(IntegerBits::V256) | TypeInfo::B256 => {
+                // Save to local and return ptr to local
+                let item_ptr = store_to_memory(self, context, CompiledValue::InRegister(item))?
+                    .expect_memory();
+                let addr = calc_addr_as_ptr(
+                    &mut self.current_block,
+                    context,
+                    ptr,
+                    len,
+                    Type::get_uint8(context),
+                );
+                self.current_block
+                    .append(context)
+                    .mem_copy_bytes(addr, item_ptr, 32);
+                increase_len(&mut self.current_block, context, len, 32)
+            }
+            TypeInfo::StringArray(length) => {
+                let string_len = length.expr().as_literal_val().unwrap() as u64;
+                // Save to local and return ptr to local
+                let item_ptr = store_to_memory(self, context, CompiledValue::InRegister(item))?
+                    .expect_memory();
+                let addr = calc_addr_as_ptr(
+                    &mut self.current_block,
+                    context,
+                    ptr,
+                    len,
+                    Type::get_uint8(context),
+                );
+                self.current_block
+                    .append(context)
+                    .mem_copy_bytes(addr, item_ptr, string_len);
+                increase_len(&mut self.current_block, context, len, string_len)
+            }
+            TypeInfo::StringSlice | TypeInfo::RawUntypedSlice => {
+                let uint64 = Type::get_uint64(context);
+
+                let item_ptr = store_to_memory(self, context, CompiledValue::InRegister(item))?
+                    .expect_memory();
+                let addr = calc_addr_as_ptr(
+                    &mut self.current_block,
+                    context,
+                    ptr,
+                    len,
+                    Type::get_uint8(context),
+                );
+
+                // asm(item_ptr = item_ptr, len = len, addr = addr, data_ptr, item_len, new_len) {
+                //     lw item_len item_ptr i1;
+                //     sw addr item_len i0;
+                //     addi addr addr i8;
+                //     lw data_ptr item_ptr i0;
+                //     mcp addr data_ptr item_len;
+                //     addi new_len len i8
+                //     add new_len new_len item_len
+                //     new_len: u64
+                // }
+                let addr_ident = Ident::new_no_span("addr".into());
+                let len_ident = Ident::new_no_span("len".into());
+                let item_ptr_ident = Ident::new_no_span("item_ptr".into());
+                let data_ptr_ident = Ident::new_no_span("data_ptr".into());
+                let item_len_ident = Ident::new_no_span("item_len".into());
+                let new_len_ident = Ident::new_no_span("new_len".into());
+                self.current_block.append(context).asm_block(
+                    vec![
+                        AsmArg {
+                            name: item_ptr_ident.clone(),
+                            initializer: Some(item_ptr),
+                        },
+                        AsmArg {
+                            name: len_ident.clone(),
+                            initializer: Some(len),
+                        },
+                        AsmArg {
+                            name: addr_ident.clone(),
+                            initializer: Some(addr),
+                        },
+                        AsmArg {
+                            name: data_ptr_ident.clone(),
+                            initializer: None,
+                        },
+                        AsmArg {
+                            name: item_len_ident.clone(),
+                            initializer: None,
+                        },
+                        AsmArg {
+                            name: new_len_ident.clone(),
+                            initializer: None,
+                        },
+                    ],
+                    vec![
+                        // load data len
+                        AsmInstruction {
+                            op_name: Ident::new_no_span("lw".into()),
+                            args: vec![item_len_ident.clone(), item_ptr_ident.clone()],
+                            immediate: Some(Ident::new_no_span("i1".into())),
+                            metadata: None,
+                        },
+                        // append len
+                        AsmInstruction {
+                            op_name: Ident::new_no_span("sw".into()),
+                            args: vec![addr_ident.clone(), item_len_ident.clone()],
+                            immediate: Some(Ident::new_no_span("i0".into())),
+                            metadata: None,
+                        },
+                        // advance addr
+                        AsmInstruction {
+                            op_name: Ident::new_no_span("addi".into()),
+                            args: vec![addr_ident.clone(), addr_ident.clone()],
+                            immediate: Some(Ident::new_no_span("i8".into())),
+                            metadata: None,
+                        },
+                        // load data ptr
+                        AsmInstruction {
+                            op_name: Ident::new_no_span("lw".into()),
+                            args: vec![data_ptr_ident.clone(), item_ptr_ident.clone()],
+                            immediate: Some(Ident::new_no_span("i0".into())),
+                            metadata: None,
+                        },
+                        // mcp data
+                        AsmInstruction {
+                            op_name: Ident::new_no_span("mcp".into()),
+                            args: vec![addr_ident, data_ptr_ident, item_len_ident.clone()],
+                            immediate: None,
+                            metadata: None,
+                        },
+                        // increase len
+                        AsmInstruction {
+                            op_name: Ident::new_no_span("addi".into()),
+                            args: vec![new_len_ident.clone(), len_ident],
+                            immediate: Some(Ident::new_no_span("i8".into())),
+                            metadata: None,
+                        },
+                        AsmInstruction {
+                            op_name: Ident::new_no_span("add".into()),
+                            args: vec![
+                                new_len_ident.clone(),
+                                new_len_ident.clone(),
+                                item_len_ident,
+                            ],
+                            immediate: None,
+                            metadata: None,
+                        },
+                    ],
+                    uint64,
+                    Some(new_len_ident),
+                )
+            }
+            TypeInfo::Tuple(items) => {
+                // check types again
+                if items.len() != 2 {
+                    return Err(CompileError::EncodingUnsupportedType { span: item_span });
+                }
+
+                let is_ptr = matches!(
+                    engines.te().get(items[0].type_id).as_ref(),
+                    TypeInfo::RawUntypedPtr
+                );
+                let is_u64 = matches!(
+                    engines.te().get(items[1].type_id).as_ref(),
+                    TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
+                );
+
+                if !is_ptr || !is_u64 {
+                    return Err(CompileError::EncodingUnsupportedType { span: item_span });
+                }
+
+                let uint64 = Type::get_uint64(context);
+
+                let item_ptr = store_to_memory(self, context, CompiledValue::InRegister(item))?
+                    .expect_memory();
+                let addr = calc_addr_as_ptr(
+                    &mut self.current_block,
+                    context,
+                    ptr,
+                    len,
+                    Type::get_uint8(context),
+                );
+
+                // asm(item_ptr = item_ptr, len = len, addr = addr, data_ptr, item_len, new_len) {
+                //     lw item_len item_ptr i1;
+                //     lw data_ptr item_ptr i0;
+                //     mcp addr data_ptr item_len;
+                //     add new_len len item_len
+                //     new_len: u64
+                // }
+                let addr_ident = Ident::new_no_span("addr".into());
+                let len_ident = Ident::new_no_span("len".into());
+                let item_ptr_ident = Ident::new_no_span("item_ptr".into());
+                let data_ptr_ident = Ident::new_no_span("data_ptr".into());
+                let item_len_ident = Ident::new_no_span("item_len".into());
+                let new_len_ident = Ident::new_no_span("new_len".into());
+                self.current_block.append(context).asm_block(
+                    vec![
+                        AsmArg {
+                            name: item_ptr_ident.clone(),
+                            initializer: Some(item_ptr),
+                        },
+                        AsmArg {
+                            name: len_ident.clone(),
+                            initializer: Some(len),
+                        },
+                        AsmArg {
+                            name: addr_ident.clone(),
+                            initializer: Some(addr),
+                        },
+                        AsmArg {
+                            name: data_ptr_ident.clone(),
+                            initializer: None,
+                        },
+                        AsmArg {
+                            name: item_len_ident.clone(),
+                            initializer: None,
+                        },
+                        AsmArg {
+                            name: new_len_ident.clone(),
+                            initializer: None,
+                        },
+                    ],
+                    vec![
+                        // load data len
+                        AsmInstruction {
+                            op_name: Ident::new_no_span("lw".into()),
+                            args: vec![item_len_ident.clone(), item_ptr_ident.clone()],
+                            immediate: Some(Ident::new_no_span("i1".into())),
+                            metadata: None,
+                        },
+                        // load data ptr
+                        AsmInstruction {
+                            op_name: Ident::new_no_span("lw".into()),
+                            args: vec![data_ptr_ident.clone(), item_ptr_ident.clone()],
+                            immediate: Some(Ident::new_no_span("i0".into())),
+                            metadata: None,
+                        },
+                        // mcp data
+                        AsmInstruction {
+                            op_name: Ident::new_no_span("mcp".into()),
+                            args: vec![addr_ident, data_ptr_ident, item_len_ident.clone()],
+                            immediate: None,
+                            metadata: None,
+                        },
+                        AsmInstruction {
+                            op_name: Ident::new_no_span("add".into()),
+                            args: vec![new_len_ident.clone(), len_ident.clone(), item_len_ident],
+                            immediate: None,
+                            metadata: None,
+                        },
+                    ],
+                    uint64,
+                    Some(new_len_ident),
+                )
+            }
+            _ => return Err(CompileError::EncodingUnsupportedType { span: item_span }),
+        };
+
+        let buffer = self.compile_to_encode_buffer(context, ptr, cap, new_len)?;
+
+        Ok(TerminatorValue::new(buffer, context))
+    }
+
     fn compile_intrinsic_transmute(
         &mut self,
         arguments: &[ty::TyExpression],
@@ -2546,17 +2895,17 @@ impl<'a> FnCompiler<'a> {
     fn ptr_to_first_element(
         &mut self,
         context: &mut Context,
-        first_argument_expr: &TyExpression,
-        first_argument_value: Value,
+        expr: &TyExpression,
+        value: Value,
         md_mgr: &mut MetadataManager,
     ) -> Result<(Value, TypeId), CompileError> {
         let te = self.engines.te();
 
         let err = CompileError::TypeArgumentsNotAllowed {
-            span: first_argument_expr.span.clone(),
+            span: expr.span.clone(),
         };
 
-        let (is_slice, elem_ty) = match &*te.get(first_argument_expr.return_type) {
+        let (is_slice, elem_ty) = match te.get(expr.return_type).as_ref() {
             TypeInfo::Ref {
                 referenced_type, ..
             } => match &*te.get(referenced_type.type_id) {
@@ -2564,6 +2913,7 @@ impl<'a> FnCompiler<'a> {
                 TypeInfo::Slice(elem_ty) => Ok((true, elem_ty.type_id)),
                 _ => Err(err),
             },
+            TypeInfo::Slice(elem_ty) => Ok((true, elem_ty.type_id)),
             _ => Err(err),
         }?;
 
@@ -2571,7 +2921,7 @@ impl<'a> FnCompiler<'a> {
             // Load from the first element of the slice
             let ptr_arg = AsmArg {
                 name: Ident::new_no_span("ptr".into()),
-                initializer: Some(first_argument_value),
+                initializer: Some(value),
             };
             let ptr_out_arg = AsmArg {
                 name: Ident::new_no_span("ptr_out".into()),
@@ -2584,7 +2934,7 @@ impl<'a> FnCompiler<'a> {
                 self.module,
                 Some(self),
                 elem_ty,
-                &first_argument_expr.span.clone(),
+                &expr.span.clone(),
             )?;
             let return_type = Type::new_typed_pointer(context, elem_ir_ty);
             let ptr_to_first_element = self.current_block.append(context).asm_block(
@@ -2595,7 +2945,7 @@ impl<'a> FnCompiler<'a> {
             );
             Ok((ptr_to_first_element, elem_ty))
         } else {
-            Ok((first_argument_value, elem_ty))
+            Ok((value, elem_ty))
         }
     }
 
@@ -2742,6 +3092,21 @@ impl<'a> FnCompiler<'a> {
             .binary_op(BinaryOpKind::Sub, end, start);
 
         // compile the slice together
+        let slice = self.slices_from_ptr_and_len(context, elem_ir_type, ptr_to_elem, slice_len)?;
+
+        Ok(TerminatorValue::new(
+            CompiledValue::InRegister(slice),
+            context,
+        ))
+    }
+
+    fn slices_from_ptr_and_len(
+        &mut self,
+        context: &mut Context<'_>,
+        elem_ir_type: Type,
+        ptr_to_elem: Value,
+        slice_len: Value,
+    ) -> Result<Value, CompileError> {
         let ptr_to_elem_ty = Type::new_typed_pointer(context, elem_ir_type);
         let return_type = Type::get_typed_slice(context, elem_ir_type);
         let slice_as_tuple = self.compile_tuple_from_values(
@@ -2759,11 +3124,7 @@ impl<'a> FnCompiler<'a> {
             return_type,
             Some(Ident::new_no_span("s".into())),
         );
-
-        Ok(TerminatorValue::new(
-            CompiledValue::InRegister(slice),
-            context,
-        ))
+        Ok(slice)
     }
 
     fn compile_return(
@@ -3380,7 +3741,7 @@ impl<'a> FnCompiler<'a> {
         let addr = return_on_termination_or_extract!(self.compile_expression_to_register(
             context,
             md_mgr,
-            &call_params.contract_address
+            &call_params.contract_address,
         )?)
         .expect_register();
         let gep_val =
@@ -3449,7 +3810,7 @@ impl<'a> FnCompiler<'a> {
                 return_on_termination_or_extract!(self.compile_expression_to_memory(
                     context,
                     md_mgr,
-                    asset_id_expr
+                    asset_id_expr,
                 )?)
             }
             None => {
@@ -3753,7 +4114,7 @@ impl<'a> FnCompiler<'a> {
         let cond_value = return_on_termination_or_extract!(self.compile_expression_to_register(
             context,
             md_mgr,
-            ast_condition
+            ast_condition,
         )?)
         .expect_register();
         let cond_block = self.current_block;
@@ -3867,26 +4228,88 @@ impl<'a> FnCompiler<'a> {
         // Compile the struct expression.
         let compiled_value = return_on_termination_or_extract!(
             self.compile_expression_to_memory(context, md_mgr, exp)?
-        )
-        .expect_memory();
-
-        // Get the variant type.
-        let variant_type = enum_type
-            .get_indexed_type(context, &[1, variant.tag as u64])
-            .ok_or_else(|| {
-                CompileError::Internal(
-                    "Failed to get variant type from enum in `unsigned downcast`.",
-                    exp.span.clone(),
-                )
-            })?;
-
-        // Get the offset to the variant.
-        let val = self.current_block.append(context).get_elem_ptr_with_idcs(
-            compiled_value,
-            variant_type,
-            &[1, variant.tag as u64],
         );
-        Ok(TerminatorValue::new(CompiledValue::InMemory(val), context))
+
+        // If the enum has variant data we use that,
+        // if not, it means that all variants are unit, and there is nothing to point to.
+        // So, we create a global var zeroed and we make the ZST pointer point to it. So
+        // in the case of a deref, all ZSTs will have the same value
+        match enum_type.get_indexed_type(context, &[1, variant.tag as u64]) {
+            Some(variant_type) => {
+                let val = self
+                    .current_block
+                    .append(context)
+                    .get_elem_ptr_with_indices(
+                        compiled_value.expect_memory(),
+                        variant_type,
+                        &[1, variant.tag as u64],
+                    );
+                Ok(TerminatorValue::new(CompiledValue::InMemory(val), context))
+            }
+            None => {
+                // Check if we really have the case of enum with all variants as unit
+                let enum_type_info = self.engines.te().get(exp.return_type);
+                match enum_type_info.as_ref() {
+                    TypeInfo::Enum(decl_id) => {
+                        let decl = self.engines.de().get(decl_id);
+                        let all_unit = decl
+                            .variants
+                            .iter()
+                            .all(|x| self.engines.te().get(x.type_argument.type_id).is_unit());
+
+                        if !all_unit {
+                            return Err(CompileError::InternalOwned(
+                                format!(
+                                    "unsafe downcast cannot find variant data for this case `{}`",
+                                    self.engines.help_out(exp.return_type)
+                                ),
+                                exp.span.clone(),
+                            ));
+                        }
+                    }
+                    _ => {
+                        return Err(CompileError::InternalOwned(
+                            format!(
+                                "unsafe downcast used with `{}`, only enums are supported",
+                                self.engines.help_out(exp.return_type)
+                            ),
+                            exp.span.clone(),
+                        ))
+                    }
+                }
+
+                // we need an addressable zero, if we save an unit it will occupy 0 bytes.
+                let addressable_zero_u64_ptr = match self
+                    .module
+                    .get_global_variable(context, &vec!["__ADDRESSABLE_ZERO_U64".to_string()])
+                {
+                    Some(var) => var,
+                    None => {
+                        let init = ConstantContent::new_uint(context, 64, 0);
+                        let init = Constant::unique(context, init);
+                        self.module.new_unique_global_var(
+                            context,
+                            "__ADDRESSABLE_ZERO_U64".into(),
+                            Type::get_uint64(context),
+                            Some(init),
+                            false,
+                        )
+                    }
+                };
+
+                let ptr = self
+                    .current_block
+                    .append(context)
+                    .get_global(addressable_zero_u64_ptr);
+
+                let ptr_to_unit_type = Type::new_typed_pointer(context, Type::get_unit(context));
+                let ptr = self
+                    .current_block
+                    .append(context)
+                    .cast_ptr(ptr, ptr_to_unit_type);
+                Ok(TerminatorValue::new(CompiledValue::InMemory(ptr), context))
+            }
+        }
     }
 
     fn compile_enum_tag(
@@ -4050,10 +4473,14 @@ impl<'a> FnCompiler<'a> {
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
         let name = decl.call_path.suffix.as_str();
+        let config = self
+            .module
+            .get_config(context, name)
+            .expect("the configurable declaration must have a corresponding config in the module");
         let val = self
             .current_block
             .append(context)
-            .get_config(self.module, name.to_string())
+            .get_config(config)
             .add_metadatum(context, span_md_idx);
         Ok(TerminatorValue::new(CompiledValue::InMemory(val), context))
     }
@@ -4093,17 +4520,12 @@ impl<'a> FnCompiler<'a> {
                 .get_global(global_val)
                 .add_metadatum(context, span_md_idx);
             Ok(TerminatorValue::new(CompiledValue::InMemory(val), context))
-        } else if self
+        } else if let Some(config) = self
             .module
             .get_config(context, &call_path.suffix.to_string())
-            .is_some()
         {
-            let name = call_path.suffix.to_string();
-            let config_val = Value::new_instruction(
-                context,
-                self.current_block,
-                InstOp::GetConfig(self.module, name),
-            );
+            let config_val =
+                Value::new_instruction(context, self.current_block, InstOp::GetConfig(config));
             Ok(TerminatorValue::new(
                 CompiledValue::InMemory(config_val),
                 context,
@@ -4295,7 +4717,7 @@ impl<'a> FnCompiler<'a> {
         let rhs = return_on_termination_or_extract!(self.compile_expression_to_register(
             context,
             md_mgr,
-            &ast_reassignment.rhs
+            &ast_reassignment.rhs,
         )?)
         .expect_register();
 
@@ -4311,26 +4733,42 @@ impl<'a> FnCompiler<'a> {
                     .expect("All local symbols must be in the lexical symbol map.");
 
                 // First look for a local variable with the required name
-                let lhs_val = self
-                    .function
-                    .get_local_var(context, name)
-                    .map(|var| {
-                        self.current_block
-                            .append(context)
-                            .get_local(var)
-                            .add_metadatum(context, span_md_idx)
-                    })
-                    .or_else(||
-                        // Now look for an argument with the required name
-                        self.function
-                            .args_iter(context)
-                            .find_map(|(arg_name, arg_val)| (arg_name == name).then_some(*arg_val)))
-                    .ok_or_else(|| {
-                        CompileError::InternalOwned(
+                let local_var = self.function.get_local_var(context, name);
+                let lhs_val = if let Some(local_var) = local_var {
+                    // TODO This check breaks some tests
+                    // if local_var.is_mutable(context) {
+                    self.current_block
+                        .append(context)
+                        .get_local(local_var)
+                        .add_metadatum(context, span_md_idx)
+                    // } else {
+                    //     return Err(CompileError::InternalOwned(
+                    //         format!("Local var `{name}` is not mutable."),
+                    //         base_name.span(),
+                    //     ));
+                    // }
+                } else {
+                    // Not a local var, check is an argument
+                    let Some(arg) = self
+                        .function
+                        .args_iter(context)
+                        .find_map(|arg| (&arg.name == name).then_some(arg.value))
+                    else {
+                        return Err(CompileError::InternalOwned(
                             format!("Variable not found: {name}."),
                             base_name.span(),
-                        )
-                    })?;
+                        ));
+                    };
+
+                    if arg.get_argument(context).unwrap().is_immutable {
+                        return Err(CompileError::InternalOwned(
+                            format!("Func arg `{name}` is not mutable."),
+                            base_name.span(),
+                        ));
+                    } else {
+                        arg
+                    }
+                };
 
                 if indices.is_empty() {
                     if self.ref_mut_args.contains(name) {
@@ -4696,7 +5134,7 @@ impl<'a> FnCompiler<'a> {
                     return_on_termination_or_extract!(self.compile_expression_to_register(
                         context,
                         md_mgr,
-                        &contents[0]
+                        &contents[0],
                     )?)
                     .expect_register(),
                 ),
@@ -4753,32 +5191,34 @@ impl<'a> FnCompiler<'a> {
         ))
     }
 
-    fn compile_array_index(
+    #[allow(clippy::too_many_arguments)]
+    fn compile_indexing_arrays(
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        array_expr: &ty::TyExpression,
+        prefix_expr: &ty::TyExpression,
         index_expr: &ty::TyExpression,
         span_md_idx: Option<MetadataIndex>,
+        prefix_val: Value,
+        index_val: Value,
     ) -> Result<TerminatorValue, CompileError> {
-        let array_val = return_on_termination_or_extract!(
-            self.compile_expression_to_memory(context, md_mgr, array_expr)?
-        )
-        .expect_memory();
-
-        // Get the array type and confirm it's an array.
-        let array_type = array_val
+        let index_expr_span = index_expr.span.clone();
+        let array_type = prefix_val
             .get_type(context)
             .and_then(|ty| ty.get_pointee_type(context))
             .and_then(|ty| ty.is_array(context).then_some(ty))
             .ok_or_else(|| {
                 CompileError::Internal(
                     "Unsupported array value for index expression.",
-                    array_expr.span.clone(),
+                    prefix_expr.span.clone(),
                 )
             })?;
-
-        let index_expr_span = index_expr.span.clone();
+        let elem_type = array_type.get_array_elem_type(context).ok_or_else(|| {
+            CompileError::Internal(
+                "Array type is already confirmed as an array. Getting the element type can't fail.",
+                prefix_expr.span.clone(),
+            )
+        })?;
 
         // Perform a bounds check if the array index is a constant int.
         if let Ok(ConstantContent {
@@ -4805,24 +5245,90 @@ impl<'a> FnCompiler<'a> {
             }
         }
 
-        let index_val = return_on_termination_or_extract!(
+        let val = self
+            .current_block
+            .append(context)
+            .get_elem_ptr(prefix_val, elem_type, vec![index_val])
+            .add_metadatum(context, span_md_idx);
+        Ok(TerminatorValue::new(CompiledValue::InMemory(val), context))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn compile_indexing_slices(
+        &mut self,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        prefix_expr: &ty::TyExpression,
+        _index_expr: &ty::TyExpression,
+        _span_md_idx: Option<MetadataIndex>,
+        prefix_value: Value,
+        index_value: Value,
+    ) -> Result<TerminatorValue, CompileError> {
+        let (ptr, elem_type_id) =
+            self.ptr_to_first_element(context, prefix_expr, prefix_value, md_mgr)?;
+        let (ptr_to_elem, _) = self.advance_ptr_n_elements(
+            context,
+            md_mgr,
+            prefix_expr,
+            ptr,
+            elem_type_id,
+            index_value,
+        )?;
+
+        Ok(TerminatorValue::new(
+            CompiledValue::InMemory(ptr_to_elem),
+            context,
+        ))
+    }
+
+    fn compile_indexing(
+        &mut self,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        prefix_expr: &ty::TyExpression,
+        index_expr: &ty::TyExpression,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Result<TerminatorValue, CompileError> {
+        let prefix_value = return_on_termination_or_extract!(self.compile_expression_to_memory(
+            context,
+            md_mgr,
+            prefix_expr
+        )?)
+        .expect_memory();
+        let prefix_type = prefix_value.get_type(context).unwrap();
+
+        let index_value = return_on_termination_or_extract!(
             self.compile_expression_to_register(context, md_mgr, index_expr)?
         )
         .expect_register();
 
-        let elem_type = array_type.get_array_elem_type(context).ok_or_else(|| {
-            CompileError::Internal(
-                "Array type is already confirmed as an array. Getting the element type can't fail.",
-                array_expr.span.clone(),
-            )
-        })?;
-
-        let val = self
-            .current_block
-            .append(context)
-            .get_elem_ptr(array_val, elem_type, vec![index_val])
-            .add_metadatum(context, span_md_idx);
-        Ok(TerminatorValue::new(CompiledValue::InMemory(val), context))
+        match prefix_type.get_content(context) {
+            TypeContent::TypedPointer(p) => match p.get_content(context) {
+                TypeContent::Array(..) => self.compile_indexing_arrays(
+                    context,
+                    md_mgr,
+                    prefix_expr,
+                    index_expr,
+                    span_md_idx,
+                    prefix_value,
+                    index_value,
+                ),
+                _ => todo!(),
+            },
+            TypeContent::TypedSlice(..) => self.compile_indexing_slices(
+                context,
+                md_mgr,
+                prefix_expr,
+                index_expr,
+                span_md_idx,
+                prefix_value,
+                index_value,
+            ),
+            _ => Err(CompileError::Internal(
+                "Expression is not indexeable",
+                prefix_expr.span.clone(),
+            )),
+        }
     }
 
     fn compile_struct_expr(
@@ -4855,7 +5361,7 @@ impl<'a> FnCompiler<'a> {
         let struct_val = return_on_termination_or_extract!(self.compile_expression_to_memory(
             context,
             md_mgr,
-            ast_struct_expr
+            ast_struct_expr,
         )?)
         .expect_memory();
 
@@ -4977,7 +5483,7 @@ impl<'a> FnCompiler<'a> {
                 let gep_val = self
                     .current_block
                     .append(context)
-                    .get_elem_ptr_with_idcs(enum_ptr, contents_type, &[1, tag as u64])
+                    .get_elem_ptr_with_indices(enum_ptr, contents_type, &[1, tag as u64])
                     .add_metadatum(context, span_md_idx);
                 self.current_block
                     .append(context)
@@ -5293,7 +5799,7 @@ impl<'a> FnCompiler<'a> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        storage_field_names: Vec<String>,
+        storage_field_path: Vec<String>,
         struct_field_names: Vec<String>,
         key: Option<U256>,
         fields: &[ty::TyStorageAccessDescriptor],
@@ -5308,7 +5814,7 @@ impl<'a> FnCompiler<'a> {
             &fields[1..],
         )?;
 
-        // Get the IR type of the storage variable.
+        // Get the IR type of the storage field.
         let base_type = convert_resolved_typeid_no_span(
             self.engines,
             context,
@@ -5321,7 +5827,7 @@ impl<'a> FnCompiler<'a> {
         self.compile_get_storage_key(
             context,
             md_mgr,
-            storage_field_names,
+            storage_field_path,
             struct_field_names,
             key,
             &field_indices,
@@ -5415,57 +5921,94 @@ impl<'a> FnCompiler<'a> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        storage_field_names: Vec<String>,
+        storage_field_path: Vec<String>,
         struct_field_names: Vec<String>,
         key: Option<U256>,
         indices: &[u64],
         base_type: &Type,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
+        // `storage_field_key` is the `b256` key of the slot of the
+        // field in a storage declaration, given by its path.
+        // Note that all eventual partial accesses to struct fields
+        // on this storage field have the same `storage_field_key`.
+        // E.g., these accesses will all have the same `storage_field_key`:
+        // - `storage.some_struct`
+        // - `storage.some_struct.some_field`
+        // - `storage.some_struct.some_field.some_subfield`
+        let storage_field_key = get_storage_key(&storage_field_path, key);
         let (path, field_id) =
-            get_storage_field_path_and_field_id(&storage_field_names, &struct_field_names);
+            get_storage_field_path_and_field_id(&storage_field_path, &struct_field_names);
 
         let storage_key = match self.module.get_storage_key(context, &path) {
             Some(storage_key) => *storage_key,
             None => {
-                // Get the actual storage key as a `Bytes32` as well as the offset, in words,
-                // within the slot. The offset depends on what field of the top level storage
-                // variable is being accessed.
-                let (slot, offset_within_slot) = {
-                    let offset_in_words = match base_type.get_indexed_offset(context, indices) {
-                        Some(offset_in_bytes) => {
-                            // TODO-MEMLAY: Warning! Here we make an assumption about the memory layout of structs.
-                            //       The memory layout of structs can be changed in the future.
-                            //       We will not refactor the Storage API at the moment to remove this
-                            //       assumption. It is a questionable effort because we anyhow
-                            //       want to improve and refactor Storage API in the future.
-                            assert!(
-                                offset_in_bytes % 8 == 0,
-                                "Expected struct fields to be aligned to word boundary. The field offset in bytes was {offset_in_bytes}.",
-                            );
-                            offset_in_bytes / 8
-                        }
-                        None => return Err(CompileError::Internal(
-                            "Cannot get the offset within the slot while compiling storage read.",
+                // If we are accessing the whole storage field, e.g., `storage.some_struct`
+                // the `offset_in_bytes` is always zero.
+                // If we are having a partial access and accessing a part of a struct within
+                // the storage field, e.g., `storage.some_struct.some_field.some_subfield`
+                // `offset_in_bytes` will be the offset of the accessed field, `some_subfield`
+                // in the above example, from the beginning of the `some_struct`, and thus
+                // from the beginning of the storage slot.
+                let offset_in_bytes = match base_type.get_indexed_offset(context, indices) {
+                    Some(offset_in_bytes) => {
+                        // TODO-MEMLAY: Warning! Here we make an assumption about the memory layout of structs.
+                        //       The memory layout of structs can be changed in the future.
+                        //       We will not refactor the Storage API at the moment to remove this
+                        //       assumption. It is a questionable effort because we anyhow
+                        //       want to improve and refactor Storage API in the future.
+                        assert!(
+                            offset_in_bytes % 8 == 0,
+                            "Expected struct fields to be aligned to word boundary. The field offset in bytes was {offset_in_bytes}.",
+                        );
+                        offset_in_bytes
+                    }
+                    None => {
+                        return Err(CompileError::Internal(
+                            "Cannot get the offset within the slot while compiling getting of storage key.",
                             md_mgr
                                 .md_to_span(context, span_md_idx)
                                 .unwrap_or_else(Span::dummy),
-                        )),
-                    };
-                    let offset_in_slots = offset_in_words / 4;
-                    let offset_remaining = offset_in_words % 4;
-
-                    // The storage key we need is the storage key of the top level storage variable
-                    // plus the offset, in number of slots, computed above. The offset within this
-                    // particular slot is the remaining offset, in words.
-                    (
-                        add_to_b256(get_storage_key(storage_field_names, key), offset_in_slots),
-                        offset_remaining,
-                    )
+                        ))
+                    }
                 };
 
-                let storage_key =
-                    StorageKey::new(context, slot.into(), offset_within_slot, field_id.into());
+                let storage_key = if context.experimental.dynamic_storage {
+                    // In dynamic storage, the whole storage field content
+                    // is stored in the same slot given by `storage_field_key`.
+                    // Eventual partial access to a struct field will always
+                    // be within the `storage_field_key` slot, at the calculated
+                    // `offset_in_bytes`.
+                    StorageKey::new(
+                        context,
+                        storage_field_key.into(),
+                        offset_in_bytes,
+                        storage_field_key.into(),
+                    )
+                } else {
+                    // In storage based on 32-byte slots, the storage field content
+                    // can potentially span several slots, starting from the
+                    // `storage_field_key`.
+                    // We have to get the actual storage key of the slot,
+                    // as well as the offset, *in words*, within that slot,
+                    // at which the accessed data is stored.
+                    let offset_in_words = offset_in_bytes / 8;
+
+                    let (slot, offset_within_slot) = {
+                        let offset_in_slots = offset_in_words / 4;
+                        let offset_remaining = offset_in_words % 4;
+
+                        // The storage key we need is the storage key of the top level storage variable
+                        // plus the offset, in number of slots, computed above. The offset within this
+                        // particular slot is the remaining offset, in words.
+                        (
+                            add_to_b256(storage_field_key, offset_in_slots),
+                            offset_remaining,
+                        )
+                    };
+
+                    StorageKey::new(context, slot.into(), offset_within_slot, field_id.into())
+                };
 
                 self.module.add_storage_key(context, path, storage_key);
 
@@ -5473,14 +6016,14 @@ impl<'a> FnCompiler<'a> {
             }
         };
 
-        let storage_key = self
+        let get_storage_key_inst = self
             .current_block
             .append(context)
             .get_storage_key(storage_key)
             .add_metadatum(context, span_md_idx);
 
         Ok(TerminatorValue::new(
-            CompiledValue::InMemory(storage_key),
+            CompiledValue::InMemory(get_storage_key_inst),
             context,
         ))
     }
@@ -5541,7 +6084,7 @@ impl MemoryRepresentation {
     pub fn len_in_bytes(&self) -> u64 {
         match self {
             MemoryRepresentation::Padding { len_in_bytes } => *len_in_bytes,
-            MemoryRepresentation::Blob { len_in_bytes } => *len_in_bytes,
+            MemoryRepresentation::Blob { len_in_bytes, .. } => *len_in_bytes,
             MemoryRepresentation::And(items) => items.iter().map(|x| x.len_in_bytes()).sum(),
             MemoryRepresentation::Or(items) => items
                 .iter()
@@ -5679,6 +6222,8 @@ pub fn get_encoding_representation_by_id(
     get_encoding_representation(engines, &engines.te().get(type_id))
 }
 
+// Range is None here because we cannot guarantee a buffer that is going to be decoded
+// has the correct bytes
 pub fn get_encoding_representation(
     engines: &Engines,
     type_info: &TypeInfo,

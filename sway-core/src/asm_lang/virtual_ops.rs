@@ -100,31 +100,6 @@ pub(crate) enum VirtualOp {
         VirtualRegister,
     ),
 
-    /* Control Flow Instructions */
-    JMP(VirtualRegister),
-    JI(VirtualImmediate24),
-    JNE(VirtualRegister, VirtualRegister, VirtualRegister),
-    JNEI(VirtualRegister, VirtualRegister, VirtualImmediate12),
-    JNZI(VirtualRegister, VirtualImmediate18),
-    JMPB(VirtualRegister, VirtualImmediate18),
-    JMPF(VirtualRegister, VirtualImmediate18),
-    JNZB(VirtualRegister, VirtualRegister, VirtualImmediate12),
-    JNZF(VirtualRegister, VirtualRegister, VirtualImmediate12),
-    JNEB(
-        VirtualRegister,
-        VirtualRegister,
-        VirtualRegister,
-        VirtualImmediate06,
-    ),
-    JNEF(
-        VirtualRegister,
-        VirtualRegister,
-        VirtualRegister,
-        VirtualImmediate06,
-    ),
-    JAL(VirtualRegister, VirtualRegister, VirtualImmediate12),
-    RET(VirtualRegister),
-
     /* Memory Instructions */
     ALOC(VirtualRegister, VirtualRegister),
     CFEI(VirtualRegister, VirtualImmediate24),
@@ -192,6 +167,7 @@ pub(crate) enum VirtualOp {
         VirtualRegister,
     ),
     MINT(VirtualRegister, VirtualRegister),
+    RET(VirtualRegister),
     RETD(VirtualRegister, VirtualRegister),
     RVRT(VirtualRegister),
     SMO(
@@ -201,12 +177,30 @@ pub(crate) enum VirtualOp {
         VirtualRegister,
     ),
     SCWQ(VirtualRegister, VirtualRegister, VirtualRegister),
-    SRW(VirtualRegister, VirtualRegister, VirtualRegister),
+    SCLR(VirtualRegister, VirtualRegister),
+    SRW(
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        VirtualImmediate06,
+    ),
     SRWQ(
         VirtualRegister,
         VirtualRegister,
         VirtualRegister,
         VirtualRegister,
+    ),
+    SRDD(
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+    ),
+    SRDI(
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        VirtualImmediate06,
     ),
     SWW(VirtualRegister, VirtualRegister, VirtualRegister),
     SWWQ(
@@ -215,6 +209,21 @@ pub(crate) enum VirtualOp {
         VirtualRegister,
         VirtualRegister,
     ),
+    SWRD(VirtualRegister, VirtualRegister, VirtualRegister),
+    SWRI(VirtualRegister, VirtualRegister, VirtualImmediate12),
+    SUPD(
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+    ),
+    SUPI(
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        VirtualImmediate06,
+    ),
+    SPLD(VirtualRegister, VirtualRegister),
     TIME(VirtualRegister, VirtualRegister),
     TR(VirtualRegister, VirtualRegister, VirtualRegister),
     TRO(
@@ -273,6 +282,150 @@ pub(crate) enum VirtualOp {
 }
 
 impl VirtualOp {
+    pub fn noop() -> VirtualOp {
+        VirtualOp::NOOP
+    }
+
+    pub fn r#move(a: impl Into<VirtualRegister>, b: impl Into<VirtualRegister>) -> VirtualOp {
+        VirtualOp::MOVE(a.into(), b.into())
+    }
+
+    pub fn movi(a: impl Into<VirtualRegister>, b: impl Into<VirtualImmediate18>) -> VirtualOp {
+        VirtualOp::MOVI(a.into(), b.into())
+    }
+
+    pub fn add(
+        a: impl Into<VirtualRegister>,
+        b: impl Into<VirtualRegister>,
+        c: impl Into<VirtualRegister>,
+    ) -> VirtualOp {
+        VirtualOp::ADD(a.into(), b.into(), c.into())
+    }
+
+    pub fn sub(
+        a: impl Into<VirtualRegister>,
+        b: impl Into<VirtualRegister>,
+        c: impl Into<VirtualRegister>,
+    ) -> VirtualOp {
+        VirtualOp::SUB(a.into(), b.into(), c.into())
+    }
+
+    pub fn mul(
+        a: impl Into<VirtualRegister>,
+        b: impl Into<VirtualRegister>,
+        c: impl Into<VirtualRegister>,
+    ) -> VirtualOp {
+        VirtualOp::MUL(a.into(), b.into(), c.into())
+    }
+
+    pub fn div(
+        a: impl Into<VirtualRegister>,
+        b: impl Into<VirtualRegister>,
+        c: impl Into<VirtualRegister>,
+    ) -> VirtualOp {
+        VirtualOp::DIV(a.into(), b.into(), c.into())
+    }
+
+    pub fn exp(
+        a: impl Into<VirtualRegister>,
+        b: impl Into<VirtualRegister>,
+        c: impl Into<VirtualRegister>,
+    ) -> VirtualOp {
+        VirtualOp::EXP(a.into(), b.into(), c.into())
+    }
+
+    pub fn mlog(
+        a: impl Into<VirtualRegister>,
+        b: impl Into<VirtualRegister>,
+        c: impl Into<VirtualRegister>,
+    ) -> VirtualOp {
+        VirtualOp::MLOG(a.into(), b.into(), c.into())
+    }
+
+    pub fn r#mod(
+        a: impl Into<VirtualRegister>,
+        b: impl Into<VirtualRegister>,
+        c: impl Into<VirtualRegister>,
+    ) -> VirtualOp {
+        VirtualOp::MOD(a.into(), b.into(), c.into())
+    }
+
+    pub fn mroo(
+        a: impl Into<VirtualRegister>,
+        b: impl Into<VirtualRegister>,
+        c: impl Into<VirtualRegister>,
+    ) -> VirtualOp {
+        VirtualOp::MROO(a.into(), b.into(), c.into())
+    }
+
+    pub fn not(a: impl Into<VirtualRegister>, b: impl Into<VirtualRegister>) -> VirtualOp {
+        VirtualOp::NOT(a.into(), b.into())
+    }
+
+    pub fn and(
+        a: impl Into<VirtualRegister>,
+        b: impl Into<VirtualRegister>,
+        c: impl Into<VirtualRegister>,
+    ) -> VirtualOp {
+        VirtualOp::AND(a.into(), b.into(), c.into())
+    }
+
+    pub fn or(
+        a: impl Into<VirtualRegister>,
+        b: impl Into<VirtualRegister>,
+        c: impl Into<VirtualRegister>,
+    ) -> VirtualOp {
+        VirtualOp::OR(a.into(), b.into(), c.into())
+    }
+
+    pub fn xor(
+        a: impl Into<VirtualRegister>,
+        b: impl Into<VirtualRegister>,
+        c: impl Into<VirtualRegister>,
+    ) -> VirtualOp {
+        VirtualOp::XOR(a.into(), b.into(), c.into())
+    }
+
+    pub fn sll(
+        a: impl Into<VirtualRegister>,
+        b: impl Into<VirtualRegister>,
+        c: impl Into<VirtualRegister>,
+    ) -> VirtualOp {
+        VirtualOp::SLL(a.into(), b.into(), c.into())
+    }
+
+    pub fn srl(
+        a: impl Into<VirtualRegister>,
+        b: impl Into<VirtualRegister>,
+        c: impl Into<VirtualRegister>,
+    ) -> VirtualOp {
+        VirtualOp::SRL(a.into(), b.into(), c.into())
+    }
+
+    pub fn eq(
+        a: impl Into<VirtualRegister>,
+        b: impl Into<VirtualRegister>,
+        c: impl Into<VirtualRegister>,
+    ) -> VirtualOp {
+        VirtualOp::EQ(a.into(), b.into(), c.into())
+    }
+
+    pub fn gt(
+        a: impl Into<VirtualRegister>,
+        b: impl Into<VirtualRegister>,
+        c: impl Into<VirtualRegister>,
+    ) -> VirtualOp {
+        VirtualOp::GT(a.into(), b.into(), c.into())
+    }
+
+    pub fn lt(
+        a: impl Into<VirtualRegister>,
+        b: impl Into<VirtualRegister>,
+        c: impl Into<VirtualRegister>,
+    ) -> VirtualOp {
+        VirtualOp::LT(a.into(), b.into(), c.into())
+    }
+
     pub(crate) fn registers(&self) -> BTreeSet<&VirtualRegister> {
         use VirtualOp::*;
         (match self {
@@ -317,18 +470,6 @@ impl VirtualOp {
             WQMM(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
 
             /* Control Flow Instructions */
-            JMP(r1) => vec![r1],
-            JI(_im) => vec![],
-            JNE(r1, r2, r3) => vec![r1, r2, r3],
-            JNEI(r1, r2, _i) => vec![r1, r2],
-            JNZI(r1, _i) => vec![r1],
-            JMPB(r1, _i) => vec![r1],
-            JMPF(r1, _i) => vec![r1],
-            JNZB(r1, r2, _i) => vec![r1, r2],
-            JNZF(r1, r2, _i) => vec![r1, r2],
-            JNEB(r1, r2, r3, _i) => vec![r1, r2, r3],
-            JNEF(r1, r2, r3, _i) => vec![r1, r2, r3],
-            JAL(r1, r2, _i) => vec![r1, r2],
             RET(r1) => vec![r1],
 
             /* Memory Instructions */
@@ -367,10 +508,18 @@ impl VirtualOp {
             RVRT(r1) => vec![r1],
             SMO(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             SCWQ(r1, r2, r3) => vec![r1, r2, r3],
-            SRW(r1, r2, r3) => vec![r1, r2, r3],
+            SCLR(r1, r2) => vec![r1, r2],
+            SRW(r1, r2, r3, _i) => vec![r1, r2, r3],
             SRWQ(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            SRDD(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            SRDI(r1, r2, r3, _i) => vec![r1, r2, r3],
             SWW(r1, r2, r3) => vec![r1, r2, r3],
             SWWQ(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            SWRD(r1, r2, r3) => vec![r1, r2, r3],
+            SWRI(r1, r2, _) => vec![r1, r2],
+            SUPD(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            SUPI(r1, r2, r3, _i) => vec![r1, r2, r3],
+            SPLD(r1, r2) => vec![r1, r2],
             TIME(r1, r2) => vec![r1, r2],
             TR(r1, r2, r3) => vec![r1, r2, r3],
             TRO(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
@@ -448,7 +597,7 @@ impl VirtualOp {
             |  BHEI(_)
             | CSIZ(_, _)
             | BSIZ(_, _)
-            | SRW(_, _, _)
+            | SRW(_, _, _, _)
             | TIME(_, _)
             |  GM(_, _)
             | GTF(_, _, _)
@@ -465,18 +614,6 @@ impl VirtualOp {
             | WQCM(_, _, _, _)
             | WQAM(_, _, _, _)
             | WQMM(_, _, _, _)
-            | JMP(_)
-            | JI(_)
-            | JNE(_, _, _)
-            | JNEI(_, _, _)
-            | JNZI(_, _)
-            | JMPB(_, _)
-            | JMPF(_, _)
-            | JNZB(_, _, _)
-            | JNZF(_, _, _)
-            | JNEB(_, _, _, _)
-            | JNEF(_, _, _, _)
-            | JAL(_, _, _)
             | RET(_)
             | ALOC(..)
             | CFEI(..)
@@ -506,9 +643,17 @@ impl VirtualOp {
             | RVRT(_)
             | SMO(_, _, _, _)
             | SCWQ(_, _, _)
+            | SCLR(_, _)
             | SRWQ(_, _, _, _)
+            | SRDD(_, _, _, _)
+            | SRDI(_, _, _, _)
             | SWW(_, _, _)
             | SWWQ(_, _, _, _)
+            | SWRD(_, _, _)
+            | SWRI(_, _, _)
+            | SUPD(_, _, _, _)
+            | SUPI(_, _, _, _)
+            | SPLD(_, _)
             | TR(_, _, _)
             | TRO(_, _, _, _)
             | ECK1(_, _, _)
@@ -528,7 +673,8 @@ impl VirtualOp {
         }
     }
 
-    // What are the special registers that an OP may set.
+    /// What are the special registers that an OP may set.
+    /// Examples: Error, Overflow, Flags, etc.
     pub(crate) fn def_const_registers(&self) -> BTreeSet<&VirtualRegister> {
         use ConstantRegister::*;
         use VirtualOp::*;
@@ -583,18 +729,6 @@ impl VirtualOp {
             | CFSI(sp, _)
             | CFE(sp, _)
             | CFS(sp, _) => vec![sp],
-            JMP(_)
-            | JI(_)
-            | JNE(_, _, _)
-            | JNEI(_, _, _)
-            | JNZI(_, _)
-            | JMPB(_, _)
-            | JMPF(_, _)
-            | JNZB(_, _, _)
-            | JNZF(_, _, _)
-            | JNEB(_, _, _, _)
-            | JNEF(_, _, _, _)
-            | JAL(_, _, _)
             | RET(_)
             | LB(_, _, _)
             | LW(_, _, _)
@@ -624,10 +758,15 @@ impl VirtualOp {
             | RVRT(_)
             | SMO(_, _, _, _)
             | SCWQ(_, _, _)
-            | SRW(_, _, _)
+            | SCLR(_, _)
+            | SRW(_, _, _, _)
             | SRWQ(_, _, _, _)
             | SWW(_, _, _)
             | SWWQ(_, _, _, _)
+            | SWRD(_, _, _)
+            | SWRI(_, _, _)
+            | SUPD(_, _, _, _)
+            | SUPI(_, _, _, _)
             | TIME(_, _)
             | TR(_, _, _)
             | TRO(_, _, _, _)
@@ -644,6 +783,9 @@ impl VirtualOp {
             | LoadDataId(_, _)
             | AddrDataId(_, _)
             | Undefined => vec![],
+            SRDD(_, _, _, _)
+            | SRDI(_, _, _, _)
+            | SPLD(_, _) => vec![&VirtualRegister::Constant(Error)],
         })
         .into_iter()
         .collect()
@@ -697,18 +839,6 @@ impl VirtualOp {
             WQMM(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
 
             /* Control Flow Instructions */
-            JMP(r1) => vec![r1],
-            JI(_im) => vec![],
-            JNE(r1, r2, r3) => vec![r1, r2, r3],
-            JNEI(r1, r2, _i) => vec![r1, r2],
-            JNZI(r1, _i) => vec![r1],
-            JMPB(r1, _i) => vec![r1],
-            JMPF(r1, _i) => vec![r1],
-            JNZB(r1, r2, _i) => vec![r1, r2],
-            JNZF(r1, r2, _i) => vec![r1, r2],
-            JNEB(r1, r2, r3, _i) => vec![r1, r2, r3],
-            JNEF(r1, r2, r3, _i) => vec![r1, r2, r3],
-            JAL(_r1, r2, _i) => vec![r2],
             RET(r1) => vec![r1],
 
             /* Memory Instructions */
@@ -747,10 +877,18 @@ impl VirtualOp {
             RVRT(r1) => vec![r1],
             SMO(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             SCWQ(r1, _r2, r3) => vec![r1, r3],
-            SRW(_r1, _r2, r3) => vec![r3],
+            SCLR(r1, r2) => vec![r1, r2],
+            SRW(_r1, _r2, r3, _i) => vec![r3],
             SRWQ(r1, _r2, r3, r4) => vec![r1, r3, r4],
+            SRDD(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            SRDI(r1, r2, r3, _i) => vec![r1, r2, r3],
             SWW(r1, _r2, r3) => vec![r1, r3],
             SWWQ(r1, _r2, r3, r4) => vec![r1, r3, r4],
+            SWRD(r1, r2, r3) => vec![r1, r2, r3],
+            SWRI(r1, r2, _i) => vec![r1, r2],
+            SUPD(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            SUPI(r1, r2, r3, _i) => vec![r1, r2, r3],
+            SPLD(_r1, r2) => vec![r2],
             TIME(_r1, r2) => vec![r2],
             TR(r1, r2, r3) => vec![r1, r2, r3],
             TRO(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
@@ -784,9 +922,9 @@ impl VirtualOp {
     }
 
     /// Returns a list of all registers *read* by instruction `self`.
-    pub(crate) fn use_registers_mut(&mut self) -> BTreeSet<&mut VirtualRegister> {
+    pub(crate) fn use_registers_mut(&mut self) -> Vec<&mut VirtualRegister> {
         use VirtualOp::*;
-        (match self {
+        match self {
             /* Arithmetic/Logic (ALU) Instructions */
             ADD(_r1, r2, r3) => vec![r2, r3],
             ADDI(_r1, r2, _i) => vec![r2],
@@ -831,18 +969,6 @@ impl VirtualOp {
             WQMM(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
 
             /* Control Flow Instructions */
-            JMP(r1) => vec![r1],
-            JI(_im) => vec![],
-            JNE(r1, r2, r3) => vec![r1, r2, r3],
-            JNEI(r1, r2, _i) => vec![r1, r2],
-            JNZI(r1, _i) => vec![r1],
-            JMPB(r1, _i) => vec![r1],
-            JMPF(r1, _i) => vec![r1],
-            JNZB(r1, r2, _i) => vec![r1, r2],
-            JNZF(r1, r2, _i) => vec![r1, r2],
-            JNEB(r1, r2, r3, _i) => vec![r1, r2, r3],
-            JNEF(r1, r2, r3, _i) => vec![r1, r2, r3],
-            JAL(_r1, r2, _i) => vec![r2],
             RET(r1) => vec![r1],
 
             /* Memory Instructions */
@@ -881,11 +1007,19 @@ impl VirtualOp {
             RVRT(r1) => vec![r1],
             SMO(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             SCWQ(r1, _r2, r3) => vec![r1, r3],
-            SRW(_r1, _r2, r3) => vec![r3],
+            SCLR(r1, r2) => vec![r1, r2],
+            SRW(_r1, _r2, r3, _i) => vec![r3],
             SRWQ(r1, _r2, r3, r4) => vec![r1, r3, r4],
+            SRDD(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            SRDI(r1, r2, r3, _i) => vec![r1, r2, r3],
             SWW(r1, _r2, r3) => vec![r1, r3],
             SWWQ(r1, _r2, r3, r4) => vec![r1, r3, r4],
+            SWRD(r1, r2, r3) => vec![r1, r2, r3],
+            SWRI(r1, r2, _i) => vec![r1, r2],
+            SUPD(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
+            SUPI(r1, r2, r3, _i) => vec![r1, r2, r3],
             TIME(_r1, r2) => vec![r2],
+            SPLD(_r1, r2) => vec![r2],
             TR(r1, r2, r3) => vec![r1, r2, r3],
             TRO(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
 
@@ -912,9 +1046,7 @@ impl VirtualOp {
             AddrDataId(_r1, _i) => vec![],
 
             Undefined => vec![],
-        })
-        .into_iter()
-        .collect()
+        }
     }
 
     /// Returns a list of all registers *written* by instruction `self`. All of our opcodes define
@@ -963,18 +1095,6 @@ impl VirtualOp {
             WQMM(_, _, _, _) => vec![],
 
             /* Control Flow Instructions */
-            JMP(_r1) => vec![],
-            JI(_im) => vec![],
-            JNE(_r1, _r2, _r3) => vec![],
-            JNEI(_r1, _r2, _i) => vec![],
-            JNZI(_r1, _i) => vec![],
-            JMPB(_r1, _i) => vec![],
-            JMPF(_r1, _i) => vec![],
-            JNZB(_r1, _r2, _i) => vec![],
-            JNZF(_r1, _r2, _i) => vec![],
-            JNEB(_r1, _r2, _r3, _i) => vec![],
-            JNEF(_r1, _r2, _r3, _i) => vec![],
-            JAL(r1, _r2, _i) => vec![r1],
             RET(_r1) => vec![],
 
             /* Memory Instructions */
@@ -1013,10 +1133,18 @@ impl VirtualOp {
             RVRT(_r1) => vec![],
             SMO(_r1, _r2, _r3, _r4) => vec![],
             SCWQ(_r1, r2, _r3) => vec![r2],
-            SRW(r1, r2, _r3) => vec![r1, r2],
+            SCLR(_r1, _r2) => vec![],
+            SRW(r1, r2, _r3, _i) => vec![r1, r2],
             SRWQ(_r1, r2, _r3, _r4) => vec![r2],
+            SRDD(_r1, _r2, _r3, _r4) => vec![],
+            SRDI(_r1, _r2, _r3, _i) => vec![],
             SWW(_r1, r2, _r3) => vec![r2],
             SWWQ(_r1, r2, _r3, _r4) => vec![r2],
+            SWRD(_r1, _r2, _r3) => vec![],
+            SWRI(_r1, _r2, _i) => vec![],
+            SUPD(_r1, _r2, _r3, _r4) => vec![],
+            SUPI(_r1, _r2, _r3, _i) => vec![],
+            SPLD(r1, _r2) => vec![r1],
             TIME(r1, _r2) => vec![r1],
             TR(_r1, _r2, _r3) => vec![],
             TRO(_r1, _r2, _r3, _r4) => vec![],
@@ -1061,10 +1189,6 @@ impl VirtualOp {
         };
         match self {
             RVRT(_) => vec![],
-            JI(_) | JNEI(..) | JNZI(..) => {
-                unreachable!("At this stage we shouldn't have jumps in the code.")
-            }
-
             _ => next_op,
         }
     }
@@ -1265,48 +1389,6 @@ impl VirtualOp {
             ),
 
             /* Control Flow Instructions */
-            JMP(r1) => Self::JMP(update_reg(reg_to_reg_map, r1)),
-            JI(_) => self.clone(),
-            JNE(r1, r2, r3) => Self::JNE(
-                update_reg(reg_to_reg_map, r1),
-                update_reg(reg_to_reg_map, r2),
-                update_reg(reg_to_reg_map, r3),
-            ),
-            JNEI(r1, r2, i) => Self::JNEI(
-                update_reg(reg_to_reg_map, r1),
-                update_reg(reg_to_reg_map, r2),
-                i.clone(),
-            ),
-            JNZI(r1, i) => Self::JNZI(update_reg(reg_to_reg_map, r1), i.clone()),
-            JMPB(r1, i) => Self::JMPB(update_reg(reg_to_reg_map, r1), i.clone()),
-            JMPF(r1, i) => Self::JMPF(update_reg(reg_to_reg_map, r1), i.clone()),
-            JNZB(r1, r2, i) => Self::JNZB(
-                update_reg(reg_to_reg_map, r1),
-                update_reg(reg_to_reg_map, r2),
-                i.clone(),
-            ),
-            JNZF(r1, r2, i) => Self::JNZF(
-                update_reg(reg_to_reg_map, r1),
-                update_reg(reg_to_reg_map, r2),
-                i.clone(),
-            ),
-            JNEB(r1, r2, r3, i) => Self::JNEB(
-                update_reg(reg_to_reg_map, r1),
-                update_reg(reg_to_reg_map, r2),
-                update_reg(reg_to_reg_map, r3),
-                i.clone(),
-            ),
-            JNEF(r1, r2, r3, i) => Self::JNEF(
-                update_reg(reg_to_reg_map, r1),
-                update_reg(reg_to_reg_map, r2),
-                update_reg(reg_to_reg_map, r3),
-                i.clone(),
-            ),
-            JAL(r1, r2, i) => Self::JAL(
-                update_reg(reg_to_reg_map, r1),
-                update_reg(reg_to_reg_map, r2),
-                i.clone(),
-            ),
             RET(r1) => Self::RET(update_reg(reg_to_reg_map, r1)),
 
             /* Memory Instructions */
@@ -1441,16 +1523,33 @@ impl VirtualOp {
                 update_reg(reg_to_reg_map, r2),
                 update_reg(reg_to_reg_map, r3),
             ),
-            SRW(r1, r2, r3) => Self::SRW(
+            SCLR(r1, r2) => Self::SCLR(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+            ),
+            SRW(r1, r2, r3, i) => Self::SRW(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
                 update_reg(reg_to_reg_map, r3),
+                i.clone(),
             ),
             SRWQ(r1, r2, r3, r4) => Self::SRWQ(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
                 update_reg(reg_to_reg_map, r3),
                 update_reg(reg_to_reg_map, r4),
+            ),
+            SRDD(r1, r2, r3, r4) => Self::SRDD(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                update_reg(reg_to_reg_map, r4),
+            ),
+            SRDI(r1, r2, r3, i) => Self::SRDI(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                i.clone(),
             ),
             SWW(r1, r2, r3) => Self::SWW(
                 update_reg(reg_to_reg_map, r1),
@@ -1462,6 +1561,32 @@ impl VirtualOp {
                 update_reg(reg_to_reg_map, r2),
                 update_reg(reg_to_reg_map, r3),
                 update_reg(reg_to_reg_map, r4),
+            ),
+            SWRD(r1, r2, r3) => Self::SWRD(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
+            SWRI(r1, r2, i) => Self::SWRI(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                i.clone(),
+            ),
+            SUPD(r1, r2, r3, r4) => Self::SUPD(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                update_reg(reg_to_reg_map, r4),
+            ),
+            SUPI(r1, r2, r3, i) => Self::SUPI(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                i.clone(),
+            ),
+            SPLD(r1, r2) => Self::SPLD(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
             ),
             TIME(r1, r2) => Self::TIME(
                 update_reg(reg_to_reg_map, r1),
@@ -1541,46 +1666,6 @@ impl VirtualOp {
             LoadDataId(r1, i) => Self::LoadDataId(update_reg(reg_to_reg_map, r1), i.clone()),
             AddrDataId(r1, i) => Self::AddrDataId(update_reg(reg_to_reg_map, r1), i.clone()),
             Undefined => Self::Undefined,
-        }
-    }
-
-    /// Use `offset_map` to update the immediate value of a jump instruction. The map simply tells
-    /// us what the new offset should be given the existing offset.
-    pub(crate) fn update_jump_immediate_values(&mut self, offset_map: &HashMap<u64, u64>) -> Self {
-        use VirtualOp::*;
-        match self {
-            JI(i) => Self::JI(
-                VirtualImmediate24::try_new(
-                    *offset_map
-                        .get(&(i.value() as u64))
-                        .expect("new offset should be valid"),
-                    crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
-                )
-                .unwrap(),
-            ),
-            JNEI(r1, r2, i) => Self::JNEI(
-                r1.clone(),
-                r2.clone(),
-                VirtualImmediate12::try_new(
-                    *offset_map
-                        .get(&(i.value() as u64))
-                        .expect("new offset should be valid"),
-                    crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
-                )
-                .unwrap(),
-            ),
-            JNZI(r1, i) => Self::JNZI(
-                r1.clone(),
-                VirtualImmediate18::try_new(
-                    *offset_map
-                        .get(&(i.value() as u64))
-                        .expect("new offset should be valid"),
-                    crate::span::Span::new(" ".into(), 0, 0, None).unwrap(),
-                )
-                .unwrap(),
-            ),
-
-            _ => self.clone(),
         }
     }
 
@@ -1802,48 +1887,6 @@ impl VirtualOp {
             ),
 
             /* Control Flow Instructions */
-            JMP(reg1) => AllocatedInstruction::JMP(map_reg(&mapping, reg1)),
-            JI(imm) => AllocatedInstruction::JI(imm.clone()),
-            JNE(reg1, reg2, reg3) => AllocatedInstruction::JNE(
-                map_reg(&mapping, reg1),
-                map_reg(&mapping, reg2),
-                map_reg(&mapping, reg3),
-            ),
-            JNEI(reg1, reg2, imm) => AllocatedInstruction::JNEI(
-                map_reg(&mapping, reg1),
-                map_reg(&mapping, reg2),
-                imm.clone(),
-            ),
-            JNZI(reg1, imm) => AllocatedInstruction::JNZI(map_reg(&mapping, reg1), imm.clone()),
-            JMPB(reg1, imm) => AllocatedInstruction::JMPB(map_reg(&mapping, reg1), imm.clone()),
-            JMPF(reg1, imm) => AllocatedInstruction::JMPF(map_reg(&mapping, reg1), imm.clone()),
-            JNZB(reg1, reg2, imm) => AllocatedInstruction::JNZB(
-                map_reg(&mapping, reg1),
-                map_reg(&mapping, reg2),
-                imm.clone(),
-            ),
-            JNZF(reg1, reg2, imm) => AllocatedInstruction::JNZF(
-                map_reg(&mapping, reg1),
-                map_reg(&mapping, reg2),
-                imm.clone(),
-            ),
-            JNEB(reg1, reg2, reg3, imm) => AllocatedInstruction::JNEB(
-                map_reg(&mapping, reg1),
-                map_reg(&mapping, reg2),
-                map_reg(&mapping, reg3),
-                imm.clone(),
-            ),
-            JNEF(reg1, reg2, reg3, imm) => AllocatedInstruction::JNEF(
-                map_reg(&mapping, reg1),
-                map_reg(&mapping, reg2),
-                map_reg(&mapping, reg3),
-                imm.clone(),
-            ),
-            JAL(reg1, reg2, imm) => AllocatedInstruction::JAL(
-                map_reg(&mapping, reg1),
-                map_reg(&mapping, reg2),
-                imm.clone(),
-            ),
             RET(reg) => AllocatedInstruction::RET(map_reg(&mapping, reg)),
 
             /* Memory Instructions */
@@ -1928,11 +1971,11 @@ impl VirtualOp {
             BSIZ(reg1, reg2) => {
                 AllocatedInstruction::BSIZ(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
             }
-            LDC(reg1, reg2, reg3, imm0) => AllocatedInstruction::LDC(
+            LDC(reg1, reg2, reg3, imm) => AllocatedInstruction::LDC(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
-                imm0.clone(),
+                imm.clone(),
             ),
             BLDD(reg1, reg2, reg3, reg4) => AllocatedInstruction::BLDD(
                 map_reg(&mapping, reg1),
@@ -1970,16 +2013,32 @@ impl VirtualOp {
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
             ),
-            SRW(reg1, reg2, reg3) => AllocatedInstruction::SRW(
+            SCLR(reg1, reg2) => {
+                AllocatedInstruction::SCLR(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
+            }
+            SRW(reg1, reg2, reg3, imm) => AllocatedInstruction::SRW(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
+                imm.clone(),
             ),
             SRWQ(reg1, reg2, reg3, reg4) => AllocatedInstruction::SRWQ(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
                 map_reg(&mapping, reg4),
+            ),
+            SRDD(reg1, reg2, reg3, reg4) => AllocatedInstruction::SRDD(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+                map_reg(&mapping, reg4),
+            ),
+            SRDI(reg1, reg2, reg3, imm) => AllocatedInstruction::SRDI(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+                imm.clone(),
             ),
             SWW(reg1, reg2, reg3) => AllocatedInstruction::SWW(
                 map_reg(&mapping, reg1),
@@ -1992,6 +2051,31 @@ impl VirtualOp {
                 map_reg(&mapping, reg3),
                 map_reg(&mapping, reg4),
             ),
+            SWRD(reg1, reg2, reg3) => AllocatedInstruction::SWRD(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+            ),
+            SWRI(reg1, reg2, imm) => AllocatedInstruction::SWRI(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                imm.clone(),
+            ),
+            SUPD(reg1, reg2, reg3, reg4) => AllocatedInstruction::SUPD(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+                map_reg(&mapping, reg4),
+            ),
+            SUPI(reg1, reg2, reg3, imm) => AllocatedInstruction::SUPI(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+                imm.clone(),
+            ),
+            SPLD(reg1, reg2) => {
+                AllocatedInstruction::SPLD(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
+            }
             TIME(reg1, reg2) => {
                 AllocatedInstruction::TIME(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
             }

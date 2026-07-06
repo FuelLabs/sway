@@ -11,7 +11,6 @@ use std::{
     collections::HashMap,
     hash::{DefaultHasher, Hasher},
 };
-
 use sway_error::error::CompileError;
 use sway_features::ExperimentalFeatures;
 use sway_ir::{
@@ -359,12 +358,16 @@ pub fn compile_program<'a>(
         .collect();
 
     let mut ctx = Context::new(engines.se(), experimental, backtrace);
-    ctx.program_kind = match kind {
+    let k = match kind {
         ty::TyProgramKind::Script { .. } => Kind::Script,
         ty::TyProgramKind::Predicate { .. } => Kind::Predicate,
         ty::TyProgramKind::Contract { .. } => Kind::Contract,
         ty::TyProgramKind::Library { .. } => Kind::Library,
     };
+    ctx.program_kind = k;
+
+    let module = Module::new(&mut ctx, k);
+    let mut md_mgr = MetadataManager::default();
 
     let mut compiled_fn_cache = CompiledFunctionCache::default();
     let mut panicking_fn_cache = PanickingFunctionCache::default();
@@ -384,6 +387,8 @@ pub fn compile_program<'a>(
             &mut panicking_fn_cache,
             &test_fns,
             &mut compiled_fn_cache,
+            &mut md_mgr,
+            module,
         ),
         ty::TyProgramKind::Predicate { entry_function, .. } => compile::compile_predicate(
             engines,
@@ -397,6 +402,8 @@ pub fn compile_program<'a>(
             &mut panicking_fn_cache,
             &test_fns,
             &mut compiled_fn_cache,
+            &mut md_mgr,
+            module,
         ),
         ty::TyProgramKind::Contract {
             entry_function,
@@ -415,6 +422,8 @@ pub fn compile_program<'a>(
             &test_fns,
             engines,
             &mut compiled_fn_cache,
+            &mut md_mgr,
+            module,
         ),
         ty::TyProgramKind::Library { .. } => compile::compile_library(
             engines,
@@ -427,6 +436,8 @@ pub fn compile_program<'a>(
             &mut panicking_fn_cache,
             &test_fns,
             &mut compiled_fn_cache,
+            &mut md_mgr,
+            module,
         ),
     }?;
 
@@ -461,11 +472,11 @@ fn type_correction(ctx: &mut Context) -> Result<(), IrError> {
                 match &instr.get_instruction(ctx).unwrap().op {
                     InstOp::Call(callee, actual_params) => {
                         let formal_params: Vec<_> = callee.args_iter(ctx).collect();
-                        for (param_idx, (actual_param, (_, formal_param))) in
+                        for (param_idx, (actual_param, arg)) in
                             actual_params.iter().zip(formal_params.iter()).enumerate()
                         {
                             let actual_ty = actual_param.get_type(ctx).unwrap();
-                            let formal_ty = formal_param.get_type(ctx).unwrap();
+                            let formal_ty = arg.value.get_type(ctx).unwrap();
                             if actual_ty != formal_ty {
                                 instrs_to_fix.push(TypeCorrection {
                                     actual_ty,

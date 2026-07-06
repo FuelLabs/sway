@@ -34,8 +34,30 @@ pub fn mem_copy_opt(
     modified |= local_copy_prop_prememcpy(context, analyses, function)?;
     modified |= load_store_to_memcopy(context, function)?;
     modified |= local_copy_prop(context, analyses, function)?;
-
     Ok(modified)
+}
+
+struct InstInfo {
+    // The block containing the instruction.
+    block: Block,
+    // Relative (use only for comparison) position of instruction in `block`.
+    pos: usize,
+}
+
+// If the source is an Arg, we replace uses of destination with Arg.
+// Otherwise (`get_local`), we replace the local symbol in-place.
+enum ReplaceWith {
+    InPlaceLocal(LocalVar),
+    Value(Value),
+}
+
+// If we have A replaces B and B replaces C, then A must replace C also.
+// Recursively searches for the final replacement for the `local`.
+// Returns `None` if the `local` cannot be replaced.
+fn get_replace_with(candidates: &FxHashMap<Symbol, Symbol>, local: &Symbol) -> Option<Symbol> {
+    candidates
+        .get(local)
+        .map(|replace_with| get_replace_with(candidates, replace_with).unwrap_or(*replace_with))
 }
 
 fn local_copy_prop_prememcpy(
@@ -43,12 +65,7 @@ fn local_copy_prop_prememcpy(
     analyses: &AnalysisResults,
     function: Function,
 ) -> Result<bool, IrError> {
-    struct InstInfo {
-        // The block containing the instruction.
-        block: Block,
-        // Relative (use only for comparison) position of instruction in `block`.
-        pos: usize,
-    }
+    let mut modified = false;
 
     // If the analysis result is incomplete we cannot do any safe optimizations here.
     // Calculating the candidates below relies on complete result of an escape analysis.
@@ -80,8 +97,21 @@ fn local_copy_prop_prememcpy(
                     instr_info_map.insert(inst, info());
                 }
             }
+            // Instructions that "write" to symbols
             Instruction {
                 op: InstOp::Store { dst_val_ptr, .. },
+                ..
+            }
+            | Instruction {
+                op: InstOp::MemCopyVal { dst_val_ptr, .. },
+                ..
+            }
+            | Instruction {
+                op: InstOp::MemClearVal { dst_val_ptr },
+                ..
+            }
+            | Instruction {
+                op: InstOp::MemCopyBytes { dst_val_ptr, .. },
                 ..
             } => {
                 if let Some(local) = get_referred_symbol(context, *dst_val_ptr) {
@@ -151,28 +181,46 @@ fn local_copy_prop_prememcpy(
                     let dst_local_stores = stores_map.get(&dst_local).unwrap_or(&temp_empty1);
                     let src_local_stores = stores_map.get(&src_local).unwrap_or(&temp_empty2);
                     let dst_local_loads = loads_map.get(&dst_local).unwrap_or(&temp_empty3);
-                    // This must be the only store of dst_local.
-                    if dst_local_stores.len() != 1 || dst_local_stores[0] != instr_val
-                        ||
-                        // All stores of src_local must be in the same block, prior to src_load.
-                        !src_local_stores.iter().all(|store_val|{
-                            let instr_info = instr_info_map.get(store_val).unwrap();
-                            let src_load_info = instr_info_map.get(src_load).unwrap();
-                            instr_info.block == block && instr_info.pos < src_load_info.pos
-                        })
-                        ||
-                        // All loads of dst_local must be after this instruction, in the same block.
-                        !dst_local_loads.iter().all(|load_val| {
-                            let instr_info = instr_info_map.get(load_val).unwrap();
-                            instr_info.block == block && instr_info.pos > pos
-                        })
-                        // We don't deal with symbols that escape.
-                        || escaped_symbols.contains(&dst_local)
-                        || escaped_symbols.contains(&src_local)
-                        // We don't deal part copies.
-                        || dst_local.get_type(context) != src_local.get_type(context)
-                        // We don't replace the destination when it's an arg.
-                        || matches!(dst_local, Symbol::Arg(_))
+
+                    // Battery of checks
+                    // We bail the optimization if ANY check is true
+
+                    // Check 1. Fail if the destination symbol has more than one write
+                    let more_than_one_write =
+                        dst_local_stores.len() != 1 || dst_local_stores[0] != instr_val;
+
+                    // Check 2. Fail if any write to src occurs after the src load.
+                    // We need to be sure that the source of the store has the last value
+                    // of the symbol (no writes after the load)
+                    let any_src_write_after_src_load = !src_local_stores.iter().all(|src_store| {
+                        let src_store_info = instr_info_map.get(src_store).unwrap();
+                        let src_load_info = instr_info_map.get(src_load).unwrap();
+                        src_store_info.block == block && src_store_info.pos < src_load_info.pos
+                    });
+
+                    // Check 3. any loads of the destination variable occur prior to this operation in the execution flow.
+                    let any_dst_load_before = !dst_local_loads.iter().all(|load_val| {
+                        let load_val_info = instr_info_map.get(load_val).unwrap();
+                        load_val_info.block == block && load_val_info.pos > pos
+                    });
+
+                    // Check 4. ensure neither symbol escape
+                    let any_escape = escaped_symbols.contains(&dst_local)
+                        || escaped_symbols.contains(&src_local);
+
+                    // Check 5. We don't deal part copies, types must be the same.
+                    let types_different =
+                        dst_local.get_type(context) != src_local.get_type(context);
+
+                    // Check 6. We don't replace the destination when it's an arg.
+                    let is_arg = matches!(dst_local, Symbol::Arg(_));
+
+                    if more_than_one_write
+                        || any_src_write_after_src_load
+                        || any_dst_load_before
+                        || any_escape
+                        || types_different
+                        || is_arg
                     {
                         None
                     } else {
@@ -182,22 +230,6 @@ fn local_copy_prop_prememcpy(
                 })
         })
         .collect();
-
-    // If we have A replaces B and B replaces C, then A must replace C also.
-    // Recursively searches for the final replacement for the `local`.
-    // Returns `None` if the `local` cannot be replaced.
-    fn get_replace_with(candidates: &FxHashMap<Symbol, Symbol>, local: &Symbol) -> Option<Symbol> {
-        candidates
-            .get(local)
-            .map(|replace_with| get_replace_with(candidates, replace_with).unwrap_or(*replace_with))
-    }
-
-    // If the source is an Arg, we replace uses of destination with Arg.
-    // Otherwise (`get_local`), we replace the local symbol in-place.
-    enum ReplaceWith {
-        InPlaceLocal(LocalVar),
-        Value(Value),
-    }
 
     // Because we can't borrow context for both iterating and replacing, do it in 2 steps.
     // `replaces` are the original GetLocal instructions with the corresponding replacements
@@ -234,30 +266,35 @@ fn local_copy_prop_prememcpy(
                 else {
                     panic!("earlier match now fails");
                 };
-                if redundant_var.is_mutable(context) {
+
+                if redundant_var.is_mutable(context) && !replacement_var.is_mutable(context) {
+                    modified = true;
                     replacement_var.set_mutable(context, true);
                 }
-                value.replace(
+
+                modified |= value.replace(
                     context,
                     ValueDatum::Instruction(Instruction {
                         op: InstOp::GetLocal(replacement_var),
                         parent,
                     }),
-                )
+                );
             }
             ReplaceWith::Value(replace_with) => {
                 value_replace.insert(value, replace_with);
             }
         }
     }
-    function.replace_values(context, &value_replace, None);
+
+    modified |= function.replace_values(context, &value_replace, None);
 
     // Delete stores to the replaced local.
     let blocks: Vec<Block> = function.block_iter(context).collect();
     for block in blocks {
-        block.remove_instructions(context, |value| to_delete.contains(&value));
+        modified |= block.remove_instructions(context, |value| to_delete.contains(&value));
     }
-    Ok(true)
+
+    Ok(modified)
 }
 
 // Deconstruct a memcpy into (dst_val_ptr, src_val_ptr, copy_len).
@@ -442,6 +479,7 @@ fn local_copy_prop(
             if escaped_symbols.contains(&src_sym) {
                 return false;
             }
+
             for memcpy in dest_to_copies
                 .get(&src_sym)
                 .iter()
@@ -449,6 +487,7 @@ fn local_copy_prop(
             {
                 let (dst_ptr_memcpy, src_ptr_memcpy, copy_len) =
                     deconstruct_memcpy(context, *memcpy).expect("Expected copy instruction");
+
                 // If the location where we're loading from exactly matches the destination of
                 // the memcpy, just load from the source pointer of the memcpy.
                 // TODO: In both the arms below, we check that the pointer type

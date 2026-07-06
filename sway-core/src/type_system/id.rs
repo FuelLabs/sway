@@ -12,12 +12,15 @@ use crate::{
         DeclEngineGet, DeclEngineGetParsedDecl, DeclEngineInsert, MaterializeConstGenerics,
     },
     engine_threading::{DebugWithEngines, DisplayWithEngines, Engines, WithEngines},
-    language::{ty::TyStructDecl, CallPath},
+    language::{
+        ty::{StructDecl, TyDecl, TyStructDecl},
+        CallPath,
+    },
     namespace::TraitMap,
     semantic_analysis::TypeCheckContext,
     type_system::priv_prelude::*,
     types::{CollectTypesMetadata, CollectTypesMetadataContext, TypeMetadata},
-    EnforceTypeArguments,
+    EnforceTypeArguments, HasChanges,
 };
 
 use std::{
@@ -64,13 +67,13 @@ impl From<usize> for TypeId {
 impl CollectTypesMetadata for TypeId {
     fn collect_types_metadata(
         &self,
-        _handler: &Handler,
+        handler: &Handler,
         ctx: &mut CollectTypesMetadataContext,
     ) -> Result<Vec<TypeMetadata>, ErrorEmitted> {
         fn filter_fn(type_info: &TypeInfo) -> bool {
             matches!(
                 type_info,
-                TypeInfo::UnknownGeneric { .. } | TypeInfo::Placeholder(_)
+                TypeInfo::UnknownGeneric { .. } | TypeInfo::Placeholder(_) | TypeInfo::Struct(_)
             )
         }
         let engines = ctx.engines;
@@ -89,6 +92,11 @@ impl CollectTypesMetadata for TypeId {
                         type_param.name().clone(),
                         ctx.call_site_get(self),
                     ));
+                }
+                TypeInfo::Struct(decl) => {
+                    let mut types = TyDecl::StructDecl(StructDecl { decl_id: *decl })
+                        .collect_types_metadata(handler, ctx)?;
+                    res.append(&mut types);
                 }
                 _ => {}
             }
@@ -123,14 +131,16 @@ impl MaterializeConstGenerics for TypeId {
         handler: &Handler,
         name: &str,
         value: &crate::language::ty::TyExpression,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
+        let mut has_changes = HasChanges::No;
         match &*engines.te().get(*self) {
             TypeInfo::Array(
                 element_type,
                 Length(ConstGenericExpr::AmbiguousVariableExpression { ident, decl }),
             ) => {
                 let mut elem_type = element_type.clone();
-                elem_type.materialize_const_generics(engines, handler, name, value)?;
+                has_changes |=
+                    elem_type.materialize_const_generics(engines, handler, name, value)?;
 
                 if ident.as_str() == name {
                     let val = match &value.expression {
@@ -153,10 +163,12 @@ impl MaterializeConstGenerics for TypeId {
                             span: value.span.clone(),
                         }),
                     );
+                    has_changes = HasChanges::Yes;
                 } else {
                     let mut decl = decl.clone();
                     if let Some(decl) = decl.as_mut() {
-                        decl.materialize_const_generics(engines, handler, name, value)?;
+                        has_changes |=
+                            decl.materialize_const_generics(engines, handler, name, value)?;
                     }
 
                     *self = engines.te().insert_array(
@@ -167,12 +179,13 @@ impl MaterializeConstGenerics for TypeId {
                             decl,
                         }),
                     );
+                    has_changes = HasChanges::Yes;
                 }
             }
             TypeInfo::Enum(id) => {
                 let decl = engines.de().get(id);
                 let mut decl = (*decl).clone();
-                decl.materialize_const_generics(engines, handler, name, value)?;
+                has_changes |= decl.materialize_const_generics(engines, handler, name, value)?;
 
                 let parsed_decl = engines
                     .de()
@@ -183,10 +196,11 @@ impl MaterializeConstGenerics for TypeId {
                 let decl_ref = engines.de().insert(decl, parsed_decl.as_ref());
 
                 *self = engines.te().insert_enum(engines, *decl_ref.id());
+                has_changes = HasChanges::Yes;
             }
             TypeInfo::Struct(id) => {
                 let mut decl = TyStructDecl::clone(&engines.de().get(id));
-                decl.materialize_const_generics(engines, handler, name, value)?;
+                has_changes |= decl.materialize_const_generics(engines, handler, name, value)?;
 
                 let parsed_decl = engines
                     .de()
@@ -197,6 +211,7 @@ impl MaterializeConstGenerics for TypeId {
                 let decl_ref = engines.de().insert(decl, parsed_decl.as_ref());
 
                 *self = engines.te().insert_struct(engines, *decl_ref.id());
+                has_changes = HasChanges::Yes;
             }
             TypeInfo::StringArray(Length(ConstGenericExpr::AmbiguousVariableExpression {
                 ident,
@@ -221,6 +236,7 @@ impl MaterializeConstGenerics for TypeId {
                         span: value.span.clone(),
                     }),
                 );
+                has_changes = HasChanges::Yes;
             }
             TypeInfo::Ref {
                 to_mutable_value,
@@ -228,18 +244,19 @@ impl MaterializeConstGenerics for TypeId {
                 ..
             } => {
                 let mut referenced_type = referenced_type.clone();
-                referenced_type
+                has_changes |= referenced_type
                     .type_id
                     .materialize_const_generics(engines, handler, name, value)?;
 
                 *self = engines
                     .te()
                     .insert_ref(engines, *to_mutable_value, referenced_type);
+                has_changes = HasChanges::Yes;
             }
             _ => {}
         }
 
-        Ok(())
+        Ok(has_changes)
     }
 }
 

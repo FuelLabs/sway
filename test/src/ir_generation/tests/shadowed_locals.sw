@@ -19,14 +19,14 @@ fn main() -> u64 {
 // check: $(true=$VAL) = const bool true
 // check: store $true to $a_var
 
-// check: $ID($(int_val=$VAL): u64):
+// check: $ID(mut $(int_val=$VAL): u64):
 // check: $(a__var=$VAL) = get_local __ptr u64, a_
 // check: store $int_val to $a__var
 
 // check: $(struct_init=$VAL) = get_local __ptr { u64 }, __struct_init_0
 // check: $(a_ptr=$VAL) = get_local __ptr u64, a_
 // check: $(a_loaded=$VAL) = load $a_ptr
-// check: $(init_aggr=$VAL) = init_aggr v109v1 [$a_loaded]
+// check: $(init_aggr=$VAL) = init_aggr v112v1 [$a_loaded]
 
 // check: $(init_aggr_val=$VAL) = load $init_aggr
 // check: $(a___var=$VAL) = get_local __ptr { u64 }, a__

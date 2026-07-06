@@ -18,7 +18,7 @@ use ::clone::Clone;
 ///
 /// WARNING: As this type is meant to be forward compatible with UTF-8, do *not*
 /// add any mutation functionality or unicode input of any kind until `char` is
-/// implemented, codepoints are *not* guaranteed to fall on byte boundaries
+/// implemented. Currently, codepoints are *not* guaranteed to fall on byte boundaries.
 pub struct String {
     /// The bytes representing the characters of the string.
     bytes: Bytes,
@@ -306,12 +306,6 @@ impl From<String> for str {
     fn from(s: String) -> str {
         s.as_str()
     }
-}
-
-#[test]
-fn test_string_str() {
-    let string = String::from_ascii_str("Fuel");
-    assert_eq(string.as_str(), "Fuel");
 }
 
 impl AsRawSlice for String {

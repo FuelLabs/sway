@@ -334,11 +334,7 @@ impl<'a, 'e> Parser<'a, 'e> {
     ///
     /// To calculate lines the original source code needs to be transversed.
     pub fn consume_while_line_equals(&mut self, line: usize) {
-        loop {
-            let Some(current_token) = self.token_trees.first() else {
-                break;
-            };
-
+        while let Some(current_token) = self.token_trees.first() {
             let current_span = current_token.span();
             let current_span_line = current_span.start_line_col_one_index().line;
 

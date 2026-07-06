@@ -4,7 +4,7 @@ category = "fail"
 #sameln: $()Pure function cannot access storage
 #check: $()fn read_storage_word() -> u64
 #nextln: $()Function "read_storage_word" is pure and cannot access storage.
-#check: $()srw res is_set key;
+#check: $()srw res is_set key i0;
 #nextln: $()Reading a word from the storage happens here.
 #check: $()Consider declaring the function "read_storage_word" as `#[storage(read)]`
 

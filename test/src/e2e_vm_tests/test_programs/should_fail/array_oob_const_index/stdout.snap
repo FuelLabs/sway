@@ -1,6 +1,5 @@
 ---
 source: test/src/snapshot/mod.rs
-assertion_line: 101
 ---
 > forc test --path test/src/e2e_vm_tests/test_programs/should_fail/array_oob_const_index --release
 exit status: 1
@@ -22,14 +21,62 @@ ____
 error
   --> test/src/e2e_vm_tests/test_programs/should_fail/array_oob_const_index/src/main.sw:12:9
    |
-10 | fn global_const_index() -> u64 {
-11 |     let ary = [1, 2, 3];
-12 |     ary[I]
-   |         ^ Index out of bounds; the length is 3 but the index is 4.
+10 | fn literal_index_const_generic<const N: u64>() -> u64 {
+11 |     let ary = [1; N];
+12 |     ary[4] // THIS SHOULD NOT EMIT OUT-OF-BOUNDS-ERROR.
+   |         ^ Index out of bounds; the length is 0 but the index is 4.
 13 | }
 14 | 
    |
 ____
 
-  Aborting due to 2 errors.
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_oob_const_index/src/main.sw:19:9
+   |
+17 | fn global_const_index() -> u64 {
+18 |     let ary = [1, 2, 3];
+19 |     ary[GLOBAL_I]
+   |         ^^^^^^^^ Index out of bounds; the length is 3 but the index is 4.
+20 | }
+21 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_oob_const_index/src/main.sw:26:9
+   |
+24 | fn global_const_index_const_generic<const N: u64>() -> u64 {
+25 |     let ary = [1; N];
+26 |     ary[GLOBAL_I] // THIS SHOULD NOT EMIT OUT-OF-BOUNDS-ERROR.
+   |         ^^^^^^^^ Index out of bounds; the length is 0 but the index is 4.
+27 | }
+28 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_oob_const_index/src/main.sw:32:9
+   |
+30 |     const LOCAL_I: u64 = 4;
+31 |     let ary = [1, 2, 3];
+32 |     ary[LOCAL_I]
+   |         ^^^^^^^ Index out of bounds; the length is 3 but the index is 4.
+33 | }
+34 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/array_oob_const_index/src/main.sw:40:9
+   |
+38 |     const LOCAL_I: u64 = 4;
+39 |     let ary = [1; N];
+40 |     ary[LOCAL_I] // THIS SHOULD NOT EMIT OUT-OF-BOUNDS-ERROR.
+   |         ^^^^^^^ Index out of bounds; the length is 0 but the index is 4.
+41 | }
+42 | 
+   |
+____
+
+  Aborting due to 6 errors.
 error: Failed to compile array_oob_const_index

@@ -1,4 +1,7 @@
 category = "compile"
-
-# check: $()Storage write after external contract interaction in function or method "deposit". Consider making all storage writes before calling another contract
 expected_warnings = 3
+
+#unordered: $()Storage read after external contract interaction in function or method "deposit_quads". Consider making all storage reads before calling another contract
+#unordered: $()Storage write after external contract interaction in function or method "deposit_quads". Consider making all storage writes before calling another contract
+#unordered: $()Storage write after external contract interaction in function or method "deposit_slot". Consider making all storage writes before calling another contract
+

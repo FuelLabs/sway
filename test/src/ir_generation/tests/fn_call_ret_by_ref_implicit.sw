@@ -35,7 +35,7 @@ fn main() -> u64 {
 // check: $(field_2_val=$VAL) = load $field_2_ptr
 // check: ret u64 $field_2_val
 
-// check: fn $a_fn($(x_arg=$ID) $MD: u64, $(ret_val_arg_ptr=$ID): __ptr { u64, u64, u64 }) -> ()
+// check: fn $a_fn(mut $(x_arg=$ID) $MD: u64, mut $(ret_val_arg_ptr=$ID): __ptr { u64, u64, u64 }) -> ()
 
 // check: $(temp_ptr=$VAL) = get_local __ptr { u64, u64, u64 }, $(=__tuple_init_\d+)
 

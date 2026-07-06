@@ -1,4 +1,3 @@
 cmds = [
-    "forc build --path {root} --no-experimental const_generics --release",
-    "forc test --path {root} --test-threads 1 --dbgs --reverts --release",
+    "forc test --path {root} --test-threads 1 --dbgs",
 ]

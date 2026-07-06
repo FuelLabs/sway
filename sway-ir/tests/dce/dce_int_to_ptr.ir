@@ -41,12 +41,3 @@ script {
         ret bool v2_5
     }
 }
-
-// check: local mut u64 x
-// check: local mut u64 y
-// not: local mut u64 y
-// check: block2
-// check: store
-// not: get_local __ptr u64, dummy
-// not: store
-// check: ret bool

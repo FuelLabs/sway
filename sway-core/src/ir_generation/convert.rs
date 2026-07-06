@@ -97,7 +97,7 @@ pub(super) fn convert_resolved_typeid_no_span(
     )
 }
 
-fn convert_resolved_type_info(
+pub(super) fn convert_resolved_type_info(
     engines: &Engines,
     context: &mut Context,
     md_mgr: &mut MetadataManager,
@@ -176,7 +176,7 @@ fn convert_resolved_type_info(
                 elem_type.type_id,
                 span,
             )?;
-            Type::new_array(context, elem_type, len as u64)
+            Type::new_array(context, elem_type, len)
         }
 
         TypeInfo::Tuple(fields) => {

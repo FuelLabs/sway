@@ -429,7 +429,6 @@ fn connect_node<'eng: 'cfg, 'cfg>(
     tree_type: &TreeType,
     options: NodeConnectionOptions,
 ) -> Result<(Vec<NodeIndex>, Option<NodeIndex>), CompileError> {
-    //    let mut graph = graph.clone();
     let span = node.span.clone();
     Ok(match &node.content {
         ty::TyAstNodeContent::Expression(ty::TyExpression {
@@ -1322,9 +1321,6 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 graph.add_edge(leaf, fn_entrypoint, label.into());
             }
 
-            // save the existing options value to restore after handling the arguments
-            let force_struct_fields_connection = options.force_struct_fields_connection;
-
             // if the function is external, assume that any struct that is being referenced
             // as an argument "consumes" all of the respective struct fields.
             // this could lead to false negatives but it is the best we can do at the moment
@@ -1405,7 +1401,6 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                     param_leaves = vec![];
                 }
             }
-            options.force_struct_fields_connection = force_struct_fields_connection;
 
             // connect final leaf to fn exit
             for leaf in current_leaf {

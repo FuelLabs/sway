@@ -48,6 +48,7 @@ pub enum IrError {
     VerifyIntToPtrUnknownSourceType,
     VerifyAllocCountNotUint64,
     VerifyInvalidGtfIndexType,
+    VerifyInvalidGtfTxFieldIdSize(u64),
     VerifyLoadFromNonPointer(String),
     VerifyLocalMissingInitializer(String, String),
     VerifyLogId,
@@ -69,10 +70,17 @@ pub enum IrError {
     VerifySmoMessageNonPointer(String),
     VerifySmoRecipientBadType,
     VerifyStateAccessNumOfSlots,
-    VerifyStateAccessQuadNonPointer(String),
+    VerifyStateAccessSourceDestNonPointer(String),
+    VerifyStateAccessSourceDestNonUntypedPointer(String),
     VerifyStateDestBadType(String),
     VerifyStateKeyBadType,
     VerifyStateKeyNonPointer(String),
+    VerifyStateLoadWordOffsetSize(u64),
+    VerifyStateReadOffsetBadType,
+    VerifyStateReadLenBadType,
+    VerifyStateWriteSlotLenBadType,
+    VerifyStateUpdateSlotOffsetBadType,
+    VerifyStateUpdateSlotLenBadType,
     VerifyStoreMismatchedTypes(Option<Value>),
     VerifyStoreToNonPointer(String),
     VerifyUntypedValuePassedToFunction,
@@ -82,6 +90,12 @@ pub enum IrError {
     VerifyInitAggrUnknownInitializerType(usize),
     VerifyInitAggrMismatchedStructFieldType(usize, String, String),
     VerifyInitAggrMismatchedArrayElementType(usize, String, String),
+
+    InvalidPassModified {
+        pass: String,
+        returned: bool,
+        comparison: bool,
+    },
 }
 impl IrError {
     pub(crate) fn get_problematic_value(&self) -> Option<&Value> {
@@ -371,31 +385,62 @@ impl fmt::Display for IrError {
                     "Verification failed: Number of slots for state access must be an integer."
                 )
             }
-            IrError::VerifyStateAccessQuadNonPointer(ty) => {
+            IrError::VerifyStateAccessSourceDestNonPointer(ty) => {
                 write!(
                     f,
                     "Verification failed: \
-                    State quad access must be to or from a pointer, not a {ty}."
+                    State access must be to or from a pointer, not a `{ty}`."
+                )
+            }
+            IrError::VerifyStateAccessSourceDestNonUntypedPointer(ty) => {
+                write!(
+                    f,
+                    "Verification failed: \
+                    State access must be to or from an untyped pointer, not a `{ty}`."
                 )
             }
             IrError::VerifyStateKeyBadType => {
                 write!(
                     f,
-                    "Verification failed: State load or store key must be a b256 pointer."
+                    "Verification failed: State loading or storing key must be a `b256` pointer."
                 )
             }
             IrError::VerifyStateKeyNonPointer(ty) => {
                 write!(
                     f,
-                    "Verification failed: State load or store key must be a pointer, not a {ty}."
+                    "Verification failed: State loading or storing key must be a pointer, not a `{ty}`."
                 )
             }
             IrError::VerifyStateDestBadType(ty) => {
                 write!(
                     f,
-                    "Verification failed: State access operation must be to a {ty} pointer."
+                    "Verification failed: State access operation must be to a `{ty}` pointer."
                 )
             }
+            IrError::VerifyStateLoadWordOffsetSize(offset) => write!(
+                f,
+                "Verification failed: 'state_load_word' instruction has offset that does not fit in 6 bits: {offset}."
+            ),
+            IrError::VerifyStateReadOffsetBadType => write!(
+                f,
+                "Verification failed: 'state_read_slot' instruction has an offset argument that is not an integer."
+            ),
+            IrError::VerifyStateReadLenBadType => write!(
+                f,
+                "Verification failed: 'state_read_slot' instruction has a length argument that is not an integer."
+            ),
+            IrError::VerifyStateWriteSlotLenBadType => write!(
+                f,
+                "Verification failed: 'state_write_slot' instruction has a length argument that is not an integer."
+            ),
+            IrError::VerifyStateUpdateSlotOffsetBadType => write!(
+                f,
+                "Verification failed: 'state_update_slot' instruction has an offset argument that is not an integer."
+            ),
+            IrError::VerifyStateUpdateSlotLenBadType => write!(
+                f,
+                "Verification failed: 'state_update_slot' instruction has a length argument that is not an integer."
+            ),
             IrError::VerifyStoreMismatchedTypes(_) => {
                 write!(
                     f,
@@ -411,7 +456,11 @@ impl fmt::Display for IrError {
             ),
             IrError::VerifyInvalidGtfIndexType => write!(
                 f,
-                "Verification failed: An non-integer value has been passed to a 'gtf' instruction."
+                "Verification failed: A non-integer value has been passed as index to a 'gtf' instruction."
+            ),
+            IrError::VerifyInvalidGtfTxFieldIdSize(tx_field_id) => write!(
+                f,
+                "Verification failed: 'gtf' instruction has transaction field ID that does not fit in 12 bits: {tx_field_id}."
             ),
             IrError::VerifyLogId => {
                 write!(f, "Verification failed: log ID must be an integer.")
@@ -530,6 +579,13 @@ impl fmt::Display for IrError {
                 write!(
                     f,
                     "Verification failed: init_aggr instruction has an initializer with a type mismatch for array element at index {idx}. Expected element type: {element_ty}, found initializer type: {initializer_ty}."
+                )
+            }
+
+            IrError::InvalidPassModified { pass, returned, comparison } => {
+                write!(
+                    f,
+                    "Verification failed: {pass} returned `modified: {returned}` but its IR comparison says `{comparison}`",
                 )
             }
         }

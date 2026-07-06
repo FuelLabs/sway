@@ -10,7 +10,7 @@ pub(crate) fn check() -> Result<()> {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let all_tests_dir = PathBuf::from(format!("{manifest_dir}/src"));
 
-    check_test_forc_tomls(&all_tests_dir)?;
+    check_forc_tomls(&all_tests_dir)?;
 
     check_redundant_gitignore_files(&all_tests_dir)?;
 
@@ -30,18 +30,23 @@ fn check_redundant_gitignore_files(all_tests_dir: &Path) -> Result<()> {
             .collect::<Vec<_>>();
         gitignores.sort();
 
-        Err(anyhow!("Redundant .gitignore files.\nTo fix the error, delete these redundant .gitignore files:\n{}", gitignores.join("\n")))
+        Err(anyhow!("Redundant .gitignore files.\nTo fix the error, delete these redundant .gitignore files, or add them to the ACCEPTABLE_GITIGNORES const in `test_consistency.rs`:\n{}", gitignores.join("\n")))
     };
 
     fn find_gitignores(path: &Path, gitignores: &mut Vec<PathBuf>) {
-        const IN_LANGUAGE_TESTS_GITIGNORE: &str = "in_language_tests/.gitignore";
+        const ACCEPTABLE_GITIGNORES: &[&str] = &[
+            REDUCED_STD_LIBS_DIR_NAME,
+            "in_language_tests/.gitignore",
+            "should_pass/storage_benchmarks/.gitignore",
+        ];
 
         if path.is_dir() {
             for entry in std::fs::read_dir(path).unwrap() {
                 let entry = entry.unwrap().path();
                 let entry_name = entry.to_str().unwrap();
-                if entry_name.contains(REDUCED_STD_LIBS_DIR_NAME)
-                    || entry_name.contains(IN_LANGUAGE_TESTS_GITIGNORE)
+                if ACCEPTABLE_GITIGNORES
+                    .iter()
+                    .any(|acc| entry_name.contains(acc))
                 {
                     continue;
                 }
@@ -58,10 +63,10 @@ fn check_redundant_gitignore_files(all_tests_dir: &Path) -> Result<()> {
     }
 }
 
-/// Checks that every Forc.toml file has the authors, license,
-/// and the name property properly set and that the std library
-/// is properly imported.
-fn check_test_forc_tomls(all_tests_dir: &Path) -> Result<()> {
+/// Checks that every Forc.toml file:
+/// - has the authors, license, and the name property properly set.
+/// - has the `std` library properly imported.
+fn check_forc_tomls(all_tests_dir: &Path) -> Result<()> {
     let mut forc_tomls = vec![];
     find_test_forc_tomls(&PathBuf::from(all_tests_dir), &mut forc_tomls);
 
@@ -71,7 +76,7 @@ fn check_test_forc_tomls(all_tests_dir: &Path) -> Result<()> {
         let toml = content.parse::<Table>().unwrap();
 
         // Skip over workspace configs. We want to test only project configs.
-        if content.starts_with("[workspace]") {
+        if toml.contains_key("workspace") {
             continue;
         }
 
@@ -81,6 +86,7 @@ fn check_test_forc_tomls(all_tests_dir: &Path) -> Result<()> {
             .file_name()
             .unwrap()
             .to_string_lossy();
+
         check_test_forc_toml(&content, &toml, &project_name)
             .context(format!("Invalid test Forc.toml: {forc_toml_file_name}"))?;
     }
@@ -124,18 +130,15 @@ fn check_test_forc_tomls(all_tests_dir: &Path) -> Result<()> {
             // 'implicit-std' is not explicitly set.
             // Since the default value for 'implicit-std' is `true` we either need to
             // set it explicitly to `false`, or explicitly import local std library.
-            let imported_std = imported_lib(toml, "std");
+            match imported_lib(toml, "std") {
+                Some(lib) => {
+                    // At least one of the libraries is imported.
+                    // Let's check that the local library is imported.
+                    check_local_import(lib, "std")?;
 
-            if imported_std.is_none() {
-                Err(anyhow!("`implicit-std` is `true` by default. Either explicitly set it to `false`, or import the standard library by using, e.g., `std = {{ path = \"../<...>/sway-lib-std\" }}`."))
-            } else {
-                // At least one of the libraries is imported.
-                // Let's check that the local library is imported.
-                if imported_std.is_some() {
-                    check_local_import(imported_std.unwrap(), "std")?;
+                    Ok(())
                 }
-
-                Ok(())
+                None => Err(anyhow!("`implicit-std` is `true` by default. Either explicitly set it to `false`, or import the standard library by using, e.g., `std = {{ path = \"../<...>/sway-lib-std\" }}`."))
             }
         };
 

@@ -1,0 +1,29 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    entry fn main() -> () {
+        local b256 local
+-         local b256 x
+
+        entry():
+        v1v1 = get_local __ptr b256, local
+        v2v1 = const b256 0x1f212e1f2e7b5a8cff18d994b7b7faa61db1a89cbf697facc518f6b6c8430196
+        store v2v1 to v1v1
+        v4v1 = get_local __ptr b256, local
+        v5v1 = load v4v1
+        v6v1 = call take_b256_2(v5v1)
+-         v7v1 = get_local __ptr b256, x
+-         store v6v1 to v7v1
+        v9v1 = const unit ()
+        ret () v9v1
+    }
+
+    fn take_b256_2(_x: b256) -> b256 {
+        entry(mut _x: b256):
+        v12v1 = const b256 0x0000000000000000000000000000000000000000000000000000000000000000
+        ret b256 v12v1
+    }
+}

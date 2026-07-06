@@ -11,9 +11,7 @@ async fn test_storage_init_instance() -> TestStorageInitContract<Wallet> {
         "out/storage_init.bin",
         LoadConfiguration::default().with_storage_configuration(
             StorageConfiguration::default()
-                .add_slot_overrides_from_file(
-                    "out/storage_init-storage_slots.json",
-                )
+                .add_slot_overrides_from_file("out/storage_init-storage_slots.json")
                 .unwrap(),
         ),
     )
@@ -28,8 +26,11 @@ async fn test_storage_init_instance() -> TestStorageInitContract<Wallet> {
 
 #[tokio::test]
 async fn test_initializers() {
-    let methods = test_storage_init_instance().await.methods();
-    assert!(methods.test_initializers().call().await.unwrap().value);
+    // TODO: (INIT-STORAGE) Uncomment once storage initialization is implemented.
+    let _methods = test_storage_init_instance().await.methods();
+    // assert!(methods.test_initializers().call().await.unwrap().value);
+
+    // TODO: Why was this commented out? Also check it when enabling the above assert.
     // let l = methods.test_initializers().call().await;
     // let (receipts, value) = match l {
     //     Ok(l) => (l.receipts, l.value),

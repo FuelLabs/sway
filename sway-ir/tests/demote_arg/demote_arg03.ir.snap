@@ -1,0 +1,58 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    entry fn main() -> () {
++         local b256 __tmp_arg
++         local b256 __tmp_arg0
+        local b256 dada = const b256 0xdadadadadadadadadadadadadadadadadadadadadadadadadadadadadadadada
+        local b256 tmp
+        local b256 twobee = const b256 0x2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b
+
+        entry():
+        v1v1 = get_local __ptr b256, twobee
+        v2v1 = load v1v1
+        v3v1 = get_local __ptr b256, dada
+        v4v1 = load v3v1
++         v22v1 = get_local __ptr b256, __tmp_arg
++         store v2v1 to v22v1
++         v24v1 = get_local __ptr b256, __tmp_arg0
++         store v4v1 to v24v1
+        v5v1 = const bool false
+-         v6v1 = call a(v5v1, v2v1, v4v1)
++         v26v1 = call a(v5v1, v22v1, v24v1)
+        v7v1 = get_local __ptr b256, tmp
+-         store v6v1 to v7v1
++         store v26v1 to v7v1
+        v9v1 = const unit ()
+        ret () v9v1
+    }
+
+-     fn a(p: bool, a: b256, b: b256) -> b256 {
+-         entry(mut p: bool, mut a: b256, mut b: b256):
+-         cbr p, block2(a), block1()
++     fn a(p: bool, a: __ptr b256, b: __ptr b256) -> b256 {
++         local b256 __tmp_block_arg
+
++         entry(mut p: bool, mut a: __ptr b256, mut b: __ptr b256):
++         v20v1 = load a
++         v21v1 = load b
++         v29v1 = get_local __ptr b256, __tmp_block_arg
++         store v20v1 to v29v1
++         cbr p, block2(v29v1), block1()
++ 
+        block1():
+-         br block2(b)
++         v31v1 = get_local __ptr b256, __tmp_block_arg
++         store v21v1 to v31v1
++         br block2(v31v1)
+
+-         block2(v14v1: b256):
+-         ret b256 v14v1
++         block2(v27v1: __ptr b256):
++         v28v1 = load v27v1
++         ret b256 v28v1
+    }
+}

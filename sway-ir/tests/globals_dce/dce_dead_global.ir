@@ -10,5 +10,3 @@ contract {
             ret u64 v1
     }
 }
-
-// not: global X

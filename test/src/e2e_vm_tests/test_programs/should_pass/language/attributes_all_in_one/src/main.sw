@@ -178,6 +178,42 @@ impl Abi for Contract {
 
 /// Comment.
 /// Comment.
+#[allow(deprecated)]
+#[allow(dead_code)]
+/// Comment.
+#[cfg(target = "fuel")]
+#[cfg(program_type = "contract")]
+#[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
+impl Contract {
+    /// Comment.
+    /// Comment.
+    #[storage(read)]
+    #[inline(always)]
+    #[trace(always)]
+    #[payable]
+    /// Comment.
+    #[allow(deprecated, dead_code)]
+    #[deprecated(note = "note")]
+    #[cfg(target = "fuel")]
+    #[cfg(program_type = "contract")]
+    #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
+    fn auto_impl_function() {
+        let _ = 0;
+        panic "Panics for tracing purposes.";
+    }
+    /// Comment.
+    /// Comment.
+    #[allow(deprecated, dead_code)]
+    #[deprecated(note = "note")]
+    /// Comment.
+    #[cfg(target = "fuel")]
+    #[cfg(program_type = "contract")]
+    #[unknown_0, unknown_1(arg), unknown_2(arg_1 = "value", arg_2)]
+    const AUTO_IMPL_CONST: u8 = 0;
+}
+
+/// Comment.
+/// Comment.
 #[storage(read)]
 #[inline(always)]
 #[trace(always)]

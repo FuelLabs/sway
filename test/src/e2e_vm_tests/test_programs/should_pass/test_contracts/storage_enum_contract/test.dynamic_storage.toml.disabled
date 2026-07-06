@@ -1,0 +1,5 @@
+category = "unit_tests_pass" # TODO: (INIT-STORAGE) Enable this test once storage initialization is implemented. 
+experimental = { new_encoding = true, dynamic_storage = true }
+validate_abi = true
+# validate_storage_slots = true # TODO: Re-enable once dynamic storage slot validation supports this test.
+expected_warnings = 6

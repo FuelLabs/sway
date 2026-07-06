@@ -1,8 +1,0 @@
-[[package]]
-name = "contract_id_type"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "std"
-source = "path+from-root-042F076988000CAA"

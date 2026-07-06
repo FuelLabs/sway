@@ -1,4 +1,4 @@
-//! A value representing a storage key. Every storage field access in the program
+//! A value representing a storage key. Every `storage` field access in the program
 //! corresponds to a [StorageKey].
 
 use std::vec;

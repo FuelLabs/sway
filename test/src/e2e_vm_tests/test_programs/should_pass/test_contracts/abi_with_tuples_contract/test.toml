@@ -1,3 +1,2 @@
 category = "compile"
 validate_abi = true
-validate_storage_slots = true

@@ -3,7 +3,7 @@ use sway_types::Spanned;
 use crate::{
     decl_engine::{parsed_id::ParsedDeclId, DeclId},
     language::{
-        parsed::{self, Declaration, TraitFn},
+        parsed::{Declaration, TraitFn},
         ty, CallPath, Visibility,
     },
     semantic_analysis::symbol_collection_context::SymbolCollectionContext,
@@ -35,9 +35,9 @@ impl ty::TyTraitFn {
     pub(crate) fn type_check(
         handler: &Handler,
         mut ctx: TypeCheckContext,
-        trait_fn: &parsed::TraitFn,
+        trait_fn: &TraitFn,
     ) -> Result<ty::TyTraitFn, ErrorEmitted> {
-        let parsed::TraitFn {
+        let TraitFn {
             name,
             span,
             purity,

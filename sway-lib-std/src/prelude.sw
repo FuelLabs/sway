@@ -10,7 +10,7 @@ pub use ::asset_id::AssetId;
 pub use ::contract_id::ContractId;
 pub use ::identity::Identity;
 
-// `StorageKey` API
+// Storage key API
 pub use ::storage::storage_key::*;
 
 // Collections

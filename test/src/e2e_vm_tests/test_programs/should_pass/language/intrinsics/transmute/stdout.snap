@@ -3,33 +3,31 @@ source: test/src/snapshot/mod.rs
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/transmute --ir final --asm final | filter-fn transmute transmute_by_reference_7
 
-fn transmute_by_reference_7(__ret_value: __ptr u256) -> () {
+fn transmute_by_reference_7(mut __ret_value: __ptr u256) -> () {
     local [u8; 32] __array_init_0
     local mut [u8; 32] bytes
     local __ptr u256 v
 
-    entry(__ret_value: __ptr u256):
-    v535v1 = get_local __ptr [u8; 32], __array_init_0
-    mem_clear_val v535v1
-    v537v1 = get_local __ptr [u8; 32], bytes
-    mem_copy_val v537v1, v535v1
-    v539v1 = get_local __ptr [u8; 32], bytes
-    v540v1 = cast_ptr v539v1 to __ptr u256
-    v541v1 = get_local __ptr __ptr u256, v
-    store v540v1 to v541v1
-    v543v1 = get_local __ptr __ptr u256, v
-    v544v1 = load v543v1
-    mem_copy_val __ret_value, v544v1
-    v546v1 = const unit ()
-    ret () v546v1
+    entry(mut __ret_value: __ptr u256):
+    v790v1 = get_local __ptr [u8; 32], __array_init_0
+    mem_clear_val v790v1
+    v792v1 = get_local __ptr [u8; 32], bytes
+    mem_copy_val v792v1, v790v1
+    v794v1 = get_local __ptr [u8; 32], bytes
+    v795v1 = cast_ptr v794v1 to __ptr u256
+    v796v1 = get_local __ptr __ptr u256, v
+    store v795v1 to v796v1
+    v798v1 = get_local __ptr __ptr u256, v
+    v799v1 = load v798v1
+    mem_copy_val __ret_value, v799v1
+    v801v1 = const unit ()
+    ret () v801v1
 }
 
 
 
 
-
-pshl i1                       ; [fn init: transmute_by_reference_7]: push used low registers 16..40
-pshh i524288                  ; [fn init: transmute_by_reference_7]: push used high registers 40..64
+pshh i528384                  ; [fn init: transmute_by_reference_7]: push used high registers 40..64
 move $$locbase $sp            ; [fn init: transmute_by_reference_7]: set locals base register
 cfei i72                      ; [fn init: transmute_by_reference_7]: allocate: locals 72 byte(s), call args 0 slot(s)
 mcli $$locbase i32            ; clear memory [u8; 32], 32 bytes
@@ -40,6 +38,5 @@ sw   $$locbase $r0 i8         ; store word
 lw   $r0 $$locbase i8         ; load word
 mcpi $$arg0 $r0 i32           ; copy memory
 cfsi i72                      ; [fn end: transmute_by_reference_7] free: locals 72 byte(s), call args 0 slot(s)
-poph i524288                  ; [fn end: transmute_by_reference_7]: restore used high registers 40..64
-popl i1                       ; [fn end: transmute_by_reference_7]: restore used low registers 16..40
+poph i528384                  ; [fn end: transmute_by_reference_7]: restore used high registers 40..64
 jal  $zero $$reta i0          ; [fn end: transmute_by_reference_7] return from call

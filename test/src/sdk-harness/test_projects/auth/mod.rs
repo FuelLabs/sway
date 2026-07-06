@@ -3,7 +3,7 @@ use fuels::{
     prelude::*,
     tx::UtxoId,
     types::{
-        coin::{Coin},
+        coin::Coin,
         coin_type::CoinType,
         input::Input,
         message::{Message, MessageStatus},
@@ -21,10 +21,7 @@ abigen!(
         name = "AuthCallerContract",
         abi = "out/auth_caller_contract-abi.json"
     ),
-    Predicate(
-        name = "AuthPredicate",
-        abi = "out/auth_predicate-abi.json"
-    ),
+    Predicate(name = "AuthPredicate", abi = "out/auth_predicate-abi.json"),
 );
 
 #[tokio::test]
@@ -132,7 +129,10 @@ async fn input_message_msg_sender_from_contract() {
     let tx = tb.build(provider.clone()).await.unwrap();
 
     // Send and verify
-    let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
+    let tx_status = provider
+        .send_transaction_and_await_commit(tx)
+        .await
+        .unwrap();
     let response = call_handler.get_response(tx_status).unwrap();
     assert!(response.value);
 }
@@ -260,18 +260,15 @@ async fn caller_addresses_from_messages() {
     let tx = tb.enable_burn(true).build(provider.clone()).await.unwrap();
 
     // Send and verify
-    let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
+    let tx_status = provider
+        .send_transaction_and_await_commit(tx)
+        .await
+        .unwrap();
     let result = call_handler.get_response(tx_status).unwrap();
 
-    assert!(result
-        .value
-        .contains(&Address::from(wallet1.address())));
-    assert!(result
-        .value
-        .contains(&Address::from(wallet2.address())));
-    assert!(result
-        .value
-        .contains(&Address::from(wallet3.address())));
+    assert!(result.value.contains(&Address::from(wallet1.address())));
+    assert!(result.value.contains(&Address::from(wallet2.address())));
+    assert!(result.value.contains(&Address::from(wallet3.address())));
 }
 
 #[tokio::test]
@@ -356,7 +353,7 @@ async fn caller_addresses_from_coins() {
             utxo_id: UtxoId::new(Bytes32::zeroed(), 0),
             amount: coin_amount,
             asset_id: AssetId::default(),
-                }),
+        }),
     });
     tb.inputs_mut().push(Input::ResourceSigned {
         resource: CoinType::Coin(Coin {
@@ -364,7 +361,7 @@ async fn caller_addresses_from_coins() {
             utxo_id: UtxoId::new(Bytes32::zeroed(), 1),
             amount: coin_amount,
             asset_id: AssetId::default(),
-                }),
+        }),
     });
     tb.inputs_mut().push(Input::ResourceSigned {
         resource: CoinType::Coin(Coin {
@@ -372,7 +369,7 @@ async fn caller_addresses_from_coins() {
             utxo_id: UtxoId::new(Bytes32::zeroed(), 2),
             amount: coin_amount,
             asset_id: AssetId::default(),
-                }),
+        }),
     });
 
     // Build transaction
@@ -384,18 +381,15 @@ async fn caller_addresses_from_coins() {
     let tx = tb.enable_burn(true).build(provider.clone()).await.unwrap();
 
     // Send and verify
-    let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
+    let tx_status = provider
+        .send_transaction_and_await_commit(tx)
+        .await
+        .unwrap();
     let result = call_handler.get_response(tx_status).unwrap();
 
-    assert!(result
-        .value
-        .contains(&Address::from(wallet1.address())));
-    assert!(result
-        .value
-        .contains(&Address::from(wallet2.address())));
-    assert!(result
-        .value
-        .contains(&Address::from(wallet3.address())));
+    assert!(result.value.contains(&Address::from(wallet1.address())));
+    assert!(result.value.contains(&Address::from(wallet2.address())));
+    assert!(result.value.contains(&Address::from(wallet3.address())));
 }
 
 #[tokio::test]
@@ -494,7 +488,7 @@ async fn caller_addresses_from_coins_and_messages() {
             utxo_id: UtxoId::new(Bytes32::zeroed(), 1),
             amount: coin_amount,
             asset_id: AssetId::default(),
-                }),
+        }),
     });
     tb.inputs_mut().push(Input::ResourceSigned {
         resource: CoinType::Coin(Coin {
@@ -502,7 +496,7 @@ async fn caller_addresses_from_coins_and_messages() {
             utxo_id: UtxoId::new(Bytes32::zeroed(), 2),
             amount: coin_amount,
             asset_id: AssetId::default(),
-                }),
+        }),
     });
 
     // Build transaction
@@ -514,18 +508,15 @@ async fn caller_addresses_from_coins_and_messages() {
     let tx = tb.enable_burn(true).build(provider.clone()).await.unwrap();
 
     // Send and verify
-    let tx_status = provider.send_transaction_and_await_commit(tx).await.unwrap();
+    let tx_status = provider
+        .send_transaction_and_await_commit(tx)
+        .await
+        .unwrap();
     let result = call_handler.get_response(tx_status).unwrap();
 
-    assert!(result
-        .value
-        .contains(&Address::from(wallet1.address())));
-    assert!(result
-        .value
-        .contains(&Address::from(wallet2.address())));
-    assert!(result
-        .value
-        .contains(&Address::from(wallet3.address())));
+    assert!(result.value.contains(&Address::from(wallet1.address())));
+    assert!(result.value.contains(&Address::from(wallet2.address())));
+    assert!(result.value.contains(&Address::from(wallet3.address())));
 }
 
 async fn get_contracts() -> (
@@ -547,15 +538,12 @@ async fn get_contracts() -> (
     .unwrap()
     .contract_id;
 
-    let id_2 = Contract::load_from(
-        "out/auth_caller_contract.bin",
-        LoadConfiguration::default(),
-    )
-    .unwrap()
-    .deploy(&wallet, TxPolicies::default())
-    .await
-    .unwrap()
-    .contract_id;
+    let id_2 = Contract::load_from("out/auth_caller_contract.bin", LoadConfiguration::default())
+        .unwrap()
+        .deploy(&wallet, TxPolicies::default())
+        .await
+        .unwrap()
+        .contract_id;
 
     let instance_1 = AuthContract::new(id_1.clone(), wallet.clone());
     let instance_2 = AuthCallerContract::new(id_2.clone(), wallet.clone());
@@ -585,17 +573,16 @@ async fn can_get_predicate_address() {
 
     // Setup predicate.
     let hex_predicate_address: &str =
-        "0xf9acc710533729d33e311df5dcbddca07898135691656fc6a95c77fdb36b0940";
+        "0x9b58a6d21eae9e75c6a1cbe9798ddcfda696454d1871b92506293363950d7259"; // AUTO-PREDICATE-ID auth_predicate test/src/sdk-harness --release --output-directory test/src/sdk-harness/out
     let predicate_address =
         Address::from_str(hex_predicate_address).expect("failed to create Address from string");
     let predicate_data = AuthPredicateEncoder::default()
         .encode_data(predicate_address)
         .unwrap();
-    let predicate: Predicate =
-        Predicate::load_from("out/auth_predicate.bin")
-            .unwrap()
-            .with_provider(first_wallet.try_provider().unwrap().clone())
-            .with_data(predicate_data);
+    let predicate: Predicate = Predicate::load_from("out/auth_predicate.bin")
+        .unwrap()
+        .with_provider(first_wallet.try_provider().unwrap().clone())
+        .with_data(predicate_data);
 
     // If this test fails, it can be that the predicate address got changed.
     // Uncomment the next line, get the predicate address, and update it above.
@@ -671,11 +658,10 @@ async fn when_incorrect_predicate_address_passed() {
     let predicate_data = AuthPredicateEncoder::default()
         .encode_data(predicate_address)
         .unwrap();
-    let predicate: Predicate =
-        Predicate::load_from("out/auth_predicate.bin")
-            .unwrap()
-            .with_provider(first_wallet.try_provider().unwrap().clone())
-            .with_data(predicate_data);
+    let predicate: Predicate = Predicate::load_from("out/auth_predicate.bin")
+        .unwrap()
+        .with_provider(first_wallet.try_provider().unwrap().clone())
+        .with_data(predicate_data);
 
     // Next, we lock some assets in this predicate using the first wallet:
     // First wallet transfers amount to predicate.
@@ -710,7 +696,7 @@ async fn when_incorrect_predicate_address_passed() {
 async fn can_get_predicate_address_in_message() {
     // Setup predicate address.
     let hex_predicate_address: &str =
-        "0xf9acc710533729d33e311df5dcbddca07898135691656fc6a95c77fdb36b0940";
+        "0x9b58a6d21eae9e75c6a1cbe9798ddcfda696454d1871b92506293363950d7259"; // AUTO-PREDICATE-ID auth_predicate test/src/sdk-harness --release --output-directory test/src/sdk-harness/out
     let predicate_address =
         Address::from_str(hex_predicate_address).expect("failed to create Address from string");
 
@@ -750,11 +736,10 @@ async fn can_get_predicate_address_in_message() {
     let predicate_data = AuthPredicateEncoder::default()
         .encode_data(predicate_address)
         .unwrap();
-    let predicate: Predicate =
-        Predicate::load_from("out/auth_predicate.bin")
-            .unwrap()
-            .with_provider(wallet.try_provider().unwrap().clone())
-            .with_data(predicate_data);
+    let predicate: Predicate = Predicate::load_from("out/auth_predicate.bin")
+        .unwrap()
+        .with_provider(wallet.try_provider().unwrap().clone())
+        .with_data(predicate_data);
 
     // If this test fails, it can be that the predicate address got changed.
     // Uncomment the next line, get the predicate address, and update it above.

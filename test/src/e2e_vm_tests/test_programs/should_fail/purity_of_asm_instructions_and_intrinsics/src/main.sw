@@ -1,16 +1,26 @@
 contract;
 
-abi Abi {
-    fn test();
-}
-
 struct S { }
 
 impl S {
+    #[cfg(experimental_dynamic_storage = false)]
     fn read_intrinsics(self) -> Self {
         let ptr = asm (p: 0) { p: raw_ptr };
         let _ = __state_load_word(b256::zero());
         let _ = __state_load_quad(b256::zero(), ptr, 1);
+        let _ = __state_load_slot(b256::zero(), ptr, 0, 8);
+        let _ = __state_preload(b256::zero());
+
+        self
+    }
+
+    #[cfg(experimental_dynamic_storage = true)]
+    fn read_intrinsics(self) -> Self {
+        let ptr = asm (p: 0) { p: raw_ptr };
+        let _ = __state_load_word(b256::zero(), 0);
+        let _ = __state_load_quad(b256::zero(), ptr, 1);
+        let _ = __state_load_slot(b256::zero(), ptr, 0, 8);
+        let _ = __state_preload(b256::zero());
 
         self
     }
@@ -20,38 +30,62 @@ impl S {
         let ptr = asm (p: 0) { p: raw_ptr };
         let _ = __state_store_word(b256::zero(), 0);
         let _ = __state_store_quad(b256::zero(), ptr, 1);
+        __state_store_slot(b256::zero(), ptr, 8);
 
         self
     }
 
     #[storage(read)]
-    fn clear_intrinsic(self) -> Self {
+    fn clear_intrinsics(self) -> Self {
         let _ = __state_clear(b256::zero(), 1);
+        let _ = __state_clear_slots(b256::zero(), 1);
+
+        self
+    }
+
+    #[storage(read)]
+    fn update_intrinsics(self) -> Self {
+        let ptr = asm (p: 0) { p: raw_ptr };
+        __state_update_slot(b256::zero(), ptr, 0, 8);
 
         self
     }
 }
 
-impl Abi for Contract {
+impl Contract {
     fn test() {
         read_asm_instructions();
         write_asm_instructions();
-        clear_asm_instruction();
+        update_asm_instructions();
+        clear_asm_instructions();
 
         let s = S {};
         let _ = s.read_intrinsics();
         let _ = s.write_intrinsics();
-        let _ = s.clear_intrinsic();
+        let _ = s.clear_intrinsics();
+        let _ = s.update_intrinsics();
     }
 }
 
 fn read_asm_instructions() {
     asm(r1, r2, r3: 0) {
-        srw r1 r2 r3;
+        srw r1 r2 r3 i0;
     }
 
     asm(r1: 0, r2, r3: 0, r4: 0) {
         srwq r1 r2 r3 r4;
+    }
+
+    asm(r1: 0, r2: 0, r3: 0, r4: 0) {
+        srdd r1 r2 r3 r4;
+    }
+
+    asm(r1: 0, r2: 0, r3: 0) {
+        srdi r1 r2 r3 i0;
+    }
+
+    asm(r1, r2: 0) {
+        spld r1 r2;
     }
 }
 
@@ -64,11 +98,34 @@ fn write_asm_instructions() {
     asm(r1: 0, r2, r3: 0, r4: 0) {
         swwq r1 r2 r3 r4;
     }
+
+    asm(r1: 0, r2: 0, r3: 0) {
+        swrd r1 r2 r3;
+    }
+
+    asm(r1: 0, r2: 0) {
+        swri r1 r2 i0;
+    }
 }
 
 #[storage(read)]
-fn clear_asm_instruction() {
+fn update_asm_instructions() {
+    asm(r1: 0, r2: 0, r3: 0, r4: 0) {
+        supd r1 r2 r3 r4;
+    }
+
+    asm(r1: 0, r2: 0, r3: 0) {
+        supi r1 r2 r3 i0;
+    }
+}
+
+#[storage(read)]
+fn clear_asm_instructions() {
     asm(r1: 0, r2, r3: 0) {
         scwq r1 r2 r3;
+    }
+
+    asm(r1: 0, r2: 0) {
+        sclr r1 r2;
     }
 }

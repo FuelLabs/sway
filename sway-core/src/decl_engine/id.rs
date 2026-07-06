@@ -6,6 +6,7 @@ use crate::{
         TyStructDecl, TyTraitDecl, TyTraitFn, TyTraitType, TyTypeAliasDecl,
     },
     type_system::*,
+    HasChanges,
 };
 use serde::{Deserialize, Serialize};
 use std::{

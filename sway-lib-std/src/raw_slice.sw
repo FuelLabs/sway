@@ -2,6 +2,7 @@ library;
 
 use ::ops::*;
 use ::raw_ptr::*;
+use ::error_signals::REVERT_WITH_RAW_SLICE_LEN_ZST;
 
 /// Trait to return a type as a `raw_slice`.
 pub trait AsRawSlice {
@@ -97,6 +98,33 @@ impl raw_slice {
         from_parts((ptr, count * __size_of::<T>()))
     }
 
+    /// Returns `self` as a pointer and length in bytes.
+    ///
+    /// # Returns
+    ///
+    /// * [(raw_ptr, u64)] - A tuple of the `self`'s pointer and length in bytes.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::alloc::alloc;
+    ///
+    /// fn foo() {
+    ///     let ptr = alloc::<u64>(1);
+    ///     let slice = raw_slice::from_parts::<u64>(ptr, 1);
+    ///     let slice_ptr = slice.ptr();
+    ///     let slice_len_in_bytes = slice.number_of_bytes();
+    ///
+    ///     let (ptr_part, len_part) = slice.into_parts();
+    ///
+    ///     assert(slice_ptr == ptr_part);
+    ///     assert(slice_len_in_bytes == len_part);
+    /// }
+    /// ```
+    pub fn into_parts(self) -> (raw_ptr, u64) {
+        into_parts(self)
+    }
+
     /// Returns the pointer to the slice.
     ///
     /// # Returns
@@ -136,8 +164,17 @@ impl raw_slice {
     ///     assert(slice.len::<u64>() == 1);
     /// }
     /// ```
+    ///
+    /// # Reverts
+    ///
+    /// * When `T` is a zero-sized type.
     pub fn len<T>(self) -> u64 {
-        into_parts(self).1 / __size_of::<T>()
+        let len = __size_of::<T>();
+        if len != 0 {
+            into_parts(self).1 / len
+        } else {
+            __revert(REVERT_WITH_RAW_SLICE_LEN_ZST);
+        }
     }
 
     /// Returns the number of elements in the slice when the elements are bytes.

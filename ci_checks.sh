@@ -31,7 +31,7 @@ cargo install --locked --debug --path ./forc-plugins/forc-client &&
 cargo install --locked --debug --path ./forc-plugins/forc-tx &&
 cargo install --locked --debug --path ./scripts/mdbook-forc-documenter &&
 forc build --path sway-lib-std &&
-forc test --path sway-lib-std &&
+./sway-lib-std/forbid-tests.sh &&
 cargo run --locked -p forc -- build --locked --path ./examples/Forc.toml &&
 cargo run --locked -p forc-fmt -- --check --path ./examples &&
 cargo run --locked -p forc -- build --path ./docs/reference/src/code/Forc.toml &&

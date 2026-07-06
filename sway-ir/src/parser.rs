@@ -29,8 +29,8 @@ pub fn parse<'eng>(
 // -------------------------------------------------------------------------------------------------
 
 mod ir_builder {
+    use crate::function::IrMutability;
     use slotmap::KeyData;
-    use std::convert::TryFrom;
     use sway_features::ExperimentalFeatures;
     use sway_types::{ident::Ident, span::Span, u256::U256, SourceEngine};
 
@@ -179,9 +179,9 @@ mod ir_builder {
                     string_to_hex::<4>(s)
                 }
 
-            rule block_arg() -> (IrAstTy, String, Option<MdIdxRef>)
-                = name:id() mdi:metadata_idx()? ":" _ ty:ast_ty() {
-                    (ty, name, mdi)
+            rule block_arg() -> (IrMutability, IrAstTy, String, Option<MdIdxRef>)
+                = m:("mut" _)? _ name:id() mdi:metadata_idx()? ":" _ ty:ast_ty() {
+                    (if m.is_some() { IrMutability::Mutable } else { IrMutability::Immutable }, ty, name, mdi)
                 }
 
             rule fn_local() -> (IrAstTy, String, Option<IrAstOperation>, bool)
@@ -278,9 +278,15 @@ mod ir_builder {
                 / op_revert()
                 / op_jmp_mem()
                 / op_smo()
+                / op_state_clear_slots()
+                / op_state_clear()
+                / op_state_read_slot()
                 / op_state_load_quad_word()
                 / op_state_load_word()
                 / op_state_store_quad_word()
+                / op_state_write_slot()
+                / op_state_update_slot()
+                / op_state_preload()
                 / op_state_store_word()
                 / op_store()
                 / op_alloc()
@@ -504,19 +510,44 @@ mod ir_builder {
                     IrAstOperation::StateClear(key, number_of_slots)
                 }
 
+            rule op_state_clear_slots() -> IrAstOperation
+                = "state_clear_slots" _ "key" _ key:id() comma()  number_of_slots:id() {
+                    IrAstOperation::StateClearSlots(key, number_of_slots)
+                }
+
             rule op_state_load_quad_word() -> IrAstOperation
                 = "state_load_quad_word" _ dst:id() comma() "key" _ key:id() comma()  number_of_slots:id() {
                     IrAstOperation::StateLoadQuadWord(dst, key, number_of_slots)
                 }
 
+            rule op_state_read_slot() -> IrAstOperation
+                = "state_read_slot" _ dst:id() comma() "key" _ key:id() comma() offset:id() comma() len:id() {
+                    IrAstOperation::StateReadSlot(dst, key, offset, len)
+                }
+
             rule op_state_load_word() -> IrAstOperation
-                = "state_load_word" _ "key" _ key:id() {
-                    IrAstOperation::StateLoadWord(key)
+                = "state_load_word" _ "key" _ key:id() comma() offset:decimal() {
+                    IrAstOperation::StateLoadWord(key, offset)
                 }
 
             rule op_state_store_quad_word() -> IrAstOperation
                 = "state_store_quad_word" _ src:id() comma() "key" _ key:id() comma()  number_of_slots:id() {
                     IrAstOperation::StateStoreQuadWord(src, key, number_of_slots)
+                }
+
+            rule op_state_write_slot() -> IrAstOperation
+                = "state_write_slot" _ src:id() comma() "key" _ key:id() comma() len:id() {
+                    IrAstOperation::StateWriteSlot(src, key, len)
+                }
+
+            rule op_state_update_slot() -> IrAstOperation
+                = "state_update_slot" _ src:id() comma() "key" _ key:id() comma() offset:id() comma() len:id() {
+                    IrAstOperation::StateUpdateSlot(src, key, offset, len)
+                }
+
+            rule op_state_preload() -> IrAstOperation
+                = "state_preload" _ "key" _ key:id() {
+                    IrAstOperation::StatePreload(key)
                 }
 
             rule op_state_store_word() -> IrAstOperation
@@ -840,7 +871,7 @@ mod ir_builder {
     #[derive(Debug)]
     struct IrAstFnDecl {
         name: String,
-        args: Vec<(IrAstTy, String, Option<MdIdxRef>)>,
+        args: Vec<(IrMutability, IrAstTy, String, Option<MdIdxRef>)>,
         ret_type: IrAstTy,
         is_public: bool,
         metadata: Option<MdIdxRef>,
@@ -855,7 +886,7 @@ mod ir_builder {
     #[derive(Debug)]
     struct IrAstBlock {
         label: String,
-        args: Vec<(IrAstTy, String, Option<MdIdxRef>)>,
+        args: Vec<(IrMutability, IrAstTy, String, Option<MdIdxRef>)>,
         instructions: Vec<IrAstInstruction>,
     }
 
@@ -905,9 +936,14 @@ mod ir_builder {
         JmpMem,
         Smo(String, String, String, String),
         StateClear(String, String),
+        StateClearSlots(String, String),
         StateLoadQuadWord(String, String, String),
-        StateLoadWord(String),
+        StateReadSlot(String, String, String, String),
+        StateLoadWord(String, u64),
         StateStoreQuadWord(String, String, String),
+        StateWriteSlot(String, String, String),
+        StateUpdateSlot(String, String, String, String),
+        StatePreload(String),
         StateStoreWord(String, String),
         Store(String, String),
         WideUnaryOp(UnaryOpKind, String, String),
@@ -1174,11 +1210,16 @@ mod ir_builder {
             let convert_md_idx = |opt_md_idx: &Option<MdIdxRef>| {
                 opt_md_idx.and_then(|mdi| self.md_map.get(&mdi).copied())
             };
-            let args: Vec<(String, Type, Option<MetadataIndex>)> = fn_decl
+            let args: Vec<(IrMutability, String, Type, Option<MetadataIndex>)> = fn_decl
                 .args
                 .iter()
-                .map(|(ty, name, md_idx)| {
-                    (name.into(), ty.to_ir_type(context), convert_md_idx(md_idx))
+                .map(|(mutability, ty, name, md_idx)| {
+                    (
+                        mutability.clone(),
+                        name.into(),
+                        ty.to_ir_type(context),
+                        convert_md_idx(md_idx),
+                    )
                 })
                 .collect();
             let ret_type = fn_decl.ret_type.to_ir_type(context);
@@ -1224,7 +1265,9 @@ mod ir_builder {
                             func.get_entry_block(context)
                         } else {
                             let irblock = func.create_block(context, Some(block.label.clone()));
-                            for (idx, (arg_ty, _, md)) in block.args.iter().enumerate() {
+                            for (idx, (immutability, arg_ty, _, md)) in
+                                block.args.iter().enumerate()
+                            {
                                 let ty = arg_ty.to_ir_type(context);
                                 let arg = Value::new_argument(
                                     context,
@@ -1232,8 +1275,10 @@ mod ir_builder {
                                         block: irblock,
                                         idx,
                                         ty,
-                                        // TODO: Support immutable flag on block arguments.
-                                        is_immutable: false,
+                                        is_immutable: match immutability {
+                                            IrMutability::Immutable => true,
+                                            IrMutability::Mutable => false,
+                                        },
                                     },
                                 )
                                 .add_metadatum(context, convert_md_idx(md));
@@ -1245,9 +1290,9 @@ mod ir_builder {
                 }));
 
             for block in fn_decl.blocks {
-                for (idx, arg) in block.args.iter().enumerate() {
+                for (idx, (_, _, name, _)) in block.args.iter().enumerate() {
                     arg_map.insert(
-                        arg.1.clone(),
+                        name.clone(),
                         named_blocks[&block.label].get_arg(context, idx).unwrap(),
                     );
                 }
@@ -1501,10 +1546,13 @@ mod ir_builder {
                         .append(context)
                         .get_global(*self.globals_map.get(&global_name).unwrap())
                         .add_metadatum(context, opt_metadata),
-                    IrAstOperation::GetConfig(name) => block
-                        .append(context)
-                        .get_config(self.module, name)
-                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::GetConfig(name) => {
+                        let config = self.module.get_config(context, &name).unwrap();
+                        block
+                            .append(context)
+                            .get_config(config)
+                            .add_metadatum(context, opt_metadata)
+                    }
                     IrAstOperation::GetStorageKey(path) => block
                         .append(context)
                         .get_storage_key(*self.storage_keys_map.get(&path).unwrap())
@@ -1614,6 +1662,13 @@ mod ir_builder {
                             *val_map.get(&number_of_slots).unwrap(),
                         )
                         .add_metadatum(context, opt_metadata),
+                    IrAstOperation::StateClearSlots(key, number_of_slots) => block
+                        .append(context)
+                        .state_clear_slots(
+                            *val_map.get(&key).unwrap(),
+                            *val_map.get(&number_of_slots).unwrap(),
+                        )
+                        .add_metadatum(context, opt_metadata),
                     IrAstOperation::StateLoadQuadWord(dst, key, number_of_slots) => block
                         .append(context)
                         .state_load_quad_word(
@@ -1622,9 +1677,18 @@ mod ir_builder {
                             *val_map.get(&number_of_slots).unwrap(),
                         )
                         .add_metadatum(context, opt_metadata),
-                    IrAstOperation::StateLoadWord(key) => block
+                    IrAstOperation::StateReadSlot(dst, key, offset, len) => block
                         .append(context)
-                        .state_load_word(*val_map.get(&key).unwrap())
+                        .state_read_slot(
+                            *val_map.get(&dst).unwrap(),
+                            *val_map.get(&key).unwrap(),
+                            *val_map.get(&offset).unwrap(),
+                            *val_map.get(&len).unwrap(),
+                        )
+                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::StateLoadWord(key, offset) => block
+                        .append(context)
+                        .state_load_word(*val_map.get(&key).unwrap(), offset)
                         .add_metadatum(context, opt_metadata),
                     IrAstOperation::StateStoreQuadWord(src, key, number_of_slots) => block
                         .append(context)
@@ -1633,6 +1697,27 @@ mod ir_builder {
                             *val_map.get(&key).unwrap(),
                             *val_map.get(&number_of_slots).unwrap(),
                         )
+                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::StateWriteSlot(src, key, len) => block
+                        .append(context)
+                        .state_write_slot(
+                            *val_map.get(&src).unwrap(),
+                            *val_map.get(&key).unwrap(),
+                            *val_map.get(&len).unwrap(),
+                        )
+                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::StateUpdateSlot(src, key, offset, len) => block
+                        .append(context)
+                        .state_update_slot(
+                            *val_map.get(&src).unwrap(),
+                            *val_map.get(&key).unwrap(),
+                            *val_map.get(&offset).unwrap(),
+                            *val_map.get(&len).unwrap(),
+                        )
+                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::StatePreload(key) => block
+                        .append(context)
+                        .state_preload(*val_map.get(&key).unwrap())
                         .add_metadatum(context, opt_metadata),
                     IrAstOperation::StateStoreWord(src, key) => block
                         .append(context)
@@ -1671,14 +1756,10 @@ mod ir_builder {
                     .find(|x| x.get_name(context) == fn_name)
                     .unwrap();
 
-                if let Some(ConfigContent::V1 { decode_fn, .. }) = context
-                    .modules
-                    .get_mut(self.module.0)
-                    .unwrap()
-                    .configs
-                    .get_mut(&configurable_name)
-                {
-                    decode_fn.replace(f);
+                if let Some(config) = self.module.get_config(context, &configurable_name) {
+                    if let ConfigContent::V1 { decode_fn, .. } = config.get_content(context) {
+                        decode_fn.replace(f);
+                    }
                 }
             }
 

@@ -21,7 +21,7 @@ impl MyContract for Contract {
     fn withdraw() {
         let caller = abi(MyContract, 0x3dba0a4455b598b7655a7fb430883d96c9527ef275b49739e7b0ad12f8280eae);
         caller.withdraw();
-        storage.var1.read();
+        let _ = storage.var1.read();
     }
 }
 

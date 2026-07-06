@@ -196,8 +196,8 @@ impl GasCostsSource {
     pub fn provide_gas_costs(&self) -> Result<GasCostsValues, anyhow::Error> {
         match self {
             // Values in the `gas_costs_values.json` are taken from the `chain-configuration` repository:
-            //      chain-configuration/upgradelog/ignition/consensus_parameters/6.json
-            // Update these values when there are changes to the gas costs on-chain.
+            //      chain-configuration/upgradelog/ignition/consensus_parameters/<version>.json
+            // Update these values when there are changes to the on-chain gas costs.
             Self::BuiltIn => Ok(serde_json::from_str(include_str!(
                 "../gas_costs_values.json"
             ))?),
@@ -273,7 +273,10 @@ impl PackageWithDeploymentToTest {
         // We are not concerned about gas costs of contract deployments for tests,
         // only the gas costs of test executions. So, we can simply provide the
         // default, built-in, gas costs values here.
-        let params = maxed_consensus_params(GasCostsValues::default(), TestGasLimit::default());
+        let params = maxed_consensus_params(
+            GasCostsSource::BuiltIn.provide_gas_costs()?,
+            TestGasLimit::default(),
+        );
         let storage = vm::storage::MemoryStorage::default();
         let interpreter_params = InterpreterParams::new(gas_price, params.clone());
         let mut interpreter: vm::prelude::Interpreter<_, _, _, vm::interpreter::NotSupportedEcal> =
@@ -809,9 +812,9 @@ fn run_tests(
 mod tests {
     use std::path::PathBuf;
 
-    use fuel_tx::GasCostsValues;
-
-    use crate::{build, BuiltTests, TestFilter, TestGasLimit, TestOpts, TestResult};
+    use crate::{
+        build, BuiltTests, GasCostsSource, TestFilter, TestGasLimit, TestOpts, TestResult,
+    };
 
     /// Name of the folder containing required data for tests to run, such as an example forc
     /// project.
@@ -852,7 +855,7 @@ mod tests {
         let tested = built_tests.run(
             test_runner_count,
             test_filter,
-            GasCostsValues::default(),
+            GasCostsSource::BuiltIn.provide_gas_costs()?,
             TestGasLimit::default(),
         )?;
         match tested {

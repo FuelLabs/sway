@@ -1,5 +1,5 @@
 ---
-source: test/tests/tests.rs
+source: test/src/snapshot/mod.rs
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_fail/contract_implements_multiple_abis_with_same_methods
 exit status: 1

@@ -358,8 +358,7 @@ impl Module {
         } else {
             // Symbol not found
             Err(handler.emit_err(CompileError::SymbolNotFound {
-                name: symbol.clone(),
-                span: symbol.span(),
+                name: symbol.into(),
             }))
         }
     }

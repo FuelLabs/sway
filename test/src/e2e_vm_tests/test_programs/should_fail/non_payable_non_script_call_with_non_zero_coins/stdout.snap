@@ -1,7 +1,7 @@
 ---
 source: test/src/snapshot/mod.rs
 ---
-> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/non_payable_non_script_call_with_non_zero_coins --experimental const_generics
+> forc build --path test/src/e2e_vm_tests/test_programs/should_fail/non_payable_non_script_call_with_non_zero_coins
 exit status: 1
 output:
     Building test/src/e2e_vm_tests/test_programs/should_fail/non_payable_non_script_call_with_non_zero_coins

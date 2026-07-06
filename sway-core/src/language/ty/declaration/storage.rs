@@ -70,14 +70,18 @@ impl TyStorageDecl {
     ///
     /// An error is returned if the above constraints are violated or if the access to the struct fields
     /// fails. E.g, if the struct field does not exists or is an inaccessible private field.
+    ///
+    /// - `storage_fields` - all the storage fields declared in the `storage` declaration.
+    /// - `field_names` - field names in the storage access expression.
+    /// - `namespace_names` - namespace names in the storage access expression.
     #[allow(clippy::too_many_arguments)]
-    pub fn apply_storage_load(
+    pub fn apply_storage_access(
         &self,
         handler: &Handler,
         engines: &Engines,
         namespace: &Namespace,
         namespace_names: &[Ident],
-        fields: &[Ident],
+        field_names: &[Ident],
         storage_fields: &[TyStorageField],
         storage_keyword_span: Span,
     ) -> Result<(TyStorageAccess, TypeId), ErrorEmitted> {
@@ -90,8 +94,8 @@ impl TyStorageDecl {
         let mut previous_field: &Ident;
         let mut previous_field_type_id: TypeId;
 
-        let (first_field, remaining_fields) = fields.split_first().expect(
-            "Having at least one element in the storage load is guaranteed by the grammar.",
+        let (first_field, remaining_fields) = field_names.split_first().expect(
+            "Having at least one element in a storage access is guaranteed by the grammar.",
         );
 
         let (initial_field_type, initial_field_key, initial_field_name) =
@@ -136,7 +140,7 @@ impl TyStorageDecl {
         // be erroneously declared in the storage, and the type behind a concrete
         // field access might be a reference to struct, but we do not treat that
         // as a special case but just another one "not a struct".
-        // The FieldAccessOnNonStruct error message will explain that in the case
+        // The `FieldAccessOnNonStruct` error message will explain that in the case
         // of storage access, fields can be accessed only on structs.
         let get_struct_decl = |type_id: TypeId| match &*type_engine.get(type_id) {
             TypeInfo::Struct(decl_ref) => Some(decl_engine.get_struct(decl_ref)),
@@ -223,7 +227,7 @@ impl TyStorageDecl {
             TyStorageAccess {
                 fields: access_descriptors,
                 key_expression: initial_field_key.clone().map(Box::new),
-                storage_field_names: namespace_names
+                storage_field_path: namespace_names
                     .iter()
                     .map(|n| n.as_str().to_string())
                     .chain(vec![initial_field_name.as_str().to_string()])
@@ -254,18 +258,23 @@ pub struct TyStorageField {
 }
 
 impl TyStorageField {
-    /// Returns the full name of the [TyStorageField], consisting
-    /// of its name preceded by its full namespace path.
-    /// E.g., "storage::ns1::ns1.name".
+    /// Returns the [TyStorageField]'s full name, consisting
+    /// of its name preceded by its namespace names, and starting
+    /// with the `storage` keyword.
+    /// E.g., "storage::<namespace_1>::<namespace_2>.<name>".
     pub fn full_name(&self) -> String {
-        get_storage_key_string(
-            &self
-                .namespace_names
-                .iter()
-                .map(|i| i.as_str().to_string())
-                .chain(vec![self.name.as_str().to_string()])
-                .collect::<Vec<_>>(),
-        )
+        get_storage_key_string(&self.path())
+    }
+
+    /// Returns the [TyStorageField]'s path, consisting
+    /// of its name preceded by its namespace names.
+    /// E.g., ["<namespace_1>", "<namespace_2>", "<name>"].
+    pub fn path(&self) -> Vec<String> {
+        self.namespace_names
+            .iter()
+            .map(|ns_name| ns_name.as_str().to_string())
+            .chain(std::iter::once(self.name.as_str().to_string()))
+            .collect()
     }
 }
 

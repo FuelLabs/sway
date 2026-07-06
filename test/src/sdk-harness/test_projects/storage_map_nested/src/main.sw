@@ -55,6 +55,7 @@ abi ExperimentalStorageTest {
 }
 
 impl ExperimentalStorageTest for Contract {
+    #[cfg(experimental_dynamic_storage = false)]
     #[storage(read, write)]
     fn nested_map_1_access() {
         // Map insert via `insert`
@@ -99,6 +100,52 @@ impl ExperimentalStorageTest for Contract {
         assert(storage.nested_map_1.get(1).get(1).get(0).try_read().is_none());
     }
 
+    #[cfg(experimental_dynamic_storage = true)]
+    #[storage(read, write)]
+    fn nested_map_1_access() {
+        // Map insert via `insert`
+        storage.nested_map_1.get(0).get(0).insert(0, 1);
+        storage.nested_map_1.get(0).get(0).insert(1, 2);
+        storage.nested_map_1.get(0).get(1).insert(0, 3);
+        storage.nested_map_1.get(0).get(1).insert(1, 4);
+        storage.nested_map_1.get(1).get(0).insert(0, 5);
+        storage.nested_map_1.get(1).get(0).insert(1, 6);
+        storage.nested_map_1.get(1).get(1).insert(0, 7);
+        storage.nested_map_1.get(1).get(1).insert(1, 8);
+
+        // Map access via `get`
+        assert(storage.nested_map_1.get(0).get(0).get(0).read() == 1);
+        assert(storage.nested_map_1.get(0).get(0).get(1).read() == 2);
+        assert(storage.nested_map_1.get(0).get(1).get(0).read() == 3);
+        assert(storage.nested_map_1.get(0).get(1).get(1).read() == 4);
+        assert(storage.nested_map_1.get(1).get(0).get(0).read() == 5);
+        assert(storage.nested_map_1.get(1).get(0).get(1).read() == 6);
+        assert(storage.nested_map_1.get(1).get(1).get(0).read() == 7);
+        assert(storage.nested_map_1.get(1).get(1).get(1).read() == 8);
+
+        // These combinations of keys are not set
+        assert(storage.nested_map_1.get(2).get(1).get(1).try_read().is_none());
+        assert(storage.nested_map_1.get(1).get(2).get(1).try_read().is_none());
+        assert(storage.nested_map_1.get(1).get(1).get(2).try_read().is_none());
+
+        let result_1: bool = storage.nested_map_1.get(0).get(0).remove_existed(0);
+        assert(result_1);
+        assert(storage.nested_map_1.get(0).get(0).get(0).try_read().is_none());
+
+        let result_2: bool = storage.nested_map_1.get(0).get(0).remove_existed(1);
+        assert(result_2);
+        assert(storage.nested_map_1.get(0).get(0).get(1).try_read().is_none());
+
+        let result_3: bool = storage.nested_map_1.get(0).get(1).remove_existed(0);
+        assert(result_3);
+        assert(storage.nested_map_1.get(0).get(1).get(0).try_read().is_none());
+
+        let result_4: bool = storage.nested_map_1.get(1).get(1).remove_existed(0);
+        assert(result_4);
+        assert(storage.nested_map_1.get(1).get(1).get(0).try_read().is_none());
+    }
+
+    #[cfg(experimental_dynamic_storage = false)]
     #[storage(read, write)]
     fn nested_map_2_access() {
         let m1 = M {
@@ -148,6 +195,57 @@ impl ExperimentalStorageTest for Contract {
         assert(storage.nested_map_2.get((0, 1)).get(_0001).get(1).try_read().is_none());
     }
 
+    #[cfg(experimental_dynamic_storage = true)]
+    #[storage(read, write)]
+    fn nested_map_2_access() {
+        let m1 = M {
+            u: 0x1111111111111111111111111111111111111111111111111111111111111111,
+            v: 1,
+        };
+        let m2 = M {
+            u: 0x2222222222222222222222222222222222222222222222222222222222222222,
+            v: 2,
+        };
+
+        let _0000 = __to_str_array("0000");
+        let _0001 = __to_str_array("0001");
+        let _0002 = __to_str_array("0002");
+
+        // Map insert via `insert`
+        storage.nested_map_2.get((0, 0)).get(_0000).insert(0, m1);
+        storage.nested_map_2.get((0, 0)).get(_0001).insert(1, m2);
+        storage.nested_map_2.get((0, 1)).get(_0000).insert(0, m1);
+        storage.nested_map_2.get((0, 1)).get(_0001).insert(1, m2);
+
+        // Map insert via `get`
+        assert(storage.nested_map_2.get((0, 0)).get(_0000).get(0).read() == m1);
+        assert(storage.nested_map_2.get((0, 0)).get(_0001).get(1).read() == m2);
+        assert(storage.nested_map_2.get((0, 1)).get(_0000).get(0).read() == m1);
+        assert(storage.nested_map_2.get((0, 1)).get(_0001).get(1).read() == m2);
+
+        // These combinations of keys are not set
+        assert(storage.nested_map_2.get((2, 0)).get(_0001).get(1).try_read().is_none());
+        assert(storage.nested_map_2.get((1, 1)).get(_0002).get(0).try_read().is_none());
+        assert(storage.nested_map_2.get((1, 1)).get(_0001).get(2).try_read().is_none());
+
+        let result_1: bool = storage.nested_map_2.get((0, 0)).get(_0000).remove_existed(0);
+        assert(result_1);
+        assert(storage.nested_map_2.get((0, 0)).get(_0000).get(0).try_read().is_none());
+
+        let result_2: bool = storage.nested_map_2.get((0, 0)).get(_0001).remove_existed(1);
+        assert(result_2);
+        assert(storage.nested_map_2.get((0, 0)).get(_0001).get(1).try_read().is_none());
+
+        let result_3: bool = storage.nested_map_2.get((0, 1)).get(_0000).remove_existed(0);
+        assert(result_3);
+        assert(storage.nested_map_2.get((0, 1)).get(_0000).get(0).try_read().is_none());
+
+        let result_4: bool = storage.nested_map_2.get((0, 1)).get(_0001).remove_existed(1);
+        assert(result_4);
+        assert(storage.nested_map_2.get((0, 1)).get(_0001).get(1).try_read().is_none());
+    }
+
+    #[cfg(experimental_dynamic_storage = false)]
     #[storage(read, write)]
     fn nested_map_3_access() {
         let m1 = M {
@@ -210,6 +308,73 @@ impl ExperimentalStorageTest for Contract {
         assert(storage.nested_map_3.get(1).get(m1).get(0).try_read().is_none());
 
         let result_4: bool = storage.nested_map_3.get(1).get(m2).remove(1);
+        assert(result_4);
+        assert(storage.nested_map_3.get(1).get(m2).get(1).try_read().is_none());
+    }
+
+    #[cfg(experimental_dynamic_storage = true)]
+    #[storage(read, write)]
+    fn nested_map_3_access() {
+        let m1 = M {
+            u: 0x1111111111111111111111111111111111111111111111111111111111111111,
+            v: 1,
+        };
+        let m2 = M {
+            u: 0x2222222222222222222222222222222222222222222222222222222222222222,
+            v: 2,
+        };
+        let e1 = E::A(42);
+        let e2 = E::B(0x3333333333333333333333333333333333333333333333333333333333333333);
+
+        // Map insert via `insert`
+        storage.nested_map_3.get(0).get(m1).insert(0, e1);
+        storage.nested_map_3.get(0).get(m2).insert(1, e2);
+        storage.nested_map_3.get(0).get(m1).insert(0, e1);
+        storage.nested_map_3.get(0).get(m2).insert(1, e2);
+        storage.nested_map_3.get(1).get(m1).insert(0, e1);
+        storage.nested_map_3.get(1).get(m2).insert(1, e2);
+        storage.nested_map_3.get(1).get(m1).insert(0, e1);
+        storage.nested_map_3.get(1).get(m2).insert(1, e2);
+
+        // Map insert via `get`
+        assert(storage.nested_map_3.get(0).get(m1).get(0).read() == e1);
+        assert(storage.nested_map_3.get(0).get(m2).get(1).read() == e2);
+        assert(storage.nested_map_3.get(0).get(m1).get(0).read() == e1);
+        assert(storage.nested_map_3.get(0).get(m2).get(1).read() == e2);
+        assert(storage.nested_map_3.get(1).get(m1).get(0).read() == e1);
+        assert(storage.nested_map_3.get(1).get(m2).get(1).read() == e2);
+        assert(storage.nested_map_3.get(1).get(m1).get(0).read() == e1);
+        assert(storage.nested_map_3.get(1).get(m2).get(1).read() == e2);
+
+        // These combinations of keys are not set
+        assert(storage.nested_map_3.get(2).get(m2).get(1).try_read().is_none());
+        assert(
+            storage
+                .nested_map_3
+                .get(1)
+                .get(M {
+                    u: b256::zero(),
+                    v: 3,
+                })
+                .get(1)
+                .try_read()
+                .is_none(),
+        );
+        assert(storage.nested_map_3.get(1).get(m2).get(2).try_read().is_none());
+
+        let result_1: bool = storage.nested_map_3.get(0).get(m1).remove_existed(0);
+        assert(result_1);
+        assert(storage.nested_map_3.get(0).get(m1).get(0).try_read().is_none());
+
+        let result_2: bool = storage.nested_map_3.get(0).get(m2).remove_existed(1);
+        assert(result_2);
+        assert(storage.nested_map_3.get(0).get(m2).get(1).try_read().is_none());
+
+        let result_3: bool = storage.nested_map_3.get(1).get(m1).remove_existed(0);
+        assert(result_3);
+        assert(storage.nested_map_3.get(1).get(m1).get(0).try_read().is_none());
+
+        let result_4: bool = storage.nested_map_3.get(1).get(m2).remove_existed(1);
         assert(result_4);
         assert(storage.nested_map_3.get(1).get(m2).get(1).try_read().is_none());
     }

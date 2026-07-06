@@ -1,0 +1,22 @@
+// regex: VAR=v\d+v\d+
+
+script {
+// check: fn main
+    fn main() -> () {
+        local b256 key_for_x
+
+        entry():
+        v0 = get_local __ptr b256, key_for_x
+        v1 = const b256 0x7fbd1192666bfac3767b890bd4d048c940879d316071e20c7c8c81bce2ca41c5
+        store v1 to v0
+        v_num_of_slots = const u64 1
+// check: $VAR = state_clear key $VAR, $VAR
+        v3 = state_clear key v0, v_num_of_slots
+
+// check: state_clear_slots key $VAR, $VAR
+        state_clear_slots key v0, v_num_of_slots
+
+        v_ret = const unit ()
+        ret () v_ret
+    }
+}

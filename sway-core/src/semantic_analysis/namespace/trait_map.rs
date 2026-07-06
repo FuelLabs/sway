@@ -386,8 +386,7 @@ impl TraitMap {
                             {
                                 // duplicate method name
                                 handler.emit_err(CompileError::MultipleDefinitionsOfName {
-                                    name: decl_ref.name().clone(),
-                                    span: decl_ref.span(),
+                                    name: decl_ref.name().into(),
                                 });
                             }
                         }
@@ -999,41 +998,63 @@ impl TraitMap {
                     if let Some(decl_implementing_for) = decl.implementing_for {
                         type_mapping.insert(decl_implementing_for, type_id);
                     }
-                    decl.subst(&SubstTypesContext::new(
-                        handler,
-                        engines,
-                        &type_mapping,
-                        matches!(code_block_first_pass, CodeBlockFirstPass::No),
-                    ));
 
-                    let new_ref = decl_engine
-                        .insert(decl, decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref())
-                        .with_parent(decl_engine, decl_ref.id().into());
+                    let new_ref = if decl
+                        .subst(&SubstTypesContext::new(
+                            handler,
+                            engines,
+                            &type_mapping,
+                            matches!(code_block_first_pass, CodeBlockFirstPass::No),
+                        ))
+                        .has_changes()
+                    {
+                        decl_engine
+                            .insert(decl, decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref())
+                            .with_parent(decl_engine, decl_ref.id().into())
+                    } else {
+                        decl_ref.clone()
+                    };
 
                     ResolvedTraitImplItem::Typed(TyImplItem::Fn(new_ref))
                 }
                 ty::TyTraitItem::Constant(decl_ref) => {
                     let mut decl = (*decl_engine.get(decl_ref.id())).clone();
-                    decl.subst(&SubstTypesContext::new(
-                        handler,
-                        engines,
-                        &type_mapping,
-                        matches!(code_block_first_pass, CodeBlockFirstPass::No),
-                    ));
-                    let new_ref = decl_engine
-                        .insert(decl, decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref());
+
+                    let new_ref = if decl
+                        .subst(&SubstTypesContext::new(
+                            handler,
+                            engines,
+                            &type_mapping,
+                            matches!(code_block_first_pass, CodeBlockFirstPass::No),
+                        ))
+                        .has_changes()
+                    {
+                        decl_engine
+                            .insert(decl, decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref())
+                    } else {
+                        decl_ref.clone()
+                    };
+
                     ResolvedTraitImplItem::Typed(TyImplItem::Constant(new_ref))
                 }
                 ty::TyTraitItem::Type(decl_ref) => {
                     let mut decl = (*decl_engine.get(decl_ref.id())).clone();
-                    decl.subst(&SubstTypesContext::new(
-                        handler,
-                        engines,
-                        &type_mapping,
-                        matches!(code_block_first_pass, CodeBlockFirstPass::No),
-                    ));
-                    let new_ref = decl_engine
-                        .insert(decl, decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref());
+
+                    let new_ref = if decl
+                        .subst(&SubstTypesContext::new(
+                            handler,
+                            engines,
+                            &type_mapping,
+                            matches!(code_block_first_pass, CodeBlockFirstPass::No),
+                        ))
+                        .has_changes()
+                    {
+                        decl_engine
+                            .insert(decl, decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref())
+                    } else {
+                        decl_ref.clone()
+                    };
+
                     ResolvedTraitImplItem::Typed(TyImplItem::Type(new_ref))
                 }
             },
@@ -1501,8 +1522,7 @@ impl TraitMap {
                 },
             )),
             Ordering::Less => Err(handler.emit_err(CompileError::SymbolNotFound {
-                name: symbol.clone(),
-                span: symbol.span(),
+                name: symbol.into(),
             })),
             Ordering::Equal => Ok(candidates.values().next().unwrap().clone()),
         }

@@ -1,0 +1,4 @@
+category = "fail"
+
+#check: $()const CONST_NO_INITIALIZER: u64;
+#nextln: $()Constant requires expression.

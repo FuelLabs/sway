@@ -18,8 +18,8 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
   REGISTRY: ghcr.io
-  RUST_VERSION: 1.90.0
-  NIGHTLY_RUST_VERSION: nightly-2025-09-28
+  RUST_VERSION: 1.93.0
+  NIGHTLY_RUST_VERSION: nightly-2026-03-06
 
 jobs:
   verifications-complete:
@@ -35,7 +35,6 @@ jobs:
       - check-sdk-harness-test-suite-compatibility
       - build-mdbook
       - build-forc-doc-sway-lib-std
-      - build-forc-test-project
       - cargo-build-workspace
       - cargo-clippy
       - cargo-test-lib-std
@@ -204,7 +203,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v6
 
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
@@ -217,7 +216,7 @@ jobs:
 
       - name: Read and compare versions
         env:
-          PACKAGE_NAMES: "fuel-core-client" # multiple packages can be specified delimited with `,`.
+          PACKAGE_NAMES: "fuel-core-client,fuel-vm,fuels" # multiple packages can be specified delimited with `,`.
         run: |
           .github/workflows/scripts/check-sdk-harness-version.sh
 
@@ -236,17 +235,20 @@ jobs:
         run: cargo install --locked --path ./forc
       - name: Install Forc plugins
         run: |
+          cargo uninstall forc-mcp || true
+          rm -f "${CARGO_HOME:-$HOME/.cargo}/bin/forc-mcp"
           for dir in ./forc-plugins/*/; do
                 cargo install --locked --path "$dir"
           done
           cargo install --locked --debug --git https://github.com/FuelLabs/forc forc-crypto
+          cargo install --locked --debug --git https://github.com/FuelLabs/forc forc-node
       - name: Install mdbook-forc-documenter
         run: cargo install --locked --path ./scripts/mdbook-forc-documenter
 
       - name: Run mdbook build
         uses: peaceiris/actions-mdbook@v1
         with:
-          mdbook-version: "0.4.25"
+          mdbook-version: "0.4.52"
       - name: Emit book logs to tmp.txt, fail if build logs contain 'ERROR'
         run: |
           MDBOOK_preprocessor__FORC_documenter__STRICT="true" mdbook build docs/book 2>&1 | tee tmp.txt
@@ -288,43 +290,6 @@ jobs:
           cargo install --locked --path ./forc-plugins/forc-doc
       - name: Build sway-lib-std docs
         run: forc doc --path ./sway-lib-std
-
-  build-forc-test-project:
-    runs-on: warp-ubuntu-latest-x64-4x
-    steps:
-      - uses: actions/checkout@v6
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-          targets: wasm32-unknown-unknown
-      - uses: Swatinem/rust-cache@v2
-        with:
-          cache-provider: "warpbuild"
-      - name: Install Forc
-        run: cargo install --locked --path ./forc
-      - name: Initialize test project
-        run: forc new test-proj
-      - name: Update project forc manifest to use local sway-lib-std
-        run: echo "std = { path = \"../sway-lib-std/\" }" >> test-proj/Forc.toml
-      - name: Build test project
-        run: forc build --path test-proj
-      # TODO: Re-add this upon landing unit test support: #1832
-      # - name: Run test project's test suite
-      #   run: (cd test-proj && forc test)
-      - name: Install cargo-generate
-        run: cargo install --locked cargo-generate
-      - name: Install fuel-core
-        run: cargo install --locked fuel-core-bin
-      - name: Generate Rust Integration Tests
-        run: (cd test-proj && cargo generate --init --path ../templates/sway-test-rs --name test-proj)
-      - name: Update project cargo manifest with workspace
-        run: |
-          echo "
-
-          [workspace]" >> test-proj/Cargo.toml
-      - name: Build and Run Default Integration Test
-        run: (cd test-proj && cargo test --release)
 
   cargo-build-workspace:
     runs-on: warp-ubuntu-latest-x64-8x
@@ -472,6 +437,14 @@ jobs:
         run: cargo run --locked --release -p forc -- build --release --locked --path ./test/src/sdk-harness --experimental str_array_no_padding --output-directory ./test/src/sdk-harness/out
       - name: Run All SDK Tests - ['str_array_no_padding' enabled] (Release)
         run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
+      - name: Build All Test Projects - ['dynamic_storage' enabled] (Debug)
+        run: cargo run --locked --release -p forc -- build --locked --path ./test/src/sdk-harness --experimental dynamic_storage --output-directory ./test/src/sdk-harness/out
+      - name: Run All SDK Tests - ['dynamic_storage' enabled] (Debug)
+        run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --skip can_get_predicate_address --nocapture
+      - name: Build All Test Projects - ['dynamic_storage' enabled] (Release)
+        run: cargo run --locked --release -p forc -- build --release --locked --path ./test/src/sdk-harness --experimental dynamic_storage --output-directory ./test/src/sdk-harness/out
+      - name: Run All SDK Tests - ['dynamic_storage' enabled] (Release)
+        run: cargo test --locked --release --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture
 
   forc-run-benchmarks:
     runs-on: warp-ubuntu-latest-x64-4x
@@ -534,30 +507,24 @@ jobs:
           cache-provider: "warpbuild"
       - name: Install Forc
         run: cargo install --locked --path ./forc
-      - name: Run Std Unit Tests (Debug)
-        run: forc test --path sway-lib-std
-      - name: Run Std Unit Tests (Release)
-        run: forc test --release --path sway-lib-std
-      - name: Run Std Unit Tests - ['new_hashing' disabled] (Debug)
-        run: forc test --path sway-lib-std --no-experimental new_hashing
-      - name: Run Std Unit Tests - ['new_hashing' disabled] (Release)
-        run: forc test --release --path sway-lib-std --no-experimental new_hashing
-      - name: Run Std Unit Tests - ['str_array_no_padding' enabled] (Debug)
-        run: forc test --path sway-lib-std --experimental str_array_no_padding
-      - name: Run Std Unit Tests - ['str_array_no_padding' enabled] (Release)
-        run: forc test --release --path sway-lib-std --experimental str_array_no_padding
+      - name: Forbid Std Unit Tests in sway-lib-std # All `std` tests must live in the in-language tests.
+        run: ./sway-lib-std/forbid-tests.sh
       - name: Run In Language Unit Tests (Debug)
-        run: forc test --error-on-warnings --path test/src/in_language_tests
+        run: ./test/src/in_language_tests/run_in_language_tests.sh
       - name: Run In Language Unit Tests (Release)
-        run: forc test --error-on-warnings --release --path test/src/in_language_tests
+        run: ./test/src/in_language_tests/run_in_language_tests.sh --release
       - name: Run In Language Unit Tests - ['new_hashing' disabled] (Debug)
-        run: forc test --error-on-warnings --path test/src/in_language_tests --no-experimental new_hashing
+        run: ./test/src/in_language_tests/run_in_language_tests.sh --no-experimental new_hashing --filter 'hash|sha256|keccak256'
       - name: Run In Language Unit Tests - ['new_hashing' disabled] (Release)
-        run: forc test --error-on-warnings --release --path test/src/in_language_tests --no-experimental new_hashing
+        run: ./test/src/in_language_tests/run_in_language_tests.sh --release --no-experimental new_hashing --filter 'hash|sha256|keccak256'
       - name: Run In Language Unit Tests - ['str_array_no_padding' enabled] (Debug)
-        run: forc test --error-on-warnings --path test/src/in_language_tests --experimental str_array_no_padding
+        run: ./test/src/in_language_tests/run_in_language_tests.sh --experimental str_array_no_padding --filter 'str\['
       - name: Run In Language Unit Tests - ['str_array_no_padding' enabled] (Release)
-        run: forc test --error-on-warnings --release --path test/src/in_language_tests --experimental str_array_no_padding
+        run: ./test/src/in_language_tests/run_in_language_tests.sh --release --experimental str_array_no_padding --filter 'str\['
+      - name: Run In Language Unit Tests - ['dynamic_storage' enabled] (Debug)
+        run: ./test/src/in_language_tests/run_in_language_tests.sh --experimental dynamic_storage --filter 'storage'
+      - name: Run In Language Unit Tests - ['dynamic_storage' enabled] (Release)
+        run: ./test/src/in_language_tests/run_in_language_tests.sh --release --experimental dynamic_storage --filter 'storage'
 
   forc-pkg-fuels-deps-check:
     runs-on: ubuntu-latest
@@ -601,10 +568,9 @@ jobs:
       matrix:
         tool:
           - test: cargo test --locked --release -p forc-debug
-          - test: cargo test --locked --release -p forc-mcp -- --test-threads 1
           - test: cargo nextest run --locked --release -p sway-lsp --no-capture --profile ci --config-file sway-lsp/tests/nextest.toml
           - test: cargo test --locked --release -p forc -- --nocapture
-          - test: cargo test --locked --release --workspace --exclude forc-debug --exclude sway-lsp --exclude forc-mcp --exclude forc
+          - test: cargo test --locked --release --workspace --exclude forc-debug --exclude sway-lsp --exclude forc
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
@@ -652,7 +618,6 @@ jobs:
   notify-slack-on-failure:
     needs:
       [
-        build-forc-test-project,
         build-sway-examples,
         build-sway-lib-std,
         cargo-build-workspace,
@@ -714,7 +679,6 @@ jobs:
     # Only do this job if publishing a release
     needs:
       [
-        build-forc-test-project,
         build-sway-examples,
         build-sway-lib-std,
         cargo-build-workspace,
@@ -737,14 +701,6 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
-
-      - name: Link forc-mcp docs into Cargo target
-        run: |
-          set -euo pipefail
-          DOCS_SRC="${{ github.workspace }}/docs/book/src/forc/plugins/forc_mcp/forc_call_tool"
-          DOCS_DST="${{ github.workspace }}/target/docs/book/src/forc/plugins/forc_mcp/forc_call_tool"
-          mkdir -p "$(dirname "$DOCS_DST")"
-          ln -sfn "$DOCS_SRC" "$DOCS_DST"
 
       - name: Publish crate
         uses: FuelLabs/publish-crates@v1
@@ -873,13 +829,13 @@ jobs:
       - name: Strip release binaries x86_64-linux-gnu
         if: matrix.job.target == 'x86_64-unknown-linux-gnu'
         run: |
-          for BINARY in forc forc-fmt forc-lsp forc-debug forc-doc forc-tx forc-mcp forc-migrate forc-publish; do
+          for BINARY in forc forc-fmt forc-lsp forc-debug forc-doc forc-tx forc-migrate forc-publish; do
             strip "target/${{ matrix.job.target }}/release/$BINARY"
           done
       - name: Strip release binaries aarch64-linux-gnu
         if: matrix.job.target == 'aarch64-unknown-linux-gnu'
         run: |
-          for BINARY in forc forc-fmt forc-lsp forc-debug forc-doc forc-tx forc-mcp forc-migrate forc-publish; do
+          for BINARY in forc forc-fmt forc-lsp forc-debug forc-doc forc-tx forc-migrate forc-publish; do
             docker run --rm -v \
             "$PWD/target:/target:Z" \
             ghcr.io/cross-rs/${{ matrix.job.target }}:main \
@@ -889,7 +845,7 @@ jobs:
       - name: Strip release binaries mac
         if: matrix.job.os == 'macos-latest'
         run: |
-          for BINARY in forc forc-fmt forc-lsp forc-debug forc-doc forc-tx forc-mcp forc-migrate forc-publish; do
+          for BINARY in forc forc-fmt forc-lsp forc-debug forc-doc forc-tx forc-migrate forc-publish; do
             strip -x "target/${{ matrix.job.target }}/release/$BINARY"
           done
 
@@ -903,7 +859,7 @@ jobs:
           ZIP_FILE_NAME=forc-binaries-${{ env.PLATFORM_NAME }}_${{ env.ARCH }}.tar.gz
           echo "ZIP_FILE_NAME=$ZIP_FILE_NAME" >> $GITHUB_ENV
           mkdir -pv ./forc-binaries
-          for BINARY in forc forc-fmt forc-lsp forc-debug forc-doc forc-tx forc-mcp forc-migrate forc-publish; do
+          for BINARY in forc forc-fmt forc-lsp forc-debug forc-doc forc-tx forc-migrate forc-publish; do
             cp "target/${{ matrix.job.target }}/release/$BINARY" ./forc-binaries
           done
           tar -czvf $ZIP_FILE_NAME ./forc-binaries

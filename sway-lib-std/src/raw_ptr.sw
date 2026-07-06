@@ -163,19 +163,19 @@ impl raw_ptr {
     /// }
     /// ```
     pub fn write<T>(self, val: T) {
-        if __is_reference_type::<T>() {
-            asm(dst: self, src: val, count: __size_of_val(val)) {
-                mcp dst src count;
-            };
-        } else if __size_of::<T>() == 1 {
-            asm(ptr: self, val: val) {
-                sb ptr val i0;
-            };
-        } else {
-            asm(ptr: self, val: val) {
-                sw ptr val i0;
-            };
-        }
+        if __size_of::<T>() == 0 {    } else if __is_reference_type::<T>() {
+        asm(dst: self, src: val, count: __size_of_val(val)) {
+            mcp dst src count;
+        };
+    } else if __size_of::<T>() == 1 {
+        asm(ptr: self, val: val) {
+            sb ptr val i0;
+        };
+    } else {
+        asm(ptr: self, val: val) {
+            sw ptr val i0;
+        };
+    }
     }
 
     /// Writes the given byte to the address.

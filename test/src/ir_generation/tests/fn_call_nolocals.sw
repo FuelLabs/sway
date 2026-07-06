@@ -27,11 +27,8 @@ fn main() -> u64 {
 
 // ::check-asm::
 
-// regex: IMM=i\d+
-// regex: REG=\$[[:alpha:]][0-9[:alpha:]]*
-
-// check: move $$$$arg0 $REG
-// check: move $$$$arg1 $REG
-// check: move $$$$arg2 $REG
-// check: jal  $$$$reta $$pc i2
+// check: movi $$$$arg0 i1
+// check: movi $$$$arg1 i10
+// check: movi $$$$arg2 i100
+// check: jal  $$$$reta $$pc i2            ; [call: g_0]: call function
 // check: ret  $$$$retv

@@ -169,12 +169,12 @@ features! {
     "https://github.com/FuelLabs/sway/issues/5727",
     references = true,
     "https://github.com/FuelLabs/sway/issues/5063",
-    const_generics = true,
-    "https://github.com/FuelLabs/sway/issues/6860",
     new_hashing = true,
     "https://github.com/FuelLabs/sway/issues/7256",
     str_array_no_padding = false,
-    "https://github.com/FuelLabs/sway/issues/7528"
+    "https://github.com/FuelLabs/sway/issues/7528",
+    dynamic_storage = false,
+    "https://github.com/FuelLabs/sway/issues/7560",
 }
 
 #[derive(Clone, Debug, Default, Parser)]

@@ -280,7 +280,7 @@ fn get_symbols(context: &Context, val: Value, gep_only: bool) -> ReferredSymbols
             // We've reached a configurable at the top of the chain.
             // There cannot be a symbol behind it, and so the returned set is complete.
             ValueDatum::Instruction(Instruction {
-                op: InstOp::GetConfig(_, _),
+                op: InstOp::GetConfig(_),
                 ..
             }) if !gep_only => (),
             // We've reached a global at the top of the chain.
@@ -439,7 +439,7 @@ fn compute_escaped_symbols(context: &Context, function: &Function) -> EscapedSym
             InstOp::FuelVm(_) => (),
             InstOp::GetLocal(_) => (),
             InstOp::GetGlobal(_) => (),
-            InstOp::GetConfig(_, _) => (),
+            InstOp::GetConfig(_) => (),
             InstOp::GetStorageKey(_) => (),
             InstOp::GetElemPtr { .. } => (),
             InstOp::IntToPtr(_, _) => (),
@@ -486,7 +486,7 @@ pub fn get_loaded_ptr_values(context: &Context, inst: Value) -> Vec<Value> {
         | InstOp::CastPtr(_, _)
         | InstOp::GetLocal(_)
         | InstOp::GetGlobal(_)
-        | InstOp::GetConfig(_, _)
+        | InstOp::GetConfig(_)
         | InstOp::GetStorageKey(_)
         | InstOp::GetElemPtr { .. }
         | InstOp::IntToPtr(_, _) => vec![],
@@ -508,17 +508,38 @@ pub fn get_loaded_ptr_values(context: &Context, inst: Value) -> Vec<Value> {
             log_val: src_val_ptr,
             ..
         })
-        | InstOp::FuelVm(FuelVmInstruction::StateLoadWord(src_val_ptr))
+        | InstOp::FuelVm(FuelVmInstruction::StateLoadWord {
+            key: src_val_ptr, ..
+        })
         | InstOp::FuelVm(FuelVmInstruction::StateStoreWord {
             key: src_val_ptr, ..
         })
         | InstOp::FuelVm(FuelVmInstruction::StateLoadQuadWord {
             key: src_val_ptr, ..
         })
+        | InstOp::FuelVm(FuelVmInstruction::StateReadSlot {
+            key: src_val_ptr, ..
+        })
         | InstOp::FuelVm(FuelVmInstruction::StateClear {
+            key: src_val_ptr, ..
+        })
+        | InstOp::FuelVm(FuelVmInstruction::StateClearSlots {
+            key: src_val_ptr, ..
+        })
+        | InstOp::FuelVm(FuelVmInstruction::StatePreload {
             key: src_val_ptr, ..
         }) => vec![*src_val_ptr],
         InstOp::FuelVm(FuelVmInstruction::StateStoreQuadWord {
+            stored_val: memopd1,
+            key: memopd2,
+            ..
+        })
+        | InstOp::FuelVm(FuelVmInstruction::StateWriteSlot {
+            stored_val: memopd1,
+            key: memopd2,
+            ..
+        })
+        | InstOp::FuelVm(FuelVmInstruction::StateUpdateSlot {
             stored_val: memopd1,
             key: memopd2,
             ..
@@ -580,7 +601,7 @@ pub fn get_stored_ptr_values(context: &Context, inst: Value) -> Vec<Value> {
         | InstOp::CastPtr(_, _)
         | InstOp::GetLocal(_)
         | InstOp::GetGlobal(_)
-        | InstOp::GetConfig(_, _)
+        | InstOp::GetConfig(_)
         | InstOp::GetStorageKey(_)
         | InstOp::GetElemPtr { .. }
         | InstOp::IntToPtr(_, _) => vec![],
@@ -604,17 +625,21 @@ pub fn get_stored_ptr_values(context: &Context, inst: Value) -> Vec<Value> {
             | FuelVmInstruction::Revert(_)
             | FuelVmInstruction::JmpMem
             | FuelVmInstruction::Smo { .. }
-            | FuelVmInstruction::StateClear { .. } => vec![],
-            FuelVmInstruction::StateLoadQuadWord { load_val, .. } => vec![*load_val],
-            FuelVmInstruction::StateLoadWord(_) | FuelVmInstruction::StateStoreWord { .. } => {
-                vec![]
-            }
-            FuelVmInstruction::StateStoreQuadWord { stored_val: _, .. } => vec![],
+            | FuelVmInstruction::Retd { .. }
+            | FuelVmInstruction::StateClear { .. }
+            | FuelVmInstruction::StateClearSlots { .. }
+            | FuelVmInstruction::StateLoadWord { .. }
+            | FuelVmInstruction::StateStoreWord { .. }
+            | FuelVmInstruction::StateStoreQuadWord { .. }
+            | FuelVmInstruction::StateWriteSlot { .. }
+            | FuelVmInstruction::StateUpdateSlot { .. }
+            | FuelVmInstruction::StatePreload { .. } => vec![],
+            FuelVmInstruction::StateLoadQuadWord { load_val, .. }
+            | FuelVmInstruction::StateReadSlot { load_val, .. } => vec![*load_val],
             FuelVmInstruction::WideUnaryOp { result, .. }
             | FuelVmInstruction::WideBinaryOp { result, .. }
             | FuelVmInstruction::WideModularOp { result, .. } => vec![*result],
             FuelVmInstruction::WideCmpOp { .. } => vec![],
-            _ => vec![],
         },
     }
 }

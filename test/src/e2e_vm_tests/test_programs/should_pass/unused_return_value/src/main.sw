@@ -23,6 +23,9 @@ pub fn test() {
             very_long_field_name: 0
         }
     }.very_long_method_name(10);
+    // Access `B`s fields and remove "field never accessed" warning.
+    let b = B { very_long_field_name: A { very_long_field_name: 0 } };
+    poke(b.very_long_field_name.very_long_field_name);
 }
 
 fn poke(x: u64) -> u64 {

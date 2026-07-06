@@ -129,7 +129,7 @@ impl ty::TyFunctionDecl {
                 let new_type_parameters = GenericTypeParameter::type_check_type_params(
                     handler,
                     ctx.by_ref(),
-                    type_parameters.clone(),
+                    type_parameters,
                     None,
                 )?;
 
@@ -153,7 +153,10 @@ impl ty::TyFunctionDecl {
                             },
                             span: const_generic_decl.span.clone(),
                             return_type: const_generic_decl.ty,
-                            value: None,
+                            value: const_generic
+                                .expr
+                                .as_ref()
+                                .map(|x| x.to_ty_expression(ctx.engines)),
                         },
                         Some(id),
                     );
@@ -185,7 +188,7 @@ impl ty::TyFunctionDecl {
                             let param = match ty::TyFunctionParameter::type_check(
                                 handler,
                                 ctx.by_ref(),
-                                parameter.clone(),
+                                parameter,
                             ) {
                                 Ok(val) => val,
                                 Err(_) => continue,

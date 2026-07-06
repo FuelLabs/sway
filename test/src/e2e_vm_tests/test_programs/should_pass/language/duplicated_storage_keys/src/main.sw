@@ -1,7 +1,7 @@
 contract;
 
 storage {
-    f1:u64 = 1,
+    f1: u64 = 1,
     f2 in 0xcecf0a910789de762c699a85a66835df1662df633238cbb25804b7f78640747b: u64 = 2,
     ns1 {
         f3 in 0x5f4c20ce4bd128e5393a4c2b82007dac795fa0006d01acf8db4c42632bc680ca: u64 = 2,
@@ -16,4 +16,3 @@ storage {
         f6: u64 = 4,
     },
 }
-

@@ -1,0 +1,6 @@
+category = "fail"
+experimental = { new_encoding = true, dynamic_storage = true }
+
+# check: x: u64 = 18446744073709551615 + 1
+# nextln: $()Could not evaluate initializer to a const declaration.
+# nextln: y: u64 = 5 + 5

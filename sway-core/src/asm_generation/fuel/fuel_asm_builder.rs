@@ -16,8 +16,8 @@ use crate::{
         FinalizedAsm, ProgramKind,
     },
     asm_lang::{
-        virtual_register::*, JumpType, Label, Op, VirtualImmediate06, VirtualImmediate12,
-        VirtualImmediate18, VirtualOp, WideCmp, WideOperations,
+        virtual_register::*, ControlFlowOp, JumpType, Label, Op, VirtualImmediate06,
+        VirtualImmediate12, VirtualImmediate18, VirtualOp, WideCmp, WideOperations,
     },
     decl_engine::DeclRefFunction,
     metadata::MetadataManager,
@@ -436,6 +436,10 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         key,
                         number_of_slots,
                     } => self.compile_state_clear(instr_val, key, number_of_slots),
+                    FuelVmInstruction::StateClearSlots {
+                        key,
+                        number_of_slots,
+                    } => self.compile_state_clear_slots(instr_val, key, number_of_slots),
                     FuelVmInstruction::StateLoadQuadWord {
                         load_val,
                         key,
@@ -447,8 +451,14 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         number_of_slots,
                         StateAccessType::Read,
                     ),
-                    FuelVmInstruction::StateLoadWord(key) => {
-                        self.compile_state_load_word(instr_val, key)
+                    FuelVmInstruction::StateReadSlot {
+                        load_val,
+                        key,
+                        offset,
+                        len,
+                    } => self.compile_state_read_slot(instr_val, load_val, key, offset, len),
+                    FuelVmInstruction::StateLoadWord { key, offset } => {
+                        self.compile_state_load_word(instr_val, key, offset)
                     }
                     FuelVmInstruction::StateStoreQuadWord {
                         stored_val,
@@ -461,6 +471,20 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         number_of_slots,
                         StateAccessType::Write,
                     ),
+                    FuelVmInstruction::StateWriteSlot {
+                        stored_val,
+                        key,
+                        len,
+                    } => self.compile_state_write_slot(instr_val, stored_val, key, len),
+                    FuelVmInstruction::StateUpdateSlot {
+                        stored_val,
+                        key,
+                        offset,
+                        len,
+                    } => self.compile_state_update_slot(instr_val, stored_val, key, offset, len),
+                    FuelVmInstruction::StatePreload { key } => {
+                        self.compile_state_preload(instr_val, key)
+                    }
                     FuelVmInstruction::StateStoreWord { stored_val, key } => {
                         self.compile_state_store_word(instr_val, stored_val, key)
                     }
@@ -497,7 +521,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 InstOp::GetGlobal(global_var) => {
                     self.compile_get_global(instr_val, global_var, module)
                 }
-                InstOp::GetConfig(_, name) => self.compile_get_config(instr_val, name),
+                InstOp::GetConfig(config) => self.compile_get_config(instr_val, config),
                 InstOp::GetStorageKey(storage_key) => {
                     self.compile_get_storage_key(instr_val, storage_key, module)
                 }
@@ -1412,7 +1436,12 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         }
     }
 
-    fn compile_get_config(&mut self, addr_val: &Value, name: &String) -> Result<(), CompileError> {
+    fn compile_get_config(
+        &mut self,
+        addr_val: &Value,
+        config: &Config,
+    ) -> Result<(), CompileError> {
+        let name = config.get_name(self.context);
         let addr_reg = self.reg_seqr.next();
 
         // if configurable is at the global_section, it is v1
@@ -2049,7 +2078,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
         self.cur_bytecode.push(Op {
             owning_span,
-            opcode: Either::Left(VirtualOp::JMP(by4_reg)),
+            opcode: Either::Right(ControlFlowOp::JumpToAddr(by4_reg)),
             comment: "[jump]: jump to computed value".into(),
         });
 
@@ -2092,24 +2121,9 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
     ) -> Result<(), CompileError> {
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
 
-        // XXX not required after we have FuelVM specific verifier.
-        if !key
-            .get_type(self.context)
-            .is_none_or(|key_ty| key_ty.is_ptr(self.context))
-        {
-            return Err(CompileError::Internal(
-                "Key value for state clear is not a pointer.",
-                owning_span.unwrap_or_else(Span::dummy),
-            ));
-        }
-
-        // Get the key pointer.
         let key_reg = self.value_to_register(key)?;
-
         // Capture the status of whether the slot was set before calling this instruction.
         let was_slot_set_reg = self.reg_seqr.next();
-
-        // Number of slots to be cleared
         let number_of_slots_reg = self.value_to_register(number_of_slots)?;
 
         self.cur_bytecode.push(Op {
@@ -2118,11 +2132,191 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 was_slot_set_reg.clone(),
                 number_of_slots_reg,
             )),
-            comment: "clear sequence of storage slots".into(),
+            comment: "clear sequence of quod storage slots".into(),
             owning_span,
         });
 
         self.reg_map.insert(*instr_val, was_slot_set_reg);
+
+        Ok(())
+    }
+
+    fn compile_state_clear_slots(
+        &mut self,
+        instr_val: &Value,
+        key: &Value,
+        number_of_slots: &Value,
+    ) -> Result<(), CompileError> {
+        let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
+
+        let key_reg = self.value_to_register(key)?;
+        let number_of_slots_reg = self.value_to_register(number_of_slots)?;
+
+        self.cur_bytecode.push(Op {
+            opcode: Either::Left(VirtualOp::SCLR(key_reg, number_of_slots_reg)),
+            comment: "clear sequence of dynamic storage slots".into(),
+            owning_span,
+        });
+
+        Ok(())
+    }
+
+    fn compile_state_preload(
+        &mut self,
+        instr_val: &Value,
+        key: &Value,
+    ) -> Result<(), CompileError> {
+        let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
+
+        let key_reg = self.value_to_register(key)?;
+        let dest_len_reg = self.reg_seqr.next();
+
+        self.cur_bytecode.push(Op {
+            opcode: Either::Left(VirtualOp::SPLD(dest_len_reg.clone(), key_reg)),
+            comment: "preload dynamic storage slot".into(),
+            owning_span,
+        });
+
+        self.reg_map.insert(*instr_val, dest_len_reg);
+
+        Ok(())
+    }
+
+    fn compile_state_read_slot(
+        &mut self,
+        instr_val: &Value,
+        load_val: &Value,
+        key: &Value,
+        offset: &Value,
+        len: &Value,
+    ) -> Result<(), CompileError> {
+        let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
+
+        let load_reg = self.value_to_register(load_val)?;
+        let key_reg = self.value_to_register(key)?;
+        let offset_reg = self.value_to_register(offset)?;
+
+        let len_imm = len.get_constant(self.context).and_then(|len_const| {
+            if let ConstantValue::Uint(len_uint) = len_const.get_content(self.context).value {
+                VirtualImmediate06::try_new(len_uint, Span::dummy()).ok()
+            } else {
+                None
+            }
+        });
+
+        match len_imm {
+            Some(len_imm) => {
+                let len_imm_value = len_imm.value();
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::SRDI(load_reg, key_reg, offset_reg, len_imm)),
+                    comment: format!(
+                        "read dynamic storage slot with immediate length {len_imm_value}"
+                    ),
+                    owning_span,
+                })
+            }
+            None => {
+                let len_reg = self.value_to_register(len)?;
+
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::SRDD(load_reg, key_reg, offset_reg, len_reg)),
+                    comment: "read dynamic storage slot".into(),
+                    owning_span,
+                });
+            }
+        }
+
+        Ok(())
+    }
+
+    fn compile_state_write_slot(
+        &mut self,
+        instr_val: &Value,
+        stored_val: &Value,
+        key: &Value,
+        len: &Value,
+    ) -> Result<(), CompileError> {
+        let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
+
+        let key_reg = self.value_to_register(key)?;
+        let stored_reg = self.value_to_register(stored_val)?;
+
+        let len_imm = len.get_constant(self.context).and_then(|len_const| {
+            if let ConstantValue::Uint(len_uint) = len_const.get_content(self.context).value {
+                VirtualImmediate12::try_new(len_uint, Span::dummy()).ok()
+            } else {
+                None
+            }
+        });
+
+        match len_imm {
+            Some(len_imm) => {
+                let len_imm_value = len_imm.value();
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::SWRI(key_reg, stored_reg, len_imm)),
+                    comment: format!(
+                        "write dynamic storage slot with immediate length {len_imm_value}"
+                    ),
+                    owning_span,
+                })
+            }
+            None => {
+                let len_reg = self.value_to_register(len)?;
+
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::SWRD(key_reg, stored_reg, len_reg)),
+                    comment: "write dynamic storage slot".into(),
+                    owning_span,
+                });
+            }
+        }
+
+        Ok(())
+    }
+
+    fn compile_state_update_slot(
+        &mut self,
+        instr_val: &Value,
+        stored_val: &Value,
+        key: &Value,
+        offset: &Value,
+        len: &Value,
+    ) -> Result<(), CompileError> {
+        let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
+
+        let key_reg = self.value_to_register(key)?;
+        let stored_reg = self.value_to_register(stored_val)?;
+        let offset_reg = self.value_to_register(offset)?;
+
+        let len_imm = len.get_constant(self.context).and_then(|len_const| {
+            if let ConstantValue::Uint(len_uint) = len_const.get_content(self.context).value {
+                VirtualImmediate06::try_new(len_uint, Span::dummy()).ok()
+            } else {
+                None
+            }
+        });
+
+        match len_imm {
+            Some(len_imm) => {
+                let len_imm_value = len_imm.value();
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::SUPI(key_reg, stored_reg, offset_reg, len_imm)),
+                    comment: format!(
+                        "update dynamic storage slot with immediate length {len_imm_value}"
+                    ),
+                    owning_span,
+                })
+            }
+            None => {
+                let len_reg = self.value_to_register(len)?;
+
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::SUPD(key_reg, stored_reg, offset_reg, len_reg)),
+                    comment: "update dynamic storage slot".into(),
+                    owning_span,
+                });
+            }
+        }
 
         Ok(())
     }
@@ -2141,7 +2335,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         // XXX not required after we have FuelVM specific verifier.
         if !val
             .get_type(self.context)
-            .and_then(|val_ty| key.get_type(self.context).map(|key_ty| (val_ty, key_ty)))
+            .zip(key.get_type(self.context))
             .is_some_and(|(val_ty, key_ty)| {
                 val_ty.is_ptr(self.context) && key_ty.is_ptr(self.context)
             })
@@ -2191,26 +2385,21 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         &mut self,
         instr_val: &Value,
         key: &Value,
+        offset: &u64,
     ) -> Result<(), CompileError> {
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
-
-        // XXX not required after we have FuelVM specific verifier.
-        if !key
-            .get_type(self.context)
-            .is_none_or(|key_ty| key_ty.is_ptr(self.context))
-        {
-            return Err(CompileError::Internal(
-                "Key value for state load word is not a pointer.",
-                owning_span.unwrap_or_else(Span::dummy),
-            ));
-        }
 
         let key_reg = self.value_to_register(key)?;
         let was_slot_set_reg = self.reg_seqr.next();
         let load_reg = self.reg_seqr.next();
 
         self.cur_bytecode.push(Op {
-            opcode: Either::Left(VirtualOp::SRW(load_reg.clone(), was_slot_set_reg, key_reg)),
+            opcode: Either::Left(VirtualOp::SRW(
+                load_reg.clone(),
+                was_slot_set_reg,
+                key_reg,
+                VirtualImmediate06::new(*offset),
+            )),
             comment: "read single word from contract state".into(),
             owning_span,
         });
@@ -2227,20 +2416,6 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         key: &Value,
     ) -> Result<(), CompileError> {
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
-
-        // XXX not required after we have FuelVM specific verifier.
-        if !store_val
-            .get_type(self.context)
-            .and_then(|val_ty| key.get_type(self.context).map(|key_ty| (val_ty, key_ty)))
-            .is_some_and(|(val_ty, key_ty)| {
-                val_ty.is_uint64(self.context) && key_ty.is_ptr(self.context)
-            })
-        {
-            return Err(CompileError::Internal(
-                "Val or key value for state store word is not a pointer.",
-                owning_span.unwrap_or_else(Span::dummy),
-            ));
-        }
 
         let store_reg = self.value_to_register(store_val)?;
         let key_reg = self.value_to_register(key)?;

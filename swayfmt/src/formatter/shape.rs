@@ -156,8 +156,9 @@ impl CodeLine {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub(crate) enum LineStyle {
+    #[default]
     Normal,
     Inline,
     Multiline,
@@ -169,14 +170,8 @@ impl LineStyle {
     }
 }
 
-impl Default for LineStyle {
-    fn default() -> Self {
-        Self::Normal
-    }
-}
-
 /// The type of expression to determine which part of `Config::heuristics` to use.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
 pub(crate) enum ExprKind {
     Variable,
     Function,
@@ -185,13 +180,8 @@ pub(crate) enum ExprKind {
     MethodChain,
     Conditional,
     Import,
+    #[default]
     Undetermined,
-}
-
-impl Default for ExprKind {
-    fn default() -> Self {
-        Self::Undetermined
-    }
 }
 
 /// The current shape of the formatter.

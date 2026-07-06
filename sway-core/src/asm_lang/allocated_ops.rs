@@ -12,7 +12,9 @@
 use super::*;
 use crate::{
     asm_generation::fuel::{
-        compiler_constants::DATA_SECTION_REGISTER,
+        compiler_constants::{
+            DATA_SECTION_REGISTER, LOWER_ALLOCATABLE_REGISTER, UPPER_ALLOCATABLE_REGISTER,
+        },
         data_section::{DataId, DataSection},
     },
     fuel_prelude::fuel_asm::{self, op},
@@ -46,9 +48,17 @@ impl fmt::Display for AllocatedRegister {
 }
 
 impl AllocatedRegister {
+    /// First allocated register starts at [UPPER_ALLOCATABLE_REGISTER] and goes
+    /// down until [LOWER_ALLOCATABLE_REGISTER].
     pub(crate) fn to_reg_id(&self) -> fuel_asm::RegId {
         match self {
-            AllocatedRegister::Allocated(a) => fuel_asm::RegId::new(a + 16),
+            AllocatedRegister::Allocated(id) => {
+                let id = UPPER_ALLOCATABLE_REGISTER.checked_sub(*id).unwrap();
+                if !(LOWER_ALLOCATABLE_REGISTER..=UPPER_ALLOCATABLE_REGISTER).contains(&id) {
+                    panic!("invalid register id: {id}")
+                }
+                fuel_asm::RegId::new(id)
+            }
             AllocatedRegister::Constant(constant) => constant.to_reg_id(),
         }
     }
@@ -246,12 +256,30 @@ pub(crate) enum AllocatedInstruction {
         AllocatedRegister,
     ),
     SCWQ(AllocatedRegister, AllocatedRegister, AllocatedRegister),
-    SRW(AllocatedRegister, AllocatedRegister, AllocatedRegister),
+    SCLR(AllocatedRegister, AllocatedRegister),
+    SRW(
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        VirtualImmediate06,
+    ),
     SRWQ(
         AllocatedRegister,
         AllocatedRegister,
         AllocatedRegister,
         AllocatedRegister,
+    ),
+    SRDD(
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+    ),
+    SRDI(
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        VirtualImmediate06,
     ),
     SWW(AllocatedRegister, AllocatedRegister, AllocatedRegister),
     SWWQ(
@@ -260,6 +288,21 @@ pub(crate) enum AllocatedInstruction {
         AllocatedRegister,
         AllocatedRegister,
     ),
+    SWRD(AllocatedRegister, AllocatedRegister, AllocatedRegister),
+    SWRI(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
+    SUPD(
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+    ),
+    SUPI(
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        VirtualImmediate06,
+    ),
+    SPLD(AllocatedRegister, AllocatedRegister),
     TIME(AllocatedRegister, AllocatedRegister),
     TR(AllocatedRegister, AllocatedRegister, AllocatedRegister),
     TRO(
@@ -412,10 +455,18 @@ impl AllocatedInstruction {
             RVRT(_r1) => vec![],
             SMO(_r1, _r2, _r3, _r4) => vec![],
             SCWQ(_r1, r2, _r3) => vec![r2],
-            SRW(r1, r2, _r3) => vec![r1, r2],
+            SCLR(_r1, _r2) => vec![],
+            SRW(r1, r2, _r3, _imm) => vec![r1, r2],
             SRWQ(_r1, r2, _r3, _r4) => vec![r2],
+            SRDD(_r1, _r2, _r3, _r4) => vec![],
+            SRDI(_r1, _r2, _r3, _imm) => vec![],
             SWW(_r1, r2, _r3) => vec![r2],
             SWWQ(_r1, r2, _r3, _r4) => vec![r2],
+            SWRD(_r1, _r2, _r3) => vec![],
+            SWRI(_r1, _r2, _i) => vec![],
+            SUPD(_r1, _r2, _r3, _r4) => vec![],
+            SUPI(_r1, _r2, _r3, _imm) => vec![],
+            SPLD(r1, _r2) => vec![r1],
             TIME(r1, _r2) => vec![r1],
             TR(_r1, _r2, _r3) => vec![],
             TRO(_r1, _r2, _r3, _r4) => vec![],
@@ -547,10 +598,18 @@ impl fmt::Display for AllocatedInstruction {
             RVRT(a) => write!(fmtr, "rvrt {a}"),
             SMO(a, b, c, d) => write!(fmtr, "smo  {a} {b} {c} {d}"),
             SCWQ(a, b, c) => write!(fmtr, "scwq {a} {b} {c}"),
-            SRW(a, b, c) => write!(fmtr, "srw  {a} {b} {c}"),
+            SCLR(a, b) => write!(fmtr, "sclr {a} {b}"),
+            SRW(a, b, c, d) => write!(fmtr, "srw  {a} {b} {c} {d}"),
             SRWQ(a, b, c, d) => write!(fmtr, "srwq {a} {b} {c} {d}"),
+            SRDD(a, b, c, d) => write!(fmtr, "srdd {a} {b} {c} {d}"),
+            SRDI(a, b, c, d) => write!(fmtr, "srdi {a} {b} {c} {d}"),
             SWW(a, b, c) => write!(fmtr, "sww  {a} {b} {c}"),
             SWWQ(a, b, c, d) => write!(fmtr, "swwq {a} {b} {c} {d}"),
+            SWRD(a, b, c) => write!(fmtr, "swrd {a} {b} {c}"),
+            SWRI(a, b, c) => write!(fmtr, "swri {a} {b} {c}"),
+            SUPD(a, b, c, d) => write!(fmtr, "supd {a} {b} {c} {d}"),
+            SUPI(a, b, c, d) => write!(fmtr, "supi {a} {b} {c} {d}"),
+            SPLD(a, b) => write!(fmtr, "spld {a} {b}"),
             TIME(a, b) => write!(fmtr, "time {a} {b}"),
             TR(a, b, c) => write!(fmtr, "tr   {a} {b} {c}"),
             TRO(a, b, c, d) => write!(fmtr, "tro  {a} {b} {c} {d}"),
@@ -787,14 +846,44 @@ impl AllocatedOp {
                 op::SMO::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
             }
             SCWQ(a, b, c) => op::SCWQ::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
-            SRW(a, b, c) => op::SRW::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            SCLR(a, b) => op::SCLR::new(a.to_reg_id(), b.to_reg_id()).into(),
+            SRW(a, b, c, d) => op::SRW::new(
+                a.to_reg_id(),
+                b.to_reg_id(),
+                c.to_reg_id(),
+                d.value().into(),
+            )
+            .into(),
             SRWQ(a, b, c, d) => {
                 op::SRWQ::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
             }
+            SRDD(a, b, c, d) => {
+                op::SRDD::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
+            }
+            SRDI(a, b, c, d) => op::SRDI::new(
+                a.to_reg_id(),
+                b.to_reg_id(),
+                c.to_reg_id(),
+                d.value().into(),
+            )
+            .into(),
             SWW(a, b, c) => op::SWW::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
             SWWQ(a, b, c, d) => {
                 op::SWWQ::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
             }
+            SWRD(a, b, c) => op::SWRD::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            SWRI(a, b, c) => op::SWRI::new(a.to_reg_id(), b.to_reg_id(), c.value().into()).into(),
+            SUPD(a, b, c, d) => {
+                op::SUPD::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
+            }
+            SUPI(a, b, c, d) => op::SUPI::new(
+                a.to_reg_id(),
+                b.to_reg_id(),
+                c.to_reg_id(),
+                d.value().into(),
+            )
+            .into(),
+            SPLD(a, b) => op::SPLD::new(a.to_reg_id(), b.to_reg_id()).into(),
             TIME(a, b) => op::TIME::new(a.to_reg_id(), b.to_reg_id()).into(),
             TR(a, b, c) => op::TR::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
             TRO(a, b, c, d) => {

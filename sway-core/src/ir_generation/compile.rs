@@ -1,32 +1,42 @@
-use crate::{
-    decl_engine::{DeclEngineGet, DeclId, DeclRefFunction},
-    ir_generation::{KeyedTyFunctionDecl, PanickingFunctionCache},
-    language::{ty, Visibility},
-    metadata::MetadataManager,
-    namespace::ResolvedDeclaration,
-    semantic_analysis::namespace,
-    type_system::TypeId,
-    types::{LogId, MessageId},
-    Engines, PanicOccurrences, PanickingCallOccurrences,
-};
-
 use super::{
     const_eval::{compile_const_decl, LookupEnv},
     convert::convert_resolved_type_id,
     function::FnCompiler,
     CompiledFunctionCache,
 };
-
-use sway_error::{error::CompileError, handler::Handler};
+use crate::{
+    decl_engine::{DeclEngineGet, DeclId, DeclRefFunction},
+    ir_generation::{
+        const_eval::compile_constant_expression_to_constant, KeyedTyFunctionDecl,
+        PanickingFunctionCache,
+    },
+    language::{
+        ty::{self, TyExpression, TyStructDecl},
+        Visibility,
+    },
+    metadata::MetadataManager,
+    namespace::ResolvedDeclaration,
+    semantic_analysis::namespace,
+    type_system::TypeId,
+    types::{LogId, MessageId},
+    Engines, PanicOccurrences, PanickingCallOccurrences, TypeInfo,
+};
+use std::{
+    cell::Cell,
+    collections::{BTreeSet, HashMap},
+    sync::Arc,
+};
+use sway_error::{
+    error::{CompileError, TrivialCheckDiagType, TrivialCheckFailedData},
+    handler::{ErrorEmitted, Handler},
+};
 use sway_ir::{metadata::combine as md_combine, *};
-use sway_types::{Ident, Span, Spanned};
-
-use std::{cell::Cell, collections::HashMap, sync::Arc};
+use sway_types::{integer_bits::IntegerBits, Ident, Named, ProgramId, Span, Spanned};
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_script(
     engines: &Engines,
-    context: &mut Context,
+    ctx: &mut Context,
     entry_function: &DeclId<ty::TyFunctionDecl>,
     namespace: &namespace::Namespace,
     logged_types_map: &HashMap<TypeId, LogId>,
@@ -36,17 +46,15 @@ pub(super) fn compile_script(
     panicking_fn_cache: &mut PanickingFunctionCache,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
     compiled_fn_cache: &mut CompiledFunctionCache,
+    md_mgr: &mut MetadataManager,
+    module: Module,
 ) -> Result<Module, Vec<CompileError>> {
-    let module = Module::new(context, Kind::Script);
-
-    compile_constants_for_package(engines, context, module, namespace)?;
-
-    let mut md_mgr = MetadataManager::default();
+    compile_constants_for_package(engines, ctx, module, namespace)?;
 
     compile_configurables(
         engines,
-        context,
-        &mut md_mgr,
+        ctx,
+        md_mgr,
         module,
         namespace.current_package_root_module(),
         logged_types_map,
@@ -59,8 +67,8 @@ pub(super) fn compile_script(
     .map_err(|err| vec![err])?;
     compile_entry_function(
         engines,
-        context,
-        &mut md_mgr,
+        ctx,
+        md_mgr,
         module,
         entry_function,
         logged_types_map,
@@ -73,8 +81,8 @@ pub(super) fn compile_script(
     )?;
     compile_tests(
         engines,
-        context,
-        &mut md_mgr,
+        ctx,
+        md_mgr,
         module,
         logged_types_map,
         messages_types_map,
@@ -101,17 +109,14 @@ pub(super) fn compile_predicate(
     panicking_fn_cache: &mut PanickingFunctionCache,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
     compiled_fn_cache: &mut CompiledFunctionCache,
+    md_mgr: &mut MetadataManager,
+    module: Module,
 ) -> Result<Module, Vec<CompileError>> {
-    let module = Module::new(context, Kind::Predicate);
-
     compile_constants_for_package(engines, context, module, namespace)?;
-
-    let mut md_mgr = MetadataManager::default();
-
     compile_configurables(
         engines,
         context,
-        &mut md_mgr,
+        md_mgr,
         module,
         namespace.current_package_root_module(),
         logged_types,
@@ -125,7 +130,7 @@ pub(super) fn compile_predicate(
     compile_entry_function(
         engines,
         context,
-        &mut md_mgr,
+        md_mgr,
         module,
         entry_function,
         &HashMap::new(),
@@ -139,7 +144,7 @@ pub(super) fn compile_predicate(
     compile_tests(
         engines,
         context,
-        &mut md_mgr,
+        md_mgr,
         module,
         logged_types,
         messages_types,
@@ -168,17 +173,14 @@ pub(super) fn compile_contract(
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
     engines: &Engines,
     compiled_fn_cache: &mut CompiledFunctionCache,
+    md_mgr: &mut MetadataManager,
+    module: Module,
 ) -> Result<Module, Vec<CompileError>> {
-    let module = Module::new(context, Kind::Contract);
-
     compile_constants_for_package(engines, context, module, namespace)?;
-
-    let mut md_mgr = MetadataManager::default();
-
     compile_configurables(
         engines,
         context,
-        &mut md_mgr,
+        md_mgr,
         module,
         namespace.current_package_root_module(),
         logged_types_map,
@@ -203,7 +205,7 @@ pub(super) fn compile_contract(
         compile_entry_function(
             engines,
             context,
-            &mut md_mgr,
+            md_mgr,
             module,
             entry_function,
             logged_types_map,
@@ -220,7 +222,7 @@ pub(super) fn compile_contract(
         for decl in abi_entries {
             compile_encoding_v0_abi_method(
                 context,
-                &mut md_mgr,
+                md_mgr,
                 module,
                 decl,
                 logged_types_map,
@@ -240,7 +242,7 @@ pub(super) fn compile_contract(
                 if decl.is_fallback() {
                     compile_encoding_v0_abi_method(
                         context,
-                        &mut md_mgr,
+                        md_mgr,
                         module,
                         &decl_id,
                         logged_types_map,
@@ -259,7 +261,7 @@ pub(super) fn compile_contract(
     compile_tests(
         engines,
         context,
-        &mut md_mgr,
+        md_mgr,
         module,
         logged_types_map,
         messages_types_map,
@@ -276,7 +278,7 @@ pub(super) fn compile_contract(
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_library(
     engines: &Engines,
-    context: &mut Context,
+    ctx: &mut Context,
     namespace: &namespace::Namespace,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
@@ -285,17 +287,14 @@ pub(super) fn compile_library(
     panicking_fn_cache: &mut PanickingFunctionCache,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
     compiled_fn_cache: &mut CompiledFunctionCache,
+    md_mgr: &mut MetadataManager,
+    module: Module,
 ) -> Result<Module, Vec<CompileError>> {
-    let module = Module::new(context, Kind::Library);
-
-    compile_constants_for_package(engines, context, module, namespace)?;
-
-    let mut md_mgr = MetadataManager::default();
-
+    compile_constants_for_package(engines, ctx, module, namespace)?;
     compile_tests(
         engines,
-        context,
-        &mut md_mgr,
+        ctx,
+        md_mgr,
         module,
         logged_types_map,
         messages_types_map,
@@ -576,6 +575,359 @@ pub(super) fn compile_entry_function(
     .map(|f| f.expect("entry point should never contain generics"))
 }
 
+#[derive(Debug, Clone)]
+pub enum CheckDecl {
+    Ref {
+        tid: TypeId,
+        is_decode_trivial_table: HashMap<String, TyExpression>,
+        type_name_span: Span,
+        diag: TrivialCheckDiagType,
+    },
+    Decl {
+        tid: TypeId,
+        is_decode_trivial_table: HashMap<String, TyExpression>,
+        diag: TrivialCheckDiagType,
+    },
+}
+
+impl CheckDecl {
+    pub fn is_decode_trivial_table(&self) -> &HashMap<String, TyExpression> {
+        match self {
+            CheckDecl::Ref {
+                is_decode_trivial_table,
+                ..
+            }
+            | CheckDecl::Decl {
+                is_decode_trivial_table,
+                ..
+            } => is_decode_trivial_table,
+        }
+    }
+
+    pub fn tid(&self) -> TypeId {
+        match self {
+            CheckDecl::Ref { tid, .. } | CheckDecl::Decl { tid, .. } => *tid,
+        }
+    }
+
+    fn diag_type(&self) -> TrivialCheckDiagType {
+        match self {
+            CheckDecl::Ref { diag, .. } | CheckDecl::Decl { diag, .. } => *diag,
+        }
+    }
+}
+
+/// It is Ok for the function to return check errors. Err is reserved for ICE and other unexpected errors.
+pub fn run_ir_decl_checks(
+    handler: &Handler,
+    engines: &Engines,
+    context: &mut Context,
+    md_mgr: &mut MetadataManager,
+    module: Module,
+    decls_check: &[CheckDecl],
+    workspace_pid: Option<ProgramId>,
+) -> Result<Vec<TrivialCheckFailedData>, ErrorEmitted> {
+    let mut errors = vec![];
+
+    // check types
+    for check in decls_check.iter() {
+        let diag = match check.diag_type() {
+            TrivialCheckDiagType::Nothing => continue,
+            diag_type => diag_type,
+        };
+
+        let is_decode_trivial_table = check
+            .is_decode_trivial_table()
+            .iter()
+            .filter_map(|(key, expr)| {
+                let expr = compile_constant_expression_to_constant(
+                    engines, context, md_mgr, module, None, None, expr,
+                )
+                .ok()?
+                .get_content(context)
+                .as_bool()?;
+                Some((key.clone(), expr))
+            })
+            .collect::<HashMap<String, bool>>();
+
+        let type_info = engines.te().get(check.tid());
+        let fullname = engines.help_out(type_info.as_ref()).to_string();
+
+        match is_decode_trivial_table.get(&fullname) {
+            Some(true) => continue,
+            Some(false) => {}
+            None => {
+                return Err(handler.emit_err(CompileError::Internal(
+                    "Missing type when evaluating encoding triviality",
+                    Span::dummy(),
+                )));
+            }
+        }
+
+        let type_decl_span = match type_info.as_ref() {
+            TypeInfo::Enum(decl_id) => Some(engines.de().get(decl_id).name().span().clone()),
+            TypeInfo::Struct(decl_id) => Some(engines.de().get(decl_id).name().span().clone()),
+            _ => None,
+        };
+
+        let type_ref_span = match check {
+            CheckDecl::Ref { type_name_span, .. } => Some(type_name_span.clone()),
+            _ => None,
+        };
+
+        let mut error = TrivialCheckFailedData {
+            span: type_ref_span
+                .clone()
+                .unwrap_or_else(|| type_decl_span.clone().unwrap()),
+            problems_qty: 0,
+            can_be_made_trivial: None,
+            infos: vec![],
+            helps: vec![],
+            never_trivial: BTreeSet::default(),
+            bottom_helps: BTreeSet::default(),
+            diag,
+        };
+
+        if let (TypeInfo::Enum(_) | TypeInfo::Struct(_), CheckDecl::Ref { type_name_span, .. }) =
+            (type_info.as_ref(), check)
+        {
+            error.infos.push((
+                type_name_span.clone(),
+                format!(
+                    "This is the reason `{}` is being checked",
+                    type_name_span.as_str()
+                ),
+            ));
+        }
+
+        push_help_if_non_trivially_decodable_type(
+            handler,
+            engines,
+            workspace_pid,
+            type_ref_span,
+            type_decl_span,
+            type_info.as_ref(),
+            &is_decode_trivial_table,
+            &mut error,
+        )?;
+
+        if error.problems_qty > 0 {
+            errors.push(error);
+        }
+    }
+
+    Ok(errors)
+}
+
+// Deal with well-known structs like Vec, String, Bytes
+fn replace_known_types_with_suggestion(
+    engines: &Engines,
+    replaced: bool,
+    decl_id: &DeclId<TyStructDecl>,
+    original_span: &Span,
+) -> (bool, String) {
+    let decl = engines.de().get(decl_id);
+    let full_call_path = decl.call_path.to_string();
+    if full_call_path == "std::vec::Vec" {
+        let elem_type = decl
+            .generic_parameters
+            .first()
+            .and_then(|x| x.as_type_parameter())
+            .unwrap();
+        let elem_type_info = engines.te().get(elem_type.type_id);
+        let (_, suggestion) = if let TypeInfo::Struct(decl_id) = elem_type_info.as_ref() {
+            replace_known_types_with_suggestion(engines, true, decl_id, &elem_type.span())
+        } else {
+            (true, engines.help_out(elem_type_info.as_ref()).to_string())
+        };
+
+        (true, format!("TrivialVec<{suggestion}, MAX_LEN>"))
+    } else {
+        (replaced, original_span.as_str().to_string())
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn push_help_if_non_trivially_decodable_type(
+    handler: &Handler,
+    engines: &Engines,
+    workspace_pid: Option<ProgramId>,
+    type_ref_span: Option<Span>,
+    type_decl_span: Option<Span>,
+    type_info: &TypeInfo,
+    table: &HashMap<String, bool>,
+    error: &mut TrivialCheckFailedData,
+) -> Result<(), ErrorEmitted> {
+    let fullname = engines.help_out(type_info).to_string();
+
+    match table.get(&fullname) {
+        Some(true) => return Ok(()),
+        Some(false) => {}
+        None => {
+            return Err(handler.emit_err(CompileError::Internal(
+                "Missing type when evaluating encoding triviality",
+                Span::dummy(),
+            )));
+        }
+    }
+
+    // Check for decls, like an attribute above a struct decl
+    if let Some(type_decl_span) = type_decl_span {
+        match &type_info {
+            TypeInfo::Struct(decl_id) => {
+                let struct_decl = engines.de().get(decl_id);
+                error.span = struct_decl.call_path.suffix.span().clone();
+
+                //Only suggest change if the decl is in the same workspace
+                let decl_pid = struct_decl.span.source_id().map(|x| x.program_id());
+                match (workspace_pid, decl_pid) {
+                    (Some(a), Some(b)) if a == b => {
+                        error.helps.push((
+                            type_decl_span.clone(),
+                            format!(
+                                "Consider changing `{}` to make it trivially decodable.",
+                                type_decl_span.as_str()
+                            ),
+                        ));
+                    }
+                    _ => {}
+                }
+
+                for field in struct_decl.fields.iter() {
+                    let field_tid = field.type_argument.type_id;
+                    let field_type_info = engines.te().get(field_tid);
+                    let field_fullname = engines.help_out(field_tid).to_string();
+
+                    match table.get(&field_fullname) {
+                        Some(true) => continue,
+                        Some(false) => {}
+                        None => {
+                            return Err(handler.emit_err(CompileError::Internal(
+                                "Missing type when evaluating encoding triviality",
+                                Span::dummy(),
+                            )));
+                        }
+                    }
+
+                    error.problems_qty += 1;
+                    error.infos.push((
+                        field.name.span().clone(),
+                        "This field is not trivially decodable.".to_string(),
+                    ));
+
+                    push_help_if_non_trivially_decodable_type(
+                        handler,
+                        engines,
+                        workspace_pid,
+                        Some(field.type_argument.span.clone()),
+                        None,
+                        field_type_info.as_ref(),
+                        table,
+                        error,
+                    )?;
+                }
+            }
+            TypeInfo::Enum(decl_id) => {
+                let enum_decl = engines.de().get(decl_id);
+                error.span = enum_decl.call_path.suffix.span().clone();
+                error.problems_qty += 1;
+            }
+            type_info => {
+                return Err(handler.emit_err(CompileError::InternalOwned(
+                    format!(
+                        "'{}' not supported. Only structs and enums",
+                        engines.help_out(type_info)
+                    ),
+                    Span::dummy(),
+                )));
+            }
+        }
+    }
+
+    // Check when a type is just a ref, like a function argument, or a field inside a decl
+    if let Some(type_ref_span) = type_ref_span {
+        match &type_info {
+            TypeInfo::Boolean => {
+                error.helps.push((
+                    type_ref_span.clone(),
+                    "Consider changing this type to `TrivialBool`.".to_string(),
+                ));
+                error.never_trivial.insert("bool".to_string());
+                error.problems_qty += 1;
+            }
+            TypeInfo::UnsignedInteger(IntegerBits::Sixteen) => {
+                error.helps.push((
+                    type_ref_span.clone(),
+                    "Consider changing this type to `u64`.".to_string(),
+                ));
+                error.never_trivial.insert("u16".to_string());
+                error.problems_qty += 1;
+            }
+            TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo) => {
+                error.helps.push((
+                    type_ref_span.clone(),
+                    "Consider changing this type to `u64`.".to_string(),
+                ));
+                error.never_trivial.insert("u32".to_string());
+                error.problems_qty += 1;
+            }
+            TypeInfo::Enum(_) => {
+                error.helps.push((
+                    type_ref_span.clone(),
+                    format!(
+                        "Consider wrapping this type like `TrivialEnum<{}>`.",
+                        type_ref_span.as_str(),
+                    ),
+                ));
+                error.bottom_helps.insert("Enums are represented as tagged unions and because of that they cannot be trivially decoded. But where needed, they can be wrapped by `TrivialEnum`, and their original value can be retrieved later with `unwrap`.".to_string());
+                error.problems_qty += 1;
+            }
+            TypeInfo::Struct(decl_id) => {
+                let (replaced, suggestion) =
+                    replace_known_types_with_suggestion(engines, false, decl_id, &type_ref_span);
+                if replaced {
+                    error.helps.push((
+                        type_ref_span.clone(),
+                        format!("This type is never trivially decodable. Consider using `{suggestion}` instead.")
+                    ));
+                    error.problems_qty += 1;
+                }
+            }
+            TypeInfo::Tuple(items) => {
+                for item in items {
+                    let type_info = engines.te().get(item.type_id);
+                    push_help_if_non_trivially_decodable_type(
+                        handler,
+                        engines,
+                        workspace_pid,
+                        Some(item.span.clone()),
+                        None,
+                        type_info.as_ref(),
+                        table,
+                        error,
+                    )?;
+                }
+            }
+            TypeInfo::Array(item, _) => {
+                let type_info = engines.te().get(item.type_id);
+                push_help_if_non_trivially_decodable_type(
+                    handler,
+                    engines,
+                    workspace_pid,
+                    Some(item.span.clone()),
+                    None,
+                    type_info.as_ref(),
+                    table,
+                    error,
+                )?;
+            }
+            _ => {}
+        }
+    }
+
+    Ok(())
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_tests(
     engines: &Engines,
@@ -683,8 +1035,10 @@ fn compile_fn(
                     ref_mut_args.insert(param.name.as_str().to_owned());
                 }
                 (
+                    // TODO: We can improve here. Setting all arguments as mutable for now.
+                    IrMutability::Mutable,
                     // Convert the name.
-                    param.name.as_str().into(),
+                    param.name.to_string(),
                     // Convert the type further to a pointer if it's a reference.
                     if param.is_reference {
                         Type::new_typed_pointer(context, ty)
@@ -702,6 +1056,7 @@ fn compile_fn(
     let keyed_decl = KeyedTyFunctionDecl::new(ast_fn_decl, engines);
     if context.backtrace != Backtrace::None && panicking_fn_cache.can_panic(&keyed_decl, engines) {
         args.push((
+            IrMutability::Immutable,
             FnCompiler::BACKTRACE_FN_ARG_NAME.to_string(),
             Type::new_uint(context, 64),
             None,

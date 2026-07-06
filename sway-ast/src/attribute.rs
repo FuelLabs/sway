@@ -65,6 +65,11 @@ pub const ABI_NAME_NAME_ARG_NAME: &str = "name";
 pub const EVENT_ATTRIBUTE_NAME: &str = "event";
 pub const INDEXED_ATTRIBUTE_NAME: &str = "indexed";
 
+// Require Attributes
+pub const REQUIRE_ATTRIBUTE_NAME: &str = "require";
+pub const REQUIRE_ARG_NAME_TRIVIALLY_ENCODABLE: &str = "trivially_encodable";
+pub const REQUIRE_ARG_NAME_TRIVIALLY_DECODABLE: &str = "trivially_decodable";
+
 pub const KNOWN_ATTRIBUTE_NAMES: &[&str] = &[
     STORAGE_ATTRIBUTE_NAME,
     DOC_COMMENT_ATTRIBUTE_NAME,
@@ -78,6 +83,7 @@ pub const KNOWN_ATTRIBUTE_NAMES: &[&str] = &[
     ABI_NAME_ATTRIBUTE_NAME,
     EVENT_ATTRIBUTE_NAME,
     INDEXED_ATTRIBUTE_NAME,
+    REQUIRE_ATTRIBUTE_NAME,
 ];
 
 /// An attribute declaration. Attribute declaration

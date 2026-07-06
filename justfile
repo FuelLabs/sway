@@ -47,19 +47,34 @@ perf-e2e filter='':
     cargo r -r -p test -- --release --kind e2e --perf-only --perf {{filter}}
 
 alias pil := perf-in-lang
-# collect gas usages from in-language tests
+# collect gas usages and bytecode sizes from in-language tests
 [group('performance')]
 perf-in-lang filter='':
     #!/usr/bin/env bash
     branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null); [[ "$branch" == "HEAD" || -z "$branch" ]] && branch="unknown-branch"; branch=${branch//\//-};
-    outfile="./test/perf_out/$(date '+%m%d%H%M%S')-in-language-gas-usages-release-$branch.csv"
-    cargo r -r -p forc -- test --release --path ./test/src/in_language_tests {{filter}} | ./scripts/perf/extract-gas-usages.sh > "$outfile"
-    echo "Gas usages written to:      $outfile"
+    ts="$(date '+%m%d%H%M%S')"
+    gas_outfile="./test/perf_out/$ts-in-language-gas-usages-release-$branch.csv"
+    size_outfile="./test/perf_out/$ts-in-language-bytecode-sizes-release-$branch.csv"
+    filter_args=(); [[ -n "{{filter}}" ]] && filter_args=(--filter "{{filter}}");
+    # Capture the test run output once and feed it to both extractors, so the
+    # (expensive) test run happens only once.
+    tmp="$(mktemp)"; trap 'rm -f "$tmp"' EXIT
+    ./test/src/in_language_tests/run_in_language_tests.sh --print-output "${filter_args[@]}" --release | tee /dev/stderr > "$tmp"
+    ./scripts/perf/extract-gas-usages.sh < "$tmp" > "$gas_outfile"
+    ./scripts/perf/extract-bytecode-sizes.sh < "$tmp" > "$size_outfile"
+    echo "Gas usages written to:      $gas_outfile"
+    echo "Bytecode sizes written to:  $size_outfile"
+
+alias pst := perf-storage
+# run storage benchmarks (storage fields and StorageVec), optionally filtered by project name substring
+[group('performance')]
+perf-storage filter='':
+    ./test/src/e2e_vm_tests/test_programs/should_pass/storage_benchmarks/bench.sh "{{filter}}"
 
 alias pa := perf-all
-# collect gas usages and bytecode sizes from all tests (E2E and in-language)
+# collect gas usages and bytecode sizes from all tests (E2E, in-language, and storage)
 [group('performance')]
-perf-all filter='': (perf-e2e filter) (perf-in-lang filter)
+perf-all filter='': (perf-e2e filter) (perf-in-lang filter) (perf-storage filter)
 
 alias pd := perf-diff
 # generate performance diff between two CSV files
@@ -91,6 +106,7 @@ perf-diff-latest format='md':
 alias psh := perf-snapshot-historical
 # collect historic gas usages from a snapshot test that has a `forc test` output
 [linux]
+[macos]
 [group('performance')]
 perf-snapshot-historical path revision_range='' format='csv' open='':
     #!/usr/bin/env bash

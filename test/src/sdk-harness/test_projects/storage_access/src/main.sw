@@ -130,9 +130,25 @@ impl ExperimentalStorageTest for Contract {
         storage.y.read()
     }
 
+    #[cfg(experimental_dynamic_storage = false)]
     #[storage(read, write)]
     fn write_and_read_struct_simple(simple: Simple) -> Simple {
-        // Make sure that writing `b` does not erase `z`. `z` comes right after `b` in the storage 
+        // Make sure that writing `b` does not erase `z`. `z` comes right after `b` in the storage
+        // slot where the second half of `simple` is stored
+        storage.simple.z.write(simple.z);
+        storage.simple.b.write(simple.b);
+        storage.simple.read()
+    }
+
+    #[cfg(experimental_dynamic_storage = true)]
+    #[storage(read, write)]
+    fn write_and_read_struct_simple(simple: Simple) -> Simple {
+        // TODO: (INIT-STORAGE) Remove once storage initialization is implemented.
+        //       The original version of the test expects `storage.simple` to be initialized.
+        //       Currently, the slot will be initialized to 32-bytes and not the whole `Simple`.
+        storage.simple.write(simple);
+
+        // Make sure that writing `b` does not erase `z`. `z` comes right after `b` in the storage
         // slot where the second half of `simple` is stored
         storage.simple.z.write(simple.z);
         storage.simple.b.write(simple.b);
@@ -236,6 +252,7 @@ impl ExperimentalStorageTest for Contract {
         storage.s2.map1.insert(key.1, value.1);
     }
 
+    #[cfg(experimental_dynamic_storage = false)]
     #[storage(read, write)]
     fn clears_storage_key() -> bool {
         let key = StorageKey::<u64>::zero();
@@ -243,6 +260,19 @@ impl ExperimentalStorageTest for Contract {
 
         assert(key.read() == 42);
         let cleared = key.clear();
+        assert(cleared);
+        assert(key.try_read().is_none());
+        cleared
+    }
+
+    #[cfg(experimental_dynamic_storage = true)]
+    #[storage(read, write)]
+    fn clears_storage_key() -> bool {
+        let key = StorageKey::<u64>::zero();
+        key.write(42);
+
+        assert(key.read() == 42);
+        let cleared = key.clear_existed();
         assert(cleared);
         assert(key.try_read().is_none());
         cleared

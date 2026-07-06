@@ -1,0 +1,4 @@
+category = "compile"
+experimental = { new_encoding = true, dynamic_storage = true }
+validate_abi = false
+expected_warnings = 5

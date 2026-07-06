@@ -50,6 +50,12 @@
       "attributes": [
         {
           "arguments": [
+            "experimental_dynamic_storage"
+          ],
+          "name": "cfg"
+        },
+        {
+          "arguments": [
             "read"
           ],
           "name": "storage"
@@ -88,6 +94,12 @@
     },
     {
       "attributes": [
+        {
+          "arguments": [
+            "experimental_dynamic_storage"
+          ],
+          "name": "cfg"
+        },
         {
           "arguments": [
             "read"
@@ -150,6 +162,12 @@
     },
     {
       "attributes": [
+        {
+          "arguments": [
+            "experimental_dynamic_storage"
+          ],
+          "name": "cfg"
+        },
         {
           "arguments": [
             "write"

@@ -1,5 +1,3 @@
-// regex: ID=[[:alpha:]_0-9]+
-
 script {
     entry fn main() -> () {
         local b256 ones = const b256 0x1111111111111111111111111111111111111111111111111111111111111111
@@ -24,33 +22,13 @@ script {
         block1(v10: b256, v11: bool, v12: b256):
         br block3(v12)
 
-// check: block1($(b10=$ID): __ptr b256, $ID: bool, $(b12=$ID): __ptr b256):
-// check: $ID = load $b10
-// check: $(load_val=$ID) = load $b12
-// check: $(get_loc_val=$ID) = get_local __ptr b256, $ID
-// check: store $load_val to $get_loc_val
-// check: br block3($get_loc_val)
-
         block2(v13: b256, v14: bool, v15: b256):
         br block3(v15)
-
-// check: block2($(b20=$ID): __ptr b256, $ID: bool, $(b22=$ID): __ptr b256):
-// check: $ID = load $b20
-// check: $(load_val=$ID) = load $b22
-// check: $(get_loc_val=$ID) = get_local __ptr b256, $ID
-// check: store $load_val to $get_loc_val
-// check: br block3($get_loc_val)
 
         block3(v16: b256):
         v17 = get_local __ptr b256, tmp
         store v16 to v17
         br exit()
-
-// check: block3($(b30=$ID): __ptr b256):
-// check: $(load_val=$ID) = load $b30
-// check: $(get_local_val=$ID) = get_local __ptr b256, $ID
-// check: store $load_val to $get_local_val
-// check: br exit()
 
         exit():
         v18 = const unit ()

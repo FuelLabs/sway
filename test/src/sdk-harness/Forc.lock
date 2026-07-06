@@ -4,11 +4,6 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
-name = "asset_id"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
 name = "asset_ops"
 source = "member"
 dependencies = ["std"]
@@ -49,19 +44,6 @@ dependencies = [
 
 [[package]]
 name = "balance_contract"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "block"
-source = "member"
-dependencies = [
-    "block_test_abi",
-    "std",
-]
-
-[[package]]
-name = "block_test_abi"
 source = "member"
 dependencies = ["std"]
 
@@ -115,35 +97,12 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
-name = "ec_recover"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
 name = "ec_recover_and_match_predicate"
 source = "member"
 dependencies = ["std"]
 
 [[package]]
 name = "events"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "evm"
-source = "member"
-dependencies = [
-    "evm_test_abi",
-    "std",
-]
-
-[[package]]
-name = "evm_ec_recover"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "evm_test_abi"
 source = "member"
 dependencies = ["std"]
 
@@ -208,11 +167,6 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
-name = "pow"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
 name = "predicate_data_simple"
 source = "member"
 dependencies = ["std"]
@@ -239,11 +193,6 @@ dependencies = ["std"]
 
 [[package]]
 name = "result_in_abi"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "result_option_expect"
 source = "member"
 dependencies = ["std"]
 
@@ -297,17 +246,7 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
-name = "storage_bytes"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
 name = "storage_init"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "storage_map"
 source = "member"
 dependencies = ["std"]
 
@@ -317,22 +256,7 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
-name = "storage_string"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "storage_vec_nested"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
 name = "storage_vec_of_storage_string"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "storage_vec_to_vec"
 source = "member"
 dependencies = ["std"]
 
@@ -348,66 +272,6 @@ dependencies = ["std"]
 
 [[package]]
 name = "superabi_supertrait"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "svec_array"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "svec_b256"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "svec_bool"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "svec_enum"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "svec_str"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "svec_struct"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "svec_tuple"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "svec_u16"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "svec_u32"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "svec_u64"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "svec_u8"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "time"
 source = "member"
 dependencies = ["std"]
 

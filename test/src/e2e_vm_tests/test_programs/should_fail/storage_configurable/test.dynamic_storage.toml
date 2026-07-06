@@ -1,0 +1,5 @@
+category = "fail"
+experimental = { new_encoding = true, dynamic_storage = true }
+
+#check: $()owner: u64 = INITIAL_OWNER,
+#nextln: $()Could not evaluate initializer to a const declaration.

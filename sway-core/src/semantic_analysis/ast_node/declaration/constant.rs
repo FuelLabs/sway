@@ -39,7 +39,7 @@ impl ty::TyConstantDecl {
     pub fn type_check(
         handler: &Handler,
         mut ctx: TypeCheckContext,
-        decl: ConstantDeclaration,
+        decl: &ConstantDeclaration,
     ) -> Result<Self, ErrorEmitted> {
         let type_engine = ctx.engines.te();
         let engines = ctx.engines();
@@ -47,11 +47,13 @@ impl ty::TyConstantDecl {
         let ConstantDeclaration {
             name,
             span,
-            mut type_ascription,
+            type_ascription,
             value,
             attributes,
             visibility,
-        } = decl.clone();
+        } = decl;
+
+        let mut type_ascription = type_ascription.clone();
 
         type_ascription.type_id = ctx
             .resolve_type(
@@ -81,8 +83,8 @@ impl ty::TyConstantDecl {
         expression's type.",
             );
 
-        let value = value.map(|value| {
-            ty::TyExpression::type_check(handler, ctx.by_ref(), &value)
+        let value = value.as_ref().map(|value| {
+            ty::TyExpression::type_check(handler, ctx.by_ref(), value)
                 .unwrap_or_else(|err| ty::TyExpression::error(err, name.span(), engines))
         });
 
@@ -98,17 +100,16 @@ impl ty::TyConstantDecl {
             },
         };
 
-        let mut call_path: CallPath = name.into();
-        call_path = call_path.to_fullpath(engines, ctx.namespace());
+        let call_path = CallPath::ident_to_fullpath(name.clone(), ctx.namespace());
 
         Ok(ty::TyConstantDecl {
             call_path,
-            attributes,
+            attributes: attributes.clone(),
             return_type,
             type_ascription,
-            span,
+            span: span.clone(),
             value,
-            visibility,
+            visibility: *visibility,
         })
     }
 

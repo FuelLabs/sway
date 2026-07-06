@@ -1,0 +1,21 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    entry fn main() -> b256 {
++         local b256 __asm_arg
++ 
+        entry():
++         v4v1 = get_local __ptr b256, __asm_arg
+        v1v1 = const b256 0x2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b
+-         v2v1 = asm(pointer: v1v1) -> b256 pointer {
++         store v1v1 to v4v1
++         v6v1 = asm(pointer: v4v1) -> __ptr b256 pointer {
+        }
+-         ret b256 v2v1
++         v7v1 = load v6v1
++         ret b256 v7v1
+    }
+}

@@ -1,0 +1,25 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    entry fn main(__ret_value: __ptr { u64, u64 }) -> __ptr { u64, u64 } {
+        local { u64, u64 } __anon_0
+
+        entry(mut __ret_value: __ptr { u64, u64 }):
+        v2v1 = get_local __ptr { u64, u64 }, __anon_0
+        v3v1 = const u64 0
+        v4v1 = get_elem_ptr v2v1, __ptr u64, v3v1
+        v5v1 = const u64 11
+        store v5v1 to v4v1
+        v7v1 = const u64 1
+        v8v1 = get_elem_ptr v2v1, __ptr u64, v7v1
+        v9v1 = const u64 22
+        store v9v1 to v8v1
+        v11v1 = load v2v1
+-         store v11v1 to __ret_value
++         mem_copy_val __ret_value, v2v1
+        ret __ptr { u64, u64 } __ret_value
+    }
+}

@@ -1,0 +1,47 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    entry fn main() -> u64 {
+        entry():
+        v1v1 = call foo()
+        v2v1 = call bar()
+-         v3v1 = call foo_dup()
++         v3v1 = call foo()
+        v4v1 = add v1v1, v2v1
+        v5v1 = add v4v1, v3v1
+        ret u64 v4v1
+    }
+
+    fn foo() -> u64 {
+        entry():
+        v7v1 = const u64 0
+        v8v1 = int_to_ptr v7v1 to __ptr b256
+        v10v1 = int_to_ptr v7v1 to __ptr b256
+        v11v1 = const u64 1
+        v12v1 = state_load_quad_word v8v1, key v10v1, v11v1
+        ret u64 v11v1
+    }
+
+-     fn foo_dup() -> u64 {
+-         entry():
+-         v14v1 = const u64 0
+-         v15v1 = int_to_ptr v14v1 to __ptr b256
+-         v17v1 = int_to_ptr v14v1 to __ptr b256
+-         v18v1 = const u64 1
+-         v19v1 = state_load_quad_word v15v1, key v17v1, v18v1
+-         ret u64 v18v1
+-     }
+- 
+    fn bar() -> u64 {
+        entry():
+        v21v1 = const u64 0
+        v22v1 = int_to_ptr v21v1 to __ptr b256
+        v24v1 = int_to_ptr v21v1 to __ptr b256
+        v25v1 = const u64 1
+        v26v1 = state_store_quad_word v22v1, key v24v1, v25v1
+        ret u64 v25v1
+    }
+}

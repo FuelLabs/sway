@@ -1,0 +1,8 @@
+[[package]]
+name = "std"
+source = "path+from-root-DE9DE5C877813A27"
+
+[[package]]
+name = "storage_vec_s8"
+source = "member"
+dependencies = ["std"]

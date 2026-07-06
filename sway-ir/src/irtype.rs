@@ -154,6 +154,11 @@ impl Type {
         Self::get_or_create_unique_type(context, TypeContent::Array(elm_ty, len))
     }
 
+    /// Get slice type
+    pub fn new_typed_slice(context: &mut Context, elm_ty: Type) -> Type {
+        Self::get_or_create_unique_type(context, TypeContent::TypedSlice(elm_ty))
+    }
+
     /// Get union type
     pub fn new_union(context: &mut Context, fields: Vec<Type>) -> Type {
         Self::get_or_create_unique_type(context, TypeContent::Union(fields))
@@ -363,12 +368,22 @@ impl Type {
     }
 
     // TODO: (REFERENCES) Check all the usages of `is_ptr`.
-    /// Returns true if `self` is a pointer type.
+    /// Returns true if `self` is **any** pointer type, typed or untyped.
     pub fn is_ptr(&self, context: &Context) -> bool {
         matches!(
             *self.get_content(context),
             TypeContent::TypedPointer(_) | TypeContent::Pointer
         )
+    }
+
+    /// Returns true if `self` is a typed pointer type.
+    pub fn is_typed_ptr(&self, context: &Context) -> bool {
+        matches!(*self.get_content(context), TypeContent::TypedPointer(_))
+    }
+
+    /// Returns true if `self` is an untyped pointer type.
+    pub fn is_untyped_ptr(&self, context: &Context) -> bool {
+        matches!(*self.get_content(context), TypeContent::Pointer)
     }
 
     /// Get pointed to type iff `self`` is a pointer.

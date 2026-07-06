@@ -1,8 +1,0 @@
-[[package]]
-name = "raw_ptr"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "std"
-source = "path+from-root-31A3D7F7F014D285"

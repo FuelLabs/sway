@@ -13,11 +13,11 @@ pub(crate) fn instantiate_tuple_index_access(
 ) -> Result<ty::TyExpression, ErrorEmitted> {
     let type_engine = engines.te();
 
-    let mut current_prefix_te = Box::new(parent);
-    let mut current_type = type_engine.get_unaliased(current_prefix_te.return_type);
+    let mut current_prefix = Box::new(parent);
+    let mut current_type = type_engine.get_unaliased(current_prefix.return_type);
 
-    let prefix_type_id = current_prefix_te.return_type;
-    let prefix_span = current_prefix_te.span.clone();
+    let prefix_type_id = current_prefix.return_type;
+    let prefix_span = current_prefix.span.clone();
 
     // Create the prefix part of the final tuple element access expression.
     // This might be an expression that directly evaluates to a tuple type,
@@ -33,8 +33,8 @@ pub(crate) fn instantiate_tuple_index_access(
             } => {
                 let referenced_type_id = referenced_type.type_id;
 
-                current_prefix_te = Box::new(ty::TyExpression {
-                    expression: ty::TyExpressionVariant::Deref(current_prefix_te),
+                current_prefix = Box::new(ty::TyExpression {
+                    expression: ty::TyExpressionVariant::Deref(current_prefix),
                     return_type: referenced_type_id,
                     span: prefix_span.clone(),
                 });
@@ -71,8 +71,8 @@ pub(crate) fn instantiate_tuple_index_access(
 
     Ok(ty::TyExpression {
         expression: ty::TyExpressionVariant::TupleElemAccess {
-            resolved_type_of_parent: current_prefix_te.return_type,
-            prefix: current_prefix_te,
+            resolved_type_of_parent: current_prefix.return_type,
+            prefix: current_prefix,
             elem_to_access_num: index,
             elem_to_access_span: index_span,
         },

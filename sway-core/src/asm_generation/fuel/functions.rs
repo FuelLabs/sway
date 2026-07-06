@@ -10,8 +10,8 @@ use crate::{
     },
     asm_lang::{
         virtual_register::{self, *},
-        JumpType, Op, OrganizationalOp, VirtualImmediate12, VirtualImmediate18, VirtualImmediate24,
-        VirtualOp,
+        ControlFlowOp, JumpType, Op, OrganizationalOp, VirtualImmediate12, VirtualImmediate18,
+        VirtualImmediate24, VirtualOp,
     },
     decl_engine::DeclRef,
     fuel_prelude::fuel_asm::GTFArgs,
@@ -385,11 +385,10 @@ impl FuelAsmBuilder<'_, '_> {
 
             // Jump to the return address.
             self.cur_bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::JAL(
-                    ConstantRegister::Zero.into(),
-                    ConstantRegister::CallReturnAddress.into(),
-                    VirtualImmediate12::new(0),
-                )),
+                opcode: Either::Right(ControlFlowOp::ReturnFromCall {
+                    zero: VirtualRegister::Constant(ConstantRegister::Zero),
+                    reta: VirtualRegister::Constant(ConstantRegister::CallReturnAddress),
+                }),
                 comment: format!("[fn end: {fn_name}] return from call"),
                 owning_span: None,
             });
@@ -419,7 +418,7 @@ impl FuelAsmBuilder<'_, '_> {
         let fn_name = function.get_name(self.context);
         let uses_stack =
             function.num_args(self.context) > compiler_constants::NUM_ARG_REGISTERS as usize;
-        for (idx, (arg_name, arg_val)) in function.args_iter(self.context).enumerate() {
+        for (idx, arg) in function.args_iter(self.context).enumerate() {
             let load_arg =
                 uses_stack && (idx >= compiler_constants::NUM_ARG_REGISTERS as usize - 1);
             let arg_reg = if !load_arg {
@@ -429,8 +428,8 @@ impl FuelAsmBuilder<'_, '_> {
                     self.cur_bytecode.push(Op::register_move(
                         arg_copy_reg.clone(),
                         initial_arg_reg,
-                        format!("[fn init: {fn_name}]: copy argument {idx} ({arg_name})"),
-                        self.md_mgr.val_to_span(self.context, *arg_val),
+                        format!("[fn init: {fn_name}]: copy argument {idx} ({})", arg.name),
+                        self.md_mgr.val_to_span(self.context, arg.value),
                     ));
                     arg_copy_reg
                 } else {
@@ -457,20 +456,23 @@ impl FuelAsmBuilder<'_, '_> {
                         VirtualImmediate12::try_new(
                             stack_offset,
                             self.md_mgr
-                                .val_to_span(self.context, *arg_val)
+                                .val_to_span(self.context, arg.value)
                                 .unwrap_or(Span::dummy()),
                         )
                         .expect("Too many arguments, cannot handle."),
                     )),
-                    comment: format!("[fn init: {fn_name}]: load argument {idx} ({arg_name}) from its stack slot"),
-                    owning_span: self.md_mgr.val_to_span(self.context, *arg_val),
+                    comment: format!(
+                        "[fn init: {fn_name}]: load argument {idx} ({}) from its stack slot",
+                        arg.name
+                    ),
+                    owning_span: self.md_mgr.val_to_span(self.context, arg.value),
                 });
 
                 arg_copy_reg
             };
 
             // Remember our arg copy.
-            self.reg_map.insert(*arg_val, arg_reg);
+            self.reg_map.insert(arg.value, arg_reg);
         }
     }
 
@@ -483,7 +485,7 @@ impl FuelAsmBuilder<'_, '_> {
             // A special case for when there's only a single arg, its value (or address) is placed
             // directly in the base register.
             1 => {
-                let (_, val) = function.args_iter(self.context).next().unwrap();
+                let arg = function.args_iter(self.context).next().unwrap();
                 let single_arg_reg = self.reg_seqr.next();
                 match self.program_kind {
                     ProgramKind::Contract => {
@@ -499,7 +501,8 @@ impl FuelAsmBuilder<'_, '_> {
 
                         // The base is an offset.  Dereference it.
                         // XXX val.get_type() should be a pointer if it's not meant to be loaded.
-                        if val
+                        if arg
+                            .value
                             .get_type(self.context)
                             .is_some_and(|t| self.is_copy_type(&t))
                         {
@@ -515,7 +518,7 @@ impl FuelAsmBuilder<'_, '_> {
                         }
                     }
                 }
-                self.reg_map.insert(*val, single_arg_reg);
+                self.reg_map.insert(arg.value, single_arg_reg);
                 Ok(())
             }
 
@@ -534,12 +537,13 @@ impl FuelAsmBuilder<'_, '_> {
                 // Successively load each argument. The asm generated depends on the arg type size
                 // and whether the offset fits in a 12-bit immediate.
                 let mut arg_word_offset = 0;
-                for (name, val) in function.args_iter(self.context) {
+                for arg in function.args_iter(self.context) {
                     let current_arg_reg = self.reg_seqr.next();
 
                     // The function arg type might be a pointer, but the value in the struct will
                     // be of the pointed to type.  So strip the pointer if necessary.
-                    let arg_type = val
+                    let arg_type = arg
+                        .value
                         .get_type(self.context)
                         .map(|ty| ty.get_pointee_type(self.context).unwrap_or(ty))
                         .unwrap();
@@ -553,7 +557,7 @@ impl FuelAsmBuilder<'_, '_> {
                                     args_base_reg.clone(),
                                     offs_reg.clone(),
                                 )),
-                                comment: format!("get offset of argument {name}"),
+                                comment: format!("get offset of argument {}", arg.name),
                                 owning_span: None,
                             });
 
@@ -564,7 +568,7 @@ impl FuelAsmBuilder<'_, '_> {
                                         offs_reg,
                                         VirtualImmediate12::new(0),
                                     )),
-                                    comment: format!("get argument {name}"),
+                                    comment: format!("get argument {}", arg.name),
                                     owning_span: None,
                                 });
                             } else {
@@ -574,7 +578,7 @@ impl FuelAsmBuilder<'_, '_> {
                                         offs_reg,
                                         VirtualImmediate12::new(0),
                                     )),
-                                    comment: format!("get argument {name}"),
+                                    comment: format!("get argument {}", arg.name),
                                     owning_span: None,
                                 });
                             }
@@ -585,7 +589,7 @@ impl FuelAsmBuilder<'_, '_> {
                                     args_base_reg.clone(),
                                     VirtualImmediate12::new(arg_word_offset * 8),
                                 )),
-                                comment: format!("get argument {name}"),
+                                comment: format!("get argument {}", arg.name),
                                 owning_span: None,
                             });
                         } else {
@@ -595,7 +599,7 @@ impl FuelAsmBuilder<'_, '_> {
                                     args_base_reg.clone(),
                                     VirtualImmediate12::new(arg_word_offset),
                                 )),
-                                comment: format!("get argument {name}"),
+                                comment: format!("get argument {}", arg.name),
                                 owning_span: None,
                             });
                         }
@@ -604,13 +608,13 @@ impl FuelAsmBuilder<'_, '_> {
                             arg_word_offset * 8,
                             current_arg_reg.clone(),
                             Some(&args_base_reg),
-                            format!("get offset of argument {name}"),
+                            format!("get offset of argument {}", arg.name),
                             None,
                         );
                     }
 
                     arg_word_offset += arg_type_size.in_words();
-                    self.reg_map.insert(*val, current_arg_reg);
+                    self.reg_map.insert(arg.value, current_arg_reg);
                 }
 
                 Ok(())

@@ -595,6 +595,9 @@ impl ty::TyModule {
                                 ctx.generate_abi_encode_and_decode_impls(engines, decl);
                             generated.extend(abi_encode_impl);
                             generated.extend(abi_decode_impl);
+
+                            let enum_codec_values_impl = ctx.generate_tables(engines, decl);
+                            generated.extend(enum_codec_values_impl);
                         }
                         _ => {}
                     }

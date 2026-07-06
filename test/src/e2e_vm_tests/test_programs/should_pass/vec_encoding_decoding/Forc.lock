@@ -1,0 +1,8 @@
+[[package]]
+name = "std"
+source = "path+from-root-2158C659FB34C0B1"
+
+[[package]]
+name = "vec_encoding_decoding"
+source = "member"
+dependencies = ["std"]

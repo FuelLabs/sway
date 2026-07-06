@@ -4,6 +4,7 @@ use crate::{
     engine_threading::Engines,
     language::ty::{self, TyDecl, TyExpression},
     semantic_analysis::TypeCheckContext,
+    HasChanges,
 };
 
 use super::DeclMapping;
@@ -14,18 +15,18 @@ pub trait ReplaceDecls {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
-    ) -> Result<bool, ErrorEmitted>;
+    ) -> Result<HasChanges, ErrorEmitted>;
 
     fn replace_decls(
         &mut self,
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
-    ) -> Result<bool, ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
         if !decl_mapping.is_empty() {
             self.replace_decls_inner(decl_mapping, handler, ctx)
         } else {
-            Ok(false)
+            Ok(HasChanges::No)
         }
     }
 }
@@ -36,7 +37,7 @@ impl<T: ReplaceDecls + Clone> ReplaceDecls for std::sync::Arc<T> {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
-    ) -> Result<bool, ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
         if let Some(item) = std::sync::Arc::get_mut(self) {
             item.replace_decls_inner(decl_mapping, handler, ctx)
         } else {
@@ -53,17 +54,26 @@ pub(crate) trait ReplaceFunctionImplementingType {
 }
 
 pub(crate) trait UpdateConstantExpression {
-    fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl);
+    fn update_constant_expression(
+        &mut self,
+        engines: &Engines,
+        implementing_type: &TyDecl,
+    ) -> HasChanges;
 }
 
 impl<T: UpdateConstantExpression + Clone> UpdateConstantExpression for std::sync::Arc<T> {
-    fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
+    fn update_constant_expression(
+        &mut self,
+        engines: &Engines,
+        implementing_type: &TyDecl,
+    ) -> HasChanges {
         if let Some(item) = std::sync::Arc::get_mut(self) {
-            item.update_constant_expression(engines, implementing_type);
+            item.update_constant_expression(engines, implementing_type)
         } else {
             let mut item = self.as_ref().clone();
-            item.update_constant_expression(engines, implementing_type);
+            let has_changes = item.update_constant_expression(engines, implementing_type);
             *self = std::sync::Arc::new(item);
+            has_changes
         }
     }
 }
@@ -77,7 +87,7 @@ pub(crate) trait MaterializeConstGenerics {
         handler: &Handler,
         name: &str,
         value: &TyExpression,
-    ) -> Result<(), ErrorEmitted>;
+    ) -> Result<HasChanges, ErrorEmitted>;
 }
 
 impl<T: MaterializeConstGenerics + Clone> MaterializeConstGenerics for std::sync::Arc<T> {
@@ -87,7 +97,7 @@ impl<T: MaterializeConstGenerics + Clone> MaterializeConstGenerics for std::sync
         handler: &Handler,
         name: &str,
         value: &TyExpression,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
         if let Some(item) = std::sync::Arc::get_mut(self) {
             item.materialize_const_generics(engines, handler, name, value)
         } else {
@@ -106,10 +116,11 @@ impl<T: MaterializeConstGenerics> MaterializeConstGenerics for Vec<T> {
         handler: &Handler,
         name: &str,
         value: &TyExpression,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
+        let mut has_changes = HasChanges::No;
         for item in self.iter_mut() {
-            item.materialize_const_generics(engines, handler, name, value)?;
+            has_changes |= item.materialize_const_generics(engines, handler, name, value)?;
         }
-        Ok(())
+        Ok(has_changes)
     }
 }

@@ -1,0 +1,3 @@
+category = "compile"
+validate_storage_slots = true
+expected_warnings = 39

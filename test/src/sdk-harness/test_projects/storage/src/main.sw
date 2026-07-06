@@ -114,135 +114,136 @@ abi StorageTest {
     fn storage_in_call() -> u64;
 }
 
+#[cfg(experimental_dynamic_storage = false)]
 impl StorageTest for Contract {
     #[storage(read, write)]
     fn store_bool(value: bool) {
-        write(S_1, 0, value);
+        write_quads(S_1, 0, value);
     }
 
     #[storage(read)]
     fn get_bool() -> Option<bool> {
-        read::<bool>(S_1, 0)
+        read_quads::<bool>(S_1, 0)
     }
 
     #[storage(read, write)]
     fn store_u8(value: u8) {
-        write(S_2, 0, value);
+        write_quads(S_2, 0, value);
     }
 
     #[storage(read)]
     fn get_u8() -> Option<u8> {
-        read::<u8>(S_2, 0)
+        read_quads::<u8>(S_2, 0)
     }
 
     #[storage(read, write)]
     fn store_u16(value: u16) {
-        write(S_3, 0, value);
+        write_quads(S_3, 0, value);
     }
 
     #[storage(read)]
     fn get_u16() -> Option<u16> {
-        read::<u16>(S_3, 0)
+        read_quads::<u16>(S_3, 0)
     }
 
     #[storage(read, write)]
     fn store_u32(value: u32) {
-        write(S_4, 0, value);
+        write_quads(S_4, 0, value);
     }
 
     #[storage(read)]
     fn get_u32() -> Option<u32> {
-        read::<u32>(S_4, 0)
+        read_quads::<u32>(S_4, 0)
     }
 
     #[storage(read, write)]
     fn store_u64(value: u64) {
-        write(S_5, 0, value);
+        write_quads(S_5, 0, value);
     }
 
     #[storage(read)]
     fn get_u64() -> Option<u64> {
-        read::<u64>(S_5, 0)
+        read_quads::<u64>(S_5, 0)
     }
 
     #[storage(read, write)]
     fn store_b256(value: b256) {
-        write(S_6, 0, value);
+        write_quads(S_6, 0, value);
     }
 
     #[storage(read)]
     fn get_b256() -> Option<b256> {
-        read::<b256>(S_6, 0)
+        read_quads::<b256>(S_6, 0)
     }
 
     #[storage(read, write)]
     fn store_small_struct(value: SmallStruct) {
-        write(S_7, 0, value);
+        write_quads(S_7, 0, value);
     }
 
     #[storage(read)]
     fn get_small_struct() -> Option<SmallStruct> {
-        read::<SmallStruct>(S_7, 0)
+        read_quads::<SmallStruct>(S_7, 0)
     }
 
     #[storage(read, write)]
     fn store_medium_struct(value: MediumStruct) {
-        write(S_8, 0, value);
+        write_quads(S_8, 0, value);
     }
 
     #[storage(read)]
     fn get_medium_struct() -> Option<MediumStruct> {
-        read::<MediumStruct>(S_8, 0)
+        read_quads::<MediumStruct>(S_8, 0)
     }
 
     #[storage(read, write)]
     fn store_large_struct(value: LargeStruct) {
-        write(S_9, 0, value);
+        write_quads(S_9, 0, value);
     }
 
     #[storage(read)]
     fn get_large_struct() -> Option<LargeStruct> {
-        read::<LargeStruct>(S_9, 0)
+        read_quads::<LargeStruct>(S_9, 0)
     }
 
     #[storage(read, write)]
     fn store_very_large_struct(value: VeryLargeStruct) {
-        write(S_10, 0, value);
+        write_quads(S_10, 0, value);
     }
 
     #[storage(read)]
     fn get_very_large_struct() -> Option<VeryLargeStruct> {
-        read::<VeryLargeStruct>(S_10, 0)
+        read_quads::<VeryLargeStruct>(S_10, 0)
     }
 
     #[storage(read, write)]
     fn store_enum(value: StorageEnum) {
-        write(S_11, 0, value);
+        write_quads(S_11, 0, value);
     }
 
     #[storage(read)]
     fn get_enum() -> Option<StorageEnum> {
-        read::<StorageEnum>(S_11, 0)
+        read_quads::<StorageEnum>(S_11, 0)
     }
 
     #[storage(read, write)]
     fn store_tuple(value: (b256, u8, b256)) {
-        write(S_12, 0, value);
+        write_quads(S_12, 0, value);
     }
 
     #[storage(read)]
     fn get_tuple() -> Option<(b256, u8, b256)> {
-        read::<(b256, u8, b256)>(S_12, 0)
+        read_quads::<(b256, u8, b256)>(S_12, 0)
     }
 
     #[storage(read, write)]
     fn store_string(value: str[31]) {
-        write(S_13, 0, value);
+        write_quads(S_13, 0, value);
     }
 
     #[storage(read)]
     fn get_string() -> Option<str[31]> {
-        read::<str[31]>(S_13, 0)
+        read_quads::<str[31]>(S_13, 0)
     }
 
     #[storage(read, write)]
@@ -252,12 +253,12 @@ impl StorageTest for Contract {
             0x8888888888888888888888888888888888888888888888888888888888888888,
             0x7777777777777777777777777777777777777777777777777777777777777777,
         ];
-        write(S_14, 0, a);
+        write_quads(S_14, 0, a);
     }
 
     #[storage(read)]
     fn get_array() -> Option<[b256; 3]> {
-        read::<[b256; 3]>(S_14, 0)
+        read_quads::<[b256; 3]>(S_14, 0)
     }
 
     #[storage(read, write)]
@@ -282,12 +283,13 @@ impl StorageTest for Contract {
     }
 }
 
+#[cfg(experimental_dynamic_storage = false)]
 #[storage(read, write)]
 fn non_inlined_function(arg: u32) -> bool {
     // By storing and reading from a large complex data structure we're ensuring that this function
     // is too large to be inlined.  The stored value type must be a reference type too, to ensure
     // the use of memory (not a register) to read it back.
-    write(
+    write_quads(
         S_15,
         0,
         LargeStruct {
@@ -297,6 +299,194 @@ fn non_inlined_function(arg: u32) -> bool {
         },
     );
 
-    let ls = read::<LargeStruct>(S_15, 0).unwrap();
+    let ls = read_quads::<LargeStruct>(S_15, 0).unwrap();
+    ls.x == arg
+}
+
+#[cfg(experimental_dynamic_storage = true)]
+impl StorageTest for Contract {
+    #[storage(read, write)]
+    fn store_bool(value: bool) {
+        write_slot(S_1, value);
+    }
+
+    #[storage(read)]
+    fn get_bool() -> Option<bool> {
+        read_slot::<bool>(S_1, 0)
+    }
+
+    #[storage(read, write)]
+    fn store_u8(value: u8) {
+        write_slot(S_2, value);
+    }
+
+    #[storage(read)]
+    fn get_u8() -> Option<u8> {
+        read_slot::<u8>(S_2, 0)
+    }
+
+    #[storage(read, write)]
+    fn store_u16(value: u16) {
+        write_slot(S_3, value);
+    }
+
+    #[storage(read)]
+    fn get_u16() -> Option<u16> {
+        read_slot::<u16>(S_3, 0)
+    }
+
+    #[storage(read, write)]
+    fn store_u32(value: u32) {
+        write_slot(S_4, value);
+    }
+
+    #[storage(read)]
+    fn get_u32() -> Option<u32> {
+        read_slot::<u32>(S_4, 0)
+    }
+
+    #[storage(read, write)]
+    fn store_u64(value: u64) {
+        write_slot(S_5, value);
+    }
+
+    #[storage(read)]
+    fn get_u64() -> Option<u64> {
+        read_slot::<u64>(S_5, 0)
+    }
+
+    #[storage(read, write)]
+    fn store_b256(value: b256) {
+        write_slot(S_6, value);
+    }
+
+    #[storage(read)]
+    fn get_b256() -> Option<b256> {
+        read_slot::<b256>(S_6, 0)
+    }
+
+    #[storage(read, write)]
+    fn store_small_struct(value: SmallStruct) {
+        write_slot(S_7, value);
+    }
+
+    #[storage(read)]
+    fn get_small_struct() -> Option<SmallStruct> {
+        read_slot::<SmallStruct>(S_7, 0)
+    }
+
+    #[storage(read, write)]
+    fn store_medium_struct(value: MediumStruct) {
+        write_slot(S_8, value);
+    }
+
+    #[storage(read)]
+    fn get_medium_struct() -> Option<MediumStruct> {
+        read_slot::<MediumStruct>(S_8, 0)
+    }
+
+    #[storage(read, write)]
+    fn store_large_struct(value: LargeStruct) {
+        write_slot(S_9, value);
+    }
+
+    #[storage(read)]
+    fn get_large_struct() -> Option<LargeStruct> {
+        read_slot::<LargeStruct>(S_9, 0)
+    }
+
+    #[storage(read, write)]
+    fn store_very_large_struct(value: VeryLargeStruct) {
+        write_slot(S_10, value);
+    }
+
+    #[storage(read)]
+    fn get_very_large_struct() -> Option<VeryLargeStruct> {
+        read_slot::<VeryLargeStruct>(S_10, 0)
+    }
+
+    #[storage(read, write)]
+    fn store_enum(value: StorageEnum) {
+        write_slot(S_11, value);
+    }
+
+    #[storage(read)]
+    fn get_enum() -> Option<StorageEnum> {
+        read_slot::<StorageEnum>(S_11, 0)
+    }
+
+    #[storage(read, write)]
+    fn store_tuple(value: (b256, u8, b256)) {
+        write_slot(S_12, value);
+    }
+
+    #[storage(read)]
+    fn get_tuple() -> Option<(b256, u8, b256)> {
+        read_slot::<(b256, u8, b256)>(S_12, 0)
+    }
+
+    #[storage(read, write)]
+    fn store_string(value: str[31]) {
+        write_slot(S_13, value);
+    }
+
+    #[storage(read)]
+    fn get_string() -> Option<str[31]> {
+        read_slot::<str[31]>(S_13, 0)
+    }
+
+    #[storage(read, write)]
+    fn store_array() {
+        let a = [
+            0x9999999999999999999999999999999999999999999999999999999999999999,
+            0x8888888888888888888888888888888888888888888888888888888888888888,
+            0x7777777777777777777777777777777777777777777777777777777777777777,
+        ];
+        write_slot(S_14, a);
+    }
+
+    #[storage(read)]
+    fn get_array() -> Option<[b256; 3]> {
+        read_slot::<[b256; 3]>(S_14, 0)
+    }
+
+    #[storage(read, write)]
+    fn storage_in_call() -> u64 {
+        // The point of this test is to call the storage functions from a non-entry point function,
+        // from a function which is _not_ inlined into the entry function.  It then must preserve
+        // the stack properly and not leak data structures read or written on the stack, else the
+        // function call frame will be corrupt.
+        //
+        // To avoid inlining the function must be called multiple times and be sufficiently large.
+        let pre_sp = stack_ptr();
+        let res = non_inlined_function(456_u32) && non_inlined_function(654_u32);
+        let post_sp = stack_ptr();
+
+        if pre_sp != post_sp {
+            111 // Code to indicate bad stack (it would probably crash before here though).
+        } else if !res {
+            222 // Code to indicate storage I/O failure.
+        } else {
+            333 // Code for success - something non-trivial so we can't accidentally succeed.
+        }
+    }
+}
+
+#[cfg(experimental_dynamic_storage = true)]
+#[storage(read, write)]
+fn non_inlined_function(arg: u32) -> bool {
+    // By storing and reading from a large complex data structure we're ensuring that this function
+    // is too large to be inlined.  The stored value type must be a reference type too, to ensure
+    // the use of memory (not a register) to read it back.
+    write_slot(
+        S_15,
+        LargeStruct {
+            x: arg,
+            y: 0x9999999999999999999999999999999999999999999999999999999999999999,
+            z: arg,
+        },
+    );
+
+    let ls = read_slot::<LargeStruct>(S_15, 0).unwrap();
     ls.x == arg
 }

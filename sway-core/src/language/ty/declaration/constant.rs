@@ -6,6 +6,7 @@ use crate::{
     semantic_analysis::TypeCheckContext,
     transform,
     type_system::*,
+    HasChanges,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -107,11 +108,11 @@ impl ReplaceDecls for TyConstantDecl {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
-    ) -> Result<bool, ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
         if let Some(expr) = &mut self.value {
             expr.replace_decls(decl_mapping, handler, ctx)
         } else {
-            Ok(false)
+            Ok(HasChanges::No)
         }
     }
 }
@@ -123,15 +124,18 @@ impl MaterializeConstGenerics for TyConstantDecl {
         handler: &Handler,
         name: &str,
         value: &TyExpression,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
+        let mut has_changes = HasChanges::No;
         if let Some(v) = self.value.as_mut() {
-            v.materialize_const_generics(engines, handler, name, value)?;
+            has_changes |= v.materialize_const_generics(engines, handler, name, value)?;
         }
-        self.return_type
+        has_changes |= self
+            .return_type
             .materialize_const_generics(engines, handler, name, value)?;
-        self.type_ascription
+        has_changes |= self
+            .type_ascription
             .type_id
             .materialize_const_generics(engines, handler, name, value)?;
-        Ok(())
+        Ok(has_changes)
     }
 }

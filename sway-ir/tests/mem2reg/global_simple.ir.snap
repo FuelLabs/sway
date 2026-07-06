@@ -1,0 +1,17 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    global sway3::F1 : u64 = const u64 11
+
+    pub entry fn main_0() -> u64 {
+        entry():
+        v1v1 = get_global __ptr u64, sway3::F1
+        v2v1 = load v1v1
+-         ret u64 v2v1
++         v4v1 = const u64 11
++         ret u64 v4v1
+    }
+}

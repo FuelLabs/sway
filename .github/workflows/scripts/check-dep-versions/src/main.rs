@@ -7,9 +7,16 @@ use toml::Value;
 // Dependency name required to use x.y.z format
 const REQUIRED_XYZ_DEP: &str = "fuel-core-client";
 
-// Dependency names allowed (but not required) to use x.y.z format
-// Add names of common dev-dependencies here if you want to allow x.y.z for them
-const ALLOWED_XYZ_DEPS: &[&str] = &["etk-asm", "etk-ops", "dap", "fuel-abi-types"];
+// Dependency names allowed (but not required) to use x.y.z format.
+// Keep this list narrow for dependencies that need an exact pin or otherwise
+// cannot reasonably follow the workspace-wide x.y convention.
+const ALLOWED_XYZ_DEPS: &[&str] = &[
+    "etk-asm",
+    "etk-ops",
+    "dap",
+    "fuel-abi-types",
+    "tracing-subscriber",
+];
 
 // Regex to strictly match semantic version x.y.z (no prefixes like ^, ~)
 const XYZ_REGEX_STR: &str = r"^\d+\.\d+\.\d+([\w.-]*)$"; // Allow suffixes like -alpha, .1
@@ -77,7 +84,7 @@ fn main() {
                             // Check all other dependencies (not required and not allowed x.y.z explicitly)
                             if is_specific_xyz {
                                 eprintln!(
-                                    "Error: Dependency '{}' uses specific 'x.y.z' format ('{}'). Use 'x.y' format (e.g., \"0.59\") or add to allowlist if it's a dev-dependency.",
+                                    "Error: Dependency '{}' uses specific 'x.y.z' format ('{}'). Use 'x.y' format (e.g., \"0.59\") or add it to the explicit allowlist when an exact pin is required.",
                                     name, version
                                 );
                                 errors_found = true;

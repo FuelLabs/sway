@@ -61,7 +61,11 @@ fn resolve_length(
             let decl = match resolved_decl {
                 TyDecl::ConstGenericDecl(decl) => ConstGenericExprTyDecl::ConstGenericDecl(decl),
                 TyDecl::ConstantDecl(decl) => ConstGenericExprTyDecl::ConstantDecl(decl),
-                _ => unreachable!(),
+                _ => {
+                    return Err(
+                        handler.emit_err(CompileError::Internal("Invalid length", ident.span()))
+                    )
+                }
             };
 
             Ok(Length(ConstGenericExpr::AmbiguousVariableExpression {
@@ -375,8 +379,7 @@ pub fn resolve_call_path(
     // Otherwise, check the visibility modifier
     if !decl.visibility(engines).is_public() && is_self_type == IsSelfType::No {
         handler.emit_err(CompileError::ImportPrivateSymbol {
-            name: call_path.suffix.clone(),
-            span: call_path.suffix.span(),
+            name: (&call_path.suffix).into(),
         });
     }
 
@@ -534,8 +537,7 @@ fn decl_to_type_info(
             }
             _ => {
                 return Err(handler.emit_err(CompileError::SymbolNotFound {
-                    name: symbol.clone(),
-                    span: symbol.span(),
+                    name: symbol.into(),
                 }))
             }
         }),

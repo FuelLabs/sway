@@ -1,10 +1,12 @@
 contract;
 
-use std::storage::storage_api::write;
+use std::storage::storage_api::{write_quads, write_slot};
 
 abi TestAbi {
   #[storage(write)]
-  fn deposit(amount: u64);
+  fn deposit_quads(amount: u64);
+  #[storage(write)]
+  fn deposit_slot(amount: u64);
 }
 
 fn pure_function(x: u64) -> u64 {
@@ -13,14 +15,28 @@ fn pure_function(x: u64) -> u64 {
 
 impl TestAbi for Contract {
   #[storage(write)]
-  fn deposit(amount: u64) {
+  fn deposit_quads(amount: u64) {
     // the function argument is a code block with CEI pattern violation
-    pure_function(
+    let _ = pure_function(
       {
         // interaction
-        abi(TestAbi, 0x3dba0a4455b598b7655a7fb430883d96c9527ef275b49739e7b0ad12f8280eae).deposit(amount);
+        abi(TestAbi, 0x3dba0a4455b598b7655a7fb430883d96c9527ef275b49739e7b0ad12f8280eae).deposit_quads(amount);
         // effect -- therefore violation of CEI where effect should go before interaction
-        write(0x3dba0a4455b598b7655a7fb430883d96c9527ef275b49739e7b0ad12f8280eae, 0, ());
+        write_quads(0x3dba0a4455b598b7655a7fb430883d96c9527ef275b49739e7b0ad12f8280eae, 0, ());
+        42
+      }
+    );
+  }
+
+  #[storage(write)]
+  fn deposit_slot(amount: u64) {
+    // the function argument is a code block with CEI pattern violation
+    let _ = pure_function(
+      {
+        // interaction
+        abi(TestAbi, 0x3dba0a4455b598b7655a7fb430883d96c9527ef275b49739e7b0ad12f8280eae).deposit_slot(amount);
+        // effect -- therefore violation of CEI where effect should go before interaction
+        write_slot(0x3dba0a4455b598b7655a7fb430883d96c9527ef275b49739e7b0ad12f8280eae, ());
         42
       }
     );

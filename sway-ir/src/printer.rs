@@ -236,7 +236,7 @@ fn module_to_doc<'a>(
             module
                 .configs
                 .values()
-                .map(|value| config_to_doc(context, value, md_namer))
+                .map(|value| config_to_doc(context, value.get_content(context), md_namer))
                 .collect(),
         ),
     ))
@@ -436,18 +436,25 @@ fn function_to_doc<'a>(
             function
                 .arguments
                 .iter()
-                .map(|(name, arg_val)| {
+                .map(|arg| {
                     if let ValueContent {
                         value: ValueDatum::Argument(BlockArgument { ty, .. }),
                         metadata,
                         ..
-                    } = &context.values[arg_val.0]
+                    } = &context.values[arg.value.0]
                     {
-                        Doc::text(name)
-                            .append(
-                                Doc::Space.and(md_namer.md_idx_to_doc_no_comma(context, metadata)),
-                            )
-                            .append(Doc::text(format!(": {}", ty.as_string(context))))
+                        Doc::text(match arg.mutability {
+                            crate::IrMutability::Mutable => "mut ",
+                            crate::IrMutability::Immutable => "",
+                        })
+                        .append(
+                            Doc::text(arg.name.to_string())
+                                .append(
+                                    Doc::Space
+                                        .and(md_namer.md_idx_to_doc_no_comma(context, metadata)),
+                                )
+                                .append(Doc::text(format!(": {}", ty.as_string(context)))),
+                        )
                     } else {
                         unreachable!("Unexpected non argument value for function arguments.")
                     }
@@ -519,7 +526,13 @@ fn block_to_doc(
                 block
                     .arg_iter(context)
                     .map(|arg_val| {
-                        Doc::text(namer.name(context, arg_val)).append(Doc::text(format!(
+                        Doc::text(if arg_val.get_argument(context).unwrap().is_immutable {
+                            ""
+                        } else {
+                            "mut "
+                        })
+                        .append(Doc::text(namer.name(context, arg_val)))
+                        .append(Doc::text(format!(
                             ": {}",
                             arg_val.get_type(context).unwrap().as_string(context)
                         )))
@@ -895,7 +908,21 @@ fn instruction_to_doc<'a>(
                 } => maybe_constant_to_doc(context, md_namer, namer, number_of_slots).append(
                     Doc::line(
                         Doc::text(format!(
-                            "state_clear key {}, {}",
+                            "{} = state_clear key {}, {}",
+                            namer.name(context, ins_value),
+                            namer.name(context, key),
+                            namer.name(context, number_of_slots),
+                        ))
+                        .append(md_namer.md_idx_to_doc(context, metadata)),
+                    ),
+                ),
+                FuelVmInstruction::StateClearSlots {
+                    key,
+                    number_of_slots,
+                } => maybe_constant_to_doc(context, md_namer, namer, number_of_slots).append(
+                    Doc::line(
+                        Doc::text(format!(
+                            "state_clear_slots key {}, {}",
                             namer.name(context, key),
                             namer.name(context, number_of_slots),
                         ))
@@ -918,11 +945,29 @@ fn instruction_to_doc<'a>(
                         .append(md_namer.md_idx_to_doc(context, metadata)),
                     ),
                 ),
-                FuelVmInstruction::StateLoadWord(key) => Doc::line(
+                FuelVmInstruction::StateReadSlot {
+                    load_val,
+                    key,
+                    offset,
+                    len,
+                } => maybe_constant_to_doc(context, md_namer, namer, offset)
+                    .append(maybe_constant_to_doc(context, md_namer, namer, len))
+                    .append(Doc::line(
+                        Doc::text(format!(
+                            "state_read_slot {}, key {}, {}, {}",
+                            namer.name(context, load_val),
+                            namer.name(context, key),
+                            namer.name(context, offset),
+                            namer.name(context, len),
+                        ))
+                        .append(md_namer.md_idx_to_doc(context, metadata)),
+                    )),
+                FuelVmInstruction::StateLoadWord { key, offset } => Doc::line(
                     Doc::text(format!(
-                        "{} = state_load_word key {}",
+                        "{} = state_load_word key {}, {}",
                         namer.name(context, ins_value),
                         namer.name(context, key),
+                        offset,
                     ))
                     .append(md_namer.md_idx_to_doc(context, metadata)),
                 ),
@@ -941,6 +986,44 @@ fn instruction_to_doc<'a>(
                         ))
                         .append(md_namer.md_idx_to_doc(context, metadata)),
                     ),
+                ),
+                FuelVmInstruction::StateWriteSlot {
+                    stored_val,
+                    key,
+                    len,
+                } => maybe_constant_to_doc(context, md_namer, namer, len).append(Doc::line(
+                    Doc::text(format!(
+                        "state_write_slot {}, key {}, {}",
+                        namer.name(context, stored_val),
+                        namer.name(context, key),
+                        namer.name(context, len),
+                    ))
+                    .append(md_namer.md_idx_to_doc(context, metadata)),
+                )),
+                FuelVmInstruction::StateUpdateSlot {
+                    stored_val,
+                    key,
+                    offset,
+                    len,
+                } => maybe_constant_to_doc(context, md_namer, namer, offset)
+                    .append(maybe_constant_to_doc(context, md_namer, namer, len))
+                    .append(Doc::line(
+                        Doc::text(format!(
+                            "state_update_slot {}, key {}, {}, {}",
+                            namer.name(context, stored_val),
+                            namer.name(context, key),
+                            namer.name(context, offset),
+                            namer.name(context, len),
+                        ))
+                        .append(md_namer.md_idx_to_doc(context, metadata)),
+                    )),
+                FuelVmInstruction::StatePreload { key } => Doc::line(
+                    Doc::text(format!(
+                        "{} = state_preload key {}",
+                        namer.name(context, ins_value),
+                        namer.name(context, key),
+                    ))
+                    .append(md_namer.md_idx_to_doc(context, metadata)),
                 ),
                 FuelVmInstruction::StateStoreWord { stored_val, key } => {
                     maybe_constant_to_doc(context, md_namer, namer, stored_val).append(Doc::line(
@@ -1106,16 +1189,13 @@ fn instruction_to_doc<'a>(
                     .append(md_namer.md_idx_to_doc(context, metadata)),
                 )
             }
-            InstOp::GetConfig(_, name) => Doc::line(
-                match block.get_module(context).get_config(context, name).unwrap() {
-                    ConfigContent::V0 { name, ptr_ty, .. }
-                    | ConfigContent::V1 { name, ptr_ty, .. } => Doc::text(format!(
-                        "{} = get_config {}, {}",
-                        namer.name(context, ins_value),
-                        ptr_ty.as_string(context),
-                        name,
-                    )),
-                }
+            InstOp::GetConfig(config) => Doc::line(
+                Doc::text(format!(
+                    "{} = get_config {}, {}",
+                    namer.name(context, ins_value),
+                    config.get_type(context).as_string(context),
+                    config.get_name(context),
+                ))
                 .append(md_namer.md_idx_to_doc(context, metadata)),
             ),
             InstOp::GetStorageKey(storage_key) => {

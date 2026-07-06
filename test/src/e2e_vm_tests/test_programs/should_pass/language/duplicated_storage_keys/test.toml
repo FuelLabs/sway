@@ -1,7 +1,7 @@
 category = "compile"
 
 # check: $()Two storage fields have the same storage key
-# check: $()f1:u64 = 1,
+# check: $()f1: u64 = 1,
 # nextln: $()"storage.f1" has the same storage key as "storage.f2".
 # check: $()f2 in 0xcecf0a910789de762c699a85a66835df1662df633238cbb25804b7f78640747b: u64 = 2,
 # nextln: $()"storage.f2" is declared here.

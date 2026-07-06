@@ -41,11 +41,12 @@ impl Display for Source {
 ///
 /// For the most part, `Reference` is useful to refine the `refspecs` used to fetch remote
 /// repositories.
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize, Default)]
 pub enum Reference {
     Branch(String),
     Tag(String),
     Rev(String),
+    #[default]
     DefaultBranch,
 }
 
@@ -324,12 +325,6 @@ impl FromStr for Pinned {
             source,
             commit_hash,
         })
-    }
-}
-
-impl Default for Reference {
-    fn default() -> Self {
-        Self::DefaultBranch
     }
 }
 

@@ -1,17 +1,18 @@
 use crate::{
     decl_engine::*,
     engine_threading::*,
-    language::{parsed::Declaration, ty::*, Visibility},
+    language::{parsed::Declaration, ty::*, CallPath, Visibility},
     semantic_analysis::TypeCheckContext,
     type_system::*,
     types::*,
+    HasChanges,
 };
 use serde::{Deserialize, Serialize};
 use std::{
+    collections::HashMap,
     fmt,
     hash::{Hash, Hasher},
 };
-
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -64,10 +65,10 @@ impl ReplaceDecls for ConstantDecl {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
-    ) -> Result<bool, ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
         let mut decl = TyConstantDecl::clone(&*ctx.engines.de().get(&self.decl_id));
         let has_changes = decl.replace_decls(decl_mapping, handler, ctx)?;
-        if has_changes {
+        if has_changes.has_changes() {
             let parsed_decl_id = ctx.engines.de().get_parsed_decl_id(&self.decl_id);
             let new_ref = ctx.engines.de().insert(decl, parsed_decl_id.as_ref());
             self.decl_id.replace_id(*new_ref.id());
@@ -522,18 +523,63 @@ impl CollectTypesMetadata for TyDecl {
             TyDecl::ErrorRecovery(..)
             | TyDecl::StorageDecl(_)
             | TyDecl::TraitDecl(_)
-            | TyDecl::StructDecl(_)
             | TyDecl::EnumDecl(_)
             | TyDecl::EnumVariantDecl(_)
             | TyDecl::ImplSelfOrTrait(_)
-            | TyDecl::AbiDecl(_)
             | TyDecl::TypeAliasDecl(_)
             | TyDecl::TraitTypeDecl(_)
             | TyDecl::GenericTypeForFunctionScope(_)
+            | TyDecl::AbiDecl(_)
+            | TyDecl::StructDecl(_)
             | TyDecl::ConstGenericDecl(_) => vec![],
         };
         Ok(metadata)
     }
+}
+
+pub fn generate_is_decode_trivial_table(
+    ctx: &mut TypeCheckContext<'_>,
+    types: impl IntoIterator<Item = TypeId>,
+) -> HashMap<String, TyExpression> {
+    let mut map = HashMap::new();
+
+    for tid in types {
+        for tid in tid.extract_inner_types(ctx.engines, IncludeSelf::Yes) {
+            let fullname = ctx.engines.help_out(tid).to_string();
+            let handler = Handler::default();
+            let expr = TyExpression::type_check_function_application(
+                &handler,
+                ctx.by_ref(),
+                TypeBinding {
+                    inner: CallPath {
+                        prefixes: vec![
+                            BaseIdent::new_no_span("std".into()),
+                            BaseIdent::new_no_span("codec".into()),
+                        ],
+                        suffix: BaseIdent::new_no_span("is_decode_trivial".into()),
+                        callpath_type: crate::language::CallPathType::Ambiguous,
+                    },
+                    type_arguments: TypeArgs::Regular(vec![GenericArgument::Type(
+                        GenericTypeArgument {
+                            type_id: tid,
+                            initial_type_id: tid,
+                            span: Span::dummy(),
+                            call_path_tree: None,
+                        },
+                    )]),
+                    span: Span::dummy(),
+                },
+                &[],
+                Span::dummy(),
+            );
+
+            if let Ok(expr) = expr {
+                map.insert(fullname, expr);
+            }
+        }
+    }
+
+    map
 }
 
 impl GetDeclIdent for TyDecl {

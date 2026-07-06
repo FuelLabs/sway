@@ -1,0 +1,38 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+contract {
+    fn main() -> () {
+        local b256 key_for_x
+        local b256 key_for_y
+        local u64 value_for_x
+        local b256 value_for_y
+
+        entry():
+        v1v1 = get_local __ptr u64, value_for_x
+        v2v1 = const u64 0
+        store v2v1 to v1v1
+        v4v1 = get_local __ptr b256, key_for_x
+        v5v1 = const b256 0x7fbd1192666bfac3767b890bd4d048c940879d316071e20c7c8c81bce2ca41c5
+        store v5v1 to v4v1
+        v7v1 = const u64 0
+        v8v1 = state_store_word v7v1, key v4v1
+        v9v1 = get_local __ptr b256, value_for_y
+        v10v1 = const b256 0x0000000000000000000000000000000000000000000000000000000000000000
+        store v10v1 to v9v1
+        v12v1 = get_local __ptr b256, key_for_y
+        v13v1 = const b256 0xa15d6d36b54df993ed1fbe4544a45d4c4f70d81b4229861dfde0e20eb652202c
+        store v13v1 to v12v1
+        v15v1 = get_local __ptr b256, value_for_y
+        v16v1 = const u64 1
+        v17v1 = state_store_quad_word v15v1, key v12v1, v16v1
+        v18v1 = cast_ptr v15v1 to ptr
+        v19v1 = const u64 32
+        state_write_slot v18v1, key v12v1, v19v1
+        state_update_slot v18v1, key v12v1, v2v1, v19v1
+        v22v1 = const unit ()
+        ret () v22v1
+    }
+}

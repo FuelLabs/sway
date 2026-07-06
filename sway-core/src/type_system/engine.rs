@@ -876,8 +876,9 @@ impl TypeEngine {
         self.insert_or_replace_type_source_info(engines, ty, source_id, is_shareable_type, None)
     }
 
-    // Get, clone, insert and return new TypeId.
-    // Keep the same source_id
+    /// Clones the [TypeInfo] corresponding to the provided `id` and inserts the clone back into the [TypeEngine],
+    /// returning the [TypeId] of the inserted clone. The `source_id` of the cloned [TypeInfo] will be the same
+    /// as the `source_id` of the original [TypeInfo].
     pub fn duplicate(&self, engines: &Engines, id: TypeId) -> TypeId {
         let type_source_info = self.slab.get(id.index());
         let duplicate = TypeInfo::clone(&type_source_info.type_info);

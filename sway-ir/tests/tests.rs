@@ -1,4 +1,8 @@
-use std::path::PathBuf;
+use std::{
+    any::Any,
+    panic::catch_unwind,
+    path::{Path, PathBuf},
+};
 
 use itertools::Itertools;
 use sway_features::ExperimentalFeatures;
@@ -18,12 +22,60 @@ use sway_types::SourceEngine;
 // -------------------------------------------------------------------------------------------------
 // Utility for finding test files and running FileCheck.  See actual pass invocations below.
 
+fn clean_output(output: &str) -> String {
+    #[derive(Default)]
+    struct RawText(String);
+
+    impl vte::Perform for RawText {
+        fn print(&mut self, c: char) {
+            self.0.push(c);
+        }
+
+        fn execute(&mut self, _: u8) {}
+
+        fn hook(&mut self, _: &vte::Params, _: &[u8], _: bool, _: char) {}
+
+        fn put(&mut self, b: u8) {
+            self.0.push(b as char);
+        }
+
+        fn unhook(&mut self) {}
+
+        fn osc_dispatch(&mut self, _: &[&[u8]], _: bool) {}
+
+        fn csi_dispatch(&mut self, _: &vte::Params, _: &[u8], _: bool, _: char) {}
+
+        fn esc_dispatch(&mut self, _: &[u8], _: bool, _: u8) {}
+    }
+
+    let mut raw = String::new();
+    for line in output.lines() {
+        let mut performer = RawText::default();
+        let mut p = vte::Parser::new();
+        for b in line.as_bytes() {
+            p.advance(&mut performer, *b);
+        }
+        raw.push_str(&performer.0);
+        raw.push('\n');
+    }
+
+    let result = raw;
+    result.to_string()
+}
+
 fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
+    let mut err: Option<Box<dyn Any + Send>> = None;
+
     let source_engine = SourceEngine::default();
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let dir: PathBuf = format!("{manifest_dir}/tests/{sub_dir}").into();
     for entry in std::fs::read_dir(dir).unwrap() {
         let path = entry.unwrap().path();
+
+        let ext = path.extension().unwrap().to_str().unwrap();
+        if ext != "ir" {
+            continue;
+        }
 
         let input_bytes = std::fs::read(&path).unwrap();
         let input = String::from_utf8_lossy(&input_bytes);
@@ -45,12 +97,69 @@ fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
 
         let first_line = input.split('\n').next().unwrap();
 
-        // The tests should return true, indicating they made modifications.
-        assert!(
-            opt_fn(first_line, &mut ir),
-            "Pass returned false (no changes made to {}).",
-            path.display()
-        );
+        let before = ir.to_string();
+        let r = opt_fn(first_line, &mut ir);
+        let after = ir.to_string();
+
+        fn run_insta(file: &Path, snapshot: String, r: &mut Option<Box<dyn Any + Send>>) {
+            let root = file.parent().unwrap();
+            let test_name = file.file_name().unwrap().to_str().unwrap();
+
+            let mut insta = insta::Settings::new();
+            insta.set_snapshot_path(root);
+            insta.set_prepend_module_to_snapshot(false);
+            insta.set_omit_expression(true);
+
+            let scope = insta.bind_to_scope();
+
+            if let Err(err) = catch_unwind(|| {
+                insta::assert_snapshot!(test_name, snapshot);
+            }) {
+                *r = Some(err);
+            }
+            drop(scope);
+        }
+
+        let mut snapshot = String::new();
+        snapshot.push_str(&format!("Modified: {}\n\n", r));
+        for diff in prettydiff::diff_lines(&before, &after).diff() {
+            match diff {
+                prettydiff::basic::DiffOp::Insert(lines) => {
+                    for line in lines {
+                        snapshot.push_str("+ ");
+                        snapshot.push_str(line);
+                        snapshot.push('\n');
+                    }
+                }
+                prettydiff::basic::DiffOp::Replace(removed, inserted) => {
+                    for line in removed {
+                        snapshot.push_str("- ");
+                        snapshot.push_str(line);
+                        snapshot.push('\n');
+                    }
+                    for line in inserted {
+                        snapshot.push_str("+ ");
+                        snapshot.push_str(line);
+                        snapshot.push('\n');
+                    }
+                }
+                prettydiff::basic::DiffOp::Remove(removed) => {
+                    for line in removed {
+                        snapshot.push_str("- ");
+                        snapshot.push_str(line);
+                        snapshot.push('\n');
+                    }
+                }
+                prettydiff::basic::DiffOp::Equal(lines) => {
+                    for line in lines {
+                        snapshot.push_str(line);
+                        snapshot.push('\n');
+                    }
+                }
+            }
+        }
+        run_insta(&path, clean_output(&snapshot), &mut err);
+
         ir.verify().unwrap_or_else(|err| {
             println!("{err}");
             panic!();
@@ -62,22 +171,23 @@ fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
             .text(&input)
             .unwrap()
             .finish();
-        if chkr.is_empty() {
-            println!("{output}");
-            panic!("No filecheck directives found in test: {}", path.display());
+        if !chkr.is_empty() {
+            match chkr.explain(&output, filecheck::NO_VARIABLES) {
+                Ok((success, report)) if !success => {
+                    println!("--- FILECHECK FAILED FOR {}", path.display());
+                    println!("{report}");
+                    panic!()
+                }
+                Err(e) => {
+                    panic!("filecheck directive error while checking: {e}");
+                }
+                _ => (),
+            }
         }
+    }
 
-        match chkr.explain(&output, filecheck::NO_VARIABLES) {
-            Ok((success, report)) if !success => {
-                println!("--- FILECHECK FAILED FOR {}", path.display());
-                println!("{report}");
-                panic!()
-            }
-            Err(e) => {
-                panic!("filecheck directive error while checking: {e}");
-            }
-            _ => (),
-        }
+    if let Some(err) = err {
+        panic!("Snapshot test failed: {err:?}");
     }
 }
 
@@ -186,9 +296,11 @@ fn inline() {
 
         if params.contains(&"all") {
             // Just inline everything, replacing all CALL instructions.
-            funcs.into_iter().fold(false, |acc, func| {
-                opt::inline_all_function_calls(ir, &func).unwrap() || acc
-            })
+            let mut changed = false;
+            for func in funcs.into_iter() {
+                changed |= opt::inline_all_function_calls(ir, &func).unwrap();
+            }
+            changed
         } else {
             // Get the parameters from the first line.  See the inline/README.md for details.  If
             // there aren't any found then there won't be any constraints and it'll be the

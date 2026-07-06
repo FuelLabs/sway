@@ -1,30 +1,6 @@
-use crate::{engine_threading::Engines, type_system::priv_prelude::*};
+use crate::{engine_threading::Engines, type_system::priv_prelude::*, HasChanges};
 use sway_error::handler::Handler;
 use sway_types::Ident;
-
-#[derive(Default)]
-pub enum HasChanges {
-    Yes,
-    #[default]
-    No,
-}
-
-impl HasChanges {
-    pub fn has_changes(&self) -> bool {
-        matches!(self, HasChanges::Yes)
-    }
-}
-
-impl std::ops::BitOr for HasChanges {
-    type Output = HasChanges;
-
-    fn bitor(self, rhs: Self) -> Self::Output {
-        match (self, rhs) {
-            (HasChanges::No, HasChanges::No) => HasChanges::No,
-            _ => HasChanges::Yes,
-        }
-    }
-}
 
 pub struct SubstTypesContext<'a> {
     pub handler: &'a Handler,
@@ -112,15 +88,4 @@ impl<T: SubstTypes> SubstTypes for Vec<T> {
         self.iter_mut()
             .fold(HasChanges::No, |has_change, x| x.subst(ctx) | has_change)
     }
-}
-
-#[macro_export]
-macro_rules! has_changes {
-    ($($stmt:expr);* ;) => {{
-        let mut has_changes = $crate::type_system::HasChanges::No;
-        $(
-            has_changes = $stmt | has_changes;
-        )*
-        has_changes
-    }};
 }

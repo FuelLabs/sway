@@ -251,10 +251,17 @@ fn hash_fn(
                         | crate::FuelVmInstruction::JmpMem
                         | crate::FuelVmInstruction::Smo { .. }
                         | crate::FuelVmInstruction::StateClear { .. }
+                        | crate::FuelVmInstruction::StateClearSlots { .. }
                         | crate::FuelVmInstruction::StateLoadQuadWord { .. }
-                        | crate::FuelVmInstruction::StateLoadWord(_)
+                        | crate::FuelVmInstruction::StateReadSlot { .. }
                         | crate::FuelVmInstruction::StateStoreQuadWord { .. }
+                        | crate::FuelVmInstruction::StateWriteSlot { .. }
+                        | crate::FuelVmInstruction::StateUpdateSlot { .. }
+                        | crate::FuelVmInstruction::StatePreload { .. }
                         | crate::FuelVmInstruction::StateStoreWord { .. } => (),
+                        crate::FuelVmInstruction::StateLoadWord { offset, .. } => {
+                            offset.hash(state)
+                        }
                         crate::FuelVmInstruction::WideUnaryOp { op, .. } => op.hash(state),
                         crate::FuelVmInstruction::WideBinaryOp { op, .. } => op.hash(state),
                         crate::FuelVmInstruction::WideModularOp { op, .. } => op.hash(state),
@@ -274,7 +281,7 @@ fn hash_fn(
                     .lookup_global_variable_name(context, global)
                     .unwrap()
                     .hash(state),
-                crate::InstOp::GetConfig(_, name) => name.hash(state),
+                crate::InstOp::GetConfig(config) => config.get_name(context).hash(state),
                 crate::InstOp::GetStorageKey(storage_key) => function
                     .get_module(context)
                     .lookup_storage_key_path(context, storage_key)
@@ -306,6 +313,7 @@ pub fn dedup_fns(
     ignore_metadata: bool,
 ) -> Result<bool, IrError> {
     let mut modified = false;
+
     let eq_class = &mut EqClass {
         hash_set_map: FxHashMap::default(),
         function_hash_map: FxHashMap::default(),
@@ -354,11 +362,9 @@ pub fn dedup_fns(
             dups_to_delete.push(*callee);
             replacements.push((inst, args.clone(), callee_rep));
         }
-        if !replacements.is_empty() {
-            modified = true;
-        }
+
         for (inst, args, callee_rep) in replacements {
-            inst.replace(
+            modified |= inst.replace(
                 context,
                 crate::ValueDatum::Instruction(Instruction {
                     op: InstOp::Call(*callee_rep, args.clone()),
@@ -370,7 +376,7 @@ pub fn dedup_fns(
 
     // Replace config decode fns
     for config in module.iter_configs(context) {
-        if let crate::ConfigContent::V1 { decode_fn, .. } = config {
+        if let crate::ConfigContent::V1 { decode_fn, .. } = config.get_content(context) {
             let f = decode_fn.get();
 
             let Some(callee_hash) = eq_class.function_hash_map.get(&f) else {
@@ -394,7 +400,7 @@ pub fn dedup_fns(
 
     // Remove replaced functions
     for function in dups_to_delete {
-        module.remove_function(context, &function);
+        modified |= module.remove_function(context, &function);
     }
 
     Ok(modified)

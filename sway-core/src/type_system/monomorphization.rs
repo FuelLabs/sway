@@ -7,8 +7,8 @@ use crate::{
     namespace::{ModulePath, ResolvedDeclaration},
     semantic_analysis::type_resolve::{resolve_type, VisibilityCheck},
     type_system::ast_elements::create_type_id::CreateTypeId,
-    EnforceTypeArguments, Engines, GenericArgument, Namespace, SubstTypes, SubstTypesContext,
-    TypeId, TypeParameter, TypeSubstMap,
+    EnforceTypeArguments, Engines, GenericArgument, HasChanges, Namespace, SubstTypes,
+    SubstTypesContext, TypeId, TypeParameter, TypeSubstMap,
 };
 use std::collections::BTreeMap;
 use sway_error::{
@@ -247,7 +247,7 @@ where
 ///    4b. for each type argument in `type_arguments`, resolve the type
 ///    4c. refresh the generic types with a [TypeSubstMapping]
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn monomorphize_with_modpath<T>(
+pub(crate) fn monomorphize_with_mod_path<T>(
     handler: &Handler,
     engines: &Engines,
     namespace: &Namespace,
@@ -259,7 +259,7 @@ pub(crate) fn monomorphize_with_modpath<T>(
     mod_path: &ModulePath,
     self_type: Option<TypeId>,
     subst_ctx: &SubstTypesContext,
-) -> Result<(), ErrorEmitted>
+) -> Result<HasChanges, ErrorEmitted>
 where
     T: MonomorphizeHelper + SubstTypes + MaterializeConstGenerics,
 {
@@ -276,22 +276,28 @@ where
         subst_ctx,
     )?;
 
-    value.subst(&SubstTypesContext::new(
-        handler,
-        engines,
-        &type_mapping,
-        true,
-    ));
+    let mut has_changes = HasChanges::No;
+
+    let ctx = SubstTypesContext::new(handler, engines, &type_mapping, true);
+    has_changes |= value.subst(&ctx);
 
     for (name, expr) in const_generics.iter() {
-        let _ = value.materialize_const_generics(engines, handler, name, expr);
+        if let Ok(materialization_has_changes) =
+            value.materialize_const_generics(engines, handler, name, expr)
+        {
+            has_changes |= materialization_has_changes;
+        }
     }
 
     for (name, expr) in type_mapping.const_generics_materialization.iter() {
-        let _ = value.materialize_const_generics(engines, handler, name, expr);
+        if let Ok(materialization_has_changes) =
+            value.materialize_const_generics(engines, handler, name, expr)
+        {
+            has_changes |= materialization_has_changes;
+        }
     }
 
-    Ok(())
+    Ok(has_changes)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -319,7 +325,7 @@ pub(crate) fn type_decl_opt_to_type_id(
             let mut new_copy = (*decl_engine.get_struct(&original_id)).clone();
 
             // monomorphize the copy, in place
-            monomorphize_with_modpath(
+            let decl_id = if monomorphize_with_mod_path(
                 handler,
                 engines,
                 namespace,
@@ -331,16 +337,21 @@ pub(crate) fn type_decl_opt_to_type_id(
                 mod_path,
                 self_type,
                 subst_ctx,
-            )?;
+            )?
+            .has_changes()
+            {
+                *decl_engine
+                    .insert(
+                        new_copy,
+                        decl_engine.get_parsed_decl_id(&original_id).as_ref(),
+                    )
+                    .id()
+            } else {
+                original_id
+            };
 
-            // insert the new copy in the decl engine
-            let new_decl_ref = decl_engine.insert(
-                new_copy,
-                decl_engine.get_parsed_decl_id(&original_id).as_ref(),
-            );
-
-            // create the type id from the copy
-            type_engine.insert_struct(engines, *new_decl_ref.id())
+            // create the type id from the copy or use the original if no changes were made
+            type_engine.insert_struct(engines, decl_id)
         }
         Some(ResolvedDeclaration::Typed(ty::TyDecl::EnumDecl(ty::EnumDecl {
             decl_id: original_id,
@@ -350,7 +361,7 @@ pub(crate) fn type_decl_opt_to_type_id(
             let mut new_copy = (*decl_engine.get_enum(&original_id)).clone();
 
             // monomorphize the copy, in place
-            monomorphize_with_modpath(
+            let decl_id = if monomorphize_with_mod_path(
                 handler,
                 engines,
                 namespace,
@@ -362,16 +373,21 @@ pub(crate) fn type_decl_opt_to_type_id(
                 mod_path,
                 self_type,
                 subst_ctx,
-            )?;
+            )?
+            .has_changes()
+            {
+                *decl_engine
+                    .insert(
+                        new_copy,
+                        decl_engine.get_parsed_decl_id(&original_id).as_ref(),
+                    )
+                    .id()
+            } else {
+                original_id
+            };
 
-            // insert the new copy in the decl engine
-            let new_decl_ref = decl_engine.insert(
-                new_copy,
-                decl_engine.get_parsed_decl_id(&original_id).as_ref(),
-            );
-
-            // create the type id from the copy
-            type_engine.insert_enum(engines, *new_decl_ref.id())
+            // create the type id from the copy or use the original if no changes were made
+            type_engine.insert_enum(engines, decl_id)
         }
         Some(ResolvedDeclaration::Typed(ty::TyDecl::TypeAliasDecl(ty::TypeAliasDecl {
             decl_id: original_id,

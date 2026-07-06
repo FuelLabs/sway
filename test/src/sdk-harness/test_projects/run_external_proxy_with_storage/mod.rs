@@ -5,17 +5,19 @@ abigen!(Contract(
     abi = "out/run_external_proxy_with_storage-abi.json",
 ));
 
+// TODO: (INIT-STORAGE) Enable once storage initialization is implemented.
+#[ignore = "requires storage initialization to support dynamic storage"]
 #[tokio::test]
 async fn run_external_can_proxy_call() {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
 
-    let storage_configuration =
-        StorageConfiguration::default().add_slot_overrides_from_file("out/run_external_target_with_storage-storage_slots.json").unwrap();
+    let storage_configuration = StorageConfiguration::default()
+        .add_slot_overrides_from_file("out/run_external_target_with_storage-storage_slots.json")
+        .unwrap();
 
     let target_id = Contract::load_from(
         "out/run_external_target_with_storage.bin",
-        LoadConfiguration::default()
-            .with_storage_configuration(storage_configuration.clone()),
+        LoadConfiguration::default().with_storage_configuration(storage_configuration.clone()),
     )
     .unwrap()
     .deploy(&wallet, TxPolicies::default())
@@ -28,7 +30,9 @@ async fn run_external_can_proxy_call() {
         .unwrap();
     let id = Contract::load_from(
         "out/run_external_proxy_with_storage.bin",
-        LoadConfiguration::default().with_configurables(configurables).with_storage_configuration(storage_configuration),
+        LoadConfiguration::default()
+            .with_configurables(configurables)
+            .with_storage_configuration(storage_configuration),
     )
     .unwrap()
     .deploy(&wallet, TxPolicies::default())

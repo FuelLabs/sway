@@ -9,6 +9,7 @@ use crate::parser_error::{ParseError, ParseErrorKind};
 use crate::type_error::TypeError;
 
 use core::fmt;
+use std::collections::BTreeSet;
 use std::fmt::Formatter;
 use sway_types::style::to_snake_case;
 use sway_types::{BaseIdent, Ident, IdentUnique, SourceEngine, Span, Spanned};
@@ -122,7 +123,7 @@ pub enum CompileError {
     #[error("Function \"{name}\" was already defined in scope.")]
     MultipleDefinitionsOfFunction { name: Ident, span: Span },
     #[error("Name \"{name}\" is defined multiple times.")]
-    MultipleDefinitionsOfName { name: Ident, span: Span },
+    MultipleDefinitionsOfName { name: IdentUnique },
     #[error("Constant \"{name}\" was already defined in scope.")]
     MultipleDefinitionsOfConstant { name: Ident, new: Span, old: Span },
     #[error("Type \"{name}\" was already defined in scope.")]
@@ -213,7 +214,7 @@ pub enum CompileError {
     #[error("Cannot pass immutable argument to mutable parameter.")]
     ImmutableArgumentToMutableParameter { span: Span },
     #[error("ref mut or mut parameter is not allowed for contract ABI function.")]
-    RefMutableNotAllowedInContractAbi { param_name: Ident, span: Span },
+    RefMutableNotAllowedInContractAbi { param_name: IdentUnique },
     #[error("Reference to a mutable value cannot reference a constant.")]
     RefMutCannotReferenceConstant {
         /// Constant, as accessed in code. E.g.:
@@ -322,7 +323,7 @@ pub enum CompileError {
         "Enum with name \"{name}\" could not be found in this scope. Perhaps you need to import \
          it?"
     )]
-    EnumNotFound { name: Ident, span: Span },
+    EnumNotFound { name: IdentUnique },
     /// This error is used only for error recovery and is not emitted as a compiler
     /// error to the final compilation output. The compiler emits the cumulative error
     /// [CompileError::StructInstantiationMissingFields] given below, and that one also
@@ -384,7 +385,7 @@ pub enum CompileError {
     },
     #[error("Field \"{field_name}\" has multiple definitions.")]
     StructFieldDuplicated { field_name: Ident, duplicate: Ident },
-    #[error("No function \"{expected_signature}\" found for type \"{type_name}\".{}", 
+    #[error("No function \"{expected_signature}\" found for type \"{type_name}\".{}",
         if matching_methods.is_empty() {
             "".to_string()
         } else {
@@ -452,7 +453,7 @@ pub enum CompileError {
     #[error("This is a {actually}, not a type alias")]
     DeclIsNotATypeAlias { actually: String, span: Span },
     #[error("Could not find symbol \"{name}\" in this scope.")]
-    SymbolNotFound { name: Ident, span: Span },
+    SymbolNotFound { name: IdentUnique },
     #[error("Found multiple bindings for \"{name}\" in this scope.")]
     SymbolWithMultipleBindings {
         name: Ident,
@@ -460,7 +461,7 @@ pub enum CompileError {
         span: Span,
     },
     #[error("Symbol \"{name}\" is private.")]
-    ImportPrivateSymbol { name: Ident, span: Span },
+    ImportPrivateSymbol { name: IdentUnique },
     #[error("Module \"{name}\" is private.")]
     ImportPrivateModule { name: Ident, span: Span },
     #[error(
@@ -878,7 +879,7 @@ pub enum CompileError {
     #[error(
         "Unrecognized contract ABI method parameter \"{param_name}\". The only available parameters are \"gas\", \"coins\", and \"asset_id\""
     )]
-    UnrecognizedContractParam { param_name: String, span: Span },
+    UnrecognizedContractParam { param_name: IdentUnique },
     #[error("Attempting to specify a contract method parameter for a non-contract function call")]
     CallParamForNonContractCallMethod { span: Span },
     #[error("Storage field \"{field_name}\" does not exist.")]
@@ -919,16 +920,35 @@ pub enum CompileError {
         span: Span,
         hint: String,
     },
-    #[error("Call to \"{name}\" expects {expected} argument(s)")]
+    #[error("\"__{name}\" intrinsic expects {} argument{}, but {} {} provided.",
+        num_to_str(*expected),
+        plural_s(*expected),
+        num_to_str_or_none(*actual),
+        is_are(*actual),
+    )]
     IntrinsicIncorrectNumArgs {
         name: String,
-        expected: u64,
+        expected: usize,
+        actual: usize,
         span: Span,
     },
-    #[error("Call to \"{name}\" expects {expected} type arguments")]
+    #[error("\"__{name}\" intrinsic expects {} type argument{}, but {} {} provided.",
+        num_to_str(*expected),
+        plural_s(*expected),
+        num_to_str_or_none(*actual),
+        is_are(*actual),
+    )]
     IntrinsicIncorrectNumTArgs {
         name: String,
-        expected: u64,
+        expected: usize,
+        actual: usize,
+        span: Span,
+    },
+    #[error("\"__{intrinsic}\" intrinsic's argument \"{arg}\" must be a constant of type `{expected_type}`.")]
+    IntrinsicArgNotConstant {
+        intrinsic: String,
+        arg: String,
+        expected_type: String,
         span: Span,
     },
     #[error("Expected string literal")]
@@ -1042,7 +1062,7 @@ pub enum CompileError {
     CouldNotGenerateEntryMissingStd { span: Span },
     #[error("Type \"{ty}\" does not implement AbiEncode or AbiDecode.")]
     CouldNotGenerateEntryMissingImpl { ty: String, span: Span },
-    #[error("Only bool, u8, u16, u32, u64, u256, b256, string arrays and string slices can be used here.")]
+    #[error("Only bool, u8, u16, u32, u64, u256, b256, string arrays, string slices and (raw_ptr, u64) can be used here.")]
     EncodingUnsupportedType { span: Span },
     #[error("Configurables need a function named \"abi_decode_in_place\" to be in scope.")]
     ConfigurableMissingAbiDecodeInPlace { span: Span },
@@ -1122,6 +1142,106 @@ pub enum CompileError {
     IndexedFieldIsNotFixedSizeABIType { field_name: IdentUnique },
     #[error("Too many indexed fields on event for current metadata format.")]
     IndexedFieldOffsetTooLarge { field_name: IdentUnique },
+    #[error("Trivial Check Failed")]
+    TrivialCheckFailed(TrivialCheckFailedData),
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum TrivialCheckDiagType {
+    Nothing,
+    Error,
+    Warning,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TrivialCheckFailedData {
+    pub span: Span,
+    pub problems_qty: usize,
+    pub can_be_made_trivial: Option<bool>,
+    pub infos: Vec<(Span, String)>,
+    pub helps: Vec<(Span, String)>,
+    pub never_trivial: BTreeSet<String>,
+    pub bottom_helps: BTreeSet<String>,
+    pub diag: TrivialCheckDiagType,
+}
+
+impl TrivialCheckFailedData {
+    pub fn as_diagnostic(&self, se: &SourceEngine) -> Diagnostic {
+        let mut hints = vec![];
+        hints.extend(
+            self.infos
+                .iter()
+                .map(|x| Hint::info(se, x.0.clone(), x.1.clone())),
+        );
+        hints.extend(
+            self.helps
+                .iter()
+                .map(|x| Hint::help(se, x.0.clone(), x.1.clone())),
+        );
+
+        let mut bottom_helps: Vec<String> = self.bottom_helps.iter().cloned().collect::<_>();
+
+        let mut never_trivial_help = String::new();
+        if !self.never_trivial.is_empty() {
+            let len = self.never_trivial.len();
+            for (idx, t) in self.never_trivial.iter().enumerate() {
+                never_trivial_help.push('`');
+                never_trivial_help.push_str(t.as_str());
+                never_trivial_help.push('`');
+
+                if idx < len - 1 {
+                    never_trivial_help.push_str(", ");
+                }
+            }
+
+            if len == 1 {
+                never_trivial_help.push_str(" is never trivially decodable.");
+            } else {
+                never_trivial_help.push_str(" are never trivially decodable.");
+            }
+
+            bottom_helps.push(never_trivial_help);
+        }
+
+        let major = env!("CARGO_PKG_VERSION_MAJOR");
+        let minor = env!("CARGO_PKG_VERSION_MINOR");
+        let patch = env!("CARGO_PKG_VERSION_PATCH");
+        bottom_helps.push(
+            format!(
+                "For more info see: https://fuellabs.github.io/sway/v{major}.{minor}.{patch}/book/advanced/trivial_encoding.html",
+            )
+        );
+
+        if matches!(self.can_be_made_trivial, Some(true)) {
+            hints.push(Hint::help(
+                se,
+                self.span.clone(),
+                "Consider the suggestions below to make this type trivially decodable.".to_string(),
+            ));
+        }
+
+        Diagnostic {
+            reason: Some(Reason::new(
+                Code::semantic_analysis(1),
+                "Type is not trivially decodable".to_string(),
+            )),
+            issue: match self.diag {
+                TrivialCheckDiagType::Nothing => unreachable!(),
+                TrivialCheckDiagType::Error => Issue::error(
+                    se,
+                    self.span.clone(),
+                    format!("`{}` is not trivially decodable.", self.span.as_str()),
+                ),
+                TrivialCheckDiagType::Warning => Issue::warning(
+                    se,
+                    self.span.clone(),
+                    format!("`{}` is not trivially decodable.", self.span.as_str()),
+                ),
+            },
+            hints,
+            help: bottom_helps,
+        }
+    }
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1150,7 +1270,7 @@ impl Spanned for CompileError {
             PredicateMainDoesNotReturnBool(span) => span.clone(),
             NoScriptMainFunction(span) => span.clone(),
             MultipleDefinitionsOfFunction { span, .. } => span.clone(),
-            MultipleDefinitionsOfName { span, .. } => span.clone(),
+            MultipleDefinitionsOfName { name } => name.span(),
             MultipleDefinitionsOfConstant { new: span, .. } => span.clone(),
             MultipleDefinitionsOfType { span, .. } => span.clone(),
             MultipleDefinitionsOfMatchArmVariable { duplicate, .. } => duplicate.clone(),
@@ -1161,7 +1281,7 @@ impl Spanned for CompileError {
             AssignmentViaNonMutableReference { span, .. } => span.clone(),
             MutableParameterNotSupported { span, .. } => span.clone(),
             ImmutableArgumentToMutableParameter { span } => span.clone(),
-            RefMutableNotAllowedInContractAbi { span, .. } => span.clone(),
+            RefMutableNotAllowedInContractAbi { param_name } => param_name.span(),
             RefMutCannotReferenceConstant { span, .. } => span.clone(),
             RefMutCannotReferenceImmutableVariable { span, .. } => span.clone(),
             MethodRequiresMutableSelf { span, .. } => span.clone(),
@@ -1192,9 +1312,9 @@ impl Spanned for CompileError {
             NotAStruct { span, .. } => span.clone(),
             NotIndexable { span, .. } => span.clone(),
             FieldAccessOnNonStruct { span, .. } => span.clone(),
-            SymbolNotFound { span, .. } => span.clone(),
+            SymbolNotFound { name } => name.span(),
             SymbolWithMultipleBindings { span, .. } => span.clone(),
-            ImportPrivateSymbol { span, .. } => span.clone(),
+            ImportPrivateSymbol { name } => name.span(),
             ImportPrivateModule { span, .. } => span.clone(),
             NoElseBranch { span, .. } => span.clone(),
             NotAType { span, .. } => span.clone(),
@@ -1292,7 +1412,7 @@ impl Spanned for CompileError {
             AbiAsSupertrait { span, .. } => span.clone(),
             SupertraitImplRequired { span, .. } => span.clone(),
             ContractCallParamRepeated { span, .. } => span.clone(),
-            UnrecognizedContractParam { span, .. } => span.clone(),
+            UnrecognizedContractParam { param_name } => param_name.span(),
             CallParamForNonContractCallMethod { span, .. } => span.clone(),
             StorageFieldDoesNotExist { field_name, .. } => field_name.span(),
             InvalidStorageOnlyTypeDecl { span, .. } => span.clone(),
@@ -1303,13 +1423,14 @@ impl Spanned for CompileError {
             ConvertParseTree { error } => error.span(),
             Lex { error } => error.span(),
             Parse { error } => error.span.clone(),
-            EnumNotFound { span, .. } => span.clone(),
+            EnumNotFound { name } => name.span(),
             TupleIndexOutOfBounds { span, .. } => span.clone(),
             NonConstantDeclValue { span, .. } => span.clone(),
             StorageDeclarationInNonContract { span, .. } => span.clone(),
             IntrinsicUnsupportedArgType { span, .. } => span.clone(),
             IntrinsicIncorrectNumArgs { span, .. } => span.clone(),
             IntrinsicIncorrectNumTArgs { span, .. } => span.clone(),
+            IntrinsicArgNotConstant { span, .. } => span.clone(),
             BreakOutsideLoop { span } => span.clone(),
             ContinueOutsideLoop { span } => span.clone(),
             ContractIdValueNotALiteral { span } => span.clone(),
@@ -1362,6 +1483,7 @@ impl Spanned for CompileError {
             IndexedFieldIsNotFixedSizeABIType { field_name } => field_name.span(),
             IndexedFieldOffsetTooLarge { field_name } => field_name.span(),
             IncoherentImplDueToOrphanRule { span, .. } => span.clone(),
+            TrivialCheckFailed(TrivialCheckFailedData { span, .. }) => span.clone(),
         }
     }
 }
@@ -1430,7 +1552,7 @@ impl ToDiagnostic for CompileError {
                 help: vec![
                     "Unlike variables, constants cannot be shadowed by other constants or variables.".to_string(),
                     match (shadowing_source, *constant_decl_span != Span::dummy()) {
-                        (LetVar | PatternMatchingStructFieldVar, false) => format!("Consider renaming either the {} \"{name}\" or the constant \"{name}\".", 
+                        (LetVar | PatternMatchingStructFieldVar, false) => format!("Consider renaming either the {} \"{name}\" or the constant \"{name}\".",
                             format!("{shadowing_source}").to_lowercase(),
                         ),
                         (Const, false) => "Consider renaming one of the constants.".to_string(),
@@ -2226,8 +2348,8 @@ impl ToDiagnostic for CompileError {
                 help: vec![
                     "Index operator `[]` can be used only on indexable types.".to_string(),
                     "In Sway, indexable types are:".to_string(),
-                    format!("{}- arrays. E.g., `[u64;3]`.", Indent::Single),
-                    format!("{}- references, direct or indirect, to arrays. E.g., `&[u64;3]` or `&&&[u64;3]`.", Indent::Single),
+                    format!("{}- arrays. E.g., `[u64;3]` or generic `[T;N]`.", Indent::Single),
+                    format!("{}- references, direct or indirect, to arrays. E.g., `&[u64;3]` or `&&&[u8;N]`.", Indent::Single),
                 ],
             },
             FieldAccessOnNonStruct { actually, storage_variable, field_name, span } => Diagnostic {
@@ -3081,7 +3203,7 @@ impl ToDiagnostic for CompileError {
                     String::new()
                 ),
                 hints: vec![],
-                help: vec![format!("Trait{} implemented for types:\n{}", if trait_names.len() > 1 {"s"} else {""}, trait_types_and_spans.iter().enumerate().map(|(e, (type_id, name))| 
+                help: vec![format!("Trait{} implemented for types:\n{}", if trait_names.len() > 1 {"s"} else {""}, trait_types_and_spans.iter().enumerate().map(|(e, (type_id, name))|
                     format!("#{} {} for {}", e, name, type_id.clone())
                 ).collect::<Vec<_>>().join("\n"))],
             },
@@ -3307,60 +3429,67 @@ impl ToDiagnostic for CompileError {
                 hints: vec![],
                 help: vec![],
             },
-            MultipleDefinitionsOfConstant { name, old, new } => {
-                Diagnostic {
-                    reason: Some(Reason::new(code(1), "Multiple definitions of constant".into())),
-                    issue: Issue::error(
+            MultipleDefinitionsOfConstant { name, old, new } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Multiple definitions of constant".into())),
+                issue: Issue::error(
+                    source_engine,
+                    new.clone(),
+                    format!("Constant \"{name}\" was already defined"),
+                ),
+                hints: vec![
+                    Hint::error(
                         source_engine,
-                        new.clone(),
-                        format!("Constant \"{name}\" was already defined"),
+                        old.clone(),
+                        "Its first definition is here.".into(),
                     ),
-                    hints: vec![
-                        Hint::error(
-                            source_engine,
-                            old.clone(),
-                            "Its first definition is here.".into(),
-                        ),
-                    ],
-                    help: vec![],
-                }
-            }
-            MethodNotFound { called_method, expected_signature, type_name, matching_methods } => {
-                Diagnostic {
-                    reason: Some(Reason::new(code(1), "Associated function or method is not found".into())),
-                    issue: Issue::error(
+                ],
+                help: vec![],
+            },
+            MethodNotFound { called_method, expected_signature, type_name, matching_methods } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Associated function or method is not found".into())),
+                issue: Issue::error(
+                    source_engine,
+                    called_method.span(),
+                    format!("\"{expected_signature}\" is not found for type \"{type_name}\"."),
+                ),
+                hints: if matching_methods.is_empty() {
+                    vec![]
+                } else {
+                    Hint::multi_help(
                         source_engine,
-                        called_method.span(),
-                        format!("\"{expected_signature}\" is not found for type \"{type_name}\"."),
-                    ),
-                    hints: if matching_methods.is_empty() {
-                        vec![]
-                    } else {
-                        Hint::multi_help(
-                            source_engine,
-                            &called_method.span(),
-                            std::iter::once(
-                                    format!("{} \"{called_method}\" function{} {} implemented for the type:",
-                                        singular_plural(matching_methods.len(), "Only this", "These"),
-                                        plural_s(matching_methods.len()),
-                                        is_are(matching_methods.len()),
-                                    )
+                        &called_method.span(),
+                        std::iter::once(
+                                format!("{} \"{called_method}\" function{} {} implemented for the type:",
+                                    singular_plural(matching_methods.len(), "Only this", "These"),
+                                    plural_s(matching_methods.len()),
+                                    is_are(matching_methods.len()),
                                 )
-                                .chain(matching_methods
-                                    .iter()
-                                    .map(|m| format!("- {m}"))
+                            )
+                            .chain(matching_methods
+                                .iter()
+                                .map(|m| format!("- {m}"))
+                            )
+                            .chain(std::iter::once(
+                                format!("Did you mean to call {}?",
+                                    singular_plural(matching_methods.len(), "that function", "one of those functions"),
                                 )
-                                .chain(std::iter::once(
-                                    format!("Did you mean to call {}?",
-                                        singular_plural(matching_methods.len(), "that function", "one of those functions"),
-                                    )
-                                ))
-                                .collect()
-                        )
-                    },
-                    help: vec![],
-                }
-            }
+                            ))
+                            .collect()
+                    )
+                },
+                help: vec![],
+            },
+            IntrinsicArgNotConstant { intrinsic, arg, expected_type, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Intrinsic argument is not a compile-time constant".into())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("\"__{intrinsic}\" intrinsic's argument \"{arg}\" must be a constant of type `{expected_type}`."),
+                ),
+                hints: vec![],
+                help: vec![],
+            },
+            TrivialCheckFailed(data) => data.as_diagnostic(source_engine),
             _ => Diagnostic {
                     // TODO: Temporarily we use `self` here to achieve backward compatibility.
                     //       In general, `self` must not be used. All the values for the formatting

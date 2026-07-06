@@ -3,6 +3,7 @@ use crate::{
     engine_threading::*,
     language::{parsed::VariableDeclaration, ty::*},
     type_system::*,
+    HasChanges,
 };
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};

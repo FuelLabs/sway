@@ -1,0 +1,6 @@
+category = "compile"
+experimental = { new_encoding = true, dynamic_storage = true }
+expected_warnings = 0
+experimental_new_encoding = true
+
+# not: $()Possibly non-zero amount of coins transferred to non-payable contract method "send_funds".

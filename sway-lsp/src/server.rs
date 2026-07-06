@@ -17,7 +17,7 @@ use lsp_types::{
     SemanticTokensRangeParams, SemanticTokensRangeResult, SemanticTokensResult,
     TextDocumentIdentifier, TextDocumentPositionParams, TextEdit, WorkspaceEdit,
 };
-use sway_utils::PerformanceData;
+use sway_utils::PerformanceMetrics;
 use tower_lsp::{jsonrpc::Result, LanguageServer};
 
 #[tower_lsp::async_trait]
@@ -160,7 +160,7 @@ impl ServerState {
         request::handle_visualize(self, &params)
     }
 
-    pub async fn metrics(&self) -> Result<Option<Vec<(String, PerformanceData)>>> {
+    pub async fn metrics(&self) -> Result<Option<Vec<(String, PerformanceMetrics)>>> {
         request::metrics(self)
     }
 }

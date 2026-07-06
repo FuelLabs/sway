@@ -124,32 +124,35 @@ impl Items {
         &self.symbols
     }
 
+    /// - `storage_fields` - all the storage fields declared in the `storage` declaration.
+    /// - `field_names` - field names in the storage access expression.
+    /// - `namespace_names` - namespace names in the storage access expression.
     #[allow(clippy::too_many_arguments)]
-    pub fn apply_storage_load(
+    pub fn apply_storage_access(
         &self,
         handler: &Handler,
         engines: &Engines,
         namespace: &Namespace,
         namespace_names: &[Ident],
-        fields: &[Ident],
+        field_names: &[Ident],
         storage_fields: &[ty::TyStorageField],
         storage_keyword_span: Span,
     ) -> Result<(ty::TyStorageAccess, TypeId), ErrorEmitted> {
         match self.declared_storage {
             Some(ref decl_ref) => {
                 let storage = engines.de().get_storage(&decl_ref.id().clone());
-                storage.apply_storage_load(
+                storage.apply_storage_access(
                     handler,
                     engines,
                     namespace,
                     namespace_names,
-                    fields,
+                    field_names,
                     storage_fields,
                     storage_keyword_span,
                 )
             }
             None => Err(handler.emit_err(CompileError::NoDeclaredStorage {
-                span: fields[0].span(),
+                span: storage_keyword_span,
             })),
         }
     }
@@ -460,8 +463,7 @@ impl Items {
                         _,
                     ) => {
                         handler.emit_err(CompileError::MultipleDefinitionsOfName {
-                            name: name.clone(),
-                            span: name.span(),
+                            name: (&name).into(),
                         });
                     }
                     _ => {}
@@ -639,8 +641,7 @@ impl Items {
                         _,
                     ) => {
                         handler.emit_err(CompileError::MultipleDefinitionsOfName {
-                            name: name.clone(),
-                            span: name.span(),
+                            name: (&name).into(),
                         });
                     }
                     // generic parameter shadowing another generic parameter
@@ -775,10 +776,7 @@ impl Items {
         self.symbols
             .get(name)
             .cloned()
-            .ok_or_else(|| CompileError::SymbolNotFound {
-                name: name.clone(),
-                span: name.span(),
-            })
+            .ok_or_else(|| CompileError::SymbolNotFound { name: name.into() })
     }
 
     pub(crate) fn check_symbols_unique_while_collecting_unifications(
@@ -789,10 +787,7 @@ impl Items {
             .read()
             .get(&name.into())
             .cloned()
-            .ok_or_else(|| CompileError::SymbolNotFound {
-                name: name.clone(),
-                span: name.span(),
-            })
+            .ok_or_else(|| CompileError::SymbolNotFound { name: name.into() })
     }
 
     pub(crate) fn clear_symbols_unique_while_collecting_unifications(&self) {

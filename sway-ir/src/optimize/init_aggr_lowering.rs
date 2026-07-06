@@ -399,7 +399,7 @@ fn lower_to_stores<'a, 'b>(
                             let inserter =
                                 get_inst_inserter_for_before_init_aggr(context, init_aggr);
                             inserter
-                                .get_elem_ptr_with_idcs(root_aggr_ptr, aggr_type, gep_indices)
+                                .get_elem_ptr_with_indices(root_aggr_ptr, aggr_type, gep_indices)
                                 .add_metadatum(context, init_aggr_metadata)
                         };
 
@@ -420,7 +420,11 @@ fn lower_to_stores<'a, 'b>(
                             let inserter =
                                 get_inst_inserter_for_before_init_aggr(context, init_aggr);
                             let gep_val = inserter
-                                .get_elem_ptr_with_idcs(root_aggr_ptr, arr_elem_type, gep_indices)
+                                .get_elem_ptr_with_indices(
+                                    root_aggr_ptr,
+                                    arr_elem_type,
+                                    gep_indices,
+                                )
                                 .add_metadatum(context, init_aggr_metadata);
 
                             let inserter =
@@ -521,7 +525,7 @@ fn lower_single_initializer_to_stores(
             // Store the initializer's value directly into the field.
             let inserter = get_inst_inserter_for_before_init_aggr(context, init_aggr);
             let gep_val = inserter
-                .get_elem_ptr_with_idcs(root_aggr_ptr, elem_ty, gep_indices)
+                .get_elem_ptr_with_indices(root_aggr_ptr, elem_ty, gep_indices)
                 .add_metadatum(context, init_aggr_metadata);
 
             let inserter = get_inst_inserter_for_before_init_aggr(context, init_aggr);
@@ -545,7 +549,7 @@ fn lower_single_initializer_to_stores(
 
             let inserter = get_inst_inserter_for_before_init_aggr(context, *nested_init_aggr);
             let gep_val = inserter
-                .get_elem_ptr_with_idcs(root_aggr_ptr, elem_ty, gep_indices)
+                .get_elem_ptr_with_indices(root_aggr_ptr, elem_ty, gep_indices)
                 .add_metadatum(context, init_aggr_metadata);
 
             let nested_aggr_type = nested_aggr_ptr

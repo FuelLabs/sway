@@ -1,0 +1,6 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+license = "Apache-2.0"
+name = "self_impl_contract_invalid_const_invalid_type"
+entry = "main.sw"
+implicit-std = false

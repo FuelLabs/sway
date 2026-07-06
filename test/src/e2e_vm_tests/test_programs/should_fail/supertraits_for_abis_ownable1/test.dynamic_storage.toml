@@ -1,0 +1,4 @@
+category = "fail"
+experimental = { new_encoding = true, dynamic_storage = true }
+
+# check: $()Trait "StorageHelpers" is not implemented for type "Contract".

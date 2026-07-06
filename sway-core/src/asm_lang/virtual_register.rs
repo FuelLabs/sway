@@ -10,6 +10,16 @@ pub enum VirtualRegister {
     Constant(ConstantRegister),
 }
 
+impl From<&str> for VirtualRegister {
+    fn from(value: &str) -> Self {
+        if let Some(r) = ConstantRegister::parse_register_name(value) {
+            VirtualRegister::Constant(r)
+        } else {
+            VirtualRegister::Virtual(value.to_string())
+        }
+    }
+}
+
 impl VirtualRegister {
     pub fn is_virtual(&self) -> bool {
         matches!(self, Self::Virtual(_))

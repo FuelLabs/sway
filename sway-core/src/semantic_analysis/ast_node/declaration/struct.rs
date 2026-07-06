@@ -36,7 +36,7 @@ impl ty::TyStructDecl {
     pub(crate) fn type_check(
         handler: &Handler,
         mut ctx: TypeCheckContext,
-        decl: StructDeclaration,
+        decl: &StructDeclaration,
     ) -> Result<Self, ErrorEmitted> {
         let StructDeclaration {
             name,
@@ -61,7 +61,7 @@ impl ty::TyStructDecl {
             // type check the fields
             let mut new_fields = vec![];
             let mut encountered_non_indexed_field = false;
-            for field in fields.into_iter() {
+            for field in fields.iter() {
                 let ty_field = ty::TyStructField::type_check(handler, ctx.by_ref(), field)?;
                 if ty_field.attributes.indexed().is_some() && attributes.event().is_none() {
                     return Err(
@@ -99,16 +99,16 @@ impl ty::TyStructDecl {
                 new_fields.push(ty_field);
             }
 
-            let path = CallPath::ident_to_fullpath(name, ctx.namespace());
+            let path = CallPath::ident_to_fullpath(name.clone(), ctx.namespace());
 
             // create the struct decl
             let decl = ty::TyStructDecl {
                 call_path: path,
                 generic_parameters: new_type_parameters,
                 fields: new_fields,
-                visibility,
-                span,
-                attributes,
+                visibility: *visibility,
+                span: span.clone(),
+                attributes: attributes.clone(),
             };
 
             Ok(decl)
@@ -120,11 +120,11 @@ impl ty::TyStructField {
     pub(crate) fn type_check(
         handler: &Handler,
         ctx: TypeCheckContext,
-        field: StructField,
+        field: &StructField,
     ) -> Result<Self, ErrorEmitted> {
         let type_engine = ctx.engines.te();
 
-        let mut type_argument = field.type_argument;
+        let mut type_argument = field.type_argument.clone();
         type_argument.type_id = ctx
             .resolve_type(
                 handler,
@@ -136,10 +136,10 @@ impl ty::TyStructField {
             .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
         let field = ty::TyStructField {
             visibility: field.visibility,
-            name: field.name,
-            span: field.span,
+            name: field.name.clone(),
+            span: field.span.clone(),
             type_argument,
-            attributes: field.attributes,
+            attributes: field.attributes.clone(),
         };
         Ok(field)
     }
