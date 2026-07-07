@@ -16,7 +16,7 @@ use crate::{
     value::{Value, ValueDatum},
     variable::LocalVar,
     AnalysisResult, AnalysisResultT, AnalysisResults, BinaryOpKind, Block, BlockArgument,
-    BranchToWithArgs, Doc, GlobalVar, InitAggr, LogEventData, Module, Pass, PassMutability,
+    BranchToWithArgs, Config, Doc, GlobalVar, InitAggr, LogEventData, Module, Pass, PassMutability,
     ScopedPass, StorageKey, TypeContent, TypeOption, UnaryOpKind,
 };
 
@@ -96,8 +96,8 @@ impl Context<'_> {
         if function.num_args(self) != entry_block.num_args(self) {
             return Err(IrError::VerifyBlockArgMalformed);
         }
-        for ((_, func_arg), block_arg) in function.args_iter(self).zip(entry_block.arg_iter(self)) {
-            if func_arg != block_arg {
+        for (arg, block_arg) in function.args_iter(self).zip(entry_block.arg_iter(self)) {
+            if &arg.value != block_arg {
                 return Err(IrError::VerifyBlockArgMalformed);
             }
         }
@@ -376,7 +376,7 @@ impl InstructionVerifier<'_, '_> {
                 } => self.verify_get_elem_ptr(&ins, base, elem_ptr_ty, indices)?,
                 InstOp::GetLocal(local_var) => self.verify_get_local(local_var)?,
                 InstOp::GetGlobal(global_var) => self.verify_get_global(global_var)?,
-                InstOp::GetConfig(_, name) => self.verify_get_config(self.cur_module, name)?,
+                InstOp::GetConfig(config) => self.verify_get_config(config)?,
                 InstOp::GetStorageKey(storage_key) => self.verify_get_storage_key(storage_key)?,
                 InstOp::IntToPtr(value, ty) => self.verify_int_to_ptr(value, ty)?,
                 InstOp::Load(ptr) => self.verify_load(ptr)?,
@@ -629,9 +629,9 @@ impl InstructionVerifier<'_, '_> {
         let callee_arg_types = callee_content
             .arguments
             .iter()
-            .map(|(_, arg_val)| {
+            .map(|arg| {
                 if let ValueDatum::Argument(BlockArgument { ty, .. }) =
-                    &self.context.values[arg_val.0].value
+                    &self.context.values[arg.value.0].value
                 {
                     Ok(*ty)
                 } else {
@@ -895,8 +895,12 @@ impl InstructionVerifier<'_, '_> {
         }
     }
 
-    fn verify_get_config(&self, module: Module, name: &str) -> Result<(), IrError> {
-        if !self.context.modules[module.0].configs.contains_key(name) {
+    fn verify_get_config(&self, config: &Config) -> Result<(), IrError> {
+        if !self.context.modules[self.cur_module.0]
+            .configs
+            .values()
+            .any(|c| c == config)
+        {
             Err(IrError::VerifyGetNonExistentConfigPointer)
         } else {
             Ok(())

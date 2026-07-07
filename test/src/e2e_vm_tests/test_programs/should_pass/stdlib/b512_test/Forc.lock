@@ -1,8 +1,0 @@
-[[package]]
-name = "b512_test"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "std"
-source = "path+from-root-036C2C548FDF30D8"

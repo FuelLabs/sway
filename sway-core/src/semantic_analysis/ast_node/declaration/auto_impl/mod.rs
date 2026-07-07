@@ -196,7 +196,7 @@ where
             &handler,
             engines,
             ctx.collection_ctx,
-            Declaration::FunctionDeclaration(decl),
+            &Declaration::FunctionDeclaration(decl),
         );
         if handler.has_errors() {
             return Err(handler);
@@ -206,7 +206,7 @@ where
             TyDecl::type_check(
                 &handler,
                 &mut ctx.by_ref(),
-                parsed::Declaration::FunctionDeclaration(decl),
+                &parsed::Declaration::FunctionDeclaration(decl),
             )
         });
 
@@ -258,19 +258,15 @@ where
             return Err(handler);
         }
 
+        let decl = Declaration::ImplSelfOrTrait(decl);
         let mut ctx = self.ctx.by_ref();
-        let _r = TyDecl::collect(
-            &handler,
-            engines,
-            ctx.collection_ctx,
-            Declaration::ImplSelfOrTrait(decl),
-        );
+        let _r = TyDecl::collect(&handler, engines, ctx.collection_ctx, &decl);
         if handler.has_errors() {
             return Err(handler);
         }
 
         let r = ctx.scoped(&handler, None, |ctx| {
-            TyDecl::type_check(&handler, ctx, Declaration::ImplSelfOrTrait(decl))
+            TyDecl::type_check(&handler, ctx, &decl)
         });
 
         // Uncomment this to understand why auto impl failed for a type.

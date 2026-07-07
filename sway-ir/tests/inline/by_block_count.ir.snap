@@ -1,0 +1,54 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    fn one_block() -> bool {
+        entry():
+        v1v1 = const bool false
+        ret bool v1v1
+    }
+
+    fn two_blocks() -> bool {
+        entry():
+        v4v1 = const bool true
+        br block(v4v1)
+
+        block(v3v1: bool):
+        ret bool v3v1
+    }
+
+    fn three_blocks(b: bool) -> bool {
+        entry(mut b: bool):
+        cbr b, then_block(), else_block()
+
+        then_block():
+        v9v1 = const bool false
+        ret bool v9v1
+
+        else_block():
+        v11v1 = const bool true
+        ret bool v11v1
+    }
+
+    fn main() -> bool {
+        entry():
+-         v13v1 = call one_block()
+-         v14v1 = call two_blocks()
+-         v15v1 = call three_blocks(v14v1)
++         v1v1 = const bool false
++         br block0(v1v1)
++ 
++         block0(mut v17v1: bool):
++         v4v1 = const bool true
++         br two_blocks_block(v4v1)
++ 
++         two_blocks_block(mut v14v3: bool):
++         br block1(v14v3)
++ 
++         block1(mut v18v1: bool):
++         v15v1 = call three_blocks(v18v1)
+        ret bool v15v1
+    }
+}

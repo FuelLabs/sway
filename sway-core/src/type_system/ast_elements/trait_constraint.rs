@@ -7,7 +7,7 @@ use crate::{
     },
     type_system::priv_prelude::*,
     types::{CollectTypesMetadata, CollectTypesMetadataContext, TypeMetadata},
-    EnforceTypeArguments, Namespace,
+    EnforceTypeArguments, HasChanges, Namespace,
 };
 use serde::{Deserialize, Serialize};
 use std::{

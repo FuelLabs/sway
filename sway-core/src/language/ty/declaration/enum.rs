@@ -3,9 +3,14 @@ use crate::{
     decl_engine::MaterializeConstGenerics,
     engine_threading::*,
     has_changes,
-    language::{parsed::EnumDeclaration, ty::TyDeclParsedType, CallPath, Visibility},
+    language::{
+        parsed::EnumDeclaration,
+        ty::{TyDeclParsedType, TyExpression},
+        CallPath, Visibility,
+    },
     transform,
     type_system::*,
+    HasChanges,
 };
 use ast_elements::type_parameter::ConstGenericExpr;
 use monomorphization::MonomorphizeHelper;
@@ -112,15 +117,18 @@ impl MaterializeConstGenerics for TyEnumDecl {
         engines: &Engines,
         handler: &Handler,
         name: &str,
-        value: &crate::language::ty::TyExpression,
-    ) -> Result<(), ErrorEmitted> {
+        value: &TyExpression,
+    ) -> Result<HasChanges, ErrorEmitted> {
+        let mut has_changes = HasChanges::No;
         for p in self.generic_parameters.iter_mut() {
             match p {
                 TypeParameter::Const(p) if p.name.as_str() == name => {
                     p.expr = Some(ConstGenericExpr::from_ty_expression(handler, value)?);
+                    has_changes = HasChanges::Yes;
                 }
                 TypeParameter::Type(p) => {
-                    p.type_id
+                    has_changes |= p
+                        .type_id
                         .materialize_const_generics(engines, handler, name, value)?;
                 }
                 _ => {}
@@ -128,13 +136,13 @@ impl MaterializeConstGenerics for TyEnumDecl {
         }
 
         for variant in self.variants.iter_mut() {
-            variant
+            has_changes |= variant
                 .type_argument
                 .type_id
                 .materialize_const_generics(engines, handler, name, value)?;
         }
 
-        Ok(())
+        Ok(has_changes)
     }
 }
 

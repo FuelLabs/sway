@@ -1,0 +1,402 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    fn main() -> bool, !1 {
+        local u64 counter
+        local u64 counter_2
+        local u64 counter_3
+        local u64 counter_4
+        local u64 counter_5
+        local () result
+
+        entry():
+        v3v1 = get_local __ptr u64, counter, !2
+        v4v1 = const u64 0, !3
+-         store v4v1 to v3v1, !2
+-         br while()
++         br while(v4v1)
+
+-         while():
++         while(mut v153v1: u64):
+        v7v1 = get_local __ptr u64, counter, !4
+-         v8v1 = load v7v1, !4
+        v9v1 = const u64 10, !5
+-         v10v1 = call lt_1(v8v1, v9v1), !6
++         v10v1 = call lt_1(v153v1, v9v1), !6
+        cbr v10v1, while_body(), end_while()
+
+        while_body():
+        v12v1 = get_local __ptr u64, counter, !7
+        v13v1 = get_local __ptr u64, counter, !8
+-         v14v1 = load v13v1, !8
+        v15v1 = const u64 1, !9
+-         v16v1 = call add_0(v14v1, v15v1), !10
+-         store v16v1 to v12v1, !7
+-         br while()
++         v16v1 = call add_0(v153v1, v15v1), !10
++         br while(v16v1)
+
+        end_while():
+        v19v1 = get_local __ptr u64, counter, !11
+-         v20v1 = load v19v1, !11
+        v21v1 = const u64 10, !12
+-         v22v1 = call eq_5(v20v1, v21v1), !13
++         v22v1 = call eq_5(v153v1, v21v1), !13
+        v23v1 = call assert_2(v22v1), !15
+        v24v1 = get_local __ptr u64, counter_2, !16
+-         v25v1 = const u64 0, !17
+-         store v25v1 to v24v1, !16
+-         v27v1 = get_local __ptr u64, counter_3, !18
++         v27v1 = get_local __ptr u64, counter_3, !17
++         v25v1 = const u64 0, !18
+        v28v1 = const u64 0, !19
+-         store v28v1 to v27v1, !18
+-         br while0()
++         br while0(v25v1, v28v1)
+
+-         while0():
++         while0(mut v155v1: u64, mut v157v1: u64):
+        v31v1 = get_local __ptr u64, counter_2, !20
+-         v32v1 = load v31v1, !20
+        v33v1 = const u64 10, !21
+-         v34v1 = call lt_1(v32v1, v33v1), !22
++         v34v1 = call lt_1(v155v1, v33v1), !22
+        cbr v34v1, while_body1(), end_while2()
+
+        while_body1():
+        v36v1 = get_local __ptr u64, counter_2, !23
+-         v37v1 = load v36v1, !23
+        v38v1 = const u64 3, !24
+-         v39v1 = call eq_5(v37v1, v38v1), !25
++         v39v1 = call eq_5(v155v1, v38v1), !25
+        cbr v39v1, block3(), block4(), !25
+
+        end_while2():
+        v41v1 = get_local __ptr u64, counter_2, !26
+-         v42v1 = load v41v1, !26
+        v43v1 = const u64 10, !27
+-         v44v1 = call eq_5(v42v1, v43v1), !28
++         v44v1 = call eq_5(v155v1, v43v1), !28
+        cbr v44v1, block6(), block7(v44v1), !29
+
+        block3():
+        v46v1 = get_local __ptr u64, counter_2, !30
++         v49v1 = const unit ()
+        v47v1 = const u64 10, !31
+-         store v47v1 to v46v1, !30
+-         v49v1 = const unit ()
+-         br block5(v49v1)
++         br block5(v49v1, v47v1, v157v1)
+
+        block4():
+        v51v1 = get_local __ptr u64, counter_2, !32
+        v52v1 = get_local __ptr u64, counter_2, !33
+-         v53v1 = load v52v1, !33
+        v54v1 = const u64 1, !34
+-         v55v1 = call add_0(v53v1, v54v1), !35
+-         store v55v1 to v51v1, !32
++         v55v1 = call add_0(v155v1, v54v1), !35
+        v57v1 = get_local __ptr u64, counter_3, !36
+        v58v1 = get_local __ptr u64, counter_3, !37
+-         v59v1 = load v58v1, !37
+        v60v1 = const u64 1, !38
+-         v61v1 = call add_0(v59v1, v60v1), !39
+-         store v61v1 to v57v1, !36
++         v61v1 = call add_0(v157v1, v60v1), !39
+        v63v1 = const unit ()
+-         br block5(v63v1)
++         br block5(v63v1, v55v1, v61v1)
+
+-         block5(v1v1: ()):
+-         br while0()
++         block5(v1v1: (), mut v154v1: u64, mut v156v1: u64):
++         br while0(v154v1, v156v1)
+
+        block6():
+        v66v1 = get_local __ptr u64, counter_3, !40
+-         v67v1 = load v66v1, !40
+        v68v1 = const u64 3, !41
+-         v69v1 = call eq_5(v67v1, v68v1), !42
++         v69v1 = call eq_5(v157v1, v68v1), !42
+        br block7(v69v1), !29
+
+        block7(v2v1: bool):
+        v71v1 = call assert_2(v2v1), !15
+        v72v1 = get_local __ptr u64, counter_4, !43
+-         v73v1 = const u64 0, !44
+-         store v73v1 to v72v1, !43
+-         v75v1 = get_local __ptr u64, counter_5, !45
+-         v76v1 = const u64 0, !46
+-         store v76v1 to v75v1, !45
+-         br while8()
++         v75v1 = get_local __ptr u64, counter_5, !44
++         v76v1 = const u64 0, !45
++         v73v1 = const u64 0, !46
++         br while8(v76v1, v73v1)
+
+-         while8():
++         while8(mut v159v1: u64, mut v160v1: u64):
+        v79v1 = get_local __ptr u64, counter_4, !47
+-         v80v1 = load v79v1, !47
+        v81v1 = const u64 7, !48
+-         v82v1 = call lt_1(v80v1, v81v1), !49
++         v82v1 = call lt_1(v160v1, v81v1), !49
+        cbr v82v1, while_body9(), end_while10()
+
+        while_body9():
+-         br while11()
++         br while11(v159v1)
+
+        end_while10():
+        v85v1 = get_local __ptr u64, counter_5, !50
+-         v86v1 = load v85v1, !50
+        v87v1 = const u64 11, !51
+-         v88v1 = call eq_5(v86v1, v87v1), !52
++         v88v1 = call eq_5(v159v1, v87v1), !52
+        v89v1 = call assert_2(v88v1), !15
+        v90v1 = get_local __ptr u64, counter_4, !53
+-         v91v1 = load v90v1, !53
+        v92v1 = const u64 7, !54
+-         v93v1 = call eq_5(v91v1, v92v1), !55
++         v93v1 = call eq_5(v160v1, v92v1), !55
+        v94v1 = call assert_2(v93v1), !15
+        br while14()
+
+-         while11():
++         while11(mut v158v1: u64):
+        v96v1 = get_local __ptr u64, counter_5, !56
+-         v97v1 = load v96v1, !56
+        v98v1 = const u64 11, !57
+-         v99v1 = call lt_1(v97v1, v98v1), !58
++         v99v1 = call lt_1(v158v1, v98v1), !58
+        cbr v99v1, while_body12(), end_while13()
+
+        while_body12():
+        v101v1 = get_local __ptr u64, counter_5, !59
+        v102v1 = get_local __ptr u64, counter_5, !60
+-         v103v1 = load v102v1, !60
+        v104v1 = const u64 1, !61
+-         v105v1 = call add_0(v103v1, v104v1), !62
+-         store v105v1 to v101v1, !59
+-         br while11()
++         v105v1 = call add_0(v158v1, v104v1), !62
++         br while11(v105v1)
+
+        end_while13():
+        v108v1 = get_local __ptr u64, counter_4, !63
+        v109v1 = get_local __ptr u64, counter_4, !64
+-         v110v1 = load v109v1, !64
+        v111v1 = const u64 1, !65
+-         v112v1 = call add_0(v110v1, v111v1), !66
+-         store v112v1 to v108v1, !63
+-         br while8()
++         v112v1 = call add_0(v160v1, v111v1), !66
++         br while8(v158v1, v112v1)
+
+        while14():
+        v115v1 = const bool true, !67
+        cbr v115v1, while_body15(), end_while16()
+
+        while_body15():
+        br end_while16()
+
+        end_while16():
+        v118v1 = get_local __ptr (), result, !68
+-         v119v1 = const unit (), !69
+-         store v119v1 to v118v1, !68
+-         v121v1 = const bool true, !70
++         v121v1 = const bool true, !69
+        ret bool v121v1
+    }
+
+-     fn add_0(self !72: u64, other !73: u64) -> u64, !74 {
++     fn add_0(self !71: u64, other !72: u64) -> u64, !73 {
+        entry(mut self: u64, mut other: u64):
+        v125v1 = add self, other
+        ret u64 v125v1
+    }
+
+-     fn lt_1(self !75: u64, other !76: u64) -> bool, !77 {
++     fn lt_1(self !74: u64, other !75: u64) -> bool, !76 {
+        entry(mut self: u64, mut other: u64):
+-         v129v1 = asm(r1: self, r2: other, r3) -> bool r3, !78 {
+-             lt     r3 r1 r2, !79
++         v129v1 = asm(r1: self, r2: other, r3) -> bool r3, !77 {
++             lt     r3 r1 r2, !78
+        }
+        ret bool v129v1
+    }
+
+-     fn assert_2(condition !80: bool) -> (), !15 {
++     fn assert_2(condition !79: bool) -> (), !15 {
+        entry(mut condition: bool):
+-         v133v1 = call not_3(condition), !81
+-         cbr v133v1, block0(), block1(), !81
++         v133v1 = call not_3(condition), !80
++         cbr v133v1, block0(), block1(), !80
+
+        block0():
+-         v135v1 = const u64 0, !82
+-         v136v1 = call revert_4(v135v1), !84
++         v135v1 = const u64 0, !81
++         v136v1 = call revert_4(v135v1), !83
+        v137v1 = const unit ()
+        br block2(v137v1)
+
+        block1():
+        v139v1 = const unit ()
+        br block2(v139v1)
+
+        block2(v132v1: ()):
+        v141v1 = const unit ()
+        ret () v141v1
+    }
+
+-     fn not_3(self !85: bool) -> bool, !86 {
++     fn not_3(self !84: bool) -> bool, !85 {
+        entry(mut self: bool):
+-         v144v1 = const bool false, !87
++         v144v1 = const bool false, !86
+        v145v1 = cmp eq self v144v1
+        ret bool v145v1
+    }
+
+-     fn revert_4(code !88: u64) -> (), !84 {
++     fn revert_4(code !87: u64) -> (), !83 {
+        entry(mut code: u64):
+-         revert code, !89
++         revert code, !88
+    }
+
+-     fn eq_5(self !90: u64, other !91: u64) -> bool, !92 {
++     fn eq_5(self !89: u64, other !90: u64) -> bool, !91 {
+        entry(mut self: u64, mut other: u64):
+        v151v1 = cmp eq self other
+        ret bool v151v1
+    }
+}
+
+!0 = "sway/test/src/e2e_vm_tests/test_programs/should_pass/language/while_loops/src/main.sw"
+!1 = span !0 35 1010
+!2 = span !0 59 79
+!3 = span !0 77 78
+!4 = span !0 123 130
+!5 = span !0 133 135
+!6 = span !0 123 135
+!7 = span !0 146 167
+!8 = span !0 156 163
+!9 = span !0 166 167
+!10 = span !0 156 167
+!11 = span !0 186 193
+!12 = span !0 197 199
+!13 = span !0 186 199
+!14 = "sway/sway-lib-std/src/assert.sw"
+!15 = span !14 308 387
+!16 = span !0 293 315
+- !17 = span !0 313 314
+- !18 = span !0 320 342
++ !17 = span !0 320 342
++ !18 = span !0 313 314
+!19 = span !0 340 341
+!20 = span !0 353 362
+!21 = span !0 365 367
+!22 = span !0 353 367
+!23 = span !0 381 390
+!24 = span !0 394 395
+!25 = span !0 381 395
+!26 = span !0 602 611
+!27 = span !0 615 617
+!28 = span !0 602 617
+!29 = span !0 602 635
+!30 = span !0 463 477
+!31 = span !0 475 477
+!32 = span !0 508 533
+!33 = span !0 520 529
+!34 = span !0 532 533
+!35 = span !0 520 533
+!36 = span !0 547 572
+!37 = span !0 559 568
+!38 = span !0 571 572
+!39 = span !0 559 572
+!40 = span !0 621 630
+!41 = span !0 634 635
+!42 = span !0 621 635
+!43 = span !0 669 691
+- !44 = span !0 689 690
+- !45 = span !0 696 718
+- !46 = span !0 716 717
++ !44 = span !0 696 718
++ !45 = span !0 716 717
++ !46 = span !0 689 690
+!47 = span !0 730 739
+!48 = span !0 742 743
+!49 = span !0 730 743
+!50 = span !0 878 887
+!51 = span !0 891 893
+!52 = span !0 878 893
+!53 = span !0 907 916
+!54 = span !0 920 921
+!55 = span !0 907 921
+!56 = span !0 760 769
+!57 = span !0 772 774
+!58 = span !0 760 774
+!59 = span !0 789 814
+!60 = span !0 801 810
+!61 = span !0 813 814
+!62 = span !0 801 814
+!63 = span !0 834 859
+!64 = span !0 846 855
+!65 = span !0 858 859
+!66 = span !0 846 859
+!67 = span !0 982 986
+!68 = span !0 963 998
+- !69 = span !0 976 997
+- !70 = span !0 1004 1008
+- !71 = "sway/sway-lib-std/src/ops.sw"
+- !72 = span !71 117 121
+- !73 = span !71 123 128
+- !74 = span !71 110 178
+- !75 = span !71 3993 3997
+- !76 = span !71 3999 4004
+- !77 = span !71 3987 4122
+- !78 = span !71 4030 4116
+- !79 = span !71 4073 4084
+- !80 = span !14 322 331
+- !81 = span !14 348 358
+- !82 = span !14 376 377
+- !83 = "sway/sway-lib-std/src/revert.sw"
+- !84 = span !83 172 219
+- !85 = span !71 2706 2710
+- !86 = span !71 2699 2753
+- !87 = span !71 2741 2746
+- !88 = span !83 186 190
+- !89 = span !83 203 217
+- !90 = span !71 3015 3019
+- !91 = span !71 3021 3026
+- !92 = span !71 3009 3075
++ !69 = span !0 1004 1008
++ !70 = "sway/sway-lib-std/src/ops.sw"
++ !71 = span !70 117 121
++ !72 = span !70 123 128
++ !73 = span !70 110 178
++ !74 = span !70 3993 3997
++ !75 = span !70 3999 4004
++ !76 = span !70 3987 4122
++ !77 = span !70 4030 4116
++ !78 = span !70 4073 4084
++ !79 = span !14 322 331
++ !80 = span !14 348 358
++ !81 = span !14 376 377
++ !82 = "sway/sway-lib-std/src/revert.sw"
++ !83 = span !82 172 219
++ !84 = span !70 2706 2710
++ !85 = span !70 2699 2753
++ !86 = span !70 2741 2746
++ !87 = span !82 186 190
++ !88 = span !82 203 217
++ !89 = span !70 3015 3019
++ !90 = span !70 3021 3026
++ !91 = span !70 3009 3075

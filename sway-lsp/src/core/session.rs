@@ -132,7 +132,7 @@ pub fn token_ranges(
         .map(|item| item.key().range)
         .collect();
 
-    token_ranges.sort_by(|a, b| a.start.line.cmp(&b.start.line));
+    token_ranges.sort_by_key(|a| a.start.line);
     Some(token_ranges)
 }
 

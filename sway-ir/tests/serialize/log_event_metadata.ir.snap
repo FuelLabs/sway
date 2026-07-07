@@ -1,0 +1,18 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    fn main() -> () {
+        entry():
+        v1v1 = const u64 0
+        v2v1 = const u64 1
+        log u64 v1v1, v2v1
+        v4v1 = const u64 2
+        v5v1 = const u64 3
+        log u64 v4v1, v5v1 log_data(version: 0, is_event: true, is_indexed: true, event_type_size: 8, num_elements: 2)
+        v7v1 = const unit ()
+        ret () v7v1
+    }
+}

@@ -1,42 +1,6 @@
 ---
 source: test/src/snapshot/mod.rs
 ---
-> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics --release
-exit status: 0
-output:
-    Building test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics
-   Compiling library std (sway-lib-std)
-   Compiling script const_generics (test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics)
-warning
-  --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:86:5
-   |
-84 |       }
-85 |   
-86 |       fn return_n2_2(self) -> u64 {
-   |  _____-
-87 | |         N2
-88 | |     }
-   | |_____- This method is never called.
-89 |   }
-90 |   const NNN: u64 = 9;
-   |
-____
-
-warning
-  --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:90:7
-   |
-88 |     }
-89 | }
-90 | const NNN: u64 = 9;
-   |       --- This declaration is never used.
-91 | 
-92 | #[inline(never)]
-   |
-____
-
-  Compiled script "const_generics" with 2 warnings.
-    Finished release [optimized + fuel] target(s) [632 B] in ???
-
 > forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics --test-threads 1 --dbgs
 exit status: 0
 output:
@@ -71,27 +35,27 @@ warning
 ____
 
   Compiled script "const_generics" with 2 warnings.
-    Finished debug [unoptimized + fuel] target(s) [8.712 KB] in ???
+    Finished debug [unoptimized + fuel] target(s) [8.816 KB] in ???
      Running 1 test, filtered 0 tests
 
 tested -- const_generics
 
-      test run_main ... ok (???, 20003 gas)
+      test run_main ... ok (???, 17769 gas)
            debug output:
-[src/main.sw:110:13] a = [1, 2]
-[src/main.sw:114:13] [C {}].len() = 1
-[src/main.sw:119:13] [C {}, C {}].len() = 2
-[src/main.sw:123:13] s.len_xxx() = 3
-[src/main.sw:129:13] e = OneVariant([1, 2, 3])
-[src/main.sw:134:13] e = Nothing
-[src/main.sw:152:13] return_n::<3>() = 3
-[src/main.sw:154:13] return_n::<5>() = 5
-[src/main.sw:160:13] a.len() = 3
-[src/main.sw:161:13] a = "ABC"
-[src/main.sw:165:13] a.len() = 5
-[src/main.sw:166:13] a = "ABCDE"
-[src/main.sw:170:13] a.len() = 70
-[src/main.sw:171:13] a = "1234567890123456789012345678901234567890123456789012345678901234567890"
+[src/main.sw:154:13] a = [1, 2]
+[src/main.sw:158:13] [C {}].len() = 1
+[src/main.sw:163:13] [C {}, C {}].len() = 2
+[src/main.sw:167:13] s.len_xxx() = 3
+[src/main.sw:173:13] e = OneVariant([1, 2, 3])
+[src/main.sw:178:13] e = Nothing
+[src/main.sw:196:13] return_n::<3>() = 3
+[src/main.sw:198:13] return_n::<5>() = 5
+[src/main.sw:204:13] a.len() = 3
+[src/main.sw:205:13] a = "ABC"
+[src/main.sw:209:13] a.len() = 5
+[src/main.sw:210:13] a = "ABCDE"
+[src/main.sw:214:13] a.len() = 70
+[src/main.sw:215:13] a = "1234567890123456789012345678901234567890123456789012345678901234567890"
 [src/main.sw:106:13] A = 2
 [src/main.sw:106:13] A = 6
 

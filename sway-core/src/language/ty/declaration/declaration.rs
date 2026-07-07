@@ -5,6 +5,7 @@ use crate::{
     semantic_analysis::TypeCheckContext,
     type_system::*,
     types::*,
+    HasChanges,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -64,10 +65,10 @@ impl ReplaceDecls for ConstantDecl {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
-    ) -> Result<bool, ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
         let mut decl = TyConstantDecl::clone(&*ctx.engines.de().get(&self.decl_id));
         let has_changes = decl.replace_decls(decl_mapping, handler, ctx)?;
-        if has_changes {
+        if has_changes.has_changes() {
             let parsed_decl_id = ctx.engines.de().get_parsed_decl_id(&self.decl_id);
             let new_ref = ctx.engines.de().insert(decl, parsed_decl_id.as_ref());
             self.decl_id.replace_id(*new_ref.id());

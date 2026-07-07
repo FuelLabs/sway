@@ -89,39 +89,20 @@ script {
     }
 
     fn main() -> bool {
-// check: fn main() -> bool
         entry():
 
         v0 = call less_one_block()
-// not: call less_one_block
-// check: const u64 11
 
         v1 = call less_two_blocks()
-// not: call less_two_blocks
-// check: const u64 22
 
         v2 = const bool true
         v3 = call less_three_blocks(v2)
-// not: call less_three_blocks
-// check: const u64 33
-// check: const u64 44
 
         v4 = call more_one_block()
-// check: call more_one_block
-// not: const u64 55
-// not: const u64 66
 
         v5 = call more_two_blocks()
-// check: call more_two_blocks
-// not: const u64 77
-// not: const u64 88
 
         v6 = call more_three_blocks(v5)
-// check: call more_three_blocks
-// not: const u64 99
-// not: const u64 1010
-// not: const u64 1111
-// not: const u64 1212
 
         ret bool v6
     }

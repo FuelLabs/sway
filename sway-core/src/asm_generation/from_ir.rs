@@ -82,7 +82,7 @@ fn compile(
     }
 
     for config in module.iter_configs(context) {
-        builder.compile_configurable(config);
+        builder.compile_configurable(config.get_content(context));
     }
 
     for function in module.function_iter(context) {

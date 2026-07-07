@@ -25,5 +25,9 @@ sway-ir-macros.workspace = true
 sway-types.workspace = true
 sway-utils.workspace = true
 
+[dev-dependencies]
+insta.workspace = true
+vte.workspace = true
+
 [lints]
 workspace = true

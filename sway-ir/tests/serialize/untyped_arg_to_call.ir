@@ -3,7 +3,6 @@
 // Based on the `v2 = call a(v1)` line
 
 script {
-// check: fn main
     fn main() -> bool {
         entry():
         v0 = const bool true

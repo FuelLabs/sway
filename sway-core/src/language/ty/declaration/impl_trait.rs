@@ -5,6 +5,7 @@ use crate::{
     has_changes,
     language::{parsed::ImplSelfOrTrait, CallPath},
     type_system::*,
+    HasChanges,
 };
 use serde::{Deserialize, Serialize};
 use std::{

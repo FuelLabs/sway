@@ -43,9 +43,3 @@ script {
         ret { u64, u64 } v1
     }
 }
-
-// check: entry fn main() -> () {
-// not: local { u64, u64 } x
-// check: entry():
-// not: get_local __ptr { u64, u64 }, x
-// check: ret ()

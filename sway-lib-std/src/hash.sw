@@ -378,9 +378,7 @@ where
         // `__elem_at` accepts only a reference to a slice or an array.
         // To satisfy this requirement, we cast the pointer to the underlying
         // vector data to an array reference.
-        let ptr = asm(ptr: self.ptr()) {
-            ptr: &[T; 0]
-        };
+        let ptr = __transmute::<raw_ptr, &[T; 0]>(self.ptr());
 
         let mut i = 0;
         while __lt(i, len) {
@@ -404,9 +402,7 @@ where
         // `__elem_at` accepts only a reference to a slice or an array.
         // To satisfy this requirement, we cast the pointer to the underlying
         // vector data to an array reference.
-        let ptr = asm(ptr: self.ptr()) {
-            ptr: &[T; 0]
-        };
+        let ptr = __transmute::<raw_ptr, &[T; 0]>(self.ptr());
 
         let mut i = 0;
         while __lt(i, len) {
@@ -591,54 +587,4 @@ where
     let mut hasher = Hasher::with_capacity(capacity);
     s.hash(hasher);
     hasher.keccak256()
-}
-
-#[cfg(experimental_new_hashing = false)]
-#[test]
-fn ok_array_hash() {
-    use ::ops::*;
-    use ::assert::*;
-
-    // Arrays and tuples
-    let a = sha256([1, 2, 3]);
-    let b = sha256((1, 2, 3));
-    assert(a == b);
-
-    // string slices
-    let a = sha256(("abc", "def"));
-    let b = sha256(("ab", "cd", "ef"));
-    assert(a == b);
-
-    // string arrays
-    let a = sha256((__to_str_array("abc"), __to_str_array("def")));
-    let b = sha256((__to_str_array("ab"), __to_str_array("cd"), __to_str_array("ef")));
-    assert(a == b);
-}
-
-#[cfg(experimental_new_hashing = true)]
-#[test]
-fn ok_array_hash() {
-    use ::ops::*;
-    use ::assert::*;
-
-    // Arrays and tuples
-    let a = sha256([1, 2, 3]);
-    let b = sha256((1, 2, 3));
-    assert(a != b);
-    let b = sha256((3_u64, 1, 2, 3));
-    assert(a == b);
-
-    // string slices
-    let a = sha256(("abc", "def"));
-    let b = sha256(("ab", "cd", "ef"));
-    assert(a != b);
-    let b = sha256((3u64, 97u8, 98u8, 99u8, 3u64, 100u8, 101u8, 102u8));
-    assert(a == b);
-
-    // string arrays
-    let a = sha256((__to_str_array("abc"), __to_str_array("def")));
-    let b = sha256((__to_str_array("ab"), __to_str_array("cd"), __to_str_array("ef")));
-    assert(a != b);
-    let b = sha256((3u64, 97u8, 98u8, 99u8, 3u64, 100u8, 101u8, 102u8));
-    assert(a == b);
 }

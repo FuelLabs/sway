@@ -280,7 +280,7 @@ fn get_symbols(context: &Context, val: Value, gep_only: bool) -> ReferredSymbols
             // We've reached a configurable at the top of the chain.
             // There cannot be a symbol behind it, and so the returned set is complete.
             ValueDatum::Instruction(Instruction {
-                op: InstOp::GetConfig(_, _),
+                op: InstOp::GetConfig(_),
                 ..
             }) if !gep_only => (),
             // We've reached a global at the top of the chain.
@@ -439,7 +439,7 @@ fn compute_escaped_symbols(context: &Context, function: &Function) -> EscapedSym
             InstOp::FuelVm(_) => (),
             InstOp::GetLocal(_) => (),
             InstOp::GetGlobal(_) => (),
-            InstOp::GetConfig(_, _) => (),
+            InstOp::GetConfig(_) => (),
             InstOp::GetStorageKey(_) => (),
             InstOp::GetElemPtr { .. } => (),
             InstOp::IntToPtr(_, _) => (),
@@ -486,7 +486,7 @@ pub fn get_loaded_ptr_values(context: &Context, inst: Value) -> Vec<Value> {
         | InstOp::CastPtr(_, _)
         | InstOp::GetLocal(_)
         | InstOp::GetGlobal(_)
-        | InstOp::GetConfig(_, _)
+        | InstOp::GetConfig(_)
         | InstOp::GetStorageKey(_)
         | InstOp::GetElemPtr { .. }
         | InstOp::IntToPtr(_, _) => vec![],
@@ -601,7 +601,7 @@ pub fn get_stored_ptr_values(context: &Context, inst: Value) -> Vec<Value> {
         | InstOp::CastPtr(_, _)
         | InstOp::GetLocal(_)
         | InstOp::GetGlobal(_)
-        | InstOp::GetConfig(_, _)
+        | InstOp::GetConfig(_)
         | InstOp::GetStorageKey(_)
         | InstOp::GetElemPtr { .. }
         | InstOp::IntToPtr(_, _) => vec![],

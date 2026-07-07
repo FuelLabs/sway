@@ -1,0 +1,120 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    fn less_one_block() -> u64 {
+        entry():
+        v1v1 = const u64 11
+        ret u64 v1v1
+    }
+
+    fn less_two_blocks() -> u64 {
+        entry():
+        v4v1 = const u64 22
+        br block(v4v1)
+
+        block(v3v1: u64):
+        ret u64 v3v1
+    }
+
+    fn less_three_blocks(b: bool) -> u64 {
+        entry(mut b: bool):
+        cbr b, then_block(), else_block()
+
+        then_block():
+        v9v1 = const u64 33
+        ret u64 v9v1
+
+        else_block():
+        v11v1 = const u64 44
+        ret u64 v11v1
+    }
+
+    fn more_one_block() -> bool {
+        entry():
+        v13v1 = const u64 55
+        v14v1 = const u64 66
+        v15v1 = cmp eq v13v1 v14v1
+        v16v1 = const bool true
+        v17v1 = cmp eq v15v1 v16v1
+        v18v1 = const bool true
+        v19v1 = cmp eq v17v1 v18v1
+        v20v1 = const bool true
+        v21v1 = cmp eq v19v1 v20v1
+        ret bool v21v1
+    }
+
+    fn more_two_blocks() -> bool {
+        entry():
+        v24v1 = const u64 77
+        v25v1 = const u64 88
+        v26v1 = cmp eq v24v1 v25v1
+        v27v1 = const bool true
+        v28v1 = cmp eq v26v1 v27v1
+        v29v1 = const bool true
+        v30v1 = cmp eq v28v1 v29v1
+        v31v1 = const bool true
+        v32v1 = cmp eq v30v1 v31v1
+        br block(v32v1)
+
+        block(v23v1: bool):
+        ret bool v23v1
+    }
+
+    fn more_three_blocks(b: bool) -> bool {
+        entry(mut b: bool):
+        cbr b, then_block(), else_block()
+
+        then_block():
+        v37v1 = const u64 99
+        v38v1 = const u64 1010
+        v39v1 = cmp eq v37v1 v38v1
+        v40v1 = const bool true
+        v41v1 = cmp eq v39v1 v40v1
+        ret bool v41v1
+
+        else_block():
+        v43v1 = const u64 1111
+        v44v1 = const u64 1212
+        v45v1 = cmp eq v43v1 v44v1
+        v46v1 = const bool true
+        v47v1 = cmp eq v45v1 v46v1
+        ret bool v47v1
+    }
+
+    fn main() -> bool {
+        entry():
+-         v49v1 = call less_one_block()
+-         v50v1 = call less_two_blocks()
++         v1v1 = const u64 11
++         br block0(v1v1)
++ 
++         block0(mut v57v1: u64):
++         v4v1 = const u64 22
++         br less_two_blocks_block(v4v1)
++ 
++         less_two_blocks_block(mut v50v3: u64):
++         br block1(v50v3)
++ 
++         block1(mut v58v1: u64):
+        v51v1 = const bool true
+-         v52v1 = call less_three_blocks(v51v1)
++         cbr v51v1, less_three_blocks_then_block(), less_three_blocks_else_block()
++ 
++         less_three_blocks_then_block():
++         v9v1 = const u64 33
++         br block2(v9v1)
++ 
++         less_three_blocks_else_block():
++         v11v1 = const u64 44
++         br block2(v11v1)
++ 
++         block2(mut v61v1: u64):
+        v53v1 = call more_one_block()
+        v54v1 = call more_two_blocks()
+        v55v1 = call more_three_blocks(v54v1)
+        ret bool v55v1
+    }
+}

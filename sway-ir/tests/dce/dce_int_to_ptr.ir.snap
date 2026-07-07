@@ -1,0 +1,48 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    entry fn main() -> bool {
+-         local mut u64 dummy
+        local mut u64 x
+        local mut u64 y
+
+        entry():
+        v2v1 = const u64 0
+        v3v1 = const u64 2
+        v4v1 = cmp eq v2v1 v3v1
+        v5v1 = const bool false
+        v6v1 = cmp eq v5v1 v4v1
+        cbr v6v1, block0(), block1()
+
+        block0():
+        v8v1 = get_local __ptr u64, x
+        v9v1 = cast_ptr v8v1 to __ptr u8
+        v10v1 = cast_ptr v9v1 to __ptr u64
+        v11v1 = ptr_to_int v10v1 to u64
+        v12v1 = int_to_ptr v11v1 to __ptr u64
+        v13v1 = ptr_to_int v12v1 to u64
+        br block2(v13v1)
+
+        block1():
+        v15v1 = get_local __ptr u64, y
+        v16v1 = cast_ptr v15v1 to __ptr u8
+        v17v1 = cast_ptr v16v1 to __ptr u64
+        v18v1 = ptr_to_int v17v1 to u64
+        v19v1 = int_to_ptr v18v1 to __ptr u64
+        v20v1 = ptr_to_int v19v1 to u64
+        br block2(v20v1)
+
+        block2(v1v1: u64):
+        v22v1 = int_to_ptr v1v1 to __ptr u64
+        v23v1 = const u64 42
+        store v23v1 to v22v1
+-         v25v1 = get_local __ptr u64, dummy
+-         v26v1 = const u64 42
+-         store v26v1 to v25v1
+        v28v1 = const bool true
+        ret bool v28v1
+    }
+}

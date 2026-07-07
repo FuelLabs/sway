@@ -1,0 +1,41 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    entry fn main() -> bool {
+        local mut u64 state
+
+        entry():
+        v1v1 = get_local __ptr u64, state
+        v2v1 = const u64 0
+        store v2v1 to v1v1
+        v4v1 = get_local __ptr u64, state
+        v5v1 = call function_0(v4v1)
+        v6v1 = get_local __ptr u64, state
+        v7v1 = load v6v1
+        v8v1 = const u64 42
+        v9v1 = cmp eq v7v1 v8v1
+        v10v1 = const bool false
+        v11v1 = cmp eq v9v1 v10v1
+        cbr v11v1, assert_1_block0(), assert_1_block1()
+
+        assert_1_block0():
+        v13v1 = const u64 18446744073709486084
+        revert v13v1
+
+        assert_1_block1():
+        v15v1 = const bool true
+        ret bool v15v1
+    }
+
+    fn function_0(state: __ptr u64) -> () {
+        entry(mut state: __ptr u64):
+        v18v1 = const u64 42
+        store v18v1 to state
+-         v21v1 = add v18v1, v18v1
+        v20v1 = const unit ()
+        ret () v20v1
+    }
+}

@@ -1,0 +1,64 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    fn a(b: bool) -> u64 {
+        local u64 x
+
+        entry(mut b: bool):
+        v3v1 = get_local __ptr u64, x
+        v4v1 = const u64 10
+        store v4v1 to v3v1
+        cbr b, block0(), block1()
+
+        block0():
+        v7v1 = get_local __ptr u64, x
+        v8v1 = load v7v1
+        br block2(v8v1)
+
+        block1():
+        v10v1 = const u64 1
+        br block2(v10v1)
+
+        block2(v2v1: u64):
+        ret u64 v2v1
+    }
+
+    fn main() -> u64 {
+        local u64 x
++         local u64 x0
+
+        entry():
+        v13v1 = get_local __ptr u64, x
+        v14v1 = const u64 0
+        store v14v1 to v13v1
++         v24v1 = get_local __ptr u64, x0
++         v4v1 = const u64 10
++         store v4v1 to v24v1
+        v16v1 = const bool true
+-         v17v1 = call a(v16v1)
++         cbr v16v1, a_block0(), a_block1()
++ 
++         a_block0():
++         v28v1 = get_local __ptr u64, x0
++         v29v1 = load v28v1
++         br a_block2(v29v1)
++ 
++         a_block1():
++         v10v1 = const u64 1
++         br a_block2(v10v1)
++ 
++         a_block2(mut v17v3: u64):
++         br block0(v17v3)
++ 
++         block0(mut v23v1: u64):
+        v18v1 = get_local __ptr u64, x
+-         store v17v1 to v18v1
++         store v23v1 to v18v1
+        v20v1 = get_local __ptr u64, x
+        v21v1 = load v20v1
+        ret u64 v21v1
+    }
+}

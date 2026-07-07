@@ -1,0 +1,18 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    fn main() -> u64 {
+        local { u64, ( { b256 } | { b256 } ) } sender
+
+        entry():
+        v1v1 = get_local __ptr { u64, ( { b256 } | { b256 } ) }, sender
+        v2v1 = const { u64, ( { b256 } | { b256 } ) } { u64 0, { b256 } { b256 0x0100000000000000000000000000000000000000000000000000000000000010 } }
+        store v2v1 to v1v1
+        v4v1 = get_local __ptr { u64, ( { b256 } | { b256 } ) }, sender
+        v5v1 = ptr_to_int v4v1 to u64
+        ret u64 v5v1
+    }
+}

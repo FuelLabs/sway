@@ -24,10 +24,23 @@ use crate::{
 };
 use crate::{Constant, InstOp};
 
+#[derive(Clone, Debug)]
+pub enum IrMutability {
+    Mutable,
+    Immutable,
+}
+
 /// A wrapper around an [ECS](https://github.com/orlp/slotmap) handle into the
 /// [`Context`].
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub struct Function(pub slotmap::DefaultKey);
+
+#[derive(Clone)]
+pub struct FunctionArgContent {
+    pub mutability: IrMutability,
+    pub name: String,
+    pub value: Value,
+}
 
 #[doc(hidden)]
 pub struct FunctionContent {
@@ -41,7 +54,7 @@ pub struct FunctionContent {
     //       a premature optimization, considering that even for large
     //       project we compile <1500 functions.
     pub abi_errors_display: String,
-    pub arguments: Vec<(String, Value)>,
+    pub arguments: Vec<FunctionArgContent>,
     pub return_type: Type,
     pub blocks: Vec<Block>,
     pub module: Module,
@@ -73,7 +86,7 @@ impl Function {
         module: Module,
         name: String,
         abi_errors_display: String,
-        args: Vec<(String, Type, Option<MetadataIndex>)>,
+        args: Vec<(IrMutability, String, Type, Option<MetadataIndex>)>,
         return_type: Type,
         selector: Option<[u8; 4]>,
         is_public: bool,
@@ -116,10 +129,11 @@ impl Function {
         let arguments: Vec<_> = args
             .into_iter()
             .enumerate()
-            .map(|(idx, (name, ty, arg_metadata))| {
-                (
+            .map(
+                |(idx, (mutability, name, ty, arg_metadata))| FunctionArgContent {
+                    mutability,
                     name,
-                    Value::new_argument(
+                    value: Value::new_argument(
                         context,
                         BlockArgument {
                             block: entry_block,
@@ -129,16 +143,18 @@ impl Function {
                         },
                     )
                     .add_metadatum(context, arg_metadata),
-                )
-            })
+                },
+            )
             .collect();
+
         context
             .functions
             .get_mut(func.0)
             .unwrap()
             .arguments
             .clone_from(&arguments);
-        let (_, arg_vals): (Vec<_>, Vec<_>) = arguments.iter().cloned().unzip();
+
+        let arg_vals = arguments.iter().map(|x| x.value).collect();
         context.blocks.get_mut(entry_block.0).unwrap().args = arg_vals;
 
         func
@@ -387,20 +403,31 @@ impl Function {
         context.functions[self.0]
             .arguments
             .iter()
-            .find_map(|(arg_name, val)| (arg_name == name).then_some(val))
-            .copied()
+            .find_map(|arg| (arg.name == name).then_some(arg.value))
     }
 
     /// Append an extra argument to the function signature.
     ///
     /// NOTE: `arg` must be a `BlockArgument` value with the correct index otherwise `add_arg` will
     /// panic.
-    pub fn add_arg<S: Into<String>>(&self, context: &mut Context, name: S, arg: Value) {
+    pub fn add_arg<S: Into<String>>(
+        &self,
+        context: &mut Context,
+        mutability: IrMutability,
+        name: S,
+        arg: Value,
+    ) {
         match context.values[arg.0].value {
             ValueDatum::Argument(BlockArgument { idx, .. })
                 if idx == context.functions[self.0].arguments.len() =>
             {
-                context.functions[self.0].arguments.push((name.into(), arg));
+                context.functions[self.0]
+                    .arguments
+                    .push(FunctionArgContent {
+                        mutability,
+                        name: name.into(),
+                        value: arg,
+                    });
             }
             _ => panic!("Inconsistent function argument being added"),
         }
@@ -411,18 +438,21 @@ impl Function {
         context.functions[self.0]
             .arguments
             .iter()
-            .find_map(|(name, arg_val)| (arg_val == value).then_some(name))
+            .find_map(|arg| (arg.value == *value).then_some(&arg.name))
     }
 
     /// Return an iterator for each of the function arguments.
-    pub fn args_iter<'a>(&self, context: &'a Context) -> impl Iterator<Item = &'a (String, Value)> {
+    pub fn args_iter<'a>(
+        &self,
+        context: &'a Context,
+    ) -> impl Iterator<Item = &'a FunctionArgContent> {
         context.functions[self.0].arguments.iter()
     }
 
     /// Is argument `i` marked immutable?
     pub fn is_arg_immutable(&self, context: &Context, i: usize) -> bool {
-        if let Some((_, val)) = context.functions[self.0].arguments.get(i) {
-            if let ValueDatum::Argument(arg) = &context.values[val.0].value {
+        if let Some(arg) = context.functions[self.0].arguments.get(i) {
+            if let ValueDatum::Argument(arg) = &context.values[arg.value.0].value {
                 return arg.is_immutable;
             }
         }
@@ -506,12 +536,17 @@ impl Function {
     }
 
     /// Remove given list of locals
-    pub fn remove_locals(&self, context: &mut Context, removals: &Vec<String>) {
+    pub fn remove_locals(&self, context: &mut Context, removals: &Vec<String>) -> bool {
+        let mut modified = false;
+
         for remove in removals {
             if let Some(local) = context.functions[self.0].local_storage.remove(remove) {
+                modified = true;
                 context.local_vars.remove(local.0);
             }
         }
+
+        modified
     }
 
     /// Merge values from another [`Function`] into this one.
@@ -606,7 +641,9 @@ impl Function {
         context: &mut Context,
         replace_map: &FxHashMap<Value, Value>,
         starting_block: Option<Block>,
-    ) {
+    ) -> bool {
+        let mut modified = false;
+
         let mut block_iter = self.block_iter(context).peekable();
 
         if let Some(ref starting_block) = starting_block {
@@ -618,8 +655,10 @@ impl Function {
         }
 
         for block in block_iter {
-            block.replace_values(context, replace_map);
+            modified |= block.replace_values(context, replace_map);
         }
+
+        modified
     }
 
     pub fn replace_value(

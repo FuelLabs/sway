@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use super::{lexed::LexedProgram, parsed::ParseProgram, ty::TyProgram};
 use crate::semantic_analysis::program::TypeCheckFailed;
-use sway_utils::PerformanceData;
+use sway_utils::PerformanceMetrics;
 
 /// Contains the lexed, parsed, typed compilation stages of a program, as well
 /// as compilation metrics.
@@ -11,7 +11,7 @@ pub struct Programs {
     pub lexed: Arc<LexedProgram>,
     pub parsed: Arc<ParseProgram>,
     pub typed: Result<Arc<TyProgram>, TypeCheckFailed>,
-    pub metrics: PerformanceData,
+    pub metrics: PerformanceMetrics,
 }
 
 impl Programs {
@@ -19,7 +19,7 @@ impl Programs {
         lexed: Arc<LexedProgram>,
         parsed: Arc<ParseProgram>,
         typed: Result<Arc<TyProgram>, TypeCheckFailed>,
-        metrics: PerformanceData,
+        metrics: PerformanceMetrics,
     ) -> Programs {
         Programs {
             lexed,

@@ -18,5 +18,5 @@ fn main() -> u64 {
 // check: $(bl1_val=$VAL) = const u64 42
 // check: br $bl2($bl1_val)
 
-// check: $bl2($(ret_val=$VAL): u64):
+// check: $bl2(mut $(ret_val=$VAL): u64):
 // check: ret u64 $ret_val

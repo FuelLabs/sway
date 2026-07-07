@@ -276,9 +276,7 @@ impl String {
         let ptr = self.bytes.ptr();
         let str_size = self.bytes.len();
 
-        asm(s: (ptr, str_size)) {
-            s: str
-        }
+        __transmute::<(raw_ptr, u64), str>((ptr, str_size))
     }
 }
 
@@ -306,12 +304,6 @@ impl From<String> for str {
     fn from(s: String) -> str {
         s.as_str()
     }
-}
-
-#[test]
-fn test_string_str() {
-    let string = String::from_ascii_str("Fuel");
-    assert_eq(string.as_str(), "Fuel");
 }
 
 impl AsRawSlice for String {
@@ -423,9 +415,7 @@ impl Clone for String {
 
 impl Debug for String {
     fn fmt(self, ref mut f: Formatter) {
-        let s = asm(s: (self.bytes.ptr(), self.bytes.len())) {
-            s: str
-        };
+        let s = __transmute::<(raw_ptr, u64), str>((self.bytes.ptr(), self.bytes.len()));
         f.print_string_quotes();
         f.print_str(s);
         f.print_string_quotes();

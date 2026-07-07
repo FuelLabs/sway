@@ -19,7 +19,7 @@ use crate::{
     pretty::DebugWithContext,
     value::{Value, ValueDatum},
     variable::LocalVar,
-    AsmInstruction, ConstantContent, GlobalVar, Module, StorageKey,
+    AsmInstruction, Config, ConstantContent, GlobalVar, StorageKey,
 };
 
 #[derive(Debug, Clone, DebugWithContext)]
@@ -39,7 +39,7 @@ impl Instruction {
         self.op.get_type(context)
     }
     /// Replace `old_val` with `new_val` if it is referenced by this instruction's arguments.
-    pub fn replace_values(&mut self, replace_map: &FxHashMap<Value, Value>) {
+    pub fn replace_values(&mut self, replace_map: &FxHashMap<Value, Value>) -> bool {
         self.op.replace_values(replace_map)
     }
     /// Get the function containing this instruction
@@ -99,7 +99,8 @@ pub enum InstOp {
     /// Return a pointer to a global variable.
     GetGlobal(GlobalVar),
     /// Return a pointer to a configurable.
-    GetConfig(Module, String),
+    GetConfig(Config),
+    /// Return a pointer to a storage key.
     GetStorageKey(StorageKey),
     /// Translate a pointer from a base to a nested element in an aggregate type.
     GetElemPtr {
@@ -553,10 +554,7 @@ impl InstOp {
             InstOp::GetElemPtr { elem_ptr_ty, .. } => Some(*elem_ptr_ty),
             InstOp::GetLocal(local_var) => Some(local_var.get_type(context)),
             InstOp::GetGlobal(global_var) => Some(global_var.get_type(context)),
-            InstOp::GetConfig(module, name) => Some(match module.get_config(context, name)? {
-                crate::ConfigContent::V0 { ptr_ty, .. } => *ptr_ty,
-                crate::ConfigContent::V1 { ptr_ty, .. } => *ptr_ty,
-            }),
+            InstOp::GetConfig(config) => Some(config.get_type(context)),
             InstOp::GetStorageKey(storage_key) => Some(storage_key.get_type(context)),
             InstOp::Alloc { ty: _, count: _ } => Some(Type::get_ptr(context)),
 
@@ -673,7 +671,7 @@ impl InstOp {
                 // `GetGlobal` returns an SSA `Value` but does not take any as an operand.
                 vec![]
             }
-            InstOp::GetConfig(_, _) => {
+            InstOp::GetConfig(_) => {
                 // `GetConfig` returns an SSA `Value` but does not take any as an operand.
                 vec![]
             }
@@ -918,7 +916,7 @@ impl InstOp {
                 // `GetGlobal` returns an SSA `Value` but does not take any as an operand.
                 panic!("Invalid index for GetGlobal");
             }
-            InstOp::GetConfig(_, _) => {
+            InstOp::GetConfig(_) => {
                 // `GetConfig` returns an SSA `Value` but does not take any as an operand.
                 panic!("Invalid index for GetConfig");
             }
@@ -1266,16 +1264,20 @@ impl InstOp {
     }
 
     /// Replace `old_val` with `new_val` if it is referenced by this instruction's arguments.
-    pub fn replace_values(&mut self, replace_map: &FxHashMap<Value, Value>) {
-        let replace = |val: &mut Value| {
+    pub fn replace_values(&mut self, replace_map: &FxHashMap<Value, Value>) -> bool {
+        let mut modified = false;
+
+        let mut replace = |val: &mut Value| {
             while let Some(new_val) = replace_map.get(val) {
                 *val = *new_val;
+                modified = true;
             }
         };
+
         match self {
             InstOp::AsmBlock(_, args) => args
                 .iter_mut()
-                .for_each(|asm_arg| asm_arg.initializer.iter_mut().for_each(replace)),
+                .for_each(|asm_arg| asm_arg.initializer.iter_mut().for_each(&mut replace)),
             InstOp::BitCast(value, _) => replace(value),
             InstOp::UnaryOp { op: _, arg } => {
                 replace(arg);
@@ -1285,9 +1287,9 @@ impl InstOp {
                 replace(arg2);
             }
             InstOp::Branch(block) => {
-                block.args.iter_mut().for_each(replace);
+                block.args.iter_mut().for_each(&mut replace);
             }
-            InstOp::Call(_, args) => args.iter_mut().for_each(replace),
+            InstOp::Call(_, args) => args.iter_mut().for_each(&mut replace),
             InstOp::CastPtr(val, _ty) => replace(val),
             InstOp::Cmp(_, lhs_val, rhs_val) => {
                 replace(lhs_val);
@@ -1299,8 +1301,8 @@ impl InstOp {
                 false_block,
             } => {
                 replace(cond_value);
-                true_block.args.iter_mut().for_each(replace);
-                false_block.args.iter_mut().for_each(replace);
+                true_block.args.iter_mut().for_each(&mut replace);
+                false_block.args.iter_mut().for_each(&mut replace);
             }
             InstOp::ContractCall {
                 params,
@@ -1316,7 +1318,7 @@ impl InstOp {
             }
             InstOp::GetLocal(_) => (),
             InstOp::GetGlobal(_) => (),
-            InstOp::GetConfig(_, _) => (),
+            InstOp::GetConfig(_) => (),
             InstOp::GetStorageKey(_) => (),
             InstOp::GetElemPtr {
                 base,
@@ -1324,7 +1326,7 @@ impl InstOp {
                 indices,
             } => {
                 replace(base);
-                indices.iter_mut().for_each(replace);
+                indices.iter_mut().for_each(&mut replace);
             }
             InstOp::Alloc { ty: _, count } => replace(count),
             InstOp::IntToPtr(value, _) => replace(value),
@@ -1490,11 +1492,11 @@ impl InstOp {
                 initializers,
             }) => {
                 replace(aggr_ptr);
-                initializers.iter_mut().for_each(|init| {
-                    replace(init);
-                });
+                initializers.iter_mut().for_each(&mut replace);
             }
         }
+
+        modified
     }
 
     pub fn may_have_side_effect(&self) -> bool {
@@ -1555,7 +1557,7 @@ impl InstOp {
             | InstOp::GetElemPtr { .. }
             | InstOp::GetLocal(_)
             | InstOp::GetGlobal(_)
-            | InstOp::GetConfig(_, _)
+            | InstOp::GetConfig(_)
             | InstOp::GetStorageKey(_)
             | InstOp::IntToPtr(..)
             | InstOp::Load(_)
@@ -1924,8 +1926,8 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
         insert_instruction!(self, InstOp::GetGlobal(global_var))
     }
 
-    pub fn get_config(self, module: Module, name: String) -> Value {
-        insert_instruction!(self, InstOp::GetConfig(module, name))
+    pub fn get_config(self, config: Config) -> Value {
+        insert_instruction!(self, InstOp::GetConfig(config))
     }
 
     pub fn alloc(self, ty: Type, count: Value) -> Value {

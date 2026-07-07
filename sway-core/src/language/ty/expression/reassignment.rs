@@ -8,6 +8,7 @@ use crate::{
         TypeCheckFinalizationContext,
     },
     type_system::*,
+    HasChanges,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -170,24 +171,26 @@ impl ReplaceDecls for TyReassignmentTarget {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
-    ) -> Result<bool, ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
         Ok(match self {
             TyReassignmentTarget::DerefAccess { exp, indices } => {
                 let mut changed = exp.replace_decls(decl_mapping, handler, ctx)?;
                 changed |= indices
                     .iter_mut()
                     .map(|i| i.replace_decls(decl_mapping, handler, ctx))
-                    .collect::<Result<Vec<bool>, _>>()?
+                    .collect::<Result<Vec<HasChanges>, _>>()?
                     .iter()
-                    .any(|is_changed| *is_changed);
+                    .any(|has_changes| has_changes.has_changes())
+                    .into();
                 changed
             }
             TyReassignmentTarget::ElementAccess { indices, .. } => indices
                 .iter_mut()
                 .map(|i| i.replace_decls(decl_mapping, handler, ctx))
-                .collect::<Result<Vec<bool>, _>>()?
+                .collect::<Result<Vec<HasChanges>, _>>()?
                 .iter()
-                .any(|is_changed| *is_changed),
+                .any(|has_changes| has_changes.has_changes())
+                .into(),
         })
     }
 }
@@ -198,11 +201,11 @@ impl ReplaceDecls for TyReassignment {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
-    ) -> Result<bool, ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
         let lhs_changed = self.lhs.replace_decls(decl_mapping, handler, ctx)?;
         let rhs_changed = self.rhs.replace_decls(decl_mapping, handler, ctx)?;
 
-        Ok(lhs_changed || rhs_changed)
+        Ok(lhs_changed | rhs_changed)
     }
 }
 
@@ -283,29 +286,39 @@ impl TypeCheckFinalization for TyReassignment {
 }
 
 impl UpdateConstantExpression for TyReassignmentTarget {
-    fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
+    fn update_constant_expression(
+        &mut self,
+        engines: &Engines,
+        implementing_type: &TyDecl,
+    ) -> HasChanges {
         match self {
-            TyReassignmentTarget::DerefAccess { exp, indices } => {
+            TyReassignmentTarget::DerefAccess { exp, indices } => has_changes! {
                 exp.update_constant_expression(engines, implementing_type);
                 indices
                     .iter_mut()
-                    .for_each(|i| i.update_constant_expression(engines, implementing_type));
-            }
+                    .fold(HasChanges::No, |acc, i| {
+                        acc | i.update_constant_expression(engines, implementing_type)
+                    });
+            },
             TyReassignmentTarget::ElementAccess { indices, .. } => {
-                indices
-                    .iter_mut()
-                    .for_each(|i| i.update_constant_expression(engines, implementing_type));
+                indices.iter_mut().fold(HasChanges::No, |acc, i| {
+                    acc | i.update_constant_expression(engines, implementing_type)
+                })
             }
-        };
+        }
     }
 }
 
 impl UpdateConstantExpression for TyReassignment {
-    fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
-        self.lhs
-            .update_constant_expression(engines, implementing_type);
-        self.rhs
-            .update_constant_expression(engines, implementing_type);
+    fn update_constant_expression(
+        &mut self,
+        engines: &Engines,
+        implementing_type: &TyDecl,
+    ) -> HasChanges {
+        has_changes! {
+            self.lhs.update_constant_expression(engines, implementing_type);
+            self.rhs.update_constant_expression(engines, implementing_type);
+        }
     }
 }
 
@@ -407,11 +420,11 @@ impl ReplaceDecls for ProjectionKind {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
-    ) -> Result<bool, ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
         use ProjectionKind::*;
         match self {
             ArrayIndex { index, .. } => index.replace_decls(decl_mapping, handler, ctx),
-            _ => Ok(false),
+            _ => Ok(HasChanges::No),
         }
     }
 }
@@ -445,15 +458,17 @@ impl TypeCheckFinalization for ProjectionKind {
 }
 
 impl UpdateConstantExpression for ProjectionKind {
-    fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
+    fn update_constant_expression(
+        &mut self,
+        engines: &Engines,
+        implementing_type: &TyDecl,
+    ) -> HasChanges {
         use ProjectionKind::*;
-        #[allow(clippy::single_match)]
-        // To keep it consistent and same looking as the above implementations.
         match self {
             ArrayIndex { index, .. } => {
                 index.update_constant_expression(engines, implementing_type)
             }
-            _ => (),
+            _ => HasChanges::No,
         }
     }
 }

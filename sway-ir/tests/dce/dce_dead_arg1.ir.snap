@@ -1,0 +1,21 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    fn main() -> bool {
+        entry():
+-         v2v1 = const u64 0
+-         v3v1 = const u64 11
+-         v4v1 = cmp eq v2v1 v3v1
+-         br block0(v4v1)
++         br block0()
+
+-         block0(v1v1: bool):
++         block0():
+        v6v1 = const bool false
+-         v7v1 = cmp eq v1v1 v6v1
+        ret bool v6v1
+    }
+}

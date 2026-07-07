@@ -1,0 +1,33 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    entry fn main() -> () {
++         local b256 __tmp_arg
+        local b256 dada = const b256 0xdadadadadadadadadadadadadadadadadadadadadadadadadadadadadadadada
+
+        entry():
+        v1v1 = get_local __ptr b256, dada
+        v2v1 = load v1v1
++         v15v1 = get_local __ptr b256, __tmp_arg
++         store v2v1 to v15v1
+        v3v1 = const u64 22
+-         v4v1 = call foo(v2v1, v3v1)
++         v17v1 = call foo(v15v1, v3v1)
+        v5v1 = const unit ()
+        ret () v5v1
+    }
+
+-     fn foo(x: b256, y: u64) -> () {
+-         entry(mut x: b256, mut y: u64):
++     fn foo(x: __ptr b256, y: u64) -> () {
++         entry(mut x: __ptr b256, mut y: u64):
++         v14v1 = load x
+        v9v1 = const u64 0
+        log u64 y, v9v1
+        v11v1 = const unit ()
+        ret () v11v1
+    }
+}

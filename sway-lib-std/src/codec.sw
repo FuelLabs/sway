@@ -17,7 +17,7 @@ impl Buffer {
         }
     }
 
-    fn with_capacity(cap: u64) -> Self {
+    pub fn with_capacity(cap: u64) -> Self {
         let ptr = asm(cap: cap) {
             aloc cap;
             hp: raw_ptr
@@ -32,6 +32,21 @@ impl Buffer {
         Buffer {
             buffer: __encode_buffer_append(self.buffer, r),
         }
+    }
+
+    /// Returns the pointer to the start of the buffer's backing allocation.
+    pub fn ptr(self) -> raw_ptr {
+        self.buffer.0
+    }
+
+    /// Returns the number of bytes the buffer can hold without reallocating.
+    pub fn capacity(self) -> u64 {
+        self.buffer.1
+    }
+
+    /// Returns the number of bytes currently written to the buffer.
+    pub fn len(self) -> u64 {
+        self.buffer.2
     }
 }
 
@@ -121,9 +136,7 @@ impl BufferReader {
     }
 
     pub fn read_bytes(ref mut self, count: u64) -> raw_slice {
-        let slice = asm(ptr: (self.ptr, count)) {
-            ptr: raw_slice
-        };
+        let slice = __transmute::<(raw_ptr, u64), raw_slice>((self.ptr, count));
         self.ptr = __ptr_add::<u8>(self.ptr, count);
         slice
     }
@@ -1700,9 +1713,7 @@ where
             mcp hp src size;
             hp: raw_ptr
         };
-        asm(s: (ptr, size)) {
-            s: raw_slice
-        }
+        __transmute::<(raw_ptr, u64), raw_slice>((ptr, size))
     } else {
         let buffer = item.abi_encode(Buffer::new());
         buffer.as_raw_slice()
@@ -1893,9 +1904,7 @@ impl AbiDecode for str {
     fn abi_decode(ref mut buffer: BufferReader) -> str {
         let len = buffer.read_8_bytes::<u64>();
         let data = buffer.read_bytes(len);
-        asm(s: (data.ptr(), len)) {
-            s: str
-        }
+        __transmute::<(raw_ptr, u64), str>((data.ptr(), len))
     }
 }
 
@@ -3397,307 +3406,6 @@ where
     T: AbiDecode,
 {
     decode_from_raw_ptr::<T>(BufferReader::from_second_parameter())
-}
-
-// Tests
-
-fn assert_encoding<T, SLICE>(value: T, expected: SLICE)
-where
-    T: AbiEncode,
-{
-    let len = __size_of::<SLICE>();
-
-    if len == 0 {
-        __revert(0);
-    }
-
-    let expected = raw_slice::from_parts::<u8>(__addr_of(expected), len);
-    let actual = encode(value);
-
-    if actual.len::<u8>() != expected.len::<u8>() {
-        __revert(0);
-    }
-
-    let result = asm(
-        result,
-        expected: expected.ptr(),
-        actual: actual.ptr(),
-        len: len,
-    ) {
-        meq result expected actual len;
-        result: bool
-    };
-
-    if !result {
-        __revert(0);
-    }
-}
-
-fn assert_encoding_and_decoding<T, SLICE>(
-    value: T,
-    expected: SLICE,
-)
-where
-    T: PartialEq + AbiEncode + AbiDecode,
-{
-    let len = __size_of::<SLICE>();
-
-    if len == 0 {
-        __revert(0);
-    }
-
-    let expected = raw_slice::from_parts::<u8>(__addr_of(expected), len);
-    let actual = encode(value);
-
-    if actual.len::<u8>() != expected.len::<u8>() {
-        __revert(0);
-    }
-
-    let result = asm(
-        result,
-        expected: expected.ptr(),
-        actual: actual.ptr(),
-        len: len,
-    ) {
-        meq result expected actual len;
-        result: bool
-    };
-
-    if !result {
-        __revert(0);
-    }
-
-    let decoded = abi_decode::<T>(actual);
-    __log(decoded);
-    if !decoded.eq(value) {
-        __revert(0);
-    }
-}
-
-fn to_slice<T>(array: T) -> raw_slice {
-    let len = __size_of::<T>();
-    raw_slice::from_parts::<u8>(__addr_of(array), len)
-}
-
-fn assert_ge<T>(a: T, b: T, revert_code: u64)
-where
-    T: Ord,
-{
-    if a.lt(b) {
-        __revert(revert_code)
-    }
-}
-
-fn assert_eq<T>(a: T, b: T, revert_code: u64)
-where
-    T: PartialEq,
-{
-    if a != b {
-        __revert(revert_code)
-    }
-}
-
-fn assert_neq<T>(a: T, b: T, revert_code: u64)
-where
-    T: PartialEq,
-{
-    if a == b {
-        __revert(revert_code)
-    }
-}
-
-fn assert_no_write_after_buffer<T>(value_to_append: T, size_of_t: u64)
-where
-    T: AbiEncode,
-{
-    // This red zone should not be overwritten
-    let red_zone1 = asm(size: 1024) {
-        aloc size;
-        hp: raw_ptr
-    };
-    red_zone1.write(0xFFFFFFFFFFFFFFFF);
-
-    // Create encoding buffer with capacity for one item
-    let mut buffer = Buffer::with_capacity(size_of_t);
-    let ptr1 = buffer.buffer.0;
-
-    // Append one item
-    let buffer = value_to_append.abi_encode(buffer);
-    assert_eq(ptr1, buffer.buffer.0, 1); // no buffer grow is expected
-    assert_eq(buffer.buffer.1, size_of_t, 2); // capacity must be still be one item
-    assert_eq(buffer.buffer.2, size_of_t, 3); // buffer has one item
-
-    // This red zone should not be overwritten
-    let red_zone2 = asm(size: 1024) {
-        aloc size;
-        hp: raw_ptr
-    };
-    red_zone2.write(0xFFFFFFFFFFFFFFFF);
-
-    // Append another item
-    let buffer = value_to_append.abi_encode(buffer);
-    assert_neq(ptr1, buffer.buffer.0, 4); // must have allocated new buffer
-    assert_ge(buffer.buffer.1, size_of_t * 2, 5); // capacity for at least two items
-    assert_eq(buffer.buffer.2, size_of_t * 2, 6); // buffer has two items
-
-    // Check that red zones were not overwritten
-    assert_eq(red_zone1.read::<u64>(), 0xFFFFFFFFFFFFFFFF, 7);
-    assert_eq(red_zone2.read::<u64>(), 0xFFFFFFFFFFFFFFFF, 8);
-}
-
-#[test]
-fn ok_encoding_should_not_write_outside_buffer() {
-    assert_no_write_after_buffer::<bool>(true, 1);
-
-    // numbers
-    assert_no_write_after_buffer::<u8>(1, 1);
-    assert_no_write_after_buffer::<u16>(1, 2);
-    assert_no_write_after_buffer::<u32>(1, 4);
-    assert_no_write_after_buffer::<u64>(1, 8);
-    assert_no_write_after_buffer::<u256>(
-        0x0000000000000000000000000000000000000000000000000000000000000001u256,
-        32,
-    );
-    assert_no_write_after_buffer::<b256>(
-        0x0000000000000000000000000000000000000000000000000000000000000001,
-        32,
-    );
-
-    // arrays
-    assert_no_write_after_buffer::<[u8; 1]>([1], 1);
-    assert_no_write_after_buffer::<[u8; 2]>([1, 1], 2);
-    assert_no_write_after_buffer::<[u8; 3]>([1, 1, 1], 3);
-    assert_no_write_after_buffer::<[u8; 4]>([1, 1, 1, 1], 4);
-    assert_no_write_after_buffer::<[u8; 5]>([1, 1, 1, 1, 1], 5);
-
-    // string arrays
-    assert_no_write_after_buffer::<str[1]>(__to_str_array("h"), 1);
-    assert_no_write_after_buffer::<str[2]>(__to_str_array("he"), 2);
-    assert_no_write_after_buffer::<str[11]>(__to_str_array("hello world"), 11);
-
-    // string slices
-    assert_no_write_after_buffer::<str>("h", 9);
-    assert_no_write_after_buffer::<str>("he", 10);
-    assert_no_write_after_buffer::<str>("hello world", 19);
-}
-
-#[test]
-fn ok_abi_encoding() {
-    // bool
-    assert_encoding_and_decoding(false, [0u8]);
-    assert_encoding_and_decoding(true, [1u8]);
-
-    // numbers
-    assert_encoding_and_decoding(0u8, [0u8]);
-    assert_encoding_and_decoding(255u8, [255u8]);
-
-    assert_encoding_and_decoding(0u16, [0u8, 0u8]);
-    assert_encoding_and_decoding(128u16, [0u8, 128u8]);
-    assert_encoding_and_decoding(65535u16, [255u8, 255u8]);
-
-    assert_encoding_and_decoding(0u32, [0u8, 0u8, 0u8, 0u8]);
-    assert_encoding_and_decoding(128u32, [0u8, 0u8, 0u8, 128u8]);
-    assert_encoding_and_decoding(4294967295u32, [255u8, 255u8, 255u8, 255u8]);
-
-    assert_encoding_and_decoding(0u64, [0u8; 8]);
-    assert_encoding_and_decoding(128u64, [0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 128u8]);
-    assert_encoding_and_decoding(18446744073709551615u64, [255u8; 8]);
-
-    assert_encoding_and_decoding(
-        0x0000000000000000000000000000000000000000000000000000000000000000u256,
-        [0u8; 32],
-    );
-    assert_encoding_and_decoding(
-        0xAA000000000000000000000000000000000000000000000000000000000000BBu256,
-        [
-            0xAAu8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-            0u8, 0u8, 0u8, 0xBBu8,
-        ],
-    );
-    assert_encoding_and_decoding(
-        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFu256,
-        [255u8; 32],
-    );
-
-    assert_encoding_and_decoding(
-        0x0000000000000000000000000000000000000000000000000000000000000000,
-        [0u8; 32],
-    );
-    assert_encoding_and_decoding(
-        0xAA000000000000000000000000000000000000000000000000000000000000BB,
-        [
-            0xAAu8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-            0u8, 0u8, 0u8, 0xBBu8,
-        ],
-    );
-    assert_encoding_and_decoding(
-        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF,
-        [255u8; 32],
-    );
-
-    // strings
-    assert_encoding_and_decoding(
-        "Hello",
-        [0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 5u8, 72u8, 101u8, 108u8, 108u8, 111u8],
-    );
-
-    assert_encoding(
-        {
-            let a: str[1] = __to_str_array("a");
-            a
-        },
-        [97u8],
-    );
-    assert_encoding(
-        {
-            let a: str[2] = __to_str_array("aa");
-            a
-        },
-        [97u8, 97u8],
-    );
-    assert_encoding(
-        {
-            let a: str[3] = __to_str_array("aaa");
-            a
-        },
-        [97u8, 97u8, 97u8],
-    );
-    assert_encoding(
-        {
-            let a: str[4] = __to_str_array("aaaa");
-            a
-        },
-        [97u8, 97u8, 97u8, 97u8],
-    );
-    assert_encoding(
-        {
-            let a: str[5] = __to_str_array("aaaaa");
-            a
-        },
-        [97u8, 97u8, 97u8, 97u8, 97u8],
-    );
-
-    // arrays
-    assert_encoding([255u8; 1], [255u8; 1]);
-    assert_encoding([255u8; 2], [255u8; 2]);
-    assert_encoding([255u8; 3], [255u8; 3]);
-    assert_encoding([255u8; 4], [255u8; 4]);
-    assert_encoding([255u8; 5], [255u8; 5]);
-
-    let array = abi_decode::<[u8; 1]>(to_slice([255u8]));
-    assert_eq(array[0], 255u8, 0);
-
-    let array = abi_decode::<[u8; 2]>(to_slice([255u8, 254u8]));
-    assert_eq(array[0], 255u8, 0);
-    assert_eq(array[1], 254u8, 0);
-}
-
-#[test(should_revert)]
-fn nok_abi_encoding_invalid_bool() {
-    let actual = encode(2u8);
-    let _ = abi_decode::<bool>(actual);
 }
 
 pub struct TrivialBool {

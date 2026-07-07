@@ -106,6 +106,50 @@ fn const_with_const_generics<const B: u64>() {
     let _ = __dbg(A);
 }
 
+struct StructWithAssocFnsAndMethodsWithConstGenerics {}
+
+impl StructWithAssocFnsAndMethodsWithConstGenerics {
+    fn method_ret_n<const N: u64, const M: u64>(self) -> u64 {
+        let _ = M;
+        N
+    }
+    fn method_ret_m<const N: u64, const M: u64>(self) -> u64 {
+        let _ = N;
+        M
+    }
+    fn fn_ret_n<const N: u64, const M: u64>() -> u64 {
+        let _ = M;
+        N
+    }
+    fn fn_ret_m<const N: u64, const M: u64>() -> u64 {
+        let _ = N;
+        M
+    }
+}
+
+#[inline(never)]
+fn call_all_on_struct_with_assoc_fns_and_methods_with_const_generics() {
+    let s = StructWithAssocFnsAndMethodsWithConstGenerics {};
+    assert(s.method_ret_n::<1, 2>() == 1);
+    assert(s.method_ret_m::<1, 2>() == 2);
+    assert(StructWithAssocFnsAndMethodsWithConstGenerics::fn_ret_n::<1, 2>() == 1);
+    assert(StructWithAssocFnsAndMethodsWithConstGenerics::fn_ret_m::<1, 2>() == 2);
+}
+
+// TODO: Enable this test once https://github.com/FuelLabs/sway/issues/7660 is fixed.
+// #[inline(never)]
+// fn call_all_on_struct_with_assoc_fns_and_methods_with_const_generics_wrapped<const A: u64, const B: u64>() {
+//     let s = StructWithAssocFnsAndMethodsWithConstGenerics {};
+//     assert(s.method_ret_n::<A, B>() == A);
+//     assert(s.method_ret_m::<A, B>() == B);
+//     assert(s.method_ret_n::<B, A>() == B);
+//     assert(s.method_ret_m::<B, A>() == A);
+//     assert(StructWithAssocFnsAndMethodsWithConstGenerics::fn_ret_n::<A, B>() == A);
+//     assert(StructWithAssocFnsAndMethodsWithConstGenerics::fn_ret_m::<A, B>() == B);
+//     assert(StructWithAssocFnsAndMethodsWithConstGenerics::fn_ret_n::<B, A>() == B);
+//     assert(StructWithAssocFnsAndMethodsWithConstGenerics::fn_ret_m::<B, A>() == A);
+// }
+
 fn main(a: [u64; 2]) {
     let _ = __dbg(a);
 
@@ -140,7 +184,7 @@ fn main(a: [u64; 2]) {
     assert(e.return_n1() == 1);
     assert(e.return_n1_2() == 2);
     assert(e.return_n2() == 2);
-    // TODO This should work: assert(e.return_n2_2() == 1)
+    // TODO This should work: assert(e.return_n2_2() == 1);
     assert(e.return_len() == 1);
     let e: TwoConstGenerics<u8, 1, 2> = TwoConstGenerics::<u8, 1, 2>::B([1u8, 2]);
     assert(e.return_n1() == 1);
@@ -172,6 +216,10 @@ fn main(a: [u64; 2]) {
 
     const_with_const_generics::<1>();
     const_with_const_generics::<5>();
+
+    call_all_on_struct_with_assoc_fns_and_methods_with_const_generics();
+    // TODO: Enable this test once https://github.com/FuelLabs/sway/issues/7660 is fixed.
+    // call_all_on_struct_with_assoc_fns_and_methods_with_const_generics_wrapped::<1, 2>();
 }
 
 #[test]

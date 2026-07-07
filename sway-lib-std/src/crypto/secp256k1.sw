@@ -340,9 +340,7 @@ impl Secp256k1 {
 impl From<B512> for Secp256k1 {
     fn from(bits: B512) -> Self {
         Self {
-            bits: asm(bits: bits.bits()) {
-                bits: [u8; 64]
-            },
+            bits: __transmute::<[b256; 2], [u8; 64]>(bits.bits()),
         }
     }
 }
@@ -350,9 +348,7 @@ impl From<B512> for Secp256k1 {
 impl From<(b256, b256)> for Secp256k1 {
     fn from(components: (b256, b256)) -> Self {
         Self {
-            bits: asm(components: components) {
-                components: [u8; 64]
-            },
+            bits: __transmute::<(b256, b256), [u8; 64]>(components),
         }
     }
 }

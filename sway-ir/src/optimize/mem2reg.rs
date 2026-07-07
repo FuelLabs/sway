@@ -191,14 +191,16 @@ fn promote_globals(context: &mut Context, function: &Function) -> Result<bool, I
         return Ok(false);
     }
 
+    let mut modified = false;
+
     let replacements = replacements
         .into_iter()
         .map(|(k, v)| (k, Value::new_constant(context, v)))
         .collect::<FxHashMap<_, _>>();
 
-    function.replace_values(context, &replacements, None);
+    modified |= function.replace_values(context, &replacements, None);
 
-    Ok(true)
+    Ok(modified)
 }
 
 /// Promote memory values that are accessed via load/store to SSA registers.
@@ -258,6 +260,7 @@ pub fn promote_locals(
             }
         }
     }
+
     // Transitively add PHIs, till nothing more to do.
     while let Some((local, ty, known_def)) = worklist.pop() {
         for df in dom_fronts[&known_def].iter() {
@@ -272,140 +275,11 @@ pub fn promote_locals(
         }
     }
 
-    // We're just left with rewriting the loads and stores into SSA.
-    // For efficiency, we first collect the rewrites
-    // and then apply them all together in the next step.
-    #[allow(clippy::too_many_arguments)]
-    fn record_rewrites(
-        context: &mut Context,
-        function: &Function,
-        dom_tree: &DomTree,
-        node: Block,
-        safe_locals: &HashSet<String>,
-        phi_to_local: &FxHashMap<Value, String>,
-        name_stack: &mut MappedStack<String, Value>,
-        rewrites: &mut FxHashMap<Value, Value>,
-        deletes: &mut Vec<(Block, Value)>,
-    ) {
-        // Whatever new definitions we find in this block, they must be popped
-        // when we're done. So let's keep track of that locally as a count.
-        let mut num_local_pushes = IndexMap::<String, u32>::new();
-
-        // Start with relevant block args, they are new definitions.
-        for arg in node.arg_iter(context) {
-            if let Some(local) = phi_to_local.get(arg) {
-                name_stack.push(local.clone(), *arg);
-                num_local_pushes
-                    .entry(local.clone())
-                    .and_modify(|count| *count += 1)
-                    .or_insert(1);
-            }
-        }
-
-        for inst in node.instruction_iter(context) {
-            match context.values[inst.0].value {
-                ValueDatum::Instruction(Instruction {
-                    op: InstOp::Load(ptr),
-                    ..
-                }) => {
-                    let local_var = get_validate_local_var(context, function, &ptr);
-                    match local_var {
-                        Some((local, var)) if safe_locals.contains(&local) => {
-                            // We should replace all uses of inst with new_stack[local].
-                            let new_val = match name_stack.get(&local) {
-                                Some(val) => *val,
-                                None => {
-                                    // Nothing on the stack, let's attempt to get the initializer
-                                    let constant = *var
-                                        .get_initializer(context)
-                                        .expect("We're dealing with an uninitialized value");
-                                    Value::new_constant(context, constant)
-                                }
-                            };
-                            rewrites.insert(inst, new_val);
-                            deletes.push((node, inst));
-                        }
-                        _ => (),
-                    }
-                }
-                ValueDatum::Instruction(Instruction {
-                    op:
-                        InstOp::Store {
-                            dst_val_ptr,
-                            stored_val,
-                        },
-                    ..
-                }) => {
-                    let local_var = get_validate_local_var(context, function, &dst_val_ptr);
-                    match local_var {
-                        Some((local, _)) if safe_locals.contains(&local) => {
-                            // Henceforth, everything that's dominated by this inst must use stored_val
-                            // instead of loading from dst_val.
-                            name_stack.push(local.clone(), stored_val);
-                            num_local_pushes
-                                .entry(local)
-                                .and_modify(|count| *count += 1)
-                                .or_insert(1);
-                            deletes.push((node, inst));
-                        }
-                        _ => (),
-                    }
-                }
-                _ => (),
-            }
-        }
-
-        // Update arguments to successor blocks (i.e., PHI args).
-        for BranchToWithArgs { block: succ, .. } in node.successors(context) {
-            let args: Vec<_> = succ.arg_iter(context).copied().collect();
-            // For every arg of succ, if it's in phi_to_local,
-            // we pass, as arg, the top value of local
-            for arg in args {
-                if let Some(local) = phi_to_local.get(&arg) {
-                    let ptr = function.get_local_var(context, local).unwrap();
-                    let new_val = match name_stack.get(local) {
-                        Some(val) => *val,
-                        None => {
-                            // Nothing on the stack, let's attempt to get the initializer
-                            let constant = *ptr
-                                .get_initializer(context)
-                                .expect("We're dealing with an uninitialized value");
-                            Value::new_constant(context, constant)
-                        }
-                    };
-                    let params = node.get_succ_params_mut(context, &succ).unwrap();
-                    params.push(new_val);
-                }
-            }
-        }
-
-        // Process dominator children.
-        for child in dom_tree.children(node) {
-            record_rewrites(
-                context,
-                function,
-                dom_tree,
-                child,
-                safe_locals,
-                phi_to_local,
-                name_stack,
-                rewrites,
-                deletes,
-            );
-        }
-
-        // Pop from the names stack.
-        for (local, pushes) in num_local_pushes.iter() {
-            for _ in 0..*pushes {
-                name_stack.pop(local);
-            }
-        }
-    }
-
     let mut name_stack = MappedStack::<String, Value>::default();
     let mut value_replacement = FxHashMap::<Value, Value>::default();
     let mut delete_insts = Vec::<(Block, Value)>::new();
-    record_rewrites(
+
+    let mut modified = record_rewrites(
         context,
         &function,
         dom_tree,
@@ -418,11 +292,148 @@ pub fn promote_locals(
     );
 
     // Apply the rewrites.
-    function.replace_values(context, &value_replacement, None);
+    modified |= function.replace_values(context, &value_replacement, None);
+
     // Delete the loads and stores.
     for (block, inst) in delete_insts {
-        block.remove_instruction(context, inst);
+        modified |= block.remove_instruction(context, inst);
     }
 
-    Ok(true)
+    Ok(modified)
+}
+
+// We're just left with rewriting the loads and stores into SSA.
+// For efficiency, we first collect the rewrites
+// and then apply them all together in the next step.
+#[allow(clippy::too_many_arguments)]
+fn record_rewrites(
+    context: &mut Context,
+    function: &Function,
+    dom_tree: &DomTree,
+    node: Block,
+    safe_locals: &HashSet<String>,
+    phi_to_local: &FxHashMap<Value, String>,
+    name_stack: &mut MappedStack<String, Value>,
+    rewrites: &mut FxHashMap<Value, Value>,
+    deletes: &mut Vec<(Block, Value)>,
+) -> bool {
+    let mut modified = false;
+
+    // Whatever new definitions we find in this block, they must be popped
+    // when we're done. So let's keep track of that locally as a count.
+    let mut num_local_pushes = IndexMap::<String, u32>::new();
+
+    // Start with relevant block args, they are new definitions.
+    for arg in node.arg_iter(context) {
+        if let Some(local) = phi_to_local.get(arg) {
+            name_stack.push(local.clone(), *arg);
+            num_local_pushes
+                .entry(local.clone())
+                .and_modify(|count| *count += 1)
+                .or_insert(1);
+        }
+    }
+
+    for inst in node.instruction_iter(context) {
+        match context.values[inst.0].value {
+            ValueDatum::Instruction(Instruction {
+                op: InstOp::Load(ptr),
+                ..
+            }) => {
+                let local_var = get_validate_local_var(context, function, &ptr);
+                match local_var {
+                    Some((local, var)) if safe_locals.contains(&local) => {
+                        // We should replace all uses of inst with new_stack[local].
+                        let new_val = match name_stack.get(&local) {
+                            Some(val) => *val,
+                            None => {
+                                // Nothing on the stack, let's attempt to get the initializer
+                                let constant = *var
+                                    .get_initializer(context)
+                                    .expect("We're dealing with an uninitialized value");
+                                Value::new_constant(context, constant)
+                            }
+                        };
+                        rewrites.insert(inst, new_val);
+                        deletes.push((node, inst));
+                    }
+                    _ => (),
+                }
+            }
+            ValueDatum::Instruction(Instruction {
+                op:
+                    InstOp::Store {
+                        dst_val_ptr,
+                        stored_val,
+                    },
+                ..
+            }) => {
+                let local_var = get_validate_local_var(context, function, &dst_val_ptr);
+                match local_var {
+                    Some((local, _)) if safe_locals.contains(&local) => {
+                        // Henceforth, everything that's dominated by this inst must use stored_val
+                        // instead of loading from dst_val.
+                        name_stack.push(local.clone(), stored_val);
+                        num_local_pushes
+                            .entry(local)
+                            .and_modify(|count| *count += 1)
+                            .or_insert(1);
+                        deletes.push((node, inst));
+                    }
+                    _ => (),
+                }
+            }
+            _ => (),
+        }
+    }
+
+    // Update arguments to successor blocks (i.e., PHI args).
+    for BranchToWithArgs { block: succ, .. } in node.successors(context) {
+        let args: Vec<_> = succ.arg_iter(context).copied().collect();
+        // For every arg of succ, if it's in phi_to_local,
+        // we pass, as arg, the top value of local
+        for arg in args {
+            if let Some(local) = phi_to_local.get(&arg) {
+                let ptr = function.get_local_var(context, local).unwrap();
+                let new_val = match name_stack.get(local) {
+                    Some(val) => *val,
+                    None => {
+                        // Nothing on the stack, let's attempt to get the initializer
+                        let constant = *ptr
+                            .get_initializer(context)
+                            .expect("We're dealing with an uninitialized value");
+                        Value::new_constant(context, constant)
+                    }
+                };
+
+                modified = true;
+                let params = node.get_succ_params_mut(context, &succ).unwrap();
+                params.push(new_val);
+            }
+        }
+    }
+
+    // Process dominator children.
+    for child in dom_tree.children(node) {
+        modified |= record_rewrites(
+            context,
+            function,
+            dom_tree,
+            child,
+            safe_locals,
+            phi_to_local,
+            name_stack,
+            rewrites,
+            deletes,
+        );
+    }
+
+    // Pop from the names stack.
+    for (local, pushes) in num_local_pushes.iter() {
+        for _ in 0..*pushes {
+            name_stack.pop(local);
+        }
+    }
+
+    modified
 }

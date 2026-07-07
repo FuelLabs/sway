@@ -369,9 +369,7 @@ impl U128 {
     ///     let u256_value = u128_value.as_u256();
     /// }
     pub fn as_u256(self) -> u256 {
-        asm(nums: (0, 0, self.upper, self.lower)) {
-            nums: u256
-        }
+        __transmute::<(u64, u64, u64, u64), u256>((0, 0, self.upper, self.lower))
     }
 
     /// The smallest value that can be represented by this integer type.
@@ -1022,9 +1020,7 @@ impl From<U128> for u256 {
     /// ```
     fn from(num: U128) -> Self {
         let input = (0u64, 0u64, num.upper(), num.lower());
-        asm(input: input) {
-            input: u256
-        }
+        __transmute::<(u64, u64, u64, u64), u256>(input)
     }
 }
 
@@ -1051,8 +1047,6 @@ impl From<U128> for b256 {
     /// ```
     fn from(num: U128) -> Self {
         let input = (0u64, 0u64, num.upper(), num.lower());
-        asm(input: input) {
-            input: b256
-        }
+        __transmute::<(u64, u64, u64, u64), b256>(input)
     }
 }

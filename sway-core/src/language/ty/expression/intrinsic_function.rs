@@ -1,4 +1,6 @@
-use crate::{engine_threading::*, has_changes, language::ty::*, type_system::*, types::*};
+use crate::{
+    engine_threading::*, has_changes, language::ty::*, type_system::*, types::*, HasChanges,
+};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::{

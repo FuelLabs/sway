@@ -19,7 +19,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use sway_ast::Intrinsic;
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{Span, Spanned};
+use sway_types::{Named, Span, Spanned};
 
 /// A `TypeBinding` is the result of using turbofish to bind types to
 /// generic parameters.
@@ -317,13 +317,14 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
         let unknown_decl = ctx.resolve_call_path_with_visibility_check(handler, &self.inner)?;
         // Check to see if this is a fn declaration.
         let fn_ref = unknown_decl.to_fn_ref(handler, ctx.engines())?;
-        // Get a new copy from the declaration engine.
-        let mut new_copy = (*decl_engine.get_function(fn_ref.id())).clone();
 
         match self.type_arguments {
             // Monomorphize the copy, in place.
             TypeArgs::Regular(_) => {
-                ctx.monomorphize(
+                // Get a new copy from the declaration engine.
+                let mut new_copy = (*decl_engine.get_function(fn_ref.id())).clone();
+
+                let has_changes = ctx.monomorphize(
                     handler,
                     &mut new_copy,
                     self.type_arguments.to_vec_mut(),
@@ -331,6 +332,19 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
                     EnforceTypeArguments::No,
                     &self.span,
                 )?;
+
+                let new_fn_ref = if has_changes.has_changes() {
+                    decl_engine
+                        .insert(
+                            new_copy,
+                            decl_engine.get_parsed_decl_id(fn_ref.id()).as_ref(),
+                        )
+                        .with_parent(ctx.engines.de(), fn_ref.id().into())
+                } else {
+                    fn_ref
+                };
+
+                Ok((new_fn_ref, None, None))
             }
             TypeArgs::Prefix(_) => {
                 // Resolve the type arguments without monomorphizing.
@@ -344,17 +358,9 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
                     )
                     .unwrap_or_else(|err| type_engine.id_of_error_recovery(err));
                 }
+                Ok((fn_ref, None, None))
             }
         }
-        // Insert the new copy into the declaration engine.
-        let new_fn_ref = decl_engine
-            .insert(
-                new_copy,
-                decl_engine.get_parsed_decl_id(fn_ref.id()).as_ref(),
-            )
-            .with_parent(ctx.engines.de(), fn_ref.id().into());
-
-        Ok((new_fn_ref, None, None))
     }
 }
 
@@ -396,10 +402,11 @@ impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
         let unknown_decl = ctx.resolve_call_path_with_visibility_check(handler, &self.inner)?;
         // Check to see if this is a struct declaration.
         let struct_id = unknown_decl.to_struct_decl(handler, engines)?;
+
         // Get a new copy from the declaration engine.
         let mut new_copy = (*decl_engine.get_struct(&struct_id)).clone();
         // Monomorphize the copy, in place.
-        ctx.monomorphize(
+        let has_changes = ctx.monomorphize(
             handler,
             &mut new_copy,
             self.type_arguments.to_vec_mut(),
@@ -407,12 +414,25 @@ impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
             EnforceTypeArguments::No,
             &self.span,
         )?;
+
         // Insert the new copy into the declaration engine.
-        let new_struct_ref = decl_engine.insert(
-            new_copy,
-            decl_engine.get_parsed_decl_id(&struct_id).as_ref(),
-        );
-        let type_id = type_engine.insert_struct(engines, *new_struct_ref.id());
+        let span = new_copy.span();
+        let decl_name = new_copy.name().clone();
+        let new_struct_id = if has_changes.has_changes() {
+            *decl_engine
+                .insert(
+                    new_copy,
+                    decl_engine.get_parsed_decl_id(&struct_id).as_ref(),
+                )
+                .id()
+        } else {
+            struct_id
+        };
+
+        let type_id = type_engine.insert_struct(engines, new_struct_id);
+
+        let new_struct_ref = DeclRef::new(decl_name, new_struct_id, span);
+
         Ok((new_struct_ref, Some(type_id), None))
     }
 }
@@ -449,7 +469,7 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
         let mut new_copy = (*decl_engine.get_enum(&enum_id)).clone();
 
         // Monomorphize the copy, in place.
-        ctx.monomorphize(
+        let has_changes = ctx.monomorphize(
             handler,
             &mut new_copy,
             self.type_arguments.to_vec_mut(),
@@ -457,10 +477,22 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
             EnforceTypeArguments::No,
             &self.span,
         )?;
+
         // Insert the new copy into the declaration engine.
-        let new_enum_ref =
-            decl_engine.insert(new_copy, decl_engine.get_parsed_decl_id(&enum_id).as_ref());
-        let type_id = type_engine.insert_enum(engines, *new_enum_ref.id());
+        let span = new_copy.span();
+        let decl_name = new_copy.name().clone();
+        let new_enum_id = if has_changes.has_changes() {
+            *decl_engine
+                .insert(new_copy, decl_engine.get_parsed_decl_id(&enum_id).as_ref())
+                .id()
+        } else {
+            enum_id
+        };
+
+        let type_id = type_engine.insert_enum(engines, new_enum_id);
+
+        let new_enum_ref = DeclRef::new(decl_name, new_enum_id, span);
+
         Ok((new_enum_ref, Some(type_id), Some(unknown_decl)))
     }
 }

@@ -521,7 +521,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 InstOp::GetGlobal(global_var) => {
                     self.compile_get_global(instr_val, global_var, module)
                 }
-                InstOp::GetConfig(_, name) => self.compile_get_config(instr_val, name),
+                InstOp::GetConfig(config) => self.compile_get_config(instr_val, config),
                 InstOp::GetStorageKey(storage_key) => {
                     self.compile_get_storage_key(instr_val, storage_key, module)
                 }
@@ -1436,7 +1436,12 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         }
     }
 
-    fn compile_get_config(&mut self, addr_val: &Value, name: &String) -> Result<(), CompileError> {
+    fn compile_get_config(
+        &mut self,
+        addr_val: &Value,
+        config: &Config,
+    ) -> Result<(), CompileError> {
+        let name = config.get_name(self.context);
         let addr_reg = self.reg_seqr.next();
 
         // if configurable is at the global_section, it is v1
@@ -2330,7 +2335,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         // XXX not required after we have FuelVM specific verifier.
         if !val
             .get_type(self.context)
-            .and_then(|val_ty| key.get_type(self.context).map(|key_ty| (val_ty, key_ty)))
+            .zip(key.get_type(self.context))
             .is_some_and(|(val_ty, key_ty)| {
                 val_ty.is_ptr(self.context) && key_ty.is_ptr(self.context)
             })

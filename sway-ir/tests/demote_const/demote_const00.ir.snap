@@ -1,0 +1,17 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    entry fn main() -> b256 {
++         local b256 __const = const b256 0x2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b
++ 
+        entry():
+-         v1v1 = const b256 0x2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b
+-         ret b256 v1v1
++         v3v1 = get_local __ptr b256, __const
++         v4v1 = load v3v1
++         ret b256 v4v1
+    }
+}

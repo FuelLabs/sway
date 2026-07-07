@@ -1,0 +1,27 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: false
+
+script {
+    entry fn main() -> u64 {
+        local u64 x
+        local u64 y
+
+        entry():
+        v1v1 = get_local __ptr u64, x
+        v2v1 = get_local __ptr u64, y
+        v3v1 = load v1v1
+        v4v1 = call escape(v1v1)
+        store v3v1 to v2v1
+        v6v1 = load v2v1
+        ret u64 v6v1
+    }
+
+    fn escape(a: __ptr u64) -> u64 {
+        entry(mut a: __ptr u64):
+        v9v1 = const u64 0
+        store v9v1 to a
+        ret u64 v9v1
+    }
+}

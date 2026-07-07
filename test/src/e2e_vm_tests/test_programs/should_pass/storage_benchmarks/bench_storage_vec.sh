@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 #
-# Runs storage_vec benchmark projects and prints results as CSV and as
-# a console histogram.  Each project benchmarks StorageVec operations
-# for one element size.
+# Runs storage_vec benchmark projects and prints results as CSV.
+# Each project benchmarks StorageVec operations for one element size.
 #
 # Baselines are per-count (not a single global baseline):
 #   - bench_baseline_nN            → cost of populating N elements
@@ -11,37 +10,27 @@
 # For "store_vec" tests the store_vec baseline is subtracted;
 # for all other tests the populate baseline is subtracted.
 #
-# Usage:
-#   ./bench_storage_vec.sh [-h] [<project> ...]
+# The output is printed to the console and also saved to a file in the
+# `perf_out` folder, named:
 #
-# Options:
-#   -h   Print a histogram alongside the CSV output.
+#   MMDDHHMMSS-<branch name>.storage_vec.txt
+#
+# where <branch name> is the normalized name of the current git branch.
+#
+# If the BENCH_NO_SAVE environment variable is set (used by bench.sh),
+# the output is only printed to the console and not saved to a file.
+#
+# Usage:
+#   ./bench_storage_vec.sh [<project> ...]
 #
 # Examples:
 #   ./bench_storage_vec.sh
-#   ./bench_storage_vec.sh -h
 #   ./bench_storage_vec.sh storage_vec_s8
-#   ./bench_storage_vec.sh -h storage_vec_s8
 #
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../../../../.." && pwd)"
-
-# ── Configurable constants ──────────────────────────────────────────
-BAR_MAX_WIDTH=60
-BAR_CHAR="█"
-# ────────────────────────────────────────────────────────────────────
-
-# ── Parse options ───────────────────────────────────────────────────
-SHOW_HISTOGRAM=false
-while getopts ":h" opt; do
-    case $opt in
-        h) SHOW_HISTOGRAM=true ;;
-        *) echo "Usage: $0 [-h] [<project> ...]" >&2; exit 1 ;;
-    esac
-done
-shift $((OPTIND - 1))
 
 ALL_PROJECTS=(
     storage_vec_s8
@@ -57,6 +46,24 @@ if [[ $# -gt 0 ]]; then
     PROJECTS=("$@")
 else
     PROJECTS=("${ALL_PROJECTS[@]}")
+fi
+
+# If BENCH_FILTER is set (used by bench.sh), keep only the projects
+# whose names contain the filter as a substring.
+if [[ -n "${BENCH_FILTER:-}" ]]; then
+    FILTERED=()
+    for p in "${PROJECTS[@]}"; do
+        [[ "$p" == *"${BENCH_FILTER}"* ]] && FILTERED+=("$p")
+    done
+    PROJECTS=()
+    if [[ ${#FILTERED[@]} -gt 0 ]]; then
+        PROJECTS=("${FILTERED[@]}")
+    fi
+fi
+
+if [[ ${#PROJECTS[@]} -eq 0 ]]; then
+    echo "No StorageVec benchmark projects match the filter '${BENCH_FILTER:-}'." >&2
+    exit 0
 fi
 
 # ── Helpers ─────────────────────────────────────────────────────────
@@ -75,12 +82,15 @@ run_project() {
     echo "═══════════════════════════════════════════════════════════════"
     echo
 
-    # Run forc test and capture output.
+    # Run forc test and capture its stdout (the test result lines).
+    # stderr is left untouched so that cargo build progress and forc
+    # warnings stream live to the console (and stay out of the saved
+    # perf_out file).
     # --no-gas-limit is needed because some O(N) operations on large structs
     # at n=1000 exceed the default gas limit and would otherwise revert.
     local output
     output=$(cd "$REPO_ROOT" && cargo r -r -p forc -- test --release \
-        --no-gas-limit -p "$project_path" 2>&1)
+        --no-gas-limit -p "$project_path")
 
     # Parse lines like:
     #       test bench_push_n100 ... ok (67.364µs, 12198 gas)
@@ -140,7 +150,6 @@ run_project() {
     echo
     echo "test,gas"
 
-    local -a adjusted=()
     for i in "${!names[@]}"; do
         local test_name="${names[$i]}"
         local test_gas="${gas_values[$i]}"
@@ -167,65 +176,28 @@ run_project() {
         fi
 
         local adj=$(( test_gas - baseline ))
-        adjusted+=("$adj")
         echo "${test_name},$adj"
     done
     echo
-
-    # ── Histogram (optional) ─────────────────────────────────────────
-    if [[ "$SHOW_HISTOGRAM" == true ]]; then
-        echo "--- Histogram ---"
-        echo
-
-        # Strip bench_ prefix for display.
-        local -a display_names=()
-        for i in "${!names[@]}"; do
-            display_names+=("${names[$i]#bench_}")
-        done
-
-        # Find the longest display name and the maximum gas value for scaling.
-        local max_name_len=0
-        local max_gas=1
-        local max_gas_len=1
-        for i in "${!display_names[@]}"; do
-            local nlen=${#display_names[$i]}
-            (( nlen > max_name_len )) && max_name_len=$nlen
-            local abs_gas=${adjusted[$i]}
-            (( abs_gas < 0 )) && abs_gas=$(( -abs_gas ))
-            (( abs_gas > max_gas )) && max_gas=$abs_gas
-            local glen=${#adjusted[$i]}
-            (( glen > max_gas_len )) && max_gas_len=$glen
-        done
-
-        # Dynamically compute bar width to fit within the terminal.
-        local term_width
-        term_width=$(tput cols 2>/dev/null || echo 120)
-        local overhead=$(( 6 + max_name_len + max_gas_len ))
-        local bar_max=$(( term_width - overhead ))
-        (( bar_max < 10 )) && bar_max=10
-        (( bar_max > BAR_MAX_WIDTH )) && bar_max=$BAR_MAX_WIDTH
-
-        for i in "${!display_names[@]}"; do
-            local gas=${adjusted[$i]}
-            local abs_gas=$gas
-            (( abs_gas < 0 )) && abs_gas=0
-            # Scale bar width.
-            local bar_len=$(( abs_gas * bar_max / max_gas ))
-            # Ensure at least 1 char when gas > 0.
-            (( abs_gas > 0 && bar_len == 0 )) && bar_len=1
-
-            local bar=""
-            for (( b=0; b<bar_len; b++ )); do bar+="$BAR_CHAR"; done
-
-            printf "  %-${max_name_len}s │ %s %${max_gas_len}s\n" "${display_names[$i]}" "$bar" "$gas"
-        done
-
-        echo
-    fi
 }
 
 # ── Main ────────────────────────────────────────────────────────────
 
-for project in "${PROJECTS[@]}"; do
-    run_project "$project"
-done
+if [[ -n "${BENCH_NO_SAVE:-}" ]]; then
+    for project in "${PROJECTS[@]}"; do
+        run_project "$project"
+    done
+else
+    OUT_DIR="$SCRIPT_DIR/perf_out"
+    mkdir -p "$OUT_DIR"
+
+    TIMESTAMP=$(date +%m%d%H%M%S)
+    BRANCH=$(git -C "$SCRIPT_DIR" rev-parse --abbrev-ref HEAD | sed 's![^A-Za-z0-9._-]!_!g')
+    OUT_FILE="$OUT_DIR/${TIMESTAMP}-${BRANCH}.storage_vec.txt"
+
+    for project in "${PROJECTS[@]}"; do
+        run_project "$project"
+    done | tee "$OUT_FILE"
+
+    echo "Results saved to: $OUT_FILE"
+fi
