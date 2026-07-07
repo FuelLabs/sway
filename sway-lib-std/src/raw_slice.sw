@@ -51,9 +51,7 @@ pub trait AsRawSlice {
 ///
 /// * [raw_slice] - The newly created `raw_slice`.
 fn from_parts(parts: (raw_ptr, u64)) -> raw_slice {
-    asm(ptr: parts) {
-        ptr: raw_slice
-    }
+    __transmute::<(raw_ptr, u64), raw_slice>(parts)
 }
 
 /// Returns a pointer and length from a `raw_slice`.
@@ -66,9 +64,7 @@ fn from_parts(parts: (raw_ptr, u64)) -> raw_slice {
 ///
 /// * [(raw_ptr, u64)] - A tuple of the location in memory of the original `raw_slice` and its length.
 fn into_parts(slice: raw_slice) -> (raw_ptr, u64) {
-    asm(ptr: slice) {
-        ptr: (raw_ptr, u64)
-    }
+    __transmute::<raw_slice, (raw_ptr, u64)>(slice)
 }
 
 impl raw_slice {
@@ -209,8 +205,6 @@ impl Eq for raw_slice {}
 
 impl AsRawSlice for str {
     fn as_raw_slice(self) -> raw_slice {
-        asm(s: self) {
-            s: raw_slice
-        }
+        __transmute::<str, raw_slice>(self)
     }
 }

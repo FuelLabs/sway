@@ -808,9 +808,7 @@ impl<T> From<raw_slice> for Vec<T> {
 
 impl<T> From<Vec<T>> for raw_slice {
     fn from(vec: Vec<T>) -> Self {
-        asm(ptr: (vec.buf.ptr, vec.len)) {
-            ptr: raw_slice
-        }
+        __transmute::<(raw_ptr, u64), raw_slice>((vec.buf.ptr, vec.len))
     }
 }
 

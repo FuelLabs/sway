@@ -29,9 +29,7 @@ impl u256 {
     /// }
     /// ```
     pub fn to_le_bytes(self) -> Bytes {
-        let (a, b, c, d): (u64, u64, u64, u64) = asm(r1: self) {
-            r1: (u64, u64, u64, u64)
-        };
+        let (a, b, c, d): (u64, u64, u64, u64) = __transmute::<u256, (u64, u64, u64, u64)>(self);
         let a = a.to_le_bytes();
         let b = b.to_le_bytes();
         let c = c.to_le_bytes();
@@ -86,9 +84,7 @@ impl u256 {
 
         let result = (d, c, b, a);
 
-        asm(r1: result) {
-            r1: u256
-        }
+        __transmute::<(u64, u64, u64, u64), u256>(result)
     }
 
     /// Converts the `u256` to a sequence of big-endian bytes.
@@ -112,9 +108,7 @@ impl u256 {
     /// }
     /// ```
     pub fn to_be_bytes(self) -> Bytes {
-        let b: b256 = asm(r1: self) {
-            r1: b256
-        };
+        let b: b256 = __transmute::<u256, b256>(self);
         Bytes::from(b)
     }
 
@@ -147,8 +141,6 @@ impl u256 {
     pub fn from_be_bytes(bytes: Bytes) -> Self {
         assert(bytes.len() == 32);
         let b: b256 = bytes.try_into().unwrap();
-        asm(r1: b) {
-            r1: u256
-        }
+        __transmute::<b256, u256>(b)
     }
 }

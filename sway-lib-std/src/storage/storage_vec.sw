@@ -1071,17 +1071,9 @@ impl<V> StorageKey<StorageVec<V>> {
                         i += 1;
                     }
 
-                    Vec::from(
-                        asm(ptr: (new_vec, len_bytes)) {
-                            ptr: raw_slice
-                        },
-                    )
+                    Vec::from(__transmute::<(raw_ptr, u64), raw_slice>((new_vec, len_bytes)))
                 } else {
-                    Vec::from(
-                        asm(ptr: (ptr, bytes)) {
-                            ptr: raw_slice
-                        },
-                    )
+                    Vec::from(__transmute::<(raw_ptr, u64), raw_slice>((ptr, bytes)))
                 }
             }
         }
