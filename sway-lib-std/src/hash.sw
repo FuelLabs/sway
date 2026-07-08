@@ -378,9 +378,7 @@ where
         // `__elem_at` accepts only a reference to a slice or an array.
         // To satisfy this requirement, we cast the pointer to the underlying
         // vector data to an array reference.
-        let ptr = asm(ptr: self.ptr()) {
-            ptr: &[T; 0]
-        };
+        let ptr = __transmute::<raw_ptr, &[T; 0]>(self.ptr());
 
         let mut i = 0;
         while __lt(i, len) {
@@ -404,9 +402,7 @@ where
         // `__elem_at` accepts only a reference to a slice or an array.
         // To satisfy this requirement, we cast the pointer to the underlying
         // vector data to an array reference.
-        let ptr = asm(ptr: self.ptr()) {
-            ptr: &[T; 0]
-        };
+        let ptr = __transmute::<raw_ptr, &[T; 0]>(self.ptr());
 
         let mut i = 0;
         while __lt(i, len) {

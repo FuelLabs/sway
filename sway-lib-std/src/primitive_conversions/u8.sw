@@ -85,9 +85,7 @@ impl u8 {
     /// ```
     pub fn as_u256(self) -> u256 {
         let input = (0u64, 0u64, 0u64, self.as_u64());
-        asm(input: input) {
-            input: u256
-        }
+        __transmute::<(u64, u64, u64, u64), u256>(input)
     }
 }
 
@@ -129,9 +127,7 @@ impl TryFrom<u64> for u8 {
 
 impl TryFrom<u256> for u8 {
     fn try_from(u: u256) -> Option<Self> {
-        let parts = asm(r1: u) {
-            r1: (u64, u64, u64, u64)
-        };
+        let parts = __transmute::<u256, (u64, u64, u64, u64)>(u);
 
         if parts.0 != 0
             || parts.1 != 0

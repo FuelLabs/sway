@@ -99,9 +99,7 @@ pub struct Bytes {
 impl AsRawSlice for Bytes {
     /// Returns a raw slice of all of the elements in the `Bytes`.
     fn as_raw_slice(self) -> raw_slice {
-        asm(ptr: (self.buf.ptr, self.len)) {
-            ptr: raw_slice
-        }
+        __transmute::<(raw_ptr, u64), raw_slice>((self.buf.ptr, self.len))
     }
 }
 

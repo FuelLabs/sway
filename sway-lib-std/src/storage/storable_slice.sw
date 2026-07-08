@@ -235,9 +235,7 @@ pub fn read_slice_quads(slot: b256) -> Option<raw_slice> {
             let ptr = alloc_bytes(number_of_slots * 32);
             // Load the slice content of `number_of_slots * 32` bytes starting at `sha256(slot)`.
             let _ = __state_load_quad(sha256(slot), ptr, number_of_slots);
-            Some(asm(ptr: (ptr, len)) {
-                ptr: raw_slice
-            })
+            Some(__transmute::<(raw_ptr, u64), raw_slice>((ptr, len)))
         }
     }
 }
@@ -329,9 +327,7 @@ pub fn read_slice_slot(slot: b256) -> Option<raw_slice> {
         len => {
             let ptr = alloc_bytes(len);
             let _ = __state_load_slot(slot, ptr, 0, len);
-            Some(asm(ptr: (ptr, len)) {
-                ptr: raw_slice
-            })
+            Some(__transmute::<(raw_ptr, u64), raw_slice>((ptr, len)))
         }
     }
 }

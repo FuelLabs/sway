@@ -314,9 +314,7 @@ impl BinaryLogarithm for u256 {
             assert(self != 0);
         }
 
-        let (a, b, c, d) = asm(r1: self) {
-            r1: (u64, u64, u64, u64)
-        };
+        let (a, b, c, d) = __transmute::<u256, (u64, u64, u64, u64)>(self);
         if a != 0 {
             return a.log2().as_u256() + 0xc0u256;
         } else if b != 0 {
@@ -361,9 +359,7 @@ impl Logarithm for u256 {
         let mut result = (self_log2 / base_log2);
 
         // Converting u256 to u32, this cannot fail as the result will be atmost ~256
-        let parts = asm(r1: result) {
-            r1: (u64, u64, u64, u64)
-        };
+        let parts = __transmute::<u256, (u64, u64, u64, u64)>(result);
         let res_u32 = asm(r1: parts.3) {
             r1: u32
         };
@@ -378,9 +374,7 @@ impl Logarithm for u256 {
             result -= 1;
 
             // Converting u256 to u32, this cannot fail as the result will be atmost ~256
-            let parts = asm(r1: result) {
-                r1: (u64, u64, u64, u64)
-            };
+            let parts = __transmute::<u256, (u64, u64, u64, u64)>(result);
             let res_u32 = asm(r1: parts.3) {
                 r1: u32
             };

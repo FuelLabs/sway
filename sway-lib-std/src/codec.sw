@@ -136,9 +136,7 @@ impl BufferReader {
     }
 
     pub fn read_bytes(ref mut self, count: u64) -> raw_slice {
-        let slice = asm(ptr: (self.ptr, count)) {
-            ptr: raw_slice
-        };
+        let slice = __transmute::<(raw_ptr, u64), raw_slice>((self.ptr, count));
         self.ptr = __ptr_add::<u8>(self.ptr, count);
         slice
     }
@@ -1715,9 +1713,7 @@ where
             mcp hp src size;
             hp: raw_ptr
         };
-        asm(s: (ptr, size)) {
-            s: raw_slice
-        }
+        __transmute::<(raw_ptr, u64), raw_slice>((ptr, size))
     } else {
         let buffer = item.abi_encode(Buffer::new());
         buffer.as_raw_slice()
@@ -1908,9 +1904,7 @@ impl AbiDecode for str {
     fn abi_decode(ref mut buffer: BufferReader) -> str {
         let len = buffer.read_8_bytes::<u64>();
         let data = buffer.read_bytes(len);
-        asm(s: (data.ptr(), len)) {
-            s: str
-        }
+        __transmute::<(raw_ptr, u64), str>((data.ptr(), len))
     }
 }
 

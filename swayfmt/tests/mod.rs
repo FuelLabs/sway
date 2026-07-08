@@ -2216,6 +2216,148 @@ fn empty_if() {
 }
 
 #[test]
+fn empty_if_else_if() {
+    check(
+        indoc! {r#"
+        library;
+        fn test() {
+            if __size_of::<T>() == 0 {    } else if __is_reference_type::<T>() {
+                let i = 42;
+            }
+        }
+        "#},
+        indoc! {r#"
+        library;
+        fn test() {
+            if __size_of::<T>() == 0 {
+            } else if __is_reference_type::<T>() {
+                let i = 42;
+            }
+        }
+        "#},
+    );
+}
+
+#[test]
+fn empty_if_with_else() {
+    check(
+        indoc! {r#"
+        library;
+        fn test() {
+            if some_really_long_condition_name_here() == 0 {    } else {
+                let really_long_variable_name = some_really_long_function_name();
+            }
+        }
+        "#},
+        indoc! {r#"
+        library;
+        fn test() {
+            if some_really_long_condition_name_here() == 0 {
+            } else {
+                let really_long_variable_name = some_really_long_function_name();
+            }
+        }
+        "#},
+    );
+}
+
+#[test]
+fn empty_if_else_if_with_block_comment() {
+    check(
+        indoc! {r#"
+        library;
+        fn test() {
+            if __size_of::<T>() == 0 { /* Block comment */    }    else
+            if __is_reference_type::<T>() {
+                let i = 42;
+            }
+        }
+        "#},
+        indoc! {r#"
+        library;
+        fn test() {
+            if __size_of::<T>() == 0 { /* Block comment */     } else if __is_reference_type::<T>() {
+                let i = 42;
+            }
+        }
+        "#},
+    );
+}
+
+#[test]
+fn empty_if_else_if_with_line_comment() {
+    check(
+        indoc! {r#"
+        library;
+        fn test() {
+            if __size_of::<T>() == 0 {
+                // Single line comment.
+            }    else    if __is_reference_type::<T>() {
+                let i = 42;
+            }
+        }
+        "#},
+        indoc! {r#"
+        library;
+        fn test() {
+            if __size_of::<T>() == 0 {
+                // Single line comment.
+            } else if __is_reference_type::<T>() {
+                let i = 42;
+            }
+        }
+        "#},
+    );
+}
+
+#[test]
+fn empty_if_else_if_chain_collapsed() {
+    check(
+        indoc! {r#"
+        library;
+        fn test() {
+            if __size_of::<T>() == 0 { } else if __is_reference_type::<T>() {    } else { let i = 42; }
+        }
+        "#},
+        indoc! {r#"
+        library;
+        fn test() {
+            if __size_of::<T>() == 0 {
+            } else if __is_reference_type::<T>() {
+            } else {
+                let i = 42;
+            }
+        }
+        "#},
+    );
+}
+
+#[test]
+fn empty_if_multiple_else_if_levels() {
+    check(
+        indoc! {r#"
+        library;
+        fn test() {
+            if __size_of::<T>() == 0 {    } else if __is_reference_type::<T>() {    } else if __is_reference_type::<U>() {    } else {
+                let i = 42;
+            }
+        }
+        "#},
+        indoc! {r#"
+        library;
+        fn test() {
+            if __size_of::<T>() == 0 {
+            } else if __is_reference_type::<T>() {
+            } else if __is_reference_type::<U>() {
+            } else {
+                let i = 42;
+            }
+        }
+        "#},
+    );
+}
+
+#[test]
 fn bug_whitespace_added_after_comment() {
     check(
         indoc! {r#"
