@@ -1,0 +1,8 @@
+[[package]]
+name = "init_aggr"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-551E051A4237E326"
