@@ -93,45 +93,20 @@ get_new_contract_id() {
 
     if [[ $CONTRACT_ARGS ]]; then
         PROJ=$(realpath "$FOLDER/..")
-        echo -e "${BOLD_WHITE}$PROJ${NC}"
 
         pushd "$DIR/.." > /dev/null
         REGEX="0x[a-zA-Z0-9]{64}"
         CONTRACT_ID=$(cargo r -p forc --release -- contract-id --path $CONTRACT_ARGS 2> /dev/null | $grep -oP "$REGEX")
-        popd > /dev/null
 
-        if [[ $CONTRACT_ID ]]; then
-            SED_EXPR="${LINE}s/0x[a-zA-Z0-9]*/$CONTRACT_ID/g"
-
-            # check if there is a diff
-            diff -s --color <(cat $FILE) <(cat $FILE | $sed --expression="$SED_EXPR") > /dev/null
-            if [ $? -eq 0 ]; then
-              # no diff, continue
-              echo -e "    ${BOLD_GREEN}no changes needed${NC} ($CONTRACT_ID)"
-            else
-              # diff detected, check we are clean to update files, if not abort
-              if [[ "$INTERACTIVELY" == "0" ]]; then
-                # Don´t change anything if git is dirty
-                if [ "$CHANGES" != "0" ]; then
-                  echo -e "    ${BOLD_RED}Aborting${NC} This contract id needs update, but git state is not clean. commit, restore first or run with \"-i\"."
-                  echo $FILE
-                  diff -s --color <(cat $FILE) <(cat $FILE | $sed --expression="$SED_EXPR")
-                  exit
-                fi
-                # we are clean and can update files
-                $sed -i "$SED_EXPR" $FILE
-              else
-                # ask confirmation before applying the change
-                diff -s --color <(cat $FILE) <(cat $FILE | $sed --expression="$SED_EXPR")
-                ask_confirmation "$sed -i \"$SED_EXPR\" $FILE" "Update contract id"
-              fi
-              echo -e "    ${BOLD_GREEN}updated${NC} ($CONTRACT_ID)"
-            fi
+        # if error print error and quit
+        if [ $? -eq 0 ]; then
+            echo "$CONTRACT_ID"
         else
-            >&2 echo "cargo r -p forc --release -- contract-id --path $CONTRACT_ARGS"
-            cargo r -p forc --release -- contract-id --path $CONTRACT_ARGS
+            cargo r -p forc --release -- build --path $CONTRACT_ARGS
             exit
         fi
+
+        popd > /dev/null
     fi
 }
 
@@ -173,6 +148,7 @@ update_line() {
     LINE=${PARTS[1]}
 
     CONTRACT_ID="$2"
+
     if [[ $CONTRACT_ID ]]; then
         SED_EXPR="${LINE}s/0x[a-zA-Z0-9]*/$CONTRACT_ID/g"
 
