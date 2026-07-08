@@ -3,7 +3,7 @@ source: test/src/snapshot/mod.rs
 ---
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/for_loops --ir final --asm final | filter-fn for_loops just_for_loop
 
-fn just_for_loop_15(vector: __ptr { { ptr, u64 }, u64 }) -> () {
+fn just_for_loop_15(mut vector: __ptr { { ptr, u64 }, u64 }) -> () {
     local mut { { { ptr, u64 }, u64 }, u64 } __for_iterable_2
     local mut { u64, ( () | u64 ) } __for_value_opt_1
     local { u64, ( () | u64 ) } __ret_val
@@ -14,7 +14,7 @@ fn just_for_loop_15(vector: __ptr { { ptr, u64 }, u64 }) -> () {
     local u64 other_0
     local u64 other_1
 
-    entry(vector: __ptr { { ptr, u64 }, u64 }):
+    entry(mut vector: __ptr { { ptr, u64 }, u64 }):
     v1132v1 = get_local __ptr u64, i
     v1133v1 = const u64 0
     store v1133v1 to v1132v1
@@ -57,7 +57,7 @@ fn just_for_loop_15(vector: __ptr { { ptr, u64 }, u64 }) -> () {
     v1165v1 = const bool true
     br is_none_22_block2(v1165v1)
 
-    is_none_22_block2(v1131v1: bool):
+    is_none_22_block2(mut v1131v1: bool):
     cbr v1131v1, end_while(), block1()
 
     block1():

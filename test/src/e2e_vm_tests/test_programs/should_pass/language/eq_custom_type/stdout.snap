@@ -1,70 +1,12 @@
 ---
 source: test/src/snapshot/mod.rs
 ---
-> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/stdlib/raw_ptr --release
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/eq_custom_type --release
 exit status: 0
 output:
-    Building test/src/e2e_vm_tests/test_programs/should_pass/stdlib/raw_ptr
-   Compiling library std (sway-lib-std)
-   Compiling script raw_ptr (test/src/e2e_vm_tests/test_programs/should_pass/stdlib/raw_ptr)
-    Finished release [optimized + fuel] target(s) [2.792 KB] in ???
+    Building test/src/e2e_vm_tests/test_programs/should_pass/language/eq_custom_type
+   Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-option-result)
+   Compiling script eq_custom_type (test/src/e2e_vm_tests/test_programs/should_pass/language/eq_custom_type)
+    Finished release [optimized + fuel] target(s) [592 B] in ???
 
-> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/stdlib/raw_ptr --release --ir final --asm final --bytecode | filter-fn raw_ptr raw_ptr_write
-
-fn raw_ptr_write_55(ptr: ptr, value: u8) -> () {
-    entry(ptr: ptr, value: u8):
-    v665v1 = asm(ptr: ptr, val: value) -> () {
-        sb     ptr val i0
-    }
-    v666v1 = const unit ()
-    ret () v666v1
-}
-
-
-fn raw_ptr_write_61(ptr: ptr, value: u64) -> () {
-    entry(ptr: ptr, value: u64):
-    v670v1 = asm(ptr: ptr, val: value) -> () {
-        sw     ptr val i0
-    }
-    v671v1 = const unit ()
-    ret () v671v1
-}
-
-
-fn raw_ptr_write_62(ptr: ptr, value: __ptr { bool, u64 }) -> () {
-    local { bool, u64 } val_
-
-    entry(ptr: ptr, value: __ptr { bool, u64 }):
-    v675v1 = get_local __ptr { bool, u64 }, val_
-    mem_copy_val v675v1, value
-    v677v1 = get_local __ptr { bool, u64 }, val_
-    v678v1 = const u64 16
-    v679v1 = asm(dst: ptr, src: v677v1, count: v678v1) -> () {
-        mcp    dst src count
-    }
-    v680v1 = const unit ()
-    ret () v680v1
-}
-
-
-pshh i524288                  ; [fn init: raw_ptr_write_55]: push used high registers 40..64
-sb   $$arg0 $$arg1 i0         ; sb ptr val i0
-poph i524288                  ; [fn end: raw_ptr_write_55]: restore used high registers 40..64
-jal  $zero $$reta i0          ; [fn end: raw_ptr_write_55] return from call
-
-pshh i524288                  ; [fn init: raw_ptr_write_61]: push used high registers 40..64
-sw   $$arg0 $$arg1 i0         ; sw ptr val i0
-poph i524288                  ; [fn end: raw_ptr_write_61]: restore used high registers 40..64
-jal  $zero $$reta i0          ; [fn end: raw_ptr_write_61] return from call
-
-
-
-pshh i528384                  ; [fn init: raw_ptr_write_62]: push used high registers 40..64
-move $$locbase $sp            ; [fn init: raw_ptr_write_62]: set locals base register
-cfei i16                      ; [fn init: raw_ptr_write_62]: allocate: locals 16 byte(s), call args 0 slot(s)
-mcpi $$locbase $$arg1 i16     ; copy memory
-movi $r0 i16                  ; initialize constant into register
-mcp  $$arg0 $$locbase $r0     ; mcp dst src count
-cfsi i16                      ; [fn end: raw_ptr_write_62] free: locals 16 byte(s), call args 0 slot(s)
-poph i528384                  ; [fn end: raw_ptr_write_62]: restore used high registers 40..64
-jal  $zero $$reta i0          ; [fn end: raw_ptr_write_62] return from call
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/eq_custom_type --release --ir final --asm final --bytecode | filter-fn eq_custom_type raw_ptr_write

@@ -8,11 +8,7 @@ fn transmute_by_reference_7(mut __ret_value: __ptr u256) -> () {
     local mut [u8; 32] bytes
     local __ptr u256 v
 
-<<<<<<< HEAD
     entry(mut __ret_value: __ptr u256):
-=======
-    entry(__ret_value: __ptr u256):
->>>>>>> a94b693b4 (update tests)
     v790v1 = get_local __ptr [u8; 32], __array_init_0
     mem_clear_val v790v1
     v792v1 = get_local __ptr [u8; 32], bytes

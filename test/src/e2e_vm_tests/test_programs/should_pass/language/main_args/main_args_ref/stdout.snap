@@ -202,11 +202,7 @@ script {
         retd v839v1 v841v1, !166
     }
 
-<<<<<<< HEAD
     entry_orig fn main_15(mut baba: __ptr { u64 }) -> u64, !170 {
-=======
-    entry_orig fn main_15(baba: __ptr { u64 }) -> u64, !170 {
->>>>>>> a94b693b4 (update tests)
         local u64 other_
 
         entry(baba: __ptr { u64 }):
@@ -377,7 +373,6 @@ script {
 !151 = span !0 170 204
 !152 = fn_call_path_span !0 170 187
 !153 = (!151 !152)
-<<<<<<< HEAD
 !154 = span !4 56805 56854
 !155 = (!151 !152 !154)
 !156 = span !4 56830 56854
@@ -390,20 +385,6 @@ script {
 !163 = span !4 56942 56946
 !164 = (!151 !152 !163)
 !165 = span !4 56921 56947
-=======
-!154 = span !4 56401 56450
-!155 = (!151 !152 !154)
-!156 = span !4 56426 56450
-!157 = (!151 !152 !154)
-!158 = span !4 56480 56508
-!159 = (!151 !152 !158)
-!160 = (!151 !152 !158)
-!161 = span !4 56532 56536
-!162 = (!151 !152 !161)
-!163 = span !4 56538 56542
-!164 = (!151 !152 !163)
-!165 = span !4 56517 56543
->>>>>>> a94b693b4 (update tests)
 !166 = (!151 !152 !165)
 !167 = "test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_ref/src/main.sw"
 !168 = span !167 46 99
