@@ -37,13 +37,6 @@ pub fn mem_copy_opt(
     Ok(modified)
 }
 
-struct InstInfo {
-    // The block containing the instruction.
-    block: Block,
-    // Relative (use only for comparison) position of instruction in `block`.
-    pos: usize,
-}
-
 // If the source is an Arg, we replace uses of destination with Arg.
 // Otherwise (`get_local`), we replace the local symbol in-place.
 enum ReplaceWith {

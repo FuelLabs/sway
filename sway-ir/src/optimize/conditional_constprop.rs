@@ -24,8 +24,6 @@ pub fn ccp(
     analyses: &AnalysisResults,
     function: Function,
 ) -> Result<bool, IrError> {
-    let mut modified = false;
-
     let dom_tree: &DomTree = analyses.get_analysis_result(function);
 
     // In the set of blocks dominated by `key`, replace all uses of `val.0` with `val.1`.
