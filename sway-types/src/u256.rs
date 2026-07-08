@@ -69,13 +69,15 @@ impl std::fmt::Display for U256 {
 
 impl std::fmt::LowerHex for U256 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:x}", self.0)
+        let s = self.0.to_str_radix(16);
+        write!(f, "{}{}", "0".repeat(64 - s.len()), s)
     }
 }
 
 impl std::fmt::UpperHex for U256 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:X}", self.0)
+        let s = self.0.to_str_radix(16);
+        write!(f, "{}{}", "0".repeat(64 - s.len()), s.to_uppercase())
     }
 }
 

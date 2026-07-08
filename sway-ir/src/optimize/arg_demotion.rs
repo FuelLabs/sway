@@ -219,6 +219,24 @@ fn demote_caller(
 }
 
 fn demote_block_signature(context: &mut Context, function: &Function, block: Block) -> bool {
+    // Do no demote if there is a never involved
+    if block
+        .arg_iter(context)
+        .any(|arg| arg.get_type(context).unwrap().is_never(context))
+    {
+        return false;
+    }
+
+    let preds = block.pred_iter(context).copied().collect::<Vec<Block>>();
+    for pred in preds {
+        for arg_val in pred.get_succ_params(context, &block) {
+            if arg_val.get_type(context).unwrap().is_never(context) {
+                return false;
+            }
+        }
+    }
+
+    // demote as normal now
     let candidate_args = block
         .arg_iter(context)
         .enumerate()
