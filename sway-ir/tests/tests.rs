@@ -296,17 +296,11 @@ fn inline() {
 
         if params.contains(&"all") {
             // Just inline everything, replacing all CALL instructions.
-<<<<<<< HEAD
             let mut changed = false;
             for func in funcs.into_iter() {
                 changed |= opt::inline_all_function_calls(ir, &func).unwrap();
             }
             changed
-=======
-            funcs
-                .into_iter()
-                .any(|func| opt::inline_all_function_calls(ir, &func).unwrap())
->>>>>>> 3de9fb411 (fmt and clippy issues)
         } else {
             // Get the parameters from the first line.  See the inline/README.md for details.  If
             // there aren't any found then there won't be any constraints and it'll be the
