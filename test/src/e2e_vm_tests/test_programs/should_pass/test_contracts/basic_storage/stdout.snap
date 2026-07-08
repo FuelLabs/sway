@@ -1,0 +1,62 @@
+---
+source: test/src/snapshot/mod.rs
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/basic_storage --ir final --asm final | filter-fn basic_storage unwrap_84
+
+pub fn unwrap_84(mut self: __ptr { u64, ( () | b256 ) }, mut __ret_value: __ptr b256) -> () {
+    local { u64, ( () | b256 ) } __matched_value_4
+    local u64 code_
+    local u64 other_
+
+    entry(mut self: __ptr { u64, ( () | b256 ) }, mut __ret_value: __ptr b256):
+    v7349v1 = get_local __ptr { u64, ( () | b256 ) }, __matched_value_4
+    mem_copy_val v7349v1, self
+    v7351v1 = const u64 0
+    v7352v1 = get_elem_ptr self, __ptr u64, v7351v1
+    v7353v1 = get_local __ptr u64, other_
+    v7354v1 = const u64 1
+    store v7354v1 to v7353v1
+    v7356v1 = load v7352v1
+    v7357v1 = get_local __ptr u64, other_
+    v7358v1 = load v7357v1
+    v7359v1 = cmp eq v7356v1 v7358v1
+    cbr v7359v1, block0(), block1()
+
+    block0():
+    v7361v1 = get_local __ptr { u64, ( () | b256 ) }, __matched_value_4
+    v7362v1 = const u64 1
+    v7363v1 = const u64 1
+    v7364v1 = get_elem_ptr v7361v1, __ptr b256, v7362v1, v7363v1
+    mem_copy_val __ret_value, v7364v1
+    v7366v1 = const unit ()
+    ret () v7366v1
+
+    block1():
+    v7368v1 = get_local __ptr u64, code_
+    v7369v1 = const u64 0
+    store v7369v1 to v7368v1
+    v7371v1 = get_local __ptr u64, code_
+    v7372v1 = load v7371v1
+    revert v7372v1
+}
+
+
+
+
+pshh i530432                  ; [fn init: unwrap_84]: push used high registers 40..64
+move $$locbase $sp            ; [fn init: unwrap_84]: set locals base register
+cfei i56                      ; [fn init: unwrap_84]: allocate: locals 56 byte(s), call args 0 slot(s)
+mcpi $$locbase $$arg0 i40     ; copy memory
+sw   $$locbase $one i6        ; store word
+lw   $r0 $$arg0 i0            ; load word
+lw   $r1 $$locbase i6         ; load word
+eq   $r0 $r0 $r1
+jnzf $r0 $zero i3
+sw   $$locbase $zero i5       ; store word
+lw   $r0 $$locbase i5         ; load word
+rvrt $r0
+addi $r0 $$locbase i8         ; get offset to aggregate element
+mcpi $$arg1 $r0 i32           ; copy memory
+cfsi i56                      ; [fn end: unwrap_84] free: locals 56 byte(s), call args 0 slot(s)
+poph i530432                  ; [fn end: unwrap_84]: restore used high registers 40..64
+jal  $zero $$reta i0          ; [fn end: unwrap_84] return from call
