@@ -96,12 +96,11 @@ get_new_contract_id() {
         echo -e "${BOLD_WHITE}$PROJ${NC}"
 
         pushd "$DIR/.." > /dev/null
+        REGEX="0x[a-zA-Z0-9]{64}"
         CONTRACT_ID=$(cargo r -p forc --release -- contract-id --path $CONTRACT_ARGS 2> /dev/null | $grep -oP "$REGEX")
         popd > /dev/null
 
         if [[ $CONTRACT_ID ]]; then
-            popd >> /dev/null
-
             SED_EXPR="${LINE}s/0x[a-zA-Z0-9]*/$CONTRACT_ID/g"
 
             # check if there is a diff
