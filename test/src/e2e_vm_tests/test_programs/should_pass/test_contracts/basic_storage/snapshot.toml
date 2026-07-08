@@ -1,3 +1,4 @@
 cmds = [
+    "echo unwrap_84 should not show never as one of its block arguments",
     "forc build --path {root} --ir final --asm final | filter-fn {name} unwrap_84"
 ]

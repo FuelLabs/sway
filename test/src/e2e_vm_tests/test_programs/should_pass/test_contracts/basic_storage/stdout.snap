@@ -1,6 +1,8 @@
 ---
 source: test/src/snapshot/mod.rs
 ---
+unwrap_84 should not show never as one of its block arguments
+
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/basic_storage --ir final --asm final | filter-fn basic_storage unwrap_84
 
 pub fn unwrap_84(mut self: __ptr { u64, ( () | b256 ) }, mut __ret_value: __ptr b256) -> () {
