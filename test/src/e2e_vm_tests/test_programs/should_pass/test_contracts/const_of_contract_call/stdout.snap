@@ -7,7 +7,7 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-vec)
    Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
-    Finished release [optimized + fuel] target(s) [19.456 KB] in ???
+    Finished release [optimized + fuel] target(s) [19.448 KB] in ???
      Running 33 tests, filtered 0 tests
 
 tested -- const_of_contract_call
@@ -43,8 +43,8 @@ tested -- const_of_contract_call
       test in_enum_u64_u64_u64 ... ok (???, 1636 gas)
       test in_vec_trivial ... ok (???, 2670 gas)
       test in_vec_not_trivial ... ok (???, 5869 gas)
-      test order_args_without_trivial_enum ... ok (???, 3049 gas)
-      test order_args_with_trivial_enum ... ok (???, 3213 gas)
+      test order_args_without_trivial_enum ... ok (???, 3047 gas)
+      test order_args_with_trivial_enum ... ok (???, 3211 gas)
 
 test result: OK. 33 passed; 0 failed; finished in ???
 
@@ -279,12 +279,12 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-vec)
    Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
-    Finished release [optimized + fuel] target(s) [1.992 KB] in ???
+    Finished release [optimized + fuel] target(s) [1.984 KB] in ???
      Running 1 test, filtered 0 tests
 
 tested -- const_of_contract_call
 
-      test order_args_without_trivial_enum ... ok (???, 2822 gas)
+      test order_args_without_trivial_enum ... ok (???, 2820 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
@@ -299,12 +299,12 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-vec)
    Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
-    Finished release [optimized + fuel] target(s) [2.288 KB] in ???
+    Finished release [optimized + fuel] target(s) [2.28 KB] in ???
      Running 1 test, filtered 0 tests
 
 tested -- const_of_contract_call
 
-      test order_args_with_trivial_enum ... ok (???, 2982 gas)
+      test order_args_with_trivial_enum ... ok (???, 2980 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 

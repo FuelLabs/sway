@@ -45,20 +45,20 @@ pub fn init_aggr_lowering<'a, 'b>(
 
         replace_map.insert(*root_init_aggr, root_aggr_ptr);
 
-        let aggr_type = root_aggr_ptr
+        let root_aggr_type = root_aggr_ptr
             .match_ptr_type(context)
             .expect("`root_aggr_ptr` must be a pointer");
 
         let _ = lower_mostly_zeroed_aggregate(
             context,
             *root_init_aggr,
-            aggr_type,
+            root_aggr_type,
             root_aggr_ptr,
             &initializers,
         ) || lower_to_stores(
             context,
             *root_init_aggr,
-            aggr_type,
+            root_aggr_type,
             root_aggr_ptr,
             &mut Vec::new(),
             &initializers,
@@ -91,35 +91,65 @@ fn deconstruct_init_aggr(context: &Context, init_aggr: Value) -> (Value, Vec<Ini
     )
 }
 
-/// This lowering checks whether the aggregate being initialized is mostly zeroed,
+/// This lowering checks whether a **root aggregate** being initialized is mostly zeroed,
 /// i.e., whether most of its fields are initialized to zero values.
-/// If so, it lowers the `init_aggr` to a `mem_clear_val` for the entire aggregate,
+/// If so, it lowers the `init_aggr` to a `mem_clear_val` for the entire root aggregate,
 /// followed by `store`s for the non-zero fields.
 ///
 /// E.g., a very common case is initializing tuples like `(0, 0, 0, some_variable)`.
 ///
+/// Note that this lowering is not recursive. It is always called with a **root aggregate**.
+///
 /// Returns `true` if the lowering was performed, `false` otherwise.
 fn lower_mostly_zeroed_aggregate<'a, 'b>(
     context: &'a mut Context<'b>,
-    init_aggr: Value,
-    aggr_type: Type,
+    root_init_aggr: Value,
+    root_aggr_type: Type,
     root_aggr_ptr: Value,
     initializers: &[InitAggrInitializer],
 ) -> bool {
-    /// Computes, recursively, the total size of a type `ty`,
-    /// and the size of its zero-initialized fields.
-    /// The top-level call will always pass an aggregate type `ty`
-    /// that can be initialized with `init_aggr` (array or struct).
-    /// The recursion ends either when we reach leaf non-aggregate types
-    /// or aggregates that are initialized with a [Value] which is
-    /// not an `init_aggr`, or enums which are also not initialized with
-    /// `init_aggr`.
-    fn compute_relative_sizes(
+    /// Computes, recursively, the total size in bytes of zero-initialized
+    /// fields within the `type_content`.
+    ///
+    /// The `type_size` is the size of the `type_content` potentially aligned
+    /// within a parent. E.g., an `u8` element inside of an array has size of one byte,
+    /// but within a struct, size of 8 bytes, because of alignment to word boundary.
+    /// That's why `type_size` cannot be calculated internally within the function
+    /// but **must be passed from the parent**.
+    ///
+    /// The top-level call will always pass a root aggregate `type_content`
+    /// that is initialized with an `init_aggr` (array or struct).
+    ///
+    /// The recursion ends when we reach leaf non-aggregate types whose `type_size`
+    /// is passed from the parent aggregate.
+    ///
+    /// Note that:
+    /// - computing size of zeroed elements and comparing it to the full aggregate size,
+    ///   **is only an approximate heuristics** for actually counting `store`s and `memcopy`s
+    ///   needed to initialize the aggregate and comparing the savings when using `memclear`.
+    /// - we could have also chosen to count only the size of leaf non-aggregates, regardless
+    ///   of them being potentially aligned within a struct parent. This would require
+    ///   also calculating the size of the root aggregate regardless of any alignments and
+    ///   comparing against that. This way of counting would lead to different tradeoffs and
+    ///   inaccuracies in the heuristics. E.g., the current way of counting sizes gives
+    ///   different ratios in the edge case example of comparing `(0u8, 42u64)` and `([0u8], 42u64)`.
+    ///   In ideal counting of `store`s these two cases should be the same.
+    ///   Counting sized of only leaf non-aggregates leads to different tradeoffs, e.g.,
+    ///   when having zeroed embedded aggregates that are initialized as [InitAggrInitializer::Value].
+    ///   The chosen approach shows slight empirical advantage in having less regressions.
+    // TODO: (INIT-AGGR) Can we improve heuristics here and actually count operations needed
+    //       to initialize an aggregate? It should be counting ASM than, including knowing the
+    //       gas cost. Too complex?
+    fn compute_size_of_zeroed_elements(
         context: &Context,
-        ty: Type,
+        type_content: &TypeContent,
+        type_size: u64,
         initializers: &[InitAggrInitializer],
-    ) -> Option<(u64, u64)> {
-        match ty.get_content(context) {
+    ) -> u64 {
+        // TODO-MEMLAY: Warning! Here we make an assumption about the memory layout of
+        //              structs and arrays.
+        //              The memory layout of structs and arrays can be changed in the future.
+        match type_content {
             TypeContent::Array(elem_type, length) => {
                 assert_eq!(
                     *length as usize,
@@ -127,14 +157,27 @@ fn lower_mostly_zeroed_aggregate<'a, 'b>(
                     "`init_aggr` initializers must match the length of the array type"
                 );
 
-                let (mut total_size, mut zero_size) = (0u64, 0u64);
+                // Array elements are packed. The size of the element is it's size in bytes.
+                let elem_size = elem_type.size(context).in_bytes();
+
+                let mut zero_size = 0u64;
                 for init in initializers.into_iter() {
                     let init_values = match init {
                         InitAggrInitializer::Value(_) => {
+                            // Not that this also deliberately includes enums.
                             if elem_type.is_aggregate(context) {
-                                // An aggregate, if initialized with a value, cannot be analyzed for zeroed fields.
-                                return None;
+                                // Element type is an aggregate not initialized with `init_aggr`.
+                                // We cannot inspect its content further in detail, but if we know
+                                // it is runtime-zeroed, we can add it to the cumulative `zero_size`.
+                                // If an aggregate is runtime-zeroed 
+                                if init.is_runtime_zeroed(context) {
+                                    zero_size += elem_size;
+                                }
+                                // Don't analyze this initializer further.
+                                continue;
                             }
+
+                            // This is non-aggregate leaf. Pass it down as the final recursive step.
                             vec![init.clone()]
                         }
                         InitAggrInitializer::NestedInitAggr {
@@ -143,15 +186,18 @@ fn lower_mostly_zeroed_aggregate<'a, 'b>(
                         } => {
                             let (_nested_aggr_ptr, nested_ia_initializers) =
                                 deconstruct_init_aggr(context, *nested_init_aggr);
+                            // Pass the initializers down the recursive step.
                             nested_ia_initializers
                         }
                     };
-                    let (elem_total_size, elem_zero_size) =
-                        compute_relative_sizes(context, *elem_type, &init_values)?;
-                    total_size += elem_total_size;
+
+                    let elem_zero_size =
+                        compute_size_of_zeroed_elements(context, elem_type.get_content(context), elem_size, &init_values);
+
                     zero_size += elem_zero_size;
                 }
-                Some((total_size, zero_size))
+
+                zero_size
             }
             TypeContent::Struct(field_types) => {
                 assert_eq!(
@@ -160,14 +206,27 @@ fn lower_mostly_zeroed_aggregate<'a, 'b>(
                     "`init_aggr` initializers must match the number of fields in the struct type"
                 );
 
-                let (mut total_size, mut zero_size) = (0u64, 0u64);
+                let mut zero_size = 0u64;
                 for (init, field_type) in initializers.into_iter().zip(field_types) {
+                    // Struct fields are aligned to word boundary.
+                    let field_size = field_type.size(context).in_bytes_aligned();
+
                     let init_values = match init {
                         InitAggrInitializer::Value(_) => {
+                            // Not that this also deliberately includes enums.
                             if field_type.is_aggregate(context) {
-                                // An aggregate, if initialized with a value, cannot be analyzed for zeroed fields.
-                                return None;
+                                // Element type is an aggregate not initialized with `init_aggr`.
+                                // We cannot inspect its content further in detail, but if we know
+                                // it is runtime-zeroed, we can add it to the cumulative `zero_size`.
+                                // If an aggregate is runtime-zeroed 
+                                if init.is_runtime_zeroed(context) {
+                                    zero_size += field_size;
+                                }
+                                // Don't analyze this initializer further.
+                                continue;
                             }
+
+                            // This is non-aggregate leaf. Pass it down as the final recursive step.
                             vec![init.clone()]
                         }
                         InitAggrInitializer::NestedInitAggr {
@@ -179,41 +238,46 @@ fn lower_mostly_zeroed_aggregate<'a, 'b>(
                             nested_ia_initializers
                         }
                     };
-                    let (field_total_size, field_zero_size) =
-                        compute_relative_sizes(context, *field_type, &init_values)?;
-                    total_size += field_total_size;
+
+                    let field_zero_size =
+                        compute_size_of_zeroed_elements(context, field_type.get_content(context), field_size, &init_values);
+
                     zero_size += field_zero_size;
                 }
-                Some((total_size, zero_size))
+
+                zero_size
             }
             _ => {
-                let size = ty.size(context).in_bytes();
-                let is_zero_init = matches!(
-                    initializers.first(),
-                    Some(InitAggrInitializer::Value(value))
-                        if value.get_constant(context).is_some_and(|c| c.is_runtime_zeroed(context))
+                assert!(
+                    matches!(initializers, [InitAggrInitializer::Value(_)]),
+                    "a leaf element must be a non-aggregate with a single initializer of variant `InitAggrInitializer::Value`"
                 );
-                let zero_size = if is_zero_init { size } else { 0 };
-                Some((size, zero_size))
+
+                let is_zero_init = initializers[0].is_runtime_zeroed(context);
+                let zero_size = if is_zero_init { type_size } else { 0 };
+                zero_size
             }
         }
     }
 
-    let Some((total_size, zero_size)) = compute_relative_sizes(context, aggr_type, initializers)
-    else {
-        // Could not compute sizes.
-        return false;
-    };
+    // The root aggregate is never embedded inside of any other aggregates.
+    // It's total size is always its size in bytes.
+    let total_size = root_aggr_type.size(context).in_bytes();
+    let zero_size = compute_size_of_zeroed_elements(context, root_aggr_type.get_content(context), total_size, initializers);
 
     let zero_ratio = zero_size as f64 / total_size as f64;
+
+    // Not mostly zeroed.
     if zero_ratio < 0.30 {
-        // Not mostly zeroed.
         return false;
     }
 
     // `lower_single_initializer_to_stores` stores values directly into the root aggregate,
     // so we need to make sure that the `mem_clear_val` is done before any of those stores.
-    // 1. Collect all `init_aggr` related to the root.
+    // We need to get the position of the outmost `init_aggr` which can be the root itself
+    // iff it has no nested `init_aggr`s, or its outmost nested `init_aggr`.
+
+    // 1. Collect all `init_aggr` related to the root, including the root itself.
     fn collect_init_aggrs<'a, 'b>(
         context: &'a Context<'b>,
         init_aggr: Value,
@@ -240,12 +304,12 @@ fn lower_mostly_zeroed_aggregate<'a, 'b>(
     }
 
     let mut init_aggrs = FxHashMap::<Value, usize>::default();
-    collect_init_aggrs(context, init_aggr, &mut init_aggrs);
+    collect_init_aggrs(context, root_init_aggr, &mut init_aggrs);
 
     // 2. Get the actual indices of `init_aggr`s increased by 1 so that 0 remains as "unknown".
     //    "Unknown" we can have only if a particular nested `init_aggr` is not in the same
     //    block as root `init_aggregate` which can never be the case.
-    let parent_block = init_aggr
+    let parent_block = root_init_aggr
         .get_parent_block(context)
         .expect("`init_aggr` is an instruction and must have a parent block");
     for (inst_idx, inst) in parent_block.instruction_iter(context).enumerate() {
@@ -261,7 +325,7 @@ fn lower_mostly_zeroed_aggregate<'a, 'b>(
         .map(|(inst, index)| (*inst, *index))
         .expect("there must be at least one `init_aggr` because we included the root `init_aggr`");
 
-    // We do not consider cases like, e.g., this one, as nested `init_argg`s:
+    // We do not consider cases like, e.g., this one, as nested `init_aggr`s:
     //   S {
     //      x: if condition {
     //          (0, 1)
@@ -270,7 +334,8 @@ fn lower_mostly_zeroed_aggregate<'a, 'b>(
     //      }
     //   }
     // All nested `init_aggr`s of a particular root will always be in the same
-    // block as the root.
+    // block as the root. Let's conveniently assert that expectation here,
+    // because we have an easy way to do it.
     assert_ne!(earliest_aggr_init_inst_idx, 0, "all nested `init_aggr`s must be in the same block as their root");
 
     // Perform the lowering:
@@ -278,19 +343,21 @@ fn lower_mostly_zeroed_aggregate<'a, 'b>(
     let inserter = get_inst_inserter_for_before_init_aggr(context, earliest_aggr_init_inst);
     inserter
         .mem_clear_val(root_aggr_ptr)
-        .add_metadatum(context, init_aggr.get_metadata(context));
+        .add_metadatum(context, root_init_aggr.get_metadata(context));
 
     // 2. `store`s for the non-zero fields.
     lower_to_stores(
         context,
-        init_aggr,
-        aggr_type,
+        root_init_aggr,
+        root_aggr_type,
         root_aggr_ptr,
         &mut Vec::new(),
         initializers,
         true,
     );
 
+    // Always return true, even if `lower_to_stores` doesn't need to do any additional lowering,
+    // because we already mem-cleared the aggregate.
     true
 }
 
