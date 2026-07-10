@@ -1801,7 +1801,35 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
         }
     }
 
-    // Recomputes the index in the instruction vec. O(n) in the worst case.
+    /// Return a new [`InstructionInserter`] context that inserts before the
+    /// instruction `inst`.
+    ///
+    /// Panics if `inst` is not an [Instruction].
+    pub fn before(
+        context: &'a mut Context<'eng>,
+        inst: Value,
+    ) -> InstructionInserter<'a, 'eng> {
+        let block = inst
+            .get_parent_block(context)
+            .expect("`inst` must be an instruction and must have a parent block");
+        InstructionInserter::new(context, block, InsertionPosition::Before(inst))
+    }
+
+    /// Return a new [`InstructionInserter`] context that inserts after the
+    /// instruction `inst`.
+    ///
+    /// Panics if `inst` is not an [Instruction].
+    pub fn after(
+        context: &'a mut Context<'eng>,
+        inst: Value,
+    ) -> InstructionInserter<'a, 'eng> {
+        let block = inst
+            .get_parent_block(context)
+            .expect("`inst` must be an instruction and must have a parent block");
+        InstructionInserter::new(context, block, InsertionPosition::After(inst))
+    }
+
+    // Recompute the index in the instruction vec. O(n) in the worst case.
     fn get_position_index(&self) -> usize {
         let instructions = &self.context.blocks[self.block.0].instructions;
         match self.position {

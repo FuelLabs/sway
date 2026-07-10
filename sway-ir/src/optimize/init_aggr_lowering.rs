@@ -9,7 +9,7 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     dominator::{self},
-    AnalysisResults, BinaryOpKind, Context, Function, InitAggrInitializer, InsertionPosition,
+    AnalysisResults, BinaryOpKind, Context, Function, InitAggrInitializer,
     InstOp, Instruction, InstructionInserter, IrError, MetadataIndex, Pass, PassMutability,
     Predicate, ScopedPass, Type, TypeContent, Value,
 };
@@ -444,14 +444,32 @@ fn lower_to_stores<'a, 'b>(
                             let (nested_aggr_ptr, nested_ia_initializers) =
                                 deconstruct_init_aggr(context, nested_init_aggr);
 
-                            // Store the nested aggregate into its original temporary, and not into the root aggregate.
-                            // Essentially, we are treating the nested `init_aggr` as a root for the rest of the lowering.
+                            // Store the nested aggregate into its original temporary, **and not into the root aggregate**.
+                            // Essentially, we are treating the nested `init_aggr` as a **root for the rest of the lowering**.
                             // Also, note that we are **not optimizing that new root for being an almost zero aggregate**.
+                            // What we do, though, if we know that it is runtime-zeroed, we `mem_clear_val` it and pass
+                            // the `skip_zeros = true` down its initialization chain.
                             let mut gep_indices: Vec<u64> = vec![];
 
                             let nested_aggr_type = nested_aggr_ptr
                                 .match_ptr_type(context)
                                 .expect("`nested_aggr_ptr` must be a pointer");
+
+                            // **Note the we must proceed with lowering even if this initializer is
+                            // runtime-zeroed and the root is already initialized with zeros.**
+                            // The reason is the final removal of the lowered `init_aggr`s that happens
+                            // below.
+                            // Note that any instructions eventually inserted by the below
+                            // `lower_to_stores` will in the end be DCEed because the temporary will
+                            // not be used anywhere.
+
+                            let is_temporary_runtime_zeroed = initializer.is_runtime_zeroed(context);
+
+                            if is_temporary_runtime_zeroed {
+                                // Insert `mem_clear_val` immediately after the `get_local` of the temporary.
+                                InstructionInserter::after(context, nested_aggr_ptr)
+                                    .mem_clear_val(nested_aggr_ptr);
+                            }
 
                             lower_to_stores(
                                 context,
@@ -460,9 +478,9 @@ fn lower_to_stores<'a, 'b>(
                                 nested_aggr_ptr,
                                 &mut gep_indices,
                                 &nested_ia_initializers,
-                                // `skip_zeros` is false, because we are not optimizing this
-                                // temporary for potentially being an almost-zero aggregate.
-                                false,
+                                // Pass `skip_zeros` to potential nested initializers
+                                // if the temporary is runtime zeroed.
+                                is_temporary_runtime_zeroed,
                             );
 
                             // Remove the `nested_init_aggr` and adapt its associated `load`
@@ -486,6 +504,14 @@ fn lower_to_stores<'a, 'b>(
                             nested_ia_load
                         }
                     };
+
+                    // The repeat array initializer is runtime zeroed and the root aggregate is
+                    // already zeroed. We can skip initializing this array.
+                    // Note that this is the safe point to do it, because the eventual nested `init_aggr`s
+                    // were removed above.
+                    if initializer.is_runtime_zeroed(context) && skip_zeroes {
+                        return true;
+                    }
 
                     // For large repeating arrays, initialize them in a loop.
                     if length > 5 {
@@ -591,10 +617,7 @@ fn get_inst_inserter_for_before_init_aggr<'a, 'b>(
     context: &'a mut Context<'b>,
     init_aggr: Value,
 ) -> InstructionInserter<'a, 'b> {
-    let block = init_aggr
-        .get_parent_block(context)
-        .expect("`init_aggr` is an instruction and must have a parent block");
-    InstructionInserter::new(context, block, InsertionPosition::Before(init_aggr))
+    InstructionInserter::before(context, init_aggr)
 }
 
 #[allow(clippy::too_many_arguments)]
