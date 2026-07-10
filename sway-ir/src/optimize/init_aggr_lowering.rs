@@ -36,7 +36,9 @@ pub fn init_aggr_lowering<'a, 'b>(
     }
 
     // Lower each `root_init_aggr` in a most optimized way.
-    // Lowering does not remove the `root_init_aggr` instruction yet, nor replaces its uses.
+    //
+    // Lowering removes only nested `init_aggr` instructions,
+    // but does not remove the `root_init_aggr` instruction yet, nor replaces its uses.
     // This is done after all lowerings are complete, and for that we build the `replace_map`
     // which maps each `root_init_aggr` to the aggregate that it initializes.
     let mut replace_map = FxHashMap::<Value, Value>::default();
@@ -71,6 +73,16 @@ pub fn init_aggr_lowering<'a, 'b>(
 
     // Finally, remove all root `root_init_aggr` instructions.
     function.remove_instructions(context, |inst| root_init_aggrs.contains(&inst));
+
+    // Check that all of the nested `init_aggr` instructions are removed.
+    // TODO: This is a full scan of all instructions in almost all functions.
+    //       If needed, we can improve this by scanning only the blocks that
+    //       contained root `init_aggr` instructions, and there also to scan
+    //       only up to the latest root `init_aggr`. But it seams to be a
+    //       premature optimization.
+    if function.instruction_iter(context).any(|(_block, inst)| matches!(inst.get_instruction(context).map(|inst| &inst.op), Some(InstOp::InitAggr(_)))) {
+        return Err(IrError::InitAggrsNotLowered());
+    }
 
     Ok(true)
 }
@@ -526,11 +538,6 @@ fn lower_to_stores<'a, 'b>(
                 _ => {
                     // Non-repeating array initializers. Initialize each element individually.
                     for (insert_idx, initializer) in initializers.iter().enumerate() {
-                        if initializer.is_runtime_zeroed(context) && skip_zeroes {
-                            // This element is zero-initialized. We can skip initializing it again.
-                            continue;
-                        }
-
                         gep_indices.push(insert_idx as u64);
 
                         lower_single_initializer_to_stores(
@@ -558,10 +565,6 @@ fn lower_to_stores<'a, 'b>(
             for (insert_idx, (initializer, field_type)) in
                 initializers.iter().zip(field_types).enumerate()
             {
-                if initializer.is_runtime_zeroed(context) && skip_zeroes {
-                    // This field is zero-initialized. We can skip initializing it again.
-                    continue;
-                }
                 gep_indices.push(insert_idx as u64);
 
                 lower_single_initializer_to_stores(
@@ -607,6 +610,12 @@ fn lower_single_initializer_to_stores(
 ) {
     match initializer {
         InitAggrInitializer::Value(value) => {
+            // This leaf value is runtime zeroed and the root aggregate is
+            // already zeroed. We can skip initializing this leaf value.
+            if initializer.is_runtime_zeroed(context) && skip_zeroes {
+                return;
+            }
+
             // The initializer's value does not come from a nested `init_aggr`.
             // Store the initializer's value directly into the field.
             let inserter = get_inst_inserter_for_before_init_aggr(context, init_aggr);
@@ -629,6 +638,13 @@ fn lower_single_initializer_to_stores(
             // We want to write nested `init_aggr`'s fields directly into the root aggregate's field.
             // This means completely removing the need for temporary storage of the nested aggregate,
             // and later `memcpy`ing it into the root aggregate.
+
+            // **Note the we must proceed with lowering even if this initializer is
+            // runtime-zeroed and the root is already initialized with zeros.**
+            // The reason is the final removal of the lowered `init_aggr`s that happens
+            // in this match arm, below.
+            // Note that in that case, the `get_elem_ptr` instruction inserted below
+            // will in the end be DCEed because it will not be used anywhere.
 
             let (nested_aggr_ptr, nested_ia_initializers) =
                 deconstruct_init_aggr(context, *nested_init_aggr);
