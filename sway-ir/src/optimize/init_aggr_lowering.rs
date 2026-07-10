@@ -412,9 +412,16 @@ fn lower_to_stores<'a, 'b>(
 
             // If all initializers are the same value, we can treat the array as a repeat array.
             // Returns the repeated element and the number of those elements in the array: `[repeated_value; size]`.
+            // Single element arrays are treated as being non-repeat arrays. This is because
+            // we can initialize them directly in-place without having a temporary `repeated_value`
+            // that needs to be copied to every array element.
             fn as_repeat_array(
                 initializers: &[InitAggrInitializer],
             ) -> Option<(InitAggrInitializer, u64)> {
+                if initializers.len() == 1 {
+                    return None;
+                }
+
                 initializers.split_first().and_then(|(first_init, rest)| {
                     if rest.iter().all(|init| init == first_init) {
                         Some((first_init.clone(), initializers.len() as u64))
