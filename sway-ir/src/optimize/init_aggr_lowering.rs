@@ -272,6 +272,10 @@ fn lower_mostly_zeroed_aggregate<'a, 'b>(
         }
     }
 
+    if root_aggr_type.is_single_store_initializeable(context) {
+        return false;
+    }
+
     // The root aggregate is never embedded inside of any other aggregates.
     // It's total size is always its size in bytes.
     let total_size = root_aggr_type.size(context).in_bytes();

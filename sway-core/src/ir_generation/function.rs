@@ -4991,7 +4991,7 @@ impl<'a> FnCompiler<'a> {
             InRegisterValue(Value),
         }
 
-        let init_kind = if Self::is_single_store_initializeable(context, array_type) {
+        let init_kind = if array_type.is_single_store_initializeable(context) {
             InitializationKind::InRegisterValue(
                 return_on_termination_or_extract!(
                     self.compile_expression_to_register(context, md_mgr, value_expr)?
@@ -5123,7 +5123,7 @@ impl<'a> FnCompiler<'a> {
             ElemByElem,
         }
 
-        let init_kind = if Self::is_single_store_initializeable(context, array_type) {
+        let init_kind = if array_type.is_single_store_initializeable(context) {
             InitializationKind::ElemByElem
         } else {
             match all_elements_are_same_literal(contents) {
@@ -5666,7 +5666,7 @@ impl<'a> FnCompiler<'a> {
             FieldByField,
         }
 
-        let init_kind = if Self::is_single_store_initializeable(context, struct_type) {
+        let init_kind = if struct_type.is_single_store_initializeable(context) {
             InitializationKind::FieldByField
         } else {
             match compile_constant_expression_to_constant(
@@ -5760,38 +5760,6 @@ impl<'a> FnCompiler<'a> {
         //       we will always want to use `memcpy` initialization,
         //       and simply return true here.
         false
-    }
-
-    /// Returns true if the given type can be initialized via a single `store` instruction.
-    ///
-    /// Such types we want to initialize via a single `store` and not, e.g., via `mem_clear_val`
-    /// even if they are zeroed, because using `store` will enable SROA which can be beneficial
-    /// in case of single field aggregates.
-    ///
-    /// Note that `u256` and `b256` are excluded here, because they require `mem_copy` for initialization.
-    fn is_single_store_initializeable(context: &Context, r#type: Type) -> bool {
-        match r#type.get_content(context) {
-            TypeContent::Never => false,
-            TypeContent::Unit => true,
-            TypeContent::Bool => true,
-            TypeContent::Uint(size) => *size <= 64,
-            TypeContent::B256 => false,
-            TypeContent::StringSlice => false,
-            TypeContent::StringArray(length) => *length == 1,
-            TypeContent::Array(elem_ty, length) => {
-                *length == 1 && Self::is_single_store_initializeable(context, *elem_ty)
-            }
-            TypeContent::Union(variants) => {
-                variants.len() == 1 && Self::is_single_store_initializeable(context, variants[0])
-            }
-            TypeContent::Struct(fields) => {
-                fields.len() == 1 && Self::is_single_store_initializeable(context, fields[0])
-            }
-            TypeContent::Slice => false,
-            TypeContent::Pointer => true,
-            TypeContent::TypedPointer(_) => true,
-            TypeContent::TypedSlice(_) => false,
-        }
     }
 
     #[allow(clippy::too_many_arguments)]
