@@ -66,7 +66,7 @@ fn raw_ptr_copy_to_and_read() {
 }
 
 #[test]
-fn raw_ptr_write() {
+fn test_raw_ptr_write() {
     // Write values into a buffer.
     let buf_ptr = alloc::<u64>(2);
     buf_ptr.write(true);
@@ -117,8 +117,6 @@ fn raw_ptr_overwrite_after_read() {
     raw_ptr_write(__addr_of(v), 0u32);
     raw_ptr_write(__addr_of(v), 0u64);
     raw_ptr_write(__addr_of(v), TestStruct { boo: false, uwu: 0 });
-
-    true
 }
 
 // We expect that each monomorphization of raw_ptr::write to be optimal
