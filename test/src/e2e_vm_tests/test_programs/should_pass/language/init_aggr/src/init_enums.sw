@@ -78,6 +78,17 @@ pub fn tuple_with_enum() {
     assert_eq(t.0, 0);
     assert_eq(t.1, E::Pair((1, 2u256)));
     assert_eq(t.2, 0);
+
+    // The `E::Pair` payload is a tuple built via `init_aggr`, and the expected
+    // `E::Pair((1, 2u256))` above builds it the same way. Additionally validate
+    // the payload field-by-field against primitive literals.
+    match t.1 {
+        E::Pair(p) => {
+            assert_eq(p.0, 1u64);
+            assert_eq(p.1, 2u256);
+        },
+        _ => assert(false),
+    }
 }
 
 #[test]

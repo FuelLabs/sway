@@ -53,6 +53,16 @@ pub fn no_nesting_all_zeros_repeat() {
         d: b256::zero(),
         u: (),
     });
+
+    // Additionally validate each element field-by-field against primitive
+    // literals. The aggregate-level assert above compares against a `NoNesting`
+    // that is itself created via `init_aggr`, so a bug shared between the
+    // element initialization and the expected value could otherwise be masked.
+    let mut i = 0;
+    while i < 10 {
+        assert_no_nesting_all_zeros(a[i]);
+        i += 1;
+    }
 }
 
 #[test]
@@ -79,6 +89,42 @@ pub fn no_nesting_not_all_zeros_repeat() {
         d: b256::zero(),
         u: (),
     });
+
+    // Additionally validate each element field-by-field against primitive literals.
+    let mut i = 0;
+    while i < 10 {
+        assert_no_nesting(a[i], 42, true, 42u256, b256::zero());
+        i += 1;
+    }
+}
+
+#[test]
+fn test_no_nesting_mostly_zeros_repeat() {
+    no_nesting_mostly_zeros_repeat();
+}
+
+/// A repeat array of a mostly-zeroed struct. Every element is the same struct
+/// whose only non-zero field is a large `u256`, so the whole array is mostly
+/// zeroed. This exercises the interaction between the mostly-zeroed lowering
+/// (`mem_clear_val` for the whole array) and the repeat-array lowering (which
+/// still has to store the non-zero field into every element).
+#[inline(never)]
+pub fn no_nesting_mostly_zeros_repeat() {
+    let a = [
+        NoNesting {
+            a: 0,
+            b: false,
+            c: 123u256,
+            d: b256::zero(),
+            u: (),
+        }; 10
+    ];
+
+    let mut i = 0;
+    while i < 10 {
+        assert_no_nesting(a[i], 0, false, 123u256, b256::zero());
+        i += 1;
+    }
 }
 
 #[test]
@@ -145,6 +191,13 @@ pub fn single_field_struct_not_zero_repeat() {
     let a = [SingleFieldStruct { a: 42 }; 10];
 
     assert_all_elems_equal(a, SingleFieldStruct { a: 42 });
+
+    // Additionally validate each element's field against a primitive literal.
+    let mut i = 0;
+    while i < 10 {
+        assert_eq(a[i].a, 42);
+        i += 1;
+    }
 }
 
 #[test]
@@ -167,6 +220,17 @@ fn test_u64_all_zeros_array_nested_in_array_repeat() {
 pub fn u64_all_zeros_array_nested_in_array_repeat() {
     let a = [[0u64; 10]; 10];
     assert_all_elems_equal(a, [0u64; 10]);
+
+    // Additionally validate each individual element against a primitive literal.
+    let mut i = 0;
+    while i < 10 {
+        let mut j = 0;
+        while j < 10 {
+            assert_eq(a[i][j], 0u64);
+            j += 1;
+        }
+        i += 1;
+    }
 }
 
 #[test]
@@ -178,6 +242,17 @@ fn test_u64_all_42s_array_nested_in_array_repeat() {
 pub fn u64_all_42s_array_nested_in_array_repeat() {
     let a = [[42u64; 10]; 10];
     assert_all_elems_equal(a, [42u64; 10]);
+
+    // Additionally validate each individual element against a primitive literal.
+    let mut i = 0;
+    while i < 10 {
+        let mut j = 0;
+        while j < 10 {
+            assert_eq(a[i][j], 42u64);
+            j += 1;
+        }
+        i += 1;
+    }
 }
 
 #[test]
