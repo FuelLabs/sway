@@ -280,7 +280,9 @@ impl InitAggrInitializer {
             //    Enums are modelled in IR as structs ( { u64, <union> }) so we need to
             //    exclude them separately.
             let local_var_type = local_var.get_inner_type(context);
-            if !((local_var_type.is_array(context) || local_var_type.is_struct(context)) && !local_var_type.is_enum(context)) {
+            if !((local_var_type.is_array(context) || local_var_type.is_struct(context))
+                && !local_var_type.is_enum(context))
+            {
                 return false;
             }
 
@@ -310,7 +312,10 @@ impl InitAggrInitializer {
 
             let Some(Instruction {
                 parent: _,
-                op: InstOp::MemClearVal { dst_val_ptr: cleared_val },
+                op:
+                    InstOp::MemClearVal {
+                        dst_val_ptr: cleared_val,
+                    },
             }) = inst_between_load_and_get_local.get_instruction(context)
             else {
                 return false;
@@ -325,10 +330,11 @@ impl InitAggrInitializer {
         }
 
         match self {
-            InitAggrInitializer::Value(val) => val
-                .get_constant(context)
-                .is_some_and(|c| c.is_runtime_zeroed(context))
-                || is_mem_cleared_aggregate(*val, context),
+            InitAggrInitializer::Value(val) => {
+                val.get_constant(context)
+                    .is_some_and(|c| c.is_runtime_zeroed(context))
+                    || is_mem_cleared_aggregate(*val, context)
+            }
             InitAggrInitializer::NestedInitAggr { load: _, init_aggr } => {
                 let Some(Instruction {
                     parent: _,
@@ -1805,10 +1811,7 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
     /// instruction `inst`.
     ///
     /// Panics if `inst` is not an [Instruction].
-    pub fn before(
-        context: &'a mut Context<'eng>,
-        inst: Value,
-    ) -> InstructionInserter<'a, 'eng> {
+    pub fn before(context: &'a mut Context<'eng>, inst: Value) -> InstructionInserter<'a, 'eng> {
         let block = inst
             .get_parent_block(context)
             .expect("`inst` must be an instruction and must have a parent block");
@@ -1819,10 +1822,7 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
     /// instruction `inst`.
     ///
     /// Panics if `inst` is not an [Instruction].
-    pub fn after(
-        context: &'a mut Context<'eng>,
-        inst: Value,
-    ) -> InstructionInserter<'a, 'eng> {
+    pub fn after(context: &'a mut Context<'eng>, inst: Value) -> InstructionInserter<'a, 'eng> {
         let block = inst
             .get_parent_block(context)
             .expect("`inst` must be an instruction and must have a parent block");

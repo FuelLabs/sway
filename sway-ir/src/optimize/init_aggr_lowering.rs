@@ -9,9 +9,9 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     dominator::{self},
-    AnalysisResults, BinaryOpKind, Context, Function, InitAggrInitializer,
-    InstOp, Instruction, InstructionInserter, IrError, MetadataIndex, Pass, PassMutability,
-    Predicate, ScopedPass, Type, TypeContent, Value,
+    AnalysisResults, BinaryOpKind, Context, Function, InitAggrInitializer, InstOp, Instruction,
+    InstructionInserter, IrError, MetadataIndex, Pass, PassMutability, Predicate, ScopedPass, Type,
+    TypeContent, Value,
 };
 
 pub const INIT_AGGR_LOWERING_NAME: &str = "lower-init-aggr";
@@ -80,7 +80,12 @@ pub fn init_aggr_lowering<'a, 'b>(
     //       contained root `init_aggr` instructions, and there also to scan
     //       only up to the latest root `init_aggr`. But it seams to be a
     //       premature optimization.
-    if function.instruction_iter(context).any(|(_block, inst)| matches!(inst.get_instruction(context).map(|inst| &inst.op), Some(InstOp::InitAggr(_)))) {
+    if function.instruction_iter(context).any(|(_block, inst)| {
+        matches!(
+            inst.get_instruction(context).map(|inst| &inst.op),
+            Some(InstOp::InitAggr(_))
+        )
+    }) {
         return Err(IrError::InitAggrsNotLowered());
     }
 
@@ -173,7 +178,7 @@ fn lower_mostly_zeroed_aggregate<'a, 'b>(
                 let elem_size = elem_type.size(context).in_bytes();
 
                 let mut zero_size = 0u64;
-                for init in initializers.into_iter() {
+                for init in initializers.iter() {
                     let init_values = match init {
                         InitAggrInitializer::Value(_) => {
                             // Not that this also deliberately includes enums.
@@ -181,7 +186,7 @@ fn lower_mostly_zeroed_aggregate<'a, 'b>(
                                 // Element type is an aggregate not initialized with `init_aggr`.
                                 // We cannot inspect its content further in detail, but if we know
                                 // it is runtime-zeroed, we can add it to the cumulative `zero_size`.
-                                // If an aggregate is runtime-zeroed 
+                                // If an aggregate is runtime-zeroed
                                 if init.is_runtime_zeroed(context) {
                                     zero_size += elem_size;
                                 }
@@ -203,8 +208,12 @@ fn lower_mostly_zeroed_aggregate<'a, 'b>(
                         }
                     };
 
-                    let elem_zero_size =
-                        compute_size_of_zeroed_elements(context, elem_type.get_content(context), elem_size, &init_values);
+                    let elem_zero_size = compute_size_of_zeroed_elements(
+                        context,
+                        elem_type.get_content(context),
+                        elem_size,
+                        &init_values,
+                    );
 
                     zero_size += elem_zero_size;
                 }
@@ -219,7 +228,7 @@ fn lower_mostly_zeroed_aggregate<'a, 'b>(
                 );
 
                 let mut zero_size = 0u64;
-                for (init, field_type) in initializers.into_iter().zip(field_types) {
+                for (init, field_type) in initializers.iter().zip(field_types) {
                     // Struct fields are aligned to word boundary.
                     let field_size = field_type.size(context).in_bytes_aligned();
 
@@ -230,7 +239,7 @@ fn lower_mostly_zeroed_aggregate<'a, 'b>(
                                 // Element type is an aggregate not initialized with `init_aggr`.
                                 // We cannot inspect its content further in detail, but if we know
                                 // it is runtime-zeroed, we can add it to the cumulative `zero_size`.
-                                // If an aggregate is runtime-zeroed 
+                                // If an aggregate is runtime-zeroed
                                 if init.is_runtime_zeroed(context) {
                                     zero_size += field_size;
                                 }
@@ -251,8 +260,12 @@ fn lower_mostly_zeroed_aggregate<'a, 'b>(
                         }
                     };
 
-                    let field_zero_size =
-                        compute_size_of_zeroed_elements(context, field_type.get_content(context), field_size, &init_values);
+                    let field_zero_size = compute_size_of_zeroed_elements(
+                        context,
+                        field_type.get_content(context),
+                        field_size,
+                        &init_values,
+                    );
 
                     zero_size += field_zero_size;
                 }
@@ -266,8 +279,12 @@ fn lower_mostly_zeroed_aggregate<'a, 'b>(
                 );
 
                 let is_zero_init = initializers[0].is_runtime_zeroed(context);
-                let zero_size = if is_zero_init { type_size } else { 0 };
-                zero_size
+
+                if is_zero_init {
+                    type_size
+                } else {
+                    0
+                }
             }
         }
     }
@@ -279,7 +296,12 @@ fn lower_mostly_zeroed_aggregate<'a, 'b>(
     // The root aggregate is never embedded inside of any other aggregates.
     // It's total size is always its size in bytes.
     let total_size = root_aggr_type.size(context).in_bytes();
-    let zero_size = compute_size_of_zeroed_elements(context, root_aggr_type.get_content(context), total_size, initializers);
+    let zero_size = compute_size_of_zeroed_elements(
+        context,
+        root_aggr_type.get_content(context),
+        total_size,
+        initializers,
+    );
 
     let zero_ratio = zero_size as f64 / total_size as f64;
 
@@ -335,7 +357,7 @@ fn lower_mostly_zeroed_aggregate<'a, 'b>(
     }
 
     // 3. Find the earliest instruction index among those `init_aggr`s.
-    let (earliest_aggr_init_inst, earliest_aggr_init_inst_idx)  = init_aggrs
+    let (earliest_aggr_init_inst, earliest_aggr_init_inst_idx) = init_aggrs
         .iter()
         .min_by(|(_inst1, index1), (_inst2, index2)| index1.cmp(index2))
         .map(|(inst, index)| (*inst, *index))
@@ -352,7 +374,10 @@ fn lower_mostly_zeroed_aggregate<'a, 'b>(
     // All nested `init_aggr`s of a particular root will always be in the same
     // block as the root. Let's conveniently assert that expectation here,
     // because we have an easy way to do it.
-    assert_ne!(earliest_aggr_init_inst_idx, 0, "all nested `init_aggr`s must be in the same block as their root");
+    assert_ne!(
+        earliest_aggr_init_inst_idx, 0,
+        "all nested `init_aggr`s must be in the same block as their root"
+    );
 
     // Perform the lowering:
     // 1. `mem_clear_val` for the entire aggregate.
@@ -474,7 +499,8 @@ fn lower_to_stores<'a, 'b>(
                             // `lower_to_stores` will in the end be DCEed because the temporary will
                             // not be used anywhere.
 
-                            let is_temporary_runtime_zeroed = initializer.is_runtime_zeroed(context);
+                            let is_temporary_runtime_zeroed =
+                                initializer.is_runtime_zeroed(context);
 
                             if is_temporary_runtime_zeroed {
                                 // Insert `mem_clear_val` immediately after the `get_local` of the temporary.
