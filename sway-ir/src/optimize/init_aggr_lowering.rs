@@ -305,8 +305,8 @@ fn lower_mostly_zeroed_aggregate<'a, 'b>(
 
     let zero_ratio = zero_size as f64 / total_size as f64;
 
-    // Not mostly zeroed.
-    if zero_ratio < 0.30 {
+    // The threshold of 75% is obtained empirically, by benchmarking real-life projects.
+    if zero_ratio < 0.75 {
         return false;
     }
 
