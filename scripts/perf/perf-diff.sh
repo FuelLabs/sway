@@ -1,4 +1,4 @@
-#!/bin/bash
+#! /usr/bin/env bash
 
 # This script compares performance data (gas usages and bytecode sizes) from two CSV files.
 # CSV files must have two columns, the test name and the performance data, and the test
