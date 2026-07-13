@@ -12,7 +12,10 @@ use ::ops::*;
 use ::raw_slice::AsRawSlice;
 use ::clone::Clone;
 
-/// A UTF-8 encoded growable string. It has ownership over its buffer.
+/// A UTF-8 encoded growable string.
+///
+/// `String` has ownership over its buffer, unless created with
+/// `from_shared_ascii_str` or `from_shared_ascii_str_array`.
 ///
 /// # Additional Information
 ///
@@ -27,6 +30,12 @@ pub struct String {
 impl String {
     /// Returns `Bytes` giving a UTF-8 representation of the string.
     ///
+    /// # Additional Information
+    ///
+    /// The returned `Bytes` contains a copy of the underlying string bytes.
+    /// To get string bytes without creating a copy of the underlying bytes,
+    /// use `String::as_raw_slice`.
+    ///
     /// # Returns
     ///
     /// * [Bytes] - A UTF-8 representation of the string.
@@ -37,11 +46,11 @@ impl String {
     /// use std::string::String;
     ///
     /// fn foo() {
-    ///     let mut string = String::new();
-    ///     string.push(0u8);
+    ///     let string = String::from_ascii_str("Fuel");
     ///     let bytes = string.as_bytes();
-    ///     assert(bytes.len() == 1);
-    ///     assert(bytes.get(0).unwrap() == 0u8);
+    ///     assert_eq(bytes.len(), 4);
+    ///     assert_eq(bytes.get(0).unwrap(), 70u8); // "F"
+    ///     assert(bytes.ptr() != string.ptr()); // A copy is returned.
     /// }
     /// ```
     pub fn as_bytes(self) -> Bytes {
@@ -60,12 +69,12 @@ impl String {
     /// use std::string::String;
     ///
     /// fn foo() {
-    ///     let mut string = String::new();
-    ///     assert(string.capacity() == 0);
-    ///     string.push(0u8);
-    ///     assert(string.capacity() == 1);
-    ///     string.push(1u8);
-    ///     assert(string.capacity() == 2);
+    ///     let string = String::new();
+    ///     assert_eq(string.capacity(), 0);
+    ///     let mut string = String::from_ascii_str("Fuel");
+    ///     assert_eq(string.capacity(), 4);
+    ///     string.clear();
+    ///     assert_eq(string.capacity(), 4); // Clearing does not change the capacity.
     /// }
     /// ```
     pub fn capacity(self) -> u64 {
@@ -74,17 +83,21 @@ impl String {
 
     /// Truncates this `String` to a length of zero, clearing all content.
     ///
+    /// Note that this method has no effect on the allocated capacity
+    /// of the `String`.
+    ///
     /// # Examples
     ///
     /// ```sway
     /// use std::string::String;
     ///
     /// fn foo() {
-    ///     let mut string = String::new();
-    ///     string.push(0u8);
+    ///     let mut string = String::from_ascii_str("Fuel");
     ///     assert(!string.is_empty());
+    ///     assert_eq(string.capacity(), 4);
     ///     string.clear();
     ///     assert(string.is_empty());
+    ///     assert_eq(string.capacity(), 4); // Clearing does not change the capacity.
     /// }
     /// ```
     pub fn clear(ref mut self) {
@@ -96,6 +109,10 @@ impl String {
     /// # Additional Information
     ///
     /// Each byte represents a single character, this supports ASCII but it does **not** support Unicode.
+    ///
+    /// The content of `bytes` gets copied into the newly created `String`.
+    /// To take the ownership of the `bytes` and move them into the newly
+    /// created `String` without copying the content, use `String::from_moved_ascii`.
     ///
     /// # Arguments
     ///
@@ -112,9 +129,12 @@ impl String {
     ///
     /// fn foo() {
     ///     let mut bytes = Bytes::new();
-    ///     bytes.push(0u8);
-    ///     bytes.push(1u8);
+    ///     bytes.push(70u8); // "F"
+    ///     bytes.push(117u8); // "u"
+    ///     bytes.push(101u8); // "e"
+    ///     bytes.push(108u8); // "l"
     ///     let string = String::from_ascii(bytes);
+    ///     assert_eq(string.len(), 4);
     /// }
     /// ```
     pub fn from_ascii(bytes: Bytes) -> Self {
@@ -123,7 +143,56 @@ impl String {
         }
     }
 
-    /// Converts a string slice containing ASCII encoded bytes to a `String`
+    /// Converts a vector of ASCII encoded bytes to a `String`, taking the
+    /// ownership of the `bytes`.
+    ///
+    /// # Additional Information
+    ///
+    /// Each byte represents a single character, this supports ASCII but it does **not** support Unicode.
+    ///
+    /// `bytes` **must not be used after the ownership is transferred to the
+    /// newly created `String`**. Violating this restriction results in an undefined behavior.
+    ///
+    /// To convert the `bytes` to a `String` by copying its content, and without
+    /// taking the ownership, use `String::from_ascii`.
+    ///
+    /// # Arguments
+    ///
+    /// * `bytes` - ASCII bytes which will be moved into a `String`.
+    ///
+    /// # Returns
+    ///
+    /// * [String] - A `String` containing the ASCII encoded bytes.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::{bytes::Bytes, string::String};
+    ///
+    /// fn foo() {
+    ///     let mut bytes = Bytes::new();
+    ///     bytes.push(70u8); // "F"
+    ///     bytes.push(117u8); // "u"
+    ///     bytes.push(101u8); // "e"
+    ///     bytes.push(108u8); // "l"
+    ///     let string = String::from_moved_ascii(bytes);
+    ///
+    ///     // ** `bytes` must not be used after this point. **
+    ///
+    ///     assert_eq(string.len(), 4);
+    /// }
+    /// ```
+    pub fn from_moved_ascii(bytes: Bytes) -> Self {
+        Self { bytes }
+    }
+
+    /// Converts a string slice containing ASCII encoded bytes to a `String`.
+    ///
+    /// # Additional Information
+    ///
+    /// The content of the string slice `s` gets copied into the newly created
+    /// `String`. To create a `String` from a string slice without copying the
+    /// content, consider using `String::from_shared_ascii_str`.
     ///
     /// # Arguments
     ///
@@ -140,14 +209,147 @@ impl String {
     ///
     /// fn foo() {
     ///     let string = String::from_ascii_str("ABCDEF");
+    ///     assert_eq(string.len(), 6);
     /// }
     /// ```
     pub fn from_ascii_str(s: str) -> Self {
-        let str_size = s.len();
-        let str_ptr = s.as_ptr();
-
         Self {
-            bytes: Bytes::from(raw_slice::from_parts::<u8>(str_ptr, str_size)),
+            bytes: Bytes::from(__transmute::<str, raw_slice>(s)),
+        }
+    }
+
+    /// Converts a string array containing ASCII encoded bytes to a `String`.
+    ///
+    /// # Additional Information
+    ///
+    /// The content of the string array `s` gets copied into the newly created
+    /// `String`. To create a `String` from a string array without copying the
+    /// content, consider using `String::from_shared_ascii_str_array`.
+    ///
+    /// # Arguments
+    ///
+    /// * `s` - A string array containing ASCII encoded bytes.
+    ///
+    /// # Returns
+    ///
+    /// * [String] - A `String` containing the ASCII encoded bytes.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::string::String;
+    ///
+    /// fn foo() {
+    ///     let string = String::from_ascii_str_array(__to_str_array("ABCDEF"));
+    ///     assert_eq(string.len(), 6);
+    /// }
+    /// ```
+    pub fn from_ascii_str_array<const N: u64>(s: str[N]) -> Self {
+        Self {
+            bytes: Bytes::from(__transmute::<(raw_ptr, u64), raw_slice>((__addr_of(s), N))),
+        }
+    }
+
+    /// Converts a string slice containing ASCII encoded bytes to a `String`,
+    /// that share the string slice's buffer.
+    ///
+    /// # Additional Information
+    ///
+    /// To convert a string slice to `String` by copying its content,
+    /// and taking the ownership of the content, use `String::from_ascii_str`.
+    ///
+    /// # Arguments
+    ///
+    /// * `s` - A string slice containing ASCII encoded bytes.
+    ///
+    /// # Returns
+    ///
+    /// * [String] - A `String` containing the ASCII encoded bytes.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::string::String;
+    ///
+    /// fn foo() {
+    ///     let string = String::from_shared_ascii_str("Shared string slice.");
+    ///     assert(!string.is_empty());
+    /// }
+    /// ```
+    pub fn from_shared_ascii_str(s: str) -> Self {
+        Self {
+            bytes: Bytes::from_moved_raw_slice(__transmute::<str, raw_slice>(s)),
+        }
+    }
+
+    /// Converts a string array containing ASCII encoded bytes to a `String`,
+    /// that share the string array's buffer.
+    ///
+    /// # Additional Information
+    ///
+    /// To convert a string array to `String` by copying its content,
+    /// and taking the ownership of the content, use `String::from_ascii_str(from_str_array(s))`.
+    ///
+    /// # Arguments
+    ///
+    /// * `s` - A string array containing ASCII encoded bytes.
+    ///
+    /// # Returns
+    ///
+    /// * [String] - A `String` containing the ASCII encoded bytes.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::string::String;
+    ///
+    /// fn foo() {
+    ///     let string = String::from_shared_ascii_str_array(__to_str_array("Shared string array."));
+    ///     assert(!string.is_empty());
+    /// }
+    /// ```
+    pub fn from_shared_ascii_str_array<const N: u64>(s: str[N]) -> Self {
+        Self {
+            bytes: Bytes::from_moved_raw_slice(__transmute::<(raw_ptr, u64), raw_slice>((__addr_of(s), N))),
+        }
+    }
+
+    /// Constructs a new `String` that takes the ownership of the `slice`.
+    ///
+    /// # Additional Information
+    ///
+    /// `slice` **must point to a heap-allocated memory** and, together with its
+    /// owner, **must not be used after the ownership is transferred to the newly
+    /// created `String`**. Violating these restrictions results in an undefined behavior.
+    ///
+    /// To create a new `String` from a `raw_slice` that copies the slice content
+    /// and does not take the ownership, use `String::from(raw_slice)`.
+    ///
+    /// # Arguments
+    ///
+    /// * `slice`: [raw_slice] - The heap-allocated slice whose ownership is transferred to the `String`.
+    ///
+    /// # Returns
+    ///
+    /// * [String] - A new `String` whose content is the original content of the `slice`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::string::String;
+    ///
+    /// fn foo() {
+    ///     let source = String::from_ascii_str("Fuel");
+    ///     let string = String::from_moved_raw_slice(source.as_raw_slice());
+    ///
+    ///     // ** `source` must not be used after this point. **
+    ///
+    ///     assert_eq(string.len(), 4);
+    /// }
+    /// ```
+    pub fn from_moved_raw_slice(slice: raw_slice) -> Self {
+        Self {
+            bytes: Bytes::from_moved_raw_slice(slice),
         }
     }
 
@@ -163,17 +365,19 @@ impl String {
     /// use std::string::String;
     ///
     /// fn foo() {
-    ///     let mut string = String::new();
-    ///     assert(string.is_empty());
-    ///     string.push(0u8);
+    ///     let mut string = String::from_ascii_str("Fuel");
     ///     assert(!string.is_empty());
+    ///     string.clear();
+    ///     assert(string.is_empty());
+    ///
+    ///     assert(String::new().is_empty());
     /// }
     /// ```
     pub fn is_empty(self) -> bool {
         self.bytes.is_empty()
     }
 
-    /// Constructs a new instance of the `String` type.
+    /// Constructs a new empty instance of the `String` type.
     ///
     /// # Returns
     ///
@@ -186,7 +390,7 @@ impl String {
     ///
     /// fn foo() {
     ///     let string = String::new();
-    ///     string.push(0u8);
+    ///     assert(string.is_empty());
     /// }
     /// ```
     pub fn new() -> Self {
@@ -195,7 +399,7 @@ impl String {
         }
     }
 
-    /// Constructs a new instance of the `String` type with the specified capacity.
+    /// Constructs a new instance of the `String` type with the specified `capacity`.
     ///
     /// # Arguments
     ///
@@ -203,7 +407,7 @@ impl String {
     ///
     /// # Returns
     ///
-    /// * [String] - A new empty instance of the `String` type with the specified capacity.
+    /// * [String] - A new empty instance of the `String` type with the specified `capacity`.
     ///
     /// # Examples
     ///
@@ -212,8 +416,7 @@ impl String {
     ///
     /// fn foo() {
     ///     let string = String::with_capacity(1);
-    ///     string.push(0u8); // This will not reallocate
-    ///     string.push(1u8); // This will reallocate
+    ///     assert_eq(string.capacity(), 1);
     /// }
     /// ```
     pub fn with_capacity(capacity: u64) -> Self {
@@ -240,18 +443,19 @@ impl String {
         self.bytes.ptr()
     }
 
-    /// Gets the length of the `String` in bytes, not chars or graphemes. In other words, it might not be what a human considers the length of the string.
+    /// Gets the length of the `String` in bytes, not chars or graphemes.
+    /// In other words, it might not be what a human considers the length of the string.
     ///
     /// # Returns
     ///
-    /// * [u64] - The length of the `String`.
+    /// * [u64] - The length of the `String` in bytes, not chars or graphemes.
     ///
     /// # Examples
     ///
     /// ```sway
     /// fn foo() {
-    ///     let string = String::from_ascii_str("Fuel");
-    ///     assert(string.len() == 4);
+    ///     let string = String::from_shared_ascii_str("Fuel");
+    ///     assert_eq(string.len(), 4);
     /// }
     /// ```
     pub fn len(self) -> u64 {
@@ -315,6 +519,14 @@ impl AsRawSlice for String {
 
 impl From<raw_slice> for String {
     /// Converts a `raw_slice` to a `String`.
+    ///
+    /// # Additional Information
+    ///
+    /// The content of the `slice` gets copied into the newly created `String`
+    /// which allocates its own buffer.
+    ///
+    /// To take the ownership of the `slice` and move it into the newly created
+    /// `String` without copying the content, use `String::from_moved_raw_slice`.
     ///
     /// # Arguments
     ///

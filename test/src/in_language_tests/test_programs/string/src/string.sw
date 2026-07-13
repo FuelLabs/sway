@@ -66,40 +66,213 @@ fn string_clear_empty() {
 
     assert(string.is_empty());
     assert_eq(string.len(), 0);
+
     string.clear();
+
     assert(string.is_empty());
     assert_eq(string.len(), 0);
 }
 
 #[test]
+fn string_from_ascii_empty() {
+    let bytes = Bytes::new();
+
+    // Dummy allocation so that empty `String` allocation
+    // does not overlap with the empty `bytes` (`hp` does not
+    // move on empty allocation).
+    let _ = std::alloc::alloc_bytes(1);
+
+    let string_from_ascii = String::from_ascii(bytes);
+    assert_eq(bytes.len(), string_from_ascii.capacity());
+    assert_eq(bytes.len(), string_from_ascii.len());
+    assert_eq(string_from_ascii.len(), 0);
+
+    assert(string_from_ascii.ptr() != bytes.ptr()); // String creates its own buffer
+}
+
+#[test]
 fn string_from_ascii() {
     let mut bytes = Bytes::new();
-    bytes.push(0u8);
-    bytes.push(1u8);
-    bytes.push(2u8);
-    bytes.push(3u8);
-    bytes.push(4u8);
+    bytes.push(65u8);
+    bytes.push(66u8);
+    bytes.push(67u8);
+    bytes.push(68u8);
+    bytes.push(69u8);
 
-    let mut string_from_ascii = String::from_ascii(bytes);
+    let string_from_ascii = String::from_ascii(bytes);
     assert_eq(bytes.len(), string_from_ascii.capacity());
     assert_eq(bytes.len(), string_from_ascii.len());
 
+    assert(string_from_ascii.ptr() != bytes.ptr()); // String creates its own buffer
+
     let bytes = string_from_ascii.as_bytes();
-    assert_eq(bytes.get(0).unwrap(), 0u8);
-    assert_eq(bytes.get(1).unwrap(), 1u8);
-    assert_eq(bytes.get(2).unwrap(), 2u8);
-    assert_eq(bytes.get(3).unwrap(), 3u8);
-    assert_eq(bytes.get(4).unwrap(), 4u8);
+    assert_eq(bytes.get(0).unwrap(), 65u8);
+    assert_eq(bytes.get(1).unwrap(), 66u8);
+    assert_eq(bytes.get(2).unwrap(), 67u8);
+    assert_eq(bytes.get(3).unwrap(), 68u8);
+    assert_eq(bytes.get(4).unwrap(), 69u8);
     assert_eq(bytes.get(5), None);
 }
 
 #[test]
-fn string_from_ascii_str() {
-    let mut string_from_ascii = String::from_ascii_str("ABCDEF");
-    assert_eq(string_from_ascii.capacity(), 6);
-    assert_eq(string_from_ascii.len(), 6);
+fn string_from_moved_ascii_empty() {
+    let bytes = Bytes::new();
 
-    let bytes = string_from_ascii.as_bytes();
+    // Dummy allocation to make sure `String` will point
+    // to the original empty `bytes`, because it is not allocating
+    // on it's own.
+    let _ = std::alloc::alloc_bytes(1);
+
+    let string_from_ascii = String::from_moved_ascii(bytes);
+    assert_eq(bytes.len(), string_from_ascii.capacity());
+    assert_eq(bytes.len(), string_from_ascii.len());
+    assert_eq(string_from_ascii.len(), 0);
+
+    assert(string_from_ascii.ptr() == bytes.ptr());  // String takes ownership of the bytes buffer
+}
+
+#[test]
+fn string_from_moved_ascii() {
+    let mut bytes = Bytes::new();
+    bytes.push(65u8);
+    bytes.push(66u8);
+    bytes.push(67u8);
+    bytes.push(68u8);
+    bytes.push(69u8);
+
+    let bytes_ptr = bytes.ptr();
+    let bytes_len = bytes.len();
+    let bytes_capacity = bytes.capacity();
+
+    let string = String::from_moved_ascii(bytes);
+
+    assert(string.ptr() == bytes_ptr); // String takes ownership of the bytes buffer
+    assert_eq(string.len(), bytes_len);
+    assert_eq(string.capacity(), bytes_capacity);
+
+    let string_bytes = string.as_bytes();
+    assert_eq(bytes.get(0).unwrap(), 65u8);
+    assert_eq(bytes.get(1).unwrap(), 66u8);
+    assert_eq(bytes.get(2).unwrap(), 67u8);
+    assert_eq(bytes.get(3).unwrap(), 68u8);
+    assert_eq(bytes.get(4).unwrap(), 69u8);
+    assert_eq(string_bytes.get(5), None);
+}
+
+#[test]
+fn string_from_ascii_str_empty() {
+    let string = String::from_ascii_str("");
+    assert_eq(string.capacity(), 0);
+    assert_eq(string.len(), 0);
+}
+
+#[test]
+fn string_from_ascii_str() {
+    let ascii_str = "ABCDEF";
+    let ascii_str_ptr = __transmute::<str, raw_slice>(ascii_str).ptr();
+
+    let string = String::from_ascii_str(ascii_str);
+    assert_eq(string.capacity(), 6);
+    assert_eq(string.len(), 6);
+
+    assert(string.ptr() != ascii_str_ptr); // String creates its own buffer
+
+    let bytes = string.as_bytes();
+
+    assert_eq(bytes.get(0).unwrap(), 65u8);
+    assert_eq(bytes.get(1).unwrap(), 66u8);
+    assert_eq(bytes.get(2).unwrap(), 67u8);
+    assert_eq(bytes.get(3).unwrap(), 68u8);
+    assert_eq(bytes.get(4).unwrap(), 69u8);
+    assert_eq(bytes.get(5).unwrap(), 70u8);
+    assert(bytes.get(6).is_none());
+}
+
+#[test]
+fn string_from_ascii_str_array_empty() {
+    let string = String::from_ascii_str_array(__to_str_array(""));
+    assert_eq(string.capacity(), 0);
+    assert_eq(string.len(), 0);
+}
+
+#[test]
+fn string_from_ascii_str_array() {
+    let ascii_str = __to_str_array("ABCDEF");
+    let ascii_str_ptr = __transmute::<(raw_ptr, u64), raw_slice>((__addr_of(ascii_str), 6)).ptr();
+
+    let string = String::from_ascii_str_array(ascii_str);
+    assert_eq(string.capacity(), 6);
+    assert_eq(string.len(), 6);
+
+    assert(string.ptr() != ascii_str_ptr); // String creates its own buffer
+
+    let bytes = string.as_bytes();
+
+    assert_eq(bytes.get(0).unwrap(), 65u8);
+    assert_eq(bytes.get(1).unwrap(), 66u8);
+    assert_eq(bytes.get(2).unwrap(), 67u8);
+    assert_eq(bytes.get(3).unwrap(), 68u8);
+    assert_eq(bytes.get(4).unwrap(), 69u8);
+    assert_eq(bytes.get(5).unwrap(), 70u8);
+    assert(bytes.get(6).is_none());
+}
+
+#[test]
+fn string_from_shared_ascii_str_empty() {
+    let string = String::from_shared_ascii_str("");
+    assert_eq(string.capacity(), 0);
+    assert_eq(string.len(), 0);
+}
+
+#[test]
+fn string_from_shared_ascii_str() {
+    let ascii_str = "ABCDEF";
+    let ascii_str_ptr = __transmute::<str, raw_slice>(ascii_str).ptr();
+
+    let string = String::from_shared_ascii_str(ascii_str);
+
+    assert(string.ptr() == ascii_str_ptr); // Shared String uses the original string slice
+    assert_eq(string.len(), 6);
+    assert_eq(string.capacity(), 6);
+
+    let bytes = string.as_bytes();
+    assert_eq(bytes.get(0).unwrap(), 65u8);
+    assert_eq(bytes.get(1).unwrap(), 66u8);
+    assert_eq(bytes.get(2).unwrap(), 67u8);
+    assert_eq(bytes.get(3).unwrap(), 68u8);
+    assert_eq(bytes.get(4).unwrap(), 69u8);
+    assert_eq(bytes.get(5).unwrap(), 70u8);
+    assert(bytes.get(6).is_none());
+}
+
+#[test(should_revert)]
+fn string_from_shared_ascii_str_immutable_static_str() {
+    let string = String::from_shared_ascii_str("static str");
+    let mut bytes = Bytes::from_moved_raw_slice(string.as_raw_slice());
+    bytes.set(0, 71); // Reverts, because the "static str" is read-only (data section).
+}
+
+#[test]
+fn string_from_shared_ascii_str_array_empty() {
+    let string_from_ascii = String::from_shared_ascii_str_array(__to_str_array(""));
+    assert_eq(string_from_ascii.capacity(), 0);
+    assert_eq(string_from_ascii.len(), 0);
+}
+
+#[test]
+fn string_from_shared_ascii_str_array() {
+    let string_array = __to_str_array("ABCDEF");
+    let string = String::from_shared_ascii_str_array(string_array);
+
+    // TODO: Enable this test once https://github.com/FuelLabs/sway/issues/7681 is fixed.
+    //       The below assert passes in `release` mode, but fails in `debug`.
+    //       The issue is likely related to the #7681.
+
+    // assert(string.ptr() == __addr_of(string_array)); // Shared String uses the original string array
+    assert_eq(string.len(), 6);
+    assert_eq(string.capacity(), 6);
+
+    let bytes = string.as_bytes();
     assert_eq(bytes.get(0).unwrap(), 65u8);
     assert_eq(bytes.get(1).unwrap(), 66u8);
     assert_eq(bytes.get(2).unwrap(), 67u8);
@@ -302,6 +475,32 @@ fn string_from_raw_slice() {
     assert_eq(bytes.get(0).unwrap(), 0u8);
     assert_eq(bytes.get(1).unwrap(), 1u8);
     assert_eq(bytes.get(2).unwrap(), 2u8);
+}
+
+#[test]
+fn string_from_moved_raw_slice() {
+    const LEN_IN_BYTES = 5;
+
+    let content_ptr = std::alloc::alloc_bytes(LEN_IN_BYTES);
+    __addr_of([0u8, 1u8, 2u8, 3u8, 4u8]).copy_bytes_to(content_ptr, LEN_IN_BYTES);
+
+    let slice = asm(ptr: (content_ptr, LEN_IN_BYTES)) {
+        ptr: raw_slice
+    };
+
+    let string = String::from_moved_raw_slice(slice);
+
+    assert(string.ptr() == slice.ptr()); // String takes ownership of the slice
+    assert_eq(string.len(), slice.number_of_bytes());
+    assert_eq(string.len(), LEN_IN_BYTES);
+    assert_eq(string.capacity(), LEN_IN_BYTES);
+
+    let bytes = string.as_bytes();
+    assert_eq(bytes.get(0).unwrap(), 0u8);
+    assert_eq(bytes.get(1).unwrap(), 1u8);
+    assert_eq(bytes.get(2).unwrap(), 2u8);
+    assert_eq(bytes.get(3).unwrap(), 3u8);
+    assert_eq(bytes.get(4).unwrap(), 4u8);
 }
 
 #[test]

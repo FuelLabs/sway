@@ -82,7 +82,9 @@ impl StorableSlice<String> for StorageKey<StorageString> {
     fn read_slice(self) -> Option<String> {
         match read_slice_quads(self.field_id()) {
             Some(slice) => {
-                Some(String::from(slice))
+                // `read_slice_quads` returns a freshly heap-allocated slice that
+                // is used only here, so we take its ownership instead of copying.
+                Some(String::from_moved_raw_slice(slice))
             },
             None => None,
         }
@@ -223,7 +225,9 @@ impl StorableSlice<String> for StorageKey<StorageString> {
     fn read_slice(self) -> Option<String> {
         match read_slice_slot(self.field_id()) {
             Some(slice) => {
-                Some(String::from(slice))
+                // `read_slice_slot` returns a freshly heap-allocated slice that
+                // is used only here, so we take its ownership instead of copying.
+                Some(String::from_moved_raw_slice(slice))
             },
             None => None,
         }

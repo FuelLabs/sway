@@ -534,37 +534,57 @@ fn bytes_len() {
 fn bytes_clear() {
     let (mut bytes, _, _, _) = setup();
     assert_eq(bytes.len(), 3);
+    assert_eq(bytes.capacity(), 4); // 1 -> 2 -> 4.
+    let ptr = bytes.ptr();
 
     bytes.clear();
     assert_eq(bytes.len(), 0);
-    assert_eq(bytes.capacity(), 0);
+    assert_eq(bytes.capacity(), 4);
+    assert(bytes.ptr() == ptr);
 }
 
 #[test()]
 fn bytes_clear_twice() {
     let (mut bytes, _, _, _) = setup();
+    assert_eq(bytes.len(), 3);
+    assert_eq(bytes.capacity(), 4); // 1 -> 2 -> 4.
+    let ptr = bytes.ptr();
 
     bytes.clear();
     assert_eq(bytes.len(), 0);
-    assert_eq(bytes.capacity(), 0);
+    assert_eq(bytes.capacity(), 4);
+    assert(bytes.ptr() == ptr);
 
-    // Can clean twice
+    // Clear already cleared
+    bytes.clear();
+    assert_eq(bytes.len(), 0);
+    assert_eq(bytes.capacity(), 4);
+    assert(bytes.ptr() == ptr);
+
+    // Can clean again after new push
     bytes.push(1u8);
+
+    assert_eq(bytes.len(), 1);
+    assert_eq(bytes.capacity(), 4);
+    assert(bytes.ptr() == ptr);
+
     bytes.clear();
     assert_eq(bytes.len(), 0);
-    assert_eq(bytes.capacity(), 0);
+    assert_eq(bytes.capacity(), 4);
+    assert(bytes.ptr() == ptr);
 }
 
 #[test()]
 fn bytes_clear_empty_bytes() {
-    // Clear on empty Bytes
     let mut empty_bytes = Bytes::new();
     assert_eq(empty_bytes.len(), 0);
     assert_eq(empty_bytes.capacity(), 0);
+    let ptr = empty_bytes.ptr();
 
     empty_bytes.clear();
     assert_eq(empty_bytes.len(), 0);
     assert_eq(empty_bytes.capacity(), 0);
+    assert(empty_bytes.ptr() == ptr);
 }
 
 #[test]
@@ -1074,6 +1094,51 @@ fn bytes_from_raw_slice() {
     let mut bytes = Bytes::from(slice);
     assert(bytes.ptr() != slice.ptr()); // Bytes should own its buffer
     assert_eq(bytes.len(), slice.number_of_bytes());
+}
+
+#[test()]
+fn bytes_from_moved_raw_slice_empty_slice() {
+    let content_ptr = std::alloc::alloc_bytes(0);
+
+    let slice = asm(ptr: (content_ptr, 0)) {
+        ptr: raw_slice
+    };
+
+    // Dummy allocation to make sure `Bytes` will point
+    // to the original empty slice, because it is not allocating
+    // on it's own.
+    let _ = std::alloc::alloc_bytes(1);
+
+    let bytes = Bytes::from_moved_raw_slice(slice);
+    assert(bytes.ptr() == slice.ptr()); // Bytes takes ownership of the slice
+    assert_eq(bytes.len(), slice.number_of_bytes());
+    assert_eq(bytes.len(), 0);
+    assert_eq(bytes.capacity(), 0);
+}
+
+#[test()]
+fn bytes_from_moved_raw_slice() {
+    const LEN_IN_BYTES = 5;
+
+    let content_ptr = std::alloc::alloc_bytes(LEN_IN_BYTES);
+
+    __addr_of([0u8, 1u8, 2u8, 3u8, 4u8]).copy_bytes_to(content_ptr, LEN_IN_BYTES);
+
+    let slice = asm(ptr: (content_ptr, LEN_IN_BYTES)) {
+        ptr: raw_slice
+    };
+
+    let bytes = Bytes::from_moved_raw_slice(slice);
+    assert(bytes.ptr() == slice.ptr()); // Bytes takes ownership of the slice
+    assert_eq(bytes.len(), slice.number_of_bytes());
+    assert_eq(bytes.len(), LEN_IN_BYTES);
+    assert_eq(bytes.capacity(), LEN_IN_BYTES);
+
+    assert_eq(bytes.get(0).unwrap(), 0u8);
+    assert_eq(bytes.get(1).unwrap(), 1u8);
+    assert_eq(bytes.get(2).unwrap(), 2u8);
+    assert_eq(bytes.get(3).unwrap(), 3u8);
+    assert_eq(bytes.get(4).unwrap(), 4u8);
 }
 
 #[test()]

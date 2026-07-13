@@ -635,15 +635,173 @@ fn vec_as_raw_slice() {
 }
 
 #[test()]
-fn vec_from_raw_slice() {
-    let val = 0x3497297632836282349729763283628234972976328362823497297632836282;
-    let slice = asm(ptr: (__addr_of(val), 32)) {
+fn vec_from_raw_slice_empty_slice() {
+    let content_ptr = std::alloc::alloc_bytes(0);
+
+    let slice = asm(ptr: (content_ptr, 0)) {
         ptr: raw_slice
     };
 
-    let mut vec: Vec<u64> = Vec::from(slice);
-    assert(vec.ptr() != slice.ptr()); // Vec should own its buffer
+    // Dummy allocation so that empty `Vec` allocation
+    // does not overlap with the slice (`hp` does not
+    // move on empty allocation).
+    let _ = std::alloc::alloc_bytes(1);
+
+    let vec: Vec<u64> = Vec::from(slice);
+    assert(vec.ptr() != slice.ptr()); // Vec must own its buffer
     assert_eq(vec.len(), slice.len::<u64>());
+    assert_eq(vec.len(), 0);
+    assert_eq(vec.capacity(), 0);
+}
+
+#[test()]
+fn vec_from_raw_slice() {
+    const NUM_OF_ELEMENTS = 7;
+    const LEN_IN_BYTES = __size_of::<u64>() * NUM_OF_ELEMENTS;
+
+    let content_ptr = std::alloc::alloc_bytes(LEN_IN_BYTES);
+
+    __addr_of([0u64, 1, 2, 3, 4, 5, 6]).copy_bytes_to(content_ptr, LEN_IN_BYTES);
+
+    let slice = asm(ptr: (content_ptr, LEN_IN_BYTES)) {
+        ptr: raw_slice
+    };
+
+    let vec: Vec<u64> = Vec::from(slice);
+    assert(vec.ptr() != slice.ptr()); // Vec must own its buffer
+    assert_eq(vec.len(), slice.len::<u64>());
+    assert_eq(vec.capacity(), slice.len::<u64>());
+
+    let mut i = 0u64;
+    while i < NUM_OF_ELEMENTS {
+        assert_eq(i, vec.get(i).unwrap());
+        i += 1;
+    }
+}
+
+// TODO: This test asserts the current behavior, that might be unintended.
+//       See: https://github.com/FuelLabs/sway/issues/7679
+#[test()]
+fn vec_from_raw_slice_slice_size_smaller_than_vec_elem_size() {
+    let content_ptr = std::alloc::alloc_bytes(4);
+
+    let slice = asm(ptr: (content_ptr, 4)) {
+        ptr: raw_slice
+    };
+
+    // Dummy allocation so that empty `Vec` allocation
+    // does not overlap with the slice (`hp` does not
+    // move on empty allocation).
+    let _ = std::alloc::alloc_bytes(1);
+
+    let vec: Vec<u64> = Vec::from(slice);
+    assert(vec.ptr() != slice.ptr()); // Vec must own its buffer
+    assert_eq(vec.len(), 0);
+    assert_eq(vec.capacity(), 0);
+}
+
+// TODO: This test asserts the current behavior, that might be unintended.
+//       See: https://github.com/FuelLabs/sway/issues/7679
+#[test()]
+fn vec_from_raw_slice_slice_size_not_multiple_of_vec_elem_size() {
+    let content_ptr = std::alloc::alloc_bytes(10);
+
+    __addr_of(42u64).copy_bytes_to(content_ptr, 8);
+
+    let slice = asm(ptr: (content_ptr, 10)) {
+        ptr: raw_slice
+    };
+
+    let vec: Vec<u64> = Vec::from(slice);
+    assert(vec.ptr() != slice.ptr()); // Vec must own its buffer
+    assert_eq(vec.len(), 1);
+    assert_eq(vec.capacity(), 1);
+    assert_eq(vec.get(0).unwrap(), 42);
+}
+
+#[test()]
+fn vec_from_moved_raw_slice_empty_slice() {
+    let content_ptr = std::alloc::alloc_bytes(0);
+
+    let slice = asm(ptr: (content_ptr, 0)) {
+        ptr: raw_slice
+    };
+
+    // Dummy allocation to make sure `Vec` will point
+    // to the original empty slice, because it is not allocating
+    // on it's own.
+    let _ = std::alloc::alloc_bytes(1);
+
+    let vec: Vec<u64> = Vec::from_moved_raw_slice(slice);
+    assert(vec.ptr() == slice.ptr()); // Vec takes ownership of the slice
+    assert_eq(vec.len(), slice.len::<u64>());
+    assert_eq(vec.len(), 0);
+    assert_eq(vec.capacity(), 0);
+}
+
+#[test()]
+fn vec_from_moved_raw_slice() {
+    const NUM_OF_ELEMENTS = 7;
+    const LEN_IN_BYTES = __size_of::<u64>() * NUM_OF_ELEMENTS;
+
+    let content_ptr = std::alloc::alloc_bytes(LEN_IN_BYTES);
+
+    __addr_of([0u64, 1, 2, 3, 4, 5, 6]).copy_bytes_to(content_ptr, LEN_IN_BYTES);
+
+    let slice = asm(ptr: (content_ptr, LEN_IN_BYTES)) {
+        ptr: raw_slice
+    };
+
+    let vec: Vec<u64> = Vec::from_moved_raw_slice(slice);
+    assert(vec.ptr() == slice.ptr()); // Vec takes ownership of the slice
+    assert_eq(vec.len(), slice.len::<u64>());
+    assert_eq(vec.capacity(), slice.len::<u64>());
+
+    let mut i = 0u64;
+    while i < NUM_OF_ELEMENTS {
+        assert_eq(i, vec.get(i).unwrap());
+        i += 1;
+    }
+}
+
+// TODO: This test asserts the current behavior, that might be unintended.
+//       See: https://github.com/FuelLabs/sway/issues/7679
+#[test()]
+fn vec_from_moved_raw_slice_slice_size_smaller_than_vec_elem_size() {
+    let content_ptr = std::alloc::alloc_bytes(4);
+
+    let slice = asm(ptr: (content_ptr, 4)) {
+        ptr: raw_slice
+    };
+
+    // Dummy allocation to make sure `Vec` will point
+    // to the original empty slice, because it is not allocating
+    // on it's own.
+    let _ = std::alloc::alloc_bytes(1);
+
+    let vec: Vec<u64> = Vec::from_moved_raw_slice(slice);
+    assert(vec.ptr() == slice.ptr()); // Vec takes ownership of the slice
+    assert_eq(vec.len(), 0);
+    assert_eq(vec.capacity(), 0);
+}
+
+// TODO: This test asserts the current behavior, that might be unintended.
+//       See: https://github.com/FuelLabs/sway/issues/7679
+#[test()]
+fn vec_from_moved_raw_slice_slice_size_not_multiple_of_vec_elem_size() {
+    let content_ptr = std::alloc::alloc_bytes(10);
+
+    __addr_of(42u64).copy_bytes_to(content_ptr, 8);
+
+    let slice = asm(ptr: (content_ptr, 10)) {
+        ptr: raw_slice
+    };
+
+    let vec: Vec<u64> = Vec::from_moved_raw_slice(slice);
+    assert(vec.ptr() == slice.ptr()); // Vec takes ownership of the slice
+    assert_eq(vec.len(), 1);
+    assert_eq(vec.capacity(), 1);
+    assert_eq(vec.get(0).unwrap(), 42);
 }
 
 // TODO: Uncomment when https://github.com/FuelLabs/sway/issues/6085 is resolved
@@ -656,7 +814,7 @@ fn vec_from_raw_slice() {
 
 //     let slice: raw_slice = vec.into();
 
-//     assert_eq(vec.ptr(), slice.ptr());
+//     assert(vec.ptr() == slice.ptr());
 //     assert_eq(vec.len(), slice.len::<u64>());
 // }
 
@@ -670,10 +828,9 @@ fn vec_from_raw_slice() {
 
 //     let slice: raw_slice = <raw_slice as From<Vec<T>>>::from(vec);
 
-//     assert_eq(vec.ptr(), slice.ptr());
+//     assert(vec.ptr() == slice.ptr());
 //     assert_eq(vec.len(), slice.len::<u64>());
 // }
-
 
 #[test()]
 fn vec_raw_slice_into() {
