@@ -124,7 +124,10 @@ fn compute_loop_analysis(
                 continue;
             }
 
-            q.extend(block.pred_iter(context));
+            let reachabe_preds = block
+                .pred_iter(context)
+                .filter(|block| po.is_reachable(block));
+            q.extend(reachabe_preds);
         }
 
         assert!(loop_blocks.contains(&loop_tail));

@@ -369,8 +369,7 @@ impl PassManager {
         let passes = passes.flatten_pass_group();
 
         // run until stabilize
-        // 10 here just to avoid infinite running
-        for _ in 0..10 {
+        for _ in 0..16 {
             let mut modified = false;
 
             for pass in passes.iter() {
@@ -409,10 +408,11 @@ impl PassManager {
             std::env::var("SWAY_FORCE_VERIFY_IR").unwrap_or_else(|_| "false".to_string());
         let force_verify: bool = force_verify.parse().unwrap_or(false);
 
-        for _ in 0..2 {
+        let passes = passes.flatten_pass_group();
+        for _ in 0..16 {
             let mut iter_modified = false;
 
-            for pass in passes.flatten_pass_group() {
+            for pass in passes.iter() {
                 // Save IR before optimisation only when forcing verification
                 let ir_before = if force_verify {
                     ir.to_string()
@@ -432,7 +432,7 @@ impl PassManager {
 
                 iter_modified |= modified;
 
-                if print_opts.passes.contains(pass) && (!print_opts.modified_only || modified) {
+                if print_opts.passes.contains(*pass) && (!print_opts.modified_only || modified) {
                     print_ir_after_pass(ir, self.lookup_registered_pass(pass).unwrap());
                 }
 
