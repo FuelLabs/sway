@@ -65,8 +65,8 @@ use sway_error::warning::{CollectedTraitImpl, CompileInfo, CompileWarning, Info,
 use sway_features::ExperimentalFeatures;
 use sway_ir::{
     create_o1_pass_group, register_known_passes, Context, Kind, Module, PassGroup, PassManager,
-    PrintPassesOpts, VerifyPassesOpts, ARG_DEMOTION_NAME, ARG_POINTEE_MUTABILITY_TAGGER_NAME,
-    CONST_DEMOTION_NAME, DCE_NAME, FN_DEDUP_DEBUG_PROFILE_NAME, FN_INLINE_NAME, GLOBALS_DCE_NAME,
+    PrintPassesOpts, ARG_DEMOTION_NAME, ARG_POINTEE_MUTABILITY_TAGGER_NAME, CONST_DEMOTION_NAME,
+    DCE_NAME, FN_DEDUP_DEBUG_PROFILE_NAME, FN_INLINE_NAME, GLOBALS_DCE_NAME,
     INIT_AGGR_LOWERING_NAME, MEM2REG_NAME, MEMCPYOPT_NAME, MEMCPYPROP_REVERSE_NAME,
     MISC_DEMOTION_NAME, RET_DEMOTION_NAME, SIMPLIFY_CFG_NAME, SROA_NAME,
 };
@@ -1615,13 +1615,9 @@ pub(crate) fn compile_ast_to_ir_to_asm(
 
     // Run the passes.
     let print_passes_opts: PrintPassesOpts = (&build_config.print_ir).into();
-    let verify_passes_opts: VerifyPassesOpts = (&build_config.verify_ir).into();
-    let res = if let Err(ir_error) = pass_mgr.run_with_print_verify(
-        &mut ir,
-        &pass_group,
-        &print_passes_opts,
-        &verify_passes_opts,
-    ) {
+    let res = if let Err(ir_error) =
+        pass_mgr.run_with_print_verify(&mut ir, &pass_group, &print_passes_opts)
+    {
         Err(handler.emit_err(CompileError::InternalOwned(
             ir_error.to_string(),
             span::Span::dummy(),

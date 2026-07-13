@@ -1,4 +1,4 @@
-use crate::cli::{self, shared::IrCliOpt};
+use crate::cli;
 use ansiterm::Colour;
 use clap::Parser;
 use forc_pkg as pkg;
@@ -11,7 +11,7 @@ use forc_util::{
     ForcError, ForcResult,
 };
 use fuel_abi_types::{abi::program::PanickingCall, revert_info::RevertKind};
-use sway_core::{asm_generation::ProgramABI, fuel_prelude::fuel_tx::Receipt, IrCli};
+use sway_core::{asm_generation::ProgramABI, fuel_prelude::fuel_tx::Receipt};
 use tracing::info;
 
 forc_util::cli_examples! {
@@ -379,11 +379,6 @@ fn opts_from_cmd(cmd: Command) -> forc_test::TestOpts {
             ir: cmd.build.print.ir(),
             reverse_order: cmd.build.print.reverse_order,
         },
-        verify_ir: cmd
-            .build
-            .verify_ir
-            .as_ref()
-            .map_or(IrCli::default(), |opts| IrCliOpt::from(opts).0),
         time_phases: cmd.build.print.time_phases,
         profile: cmd.build.print.profile,
         metrics_outfile: cmd.build.print.metrics_outfile,

@@ -18,7 +18,7 @@ use rand::{Rng, SeedableRng};
 use rayon::prelude::*;
 use std::str::FromStr;
 use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
-use sway_core::{BuildTarget, IrCli};
+use sway_core::BuildTarget;
 use sway_types::Span;
 use tx::consensus_parameters::ConsensusParametersV1;
 use tx::{ConsensusParameters, ContractParameters, ScriptParameters, TxParameters};
@@ -143,7 +143,6 @@ pub enum PackageWithDeploymentToTest {
 pub struct TestOpts {
     pub pkg: pkg::PkgOpts,
     pub print: pkg::PrintOpts,
-    pub verify_ir: IrCli,
     pub minify: pkg::MinifyOpts,
     /// If set, outputs a binary file representing the script bytes.
     pub binary_outfile: Option<String>,
@@ -518,7 +517,6 @@ impl From<TestOpts> for pkg::BuildOpts {
         pkg::BuildOpts {
             pkg: val.pkg,
             print: val.print,
-            verify_ir: val.verify_ir,
             minify: val.minify,
             dump: DumpOpts::default(),
             binary_outfile: val.binary_outfile,
@@ -546,7 +544,6 @@ impl TestOpts {
         pkg::BuildOpts {
             pkg: self.pkg,
             print: self.print,
-            verify_ir: self.verify_ir,
             minify: self.minify,
             dump: DumpOpts::default(),
             binary_outfile: self.binary_outfile,

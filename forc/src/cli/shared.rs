@@ -82,16 +82,6 @@ pub struct Build {
     pub pkg: Pkg,
     #[clap(flatten)]
     pub print: Print,
-    /// Verify the generated Sway IR (Intermediate Representation).
-    ///
-    /// Values that can be combined:
-    ///  - initial:     initial IR prior to any optimization passes.
-    ///  - final:       final IR after applying all optimization passes.
-    ///  - <pass name>: the name of an optimization pass. Verifies the IR state after that pass.
-    ///  - all:         short for initial, final, and all the optimization passes.
-    ///  - modified:    verify a requested optimization pass only if it has modified the IR.
-    #[arg(long, verbatim_doc_comment, num_args(1..=IrCliOpt::max_num_args()), value_parser = clap::builder::PossibleValuesParser::new(IrCliOpt::cli_options()))]
-    pub verify_ir: Option<Vec<String>>,
     #[clap(flatten)]
     pub minify: Minify,
     #[clap(flatten)]
