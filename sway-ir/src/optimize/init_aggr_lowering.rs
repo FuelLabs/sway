@@ -462,6 +462,8 @@ fn lower_to_stores<'a, 'b>(
 
             match as_repeat_array(initializers) {
                 Some((initializer, length)) => {
+                    let skip_initialization = initializer.is_runtime_zeroed(context) && skip_zeroes;
+
                     let repeated_value = match initializer {
                         InitAggrInitializer::Value(value) => value,
                         InitAggrInitializer::NestedInitAggr {
@@ -546,7 +548,7 @@ fn lower_to_stores<'a, 'b>(
                     // already zeroed. We can skip initializing this array.
                     // Note that this is the safe point to do it, because the eventual nested `init_aggr`s
                     // were removed above.
-                    if initializer.is_runtime_zeroed(context) && skip_zeroes {
+                    if skip_initialization {
                         return true;
                     }
 
