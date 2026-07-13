@@ -132,6 +132,16 @@ pub fn no_nesting_all_zeros() {
         d: b256::zero(),
         u: (),
     });
+
+    // Additionally validate each element field-by-field against primitive
+    // literals. The aggregate-level assert above compares against a `NoNesting`
+    // that is itself created via `init_aggr`, so a bug shared between the
+    // element initialization and the expected value could otherwise be masked.
+    let mut i = 0;
+    while i < 10 {
+        assert_no_nesting_all_zeros(a[i]);
+        i += 1;
+    }
 }
 
 #[test]
@@ -221,6 +231,124 @@ pub fn no_nesting_not_all_zeros() {
         d: b256::zero(),
         u: (),
     });
+
+    // Additionally validate each element field-by-field against primitive literals.
+    let mut i = 0;
+    while i < 10 {
+        assert_no_nesting(a[i], 42, true, 42u256, b256::zero());
+        i += 1;
+    }
+}
+
+#[test]
+fn test_no_nesting_mostly_zeros() {
+    no_nesting_mostly_zeros();
+}
+
+/// A mostly-zeroed array of structs. Most elements are fully zero, and the few
+/// non-zero elements each make a *different* single primitive field non-zero, so
+/// that on top of the zero-cleared aggregate we exercise storing each nested
+/// primitive type (`u64`, `bool`, `u256`, `b256`).
+#[inline(never)]
+pub fn no_nesting_mostly_zeros() {
+    let a = [
+        // index 0: `u64` field non-zero.
+        NoNesting {
+            a: 42,
+            b: false,
+            c: 0u256,
+            d: b256::zero(),
+            u: (),
+        },
+        // index 1: all zero.
+        NoNesting {
+            a: 0,
+            b: false,
+            c: 0u256,
+            d: b256::zero(),
+            u: (),
+        },
+        // index 2: `bool` field non-zero.
+        NoNesting {
+            a: 0,
+            b: true,
+            c: 0u256,
+            d: b256::zero(),
+            u: (),
+        },
+        // index 3: all zero.
+        NoNesting {
+            a: 0,
+            b: false,
+            c: 0u256,
+            d: b256::zero(),
+            u: (),
+        },
+        // index 4: `u256` field non-zero.
+        NoNesting {
+            a: 0,
+            b: false,
+            c: 123u256,
+            d: b256::zero(),
+            u: (),
+        },
+        // index 5: all zero.
+        NoNesting {
+            a: 0,
+            b: false,
+            c: 0u256,
+            d: b256::zero(),
+            u: (),
+        },
+        // index 6: `b256` field non-zero.
+        NoNesting {
+            a: 0,
+            b: false,
+            c: 0u256,
+            d: 0x00000000000000000000000000000000000000000000000000000000000000FF,
+            u: (),
+        },
+        // indices 7, 8, 9: all zero.
+        NoNesting {
+            a: 0,
+            b: false,
+            c: 0u256,
+            d: b256::zero(),
+            u: (),
+        },
+        NoNesting {
+            a: 0,
+            b: false,
+            c: 0u256,
+            d: b256::zero(),
+            u: (),
+        },
+        NoNesting {
+            a: 0,
+            b: false,
+            c: 0u256,
+            d: b256::zero(),
+            u: (),
+        },
+    ];
+
+    // Validate each element field-by-field against primitive literals.
+    assert_no_nesting(a[0], 42, false, 0u256, b256::zero());
+    assert_no_nesting_all_zeros(a[1]);
+    assert_no_nesting(a[2], 0, true, 0u256, b256::zero());
+    assert_no_nesting_all_zeros(a[3]);
+    assert_no_nesting(a[4], 0, false, 123u256, b256::zero());
+    assert_no_nesting_all_zeros(a[5]);
+    assert_no_nesting(
+        a[6],
+        0,
+        false,
+        0u256,
+        0x00000000000000000000000000000000000000000000000000000000000000FF,
+    );
+    assert_no_nesting_all_zeros(a[7]);
+    assert_no_nesting_all_zeros(a[8]);
+    assert_no_nesting_all_zeros(a[9]);
 }
 
 #[test]
@@ -311,6 +439,13 @@ pub fn single_field_struct_not_zero() {
         SingleFieldStruct { a: 42 },
     ];
     assert_all_elems_equal(a, SingleFieldStruct { a: 42 });
+
+    // Additionally validate each element's field against a primitive literal.
+    let mut i = 0;
+    while i < 10 {
+        assert_eq(a[i].a, 42);
+        i += 1;
+    }
 }
 
 #[test]
@@ -350,6 +485,19 @@ pub fn u64_all_zeros_array_nested_in_array() {
         [0u64, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     ];
     assert_all_elems_equal(a, [0u64, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+
+    // Additionally validate each individual element against a primitive literal.
+    // The aggregate-level assert above compares against an array literal that is
+    // itself created via `init_aggr`.
+    let mut i = 0;
+    while i < 10 {
+        let mut j = 0;
+        while j < 10 {
+            assert_eq(a[i][j], 0u64);
+            j += 1;
+        }
+        i += 1;
+    }
 }
 
 #[test]
@@ -372,6 +520,17 @@ pub fn u64_all_42s_array_nested_in_array() {
         [42u64, 42, 42, 42, 42, 42, 42, 42, 42, 42],
     ];
     assert_all_elems_equal(a, [42u64, 42, 42, 42, 42, 42, 42, 42, 42, 42]);
+
+    // Additionally validate each individual element against a primitive literal.
+    let mut i = 0;
+    while i < 10 {
+        let mut j = 0;
+        while j < 10 {
+            assert_eq(a[i][j], 42u64);
+            j += 1;
+        }
+        i += 1;
+    }
 }
 
 #[test]

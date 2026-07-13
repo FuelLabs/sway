@@ -203,3 +203,55 @@ pub fn large_repeat_array_of_struct() {
         i += 1;
     }
 }
+
+// A struct that embeds an array and is mostly zeroed: everything is zero except a
+// single trailing scalar. Hits the mostly-zeroed lowering for a struct that
+// embeds an array (the zeroed array must not be re-initialized element by
+// element).
+#[test]
+fn test_struct_with_array_mostly_zeros() {
+    struct_with_array_mostly_zeros();
+}
+
+#[inline(never)]
+pub fn struct_with_array_mostly_zeros() {
+    let s = WithArray {
+        head: 0,
+        body: [0, 0, 0, 0],
+        tail: 7,
+    };
+
+    assert_eq(s.head, 0);
+    let mut i = 0;
+    while i < 4 {
+        assert_eq(s.body[i], 0u64);
+        i += 1;
+    }
+    assert_eq(s.tail, 7);
+}
+
+// A tuple that embeds a mostly-zeroed struct (only its `u256` field is non-zero)
+// followed by zero scalars. Exercises the mostly-zeroed lowering reaching a
+// non-zero leaf nested inside a struct nested inside a tuple.
+#[test]
+fn test_tuple_with_mostly_zero_struct() {
+    tuple_with_mostly_zero_struct();
+}
+
+#[inline(never)]
+pub fn tuple_with_mostly_zero_struct() {
+    let t = (
+        Simple {
+            a: 0,
+            b: 0,
+            c: false,
+            d: 5u256,
+        },
+        0u64,
+        0u64,
+    );
+
+    assert_simple(t.0, 0, 0, false, 5u256);
+    assert_eq(t.1, 0u64);
+    assert_eq(t.2, 0u64);
+}
