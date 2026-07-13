@@ -38,6 +38,16 @@ pub fn ref_mut_args(
     assert_eq(t.3, d);
     assert_eq(t.4, e);
     assert_eq(t.5, s);
+
+    // The `t.5 == s` assert above compares two `Struct`s that are both created
+    // via `init_aggr`. Additionally validate the struct element field-by-field
+    // against the primitive literals used by the single caller of this function.
+    assert_eq(t.5.x, 100);
+    assert_eq(t.5.simple.a, 10);
+    assert_eq(t.5.simple.b, 2);
+    assert_eq(t.5.simple.c, true);
+    assert_eq(t.5.simple.d, 3u256);
+    assert_eq(t.5.b, false);
 }
 
 struct SelfCopieable {
@@ -45,29 +55,37 @@ struct SelfCopieable {
 }
 
 impl SelfCopieable {
+    // `expected` is the primitive literal `value` the caller initialized `self`
+    // with. We assert against it in addition to `self.value`, because `self` is
+    // itself created via `init_aggr` and asserting only against `self.value`
+    // would compare two identically-initialized values.
     #[inline(never)]
-    pub fn copy_me(self) {
+    pub fn copy_me(self, expected: u64) {
         let copied = (self, self);
         assert_eq(copied.0.value, self.value);
         assert_eq(copied.1.value, self.value);
+        assert_eq(copied.0.value, expected);
+        assert_eq(copied.1.value, expected);
     }
 
     #[inline(never)]
-    pub fn copy_me_ref_mut(ref mut self) {
+    pub fn copy_me_ref_mut(ref mut self, expected: u64) {
         let copied = (self, self);
         assert_eq(copied.0.value, self.value);
         assert_eq(copied.1.value, self.value);
+        assert_eq(copied.0.value, expected);
+        assert_eq(copied.1.value, expected);
     }
 }
 
 #[test]
 fn test_self_copieable_copy_me() {
     let sc = SelfCopieable { value: 123 };
-    sc.copy_me();
+    sc.copy_me(123);
 }
 
 #[test]
 fn test_self_copieable_copy_me_ref_mut() {
     let mut sc = SelfCopieable { value: 456 };
-    sc.copy_me_ref_mut();
+    sc.copy_me_ref_mut(456);
 }
