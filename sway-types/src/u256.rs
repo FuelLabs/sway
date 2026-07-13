@@ -69,13 +69,13 @@ impl std::fmt::Display for U256 {
 
 impl std::fmt::LowerHex for U256 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:x}", self.0)
+        write!(f, "{:064x}", self.0)
     }
 }
 
 impl std::fmt::UpperHex for U256 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:X}", self.0)
+        write!(f, "{:064X}", self.0)
     }
 }
 
@@ -162,4 +162,11 @@ impl std::ops::Not for &U256 {
         bytes.iter_mut().for_each(|b| *b = !*b);
         U256(BigUint::from_bytes_be(&bytes))
     }
+}
+
+#[test]
+fn to_hex_display_must_always_have_64_chars() {
+    let v = U256::from_be_bytes(&[0u8; 32]);
+    assert_eq!(format!("{v:x}").len(), 64);
+    assert_eq!(format!("{v:X}").len(), 64);
 }
