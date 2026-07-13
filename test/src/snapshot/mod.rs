@@ -265,9 +265,12 @@ fn run_cmds(
                             let mut inside_asm = false;
                             let mut capture_line = false;
 
-                            let compiling_project_line = format!("Compiling script {name}");
+                            let compiling_script_line = format!("Compiling script {name}");
+                            let compiling_contract_line = format!("Compiling contract {name}");
                             for line in output.lines() {
-                                if line.contains(&compiling_project_line) {
+                                if line.contains(&compiling_script_line)
+                                    || line.contains(&compiling_contract_line)
+                                {
                                     inside_ir = true;
                                 }
 

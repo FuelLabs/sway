@@ -237,7 +237,6 @@ pub struct BuildConfig {
     pub(crate) print_bytecode: bool,
     pub(crate) print_bytecode_spans: bool,
     pub(crate) print_ir: IrCli,
-    pub(crate) verify_ir: IrCli,
     pub(crate) include_tests: bool,
     pub(crate) optimization_level: OptLevel,
     pub(crate) backtrace: Backtrace,
@@ -289,7 +288,6 @@ impl BuildConfig {
             print_bytecode: false,
             print_bytecode_spans: false,
             print_ir: IrCli::default(),
-            verify_ir: IrCli::default(),
             include_tests: false,
             time_phases: false,
             profile: false,
@@ -340,13 +338,6 @@ impl BuildConfig {
     pub fn with_print_ir(self, a: IrCli) -> Self {
         Self {
             print_ir: a,
-            ..self
-        }
-    }
-
-    pub fn with_verify_ir(self, a: IrCli) -> Self {
-        Self {
-            verify_ir: a,
             ..self
         }
     }

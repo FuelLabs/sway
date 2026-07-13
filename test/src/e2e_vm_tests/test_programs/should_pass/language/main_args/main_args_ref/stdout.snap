@@ -181,11 +181,11 @@ script {
         v180v1 = get_local __ptr { { u64 } }, args, !147
         v181v1 = const u64 0
         v182v1 = get_elem_ptr v180v1, __ptr { u64 }, v181v1, !148
-        v869v1 = get_local __ptr { u64 }, __tmp_arg
-        mem_copy_val v869v1, v182v1
-        v871v1 = call main_15(v869v1)
+        v867v1 = get_local __ptr { u64 }, __tmp_arg
+        mem_copy_val v867v1, v182v1
+        v869v1 = call main_15(v867v1)
         v185v1 = get_local __ptr u64, _result, !149
-        store v871v1 to v185v1, !149
+        store v869v1 to v185v1, !149
         v204v1 = get_local __ptr u64, _result, !150
         v205v3 = get_local __ptr __ptr u64, item_, !153
         store v204v1 to v205v3, !153
