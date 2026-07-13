@@ -35,12 +35,12 @@ warning
 ____
 
   Compiled script "const_generics" with 2 warnings.
-    Finished debug [unoptimized + fuel] target(s) [8.816 KB] in ???
+    Finished debug [unoptimized + fuel] target(s) [8.808 KB] in ???
      Running 1 test, filtered 0 tests
 
 tested -- const_generics
 
-      test run_main ... ok (???, 17769 gas)
+      test run_main ... ok (???, 17766 gas)
            debug output:
 [src/main.sw:154:13] a = [1, 2]
 [src/main.sw:158:13] [C {}].len() = 1

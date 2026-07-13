@@ -11,35 +11,35 @@ pub fn unwrap_84(mut self: __ptr { u64, ( () | b256 ) }, mut __ret_value: __ptr 
     local u64 other_
 
     entry(mut self: __ptr { u64, ( () | b256 ) }, mut __ret_value: __ptr b256):
-    v7334v1 = get_local __ptr { u64, ( () | b256 ) }, __matched_value_4
-    mem_copy_val v7334v1, self
-    v7336v1 = const u64 0
-    v7337v1 = get_elem_ptr self, __ptr u64, v7336v1
+    v7330v1 = get_local __ptr { u64, ( () | b256 ) }, __matched_value_4
+    mem_copy_val v7330v1, self
+    v7332v1 = const u64 0
+    v7333v1 = get_elem_ptr self, __ptr u64, v7332v1
+    v7334v1 = get_local __ptr u64, other_
+    v7335v1 = const u64 1
+    store v7335v1 to v7334v1
+    v7337v1 = load v7333v1
     v7338v1 = get_local __ptr u64, other_
-    v7339v1 = const u64 1
-    store v7339v1 to v7338v1
-    v7341v1 = load v7337v1
-    v7342v1 = get_local __ptr u64, other_
-    v7343v1 = load v7342v1
-    v7344v1 = cmp eq v7341v1 v7343v1
-    cbr v7344v1, block0(), block1()
+    v7339v1 = load v7338v1
+    v7340v1 = cmp eq v7337v1 v7339v1
+    cbr v7340v1, block0(), block1()
 
     block0():
-    v7346v1 = get_local __ptr { u64, ( () | b256 ) }, __matched_value_4
-    v7347v1 = const u64 1
-    v7348v1 = const u64 1
-    v7349v1 = get_elem_ptr v7346v1, __ptr b256, v7347v1, v7348v1
-    mem_copy_val __ret_value, v7349v1
-    v7351v1 = const unit ()
-    ret () v7351v1
+    v7342v1 = get_local __ptr { u64, ( () | b256 ) }, __matched_value_4
+    v7343v1 = const u64 1
+    v7344v1 = const u64 1
+    v7345v1 = get_elem_ptr v7342v1, __ptr b256, v7343v1, v7344v1
+    mem_copy_val __ret_value, v7345v1
+    v7347v1 = const unit ()
+    ret () v7347v1
 
     block1():
-    v7353v1 = get_local __ptr u64, code_
-    v7354v1 = const u64 0
-    store v7354v1 to v7353v1
-    v7356v1 = get_local __ptr u64, code_
-    v7357v1 = load v7356v1
-    revert v7357v1
+    v7349v1 = get_local __ptr u64, code_
+    v7350v1 = const u64 0
+    store v7350v1 to v7349v1
+    v7352v1 = get_local __ptr u64, code_
+    v7353v1 = load v7352v1
+    revert v7353v1
 }
 
 
