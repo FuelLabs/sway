@@ -27,6 +27,8 @@ pub struct TyConfigurableDecl {
     pub span: Span,
     // Only encoding v1 has a decode_fn
     pub decode_fn: Option<DeclRef<DeclId<TyFunctionDecl>>>,
+    // Used to decide whether the configurable is trivially decodable or not
+    pub is_decode_trivial: Option<TyExpression>,
 }
 
 impl TyDeclParsedType for TyConfigurableDecl {
@@ -67,6 +69,7 @@ impl HashWithEngines for TyConfigurableDecl {
             attributes: _,
             span: _,
             decode_fn: _, // this is defined entirely by the type ascription
+            is_decode_trivial: _,
         } = self;
         call_path.hash(state);
         value.hash(state, engines);

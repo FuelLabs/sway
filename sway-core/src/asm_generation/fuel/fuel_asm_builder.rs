@@ -45,8 +45,10 @@ pub struct FuelAsmBuilder<'ir, 'eng> {
     // Globals will be allocated at SSP uninitialized (they will not be zeroed)
     pub(super) globals_section: GlobalsSection,
 
-    // Maps configurable name to data id, only used by encoding v0
-    pub(super) configurable_v0_data_id: HashMap<String, DataId>,
+    // Maps a configurable name to its DataId in the data section, used by
+    // v0 configurables and trivially decodable encoding-v1 configurables.
+    // Non-trivial v1 configurables are NOT here (they have a global instead).
+    pub(super) trivial_configurable_to_data_id: HashMap<String, DataId>,
 
     // Register sequencer dishes out new registers and labels.
     pub(super) reg_seqr: RegisterSequencer,
@@ -106,7 +108,8 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
                     None,
                 );
                 let dataid = self.data_section.insert_data_value(entry);
-                self.configurable_v0_data_id.insert(name.clone(), dataid);
+                self.trivial_configurable_to_data_id
+                    .insert(name.clone(), dataid);
             }
             ConfigContent::V1 {
                 name,
@@ -115,56 +118,67 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
                 decode_fn,
                 ..
             } => {
-                let size_in_bytes = ty.size(self.context).in_bytes();
-
-                self.globals_section.insert(name, size_in_bytes);
-                let global = self.globals_section.get_by_name(name).unwrap();
-
-                let (decode_fn_label, _) = self.func_label_map.get(&decode_fn.get()).unwrap();
                 let dataid = self.data_section.insert_data_value(Entry::new_byte_array(
                     encoded_bytes.clone(),
                     EntryName::Configurable(name.clone()),
                     None,
                 ));
 
-                self.before_entries.push(Op {
-                    opcode: Either::Left(VirtualOp::AddrDataId(
-                        VirtualRegister::Constant(ConstantRegister::FuncArg0),
-                        dataid,
-                    )),
-                    comment: format!("get pointer to configurable {name} default value"),
-                    owning_span: None,
-                });
+                if let Some(decode_fn) = decode_fn.get() {
+                    // Non-trivial: allocate a writable global and decode the
+                    // encoded bytes into it at program start.
+                    let size_in_bytes = ty.size(self.context).in_bytes();
 
-                self.before_entries.push(Op {
-                    opcode: Either::Left(VirtualOp::ADDI(
-                        VirtualRegister::Constant(ConstantRegister::FuncArg1),
-                        VirtualRegister::Constant(ConstantRegister::Zero),
-                        VirtualImmediate12::new(encoded_bytes.len() as u64),
-                    )),
-                    comment: format!("get length of configurable {name} default value"),
-                    owning_span: None,
-                });
+                    self.globals_section.insert(name, size_in_bytes);
+                    let global = self.globals_section.get_by_name(name).unwrap();
 
-                self.before_entries.push(Op {
-                    opcode: Either::Left(VirtualOp::ADDI(
-                        VirtualRegister::Constant(ConstantRegister::FuncArg2),
-                        VirtualRegister::Constant(ConstantRegister::StackStartPointer),
-                        VirtualImmediate12::new(global.offset_in_bytes),
-                    )),
-                    comment: format!("get pointer to configurable {name} stack address"),
-                    owning_span: None,
-                });
+                    let (decode_fn_label, _) = self.func_label_map.get(&decode_fn).unwrap();
 
-                // call decode
-                self.before_entries.push(Op {
-                    opcode: Either::Right(crate::asm_lang::ControlFlowOp::Jump {
-                        to: *decode_fn_label,
-                        type_: JumpType::Call,
-                    }),
-                    comment: format!("decode configurable {name}"),
-                    owning_span: None,
-                });
+                    self.before_entries.push(Op {
+                        opcode: Either::Left(VirtualOp::AddrDataId(
+                            VirtualRegister::Constant(ConstantRegister::FuncArg0),
+                            dataid,
+                        )),
+                        comment: format!("get pointer to configurable {name} default value"),
+                        owning_span: None,
+                    });
+
+                    self.before_entries.push(Op {
+                        opcode: Either::Left(VirtualOp::ADDI(
+                            VirtualRegister::Constant(ConstantRegister::FuncArg1),
+                            VirtualRegister::Constant(ConstantRegister::Zero),
+                            VirtualImmediate12::new(encoded_bytes.len() as u64),
+                        )),
+                        comment: format!("get length of configurable {name} default value"),
+                        owning_span: None,
+                    });
+
+                    self.before_entries.push(Op {
+                        opcode: Either::Left(VirtualOp::ADDI(
+                            VirtualRegister::Constant(ConstantRegister::FuncArg2),
+                            VirtualRegister::Constant(ConstantRegister::StackStartPointer),
+                            VirtualImmediate12::new(global.offset_in_bytes),
+                        )),
+                        comment: format!("get pointer to configurable {name} stack address"),
+                        owning_span: None,
+                    });
+
+                    // call decode
+                    self.before_entries.push(Op {
+                        opcode: Either::Right(crate::asm_lang::ControlFlowOp::Jump {
+                            to: *decode_fn_label,
+                            type_: JumpType::Call,
+                        }),
+                        comment: format!("decode configurable {name}"),
+                        owning_span: None,
+                    });
+                } else {
+                    // Trivial: no writable global and no decode call. get_config
+                    // resolves this name to AddrDataId via the shared map, reading
+                    // the (read-only) encoded bytes directly.
+                    self.trivial_configurable_to_data_id
+                        .insert(name.clone(), dataid);
+                }
             }
         }
     }
@@ -308,7 +322,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             program_kind,
             data_section,
             globals_section: GlobalsSection::default(),
-            configurable_v0_data_id: HashMap::default(),
+            trivial_configurable_to_data_id: HashMap::default(),
             reg_seqr,
             func_label_map: HashMap::new(),
             block_label_map: HashMap::new(),
@@ -1457,8 +1471,10 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             });
             self.reg_map.insert(*addr_val, addr_reg);
         } else {
-            // Otherwise it is a configurable with encoding v0 and must be at configurable_v0_data_id
-            let dataid = self.configurable_v0_data_id.get(name).unwrap();
+            // Otherwise it is a configurable without a writable global: either an
+            // encoding v0 configurable or a trivially decodable encoding-v1
+            // configurable.
+            let dataid = self.trivial_configurable_to_data_id.get(name).unwrap();
             self.cur_bytecode.push(Op {
                 opcode: either::Either::Left(VirtualOp::AddrDataId(
                     addr_reg.clone(),
