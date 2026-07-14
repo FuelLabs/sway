@@ -76,7 +76,8 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
         .unwrap()
         .to_path_buf();
     let test_root = repo_root.join("test");
-    let test_programs_dir = test_root.join("src/e2e_vm_tests/test_programs/");
+    let e2e_vm_tests_dir = test_root.join("src/e2e_vm_tests/test_programs/");
+    let in_lang_tests_dir = test_root.join("src/in_language_tests/test_programs");
 
     let args = Arguments {
         filter: filter_regex.as_ref().map(|filter| filter.to_string()),
@@ -88,7 +89,8 @@ pub(super) async fn run(filter_regex: Option<&regex::Regex>) -> Result<()> {
         .into_iter()
         .map(|dir| {
             let name = dir
-                .strip_prefix(&test_programs_dir)
+                .strip_prefix(&e2e_vm_tests_dir)
+                .or_else(|_| dir.strip_prefix(&in_lang_tests_dir))
                 .unwrap()
                 .display()
                 .to_string();
@@ -183,13 +185,18 @@ fn run_cmds(
                         });
                         format!("target/release/forc {cmd} 1>&2")
                     } else if let Some(cmd) = cmd.strip_prefix("sub ") {
-                        let arg = cmd.trim();
+                        let args = cmd.trim().split(",").collect::<Vec<_>>();
                         if let Some(l) = last_output.take() {
                             let mut new_output = String::new();
-                            for line in l.lines() {
-                                if line.contains(arg) {
-                                    new_output.push_str(line);
-                                    new_output.push('\n');
+                            for arg in args.iter() {
+                                new_output.push_str("\nMatches for \"");
+                                new_output.push_str(arg);
+                                new_output.push_str("\"\n\n");
+                                for line in l.lines() {
+                                    if line.contains(arg) {
+                                        new_output.push_str(line);
+                                        new_output.push('\n');
+                                    }
                                 }
                             }
                             last_output = Some(new_output);

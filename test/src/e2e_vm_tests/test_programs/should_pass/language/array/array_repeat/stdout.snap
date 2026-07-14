@@ -560,9 +560,9 @@ cfsi i40                      ; [fn end: log_45] free: locals 40 byte(s), call a
 poph i531456                  ; [fn end: log_45]: restore used high registers 40..64
 jal  $zero $$reta i0          ; [fn end: log_45] return from call
 .data:
-data_NonConfigurable_0 .word 18446744073709486083
-data_NonConfigurable_1 .word 262145
-data_NonConfigurable_2 .word 14454674236531057292
+data_non_configurable_0 .word 18446744073709486083
+data_non_configurable_1 .word 262145
+data_non_configurable_2 .word 14454674236531057292
 
 
 ;; --- START OF TARGET BYTECODE ---

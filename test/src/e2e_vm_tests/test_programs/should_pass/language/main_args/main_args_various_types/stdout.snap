@@ -1516,11 +1516,11 @@ cfsi i144                     ; [fn end: abi_encode_51] free: locals 144 byte(s)
 poph i532352                  ; [fn end: abi_encode_51]: restore used high registers 40..64
 jal  $zero $$reta i0          ; [fn end: abi_encode_51] return from call
 .data:
-data_NonConfigurable_0 .word 3647243719605075626
-data_NonConfigurable_1 .bytes[3] 73 65 74  set
-data_NonConfigurable_2 .bytes[3] 61 64 64  add
-data_NonConfigurable_3 .word 18446744073709486084
-data_NonConfigurable_4 .word 14757395258967588866
+data_non_configurable_0 .word 3647243719605075626
+data_non_configurable_1 .bytes[3] 73 65 74  set
+data_non_configurable_2 .bytes[3] 61 64 64  add
+data_non_configurable_3 .word 18446744073709486084
+data_non_configurable_4 .word 14757395258967588866
 
 
 ;; --- START OF TARGET BYTECODE ---
