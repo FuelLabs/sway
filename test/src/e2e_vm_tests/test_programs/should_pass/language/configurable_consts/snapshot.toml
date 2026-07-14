@@ -1,0 +1,7 @@
+cmds = [
+    "echo TUPLE_BOOL_U64 is NOT trivially decodable, so we should see its initialization",
+    "echo ANOTHER_U8 is trivially decodable, so we should not see any initialization.",
+    "echo When accessing TUPLE_BOOL_U64 we should see an offset from $ssp",
+    "echo When accessing ANOTHER_U8 we should see an offset to the configurable data section",
+    "forc build --path {root} --release --ir final --asm final | sub TUPLE_BOOL_U64,ANOTHER_U8",
+]
