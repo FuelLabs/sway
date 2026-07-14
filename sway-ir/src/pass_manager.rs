@@ -393,7 +393,7 @@ impl PassManager {
             std::env::var("SWAY_FORCE_VERIFY_IR").unwrap_or_else(|_| "false".to_string());
         let force_verify: bool = force_verify.parse().unwrap_or(false);
 
-        for _ in 0..2 {
+        for _ in 0..16 {
             let mut iter_modified = false;
 
             for pass in passes.flatten_pass_group() {

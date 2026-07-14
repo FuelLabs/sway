@@ -25,7 +25,11 @@ ecal $r0 $r1 $zero $zero      ; ecal id fd zero zero
 ecal $r0 $r1 $zero $zero      ; ecal id fd zero zero
 ecal $r2 $r3 $r0 $r1          ; ecal id fd buf count
 ecal $r0 $r1 $zero $zero      ; ecal id fd zero zero
+ecal $r5 $r6 $r3 $one         ; ecal id fd buf count
+ecal $r2 $r3 $r0 $one         ; ecal id fd buf count
 ecal $r0 $r2 $zero $zero      ; ecal id fd zero zero
+ecal $r5 $r6 $r3 $one         ; ecal id fd buf count
+ecal $r2 $r3 $r0 $one         ; ecal id fd buf count
 ecal $r0 $r2 $zero $zero      ; ecal id fd zero zero
 ecal $r0 $r2 $zero $zero      ; ecal id fd zero zero
 ecal $r0 $r1 $zero $zero      ; ecal id fd zero zero
@@ -35,5 +39,3 @@ ecal $r0 $r2 $zero $zero      ; ecal id fd zero zero
 ecal $r0 $r1 $zero $zero      ; ecal id fd zero zero
 ecal $r2 $r3 $r0 $r1          ; ecal id fd buf count
 ecal $r2 $r3 $r0 $r1          ; ecal id fd buf count
-ecal $r3 $r4 $$locbase $one   ; ecal id fd buf count
-ecal $r1 $r3 $r0 $one         ; ecal id fd buf count
