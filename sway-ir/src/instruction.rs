@@ -223,6 +223,132 @@ impl InitAggrInitializer {
 
         InitAggrInitializer::Value(value)
     }
+
+    /// Returns true if this [InitAggrInitializer] initializes
+    /// its aggregate field to all zeros. The initializer is
+    /// runtime zeroed iff it is a runtime zeroed constant or
+    /// an aggregate `mem_clear_val`-zeroed during aggregate
+    /// initialization.
+    pub fn is_runtime_zeroed(&self, context: &Context) -> bool {
+        /// Returns true if the value `val` of this [InitAggrInitializer]
+        /// is coming from an aggregate previous initialized during IR
+        /// generation of the root `init_aggr` with `mem_clear_val`.
+        ///
+        /// In other words, we are looking **strictly** for the following
+        /// pattern:
+        ///
+        ///   nested_aggr = get_local __ptr <aggregate type>, <temp local of the nested aggregate>
+        ///   mem_clear_val nested_aggr
+        ///   val = load nested_aggr
+        ///
+        /// Where <aggregate type> must be an IR struct or array.
+        ///
+        /// We consider such `val` initializers to be runtime zeroed.
+        ///
+        /// **Note that this assumption cannot be made in arbitrary code**,
+        /// because `nested_aggr` could be written to between the `val` definition
+        /// and usage. But **this assumption can be made in the `init_aggr` context**,
+        /// because in that context we know that initializer `val`s **are surely not
+        /// accessed between their definition and consumption in `init_aggr`**.
+        /// (The whole point of introducing `init_aggr` was to have a dedicated
+        /// IR construct for aggregate initialization in which we provide certain
+        /// guarantees that allow additional optimizations.)
+        fn is_mem_cleared_aggregate(val: Value, context: &Context) -> bool {
+            // 1. `val` must be a `load`.
+            let Some(Instruction {
+                parent: load_block,
+                op: InstOp::Load(loaded_val),
+            }) = val.get_instruction(context)
+            else {
+                return false;
+            };
+
+            // 2. `loaded_val` must be a `get_local` in the same block as `load`.
+            let Some(Instruction {
+                parent: get_local_block,
+                op: InstOp::GetLocal(local_var),
+            }) = loaded_val.get_instruction(context)
+            else {
+                return false;
+            };
+
+            if load_block != get_local_block {
+                return false;
+            }
+
+            // 3. The type of the `local_var` must be an IR pointer to a struct or array.
+            //    Enums are modelled in IR as structs ( { u64, <union> }) so we need to
+            //    exclude them separately.
+            let local_var_type = local_var.get_inner_type(context);
+            if !((local_var_type.is_array(context) || local_var_type.is_struct(context))
+                && !local_var_type.is_enum(context))
+            {
+                return false;
+            }
+
+            // 4. `load` and `get_local` must have only one instruction between them.
+            let block = load_block;
+            let load_inst = val;
+            let get_local_inst = *loaded_val;
+
+            let (index_of_load_inst, _load_inst) = block
+                .instruction_iter(context)
+                .enumerate()
+                .find(|(_inst_index, inst)| *inst == load_inst)
+                .expect("`load_inst` must exists in its `block`");
+
+            if index_of_load_inst < 2 {
+                return false;
+            }
+
+            if block.get_instruction_at(context, index_of_load_inst - 2) != Some(get_local_inst) {
+                return false;
+            }
+
+            // 5. The instruction between `load` and `get_local` must be a `mem_clear_val get_local_inst`.
+            let inst_between_load_and_get_local = block
+                .get_instruction_at(context, index_of_load_inst - 1)
+                .expect("there must be an instruction right before `load_inst");
+
+            let Some(Instruction {
+                parent: _,
+                op:
+                    InstOp::MemClearVal {
+                        dst_val_ptr: cleared_val,
+                    },
+            }) = inst_between_load_and_get_local.get_instruction(context)
+            else {
+                return false;
+            };
+
+            if *cleared_val != get_local_inst {
+                return false;
+            }
+
+            // All conditions met. We found the pattern.
+            true
+        }
+
+        match self {
+            InitAggrInitializer::Value(val) => {
+                val.get_constant(context)
+                    .is_some_and(|c| c.is_runtime_zeroed(context))
+                    || is_mem_cleared_aggregate(*val, context)
+            }
+            InitAggrInitializer::NestedInitAggr { load: _, init_aggr } => {
+                let Some(Instruction {
+                    parent: _,
+                    op: InstOp::InitAggr(init_aggr),
+                }) = init_aggr.get_instruction(context).as_ref()
+                else {
+                    panic!("Expected `init_aggr` instruction for nested init aggr");
+                };
+                init_aggr
+                    .initializers(context)
+                    .all(|init| init.is_runtime_zeroed(context))
+            }
+        }
+    }
 }
 
 /// Metadata describing a logged event.
@@ -1681,7 +1807,29 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
         }
     }
 
-    // Recomputes the index in the instruction vec. O(n) in the worst case.
+    /// Return a new [`InstructionInserter`] context that inserts before the
+    /// instruction `inst`.
+    ///
+    /// Panics if `inst` is not an [Instruction].
+    pub fn before(context: &'a mut Context<'eng>, inst: Value) -> InstructionInserter<'a, 'eng> {
+        let block = inst
+            .get_parent_block(context)
+            .expect("`inst` must be an instruction and must have a parent block");
+        InstructionInserter::new(context, block, InsertionPosition::Before(inst))
+    }
+
+    /// Return a new [`InstructionInserter`] context that inserts after the
+    /// instruction `inst`.
+    ///
+    /// Panics if `inst` is not an [Instruction].
+    pub fn after(context: &'a mut Context<'eng>, inst: Value) -> InstructionInserter<'a, 'eng> {
+        let block = inst
+            .get_parent_block(context)
+            .expect("`inst` must be an instruction and must have a parent block");
+        InstructionInserter::new(context, block, InsertionPosition::After(inst))
+    }
+
+    // Recompute the index in the instruction vec. O(n) in the worst case.
     fn get_position_index(&self) -> usize {
         let instructions = &self.context.blocks[self.block.0].instructions;
         match self.position {

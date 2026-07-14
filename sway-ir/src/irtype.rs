@@ -386,6 +386,39 @@ impl Type {
         matches!(*self.get_content(context), TypeContent::Pointer)
     }
 
+    /// Returns true if `self` can be initialized via a single `store` instruction.
+    ///
+    /// When initializing aggregates, values of such types we want to initialize via
+    /// a single `store` and not, e.g., via `mem_clear_val` even if they are zeroed,
+    /// because using `store` will enable SROA which can be beneficial
+    /// in case of single field aggregates.
+    ///
+    /// Note that `u256` and `b256` are excluded here, because they require `mem_copy` for initialization.
+    pub fn is_single_store_initializeable(&self, context: &Context) -> bool {
+        match self.get_content(context) {
+            TypeContent::Never => false,
+            TypeContent::Unit => true,
+            TypeContent::Bool => true,
+            TypeContent::Uint(size) => *size <= 64,
+            TypeContent::B256 => false,
+            TypeContent::StringSlice => false,
+            TypeContent::StringArray(length) => *length == 1,
+            TypeContent::Array(elem_ty, length) => {
+                *length == 1 && elem_ty.is_single_store_initializeable(context)
+            }
+            TypeContent::Union(variants) => {
+                variants.len() == 1 && variants[0].is_single_store_initializeable(context)
+            }
+            TypeContent::Struct(fields) => {
+                fields.len() == 1 && fields[0].is_single_store_initializeable(context)
+            }
+            TypeContent::Slice => false,
+            TypeContent::Pointer => true,
+            TypeContent::TypedPointer(_) => true,
+            TypeContent::TypedSlice(_) => false,
+        }
+    }
+
     /// Get pointed to type iff `self`` is a pointer.
     pub fn get_pointee_type(&self, context: &Context) -> Option<Type> {
         if let TypeContent::TypedPointer(to_ty) = self.get_content(context) {

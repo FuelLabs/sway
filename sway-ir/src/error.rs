@@ -15,6 +15,12 @@ pub enum IrError {
     RemoveMissingBlock(String),
     ValueNotFound(String),
     InconsistentParent(String, String, String),
+    InvalidPassModified {
+        pass: String,
+        returned: bool,
+        comparison: bool,
+    },
+    InitAggrsNotLowered(),
 
     VerifyArgumentValueIsNotArgument(String),
     VerifyUnaryOpIncorrectArgType,
@@ -90,13 +96,8 @@ pub enum IrError {
     VerifyInitAggrUnknownInitializerType(usize),
     VerifyInitAggrMismatchedStructFieldType(usize, String, String),
     VerifyInitAggrMismatchedArrayElementType(usize, String, String),
-
-    InvalidPassModified {
-        pass: String,
-        returned: bool,
-        comparison: bool,
-    },
 }
+
 impl IrError {
     pub(crate) fn get_problematic_value(&self) -> Option<&Value> {
         match self {
@@ -150,11 +151,24 @@ impl fmt::Display for IrError {
             }
             IrError::InconsistentParent(entity, expected_parent, found_parent) => {
                 write!(
-                                    f,
-                                    "For IR Entity (module/function/block) {entity}, expected parent to be {expected_parent}, \
+                    f,
+                    "For IR Entity (module/function/block) {entity}, expected parent to be {expected_parent}, \
                     but found {found_parent}."
-                                )
+                )
             }
+            IrError::InvalidPassModified { pass, returned, comparison } => {
+                write!(
+                    f,
+                    "Optimization pass {pass} returned `modified: {returned}` but its IR comparison says `{comparison}`.",
+                )
+            }
+            IrError::InitAggrsNotLowered() => {
+                write!(
+                    f,
+                    "Some `InstOp::InitAggr` instructions were not lowered in the `lower-init-aggr` pass.",
+                )
+            }
+
             IrError::VerifyArgumentValueIsNotArgument(callee) => write!(
                 f,
                 "Verification failed: Argument specifier for function '{callee}' is not an \
@@ -579,13 +593,6 @@ impl fmt::Display for IrError {
                 write!(
                     f,
                     "Verification failed: init_aggr instruction has an initializer with a type mismatch for array element at index {idx}. Expected element type: {element_ty}, found initializer type: {initializer_ty}."
-                )
-            }
-
-            IrError::InvalidPassModified { pass, returned, comparison } => {
-                write!(
-                    f,
-                    "Verification failed: {pass} returned `modified: {returned}` but its IR comparison says `{comparison}`",
                 )
             }
         }
