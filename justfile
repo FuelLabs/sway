@@ -40,6 +40,27 @@ benchmark-tests:
 # The `performance` group contains recipes related to benchmarking the performance of compiled code:
 # gas usages and bytecode sizes.
 
+CURRENT_BRANCH := `git branch --show-current`
+
+pe2e-against-master:
+    echo "Performance: {{CURRENT_BRANCH}} vs master"
+    git clean -xfd test/perf_out
+    git checkout master
+    cargo r -p test --release -- XX # update reduced std-libs
+    just pa
+    git checkout {{CURRENT_BRANCH}}
+    cargo r -p test --release -- XX # update reduced std-libs
+    just pa
+    just pdl
+    echo "performance reports at ./test/perf_out"
+
+pe2e-o2-against-master:
+    echo "Performance: {{CURRENT_BRANCH}} vs master"
+    git checkout master
+    cd ../sway-program-collection && git clean -xfd && just a
+    git checkout {{CURRENT_BRANCH}}
+    cd ../sway-program-collection && just a && just opd
+
 alias pe2e := perf-e2e
 # collect gas usages and bytecode sizes from E2E tests
 [group('performance')]
@@ -103,7 +124,7 @@ perf-diff-latest format='md':
 # format:         output format, either `csv` or `html` (default: `csv`)
 # open:           for `html` output, `-o` opens the report in the default browser
 
-alias psh := perf-snapshot-historical
+#alias psh := perf-snapshot-historical
 # collect historic gas usages from a snapshot test that has a `forc test` output
 [linux]
 [macos]

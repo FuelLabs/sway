@@ -37,13 +37,6 @@ pub fn mem_copy_opt(
     Ok(modified)
 }
 
-struct InstInfo {
-    // The block containing the instruction.
-    block: Block,
-    // Relative (use only for comparison) position of instruction in `block`.
-    pos: usize,
-}
-
 // If the source is an Arg, we replace uses of destination with Arg.
 // Otherwise (`get_local`), we replace the local symbol in-place.
 enum ReplaceWith {
@@ -66,6 +59,13 @@ fn local_copy_prop_prememcpy(
     function: Function,
 ) -> Result<bool, IrError> {
     let mut modified = false;
+
+    struct InstInfo {
+        // The block containing the instruction.
+        block: Block,
+        // Relative (use only for comparison) position of instruction in `block`.
+        pos: usize,
+    }
 
     // If the analysis result is incomplete we cannot do any safe optimizations here.
     // Calculating the candidates below relies on complete result of an escape analysis.
@@ -556,7 +556,8 @@ fn local_copy_prop(
         // optimization possible. We could track just the changes and do it
         // all in one go, but that would complicate the algorithm. So I've
         // marked this as a TODO for now (#4600).
-        loop {
+        // 100 here just to avoid infinite recursion.
+        for _ in 0..100 {
             available_copies = FxHashSet::default();
             src_to_copies = IndexMap::default();
             dest_to_copies = IndexMap::default();

@@ -92,21 +92,21 @@ get_new_contract_id() {
     CONTRACT_ARGS=$(join_by " " ${CONTRACT_ARGS[@]})
 
     if [[ $CONTRACT_ARGS ]]; then
-        PROJ=$(realpath "$FILE")
-        REGEX="0x[a-zA-Z0-9]{64}"
+        PROJ=$(realpath "$FOLDER/..")
 
         pushd "$DIR/.." > /dev/null
+        REGEX="0x[a-zA-Z0-9]{64}"
         CONTRACT_ID=$(cargo r -p forc --release -- contract-id --path $CONTRACT_ARGS 2> /dev/null | $grep -oP "$REGEX")
-        popd > /dev/null
 
         # if error print error and quit
         if [ $? -eq 0 ]; then
             echo "$CONTRACT_ID"
         else
-            >&2 echo "cargo r -p forc --release -- contract-id --path $CONTRACT_ARGS"
-            cargo r -p forc --release -- contract-id --path $CONTRACT_ARGS
+            cargo r -p forc --release -- build --path $CONTRACT_ARGS
             exit
         fi
+
+        popd > /dev/null
     fi
 }
 
@@ -148,6 +148,7 @@ update_line() {
     LINE=${PARTS[1]}
 
     CONTRACT_ID="$2"
+
     if [[ $CONTRACT_ID ]]; then
         SED_EXPR="${LINE}s/0x[a-zA-Z0-9]*/$CONTRACT_ID/g"
 

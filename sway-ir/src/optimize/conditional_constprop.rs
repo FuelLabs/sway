@@ -24,8 +24,6 @@ pub fn ccp(
     analyses: &AnalysisResults,
     function: Function,
 ) -> Result<bool, IrError> {
-    let mut modified = false;
-
     let dom_tree: &DomTree = analyses.get_analysis_result(function);
 
     // In the set of blocks dominated by `key`, replace all uses of `val.0` with `val.1`.
@@ -61,12 +59,13 @@ pub fn ccp(
         }
     }
 
-    // lets walk the dominator tree from the root.
-    let root_block = function.get_entry_block(context);
-
     if dom_region_replacements.is_empty() {
         return Ok(false);
     }
+
+    // lets walk the dominator tree from the root.
+    let root_block = function.get_entry_block(context);
+    let mut modified = false;
 
     let mut stack = vec![(root_block, 0)];
     let mut replacements = FxHashMap::default();

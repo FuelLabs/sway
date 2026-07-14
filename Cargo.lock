@@ -7653,6 +7653,7 @@ version = "0.71.2"
 dependencies = [
  "anyhow",
  "downcast-rs",
+ "expect-test",
  "filecheck",
  "indexmap 2.14.0",
  "insta",

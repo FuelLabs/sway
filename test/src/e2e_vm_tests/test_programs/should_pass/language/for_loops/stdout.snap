@@ -1,0 +1,154 @@
+---
+source: test/src/snapshot/mod.rs
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/for_loops --ir final --asm final | filter-fn for_loops just_for_loop
+
+fn just_for_loop_15(mut vector: __ptr { { ptr, u64 }, u64 }) -> () {
+    local mut { { { ptr, u64 }, u64 }, u64 } __for_iterable_2
+    local mut { u64, ( () | u64 ) } __for_value_opt_1
+    local { u64, ( () | u64 ) } __ret_val
+    local { { { ptr, u64 }, u64 }, u64 } __struct_init_0
+    local mut u64 i
+    local u64 n
+    local u64 other_
+    local u64 other_0
+    local u64 other_1
+
+    entry(mut vector: __ptr { { ptr, u64 }, u64 }):
+    v1132v1 = get_local __ptr u64, i
+    v1133v1 = const u64 0
+    store v1133v1 to v1132v1
+    v1135v1 = get_local __ptr { { { ptr, u64 }, u64 }, u64 }, __struct_init_0
+    v1136v1 = const u64 0
+    v1137v1 = get_elem_ptr v1135v1, __ptr { { ptr, u64 }, u64 }, v1136v1
+    mem_copy_val v1137v1, vector
+    v1139v1 = const u64 1
+    v1140v1 = get_elem_ptr v1135v1, __ptr u64, v1139v1
+    v1141v1 = const u64 0
+    store v1141v1 to v1140v1
+    v1143v1 = get_local __ptr { { { ptr, u64 }, u64 }, u64 }, __for_iterable_2
+    mem_copy_val v1143v1, v1135v1
+    br while()
+
+    while():
+    v1146v1 = const bool true
+    cbr v1146v1, while_body(), end_while()
+
+    while_body():
+    v1148v1 = get_local __ptr { { { ptr, u64 }, u64 }, u64 }, __for_iterable_2
+    v1149v1 = get_local __ptr { u64, ( () | u64 ) }, __ret_val
+    v1150v1 = call next_17(v1148v1, v1149v1)
+    v1151v1 = get_local __ptr { u64, ( () | u64 ) }, __for_value_opt_1
+    mem_copy_val v1151v1, v1149v1
+    v1153v1 = get_local __ptr { u64, ( () | u64 ) }, __for_value_opt_1
+    v1154v1 = const u64 0
+    v1155v1 = get_elem_ptr v1153v1, __ptr u64, v1154v1
+    v1156v1 = get_local __ptr u64, other_
+    v1157v1 = const u64 1
+    store v1157v1 to v1156v1
+    v1159v1 = load v1155v1
+    v1160v1 = get_local __ptr u64, other_
+    v1161v1 = load v1160v1
+    v1162v1 = cmp eq v1159v1 v1161v1
+    v1163v1 = const bool false
+    cbr v1162v1, is_none_22_block2(v1163v1), is_none_22_block1()
+
+    is_none_22_block1():
+    v1165v1 = const bool true
+    br is_none_22_block2(v1165v1)
+
+    is_none_22_block2(mut v1131v1: bool):
+    cbr v1131v1, end_while(), block1()
+
+    block1():
+    v1168v1 = get_local __ptr { u64, ( () | u64 ) }, __for_value_opt_1
+    v1169v1 = call unwrap_23(v1168v1)
+    v1170v1 = get_local __ptr u64, n
+    store v1169v1 to v1170v1
+    v1172v1 = get_local __ptr u64, i
+    v1173v1 = get_local __ptr u64, n
+    v1174v1 = load v1173v1
+    v1175v1 = load v1172v1
+    v1176v1 = cmp eq v1174v1 v1175v1
+    v1177v1 = call assert_25(v1176v1)
+    v1178v1 = get_local __ptr u64, i
+    v1179v1 = get_local __ptr u64, other_0
+    v1180v1 = const u64 1
+    store v1180v1 to v1179v1
+    v1182v1 = load v1178v1
+    v1183v1 = get_local __ptr u64, other_0
+    v1184v1 = load v1183v1
+    v1185v1 = add v1182v1, v1184v1
+    v1186v1 = get_local __ptr u64, i
+    store v1185v1 to v1186v1
+    br while()
+
+    end_while():
+    v1189v1 = get_local __ptr u64, i
+    v1190v1 = get_local __ptr u64, other_1
+    v1191v1 = const u64 5
+    store v1191v1 to v1190v1
+    v1193v1 = load v1189v1
+    v1194v1 = get_local __ptr u64, other_1
+    v1195v1 = load v1194v1
+    v1196v1 = cmp eq v1193v1 v1195v1
+    v1197v1 = call assert_25(v1196v1)
+    v1198v1 = const unit ()
+    ret () v1198v1
+}
+
+
+
+
+
+
+pshh i531456                  ; [fn init: just_for_loop_15]: push used high registers 40..64
+move $$locbase $sp            ; [fn init: just_for_loop_15]: set locals base register
+cfei i136                     ; [fn init: just_for_loop_15]: allocate: locals 136 byte(s), call args 0 slot(s)
+move $r0 $$arg0               ; [fn init: just_for_loop_15]: copy argument 0 (vector)
+move $r1 $$reta               ; [fn init: just_for_loop_15]: save return address
+sw   $$locbase $zero i12      ; store word
+addi $r2 $$locbase i64        ; get offset to local __ptr { { { ptr, u64 }, u64 }, u64 }
+mcpi $r2 $r0 i24              ; copy memory
+sw   $$locbase $zero i11      ; store word
+mcpi $$locbase $r2 i32        ; copy memory
+addi $r0 $$locbase i48        ; get offset to local __ptr { u64, ( () | u64 ) }
+move $$arg0 $$locbase         ; [call: next_17]: pass argument 0
+move $$arg1 $r0               ; [call: next_17]: pass argument 1
+jal  $$reta $pc i37           ; [call: next_17]: call function
+addi $r2 $$locbase i32        ; get offset to local __ptr { u64, ( () | u64 ) }
+mcpi $r2 $r0 i16              ; copy memory
+sw   $$locbase $one i14       ; store word
+lw   $r0 $$locbase i4         ; load word
+lw   $r2 $$locbase i14        ; load word
+eq   $r0 $r0 $r2
+movi $r2 i0                   ; move parameter from branch to block argument
+jnzf $r0 $zero i1
+movi $r2 i1                   ; move parameter from branch to block argument
+jnzf $r2 $zero i15
+addi $r0 $$locbase i32        ; get offset to local __ptr { u64, ( () | u64 ) }
+move $$arg0 $r0               ; [call: unwrap_23]: pass argument 0
+jal  $$reta $pc i110          ; [call: unwrap_23]: call function
+sw   $$locbase $$retv i13     ; store word
+lw   $r0 $$locbase i13        ; load word
+lw   $r2 $$locbase i12        ; load word
+eq   $r0 $r0 $r2
+move $$arg0 $r0               ; [call: assert_25]: pass argument 0
+jal  $$reta $pc i121          ; [call: assert_25]: call function
+sw   $$locbase $one i15       ; store word
+lw   $r0 $$locbase i12        ; load word
+lw   $r2 $$locbase i15        ; load word
+add  $r0 $r0 $r2
+sw   $$locbase $r0 i12        ; store word
+jmpb $zero i27
+movi $r0 i5                   ; initialize constant into register
+sw   $$locbase $r0 i16        ; store word
+lw   $r0 $$locbase i12        ; load word
+lw   $r2 $$locbase i16        ; load word
+eq   $r0 $r0 $r2
+move $$arg0 $r0               ; [call: assert_25]: pass argument 0
+jal  $$reta $pc i108          ; [call: assert_25]: call function
+cfsi i136                     ; [fn end: just_for_loop_15] free: locals 136 byte(s), call args 0 slot(s)
+move $$reta $r1               ; [fn end: just_for_loop_15] restore return address
+poph i531456                  ; [fn end: just_for_loop_15]: restore used high registers 40..64
+jal  $zero $$reta i0          ; [fn end: just_for_loop_15] return from call

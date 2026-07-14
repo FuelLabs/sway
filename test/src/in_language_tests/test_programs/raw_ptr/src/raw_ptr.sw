@@ -66,7 +66,7 @@ fn raw_ptr_copy_to_and_read() {
 }
 
 #[test]
-fn raw_ptr_write() {
+fn test_raw_ptr_write() {
     // Write values into a buffer.
     let buf_ptr = alloc::<u64>(2);
     buf_ptr.write(true);
@@ -109,4 +109,18 @@ fn raw_ptr_overwrite_after_read() {
     let read_large_string_2 = buf_ptr.read::<str[12]>();
     assert(sha256_str_array(large_string_1) == sha256_str_array(read_large_string_1));
     assert(sha256_str_array(large_string_2) == sha256_str_array(read_large_string_2));
+
+    // calls to raw_ptr_write.
+    let v = [0u8; 128];
+    raw_ptr_write(__addr_of(v), 0u8);
+    raw_ptr_write(__addr_of(v), 0u16);
+    raw_ptr_write(__addr_of(v), 0u32);
+    raw_ptr_write(__addr_of(v), 0u64);
+    raw_ptr_write(__addr_of(v), TestStruct { boo: false, uwu: 0 });
+}
+
+// We expect that each monomorphization of raw_ptr::write to be optimal
+#[inline(never)]
+fn raw_ptr_write<T>(ptr: raw_ptr, value: T) {
+    ptr.write(value)
 }

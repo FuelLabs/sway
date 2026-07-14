@@ -1,0 +1,12 @@
+---
+source: test/src/snapshot/mod.rs
+---
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/eq_custom_type --release
+exit status: 0
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_pass/language/eq_custom_type
+   Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-option-result)
+   Compiling script eq_custom_type (test/src/e2e_vm_tests/test_programs/should_pass/language/eq_custom_type)
+    Finished release [optimized + fuel] target(s) [592 B] in ???
+
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/eq_custom_type --release --ir final --asm final --bytecode | filter-fn eq_custom_type raw_ptr_write

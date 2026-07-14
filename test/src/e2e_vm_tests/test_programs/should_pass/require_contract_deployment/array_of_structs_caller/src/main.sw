@@ -35,9 +35,9 @@ fn main() -> u64 {
     let result = addr.return_element_of_array_of_structs(input);
     assert(result.id.number == 42);
 
-    let result = addr.return_element_of_array_of_strings([ 
-        __to_str_array("111"), 
-        __to_str_array("222"), 
+    let result = addr.return_element_of_array_of_strings([
+        __to_str_array("111"),
+        __to_str_array("222"),
         __to_str_array("333")
     ]);
     assert(sha256("111") == sha256_str_array(result));

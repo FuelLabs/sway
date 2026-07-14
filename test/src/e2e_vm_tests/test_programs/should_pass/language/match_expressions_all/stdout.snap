@@ -7,7 +7,7 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/match_expressions_all
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert)
    Compiling script match_expressions_all (test/src/e2e_vm_tests/test_programs/should_pass/language/match_expressions_all)
-    Finished debug [unoptimized + fuel] target(s) [2.84 KB] in ???
+    Finished debug [unoptimized + fuel] target(s) [2.776 KB] in ???
 
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/match_expressions_all --ir final --asm final --release | filter-fn match_expressions_all return_match_on_str_slice
 
@@ -21,70 +21,70 @@ fn return_match_on_str_slice_8(mut param: __ptr slice) -> u64 {
     local slice __matched_value_1
 
     entry(mut param: __ptr slice):
-    v263v1 = get_local __ptr slice, __matched_value_1
-    mem_copy_val v263v1, param
-    v265v1 = get_global __ptr string<5>, __const_global
-    v266v1 = cast_ptr v265v1 to ptr
-    v267v1 = get_local __ptr { ptr, u64 }, __anon_0
-    v268v1 = const u64 0
-    v269v1 = get_elem_ptr v267v1, __ptr ptr, v268v1
-    store v266v1 to v269v1
-    v271v1 = const u64 1
-    v272v1 = get_elem_ptr v267v1, __ptr u64, v271v1
-    v273v1 = const u64 5
-    store v273v1 to v272v1
-    v275v1 = get_local __ptr slice, __anon_1
-    mem_copy_bytes v275v1, v267v1, 16
-    v277v1 = call eq_9(param, v275v1)
-    v278v1 = const u64 1
-    cbr v277v1, block8(v278v1), block1()
+    v257v1 = get_local __ptr slice, __matched_value_1
+    mem_copy_val v257v1, param
+    v259v1 = get_global __ptr string<5>, __const_global
+    v260v1 = cast_ptr v259v1 to ptr
+    v261v1 = get_local __ptr { ptr, u64 }, __anon_0
+    v262v1 = const u64 0
+    v263v1 = get_elem_ptr v261v1, __ptr ptr, v262v1
+    store v260v1 to v263v1
+    v265v1 = const u64 1
+    v266v1 = get_elem_ptr v261v1, __ptr u64, v265v1
+    v267v1 = const u64 5
+    store v267v1 to v266v1
+    v269v1 = get_local __ptr slice, __anon_1
+    mem_copy_bytes v269v1, v261v1, 16
+    v271v1 = call eq_9(param, v269v1)
+    v272v1 = const u64 1
+    cbr v271v1, block8(v272v1), block1()
 
     block1():
-    v280v1 = get_global __ptr string<7>, __const_global0
-    v281v1 = cast_ptr v280v1 to ptr
-    v282v1 = get_local __ptr { ptr, u64 }, __anon_2
-    v283v1 = const u64 0
-    v284v1 = get_elem_ptr v282v1, __ptr ptr, v283v1
-    store v281v1 to v284v1
-    v286v1 = const u64 1
-    v287v1 = get_elem_ptr v282v1, __ptr u64, v286v1
-    v288v1 = const u64 7
-    store v288v1 to v287v1
-    v290v1 = get_local __ptr slice, __anon_3
-    mem_copy_bytes v290v1, v282v1, 16
-    v292v1 = call eq_9(v263v1, v290v1)
-    v293v1 = const u64 2
-    cbr v292v1, block7(v293v1), block3()
+    v274v1 = get_global __ptr string<7>, __const_global0
+    v275v1 = cast_ptr v274v1 to ptr
+    v276v1 = get_local __ptr { ptr, u64 }, __anon_2
+    v277v1 = const u64 0
+    v278v1 = get_elem_ptr v276v1, __ptr ptr, v277v1
+    store v275v1 to v278v1
+    v280v1 = const u64 1
+    v281v1 = get_elem_ptr v276v1, __ptr u64, v280v1
+    v282v1 = const u64 7
+    store v282v1 to v281v1
+    v284v1 = get_local __ptr slice, __anon_3
+    mem_copy_bytes v284v1, v276v1, 16
+    v286v1 = call eq_9(v257v1, v284v1)
+    v287v1 = const u64 2
+    cbr v286v1, block7(v287v1), block3()
 
     block3():
-    v295v1 = get_global __ptr string<5>, __const_global1
-    v296v1 = cast_ptr v295v1 to ptr
-    v297v1 = get_local __ptr { ptr, u64 }, __anon_4
-    v298v1 = const u64 0
-    v299v1 = get_elem_ptr v297v1, __ptr ptr, v298v1
-    store v296v1 to v299v1
-    v301v1 = const u64 1
-    v302v1 = get_elem_ptr v297v1, __ptr u64, v301v1
-    v303v1 = const u64 5
-    store v303v1 to v302v1
-    v305v1 = get_local __ptr slice, __anon_5
-    mem_copy_bytes v305v1, v297v1, 16
-    v307v1 = call eq_9(v263v1, v305v1)
-    v308v1 = const u64 3
-    cbr v307v1, block6(v308v1), block5()
+    v289v1 = get_global __ptr string<5>, __const_global1
+    v290v1 = cast_ptr v289v1 to ptr
+    v291v1 = get_local __ptr { ptr, u64 }, __anon_4
+    v292v1 = const u64 0
+    v293v1 = get_elem_ptr v291v1, __ptr ptr, v292v1
+    store v290v1 to v293v1
+    v295v1 = const u64 1
+    v296v1 = get_elem_ptr v291v1, __ptr u64, v295v1
+    v297v1 = const u64 5
+    store v297v1 to v296v1
+    v299v1 = get_local __ptr slice, __anon_5
+    mem_copy_bytes v299v1, v291v1, 16
+    v301v1 = call eq_9(v257v1, v299v1)
+    v302v1 = const u64 3
+    cbr v301v1, block6(v302v1), block5()
 
     block5():
-    v310v1 = const u64 1000
-    br block6(v310v1)
+    v304v1 = const u64 1000
+    br block6(v304v1)
 
-    block6(mut v260v1: u64):
-    br block7(v260v1)
+    block6(mut v254v1: u64):
+    br block7(v254v1)
 
-    block7(mut v261v1: u64):
-    br block8(v261v1)
+    block7(mut v255v1: u64):
+    br block8(v255v1)
 
-    block8(mut v262v1: u64):
-    ret u64 v262v1
+    block8(mut v256v1: u64):
+    ret u64 v256v1
 }
 
 
