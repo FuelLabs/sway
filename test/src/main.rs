@@ -81,7 +81,7 @@ struct Cli {
     /// Print out the specified IR (separate options with comma), if the verbose option is on
     ///
     /// This option is ignored if tests are run in parallel.
-    #[arg(long, num_args(1..=18), value_parser = clap::builder::PossibleValuesParser::new(IrCliOpt::cli_options()))]
+    #[arg(long, num_args(1..=IrCliOpt::max_num_args()), value_parser = clap::builder::PossibleValuesParser::new(IrCliOpt::cli_options()))]
     print_ir: Option<Vec<String>>,
 
     /// Print out the specified ASM (separate options with comma), if the verbose option is on

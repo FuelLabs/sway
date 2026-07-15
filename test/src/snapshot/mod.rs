@@ -283,7 +283,13 @@ fn run_cmds(
                                         capture_line = true;
                                     }
 
-                                    if line.starts_with("!0 =") {
+                                    // The printed IR module ends with a closing brace at
+                                    // column zero. We detect this to know when the whole
+                                    // module has been captured and can be re-parsed.
+                                    if capture_line && line == "}" {
+                                        captured.push_str(line);
+                                        captured.push('\n');
+
                                         let engines = Engines::default();
                                         let ir = sway_ir::parse(
                                             &captured,
@@ -309,6 +315,8 @@ fn run_cmds(
                                         capture_line = false;
                                         inside_ir = false;
                                         captured.clear();
+
+                                        continue;
                                     }
                                 }
 

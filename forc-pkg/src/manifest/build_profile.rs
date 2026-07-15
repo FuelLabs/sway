@@ -136,6 +136,7 @@ mod tests {
                 initial: true,
                 r#final: false,
                 modified_only: true,
+                print_metadata: false,
                 passes: vec!["dce".to_string(), "sroa".to_string()],
             },
             ..BuildProfile::debug()

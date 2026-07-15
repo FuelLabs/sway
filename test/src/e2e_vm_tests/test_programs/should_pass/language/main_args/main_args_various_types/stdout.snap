@@ -1,7 +1,7 @@
 ---
 source: test/src/snapshot/mod.rs
 ---
-> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_various_types --release --ir final --asm final --bytecode
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_various_types --release --ir final print-md --asm final --bytecode
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/main_args/main_args_various_types

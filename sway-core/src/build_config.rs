@@ -123,6 +123,11 @@ pub struct IrCli {
     pub r#final: bool,
     #[serde(rename = "modified")]
     pub modified_only: bool,
+    /// Whether to print the IR metadata (`!N = ...`) definitions block.
+    /// Opt in, as metadata is mostly not needed in the IR analysis and
+    /// produces a lot of clutter.
+    #[serde(rename = "print-md", default)]
+    pub print_metadata: bool,
     pub passes: Vec<String>,
 }
 
@@ -131,18 +136,20 @@ impl Default for IrCli {
         Self {
             initial: false,
             r#final: false,
-            modified_only: true, // Default option is more restrictive.
+            modified_only: true,   // Default option is more restrictive.
+            print_metadata: false, // Metadata is opt in.
             passes: vec![],
         }
     }
 }
 
 impl IrCli {
-    pub fn all(modified_only: bool) -> Self {
+    pub fn all(modified_only: bool, print_metadata: bool) -> Self {
         Self {
             initial: true,
             r#final: true,
             modified_only,
+            print_metadata,
             passes: PassManager::OPTIMIZATION_PASSES
                 .iter()
                 .map(|pass| pass.to_string())
@@ -171,6 +178,7 @@ impl std::ops::BitOrAssign for IrCli {
         // Otherwise, displaying passes regardless if they
         // are modified or not wins.
         self.modified_only &= rhs.modified_only;
+        self.print_metadata |= rhs.print_metadata;
         for pass in rhs.passes {
             if !self.passes.contains(&pass) {
                 self.passes.push(pass);
@@ -185,6 +193,7 @@ impl From<&IrCli> for PrintPassesOpts {
             initial: value.initial,
             r#final: value.r#final,
             modified_only: value.modified_only,
+            metadata: value.print_metadata,
             passes: HashSet::from_iter(value.passes.iter().cloned()),
         }
     }
