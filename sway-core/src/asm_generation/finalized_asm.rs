@@ -3,6 +3,7 @@ use super::{
     fuel::{checks, data_section::DataSection},
     ProgramABI, ProgramKind,
 };
+use crate::asm_generation::fuel::compiler_constants::TWELVE_BITS;
 use crate::asm_generation::fuel::data_section::{Datum, Entry, EntryName};
 use crate::asm_lang::allocated_ops::{AllocatedInstruction, AllocatedOp, FuelAsmData};
 use crate::decl_engine::DeclRefFunction;
@@ -129,7 +130,14 @@ fn to_bytecode_mut(
             {
                 8
             }
-            AllocatedInstruction::AddrDataId(_, _data_id) => 8,
+            AllocatedInstruction::AddrDataId(_, data_id) => {
+                let offset_bytes = data_section.data_id_to_offset(data_id) as u64;
+                if offset_bytes <= TWELVE_BITS {
+                    4
+                } else {
+                    8
+                }
+            }
             AllocatedInstruction::ConfigurablesOffsetPlaceholder => 8,
             AllocatedInstruction::DataSectionOffsetPlaceholder => 8,
             AllocatedInstruction::BLOB(count) => count.value() as u64 * 4,

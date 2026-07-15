@@ -7,7 +7,7 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/forc/test_contract
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert)
    Compiling contract test_contract (test/src/e2e_vm_tests/test_programs/should_pass/forc/test_contract)
-    Finished debug [unoptimized + fuel] target(s) [1.04 KB] in ???
+    Finished debug [unoptimized + fuel] target(s) [1.032 KB] in ???
      Running 2 tests, filtered 0 tests
 
 tested -- test_contract
@@ -29,17 +29,17 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/forc/test_contract
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert)
    Compiling contract test_contract (test/src/e2e_vm_tests/test_programs/should_pass/forc/test_contract)
-    Finished debug [unoptimized + fuel] target(s) [1.04 KB] in ???
+    Finished debug [unoptimized + fuel] target(s) [1.032 KB] in ???
      Running 2 tests, filtered 0 tests
 
 tested -- test_contract
 
       test test_log_4 ... ok (???, 604 gas)
            raw logs:
-[{"LogData":{"data":"0000000000000004","digest":"8005f02d43fa06e7d0585fb64c961d57e318b27a145c857bcd3a6bdb413ff7fc","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":8,"pc":11288,"ptr":12464,"ra":0,"rb":1515152261580153489}}]
+[{"LogData":{"data":"0000000000000004","digest":"8005f02d43fa06e7d0585fb64c961d57e318b27a145c857bcd3a6bdb413ff7fc","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":8,"pc":11284,"ptr":12456,"ra":0,"rb":1515152261580153489}}]
       test test_log_2 ... ok (???, 604 gas)
            raw logs:
-[{"LogData":{"data":"0000000000000002","digest":"cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":8,"pc":11288,"ptr":12464,"ra":0,"rb":1515152261580153489}}]
+[{"LogData":{"data":"0000000000000002","digest":"cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":8,"pc":11284,"ptr":12456,"ra":0,"rb":1515152261580153489}}]
 
 test result: OK. 2 passed; 0 failed; finished in ???
 
@@ -51,7 +51,7 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/forc/test_contract
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert)
    Compiling contract test_contract (test/src/e2e_vm_tests/test_programs/should_pass/forc/test_contract)
-    Finished debug [unoptimized + fuel] target(s) [1.04 KB] in ???
+    Finished debug [unoptimized + fuel] target(s) [1.032 KB] in ???
      Running 2 tests, filtered 0 tests
 
 tested -- test_contract
@@ -60,12 +60,12 @@ tested -- test_contract
            decoded log values:
 4, log rb: 1515152261580153489
            raw logs:
-[{"LogData":{"data":"0000000000000004","digest":"8005f02d43fa06e7d0585fb64c961d57e318b27a145c857bcd3a6bdb413ff7fc","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":8,"pc":11288,"ptr":12464,"ra":0,"rb":1515152261580153489}}]
+[{"LogData":{"data":"0000000000000004","digest":"8005f02d43fa06e7d0585fb64c961d57e318b27a145c857bcd3a6bdb413ff7fc","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":8,"pc":11284,"ptr":12456,"ra":0,"rb":1515152261580153489}}]
       test test_log_2 ... ok (???, 604 gas)
            decoded log values:
 2, log rb: 1515152261580153489
            raw logs:
-[{"LogData":{"data":"0000000000000002","digest":"cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":8,"pc":11288,"ptr":12464,"ra":0,"rb":1515152261580153489}}]
+[{"LogData":{"data":"0000000000000002","digest":"cd04a4754498e06db5a13c5f371f1f04ff6d2470f24aa9bd886540e5dce77f70","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":8,"pc":11284,"ptr":12456,"ra":0,"rb":1515152261580153489}}]
 
 test result: OK. 2 passed; 0 failed; finished in ???
 

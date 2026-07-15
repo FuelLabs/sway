@@ -7,7 +7,7 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/match_expressions_all
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert)
    Compiling script match_expressions_all (test/src/e2e_vm_tests/test_programs/should_pass/language/match_expressions_all)
-    Finished debug [unoptimized + fuel] target(s) [2.84 KB] in ???
+    Finished debug [unoptimized + fuel] target(s) [2.784 KB] in ???
 
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/match_expressions_all --ir final --asm final --release | filter-fn match_expressions_all return_match_on_str_slice
 
@@ -107,9 +107,9 @@ addi $r3 $$locbase i16        ; get offset to local __ptr slice
 mcpi $r3 $$locbase i16        ; copy memory
 move $$arg0 $r0               ; [call: eq_9]: pass argument 0
 move $$arg1 $r3               ; [call: eq_9]: pass argument 1
-jal  $$reta $pc i35           ; [call: eq_9]: call function
+jal  $$reta $pc i33           ; [call: eq_9]: call function
 movi $r0 i1                   ; move parameter from branch to block argument
-jnzf $$retv $zero i27
+jnzf $$retv $zero i25
 addr $r0 data_NonConfigurable_9; get __const_global0's address in data section
 addi $r3 $$locbase i32        ; get offset to local __ptr { ptr, u64 }
 sw   $$locbase $r0 i4         ; store word
@@ -119,9 +119,9 @@ addi $r0 $$locbase i48        ; get offset to local __ptr slice
 mcpi $r0 $r3 i16              ; copy memory
 move $$arg0 $r2               ; [call: eq_9]: pass argument 0
 move $$arg1 $r0               ; [call: eq_9]: pass argument 1
-jal  $$reta $pc i22           ; [call: eq_9]: call function
+jal  $$reta $pc i21           ; [call: eq_9]: call function
 movi $r0 i2                   ; move parameter from branch to block argument
-jnzf $$retv $zero i14
+jnzf $$retv $zero i13
 addr $r0 data_NonConfigurable_10; get __const_global1's address in data section
 addi $r3 $$locbase i64        ; get offset to local __ptr { ptr, u64 }
 sw   $$locbase $r0 i8         ; store word

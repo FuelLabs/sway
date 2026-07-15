@@ -1,5 +1,5 @@
 use crate::{
-    asm_generation::fuel::data_section::EntryName,
+    asm_generation::fuel::{compiler_constants::TWELVE_BITS, data_section::EntryName},
     asm_lang::{
         allocated_ops::{AllocatedInstruction, AllocatedRegister},
         AllocatedAbstractOp, ConstantRegister, ControlFlowOp, JumpType, Label, RealizedOp,
@@ -456,7 +456,14 @@ impl AllocatedAbstractInstructionSet {
                 }
             }
 
-            Either::Left(AllocatedInstruction::AddrDataId(_, ref _data_id)) => 2,
+            Either::Left(AllocatedInstruction::AddrDataId(_, ref data_id)) => {
+                let offset_bytes = data_section.data_id_to_offset(data_id) as u64;
+                if offset_bytes <= TWELVE_BITS {
+                    1
+                } else {
+                    2
+                }
+            }
 
             // cfei 0 and cfsi 0 are omitted from asm emission, don't count them for offsets
             Either::Left(AllocatedInstruction::CFEI(ref op))
