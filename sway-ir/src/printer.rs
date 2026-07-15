@@ -115,12 +115,9 @@ pub(crate) fn context_print(
     map_doc: &impl Fn(&Value, Doc) -> Doc,
 ) -> String {
     let mut md_namer = MetadataNamer::default();
-    let doc = context
-        .modules
-        .iter()
-        .fold(Doc::Empty, |doc, (_, module)| {
-            doc.append(module_to_doc(context, &mut md_namer, module, map_doc))
-        });
+    let doc = context.modules.iter().fold(Doc::Empty, |doc, (_, module)| {
+        doc.append(module_to_doc(context, &mut md_namer, module, map_doc))
+    });
     if print_metadata {
         doc.append(md_namer.to_doc(context)).build()
     } else {

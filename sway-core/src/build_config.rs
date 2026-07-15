@@ -136,7 +136,7 @@ impl Default for IrCli {
         Self {
             initial: false,
             r#final: false,
-            modified_only: true, // Default option is more restrictive.
+            modified_only: true,   // Default option is more restrictive.
             print_metadata: false, // Metadata is opt in.
             passes: vec![],
         }

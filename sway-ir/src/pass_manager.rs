@@ -481,14 +481,20 @@ fn ir_is_empty(ir: &Context) -> bool {
 fn print_ir_after_pass(ir: &Context, pass: &Pass, print_metadata: bool) {
     if !ir_is_empty(ir) {
         println!("// IR: [{}] {}", pass.name, pass.descr);
-        println!("{}", crate::printer::to_string_with_metadata(ir, print_metadata));
+        println!(
+            "{}",
+            crate::printer::to_string_with_metadata(ir, print_metadata)
+        );
     }
 }
 
 fn print_initial_or_final_ir(ir: &Context, initial_or_final: &'static str, print_metadata: bool) {
     if !ir_is_empty(ir) {
         println!("// IR: {initial_or_final}");
-        println!("{}", crate::printer::to_string_with_metadata(ir, print_metadata));
+        println!(
+            "{}",
+            crate::printer::to_string_with_metadata(ir, print_metadata)
+        );
     }
 }
 
