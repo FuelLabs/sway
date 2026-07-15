@@ -12,10 +12,7 @@ use ::ops::*;
 use ::raw_slice::AsRawSlice;
 use ::clone::Clone;
 
-/// A UTF-8 encoded growable string.
-///
-/// `String` has ownership over its buffer, unless created with
-/// `from_shared_ascii_str` or `from_shared_ascii_str_array`.
+/// A UTF-8 encoded growable string, that has ownership of its buffer.
 ///
 /// # Additional Information
 ///
@@ -188,12 +185,6 @@ impl String {
 
     /// Converts a string slice containing ASCII encoded bytes to a `String`.
     ///
-    /// # Additional Information
-    ///
-    /// The content of the string slice `s` gets copied into the newly created
-    /// `String`. To create a `String` from a string slice without copying the
-    /// content, consider using `String::from_shared_ascii_str`.
-    ///
     /// # Arguments
     ///
     /// * `s` - A string slice containing ASCII encoded bytes.
@@ -220,12 +211,6 @@ impl String {
 
     /// Converts a string array containing ASCII encoded bytes to a `String`.
     ///
-    /// # Additional Information
-    ///
-    /// The content of the string array `s` gets copied into the newly created
-    /// `String`. To create a `String` from a string array without copying the
-    /// content, consider using `String::from_shared_ascii_str_array`.
-    ///
     /// # Arguments
     ///
     /// * `s` - A string array containing ASCII encoded bytes.
@@ -247,70 +232,6 @@ impl String {
     pub fn from_ascii_str_array<const N: u64>(s: str[N]) -> Self {
         Self {
             bytes: Bytes::from(__transmute::<(raw_ptr, u64), raw_slice>((__addr_of(s), N))),
-        }
-    }
-
-    /// Converts a string slice containing ASCII encoded bytes to a `String`,
-    /// that share the string slice's buffer.
-    ///
-    /// # Additional Information
-    ///
-    /// To convert a string slice to `String` by copying its content,
-    /// and taking the ownership of the content, use `String::from_ascii_str`.
-    ///
-    /// # Arguments
-    ///
-    /// * `s` - A string slice containing ASCII encoded bytes.
-    ///
-    /// # Returns
-    ///
-    /// * [String] - A `String` containing the ASCII encoded bytes.
-    ///
-    /// # Examples
-    ///
-    /// ```sway
-    /// use std::string::String;
-    ///
-    /// fn foo() {
-    ///     let string = String::from_shared_ascii_str("Shared string slice.");
-    ///     assert(!string.is_empty());
-    /// }
-    /// ```
-    pub fn from_shared_ascii_str(s: str) -> Self {
-        Self {
-            bytes: Bytes::from_moved_raw_slice(__transmute::<str, raw_slice>(s)),
-        }
-    }
-
-    /// Converts a string array containing ASCII encoded bytes to a `String`,
-    /// that share the string array's buffer.
-    ///
-    /// # Additional Information
-    ///
-    /// To convert a string array to `String` by copying its content,
-    /// and taking the ownership of the content, use `String::from_ascii_str(from_str_array(s))`.
-    ///
-    /// # Arguments
-    ///
-    /// * `s` - A string array containing ASCII encoded bytes.
-    ///
-    /// # Returns
-    ///
-    /// * [String] - A `String` containing the ASCII encoded bytes.
-    ///
-    /// # Examples
-    ///
-    /// ```sway
-    /// use std::string::String;
-    ///
-    /// fn foo() {
-    ///     let string = String::from_shared_ascii_str_array(__to_str_array("Shared string array."));
-    ///     assert(!string.is_empty());
-    /// }
-    /// ```
-    pub fn from_shared_ascii_str_array<const N: u64>(s: str[N]) -> Self {
-        Self {
-            bytes: Bytes::from_moved_raw_slice(__transmute::<(raw_ptr, u64), raw_slice>((__addr_of(s), N))),
         }
     }
 
@@ -454,7 +375,7 @@ impl String {
     ///
     /// ```sway
     /// fn foo() {
-    ///     let string = String::from_shared_ascii_str("Fuel");
+    ///     let string = String::from_ascii_str("Fuel");
     ///     assert_eq(string.len(), 4);
     /// }
     /// ```
