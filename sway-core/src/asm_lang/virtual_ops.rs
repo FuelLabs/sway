@@ -12,7 +12,10 @@ use super::{
     virtual_register::*,
     Op,
 };
-use crate::asm_generation::fuel::{data_section::DataId, register_allocator::RegisterPool};
+use crate::asm_generation::fuel::{
+    data_section::{DataId, Entry, PoolEntryId},
+    register_allocator::RegisterPool,
+};
 
 use std::collections::{BTreeSet, HashMap};
 
@@ -272,12 +275,27 @@ pub(crate) enum VirtualOp {
     BLOB(VirtualImmediate24),
     ConfigurablesOffsetPlaceholder,
     DataSectionOffsetPlaceholder,
-    // LoadDataId takes a virtual register and a DataId, which points to a labeled piece
+    // LoadFromDataSection takes a virtual register and a DataId, which points to a labeled piece
     // of data in the data section. Note that the ASM op corresponding to a LW is
     // subtly complex: $rB is in bytes and points to some mem address. The immediate
     // third argument is a _word_ offset from that byte address.
-    LoadDataId(VirtualRegister, DataId),
-    AddrDataId(VirtualRegister, DataId),
+    LoadFromDataSection(VirtualRegister, DataId),
+    AddrFromDataSection(VirtualRegister, DataId),
+    // A per-function literal pool, appended at the very end of a function's
+    // ops. It carries the same `Entry` type as the data section and, at
+    // finalization, emits its entries' bytes inline in the code section as raw
+    // data (not instructions). It is never executed: it sits after the
+    // function's return, and the next function is reached via `CALL` (a
+    // jump). It survives DCE / simplify_cfg (`has_side_effect` is true and it
+    // is pinned by those passes).
+    LiteralPool(Vec<Entry>),
+    // Load a value from the enclosing function's literal pool. The pool entry
+    // is addressed `$pc`-relatively at lowering time. `LoadFromDataSection`
+    // and `LoadFromLiteralPool` have identical register/liveness profiles.
+    LoadFromLiteralPool(VirtualRegister, PoolEntryId),
+    // Address-of a literal-pool entry (the `AddrFromDataSection` analogue),
+    // needed e.g. for the aggregated `_method_names` string used via `.as_ptr()`.
+    AddrFromLiteralPool(VirtualRegister, PoolEntryId),
     Undefined,
 }
 
@@ -543,8 +561,11 @@ impl VirtualOp {
             BLOB(_imm) => vec![],
             DataSectionOffsetPlaceholder => vec![],
             ConfigurablesOffsetPlaceholder => vec![],
-            LoadDataId(r1, _i) => vec![r1],
-            AddrDataId(r1, _) => vec![r1],
+            LoadFromDataSection(r1, _i) => vec![r1],
+            AddrFromDataSection(r1, _) => vec![r1],
+            LiteralPool(_entries) => vec![],
+            LoadFromLiteralPool(r1, _) => vec![r1],
+            AddrFromLiteralPool(r1, _) => vec![r1],
 
             Undefined => vec![],
         })
@@ -603,8 +624,10 @@ impl VirtualOp {
             | GTF(_, _, _)
             | EPAR(_, _, _, _)
             // Virtual OPs
-            | LoadDataId(_, _)
-            | AddrDataId(_, _)
+            | LoadFromDataSection(_, _)
+            | AddrFromDataSection(_, _)
+            | LoadFromLiteralPool(_, _)
+            | AddrFromLiteralPool(_, _)
              => self.def_registers().iter().any(|vreg| matches!(vreg, VirtualRegister::Constant(_))),
             // Memory write and jump
             WQOP(_, _, _, _)
@@ -669,6 +692,10 @@ impl VirtualOp {
             | BLOB(_)
             | DataSectionOffsetPlaceholder
             | ConfigurablesOffsetPlaceholder
+            // A literal pool is raw data pinned at the end of a function; it
+            // must never be removed by DCE/simplify_cfg even though it is
+            // unreachable from control flow.
+            | LiteralPool(_)
             | Undefined => true
         }
     }
@@ -780,8 +807,11 @@ impl VirtualOp {
             | BLOB(_)
             | DataSectionOffsetPlaceholder
             | ConfigurablesOffsetPlaceholder
-            | LoadDataId(_, _)
-            | AddrDataId(_, _)
+            | LoadFromDataSection(_, _)
+            | AddrFromDataSection(_, _)
+            | LiteralPool(_)
+            | LoadFromLiteralPool(_, _)
+            | AddrFromLiteralPool(_, _)
             | Undefined => vec![],
             SRDD(_, _, _, _)
             | SRDI(_, _, _, _)
@@ -912,8 +942,11 @@ impl VirtualOp {
             BLOB(_imm) => vec![],
             DataSectionOffsetPlaceholder => vec![],
             ConfigurablesOffsetPlaceholder => vec![],
-            LoadDataId(_r1, _i) => vec![],
-            AddrDataId(_r1, _i) => vec![],
+            LoadFromDataSection(_r1, _i) => vec![],
+            AddrFromDataSection(_r1, _i) => vec![],
+            LiteralPool(_entries) => vec![],
+            LoadFromLiteralPool(_r1, _) => vec![],
+            AddrFromLiteralPool(_r1, _) => vec![],
 
             Undefined => vec![],
         })
@@ -1042,8 +1075,11 @@ impl VirtualOp {
             BLOB(_imm) => vec![],
             DataSectionOffsetPlaceholder => vec![],
             ConfigurablesOffsetPlaceholder => vec![],
-            LoadDataId(_r1, _i) => vec![],
-            AddrDataId(_r1, _i) => vec![],
+            LoadFromDataSection(_r1, _i) => vec![],
+            AddrFromDataSection(_r1, _i) => vec![],
+            LiteralPool(_entries) => vec![],
+            LoadFromLiteralPool(_r1, _) => vec![],
+            AddrFromLiteralPool(_r1, _) => vec![],
 
             Undefined => vec![],
         }
@@ -1166,8 +1202,11 @@ impl VirtualOp {
 
             /* Non-VM Instructions */
             BLOB(_imm) => vec![],
-            LoadDataId(r1, _i) => vec![r1],
-            AddrDataId(r1, _i) => vec![r1],
+            LoadFromDataSection(r1, _i) => vec![r1],
+            AddrFromDataSection(r1, _i) => vec![r1],
+            LiteralPool(_entries) => vec![],
+            LoadFromLiteralPool(r1, _) => vec![r1],
+            AddrFromLiteralPool(r1, _) => vec![r1],
             DataSectionOffsetPlaceholder => vec![],
             ConfigurablesOffsetPlaceholder => vec![],
             Undefined => vec![],
@@ -1663,8 +1702,11 @@ impl VirtualOp {
             BLOB(i) => Self::BLOB(i.clone()),
             DataSectionOffsetPlaceholder => Self::DataSectionOffsetPlaceholder,
             ConfigurablesOffsetPlaceholder => Self::ConfigurablesOffsetPlaceholder,
-            LoadDataId(r1, i) => Self::LoadDataId(update_reg(reg_to_reg_map, r1), i.clone()),
-            AddrDataId(r1, i) => Self::AddrDataId(update_reg(reg_to_reg_map, r1), i.clone()),
+            LoadFromDataSection(r1, i) => Self::LoadFromDataSection(update_reg(reg_to_reg_map, r1), i.clone()),
+            AddrFromDataSection(r1, i) => Self::AddrFromDataSection(update_reg(reg_to_reg_map, r1), i.clone()),
+            LiteralPool(entries) => Self::LiteralPool(entries.clone()),
+            LoadFromLiteralPool(r1, i) => Self::LoadFromLiteralPool(update_reg(reg_to_reg_map, r1), i.clone()),
+            AddrFromLiteralPool(r1, i) => Self::AddrFromLiteralPool(update_reg(reg_to_reg_map, r1), i.clone()),
             Undefined => Self::Undefined,
         }
     }
@@ -2150,11 +2192,18 @@ impl VirtualOp {
             BLOB(imm) => AllocatedInstruction::BLOB(imm.clone()),
             DataSectionOffsetPlaceholder => AllocatedInstruction::DataSectionOffsetPlaceholder,
             ConfigurablesOffsetPlaceholder => AllocatedInstruction::ConfigurablesOffsetPlaceholder,
-            LoadDataId(reg1, label) => {
-                AllocatedInstruction::LoadDataId(map_reg(&mapping, reg1), label.clone())
+            LoadFromDataSection(reg1, label) => {
+                AllocatedInstruction::LoadFromDataSection(map_reg(&mapping, reg1), label.clone())
             }
-            AddrDataId(reg1, label) => {
-                AllocatedInstruction::AddrDataId(map_reg(&mapping, reg1), label.clone())
+            AddrFromDataSection(reg1, label) => {
+                AllocatedInstruction::AddrFromDataSection(map_reg(&mapping, reg1), label.clone())
+            }
+            LiteralPool(entries) => AllocatedInstruction::LiteralPool(entries.clone()),
+            LoadFromLiteralPool(reg1, label) => {
+                AllocatedInstruction::LoadFromLiteralPool(map_reg(&mapping, reg1), label.clone())
+            }
+            AddrFromLiteralPool(reg1, label) => {
+                AllocatedInstruction::AddrFromLiteralPool(map_reg(&mapping, reg1), label.clone())
             }
             Undefined => AllocatedInstruction::Undefined,
         }

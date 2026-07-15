@@ -180,7 +180,7 @@ impl Op {
         comment: impl Into<String>,
     ) -> Self {
         Op {
-            opcode: Either::Left(VirtualOp::LoadDataId(reg, data)),
+            opcode: Either::Left(VirtualOp::LoadFromDataSection(reg, data)),
             comment: comment.into(),
             owning_span: None,
         }
@@ -1284,8 +1284,16 @@ impl fmt::Display for VirtualOp {
             BLOB(a) => write!(fmtr, "blob {a}"),
             DataSectionOffsetPlaceholder => write!(fmtr, "data section offset placeholder"),
             ConfigurablesOffsetPlaceholder => write!(fmtr, "configurables offset placeholder"),
-            LoadDataId(a, b) => write!(fmtr, "load {a} {b}"),
-            AddrDataId(a, b) => write!(fmtr, "addr {a} {b}"),
+            LoadFromDataSection(a, b) => write!(fmtr, "load {a} {b}"),
+            AddrFromDataSection(a, b) => write!(fmtr, "addr {a} {b}"),
+            LiteralPool(entries) => write!(
+                fmtr,
+                "literal_pool ({} entr{})",
+                entries.len(),
+                if entries.len() == 1 { "y" } else { "ies" }
+            ),
+            LoadFromLiteralPool(a, b) => write!(fmtr, "load_pool {a} {b}"),
+            AddrFromLiteralPool(a, b) => write!(fmtr, "addr_pool {a} {b}"),
             Undefined => write!(fmtr, "undefined op"),
         }
     }

@@ -136,7 +136,7 @@ impl AbstractProgram {
             .collect::<Result<Vec<AllocatedAbstractInstructionSet>, CompileError>>()?;
 
         // Optimize allocated functions.
-        let functions = allocated_functions
+        let mut functions = allocated_functions
             .into_iter()
             .map(|instruction_set| instruction_set.optimize())
             // TODO: Add verification. E.g., verify that:
@@ -146,6 +146,20 @@ impl AbstractProgram {
             //        - etc.
             // .map(AllocatedAbstractInstructionSet::verify)
             .collect::<Vec<AllocatedAbstractInstructionSet>>();
+
+        // Relocate single-function data-section entries into per-function
+        // literal pools, lowering each address-of to a single `$pc`-relative
+        // `ADDI` (4 bytes). Runs once, at program scope, after the per-function
+        // allocated optimization but before label resolution (`into_final_program`)
+        // so the shrunk sizes are accounted for when offsets and far-jump
+        // decisions are computed. The prologue is scanned for data references
+        // (so entries used from the prologue stay in the data section) but is
+        // never a relocation target.
+        crate::asm_generation::fuel::optimizations::move_to_literal_pools(
+            &prologue,
+            &mut functions,
+            &mut self.data_section,
+        );
 
         Ok(AllocatedProgram {
             kind: self.kind,
@@ -322,7 +336,7 @@ impl AbstractProgram {
 
             // Load the data into a register for comparison.
             asm.ops.push(AllocatedAbstractOp {
-                opcode: Either::Left(AllocatedInstruction::LoadDataId(
+                opcode: Either::Left(AllocatedInstruction::LoadFromDataSection(
                     PROG_SELECTOR_REG,
                     data_label,
                 )),

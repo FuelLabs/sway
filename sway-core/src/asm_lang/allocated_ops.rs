@@ -13,15 +13,16 @@ use super::*;
 use crate::{
     asm_generation::fuel::{
         compiler_constants::{
-            DATA_SECTION_REGISTER, LOWER_ALLOCATABLE_REGISTER, UPPER_ALLOCATABLE_REGISTER,
+            DATA_SECTION_REGISTER, EIGHTEEN_BITS, LOWER_ALLOCATABLE_REGISTER,
+            TWELVE_BITS, UPPER_ALLOCATABLE_REGISTER,
         },
-        data_section::{DataId, DataSection},
+        data_section::{DataId, DataSection, Entry, PoolEntryId},
     },
     fuel_prelude::fuel_asm::{self, op},
 };
 use fuel_vm::fuel_asm::{
-    op::{ADD, MOVI},
-    Imm18,
+    op::{ADD, ADDI, MOVI},
+    Imm12, Imm18,
 };
 use std::fmt::{self, Write};
 use sway_types::span::Span;
@@ -351,8 +352,12 @@ pub(crate) enum AllocatedInstruction {
     BLOB(VirtualImmediate24),
     ConfigurablesOffsetPlaceholder,
     DataSectionOffsetPlaceholder,
-    LoadDataId(AllocatedRegister, DataId),
-    AddrDataId(AllocatedRegister, DataId),
+    LoadFromDataSection(AllocatedRegister, DataId),
+    AddrFromDataSection(AllocatedRegister, DataId),
+    // See `VirtualOp::LiteralPool` / `LoadFromLiteralPool` / `AddrFromLiteralPool`.
+    LiteralPool(Vec<Entry>),
+    LoadFromLiteralPool(AllocatedRegister, PoolEntryId),
+    AddrFromLiteralPool(AllocatedRegister, PoolEntryId),
     Undefined,
 }
 
@@ -490,8 +495,11 @@ impl AllocatedInstruction {
             BLOB(_imm) => vec![],
             ConfigurablesOffsetPlaceholder => vec![],
             DataSectionOffsetPlaceholder => vec![],
-            LoadDataId(r1, _i) => vec![r1],
-            AddrDataId(r1, _i) => vec![r1],
+            LoadFromDataSection(r1, _i) => vec![r1],
+            AddrFromDataSection(r1, _i) => vec![r1],
+            LiteralPool(_entries) => vec![],
+            LoadFromLiteralPool(r1, _) => vec![r1],
+            AddrFromLiteralPool(r1, _) => vec![r1],
             Undefined => vec![],
         })
         .into_iter()
@@ -641,8 +649,27 @@ impl fmt::Display for AllocatedInstruction {
                     "DATA_SECTION_OFFSET[0..32]\nDATA_SECTION_OFFSET[32..64]"
                 )
             }
-            LoadDataId(a, b) => write!(fmtr, "load {a} {b}"),
-            AddrDataId(a, b) => write!(fmtr, "addr {a} {b}"),
+            LoadFromDataSection(a, b) => write!(fmtr, "load {a} {b}"),
+            AddrFromDataSection(a, b) => write!(fmtr, "addr {a} {b}"),
+            LiteralPool(entries) => {
+                // Dump the pool's entries inline so the relocation is visible
+                // in the ASM dump (which entries moved here, and their values).
+                let summary = entries
+                    .iter()
+                    .enumerate()
+                    .map(|(i, e)| format!("pool_{i}: {}", e.display_value()))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                write!(
+                    fmtr,
+                    "literal_pool ({} entr{}): [{}]",
+                    entries.len(),
+                    if entries.len() == 1 { "y" } else { "ies" },
+                    summary
+                )
+            }
+            LoadFromLiteralPool(a, b) => write!(fmtr, "load_pool {a} {b}"),
+            AddrFromLiteralPool(a, b) => write!(fmtr, "addr_pool {a} {b}"),
             Undefined => write!(fmtr, "undefined op"),
         }
     }
@@ -675,6 +702,9 @@ impl fmt::Display for AllocatedOp {
 pub(crate) enum FuelAsmData {
     ConfigurablesOffset([u8; 8]),
     DatasectionOffset([u8; 8]),
+    /// Raw bytes emitted inline in the code section, used for a function's
+    /// literal pool (which is data, not instructions).
+    LiteralPoolBytes(Vec<u8>),
     Instructions(Vec<fuel_asm::Instruction>),
 }
 
@@ -925,7 +955,7 @@ impl AllocatedOp {
             DataSectionOffsetPlaceholder => {
                 return FuelAsmData::DatasectionOffset(offset_to_data_section.to_be_bytes())
             }
-            LoadDataId(a, b) => {
+            LoadFromDataSection(a, b) => {
                 return FuelAsmData::Instructions(realize_load(
                     a,
                     b,
@@ -934,7 +964,19 @@ impl AllocatedOp {
                     offset_from_instr_start,
                 ))
             }
-            AddrDataId(a, b) => return FuelAsmData::Instructions(addr_of(a, b, data_section)),
+            AddrFromDataSection(a, b) => return FuelAsmData::Instructions(addr_of(a, b, data_section)),
+            LiteralPool(entries) => {
+                return FuelAsmData::LiteralPoolBytes(DataSection::serialize_literal_pool(entries))
+            }
+            // Pool loads/addresses are resolved against the pool's absolute
+            // position in `to_bytecode_mut`, where the full op stream and
+            // per-op offsets are known. They never reach this point.
+            LoadFromLiteralPool(_, _) => {
+                unreachable!("LoadFromLiteralPool must be resolved in to_bytecode_mut")
+            }
+            AddrFromLiteralPool(_, _) => {
+                unreachable!("AddrFromLiteralPool must be resolved in to_bytecode_mut")
+            }
             Undefined => unreachable!("Sway cannot generate undefined ASM opcodes"),
         }])
     }
@@ -958,6 +1000,80 @@ fn addr_of(
             fuel_asm::RegId::new(DATA_SECTION_REGISTER),
         )),
     ]
+}
+
+impl AllocatedInstruction {
+    /// Address of a literal-pool entry, `$pc`-relative.
+    ///
+    /// `target_abs` is the byte offset (from instruction start) of the pool
+    /// entry, and `use_offset` is the byte offset of this `AddrFromLiteralPool`
+    /// op. Lowers to a single `ADDI dest, $pc, delta`, where
+    /// `delta = target_abs - use_offset`. Because the pool sits *ahead* of the
+    /// use, `delta > 0`, and `$pc` for the `ADDI` is the `ADDI` itself (so, unlike
+    /// the `MOVI` + `ADD` form, there is no `-4` correction). `Imm12` is
+    /// zero-extended (0..=4095), so a single instruction reaches any pool entry
+    /// within `TWELVE_BITS` (4095) bytes forward. The `move_to_literal_pools`
+    /// pass checks this bound conservatively (worst-case sizes) before
+    /// relocating, so this assertion is a late invariant and should never fire.
+    pub(crate) fn addr_from_literal_pool(
+        dest: &AllocatedRegister,
+        target_abs: u64,
+        use_offset: u64,
+    ) -> Vec<fuel_asm::Instruction> {
+        let delta = target_abs - use_offset;
+        assert!(
+            delta <= TWELVE_BITS,
+            "literal pool offset {delta} exceeds 12-bit ADDI range; \
+             the entry should have been kept in the data section"
+        );
+        vec![fuel_asm::Instruction::ADDI(ADDI::new(
+            dest.to_reg_id(),
+            ConstantRegister::ProgramCounter.to_reg_id(),
+            Imm12::new(delta.try_into().unwrap()),
+        ))]
+    }
+
+    /// Value load from a literal-pool entry, `$pc`-relative.
+    ///
+    /// Lowers to `MOVI dest, delta; ADD dest, dest, $pc; LW/LB dest, dest, 0`.
+    /// This is 3 instructions (12 bytes), i.e. *not* size-neutral with a
+    /// `LoadFromDataSection` copy load (1 instruction), which is why value
+    /// loads are not relocated by `move_to_literal_pools` in the current
+    /// implementation.
+    pub(crate) fn load_from_literal_pool(
+        dest: &AllocatedRegister,
+        target_abs: u64,
+        use_offset: u64,
+        is_byte: bool,
+    ) -> Vec<fuel_asm::Instruction> {
+        let delta = target_abs - use_offset - 4;
+        assert!(
+            delta <= EIGHTEEN_BITS,
+            "literal pool offset {delta} exceeds 18-bit MOVI range; \
+             the entry should have been kept in the data section"
+        );
+        let mut buf = vec![
+            fuel_asm::Instruction::MOVI(MOVI::new(
+                dest.to_reg_id(),
+                Imm18::new(delta.try_into().unwrap()),
+            )),
+            fuel_asm::Instruction::ADD(ADD::new(
+                dest.to_reg_id(),
+                dest.to_reg_id(),
+                ConstantRegister::ProgramCounter.to_reg_id(),
+            )),
+        ];
+        if is_byte {
+            buf.push(
+                op::LB::new(dest.to_reg_id(), dest.to_reg_id(), Imm12::new(0)).into(),
+            );
+        } else {
+            buf.push(
+                op::LW::new(dest.to_reg_id(), dest.to_reg_id(), Imm12::new(0)).into(),
+            );
+        }
+        buf
+    }
 }
 
 /// Converts a virtual load word instruction which uses data labels into one which uses

@@ -954,7 +954,7 @@ impl FuelAsmBuilder<'_, '_> {
             match data {
                 Storage::Data(data_id) => {
                     self.cur_bytecode.push(Op {
-                        opcode: Either::Left(VirtualOp::LoadDataId(
+                        opcode: Either::Left(VirtualOp::LoadFromDataSection(
                             VirtualRegister::Constant(ConstantRegister::Scratch),
                             data_id,
                         )),

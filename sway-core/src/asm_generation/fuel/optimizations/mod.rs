@@ -1,8 +1,11 @@
 mod const_indexed_aggregates;
 mod constant_propagate;
 mod misc;
+mod move_to_literal_pools;
 mod reachability;
 mod verify;
+
+pub(crate) use self::move_to_literal_pools::move_to_literal_pools;
 
 use std::cmp::Ordering;
 

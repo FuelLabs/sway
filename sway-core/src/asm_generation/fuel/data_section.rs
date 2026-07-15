@@ -1,4 +1,4 @@
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use sway_ir::{
     size_bytes_round_up_to_word_alignment, ConstantContent, ConstantValue, Context, Padding,
 };
@@ -195,6 +195,38 @@ impl Entry {
         matches!(self.value, Datum::Byte(_))
     }
 
+    /// A short, human-readable description of this entry's value (for ASM
+    /// dumps). Mirrors the format used by the `DataSection` `.data:` dump so
+    /// the pool dump and the data-section dump read the same.
+    pub(crate) fn display_value(&self) -> String {
+        fn display_bytes(bs: &[u8]) -> String {
+            let mut hex = String::new();
+            let mut chr = String::new();
+            for b in bs {
+                hex.push_str(format!("{b:02x} ").as_str());
+                chr.push(if *b == b' ' || b.is_ascii_graphic() {
+                    *b as char
+                } else {
+                    '.'
+                });
+            }
+            format!("[{}] {hex} {chr}", bs.len())
+        }
+        match &self.value {
+            Datum::Byte(w) => format!(".byte {w}"),
+            Datum::Word(w) => format!(".word {w}"),
+            Datum::ByteArray(bs) => format!(".bytes{}", display_bytes(bs)),
+            Datum::Slice(bs) => format!(".slice{}", display_bytes(bs)),
+            Datum::Collection(els) => format!(
+                ".collection {{ {} }}",
+                els.iter()
+                    .map(|el| el.display_value())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+        }
+    }
+
     pub(crate) fn equiv(&self, entry: &Entry) -> bool {
         fn equiv_data(lhs: &Datum, rhs: &Datum) -> bool {
             match (lhs, rhs) {
@@ -219,7 +251,7 @@ impl Entry {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum DataIdEntryKind {
     NonConfigurable,
     Configurable,
@@ -235,7 +267,7 @@ impl fmt::Display for DataIdEntryKind {
 }
 
 /// An address which refers to a value in the data section of the asm.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct DataId {
     pub(crate) idx: u32,
     pub(crate) kind: DataIdEntryKind,
@@ -247,12 +279,32 @@ impl fmt::Display for DataId {
     }
 }
 
+/// An index which refers to a value in a function's literal pool.
+///
+/// Unlike [`DataId`], a `PoolEntryId` is only meaningful within the single
+/// function whose [`crate::asm_lang::VirtualOp::LiteralPool`] it indexes into.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub(crate) struct PoolEntryId(pub(crate) u32);
+
+impl fmt::Display for PoolEntryId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "pool_{}", self.0)
+    }
+}
+
 /// The data to be put in the data section of the asm
 #[derive(Default, Clone, Debug)]
 pub struct DataSection {
     pub non_configurables: Vec<Entry>,
     pub configurables: Vec<Entry>,
     pub(crate) pointer_id: FxHashMap<u64, DataId>,
+    /// Indices (into `non_configurables`) of entries that have been relocated
+    /// into a function's literal pool. Relocated entries are *not* removed from
+    /// `non_configurables` (that would invalidate every other `DataId::idx`),
+    /// but they contribute zero bytes to serialization and to offset
+    /// computation, so the data section shrinks and surviving entries get
+    /// compact offsets. Configurables are never relocated.
+    pub(crate) relocated_non_configurables: FxHashSet<u32>,
 }
 
 impl DataSection {
@@ -267,6 +319,66 @@ impl DataSection {
             .iter()
             .chain(self.configurables.iter())
             .cloned()
+    }
+
+    /// Iterate over the entries that are actually serialized, i.e. all entries
+    /// except non-configurables that have been relocated to a literal pool.
+    /// Each item is paired with its absolute (positional) index, so labels like
+    /// `data_NonConfigurable_{idx}` stay stable and it is visible which indices
+    /// were relocated (they are simply absent here). Used by the ASM/bytecode
+    /// dumps so they reflect the real data section rather than the tombstones.
+    pub(crate) fn iter_serialized_entries(&self) -> impl Iterator<Item = (usize, &Entry)> + '_ {
+        self.iter_all_entries_indexed()
+            .filter(|(idx, _)| !self.is_relocated_abs(*idx))
+    }
+
+    /// Iterate over all entries paired with their absolute index, non-configurables
+    /// followed by configurables.
+    fn iter_all_entries_indexed(&self) -> impl Iterator<Item = (usize, &Entry)> + '_ {
+        self.non_configurables
+            .iter()
+            .chain(self.configurables.iter())
+            .enumerate()
+    }
+
+    /// Returns true if the entry at absolute index `abs_idx` has been relocated
+    /// to a literal pool. Only non-configurables can be relocated.
+    fn is_relocated_abs(&self, abs_idx: usize) -> bool {
+        abs_idx < self.non_configurables.len()
+            && self.relocated_non_configurables.contains(&(abs_idx as u32))
+    }
+
+    /// Mark a non-configurable entry as relocated to a literal pool. The entry
+    /// stays in `non_configurables` (preserving `DataId::idx` stability) but
+    /// contributes zero bytes to the serialized data section.
+    pub(crate) fn mark_relocated(&mut self, id: &DataId) {
+        if id.kind == DataIdEntryKind::NonConfigurable {
+            self.relocated_non_configurables.insert(id.idx);
+        }
+    }
+
+    /// Un-mark a previously relocated entry, restoring it to the data section.
+    ///
+    /// Reserved for the Phase 2 verification/repair step ("check everything at
+    /// the end"). For the current `move_to_literal_pools` pass, which only
+    /// relocates *address-of* uses, the late check is the `delta <= 18-bit MOVI`
+    /// assertion in `AllocatedInstruction::addr_from_literal_pool`, reached from
+    /// `to_bytecode_mut` with final offsets; address-of relocation is
+    /// size-neutral and bounded by the function size, so the assertion never
+    /// fires in practice and no revert is needed. This helper is kept for the
+    /// future value-load relocation extension, where a revert would use it.
+    #[allow(dead_code)]
+    pub(crate) fn unmark_relocated(&mut self, id: &DataId) {
+        if id.kind == DataIdEntryKind::NonConfigurable {
+            self.relocated_non_configurables.remove(&id.idx);
+        }
+    }
+
+    /// Has this entry been relocated to a literal pool?
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub(crate) fn is_relocated(&self, id: &DataId) -> bool {
+        id.kind == DataIdEntryKind::NonConfigurable
+            && self.relocated_non_configurables.contains(&id.idx)
     }
 
     /// Get the absolute index of an id
@@ -293,18 +405,29 @@ impl DataSection {
     }
 
     /// Given an absolute index, calculate the offset _from the beginning of the data section_ to the data
-    /// in bytes.
+    /// in bytes. Entries that have been relocated to a literal pool contribute zero
+    /// bytes, so surviving entries get compact offsets while `DataId::idx` stays
+    /// stable.
     pub(crate) fn absolute_idx_to_offset(&self, idx: usize) -> usize {
-        self.iter_all_entries().take(idx).fold(0, |offset, entry| {
-            //entries must be word aligned
-            size_bytes_round_up_to_word_alignment!(offset + entry.to_bytes().len())
-        })
+        self.iter_all_entries_indexed()
+            .take(idx)
+            .fold(0, |offset, (entry_idx, entry)| {
+                if self.is_relocated_abs(entry_idx) {
+                    offset
+                } else {
+                    //entries must be word aligned
+                    size_bytes_round_up_to_word_alignment!(offset + entry.to_bytes().len())
+                }
+            })
     }
 
     pub(crate) fn serialize_to_bytes(&self) -> Vec<u8> {
         // not the exact right capacity but serves as a lower bound
         let mut buf = Vec::with_capacity(self.num_entries());
-        for entry in self.iter_all_entries() {
+        for (entry_idx, entry) in self.iter_all_entries_indexed() {
+            if self.is_relocated_abs(entry_idx) {
+                continue;
+            }
             buf.append(&mut entry.to_bytes());
 
             //entries must be word aligned
@@ -345,6 +468,34 @@ impl DataSection {
     /// The pointer must've been inserted with append_pointer.
     pub(crate) fn data_id_of_pointer(&self, pointer_value: u64) -> Option<DataId> {
         self.pointer_id.get(&pointer_value).cloned()
+    }
+
+    /// Serialize a function's literal pool: each entry's bytes, word-aligned, in order.
+    /// This mirrors [`DataSection::serialize_to_bytes`] but for a standalone pool.
+    pub(crate) fn serialize_literal_pool(entries: &[Entry]) -> Vec<u8> {
+        let mut buf = Vec::new();
+        for entry in entries {
+            buf.append(&mut entry.to_bytes());
+            let aligned_len = size_bytes_round_up_to_word_alignment!(buf.len());
+            buf.extend(vec![0u8; aligned_len - buf.len()]);
+        }
+        buf
+    }
+
+    /// Byte offset of entry `idx` within a serialized literal pool (i.e. the
+    /// distance from the start of the pool to the start of entry `idx`).
+    pub(crate) fn literal_pool_entry_offset(entries: &[Entry], idx: usize) -> usize {
+        entries.iter().take(idx).fold(0, |offset, entry| {
+            size_bytes_round_up_to_word_alignment!(offset + entry.to_bytes().len())
+        })
+    }
+
+    /// Total serialized size in bytes of a literal pool. Each entry is
+    /// word-aligned, so the result is always a multiple of 8.
+    pub(crate) fn literal_pool_size_bytes(entries: &[Entry]) -> u64 {
+        entries.iter().fold(0u64, |offset, entry| {
+            size_bytes_round_up_to_word_alignment!(offset + entry.to_bytes().len() as u64)
+        })
     }
 
     /// Given any data in the form of a [Literal] (using this type mainly because it includes type
@@ -394,31 +545,19 @@ impl DataSection {
 
 impl fmt::Display for DataSection {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fn display_entry(datum: &Datum) -> String {
-            match datum {
-                Datum::Byte(w) => format!(".byte {w}"),
-                Datum::Word(w) => format!(".word {w}"),
-                Datum::ByteArray(bs) => display_bytes_for_data_section(bs, ".bytes"),
-                Datum::Slice(bs) => display_bytes_for_data_section(bs, ".slice"),
-                Datum::Collection(els) => format!(
-                    ".collection {{ {} }}",
-                    els.iter()
-                        .map(|el| display_entry(&el.value))
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                ),
-            }
-        }
-
         use std::fmt::Write;
         let mut data_buf = String::new();
-        for (ix, entry) in self.iter_all_entries().enumerate() {
+        // Only show entries that are actually serialized: relocated
+        // non-configurables live in a function's literal pool now (their
+        // `data_*` index is simply absent here), so this reflects the real
+        // data section rather than the tombstones kept for `DataId` stability.
+        for (ix, entry) in self.iter_serialized_entries() {
             writeln!(
                 data_buf,
                 "data_{}_{} {}",
                 entry.name,
                 ix,
-                display_entry(&entry.value)
+                entry.display_value()
             )?;
         }
 
@@ -426,16 +565,3 @@ impl fmt::Display for DataSection {
     }
 }
 
-fn display_bytes_for_data_section(bs: &Vec<u8>, prefix: &str) -> String {
-    let mut hex_str = String::new();
-    let mut chr_str = String::new();
-    for b in bs {
-        hex_str.push_str(format!("{b:02x} ").as_str());
-        chr_str.push(if *b == b' ' || b.is_ascii_graphic() {
-            *b as char
-        } else {
-            '.'
-        });
-    }
-    format!("{prefix}[{}] {hex_str} {chr_str}", bs.len())
-}

@@ -128,7 +128,7 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
                 ));
 
                 self.before_entries.push(Op {
-                    opcode: Either::Left(VirtualOp::AddrDataId(
+                    opcode: Either::Left(VirtualOp::AddrFromDataSection(
                         VirtualRegister::Constant(ConstantRegister::FuncArg0),
                         dataid,
                     )),
@@ -1333,7 +1333,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         // Allocate a register for it, and an address_of instruction.
         let reg = self.reg_seqr.next();
         self.cur_bytecode.push(Op {
-            opcode: either::Either::Left(VirtualOp::AddrDataId(reg.clone(), data_id.clone())),
+            opcode: either::Either::Left(VirtualOp::AddrFromDataSection(reg.clone(), data_id.clone())),
             comment: format!("get {name}'s address in data section"),
             owning_span: Some(span),
         });
@@ -1408,7 +1408,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             Some(Storage::Data(data_id)) => {
                 let instr_reg = self.reg_seqr.next();
                 self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::LoadDataId(instr_reg.clone(), data_id.clone())),
+                    opcode: Either::Left(VirtualOp::LoadFromDataSection(instr_reg.clone(), data_id.clone())),
                     comment: "get local constant".into(),
                     owning_span,
                 });
@@ -1460,7 +1460,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             // Otherwise it is a configurable with encoding v0 and must be at configurable_v0_data_id
             let dataid = self.configurable_v0_data_id.get(name).unwrap();
             self.cur_bytecode.push(Op {
-                opcode: either::Either::Left(VirtualOp::AddrDataId(
+                opcode: either::Either::Left(VirtualOp::AddrFromDataSection(
                     addr_reg.clone(),
                     dataid.clone(),
                 )),
@@ -1497,7 +1497,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
         let reg = self.reg_seqr.next();
         self.cur_bytecode.push(Op {
-            opcode: either::Either::Left(VirtualOp::AddrDataId(reg.clone(), data_id.clone())),
+            opcode: either::Either::Left(VirtualOp::AddrFromDataSection(reg.clone(), data_id.clone())),
             comment: format!("get {path}'s address in data section"),
             owning_span: Some(span),
         });
@@ -1711,7 +1711,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
                         let len_reg = VirtualRegister::Constant(ConstantRegister::Scratch);
                         self.cur_bytecode.push(Op {
-                            opcode: Either::Left(VirtualOp::LoadDataId(
+                            opcode: Either::Left(VirtualOp::LoadFromDataSection(
                                 len_reg.clone(),
                                 len_dataid,
                             )),
@@ -1794,7 +1794,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
                 let len_reg = VirtualRegister::Constant(ConstantRegister::Scratch);
                 self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::LoadDataId(len_reg.clone(), len_dataid)),
+                    opcode: Either::Left(VirtualOp::LoadFromDataSection(len_reg.clone(), len_dataid)),
                     comment: "loading clear size in bytes".to_string(),
                     owning_span: owning_span.clone(),
                 });
@@ -2554,7 +2554,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 // Allocate a register for it, and a load instruction.
                 let reg = self.reg_seqr.next();
                 self.cur_bytecode.push(Op {
-                    opcode: either::Either::Left(VirtualOp::LoadDataId(
+                    opcode: either::Either::Left(VirtualOp::LoadFromDataSection(
                         reg.clone(),
                         data_id.clone(),
                     )),
@@ -2570,7 +2570,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         //
         // Actually, no, don't.  It's possible for constant values to be
         // reused in the IR, especially with transforms which copy blocks
-        // around, like inlining.  The `LW`/`LoadDataId` instruction above
+        // around, like inlining.  The `LW`/`LoadFromDataSection` instruction above
         // initialises that constant value but it may be in a conditional
         // block and not actually get evaluated for every possible
         // execution. So using the register later on by pulling it from
@@ -2668,7 +2668,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 None,
             ));
             self.cur_bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::LoadDataId(reg.clone(), data_id)),
+                opcode: Either::Left(VirtualOp::LoadFromDataSection(reg.clone(), data_id)),
                 owning_span: span.clone(),
                 comment: comment.clone(),
             });
