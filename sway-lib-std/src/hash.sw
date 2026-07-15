@@ -451,13 +451,33 @@ where
 
 /// Returns the `Hasher`'s initial capacity optimal for hashing
 /// an instance of type `T`.
+#[cfg(experimental_new_hashing = false)]
 fn get_initial_capacity<T>() -> u64 {
     if __is_str_array::<T>() {
         __size_of_str_array::<T>()
     } else {
-        // This will work accurately for all non-heap types.
-        // For heap types, it still gives a slightly better
-        // start then having the empty buffer.
+        // This will work accurately for all non-dynamic types.
+        // For dynamic types, it might give a slightly better
+        // start then having an empty buffer, or a useless
+        // initial allocation, depending on the size of the
+        // content.
+        __size_of::<T>()
+    }
+}
+
+/// Returns the `Hasher`'s initial capacity optimal for hashing
+/// an instance of type `T`.
+#[cfg(experimental_new_hashing = true)]
+fn get_initial_capacity<T>() -> u64 {
+    if __is_str_array::<T>() {
+        // Add 8 bytes for the length prefix.
+        __size_of_str_array::<T>() + 8
+    } else {
+        // This will work accurately for all non-dynamic types.
+        // For dynamic types, it might give a slightly better
+        // start then having an empty buffer, or a useless
+        // initial allocation, depending on the size of the
+        // content.
         __size_of::<T>()
     }
 }

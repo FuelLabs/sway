@@ -143,11 +143,16 @@ impl raw_slice {
         into_parts(self).0
     }
 
-    /// Returns the number of elements in the slice.
+    /// Returns the number of elements in the slice, where each element has a `__size_of::<T>`.
+    ///
+    /// # Additional information
+    ///
+    /// If the slice size in bytes is not a multiple of `__size_of::<T>`, the return length
+    /// is the maximum number of elements of type `T` that can fit into the slice.
     ///
     /// # Returns
     ///
-    /// * [u64] - The length of the slice based on `size_of::<T>`.
+    /// * [u64] - The length of the slice based on `__size_of::<T>`.
     ///
     /// # Examples
     ///
@@ -165,9 +170,9 @@ impl raw_slice {
     ///
     /// * When `T` is a zero-sized type.
     pub fn len<T>(self) -> u64 {
-        let len = __size_of::<T>();
-        if len != 0 {
-            into_parts(self).1 / len
+        const SIZE_OF_T: u64 = __size_of::<T>();
+        if SIZE_OF_T != 0 {
+            into_parts(self).1 / SIZE_OF_T
         } else {
             __revert(REVERT_WITH_RAW_SLICE_LEN_ZST);
         }

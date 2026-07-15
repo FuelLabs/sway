@@ -170,6 +170,55 @@ impl Bytes {
         }
     }
 
+    /// Constructs a new `Bytes` that takes the ownership of the `slice`.
+    ///
+    /// # Additional Information
+    ///
+    /// `slice` **must point to a heap-allocated memory**.
+    /// `slice`, or its owner, like, e.g., `Vec`, **must not be used
+    ///  after the ownership is transferred to the newly created `Bytes`**.
+    ///
+    /// Violating the above restrictions results in an undefined behavior.
+    ///
+    /// To create a new `Bytes` from a `raw_slice` that copies the slice content
+    /// and does not take the ownership, use `Bytes::from(raw_slice)`.
+    ///
+    /// # Arguments
+    ///
+    /// * `slice`: [raw_slice] - The heap-allocated slice whose ownership is transferred to the `Bytes`.
+    ///
+    /// # Returns
+    ///
+    /// * [Bytes] - A new `Bytes` whose content is the original content of the `slice`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::bytes::Bytes;
+    /// use std::vec::Vec;
+    ///
+    /// fn foo() {
+    ///     let mut source = Vec::<u8>::new();
+    ///     source.push(1u8);
+    ///
+    ///     let bytes = Bytes::from_moved_raw_slice(source.as_raw_slice());
+    ///
+    ///     // ** `source` must not be used after this point. **
+    ///
+    ///     assert_eq(bytes.get(0).unwrap(), 1u8);
+    /// }
+    /// ```
+    pub fn from_moved_raw_slice(slice: raw_slice) -> Self {
+        let len_and_capacity = slice.number_of_bytes();
+        Self {
+            buf: RawBytes {
+                ptr: slice.ptr(),
+                cap: len_and_capacity,
+            },
+            len: len_and_capacity,
+        }
+    }
+
     /// Appends an element to the back of a `Bytes` collection.
     ///
     /// # Arguments
@@ -541,6 +590,9 @@ impl Bytes {
 
     /// Clears the `Bytes`, removing all values.
     ///
+    /// Note that this method has no effect on the allocated capacity
+    /// of the `Bytes`.
+    ///
     /// # Examples
     ///
     /// ```sway
@@ -554,7 +606,6 @@ impl Bytes {
     /// }
     /// ```
     pub fn clear(ref mut self) {
-        self.buf = RawBytes::new();
         self.len = 0;
     }
 
@@ -752,11 +803,12 @@ impl Bytes {
 
         // reallocate with combined capacity, write `slice`, set buffer capacity
         if self.buf.cap < both_len {
-            let new_slice = raw_slice::from_parts::<u8>(
-                realloc_bytes(self.buf.ptr, self.buf.cap, both_len),
-                both_len,
-            );
-            self.buf = RawBytes::from(new_slice);
+            // `realloc_bytes` already returns a fresh buffer that owns the
+            // existing content, so we take its ownership directly into `RawBytes`
+            self.buf = RawBytes {
+                ptr: realloc_bytes(self.buf.ptr, self.buf.cap, both_len),
+                cap: both_len,
+            };
         }
 
         let new_ptr = self.buf.ptr.add_uint_offset(other_start);
@@ -1104,7 +1156,15 @@ impl TryInto<b256> for Bytes {
 impl From<raw_slice> for Bytes {
     /// Creates a `Bytes` from a `raw_slice`.
     ///
-    /// ### Examples
+    /// # Additional Information
+    ///
+    /// The content of the `slice` gets copied to a newly created `Bytes`
+    /// that allocates its own buffer.
+    ///
+    /// To take the ownership of the `slice` and move it to the newly
+    /// created `Bytes` without copying the content, use `Bytes::from_moved_raw_slice`.
+    ///
+    /// # Examples
     ///
     /// ```sway
     /// use std:bytes::Bytes;
@@ -1121,10 +1181,10 @@ impl From<raw_slice> for Bytes {
     /// let vec_as_raw_slice = vec.as_raw_slice();
     /// let bytes = Bytes::from(vec_as_raw_slice);
     ///
-    /// assert(bytes.len == 3);
-    /// assert(bytes.get(0).unwrap() == a);
-    /// assert(bytes.get(1).unwrap() == b);
-    /// assert(bytes.get(2).unwrap() == c);
+    /// assert_eq(bytes.len, 3);
+    /// assert_eq(bytes.get(0).unwrap(), a);
+    /// assert_eq(bytes.get(1).unwrap(), b);
+    /// assert_eq(bytes.get(2).unwrap(), c);
     /// ```
     fn from(slice: raw_slice) -> Self {
         Self {
