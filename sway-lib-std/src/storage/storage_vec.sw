@@ -1071,9 +1071,9 @@ impl<V> StorageKey<StorageVec<V>> {
                         i += 1;
                     }
 
-                    Vec::from(__transmute::<(raw_ptr, u64), raw_slice>((new_vec, len_bytes)))
+                    Vec::from_moved_raw_slice(__transmute::<(raw_ptr, u64), raw_slice>((new_vec, len_bytes)))
                 } else {
-                    Vec::from(__transmute::<(raw_ptr, u64), raw_slice>((ptr, bytes)))
+                    Vec::from_moved_raw_slice(__transmute::<(raw_ptr, u64), raw_slice>((ptr, bytes)))
                 }
             }
         }
@@ -2862,7 +2862,7 @@ impl<V> StorageKey<StorageVec<V>> {
                 }
             }
 
-            Vec::from(raw_slice::from_parts::<V>(elements_ptr, len))
+            Vec::from_moved_raw_slice(raw_slice::from_parts::<V>(elements_ptr, len))
         }
     }
 

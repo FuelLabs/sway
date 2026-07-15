@@ -14,3 +14,5 @@ reserve the right to make some of the listed behavior defined in the future.
 * Reading and writing `raw_ptr` and `raw_slice`.
 * Slicing and indexing out of bounds by directly using compiler intrinsics.
 * Modifying collections while iterating over them using `Iterator`s.
+* Accessing a dynamic type instance after it has been moved by a `from_moved_...` constructor.
+* Passing a `raw_slice` that doesn't point to heap memory to a `from_moved_raw_slice` constructor.

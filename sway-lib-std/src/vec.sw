@@ -20,6 +20,7 @@ struct RawVec<T> {
 
 impl<T> RawVec<T> {
     /// Create a new `RawVec` with zero capacity.
+    /// This is equivalent to calling `RawVec::with_capacity` when `capacity` is zero.
     ///
     /// # Returns
     ///
@@ -41,17 +42,15 @@ impl<T> RawVec<T> {
         }
     }
 
-    /// Creates a `RawVec` (on the heap) with exactly the capacity for a
-    /// `[T; capacity]`. This is equivalent to calling `RawVec::new` when
-    /// `capacity` is zero.
+    /// Creates a `RawVec` (on the heap) with exactly the capacity for a `[T; capacity]`.
     ///
     /// # Arguments
     ///
-    /// * `capacity`: [u64] - The capacity of the `RawVec`.
+    /// * `capacity`: [u64] - The capacity of the `RawVec`, in `__size_of<T>`.
     ///
     /// # Returns
     ///
-    /// * [RawVec] - A new `RawVec` with zero capacity.
+    /// * [RawVec] - A new `RawVec` with capacity `__size_of<T> * capacity` in bytes.
     ///
     /// # Examples
     ///
@@ -91,7 +90,7 @@ impl<T> RawVec<T> {
         self.ptr
     }
 
-    /// Gets the capacity of the allocation.
+    /// Gets the capacity of the allocation, measured in `__size_of<T>`.
     ///
     /// # Returns
     ///
@@ -788,6 +787,59 @@ impl<T> Vec<T> {
         }
 
         Some(self.buf.ptr.add::<T>(self.len - 1).read::<T>())
+    }
+
+    /// Constructs a new `Vec<T>` that takes the ownership of the `slice`.
+    ///
+    /// # Additional Information
+    ///
+    /// `slice` **must point to a heap-allocated memory**.
+    /// `slice`, or its owner, like, e.g., `Bytes`, **must not be used after
+    ///  the ownership is transferred to the newly created vector**.
+    ///
+    /// Violating the above restrictions results in an undefined behavior.
+    ///
+    /// To create a new `Vec<T>` from a `raw_slice` that copies the slice content
+    /// and does not take the ownership, use `Vec<T>::from(raw_slice)`.
+    ///
+    /// If the `slice` size in bytes is not a multiple of `__size_of::<T>` the length
+    /// and the capacity of the vector will be the maximum number of elements of
+    /// type `T` that can fit into the `slice`.
+    ///
+    /// # Arguments
+    ///
+    /// * `slice`: [raw_slice] - The heap-allocated slice whose ownership is transferred to the `Vec`.
+    ///
+    /// # Returns
+    ///
+    /// * [Vec] - A new `Vec<T>` whose content is the original content of the `slice`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::vec::Vec;
+    /// use std::bytes::Bytes;
+    ///
+    /// fn foo() {
+    ///     let bytes = Bytes::new();
+    ///     bytes.push(1);
+    ///
+    ///     let vec = Vec::<u8>::from_moved_raw_slice(bytes.as_raw_slice());
+    ///
+    ///     // ** `bytes` must not be used after this point. **
+    ///
+    ///     assert_eq(vec.get(0).unwrap(), 1);
+    /// }
+    /// ```
+    pub fn from_moved_raw_slice(slice: raw_slice) -> Self {
+        let len_and_capacity = slice.len::<T>();
+        Self {
+            buf: RawVec {
+                ptr: slice.ptr(),
+                cap: len_and_capacity,
+            },
+            len: len_and_capacity,
+        }
     }
 }
 

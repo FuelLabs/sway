@@ -1769,7 +1769,7 @@ where
         };
         *item
     } else {
-        let mut buffer = BufferReader::from_parts(data.ptr(), data.len::<u8>());
+        let mut buffer = BufferReader::from_parts(data.ptr(), data.number_of_bytes());
         T::abi_decode(buffer)
     }
 }
