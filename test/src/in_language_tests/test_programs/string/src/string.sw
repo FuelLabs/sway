@@ -82,12 +82,12 @@ fn string_from_ascii_empty() {
     // move on empty allocation).
     let _ = std::alloc::alloc_bytes(1);
 
-    let string_from_ascii = String::from_ascii(bytes);
-    assert_eq(bytes.len(), string_from_ascii.capacity());
-    assert_eq(bytes.len(), string_from_ascii.len());
-    assert_eq(string_from_ascii.len(), 0);
+    let string = String::from_ascii(bytes);
+    assert_eq(bytes.len(), string.capacity());
+    assert_eq(bytes.len(), string.len());
+    assert_eq(string.len(), 0);
 
-    assert(string_from_ascii.ptr() != bytes.ptr()); // String creates its own buffer
+    assert(string.ptr() != bytes.ptr()); // String creates its own buffer
 }
 
 #[test]
@@ -99,19 +99,19 @@ fn string_from_ascii() {
     bytes.push(68u8);
     bytes.push(69u8);
 
-    let string_from_ascii = String::from_ascii(bytes);
-    assert_eq(bytes.len(), string_from_ascii.capacity());
-    assert_eq(bytes.len(), string_from_ascii.len());
+    let string = String::from_ascii(bytes);
+    assert_eq(bytes.len(), string.capacity());
+    assert_eq(bytes.len(), string.len());
 
-    assert(string_from_ascii.ptr() != bytes.ptr()); // String creates its own buffer
+    assert(string.ptr() != bytes.ptr()); // String creates its own buffer
 
-    let bytes = string_from_ascii.as_bytes();
-    assert_eq(bytes.get(0).unwrap(), 65u8);
-    assert_eq(bytes.get(1).unwrap(), 66u8);
-    assert_eq(bytes.get(2).unwrap(), 67u8);
-    assert_eq(bytes.get(3).unwrap(), 68u8);
-    assert_eq(bytes.get(4).unwrap(), 69u8);
-    assert_eq(bytes.get(5), None);
+    let string_bytes = string.as_bytes();
+    assert_eq(string_bytes.get(0).unwrap(), 65u8);
+    assert_eq(string_bytes.get(1).unwrap(), 66u8);
+    assert_eq(string_bytes.get(2).unwrap(), 67u8);
+    assert_eq(string_bytes.get(3).unwrap(), 68u8);
+    assert_eq(string_bytes.get(4).unwrap(), 69u8);
+    assert_eq(string_bytes.get(5), None);
 }
 
 #[test]
@@ -123,12 +123,12 @@ fn string_from_moved_ascii_empty() {
     // on it's own.
     let _ = std::alloc::alloc_bytes(1);
 
-    let string_from_ascii = String::from_moved_ascii(bytes);
-    assert_eq(bytes.len(), string_from_ascii.capacity());
-    assert_eq(bytes.len(), string_from_ascii.len());
-    assert_eq(string_from_ascii.len(), 0);
+    let string = String::from_moved_ascii(bytes);
+    assert_eq(bytes.len(), string.capacity());
+    assert_eq(bytes.len(), string.len());
+    assert_eq(string.len(), 0);
 
-    assert(string_from_ascii.ptr() == bytes.ptr());  // String takes ownership of the bytes buffer
+    assert(string.ptr() == bytes.ptr());  // String takes ownership of the bytes buffer
 }
 
 #[test]
@@ -151,11 +151,11 @@ fn string_from_moved_ascii() {
     assert_eq(string.capacity(), bytes_capacity);
 
     let string_bytes = string.as_bytes();
-    assert_eq(bytes.get(0).unwrap(), 65u8);
-    assert_eq(bytes.get(1).unwrap(), 66u8);
-    assert_eq(bytes.get(2).unwrap(), 67u8);
-    assert_eq(bytes.get(3).unwrap(), 68u8);
-    assert_eq(bytes.get(4).unwrap(), 69u8);
+    assert_eq(string_bytes.get(0).unwrap(), 65u8);
+    assert_eq(string_bytes.get(1).unwrap(), 66u8);
+    assert_eq(string_bytes.get(2).unwrap(), 67u8);
+    assert_eq(string_bytes.get(3).unwrap(), 68u8);
+    assert_eq(string_bytes.get(4).unwrap(), 69u8);
     assert_eq(string_bytes.get(5), None);
 }
 
@@ -254,9 +254,9 @@ fn string_from_shared_ascii_str_immutable_static_str() {
 
 #[test]
 fn string_from_shared_ascii_str_array_empty() {
-    let string_from_ascii = String::from_shared_ascii_str_array(__to_str_array(""));
-    assert_eq(string_from_ascii.capacity(), 0);
-    assert_eq(string_from_ascii.len(), 0);
+    let string = String::from_shared_ascii_str_array(__to_str_array(""));
+    assert_eq(string.capacity(), 0);
+    assert_eq(string.len(), 0);
 }
 
 #[test]
@@ -350,9 +350,9 @@ fn string_ptr() {
     bytes.push(3u8);
     bytes.push(4u8);
 
-    let mut string_from_ascii = String::from_ascii(bytes);
-    assert(!string_from_ascii.ptr().is_null());
-    assert(string_from_ascii.ptr() != bytes.ptr());
+    let mut string = String::from_ascii(bytes);
+    assert(!string.ptr().is_null());
+    assert(string.ptr() != bytes.ptr());
 }
 
 #[test]
