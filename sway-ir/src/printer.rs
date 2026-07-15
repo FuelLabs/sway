@@ -100,19 +100,29 @@ impl Doc {
 ///
 /// The output from this function must always be suitable for [crate::parser::parse].
 pub fn to_string(context: &Context) -> String {
-    context_print(context, &|_, doc| doc)
+    context_print(context, true, &|_, doc| doc)
 }
 
-pub(crate) fn context_print(context: &Context, map_doc: &impl Fn(&Value, Doc) -> Doc) -> String {
+/// Pretty-print a whole [`Context`] to a string, optionally omitting the
+/// trailing metadata (`!N = ...`) definitions block.
+pub fn to_string_with_metadata(context: &Context, print_metadata: bool) -> String {
+    context_print(context, print_metadata, &|_, doc| doc)
+}
+
+pub(crate) fn context_print(
+    context: &Context,
+    print_metadata: bool,
+    map_doc: &impl Fn(&Value, Doc) -> Doc,
+) -> String {
     let mut md_namer = MetadataNamer::default();
-    context
-        .modules
-        .iter()
-        .fold(Doc::Empty, |doc, (_, module)| {
-            doc.append(module_to_doc(context, &mut md_namer, module, map_doc))
-        })
-        .append(md_namer.to_doc(context))
-        .build()
+    let doc = context.modules.iter().fold(Doc::Empty, |doc, (_, module)| {
+        doc.append(module_to_doc(context, &mut md_namer, module, map_doc))
+    });
+    if print_metadata {
+        doc.append(md_namer.to_doc(context)).build()
+    } else {
+        doc.build()
+    }
 }
 
 pub(crate) fn block_print(

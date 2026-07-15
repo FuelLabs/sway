@@ -1,7 +1,7 @@
 ---
 source: test/src/snapshot/mod.rs
 ---
-> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode --release --ir final --asm final
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode --release --ir final print-md --asm final
 exit status: 0
 output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_dedup_decode
