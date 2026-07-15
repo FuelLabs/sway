@@ -178,6 +178,7 @@ pub struct Print {
     ///  - <pass name>: the name of an optimization pass. Prints the IR state after that pass.
     ///  - all:         short for initial, final, and all the optimization passes.
     ///  - modified:    print a requested optimization pass only if it has modified the IR.
+    ///  - print-md:    also print the IR metadata (`!N = ...`). By default, metadata is not printed.
     #[arg(long, verbatim_doc_comment, num_args(1..=IrCliOpt::max_num_args()), value_parser = clap::builder::PossibleValuesParser::new(IrCliOpt::cli_options()))]
     pub ir: Option<Vec<String>>,
     /// Output the time elapsed over each part of the compilation process.
@@ -303,8 +304,14 @@ impl IrCliOpt {
     const FINAL: &'static str = "final";
     const ALL: &'static str = "all";
     const MODIFIED: &'static str = "modified";
-    pub const CLI_OPTIONS: [&'static str; 4] =
-        [Self::INITIAL, Self::FINAL, Self::ALL, Self::MODIFIED];
+    const PRINT_MD: &'static str = "print-md";
+    pub const CLI_OPTIONS: [&'static str; 5] = [
+        Self::INITIAL,
+        Self::FINAL,
+        Self::ALL,
+        Self::MODIFIED,
+        Self::PRINT_MD,
+    ];
 
     pub fn cli_options() -> Vec<&'static str> {
         Self::CLI_OPTIONS
@@ -324,12 +331,13 @@ impl From<&Vec<String>> for IrCliOpt {
         let contains_opt = |opt: &str| value.iter().any(|val| *val == opt);
 
         let ir_cli = if contains_opt(Self::ALL) {
-            IrCli::all(contains_opt(Self::MODIFIED))
+            IrCli::all(contains_opt(Self::MODIFIED), contains_opt(Self::PRINT_MD))
         } else {
             IrCli {
                 initial: contains_opt(Self::INITIAL),
                 r#final: contains_opt(Self::FINAL),
                 modified_only: contains_opt(Self::MODIFIED),
+                print_metadata: contains_opt(Self::PRINT_MD),
                 passes: value
                     .iter()
                     .filter(|val| !Self::CLI_OPTIONS.contains(&val.as_str()))

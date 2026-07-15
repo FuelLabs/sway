@@ -166,7 +166,7 @@ impl Context<'_> {
             );
 
             let block = if let Some(problematic_value) = error.get_problematic_value() {
-                printer::context_print(self, &|current_value: &Value, doc: Doc| {
+                printer::context_print(self, true, &|current_value: &Value, doc: Doc| {
                     if *current_value == *problematic_value {
                         doc.append(Doc::text_line(format!("\x1b[0;31m^ {error}\x1b[0m")))
                     } else {

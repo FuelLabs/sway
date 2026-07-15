@@ -167,6 +167,7 @@ pub struct PrintPassesOpts {
     pub initial: bool,
     pub r#final: bool,
     pub modified_only: bool,
+    pub metadata: bool,
     pub passes: HashSet<String>,
 }
 
@@ -380,7 +381,7 @@ impl PassManager {
         print_opts: &PrintPassesOpts,
     ) -> Result<bool, IrError> {
         if print_opts.initial {
-            print_initial_or_final_ir(ir, "Initial");
+            print_initial_or_final_ir(ir, "Initial", print_opts.metadata);
         }
 
         // Verify before we start
@@ -417,7 +418,11 @@ impl PassManager {
                 iter_modified |= modified;
 
                 if print_opts.passes.contains(pass) && (!print_opts.modified_only || modified) {
-                    print_ir_after_pass(ir, self.lookup_registered_pass(pass).unwrap());
+                    print_ir_after_pass(
+                        ir,
+                        self.lookup_registered_pass(pass).unwrap(),
+                        print_opts.metadata,
+                    );
                 }
 
                 ir.verify()?;
@@ -442,7 +447,7 @@ impl PassManager {
         }
 
         if print_opts.r#final {
-            print_initial_or_final_ir(ir, "Final");
+            print_initial_or_final_ir(ir, "Final", print_opts.metadata);
         }
 
         Ok(global_modified)
@@ -473,17 +478,17 @@ fn ir_is_empty(ir: &Context) -> bool {
         && ir.local_vars.is_empty()
 }
 
-fn print_ir_after_pass(ir: &Context, pass: &Pass) {
+fn print_ir_after_pass(ir: &Context, pass: &Pass, print_metadata: bool) {
     if !ir_is_empty(ir) {
         println!("// IR: [{}] {}", pass.name, pass.descr);
-        println!("{ir}");
+        println!("{}", crate::printer::to_string_with_metadata(ir, print_metadata));
     }
 }
 
-fn print_initial_or_final_ir(ir: &Context, initial_or_final: &'static str) {
+fn print_initial_or_final_ir(ir: &Context, initial_or_final: &'static str, print_metadata: bool) {
     if !ir_is_empty(ir) {
         println!("// IR: {initial_or_final}");
-        println!("{ir}");
+        println!("{}", crate::printer::to_string_with_metadata(ir, print_metadata));
     }
 }
 
