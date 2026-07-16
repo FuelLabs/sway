@@ -58,24 +58,26 @@ fn flatten_layout(
     base: u64,
     out: &mut Vec<(u64, LayoutLeaf)>,
 ) -> bool {
-    use crate::TypeContent as TC;
+    // TODO-MEMLAY: Warning! Here we make an assumption about the memory layout of structs and arrays.
+    //       The memory layout of structs and arrays can be changed in the future.
+    use crate::TypeContent::*;
     match ty.get_content(context) {
         // Zero-sized: contributes nothing to the layout.
-        TC::Never | TC::Unit => {}
-        TC::Bool | TC::Uint(8) => out.push((base, LayoutLeaf::Byte)),
-        TC::Uint(16) | TC::Uint(32) | TC::Uint(64) | TC::Pointer | TC::TypedPointer(_) => {
+        Never | Unit => {}
+        Bool | Uint(8) => out.push((base, LayoutLeaf::Byte)),
+        Uint(16) | Uint(32) | Uint(64) | Pointer | TypedPointer(_) => {
             out.push((base, LayoutLeaf::Word))
         }
-        TC::Uint(256) | TC::B256 => out.push((base, LayoutLeaf::Wide)),
+        Uint(256) | B256 => out.push((base, LayoutLeaf::Wide)),
         // Any other integer width is unexpected.
-        TC::Uint(_) => return false,
+        Uint(_) => return false,
         // A slice / string slice is a fat pointer, laid out as `{ ptr, u64 }`.
-        TC::Slice | TC::TypedSlice(_) | TC::StringSlice => {
+        Slice | TypedSlice(_) | StringSlice => {
             out.push((base, LayoutLeaf::Word));
             out.push((base + 8, LayoutLeaf::Word));
         }
-        TC::StringArray(n) => out.push((base, LayoutLeaf::StringArray(*n))),
-        TC::Array(elem_ty, count) => {
+        StringArray(n) => out.push((base, LayoutLeaf::StringArray(*n))),
+        Array(elem_ty, count) => {
             // Array elements are tightly packed.
             let elem_size = elem_ty.size(context).in_bytes();
             for i in 0..*count {
@@ -84,7 +86,7 @@ fn flatten_layout(
                 }
             }
         }
-        TC::Struct(fields) => {
+        Struct(fields) => {
             // Struct fields are aligned to word boundaries.
             let mut offset = base;
             for field_ty in fields {
@@ -95,7 +97,7 @@ fn flatten_layout(
             }
         }
         // We deliberately do not reason about the layout of unions.
-        TC::Union(_) => return false,
+        Union(_) => return false,
     }
     true
 }
