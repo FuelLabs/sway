@@ -14,6 +14,156 @@ use crate::{
 
 pub const ESCAPED_SYMBOLS_NAME: &str = "escaped-symbols";
 
+/// A leaf, register-sized element of a type's memory layout.
+///
+/// Two types have the same layout (see [types_have_same_layout]) exactly when
+/// they flatten into the same ordered sequence of `(offset, LayoutLeaf)` pairs.
+/// E.g., a scalar `b256` is not layout-compatible with a `{ u64, u64, u64, u64 }`
+/// aggregate even though both occupy 32 bytes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LayoutLeaf {
+    /// A single byte: `bool` or `u8`.
+    Byte,
+    /// An 8-byte word: `u16`/`u32`/`u64` or a (typed or untyped) pointer.
+    ///
+    /// A pointer and an integer word are deliberately folded into the same leaf kind.
+    /// We intentionally do not distinguish the two here; doing
+    /// so would only reject genuinely layout-identical reinterpretations without
+    /// buying any additional safety.
+    ///
+    /// This is exactly what lets a `slice` be reinterpreted as `{ ptr, u64 }`. A side
+    /// effect is that e.g., `{ u64, u64 }` and `slice` also share the same layout.
+    /// That is still true, considering layout (two words are two words) and safe for
+    /// every consumer of [LayoutLeaf], which only relies on offsets and sizes lining up,
+    /// never on a slot being "a pointer" vs. "an integer".
+    Word,
+    /// A 32-byte scalar: `b256` or `u256`.
+    Wide,
+    /// An opaque string array of the given byte length.
+    StringArray(u64),
+}
+
+/// Flatten `ty` into its ordered sequence of leaf elements, each tagged with its
+/// byte offset relative to `base`. Returns `false` (leaving `out` in an
+/// unspecified state) if `ty` contains something whose layout we do not want to
+/// reason about (currently unions and unexpected integer widths), in which case
+/// the caller must treat the layout as unknown.
+///
+/// The offset arithmetic mirrors [Type::get_indexed_offset] and
+/// [Type::size]: struct fields are word-aligned, array elements are tightly
+/// packed, and a `slice` (fat pointer) is laid out as `{ ptr, u64 }`.
+fn flatten_layout(
+    context: &Context,
+    ty: Type,
+    base: u64,
+    out: &mut Vec<(u64, LayoutLeaf)>,
+) -> bool {
+    use crate::TypeContent as TC;
+    match ty.get_content(context) {
+        // Zero-sized: contributes nothing to the layout.
+        TC::Never | TC::Unit => {}
+        TC::Bool | TC::Uint(8) => out.push((base, LayoutLeaf::Byte)),
+        TC::Uint(16) | TC::Uint(32) | TC::Uint(64) | TC::Pointer | TC::TypedPointer(_) => {
+            out.push((base, LayoutLeaf::Word))
+        }
+        TC::Uint(256) | TC::B256 => out.push((base, LayoutLeaf::Wide)),
+        // Any other integer width is unexpected.
+        TC::Uint(_) => return false,
+        // A slice / string slice is a fat pointer, laid out as `{ ptr, u64 }`.
+        TC::Slice | TC::TypedSlice(_) | TC::StringSlice => {
+            out.push((base, LayoutLeaf::Word));
+            out.push((base + 8, LayoutLeaf::Word));
+        }
+        TC::StringArray(n) => out.push((base, LayoutLeaf::StringArray(*n))),
+        TC::Array(elem_ty, count) => {
+            // Array elements are tightly packed.
+            let elem_size = elem_ty.size(context).in_bytes();
+            for i in 0..*count {
+                if !flatten_layout(context, *elem_ty, base + i * elem_size, out) {
+                    return false;
+                }
+            }
+        }
+        TC::Struct(fields) => {
+            // Struct fields are aligned to word boundaries.
+            let mut offset = base;
+            for field_ty in fields {
+                if !flatten_layout(context, *field_ty, offset, out) {
+                    return false;
+                }
+                offset += field_ty.size(context).in_bytes_aligned();
+            }
+        }
+        // We deliberately do not reason about the layout of unions.
+        TC::Union(_) => return false,
+    }
+    true
+}
+
+/// Returns `true` if `a` and `b` have an identical in-memory layout, i.e., the
+/// same size and the same ordered sequence of leaf elements at the same offsets.
+///
+/// This is a *layout* (byte-level) comparison, not a *type* comparison. Its
+/// primary purpose is to recognize that a `slice` and a `{ ptr, u64 }` struct
+/// are interchangeable in memory, so that memory analyses can safely see
+/// through a layout-preserving `cast_ptr` between them.
+///
+/// The predicate is intentionally conservative: whenever it cannot prove the
+/// layouts are identical (e.g., for unions) it returns `false`.
+pub fn types_have_same_layout(context: &Context, a: Type, b: Type) -> bool {
+    // Fast path for the common (and cheap) case of the *same* interned type.
+    //
+    // We deliberately use identity equality (`==` on the interned key) here and
+    // not `Type::eq`: `Type::eq` considers a union equal to any of its
+    // variants (a type-compatibility notion), which is not a byte-layout equality.
+    if a == b {
+        return true;
+    }
+
+    // Differently-sized types can never share a layout.
+    if a.size(context).in_bytes() != b.size(context).in_bytes() {
+        return false;
+    }
+
+    let mut a_leaves = Vec::new();
+    let mut b_leaves = Vec::new();
+    if !flatten_layout(context, a, 0, &mut a_leaves)
+        || !flatten_layout(context, b, 0, &mut b_leaves)
+    {
+        return false;
+    }
+
+    a_leaves == b_leaves
+}
+
+/// Returns `true` if a `cast_ptr` from a value of type `from_ptr_ty` to type
+/// `to_ptr_ty` is layout-preserving: both are pointers and their pointee
+/// types have an identical in-memory layout (see [types_have_same_layout]).
+///
+/// When a `cast_ptr` is layout-preserving, any GEP/load/store/memcpy access
+/// performed through the cast pointer touches exactly the same bytes it would
+/// through the original pointer, so memory analyses can safely track symbols
+/// straight through the cast. For any other cast the function returns `false`
+/// and the `cast_ptr` acts as an opaque barrier to memory analysis.
+pub fn cast_ptr_preserves_layout(context: &Context, from_ptr_ty: Type, to_ptr_ty: Type) -> bool {
+    match (
+        from_ptr_ty.get_pointee_type(context),
+        to_ptr_ty.get_pointee_type(context),
+    ) {
+        (Some(from), Some(to)) => types_have_same_layout(context, from, to),
+        _ => false,
+    }
+}
+
+/// Returns `true` if the value `cast_ptr_val` is a `cast_ptr` instruction whose
+/// cast is layout-preserving (see [cast_ptr_preserves_layout]).
+fn is_layout_preserving_cast_ptr(context: &Context, cast_ptr_val: Value, to_ty: Type) -> bool {
+    match cast_ptr_val.get_type(context) {
+        Some(from_ty) => cast_ptr_preserves_layout(context, from_ty, to_ty),
+        None => false,
+    }
+}
+
 pub fn create_escaped_symbols_pass() -> Pass {
     Pass {
         name: ESCAPED_SYMBOLS_NAME,
@@ -309,16 +459,22 @@ fn get_symbols(context: &Context, val: Value, gep_only: bool) -> ReferredSymbols
                 is_complete,
             ),
             ValueDatum::Instruction(Instruction {
-                op: InstOp::CastPtr(ptr_to_cast, _),
+                op: InstOp::CastPtr(ptr_to_cast, to_ty),
                 ..
-            }) if !gep_only => get_symbols_rec(
-                context,
-                symbols,
-                visited,
-                ptr_to_cast,
-                gep_only,
-                is_complete,
-            ),
+            }) if !gep_only || is_layout_preserving_cast_ptr(context, ptr_to_cast, to_ty) => {
+                // For non-GEP tracking we always follow a `cast_ptr`. For GEP-only
+                // tracking we may follow it too, but only when it is
+                // layout-preserving: then a GEP through the cast addresses the same
+                // bytes of the same symbol as a GEP through the original pointer.
+                get_symbols_rec(
+                    context,
+                    symbols,
+                    visited,
+                    ptr_to_cast,
+                    gep_only,
+                    is_complete,
+                )
+            }
             ValueDatum::Argument(arg) => {
                 get_argument_symbols(context, symbols, visited, arg, gep_only, is_complete)
             }
@@ -430,7 +586,19 @@ fn compute_escaped_symbols(context: &Context, function: &Function) -> EscapedSym
                     !callee.is_arg_immutable(context, *arg_idx)
                 })
                 .for_each(|(_, v)| add_from_val(&mut result, v, &mut is_complete)),
-            InstOp::CastPtr(ptr, _) => add_from_val(&mut result, ptr, &mut is_complete),
+            InstOp::CastPtr(ptr, to_ty) => {
+                // A layout-preserving `cast_ptr` (e.g. `slice` <-> `{ ptr, u64 }`)
+                // merely reinterprets the pointer; it does not, by itself, let the
+                // pointee escape. The symbols behind `ptr` remain fully trackable
+                // through the cast (see `get_symbols`), and any genuinely escaping
+                // later use of the cast result is still caught when that use is
+                // visited. For any other cast we can no longer reason about the
+                // accesses performed through it, so we conservatively treat the
+                // pointee as escaped.
+                if !is_layout_preserving_cast_ptr(context, *ptr, *to_ty) {
+                    add_from_val(&mut result, ptr, &mut is_complete)
+                }
+            }
             InstOp::Cmp(_, _, _) => (),
             InstOp::ConditionalBranch { .. } => (),
             InstOp::ContractCall { params, .. } => {
@@ -755,4 +923,170 @@ pub fn pointee_size(context: &Context, ptr_val: Value) -> u64 {
         .expect("Expected arg to be a pointer")
         .size(context)
         .in_bytes()
+}
+
+#[cfg(test)]
+mod tests {
+    use once_cell::sync::Lazy;
+    use sway_features::ExperimentalFeatures;
+    use sway_types::SourceEngine;
+
+    use super::{cast_ptr_preserves_layout, types_have_same_layout};
+    use crate::{Backtrace, Context, Type};
+
+    static SOURCE_ENGINE: Lazy<SourceEngine> = Lazy::new(SourceEngine::default);
+
+    fn create_context() -> Context<'static> {
+        Context::new(
+            &SOURCE_ENGINE,
+            ExperimentalFeatures::default(),
+            Backtrace::default(),
+        )
+    }
+
+    #[test]
+    /// A `slice` is a fat pointer laid out as `{ ptr, u64 }`, so the two are
+    /// layout-compatible even though they are different types.
+    fn slice_and_ptr_u64_struct_have_same_layout() {
+        let mut context = create_context();
+
+        let ptr = Type::get_ptr(&context);
+        let u64_ty = Type::get_uint64(&context);
+        let slice = Type::get_slice(&context);
+        let ptr_u64 = Type::new_struct(&mut context, vec![ptr, u64_ty]);
+
+        assert!(types_have_same_layout(&context, slice, ptr_u64));
+        assert!(types_have_same_layout(&context, ptr_u64, slice));
+        // Reflexivity.
+        assert!(types_have_same_layout(&context, slice, slice));
+    }
+
+    #[test]
+    /// Two words are two words, regardless of whether they are spelled as a
+    /// struct, a two-element array, or a slice.
+    fn two_word_aggregates_have_same_layout() {
+        let mut context = create_context();
+
+        let u64_ty = Type::get_uint64(&context);
+        let ptr = Type::get_ptr(&context);
+        let struct_u64_u64 = Type::new_struct(&mut context, vec![u64_ty, u64_ty]);
+        let array_u64_2 = Type::new_array(&mut context, u64_ty, 2);
+        let struct_ptr_u64 = Type::new_struct(&mut context, vec![ptr, u64_ty]);
+
+        assert!(types_have_same_layout(
+            &context,
+            struct_u64_u64,
+            array_u64_2
+        ));
+        assert!(types_have_same_layout(
+            &context,
+            struct_u64_u64,
+            struct_ptr_u64
+        ));
+    }
+
+    #[test]
+    /// A 32-byte scalar (`b256`) is not layout-compatible with a 32-byte
+    /// aggregate of four words.
+    fn scalar_and_aggregate_of_same_size_differ() {
+        let mut context = create_context();
+
+        let u64_ty = Type::get_uint64(&context);
+        let b256 = Type::get_b256(&context);
+        let array_u64_4 = Type::new_array(&mut context, u64_ty, 4);
+        let struct_u64_4 = Type::new_struct(&mut context, vec![u64_ty, u64_ty, u64_ty, u64_ty]);
+
+        assert_eq!(b256.size(&context).in_bytes(), 32);
+        assert_eq!(array_u64_4.size(&context).in_bytes(), 32);
+
+        assert!(!types_have_same_layout(&context, b256, array_u64_4));
+        assert!(!types_have_same_layout(&context, b256, struct_u64_4));
+    }
+
+    #[test]
+    /// Differently-sized types are never layout-compatible.
+    fn different_sizes_differ() {
+        let mut context = create_context();
+
+        let ptr = Type::get_ptr(&context);
+        let u64_ty = Type::get_uint64(&context);
+        let slice = Type::get_slice(&context); // 16 bytes
+        let struct_ptr_u64_u64 = Type::new_struct(&mut context, vec![ptr, u64_ty, u64_ty]); // 24 bytes
+
+        assert!(!types_have_same_layout(&context, slice, struct_ptr_u64_u64));
+    }
+
+    #[test]
+    /// The word granularity must line up: a struct whose first field is a byte
+    /// is not compatible with one whose first field is a word, even at equal
+    /// total size (padding differs).
+    fn byte_vs_word_layout_differs() {
+        let mut context = create_context();
+
+        let u8_ty = Type::get_uint8(&context);
+        let u64_ty = Type::get_uint64(&context);
+        // { u8, u64 }: u8 padded to a word, then u64 => [Byte@0, Word@8], 16 bytes.
+        let struct_u8_u64 = Type::new_struct(&mut context, vec![u8_ty, u64_ty]);
+        // { u64, u64 }: [Word@0, Word@8], 16 bytes.
+        let struct_u64_u64 = Type::new_struct(&mut context, vec![u64_ty, u64_ty]);
+
+        assert_eq!(struct_u8_u64.size(&context).in_bytes(), 16);
+        assert_eq!(struct_u64_u64.size(&context).in_bytes(), 16);
+        assert!(!types_have_same_layout(
+            &context,
+            struct_u8_u64,
+            struct_u64_u64
+        ));
+    }
+
+    #[test]
+    /// A union (and an enum, which is `{ tag, union }`) must never be considered
+    /// layout-compatible with one of its variants, even though `Type::eq` treats
+    /// them as equal.
+    fn union_and_variant_differ() {
+        let mut context = create_context();
+
+        let u64_ty = Type::get_uint64(&context);
+        let t1 = Type::new_struct(&mut context, vec![u64_ty]); // { u64 }
+        let t2 = Type::new_struct(&mut context, vec![u64_ty, u64_ty]); // { u64, u64 }
+        let variants = Type::new_union(&mut context, vec![u64_ty, t1, t2]);
+
+        // The union is as large as its biggest variant (16 bytes), the small
+        // variant is 8 bytes: clearly different layouts.
+        assert!(!types_have_same_layout(&context, variants, u64_ty));
+        assert!(!types_have_same_layout(&context, variants, t1));
+        // Even against the largest variant, we conservatively refuse (we do
+        // not reason about union layouts at all).
+        assert!(!types_have_same_layout(&context, variants, t2));
+
+        // The exact enum-payload shape from the failing test: `{ u64, <union> }`
+        // vs. `{ u64, u64 }`. `Type::eq` would call these equal; we must not.
+        let enum_ty = Type::new_struct(&mut context, vec![u64_ty, variants]);
+        assert!(enum_ty.eq(&context, &t2)); // sanity: `Type::eq` is permissive here
+        assert!(!types_have_same_layout(&context, enum_ty, t2));
+    }
+
+    #[test]
+    /// `cast_ptr_preserves_layout` compares the pointee types of two pointer
+    /// types.
+    fn cast_ptr_predicate_compares_pointees() {
+        let mut context = create_context();
+
+        let ptr = Type::get_ptr(&context);
+        let u64_ty = Type::get_uint64(&context);
+        let slice = Type::get_slice(&context);
+        let ptr_u64 = Type::new_struct(&mut context, vec![ptr, u64_ty]);
+        let b256 = Type::get_b256(&context);
+        let array_u64_4 = Type::new_array(&mut context, u64_ty, 4);
+
+        let slice_ptr = Type::new_typed_pointer(&mut context, slice);
+        let ptr_u64_ptr = Type::new_typed_pointer(&mut context, ptr_u64);
+        let b256_ptr = Type::new_typed_pointer(&mut context, b256);
+        let array_ptr = Type::new_typed_pointer(&mut context, array_u64_4);
+
+        // Layout-preserving: `slice*` <-> `{ ptr, u64 }*`.
+        assert!(cast_ptr_preserves_layout(&context, slice_ptr, ptr_u64_ptr));
+        // Not layout-preserving: `b256*` <-> `[u64; 4]*`.
+        assert!(!cast_ptr_preserves_layout(&context, b256_ptr, array_ptr));
+    }
 }

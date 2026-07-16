@@ -457,6 +457,12 @@ fn local_copy_prop(
 
     struct ReplGep {
         base: Symbol,
+        // When the memcpy's source symbol has a different (but layout-identical)
+        // type than its destination symbol - i.e. the memcpy copies through a
+        // layout-preserving `cast_ptr` - we must re-interpret the base symbol as
+        // the destination's pointee type before indexing into it. This holds the
+        // pointer type to `cast_ptr` the base to or `None` when no cast is needed.
+        cast_base_to: Option<Type>,
         elem_ptr_ty: Type,
         indices: Vec<Value>,
     }
@@ -523,15 +529,28 @@ fn local_copy_prop(
                             .get_type(context)
                             .get_pointee_type(context)
                             .unwrap();
-                        if memcpy_src_sym_type == memcpy_dst_sym_type
-                            && memcpy_dst_sym_type.size(context).in_bytes() == copy_len
-                        {
+                        // The memcpy copies the whole destination symbol, and the
+                        // source symbol has the same layout as the destination.
+                        // If the two symbol types are identical we can index the
+                        // source directly; if they only share a layout (the memcpy
+                        // went through a layout-preserving `cast_ptr`) we index it
+                        // after re-interpreting it as the destination's type.
+                        let same_type = memcpy_src_sym_type == memcpy_dst_sym_type;
+                        let same_layout = same_type
+                            || memory_utils::types_have_same_layout(
+                                context,
+                                memcpy_src_sym_type,
+                                memcpy_dst_sym_type,
+                            );
+                        if same_layout && memcpy_dst_sym_type.size(context).in_bytes() == copy_len {
                             replacements.insert(
                                 inst,
                                 (
                                     src_val_ptr,
                                     Replacement::NewGep(ReplGep {
                                         base: memcpy_src_sym,
+                                        cast_base_to: (!same_type)
+                                            .then(|| memcpy_dst_sym.get_type(context)),
                                         elem_ptr_ty: src_val_ptr.get_type(context).unwrap(),
                                         indices: new_indices,
                                     }),
@@ -770,11 +789,12 @@ fn local_copy_prop(
                             to_replace,
                             Replacement::NewGep(ReplGep {
                                 base,
+                                cast_base_to,
                                 elem_ptr_ty,
                                 indices,
                             }),
                         ) => {
-                            let base = match base {
+                            let mut base = match base {
                                 Symbol::Local(local) => {
                                     let base = Value::new_instruction(
                                         context,
@@ -788,6 +808,16 @@ fn local_copy_prop(
                                     block_arg.block.get_arg(context, block_arg.idx).unwrap()
                                 }
                             };
+                            // Re-interpret the base as the destination symbol's type
+                            // when the memcpy went through a layout-preserving cast.
+                            if let Some(cast_to) = cast_base_to {
+                                base = Value::new_instruction(
+                                    context,
+                                    block,
+                                    InstOp::CastPtr(base, cast_to),
+                                );
+                                new_insts.push(base);
+                            }
                             let v = Value::new_instruction(
                                 context,
                                 block,

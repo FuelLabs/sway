@@ -18,12 +18,12 @@ warning: Error message is empty
 ____
 
   Compiled script "panic_handling_in_unit_tests" with 1 warning.
-    Finished debug [unoptimized + fuel] target(s) [7.712 KB] in ???
+    Finished debug [unoptimized + fuel] target(s) [7.664 KB] in ???
      Running 2 tests, filtered 18 tests
 
 tested -- panic_handling_in_unit_tests
 
-      test passing_dbgs_and_logs ... ok (???, 2681 gas)
+      test passing_dbgs_and_logs ... ok (???, 2596 gas)
            debug output:
 [src/main.sw:23:13] "This is a passing test containing `__dbg` outputs." = "This is a passing test containing `__dbg` outputs."
 [src/main.sw:25:13] x = 42
@@ -31,7 +31,7 @@ tested -- panic_handling_in_unit_tests
 AsciiString { data: "This is a log from the passing test." }, log rb: 10098701174489624218
 42, log rb: 1515152261580153489
            raw logs:
-[{"LogData":{"data":"0000000000000024546869732069732061206c6f672066726f6d207468652070617373696e6720746573742e","digest":"29d742ad9093cdf81404ff756467a44448729b85ab3c0d65197829fb61d2dd29","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":44,"pc":10800,"ptr":67107840,"ra":0,"rb":10098701174489624218}},{"LogData":{"data":"000000000000002a","digest":"a6bb133cb1e3638ad7b8a3ff0539668e9e56f9b850ef1b2a810f5422eaa6c323","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":8,"pc":15248,"ptr":18832,"ra":0,"rb":1515152261580153489}}]
+[{"LogData":{"data":"0000000000000024546869732069732061206c6f672066726f6d207468652070617373696e6720746573742e","digest":"29d742ad9093cdf81404ff756467a44448729b85ab3c0d65197829fb61d2dd29","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":44,"pc":10800,"ptr":67107840,"ra":0,"rb":10098701174489624218}},{"LogData":{"data":"000000000000002a","digest":"a6bb133cb1e3638ad7b8a3ff0539668e9e56f9b850ef1b2a810f5422eaa6c323","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":8,"pc":15212,"ptr":18768,"ra":0,"rb":1515152261580153489}}]
       test passing_no_dbgs_or_logs ... ok (???, 69 gas)
 
 test result: OK. 2 passed; 0 failed; finished in ???
@@ -55,28 +55,28 @@ warning: Error message is empty
 ____
 
   Compiled script "panic_handling_in_unit_tests" with 1 warning.
-    Finished debug [unoptimized + fuel] target(s) [7.712 KB] in ???
+    Finished debug [unoptimized + fuel] target(s) [7.664 KB] in ???
      Running 20 tests, filtered 0 tests
 
 tested -- panic_handling_in_unit_tests
 
-      test passing_dbgs_and_logs ... ok (???, 2681 gas)
+      test passing_dbgs_and_logs ... ok (???, 2596 gas)
       test passing_no_dbgs_or_logs ... ok (???, 69 gas)
       test failing_revert_intrinsic ... FAILED (???, 71 gas)
-      test failing_revert_function_with_dbgs_and_logs ... FAILED (???, 2633 gas)
-      test failing_error_signal_assert ... FAILED (???, 375 gas)
-      test failing_error_signal_assert_eq ... FAILED (???, 2200 gas)
-      test failing_error_signal_assert_ne ... FAILED (???, 2194 gas)
-      test failing_error_signal_require_str_error ... FAILED (???, 819 gas)
+      test failing_revert_function_with_dbgs_and_logs ... FAILED (???, 2552 gas)
+      test failing_error_signal_assert ... FAILED (???, 327 gas)
+      test failing_error_signal_assert_eq ... FAILED (???, 2143 gas)
+      test failing_error_signal_assert_ne ... FAILED (???, 2137 gas)
+      test failing_error_signal_require_str_error ... FAILED (???, 818 gas)
       test failing_error_signal_require_enum_error ... FAILED (???, 928 gas)
-      test failing_panic_no_arg ... FAILED (???, 571 gas)
-      test failing_panic_unit_arg ... FAILED (???, 571 gas)
+      test failing_panic_no_arg ... FAILED (???, 568 gas)
+      test failing_panic_unit_arg ... FAILED (???, 568 gas)
       test failing_panic_const_eval_str_arg ... FAILED (???, 71 gas)
       test failing_panic_const_eval_empty_str_arg ... FAILED (???, 71 gas)
       test failing_panic_const_eval_whitespace_str_arg ... FAILED (???, 71 gas)
-      test failing_panic_non_const_eval_str_arg ... FAILED (???, 806 gas)
-      test failing_panic_non_const_eval_str_empty_arg ... FAILED (???, 787 gas)
-      test failing_panic_non_const_eval_str_whitespace_arg ... FAILED (???, 790 gas)
+      test failing_panic_non_const_eval_str_arg ... FAILED (???, 805 gas)
+      test failing_panic_non_const_eval_str_empty_arg ... FAILED (???, 786 gas)
+      test failing_panic_non_const_eval_str_whitespace_arg ... FAILED (???, 789 gas)
       test failing_panic_error_enum_arg ... FAILED (???, 903 gas)
       test failing_panic_error_enum_arg_with_empty_msg ... FAILED (???, 1010 gas)
       test failing_panic_error_enum_arg_with_whitespace_msg ... FAILED (???, 1030 gas)
@@ -149,8 +149,8 @@ AsciiString { data: "We will get logged the asserted values and this message." }
       "id": "0000000000000000000000000000000000000000000000000000000000000000",
       "is": 10368,
       "len": 8,
-      "pc": 15248,
-      "ptr": 18784,
+      "pc": 15212,
+      "ptr": 18720,
       "ra": 0,
       "rb": 1515152261580153489
     }
@@ -162,8 +162,8 @@ AsciiString { data: "We will get logged the asserted values and this message." }
       "id": "0000000000000000000000000000000000000000000000000000000000000000",
       "is": 10368,
       "len": 8,
-      "pc": 15248,
-      "ptr": 18784,
+      "pc": 15212,
+      "ptr": 18720,
       "ra": 0,
       "rb": 1515152261580153489
     }
@@ -202,8 +202,8 @@ AsciiString { data: "We will get logged the asserted values and this message." }
       "id": "0000000000000000000000000000000000000000000000000000000000000000",
       "is": 10368,
       "len": 8,
-      "pc": 15248,
-      "ptr": 18776,
+      "pc": 15212,
+      "ptr": 18712,
       "ra": 0,
       "rb": 1515152261580153489
     }
@@ -215,8 +215,8 @@ AsciiString { data: "We will get logged the asserted values and this message." }
       "id": "0000000000000000000000000000000000000000000000000000000000000000",
       "is": 10368,
       "len": 8,
-      "pc": 15248,
-      "ptr": 18776,
+      "pc": 15212,
+      "ptr": 18712,
       "ra": 0,
       "rb": 1515152261580153489
     }
@@ -287,7 +287,7 @@ B(true), log rb: 8516346929033386016
       "is": 10368,
       "len": 0,
       "pc": 13096,
-      "ptr": 18336,
+      "ptr": 18288,
       "ra": 0,
       "rb": 3330666440490685604
     }
@@ -312,7 +312,7 @@ B(true), log rb: 8516346929033386016
       "is": 10368,
       "len": 0,
       "pc": 13148,
-      "ptr": 18336,
+      "ptr": 18288,
       "ra": 0,
       "rb": 3330666440490685604
     }

@@ -1,0 +1,34 @@
+// The casts here are layout-preserving (`{ ptr, u64 }` <-> `slice`),
+// but the copied-into pointer `c` also escapes into an `asm` block. Escape
+// analysis must still treat `c` as escaped, so the copy propagation must not
+// fire and the `mem_copy_val` into `c` is preserved.
+
+script {
+    entry fn main() -> u64 {
+        local { ptr, u64 } a
+        local slice b
+        local { ptr, u64 } c
+
+        entry():
+        va = get_local __ptr { ptr, u64 }, a
+        i1 = const u64 1
+        pa1 = get_elem_ptr va, __ptr u64, i1
+        c32 = const u64 32
+        store c32 to pa1
+        vcast = cast_ptr va to __ptr slice
+        vb = get_local __ptr slice, b
+        mem_copy_val vb, vcast
+        vcast2 = cast_ptr vb to __ptr { ptr, u64 }
+        vc = get_local __ptr { ptr, u64 }, c
+        mem_copy_val vc, vcast2
+        i0 = const u64 0
+        vptr = get_elem_ptr vc, __ptr ptr, i0
+        vesc = asm(ptr: vptr) -> u64 {
+            lw result ptr i1
+        }
+        jl = const u64 1
+        vlen_p = get_elem_ptr vc, __ptr u64, jl
+        vlen = load vlen_p
+        ret u64 vlen
+    }
+}

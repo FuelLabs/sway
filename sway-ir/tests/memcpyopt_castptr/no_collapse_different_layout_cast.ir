@@ -1,0 +1,29 @@
+// The `cast_ptr`s here reinterpret between `[u64; 4]` and `b256`.
+// The optimization must not fire:
+// - both `mem_copy_val`s are preserved,
+// - the length is still read out of `c`.
+
+script {
+    entry fn main() -> u64 {
+        local [u64; 4] a
+        local b256 b
+        local [u64; 4] c
+
+        entry():
+        va = get_local __ptr [u64; 4], a
+        i0 = const u64 0
+        e0 = get_elem_ptr va, __ptr u64, i0
+        c32 = const u64 32
+        store c32 to e0
+        vcast = cast_ptr va to __ptr b256
+        vb = get_local __ptr b256, b
+        mem_copy_val vb, vcast
+        vcast2 = cast_ptr vb to __ptr [u64; 4]
+        vc = get_local __ptr [u64; 4], c
+        mem_copy_val vc, vcast2
+        j0 = const u64 0
+        ep = get_elem_ptr vc, __ptr u64, j0
+        vlen = load ep
+        ret u64 vlen
+    }
+}

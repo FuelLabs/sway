@@ -13,9 +13,9 @@ use sway_ir::{
     create_mem2reg_pass, create_memcpyopt_pass, create_memcpyprop_reverse_pass,
     create_misc_demotion_pass, create_postorder_pass, create_ret_demotion_pass,
     create_simplify_cfg_pass, metadata_to_inline, optimize as opt, register_known_passes,
-    Backtrace, Context, Function, IrError, PassGroup, PassManager, Value, DCE_NAME,
-    FN_DEDUP_DEBUG_PROFILE_NAME, FN_DEDUP_RELEASE_PROFILE_NAME, GLOBALS_DCE_NAME, MEM2REG_NAME,
-    SROA_NAME,
+    Backtrace, Context, Function, IrError, PassGroup, PassManager, Value,
+    ARG_POINTEE_MUTABILITY_TAGGER_NAME, DCE_NAME, FN_DEDUP_DEBUG_PROFILE_NAME,
+    FN_DEDUP_RELEASE_PROFILE_NAME, GLOBALS_DCE_NAME, MEM2REG_NAME, MEMCPYOPT_NAME, SROA_NAME,
 };
 use sway_types::SourceEngine;
 
@@ -504,6 +504,25 @@ fn memcpyopt() {
         pass_mgr.register(create_escaped_symbols_pass());
         let pass = pass_mgr.register(create_memcpyopt_pass());
         pass_group.append_pass(pass);
+        pass_mgr.run(ir, &pass_group).unwrap()
+    })
+}
+
+// -------------------------------------------------------------------------------------------------
+
+// Runs `memcpyopt` followed by `dce`, mirroring the order in which they run in
+// the real optimization pipeline. This tests the copy propagation through
+// layout-preserving `cast_ptr`s and lets `dce` remove the now-redundant copies.
+#[allow(clippy::needless_collect)]
+#[test]
+fn memcpyopt_castptr() {
+    run_tests("memcpyopt_castptr", |_first_line, ir: &mut Context| {
+        let mut pass_mgr = PassManager::default();
+        register_known_passes(&mut pass_mgr);
+        let mut pass_group = PassGroup::default();
+        pass_group.append_pass(ARG_POINTEE_MUTABILITY_TAGGER_NAME);
+        pass_group.append_pass(MEMCPYOPT_NAME);
+        pass_group.append_pass(DCE_NAME);
         pass_mgr.run(ir, &pass_group).unwrap()
     })
 }

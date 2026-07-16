@@ -449,7 +449,7 @@ fn profitability(context: &Context, function: Function, candidates: &mut FxHashS
     }
 }
 
-/// Only the following aggregates can be scalarised:
+/// Only a following aggregate can be scalarised:
 /// 1. Does not escape.
 /// 2. Is always accessed via a scalar (register sized) field.
 ///    i.e., The entire aggregate or a sub-aggregate isn't loaded / stored.
@@ -478,7 +478,7 @@ fn candidate_symbols(
         })
         .collect();
 
-    // We walk the function to remove from `candidates`, any local that is
+    // We walk the function to remove from `candidates` any local that is:
     // 1. accessed by a bigger-than-register sized load / store.
     //    (we make an exception for load / store in `mem_copy_val` as that can be handled).
     // 2. OR accessed via a non-const indexing.
@@ -496,8 +496,22 @@ fn candidate_symbols(
                 }
                 continue;
             }
-            if combine_indices(context, *ptr)
-                .is_some_and(|indices| indices.iter().any(|idx| !idx.is_constant(context)))
+            // We can only scalarise a symbol if we can compute the exact offset
+            // of **every** access into it. `combine_indices` returns `None` when the
+            // access reaches the symbol through something we cannot turn into a
+            // constant offset chain.
+            //
+            // E.g. a layout-preserving `cast_ptr` that the above `get_gep_referred_symbols`
+            // will see through will result in `combine_indices` returning `None`,
+            // and we will remove the candidate.
+            //
+            // This is precisely what we want, because we don't want, e.g. to attempt
+            // to scalarise a `{ ptr, u64 }` that comes from a `slice` casted to `{ ptr, u64 }`.
+            let indices = combine_indices(context, *ptr);
+            if indices.is_none()
+                || indices
+                    .as_ref()
+                    .is_some_and(|indices| indices.iter().any(|idx| !idx.is_constant(context)))
                 || ptr.match_ptr_type(context).is_some_and(|pointee_ty| {
                     super::target_fuel::is_demotable_type(context, &pointee_ty)
                         && !matches!(inst.op, InstOp::MemCopyVal { .. })
