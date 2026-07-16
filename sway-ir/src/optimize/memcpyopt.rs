@@ -529,10 +529,11 @@ fn local_copy_prop(
                             .get_type(context)
                             .get_pointee_type(context)
                             .unwrap();
-                        // The memcpy copies the whole destination symbol, and the
+
+                        // The memcpy copies the whole destination symbol, iff the
                         // source symbol has the same layout as the destination.
                         // If the two symbol types are identical we can index the
-                        // source directly; if they only share a layout (the memcpy
+                        // source directly. If they only share a layout (the memcpy
                         // went through a layout-preserving `cast_ptr`) we index it
                         // after re-interpreting it as the destination's type.
                         let same_type = memcpy_src_sym_type == memcpy_dst_sym_type;
@@ -542,7 +543,32 @@ fn local_copy_prop(
                                 memcpy_src_sym_type,
                                 memcpy_dst_sym_type,
                             );
-                        if same_layout && memcpy_dst_sym_type.size(context).in_bytes() == copy_len {
+
+                        // In the `cast_ptr` crossing case we re-interpret the source as
+                        // `memcpy_dst_sym_type` and index it with `new_indices`.
+                        //
+                        // Those indices were computed against the access pointer,
+                        // whose type can differ from `memcpy_dst_sym_type` when the
+                        // symbol is reached through a layout-preserving cast (e.g.
+                        // via a block argument.
+                        //
+                        // E.g., let's say the original symbol is a slice that gets
+                        // passed as block argument via `cast_ptr` to `{ ptr, u64 }`.
+                        // In this case, the access sees the block parameter as `{ ptr, u64 }`
+                        // while the symbol passed as the block argument stays a
+                        // non-indexable `slice`.
+                        //
+                        // We want to only proceed if the indices are actually valid for the
+                        // `memcpy_dst_sym_type`.
+                        let indices_valid_for_dst = same_type
+                            || memcpy_dst_sym_type
+                                .get_value_indexed_offset(context, &new_indices)
+                                .is_some();
+
+                        if same_layout
+                            && indices_valid_for_dst
+                            && memcpy_dst_sym_type.size(context).in_bytes() == copy_len
+                        {
                             replacements.insert(
                                 inst,
                                 (

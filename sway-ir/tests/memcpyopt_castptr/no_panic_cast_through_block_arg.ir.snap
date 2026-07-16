@@ -1,0 +1,31 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: false
+
+script {
+    entry fn main(p: __ptr b256) -> u64 {
+        local slice s
+        local { ptr, u64 } src
+
+        entry(mut p: __ptr b256):
+        v3v1 = get_local __ptr slice, s
+        v4v1 = cast_ptr v3v1 to __ptr { ptr, u64 }
+        br next(v4v1)
+
+        next(v2v1: __ptr { ptr, u64 }):
+        v6v1 = get_local __ptr { ptr, u64 }, src
+        v7v1 = const u64 0
+        v8v1 = get_elem_ptr v6v1, __ptr ptr, v7v1
+        v9v1 = cast_ptr p to ptr
+        store v9v1 to v8v1
+        v11v1 = const u64 1
+        v12v1 = get_elem_ptr v6v1, __ptr u64, v11v1
+        v13v1 = const u64 32
+        store v13v1 to v12v1
+        mem_copy_val v2v1, v6v1
+        v16v1 = get_elem_ptr v2v1, __ptr u64, v11v1
+        v17v1 = load v16v1
+        ret u64 v17v1
+    }
+}

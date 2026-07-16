@@ -473,9 +473,21 @@ impl Type {
         })
     }
 
-    /// What's the offset, in bytes, of the indexed element?
-    /// Returns `None` on invalid indices.
-    /// Panics if `self` is not an aggregate (struct, union, or array).
+    /// Returns the offset, in bytes, of the indexed element of an aggregate `self`.
+    ///
+    /// Returns `None`:
+    /// - on invalid `indices`.
+    /// - if `self` is not an aggregate (struct, union, or array).
+    ///
+    /// Note that the function accepts both invalid `indices` and `self` not
+    /// being an aggregate as a valid input. It is up to the caller to decide
+    /// what to do in case of `None` being returned.
+    /// E.g.:
+    /// - SROA internally guarantees that `self` is an aggregate and that
+    ///  `indices` are valid and `expect`s a valid offset.
+    /// - Memcpyopt can try to index into a `slice` (not an aggregate) as a result of
+    ///   a valid inspection of a `{ ptr, u64 }` the `slice` got `cast_ptr`ed into,
+    ///   and simply bail out if `None` is return (as a semantically valid result).
     pub fn get_indexed_offset(&self, context: &Context, indices: &[u64]) -> Option<u64> {
         indices
             .iter()
@@ -500,12 +512,7 @@ impl Type {
                                 + (union_size_in_bytes - field_ty.size(context).in_bytes()),
                         )
                     })
-                } else {
-                    assert!(
-                        ty.is_array(context),
-                        "Expected aggregate type. Got {}.",
-                        ty.as_string(context)
-                    );
+                } else if ty.is_array(context) {
                     // size_of_element * idx will be the offset of idx.
                     ty.get_array_elem_type(context).map(|elm_ty| {
                         let prev_idxs_offset = ty
@@ -516,6 +523,8 @@ impl Type {
                             * idx;
                         (elm_ty, accum_offset + prev_idxs_offset)
                     })
+                } else {
+                    None
                 }
             })
             .map(|pair| pair.1)
