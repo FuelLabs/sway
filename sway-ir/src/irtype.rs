@@ -484,7 +484,7 @@ impl Type {
     /// what to do in case of `None` being returned.
     /// E.g.:
     /// - SROA internally guarantees that `self` is an aggregate and that
-    ///  `indices` are valid and `expect`s a valid offset.
+    ///   `indices` are valid and `expect`s a valid offset.
     /// - Memcpyopt can try to index into a `slice` (not an aggregate) as a result of
     ///   a valid inspection of a `{ ptr, u64 }` the `slice` got `cast_ptr`ed into,
     ///   and simply bail out if `None` is return (as a semantically valid result).
