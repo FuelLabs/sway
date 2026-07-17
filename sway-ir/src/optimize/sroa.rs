@@ -502,18 +502,22 @@ fn candidate_symbols(
             }
 
             let indices = combine_indices(context, *ptr);
-            if indices.is_none() // 2. Indices must come from a known source.
-                // 3. All indices must be constants.
-                || indices
-                    .as_ref()
-                    .is_some_and(|indices| indices.iter().any(|idx| !idx.is_constant(context)))
-                // 4. Pointee type must be demotable, or the instruction must be `mem_copy_val`.
-                || ptr.match_ptr_type(context).is_some_and(|pointee_ty| {
-                    super::target_fuel::is_demotable_type(context, &pointee_ty)
-                        && !matches!(inst.op, InstOp::MemCopyVal { .. })
-                })
+            // 2. Indices must come from a known source.
+            let have_unknown_source = indices.is_none();
+            // 3. All indices must be constants.
+            let have_non_constant_index = indices
+                .as_ref()
+                .is_some_and(|indices| indices.iter().any(|idx| !idx.is_constant(context)));
+            // 4. Pointee type must not be demotable, or the instruction must be `mem_copy_val`.
+            let pointee_ty_is_demotable = ptr.match_ptr_type(context).is_some_and(|pointee_ty| {
+                super::target_fuel::is_demotable_type(context, &pointee_ty)
+            });
+            let inst_is_not_memcpy = !matches!(inst.op, InstOp::MemCopyVal { .. });
+
+            if have_unknown_source
+                || have_non_constant_index
+                || (pointee_ty_is_demotable && inst_is_not_memcpy)
             {
-                // If any of the requirements is not satisfied, remove the symbol from the candidates.
                 candidates.remove(syms.iter().next().unwrap());
             }
         }
