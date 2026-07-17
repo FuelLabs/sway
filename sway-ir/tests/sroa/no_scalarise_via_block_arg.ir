@@ -1,0 +1,36 @@
+// A pointer into the local `s` (specifically `&s.1`, at offset 8) is passed to a
+// successor block as a block argument, and only loaded there.
+//
+// `s` **must not be scalarised**: the offset of a pointer that arrives via a
+// non-entry block argument cannot be determined by `combine_indices` (a block
+// argument is a control-flow join, not a GEP into `s`). If SROA were to scalarise
+// `s`, it would resolve the block-argument access `vp` to offset 0 and remap the
+// load to the `s.0` scalar, folding the whole function to `ret 10` instead of
+// loading `s.1` (`20`). That is a miscompile.
+//
+// With `combine_indices` correctly reporting the offset as unknown for non-entry
+// block arguments, SROA leaves `s` alone and the load of the block-argument
+// pointer survives.
+
+script {
+    entry fn main() -> u64 {
+        local { u64, u64 } s
+
+        entry():
+        vs = get_local __ptr { u64, u64 }, s
+        i0 = const u64 0
+        e0 = get_elem_ptr vs, __ptr u64, i0
+        c10 = const u64 10
+        store c10 to e0
+        i1 = const u64 1
+        e1 = get_elem_ptr vs, __ptr u64, i1
+        c20 = const u64 20
+        store c20 to e1
+        e1b = get_elem_ptr vs, __ptr u64, i1
+        br next(e1b)
+
+        next(vp: __ptr u64):
+        v = load vp
+        ret u64 v
+    }
+}
