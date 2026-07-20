@@ -322,7 +322,8 @@ fn find_jump_instruction_index(bytecode: &[u8]) -> usize {
     // is an internal compiler detail that can change; read it from sway-core instead
     // of hardcoding it (it was hardcoded to `59` previously, which broke when the
     // reserved-register chain shifted).
-    let a = vm::fuel_asm::op::move_(sway_core::LOCALS_BASE_REGISTER, fuel_asm::RegId::SP).to_bytes();
+    let a =
+        vm::fuel_asm::op::move_(sway_core::LOCALS_BASE_REGISTER, fuel_asm::RegId::SP).to_bytes();
 
     // for contracts using encoding v0
     // search the first `lw $r0 $fp i73`
