@@ -29,6 +29,8 @@ pub enum IrError {
     VerifyBitcastUnknownSourceType,
     VerifyEntryBlockHasPredecessors(String, Vec<String>),
     VerifyBlockArgMalformed,
+    VerifyBlockEntryBlockNotNamedEntry,
+    VerifyBlockNonEntryBlockNamedEntry,
     VerifyBranchParamsMismatch,
     VerifyBranchToMissingBlock(String),
     VerifyCallArgTypeMismatch(String, String, String),
@@ -374,6 +376,12 @@ impl fmt::Display for IrError {
             }
             IrError::VerifyBlockArgMalformed => {
                 write!(f, "Verification failed: Block argument is malformed")
+            }
+            IrError::VerifyBlockEntryBlockNotNamedEntry => {
+                write!(f, "Verification failed: Entry block is not named \"entry\"")
+            }
+            IrError::VerifyBlockNonEntryBlockNamedEntry => {
+                write!(f, "Verification failed: Non-entry block is named \"entry\"")
             }
             IrError::VerifyBranchParamsMismatch => {
                 write!(

@@ -80,6 +80,9 @@ impl Context<'_> {
             ));
         }
 
+        // Checks that are supposed to run only against the entry block,
+        // and do not require the block content, we do here in the `verify_function`
+        // rather than in the `verify_block`, to avoid unnecessary check on every block.
         let entry_block = function.get_entry_block(self);
 
         if entry_block.num_predecessors(self) != 0 {
@@ -90,6 +93,10 @@ impl Context<'_> {
                     .map(|block| block.get_label(self))
                     .collect(),
             ));
+        }
+
+        if entry_block.get_label(self) != "entry" {
+            return Err(IrError::VerifyBlockEntryBlockNotNamedEntry);
         }
 
         // Ensure that the entry block arguments are same as function arguments.
@@ -103,7 +110,7 @@ impl Context<'_> {
         }
 
         // Check that locals have initializers if they aren't mutable.
-        // TODO: This check is disabled because we incorrect create
+        // TODO: This check is disabled because we incorrectly create
         //       immutable locals without initializers at many places.
         // for local in &self.functions[function.0].local_storage {
         //     if !local.1.is_mutable(self) && local.1.get_initializer(self).is_none() {
@@ -138,6 +145,10 @@ impl Context<'_> {
         if cur_block.num_instructions(self) <= 1 && cur_block.num_predecessors(self) == 0 {
             // Empty unreferenced blocks are a harmless artefact.
             return Ok(());
+        }
+
+        if !cur_block.is_entry(self) && cur_block.get_label(self) == "entry" {
+            return Err(IrError::VerifyBlockNonEntryBlockNamedEntry);
         }
 
         for (arg_idx, arg_val) in cur_block.arg_iter(self).enumerate() {

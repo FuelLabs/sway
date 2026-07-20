@@ -1,0 +1,4 @@
+cmds = [
+    "echo SROA must not eliminate the local tuple `t`",
+    "forc build --path {root} --release --ir final | filter-fn {name} main",
+]

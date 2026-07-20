@@ -117,6 +117,11 @@ impl Block {
         context.blocks[self.0].function
     }
 
+    /// True if `self` is the entry block of its [Function].
+    pub fn is_entry(&self, context: &Context) -> bool {
+        *self == self.get_function(context).get_entry_block(context)
+    }
+
     /// Create a new [`InstructionInserter`] to more easily append instructions to this block.
     pub fn append<'a, 'eng>(
         &self,
