@@ -1,0 +1,8 @@
+[[package]]
+name = "sroa_reference_to_field_in_branch"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-BDB0CCD415F11812"
