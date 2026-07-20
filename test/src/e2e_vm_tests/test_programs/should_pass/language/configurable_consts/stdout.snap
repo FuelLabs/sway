@@ -18,7 +18,7 @@ Matches for "TUPLE_BOOL_U64"
 addr $$arg0 data_configurable_10; get pointer to configurable TUPLE_BOOL_U64 default value
 addi $$arg1 $zero i9          ; get length of configurable TUPLE_BOOL_U64 default value
 addi $$arg2 $ssp i108         ; get pointer to configurable TUPLE_BOOL_U64 stack address
-jal  $$reta $pc i183          ; decode configurable TUPLE_BOOL_U64
+jal  $$reta $pc i180          ; decode configurable TUPLE_BOOL_U64
 addi $r0 $ssp i108            ; get address of configurable TUPLE_BOOL_U64
 data_configurable_TUPLE_BOOL_U64_16 .bytes[9] 01 00 00 00 00 00 00 00 0b  .........
 43 |     TUPLE_BOOL_U64: (bool, u64) = (true, 11),
