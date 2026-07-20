@@ -15,7 +15,7 @@ Matches for "TUPLE_BOOL_U64"
 
     TUPLE_BOOL_U64 = config { bool, u64 }, abi_decode_in_place_39, 0x01000000000000000b, !11
         v1463v1 = get_config __ptr { bool, u64 }, TUPLE_BOOL_U64, !522
-addr $$arg0 data_Configurable_10; get pointer to configurable TUPLE_BOOL_U64 default value
+addr $$arg0 data_configurable_10; get pointer to configurable TUPLE_BOOL_U64 default value
 addi $$arg1 $zero i9          ; get length of configurable TUPLE_BOOL_U64 default value
 addi $$arg2 $ssp i108         ; get pointer to configurable TUPLE_BOOL_U64 stack address
 jal  $$reta $pc i183          ; decode configurable TUPLE_BOOL_U64
@@ -27,5 +27,5 @@ Matches for "ANOTHER_U8"
 
     ANOTHER_U8 = config u8, <none>, 0x03, !1
         v1190v1 = get_config __ptr u8, ANOTHER_U8, !361
-addr $r0 data_Configurable_0  ; get address of configurable ANOTHER_U8
+addi $r0 $$cs i0              ; get address of configurable ANOTHER_U8
 data_configurable_ANOTHER_U8_6 .bytes[1] 03  .
