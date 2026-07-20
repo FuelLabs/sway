@@ -7,7 +7,7 @@ source: test/src/snapshot/mod.rs
 
 
 
-pshh i530432                  ; [fn init: check_no_locals_no_call_args_spills_24]: push used high registers 40..64
+pshh i265216                  ; [fn init: check_no_locals_no_call_args_spills_24]: push used high registers 40..64
 move $$locbase $sp            ; [fn init: check_no_locals_no_call_args_spills_24]: set locals base register
 cfei i528                     ; [fn init: check_no_locals_no_call_args_spills_24]: allocate: locals 0 byte(s), call args 0 slot(s), register spills 528 byte(s)
 move $r0 $$arg0               ; [fn init: check_no_locals_no_call_args_spills_24]: copy argument 0 (a)
@@ -569,7 +569,7 @@ move $$retv $r0               ; [fn end: check_no_locals_no_call_args_spills_24]
 cfsi i528                     ; [fn end: check_no_locals_no_call_args_spills_24] free: locals 0 byte(s), call args 0 slot(s), register spills 528 byte(s)
 lw   $r0 $$locbase i45        ; [spill/refill]: refill from spill
 move $$reta $r0               ; [fn end: check_no_locals_no_call_args_spills_24] restore return address
-poph i530432                  ; [fn end: check_no_locals_no_call_args_spills_24]: restore used high registers 40..64
+poph i265216                  ; [fn end: check_no_locals_no_call_args_spills_24]: restore used high registers 40..64
 jal  $zero $$reta i0          ; [fn end: check_no_locals_no_call_args_spills_24] return from call
 
 
@@ -609,7 +609,7 @@ jal  $zero $$reta i0          ; [fn end: check_locals_call_args_no_spills_32] re
 
 
 
-pshh i530432                  ; [fn init: check_no_locals_call_args_spills_30]: push used high registers 40..64
+pshh i265216                  ; [fn init: check_no_locals_call_args_spills_30]: push used high registers 40..64
 move $$locbase $sp            ; [fn init: check_no_locals_call_args_spills_30]: set locals base register
 cfei i560                     ; [fn init: check_no_locals_call_args_spills_30]: allocate: locals 0 byte(s), call args 3 slot(s), register spills 536 byte(s)
 move $r0 $$arg0               ; [fn init: check_no_locals_call_args_spills_30]: copy argument 0 (a)
@@ -1197,7 +1197,7 @@ move $$retv $r0               ; [fn end: check_no_locals_call_args_spills_30] se
 cfsi i560                     ; [fn end: check_no_locals_call_args_spills_30] free: locals 0 byte(s), call args 3 slot(s), register spills 536 byte(s)
 lw   $r0 $$locbase i4         ; [spill/refill]: refill from spill
 move $$reta $r0               ; [fn end: check_no_locals_call_args_spills_30] restore return address
-poph i530432                  ; [fn end: check_no_locals_call_args_spills_30]: restore used high registers 40..64
+poph i265216                  ; [fn end: check_no_locals_call_args_spills_30]: restore used high registers 40..64
 jal  $zero $$reta i0          ; [fn end: check_no_locals_call_args_spills_30] return from call
 
 
@@ -1228,7 +1228,7 @@ jal  $zero $$reta i0          ; [fn end: check_no_locals_call_args_no_spills_28]
 
 
 
-pshh i530432                  ; [fn init: check_locals_call_args_spills_33]: push used high registers 40..64
+pshh i265216                  ; [fn init: check_locals_call_args_spills_33]: push used high registers 40..64
 move $$locbase $sp            ; [fn init: check_locals_call_args_spills_33]: set locals base register
 cfei i560                     ; [fn init: check_locals_call_args_spills_33]: allocate: locals 0 byte(s), call args 3 slot(s), register spills 536 byte(s)
 move $r0 $$arg0               ; [fn init: check_locals_call_args_spills_33]: copy argument 0 (a)
@@ -1848,7 +1848,7 @@ move $$retv $r0               ; [fn end: check_locals_call_args_spills_33] set r
 cfsi i560                     ; [fn end: check_locals_call_args_spills_33] free: locals 0 byte(s), call args 3 slot(s), register spills 536 byte(s)
 lw   $r0 $$locbase i4         ; [spill/refill]: refill from spill
 move $$reta $r0               ; [fn end: check_locals_call_args_spills_33] restore return address
-poph i530432                  ; [fn end: check_locals_call_args_spills_33]: restore used high registers 40..64
+poph i265216                  ; [fn end: check_locals_call_args_spills_33]: restore used high registers 40..64
 jal  $zero $$reta i0          ; [fn end: check_locals_call_args_spills_33] return from call
 
 pshh i528384                  ; [fn init: check_locals_no_call_args_no_spills_31]: push used high registers 40..64

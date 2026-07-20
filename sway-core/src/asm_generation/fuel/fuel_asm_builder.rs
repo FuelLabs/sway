@@ -207,8 +207,17 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
             entries,
             non_entries,
             before_entries: before_entry,
+            configurable_to_data_id,
             ..
         } = self;
+
+        // The configurable-section register `$cs` only needs to be initialized in
+        // the prologue when the program actually has a trivially-addressable
+        // configurable (V0, or a trivially-decodable V1). Non-trivial V1
+        // configurables are addressed via `$ds` (decode prologue) and `$ssp`
+        // (`get_config`), and do not populate this map, so they correctly do not
+        // trigger the `$cs` initialization.
+        let needs_configurable_register = !configurable_to_data_id.is_empty();
 
         let opt_level = build_config
             .map(|cfg| cfg.optimization_level)
@@ -268,6 +277,7 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
             non_entries,
             reg_seqr,
             context.experimental,
+            needs_configurable_register,
         );
 
         // Compiled dependencies will not have any content and we
@@ -1470,23 +1480,53 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         } else {
             // Otherwise it is a configurable without a writable global: either an
             // encoding v0 configurable or a trivially decodable encoding-v1
-            // configurable.
-            let dataid = self.configurable_to_data_id.get(name).ok_or_else(|| {
-                CompileError::InternalOwned(
-                    format!("configurable '{name}' missing from data section map"),
-                    self.md_mgr
-                        .val_to_span(self.context, *addr_val)
-                        .unwrap_or_else(Span::dummy),
-                )
-            })?;
-            self.cur_bytecode.push(Op {
-                opcode: either::Either::Left(VirtualOp::AddrDataId(
-                    addr_reg.clone(),
-                    dataid.clone(),
-                )),
-                comment: format!("get address of configurable {name}"),
-                owning_span: self.md_mgr.val_to_span(self.context, *addr_val),
-            });
+            // configurable. Address it through the configurable section register
+            // (`$cs`), which points at the start of the configurable section, using an
+            // offset measured from there.
+            let dataid = self.configurable_to_data_id.get(name).unwrap();
+            let offset_within_configurables =
+                self.data_section.configurable_offset_within_section(dataid) as u64;
+            let span = self
+                .md_mgr
+                .val_to_span(self.context, *addr_val)
+                .unwrap_or_else(Span::dummy);
+            match VirtualImmediate12::try_new(offset_within_configurables, span.clone()) {
+                Ok(imm12) => {
+                    // Single op: ADDI addr_reg, $cs, <offset>
+                    self.cur_bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::ADDI(
+                            addr_reg.clone(),
+                            VirtualRegister::Constant(ConstantRegister::ConfigurableSectionStart),
+                            imm12,
+                        )),
+                        comment: format!("get address of configurable {name}"),
+                        owning_span: Some(span),
+                    });
+                }
+                Err(_) => {
+                    // Offset doesn't fit in 12 bits: MOVI addr_reg, <offset>;
+                    // ADD addr_reg, addr_reg, $cs
+                    self.cur_bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::MOVI(
+                            addr_reg.clone(),
+                            VirtualImmediate18::new(offset_within_configurables),
+                        )),
+                        comment: format!(
+                            "get offset of configurable {name} within configurable section"
+                        ),
+                        owning_span: Some(span.clone()),
+                    });
+                    self.cur_bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::ADD(
+                            addr_reg.clone(),
+                            addr_reg.clone(),
+                            VirtualRegister::Constant(ConstantRegister::ConfigurableSectionStart),
+                        )),
+                        comment: format!("get address of configurable {name}"),
+                        owning_span: Some(span),
+                    });
+                }
+            }
             self.reg_map.insert(*addr_val, addr_reg);
         }
 
