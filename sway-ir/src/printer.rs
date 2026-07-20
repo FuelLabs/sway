@@ -386,10 +386,7 @@ fn config_to_doc(
             Doc::line(
                 Doc::text(format!(
                     "{} = config {}, {}, 0x{}",
-                    name,
-                    ty,
-                    decode_fn_name,
-                    bytes,
+                    name, ty, decode_fn_name, bytes,
                 ))
                 .append(md_namer.md_idx_to_doc(context, opt_metadata)),
             )
