@@ -139,7 +139,7 @@ fn reg_pressure_12() -> u64 {
 
 
 
-pshh i530432                  ; [fn init: reg_pressure_12]: push used high registers 40..64
+pshh i265216                  ; [fn init: reg_pressure_12]: push used high registers 40..64
 move $$locbase $sp            ; [fn init: reg_pressure_12]: set locals base register
 cfei i512                     ; [fn init: reg_pressure_12]: allocate: locals 0 byte(s), call args 0 slot(s), register spills 512 byte(s)
 move $r0 $$reta               ; [fn init: reg_pressure_12]: save return address
@@ -464,5 +464,5 @@ move $$retv $r0               ; [fn end: reg_pressure_12] set return value
 cfsi i512                     ; [fn end: reg_pressure_12] free: locals 0 byte(s), call args 0 slot(s), register spills 512 byte(s)
 lw   $r0 $$locbase i0         ; [spill/refill]: refill from spill
 move $$reta $r0               ; [fn end: reg_pressure_12] restore return address
-poph i530432                  ; [fn end: reg_pressure_12]: restore used high registers 40..64
+poph i265216                  ; [fn end: reg_pressure_12]: restore used high registers 40..64
 jal  $zero $$reta i0          ; [fn end: reg_pressure_12] return from call

@@ -46,6 +46,11 @@ pub(crate) struct AbstractProgram {
     non_entries: Vec<AbstractInstructionSet>,
     reg_seqr: RegisterSequencer,
     experimental: ExperimentalFeatures,
+    /// Whether the program uses a trivially-addressable configurable, and therefore
+    /// needs the configurable-section register (`$cs`) to be initialized in the
+    /// prologue. When this is `false` the two `$cs` initialization instructions are
+    /// omitted, shrinking the prelude by 8 bytes (see `prelude_size_in_bytes`).
+    needs_configurable_register: bool,
 }
 
 impl AbstractProgram {
@@ -59,6 +64,7 @@ impl AbstractProgram {
         non_entries: Vec<AbstractInstructionSet>,
         reg_seqr: RegisterSequencer,
         experimental: ExperimentalFeatures,
+        needs_configurable_register: bool,
     ) -> Self {
         AbstractProgram {
             kind,
@@ -69,6 +75,7 @@ impl AbstractProgram {
             non_entries,
             reg_seqr,
             experimental,
+            needs_configurable_register,
         }
     }
 
@@ -183,7 +190,9 @@ impl AbstractProgram {
     ///     -    CONFIGURABLES_OFFSET (32-64)
     ///     4    LW $ds $scratch 1
     ///     -    ADD $ds $ds $scratch
-    ///     5    .program_start:
+    ///     5    LW $cs $scratch 2          (only if `needs_configurable_register`)
+    ///     -    ADD $cs $cs $scratch        (only if `needs_configurable_register`)
+    ///     6    .program_start:
     fn build_prologue(&mut self) -> AllocatedAbstractInstructionSet {
         const _: () = assert!(
             crate::PRELUDE_CONFIGURABLES_OFFSET_IN_BYTES == 16,
@@ -194,69 +203,100 @@ impl AbstractProgram {
             "Inconsistency in the assumption of prelude organisation"
         );
         const _: () = assert!(
-            crate::PRELUDE_SIZE_IN_BYTES == 32,
+            crate::PRELUDE_SIZE_IN_BYTES_WITHOUT_CONFIGURABLES == 32,
+            "Inconsistency in the assumption of prelude organisation"
+        );
+        const _: () = assert!(
+            crate::PRELUDE_CONFIGURABLE_REGISTER_INIT_SIZE_IN_BYTES == 8,
             "Inconsistency in the assumption of prelude organisation"
         );
         let label = self.reg_seqr.get_label();
+        let mut ops = vec![
+            AllocatedAbstractOp {
+                opcode: Either::Left(AllocatedInstruction::MOVE(
+                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                    AllocatedRegister::Constant(ConstantRegister::ProgramCounter),
+                )),
+                comment: String::new(),
+                owning_span: None,
+            },
+            // word 1.5
+            AllocatedAbstractOp {
+                opcode: Either::Right(ControlFlowOp::Jump {
+                    to: label,
+                    type_: JumpType::Unconditional,
+                }),
+                comment: String::new(),
+                owning_span: None,
+            },
+            // word 2 -- full word u64 placeholder
+            AllocatedAbstractOp {
+                opcode: Either::Right(ControlFlowOp::DataSectionOffsetPlaceholder),
+                comment: "data section offset".into(),
+                owning_span: None,
+            },
+            // word 3 -- full word u64 placeholder
+            AllocatedAbstractOp {
+                opcode: Either::Right(ControlFlowOp::ConfigurablesOffsetPlaceholder),
+                comment: "configurables offset".into(),
+                owning_span: None,
+            },
+            AllocatedAbstractOp {
+                opcode: Either::Right(ControlFlowOp::Label(label)),
+                comment: "end of configurables offset".into(),
+                owning_span: None,
+            },
+            // word 4 -- load the data offset into $ds
+            AllocatedAbstractOp {
+                opcode: Either::Left(AllocatedInstruction::LW(
+                    AllocatedRegister::Constant(ConstantRegister::DataSectionStart),
+                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                    VirtualImmediate12::new(1),
+                )),
+                comment: "".into(),
+                owning_span: None,
+            },
+            // word 4.5 -- add $ds $ds $is
+            AllocatedAbstractOp {
+                opcode: Either::Left(AllocatedInstruction::ADD(
+                    AllocatedRegister::Constant(ConstantRegister::DataSectionStart),
+                    AllocatedRegister::Constant(ConstantRegister::DataSectionStart),
+                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                )),
+                comment: "".into(),
+                owning_span: None,
+            },
+        ];
+
+        // words 5 / 5.5 -- initialize the configurable-section register `$cs`.
+        // Emitted only when the program actually uses a trivially-addressable
+        // configurable; otherwise the prelude is 8 bytes smaller.
+        if self.needs_configurable_register {
+            // word 5 -- load the configurables offset into $cs
+            ops.push(AllocatedAbstractOp {
+                opcode: Either::Left(AllocatedInstruction::LW(
+                    AllocatedRegister::Constant(ConstantRegister::ConfigurableSectionStart),
+                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                    VirtualImmediate12::new(2),
+                )),
+                comment: "".into(),
+                owning_span: None,
+            });
+            // word 5.5 -- add $is to make it absolute
+            ops.push(AllocatedAbstractOp {
+                opcode: Either::Left(AllocatedInstruction::ADD(
+                    AllocatedRegister::Constant(ConstantRegister::ConfigurableSectionStart),
+                    AllocatedRegister::Constant(ConstantRegister::ConfigurableSectionStart),
+                    AllocatedRegister::Constant(ConstantRegister::Scratch),
+                )),
+                comment: "".into(),
+                owning_span: None,
+            });
+        }
+
         AllocatedAbstractInstructionSet {
             function: None,
-            ops: [
-                AllocatedAbstractOp {
-                    opcode: Either::Left(AllocatedInstruction::MOVE(
-                        AllocatedRegister::Constant(ConstantRegister::Scratch),
-                        AllocatedRegister::Constant(ConstantRegister::ProgramCounter),
-                    )),
-                    comment: String::new(),
-                    owning_span: None,
-                },
-                // word 1.5
-                AllocatedAbstractOp {
-                    opcode: Either::Right(ControlFlowOp::Jump {
-                        to: label,
-                        type_: JumpType::Unconditional,
-                    }),
-                    comment: String::new(),
-                    owning_span: None,
-                },
-                // word 2 -- full word u64 placeholder
-                AllocatedAbstractOp {
-                    opcode: Either::Right(ControlFlowOp::DataSectionOffsetPlaceholder),
-                    comment: "data section offset".into(),
-                    owning_span: None,
-                },
-                // word 3 -- full word u64 placeholder
-                AllocatedAbstractOp {
-                    opcode: Either::Right(ControlFlowOp::ConfigurablesOffsetPlaceholder),
-                    comment: "configurables offset".into(),
-                    owning_span: None,
-                },
-                AllocatedAbstractOp {
-                    opcode: Either::Right(ControlFlowOp::Label(label)),
-                    comment: "end of configurables offset".into(),
-                    owning_span: None,
-                },
-                // word 4 -- load the data offset into $ds
-                AllocatedAbstractOp {
-                    opcode: Either::Left(AllocatedInstruction::LW(
-                        AllocatedRegister::Constant(ConstantRegister::DataSectionStart),
-                        AllocatedRegister::Constant(ConstantRegister::Scratch),
-                        VirtualImmediate12::new(1),
-                    )),
-                    comment: "".into(),
-                    owning_span: None,
-                },
-                // word 4.5 -- add $ds $ds $is
-                AllocatedAbstractOp {
-                    opcode: Either::Left(AllocatedInstruction::ADD(
-                        AllocatedRegister::Constant(ConstantRegister::DataSectionStart),
-                        AllocatedRegister::Constant(ConstantRegister::DataSectionStart),
-                        AllocatedRegister::Constant(ConstantRegister::Scratch),
-                    )),
-                    comment: "".into(),
-                    owning_span: None,
-                },
-            ]
-            .to_vec(),
+            ops,
         }
     }
 

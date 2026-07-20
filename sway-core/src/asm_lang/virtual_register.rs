@@ -72,6 +72,7 @@ pub enum ConstantRegister {
 
     // Below are compiler-reserved registers
     DataSectionStart,
+    ConfigurableSectionStart,
     CallReturnAddress,
     CallReturnValue,
     Scratch,
@@ -107,6 +108,7 @@ impl ConstantRegister {
             "retl" => ReturnLength,
             "ret" => ReturnValue,
             "ds" => DataSectionStart,
+            "cs" => ConfigurableSectionStart,
             _ => return None,
         })
     }
@@ -136,6 +138,9 @@ impl ConstantRegister {
             Flags => fuel_asm::RegId::FLAG,
 
             DataSectionStart => fuel_asm::RegId::new(compiler_constants::DATA_SECTION_REGISTER),
+            ConfigurableSectionStart => {
+                fuel_asm::RegId::new(compiler_constants::CONFIGURABLE_SECTION_REGISTER)
+            }
             CallReturnAddress => fuel_asm::RegId::new(compiler_constants::RETURN_ADDRESS_REGISTER),
             CallReturnValue => fuel_asm::RegId::new(compiler_constants::RETURN_VALUE_REGISTER),
             Scratch => fuel_asm::RegId::new(compiler_constants::SCRATCH_REGISTER),
@@ -183,6 +188,7 @@ impl fmt::Display for ConstantRegister {
             // two `$` signs denotes this is a compiler-reserved register and not a
             // VM-reserved register
             DataSectionStart => "$$ds",
+            ConfigurableSectionStart => "$$cs",
             CallReturnAddress => "$$reta",
             CallReturnValue => "$$retv",
             Scratch => "$$tmp",

@@ -12,12 +12,12 @@ library {
 
 ;; --- START OF TARGET BYTECODE ---
 
-0x00000000 MOVE R60 $pc                                    ;; [26, 240, 48, 0]
+0x00000000 MOVE R59 $pc                                    ;; [26, 236, 48, 0]
 0x00000004 JMPF $zero 0x4                                  ;; [116, 0, 0, 4]
 0x00000008                                                 ;; [0, 0, 0, 0, 0, 0, 0, 32]
 0x00000010                                                 ;; [0, 0, 0, 0, 0, 0, 0, 0]
-0x00000018 LW R63 R60 0x1                                  ;; [93, 255, 192, 1]
-0x0000001c ADD R63 R63 R60                                 ;; [16, 255, 255, 0]
+0x00000018 LW R63 R59 0x1                                  ;; [93, 255, 176, 1]
+0x0000001c ADD R63 R63 R59                                 ;; [16, 255, 254, 192]
 .data_section:
 ;; --- END OF TARGET BYTECODE ---
 
@@ -1233,12 +1233,12 @@ mcpi $r0 $r9 i24              ; copy memory
 mcpi $r8 $r0 i24              ; copy memory
 addi $r7 $r7 i1
 jmpb $zero i81
-pshl i8388608                 ; [fn init: main_32]: push used low registers 16..40
-pshh i532479                  ; [fn init: main_32]: push used high registers 40..64
+pshl i12582912                ; [fn init: main_32]: push used low registers 16..40
+pshh i266239                  ; [fn init: main_32]: push used high registers 40..64
 move $$locbase $sp            ; [fn init: main_32]: set locals base register
 cfei i1312                    ; [fn init: main_32]: allocate: locals 1312 byte(s), call args 0 slot(s)
-move $r5 $$arg1               ; [fn init: main_32]: copy argument 1 (__ret_value)
-move $r4 $$reta               ; [fn init: main_32]: save return address
+move $r4 $$arg1               ; [fn init: main_32]: copy argument 1 (__ret_value)
+move $r3 $$reta               ; [fn init: main_32]: save return address
 addi $r6 $$locbase i1136      ; get offset to local __ptr [{ { string<3> }, { u64, ( u64 | u64 ) } }; 2]
 mcpi $r6 $$arg0 i48           ; copy memory
 addi $r0 $$locbase i496       ; get offset to local __ptr { { ptr, u64, u64 } }
@@ -1270,21 +1270,21 @@ mcpi $r0 $r1 i24              ; copy memory
 addi $r1 $$locbase i176       ; get offset to local __ptr { ptr, u64, u64 }
 mcpi $r1 $r0 i24              ; copy memory
 addi $r2 $r1 i16              ; get offset to aggregate element
-addi $r3 $$locbase i256       ; get offset to local __ptr { ptr, u64 }
-mcpi $r3 $r1 i8               ; copy memory
-addi $r0 $r3 i8               ; get offset to aggregate element
+addi $r5 $$locbase i256       ; get offset to local __ptr { ptr, u64 }
+mcpi $r5 $r1 i8               ; copy memory
+addi $r0 $r5 i8               ; get offset to aggregate element
 mcpi $r0 $r2 i8               ; copy memory
 addi $r0 $$locbase i96        ; get offset to local __ptr slice
-mcpi $r0 $r3 i16              ; copy memory
+mcpi $r0 $r5 i16              ; copy memory
 addi $r1 $$locbase i712       ; get offset to local __ptr slice
 mcpi $r1 $r0 i16              ; copy memory
 addi $r0 $$locbase i328       ; get offset to local __ptr slice
 mcpi $r0 $r1 i16              ; copy memory
-load $r0 data_NonConfigurable_0; load constant from data section
+load $r0 data_non_configurable_0; load constant from data section
 lw   $r1 $$locbase i41        ; load slice pointer for logging data
 lw   $r2 $$locbase i42        ; load slice size for logging data
 logd $zero $r0 $r1 $r2        ; log slice
-addr $r0 data_NonConfigurable_1; get __const_global's address in data section
+addr $r0 data_non_configurable_1; get __const_global's address in data section
 addi $r1 $$locbase i112       ; get offset to local __ptr { ptr, u64 }
 sw   $$locbase $r0 i14        ; store word
 movi $r0 i3                   ; initialize constant into register
@@ -1319,7 +1319,7 @@ eq   $r0 $r0 $r1
 eq   $r0 $r0 $zero
 jnzf $r0 $zero i43
 addi $r0 $r6 i24              ; add array element offset to array base
-addr $r1 data_NonConfigurable_2; get __const_global0's address in data section
+addr $r1 data_non_configurable_2; get __const_global0's address in data section
 addi $r2 $$locbase i272       ; get offset to local __ptr { ptr, u64 }
 sw   $$locbase $r1 i34        ; store word
 movi $r1 i3                   ; initialize constant into register
@@ -1328,17 +1328,17 @@ addi $r1 $$locbase i312       ; get offset to local __ptr slice
 mcpi $r1 $r2 i16              ; copy memory
 addi $r2 $$locbase i664       ; get offset to local __ptr string<3>
 mcpi $r2 $r0 i8               ; copy memory
-addi $r3 $$locbase i672       ; get offset to local __ptr slice
-mcpi $r3 $r1 i16              ; copy memory
+addi $r5 $$locbase i672       ; get offset to local __ptr slice
+mcpi $r5 $r1 i16              ; copy memory
 addi $r1 $$locbase i768       ; get offset to local __ptr string<3>
 mcpi $r1 $r2 i8               ; copy memory
 addi $r2 $$locbase i216       ; get offset to local __ptr slice
-mcpi $r2 $r3 i16              ; copy memory
-addi $r3 $$locbase i744       ; get offset to local __ptr { ptr, u64 }
-mcpi $r3 $r2 i16              ; copy memory
+mcpi $r2 $r5 i16              ; copy memory
+addi $r5 $$locbase i744       ; get offset to local __ptr { ptr, u64 }
+mcpi $r5 $r2 i16              ; copy memory
 lw   $r2 $$locbase i93        ; load word
-movi $r3 i3                   ; initialize constant into register
-meq  $r1 $r1 $r2 $r3          ; meq r a b len
+movi $r5 i3                   ; initialize constant into register
+meq  $r1 $r1 $r2 $r5          ; meq r a b len
 eq   $r1 $r1 $zero
 jnzf $r1 $zero i18
 addi $r0 $r0 i8               ; get offset to aggregate element
@@ -1355,15 +1355,15 @@ eq   $r0 $r0 $zero
 jnzf $r0 $zero i4
 addi $r0 $$locbase i488       ; get offset to local __ptr { u64 }
 sw   $$locbase $one i61       ; store word
-mcpi $r5 $r0 i8               ; copy memory
+mcpi $r4 $r0 i8               ; copy memory
 jmpf $zero i119
-load $r0 data_NonConfigurable_3; load constant from data section
+load $r0 data_non_configurable_3; load constant from data section
 rvrt $r0
-load $r0 data_NonConfigurable_3; load constant from data section
+load $r0 data_non_configurable_3; load constant from data section
 rvrt $r0
-load $r0 data_NonConfigurable_3; load constant from data section
+load $r0 data_non_configurable_3; load constant from data section
 rvrt $r0
-load $r0 data_NonConfigurable_3; load constant from data section
+load $r0 data_non_configurable_3; load constant from data section
 rvrt $r0
 muli $r0 $r11 i24             ; get offset to array element
 add  $r0 $r13 $r0             ; add array element offset to array base
@@ -1373,13 +1373,13 @@ addi $r0 $$locbase i824       ; get offset to local __ptr { { ptr, u64, u64 } }
 mcpi $r0 $r12 i24             ; copy memory
 addi $r2 $$locbase i1184      ; get offset to local __ptr { string<3> }
 mcpi $r2 $r1 i8               ; copy memory
-addi $r3 $$locbase i848       ; get offset to local __ptr { { ptr, u64, u64 } }
-mcpi $r3 $r0 i24              ; copy memory
+addi $r5 $$locbase i848       ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r5 $r0 i24              ; copy memory
 addi $r0 $$locbase i1192      ; get offset to local __ptr string<3>
 mcpi $r0 $r2 i8               ; copy memory
 addi $r2 $$locbase i872       ; get offset to local __ptr { { ptr, u64, u64 } }
-mcpi $r2 $r3 i24              ; copy memory
-addi $r3 $$locbase i520       ; get offset to local __ptr { { ptr, u64, u64 } }
+mcpi $r2 $r5 i24              ; copy memory
+addi $r5 $$locbase i520       ; get offset to local __ptr { { ptr, u64, u64 } }
 addi $r7 $$locbase i24        ; get offset to local __ptr { ptr, u64, u64 }
 mcpi $r7 $r2 i24              ; copy memory
 addi $r2 $$locbase i152       ; get offset to local __ptr { ptr, u64, u64 }
@@ -1406,9 +1406,9 @@ sw   $$locbase $r10 i37       ; store word
 sw   $$locbase $r8 i38        ; store word
 addi $r2 $$locbase i48        ; get offset to local __ptr { ptr, u64, u64 }
 mcpi $r2 $r0 i24              ; copy memory
-mcpi $r3 $r2 i24              ; copy memory
+mcpi $r5 $r2 i24              ; copy memory
 addi $r0 $$locbase i968       ; get offset to local __ptr { { ptr, u64, u64 } }
-mcpi $r0 $r3 i24              ; copy memory
+mcpi $r0 $r5 i24              ; copy memory
 addi $r2 $$locbase i944       ; get offset to local __ptr { { ptr, u64, u64 } }
 mcpi $r2 $r0 i24              ; copy memory
 addi $r0 $r1 i8               ; get offset to aggregate element
@@ -1424,7 +1424,7 @@ jnzf $r1 $zero i27
 lw   $r1 $r2 i0               ; load word
 eq   $r1 $r1 $one
 jnzf $r1 $zero i2
-load $r0 data_NonConfigurable_4; load constant from data section
+load $r0 data_non_configurable_4; load constant from data section
 rvrt $r0
 lw   $r1 $r2 i1               ; load word
 addi $r2 $$locbase i592       ; get offset to local __ptr { { ptr, u64, u64 } }
@@ -1477,11 +1477,11 @@ mcpi $r12 $r1 i24             ; copy memory
 addi $r11 $r11 i1
 jmpb $zero i216
 cfsi i1312                    ; [fn end: main_32] free: locals 1312 byte(s), call args 0 slot(s)
-move $$reta $r4               ; [fn end: main_32] restore return address
-poph i532479                  ; [fn end: main_32]: restore used high registers 40..64
-popl i8388608                 ; [fn end: main_32]: restore used low registers 16..40
+move $$reta $r3               ; [fn end: main_32] restore return address
+poph i266239                  ; [fn end: main_32]: restore used high registers 40..64
+popl i12582912                ; [fn end: main_32]: restore used low registers 16..40
 jal  $zero $$reta i0          ; [fn end: main_32] return from call
-pshh i532352                  ; [fn init: abi_encode_51]: push used high registers 40..64
+pshh i266176                  ; [fn init: abi_encode_51]: push used high registers 40..64
 move $$locbase $sp            ; [fn init: abi_encode_51]: set locals base register
 cfei i144                     ; [fn init: abi_encode_51]: allocate: locals 144 byte(s), call args 0 slot(s)
 addi $r0 $$locbase i120       ; get offset to local __ptr { { ptr, u64, u64 } }
@@ -1513,7 +1513,7 @@ mcpi $r0 $r2 i24              ; copy memory
 mcpi $r1 $r0 i24              ; copy memory
 mcpi $$arg2 $r1 i24           ; copy memory
 cfsi i144                     ; [fn end: abi_encode_51] free: locals 144 byte(s), call args 0 slot(s)
-poph i532352                  ; [fn end: abi_encode_51]: restore used high registers 40..64
+poph i266176                  ; [fn end: abi_encode_51]: restore used high registers 40..64
 jal  $zero $$reta i0          ; [fn end: abi_encode_51] return from call
 .data:
 data_non_configurable_0 .word 3647243719605075626
@@ -1525,112 +1525,113 @@ data_non_configurable_4 .word 14757395258967588866
 
 ;; --- START OF TARGET BYTECODE ---
 
-0x00000000 MOVE R60 $pc                                    ;; [26, 240, 48, 0]
+0x00000000 MOVE R59 $pc                                    ;; [26, 236, 48, 0]
 0x00000004 JMPF $zero 0x4                                  ;; [116, 0, 0, 4]
 0x00000008                                                 ;; [0, 0, 0, 0, 0, 0, 6, 8]
 0x00000010                                                 ;; [0, 0, 0, 0, 0, 0, 0, 0]
-0x00000018 LW R63 R60 0x1                                  ;; [93, 255, 192, 1]
-0x0000001c ADD R63 R63 R60                                 ;; [16, 255, 255, 0]
-0x00000020 MOVE R59 $sp                                    ;; [26, 236, 80, 0]
+0x00000018 LW R63 R59 0x1                                  ;; [93, 255, 176, 1]
+0x0000001c ADD R63 R63 R59                                 ;; [16, 255, 254, 192]
+0x00000020 MOVE R58 $sp                                    ;; [26, 232, 80, 0]
 0x00000024 CFEI 0x200                                      ;; [145, 0, 2, 0]
-0x00000028 GTF R52 $zero 0xa                               ;; [97, 208, 0, 10]
-0x0000002c ADDI R51 R59 0xa8                               ;; [80, 207, 176, 168]
-0x00000030 SW R59 R52 0x15                                 ;; [95, 239, 64, 21]
-0x00000034 ADDI R47 R59 0x1b8                              ;; [80, 191, 177, 184]
-0x00000038 MCPI R47 R51 0x8                                ;; [96, 191, 48, 8]
-0x0000003c ADDI R46 R59 0xf8                               ;; [80, 187, 176, 248]
-0x00000040 ADDI R52 R59 0x70                               ;; [80, 211, 176, 112]
-0x00000044 MCLI R52 0x30                                   ;; [112, 208, 0, 48]
-0x00000048 ADDI R48 R59 0x188                              ;; [80, 195, 177, 136]
-0x0000004c MCPI R48 R52 0x30                               ;; [96, 195, 64, 48]
-0x00000050 MOVI R45 0x0                                    ;; [114, 180, 0, 0]
-0x00000054 MOVI R52 0x2                                    ;; [114, 208, 0, 2]
-0x00000058 LT R52 R45 R52                                  ;; [22, 210, 221, 0]
-0x0000005c JNZF R52 $zero 0xd                              ;; [118, 208, 0, 13]
-0x00000060 MCPI R46 R48 0x30                               ;; [96, 187, 0, 48]
-0x00000064 ADDI R52 R59 0x158                              ;; [80, 211, 177, 88]
-0x00000068 MCPI R52 R46 0x30                               ;; [96, 210, 224, 48]
-0x0000006c ADDI R51 R59 0xb8                               ;; [80, 207, 176, 184]
-0x00000070 MCPI R51 R52 0x30                               ;; [96, 207, 64, 48]
-0x00000074 ADDI R52 R59 0xa0                               ;; [80, 211, 176, 160]
-0x00000078 MOVE R58 R51                                    ;; [26, 235, 48, 0]
-0x0000007c MOVE R57 R52                                    ;; [26, 231, 64, 0]
-0x00000080 JAL R62 $pc 0x48                                ;; [153, 248, 48, 72]
-0x00000084 ADDI R51 R59 0x150                              ;; [80, 207, 177, 80]
-0x00000088 MCPI R51 R52 0x8                                ;; [96, 207, 64, 8]
-0x0000008c MOVI R52 0x8                                    ;; [114, 208, 0, 8]
-0x00000090 RETD R51 R52                                    ;; [37, 207, 64, 0]
-0x00000094 MULI R52 R45 0x18                               ;; [85, 210, 208, 24]
-0x00000098 ADD R44 R48 R52                                 ;; [16, 179, 13, 0]
-0x0000009c ADDI R43 R59 0x128                              ;; [80, 175, 177, 40]
-0x000000a0 ADDI R52 R59 0xb0                               ;; [80, 211, 176, 176]
-0x000000a4 ADDI R51 R59 0x140                              ;; [80, 207, 177, 64]
-0x000000a8 MCPI R51 R47 0x8                                ;; [96, 206, 240, 8]
-0x000000ac MOVI R50 0x3                                    ;; [114, 200, 0, 3]
-0x000000b0 SW R59 R50 0x29                                 ;; [95, 239, 32, 41]
-0x000000b4 ADDI R50 R59 0x20                               ;; [80, 203, 176, 32]
-0x000000b8 MCPI R50 R51 0x10                               ;; [96, 203, 48, 16]
-0x000000bc ADDI R51 R59 0x1e0                              ;; [80, 207, 177, 224]
-0x000000c0 MCPI R51 R50 0x10                               ;; [96, 207, 32, 16]
-0x000000c4 LW R50 R47 0x0                                  ;; [93, 202, 240, 0]
-0x000000c8 ADDI R50 R50 0x3                                ;; [80, 203, 32, 3]
-0x000000cc SW R47 R50 0x0                                  ;; [95, 191, 32, 0]
-0x000000d0 ADDI R50 R59 0x1c0                              ;; [80, 203, 177, 192]
-0x000000d4 MCPI R50 R51 0x10                               ;; [96, 203, 48, 16]
-0x000000d8 ADDI R51 R59 0x1d0                              ;; [80, 207, 177, 208]
-0x000000dc MCPI R51 R50 0x10                               ;; [96, 207, 32, 16]
-0x000000e0 ADDI R50 R59 0x1f0                              ;; [80, 203, 177, 240]
-0x000000e4 MCPI R50 R51 0x10                               ;; [96, 203, 48, 16]
-0x000000e8 ADDI R51 R59 0x40                               ;; [80, 207, 176, 64]
-0x000000ec MCPI R51 R50 0x10                               ;; [96, 207, 32, 16]
-0x000000f0 ADDI R50 R59 0x30                               ;; [80, 203, 176, 48]
-0x000000f4 MCPI R50 R51 0x10                               ;; [96, 203, 48, 16]
-0x000000f8 LW R51 R59 0x6                                  ;; [93, 207, 176, 6]
-0x000000fc MCPI R59 R51 0x8                                ;; [96, 239, 48, 8]
-0x00000100 MCPI R52 R59 0x8                                ;; [96, 211, 176, 8]
-0x00000104 LW R51 R47 0x0                                  ;; [93, 206, 240, 0]
-0x00000108 LW R51 R51 0x0                                  ;; [93, 207, 48, 0]
-0x0000010c LW R50 R47 0x0                                  ;; [93, 202, 240, 0]
-0x00000110 ADDI R50 R50 0x8                                ;; [80, 203, 32, 8]
-0x00000114 SW R47 R50 0x0                                  ;; [95, 191, 32, 0]
-0x00000118 EQ R50 R51 $zero                                ;; [19, 203, 48, 0]
-0x0000011c JNZF R50 $zero 0xe                              ;; [118, 200, 0, 14]
-0x00000120 EQ R51 R51 $one                                 ;; [19, 207, 48, 64]
-0x00000124 JNZF R51 $zero 0x1                              ;; [118, 204, 0, 1]
+0x00000028 GTF R51 $zero 0xa                               ;; [97, 204, 0, 10]
+0x0000002c ADDI R50 R58 0xa8                               ;; [80, 203, 160, 168]
+0x00000030 SW R58 R51 0x15                                 ;; [95, 235, 48, 21]
+0x00000034 ADDI R46 R58 0x1b8                              ;; [80, 187, 161, 184]
+0x00000038 MCPI R46 R50 0x8                                ;; [96, 187, 32, 8]
+0x0000003c ADDI R45 R58 0xf8                               ;; [80, 183, 160, 248]
+0x00000040 ADDI R51 R58 0x70                               ;; [80, 207, 160, 112]
+0x00000044 MCLI R51 0x30                                   ;; [112, 204, 0, 48]
+0x00000048 ADDI R47 R58 0x188                              ;; [80, 191, 161, 136]
+0x0000004c MCPI R47 R51 0x30                               ;; [96, 191, 48, 48]
+0x00000050 MOVI R44 0x0                                    ;; [114, 176, 0, 0]
+0x00000054 MOVI R51 0x2                                    ;; [114, 204, 0, 2]
+0x00000058 LT R51 R44 R51                                  ;; [22, 206, 204, 192]
+0x0000005c JNZF R51 $zero 0xd                              ;; [118, 204, 0, 13]
+0x00000060 MCPI R45 R47 0x30                               ;; [96, 182, 240, 48]
+0x00000064 ADDI R51 R58 0x158                              ;; [80, 207, 161, 88]
+0x00000068 MCPI R51 R45 0x30                               ;; [96, 206, 208, 48]
+0x0000006c ADDI R50 R58 0xb8                               ;; [80, 203, 160, 184]
+0x00000070 MCPI R50 R51 0x30                               ;; [96, 203, 48, 48]
+0x00000074 ADDI R51 R58 0xa0                               ;; [80, 207, 160, 160]
+0x00000078 MOVE R57 R50                                    ;; [26, 231, 32, 0]
+0x0000007c MOVE R56 R51                                    ;; [26, 227, 48, 0]
+0x00000080 JAL R61 $pc 0x48                                ;; [153, 244, 48, 72]
+0x00000084 ADDI R50 R58 0x150                              ;; [80, 203, 161, 80]
+0x00000088 MCPI R50 R51 0x8                                ;; [96, 203, 48, 8]
+0x0000008c MOVI R51 0x8                                    ;; [114, 204, 0, 8]
+0x00000090 RETD R50 R51                                    ;; [37, 203, 48, 0]
+0x00000094 MULI R51 R44 0x18                               ;; [85, 206, 192, 24]
+0x00000098 ADD R43 R47 R51                                 ;; [16, 174, 252, 192]
+0x0000009c ADDI R42 R58 0x128                              ;; [80, 171, 161, 40]
+0x000000a0 ADDI R51 R58 0xb0                               ;; [80, 207, 160, 176]
+0x000000a4 ADDI R50 R58 0x140                              ;; [80, 203, 161, 64]
+0x000000a8 MCPI R50 R46 0x8                                ;; [96, 202, 224, 8]
+0x000000ac MOVI R49 0x3                                    ;; [114, 196, 0, 3]
+0x000000b0 SW R58 R49 0x29                                 ;; [95, 235, 16, 41]
+0x000000b4 ADDI R49 R58 0x20                               ;; [80, 199, 160, 32]
+0x000000b8 MCPI R49 R50 0x10                               ;; [96, 199, 32, 16]
+0x000000bc ADDI R50 R58 0x1e0                              ;; [80, 203, 161, 224]
+0x000000c0 MCPI R50 R49 0x10                               ;; [96, 203, 16, 16]
+0x000000c4 LW R49 R46 0x0                                  ;; [93, 198, 224, 0]
+0x000000c8 ADDI R49 R49 0x3                                ;; [80, 199, 16, 3]
+0x000000cc SW R46 R49 0x0                                  ;; [95, 187, 16, 0]
+0x000000d0 ADDI R49 R58 0x1c0                              ;; [80, 199, 161, 192]
+0x000000d4 MCPI R49 R50 0x10                               ;; [96, 199, 32, 16]
+0x000000d8 ADDI R50 R58 0x1d0                              ;; [80, 203, 161, 208]
+0x000000dc MCPI R50 R49 0x10                               ;; [96, 203, 16, 16]
+0x000000e0 ADDI R49 R58 0x1f0                              ;; [80, 199, 161, 240]
+0x000000e4 MCPI R49 R50 0x10                               ;; [96, 199, 32, 16]
+0x000000e8 ADDI R50 R58 0x40                               ;; [80, 203, 160, 64]
+0x000000ec MCPI R50 R49 0x10                               ;; [96, 203, 16, 16]
+0x000000f0 ADDI R49 R58 0x30                               ;; [80, 199, 160, 48]
+0x000000f4 MCPI R49 R50 0x10                               ;; [96, 199, 32, 16]
+0x000000f8 LW R50 R58 0x6                                  ;; [93, 203, 160, 6]
+0x000000fc MCPI R58 R50 0x8                                ;; [96, 235, 32, 8]
+0x00000100 MCPI R51 R58 0x8                                ;; [96, 207, 160, 8]
+0x00000104 LW R50 R46 0x0                                  ;; [93, 202, 224, 0]
+0x00000108 LW R50 R50 0x0                                  ;; [93, 203, 32, 0]
+0x0000010c LW R49 R46 0x0                                  ;; [93, 198, 224, 0]
+0x00000110 ADDI R49 R49 0x8                                ;; [80, 199, 16, 8]
+0x00000114 SW R46 R49 0x0                                  ;; [95, 187, 16, 0]
+0x00000118 EQ R49 R50 $zero                                ;; [19, 199, 32, 0]
+0x0000011c JNZF R49 $zero 0xe                              ;; [118, 196, 0, 14]
+0x00000120 EQ R50 R50 $one                                 ;; [19, 203, 32, 64]
+0x00000124 JNZF R50 $zero 0x1                              ;; [118, 200, 0, 1]
 0x00000128 RVRT $zero                                      ;; [54, 0, 0, 0]
-0x0000012c ADDI R51 R59 0x60                               ;; [80, 207, 176, 96]
-0x00000130 SW R59 $one 0xc                                 ;; [95, 236, 16, 12]
-0x00000134 LW R50 R47 0x0                                  ;; [93, 202, 240, 0]
-0x00000138 LW R50 R50 0x0                                  ;; [93, 203, 32, 0]
-0x0000013c LW R49 R47 0x0                                  ;; [93, 198, 240, 0]
-0x00000140 ADDI R49 R49 0x8                                ;; [80, 199, 16, 8]
-0x00000144 SW R47 R49 0x0                                  ;; [95, 191, 16, 0]
-0x00000148 SW R59 R50 0xd                                  ;; [95, 239, 32, 13]
-0x0000014c ADDI R50 R59 0xe8                               ;; [80, 203, 176, 232]
-0x00000150 MCPI R50 R51 0x10                               ;; [96, 203, 48, 16]
+0x0000012c ADDI R50 R58 0x60                               ;; [80, 203, 160, 96]
+0x00000130 SW R58 $one 0xc                                 ;; [95, 232, 16, 12]
+0x00000134 LW R49 R46 0x0                                  ;; [93, 198, 224, 0]
+0x00000138 LW R49 R49 0x0                                  ;; [93, 199, 16, 0]
+0x0000013c LW R48 R46 0x0                                  ;; [93, 194, 224, 0]
+0x00000140 ADDI R48 R48 0x8                                ;; [80, 195, 0, 8]
+0x00000144 SW R46 R48 0x0                                  ;; [95, 187, 0, 0]
+0x00000148 SW R58 R49 0xd                                  ;; [95, 235, 16, 13]
+0x0000014c ADDI R49 R58 0xe8                               ;; [80, 199, 160, 232]
+0x00000150 MCPI R49 R50 0x10                               ;; [96, 199, 32, 16]
 0x00000154 JMPF $zero 0xa                                  ;; [116, 0, 0, 10]
-0x00000158 ADDI R51 R59 0x50                               ;; [80, 207, 176, 80]
-0x0000015c SW R59 $zero 0xa                                ;; [95, 236, 0, 10]
-0x00000160 LW R50 R47 0x0                                  ;; [93, 202, 240, 0]
-0x00000164 LW R50 R50 0x0                                  ;; [93, 203, 32, 0]
-0x00000168 LW R49 R47 0x0                                  ;; [93, 198, 240, 0]
-0x0000016c ADDI R49 R49 0x8                                ;; [80, 199, 16, 8]
-0x00000170 SW R47 R49 0x0                                  ;; [95, 191, 16, 0]
-0x00000174 SW R59 R50 0xb                                  ;; [95, 239, 32, 11]
-0x00000178 ADDI R50 R59 0xe8                               ;; [80, 203, 176, 232]
-0x0000017c MCPI R50 R51 0x10                               ;; [96, 203, 48, 16]
-0x00000180 MCPI R43 R52 0x8                                ;; [96, 175, 64, 8]
-0x00000184 ADDI R52 R43 0x8                                ;; [80, 210, 176, 8]
-0x00000188 MCPI R52 R50 0x10                               ;; [96, 211, 32, 16]
-0x0000018c ADDI R52 R59 0x8                                ;; [80, 211, 176, 8]
-0x00000190 MCPI R52 R43 0x18                               ;; [96, 210, 176, 24]
-0x00000194 MCPI R44 R52 0x18                               ;; [96, 179, 64, 24]
-0x00000198 ADDI R45 R45 0x1                                ;; [80, 182, 208, 1]
+0x00000158 ADDI R50 R58 0x50                               ;; [80, 203, 160, 80]
+0x0000015c SW R58 $zero 0xa                                ;; [95, 232, 0, 10]
+0x00000160 LW R49 R46 0x0                                  ;; [93, 198, 224, 0]
+0x00000164 LW R49 R49 0x0                                  ;; [93, 199, 16, 0]
+0x00000168 LW R48 R46 0x0                                  ;; [93, 194, 224, 0]
+0x0000016c ADDI R48 R48 0x8                                ;; [80, 195, 0, 8]
+0x00000170 SW R46 R48 0x0                                  ;; [95, 187, 0, 0]
+0x00000174 SW R58 R49 0xb                                  ;; [95, 235, 16, 11]
+0x00000178 ADDI R49 R58 0xe8                               ;; [80, 199, 160, 232]
+0x0000017c MCPI R49 R50 0x10                               ;; [96, 199, 32, 16]
+0x00000180 MCPI R42 R51 0x8                                ;; [96, 171, 48, 8]
+0x00000184 ADDI R51 R42 0x8                                ;; [80, 206, 160, 8]
+0x00000188 MCPI R51 R49 0x10                               ;; [96, 207, 16, 16]
+0x0000018c ADDI R51 R58 0x8                                ;; [80, 207, 160, 8]
+0x00000190 MCPI R51 R42 0x18                               ;; [96, 206, 160, 24]
+0x00000194 MCPI R43 R51 0x18                               ;; [96, 175, 48, 24]
+0x00000198 ADDI R44 R44 0x1                                ;; [80, 178, 192, 1]
 0x0000019c JMPB $zero 0x51                                 ;; [117, 0, 0, 81]
-0x000001a0 PSHL 0x800000                                   ;; [149, 128, 0, 0]
-0x000001a4 PSHH 0x81fff                                    ;; [150, 8, 31, 255]
-0x000001a8 MOVE R59 $sp                                    ;; [26, 236, 80, 0]
+0x000001a0 PSHL 0xc00000                                   ;; [149, 192, 0, 0]
+0x000001a4 PSHH 0x40fff                                    ;; [150, 4, 15, 255]
+0x000001a8 MOVE R58 $sp                                    ;; [26, 232, 80, 0]
 0x000001ac CFEI 0x520                                      ;; [145, 0, 5, 32]
+<<<<<<< HEAD
 0x000001b0 MOVE R47 R57                                    ;; [26, 191, 144, 0]
 0x000001b4 MOVE R48 R62                                    ;; [26, 195, 224, 0]
 0x000001b8 ADDI R46 R59 0x470                              ;; [80, 187, 180, 112]
@@ -1909,6 +1910,288 @@ data_non_configurable_4 .word 14757395258967588866
 0x000005fc CFSI 0x90                                       ;; [146, 0, 0, 144]
 0x00000600 POPH 0x81f80                                    ;; [152, 8, 31, 128]
 0x00000604 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+=======
+0x000001b0 MOVE R47 R56                                    ;; [26, 191, 128, 0]
+0x000001b4 MOVE R48 R61                                    ;; [26, 195, 208, 0]
+0x000001b8 ADDI R45 R58 0x470                              ;; [80, 183, 164, 112]
+0x000001bc MCPI R45 R57 0x30                               ;; [96, 183, 144, 48]
+0x000001c0 ADDI R51 R58 0x1f0                              ;; [80, 207, 161, 240]
+0x000001c4 MOVI R50 0x400                                  ;; [114, 200, 4, 0]
+0x000001c8 ALOC R50                                        ;; [38, 200, 0, 0]
+0x000001cc ADDI R50 R58 0x80                               ;; [80, 203, 160, 128]
+0x000001d0 SW R58 $hp 0x10                                 ;; [95, 232, 112, 16]
+0x000001d4 MOVI R49 0x400                                  ;; [114, 196, 4, 0]
+0x000001d8 SW R58 R49 0x11                                 ;; [95, 235, 16, 17]
+0x000001dc SW R58 $zero 0x12                               ;; [95, 232, 0, 18]
+0x000001e0 MCPI R58 R50 0x18                               ;; [96, 235, 32, 24]
+0x000001e4 MCPI R51 R58 0x18                               ;; [96, 207, 160, 24]
+0x000001e8 ADDI R38 R58 0x4d8                              ;; [80, 155, 164, 216]
+0x000001ec MCPI R38 R45 0x30                               ;; [96, 154, 208, 48]
+0x000001f0 ADDI R50 R58 0x320                              ;; [80, 203, 163, 32]
+0x000001f4 MCPI R50 R51 0x18                               ;; [96, 203, 48, 24]
+0x000001f8 ADDI R39 R58 0x398                              ;; [80, 159, 163, 152]
+0x000001fc MCPI R39 R50 0x18                               ;; [96, 159, 32, 24]
+0x00000200 MOVI R40 0x0                                    ;; [114, 160, 0, 0]
+0x00000204 MOVI R51 0x2                                    ;; [114, 204, 0, 2]
+0x00000208 LT R51 R40 R51                                  ;; [22, 206, 140, 192]
+0x0000020c JNZF R51 $zero 0x6a                             ;; [118, 204, 0, 106]
+0x00000210 ADDI R51 R58 0x308                              ;; [80, 207, 163, 8]
+0x00000214 MCPI R51 R39 0x18                               ;; [96, 206, 112, 24]
+0x00000218 ADDI R50 R58 0x508                              ;; [80, 203, 165, 8]
+0x0000021c MCPI R50 R51 0x18                               ;; [96, 203, 48, 24]
+0x00000220 ADDI R51 R58 0x48                               ;; [80, 207, 160, 72]
+0x00000224 MCPI R51 R50 0x18                               ;; [96, 207, 32, 24]
+0x00000228 ADDI R50 R58 0xb0                               ;; [80, 203, 160, 176]
+0x0000022c MCPI R50 R51 0x18                               ;; [96, 203, 48, 24]
+0x00000230 ADDI R49 R50 0x10                               ;; [80, 199, 32, 16]
+0x00000234 ADDI R46 R58 0x100                              ;; [80, 187, 161, 0]
+0x00000238 MCPI R46 R50 0x8                                ;; [96, 187, 32, 8]
+0x0000023c ADDI R51 R46 0x8                                ;; [80, 206, 224, 8]
+0x00000240 MCPI R51 R49 0x8                                ;; [96, 207, 16, 8]
+0x00000244 ADDI R51 R58 0x60                               ;; [80, 207, 160, 96]
+0x00000248 MCPI R51 R46 0x10                               ;; [96, 206, 224, 16]
+0x0000024c ADDI R50 R58 0x2c8                              ;; [80, 203, 162, 200]
+0x00000250 MCPI R50 R51 0x10                               ;; [96, 203, 48, 16]
+0x00000254 ADDI R51 R58 0x148                              ;; [80, 207, 161, 72]
+0x00000258 MCPI R51 R50 0x10                               ;; [96, 207, 32, 16]
+0x0000025c LW R51 R63 0x0                                  ;; [93, 207, 240, 0]
+0x00000260 LW R50 R58 0x29                                 ;; [93, 203, 160, 41]
+0x00000264 LW R49 R58 0x2a                                 ;; [93, 199, 160, 42]
+0x00000268 LOGD $zero R51 R50 R49                          ;; [52, 3, 60, 177]
+0x0000026c MOVI R51 0x8                                    ;; [114, 204, 0, 8]
+0x00000270 ADD R51 R51 R63                                 ;; [16, 207, 63, 192]
+0x00000274 ADDI R50 R58 0x70                               ;; [80, 203, 160, 112]
+0x00000278 SW R58 R51 0xe                                  ;; [95, 235, 48, 14]
+0x0000027c MOVI R51 0x3                                    ;; [114, 204, 0, 3]
+0x00000280 SW R58 R51 0xf                                  ;; [95, 235, 48, 15]
+0x00000284 ADDI R51 R58 0xe8                               ;; [80, 207, 160, 232]
+0x00000288 MCPI R51 R50 0x10                               ;; [96, 207, 32, 16]
+0x0000028c ADDI R50 R58 0x280                              ;; [80, 203, 162, 128]
+0x00000290 MCPI R50 R45 0x8                                ;; [96, 202, 208, 8]
+0x00000294 ADDI R49 R58 0x288                              ;; [80, 199, 162, 136]
+0x00000298 MCPI R49 R51 0x10                               ;; [96, 199, 48, 16]
+0x0000029c ADDI R51 R58 0x2f8                              ;; [80, 207, 162, 248]
+0x000002a0 MCPI R51 R50 0x8                                ;; [96, 207, 32, 8]
+0x000002a4 ADDI R50 R58 0xc8                               ;; [80, 203, 160, 200]
+0x000002a8 MCPI R50 R49 0x10                               ;; [96, 203, 16, 16]
+0x000002ac ADDI R49 R58 0x2d8                              ;; [80, 199, 162, 216]
+0x000002b0 MCPI R49 R50 0x10                               ;; [96, 199, 32, 16]
+0x000002b4 LW R50 R58 0x5b                                 ;; [93, 203, 160, 91]
+0x000002b8 MOVI R49 0x3                                    ;; [114, 196, 0, 3]
+0x000002bc MEQ R51 R51 R50 R49                             ;; [41, 207, 60, 177]
+0x000002c0 EQ R51 R51 $zero                                ;; [19, 207, 48, 0]
+0x000002c4 JNZF R51 $zero 0x3a                             ;; [118, 204, 0, 58]
+0x000002c8 ADDI R51 R45 0x8                                ;; [80, 206, 208, 8]
+0x000002cc ADDI R50 R58 0x158                              ;; [80, 203, 161, 88]
+0x000002d0 MCPI R50 R51 0x10                               ;; [96, 203, 48, 16]
+0x000002d4 LW R51 R58 0x2b                                 ;; [93, 207, 160, 43]
+0x000002d8 EQ R51 R51 $zero                                ;; [19, 207, 48, 0]
+0x000002dc JNZF R51 $zero 0x1                              ;; [118, 204, 0, 1]
+0x000002e0 RVRT $one                                       ;; [54, 4, 0, 0]
+0x000002e4 LW R51 R50 0x1                                  ;; [93, 207, 32, 1]
+0x000002e8 MOVI R50 0x53a                                  ;; [114, 200, 5, 58]
+0x000002ec EQ R51 R51 R50                                  ;; [19, 207, 60, 128]
+0x000002f0 EQ R51 R51 $zero                                ;; [19, 207, 48, 0]
+0x000002f4 JNZF R51 $zero 0x2c                             ;; [118, 204, 0, 44]
+0x000002f8 ADDI R51 R45 0x18                               ;; [80, 206, 208, 24]
+0x000002fc MOVI R50 0x10                                   ;; [114, 200, 0, 16]
+0x00000300 ADD R50 R50 R63                                 ;; [16, 203, 47, 192]
+0x00000304 ADDI R49 R58 0x110                              ;; [80, 199, 161, 16]
+0x00000308 SW R58 R50 0x22                                 ;; [95, 235, 32, 34]
+0x0000030c MOVI R50 0x3                                    ;; [114, 200, 0, 3]
+0x00000310 SW R58 R50 0x23                                 ;; [95, 235, 32, 35]
+0x00000314 ADDI R50 R58 0x138                              ;; [80, 203, 161, 56]
+0x00000318 MCPI R50 R49 0x10                               ;; [96, 203, 16, 16]
+0x0000031c ADDI R49 R58 0x298                              ;; [80, 199, 162, 152]
+0x00000320 MCPI R49 R51 0x8                                ;; [96, 199, 48, 8]
+0x00000324 ADDI R46 R58 0x2a0                              ;; [80, 187, 162, 160]
+0x00000328 MCPI R46 R50 0x10                               ;; [96, 187, 32, 16]
+0x0000032c ADDI R50 R58 0x300                              ;; [80, 203, 163, 0]
+0x00000330 MCPI R50 R49 0x8                                ;; [96, 203, 16, 8]
+0x00000334 ADDI R49 R58 0xd8                               ;; [80, 199, 160, 216]
+0x00000338 MCPI R49 R46 0x10                               ;; [96, 198, 224, 16]
+0x0000033c ADDI R46 R58 0x2e8                              ;; [80, 187, 162, 232]
+0x00000340 MCPI R46 R49 0x10                               ;; [96, 187, 16, 16]
+0x00000344 LW R49 R58 0x5d                                 ;; [93, 199, 160, 93]
+0x00000348 MOVI R46 0x3                                    ;; [114, 184, 0, 3]
+0x0000034c MEQ R50 R50 R49 R46                             ;; [41, 203, 44, 110]
+0x00000350 EQ R50 R50 $zero                                ;; [19, 203, 32, 0]
+0x00000354 JNZF R50 $zero 0x12                             ;; [118, 200, 0, 18]
+0x00000358 ADDI R51 R51 0x8                                ;; [80, 207, 48, 8]
+0x0000035c ADDI R50 R58 0x178                              ;; [80, 203, 161, 120]
+0x00000360 MCPI R50 R51 0x10                               ;; [96, 203, 48, 16]
+0x00000364 LW R51 R58 0x2f                                 ;; [93, 207, 160, 47]
+0x00000368 EQ R51 R51 $one                                 ;; [19, 207, 48, 64]
+0x0000036c JNZF R51 $zero 0x2                              ;; [118, 204, 0, 2]
+0x00000370 MOVI R51 0x2                                    ;; [114, 204, 0, 2]
+0x00000374 RVRT R51                                        ;; [54, 204, 0, 0]
+0x00000378 LW R51 R50 0x1                                  ;; [93, 207, 32, 1]
+0x0000037c EQ R51 R51 $one                                 ;; [19, 207, 48, 64]
+0x00000380 EQ R51 R51 $zero                                ;; [19, 207, 48, 0]
+0x00000384 JNZF R51 $zero 0x4                              ;; [118, 204, 0, 4]
+0x00000388 ADDI R51 R58 0x1e8                              ;; [80, 207, 161, 232]
+0x0000038c SW R58 $one 0x3d                                ;; [95, 232, 16, 61]
+0x00000390 MCPI R47 R51 0x8                                ;; [96, 191, 48, 8]
+0x00000394 JMPF $zero 0x77                                 ;; [116, 0, 0, 119]
+0x00000398 LW R51 R63 0x3                                  ;; [93, 207, 240, 3]
+0x0000039c RVRT R51                                        ;; [54, 204, 0, 0]
+0x000003a0 LW R51 R63 0x3                                  ;; [93, 207, 240, 3]
+0x000003a4 RVRT R51                                        ;; [54, 204, 0, 0]
+0x000003a8 LW R51 R63 0x3                                  ;; [93, 207, 240, 3]
+0x000003ac RVRT R51                                        ;; [54, 204, 0, 0]
+0x000003b0 LW R51 R63 0x3                                  ;; [93, 207, 240, 3]
+0x000003b4 RVRT R51                                        ;; [54, 204, 0, 0]
+0x000003b8 MULI R51 R40 0x18                               ;; [85, 206, 128, 24]
+0x000003bc ADD R51 R38 R51                                 ;; [16, 206, 108, 192]
+0x000003c0 ADDI R50 R58 0x4b0                              ;; [80, 203, 164, 176]
+0x000003c4 MCPI R50 R51 0x18                               ;; [96, 203, 48, 24]
+0x000003c8 ADDI R51 R58 0x338                              ;; [80, 207, 163, 56]
+0x000003cc MCPI R51 R39 0x18                               ;; [96, 206, 112, 24]
+0x000003d0 ADDI R49 R58 0x4a0                              ;; [80, 199, 164, 160]
+0x000003d4 MCPI R49 R50 0x8                                ;; [96, 199, 32, 8]
+0x000003d8 ADDI R46 R58 0x350                              ;; [80, 187, 163, 80]
+0x000003dc MCPI R46 R51 0x18                               ;; [96, 187, 48, 24]
+0x000003e0 ADDI R51 R58 0x4a8                              ;; [80, 207, 164, 168]
+0x000003e4 MCPI R51 R49 0x8                                ;; [96, 207, 16, 8]
+0x000003e8 ADDI R49 R58 0x368                              ;; [80, 199, 163, 104]
+0x000003ec MCPI R49 R46 0x18                               ;; [96, 198, 224, 24]
+0x000003f0 ADDI R46 R58 0x208                              ;; [80, 187, 162, 8]
+0x000003f4 ADDI R44 R58 0x18                               ;; [80, 179, 160, 24]
+0x000003f8 MCPI R44 R49 0x18                               ;; [96, 179, 16, 24]
+0x000003fc ADDI R49 R58 0x98                               ;; [80, 199, 160, 152]
+0x00000400 MCPI R49 R44 0x18                               ;; [96, 198, 192, 24]
+0x00000404 LW R49 R58 0x13                                 ;; [93, 199, 160, 19]
+0x00000408 LW R41 R58 0x14                                 ;; [93, 167, 160, 20]
+0x0000040c LW R44 R58 0x15                                 ;; [93, 179, 160, 21]
+0x00000410 ADDI R43 R44 0x3                                ;; [80, 174, 192, 3]
+0x00000414 GT R42 R43 R41                                  ;; [21, 170, 186, 64]
+0x00000418 JNZF R42 $zero 0x1                              ;; [118, 168, 0, 1]
+0x0000041c JMPF $zero 0x5                                  ;; [116, 0, 0, 5]
+0x00000420 MULI R42 R41 0x2                                ;; [85, 170, 144, 2]
+0x00000424 ADDI R41 R42 0x3                                ;; [80, 166, 160, 3]
+0x00000428 ALOC R41                                        ;; [38, 164, 0, 0]
+0x0000042c MCP $hp R49 R44                                 ;; [40, 31, 27, 0]
+0x00000430 MOVE R49 $hp                                    ;; [26, 196, 112, 0]
+0x00000434 ADDI R42 R58 0xf8                               ;; [80, 171, 160, 248]
+0x00000438 MCPI R42 R51 0x8                                ;; [96, 171, 48, 8]
+0x0000043c ADD R51 R49 R44                                 ;; [16, 207, 27, 0]
+0x00000440 MCPI R51 R42 0x3                                ;; [96, 206, 160, 3]
+0x00000444 ADDI R51 R58 0x120                              ;; [80, 207, 161, 32]
+0x00000448 SW R58 R49 0x24                                 ;; [95, 235, 16, 36]
+0x0000044c SW R58 R41 0x25                                 ;; [95, 234, 144, 37]
+0x00000450 SW R58 R43 0x26                                 ;; [95, 234, 176, 38]
+0x00000454 ADDI R49 R58 0x30                               ;; [80, 199, 160, 48]
+0x00000458 MCPI R49 R51 0x18                               ;; [96, 199, 48, 24]
+0x0000045c MCPI R46 R49 0x18                               ;; [96, 187, 16, 24]
+0x00000460 ADDI R51 R58 0x3c8                              ;; [80, 207, 163, 200]
+0x00000464 MCPI R51 R46 0x18                               ;; [96, 206, 224, 24]
+0x00000468 ADDI R49 R58 0x3b0                              ;; [80, 199, 163, 176]
+0x0000046c MCPI R49 R51 0x18                               ;; [96, 199, 48, 24]
+0x00000470 ADDI R51 R50 0x8                                ;; [80, 207, 32, 8]
+0x00000474 ADDI R50 R58 0x4c8                              ;; [80, 203, 164, 200]
+0x00000478 MCPI R50 R51 0x10                               ;; [96, 203, 48, 16]
+0x0000047c ADDI R51 R58 0x380                              ;; [80, 207, 163, 128]
+0x00000480 MCPI R51 R49 0x18                               ;; [96, 207, 16, 24]
+0x00000484 ADDI R49 R58 0x168                              ;; [80, 199, 161, 104]
+0x00000488 MCPI R49 R50 0x10                               ;; [96, 199, 32, 16]
+0x0000048c LW R50 R58 0x2d                                 ;; [93, 203, 160, 45]
+0x00000490 EQ R50 R50 $zero                                ;; [19, 203, 32, 0]
+0x00000494 JNZF R50 $zero 0x1b                             ;; [118, 200, 0, 27]
+0x00000498 LW R50 R49 0x0                                  ;; [93, 203, 16, 0]
+0x0000049c EQ R50 R50 $one                                 ;; [19, 203, 32, 64]
+0x000004a0 JNZF R50 $zero 0x2                              ;; [118, 200, 0, 2]
+0x000004a4 LW R51 R63 0x4                                  ;; [93, 207, 240, 4]
+0x000004a8 RVRT R51                                        ;; [54, 204, 0, 0]
+0x000004ac LW R50 R49 0x1                                  ;; [93, 203, 16, 1]
+0x000004b0 ADDI R49 R58 0x250                              ;; [80, 199, 162, 80]
+0x000004b4 MCPI R49 R51 0x18                               ;; [96, 199, 48, 24]
+0x000004b8 ADDI R51 R58 0x1b8                              ;; [80, 207, 161, 184]
+0x000004bc MOVI R57 0x1                                    ;; [114, 228, 0, 1]
+0x000004c0 MOVE R56 R49                                    ;; [26, 227, 16, 0]
+0x000004c4 MOVE R55 R51                                    ;; [26, 223, 48, 0]
+0x000004c8 JAL R61 $pc 0x30                                ;; [153, 244, 48, 48]
+0x000004cc ADDI R49 R58 0x428                              ;; [80, 199, 164, 40]
+0x000004d0 MCPI R49 R51 0x18                               ;; [96, 199, 48, 24]
+0x000004d4 ADDI R51 R58 0x268                              ;; [80, 207, 162, 104]
+0x000004d8 MCPI R51 R49 0x18                               ;; [96, 207, 16, 24]
+0x000004dc ADDI R49 R58 0x1d0                              ;; [80, 199, 161, 208]
+0x000004e0 MOVE R57 R50                                    ;; [26, 231, 32, 0]
+0x000004e4 MOVE R56 R51                                    ;; [26, 227, 48, 0]
+0x000004e8 MOVE R55 R49                                    ;; [26, 223, 16, 0]
+0x000004ec JAL R61 $pc 0x27                                ;; [153, 244, 48, 39]
+0x000004f0 ADDI R51 R58 0x440                              ;; [80, 207, 164, 64]
+0x000004f4 MCPI R51 R49 0x18                               ;; [96, 207, 16, 24]
+0x000004f8 ADDI R50 R58 0x2b0                              ;; [80, 203, 162, 176]
+0x000004fc MCPI R50 R51 0x18                               ;; [96, 203, 48, 24]
+0x00000500 JMPF $zero 0x15                                 ;; [116, 0, 0, 21]
+0x00000504 LW R50 R49 0x1                                  ;; [93, 203, 16, 1]
+0x00000508 ADDI R49 R58 0x220                              ;; [80, 199, 162, 32]
+0x0000050c MCPI R49 R51 0x18                               ;; [96, 199, 48, 24]
+0x00000510 ADDI R51 R58 0x188                              ;; [80, 207, 161, 136]
+0x00000514 MOVI R57 0x0                                    ;; [114, 228, 0, 0]
+0x00000518 MOVE R56 R49                                    ;; [26, 227, 16, 0]
+0x0000051c MOVE R55 R51                                    ;; [26, 223, 48, 0]
+0x00000520 JAL R61 $pc 0x1a                                ;; [153, 244, 48, 26]
+0x00000524 ADDI R49 R58 0x3e0                              ;; [80, 199, 163, 224]
+0x00000528 MCPI R49 R51 0x18                               ;; [96, 199, 48, 24]
+0x0000052c ADDI R51 R58 0x238                              ;; [80, 207, 162, 56]
+0x00000530 MCPI R51 R49 0x18                               ;; [96, 207, 16, 24]
+0x00000534 ADDI R49 R58 0x1a0                              ;; [80, 199, 161, 160]
+0x00000538 MOVE R57 R50                                    ;; [26, 231, 32, 0]
+0x0000053c MOVE R56 R51                                    ;; [26, 227, 48, 0]
+0x00000540 MOVE R55 R49                                    ;; [26, 223, 16, 0]
+0x00000544 JAL R61 $pc 0x11                                ;; [153, 244, 48, 17]
+0x00000548 ADDI R51 R58 0x410                              ;; [80, 207, 164, 16]
+0x0000054c MCPI R51 R49 0x18                               ;; [96, 207, 16, 24]
+0x00000550 ADDI R50 R58 0x2b0                              ;; [80, 203, 162, 176]
+0x00000554 MCPI R50 R51 0x18                               ;; [96, 203, 48, 24]
+0x00000558 ADDI R51 R58 0x458                              ;; [80, 207, 164, 88]
+0x0000055c MCPI R51 R50 0x18                               ;; [96, 207, 32, 24]
+0x00000560 ADDI R50 R58 0x3f8                              ;; [80, 203, 163, 248]
+0x00000564 MCPI R50 R51 0x18                               ;; [96, 203, 48, 24]
+0x00000568 MCPI R39 R50 0x18                               ;; [96, 159, 32, 24]
+0x0000056c ADDI R40 R40 0x1                                ;; [80, 162, 128, 1]
+0x00000570 JMPB $zero 0xda                                 ;; [117, 0, 0, 218]
+0x00000574 CFSI 0x520                                      ;; [146, 0, 5, 32]
+0x00000578 MOVE R61 R48                                    ;; [26, 247, 0, 0]
+0x0000057c POPH 0x40fff                                    ;; [152, 4, 15, 255]
+0x00000580 POPL 0xc00000                                   ;; [151, 192, 0, 0]
+0x00000584 JAL $zero R61 0x0                               ;; [153, 3, 208, 0]
+0x00000588 PSHH 0x40fc0                                    ;; [150, 4, 15, 192]
+0x0000058c MOVE R58 $sp                                    ;; [26, 232, 80, 0]
+0x00000590 CFEI 0x90                                       ;; [145, 0, 0, 144]
+0x00000594 ADDI R51 R58 0x78                               ;; [80, 207, 160, 120]
+0x00000598 MCPI R51 R56 0x18                               ;; [96, 207, 128, 24]
+0x0000059c ADDI R50 R58 0x60                               ;; [80, 203, 160, 96]
+0x000005a0 MCPI R58 R51 0x18                               ;; [96, 235, 48, 24]
+0x000005a4 ADDI R51 R58 0x30                               ;; [80, 207, 160, 48]
+0x000005a8 MCPI R51 R58 0x18                               ;; [96, 207, 160, 24]
+0x000005ac LW R51 R58 0x6                                  ;; [93, 207, 160, 6]
+0x000005b0 LW R46 R58 0x7                                  ;; [93, 187, 160, 7]
+0x000005b4 LW R49 R58 0x8                                  ;; [93, 199, 160, 8]
+0x000005b8 ADDI R48 R49 0x8                                ;; [80, 195, 16, 8]
+0x000005bc GT R47 R48 R46                                  ;; [21, 191, 11, 128]
+0x000005c0 JNZF R47 $zero 0x1                              ;; [118, 188, 0, 1]
+0x000005c4 JMPF $zero 0x5                                  ;; [116, 0, 0, 5]
+0x000005c8 MULI R47 R46 0x2                                ;; [85, 190, 224, 2]
+0x000005cc ADDI R46 R47 0x8                                ;; [80, 186, 240, 8]
+0x000005d0 ALOC R46                                        ;; [38, 184, 0, 0]
+0x000005d4 MCP $hp R51 R49                                 ;; [40, 31, 60, 64]
+0x000005d8 MOVE R51 $hp                                    ;; [26, 204, 112, 0]
+0x000005dc ADD R49 R51 R49                                 ;; [16, 199, 60, 64]
+0x000005e0 SW R49 R57 0x0                                  ;; [95, 199, 144, 0]
+0x000005e4 ADDI R49 R58 0x48                               ;; [80, 199, 160, 72]
+0x000005e8 SW R58 R51 0x9                                  ;; [95, 235, 48, 9]
+0x000005ec SW R58 R46 0xa                                  ;; [95, 234, 224, 10]
+0x000005f0 SW R58 R48 0xb                                  ;; [95, 235, 0, 11]
+0x000005f4 ADDI R51 R58 0x18                               ;; [80, 207, 160, 24]
+0x000005f8 MCPI R51 R49 0x18                               ;; [96, 207, 16, 24]
+0x000005fc MCPI R50 R51 0x18                               ;; [96, 203, 48, 24]
+0x00000600 MCPI R55 R50 0x18                               ;; [96, 223, 32, 24]
+0x00000604 CFSI 0x90                                       ;; [146, 0, 0, 144]
+0x00000608 POPH 0x40fc0                                    ;; [152, 4, 15, 192]
+0x0000060c JAL $zero R61 0x0                               ;; [153, 3, 208, 0]
+>>>>>>> 550f3480d (new register pointing to the configurable section to allow access with just one addi)
 .data_section:
 0x00000608 .word i3647243719605075626, as hex be bytes ([32, 9D, 9C, D6, CC, 55, BE, AA])
 0x00000610 .bytes as hex ([73, 65, 74]), len i3, as ascii "set"
