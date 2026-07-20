@@ -1,0 +1,8 @@
+[[package]]
+name = "match_expressions_enums_zero_sized_variants"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-30BF47884603DB00"

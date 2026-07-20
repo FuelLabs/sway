@@ -4231,7 +4231,7 @@ impl<'a> FnCompiler<'a> {
         );
 
         // If the enum has variant data we use that,
-        // if not, it means that all variants are unit, and there is nothing to point to.
+        // if not, it means that all variants are zero-sized, and there is nothing to point to.
         // So, we create a global var zeroed and we make the ZST pointer point to it. So
         // in the case of a deref, all ZSTs will have the same value
         match enum_type.get_indexed_type(context, &[1, variant.tag as u64]) {
@@ -4247,38 +4247,21 @@ impl<'a> FnCompiler<'a> {
                 Ok(TerminatorValue::new(CompiledValue::InMemory(val), context))
             }
             None => {
-                // Check if we really have the case of enum with all variants as unit
-                let enum_type_info = self.engines.te().get(exp.return_type);
-                match enum_type_info.as_ref() {
-                    TypeInfo::Enum(decl_id) => {
-                        let decl = self.engines.de().get(decl_id);
-                        let all_unit = decl
-                            .variants
-                            .iter()
-                            .all(|x| self.engines.te().get(x.type_argument.type_id).is_unit());
-
-                        if !all_unit {
-                            return Err(CompileError::InternalOwned(
-                                format!(
-                                    "unsafe downcast cannot find variant data for this case `{}`",
-                                    self.engines.help_out(exp.return_type)
-                                ),
-                                exp.span.clone(),
-                            ));
-                        }
-                    }
-                    _ => {
-                        return Err(CompileError::InternalOwned(
-                            format!(
-                                "unsafe downcast used with `{}`, only enums are supported",
-                                self.engines.help_out(exp.return_type)
-                            ),
-                            exp.span.clone(),
-                        ))
-                    }
+                // We can only reach this branch when the enum is lowered to just the tag, i.e., when
+                // all its variants are zero-sized. In that case the enum aggregate has a single
+                // field, the tag, and there is no variant data to point to. Any other case is a
+                // compiler error.
+                if enum_type.get_field_types(context).len() != 1 {
+                    return Err(CompileError::InternalOwned(
+                        format!(
+                            "unsafe downcast cannot find variant data for this case `{}`",
+                            self.engines.help_out(exp.return_type)
+                        ),
+                        exp.span.clone(),
+                    ));
                 }
 
-                // we need an addressable zero, if we save an unit it will occupy 0 bytes.
+                // We need an addressable zero, if we save an unit it will occupy 0 bytes.
                 let addressable_zero_u64_ptr = match self
                     .module
                     .get_global_variable(context, &vec!["__ADDRESSABLE_ZERO_U64".to_string()])
@@ -4302,11 +4285,23 @@ impl<'a> FnCompiler<'a> {
                     .append(context)
                     .get_global(addressable_zero_u64_ptr);
 
-                let ptr_to_unit_type = Type::new_typed_pointer(context, Type::get_unit(context));
+                // The variant data is zero-sized, so it occupies no bytes and pointing into the
+                // zeroed global is safe. We still cast to a pointer to the actual variant type so
+                // that the downcast result has the type expected by its consumers.
+                let variant_type = convert_resolved_type_id(
+                    self.engines,
+                    context,
+                    md_mgr,
+                    self.module,
+                    Some(self),
+                    variant.type_argument.type_id,
+                    &exp.span,
+                )?;
+                let ptr_to_variant_type = Type::new_typed_pointer(context, variant_type);
                 let ptr = self
                     .current_block
                     .append(context)
-                    .cast_ptr(ptr, ptr_to_unit_type);
+                    .cast_ptr(ptr, ptr_to_variant_type);
                 Ok(TerminatorValue::new(CompiledValue::InMemory(ptr), context))
             }
         }
@@ -4595,7 +4590,7 @@ impl<'a> FnCompiler<'a> {
         // We can have empty aggregates, especially arrays, which shouldn't be initialized, but
         // otherwise use a store.
         let var_ty = local_var.get_type(context);
-        if var_ty.size(context).in_bytes() > 0 {
+        if !var_ty.is_zero_sized(context) {
             let local_ptr = self
                 .current_block
                 .append(context)
@@ -4686,7 +4681,7 @@ impl<'a> FnCompiler<'a> {
                 // We can have empty aggregates, especially arrays, which shouldn't be initialised, but
                 // otherwise use a store.
                 let var_ty = local_var.get_type(context);
-                Ok(if var_ty.size(context).in_bytes() > 0 {
+                Ok(if !var_ty.is_zero_sized(context) {
                     let local_val = self
                         .current_block
                         .append(context)
@@ -5449,7 +5444,7 @@ impl<'a> FnCompiler<'a> {
             .add_metadatum(context, span_md_idx);
 
         // If the struct representing the enum has only one field, then that field is the tag and
-        // all the variants must have unit types, hence the absence of the union. Therefore, there
+        // all the variants must be zero-sized, hence the absence of the union. Therefore, there
         // is no need for another `store` instruction here.
         let field_tys = enum_type.get_field_types(context);
         if field_tys.len() != 1 {
@@ -5997,14 +5992,31 @@ impl<'a> FnCompiler<'a> {
     }
 }
 
-/// Used to check if encoding and runtime have the same memory representation.
+/// Memory representation of a type.
+///
+/// Used, e.g., to check if encoding and runtime have the same memory representation.
 /// If they do, it is possible to trivially encode/decode some types.
+///
+/// For examples see: test/src/e2e_vm_tests/test_programs/should_pass/language/type_layout/logs.snap
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum MemoryRepresentation {
+    /// `pN`. E.g.:
+    /// - right padded `u8` in a struct field: `{ b1, p7 }`.
+    /// - left padded `u8` in an enum variant: `{ p7, b1 }`.
     Padding { len_in_bytes: u64 },
+    /// `bN`. E.g.:
+    /// - `u8`: `b1`.
+    /// - `u64`: `b8`.
     Blob { len_in_bytes: u64 },
+    /// `{ .., .. }`. E.g.:
+    /// - structs and tuples: `{ b64, b256, { b1, p7 } }`.
+    /// - unit: `{ }`.
     And(Vec<MemoryRepresentation>),
+    /// `( .. | .. )`. E.g.:
+    /// - enums: `{ b8, ( { }, b8, { p7, b1 } ) }`.
     Or(Vec<MemoryRepresentation>),
+    /// `[<type>; N]`. E.g.:
+    /// - arrays: `[b256; 10]`.
     Array(Box<MemoryRepresentation>, u64),
 }
 
@@ -6069,8 +6081,11 @@ pub fn get_runtime_representation(ctx: &Context, t: Type) -> MemoryRepresentatio
         TypeContent::Unit | TypeContent::Never => MemoryRepresentation::And(vec![]),
         TypeContent::Bool => MemoryRepresentation::Blob { len_in_bytes: 1 },
         TypeContent::Uint(8) => MemoryRepresentation::Blob { len_in_bytes: 1 },
+        TypeContent::Uint(16) => panic!("`TypeContent::Uint(`16`) is currently not used in IR"),
+        TypeContent::Uint(32) => panic!("`TypeContent::Uint(`32`) is currently not used in IR"),
         TypeContent::Uint(64) => MemoryRepresentation::Blob { len_in_bytes: 8 },
         TypeContent::Uint(256) => MemoryRepresentation::Blob { len_in_bytes: 32 },
+        TypeContent::Uint(_) => unreachable!("`TypeContent::Uint` can only be 8, 16, 32, 64, or 256"),
         TypeContent::B256 => MemoryRepresentation::Blob { len_in_bytes: 32 },
         TypeContent::Struct(fields) => {
             let mut items = vec![];
@@ -6078,21 +6093,25 @@ pub fn get_runtime_representation(ctx: &Context, t: Type) -> MemoryRepresentatio
 
             for idx in 0..fields.len() {
                 let (position_in_bytes, t) =
-                    t.get_struct_field_offset_and_type(ctx, idx as u64).unwrap();
+                    t.get_struct_field_offset_and_type(ctx, idx as u64).expect("type `t` is checked to be `TypeContent::Struct`");
                 assert!(offset_in_bytes == position_in_bytes);
 
                 let field_mem_rep = get_runtime_representation(ctx, t);
                 let field_len_in_bytes = field_mem_rep.len_in_bytes();
 
-                items.push(field_mem_rep);
-
                 offset_in_bytes += field_len_in_bytes;
                 if !offset_in_bytes.is_multiple_of(8) {
+                    // The field does not end at a word boundary and has to be
+                    // padded. We group the trailing padding together with the
+                    // field it belongs to, e.g. `{ {[[b1;2];3],p2}, b32 }`.
                     let next = offset_in_bytes.next_multiple_of(8);
-                    items.push(MemoryRepresentation::Padding {
-                        len_in_bytes: next.checked_sub(offset_in_bytes).unwrap(),
-                    });
+                    let padding = MemoryRepresentation::Padding {
+                        len_in_bytes: next - offset_in_bytes,
+                    };
+                    items.push(MemoryRepresentation::And(vec![field_mem_rep, padding]));
                     offset_in_bytes = next;
+                } else {
+                    items.push(field_mem_rep);
                 }
             }
 
@@ -6108,23 +6127,43 @@ pub fn get_runtime_representation(ctx: &Context, t: Type) -> MemoryRepresentatio
                 .iter()
                 .map(|x| x.len_in_bytes())
                 .max()
-                .unwrap_or_default()
-                .max(8);
+                .unwrap_or_default();
+
+            // If the biggest variant is not aligned to the word boundary,
+            // we have to add additional padding to align to the word boundary.
+            let padding_to_word_boundary = if biggest_len_in_bytes.is_multiple_of(8) {
+                0
+            } else {
+                let next = biggest_len_in_bytes.next_multiple_of(8);
+                next - biggest_len_in_bytes
+            };
+
             for item in items.iter_mut() {
                 let item_len_in_bytes = item.len_in_bytes();
-                if item_len_in_bytes == biggest_len_in_bytes {
-                    continue;
-                }
-                let padding = MemoryRepresentation::Padding {
-                    len_in_bytes: biggest_len_in_bytes - item_len_in_bytes,
-                };
-                if let MemoryRepresentation::And(old_items) = item {
-                    old_items.push(padding);
-                } else {
-                    *item = MemoryRepresentation::And(vec![item.clone(), padding])
+
+                // If the current variant is smaller than the biggest variant,
+                // we have to left-pad it to reach the biggest variant size.
+                // Note that if they are of the same size, this will simply be zero
+                // additional padding.
+                let padding_to_biggest_variant = biggest_len_in_bytes - item_len_in_bytes;
+
+                let total_padding = padding_to_word_boundary + padding_to_biggest_variant;
+
+                if total_padding > 0 {
+                    let padding = MemoryRepresentation::Padding {
+                        len_in_bytes: total_padding,
+                    };
+                    // We always show `item` even if its size is zero.
+                    // This is a bit verbose cosmetic choice.
+                    *item = MemoryRepresentation::And(vec![padding, item.clone()])
                 }
             }
 
+            // If all the variants are zero-sized, this will be
+            // an `Or` of `And(vec[]) | And(vec[]) | ... | And(vec[])`.
+            // Note that in Sway code we never generate unions whose all
+            // variants are zero sized. Unions are generated only for enums,
+            // and if all enum variants are zero sized, we generate only the tag.
             MemoryRepresentation::Or(items)
         }
         TypeContent::StringArray(len) => {
@@ -6132,12 +6171,12 @@ pub fn get_runtime_representation(ctx: &Context, t: Type) -> MemoryRepresentatio
                 MemoryRepresentation::Blob { len_in_bytes: *len }
             } else {
                 let item = MemoryRepresentation::Blob { len_in_bytes: *len };
-                let item_len_as_bytes = item.len_in_bytes();
-                if !item_len_as_bytes.is_multiple_of(8) {
+                let item_len_in_bytes = item.len_in_bytes();
+                if !item_len_in_bytes.is_multiple_of(8) {
                     MemoryRepresentation::And(vec![
                         item,
                         MemoryRepresentation::Padding {
-                            len_in_bytes: item_len_as_bytes.next_multiple_of(8) - item_len_as_bytes,
+                            len_in_bytes: item_len_in_bytes.next_multiple_of(8) - item_len_in_bytes,
                         },
                     ])
                 } else {
@@ -6147,24 +6186,14 @@ pub fn get_runtime_representation(ctx: &Context, t: Type) -> MemoryRepresentatio
         }
         TypeContent::Array(t, len) => {
             let item = get_runtime_representation(ctx, *t);
-            let total_len_in_bytes = item.len_in_bytes() * len;
-            if !total_len_in_bytes.is_multiple_of(8) {
-                MemoryRepresentation::And(vec![
-                    MemoryRepresentation::Array(Box::new(item), *len),
-                    MemoryRepresentation::Padding {
-                        len_in_bytes: total_len_in_bytes.next_multiple_of(8) - total_len_in_bytes,
-                    },
-                ])
-            } else {
-                MemoryRepresentation::Array(Box::new(item), *len)
-            }
+            MemoryRepresentation::Array(Box::new(item), *len)
         }
         TypeContent::Pointer | TypeContent::TypedPointer(_) => {
             MemoryRepresentation::Blob { len_in_bytes: 8 }
         }
         TypeContent::Slice => MemoryRepresentation::Blob { len_in_bytes: 16 },
         TypeContent::TypedSlice(_) => MemoryRepresentation::Blob { len_in_bytes: 16 },
-        x => todo!("{x:#?}"),
+        TypeContent::StringSlice => MemoryRepresentation::Blob { len_in_bytes: 16 },
     }
 }
 
@@ -6238,27 +6267,27 @@ pub fn get_encoding_representation(
         TypeInfo::Enum(id) => {
             let decl = engines.de().get(id);
 
-            if decl.variants.is_empty() {
-                Some(MemoryRepresentation::Blob { len_in_bytes: 8 })
-            } else {
-                let variants = decl
-                    .variants
-                    .iter()
-                    .map(|variant| {
-                        get_encoding_representation_by_id(engines, variant.type_argument.type_id)
-                    })
-                    .collect::<Option<Vec<_>>>()?;
+            let variants = decl
+                .variants
+                .iter()
+                .map(|variant| {
+                    get_encoding_representation_by_id(engines, variant.type_argument.type_id)
+                })
+                .collect::<Option<Vec<_>>>()?;
 
-                if variants.iter().all(|x| x.len_in_bytes() == 0) {
-                    Some(MemoryRepresentation::And(vec![
-                        MemoryRepresentation::Blob { len_in_bytes: 8 },
-                    ]))
-                } else {
-                    Some(MemoryRepresentation::And(vec![
-                        MemoryRepresentation::Blob { len_in_bytes: 8 },
-                        MemoryRepresentation::Or(variants),
-                    ]))
-                }
+            // When all variants are zero-sized (e.g. all unit variants, or empty structs),
+            // the enum is laid out in memory as just the tag and the union variants are
+            // omitted. The encoding representation mirrors that, otherwise
+            // such enums would be wrongly classified as non-trivial.
+            if variants.iter().all(|variant| variant.len_in_bytes() == 0) {
+                Some(MemoryRepresentation::And(vec![MemoryRepresentation::Blob {
+                    len_in_bytes: 8,
+                }]))
+            } else {
+                Some(MemoryRepresentation::And(vec![
+                    MemoryRepresentation::Blob { len_in_bytes: 8 },
+                    MemoryRepresentation::Or(variants),
+                ]))
             }
         }
         TypeInfo::StringArray(len) => Some(MemoryRepresentation::Blob {
@@ -6274,7 +6303,7 @@ pub fn get_encoding_representation(
         TypeInfo::Slice(_) => None,
         TypeInfo::Ref { .. } => None,
         TypeInfo::Alias { ty, .. } => get_encoding_representation_by_id(engines, ty.type_id),
-        x => todo!("{x:#?}"),
+        x => unreachable!("this `TypeInfo` is not an encoding representable type: {x:#?}"),
     }
 }
 

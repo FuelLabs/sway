@@ -49,6 +49,7 @@ pub enum IrError {
     VerifyGetNonExistentConfigPointer,
     VerifyGetNonExistentStorageKeyPointer,
     VerifyGlobalMissingInitializer(String),
+    VerifyGlobalInitializerTypeMismatch(String),
     VerifyInsertElementOfIncorrectType,
     VerifyInsertValueOfIncorrectType,
     VerifyIntToPtrFromNonIntegerType(String),
@@ -552,6 +553,13 @@ impl fmt::Display for IrError {
                     f,
                     "Verification failed: Immutable global variable {global_name}\
                     is missing an initializer."
+                )
+            }
+            IrError::VerifyGlobalInitializerTypeMismatch(details) => {
+                write!(
+                    f,
+                    "Verification failed: A global variable initializer does not have \
+                    the shape of the global variable's type. {details}"
                 )
             }
             IrError::VerifyLocalMissingInitializer(local_name, func_name) => {

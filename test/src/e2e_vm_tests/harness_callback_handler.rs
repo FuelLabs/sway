@@ -20,9 +20,7 @@ fn stdout_logs(root: &str, snapshot: &str) {
     insta.set_prepend_module_to_snapshot(false);
     insta.set_omit_expression(true);
     let scope = insta.bind_to_scope();
-    let _ = std::panic::catch_unwind(|| {
-        insta::assert_snapshot!("logs", snapshot);
-    });
+    insta::assert_snapshot!("logs", snapshot);
     drop(scope);
 }
 
@@ -190,6 +188,11 @@ impl Drop for Inner {
     fn drop(&mut self) {
         let snapshot = self.snapshot.lock().unwrap();
         if !snapshot.is_empty() {
+            // This call will panic if the snapshots do not match,
+            // which is what we want. It is a panic in a `drop`,
+            // but the only one, and as such safe, because we
+            // cannot end up in double-panicking. I.e., this
+            // `drop` will never be called while unwinding some panic.
             stdout_logs(&self.root, &snapshot);
         }
     }

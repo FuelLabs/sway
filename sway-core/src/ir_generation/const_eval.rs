@@ -298,6 +298,42 @@ fn create_array_from_vec(
     arr.map(|c| Constant::unique(lookup.context, c))
 }
 
+/// Builds a valid constant of a zero-sized `ty`, whose structural shape matches `ty`.
+///
+/// This is used, e.g., when downcasting a tag-only enum (an enum whose variants are all
+/// zero-sized) to one of its variants. The variant payload carries no data but we still need a
+/// constant of the correct shape to represent it.
+///
+/// Panics if `ty` is not a zero-sized [Type] or is a zero-sized [Type]
+/// that cannot have a constant, like, e.g., a [TypeContent::Union] type.
+fn zero_sized_constant(context: &mut Context, ty: Type) -> ConstantContent {
+    assert!(ty.is_zero_sized(context), "to create a zero-sized constant, `ty` must be zero-sized");
+
+    if ty.is_struct(context) {
+        let field_tys = ty.get_field_types(context);
+        let fields = field_tys
+            .iter()
+            .map(|field_ty| zero_sized_constant(context, *field_ty))
+            .collect();
+        ConstantContent::new_struct(context, field_tys, fields)
+    } else if ty.is_array(context) {
+        let elem_ty = ty.get_array_elem_type(context).unwrap();
+        let count = ty.get_array_len(context).unwrap();
+        let elems = (0..count)
+            .map(|_| zero_sized_constant(context, elem_ty))
+            .collect();
+        ConstantContent::new_array(context, elem_ty, elems)
+    } else if ty.is_unit(context) {
+        ConstantContent::new_unit(context)
+    } else if ty.is_union(context) {
+        panic!("cannot create a constant of a union type")
+    } else if ty.is_never(context) {
+        panic!("cannot create a constant of Never type")
+    } else {
+        unreachable!("the only possible zero-sized IR types are: structs, arrays, unions, unit, and never")
+    }
+}
+
 /// Returns true if the `expr` contains any variables declared outside of itself.
 ///
 /// `in_expr_vars` are variables defined within the `expr` in a scope being examined.
@@ -738,24 +774,37 @@ fn const_eval_typed_expr(
                 &enum_decl.variants,
             );
 
+            // `enum_ty` is a `{ u64, <union of variants> }` where the `<union of variants>` payload is optional
+            // and not available if all the variants are zero-sized.
             if let Ok(enum_ty) = aggregate {
                 let tag_value = ConstantContent::new_uint(lookup.context, 64, *tag as u64);
                 let mut fields: Vec<ConstantContent> = vec![tag_value];
 
-                match contents {
-                    None => fields.push(ConstantContent::new_unit(lookup.context)),
-                    Some(subexpr) => match const_eval_typed_expr(lookup, known_consts, subexpr)? {
-                        Some(constant) => fields.push(constant.get_content(lookup.context).clone()),
-                        None => {
-                            return Err(ConstEvalError::CannotBeEvaluatedToConst {
-                                span: variant_instantiation_span.clone(),
-                            });
+                let tag_and_variants_tys = enum_ty.get_field_types(lookup.context);
+
+                // If the enum is lowered to just the tag (all variants are zero-sized), the
+                // aggregate has a single field, the tag. In that case the constant must contain
+                // only the tag, so that its shape matches the enum type. Note that a possible
+                // variant payload is zero-sized here and thus carries no value to store.
+                if tag_and_variants_tys.len() > 1 {
+                    match contents {
+                        None => fields.push(ConstantContent::new_unit(lookup.context)),
+                        Some(subexpr) => {
+                            match const_eval_typed_expr(lookup, known_consts, subexpr)? {
+                                Some(constant) => {
+                                    fields.push(constant.get_content(lookup.context).clone())
+                                }
+                                None => {
+                                    return Err(ConstEvalError::CannotBeEvaluatedToConst {
+                                        span: variant_instantiation_span.clone(),
+                                    });
+                                }
+                            }
                         }
-                    },
+                    }
                 }
 
-                let fields_tys = enum_ty.get_field_types(lookup.context);
-                let c = ConstantContent::new_struct(lookup.context, fields_tys, fields);
+                let c = ConstantContent::new_struct(lookup.context, tag_and_variants_tys, fields);
                 let c = Constant::unique(lookup.context, c);
                 Some(c)
             } else {
@@ -948,11 +997,34 @@ fn const_eval_typed_expr(
                 return Err(ConstEvalError::CompileError);
             }
         }
-        ty::TyExpressionVariant::UnsafeDowncast { exp, .. } => {
+        ty::TyExpressionVariant::UnsafeDowncast { exp, variant, .. } => {
             let value = const_eval_typed_expr(lookup, known_consts, exp)?
                 .map(|x| x.get_content(lookup.context).value.clone());
+            // `value` is a `{ u64, <variant const> }` where the `<variant const>` is optional
+            // and not available if all the variants are zero-sized.
             if let Some(ConstantValue::Struct(fields)) = value {
-                Some(Constant::unique(lookup.context, fields[1].clone()))
+                match fields.get(1) {
+                    // We have the second field, means the variant is available.
+                    // Just return it.
+                    Some(variant) => Some(Constant::unique(lookup.context, variant.clone())),
+                    // No second field.
+                    // This means a tag-only enum (all variants are zero-sized) has no variants field, so the
+                    // downcast value is a zero-sized constant of the variant's type.
+                    None => {
+                        let variant_ty = convert_resolved_type_id(
+                            lookup.engines,
+                            lookup.context,
+                            lookup.md_mgr,
+                            lookup.module,
+                            lookup.function_compiler,
+                            variant.type_argument.type_id,
+                            &variant.span,
+                        )
+                        .map_err(|_| ConstEvalError::CompileError)?;
+                        let c = zero_sized_constant(lookup.context, variant_ty);
+                        Some(Constant::unique(lookup.context, c))
+                    }
+                }
             } else {
                 return Err(ConstEvalError::CompileError);
             }

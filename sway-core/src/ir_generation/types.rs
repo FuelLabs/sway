@@ -36,10 +36,13 @@ pub(super) fn create_tagged_union_type(
         })
         .collect::<Result<Vec<_>, CompileError>>()?;
 
-    // Enums where all the variants are unit types don't really need the union. Only a tag is
-    // needed. For consistency, and to keep enums as reference types, we keep the tag in an
-    // Aggregate.
-    Ok(if field_types.iter().all(|f| f.is_unit(context)) {
+    // Enums where all the variants are zero-sized (e.g., unit types, empty structs, or empty
+    // arrays) don't really need the union. Only a tag is needed. For consistency, and to keep
+    // enums as reference types, we keep the tag in an aggregate.
+    Ok(if field_types
+        .iter()
+        .all(|f| f.is_zero_sized(context))
+    {
         Type::new_struct(context, vec![Type::get_uint64(context)])
     } else {
         let u64_ty = Type::get_uint64(context);

@@ -1,0 +1,119 @@
+---
+source: test/src/snapshot/mod.rs
+---
+This snapshot proves that enums of all zero-sized variants get compiled only to tag.
+
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/enum_zero_sized_variants --release --ir final
+exit status: 0
+output:
+    Building test/src/e2e_vm_tests/test_programs/should_pass/language/enum_zero_sized_variants
+   Compiling library std (sway-lib-std)
+// IR: Final
+library {
+}
+
+   Compiling script enum_zero_sized_variants (test/src/e2e_vm_tests/test_programs/should_pass/language/enum_zero_sized_variants)
+// IR: Final
+script {
+    global enum_zero_sized_variants::GLOBAL_DIFFERENT_TYPES : { u64 } = const { u64 } { u64 1 }
+    global enum_zero_sized_variants::GLOBAL_EMPTY_ARRAYS : { u64 } = const { u64 } { u64 2 }
+    global enum_zero_sized_variants::GLOBAL_EMPTY_ARRAYS_OF_STRUCTS : { u64 } = const { u64 } { u64 3 }
+    global enum_zero_sized_variants::GLOBAL_EMPTY_STRUCTS : { u64 } = const { u64 } { u64 1 }
+    global enum_zero_sized_variants::GLOBAL_GENERIC : { u64 } = const { u64 } { u64 0 }
+    global enum_zero_sized_variants::GLOBAL_UNIT : { u64 } = const { u64 } { u64 0 }
+
+    pub entry fn __entry() -> __ptr never, !3 {
+        entry():
+        v230v1 = call main_0(), !6
+        v233v1 = const u64 0, !7
+        v234v1 = const u64 0, !8
+        retd v233v1 v234v1, !9
+    }
+
+    entry_orig fn main_0() -> (), !13 {
+        local { u64 } __anon_0
+        local { u64 } __anon_1
+        local { u64 } __anon_2
+        local { u64 } __anon_3
+        local { u64 } __anon_4
+        local { u64 } __anon_5
+        local { u64 } __tmp_arg10
+        local { u64 } __tmp_arg5
+        local { u64 } __tmp_arg6
+        local { u64 } __tmp_arg7
+        local { u64 } __tmp_arg8
+        local { u64 } __tmp_arg9
+
+        entry():
+        v108v1 = get_local __ptr { u64 }, __anon_0, !14
+        v109v1 = const u64 0
+        v110v1 = get_elem_ptr v108v1, __ptr u64, v109v1, !14
+        v107v1 = const u64 1, !14
+        store v107v1 to v110v1, !14
+        v116v1 = get_local __ptr { u64 }, __anon_1, !15
+        v117v1 = const u64 0
+        v118v1 = get_elem_ptr v116v1, __ptr u64, v117v1, !15
+        v115v1 = const u64 0, !15
+        store v115v1 to v118v1, !15
+        v124v1 = get_local __ptr { u64 }, __anon_2, !16
+        v125v1 = const u64 0
+        v126v1 = get_elem_ptr v124v1, __ptr u64, v125v1, !16
+        v123v1 = const u64 0, !16
+        store v123v1 to v126v1, !16
+        v132v1 = get_local __ptr { u64 }, __anon_3, !16
+        v133v1 = const u64 0
+        v134v1 = get_elem_ptr v132v1, __ptr u64, v133v1, !16
+        v131v1 = const u64 3, !16
+        store v131v1 to v134v1, !16
+        v140v1 = get_local __ptr { u64 }, __anon_4, !17
+        v141v1 = const u64 0
+        v142v1 = get_elem_ptr v140v1, __ptr u64, v141v1, !17
+        v139v1 = const u64 2, !17
+        store v139v1 to v142v1, !17
+        v148v1 = get_local __ptr { u64 }, __anon_5, !18
+        v149v1 = const u64 0
+        v150v1 = get_elem_ptr v148v1, __ptr u64, v149v1, !18
+        v147v1 = const u64 2, !18
+        store v147v1 to v150v1, !18
+        v241v1 = call poke_3(v108v1)
+        v244v1 = call poke_3(v116v1)
+        v247v1 = call poke_3(v124v1)
+        v250v1 = call poke_3(v132v1)
+        v253v1 = call poke_3(v140v1)
+        v256v1 = call poke_3(v148v1)
+        v203v1 = get_global __ptr { u64 }, enum_zero_sized_variants::GLOBAL_UNIT, !19
+        v257v1 = get_local __ptr { u64 }, __tmp_arg5
+        mem_copy_val v257v1, v203v1
+        v259v1 = call poke_3(v257v1)
+        v207v1 = get_global __ptr { u64 }, enum_zero_sized_variants::GLOBAL_EMPTY_STRUCTS, !20
+        v260v1 = get_local __ptr { u64 }, __tmp_arg6
+        mem_copy_val v260v1, v207v1
+        v262v1 = call poke_3(v260v1)
+        v211v1 = get_global __ptr { u64 }, enum_zero_sized_variants::GLOBAL_EMPTY_ARRAYS, !21
+        v263v1 = get_local __ptr { u64 }, __tmp_arg7
+        mem_copy_val v263v1, v211v1
+        v265v1 = call poke_3(v263v1)
+        v215v1 = get_global __ptr { u64 }, enum_zero_sized_variants::GLOBAL_EMPTY_ARRAYS_OF_STRUCTS, !22
+        v266v1 = get_local __ptr { u64 }, __tmp_arg8
+        mem_copy_val v266v1, v215v1
+        v268v1 = call poke_3(v266v1)
+        v219v1 = get_global __ptr { u64 }, enum_zero_sized_variants::GLOBAL_DIFFERENT_TYPES, !23
+        v269v1 = get_local __ptr { u64 }, __tmp_arg9
+        mem_copy_val v269v1, v219v1
+        v271v1 = call poke_3(v269v1)
+        v223v1 = get_global __ptr { u64 }, enum_zero_sized_variants::GLOBAL_GENERIC, !24
+        v272v1 = get_local __ptr { u64 }, __tmp_arg10
+        mem_copy_val v272v1, v223v1
+        v274v1 = call poke_3(v272v1)
+        v228v1 = const unit ()
+        ret () v228v1
+    }
+
+    fn poke_3(mut _x: __ptr { u64 }) -> (), !28 {
+        entry(_x: __ptr { u64 }):
+        v177v1 = const unit ()
+        ret () v177v1
+    }
+}
+
+    Finished release [optimized + fuel] target(s) [344 B] in ???
