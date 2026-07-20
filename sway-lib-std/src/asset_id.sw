@@ -28,6 +28,10 @@ pub struct AssetId {
 }
 
 impl Hash for AssetId {
+    fn is_hash_trivial() -> bool {
+        true
+    }
+
     fn hash(self, ref mut state: Hasher) {
         self.bits.hash(state);
     }

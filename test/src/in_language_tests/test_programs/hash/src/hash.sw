@@ -462,6 +462,57 @@ fn hash_tuple_5() {
     assert_eq(keccak256((1_u64, 1_u64, 1u64, 1_u64, 1_u64)), 0x7755da38b585018ea81bdf1a67e2c7de3014469999d4c11eb8c2d99c6285df6c);
 }
 
+#[test]
+fn hash_tuple_6() {
+    let mut hasher = Hasher::new();
+    (0_u64, 0_u64, 0_u64, 0_u64, 0_u64, 0_u64).hash(hasher);
+    assert_eq(hasher.sha256(), 0x17b0761f87b081d5cf10757ccc89f12be355c70e2e29df288b65b30710dcbcd1);
+    assert_eq(sha256((0_u64, 0_u64, 0_u64, 0_u64, 0_u64, 0_u64)), 0x17b0761f87b081d5cf10757ccc89f12be355c70e2e29df288b65b30710dcbcd1);
+    assert_eq(hasher.keccak256(), 0xc980e59163ce244bb4bb6211f48c7b46f88a4f40943e84eb99bdc41e129bd293);
+    assert_eq(keccak256((0_u64, 0_u64, 0_u64, 0_u64, 0_u64, 0_u64)), 0xc980e59163ce244bb4bb6211f48c7b46f88a4f40943e84eb99bdc41e129bd293);
+
+    let mut hasher = Hasher::new();
+    (1_u64, 1_u64, 1_u64, 1_u64, 1_u64, 1_u64).hash(hasher);
+    assert_eq(hasher.sha256(), 0x9cd65c79280fcb0d834da54ea98364d11439ec21e106447abcee2893765809a4);
+    assert_eq(sha256((1_u64, 1_u64, 1_u64, 1_u64, 1_u64, 1_u64)), 0x9cd65c79280fcb0d834da54ea98364d11439ec21e106447abcee2893765809a4);
+    assert_eq(hasher.keccak256(), 0xe25b47d30a6a4dc767566eb44c1ca3bb814bc7d05336e407cb7e4fcbb62dfd51);
+    assert_eq(keccak256((1_u64, 1_u64, 1_u64, 1_u64, 1_u64, 1_u64)), 0xe25b47d30a6a4dc767566eb44c1ca3bb814bc7d05336e407cb7e4fcbb62dfd51);
+}
+
+#[test]
+fn hash_tuple_7() {
+    let mut hasher = Hasher::new();
+    (0_u64, 0_u64, 0_u64, 0_u64, 0_u64, 0_u64, 0_u64).hash(hasher);
+    assert_eq(hasher.sha256(), 0xd4817aa5497628e7c77e6b606107042bbba3130888c5f47a375e6179be789fbb);
+    assert_eq(sha256((0_u64, 0_u64, 0_u64, 0_u64, 0_u64, 0_u64, 0_u64)), 0xd4817aa5497628e7c77e6b606107042bbba3130888c5f47a375e6179be789fbb);
+    assert_eq(hasher.keccak256(), 0x660b057b36925d4a0da5bf6588b4c64cff7f27ee34e9c90b052829bf8e2a3168);
+    assert_eq(keccak256((0_u64, 0_u64, 0_u64, 0_u64, 0_u64, 0_u64, 0_u64)), 0x660b057b36925d4a0da5bf6588b4c64cff7f27ee34e9c90b052829bf8e2a3168);
+
+    let mut hasher = Hasher::new();
+    (1_u64, 1_u64, 1_u64, 1_u64, 1_u64, 1_u64, 1_u64).hash(hasher);
+    assert_eq(hasher.sha256(), 0x68ac8a4116c57147cbdf1560d0aa00bd087e8c3ca484ff219cf85ac2c3249a7b);
+    assert_eq(sha256((1_u64, 1_u64, 1_u64, 1_u64, 1_u64, 1_u64, 1_u64)), 0x68ac8a4116c57147cbdf1560d0aa00bd087e8c3ca484ff219cf85ac2c3249a7b);
+    assert_eq(hasher.keccak256(), 0x4b085430c7e79e4862c111c5b93c007a7c264c60726a71c85fd5cf48927b873a);
+    assert_eq(keccak256((1_u64, 1_u64, 1_u64, 1_u64, 1_u64, 1_u64, 1_u64)), 0x4b085430c7e79e4862c111c5b93c007a7c264c60726a71c85fd5cf48927b873a);
+}
+
+#[test]
+fn hash_tuple_8() {
+    let mut hasher = Hasher::new();
+    (0_u64, 0_u64, 0_u64, 0_u64, 0_u64, 0_u64, 0_u64, 0_u64).hash(hasher);
+    assert_eq(hasher.sha256(), 0xf5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b);
+    assert_eq(sha256((0_u64, 0_u64, 0_u64, 0_u64, 0_u64, 0_u64, 0_u64, 0_u64)), 0xf5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b);
+    assert_eq(hasher.keccak256(), 0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5);
+    assert_eq(keccak256((0_u64, 0_u64, 0_u64, 0_u64, 0_u64, 0_u64, 0_u64, 0_u64)), 0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5);
+
+    let mut hasher = Hasher::new();
+    (1_u64, 1_u64, 1_u64, 1_u64, 1_u64, 1_u64, 1_u64, 1_u64).hash(hasher);
+    assert_eq(hasher.sha256(), 0x794dde2d7e1d63dc28474122bd094bd35499447b3764dbf6cdf7c75ca73918dc);
+    assert_eq(sha256((1_u64, 1_u64, 1_u64, 1_u64, 1_u64, 1_u64, 1_u64, 1_u64)), 0x794dde2d7e1d63dc28474122bd094bd35499447b3764dbf6cdf7c75ca73918dc);
+    assert_eq(hasher.keccak256(), 0x4d7178fc9dd0659e4f25a41774e1905f280a2561076e876ee49350d24bdc9077);
+    assert_eq(keccak256((1_u64, 1_u64, 1_u64, 1_u64, 1_u64, 1_u64, 1_u64, 1_u64)), 0x4d7178fc9dd0659e4f25a41774e1905f280a2561076e876ee49350d24bdc9077);
+}
+
 #[cfg(experimental_new_hashing = false)]
 #[test()]
 fn hash_array_empty() {
@@ -1911,29 +1962,45 @@ fn hash_b512() {
     let b512 = B512::from((b256::min(), 0x0000000000000000000000000000000000000000000000000000000000000000));
     b512.hash(hasher);
     assert_eq(hasher.sha256(), 0xf5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b);
+    assert_eq(sha256(b512), 0xf5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b);
     assert_eq(hasher.keccak256(), 0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5);
+    assert_eq(keccak256(b512), 0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5);
 
     let mut hasher = Hasher::new();
     let b512 = B512::from((b256::min(), 0x0000000000000000000000000000000000000000000000000000000000000001));
     b512.hash(hasher);
     assert_eq(hasher.sha256(), 0x90f4b39548df55ad6187a1d20d731ecee78c545b94afd16f42ef7592d99cd365);
+    assert_eq(sha256(b512), 0x90f4b39548df55ad6187a1d20d731ecee78c545b94afd16f42ef7592d99cd365);
     assert_eq(hasher.keccak256(), 0xa6eef7e35abe7026729641147f7915573c7e97b47efa546f5f6e3230263bcb49);
+    assert_eq(keccak256(b512), 0xa6eef7e35abe7026729641147f7915573c7e97b47efa546f5f6e3230263bcb49);
 
     let mut hasher = Hasher::new();
     let b512 = B512::from((b256::min(), 0x000000000000000000000000000000000000000000000000000000000000002a));
     b512.hash(hasher);
     assert_eq(hasher.sha256(), 0xc77673a8cc11eb4f660ce1a4ca446423df3b68677ba4c1c1846351ddbeb2e5ef);
+    assert_eq(sha256(b512), 0xc77673a8cc11eb4f660ce1a4ca446423df3b68677ba4c1c1846351ddbeb2e5ef);
     assert_eq(hasher.keccak256(), 0x25a1a901705ed15d5376e82511cff743d9474883c82d145cebcc7811e0424a9c);
+    assert_eq(keccak256(b512), 0x25a1a901705ed15d5376e82511cff743d9474883c82d145cebcc7811e0424a9c);
 
     let mut hasher = Hasher::new();
     let b512 = B512::from((b256::max(), 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff));
     b512.hash(hasher);
     assert_eq(hasher.sha256(), 0x8667e718294e9e0df1d30600ba3eeb201f764aad2dad72748643e4a285e1d1f7);
+    assert_eq(sha256(b512), 0x8667e718294e9e0df1d30600ba3eeb201f764aad2dad72748643e4a285e1d1f7);
     assert_eq(hasher.keccak256(), 0xbd8b151773dbbefd7b0df67f2dcc482901728b6df477f4fb2f192733a005d396);
+    assert_eq(keccak256(b512), 0xbd8b151773dbbefd7b0df67f2dcc482901728b6df477f4fb2f192733a005d396);
 }
 
 #[test()]
 fn hash_call_params() {
+    assert_eq_hashes(
+        CallParams {
+            coins: 0,
+            asset_id: AssetId::from(b256::min()),
+            gas: 0,
+        },
+        (0_u64, AssetId::from(b256::min()), 0_u64),
+    );
     assert_eq_hashes(
         CallParams {
             coins: 42,
@@ -1946,66 +2013,98 @@ fn hash_call_params() {
             112233_u64
         ),
     );
+    assert_eq_hashes(
+        CallParams {
+            coins: u64::max(),
+            asset_id: AssetId::from(b256::max()),
+            gas: u64::max(),
+        },
+        (u64::max(), AssetId::from(b256::max()), u64::max()),
+    );
 }
 
 #[test()]
 fn hash_duration() {
-    assert_eq_hashes(
-        Duration::seconds(42),
-        42_u64,
-    );
+    assert_eq_hashes(Duration::seconds(0), 0_u64);
+    assert_eq_hashes(Duration::seconds(1), 1_u64);
+    assert_eq_hashes(Duration::seconds(42), 42_u64);
+    assert_eq_hashes(Duration::seconds(u64::max()), u64::max());
 }
 
 #[test()]
 fn hash_time() {
-    assert_eq_hashes(
-        Time::from(42),
-        42_u64,
-    );
+    assert_eq_hashes(Time::from(0), 0_u64);
+    assert_eq_hashes(Time::from(1), 1_u64);
+    assert_eq_hashes(Time::from(42), 42_u64);
+    assert_eq_hashes(Time::from(u64::max()), u64::max());
 }
 
 #[test()]
 fn hash_u128() {
+    assert_eq_hashes(U128::from((0, 0)), (0_u64, 0_u64));
+    assert_eq_hashes(U128::from((0, 1)), (0_u64, 1_u64));
+    assert_eq_hashes(U128::from((1, 0)), (1_u64, 0_u64));
+    assert_eq_hashes(U128::from((42, 42)), (42_u64, 42_u64));
     assert_eq_hashes(
-        U128::from((42, 42)),
-        (42_u64, 42_u64),
+        U128::from((u64::max(), u64::max())),
+        (u64::max(), u64::max()),
     );
 }
 
 #[cfg(experimental_new_hashing = false)]
 #[test()]
 fn hash_point2d() {
+    assert_eq_hashes(Point2D::from([0_u256, 0_u256]), (0_u256, 0_u256));
+    assert_eq_hashes(Point2D::from([0_u256, 1_u256]), (0_u256, 1_u256));
+    assert_eq_hashes(Point2D::from([1_u256, 0_u256]), (1_u256, 0_u256));
+    assert_eq_hashes(Point2D::from([42_u256, 42_u256]), (42_u256, 42_u256));
     assert_eq_hashes(
-        Point2D::from([42_u256, 42_u256]),
-        (42_u256, 42_u256),
+        Point2D::from([u256::max(), u256::max()]),
+        (u256::max(), u256::max()),
     );
 }
 
 #[cfg(experimental_new_hashing = true)]
 #[test()]
 fn hash_point2d() {
+    assert_eq_hashes(
+        Point2D::from([0_u256, 0_u256]),
+        (32_u64, 0_u256, 32_u64, 0_u256),
+    );
+    assert_eq_hashes(
+        Point2D::from([0_u256, 1_u256]),
+        (32_u64, 0_u256, 32_u64, 1_u256),
+    );
+    assert_eq_hashes(
+        Point2D::from([1_u256, 0_u256]),
+        (32_u64, 1_u256, 32_u64, 0_u256),
+    );
     assert_eq_hashes(
         Point2D::from([42_u256, 42_u256]),
         (32_u64, 42_u256, 32_u64, 42_u256),
     );
+    assert_eq_hashes(
+        Point2D::from([u256::max(), u256::max()]),
+        (32_u64, u256::max(), 32_u64, u256::max()),
+    );
 }
 
 #[cfg(experimental_new_hashing = false)]
 #[test()]
 fn hash_scalar() {
-    assert_eq_hashes(
-        Scalar::from(42_u256),
-         42_u256,
-    );
+    assert_eq_hashes(Scalar::from(0_u256), 0_u256);
+    assert_eq_hashes(Scalar::from(1_u256), 1_u256);
+    assert_eq_hashes(Scalar::from(42_u256), 42_u256);
+    assert_eq_hashes(Scalar::from(u256::max()), u256::max());
 }
 
 #[cfg(experimental_new_hashing = true)]
 #[test()]
 fn hash_scalar() {
-    assert_eq_hashes(
-        Scalar::from(42_u256),
-        (32_u64, 42_u256),
-    );
+    assert_eq_hashes(Scalar::from(0_u256), (32_u64, 0_u256));
+    assert_eq_hashes(Scalar::from(1_u256), (32_u64, 1_u256));
+    assert_eq_hashes(Scalar::from(42_u256), (32_u64, 42_u256));
+    assert_eq_hashes(Scalar::from(u256::max()), (32_u64, u256::max()));
 }
 
 #[test()]
@@ -2170,6 +2269,10 @@ enum EnumWithUnitVariantsOnly {
 }
 
 impl Hash for EnumWithUnitVariantsOnly {
+    fn is_hash_trivial() -> bool {
+        false
+    }
+
     fn hash(self, ref mut state: Hasher) {
         match self {
             Self::A => 0_u8.hash(state),
@@ -2187,6 +2290,10 @@ enum EnumWithUnitVariantsAndData {
 }
 
 impl Hash for EnumWithUnitVariantsAndData {
+    fn is_hash_trivial() -> bool {
+        false
+    }
+
     fn hash(self, ref mut state: Hasher) {
         match self {
             Self::A => 0_u8.hash(state),
@@ -2220,6 +2327,10 @@ struct Struct {
 }
 
 impl Hash for Struct {
+    fn is_hash_trivial() -> bool {
+        false
+    }
+
     fn hash(self, ref mut state: Hasher) {
         self.f_unit.hash(state);
         self.f_bool.hash(state);
@@ -2433,4 +2544,532 @@ fn hash_sha256_equivalence() {
         sha256((__to_str_array("abc"), __to_str_array("def"))),
         sha256((3u64, 97u8, 98u8, 99u8, 3u64, 100u8, 101u8, 102u8)),
     );
+}
+
+// Test `Hash::is_hash_trivial` classification.
+
+#[test]
+fn hash_is_hash_trivial_stable_true() {
+    // Fixed-size primitives whose in-memory bytes equal their hash bytes.
+    assert(is_hash_trivial::<u8>());
+    assert(is_hash_trivial::<u64>());
+    assert(is_hash_trivial::<b256>());
+    assert(is_hash_trivial::<u256>());
+    assert(is_hash_trivial::<bool>());
+    assert(is_hash_trivial::<()>());
+
+    // `std` wrappers over `b256` / fixed 64-byte data / packed `u64`s.
+    assert(is_hash_trivial::<Address>());
+    assert(is_hash_trivial::<AssetId>());
+    assert(is_hash_trivial::<ContractId>());
+    assert(is_hash_trivial::<EvmAddress>());
+    assert(is_hash_trivial::<B512>());
+    assert(is_hash_trivial::<Ed25519>());
+    assert(is_hash_trivial::<Secp256k1>());
+    assert(is_hash_trivial::<Secp256r1>());
+    assert(is_hash_trivial::<U128>());
+    assert(is_hash_trivial::<Duration>());
+    assert(is_hash_trivial::<Time>());
+    assert(is_hash_trivial::<CallParams>());
+
+    // Tuples of trivially hashable elements with no padding.
+    assert(is_hash_trivial::<(u64, u64)>());
+    assert(is_hash_trivial::<(b256, u64)>());
+    assert(is_hash_trivial::<(u64, b256, u64)>());
+}
+
+#[test]
+fn hash_is_hash_trivial_stable_false() {
+    // Stored in eight-byte slots but hashed as two/four bytes.
+    assert(!is_hash_trivial::<u16>());
+    assert(!is_hash_trivial::<u32>());
+
+    // Dynamically sized types.
+    assert(!is_hash_trivial::<str>());
+    assert(!is_hash_trivial::<Bytes>());
+    assert(!is_hash_trivial::<raw_slice>());
+    assert(!is_hash_trivial::<Vec<u64>>());
+    assert(!is_hash_trivial::<String>());
+    assert(!is_hash_trivial::<Scalar>());
+    assert(!is_hash_trivial::<Point2D>());
+    assert(!is_hash_trivial::<Message>());
+    assert(!is_hash_trivial::<PublicKey>());
+
+    // Enums: the tag is a `u64` in memory but hashed as a `u8`.
+    assert(!is_hash_trivial::<Option<u64>>());
+    assert(!is_hash_trivial::<Result<u64, u64>>());
+    assert(!is_hash_trivial::<Identity>());
+    assert(!is_hash_trivial::<Signature>());
+    assert(!is_hash_trivial::<Input>());
+    assert(!is_hash_trivial::<Output>());
+    assert(!is_hash_trivial::<Transaction>());
+
+    // Tuples with padded fields of otherwise trivial elements
+    // (`bool`/`u8` are padded to eight bytes).
+    assert(!is_hash_trivial::<(u8, u64)>());
+    assert(!is_hash_trivial::<(bool, u64)>());
+    // Tuples containing a non-trivial (`u16`) element.
+    assert(!is_hash_trivial::<(u16, u16)>());
+    assert(!is_hash_trivial::<(u16, u64)>());
+}
+
+#[cfg(experimental_new_hashing = false)]
+#[test]
+fn hash_is_hash_trivial_collections() {
+    // Without `new_hashing`, arrays carry no length prefix, so an array is
+    // trivially hashable exactly when its element type is.
+    assert(is_hash_trivial::<[u64; 2]>());
+    assert(is_hash_trivial::<[b256; 2]>());
+    assert(is_hash_trivial::<([u64; 2], u64)>());
+    // Array of a non-trivial (`u16`) element is not trivial.
+    assert(!is_hash_trivial::<[u16; 2]>());
+}
+
+#[cfg(experimental_new_hashing = true)]
+#[test]
+fn hash_is_hash_trivial_collections() {
+    // With `new_hashing`, arrays carry a length prefix, so they are never
+    // trivially hashable, and neither are aggregates containing them.
+    assert(!is_hash_trivial::<[u64; 2]>());
+    assert(!is_hash_trivial::<[b256; 2]>());
+    assert(!is_hash_trivial::<([u64; 2], u64)>());
+    assert(!is_hash_trivial::<[u16; 2]>());
+}
+
+// Test `Hash` implementations and `is_hash_trivial` for trivially hashable
+// user defined types.
+//
+// Unlike the `Hash` implementations in the standard library, these test types
+// hash their enum tags as `u64` (matching the in-memory tag), which makes them
+// trivially hashable. Since none of them contain collections, their hash is
+// the same regardless of the `new_hashing` experimental feature.
+
+// An enum that hashes its tag as `u64` and has only unit variants.
+enum TrivialEnumUnitsOnly {
+    A: (),
+    B: (),
+    C: (),
+}
+
+impl Hash for TrivialEnumUnitsOnly {
+    fn is_hash_trivial() -> bool {
+        true
+    }
+
+    fn hash(self, ref mut state: Hasher) {
+        match self {
+            Self::A => 0_u64.hash(state),
+            Self::B => 1_u64.hash(state),
+            Self::C => 2_u64.hash(state),
+        }
+    }
+}
+
+// An enum that hashes its tag as `u64` and whose variants are all of the same
+// trivially hashable, non-padded type.
+enum TrivialEnumSameType {
+    A: u64,
+    B: u64,
+    C: u64,
+}
+
+impl Hash for TrivialEnumSameType {
+    fn is_hash_trivial() -> bool {
+        true
+    }
+
+    fn hash(self, ref mut state: Hasher) {
+        match self {
+            Self::A(v) => {
+                0_u64.hash(state);
+                v.hash(state);
+            },
+            Self::B(v) => {
+                1_u64.hash(state);
+                v.hash(state);
+            },
+            Self::C(v) => {
+                2_u64.hash(state);
+                v.hash(state);
+            },
+        }
+    }
+}
+
+// An enum that hashes its tag as `u64` and whose variants are of different
+// trivially hashable, non-padded types that all have the same size (32 bytes).
+enum TrivialEnumDifferentTypes {
+    A: u256,
+    B: b256,
+    C: (u64, u64, u64, u64),
+}
+
+impl Hash for TrivialEnumDifferentTypes {
+    fn is_hash_trivial() -> bool {
+        true
+    }
+
+    fn hash(self, ref mut state: Hasher) {
+        match self {
+            Self::A(v) => {
+                0_u64.hash(state);
+                v.hash(state);
+            },
+            Self::B(v) => {
+                1_u64.hash(state);
+                v.hash(state);
+            },
+            Self::C(v) => {
+                2_u64.hash(state);
+                v.hash(state);
+            },
+        }
+    }
+}
+
+// A struct with many trivially hashable, non-padded fields, including a nested
+// trivially hashable enum.
+struct TrivialStruct {
+    f_u64: u64,
+    f_u256: u256,
+    f_b256: b256,
+    f_b512: B512,
+    f_address: Address,
+    f_u128: U128,
+    f_tuple: (u64, b256, u64),
+    f_enum: TrivialEnumSameType,
+}
+
+impl Hash for TrivialStruct {
+    fn is_hash_trivial() -> bool {
+        true
+    }
+
+    fn hash(self, ref mut state: Hasher) {
+        self.f_u64.hash(state);
+        self.f_u256.hash(state);
+        self.f_b256.hash(state);
+        self.f_b512.hash(state);
+        self.f_address.hash(state);
+        self.f_u128.hash(state);
+        self.f_tuple.hash(state);
+        self.f_enum.hash(state);
+    }
+}
+
+// An empty struct. Its hash is the hash of no bytes.
+struct EmptyStruct {}
+
+impl Hash for EmptyStruct {
+    fn is_hash_trivial() -> bool {
+        true
+    }
+
+    fn hash(self, ref mut _state: Hasher) {}
+}
+
+#[test]
+fn hash_trivial_enum_units_only() {
+    let value = TrivialEnumUnitsOnly::B;
+
+    let mut hasher = Hasher::new();
+    value.hash(hasher);
+    assert_eq(hasher.sha256(), 0xcd2662154e6d76b2b2b92e70c0cac3ccf534f9b74eb5b89819ec509083d00a50);
+    assert_eq(sha256(value), 0xcd2662154e6d76b2b2b92e70c0cac3ccf534f9b74eb5b89819ec509083d00a50);
+    assert_eq(hasher.keccak256(), 0x6c31fc15422ebad28aaf9089c306702f67540b53c7eea8b7d2941044b027100f);
+    assert_eq(keccak256(value), 0x6c31fc15422ebad28aaf9089c306702f67540b53c7eea8b7d2941044b027100f);
+
+    assert(is_hash_trivial::<TrivialEnumUnitsOnly>());
+}
+
+#[test]
+fn hash_trivial_enum_same_type() {
+    let value = TrivialEnumSameType::B(42);
+
+    let mut hasher = Hasher::new();
+    value.hash(hasher);
+    assert_eq(hasher.sha256(), 0xd66d0e5b79ccc9b49fdcc56bebb2b15bdc937c17635c0b93fe6380940c7fd500);
+    assert_eq(sha256(value), 0xd66d0e5b79ccc9b49fdcc56bebb2b15bdc937c17635c0b93fe6380940c7fd500);
+    assert_eq(hasher.keccak256(), 0x5ad0290b3109a92be769d3ef23436982240272370eeb693438f100408473b4fe);
+    assert_eq(keccak256(value), 0x5ad0290b3109a92be769d3ef23436982240272370eeb693438f100408473b4fe);
+
+    assert(is_hash_trivial::<TrivialEnumSameType>());
+}
+
+#[test]
+fn hash_trivial_enum_different_types() {
+    let value_a = TrivialEnumDifferentTypes::A(42_u256);
+    let value_b = TrivialEnumDifferentTypes::B(0x000000000000000000000000000000000000000000000000000000000000002a);
+    let value_c = TrivialEnumDifferentTypes::C((1, 2, 3, 4));
+
+    let mut hasher_a = Hasher::new();
+    value_a.hash(hasher_a);
+    assert_eq(hasher_a.sha256(), 0x81c1ba25bc4bab042375714d443e67a28b732f83efbd75428c317aa746063069);
+    assert_eq(sha256(value_a), 0x81c1ba25bc4bab042375714d443e67a28b732f83efbd75428c317aa746063069);
+    assert_eq(hasher_a.keccak256(), 0x42c3e073a91944dd4b8a31a1ff228e49097013c6567183d0bbf37109ed336d3e);
+    assert_eq(keccak256(value_a), 0x42c3e073a91944dd4b8a31a1ff228e49097013c6567183d0bbf37109ed336d3e);
+
+    let mut hasher_b = Hasher::new();
+    value_b.hash(hasher_b);
+    assert_eq(hasher_b.sha256(), 0xce5a4fa95a60bba8ee7035b230935940b945e7bdcab21983845c300e7e0e0445);
+    assert_eq(sha256(value_b), 0xce5a4fa95a60bba8ee7035b230935940b945e7bdcab21983845c300e7e0e0445);
+    assert_eq(hasher_b.keccak256(), 0x69aaea214c0d06072c58418ccc19ae92670106893542213d0c79ae938e4325e7);
+    assert_eq(keccak256(value_b), 0x69aaea214c0d06072c58418ccc19ae92670106893542213d0c79ae938e4325e7);
+
+    let mut hasher_c = Hasher::new();
+    value_c.hash(hasher_c);
+    assert_eq(hasher_c.sha256(), 0x55d1cccb0c72cd3836dec829ed3646b24a2145ec5b461a878b1628e942bf4a2f);
+    assert_eq(sha256(value_c), 0x55d1cccb0c72cd3836dec829ed3646b24a2145ec5b461a878b1628e942bf4a2f);
+    assert_eq(hasher_c.keccak256(), 0x029be2cdf4a5126b0a22fc0c8beb58d40766890d24bfcb6d324142ad4126580d);
+    assert_eq(keccak256(value_c), 0x029be2cdf4a5126b0a22fc0c8beb58d40766890d24bfcb6d324142ad4126580d);
+
+    assert(is_hash_trivial::<TrivialEnumDifferentTypes>());
+}
+
+#[test]
+fn hash_trivial_struct() {
+    let value = TrivialStruct {
+        f_u64: 640,
+        f_u256: 2560_u256,
+        f_b256: 0x0000000000000000000000000000000000000000000000000000000000000001,
+        f_b512: B512::from((b256::min(), b256::max())),
+        f_address: Address::from(0x000000000000000000000000000000000000000000000000000000000000002a),
+        f_u128: U128::from((0, 42)),
+        f_tuple: (7, 0x0000000000000000000000000000000000000000000000000000000000000002, 9),
+        f_enum: TrivialEnumSameType::C(99),
+    };
+
+    let mut hasher = Hasher::new();
+    value.hash(hasher);
+    assert_eq(hasher.sha256(), 0xef6befb1cb7b406e0e7e83d6795e9b4edb5ac3121cfa0ff75e17d4881aeb3c1b);
+    assert_eq(sha256(value), 0xef6befb1cb7b406e0e7e83d6795e9b4edb5ac3121cfa0ff75e17d4881aeb3c1b);
+    assert_eq(hasher.keccak256(), 0x5515810e6b1981179e0eb8a281ad136e21397f5c313e814b4044690c95877207);
+    assert_eq(keccak256(value), 0x5515810e6b1981179e0eb8a281ad136e21397f5c313e814b4044690c95877207);
+
+    assert(is_hash_trivial::<TrivialStruct>());
+}
+
+#[test]
+fn hash_trivial_empty_struct() {
+    let value = EmptyStruct {};
+
+    // An empty struct hashes to the hash of no bytes.
+    let mut hasher = Hasher::new();
+    value.hash(hasher);
+    assert_eq(hasher.sha256(), 0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855);
+    assert_eq(sha256(value), 0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855);
+    assert_eq(hasher.keccak256(), 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470);
+    assert_eq(keccak256(value), 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470);
+
+    assert(is_hash_trivial::<EmptyStruct>());
+}
+
+/// Test that `Hash` implementations compose correctly when a value is hashed as
+/// part of a larger hashing chain, and not only in isolation.
+///
+/// `AllInOneStruct` has one field for every concrete `std` type that implements
+/// `Hash`.
+///
+/// The struct contains collections and padded fields, so it is never trivially
+/// hashable, and its hash is computed by chaining `hash` over all its fields.
+/// Because it contains collections, its hash depends on the `new_hashing`
+/// experimental feature.
+struct AllInOneStruct {
+    // Primitives and other fixed-size core types.
+    f_unit: (),
+    f_bool: bool,
+    f_u8: u8,
+    f_u16: u16,
+    f_u32: u32,
+    f_u64: u64,
+    f_u256: u256,
+    f_b256: b256,
+    f_u128: U128,
+    f_tuple: (u8, u64, b256),
+    // `std` wrappers over `b256` / fixed-size data.
+    f_address: Address,
+    f_asset_id: AssetId,
+    f_contract_id: ContractId,
+    f_evm_address: EvmAddress,
+    f_b512: B512,
+    f_message: Message,
+    f_public_key: PublicKey,
+    f_ed25519: Ed25519,
+    f_secp256k1: Secp256k1,
+    f_secp256r1: Secp256r1,
+    f_point2d: Point2D,
+    f_scalar: Scalar,
+    f_duration: Duration,
+    f_time: Time,
+    f_call_params: CallParams,
+    // Enums.
+    f_identity: Identity,
+    f_signature: Signature,
+    f_input: Input,
+    f_output: Output,
+    f_transaction: Transaction,
+    f_option: Option<u64>,
+    f_result: Result<u64, u64>,
+    // Collections (make the struct non-trivially hashable and its hash
+    // dependent on the `new_hashing` feature).
+    f_array: [u64; 3],
+    f_str_array: str[5],
+    f_str: str,
+    f_string: String,
+    f_bytes: Bytes,
+    f_vec: Vec<u64>,
+    f_raw_slice: raw_slice,
+}
+
+impl Hash for AllInOneStruct {
+    fn is_hash_trivial() -> bool {
+        false
+    }
+
+    fn hash(self, ref mut state: Hasher) {
+        self.f_unit.hash(state);
+        self.f_bool.hash(state);
+        self.f_u8.hash(state);
+        self.f_u16.hash(state);
+        self.f_u32.hash(state);
+        self.f_u64.hash(state);
+        self.f_u256.hash(state);
+        self.f_b256.hash(state);
+        self.f_u128.hash(state);
+        self.f_tuple.hash(state);
+        self.f_address.hash(state);
+        self.f_asset_id.hash(state);
+        self.f_contract_id.hash(state);
+        self.f_evm_address.hash(state);
+        self.f_b512.hash(state);
+        self.f_message.hash(state);
+        self.f_public_key.hash(state);
+        self.f_ed25519.hash(state);
+        self.f_secp256k1.hash(state);
+        self.f_secp256r1.hash(state);
+        self.f_point2d.hash(state);
+        self.f_scalar.hash(state);
+        self.f_duration.hash(state);
+        self.f_time.hash(state);
+        self.f_call_params.hash(state);
+        self.f_identity.hash(state);
+        self.f_signature.hash(state);
+        self.f_input.hash(state);
+        self.f_output.hash(state);
+        self.f_transaction.hash(state);
+        self.f_option.hash(state);
+        self.f_result.hash(state);
+        self.f_array.hash(state);
+        self.f_str_array.hash(state);
+        self.f_str.hash(state);
+        self.f_string.hash(state);
+        self.f_bytes.hash(state);
+        self.f_vec.hash(state);
+        self.f_raw_slice.hash(state);
+    }
+}
+
+/// Builds a representative `AllInOneStruct` instance.
+///
+/// The `raw_slice` field borrows `raw_slice_source`, which the caller must
+/// keep alive for as long as the returned struct is used.
+fn make_all_in_one_struct(raw_slice_source: Bytes) -> AllInOneStruct {
+    let mut vec = Vec::new();
+    vec.push(9_u64);
+    vec.push(8_u64);
+    vec.push(7_u64);
+
+    let mut bytes = Bytes::new();
+    bytes.push(1_u8);
+    bytes.push(2_u8);
+    bytes.push(3_u8);
+
+    AllInOneStruct {
+        f_unit: (),
+        f_bool: true,
+        f_u8: 8,
+        f_u16: 16,
+        f_u32: 32,
+        f_u64: 64,
+        f_u256: 256_u256,
+        f_b256: 0x0000000000000000000000000000000000000000000000000000000000000042,
+        f_u128: U128::from((1, 2)),
+        f_tuple: (5_u8, 6_u64, 0x0000000000000000000000000000000000000000000000000000000000000007),
+        f_address: Address::from(0x000000000000000000000000000000000000000000000000000000000000002a),
+        f_asset_id: AssetId::from(0x00000000000000000000000000000000000000000000000000000000000000bb),
+        f_contract_id: ContractId::from(0x00000000000000000000000000000000000000000000000000000000000000cc),
+        f_evm_address: EvmAddress::from(0x000000000000000000000000ffffffffffffffffffffffffffffffffffffffff),
+        f_b512: B512::from((b256::min(), b256::max())),
+        f_message: Message::from(0x000000000000000000000000000000000000000000000000000000000000002a),
+        f_public_key: PublicKey::from(0x000000000000000000000000000000000000000000000000000000000000002a),
+        f_ed25519: Ed25519::from((b256::min(), 0x000000000000000000000000000000000000000000000000000000000000002a)),
+        f_secp256k1: Secp256k1::from((b256::min(), 0x000000000000000000000000000000000000000000000000000000000000002a)),
+        f_secp256r1: Secp256r1::from((b256::min(), 0x000000000000000000000000000000000000000000000000000000000000002a)),
+        f_point2d: Point2D::from([1_u256, 2_u256]),
+        f_scalar: Scalar::from(3_u256),
+        f_duration: Duration::seconds(42),
+        f_time: Time::from(43),
+        f_call_params: CallParams {
+            coins: 1,
+            asset_id: AssetId::from(b256::min()),
+            gas: 2,
+        },
+        f_identity: Identity::Address(Address::from(0x000000000000000000000000000000000000000000000000000000000000002a)),
+        f_signature: Signature::Secp256k1(Secp256k1::from((b256::min(), 0x000000000000000000000000000000000000000000000000000000000000002a))),
+        f_input: Input::Message,
+        f_output: Output::Variable,
+        f_transaction: Transaction::Blob,
+        f_option: Option::<u64>::Some(7),
+        f_result: Result::<u64, u64>::Ok(8),
+        f_array: [101_u64, 102_u64, 103_u64],
+        f_str_array: __to_str_array("hello"),
+        f_str: "world",
+        f_string: String::from("sway"),
+        f_bytes: bytes,
+        f_vec: vec,
+        f_raw_slice: raw_slice_source.as_raw_slice(),
+    }
+}
+
+// The expected hashes below were obtained using the released `forc` compiler,
+// so that this test verifies that the current compiler and `std` produce the
+// same hashes as the released, known-good implementation.
+#[cfg(experimental_new_hashing = false)]
+#[test]
+fn hash_all_in_one_struct() {
+    let mut raw_slice_source = Bytes::new();
+    raw_slice_source.push(4_u8);
+    raw_slice_source.push(5_u8);
+    raw_slice_source.push(6_u8);
+
+    let value = make_all_in_one_struct(raw_slice_source);
+
+    let mut hasher = Hasher::new();
+    value.hash(hasher);
+    assert_eq(hasher.sha256(), 0x3118f571d13c9e9a5af08fe6c6bda3ac8a82f337efece2a3b7bbc678059e215e);
+    assert_eq(sha256(value), 0x3118f571d13c9e9a5af08fe6c6bda3ac8a82f337efece2a3b7bbc678059e215e);
+    assert_eq(hasher.keccak256(), 0xf4c16617b097cfccbfc48bde32fbc5c1233bc6ca056c680079a44f23ffc6105c);
+    assert_eq(keccak256(value), 0xf4c16617b097cfccbfc48bde32fbc5c1233bc6ca056c680079a44f23ffc6105c);
+
+    assert(!is_hash_trivial::<AllInOneStruct>());
+}
+
+#[cfg(experimental_new_hashing = true)]
+#[test]
+fn hash_all_in_one_struct() {
+    let mut raw_slice_source = Bytes::new();
+    raw_slice_source.push(4_u8);
+    raw_slice_source.push(5_u8);
+    raw_slice_source.push(6_u8);
+
+    let value = make_all_in_one_struct(raw_slice_source);
+
+    let mut hasher = Hasher::new();
+    value.hash(hasher);
+    assert_eq(hasher.sha256(), 0xc703a9a0ddcc9354a72d5f595e0d2ad228b3b16e540111259551d649f4cbf447);
+    assert_eq(sha256(value), 0xc703a9a0ddcc9354a72d5f595e0d2ad228b3b16e540111259551d649f4cbf447);
+    assert_eq(hasher.keccak256(), 0xb50b4afcbf32f00dbf9084f5b187a0d98744dcce615300d3d3e63d0e090377f6);
+    assert_eq(keccak256(value), 0xb50b4afcbf32f00dbf9084f5b187a0d98744dcce615300d3d3e63d0e090377f6);
+
+    assert(!is_hash_trivial::<AllInOneStruct>());
 }

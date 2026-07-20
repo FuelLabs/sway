@@ -24,10 +24,18 @@ pub struct CallParams {
 }
 
 impl Hash for CallParams {
+    fn is_hash_trivial() -> bool {
+        // `CallParams` is a `u64`, a `b256` (`AssetId`), and a `u64`, all
+        // eight-byte aligned with no padding, hashed in memory order, so its
+        // in-memory representation is identical to its hash bytes representation.
+        true
+    }
+
     fn hash(self, ref mut state: Hasher) {
-        self.coins.hash(state);
-        self.asset_id.hash(state);
-        self.gas.hash(state);
+        // Adding the whole `self` to `state` as a slice
+        // is ~3x more gas effective than adding individual
+        // fields, ~385 vs ~125 gas units.
+        state.write_raw_slice(raw_slice::from_parts::<Self>(__addr_of(self), 1));
     }
 }
 

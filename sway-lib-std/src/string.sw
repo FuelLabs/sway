@@ -513,6 +513,10 @@ impl PartialEq for String {
 impl Eq for String {}
 
 impl Hash for String {
+    fn is_hash_trivial() -> bool {
+        false
+    }
+
     fn hash(self, ref mut state: Hasher) {
         self.bytes.hash(state);
     }

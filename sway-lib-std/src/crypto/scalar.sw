@@ -26,6 +26,10 @@ impl PartialEq for Scalar {
 // is not equal to any other scalar, including itself.
 
 impl Hash for Scalar {
+    fn is_hash_trivial() -> bool {
+        false
+    }
+
     fn hash(self, ref mut state: Hasher) {
         self.bytes.hash(state);
     }

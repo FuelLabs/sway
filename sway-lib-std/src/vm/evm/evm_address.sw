@@ -204,6 +204,10 @@ impl Into<Bytes> for EvmAddress {
 }
 
 impl Hash for EvmAddress {
+    fn is_hash_trivial() -> bool {
+        true
+    }
+
     fn hash(self, ref mut state: Hasher) {
         self.bits.hash(state);
     }

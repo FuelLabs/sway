@@ -94,6 +94,10 @@ impl PartialEq for Message {
 impl Eq for Message {}
 
 impl Hash for Message {
+    fn is_hash_trivial() -> bool {
+        false
+    }
+
     fn hash(self, ref mut state: Hasher) {
         // We want to hash just the raw bytes of the message,
         // and not the `self.bytes` `Bytes` itself.

@@ -183,6 +183,10 @@ impl Into<Bytes> for Address {
 }
 
 impl Hash for Address {
+    fn is_hash_trivial() -> bool {
+        true
+    }
+
     fn hash(self, ref mut state: Hasher) {
         self.bits.hash(state);
     }

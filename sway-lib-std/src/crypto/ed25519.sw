@@ -199,6 +199,12 @@ impl PartialEq for Ed25519 {
 impl Eq for Ed25519 {}
 
 impl Hash for Ed25519 {
+    fn is_hash_trivial() -> bool {
+        // `Ed25519` is a single inline `[u8; 64]` (64 bytes), hashed as raw
+        // bytes, so its in-memory representation is identical to its hash bytes.
+        true
+    }
+
     fn hash(self, ref mut state: Hasher) {
         state.write_raw_slice(raw_slice::from_parts::<u8>(__addr_of(self.bits), 64));
     }

@@ -69,6 +69,12 @@ impl PartialEq for Output {
 impl Eq for Output {}
 
 impl Hash for Output {
+    fn is_hash_trivial() -> bool {
+        // TODO: (HASH-TRIVIAL-ENUMS) The enum tag is stored in memory as a `u64`,
+        //       but hashed as a `u8`.
+        false
+    }
+
     fn hash(self, ref mut state: Hasher) {
         match self {
             Self::Coin => {
