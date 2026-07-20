@@ -14,31 +14,31 @@ exit status: 0
 output:
                                                                                                                   
   half-word   byte   op                                              raw           notes                          
-          0   0      MOVE { dst: 0x3c, src: 0x3 }                    1a f0 30 00                                  
+          0   0      MOVE { dst: 0x3b, src: 0x3 }                    1a ec 30 00                                  
           1   4      JMPF { dynamic: 0x0, fixed: 4 }                 74 00 00 04                                  
           2   8      InvalidOpcode                                   00 00 00 00   data section offset lo (0)     
           3   12     InvalidOpcode                                   00 00 00 68   data section offset hi (104)   
           4   16     InvalidOpcode                                   00 00 00 00   configurables offset lo (0)    
           5   20     InvalidOpcode                                   00 00 00 68   configurables offset hi (104)  
-          6   24     LW { dst: 0x3f, ptr: 0x3c, offset: 1 }          5d ff c0 01                                  
-          7   28     ADD { dst: 0x3f, lhs: 0x3f, rhs: 0x3c }         10 ff ff 00                                  
-          8   32     MOVE { dst: 0x3b, src: 0x5 }                    1a ec 50 00                                  
+          6   24     LW { dst: 0x3f, ptr: 0x3b, offset: 1 }          5d ff b0 01                                  
+          7   28     ADD { dst: 0x3f, lhs: 0x3f, rhs: 0x3b }         10 ff fe c0                                  
+          8   32     MOVE { dst: 0x3a, src: 0x5 }                    1a e8 50 00                                  
           9   36     CFEI { amount: 24 }                             91 00 00 18                                  
-         10   40     JAL { ret_ptr: 0x3e, target: 0x3, offset: 8 }   99 f8 30 08                                  
-         11   44     SW { ptr: 0x3b, value: 0x3d, offset: 0 }        5f ef d0 00                                  
-         12   48     SW { ptr: 0x3b, value: 0x3b, offset: 1 }        5f ef b0 01                                  
-         13   52     MOVI { dst: 0x34, val: 8 }                      72 d0 00 08                                  
-         14   56     SW { ptr: 0x3b, value: 0x34, offset: 2 }        5f ef 40 02                                  
-         15   60     LW { dst: 0x34, ptr: 0x3b, offset: 1 }          5d d3 b0 01                                  
-         16   64     LW { dst: 0x33, ptr: 0x3b, offset: 2 }          5d cf b0 02                                  
-         17   68     RETD { ptr: 0x34, len: 0x33 }                   25 d3 30 00                                  
-         18   72     PSHH { bitmask: 528384 }                        96 08 10 00                                  
-         19   76     ADDI { dst: 0x34, lhs: 0x0, rhs: 3 }            50 d0 00 03                                  
+         10   40     JAL { ret_ptr: 0x3d, target: 0x3, offset: 8 }   99 f4 30 08                                  
+         11   44     SW { ptr: 0x3a, value: 0x3c, offset: 0 }        5f eb c0 00                                  
+         12   48     SW { ptr: 0x3a, value: 0x3a, offset: 1 }        5f eb a0 01                                  
+         13   52     MOVI { dst: 0x33, val: 8 }                      72 cc 00 08                                  
+         14   56     SW { ptr: 0x3a, value: 0x33, offset: 2 }        5f eb 30 02                                  
+         15   60     LW { dst: 0x33, ptr: 0x3a, offset: 1 }          5d cf a0 01                                  
+         16   64     LW { dst: 0x32, ptr: 0x3a, offset: 2 }          5d cb a0 02                                  
+         17   68     RETD { ptr: 0x33, len: 0x32 }                   25 cf 20 00                                  
+         18   72     PSHH { bitmask: 264192 }                        96 04 08 00                                  
+         19   76     ADDI { dst: 0x33, lhs: 0x0, rhs: 3 }            50 cc 00 03                                  
          20   80     LOG { a: 0x0, b: 0x0, c: 0x0, d: 0x0 }          33 00 00 00                                  
-         21   84     ADDI { dst: 0x34, lhs: 0x34, rhs: 5 }           50 d3 40 05                                  
-         22   88     MOVE { dst: 0x3d, src: 0x34 }                   1a f7 40 00                                  
-         23   92     POPH { bitmask: 528384 }                        98 08 10 00                                  
-         24   96     JAL { ret_ptr: 0x0, target: 0x3e, offset: 0 }   99 03 e0 00                                  
+         21   84     ADDI { dst: 0x33, lhs: 0x33, rhs: 5 }           50 cf 30 05                                  
+         22   88     MOVE { dst: 0x3c, src: 0x33 }                   1a f3 30 00                                  
+         23   92     POPH { bitmask: 264192 }                        98 04 08 00                                  
+         24   96     JAL { ret_ptr: 0x0, target: 0x3d, offset: 0 }   99 03 d0 00                                  
          25   100    NOOP                                            47 00 00 00                                  
                                                                                                                   
 
@@ -50,31 +50,31 @@ exit status: 0
 output:
                                                                                                                   
   half-word   byte   op                                              raw           notes                          
-          0   0      MOVE { dst: 0x3c, src: 0x3 }                    1a f0 30 00                                  
+          0   0      MOVE { dst: 0x3b, src: 0x3 }                    1a ec 30 00                                  
           1   4      JMPF { dynamic: 0x0, fixed: 4 }                 74 00 00 04                                  
           2   8      InvalidOpcode                                   00 00 00 00   data section offset lo (0)     
           3   12     InvalidOpcode                                   00 00 00 68   data section offset hi (104)   
           4   16     InvalidOpcode                                   00 00 00 00   configurables offset lo (0)    
           5   20     InvalidOpcode                                   00 00 00 68   configurables offset hi (104)  
-          6   24     LW { dst: 0x3f, ptr: 0x3c, offset: 1 }          5d ff c0 01                                  
-          7   28     ADD { dst: 0x3f, lhs: 0x3f, rhs: 0x3c }         10 ff ff 00                                  
-          8   32     MOVE { dst: 0x3b, src: 0x5 }                    1a ec 50 00                                  
+          6   24     LW { dst: 0x3f, ptr: 0x3b, offset: 1 }          5d ff b0 01                                  
+          7   28     ADD { dst: 0x3f, lhs: 0x3f, rhs: 0x3b }         10 ff fe c0                                  
+          8   32     MOVE { dst: 0x3a, src: 0x5 }                    1a e8 50 00                                  
           9   36     CFEI { amount: 24 }                             91 00 00 18                                  
-         10   40     JAL { ret_ptr: 0x3e, target: 0x3, offset: 8 }   99 f8 30 08                                  
-         11   44     SW { ptr: 0x3b, value: 0x3d, offset: 0 }        5f ef d0 00                                  
-         12   48     SW { ptr: 0x3b, value: 0x3b, offset: 1 }        5f ef b0 01                                  
-         13   52     MOVI { dst: 0x34, val: 8 }                      72 d0 00 08                                  
-         14   56     SW { ptr: 0x3b, value: 0x34, offset: 2 }        5f ef 40 02                                  
-         15   60     LW { dst: 0x34, ptr: 0x3b, offset: 1 }          5d d3 b0 01                                  
-         16   64     LW { dst: 0x33, ptr: 0x3b, offset: 2 }          5d cf b0 02                                  
-         17   68     RETD { ptr: 0x34, len: 0x33 }                   25 d3 30 00                                  
-         18   72     PSHH { bitmask: 528384 }                        96 08 10 00                                  
-         19   76     ADDI { dst: 0x34, lhs: 0x0, rhs: 3 }            50 d0 00 03                                  
+         10   40     JAL { ret_ptr: 0x3d, target: 0x3, offset: 8 }   99 f4 30 08                                  
+         11   44     SW { ptr: 0x3a, value: 0x3c, offset: 0 }        5f eb c0 00                                  
+         12   48     SW { ptr: 0x3a, value: 0x3a, offset: 1 }        5f eb a0 01                                  
+         13   52     MOVI { dst: 0x33, val: 8 }                      72 cc 00 08                                  
+         14   56     SW { ptr: 0x3a, value: 0x33, offset: 2 }        5f eb 30 02                                  
+         15   60     LW { dst: 0x33, ptr: 0x3a, offset: 1 }          5d cf a0 01                                  
+         16   64     LW { dst: 0x32, ptr: 0x3a, offset: 2 }          5d cb a0 02                                  
+         17   68     RETD { ptr: 0x33, len: 0x32 }                   25 cf 20 00                                  
+         18   72     PSHH { bitmask: 264192 }                        96 04 08 00                                  
+         19   76     ADDI { dst: 0x33, lhs: 0x0, rhs: 3 }            50 cc 00 03                                  
          20   80     ADDI { dst: 0x10, lhs: 0x10, rhs: 4 }           50 41 00 04                                  
-         21   84     ADDI { dst: 0x34, lhs: 0x34, rhs: 5 }           50 d3 40 05                                  
+         21   84     ADDI { dst: 0x33, lhs: 0x33, rhs: 5 }           50 cf 30 05                                  
          22   88     ADDI { dst: 0x10, lhs: 0x10, rhs: 4 }           50 41 00 04                                  
-         23   92     POPH { bitmask: 528384 }                        98 08 10 00                                  
-         24   96     JAL { ret_ptr: 0x0, target: 0x3e, offset: 0 }   99 03 e0 00                                  
+         23   92     POPH { bitmask: 264192 }                        98 04 08 00                                  
+         24   96     JAL { ret_ptr: 0x0, target: 0x3d, offset: 0 }   99 03 d0 00                                  
          25   100    NOOP                                            47 00 00 00                                  
                                                                                                                   
 

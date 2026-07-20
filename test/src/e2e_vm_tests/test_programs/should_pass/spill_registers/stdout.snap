@@ -139,10 +139,17 @@ fn reg_pressure_11() -> u64 {
 
 
 
+<<<<<<< HEAD
 pshh i530432                  ; [fn init: reg_pressure_11]: push used high registers 40..64
 move $$locbase $sp            ; [fn init: reg_pressure_11]: set locals base register
 cfei i520                     ; [fn init: reg_pressure_11]: allocate: locals 0 byte(s), call args 0 slot(s), register spills 520 byte(s)
 move $r0 $$reta               ; [fn init: reg_pressure_11]: save return address
+=======
+pshh i265216                  ; [fn init: reg_pressure_12]: push used high registers 40..64
+move $$locbase $sp            ; [fn init: reg_pressure_12]: set locals base register
+cfei i512                     ; [fn init: reg_pressure_12]: allocate: locals 0 byte(s), call args 0 slot(s), register spills 512 byte(s)
+move $r0 $$reta               ; [fn init: reg_pressure_12]: save return address
+>>>>>>> 403287569 (new register pointing to the configurable section to allow access with just one addi)
 sw   $$locbase $r0 i0         ; [spill/refill]: spill
 jal  $$reta $pc i431          ; [call: dummy_12]: call function
 move $r0 $$retv               ; [call: dummy_12]: copy returned value
@@ -572,6 +579,12 @@ add  $r0 $r0 $r1
 move $$retv $r0               ; [fn end: reg_pressure_11] set return value
 cfsi i520                     ; [fn end: reg_pressure_11] free: locals 0 byte(s), call args 0 slot(s), register spills 520 byte(s)
 lw   $r0 $$locbase i0         ; [spill/refill]: refill from spill
+<<<<<<< HEAD
 move $$reta $r0               ; [fn end: reg_pressure_11] restore return address
 poph i530432                  ; [fn end: reg_pressure_11]: restore used high registers 40..64
 jal  $zero $$reta i0          ; [fn end: reg_pressure_11] return from call
+=======
+move $$reta $r0               ; [fn end: reg_pressure_12] restore return address
+poph i265216                  ; [fn end: reg_pressure_12]: restore used high registers 40..64
+jal  $zero $$reta i0          ; [fn end: reg_pressure_12] return from call
+>>>>>>> 403287569 (new register pointing to the configurable section to allow access with just one addi)

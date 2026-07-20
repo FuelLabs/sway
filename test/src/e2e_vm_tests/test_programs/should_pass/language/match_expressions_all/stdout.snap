@@ -92,14 +92,14 @@ fn return_match_on_str_slice_8(mut param: __ptr slice) -> u64 {
 
 
 
-pshh i531968                  ; [fn init: return_match_on_str_slice_8]: push used high registers 40..64
+pshh i265984                  ; [fn init: return_match_on_str_slice_8]: push used high registers 40..64
 move $$locbase $sp            ; [fn init: return_match_on_str_slice_8]: set locals base register
 cfei i112                     ; [fn init: return_match_on_str_slice_8]: allocate: locals 112 byte(s), call args 0 slot(s)
 move $r0 $$arg0               ; [fn init: return_match_on_str_slice_8]: copy argument 0 (param)
 move $r1 $$reta               ; [fn init: return_match_on_str_slice_8]: save return address
 addi $r2 $$locbase i96        ; get offset to local __ptr slice
 mcpi $r2 $$arg0 i16           ; copy memory
-addr $r3 data_NonConfigurable_7; get __const_global's address in data section
+addr $r3 data_non_configurable_7; get __const_global's address in data section
 sw   $$locbase $r3 i0         ; store word
 movi $r3 i5                   ; initialize constant into register
 sw   $$locbase $r3 i1         ; store word
@@ -109,8 +109,13 @@ move $$arg0 $r0               ; [call: eq_9]: pass argument 0
 move $$arg1 $r3               ; [call: eq_9]: pass argument 1
 jal  $$reta $pc i33           ; [call: eq_9]: call function
 movi $r0 i1                   ; move parameter from branch to block argument
+<<<<<<< HEAD
 jnzf $$retv $zero i25
 addr $r0 data_NonConfigurable_9; get __const_global0's address in data section
+=======
+jnzf $$retv $zero i27
+addr $r0 data_non_configurable_9; get __const_global0's address in data section
+>>>>>>> 550f3480d (new register pointing to the configurable section to allow access with just one addi)
 addi $r3 $$locbase i32        ; get offset to local __ptr { ptr, u64 }
 sw   $$locbase $r0 i4         ; store word
 movi $r0 i7                   ; initialize constant into register
@@ -121,8 +126,13 @@ move $$arg0 $r2               ; [call: eq_9]: pass argument 0
 move $$arg1 $r0               ; [call: eq_9]: pass argument 1
 jal  $$reta $pc i21           ; [call: eq_9]: call function
 movi $r0 i2                   ; move parameter from branch to block argument
+<<<<<<< HEAD
 jnzf $$retv $zero i13
 addr $r0 data_NonConfigurable_10; get __const_global1's address in data section
+=======
+jnzf $$retv $zero i14
+addr $r0 data_non_configurable_10; get __const_global1's address in data section
+>>>>>>> 550f3480d (new register pointing to the configurable section to allow access with just one addi)
 addi $r3 $$locbase i64        ; get offset to local __ptr { ptr, u64 }
 sw   $$locbase $r0 i8         ; store word
 movi $r0 i5                   ; initialize constant into register
@@ -138,5 +148,5 @@ movi $r0 i1000                ; move parameter from branch to block argument
 move $$retv $r0               ; [fn end: return_match_on_str_slice_8] set return value
 cfsi i112                     ; [fn end: return_match_on_str_slice_8] free: locals 112 byte(s), call args 0 slot(s)
 move $$reta $r1               ; [fn end: return_match_on_str_slice_8] restore return address
-poph i531968                  ; [fn end: return_match_on_str_slice_8]: restore used high registers 40..64
+poph i265984                  ; [fn end: return_match_on_str_slice_8]: restore used high registers 40..64
 jal  $zero $$reta i0          ; [fn end: return_match_on_str_slice_8] return from call
