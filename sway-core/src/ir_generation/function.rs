@@ -5443,18 +5443,20 @@ impl<'a> FnCompiler<'a> {
             .store(tag_gep_val, tag_value)
             .add_metadatum(context, span_md_idx);
 
-        // If the struct representing the enum has only one field, then that field is the tag and
-        // all the variants must be zero-sized, hence the absence of the union. Therefore, there
-        // is no need for another `store` instruction here.
-        let field_tys = enum_type.get_field_types(context);
-        if field_tys.len() != 1 {
-            if let Some(contents_expr) = contents {
-                // Insert the value too.
-                // Only store if the value does not diverge.
-                let contents_value = return_on_termination_or_extract!(
-                    self.compile_expression_to_register(context, md_mgr, contents_expr)?
-                )
-                .expect_register();
+        if let Some(contents_expr) = contents {
+            // Always compile the variant contents expression, if any, so that its side effects are
+            // executed and its divergence is handled, even if the enum is tag-only and the
+            // content is not stored.
+            let contents_value = return_on_termination_or_extract!(
+                self.compile_expression_to_register(context, md_mgr, contents_expr)?
+            )
+            .expect_register();
+
+            // If the struct representing the enum has only one field, then that field is the tag
+            // and all the variants are zero-sized, hence the absence of the union. In that case
+            // the payload carries no data and there is no need for another `store` instruction.
+            let tag_and_variants_tys = enum_type.get_field_types(context);
+            if tag_and_variants_tys.len() != 1 {
                 let contents_type = contents_value.get_type(context).ok_or_else(|| {
                     CompileError::Internal(
                         "Unable to get type for enum contents.",
@@ -5462,7 +5464,9 @@ impl<'a> FnCompiler<'a> {
                     )
                 })?;
 
-                let variant_type = field_tys[1].get_field_type(context, tag as u64).unwrap();
+                let variant_type = tag_and_variants_tys[1]
+                    .get_field_type(context, tag as u64)
+                    .unwrap();
                 if contents_type != variant_type {
                     return Err(CompileError::Internal(
                         format!(
