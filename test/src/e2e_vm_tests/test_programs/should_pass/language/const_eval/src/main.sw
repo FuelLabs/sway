@@ -125,6 +125,10 @@ impl GetVal for [u256; 0] {
     fn get_val(self) -> u64 { 256 }
 }
 
+impl GetVal for str[0] {
+    fn get_val(self) -> u64 { 512 }
+}
+
 // Empty structs that are themselves made only of zero-sized fields. This ensures we also
 // cover zero-sized types that have structure, not just the trivial `{}` case.
 struct EmptyStruct01 {}
@@ -170,6 +174,7 @@ enum AllVariantsDifferentTypes {
     A: (),
     B: EmptyStruct01,
     C: [u8; 0],
+    D: str[0],
 }
 
 enum GenericAllVariantsEmpty<T1, T2, T3> {
@@ -198,6 +203,20 @@ const AVEA_D = AllVariantsEmptyArrays::D([ES03; 100]);
 const AVDT_A = AllVariantsDifferentTypes::A;
 const AVDT_B = AllVariantsDifferentTypes::B(EmptyStruct01 {});
 const AVDT_C = AllVariantsDifferentTypes::C([]);
+const AVDT_D = AllVariantsDifferentTypes::D(__to_str_array(""));
+
+const AVES_C_PAYLOAD: EmptyStruct03 = match AVES_C {
+    AllVariantsEmptyStructs::C(s) => s,
+    _ => ES03,
+};
+const AVEA_D_PAYLOAD: [EmptyStruct03; 100] = match AVEA_D {
+    AllVariantsEmptyArrays::D(a) => a,
+    _ => [ES03; 100],
+};
+const AVDT_D_PAYLOAD: str[0] = match AVDT_D {
+    AllVariantsDifferentTypes::D(s) => s,
+    _ => __to_str_array(""),
+};
 
 const GAVE_A = GenericAllVariantsEmpty::<EmptyStruct01, EmptyStruct02, EmptyStruct03>::A(EmptyStruct01 {});
 const GAVE_B = GenericAllVariantsEmpty::<EmptyStruct01, EmptyStruct02, EmptyStruct03>::B(ES02);
@@ -330,17 +349,30 @@ fn main() -> u64 {
         AllVariantsDifferentTypes::A => assert(().get_val() == 42),
         AllVariantsDifferentTypes::B(_) => assert(false),
         AllVariantsDifferentTypes::C(_) => assert(false),
+        AllVariantsDifferentTypes::D(_) => assert(false),
     }
     match AVDT_B {
         AllVariantsDifferentTypes::A => assert(false),
         AllVariantsDifferentTypes::B(s) => assert(s.get_val() == 1),
         AllVariantsDifferentTypes::C(_) => assert(false),
+        AllVariantsDifferentTypes::D(_) => assert(false),
     }
     match AVDT_C {
         AllVariantsDifferentTypes::A => assert(false),
         AllVariantsDifferentTypes::B(_) => assert(false),
         AllVariantsDifferentTypes::C(a) => assert(a.get_val() == 8),
+        AllVariantsDifferentTypes::D(_) => assert(false),
     }
+    match AVDT_D {
+        AllVariantsDifferentTypes::A => assert(false),
+        AllVariantsDifferentTypes::B(_) => assert(false),
+        AllVariantsDifferentTypes::C(_) => assert(false),
+        AllVariantsDifferentTypes::D(s) => assert(s.get_val() == 512),
+    }
+
+    assert(AVES_C_PAYLOAD.get_val() == 9);
+    assert(AVEA_D_PAYLOAD.get_val() == 9);
+    assert(AVDT_D_PAYLOAD.get_val() == 512);
 
     match GAVE_A {
         GenericAllVariantsEmpty::A(v) => assert(v.get_val() == 1),

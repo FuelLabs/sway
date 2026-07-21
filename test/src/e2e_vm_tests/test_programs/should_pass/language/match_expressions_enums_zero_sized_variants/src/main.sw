@@ -20,6 +20,10 @@ impl GetVal for [u256;0] {
     fn get_val(self) -> u64 { 256 }
 }
 
+impl GetVal for str[0] {
+    fn get_val(self) -> u64 { 512 }
+}
+
 // Empty structs that are themselves made only of zero-sized fields. This ensures we also
 // cover zero-sized types that have structure, not just the trivial `{}` case.
 struct EmptyStruct01 {}
@@ -66,6 +70,7 @@ enum AllVariantsDifferentTypes {
     A: (),
     B: EmptyStruct01,
     C: [u8;0],
+    D: str[0],
 }
 
 enum GenericAllVariantsEmpty<T1, T2, T3> {
@@ -104,6 +109,7 @@ fn match_all_variants_different_types(val: AllVariantsDifferentTypes) -> u64 {
         AllVariantsDifferentTypes::A => ().get_val(),
         AllVariantsDifferentTypes::B(s) => s.get_val(),
         AllVariantsDifferentTypes::C(a) => a.get_val(),
+        AllVariantsDifferentTypes::D(s) => s.get_val(),
     }
 }
 
@@ -163,6 +169,9 @@ fn main() -> u64 {
 
     let x = match_all_variants_different_types(AllVariantsDifferentTypes::C([]));
     assert_eq(x, 8);
+
+    let x = match_all_variants_different_types(AllVariantsDifferentTypes::D(__to_str_array("")));
+    assert_eq(x, 512);
 
     let x = match_generic_all_variants_empty(GenericAllVariantsEmpty::<EmptyStruct01, EmptyStruct02, EmptyStruct03>::A(EmptyStruct01 {}));
     assert_eq(x, 1);

@@ -16,6 +16,7 @@ library {
 // IR: Final
 script {
     global enum_zero_sized_variants::GLOBAL_DIFFERENT_TYPES : { u64 } = const { u64 } { u64 1 }
+    global enum_zero_sized_variants::GLOBAL_DIFFERENT_TYPES_STR : { u64 } = const { u64 } { u64 3 }
     global enum_zero_sized_variants::GLOBAL_EMPTY_ARRAYS : { u64 } = const { u64 } { u64 2 }
     global enum_zero_sized_variants::GLOBAL_EMPTY_ARRAYS_OF_STRUCTS : { u64 } = const { u64 } { u64 3 }
     global enum_zero_sized_variants::GLOBAL_EMPTY_STRUCTS : { u64 } = const { u64 } { u64 1 }
@@ -24,10 +25,10 @@ script {
 
     pub entry fn __entry() -> __ptr never, !3 {
         entry():
-        v230v1 = call main_0(), !6
-        v233v1 = const u64 0, !7
-        v234v1 = const u64 0, !8
-        retd v233v1 v234v1, !9
+        v246v1 = call main_0(), !6
+        v249v1 = const u64 0, !7
+        v250v1 = const u64 0, !8
+        retd v249v1 v250v1, !9
     }
 
     entry_orig fn main_0() -> (), !13 {
@@ -37,83 +38,95 @@ script {
         local { u64 } __anon_3
         local { u64 } __anon_4
         local { u64 } __anon_5
+        local { u64 } __anon_6
         local { u64 } __tmp_arg10
-        local { u64 } __tmp_arg5
+        local { u64 } __tmp_arg11
+        local { u64 } __tmp_arg12
         local { u64 } __tmp_arg6
         local { u64 } __tmp_arg7
         local { u64 } __tmp_arg8
         local { u64 } __tmp_arg9
 
         entry():
-        v108v1 = get_local __ptr { u64 }, __anon_0, !14
-        v109v1 = const u64 0
-        v110v1 = get_elem_ptr v108v1, __ptr u64, v109v1, !14
-        v107v1 = const u64 1, !14
-        store v107v1 to v110v1, !14
-        v116v1 = get_local __ptr { u64 }, __anon_1, !15
-        v117v1 = const u64 0
-        v118v1 = get_elem_ptr v116v1, __ptr u64, v117v1, !15
-        v115v1 = const u64 0, !15
-        store v115v1 to v118v1, !15
-        v124v1 = get_local __ptr { u64 }, __anon_2, !16
-        v125v1 = const u64 0
-        v126v1 = get_elem_ptr v124v1, __ptr u64, v125v1, !16
-        v123v1 = const u64 0, !16
-        store v123v1 to v126v1, !16
-        v132v1 = get_local __ptr { u64 }, __anon_3, !16
-        v133v1 = const u64 0
-        v134v1 = get_elem_ptr v132v1, __ptr u64, v133v1, !16
-        v131v1 = const u64 3, !16
-        store v131v1 to v134v1, !16
-        v140v1 = get_local __ptr { u64 }, __anon_4, !17
-        v141v1 = const u64 0
-        v142v1 = get_elem_ptr v140v1, __ptr u64, v141v1, !17
-        v139v1 = const u64 2, !17
-        store v139v1 to v142v1, !17
-        v148v1 = get_local __ptr { u64 }, __anon_5, !18
-        v149v1 = const u64 0
-        v150v1 = get_elem_ptr v148v1, __ptr u64, v149v1, !18
-        v147v1 = const u64 2, !18
-        store v147v1 to v150v1, !18
-        v241v1 = call poke_3(v108v1)
-        v244v1 = call poke_3(v116v1)
-        v247v1 = call poke_3(v124v1)
-        v250v1 = call poke_3(v132v1)
-        v253v1 = call poke_3(v140v1)
-        v256v1 = call poke_3(v148v1)
-        v203v1 = get_global __ptr { u64 }, enum_zero_sized_variants::GLOBAL_UNIT, !19
-        v257v1 = get_local __ptr { u64 }, __tmp_arg5
-        mem_copy_val v257v1, v203v1
-        v259v1 = call poke_3(v257v1)
-        v207v1 = get_global __ptr { u64 }, enum_zero_sized_variants::GLOBAL_EMPTY_STRUCTS, !20
-        v260v1 = get_local __ptr { u64 }, __tmp_arg6
-        mem_copy_val v260v1, v207v1
-        v262v1 = call poke_3(v260v1)
-        v211v1 = get_global __ptr { u64 }, enum_zero_sized_variants::GLOBAL_EMPTY_ARRAYS, !21
-        v263v1 = get_local __ptr { u64 }, __tmp_arg7
-        mem_copy_val v263v1, v211v1
-        v265v1 = call poke_3(v263v1)
-        v215v1 = get_global __ptr { u64 }, enum_zero_sized_variants::GLOBAL_EMPTY_ARRAYS_OF_STRUCTS, !22
-        v266v1 = get_local __ptr { u64 }, __tmp_arg8
-        mem_copy_val v266v1, v215v1
-        v268v1 = call poke_3(v266v1)
-        v219v1 = get_global __ptr { u64 }, enum_zero_sized_variants::GLOBAL_DIFFERENT_TYPES, !23
-        v269v1 = get_local __ptr { u64 }, __tmp_arg9
-        mem_copy_val v269v1, v219v1
-        v271v1 = call poke_3(v269v1)
-        v223v1 = get_global __ptr { u64 }, enum_zero_sized_variants::GLOBAL_GENERIC, !24
-        v272v1 = get_local __ptr { u64 }, __tmp_arg10
-        mem_copy_val v272v1, v223v1
-        v274v1 = call poke_3(v272v1)
-        v228v1 = const unit ()
-        ret () v228v1
+        v109v1 = get_local __ptr { u64 }, __anon_0, !14
+        v110v1 = const u64 0
+        v111v1 = get_elem_ptr v109v1, __ptr u64, v110v1, !14
+        v108v1 = const u64 1, !14
+        store v108v1 to v111v1, !14
+        v117v1 = get_local __ptr { u64 }, __anon_1, !15
+        v118v1 = const u64 0
+        v119v1 = get_elem_ptr v117v1, __ptr u64, v118v1, !15
+        v116v1 = const u64 0, !15
+        store v116v1 to v119v1, !15
+        v125v1 = get_local __ptr { u64 }, __anon_2, !16
+        v126v1 = const u64 0
+        v127v1 = get_elem_ptr v125v1, __ptr u64, v126v1, !16
+        v124v1 = const u64 0, !16
+        store v124v1 to v127v1, !16
+        v133v1 = get_local __ptr { u64 }, __anon_3, !16
+        v134v1 = const u64 0
+        v135v1 = get_elem_ptr v133v1, __ptr u64, v134v1, !16
+        v132v1 = const u64 3, !16
+        store v132v1 to v135v1, !16
+        v141v1 = get_local __ptr { u64 }, __anon_4, !17
+        v142v1 = const u64 0
+        v143v1 = get_elem_ptr v141v1, __ptr u64, v142v1, !17
+        v140v1 = const u64 2, !17
+        store v140v1 to v143v1, !17
+        v149v1 = get_local __ptr { u64 }, __anon_5, !17
+        v150v1 = const u64 0
+        v151v1 = get_elem_ptr v149v1, __ptr u64, v150v1, !17
+        v148v1 = const u64 3, !17
+        store v148v1 to v151v1, !17
+        v157v1 = get_local __ptr { u64 }, __anon_6, !18
+        v158v1 = const u64 0
+        v159v1 = get_elem_ptr v157v1, __ptr u64, v158v1, !18
+        v156v1 = const u64 2, !18
+        store v156v1 to v159v1, !18
+        v257v1 = call poke_3(v109v1)
+        v260v1 = call poke_3(v117v1)
+        v263v1 = call poke_3(v125v1)
+        v266v1 = call poke_3(v133v1)
+        v269v1 = call poke_3(v141v1)
+        v272v1 = call poke_3(v149v1)
+        v275v1 = call poke_3(v157v1)
+        v215v1 = get_global __ptr { u64 }, enum_zero_sized_variants::GLOBAL_UNIT, !19
+        v276v1 = get_local __ptr { u64 }, __tmp_arg6
+        mem_copy_val v276v1, v215v1
+        v278v1 = call poke_3(v276v1)
+        v219v1 = get_global __ptr { u64 }, enum_zero_sized_variants::GLOBAL_EMPTY_STRUCTS, !20
+        v279v1 = get_local __ptr { u64 }, __tmp_arg7
+        mem_copy_val v279v1, v219v1
+        v281v1 = call poke_3(v279v1)
+        v223v1 = get_global __ptr { u64 }, enum_zero_sized_variants::GLOBAL_EMPTY_ARRAYS, !21
+        v282v1 = get_local __ptr { u64 }, __tmp_arg8
+        mem_copy_val v282v1, v223v1
+        v284v1 = call poke_3(v282v1)
+        v227v1 = get_global __ptr { u64 }, enum_zero_sized_variants::GLOBAL_EMPTY_ARRAYS_OF_STRUCTS, !22
+        v285v1 = get_local __ptr { u64 }, __tmp_arg9
+        mem_copy_val v285v1, v227v1
+        v287v1 = call poke_3(v285v1)
+        v231v1 = get_global __ptr { u64 }, enum_zero_sized_variants::GLOBAL_DIFFERENT_TYPES, !23
+        v288v1 = get_local __ptr { u64 }, __tmp_arg10
+        mem_copy_val v288v1, v231v1
+        v290v1 = call poke_3(v288v1)
+        v235v1 = get_global __ptr { u64 }, enum_zero_sized_variants::GLOBAL_DIFFERENT_TYPES_STR, !24
+        v291v1 = get_local __ptr { u64 }, __tmp_arg11
+        mem_copy_val v291v1, v235v1
+        v293v1 = call poke_3(v291v1)
+        v239v1 = get_global __ptr { u64 }, enum_zero_sized_variants::GLOBAL_GENERIC, !25
+        v294v1 = get_local __ptr { u64 }, __tmp_arg12
+        mem_copy_val v294v1, v239v1
+        v296v1 = call poke_3(v294v1)
+        v244v1 = const unit ()
+        ret () v244v1
     }
 
-    fn poke_3(mut _x: __ptr { u64 }) -> (), !28 {
+    fn poke_3(mut _x: __ptr { u64 }) -> (), !29 {
         entry(_x: __ptr { u64 }):
-        v177v1 = const unit ()
-        ret () v177v1
+        v186v1 = const unit ()
+        ret () v186v1
     }
 }
 
-    Finished release [optimized + fuel] target(s) [344 B] in ???
+    Finished release [optimized + fuel] target(s) [384 B] in ???

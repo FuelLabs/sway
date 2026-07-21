@@ -326,6 +326,8 @@ fn zero_sized_constant(context: &mut Context, ty: Type) -> ConstantContent {
             .map(|_| zero_sized_constant(context, elem_ty))
             .collect();
         ConstantContent::new_array(context, elem_ty, elems)
+    } else if ty.is_string_array(context) {
+        ConstantContent::new_string(context, vec![])
     } else if ty.is_unit(context) {
         ConstantContent::new_unit(context)
     } else if ty.is_union(context) {
@@ -334,7 +336,7 @@ fn zero_sized_constant(context: &mut Context, ty: Type) -> ConstantContent {
         panic!("cannot create a constant of Never type")
     } else {
         unreachable!(
-            "the only possible zero-sized IR types are: structs, arrays, unions, unit, and never"
+            "the only possible zero-sized IR types are: structs, arrays, string arrays, unions, unit, and never"
         )
     }
 }

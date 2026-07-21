@@ -35,6 +35,7 @@ enum AllVariantsDifferentTypes {
     A: (),
     B: EmptyStruct01,
     C: [u8; 0],
+    D: str[0],
 }
 
 enum GenericAllVariantsEmpty<T1, T2, T3> {
@@ -52,6 +53,7 @@ const GLOBAL_EMPTY_STRUCTS = AllVariantsEmptyStructs::B(ES02);
 const GLOBAL_EMPTY_ARRAYS = AllVariantsEmptyArrays::C([]);
 const GLOBAL_EMPTY_ARRAYS_OF_STRUCTS = AllVariantsEmptyArrays::D([ES03; 100]);
 const GLOBAL_DIFFERENT_TYPES = AllVariantsDifferentTypes::B(EmptyStruct01 {});
+const GLOBAL_DIFFERENT_TYPES_STR = AllVariantsDifferentTypes::D(__to_str_array(""));
 const GLOBAL_GENERIC = GenericAllVariantsEmpty::<EmptyStruct01, EmptyStruct02, EmptyStruct03>::A(EmptyStruct01 {});
 
 #[inline(never)]
@@ -63,6 +65,7 @@ fn main() {
     let local_empty_arrays = AllVariantsEmptyArrays::A([]);
     let local_empty_arrays_of_structs = AllVariantsEmptyArrays::D([ES03; 100]);
     let local_different_types = AllVariantsDifferentTypes::C([]);
+    let local_different_types_str = AllVariantsDifferentTypes::D(__to_str_array(""));
     let local_generic =
         GenericAllVariantsEmpty::<EmptyStruct01, EmptyStruct02, EmptyStruct03>::C(ES03);
 
@@ -71,6 +74,7 @@ fn main() {
     poke(local_empty_arrays);
     poke(local_empty_arrays_of_structs);
     poke(local_different_types);
+    poke(local_different_types_str);
     poke(local_generic);
 
     poke(GLOBAL_UNIT);
@@ -78,5 +82,6 @@ fn main() {
     poke(GLOBAL_EMPTY_ARRAYS);
     poke(GLOBAL_EMPTY_ARRAYS_OF_STRUCTS);
     poke(GLOBAL_DIFFERENT_TYPES);
+    poke(GLOBAL_DIFFERENT_TYPES_STR);
     poke(GLOBAL_GENERIC);
 }
