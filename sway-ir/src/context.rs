@@ -64,6 +64,10 @@ pub struct Context<'eng> {
     next_unique_sym_tag: u64,
     next_unique_panic_error_code: u64,
     next_unique_panicking_call_id: u64,
+
+    /// When enabled, `Context::verify` performs an SSA-dominance legality check:
+    /// every used value must be defined by a block/instruction that dominates its use.
+    pub verify_ssa_dominance: bool,
 }
 
 impl<'eng> Context<'eng> {
@@ -95,6 +99,8 @@ impl<'eng> Context<'eng> {
             program_kind: Kind::Contract,
             experimental,
             backtrace,
+            // false by default for performance reasons
+            verify_ssa_dominance: false,
         };
         Type::create_basic_types(&mut def);
         def

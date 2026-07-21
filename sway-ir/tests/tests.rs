@@ -196,6 +196,7 @@ fn run_passes_with_verify(
     ir: &mut Context,
     passes: &PassGroup,
 ) -> bool {
+    ir.verify_ssa_dominance = true;
     pass_mgr
         .run_with_print_verify(
             ir,

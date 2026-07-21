@@ -4,6 +4,7 @@
 //! consistent valid state, using the functions in this module.
 
 use crate::{
+    analysis::dominator::{compute_dom_tree_from_po, compute_post_order, DomTree, PostOrder},
     context::Context,
     error::IrError,
     function::Function,
@@ -18,7 +19,7 @@ use crate::{
     ScopedPass, StorageKey, TypeContent, TypeOption, UnaryOpKind,
 };
 use itertools::Itertools;
-use std::collections::HashSet;
+use rustc_hash::FxHashMap;
 
 pub struct ModuleVerifierResult;
 impl AnalysisResultT for ModuleVerifierResult {}
@@ -42,6 +43,24 @@ pub fn create_module_verifier_pass() -> Pass {
         deps: vec![],
         runner: ScopedPass::ModulePass(PassMutability::Analysis(module_verifier)),
     }
+}
+
+struct SSADominanceScopeChecker {
+    post_order: PostOrder,
+    dom_tree: DomTree,
+    /// Position of each instruction within its block: `(block, index)`.
+    inst_index: FxHashMap<Value, (Block, usize)>,
+}
+
+/// Maps each instruction to `(its block, its position within that block)`.
+fn build_inst_index(context: &Context, function: Function) -> FxHashMap<Value, (Block, usize)> {
+    let mut idx = FxHashMap::default();
+    for block in function.block_iter(context) {
+        for (pos, ins) in block.instruction_iter(context).enumerate() {
+            idx.insert(ins, (block, pos));
+        }
+    }
+    idx
 }
 
 impl Context<'_> {
@@ -121,26 +140,21 @@ impl Context<'_> {
         //     }
         // }
 
-        let mut declared = HashSet::default();
-        for arg in function.args_iter(self) {
-            declared.insert(arg.value);
-        }
+        let scope_checker = if self.verify_ssa_dominance {
+            let post_order = compute_post_order(self, &function);
+            let dom_tree = compute_dom_tree_from_po(self, function, &post_order);
+            let inst_index = build_inst_index(self, function);
+            Some(SSADominanceScopeChecker {
+                post_order,
+                dom_tree,
+                inst_index,
+            })
+        } else {
+            None
+        };
 
         for block in function.block_iter(self) {
-            let is_entry = block.is_entry(self);
-
-            for arg in block.arg_iter(self) {
-                declared.insert(*arg);
-            }
-
-            self.verify_block(cur_module, function, block, &mut declared)?;
-
-            // Otherwise we would remove function args
-            if !is_entry {
-                for arg in block.arg_iter(self) {
-                    declared.remove(arg);
-                }
-            }
+            self.verify_block(cur_module, function, block, scope_checker.as_ref())?;
         }
 
         self.verify_metadata(function.get_metadata(self))?;
@@ -152,7 +166,7 @@ impl Context<'_> {
         cur_module: Module,
         cur_function: Function,
         cur_block: Block,
-        declared: &mut HashSet<Value>,
+        scope_checker: Option<&SSADominanceScopeChecker>,
     ) -> Result<(), IrError> {
         if cur_block.get_function(self) != cur_function {
             return Err(IrError::InconsistentParent(
@@ -183,7 +197,7 @@ impl Context<'_> {
             cur_module,
             cur_function,
             cur_block,
-            declared,
+            scope_checker,
         }
         .verify_instructions();
 
@@ -276,7 +290,7 @@ struct InstructionVerifier<'a, 'eng> {
     cur_module: Module,
     cur_function: Function,
     cur_block: Block,
-    declared: &'a mut HashSet<Value>,
+    scope_checker: Option<&'a SSADominanceScopeChecker>,
 }
 
 impl InstructionVerifier<'_, '_> {
@@ -294,8 +308,6 @@ impl InstructionVerifier<'_, '_> {
                     instruction.parent.get_label(self.context),
                 ));
             }
-
-            self.declared.insert(ins);
 
             match &instruction.op {
                 InstOp::AsmBlock(..) => (),
@@ -414,7 +426,7 @@ impl InstructionVerifier<'_, '_> {
                 InstOp::GetConfig(config) => self.verify_get_config(config)?,
                 InstOp::GetStorageKey(storage_key) => self.verify_get_storage_key(storage_key)?,
                 InstOp::IntToPtr(value, ty) => self.verify_int_to_ptr(value, ty)?,
-                InstOp::Load(ptr) => self.verify_load(ptr)?,
+                InstOp::Load(ptr) => self.verify_load(ptr, ins)?,
                 InstOp::Alloc { ty, count } => self.verify_alloc(ty, count)?,
                 InstOp::MemCopyBytes {
                     dst_val_ptr,
@@ -997,16 +1009,64 @@ impl InstructionVerifier<'_, '_> {
         format!("{:?}", v)
     }
 
-    fn verify_load(&self, src_val: &Value) -> Result<(), IrError> {
-        if !self.declared.contains(src_val) {
-            return Err(IrError::VerifyUnknownValue {
-                value: self.value_to_string(src_val),
-            });
+    fn verify_load(&self, src_val: &Value, use_ins: Value) -> Result<(), IrError> {
+        if let Some(scope_checker) = self.scope_checker.as_ref() {
+            if !self.check_value_scope(scope_checker, src_val, use_ins) {
+                return Err(IrError::VerifyInvalidScope {
+                    value: self.value_to_string(src_val),
+                    val: *src_val,
+                });
+            }
         }
 
         // Just confirm `src_val` is a pointer.
         self.get_ptr_type(src_val, IrError::VerifyLoadFromNonPointer)
             .map(|_| ())
+    }
+
+    fn check_value_scope(
+        &self,
+        scope: &SSADominanceScopeChecker,
+        def_value: &Value,
+        use_instruction_as_value: Value,
+    ) -> bool {
+        let Some(use_instruction) = use_instruction_as_value.get_instruction(self.context) else {
+            return true;
+        };
+        let use_block = use_instruction.parent;
+
+        // ignore checks inside unreachable blocks
+        if !scope.post_order.block_to_po.contains_key(&use_block) {
+            return true;
+        }
+
+        // Constants are module-global; always in scope.
+        if def_value.is_constant(self.context) {
+            return true;
+        }
+
+        // Block or function args dominates its own block and what it
+        // dominates.
+        if let Some(arg) = def_value.get_argument(self.context) {
+            return scope.dom_tree.dominates(arg.block, use_block);
+        }
+
+        let Some(&(def_block, def_pos)) = scope.inst_index.get(def_value) else {
+            return true;
+        };
+
+        // def_block is unreacheable, use_block is reacheable, so we have
+        // a problem
+        if !scope.post_order.block_to_po.contains_key(&def_block) {
+            return false;
+        }
+
+        if def_block == use_block {
+            let use_pos = scope.inst_index[&use_instruction_as_value].1;
+            def_pos <= use_pos
+        } else {
+            scope.dom_tree.dominates(def_block, use_block)
+        }
     }
 
     fn verify_alloc(&self, _ty: &Type, count: &Value) -> Result<(), IrError> {

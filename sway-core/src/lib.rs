@@ -1615,6 +1615,9 @@ pub(crate) fn compile_ast_to_ir_to_asm(
 
     // Run the passes.
     let print_passes_opts: PrintPassesOpts = (&build_config.print_ir).into();
+    ir.verify_ssa_dominance = std::env::var("SWAY_FORCE_VERIFY_IR")
+        .map(|v| v.parse::<bool>().unwrap_or(false))
+        .unwrap_or(false);
     let res = if let Err(ir_error) =
         pass_mgr.run_with_print_verify(&mut ir, &pass_group, &print_passes_opts)
     {
