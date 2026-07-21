@@ -380,12 +380,14 @@ pub fn globals_dce(
     // config decode fns
     for config in context.modules[module.0].configs.iter() {
         if let crate::ConfigContent::V1 { decode_fn, .. } = config.1.get_content(context) {
-            grow_called_function_used_globals_set(
-                context,
-                decode_fn.get(),
-                &mut called_fns,
-                &mut used_globals,
-            );
+            if let Some(decode_fn) = decode_fn.get() {
+                grow_called_function_used_globals_set(
+                    context,
+                    decode_fn,
+                    &mut called_fns,
+                    &mut used_globals,
+                );
+            }
         }
     }
 

@@ -12,12 +12,12 @@ library {
 
 ;; --- START OF TARGET BYTECODE ---
 
-0x00000000 MOVE R60 $pc                                    ;; [26, 240, 48, 0]
+0x00000000 MOVE R59 $pc                                    ;; [26, 236, 48, 0]
 0x00000004 JMPF $zero 0x4                                  ;; [116, 0, 0, 4]
 0x00000008                                                 ;; [0, 0, 0, 0, 0, 0, 0, 32]
 0x00000010                                                 ;; [0, 0, 0, 0, 0, 0, 0, 0]
-0x00000018 LW R63 R60 0x1                                  ;; [93, 255, 192, 1]
-0x0000001c ADD R63 R63 R60                                 ;; [16, 255, 255, 0]
+0x00000018 LW R63 R59 0x1                                  ;; [93, 255, 176, 1]
+0x0000001c ADD R63 R63 R59                                 ;; [16, 255, 254, 192]
 .data_section:
 ;; --- END OF TARGET BYTECODE ---
 
@@ -90,44 +90,44 @@ addi $r0 $$locbase i32        ; get offset to local __ptr u64
 sw   $$locbase $$retv i4      ; store word
 movi $r1 i8                   ; initialize constant into register
 retd  $r0 $r1                 ; [entry end: __entry] return slice
-pshh i528384                  ; [fn init: main_11]: push used high registers 40..64
+pshh i264192                  ; [fn init: main_11]: push used high registers 40..64
 add  $r0 $$arg0 $$arg1
 move $$retv $r0               ; [fn end: main_11] set return value
-poph i528384                  ; [fn end: main_11]: restore used high registers 40..64
+poph i264192                  ; [fn end: main_11]: restore used high registers 40..64
 jal  $zero $$reta i0          ; [fn end: main_11] return from call
 .data:
 
 
 ;; --- START OF TARGET BYTECODE ---
 
-0x00000000 MOVE R60 $pc                                    ;; [26, 240, 48, 0]
+0x00000000 MOVE R59 $pc                                    ;; [26, 236, 48, 0]
 0x00000004 JMPF $zero 0x4                                  ;; [116, 0, 0, 4]
 0x00000008                                                 ;; [0, 0, 0, 0, 0, 0, 0, 120]
 0x00000010                                                 ;; [0, 0, 0, 0, 0, 0, 0, 0]
-0x00000018 LW R63 R60 0x1                                  ;; [93, 255, 192, 1]
-0x0000001c ADD R63 R63 R60                                 ;; [16, 255, 255, 0]
-0x00000020 MOVE R59 $sp                                    ;; [26, 236, 80, 0]
+0x00000018 LW R63 R59 0x1                                  ;; [93, 255, 176, 1]
+0x0000001c ADD R63 R63 R59                                 ;; [16, 255, 254, 192]
+0x00000020 MOVE R58 $sp                                    ;; [26, 232, 80, 0]
 0x00000024 CFEI 0x38                                       ;; [145, 0, 0, 56]
-0x00000028 GTF R52 $zero 0xa                               ;; [97, 208, 0, 10]
-0x0000002c MCPI R59 R52 0x10                               ;; [96, 239, 64, 16]
-0x00000030 ADDI R52 R59 0x10                               ;; [80, 211, 176, 16]
-0x00000034 MCPI R52 R59 0x10                               ;; [96, 211, 176, 16]
-0x00000038 ADDI R51 R59 0x28                               ;; [80, 207, 176, 40]
-0x0000003c MCPI R51 R52 0x10                               ;; [96, 207, 64, 16]
-0x00000040 LW R52 R59 0x5                                  ;; [93, 211, 176, 5]
-0x00000044 LW R51 R59 0x6                                  ;; [93, 207, 176, 6]
-0x00000048 MOVE R58 R52                                    ;; [26, 235, 64, 0]
-0x0000004c MOVE R57 R51                                    ;; [26, 231, 48, 0]
-0x00000050 JAL R62 $pc 0x5                                 ;; [153, 248, 48, 5]
-0x00000054 ADDI R52 R59 0x20                               ;; [80, 211, 176, 32]
-0x00000058 SW R59 R61 0x4                                  ;; [95, 239, 208, 4]
-0x0000005c MOVI R51 0x8                                    ;; [114, 204, 0, 8]
-0x00000060 RETD R52 R51                                    ;; [37, 211, 48, 0]
-0x00000064 PSHH 0x81000                                    ;; [150, 8, 16, 0]
-0x00000068 ADD R52 R58 R57                                 ;; [16, 211, 174, 64]
-0x0000006c MOVE R61 R52                                    ;; [26, 247, 64, 0]
-0x00000070 POPH 0x81000                                    ;; [152, 8, 16, 0]
-0x00000074 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x00000028 GTF R51 $zero 0xa                               ;; [97, 204, 0, 10]
+0x0000002c MCPI R58 R51 0x10                               ;; [96, 235, 48, 16]
+0x00000030 ADDI R51 R58 0x10                               ;; [80, 207, 160, 16]
+0x00000034 MCPI R51 R58 0x10                               ;; [96, 207, 160, 16]
+0x00000038 ADDI R50 R58 0x28                               ;; [80, 203, 160, 40]
+0x0000003c MCPI R50 R51 0x10                               ;; [96, 203, 48, 16]
+0x00000040 LW R51 R58 0x5                                  ;; [93, 207, 160, 5]
+0x00000044 LW R50 R58 0x6                                  ;; [93, 203, 160, 6]
+0x00000048 MOVE R57 R51                                    ;; [26, 231, 48, 0]
+0x0000004c MOVE R56 R50                                    ;; [26, 227, 32, 0]
+0x00000050 JAL R61 $pc 0x5                                 ;; [153, 244, 48, 5]
+0x00000054 ADDI R51 R58 0x20                               ;; [80, 207, 160, 32]
+0x00000058 SW R58 R60 0x4                                  ;; [95, 235, 192, 4]
+0x0000005c MOVI R50 0x8                                    ;; [114, 200, 0, 8]
+0x00000060 RETD R51 R50                                    ;; [37, 207, 32, 0]
+0x00000064 PSHH 0x40800                                    ;; [150, 4, 8, 0]
+0x00000068 ADD R51 R57 R56                                 ;; [16, 207, 158, 0]
+0x0000006c MOVE R60 R51                                    ;; [26, 243, 48, 0]
+0x00000070 POPH 0x40800                                    ;; [152, 4, 8, 0]
+0x00000074 JAL $zero R61 0x0                               ;; [153, 3, 208, 0]
 .data_section:
 ;; --- END OF TARGET BYTECODE ---
 

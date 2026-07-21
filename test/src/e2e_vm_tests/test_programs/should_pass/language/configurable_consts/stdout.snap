@@ -1,0 +1,31 @@
+---
+source: test/src/snapshot/mod.rs
+---
+TUPLE_BOOL_U64 is NOT trivially decodable, so we should see its initialization
+
+ANOTHER_U8 is trivially decodable, so we should not see any initialization.
+
+When accessing TUPLE_BOOL_U64 we should see an offset from $ssp
+
+When accessing ANOTHER_U8 we should see an offset to the configurable data section
+
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/language/configurable_consts --release --ir final --asm final | sub TUPLE_BOOL_U64,ANOTHER_U8
+
+Matches for "TUPLE_BOOL_U64"
+
+    TUPLE_BOOL_U64 = config { bool, u64 }, abi_decode_in_place_39, 0x01000000000000000b, !11
+        v1463v1 = get_config __ptr { bool, u64 }, TUPLE_BOOL_U64, !522
+addr $$arg0 data_configurable_10; get pointer to configurable TUPLE_BOOL_U64 default value
+addi $$arg1 $zero i9          ; get length of configurable TUPLE_BOOL_U64 default value
+addi $$arg2 $ssp i108         ; get pointer to configurable TUPLE_BOOL_U64 stack address
+jal  $$reta $pc i180          ; decode configurable TUPLE_BOOL_U64
+addi $r0 $ssp i108            ; get address of configurable TUPLE_BOOL_U64
+data_configurable_TUPLE_BOOL_U64_16 .bytes[9] 01 00 00 00 00 00 00 00 0b  .........
+43 |     TUPLE_BOOL_U64: (bool, u64) = (true, 11),
+
+Matches for "ANOTHER_U8"
+
+    ANOTHER_U8 = config u8, <none>, 0x03, !1
+        v1190v1 = get_config __ptr u8, ANOTHER_U8, !361
+addi $r0 $$cs i0              ; get address of configurable ANOTHER_U8
+data_configurable_ANOTHER_U8_6 .bytes[1] 03  .

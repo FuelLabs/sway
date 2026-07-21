@@ -439,20 +439,39 @@ pub(crate) fn compile_configurables(
                 }
                 assert!(encoded_bytes.len() == buffer_size);
 
-                let decode_fn = engines.de().get(decl.decode_fn.as_ref().unwrap().id());
-                let keyed_decl = KeyedTyFunctionDecl::new(&decode_fn, engines);
-                let decode_fn = compiled_fn_cache.get_compiled_function(
-                    engines,
-                    context,
-                    module,
-                    md_mgr,
-                    &keyed_decl,
-                    logged_types_map,
-                    messages_types_map,
-                    panic_occurrences,
-                    panicking_call_occurrences,
-                    panicking_fn_cache,
-                )?;
+                // Determine whether this configurable is trivially decodable or not
+                let is_trivial = decl
+                    .is_decode_trivial
+                    .as_ref()
+                    .and_then(|expr| {
+                        super::const_eval::compile_constant_expression_to_constant(
+                            engines, context, md_mgr, module, None, None, expr,
+                        )
+                        .ok()
+                    })
+                    .and_then(|c| c.get_content(context).as_bool())
+                    .unwrap_or(false);
+
+                // Trivial configurables do not need a decode function
+                let decode_fn = if is_trivial {
+                    None
+                } else {
+                    let decode_fn = engines.de().get(decl.decode_fn.as_ref().unwrap().id());
+                    let keyed_decl = KeyedTyFunctionDecl::new(&decode_fn, engines);
+                    let decode_fn = compiled_fn_cache.get_compiled_function(
+                        engines,
+                        context,
+                        module,
+                        md_mgr,
+                        &keyed_decl,
+                        logged_types_map,
+                        messages_types_map,
+                        panic_occurrences,
+                        panicking_call_occurrences,
+                        panicking_fn_cache,
+                    )?;
+                    Some(decode_fn)
+                };
 
                 let name = decl_name.as_str().to_string();
                 module.add_config(

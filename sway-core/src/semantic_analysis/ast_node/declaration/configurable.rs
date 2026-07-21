@@ -83,7 +83,7 @@ impl ty::TyConfigurableDecl {
         }
 
         // Configurables using encoding v1 will be encoded and must be type_checked into "slice"
-        let (value, decode_fn) = if ctx.experimental.new_encoding {
+        let (value, decode_fn, is_decode_trivial) = if ctx.experimental.new_encoding {
             let mut ctx = ctx
                 .by_ref()
                 .with_type_annotation(type_engine.id_of_raw_slice())
@@ -164,7 +164,37 @@ impl ty::TyConfigurableDecl {
                 decode_fn_ref
             };
 
-            (value, Some(decode_fn_ref))
+            let is_decode_trivial = {
+                let is_decode_trivial_handler = Handler::default();
+                let expr = ty::TyExpression::type_check_function_application(
+                    &is_decode_trivial_handler,
+                    ctx.by_ref(),
+                    TypeBinding {
+                        inner: CallPath {
+                            prefixes: vec![
+                                sway_types::Ident::new_no_span("std".into()),
+                                sway_types::Ident::new_no_span("codec".into()),
+                            ],
+                            suffix: sway_types::Ident::new_no_span("is_decode_trivial".into()),
+                            callpath_type: CallPathType::Ambiguous,
+                        },
+                        type_arguments: crate::TypeArgs::Regular(vec![GenericArgument::Type(
+                            GenericTypeArgument {
+                                type_id: type_ascription.type_id,
+                                initial_type_id: type_ascription.type_id,
+                                span: sway_types::Span::dummy(),
+                                call_path_tree: None,
+                            },
+                        )]),
+                        span: value_span.clone(),
+                    },
+                    &[],
+                    value_span.clone(),
+                );
+                expr.ok()
+            };
+
+            (value, Some(decode_fn_ref), is_decode_trivial)
         } else {
             // while configurables using encoding v0 will typed as the configurable type itself
             let mut ctx = ctx
@@ -180,7 +210,7 @@ impl ty::TyConfigurableDecl {
                     .unwrap_or_else(|err| ty::TyExpression::error(err, name.span(), engines))
             });
 
-            (value, None)
+            (value, None, None)
         };
 
         let call_path = CallPath::ident_to_fullpath(name.clone(), ctx.namespace());
@@ -193,6 +223,7 @@ impl ty::TyConfigurableDecl {
             span: span.clone(),
             value,
             decode_fn,
+            is_decode_trivial,
             visibility: *visibility,
         })
     }

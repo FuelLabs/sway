@@ -379,13 +379,14 @@ fn config_to_doc(
                 .map(|b| format!("{b:02x}"))
                 .collect::<Vec<String>>()
                 .concat();
+            let decode_fn_name = match decode_fn.get() {
+                Some(f) => f.get_name(context).to_string(),
+                None => "<none>".to_string(),
+            };
             Doc::line(
                 Doc::text(format!(
                     "{} = config {}, {}, 0x{}",
-                    name,
-                    ty,
-                    decode_fn.get().get_name(context),
-                    bytes,
+                    name, ty, decode_fn_name, bytes,
                 ))
                 .append(md_namer.md_idx_to_doc(context, opt_metadata)),
             )
