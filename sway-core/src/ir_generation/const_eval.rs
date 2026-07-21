@@ -789,26 +789,27 @@ fn const_eval_typed_expr(
 
                 let tag_and_variants_tys = enum_ty.get_field_types(lookup.context);
 
+                // Always const-evaluate the variant payload, even when the enum is tag-only and
+                // the payload will be dropped. Otherwise, a non-const-evaluable payload expression
+                // would be wrongly accepted in a const context.
+                let payload = match contents {
+                    None => ConstantContent::new_unit(lookup.context),
+                    Some(subexpr) => match const_eval_typed_expr(lookup, known_consts, subexpr)? {
+                        Some(constant) => constant.get_content(lookup.context).clone(),
+                        None => {
+                            return Err(ConstEvalError::CannotBeEvaluatedToConst {
+                                span: variant_instantiation_span.clone(),
+                            });
+                        }
+                    },
+                };
+
                 // If the enum is lowered to just the tag (all variants are zero-sized), the
                 // aggregate has a single field, the tag. In that case the constant must contain
-                // only the tag, so that its shape matches the enum type. Note that a possible
-                // variant payload is zero-sized here and thus carries no value to store.
+                // only the tag, so that its shape matches the enum type. The payload evaluated
+                // above is zero-sized and thus carries no value to store.
                 if tag_and_variants_tys.len() > 1 {
-                    match contents {
-                        None => fields.push(ConstantContent::new_unit(lookup.context)),
-                        Some(subexpr) => {
-                            match const_eval_typed_expr(lookup, known_consts, subexpr)? {
-                                Some(constant) => {
-                                    fields.push(constant.get_content(lookup.context).clone())
-                                }
-                                None => {
-                                    return Err(ConstEvalError::CannotBeEvaluatedToConst {
-                                        span: variant_instantiation_span.clone(),
-                                    });
-                                }
-                            }
-                        }
-                    }
+                    fields.push(payload);
                 }
 
                 let c = ConstantContent::new_struct(lookup.context, tag_and_variants_tys, fields);
