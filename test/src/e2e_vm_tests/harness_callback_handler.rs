@@ -11,7 +11,15 @@ use sway_core::{
 };
 use sway_ir::Type;
 
-fn stdout_logs(root: &str, snapshot: &str) {
+/// Asserts that the accumulated `snapshot` logs match the stored `logs` snapshot in `root`.
+///
+/// This function panics on a snapshot mismatch.
+///
+/// It is crucial that this assertion is _not_ performed while unwinding a compiler panic (i.e.,
+/// not from the [Observer]'s `Drop`, which runs inside the compiler's own
+/// [std::panic::catch_unwind]). Otherwise, a snapshot mismatch could double-panic and abort the
+/// process. See `compile_to_bytes` for how the caller guarantees this.
+pub(crate) fn assert_stdout_logs(root: &str, snapshot: &str) {
     let root = PathBuf::from_str(root).unwrap();
     let root = root.normalize();
 
@@ -30,7 +38,6 @@ struct Inner {
     pkg_name_cache: HashMap<PathBuf, String>,
     snapshot: Arc<Mutex<String>>,
     trace: Arc<Mutex<Option<bool>>>,
-    root: String,
 }
 
 impl Inner {
@@ -184,27 +191,20 @@ impl Inner {
     }
 }
 
-impl Drop for Inner {
-    fn drop(&mut self) {
-        let snapshot = self.snapshot.lock().unwrap();
-        if !snapshot.is_empty() {
-            // This call will panic if the snapshots do not match,
-            // which is what we want. It is a panic in a `drop`,
-            // but the only one, and as such safe, because we
-            // cannot end up in double-panicking. I.e., this
-            // `drop` will never be called while unwinding some panic.
-            stdout_logs(&self.root, &snapshot);
-        }
-    }
-}
-
 pub struct HarnessCallbackHandler {
     inner: Mutex<Inner>,
 }
 
 impl HarnessCallbackHandler {
-    pub fn new(root: &str, script: &str) -> Self {
-        let snapshot = Arc::new(Mutex::new(String::new()));
+    /// Creates a new handler that accumulates its snapshot logs into the shared `snapshot`
+    /// buffer.
+    ///
+    /// The buffer is intentionally owned by the caller (and not by the handler) so that the
+    /// snapshot assertion can be performed via [assert_stdout_logs] _after_ the compilation,
+    /// outside of any [std::panic::catch_unwind]. The handler itself is consumed and dropped by
+    /// `build_with_options`, potentially while unwinding a compiler panic, so it must not perform
+    /// the assertion in its `Drop`.
+    pub fn new(script: &str, snapshot: Arc<Mutex<String>>) -> Self {
         let trace = Arc::new(Mutex::new(None));
 
         let mut eng = rhai::Engine::new();
@@ -250,7 +250,6 @@ impl HarnessCallbackHandler {
                 pkg_name_cache: HashMap::default(),
                 snapshot,
                 trace,
-                root: root.to_string(),
             }),
         }
     }
