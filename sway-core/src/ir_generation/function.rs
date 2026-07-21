@@ -6085,15 +6085,18 @@ pub fn get_runtime_representation(ctx: &Context, t: Type) -> MemoryRepresentatio
         TypeContent::Uint(32) => panic!("`TypeContent::Uint(`32`) is currently not used in IR"),
         TypeContent::Uint(64) => MemoryRepresentation::Blob { len_in_bytes: 8 },
         TypeContent::Uint(256) => MemoryRepresentation::Blob { len_in_bytes: 32 },
-        TypeContent::Uint(_) => unreachable!("`TypeContent::Uint` can only be 8, 16, 32, 64, or 256"),
+        TypeContent::Uint(_) => {
+            unreachable!("`TypeContent::Uint` can only be 8, 16, 32, 64, or 256")
+        }
         TypeContent::B256 => MemoryRepresentation::Blob { len_in_bytes: 32 },
         TypeContent::Struct(fields) => {
             let mut items = vec![];
             let mut offset_in_bytes = 0;
 
             for idx in 0..fields.len() {
-                let (position_in_bytes, t) =
-                    t.get_struct_field_offset_and_type(ctx, idx as u64).expect("type `t` is checked to be `TypeContent::Struct`");
+                let (position_in_bytes, t) = t
+                    .get_struct_field_offset_and_type(ctx, idx as u64)
+                    .expect("type `t` is checked to be `TypeContent::Struct`");
                 assert!(offset_in_bytes == position_in_bytes);
 
                 let field_mem_rep = get_runtime_representation(ctx, t);
@@ -6280,9 +6283,9 @@ pub fn get_encoding_representation(
             // omitted. The encoding representation mirrors that, otherwise
             // such enums would be wrongly classified as non-trivial.
             if variants.iter().all(|variant| variant.len_in_bytes() == 0) {
-                Some(MemoryRepresentation::And(vec![MemoryRepresentation::Blob {
-                    len_in_bytes: 8,
-                }]))
+                Some(MemoryRepresentation::And(vec![
+                    MemoryRepresentation::Blob { len_in_bytes: 8 },
+                ]))
             } else {
                 Some(MemoryRepresentation::And(vec![
                     MemoryRepresentation::Blob { len_in_bytes: 8 },

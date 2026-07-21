@@ -307,7 +307,10 @@ fn create_array_from_vec(
 /// Panics if `ty` is not a zero-sized [Type] or is a zero-sized [Type]
 /// that cannot have a constant, like, e.g., a [TypeContent::Union] type.
 fn zero_sized_constant(context: &mut Context, ty: Type) -> ConstantContent {
-    assert!(ty.is_zero_sized(context), "to create a zero-sized constant, `ty` must be zero-sized");
+    assert!(
+        ty.is_zero_sized(context),
+        "to create a zero-sized constant, `ty` must be zero-sized"
+    );
 
     if ty.is_struct(context) {
         let field_tys = ty.get_field_types(context);
@@ -330,7 +333,9 @@ fn zero_sized_constant(context: &mut Context, ty: Type) -> ConstantContent {
     } else if ty.is_never(context) {
         panic!("cannot create a constant of Never type")
     } else {
-        unreachable!("the only possible zero-sized IR types are: structs, arrays, unions, unit, and never")
+        unreachable!(
+            "the only possible zero-sized IR types are: structs, arrays, unions, unit, and never"
+        )
     }
 }
 

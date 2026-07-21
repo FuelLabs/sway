@@ -6,7 +6,19 @@
 use itertools::Itertools;
 
 use crate::{
-    AnalysisResult, AnalysisResultT, AnalysisResults, BinaryOpKind, Block, BlockArgument, BranchToWithArgs, Config, ConstantContent, ConstantValue, Doc, GlobalVar, InitAggr, LogEventData, Module, Pass, PassMutability, ScopedPass, StorageKey, TypeContent, TypeOption, UnaryOpKind, context::Context, error::IrError, function::Function, instruction::{FuelVmInstruction, InstOp, Predicate}, irtype::Type, metadata::{MetadataIndex, Metadatum}, printer, value::{Value, ValueDatum}, variable::LocalVar,
+    context::Context,
+    error::IrError,
+    function::Function,
+    instruction::{FuelVmInstruction, InstOp, Predicate},
+    irtype::Type,
+    metadata::{MetadataIndex, Metadatum},
+    printer,
+    value::{Value, ValueDatum},
+    variable::LocalVar,
+    AnalysisResult, AnalysisResultT, AnalysisResults, BinaryOpKind, Block, BlockArgument,
+    BranchToWithArgs, Config, ConstantContent, ConstantValue, Doc, GlobalVar, InitAggr,
+    LogEventData, Module, Pass, PassMutability, ScopedPass, StorageKey, TypeContent, TypeOption,
+    UnaryOpKind,
 };
 
 pub struct ModuleVerifierResult;
@@ -127,7 +139,9 @@ impl Context<'_> {
                 }
             }
             ConstantValue::Uint(_) => match ty.get_content(self) {
-                TypeContent::Uint(8) | TypeContent::Uint(16) | TypeContent::Uint(32)
+                TypeContent::Uint(8)
+                | TypeContent::Uint(16)
+                | TypeContent::Uint(32)
                 | TypeContent::Uint(64) => Ok(()),
                 _ => mismatch("Expected an unsigned integer type of up to 64 bits.".to_owned()),
             },
