@@ -128,10 +128,9 @@ pub fn sroa(
         })
         .collect();
 
-    let mut scalar_replacements = FxHashMap::<Value, Value>::default();
-
     for block in function.block_iter(context) {
         let mut new_insts = Vec::new();
+        let mut replacements_per_block = FxHashMap::<Value, Value>::default();
         for inst in block.instruction_iter(context) {
             if let InstOp::MemCopyVal {
                 dst_val_ptr,
@@ -372,6 +371,11 @@ pub fn sroa(
                     .next()
                     .filter(|sym| syms.len() == 1 && candidates.contains(sym))
                 {
+                    // Reuse the `get_local` already in the same block
+                    if replacements_per_block.contains_key(ptr) {
+                        continue;
+                    }
+
                     let Some(offset) = combine_indices(context, *ptr).and_then(|indices| {
                         sym.get_type(context)
                             .get_pointee_type(context)
@@ -389,15 +393,17 @@ pub fn sroa(
                     let scalarized_local =
                         Value::new_instruction(context, block, InstOp::GetLocal(*remapped_var));
                     new_insts.push(scalarized_local);
-                    scalar_replacements.insert(*ptr, scalarized_local);
+                    replacements_per_block.insert(*ptr, scalarized_local);
                 }
             }
             new_insts.push(inst);
         }
         block.take_body(context, new_insts);
-    }
 
-    function.replace_values(context, &scalar_replacements, None);
+        if !replacements_per_block.is_empty() {
+            block.replace_values(context, &replacements_per_block);
+        }
+    }
 
     Ok(true)
 }

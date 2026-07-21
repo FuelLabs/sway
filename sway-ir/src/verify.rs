@@ -3,8 +3,6 @@
 //! During creation, deserialization and optimization the IR should be verified to be in a
 //! consistent valid state, using the functions in this module.
 
-use itertools::Itertools;
-
 use crate::{
     context::Context,
     error::IrError,
@@ -19,6 +17,8 @@ use crate::{
     BranchToWithArgs, Config, Doc, GlobalVar, InitAggr, LogEventData, Module, Pass, PassMutability,
     ScopedPass, StorageKey, TypeContent, TypeOption, UnaryOpKind,
 };
+use itertools::Itertools;
+use std::collections::HashSet;
 
 pub struct ModuleVerifierResult;
 impl AnalysisResultT for ModuleVerifierResult {}
@@ -121,9 +121,28 @@ impl Context<'_> {
         //     }
         // }
 
-        for block in function.block_iter(self) {
-            self.verify_block(cur_module, function, block)?;
+        let mut declared = HashSet::default();
+        for arg in function.args_iter(self) {
+            declared.insert(arg.value);
         }
+
+        for block in function.block_iter(self) {
+            let is_entry = block.is_entry(self);
+
+            for arg in block.arg_iter(self) {
+                declared.insert(*arg);
+            }
+
+            self.verify_block(cur_module, function, block, &mut declared)?;
+
+            // Otherwise we would remove function args
+            if !is_entry {
+                for arg in block.arg_iter(self) {
+                    declared.remove(arg);
+                }
+            }
+        }
+
         self.verify_metadata(function.get_metadata(self))?;
         Ok(())
     }
@@ -133,6 +152,7 @@ impl Context<'_> {
         cur_module: Module,
         cur_function: Function,
         cur_block: Block,
+        declared: &mut HashSet<Value>,
     ) -> Result<(), IrError> {
         if cur_block.get_function(self) != cur_function {
             return Err(IrError::InconsistentParent(
@@ -163,6 +183,7 @@ impl Context<'_> {
             cur_module,
             cur_function,
             cur_block,
+            declared,
         }
         .verify_instructions();
 
@@ -255,10 +276,11 @@ struct InstructionVerifier<'a, 'eng> {
     cur_module: Module,
     cur_function: Function,
     cur_block: Block,
+    declared: &'a mut HashSet<Value>,
 }
 
 impl InstructionVerifier<'_, '_> {
-    fn verify_instructions(&self) -> Result<(), IrError> {
+    fn verify_instructions(&mut self) -> Result<(), IrError> {
         for ins in self.cur_block.instruction_iter(self.context) {
             let value_content = &self.context.values[ins.0];
             let ValueDatum::Instruction(instruction) = &value_content.value else {
@@ -272,6 +294,8 @@ impl InstructionVerifier<'_, '_> {
                     instruction.parent.get_label(self.context),
                 ));
             }
+
+            self.declared.insert(ins);
 
             match &instruction.op {
                 InstOp::AsmBlock(..) => (),
@@ -963,7 +987,23 @@ impl InstructionVerifier<'_, '_> {
         Ok(())
     }
 
+    fn value_to_string(&self, v: &Value) -> String {
+        if v.get_argument(self.context).is_some() {
+            if let Some(name) = self.cur_function.lookup_arg_name(self.context, v) {
+                return name.to_string();
+            }
+        }
+
+        format!("{:?}", v)
+    }
+
     fn verify_load(&self, src_val: &Value) -> Result<(), IrError> {
+        if !self.declared.contains(src_val) {
+            return Err(IrError::VerifyUnknownValue {
+                value: self.value_to_string(src_val),
+            });
+        }
+
         // Just confirm `src_val` is a pointer.
         self.get_ptr_type(src_val, IrError::VerifyLoadFromNonPointer)
             .map(|_| ())

@@ -98,6 +98,9 @@ pub enum IrError {
     VerifyInitAggrUnknownInitializerType(usize),
     VerifyInitAggrMismatchedStructFieldType(usize, String, String),
     VerifyInitAggrMismatchedArrayElementType(usize, String, String),
+    VerifyUnknownValue {
+        value: String,
+    },
 }
 
 impl IrError {
@@ -603,6 +606,12 @@ impl fmt::Display for IrError {
                     "Verification failed: init_aggr instruction has an initializer with a type mismatch for array element at index {idx}. Expected element type: {element_ty}, found initializer type: {initializer_ty}."
                 )
             }
+            IrError::VerifyUnknownValue { value } => {
+                write!(
+                    f,
+                    "Verification failed: unknown value: {value}",
+                )
+            },
         }
     }
 }
