@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: $()const SOME_ENUM
+# check: $()Could not evaluate initializer to a const declaration.

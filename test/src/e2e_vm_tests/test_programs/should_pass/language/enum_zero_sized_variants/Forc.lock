@@ -1,0 +1,8 @@
+[[package]]
+name = "enum_zero_sized_variants"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-03EDD4E32A2BDA0C"

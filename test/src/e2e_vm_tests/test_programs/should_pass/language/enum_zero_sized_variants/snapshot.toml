@@ -1,0 +1,4 @@
+cmds = [
+    "echo This snapshot proves that enums of all zero-sized variants get compiled only to tag.",
+    "forc build --path {root} --release --ir final",
+]
