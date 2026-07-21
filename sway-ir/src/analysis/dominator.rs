@@ -111,7 +111,7 @@ pub fn create_dominators_pass() -> Pass {
     }
 }
 
-/// Compute the dominator tree of the funtion, given a post-order traversal.
+/// Compute the dominator tree of the function, given a post-order traversal.
 pub fn compute_dom_tree_from_po(context: &Context, function: Function, po: &PostOrder) -> DomTree {
     let mut dom_tree = DomTree::default();
     let entry = function.get_entry_block(context);

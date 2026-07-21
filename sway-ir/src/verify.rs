@@ -1058,7 +1058,7 @@ impl InstructionVerifier<'_, '_> {
             return true;
         };
 
-        // def_block is unreacheable, use_block is reacheable, so we have
+        // def_block is unreachable, use_block is reachable, so we have
         // a problem
         if !scope.post_order.block_to_po.contains_key(&def_block) {
             return false;
