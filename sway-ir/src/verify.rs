@@ -309,6 +309,18 @@ impl InstructionVerifier<'_, '_> {
                 ));
             }
 
+            // SSA dominance check: operand must dominate ins
+            if let Some(scope) = self.scope_checker {
+                for operand in instruction.op.get_operands() {
+                    if !self.check_def_dominates_use(scope, &operand, ins) {
+                        return Err(IrError::VerifyInvalidScope {
+                            value: self.value_to_string(&operand),
+                            val: operand,
+                        });
+                    }
+                }
+            }
+
             match &instruction.op {
                 InstOp::AsmBlock(..) => (),
                 InstOp::BitCast(value, ty) => self.verify_bitcast(value, ty)?,
@@ -426,7 +438,7 @@ impl InstructionVerifier<'_, '_> {
                 InstOp::GetConfig(config) => self.verify_get_config(config)?,
                 InstOp::GetStorageKey(storage_key) => self.verify_get_storage_key(storage_key)?,
                 InstOp::IntToPtr(value, ty) => self.verify_int_to_ptr(value, ty)?,
-                InstOp::Load(ptr) => self.verify_load(ptr, ins)?,
+                InstOp::Load(ptr) => self.verify_load(ptr)?,
                 InstOp::Alloc { ty, count } => self.verify_alloc(ty, count)?,
                 InstOp::MemCopyBytes {
                     dst_val_ptr,
@@ -1009,22 +1021,13 @@ impl InstructionVerifier<'_, '_> {
         format!("{:?}", v)
     }
 
-    fn verify_load(&self, src_val: &Value, use_ins: Value) -> Result<(), IrError> {
-        if let Some(scope_checker) = self.scope_checker.as_ref() {
-            if !self.check_value_scope(scope_checker, src_val, use_ins) {
-                return Err(IrError::VerifyInvalidScope {
-                    value: self.value_to_string(src_val),
-                    val: *src_val,
-                });
-            }
-        }
-
-        // Just confirm `src_val` is a pointer.
+    fn verify_load(&self, src_val: &Value) -> Result<(), IrError> {
         self.get_ptr_type(src_val, IrError::VerifyLoadFromNonPointer)
             .map(|_| ())
     }
 
-    fn check_value_scope(
+    /// `def_value` block/argument/instruction must dominate `use_instruction_as_value`.
+    fn check_def_dominates_use(
         &self,
         scope: &SSADominanceScopeChecker,
         def_value: &Value,
