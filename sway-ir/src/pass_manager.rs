@@ -162,7 +162,7 @@ impl AnalysisResults {
 /// and just running the passes. That approach however offers less control over the
 /// printing. E.g., requiring the printing to happen only if the previous passes
 /// modified the IR cannot be done by simply injecting a module printer.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct PrintPassesOpts {
     pub initial: bool,
     pub r#final: bool,
@@ -359,15 +359,6 @@ impl PassManager {
                     }
                 }
             }
-        }
-        Ok(modified)
-    }
-
-    /// Run the `passes` and return true if the `passes` modify the initial `ir`.
-    pub fn run(&mut self, ir: &mut Context, passes: &PassGroup) -> Result<bool, IrError> {
-        let mut modified = false;
-        for pass in passes.flatten_pass_group() {
-            modified |= self.actually_run(ir, pass)?;
         }
         Ok(modified)
     }

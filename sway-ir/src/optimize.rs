@@ -50,7 +50,7 @@ mod target_fuel;
 
 #[cfg(test)]
 pub mod tests {
-    use crate::{Backtrace, PassGroup, PassManager};
+    use crate::{Backtrace, PassGroup, PassManager, PrintPassesOpts};
     use sway_features::ExperimentalFeatures;
     use sway_types::SourceEngine;
 
@@ -104,7 +104,9 @@ pub mod tests {
         }
 
         let before = context.to_string();
-        let modified = pass_manager.run(&mut context, &group).unwrap();
+        let modified = pass_manager
+            .run_with_print_verify(&mut context, &group, &PrintPassesOpts::default())
+            .unwrap();
         let after = context.to_string();
 
         // print diff to help debug
