@@ -7,9 +7,7 @@ script {
     entry fn main() -> u64, !1 {
         local { u64, u64 } __anon_0
 +         local u64 __anon_00
-+         local u64 __anon_000
 +         local u64 __anon_08
-+         local u64 __anon_080
 
         entry():
         v1v1 = get_local __ptr { u64, u64 }, __anon_0, !2

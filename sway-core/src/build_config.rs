@@ -6,7 +6,7 @@ use std::{
     sync::Arc,
 };
 use strum::{Display, EnumString};
-use sway_ir::{PassManager, PrintPassesOpts, VerifyPassesOpts};
+use sway_ir::{Options, PassManager, VerifyPassesOpts};
 
 #[derive(
     Clone,
@@ -187,14 +187,15 @@ impl std::ops::BitOrAssign for IrCli {
     }
 }
 
-impl From<&IrCli> for PrintPassesOpts {
+impl From<&IrCli> for Options {
     fn from(value: &IrCli) -> Self {
         Self {
-            initial: value.initial,
-            r#final: value.r#final,
-            modified_only: value.modified_only,
-            metadata: value.print_metadata,
-            passes: HashSet::from_iter(value.passes.iter().cloned()),
+            print_initial: value.initial,
+            print_final: value.r#final,
+            print_modified_only: value.modified_only,
+            print_metadata: value.print_metadata,
+            print_passes: HashSet::from_iter(value.passes.iter().cloned()),
+            ..Default::default()
         }
     }
 }

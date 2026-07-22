@@ -7,9 +7,7 @@ script {
     entry fn main() -> u64 {
         local { u64, u64 } s
 +         local u64 s0
-+         local u64 s00
 +         local u64 s8
-+         local u64 s80
 
         entry():
         v1v1 = get_local __ptr { u64, u64 }, s

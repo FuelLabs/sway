@@ -16,9 +16,9 @@ use sway_error::handler::Handler;
 
 use sway_features::ExperimentalFeatures;
 use sway_ir::{
-    create_fn_inline_pass, register_known_passes, Backtrace, PassGroup, PassManager,
-    PrintPassesOpts, ARG_DEMOTION_NAME, CONST_DEMOTION_NAME, DCE_NAME, INIT_AGGR_LOWERING_NAME,
-    MEMCPYOPT_NAME, MISC_DEMOTION_NAME, RET_DEMOTION_NAME,
+    create_fn_inline_pass, register_known_passes, Backtrace, Options, PassGroup, PassManager,
+    ARG_DEMOTION_NAME, CONST_DEMOTION_NAME, DCE_NAME, INIT_AGGR_LOWERING_NAME, MEMCPYOPT_NAME,
+    MISC_DEMOTION_NAME, RET_DEMOTION_NAME,
 };
 use sway_types::ProgramId;
 
@@ -321,7 +321,7 @@ pub(super) async fn run(
                     pass_group.append_pass(MEMCPYOPT_NAME);
                     pass_group.append_pass(DCE_NAME);
                     if pass_mgr
-                        .run_with_print_verify(&mut ir, &pass_group, &PrintPassesOpts::default())
+                        .run(&mut ir, &pass_group, &Options::default())
                         .is_err()
                     {
                         panic!(
@@ -397,7 +397,7 @@ pub(super) async fn run(
                                 .unwrap_or_else(|e| panic!("{}: {e}\n{ir_output}", path.display()));
 
                             let _ = pass_mgr
-                                .run_with_print_verify(&mut ir, &group, &PrintPassesOpts::default());
+                                .run(&mut ir, &group, &Options::default());
                             let ir_output = sway_ir::printer::to_string(&ir);
 
                             match checker.explain(&ir_output, filecheck::NO_VARIABLES)
@@ -423,10 +423,10 @@ pub(super) async fn run(
                                 let mut pmgr_config = PassGroup::default();
                                 let inline = pass_mgr.register(create_fn_inline_pass());
                                 pmgr_config.append_pass(inline);
-                                let inline_res = pass_mgr.run_with_print_verify(
+                                let inline_res = pass_mgr.run(
                                     &mut ir,
                                     &pmgr_config,
-                                    &PrintPassesOpts::default(),
+                                    &Options::default(),
                                 );
                                 if inline_res.is_err() {
                                     panic!(

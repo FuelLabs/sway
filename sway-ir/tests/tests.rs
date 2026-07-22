@@ -14,7 +14,7 @@ use sway_ir::{
     create_mem2reg_pass, create_memcpyopt_pass, create_memcpyprop_reverse_pass,
     create_misc_demotion_pass, create_postorder_pass, create_ret_demotion_pass,
     create_simplify_cfg_pass, metadata_to_inline, optimize as opt, register_known_passes,
-    Backtrace, Context, Function, IrError, PassGroup, PassManager, PrintPassesOpts, Value,
+    Backtrace, Context, Function, IrError, Options, PassGroup, PassManager, Value,
     FN_DEDUP_DEBUG_PROFILE_NAME, FN_DEDUP_RELEASE_PROFILE_NAME, GLOBALS_DCE_NAME, SROA_NAME,
 };
 use sway_types::SourceEngine;
@@ -198,15 +198,17 @@ fn run_passes_with_verify(
 ) -> bool {
     ir.verify_ssa_dominance = true;
     pass_mgr
-        .run_with_print_verify(
+        .run(
             ir,
             passes,
-            &PrintPassesOpts {
-                initial: false,
-                r#final: false,
-                modified_only: false,
-                metadata: false,
-                passes: HashSet::default(),
+            &Options {
+                print_initial: false,
+                print_final: false,
+                print_modified_only: false,
+                print_metadata: false,
+                print_passes: HashSet::default(),
+                force_verify_ir: true,
+                rounds: 1, // we want to check the effect of the optimization only once
             },
         )
         .unwrap()

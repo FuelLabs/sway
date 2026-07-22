@@ -8,9 +8,7 @@ script {
         local [u64; 4] __anon_0
         local { u64, u64 } __anon_1
 +         local u64 __anon_10
-+         local u64 __anon_100
 +         local u64 __anon_18
-+         local u64 __anon_180
         local { u64, u64, [u64; 4], { u64, u64 } } __anon_2
 
         entry():

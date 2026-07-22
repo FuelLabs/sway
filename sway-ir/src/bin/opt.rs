@@ -6,7 +6,7 @@ use std::{
 use anyhow::anyhow;
 use sway_features::ExperimentalFeatures;
 use sway_ir::{
-    insert_after_each, register_known_passes, Backtrace, PassGroup, PassManager, PrintPassesOpts,
+    insert_after_each, register_known_passes, Backtrace, Options, PassGroup, PassManager,
     MODULE_PRINTER_NAME, MODULE_VERIFIER_NAME,
 };
 use sway_types::SourceEngine;
@@ -45,7 +45,7 @@ fn main() -> Result<(), anyhow::Error> {
     if config.verify_after_each {
         passes = insert_after_each(passes, MODULE_VERIFIER_NAME);
     }
-    pass_mgr.run_with_print_verify(&mut ir, &passes, &PrintPassesOpts::default())?;
+    pass_mgr.run(&mut ir, &passes, &Options::default())?;
 
     // Write the output file or standard out.
     write_to_output(ir, &config.output_path)?;
