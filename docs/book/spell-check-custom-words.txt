@@ -281,3 +281,4 @@ callee
 decodable
 encodable
 Vec
+hashable
