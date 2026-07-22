@@ -83,6 +83,12 @@ impl PartialEq for Transaction {
 impl Eq for Transaction {}
 
 impl Hash for Transaction {
+    fn is_hash_trivial() -> bool {
+        // TODO: (HASH-TRIVIAL-ENUMS) The enum tag is stored in memory as a `u64`,
+        //       but hashed as a `u8`.
+        false
+    }
+
     fn hash(self, ref mut state: Hasher) {
         match self {
             Self::Script => {

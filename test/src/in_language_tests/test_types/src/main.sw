@@ -439,6 +439,10 @@ impl PartialEq for EnumSingleU8 {
 impl Eq for EnumSingleU8 {}
 
 impl Hash for EnumSingleU8 {
+    fn is_hash_trivial() -> bool {
+        false
+    }
+
     fn hash(self, ref mut state: Hasher) {
         match self {
             EnumSingleU8::A(v) => { 0_u8.hash(state); v.hash(state); }
@@ -481,6 +485,10 @@ impl PartialEq for EnumSingleU64 {
 impl Eq for EnumSingleU64 {}
 
 impl Hash for EnumSingleU64 {
+    fn is_hash_trivial() -> bool {
+        false
+    }
+
     fn hash(self, ref mut state: Hasher) {
         match self {
             EnumSingleU64::A(v) => { 0_u8.hash(state); v.hash(state); }
@@ -523,6 +531,10 @@ impl PartialEq for EnumSingleBool {
 impl Eq for EnumSingleBool {}
 
 impl Hash for EnumSingleBool {
+    fn is_hash_trivial() -> bool {
+        false
+    }
+
     fn hash(self, ref mut state: Hasher) {
         match self {
             EnumSingleBool::A(v) => { 0_u8.hash(state); v.hash(state); }
@@ -570,6 +582,10 @@ impl PartialEq for EnumMultiUnits {
 impl Eq for EnumMultiUnits {}
 
 impl Hash for EnumMultiUnits {
+    fn is_hash_trivial() -> bool {
+        false
+    }
+
     fn hash(self, ref mut state: Hasher) {
         match self {
             EnumMultiUnits::A => { 0_u8.hash(state); }
@@ -622,6 +638,10 @@ impl PartialEq for EnumMultiOneByte {
 impl Eq for EnumMultiOneByte {}
 
 impl Hash for EnumMultiOneByte {
+    fn is_hash_trivial() -> bool {
+        false
+    }
+
     fn hash(self, ref mut state: Hasher) {
         match self {
             EnumMultiOneByte::A(v) => { 0_u8.hash(state); v.hash(state); }
@@ -674,6 +694,10 @@ impl PartialEq for EnumU8AndU64 {
 impl Eq for EnumU8AndU64 {}
 
 impl Hash for EnumU8AndU64 {
+    fn is_hash_trivial() -> bool {
+        false
+    }
+
     fn hash(self, ref mut state: Hasher) {
         match self {
             EnumU8AndU64::A(v) => { 0_u8.hash(state); v.hash(state); }
@@ -726,6 +750,10 @@ impl PartialEq for EnumQuadSlotSize {
 impl Eq for EnumQuadSlotSize {}
 
 impl Hash for EnumQuadSlotSize {
+    fn is_hash_trivial() -> bool {
+        false
+    }
+
     fn hash(self, ref mut state: Hasher) {
         match self {
             EnumQuadSlotSize::A(v) => { 0_u8.hash(state); v.hash(state); }
@@ -782,6 +810,10 @@ impl PartialEq for EnumLargerThanQuadSlot {
 impl Eq for EnumLargerThanQuadSlot {}
 
 impl Hash for EnumLargerThanQuadSlot {
+    fn is_hash_trivial() -> bool {
+        false
+    }
+
     fn hash(self, ref mut state: Hasher) {
         match self {
             EnumLargerThanQuadSlot::A(v) => { 0_u8.hash(state); v.hash(state); }
@@ -844,6 +876,10 @@ impl PartialEq for StructA {
 impl Eq for StructA {}
 
 impl Hash for StructA {
+    fn is_hash_trivial() -> bool {
+        false
+    }
+
     fn hash(self, ref mut state: Hasher) {
         self.f_bool.hash(state);
         self.f_u8.hash(state);
@@ -933,6 +969,10 @@ impl PartialEq for StructB {
 impl Eq for StructB {}
 
 impl Hash for StructB {
+    fn is_hash_trivial() -> bool {
+        false
+    }
+
     fn hash(self, ref mut state: Hasher) {
         self.f_struct_a.hash(state);
         self.f_tuple.0.hash(state);
@@ -1118,6 +1158,10 @@ impl PartialEq for RawPtrNewtype {
 impl Eq for RawPtrNewtype {}
 
 impl Hash for RawPtrNewtype {
+    fn is_hash_trivial() -> bool {
+        false
+    }
+
     fn hash(self, ref mut state: Hasher) {
         let ptr_as_u64 = asm(p: self.ptr) { p: u64 };
         ptr_as_u64.hash(state);

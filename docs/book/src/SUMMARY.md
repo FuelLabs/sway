@@ -34,6 +34,7 @@
   - [Error Handling](./basics/error_handling.md)
 - [Blockchain Development with Sway](./blockchain-development/index.md)
   - [Hashing and Cryptography](./blockchain-development/hashing_and_cryptography.md)
+  - [Implementing the Hash Trait](./blockchain-development/implementing_hash_trait.md)
   - [Contract Storage](./blockchain-development/storage.md)
   - [Function Purity](./blockchain-development/purity.md)
   - [Identifiers](./blockchain-development/identifiers.md)

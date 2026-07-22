@@ -169,9 +169,17 @@ impl Ord for U128 {
 impl OrdEq for U128 {}
 
 impl Hash for U128 {
+    fn is_hash_trivial() -> bool {
+        // `U128` is two contiguous `u64`s with no padding, hashed in memory
+        // order, so its in-memory representation is identical to its hash bytes.
+        true
+    }
+
     fn hash(self, ref mut state: Hasher) {
-        self.upper.hash(state);
-        self.lower.hash(state);
+        // Adding the whole `self` to `state` as a slice
+        // is ~2.4x more gas effective than adding individual
+        // fields, ~255 vs ~105 gas units.
+        state.write_raw_slice(raw_slice::from_parts::<Self>(__addr_of(self), 1));
     }
 }
 

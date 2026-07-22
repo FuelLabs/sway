@@ -195,6 +195,10 @@ impl PartialEq for PublicKey {
 impl Eq for PublicKey {}
 
 impl Hash for PublicKey {
+    fn is_hash_trivial() -> bool {
+        false
+    }
+
     fn hash(self, ref mut state: Hasher) {
         // We want to hash just the raw bytes of the public key,
         // and not the `self.bytes` `Bytes` itself.

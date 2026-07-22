@@ -416,6 +416,12 @@ impl PartialEq for Secp256k1 {
 impl Eq for Secp256k1 {}
 
 impl Hash for Secp256k1 {
+    fn is_hash_trivial() -> bool {
+        // `Secp256k1` is a single inline `[u8; 64]` (64 bytes), hashed as raw
+        // bytes, so its in-memory representation is identical to its hash bytes.
+        true
+    }
+
     fn hash(self, ref mut state: Hasher) {
         // We want to hash just the raw bytes of the signature,
         // and not the `self.bits` array itself.

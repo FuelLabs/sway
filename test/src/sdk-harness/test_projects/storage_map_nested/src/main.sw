@@ -15,6 +15,10 @@ impl PartialEq for M {
 impl Eq for M {}
 
 impl Hash for M {
+    fn is_hash_trivial() -> bool {
+        true
+    }
+
     fn hash(self, ref mut state: Hasher) {
         self.u.hash(state);
         self.v.hash(state);
