@@ -1,3 +1,113 @@
-<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="swaydoc"><meta name="description" content="API documentation for the Sway `Hash` trait in `hash`."><meta name="keywords" content="sway, swaylang, sway-lang, Hash"><link rel="icon" href="../../static.files/sway-logo.svg"><title>Hash in hash - Sway</title><link rel="stylesheet" type="text/css" href="../../static.files/normalize.css"><link rel="stylesheet" type="text/css" href="../../static.files/swaydoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../static.files/ayu.css"><link rel="stylesheet" href="../../static.files/ayu.min.css"></head><body class="swaydoc trait"><nav class="sidebar"><a class="sidebar-logo" href="../../std/index.html"><div class="logo-container"><img class="sway-logo" src="../../static.files/sway-logo.svg" alt="logo"></div></a><h2 class="location">Trait Hash</h2><div class="sidebar-elems"><section><h3><a href="#required-methods">Required Methods</a></h3><ul class="block method"><li><a href="#structfield.hash">hash</a></li></ul></section></div></nav><main><div class="width-limiter"><script src="../../search.js" type="text/javascript"></script><script>function onSearchFormSubmit(event){event.preventDefault();const searchQuery=document.getElementById("search-input").value;const url=new URL(window.location.href);if(searchQuery){url.searchParams.set('search',searchQuery);}else{url.searchParams.delete('search');}history.pushState({search:searchQuery},"",url);window.dispatchEvent(new HashChangeEvent("hashchange"));}document.addEventListener('DOMContentLoaded',()=>{const searchbar=document.getElementById("search-input");const searchForm=document.getElementById("search-form");searchbar.addEventListener("keyup",function(event){onSearchFormSubmit(event);});searchbar.addEventListener("search",function(event){onSearchFormSubmit(event);});function onQueryParamsChange(){const searchParams=new URLSearchParams(window.location.search);const query=searchParams.get("search");const searchSection=document.getElementById('search');const mainSection=document.getElementById('main-content');const searchInput=document.getElementById('search-input');if(query){searchInput.value=query;const results=Object.values(SEARCH_INDEX).flat().filter(item=>{const lowerQuery=query.toLowerCase();return item.name.toLowerCase().includes(lowerQuery);});const header=`<h1>Results for ${query}</h1>`;if(results.length>0){const resultList=results.map(item=>{const formattedName=`<span class="type ${item.type_name}">${item.name}</span>`;const name=item.type_name==="module"?[...item.module_info.slice(0,-1),formattedName].join("::"):[...item.module_info,formattedName].join("::");const path=["../..",...item.module_info,item.html_filename].join("/");const left=`<td><span>${name}</span></td>`;const right=`<td><p>${item.preview}</p></td>`;return`<tr onclick="window.location='${path}';">${left}${right}</tr>`;}).join('');searchSection.innerHTML=`${header}<table>${resultList}</table>`;}else{searchSection.innerHTML=`${header}<p>No results found.</p>`;}searchSection.setAttribute("class","search-results");mainSection.setAttribute("class","content hidden");}else{searchSection.setAttribute("class","search-results hidden");mainSection.setAttribute("class","content");}}window.addEventListener('hashchange',onQueryParamsChange);onQueryParamsChange();});</script><nav class="sub"><form id="search-form" class="search-form" onsubmit="onSearchFormSubmit(event)"><div class="search-container"><input id="search-input" class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Search the docs..." type="search"></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1 class="fqn"><span class="in-band">Trait <a class="mod" href="../index.html">std</a><span>::</span><a class="mod" href="index.html">hash</a><span>::</span><a class="trait" href="#">Hash</a></span></h1></div><div class="docblock item-decl"><pre class="sway trait"><code>pub trait Hash {
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="swaydoc"><meta name="description" content="API documentation for the Sway `Hash` trait in `hash`."><meta name="keywords" content="sway, swaylang, sway-lang, Hash"><link rel="icon" href="../../static.files/sway-logo.svg"><title>Hash in hash - Sway</title><link rel="stylesheet" type="text/css" href="../../static.files/normalize.css"><link rel="stylesheet" type="text/css" href="../../static.files/swaydoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../static.files/ayu.css"><link rel="stylesheet" href="../../static.files/ayu.min.css"></head><body class="swaydoc trait"><nav class="sidebar"><a class="sidebar-logo" href="../../std/index.html"><div class="logo-container"><img class="sway-logo" src="../../static.files/sway-logo.svg" alt="logo"></div></a><h2 class="location">Trait Hash</h2><div class="sidebar-elems"><section><h3><a href="#required-methods">Required Methods</a></h3><ul class="block method"><li><a href="#structfield.is_hash_trivial">is_hash_trivial</a></li><li><a href="#structfield.hash">hash</a></li></ul></section></div></nav><main><div class="width-limiter"><script src="../../search.js" type="text/javascript"></script><script>function onSearchFormSubmit(event){event.preventDefault();const searchQuery=document.getElementById("search-input").value;const url=new URL(window.location.href);if(searchQuery){url.searchParams.set('search',searchQuery);}else{url.searchParams.delete('search');}history.pushState({search:searchQuery},"",url);window.dispatchEvent(new HashChangeEvent("hashchange"));}document.addEventListener('DOMContentLoaded',()=>{const searchbar=document.getElementById("search-input");const searchForm=document.getElementById("search-form");searchbar.addEventListener("keyup",function(event){onSearchFormSubmit(event);});searchbar.addEventListener("search",function(event){onSearchFormSubmit(event);});function onQueryParamsChange(){const searchParams=new URLSearchParams(window.location.search);const query=searchParams.get("search");const searchSection=document.getElementById('search');const mainSection=document.getElementById('main-content');const searchInput=document.getElementById('search-input');if(query){searchInput.value=query;const results=Object.values(SEARCH_INDEX).flat().filter(item=>{const lowerQuery=query.toLowerCase();return item.name.toLowerCase().includes(lowerQuery);});const header=`<h1>Results for ${query}</h1>`;if(results.length>0){const resultList=results.map(item=>{const formattedName=`<span class="type ${item.type_name}">${item.name}</span>`;const name=item.type_name==="module"?[...item.module_info.slice(0,-1),formattedName].join("::"):[...item.module_info,formattedName].join("::");const path=["../..",...item.module_info,item.html_filename].join("/");const left=`<td><span>${name}</span></td>`;const right=`<td><p>${item.preview}</p></td>`;return`<tr onclick="window.location='${path}';">${left}${right}</tr>`;}).join('');searchSection.innerHTML=`${header}<table>${resultList}</table>`;}else{searchSection.innerHTML=`${header}<p>No results found.</p>`;}searchSection.setAttribute("class","search-results");mainSection.setAttribute("class","content hidden");}else{searchSection.setAttribute("class","search-results hidden");mainSection.setAttribute("class","content");}}window.addEventListener('hashchange',onQueryParamsChange);onQueryParamsChange();});</script><nav class="sub"><form id="search-form" class="search-form" onsubmit="onSearchFormSubmit(event)"><div class="search-container"><input id="search-input" class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Search the docs..." type="search"></div></form></nav><section id="main-content" class="content"><div class="main-heading"><h1 class="fqn"><span class="in-band">Trait <a class="mod" href="../index.html">std</a><span>::</span><a class="mod" href="index.html">hash</a><span>::</span><a class="trait" href="#">Hash</a></span></h1></div><div class="docblock item-decl"><pre class="sway trait"><code>pub trait Hash {
+    /// Returns `true` if the *in-memory representation* of the type is
+    /// byte-for-byte identical to the *hash bytes representation* that
+    /// [Hash::hash] writes into the [Hasher]; otherwise, returns `false`.
+    ///
+    /// # Additional Information
+    ///
+    /// When a type is trivially hashable, its hash can be computed by using
+    /// the raw memory of the value (`__size_of::&lt;Self&gt;()` bytes starting at the
+    /// value's address), without first building an intermediate byte buffer
+    /// in a [Hasher]. This is what the [sha256] and [keccak256] functions do
+    /// for trivially hashable types, which is significantly more gas effective.
+    ///
+    /// **Returning `true` is a strong guarantee: an incorrect `true` will produce
+    /// wrong hashes when a value is hashed via [sha256] or [keccak256].** When in
+    /// doubt, return `false`. Returning `false` is always safe; it only forgoes
+    /// the optimization.
+    ///
+    /// # Warning
+    ///
+    /// Several subtleties make types that might look trivially hashable actually
+    /// **not** trivially hashable. In particular:
+    ///
+    /// - `u16` and `u32` are stored in memory in an eight-byte slot (as `u64`),
+    ///   but their hash bytes representation is only two and four bytes,
+    ///   respectively. They are therefore **never** trivially hashable, and
+    ///   neither is any aggregate (struct, tuple, array, ...) containing them.
+    /// - `bool`, `u8`, `u16`, and `u32` fields inside a struct or tuple are
+    ///   padded to eight bytes in memory. An aggregate containing such a field
+    ///   is therefore **not** trivially hashable, even though the field types
+    ///   themselves might be when hashed on their own.
+    /// - Enum tags are stored in memory as `u64`, but the `Hash` implementations
+    ///   in this library hash them as `u8`. Enums are therefore **not** trivially
+    ///   hashable.
+    /// - Collections (`Bytes`, `Vec`, `raw_slice`, `str`, `str[N]`, arrays, and
+    ///   aggregates containing them) can be trivially hashable or not depending
+    ///   on the `new_hashing` experimental feature. When `new_hashing` is
+    ///   enabled, collections prefix their content with their length, which means
+    ///   their hash bytes representation no longer matches their in-memory
+    ///   representation, making them **not** trivially hashable.
+    ///   For more details see: https://github.com/FuelLabs/sway/issues/7256.
+    // TODO-MEMLAY: In this doc-comment we make an assumption about the memory
+    //              layouts. Those can be changed in the future.
+    // TODO: (TRIVIALLY-HASHABLE-ENUMS) Once we change enum implementations, adapt
+    //       the doc-comment.
+    fn is_hash_trivial() -&gt; bool;
+    /// Writes the hash bytes representation of `self` into the [Hasher] `state`.
     fn hash(self, ref mut state: Hasher);
-}</code></pre></div><h2 id="required-methods" class="required-methods small-section-header">Required Methods<a class="anchor" href="#required-methods"></a></h2><div class="methods"><div id="tymethod.hash" class="method has-srclink"><a href="#tymethod.hash" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#tymethod.hash">hash</a>(<br>    self,<br>    refmut state: Hasher,<br>)</h4></div></div></section><section id="search" class="search-results"></section></div></main><script src="../../static.files/highlight.js"></script><script>hljs.highlightAll();</script></body></html>
+}</code></pre></div><details class="swaydoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Trait for hashing values into a [Hasher].</p>
+<p>Types implementing <code>Hash</code> can be hashed using the [Hasher], or via the<br />
+[sha256] and [keccak256] convenience functions, and can be used in places<br />
+that require a deterministic hash, e.g., as keys in a <code>StorageMap</code>.</p>
+<h1>Implementing <code>Hash</code></h1>
+<p>A <code>Hash</code> implementation defines how the value is written into the [Hasher]<br />
+via the [Hash::hash] method, and declares, via [Hash::is_hash_trivial],<br />
+whether the value’s in-memory representation is byte-for-byte identical to<br />
+the bytes it writes into the [Hasher].</p>
+<pre><code class="language-sway">use std::hash::{Hash, Hasher};
+
+struct MyU64Wrapper {
+    value: u64,
+}
+
+impl Hash for MyU64Wrapper {
+    fn is_hash_trivial() -&gt; bool {
+        // A struct with a single `u64` field has the same in-memory
+        // representation as its hash bytes representation.
+        true
+    }
+
+    fn hash(self, ref mut state: Hasher) {
+        self.value.hash(state);
+    }
+}
+</code></pre>
+</div></details><h2 id="required-methods" class="required-methods small-section-header">Required Methods<a class="anchor" href="#required-methods"></a></h2><div class="methods"><details class="swaydoc-toggle open"><summary><div id="tymethod.is_hash_trivial" class="method has-srclink"><a href="#tymethod.is_hash_trivial" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#tymethod.is_hash_trivial">is_hash_trivial</a>() -&gt; bool</h4></div></summary><div class="docblock"><p>Returns <code>true</code> if the <em>in-memory representation</em> of the type is<br />
+byte-for-byte identical to the <em>hash bytes representation</em> that<br />
+[Hash::hash] writes into the [Hasher]; otherwise, returns <code>false</code>.</p>
+<h1>Additional Information</h1>
+<p>When a type is trivially hashable, its hash can be computed by using<br />
+the raw memory of the value (<code>__size_of::&lt;Self&gt;()</code> bytes starting at the<br />
+value’s address), without first building an intermediate byte buffer<br />
+in a [Hasher]. This is what the [sha256] and [keccak256] functions do<br />
+for trivially hashable types, which is significantly more gas effective.</p>
+<p><strong>Returning <code>true</code> is a strong guarantee: an incorrect <code>true</code> will produce<br />
+wrong hashes when a value is hashed via [sha256] or [keccak256].</strong> When in<br />
+doubt, return <code>false</code>. Returning <code>false</code> is always safe; it only forgoes<br />
+the optimization.</p>
+<h1>Warning</h1>
+<p>Several subtleties make types that might look trivially hashable actually<br />
+<strong>not</strong> trivially hashable. In particular:</p>
+<ul>
+<li><code>u16</code> and <code>u32</code> are stored in memory in an eight-byte slot (as <code>u64</code>),<br />
+but their hash bytes representation is only two and four bytes,<br />
+respectively. They are therefore <strong>never</strong> trivially hashable, and<br />
+neither is any aggregate (struct, tuple, array, …) containing them.</li>
+<li><code>bool</code>, <code>u8</code>, <code>u16</code>, and <code>u32</code> fields inside a struct or tuple are<br />
+padded to eight bytes in memory. An aggregate containing such a field<br />
+is therefore <strong>not</strong> trivially hashable, even though the field types<br />
+themselves might be when hashed on their own.</li>
+<li>Enum tags are stored in memory as <code>u64</code>, but the <code>Hash</code> implementations<br />
+in this library hash them as <code>u8</code>. Enums are therefore <strong>not</strong> trivially<br />
+hashable.</li>
+<li>Collections (<code>Bytes</code>, <code>Vec</code>, <code>raw_slice</code>, <code>str</code>, <code>str[N]</code>, arrays, and<br />
+aggregates containing them) can be trivially hashable or not depending<br />
+on the <code>new_hashing</code> experimental feature. When <code>new_hashing</code> is<br />
+enabled, collections prefix their content with their length, which means<br />
+their hash bytes representation no longer matches their in-memory<br />
+representation, making them <strong>not</strong> trivially hashable.<br />
+For more details see: <a href="https://github.com/FuelLabs/sway/issues/7256">https://github.com/FuelLabs/sway/issues/7256</a>.</li>
+</ul>
+</div></details><details class="swaydoc-toggle open"><summary><div id="tymethod.hash" class="method has-srclink"><a href="#tymethod.hash" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#tymethod.hash">hash</a>(<br>    self,<br>    refmut state: Hasher,<br>)</h4></div></summary><div class="docblock"><p>Writes the hash bytes representation of <code>self</code> into the [Hasher] <code>state</code>.</p>
+</div></details></div></section><section id="search" class="search-results"></section></div></main><script src="../../static.files/highlight.js"></script><script>hljs.highlightAll();</script></body></html>
