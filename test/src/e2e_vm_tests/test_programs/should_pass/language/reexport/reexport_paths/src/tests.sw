@@ -67,7 +67,7 @@ fn mk_hasher() -> Hasher {
 
 impl Hash for TestStruct1 {
     fn is_hash_trivial() -> bool {
-        true
+        false
     }
 
     fn hash(self, ref mut _state: Hasher) {
