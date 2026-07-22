@@ -83,6 +83,10 @@ pub enum CompileError {
         what_it_is: &'static str,
         span: Span,
     },
+    #[error(
+        "\"self\" is not available here because the enclosing function does not have a \"self\" parameter."
+    )]
+    SelfParameterNotAvailable { span: Span },
     #[error("{feature} is currently not implemented.")]
     Unimplemented {
         /// The description of the unimplemented feature,
@@ -1261,6 +1265,7 @@ impl Spanned for CompileError {
             ModuleDepGraphCyclicReference { .. } => Span::dummy(),
             UnknownVariable { span, .. } => span.clone(),
             NotAVariable { span, .. } => span.clone(),
+            SelfParameterNotAvailable { span, .. } => span.clone(),
             Unimplemented { span, .. } => span.clone(),
             TypeError(err) => err.span(),
             ParseError { span, .. } => span.clone(),
