@@ -1,0 +1,8 @@
+[[package]]
+name = "enum_tag_only_payload_side_effect"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-F77BC35999EAD66D"

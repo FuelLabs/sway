@@ -1,0 +1,36 @@
+---
+source: test/src/snapshot/mod.rs
+assertion_line: 124
+---
+SROA must not eliminate the local tuple `t`
+
+> forc build --path test/src/e2e_vm_tests/test_programs/should_pass/optimisations/sroa_reference_to_field_in_branch --release --ir final | filter-fn sroa_reference_to_field_in_branch main
+
+entry_orig fn main_11(mut sel: u64) -> u64 {
+    local { u64, u64, u64 } t
+
+    entry(mut sel: u64):
+    v19v1 = get_local __ptr { u64, u64, u64 }, t
+    v20v1 = const u64 0
+    v21v1 = get_elem_ptr v19v1, __ptr u64, v20v1
+    v22v1 = const u64 10
+    store v22v1 to v21v1
+    v24v1 = const u64 1
+    v25v1 = get_elem_ptr v19v1, __ptr u64, v24v1
+    v26v1 = const u64 20
+    store v26v1 to v25v1
+    v28v1 = const u64 2
+    v29v1 = get_elem_ptr v19v1, __ptr u64, v28v1
+    v30v1 = const u64 30
+    store v30v1 to v29v1
+    v32v1 = const u64 0
+    v33v1 = cmp eq sel v32v1
+    cbr v33v1, block2(v25v1), block1()
+
+    block1():
+    br block2(v29v1)
+
+    block2(mut v18v1: __ptr u64):
+    v36v1 = load v18v1
+    ret u64 v36v1
+}

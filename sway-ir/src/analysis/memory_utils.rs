@@ -834,6 +834,8 @@ pub fn get_stored_symbols(context: &Context, inst: Value) -> ReferredSymbols {
 /// Combine a series of GEPs into one.
 pub fn combine_indices(context: &Context, val: Value) -> Option<Vec<Value>> {
     match &context.values[val.0].value {
+        // Locals are base symbols, always accessed at offset zero, so they
+        // don't contribute additional indices.
         ValueDatum::Instruction(Instruction {
             op: InstOp::GetLocal(_),
             ..
@@ -851,7 +853,20 @@ pub fn combine_indices(context: &Context, val: Value) -> Option<Vec<Value>> {
             base_indices.append(&mut indices.clone());
             Some(base_indices)
         }
-        ValueDatum::Argument(_) => Some(vec![]),
+        ValueDatum::Argument(arg) => {
+            if arg.block.get_label(context) == "entry" {
+                // Entry block arguments are function parameters, and same as locals base
+                // symbols, accessed at offset zero, and contribute no indices.
+                Some(vec![])
+            } else {
+                // All other block arguments are control-flow joins: their values arrive
+                // along multiple predecessor edges and may be pointers at arbitrary
+                // offsets into a symbol, depending on a predecessor.
+                // There is no single GEP index path to combine in this case,
+                // so the offset is unknown.
+                None
+            }
+        }
         _ => None,
     }
 }

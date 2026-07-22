@@ -419,6 +419,11 @@ impl Type {
         }
     }
 
+    /// Returns `true` if `self` is zero-sized.
+    pub fn is_zero_sized(&self, context: &Context) -> bool {
+        self.size(context).in_bytes() == 0
+    }
+
     /// Get pointed to type iff `self`` is a pointer.
     pub fn get_pointee_type(&self, context: &Context) -> Option<Type> {
         if let TypeContent::TypedPointer(to_ty) = self.get_content(context) {
@@ -598,7 +603,9 @@ impl Type {
         }
     }
 
-    /// Get the type of each field of a struct Type. Empty vector otherwise.
+    /// Get the type of each field of a [TypeContent::Struct],
+    /// or each variant of a [TypeContent::Union].
+    /// Empty vector otherwise.
     pub fn get_field_types(&self, context: &Context) -> Vec<Type> {
         match self.get_content(context) {
             TypeContent::Struct(fields) | TypeContent::Union(fields) => fields.clone(),
@@ -692,7 +699,7 @@ impl Type {
                 )
             }
             TypeContent::Union(field_tys) => {
-                // Find the max size for field sizes.
+                // Find the max size for field sizes, aligned to words.
                 TypeSize::new(
                     field_tys
                         .iter()

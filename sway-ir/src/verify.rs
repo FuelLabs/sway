@@ -16,8 +16,9 @@ use crate::{
     value::{Value, ValueDatum},
     variable::LocalVar,
     AnalysisResult, AnalysisResultT, AnalysisResults, BinaryOpKind, Block, BlockArgument,
-    BranchToWithArgs, Config, Doc, GlobalVar, InitAggr, LogEventData, Module, Pass, PassMutability,
-    ScopedPass, StorageKey, TypeContent, TypeOption, UnaryOpKind,
+    BranchToWithArgs, Config, ConstantContent, ConstantValue, Doc, GlobalVar, InitAggr,
+    LogEventData, Module, Pass, PassMutability, ScopedPass, StorageKey, TypeContent, TypeOption,
+    UnaryOpKind,
 };
 
 pub struct ModuleVerifierResult;
@@ -61,14 +62,148 @@ impl Context<'_> {
 
         // Check that globals have initializers if they are not mutable.
         for global in &self.modules[module.0].global_variables {
-            if !global.1.is_mutable(self) && global.1.get_initializer(self).is_none() {
-                let global_name = module.lookup_global_variable_name(self, global.1);
+            let global_var = global.1;
+            if !global_var.is_mutable(self) && global_var.get_initializer(self).is_none() {
+                let global_name = module.lookup_global_variable_name(self, global_var);
                 return Err(IrError::VerifyGlobalMissingInitializer(
                     global_name.unwrap_or_else(|| "<unknown>".to_owned()),
                 ));
             }
+
+            // Check that the initializer, if any, has the shape of the global's type.
+            if let Some(initializer) = global_var.get_initializer(self) {
+                let global_name = module
+                    .lookup_global_variable_name(self, global_var)
+                    .unwrap_or_else(|| "<unknown>".to_owned());
+                self.verify_constant_matches_type(
+                    &global_name,
+                    global_var.get_inner_type(self),
+                    initializer.get_content(self),
+                )?;
+            }
         }
         Ok(())
+    }
+
+    /// Verifies that `constant` matches the `expected` [Type]:
+    /// - the constant's own type must be equivalent to `expected` (union-aware,
+    ///   so that an enum variant value matches its union field), and
+    /// - the constant's value must have the shape of its type (e.g., a struct
+    ///   value must have exactly as many elements as the struct type has fields).
+    fn verify_constant_matches_type(
+        &self,
+        global_name: &str,
+        expected: Type,
+        constant: &ConstantContent,
+    ) -> Result<(), IrError> {
+        if !constant.ty.eq(self, &expected) {
+            return Err(IrError::VerifyGlobalInitializerTypeMismatch(format!(
+                "Global variable `{global_name}`: expected a value of type `{}`, but the value has type `{}`.",
+                expected.as_string(self),
+                constant.ty.as_string(self),
+            )));
+        }
+
+        self.verify_constant_value_shape(global_name, constant.ty, &constant.value)
+    }
+
+    /// Verifies that the constant `value` structurally matches `ty`.
+    fn verify_constant_value_shape(
+        &self,
+        global_name: &str,
+        ty: Type,
+        value: &ConstantValue,
+    ) -> Result<(), IrError> {
+        let mismatch = |reason: String| {
+            Err(IrError::VerifyGlobalInitializerTypeMismatch(format!(
+                "Global variable `{global_name}`: value does not match type `{}`. {reason}",
+                ty.as_string(self),
+            )))
+        };
+
+        match value {
+            // An undefined (uninitialized) value is valid for any type.
+            ConstantValue::Undef => Ok(()),
+            ConstantValue::Unit => {
+                if ty.is_unit(self) {
+                    Ok(())
+                } else {
+                    mismatch("Expected a unit type.".to_owned())
+                }
+            }
+            ConstantValue::Bool(_) => {
+                if ty.is_bool(self) {
+                    Ok(())
+                } else {
+                    mismatch("Expected a `bool` type.".to_owned())
+                }
+            }
+            ConstantValue::Uint(_) => match ty.get_content(self) {
+                TypeContent::Uint(8)
+                | TypeContent::Uint(16)
+                | TypeContent::Uint(32)
+                | TypeContent::Uint(64) => Ok(()),
+                _ => mismatch("Expected an unsigned integer type of up to 64 bits.".to_owned()),
+            },
+            ConstantValue::U256(_) => match ty.get_content(self) {
+                TypeContent::Uint(256) => Ok(()),
+                _ => mismatch("Expected the `u256` type.".to_owned()),
+            },
+            ConstantValue::B256(_) => {
+                if ty.is_b256(self) {
+                    Ok(())
+                } else {
+                    mismatch("Expected the `b256` type.".to_owned())
+                }
+            }
+            ConstantValue::String(bytes) => match ty.get_content(self) {
+                TypeContent::StringArray(len) if *len == bytes.len() as u64 => Ok(()),
+                _ => mismatch(format!(
+                    "Expected a string array of length {}.",
+                    bytes.len()
+                )),
+            },
+            ConstantValue::Array(elems) => {
+                let TypeContent::Array(elem_ty, len) = ty.get_content(self) else {
+                    return mismatch("Expected an array type.".to_owned());
+                };
+                let (elem_ty, len) = (*elem_ty, *len);
+                if len != elems.len() as u64 {
+                    return mismatch(format!(
+                        "Expected {len} array element(s), but the value has {}.",
+                        elems.len()
+                    ));
+                }
+                for elem in elems {
+                    self.verify_constant_matches_type(global_name, elem_ty, elem)?;
+                }
+                Ok(())
+            }
+            ConstantValue::Struct(elems) => {
+                if !ty.is_struct(self) {
+                    return mismatch("Expected a struct type.".to_owned());
+                }
+                let field_tys = ty.get_field_types(self);
+                if field_tys.len() != elems.len() {
+                    return mismatch(format!(
+                        "Expected {} struct field(s), but the value has {}.",
+                        field_tys.len(),
+                        elems.len()
+                    ));
+                }
+                for (field_ty, elem) in field_tys.iter().zip(elems.iter()) {
+                    self.verify_constant_matches_type(global_name, *field_ty, elem)?;
+                }
+                Ok(())
+            }
+            // Slices and references carry pointers whose pointees are not part of
+            // the constant's own layout, so we do not structurally verify them here.
+            // Moreover, constant references and slices are currently not supported
+            // at all.
+            ConstantValue::Slice(_)
+            | ConstantValue::RawUntypedSlice(_)
+            | ConstantValue::Reference(_) => Ok(()),
+        }
     }
 
     fn verify_function(&self, cur_module: Module, function: Function) -> Result<(), IrError> {
@@ -80,6 +215,9 @@ impl Context<'_> {
             ));
         }
 
+        // Checks that are supposed to run only against the entry block,
+        // and do not require the block content, we do here in the `verify_function`
+        // rather than in the `verify_block`, to avoid unnecessary check on every block.
         let entry_block = function.get_entry_block(self);
 
         if entry_block.num_predecessors(self) != 0 {
@@ -90,6 +228,10 @@ impl Context<'_> {
                     .map(|block| block.get_label(self))
                     .collect(),
             ));
+        }
+
+        if entry_block.get_label(self) != "entry" {
+            return Err(IrError::VerifyBlockEntryBlockNotNamedEntry);
         }
 
         // Ensure that the entry block arguments are same as function arguments.
@@ -103,7 +245,7 @@ impl Context<'_> {
         }
 
         // Check that locals have initializers if they aren't mutable.
-        // TODO: This check is disabled because we incorrect create
+        // TODO: This check is disabled because we incorrectly create
         //       immutable locals without initializers at many places.
         // for local in &self.functions[function.0].local_storage {
         //     if !local.1.is_mutable(self) && local.1.get_initializer(self).is_none() {
@@ -138,6 +280,10 @@ impl Context<'_> {
         if cur_block.num_instructions(self) <= 1 && cur_block.num_predecessors(self) == 0 {
             // Empty unreferenced blocks are a harmless artefact.
             return Ok(());
+        }
+
+        if !cur_block.is_entry(self) && cur_block.get_label(self) == "entry" {
+            return Err(IrError::VerifyBlockNonEntryBlockNamedEntry);
         }
 
         for (arg_idx, arg_val) in cur_block.arg_iter(self).enumerate() {

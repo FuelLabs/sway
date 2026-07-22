@@ -479,10 +479,13 @@ fn candidate_symbols(
         .collect();
 
     // We walk the function to remove from `candidates` any local that is:
-    // 1. accessed by a bigger-than-register sized load / store.
-    //    (we make an exception for load / store in `mem_copy_val` as that can be handled).
-    // 2. OR accessed via a non-const indexing.
-    // 3. OR aliased to a pointer that may point to more than one symbol.
+    // 1. aliased to a pointer that may point to more than one symbol.
+    // 2. access from indices from an unknown source (`combine_indices` returning `None`).
+    //    E.g., if the local is accessed via GEP chain that passes through a block argument
+    //    and can have multiple sources in different predecessors.
+    // 3. accessed via a non-const indexing.
+    // 4. accessed by a bigger-than-register sized load / store.
+    //    We make an exception for load / store in `mem_copy_val` as that can be handled.
     for (_, inst) in function.instruction_iter(context) {
         let loaded_pointers = get_loaded_ptr_values(context, inst);
         let stored_pointers = get_stored_ptr_values(context, inst);
@@ -490,32 +493,30 @@ fn candidate_symbols(
         let inst = inst.get_instruction(context).unwrap();
         for ptr in loaded_pointers.iter().chain(stored_pointers.iter()) {
             let syms = get_gep_referred_symbols(context, *ptr);
+            // 1. Pointer must point to exactly one symbol.
             if syms.len() != 1 {
                 for sym in &syms {
                     candidates.remove(sym);
                 }
                 continue;
             }
-            // We can only scalarise a symbol if we can compute the exact offset
-            // of **every** access into it. `combine_indices` returns `None` when the
-            // access reaches the symbol through something we cannot turn into a
-            // constant offset chain.
-            //
-            // E.g. a layout-preserving `cast_ptr` that the above `get_gep_referred_symbols`
-            // will see through will result in `combine_indices` returning `None`,
-            // and we will remove the candidate.
-            //
-            // This is precisely what we want, because we don't want, e.g. to attempt
-            // to scalarise a `{ ptr, u64 }` that comes from a `slice` casted to `{ ptr, u64 }`.
+
             let indices = combine_indices(context, *ptr);
-            if indices.is_none()
-                || indices
-                    .as_ref()
-                    .is_some_and(|indices| indices.iter().any(|idx| !idx.is_constant(context)))
-                || ptr.match_ptr_type(context).is_some_and(|pointee_ty| {
-                    super::target_fuel::is_demotable_type(context, &pointee_ty)
-                        && !matches!(inst.op, InstOp::MemCopyVal { .. })
-                })
+            // 2. Indices must come from a known source.
+            let have_unknown_source = indices.is_none();
+            // 3. All indices must be constants.
+            let have_non_constant_index = indices
+                .as_ref()
+                .is_some_and(|indices| indices.iter().any(|idx| !idx.is_constant(context)));
+            // 4. Pointee type must not be demotable, or the instruction must be `mem_copy_val`.
+            let pointee_ty_is_demotable = ptr.match_ptr_type(context).is_some_and(|pointee_ty| {
+                super::target_fuel::is_demotable_type(context, &pointee_ty)
+            });
+            let inst_is_not_memcpy = !matches!(inst.op, InstOp::MemCopyVal { .. });
+
+            if have_unknown_source
+                || have_non_constant_index
+                || (pointee_ty_is_demotable && inst_is_not_memcpy)
             {
                 candidates.remove(syms.iter().next().unwrap());
             }
