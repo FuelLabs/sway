@@ -111,13 +111,8 @@ pub fn create_dominators_pass() -> Pass {
     }
 }
 
-/// Compute the dominator tree for the CFG.
-fn compute_dom_tree(
-    context: &Context,
-    analyses: &AnalysisResults,
-    function: Function,
-) -> Result<AnalysisResult, IrError> {
-    let po: &PostOrder = analyses.get_analysis_result(function);
+/// Compute the dominator tree of the function, given a post-order traversal.
+pub fn compute_dom_tree_from_po(context: &Context, function: Function, po: &PostOrder) -> DomTree {
     let mut dom_tree = DomTree::default();
     let entry = function.get_entry_block(context);
 
@@ -198,7 +193,17 @@ fn compute_dom_tree(
         dom_tree.0.get_mut(&parent).unwrap().children.push(child);
     }
 
-    Ok(Box::new(dom_tree))
+    dom_tree
+}
+
+/// Returns the dominator tree `AnalysisResult` for the function.
+fn compute_dom_tree(
+    context: &Context,
+    analyses: &AnalysisResults,
+    function: Function,
+) -> Result<AnalysisResult, IrError> {
+    let po: &PostOrder = analyses.get_analysis_result(function);
+    Ok(Box::new(compute_dom_tree_from_po(context, function, po)))
 }
 
 impl DomTree {

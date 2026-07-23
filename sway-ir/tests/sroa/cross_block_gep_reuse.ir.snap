@@ -1,0 +1,31 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: true
+
+script {
+    entry fn main() -> u64 {
+        local { u64, u64 } s
++         local u64 s0
++         local u64 s8
+
+        entry():
+        v1v1 = get_local __ptr { u64, u64 }, s
+        v2v1 = const u64 0
+        v3v1 = get_elem_ptr v1v1, __ptr u64, v2v1
++         v11v1 = get_local __ptr u64, s0
+        v4v1 = const u64 42
+-         store v4v1 to v3v1
+-         v6v1 = load v3v1
++         store v4v1 to v11v1
++         v6v1 = load v11v1
+        br next()
+
+        next():
+-         v8v1 = load v3v1
++         v12v1 = get_local __ptr u64, s0
++         v8v1 = load v12v1
+        v9v1 = add v6v1, v8v1
+        ret u64 v9v1
+    }
+}

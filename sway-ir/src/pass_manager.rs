@@ -156,19 +156,37 @@ impl AnalysisResults {
     }
 }
 
-/// Options for printing [Pass]es in case of running them with printing requested.
+/// Options when running the `PassManager`.
+///
+/// # Printint Options
 ///
 /// Note that states of IR can always be printed by injecting the module printer pass
 /// and just running the passes. That approach however offers less control over the
 /// printing. E.g., requiring the printing to happen only if the previous passes
 /// modified the IR cannot be done by simply injecting a module printer.
 #[derive(Debug)]
-pub struct PrintPassesOpts {
-    pub initial: bool,
-    pub r#final: bool,
-    pub modified_only: bool,
-    pub metadata: bool,
-    pub passes: HashSet<String>,
+pub struct Options {
+    pub print_initial: bool,
+    pub print_final: bool,
+    pub print_modified_only: bool,
+    pub print_metadata: bool,
+    pub print_passes: HashSet<String>,
+    pub force_verify_ir: bool,
+    pub rounds: usize,
+}
+
+impl Default for Options {
+    fn default() -> Self {
+        Self {
+            print_initial: false,
+            print_final: false,
+            print_modified_only: false,
+            print_metadata: false,
+            print_passes: HashSet::default(),
+            force_verify_ir: false,
+            rounds: 2,
+        }
+    }
 }
 
 /// Options for verifying [Pass]es in case of running them with verifying requested.
@@ -364,24 +382,15 @@ impl PassManager {
     }
 
     /// Run the `passes` and return true if the `passes` modify the initial `ir`.
-    pub fn run(&mut self, ir: &mut Context, passes: &PassGroup) -> Result<bool, IrError> {
-        let mut modified = false;
-        for pass in passes.flatten_pass_group() {
-            modified |= self.actually_run(ir, pass)?;
-        }
-        Ok(modified)
-    }
-
-    /// Run the `passes` and return true if the `passes` modify the initial `ir`.
     /// The IR states are printed according to the options provided and verified.
-    pub fn run_with_print_verify(
+    pub fn run(
         &mut self,
         ir: &mut Context,
         passes: &PassGroup,
-        print_opts: &PrintPassesOpts,
+        options: &Options,
     ) -> Result<bool, IrError> {
-        if print_opts.initial {
-            print_initial_or_final_ir(ir, "Initial", print_opts.metadata);
+        if options.print_initial {
+            print_initial_or_final_ir(ir, "Initial", options.print_metadata);
         }
 
         // Verify before we start
@@ -389,17 +398,12 @@ impl PassManager {
 
         let mut global_modified = false;
 
-        // Make it easy for tests to run IR verification in all steps
-        let force_verify: String =
-            std::env::var("SWAY_FORCE_VERIFY_IR").unwrap_or_else(|_| "false".to_string());
-        let force_verify: bool = force_verify.parse().unwrap_or(false);
-
-        for _ in 0..2 {
+        for _ in 0..options.rounds {
             let mut iter_modified = false;
 
             for pass in passes.flatten_pass_group() {
                 // Save IR before optimisation only when forcing verification
-                let ir_before = if force_verify {
+                let ir_before = if options.force_verify_ir {
                     ir.to_string()
                 } else {
                     String::new()
@@ -409,7 +413,7 @@ impl PassManager {
                 let modified = self.actually_run(ir, pass)?;
 
                 // Save IR after optimisation only when forcing verification
-                let ir_after = if force_verify {
+                let ir_after = if options.force_verify_ir {
                     ir.to_string()
                 } else {
                     String::new()
@@ -417,17 +421,18 @@ impl PassManager {
 
                 iter_modified |= modified;
 
-                if print_opts.passes.contains(pass) && (!print_opts.modified_only || modified) {
+                if options.print_passes.contains(pass) && (!options.print_modified_only || modified)
+                {
                     print_ir_after_pass(
                         ir,
                         self.lookup_registered_pass(pass).unwrap(),
-                        print_opts.metadata,
+                        options.print_metadata,
                     );
                 }
 
                 ir.verify()?;
 
-                if force_verify {
+                if options.force_verify_ir {
                     // Verify pass correctly return modified
                     let ir_modified = ir_before != ir_after;
                     if modified != ir_modified {
@@ -446,8 +451,8 @@ impl PassManager {
             }
         }
 
-        if print_opts.r#final {
-            print_initial_or_final_ir(ir, "Final", print_opts.metadata);
+        if options.print_final {
+            print_initial_or_final_ir(ir, "Final", options.print_metadata);
         }
 
         Ok(global_modified)

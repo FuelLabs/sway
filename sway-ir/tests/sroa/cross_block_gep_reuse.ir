@@ -1,0 +1,23 @@
+// Regression test for an bug that was incorrectly scalarising the local `s` below.
+// This test checks if SROA introduces a separate `get_local` for the scalarised field
+// in each block that uses `e`.
+
+script {
+    entry fn main() -> u64 {
+        local { u64, u64 } s
+
+        entry():
+        vs = get_local __ptr { u64, u64 }, s
+        i0 = const u64 0
+        e = get_elem_ptr vs, __ptr u64, i0
+        c = const u64 42
+        store c to e
+        x = load e
+        br next()
+
+        next():
+        y = load e
+        z = add x, y
+        ret u64 z
+    }
+}

@@ -1,5 +1,6 @@
 use std::{
     any::Any,
+    collections::HashSet,
     panic::catch_unwind,
     path::{Path, PathBuf},
 };
@@ -13,9 +14,8 @@ use sway_ir::{
     create_mem2reg_pass, create_memcpyopt_pass, create_memcpyprop_reverse_pass,
     create_misc_demotion_pass, create_postorder_pass, create_ret_demotion_pass,
     create_simplify_cfg_pass, metadata_to_inline, optimize as opt, register_known_passes,
-    Backtrace, Context, Function, IrError, PassGroup, PassManager, Value, DCE_NAME,
-    FN_DEDUP_DEBUG_PROFILE_NAME, FN_DEDUP_RELEASE_PROFILE_NAME, GLOBALS_DCE_NAME, MEM2REG_NAME,
-    SROA_NAME,
+    Backtrace, Context, Function, IrError, Options, PassGroup, PassManager, Value,
+    FN_DEDUP_DEBUG_PROFILE_NAME, FN_DEDUP_RELEASE_PROFILE_NAME, GLOBALS_DCE_NAME, SROA_NAME,
 };
 use sway_types::SourceEngine;
 
@@ -191,6 +191,29 @@ fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
     }
 }
 
+fn run_passes_with_verify(
+    pass_mgr: &mut PassManager,
+    ir: &mut Context,
+    passes: &PassGroup,
+) -> bool {
+    ir.verify_ssa_dominance = true;
+    pass_mgr
+        .run(
+            ir,
+            passes,
+            &Options {
+                print_initial: false,
+                print_final: false,
+                print_modified_only: false,
+                print_metadata: false,
+                print_passes: HashSet::default(),
+                force_verify_ir: true,
+                rounds: 1, // we want to check the effect of the optimization only once
+            },
+        )
+        .unwrap()
+}
+
 // Utility for finding test files and running IR verifier tests.
 // Each test file must contain an IR code that is parsable,
 // but does not pass IR verification.
@@ -348,7 +371,7 @@ fn constants() {
         let mut pass_group = PassGroup::default();
         let pass = pass_mgr.register(create_const_folding_pass());
         pass_group.append_pass(pass);
-        pass_mgr.run(ir, &pass_group).unwrap()
+        run_passes_with_verify(&mut pass_mgr, ir, &pass_group)
     })
 }
 
@@ -364,7 +387,7 @@ fn ccp() {
         pass_mgr.register(create_dominators_pass());
         let pass = pass_mgr.register(create_ccp_pass());
         pass_group.append_pass(pass);
-        pass_mgr.run(ir, &pass_group).unwrap()
+        run_passes_with_verify(&mut pass_mgr, ir, &pass_group)
     })
 }
 
@@ -378,7 +401,7 @@ fn simplify_cfg() {
         let mut pass_group = PassGroup::default();
         let pass = pass_mgr.register(create_simplify_cfg_pass());
         pass_group.append_pass(pass);
-        pass_mgr.run(ir, &pass_group).unwrap()
+        run_passes_with_verify(&mut pass_mgr, ir, &pass_group)
     })
 }
 
@@ -398,7 +421,7 @@ fn dce() {
         // Some tests require multiple passes of DCE to be run,
         // this also reflects our actual compiler pipeline where DCE runs multiple times.
         pass_group.append_pass(pass);
-        pass_mgr.run(ir, &pass_group).unwrap()
+        run_passes_with_verify(&mut pass_mgr, ir, &pass_group)
     })
 }
 
@@ -414,7 +437,7 @@ fn cse() {
         pass_mgr.register(create_dominators_pass());
         let pass = pass_mgr.register(create_cse_pass());
         pass_group.append_pass(pass);
-        pass_mgr.run(ir, &pass_group).unwrap()
+        run_passes_with_verify(&mut pass_mgr, ir, &pass_group)
     })
 }
 
@@ -431,7 +454,7 @@ fn mem2reg() {
         pass_mgr.register(create_dom_fronts_pass());
         let pass = pass_mgr.register(create_mem2reg_pass());
         pass_group.append_pass(pass);
-        pass_mgr.run(ir, &pass_group).unwrap()
+        run_passes_with_verify(&mut pass_mgr, ir, &pass_group)
     })
 }
 
@@ -445,7 +468,7 @@ fn demote_arg() {
         let mut pass_group = PassGroup::default();
         let pass = pass_mgr.register(create_arg_demotion_pass());
         pass_group.append_pass(pass);
-        pass_mgr.run(ir, &pass_group).unwrap()
+        run_passes_with_verify(&mut pass_mgr, ir, &pass_group)
     })
 }
 
@@ -459,7 +482,7 @@ fn demote_const() {
         let mut pass_group = PassGroup::default();
         let pass = pass_mgr.register(create_const_demotion_pass());
         pass_group.append_pass(pass);
-        pass_mgr.run(ir, &pass_group).unwrap()
+        run_passes_with_verify(&mut pass_mgr, ir, &pass_group)
     })
 }
 
@@ -473,7 +496,7 @@ fn demote_ret() {
         let mut pass_group = PassGroup::default();
         let pass = pass_mgr.register(create_ret_demotion_pass());
         pass_group.append_pass(pass);
-        pass_mgr.run(ir, &pass_group).unwrap()
+        run_passes_with_verify(&mut pass_mgr, ir, &pass_group)
     })
 }
 
@@ -487,7 +510,7 @@ fn demote_misc() {
         let mut pass_group = PassGroup::default();
         let pass = pass_mgr.register(create_misc_demotion_pass());
         pass_group.append_pass(pass);
-        pass_mgr.run(ir, &pass_group).unwrap()
+        run_passes_with_verify(&mut pass_mgr, ir, &pass_group)
     })
 }
 
@@ -504,7 +527,7 @@ fn memcpyopt() {
         pass_mgr.register(create_escaped_symbols_pass());
         let pass = pass_mgr.register(create_memcpyopt_pass());
         pass_group.append_pass(pass);
-        pass_mgr.run(ir, &pass_group).unwrap()
+        run_passes_with_verify(&mut pass_mgr, ir, &pass_group)
     })
 }
 
@@ -518,7 +541,7 @@ fn memcpy_prop() {
         let mut pass_group = PassGroup::default();
         let pass = pass_mgr.register(create_memcpyprop_reverse_pass());
         pass_group.append_pass(pass);
-        pass_mgr.run(ir, &pass_group).unwrap()
+        run_passes_with_verify(&mut pass_mgr, ir, &pass_group)
     })
 }
 
@@ -532,9 +555,7 @@ fn sroa() {
         let mut pass_group = PassGroup::default();
         register_known_passes(&mut pass_mgr);
         pass_group.append_pass(SROA_NAME);
-        pass_group.append_pass(MEM2REG_NAME);
-        pass_group.append_pass(DCE_NAME);
-        pass_mgr.run(ir, &pass_group).unwrap()
+        run_passes_with_verify(&mut pass_mgr, ir, &pass_group)
     })
 }
 
@@ -548,7 +569,7 @@ fn globals_dce() {
         let mut pass_group = PassGroup::default();
         register_known_passes(&mut pass_mgr);
         pass_group.append_pass(GLOBALS_DCE_NAME);
-        pass_mgr.run(ir, &pass_group).unwrap()
+        run_passes_with_verify(&mut pass_mgr, ir, &pass_group)
     })
 }
 
@@ -563,7 +584,7 @@ fn fndedup_debug() {
         register_known_passes(&mut pass_mgr);
         pass_group.append_pass(FN_DEDUP_DEBUG_PROFILE_NAME);
         pass_group.append_pass(GLOBALS_DCE_NAME);
-        pass_mgr.run(ir, &pass_group).unwrap()
+        run_passes_with_verify(&mut pass_mgr, ir, &pass_group)
     })
 }
 
@@ -576,7 +597,7 @@ fn fndedup_release() {
         register_known_passes(&mut pass_mgr);
         pass_group.append_pass(FN_DEDUP_RELEASE_PROFILE_NAME);
         pass_group.append_pass(GLOBALS_DCE_NAME);
-        pass_mgr.run(ir, &pass_group).unwrap()
+        run_passes_with_verify(&mut pass_mgr, ir, &pass_group)
     })
 }
 

@@ -6,7 +6,9 @@ Modified: true
 script {
     entry fn main() -> u64, !1 {
         local [u64; 4] __anon_0
--         local { u64, u64 } __anon_1
+        local { u64, u64 } __anon_1
++         local u64 __anon_10
++         local u64 __anon_18
         local { u64, u64, [u64; 4], { u64, u64 } } __anon_2
 
         entry():
@@ -27,83 +29,69 @@ script {
         v15v1 = get_elem_ptr v1v1, __ptr u64, v14v1
         v16v1 = const u64 3, !6
         store v16v1 to v15v1, !2
--         v18v1 = get_local __ptr { u64, u64 }, __anon_1, !7
--         v19v1 = const u64 0
--         v20v1 = get_elem_ptr v18v1, __ptr u64, v19v1
--         v21v1 = const u64 199, !8
+        v18v1 = get_local __ptr { u64, u64 }, __anon_1, !7
+        v19v1 = const u64 0
+        v20v1 = get_elem_ptr v18v1, __ptr u64, v19v1
++         v68v1 = get_local __ptr u64, __anon_10
+        v21v1 = const u64 199, !8
 -         store v21v1 to v20v1, !7
--         v23v1 = const u64 1
--         v24v1 = get_elem_ptr v18v1, __ptr u64, v23v1
--         v25v1 = const u64 200, !9
++         store v21v1 to v68v1, !7
+        v23v1 = const u64 1
+        v24v1 = get_elem_ptr v18v1, __ptr u64, v23v1
++         v69v1 = get_local __ptr u64, __anon_18
+        v25v1 = const u64 200, !9
 -         store v25v1 to v24v1, !7
--         v27v1 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !10
-+         v27v1 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !7
++         store v25v1 to v69v1, !7
+        v27v1 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !10
         v28v1 = const u64 0
         v29v1 = get_elem_ptr v27v1, __ptr u64, v28v1
--         v30v1 = const u64 2, !11
--         store v30v1 to v29v1, !10
-+         v30v1 = const u64 2, !8
-+         store v30v1 to v29v1, !7
+        v30v1 = const u64 2, !11
+        store v30v1 to v29v1, !10
         v32v1 = const u64 1
         v33v1 = get_elem_ptr v27v1, __ptr u64, v32v1
--         v34v1 = const u64 3, !12
--         store v34v1 to v33v1, !10
-+         v34v1 = const u64 3, !9
-+         store v34v1 to v33v1, !7
+        v34v1 = const u64 3, !12
+        store v34v1 to v33v1, !10
         v36v1 = const u64 2
         v37v1 = get_elem_ptr v27v1, __ptr [u64; 4], v36v1
         mem_copy_val v37v1, v1v1
         v39v1 = const u64 3
         v40v1 = get_elem_ptr v27v1, __ptr { u64, u64 }, v39v1
 -         mem_copy_val v40v1, v18v1
--         v42v1 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !13
++         v70v1 = get_local __ptr u64, __anon_10
++         v71v1 = load v70v1
++         v72v1 = get_local __ptr u64, __anon_18
++         v73v1 = load v72v1
 +         v74v1 = const u64 0
 +         v75v1 = get_elem_ptr v40v1, __ptr u64, v74v1
-+         v21v1 = const u64 199, !10
-+         store v21v1 to v75v1
++         store v71v1 to v75v1
 +         v77v1 = const u64 1
 +         v78v1 = get_elem_ptr v40v1, __ptr u64, v77v1
-+         v25v1 = const u64 200, !11
-+         store v25v1 to v78v1
-+         v42v1 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !12
++         store v73v1 to v78v1
+        v42v1 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !13
         v43v1 = const u64 0
--         v44v1 = get_elem_ptr v42v1, __ptr u64, v43v1, !14
-+         v44v1 = get_elem_ptr v42v1, __ptr u64, v43v1, !13
+        v44v1 = get_elem_ptr v42v1, __ptr u64, v43v1, !14
         v45v1 = load v44v1
--         v46v1 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !15
-+         v46v1 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !14
+        v46v1 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !15
         v47v1 = const u64 3
--         v48v1 = get_elem_ptr v46v1, __ptr { u64, u64 }, v47v1, !16
-+         v48v1 = get_elem_ptr v46v1, __ptr { u64, u64 }, v47v1, !15
+        v48v1 = get_elem_ptr v46v1, __ptr { u64, u64 }, v47v1, !16
         v49v1 = const u64 0
--         v50v1 = get_elem_ptr v48v1, __ptr u64, v49v1, !17
-+         v50v1 = get_elem_ptr v48v1, __ptr u64, v49v1, !16
+        v50v1 = get_elem_ptr v48v1, __ptr u64, v49v1, !17
         v51v1 = load v50v1
--         v52v1 = add v45v1, v51v1, !18
--         v53v1 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !19
-+         v52v1 = add v45v1, v51v1, !17
-+         v53v1 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !18
+        v52v1 = add v45v1, v51v1, !18
+        v53v1 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !19
         v54v1 = const u64 3
--         v55v1 = get_elem_ptr v53v1, __ptr { u64, u64 }, v54v1, !16
-+         v55v1 = get_elem_ptr v53v1, __ptr { u64, u64 }, v54v1, !15
+        v55v1 = get_elem_ptr v53v1, __ptr { u64, u64 }, v54v1, !16
         v56v1 = const u64 1
--         v57v1 = get_elem_ptr v55v1, __ptr u64, v56v1, !20
-+         v57v1 = get_elem_ptr v55v1, __ptr u64, v56v1, !19
+        v57v1 = get_elem_ptr v55v1, __ptr u64, v56v1, !20
         v58v1 = load v57v1
--         v59v1 = add v52v1, v58v1, !21
--         v60v1 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !22
-+         v59v1 = add v52v1, v58v1, !20
-+         v60v1 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !21
+        v59v1 = add v52v1, v58v1, !21
+        v60v1 = get_local __ptr { u64, u64, [u64; 4], { u64, u64 } }, __anon_2, !22
         v61v1 = const u64 2
--         v62v1 = get_elem_ptr v60v1, __ptr [u64; 4], v61v1, !23
--         v63v1 = const u64 1, !24
--         v64v1 = get_elem_ptr v62v1, __ptr u64, v63v1, !25
-+         v62v1 = get_elem_ptr v60v1, __ptr [u64; 4], v61v1, !22
-+         v63v1 = const u64 1, !23
-+         v64v1 = get_elem_ptr v62v1, __ptr u64, v63v1, !24
+        v62v1 = get_elem_ptr v60v1, __ptr [u64; 4], v61v1, !23
+        v63v1 = const u64 1, !24
+        v64v1 = get_elem_ptr v62v1, __ptr u64, v63v1, !25
         v65v1 = load v64v1
--         v66v1 = add v59v1, v65v1, !26
-+         v66v1 = add v59v1, v65v1, !25
+        v66v1 = add v59v1, v65v1, !26
         ret u64 v66v1
     }
 }
@@ -115,42 +103,23 @@ script {
 !4 = span !0 178 179
 !5 = span !0 181 182
 !6 = span !0 184 185
-- !7 = span !0 199 220
-- !8 = span !0 206 209
-- !9 = span !0 215 218
-- !10 = span !0 130 226
-- !11 = span !0 146 147
-- !12 = span !0 160 161
-- !13 = span !0 232 233
-- !14 = span !0 56 62
-- !15 = span !0 238 239
-- !16 = span !0 91 95
-- !17 = span !0 22 28
-- !18 = span !0 232 243
-- !19 = span !0 246 247
-- !20 = span !0 32 38
-- !21 = span !0 232 251
-- !22 = span !0 254 255
-- !23 = span !0 76 87
-- !24 = span !0 258 259
-- !25 = span !0 254 260
-- !26 = span !0 232 260
-+ !7 = span !0 130 226
-+ !8 = span !0 146 147
-+ !9 = span !0 160 161
-+ !10 = span !0 206 209
-+ !11 = span !0 215 218
-+ !12 = span !0 232 233
-+ !13 = span !0 56 62
-+ !14 = span !0 238 239
-+ !15 = span !0 91 95
-+ !16 = span !0 22 28
-+ !17 = span !0 232 243
-+ !18 = span !0 246 247
-+ !19 = span !0 32 38
-+ !20 = span !0 232 251
-+ !21 = span !0 254 255
-+ !22 = span !0 76 87
-+ !23 = span !0 258 259
-+ !24 = span !0 254 260
-+ !25 = span !0 232 260
+!7 = span !0 199 220
+!8 = span !0 206 209
+!9 = span !0 215 218
+!10 = span !0 130 226
+!11 = span !0 146 147
+!12 = span !0 160 161
+!13 = span !0 232 233
+!14 = span !0 56 62
+!15 = span !0 238 239
+!16 = span !0 91 95
+!17 = span !0 22 28
+!18 = span !0 232 243
+!19 = span !0 246 247
+!20 = span !0 32 38
+!21 = span !0 232 251
+!22 = span !0 254 255
+!23 = span !0 76 87
+!24 = span !0 258 259
+!25 = span !0 254 260
+!26 = span !0 232 260

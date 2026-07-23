@@ -5,33 +5,38 @@ Modified: true
 
 script {
     entry fn main() -> u64, !1 {
--         local { u64, u64 } __anon_0
-- 
+        local { u64, u64 } __anon_0
++         local u64 __anon_00
++         local u64 __anon_08
+
         entry():
--         v1v1 = get_local __ptr { u64, u64 }, __anon_0, !2
--         v2v1 = const u64 0
--         v3v1 = get_elem_ptr v1v1, __ptr u64, v2v1
--         v4v1 = const u64 2, !3
+        v1v1 = get_local __ptr { u64, u64 }, __anon_0, !2
+        v2v1 = const u64 0
+        v3v1 = get_elem_ptr v1v1, __ptr u64, v2v1
++         v15v1 = get_local __ptr u64, __anon_00
+        v4v1 = const u64 2, !3
 -         store v4v1 to v3v1, !2
--         v6v1 = const u64 1
--         v7v1 = get_elem_ptr v1v1, __ptr u64, v6v1
--         v8v1 = const u64 3, !4
++         store v4v1 to v15v1, !2
+        v6v1 = const u64 1
+        v7v1 = get_elem_ptr v1v1, __ptr u64, v6v1
++         v16v1 = get_local __ptr u64, __anon_08
+        v8v1 = const u64 3, !4
 -         store v8v1 to v7v1, !2
--         v10v1 = get_local __ptr { u64, u64 }, __anon_0, !5
--         v11v1 = const u64 0
--         v12v1 = get_elem_ptr v10v1, __ptr u64, v11v1, !6
++         store v8v1 to v16v1, !2
+        v10v1 = get_local __ptr { u64, u64 }, __anon_0, !5
+        v11v1 = const u64 0
+        v12v1 = get_elem_ptr v10v1, __ptr u64, v11v1, !6
 -         v13v1 = load v12v1
--         ret u64 v13v1
-+         v4v1 = const u64 2, !2
-+         ret u64 v4v1
++         v17v1 = get_local __ptr u64, __anon_00
++         v13v1 = load v17v1
+        ret u64 v13v1
     }
 }
 
 !0 = "test/src/main.sw"
 !1 = span !0 43 122
-- !2 = span !0 73 111
-- !3 = span !0 89 90
-- !4 = span !0 103 104
-- !5 = span !0 117 118
-- !6 = span !0 22 28
-+ !2 = span !0 89 90
+!2 = span !0 73 111
+!3 = span !0 89 90
+!4 = span !0 103 104
+!5 = span !0 117 118
+!6 = span !0 22 28
