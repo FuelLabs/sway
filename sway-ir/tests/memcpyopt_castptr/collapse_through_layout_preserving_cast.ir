@@ -1,0 +1,38 @@
+// A chain of `mem_copy_val`s that alternates between a `{ ptr, u64 }` local and
+// a `slice` local (which have an identical memory layout) via `cast_ptr`.
+//
+// This mirrors the shape produced by usual `raw_slice` handlings.
+//
+// The expected result is:
+// - intermediate copies through the layout-preserving casts must collapse,
+// - the final read of the length field must come straight from `b` (through an inserted, layout-preserving cast),
+// - the redundant copy into `c` must be gone.
+
+script {
+    entry fn main(p: __ptr b256) -> u64 {
+        local { ptr, u64 } a
+        local slice b
+        local { ptr, u64 } c
+
+        entry(p: __ptr b256):
+        va = get_local __ptr { ptr, u64 }, a
+        i0 = const u64 0
+        pa0 = get_elem_ptr va, __ptr ptr, i0
+        pc = cast_ptr p to ptr
+        store pc to pa0
+        i1 = const u64 1
+        pa1 = get_elem_ptr va, __ptr u64, i1
+        c32 = const u64 32
+        store c32 to pa1
+        vcast = cast_ptr va to __ptr slice
+        vb = get_local __ptr slice, b
+        mem_copy_val vb, vcast
+        vcast2 = cast_ptr vb to __ptr { ptr, u64 }
+        vc = get_local __ptr { ptr, u64 }, c
+        mem_copy_val vc, vcast2
+        j1 = const u64 1
+        vlen_p = get_elem_ptr vc, __ptr u64, j1
+        vlen = load vlen_p
+        ret u64 vlen
+    }
+}

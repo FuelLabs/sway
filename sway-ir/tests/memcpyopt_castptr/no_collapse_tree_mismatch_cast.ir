@@ -1,0 +1,32 @@
+// The `cast_ptr`s here reinterpret between `[u64; 4]` and `[[u64; 2]; 2]`.
+// The two types have the same byte layout four words,
+// but they are not GEP-equivalent.
+//
+// The layout-preserving `cast_ptr` must only be seen through
+// when the pointee types are GEP-equivalent, so the optimization must not fire:
+// - both `mem_copy_val`s are preserved,
+// - the length is still read out of `c`.
+
+script {
+    entry fn main() -> u64 {
+        local [u64; 4] a
+        local [[u64; 2]; 2] b
+        local [u64; 4] c
+
+        entry():
+        va = get_local __ptr [u64; 4], a
+        i3 = const u64 3
+        pa3 = get_elem_ptr va, __ptr u64, i3
+        c40 = const u64 40
+        store c40 to pa3
+        vcast = cast_ptr va to __ptr [[u64; 2]; 2]
+        vb = get_local __ptr [[u64; 2]; 2], b
+        mem_copy_val vb, vcast
+        vcast2 = cast_ptr vb to __ptr [u64; 4]
+        vc = get_local __ptr [u64; 4], c
+        mem_copy_val vc, vcast2
+        ep = get_elem_ptr vc, __ptr u64, i3
+        vlen = load ep
+        ret u64 vlen
+    }
+}

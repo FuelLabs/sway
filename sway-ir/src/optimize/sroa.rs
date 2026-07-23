@@ -449,7 +449,7 @@ fn profitability(context: &Context, function: Function, candidates: &mut FxHashS
     }
 }
 
-/// Only the following aggregates can be scalarised:
+/// Only a following aggregate can be scalarised:
 /// 1. Does not escape.
 /// 2. Is always accessed via a scalar (register sized) field.
 ///    i.e., The entire aggregate or a sub-aggregate isn't loaded / stored.

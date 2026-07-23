@@ -1,0 +1,41 @@
+// This test proves that the issue discussed in this review comment is fixed:
+//   https://github.com/FuelLabs/sway/pull/7688#discussion_r3594711802
+//
+// The core of the issue was that `get_gep_referred_symbols` follows a
+// layout-preserving `cast_ptr` (`slice` -> `{ ptr, u64 }`), and the cast
+// result reaches a `get_elem_ptr` through a block argument (`vp`).
+//
+// For the block argument, `combine_indices` short-circuits to `Some([])`
+// instead of following the cast in the predecessor, so the field index `1`
+// (which belongs to the `{ ptr, u64 }` view) ends up
+// being resolved against the symbol's original `slice` pointee type.
+//
+// This is now handled as a valid case and gracefully. The `memcpyopt` pass
+// simply does not optimize and runs to completion without panicking.
+
+script {
+    entry fn main(p: __ptr b256) -> u64 {
+        local slice s
+        local { ptr, u64 } src
+
+        entry(p: __ptr b256):
+        vs = get_local __ptr slice, s
+        vc = cast_ptr vs to __ptr { ptr, u64 }
+        br next(vc)
+
+        next(vp: __ptr { ptr, u64 }):
+        vsrc = get_local __ptr { ptr, u64 }, src
+        i0 = const u64 0
+        s0 = get_elem_ptr vsrc, __ptr ptr, i0
+        pc = cast_ptr p to ptr
+        store pc to s0
+        i1 = const u64 1
+        s1 = get_elem_ptr vsrc, __ptr u64, i1
+        c32 = const u64 32
+        store c32 to s1
+        mem_copy_val vp, vsrc
+        g1 = get_elem_ptr vp, __ptr u64, i1
+        vlen = load g1
+        ret u64 vlen
+    }
+}
