@@ -292,7 +292,6 @@ impl AbiEncode for str {
 #[cfg(experimental_str_array_no_padding = false)]
 impl<const N: u64> AbiEncode for str[N] {
     // str[N] have alignments and paddings that make them not trivial
-    // for more information see comments on a test named: string_array
     fn is_encode_trivial() -> bool {
         false
     }
@@ -306,6 +305,7 @@ impl<const N: u64> AbiEncode for str[N] {
 #[cfg(experimental_str_array_no_padding = true)]
 impl<const N: u64> AbiEncode for str[N] {
     fn is_encode_trivial() -> bool {
+        // str[N] have no alignments and paddings and are trivial
         true
     }
     fn abi_encode(self, buffer: Buffer) -> Buffer {

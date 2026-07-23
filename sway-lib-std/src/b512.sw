@@ -226,6 +226,12 @@ impl Into<Bytes> for B512 {
 }
 
 impl Hash for B512 {
+    fn is_hash_trivial() -> bool {
+        // `B512` is just two contiguous `b256`s (64 bytes), **hashed as raw bytes**,
+        // so its in-memory representation is identical to its hash bytes.
+        true
+    }
+
     fn hash(self, ref mut state: Hasher) {
         // We want to hash just the raw bytes of the b512,
         // and not the `self.bits` array itself.

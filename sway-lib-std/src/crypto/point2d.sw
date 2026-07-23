@@ -33,6 +33,10 @@ impl PartialEq for Point2D {
 // is not equal to any other point, including itself.
 
 impl Hash for Point2D {
+    fn is_hash_trivial() -> bool {
+        false
+    }
+
     fn hash(self, ref mut state: Hasher) {
         self.x.hash(state);
         self.y.hash(state);

@@ -144,6 +144,10 @@ impl Into<Bytes> for ContractId {
 }
 
 impl Hash for ContractId {
+    fn is_hash_trivial() -> bool {
+        true
+    }
+
     fn hash(self, ref mut state: Hasher) {
         self.bits.hash(state);
     }

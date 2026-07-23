@@ -1,4 +1,4 @@
-use crate::e2e_vm_tests::harness_callback_handler::HarnessCallbackHandler;
+use crate::e2e_vm_tests::harness_callback_handler::{assert_stdout_logs, HarnessCallbackHandler};
 
 use super::RunConfig;
 use anyhow::{anyhow, bail, Result};
@@ -302,9 +302,21 @@ pub(crate) async fn compile_to_bytes(
         ..Default::default()
     };
 
+    // The snapshot buffer is owned here, outside of the `catch_unwind` below, and shared with the
+    // `HarnessCallbackHandler`. The handler itself is consumed and dropped inside
+    // `build_with_options`, possibly while unwinding a compiler panic, so it deliberately does not
+    // perform the snapshot assertion in its `Drop`. Instead, we perform it here, after the build,
+    // outside of the `catch_unwind` and only on the non-panicking path (see below). This ensures
+    // that a snapshot mismatch surfaces as a proper `insta` diff that fails the test, and that a
+    // compiler panic can never lead to a double-panic and abort.
+    let snapshot = std::sync::Arc::new(std::sync::Mutex::new(String::new()));
+
     match std::panic::catch_unwind(|| {
         let callback_handler: Option<Box<dyn Observer>> = if let Some(script) = logs {
-            Some(Box::new(HarnessCallbackHandler::new(&root, script)))
+            Some(Box::new(HarnessCallbackHandler::new(
+                script,
+                snapshot.clone(),
+            )))
         } else {
             None
         };
@@ -315,9 +327,35 @@ pub(crate) async fn compile_to_bytes(
             if let Err(ref e) = result {
                 println!("\n{e}");
             }
+
+            // The compilation did not panic, so it is safe to assert here the snapshot logs
+            // coming out of the `HarnessCallbackHandler::inner` drop.
+            // This is outside of the compiler's `catch_unwind` above (and never while unwinding a
+            // compiler panic, so a double-panic can never occur).
+            //
+            // `insta` reports a snapshot mismatch by printing a diff and then panicking. Both the
+            // diff and the panic message go to stdout/stderr, which the caller
+            // (`run_and_capture_output`) captures and surfaces only on the *normal*
+            // (non-panicking) return path. If we let the panic escape here, it would unwind past
+            // that capture and the test would fail without showing anything. So we catch the
+            // panic (this is the only place it can happen) and turn a mismatch into a regular
+            // error, letting the captured diff be shown together with the error message.
+            let snapshot = snapshot.lock().unwrap();
+            if !snapshot.is_empty() {
+                let assertion = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    assert_stdout_logs(&root, &snapshot);
+                }));
+                if assertion.is_err() {
+                    return Err(anyhow!(
+                        "Snapshot logs changed for this test. See the diff above. \
+                         Run `cargo insta review`, or update the `*.snap` file, to accept the new snapshot."
+                    ));
+                }
+            }
+
             result
         }
-        Err(_) => Err(anyhow!("Compiler panic")),
+        Err(_) => Err(anyhow!("Compiler panicked while compiling '{root}'.")),
     }
 }
 

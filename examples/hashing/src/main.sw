@@ -3,19 +3,31 @@ script;
 use std::hash::*;
 
 impl Hash for Location {
+    fn is_hash_trivial() -> bool {
+        // `Location` contains only the enum tag
+        // which is a trivially hashable `u64`.
+        true
+    }
+
     fn hash(self, ref mut state: Hasher) {
         match self {
             Location::Earth => {
-                0_u8.hash(state);
+                0_u64.hash(state);
             }
             Location::Mars => {
-                1_u8.hash(state);
+                1_u64.hash(state);
             }
         }
     }
 }
 
 impl Hash for Stats {
+    fn is_hash_trivial() -> bool {
+        // `Stats` is a struct containing two `u64`s
+        // and as such trivially hashable.
+        true
+    }
+
     fn hash(self, ref mut state: Hasher) {
         self.strength.hash(state);
         self.agility.hash(state);
@@ -23,6 +35,12 @@ impl Hash for Stats {
 }
 
 impl Hash for Person {
+    fn is_hash_trivial() -> bool {
+        // `Person` is a struct containing a `bool`,
+        // `str` and array, and as such not trivially hashable.
+        false
+    }
+
     fn hash(self, ref mut state: Hasher) {
         self.name.hash(state);
         self.age.hash(state);

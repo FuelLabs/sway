@@ -1,8 +1,0 @@
-[[package]]
-name = "const_inits"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "std"
-source = "path+from-root-76FD265A93458D61"
