@@ -7,6 +7,11 @@ on:
     tags:
       - v*
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Release tag to backfill (for example, v0.70.2); leave empty to publish master"
+        required: false
+        type: string
 
 env:
   RUST_VERSION: 1.93.0
@@ -19,6 +24,26 @@ jobs:
     runs-on: warp-ubuntu-latest-x64-2x # needs at least 100 gb hdd
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.version || github.ref }}
+
+      - name: Resolve documentation target
+        id: docs_target
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
+        run: |
+          if [[ -n "$REQUESTED_VERSION" ]]; then
+            checked_out_tag="$(git describe --tags --exact-match)"
+            if [[ "$checked_out_tag" != "$REQUESTED_VERSION" ]]; then
+              echo "Requested $REQUESTED_VERSION but checked out $checked_out_tag" >&2
+              exit 1
+            fi
+            echo "tag=$REQUESTED_VERSION" >> "$GITHUB_OUTPUT"
+          elif [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=" >> "$GITHUB_OUTPUT"
+          fi
 
       - uses: Swatinem/rust-cache@v2
 
@@ -34,15 +59,24 @@ jobs:
         run: |
           cargo uninstall forc-mcp || true
           rm -f "${CARGO_HOME:-$HOME/.cargo}/bin/forc-mcp"
-          cargo install --locked --debug --git https://github.com/FuelLabs/forc forc-client
-          cargo install --locked --debug --git https://github.com/FuelLabs/forc forc-crypto
-          cargo install --locked --debug --path ./forc-plugins/forc-debug
-          cargo install --locked --debug --path ./forc-plugins/forc-fmt
-          cargo install --locked --debug --path ./forc-plugins/forc-doc
-          cargo install --locked --debug --path ./forc-plugins/forc-lsp
-          cargo install --locked --debug --path ./forc-plugins/forc-migrate
-          cargo install --locked --debug --git https://github.com/FuelLabs/forc forc-node
-          cargo install --locked --debug --path ./forc-plugins/forc-publish
+          if [[ -d ./forc-plugins/forc-client ]]; then
+            # Before the plugin repository split, release tags carried these
+            # plugins in-tree. Use those exact sources when backfilling docs.
+            for plugin in forc-client forc-crypto forc-mcp forc-node; do
+              if [[ -d "./forc-plugins/$plugin" ]]; then
+                cargo install --locked --debug --path "./forc-plugins/$plugin"
+              fi
+            done
+          else
+            cargo install --locked --debug --git https://github.com/FuelLabs/forc forc-client
+            cargo install --locked --debug --git https://github.com/FuelLabs/forc forc-crypto
+            cargo install --locked --debug --git https://github.com/FuelLabs/forc forc-node
+          fi
+          for plugin in forc-debug forc-fmt forc-doc forc-lsp forc-migrate forc-publish; do
+            if [[ -d "./forc-plugins/$plugin" ]]; then
+              cargo install --locked --debug --path "./forc-plugins/$plugin"
+            fi
+          done
 
       - name: Install mdbook-forc-documenter
         run: cargo install --locked --debug --path ./scripts/mdbook-forc-documenter
@@ -67,7 +101,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./sway-lib-std/out/doc
           destination_dir: master
-        if: github.ref == 'refs/heads/master'
+        if: steps.docs_target.outputs.tag == ''
 
       - name: Deploy master book
         uses: peaceiris/actions-gh-pages@v4
@@ -75,7 +109,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./docs/book/book
           destination_dir: master/book
-        if: github.ref == 'refs/heads/master'
+        if: steps.docs_target.outputs.tag == ''
 
       - name: Deploy master reference
         uses: peaceiris/actions-gh-pages@v4
@@ -83,7 +117,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./docs/reference/book
           destination_dir: master/reference
-        if: github.ref == 'refs/heads/master'
+        if: steps.docs_target.outputs.tag == ''
 
       - name: Create master book redirect file
         run: |
@@ -94,7 +128,7 @@ jobs:
           <meta http-equiv="refresh" content="0; URL=../master/book">
           <link rel="canonical" href="../master/book">
           EOF
-        if: github.ref == 'refs/heads/master'
+        if: steps.docs_target.outputs.tag == ''
 
       - name: Deploy index.html redirect file to master
         uses: peaceiris/actions-gh-pages@v4
@@ -103,37 +137,31 @@ jobs:
           publish_dir: ./tmp
           destination_dir: ./master
           keep_files: true
-        if: github.ref == 'refs/heads/master'
-
-      - name: Get tag
-        id: branch_name
-        run: |
-          echo ::set-output name=BRANCH_NAME::${GITHUB_REF#refs/tags/}
-        if: startsWith(github.ref, 'refs/tags')
+        if: steps.docs_target.outputs.tag == ''
 
       - name: Deploy book tag
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./docs/book/book
-          destination_dir: ${{ steps.branch_name.outputs.BRANCH_NAME }}/book
-        if: startsWith(github.ref, 'refs/tags')
+          destination_dir: ${{ steps.docs_target.outputs.tag }}/book
+        if: steps.docs_target.outputs.tag != ''
 
       - name: Deploy reference tag
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./docs/reference/book
-          destination_dir: ${{ steps.branch_name.outputs.BRANCH_NAME }}/reference
-        if: startsWith(github.ref, 'refs/tags')
+          destination_dir: ${{ steps.docs_target.outputs.tag }}/reference
+        if: steps.docs_target.outputs.tag != ''
 
       - name: Deploy std tag
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./sway-lib-std/out/doc/std
-          destination_dir: ${{ steps.branch_name.outputs.BRANCH_NAME }}/std
-        if: startsWith(github.ref, 'refs/tags')
+          destination_dir: ${{ steps.docs_target.outputs.tag }}/std
+        if: steps.docs_target.outputs.tag != ''
 
       - name: Create tag book redirect file
         run: |
@@ -141,19 +169,19 @@ jobs:
           cat > ./tmp/index.html <<EOF
           <!DOCTYPE html>
           <meta charset="utf-8">
-          <meta http-equiv="refresh" content="0; URL=../${{ steps.branch_name.outputs.BRANCH_NAME }}/book">
-          <link rel="canonical" href="../${{ steps.branch_name.outputs.BRANCH_NAME }}/book">
+          <meta http-equiv="refresh" content="0; URL=../${{ steps.docs_target.outputs.tag }}/book">
+          <link rel="canonical" href="../${{ steps.docs_target.outputs.tag }}/book">
           EOF
-        if: startsWith(github.ref, 'refs/tags')
+        if: steps.docs_target.outputs.tag != ''
 
       - name: Deploy index.html redirect file to tag
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./tmp
-          destination_dir: ./${{ steps.branch_name.outputs.BRANCH_NAME }}
+          destination_dir: ./${{ steps.docs_target.outputs.tag }}
           keep_files: true
-        if: startsWith(github.ref, 'refs/tags')
+        if: steps.docs_target.outputs.tag != ''
 
       - name: Create latest HTML redirect file
         if: startsWith(github.ref, 'refs/tags')
@@ -162,8 +190,8 @@ jobs:
           cat > ./latest/index.html <<EOF
           <!DOCTYPE html>
           <meta charset="utf-8">
-          <meta http-equiv="refresh" content="0; URL=../${{ steps.branch_name.outputs.BRANCH_NAME }}/book">
-          <link rel="canonical" href="../${{ steps.branch_name.outputs.BRANCH_NAME }}/book">
+          <meta http-equiv="refresh" content="0; URL=../${{ steps.docs_target.outputs.tag }}/book">
+          <link rel="canonical" href="../${{ steps.docs_target.outputs.tag }}/book">
           EOF
 
       - name: Set latest to point to tag

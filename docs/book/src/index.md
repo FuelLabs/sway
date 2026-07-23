@@ -2,6 +2,16 @@
 
 Welcome to the Sway programming language book 🌴.
 
+> **Documentation version:** A `vX.Y.Z` URL is built from that exact Sway
+> release tag. The [`latest`](https://fuellabs.github.io/sway/latest/) URL
+> redirects to the most recently published release, while
+> [`master`](https://fuellabs.github.io/sway/master/book/) describes the
+> default branch and may include unreleased behavior. These are documentation
+> versions, not Fuelup channel names. Run `forc --version` to identify the
+> compiler you are using and consult the
+> [Fuelup channel documentation](https://install.fuel.network/master/concepts/channels.html)
+> before choosing tooling for a network.
+
 **Q: Hi! What is Sway?**
 
 Sway is a domain-specific programming language for implementing smart contracts on blockchain platforms, most notably for the [Fuel Virtual Machine (Fuel VM)](https://docs.fuel.network/docs/specs/fuel-vm/).
@@ -55,7 +65,7 @@ If you don't want to install anything just yet, you can use the [Sway Playground
 
 **Q: Where can I find example Sway code?**
 
-You can find example applications built with Sway in the [Sway Applications repository](https://github.com/FuelLabs/sway-applications) on GitHub. You can also find projects building on Fuel in the [Fuel ecosystem home](https://app.fuel.network/ecosystem).
+You can find historical example applications built with Sway in the [Sway Applications repository](https://github.com/FuelLabs/sway-applications) on GitHub. That repository contains version-pinned legacy snapshots, so check its status matrix before copying an example into a current project. You can also find projects building on Fuel in the [Fuel ecosystem home](https://app.fuel.network/ecosystem).
 
 **Q: What is the standard library?**
 

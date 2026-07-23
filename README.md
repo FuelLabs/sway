@@ -10,11 +10,32 @@ Sway is a language developed for the [Fuel](https://docs.fuel.network/docs/intro
 
 ## Documentation
 
-For user documentation, including installing release builds, see the Sway Book: <https://fuellabs.github.io/sway/latest/>.
+For user documentation, including installing release builds, see the latest
+released Sway Book: <https://fuellabs.github.io/sway/latest/>.
 
-For Sway Standard library documentation, see: <https://fuellabs.github.io/sway/master/std/>
+The documentation URLs describe different source versions:
 
-Also view the technical reference for the Sway programming language: <https://fuellabs.github.io/sway/master/reference/>
+- `latest` redirects to the most recently published Sway release.
+- `vX.Y.Z` is documentation built from that exact Sway release tag.
+- `master` is built from the default branch and may describe unreleased
+  behavior.
+
+These labels are Sway documentation versions. They are not Fuelup channel names
+and do not identify the toolchain activated on a Fuel network. Check the
+compiler you are running with `forc --version` and consult the
+[Fuelup channel documentation](https://install.fuel.network/master/concepts/channels.html)
+when selecting network-compatible tooling.
+
+For Sway standard library documentation from the default branch, see
+<https://fuellabs.github.io/sway/master/std/>.
+
+Also view the default-branch technical reference for the Sway programming
+language at <https://fuellabs.github.io/sway/master/reference/>.
+
+The **Stable** Sway and Forc pages on `docs.fuel.network` are published by
+[`FuelLabs/docs-hub`](https://github.com/FuelLabs/docs-hub) from an explicitly
+selected Sway release. That selection can differ from both the newest upstream
+release and the compiler in a named Fuelup network channel.
 
 ## Building from Source
 

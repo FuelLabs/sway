@@ -51,6 +51,11 @@ placeholder in the template. Otherwise, `cargo-generate` automatically converts 
 With `--force`, this means that both `my_fuel_project` and `my-fuel-project` are valid project names,
 depending on your needs.
 
+The command above reads the template from Sway's default branch. That template
+tracks the default-branch SDK harness and may be newer than an installed release
+of Forc. For a released project, use `cargo-generate`'s `--tag vX.Y.Z` option to
+select the Sway tag matching `forc --version`.
+
 > _**Note**: `templates/sway-test-rs` can be replaced with `templates/sway-script-test-rs` or `templates/sway-predicate-test-rs` to generate a test
 > harness for scripts and predicates respectively.
 

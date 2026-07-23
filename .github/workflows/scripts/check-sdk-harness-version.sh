@@ -30,3 +30,30 @@ if [ $mismatch -ne 0 ]; then
 else
 	printf "\nAll specified package versions match.\n"
 fi
+
+# The public cargo-generate templates must use the same Rust SDK generation as
+# the SDK harness tested above. Keep this list explicit so a new program-type
+# template must opt into the compatibility check.
+FUELS_VERSION=$(get_version ./Cargo.toml "workspace.dependencies.fuels")
+TEMPLATES=(
+	"./templates/sway-test-rs/template/Cargo.toml"
+	"./templates/sway-script-test-rs/template/Cargo.toml"
+	"./templates/sway-predicate-test-rs/template/Cargo.toml"
+)
+
+template_mismatch=0
+for TEMPLATE in "${TEMPLATES[@]}"; do
+	TEMPLATE_VERSION=$(get_version "$TEMPLATE" "dev-dependencies.fuels")
+	printf "fuels\n    sway repo: $FUELS_VERSION\n    $TEMPLATE: $TEMPLATE_VERSION\n"
+	if [ "$FUELS_VERSION" != "$TEMPLATE_VERSION" ]; then
+		printf "ERROR: Rust SDK version mismatch for %s\n" "$TEMPLATE"
+		template_mismatch=1
+	fi
+done
+
+if [ $template_mismatch -ne 0 ]; then
+	printf "\nRust SDK versions in the public templates must match workspace.dependencies.fuels.\n"
+	exit 1
+else
+	printf "\nAll public template Rust SDK versions match the Sway SDK harness.\n"
+fi
