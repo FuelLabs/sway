@@ -332,11 +332,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         block: &Block,
         is_entry_fn: bool,
     ) -> Result<(), ErrorEmitted> {
-        if block
-            .get_function(self.context)
-            .get_entry_block(self.context)
-            != *block
-        {
+        if !block.is_entry(self.context) {
             // If the block has an arg, copy value from its phi_reg_map vreg to a new one.
             for arg in block.arg_iter(self.context) {
                 let phi_reg = self.phi_reg_map.entry(*arg).or_insert(self.reg_seqr.next());

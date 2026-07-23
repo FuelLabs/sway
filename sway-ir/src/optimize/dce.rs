@@ -299,9 +299,9 @@ pub fn dce(
     }
 
     // Remove all dead instructions and arguments.
-    // We collect here and below because we want &mut Context for modifications.
+    // We collect here and below because we want `&mut Context` for modifications.
     for block in function.block_iter(context).collect_vec() {
-        if block != function.get_entry_block(context) {
+        if !block.is_entry(context) {
             // dead_args[arg_idx] indicates whether the argument is dead.
             let dead_args = block
                 .arg_iter(context)
