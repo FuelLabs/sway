@@ -34,6 +34,10 @@ struct DepositKey {
 }
 
 impl Hash for DepositKey {
+    fn is_hash_trivial() -> bool {
+        false
+    }
+
     fn hash(self, ref mut state: Hasher) {
         self.sender.hash(state);
         self.auction_id.hash(state);

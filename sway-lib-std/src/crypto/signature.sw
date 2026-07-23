@@ -508,6 +508,12 @@ impl PartialEq for Signature {
 impl Eq for Signature {}
 
 impl Hash for Signature {
+    fn is_hash_trivial() -> bool {
+        // TODO: (HASH-TRIVIAL-ENUMS) The enum tag is stored in memory as a `u64`,
+        //       but hashed as a `u8`. Otherwise it would be trivially hashable.
+        false
+    }
+
     fn hash(self, ref mut state: Hasher) {
         match self {
             Self::Secp256k1(sig) => {

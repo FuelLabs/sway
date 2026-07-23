@@ -459,6 +459,10 @@ impl Ord for Duration {
 impl OrdEq for Duration {}
 
 impl Hash for Duration {
+    fn is_hash_trivial() -> bool {
+        true
+    }
+
     fn hash(self, ref mut state: Hasher) {
         self.seconds.hash(state);
     }
@@ -839,6 +843,10 @@ impl Ord for Time {
 impl OrdEq for Time {}
 
 impl Hash for Time {
+    fn is_hash_trivial() -> bool {
+        true
+    }
+
     fn hash(self, ref mut state: Hasher) {
         self.unix.hash(state);
     }

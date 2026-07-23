@@ -8,6 +8,10 @@ The Sway standard library provides easy access to a selection of cryptographic h
 {{#include ../../../../examples/hashing/src/main.sw}}
 ```
 
+To hash your own types, you need to implement the `Hash` trait for them. See
+[Implementing the Hash Trait](./implementing_hash_trait.md) for the rules and
+examples, including how to safely implement `is_hash_trivial`.
+
 ## Cryptographic Signature Recovery and Verification
 
 Fuel supports 3 asymmetric cryptographic signature schemes; `Secp256k1`, `Secp256r1`, and `Ed25519`.
