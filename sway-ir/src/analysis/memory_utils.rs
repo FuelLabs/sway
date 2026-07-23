@@ -14,12 +14,7 @@ use crate::{
 
 pub const ESCAPED_SYMBOLS_NAME: &str = "escaped-symbols";
 
-/// A leaf, register-sized element of a type's memory layout.
-///
-/// Two types have the same layout (see [types_have_same_layout]) exactly when
-/// they flatten into the same ordered sequence of `(offset, LayoutLeaf)` pairs.
-/// E.g., a scalar `b256` is not layout-compatible with a `{ u64, u64, u64, u64 }`
-/// aggregate even though both occupy 32 bytes.
+/// A leaf, non-aggregate, element of a type's GEP shape (see [gep_shape]).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum LayoutLeaf {
     /// A single byte: `bool` or `u8`.
@@ -28,139 +23,152 @@ enum LayoutLeaf {
     ///
     /// A pointer and an integer word are deliberately folded into the same leaf kind.
     /// We intentionally do not distinguish the two here; doing
-    /// so would only reject genuinely layout-identical reinterpretations without
+    /// so would only reject genuinely interchangeable reinterpretations without
     /// buying any additional safety.
     ///
-    /// This is exactly what lets a `slice` be reinterpreted as `{ ptr, u64 }`. A side
-    /// effect is that e.g., `{ u64, u64 }` and `slice` also share the same layout.
-    /// That is still true, considering layout (two words are two words) and safe for
-    /// every consumer of [LayoutLeaf], which only relies on offsets and sizes lining up,
-    /// never on a slot being "a pointer" vs. "an integer".
+    /// This is part of what lets a `slice` be reinterpreted as `{ ptr, u64 }`. A side
+    /// effect is that e.g., `{ u64, u64 }` and `slice` are also GEP-equivalent.
+    /// That is still true and safe for every consumer, which only relies on offsets
+    /// and sizes lining up, never on a slot being "a pointer" vs. "an integer".
     Word,
     /// A 32-byte scalar: `b256` or `u256`.
     Wide,
-    /// An opaque string array of the given byte length.
+    /// A string array of the given byte length.
     StringArray(u64),
 }
 
-/// Flatten `ty` into its ordered sequence of leaf elements, each tagged with its
-/// byte offset relative to `base`. Returns `false` (leaving `out` in an
-/// unspecified state) if `ty` contains something whose layout we do not want to
-/// reason about (currently unions and unexpected integer widths), in which case
-/// the caller must treat the layout as unknown.
+/// The GEP-addressable shape of a type: either a non-aggregate leaf, or
+/// an indexable aggregate broken into its ordered children, each tagged with its
+/// byte offset relative to the aggregate's base.
 ///
-/// The offset arithmetic mirrors [Type::get_indexed_offset] and
-/// [Type::size]: struct fields are word-aligned, array elements are tightly
-/// packed, and a `slice` (fat pointer) is laid out as `{ ptr, u64 }`.
-fn flatten_layout(
-    context: &Context,
-    ty: Type,
-    base: u64,
-    out: &mut Vec<(u64, LayoutLeaf)>,
-) -> bool {
+/// It preserves the tree structure, so that **a `get_elem_ptr` index
+/// chain valid in one type designates the same element in an equivalent type**.
+///
+/// This is what [types_are_gep_equivalent] compares.
+enum GepShape {
+    Leaf(LayoutLeaf),
+    /// Ordered `(offset, child_type)` pairs of an indexable aggregate.
+    Aggregate(Vec<(u64, Type)>),
+}
+
+/// Returns `ty`'s [GepShape], or `None` for a [Type] whose layout we deliberately
+/// refuse to reason about (currently unions and unused integer widths).
+///
+/// The offset arithmetic mirrors [Type::get_indexed_offset] and [Type::size]:
+/// struct fields are word-aligned, array elements are tightly packed, and a
+/// `slice` (fat pointer) is modelled as `{ ptr, u64 }`.
+fn gep_shape(context: &Context, ty: Type) -> Option<GepShape> {
     // TODO-MEMLAY: Warning! Here we make an assumption about the memory layout of structs and arrays.
-    //       The memory layout of structs and arrays can be changed in the future.
+    //              The memory layout of structs and arrays can be changed in the future.
     use crate::TypeContent::*;
-    match ty.get_content(context) {
-        // Zero-sized: contributes nothing to the layout.
-        Never | Unit => {}
-        Bool | Uint(8) => out.push((base, LayoutLeaf::Byte)),
+    Some(match ty.get_content(context) {
+        // Zero-sized types have no indexable children.
+        Never | Unit => GepShape::Aggregate(vec![]),
+        Bool | Uint(8) => GepShape::Leaf(LayoutLeaf::Byte),
         Uint(16) | Uint(32) | Uint(64) | Pointer | TypedPointer(_) => {
-            out.push((base, LayoutLeaf::Word))
+            GepShape::Leaf(LayoutLeaf::Word)
         }
-        Uint(256) | B256 => out.push((base, LayoutLeaf::Wide)),
+        Uint(256) | B256 => GepShape::Leaf(LayoutLeaf::Wide),
         // Any other integer width is unexpected.
-        Uint(_) => return false,
-        // A slice / string slice is a fat pointer, laid out as `{ ptr, u64 }`.
+        Uint(_) => return None,
+        StringArray(n) => GepShape::Leaf(LayoutLeaf::StringArray(*n)),
+        // A slice / string slice is a fat pointer, GEP-equivalent to `{ ptr, u64 }`.
         Slice | TypedSlice(_) | StringSlice => {
-            out.push((base, LayoutLeaf::Word));
-            out.push((base + 8, LayoutLeaf::Word));
+            GepShape::Aggregate(vec![(0, Type::get_ptr(context)), (8, Type::get_uint64(context))])
         }
-        StringArray(n) => out.push((base, LayoutLeaf::StringArray(*n))),
         Array(elem_ty, count) => {
             // Array elements are tightly packed.
             let elem_size = elem_ty.size(context).in_bytes();
-            for i in 0..*count {
-                if !flatten_layout(context, *elem_ty, base + i * elem_size, out) {
-                    return false;
-                }
-            }
+            GepShape::Aggregate((0..*count).map(|i| (i * elem_size, *elem_ty)).collect())
         }
         Struct(fields) => {
             // Struct fields are aligned to word boundaries.
-            let mut offset = base;
+            let mut offset = 0;
+            let mut children = Vec::with_capacity(fields.len());
             for field_ty in fields {
-                if !flatten_layout(context, *field_ty, offset, out) {
-                    return false;
-                }
+                children.push((offset, *field_ty));
                 offset += field_ty.size(context).in_bytes_aligned();
             }
+            GepShape::Aggregate(children)
         }
-        // We deliberately do not reason about the layout of unions.
-        Union(_) => return false,
-    }
-    true
+        // We deliberately do not support unions.
+        Union(_) => return None,
+    })
 }
 
-/// Returns `true` if `a` and `b` have an identical in-memory layout, i.e., the
-/// same size and the same ordered sequence of leaf elements at the same offsets.
+/// Returns `true` if `a` and `b` are GEP-equivalent: the same chain of
+/// `get_elem_ptr` indices is valid in both and lands on the same byte offset on
+/// a GEP-equivalent element. Equivalently, they have identical GEP trees down to
+/// [LayoutLeaf]s.
 ///
-/// This is a *layout* (byte-level) comparison, not a *type* comparison. Its
-/// primary purpose is to recognize that a `slice` and a `{ ptr, u64 }` struct
-/// are interchangeable in memory, so that memory analyses can safely see
-/// through a layout-preserving `cast_ptr` between them.
+/// E.g.: `[u64; 4]` and `[[u64; 2]; 2]` flatten to the same four [LayoutLeaf::Word]s
+/// but are not GEP-equivalent, because, e.g, the index `[1]` selects a `u64` in the
+/// first and a `[u64; 2]` sub-array in the second. In contrast `[[u64; 2]; 2]` and
+/// `{ { u64, u64 }, { u64, u64 } }` are GEP-equivalent.
 ///
-/// The predicate is intentionally conservative: whenever it cannot prove the
-/// layouts are identical (e.g., for unions) it returns `false`.
-pub fn types_have_same_layout(context: &Context, a: Type, b: Type) -> bool {
+/// Its primary purpose is to recognize that a `slice` and a `{ ptr, u64 }` struct
+/// are interchangeable, so that memory analyses can safely see through a
+/// layout-preserving `cast_ptr` between them without ever attributing an index in
+/// one type's basis to an incompatible element of the other.
+///
+/// The predicate is intentionally conservative: whenever it cannot prove `a` and `b`
+/// are GEP-equivalent (e.g., for unions) it returns `false`.
+pub fn types_are_gep_equivalent(context: &Context, a: Type, b: Type) -> bool {
     // Fast path for the common (and cheap) case of the *same* interned type.
     //
     // We deliberately use identity equality (`==` on the interned key) here and
     // not `Type::eq`: `Type::eq` considers a union equal to any of its
-    // variants (a type-compatibility notion), which is not a byte-layout equality.
+    // variants (a type-compatibility notion), which is not what we want here.
     if a == b {
         return true;
     }
 
-    // Differently-sized types can never share a layout.
+    // Differently-sized types can never be GEP-equivalent.
     if a.size(context).in_bytes() != b.size(context).in_bytes() {
         return false;
     }
 
-    let mut a_leaves = Vec::new();
-    let mut b_leaves = Vec::new();
-    if !flatten_layout(context, a, 0, &mut a_leaves)
-        || !flatten_layout(context, b, 0, &mut b_leaves)
-    {
-        return false;
+    match (gep_shape(context, a), gep_shape(context, b)) {
+        (Some(GepShape::Leaf(la)), Some(GepShape::Leaf(lb))) => la == lb,
+        (Some(GepShape::Aggregate(ca)), Some(GepShape::Aggregate(cb))) => {
+            ca.len() == cb.len()
+                && ca
+                    .iter()
+                    .zip(cb.iter())
+                    .all(|(&(off_a, ty_a), &(off_b, ty_b))| {
+                        off_a == off_b && types_are_gep_equivalent(context, ty_a, ty_b)
+                    })
+        }
+        // A leaf vs. an aggregate (e.g. `b256` vs. `[u64; 4]`), or an opaque type
+        // (a union or an unexpected integer width) are not GEP-equivalent.
+        _ => false,
     }
-
-    a_leaves == b_leaves
 }
 
 /// Returns `true` if a `cast_ptr` from a value of type `from_ptr_ty` to type
 /// `to_ptr_ty` is layout-preserving: both are pointers and their pointee
-/// types have an identical in-memory layout (see [types_have_same_layout]).
+/// types are GEP-equivalent (see [types_are_gep_equivalent]).
 ///
 /// When a `cast_ptr` is layout-preserving, any GEP/load/store/memcpy access
-/// performed through the cast pointer touches exactly the same bytes it would
-/// through the original pointer, so memory analyses can safely track symbols
-/// straight through the cast. For any other cast the function returns `false`
-/// and the `cast_ptr` acts as an opaque barrier to memory analysis.
+/// performed through the cast pointer touches exactly the same bytes, and via
+/// the same index chain, the same element that it would through the original
+/// pointer, so memory analyses can safely track symbols straight through the
+/// cast. For any other cast the function returns `false` and the `cast_ptr` acts
+/// as an opaque barrier to memory analysis.
 pub fn cast_ptr_preserves_layout(context: &Context, from_ptr_ty: Type, to_ptr_ty: Type) -> bool {
     match (
         from_ptr_ty.get_pointee_type(context),
         to_ptr_ty.get_pointee_type(context),
     ) {
-        (Some(from), Some(to)) => types_have_same_layout(context, from, to),
+        (Some(from), Some(to)) => types_are_gep_equivalent(context, from, to),
         _ => false,
     }
 }
 
-/// Returns `true` if the value `cast_ptr_val` is a `cast_ptr` instruction whose
-/// cast is layout-preserving (see [cast_ptr_preserves_layout]).
-fn is_layout_preserving_cast_ptr(context: &Context, cast_ptr_val: Value, to_ty: Type) -> bool {
-    match cast_ptr_val.get_type(context) {
+/// Returns `true` if the `ptr_to_cast` is a pointer whose cast to `to_ty` pointer
+/// is layout-preserving (see [cast_ptr_preserves_layout]).
+fn is_layout_preserving_cast_ptr(context: &Context, ptr_to_cast: Value, to_ty: Type) -> bool {
+    match ptr_to_cast.get_type(context) {
         Some(from_ty) => cast_ptr_preserves_layout(context, from_ty, to_ty),
         None => false,
     }
@@ -948,7 +956,7 @@ mod tests {
     use sway_features::ExperimentalFeatures;
     use sway_types::SourceEngine;
 
-    use super::{cast_ptr_preserves_layout, types_have_same_layout};
+    use super::{cast_ptr_preserves_layout, types_are_gep_equivalent};
     use crate::{Backtrace, Context, Type};
 
     static SOURCE_ENGINE: Lazy<SourceEngine> = Lazy::new(SourceEngine::default);
@@ -972,10 +980,10 @@ mod tests {
         let slice = Type::get_slice(&context);
         let ptr_u64 = Type::new_struct(&mut context, vec![ptr, u64_ty]);
 
-        assert!(types_have_same_layout(&context, slice, ptr_u64));
-        assert!(types_have_same_layout(&context, ptr_u64, slice));
+        assert!(types_are_gep_equivalent(&context, slice, ptr_u64));
+        assert!(types_are_gep_equivalent(&context, ptr_u64, slice));
         // Reflexivity.
-        assert!(types_have_same_layout(&context, slice, slice));
+        assert!(types_are_gep_equivalent(&context, slice, slice));
     }
 
     #[test]
@@ -990,12 +998,12 @@ mod tests {
         let array_u64_2 = Type::new_array(&mut context, u64_ty, 2);
         let struct_ptr_u64 = Type::new_struct(&mut context, vec![ptr, u64_ty]);
 
-        assert!(types_have_same_layout(
+        assert!(types_are_gep_equivalent(
             &context,
             struct_u64_u64,
             array_u64_2
         ));
-        assert!(types_have_same_layout(
+        assert!(types_are_gep_equivalent(
             &context,
             struct_u64_u64,
             struct_ptr_u64
@@ -1016,8 +1024,8 @@ mod tests {
         assert_eq!(b256.size(&context).in_bytes(), 32);
         assert_eq!(array_u64_4.size(&context).in_bytes(), 32);
 
-        assert!(!types_have_same_layout(&context, b256, array_u64_4));
-        assert!(!types_have_same_layout(&context, b256, struct_u64_4));
+        assert!(!types_are_gep_equivalent(&context, b256, array_u64_4));
+        assert!(!types_are_gep_equivalent(&context, b256, struct_u64_4));
     }
 
     #[test]
@@ -1030,7 +1038,7 @@ mod tests {
         let slice = Type::get_slice(&context); // 16 bytes
         let struct_ptr_u64_u64 = Type::new_struct(&mut context, vec![ptr, u64_ty, u64_ty]); // 24 bytes
 
-        assert!(!types_have_same_layout(&context, slice, struct_ptr_u64_u64));
+        assert!(!types_are_gep_equivalent(&context, slice, struct_ptr_u64_u64));
     }
 
     #[test]
@@ -1049,7 +1057,7 @@ mod tests {
 
         assert_eq!(struct_u8_u64.size(&context).in_bytes(), 16);
         assert_eq!(struct_u64_u64.size(&context).in_bytes(), 16);
-        assert!(!types_have_same_layout(
+        assert!(!types_are_gep_equivalent(
             &context,
             struct_u8_u64,
             struct_u64_u64
@@ -1070,17 +1078,17 @@ mod tests {
 
         // The union is as large as its biggest variant (16 bytes), the small
         // variant is 8 bytes: clearly different layouts.
-        assert!(!types_have_same_layout(&context, variants, u64_ty));
-        assert!(!types_have_same_layout(&context, variants, t1));
+        assert!(!types_are_gep_equivalent(&context, variants, u64_ty));
+        assert!(!types_are_gep_equivalent(&context, variants, t1));
         // Even against the largest variant, we conservatively refuse (we do
         // not reason about union layouts at all).
-        assert!(!types_have_same_layout(&context, variants, t2));
+        assert!(!types_are_gep_equivalent(&context, variants, t2));
 
         // The exact enum-payload shape from the failing test: `{ u64, <union> }`
         // vs. `{ u64, u64 }`. `Type::eq` would call these equal; we must not.
         let enum_ty = Type::new_struct(&mut context, vec![u64_ty, variants]);
         assert!(enum_ty.eq(&context, &t2)); // sanity: `Type::eq` is permissive here
-        assert!(!types_have_same_layout(&context, enum_ty, t2));
+        assert!(!types_are_gep_equivalent(&context, enum_ty, t2));
     }
 
     #[test]
@@ -1105,5 +1113,84 @@ mod tests {
         assert!(cast_ptr_preserves_layout(&context, slice_ptr, ptr_u64_ptr));
         // Not layout-preserving: `b256*` <-> `[u64; 4]*`.
         assert!(!cast_ptr_preserves_layout(&context, b256_ptr, array_ptr));
+    }
+
+    // GEP-equivalence (structural) tests.
+    //
+    // Two pointee types are only interchangeable when they are GEP-equivalent:
+    // the same chain of GEP indices must be valid in both and must land on the
+    // same byte offset or same leaf element.
+
+    #[test]
+    /// `[u64; 4]` and `[[u64; 2]; 2]` flatten to the same four words, but the GEP
+    /// index chain `[i]` lands on a `u64` in the first and on a `[u64; 2]` sub-array
+    /// in the second. They are not GEP-equivalent.
+    fn flat_and_nested_arrays_are_not_gep_equivalent() {
+        let mut context = create_context();
+
+        let u64_ty = Type::get_uint64(&context);
+        let arr4 = Type::new_array(&mut context, u64_ty, 4); // [u64; 4]
+        let inner = Type::new_array(&mut context, u64_ty, 2); // [u64; 2]
+        let nested = Type::new_array(&mut context, inner, 2); // [[u64; 2]; 2]
+
+        assert_eq!(arr4.size(&context).in_bytes(), nested.size(&context).in_bytes());
+        assert!(!types_are_gep_equivalent(&context, arr4, nested));
+    }
+
+    #[test]
+    /// `{ u64, u64, u64, u64 }` and `{ { u64, u64 }, { u64, u64 } }` share the same
+    /// leaves but expose different GEP trees (four flat fields vs. two sub-structs).
+    fn flat_and_nested_structs_are_not_gep_equivalent() {
+        let mut context = create_context();
+
+        let u64_ty = Type::get_uint64(&context);
+        let flat = Type::new_struct(&mut context, vec![u64_ty, u64_ty, u64_ty, u64_ty]);
+        let pair = Type::new_struct(&mut context, vec![u64_ty, u64_ty]);
+        let nested = Type::new_struct(&mut context, vec![pair, pair]);
+
+        assert!(!types_are_gep_equivalent(&context, flat, nested));
+    }
+
+    #[test]
+    /// A flat `[u64; 4]` and a nested `{ { u64, u64 }, { u64, u64 } }`. The chain `[i]`
+    /// selects a leaf word in the array and a sub-struct in the struct. Not equivalent.
+    fn flat_array_and_nested_struct_are_not_gep_equivalent() {
+        let mut context = create_context();
+
+        let u64_ty = Type::get_uint64(&context);
+        let arr4 = Type::new_array(&mut context, u64_ty, 4);
+        let pair = Type::new_struct(&mut context, vec![u64_ty, u64_ty]);
+        let nested = Type::new_struct(&mut context, vec![pair, pair]);
+
+        assert!(!types_are_gep_equivalent(&context, arr4, nested));
+    }
+
+    #[test]
+    /// `[[u64; 2]; 2]` and `{ { u64, u64 }, { u64, u64 } }` expose the same 2x2 GEP
+    /// tree at the same offsets: `[i, j]` designates the same word in both. An array
+    /// node and a struct node of the same shape are GEP-equivalent.
+    fn nested_array_and_nested_struct_are_gep_equivalent() {
+        let mut context = create_context();
+
+        let u64_ty = Type::get_uint64(&context);
+        let inner_arr = Type::new_array(&mut context, u64_ty, 2); // [u64; 2]
+        let nested_arr = Type::new_array(&mut context, inner_arr, 2); // [[u64; 2]; 2]
+        let pair = Type::new_struct(&mut context, vec![u64_ty, u64_ty]); // { u64, u64 }
+        let nested_struct = Type::new_struct(&mut context, vec![pair, pair]);
+
+        assert!(types_are_gep_equivalent(&context, nested_arr, nested_struct));
+    }
+
+    #[test]
+    /// A flat `[u64; 4]` and a flat `{ u64, u64, u64, u64 }` both expose four
+    /// word-sized children at 0/8/16/24, so `[i]` matches. GEP-equivalent.
+    fn flat_array_and_flat_struct_are_gep_equivalent() {
+        let mut context = create_context();
+
+        let u64_ty = Type::get_uint64(&context);
+        let arr4 = Type::new_array(&mut context, u64_ty, 4);
+        let flat = Type::new_struct(&mut context, vec![u64_ty, u64_ty, u64_ty, u64_ty]);
+
+        assert!(types_are_gep_equivalent(&context, arr4, flat));
     }
 }

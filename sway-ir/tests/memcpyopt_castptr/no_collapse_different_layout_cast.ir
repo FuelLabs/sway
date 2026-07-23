@@ -1,4 +1,5 @@
 // The `cast_ptr`s here reinterpret between `[u64; 4]` and `b256`.
+//
 // The optimization must not fire:
 // - both `mem_copy_val`s are preserved,
 // - the length is still read out of `c`.

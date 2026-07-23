@@ -538,7 +538,7 @@ fn local_copy_prop(
                         // after re-interpreting it as the destination's type.
                         let same_type = memcpy_src_sym_type == memcpy_dst_sym_type;
                         let same_layout = same_type
-                            || memory_utils::types_have_same_layout(
+                            || memory_utils::types_are_gep_equivalent(
                                 context,
                                 memcpy_src_sym_type,
                                 memcpy_dst_sym_type,

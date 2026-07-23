@@ -1,8 +1,9 @@
 // A chain of `mem_copy_val`s that alternates between a `{ ptr, u64 }` local and
 // a `slice` local (which have an identical memory layout) via `cast_ptr`.
 //
-// This mirrors the shape produced by `raw_slice` / `Bytes` handling, e.g. in the
-// inlined `sha256::<b256>` path. The expected result is:
+// This mirrors the shape produced by usual `raw_slice` handlings.
+//
+// The expected result is:
 // - intermediate copies through the layout-preserving casts must collapse,
 // - the final read of the length field must come straight from `b` (through an inserted, layout-preserving cast),
 // - the redundant copy into `c` must be gone.
