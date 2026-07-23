@@ -41,6 +41,10 @@ jobs:
             echo "tag=$REQUESTED_VERSION" >> "$GITHUB_OUTPUT"
           elif [[ "$GITHUB_REF" == refs/tags/* ]]; then
             echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          elif [[ "$GITHUB_REF" != refs/heads/master ]]; then
+            echo "Refusing to publish master documentation from $GITHUB_REF" >&2
+            echo "Select an exact release tag with the version input instead." >&2
+            exit 1
           else
             echo "tag=" >> "$GITHUB_OUTPUT"
           fi
@@ -56,6 +60,8 @@ jobs:
         run: cargo install --locked --debug --path ./forc
 
       - name: Install Forc plugins
+        env:
+          DOCS_TAG: ${{ steps.docs_target.outputs.tag }}
         run: |
           cargo uninstall forc-mcp || true
           rm -f "${CARGO_HOME:-$HOME/.cargo}/bin/forc-mcp"
@@ -67,10 +73,21 @@ jobs:
                 cargo install --locked --debug --path "./forc-plugins/$plugin"
               fi
             done
-          else
+          elif [[ -z "$DOCS_TAG" ]]; then
+            # Default-branch documentation follows the current plugin sources.
             cargo install --locked --debug --git https://github.com/FuelLabs/forc forc-client
             cargo install --locked --debug --git https://github.com/FuelLabs/forc forc-crypto
             cargo install --locked --debug --git https://github.com/FuelLabs/forc forc-node
+          elif [[ "$DOCS_TAG" == v0.71.2 ]]; then
+            # Post-split plugins release independently. Pin the compatibility
+            # set recorded for Sway v0.71.2 in FuelLabs/forc releases.toml.
+            cargo install --locked --debug --git https://github.com/FuelLabs/forc --tag forc-client-0.71.3 forc-client
+            cargo install --locked --debug --git https://github.com/FuelLabs/forc --tag forc-crypto-0.71.1 forc-crypto
+            cargo install --locked --debug --git https://github.com/FuelLabs/forc --tag forc-node-0.71.3 forc-node
+          else
+            echo "No independent Forc plugin compatibility set is recorded for $DOCS_TAG" >&2
+            echo "Add exact plugin tags before publishing this release's command reference." >&2
+            exit 1
           fi
           for plugin in forc-debug forc-fmt forc-doc forc-lsp forc-migrate forc-publish; do
             if [[ -d "./forc-plugins/$plugin" ]]; then
