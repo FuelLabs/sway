@@ -1,0 +1,360 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Implementing the Hash Trait - The Sway Programming Language</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">The Sway Programming Language</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/FuelLabs/sway" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="implementing-the-hash-trait"><a class="header" href="#implementing-the-hash-trait">Implementing the <code>Hash</code> Trait</a></h1>
+<p>The <code>Hash</code> trait from the standard library (<code>std::hash::Hash</code>) defines how a value is hashed. Implementing it for your own types lets you hash them with the <code>sha256</code> and <code>keccak256</code> functions and use them wherever a deterministic hash is required, for example as keys in a <a href="../common-collections/storage_map.html"><code>StorageMap</code></a>.</p>
+<p>Unlike Rust, which can automatically generate a <code>Hash</code> implementation via <a href="https://doc.rust-lang.org/std/hash/trait.Hash.html#derivable"><code>#[derive(Hash)]</code></a>, Sway does not currently support deriving trait implementations. The <code>Hash</code> trait must therefore always be implemented manually.</p>
+<h2 id="the-hash-trait"><a class="header" href="#the-hash-trait">The <code>Hash</code> trait</a></h2>
+<pre><code class="language-sway">pub trait Hash {
+    fn is_hash_trivial() -&gt; bool;
+
+    fn hash(self, ref mut state: Hasher);
+}
+</code></pre>
+<p>An implementation consists of two methods:</p>
+<ul>
+<li><code>hash</code> defines how the value writes its bytes into the <code>Hasher</code>. This is the only method that affects the resulting hash value.</li>
+<li><code>is_hash_trivial</code> is an optimization hint. It declares whether the value's <em>in-memory representation</em> is byte-for-byte identical to the bytes that <code>hash</code> writes into the <code>Hasher</code>.</li>
+</ul>
+<h3 id="implementing-hash"><a class="header" href="#implementing-hash">Implementing <code>hash</code></a></h3>
+<p><code>hash</code> writes the <em>hash bytes representation</em> of the value into the <code>Hasher</code>. For aggregates, this is typically done by hashing each field in turn, and for enums by first hashing a discriminator (the tag) and then the payload:</p>
+<pre><code class="language-sway">use std::hash::{Hash, Hasher};
+
+struct Point {
+    x: u64,
+    y: u64,
+}
+
+impl Hash for Point {
+    fn is_hash_trivial() -&gt; bool {
+        true
+    }
+
+    fn hash(self, ref mut state: Hasher) {
+        self.x.hash(state);
+        self.y.hash(state);
+    }
+}
+</code></pre>
+<h3 id="implementing-is_hash_trivial"><a class="header" href="#implementing-is_hash_trivial">Implementing <code>is_hash_trivial</code></a></h3>
+<p>When a type is <em>trivially hashable</em>, its hash can be computed directly from the raw memory of the value (the <code>__size_of::&lt;Self&gt;()</code> bytes at the value's address), without first building an intermediate byte buffer in a <code>Hasher</code>. This is exactly what <code>sha256</code> and <code>keccak256</code> do for trivially hashable types, and it is significantly more gas efficient.</p>
+<p>Returning <code>true</code> is a <strong>strong guarantee</strong>: an incorrect <code>true</code> will produce wrong hashes when a value is hashed via <code>sha256</code> or <code>keccak256</code>. Returning <code>false</code> is <strong>always safe</strong>; it only forgoes the optimization.</p>
+<blockquote>
+<p><strong>When in doubt, return <code>false</code>.</strong></p>
+</blockquote>
+<h2 id="rules-for-safely-implementing-is_hash_trivial"><a class="header" href="#rules-for-safely-implementing-is_hash_trivial">Rules for safely implementing <code>is_hash_trivial</code></a></h2>
+<p>Return <code>true</code> only if the in-memory representation of the type is byte-for-byte identical to the bytes its <code>hash</code> method writes into the <code>Hasher</code>. Several subtleties make types that look trivially hashable actually <strong>not</strong> trivially hashable:</p>
+<ul>
+<li><strong><code>u16</code> and <code>u32</code> are never trivially hashable.</strong> They are stored in memory in an eight-byte slot (as a <code>u64</code>), but their hash bytes representation is only two and four bytes, respectively. Any aggregate (struct, tuple, array, ...) containing them is therefore also not trivially hashable.</li>
+<li><strong>Padding inside aggregates breaks triviality.</strong> <code>bool</code>, <code>u8</code>, <code>u16</code>, and <code>u32</code> fields inside a struct or tuple are padded to eight bytes in memory, while <code>hash</code> writes them without that padding. An aggregate containing such a field is therefore <strong>not</strong> trivially hashable, even though the field types might be when hashed on their own.</li>
+<li><strong>Enum tags are stored as <code>u64</code>.</strong> The <code>Hash</code> implementations in the standard library hash enum tags as <code>u8</code>, but the tag is stored as a <code>u64</code> in memory.  Enums following that convention are therefore <strong>not</strong> trivially hashable.</li>
+<li><strong>Collections depend on the <code>new_hashing</code> feature.</strong> <code>Bytes</code>, <code>Vec</code>, <code>raw_slice</code>, <code>str</code>, <code>str[N]</code>, arrays, and any aggregate containing them can be trivially hashable or not depending on the <a href="https://github.com/FuelLabs/sway/issues/7256"><code>new_hashing</code></a> experimental feature. When <code>new_hashing</code> is enabled, collections prefix their content with their length, so their hash bytes representation no longer matches their in-memory representation, making them <strong>not</strong> trivially hashable.</li>
+</ul>
+<p>A type is trivially hashable when it is a fixed-size type with no padding whose <code>hash</code> method writes exactly its in-memory bytes. This includes <code>u64</code>, <code>b256</code>, <code>u256</code>, <code>bool</code>, and <code>()</code>, as well as structs and tuples whose fields are all
+themselves trivially hashable and word-aligned (e.g. only <code>u64</code>, <code>b256</code>, <code>u256</code>).</p>
+<h2 id="examples"><a class="header" href="#examples">Examples</a></h2>
+<h3 id="a-trivially-hashable-struct"><a class="header" href="#a-trivially-hashable-struct">A trivially hashable struct</a></h3>
+<p>A struct whose fields are all word-aligned and trivially hashable, with no padding, is trivially hashable:</p>
+<pre><code class="language-sway">use std::hash::{Hash, Hasher};
+
+struct Stats {
+    strength: u64,
+    agility: u64,
+}
+
+impl Hash for Stats {
+    fn is_hash_trivial() -&gt; bool {
+        // Two `u64` fields, no padding: the in-memory bytes are exactly
+        // the bytes written by `hash`.
+        true
+    }
+
+    fn hash(self, ref mut state: Hasher) {
+        self.strength.hash(state);
+        self.agility.hash(state);
+    }
+}
+</code></pre>
+<h3 id="a-struct-that-is-not-trivially-hashable"><a class="header" href="#a-struct-that-is-not-trivially-hashable">A struct that is not trivially hashable</a></h3>
+<p>Padded fields (<code>bool</code>) and dynamically sized fields (<code>str</code>) make a struct not trivially hashable:</p>
+<pre><code class="language-sway">use std::hash::{Hash, Hasher};
+
+struct Account {
+    id: u64,
+    active: bool, // Padded to eight bytes in memory.
+    name: str, // Dynamically sized.
+}
+
+impl Hash for Account {
+    fn is_hash_trivial() -&gt; bool {
+        // `active` is padded to eight bytes in memory, and `name` is
+        // dynamically sized, so the in-memory representation does not
+        // match the hash bytes.
+        false
+    }
+
+    fn hash(self, ref mut state: Hasher) {
+        self.id.hash(state);
+        self.active.hash(state);
+        self.name.hash(state);
+    }
+}
+</code></pre>
+<h3 id="enums"><a class="header" href="#enums">Enums</a></h3>
+<p>Following the standard library convention of hashing the tag as a <code>u8</code> makes an enum <strong>not</strong> trivially hashable, because the tag is stored as a <code>u64</code> in memory:</p>
+<pre><code class="language-sway">use std::hash::{Hash, Hasher};
+
+enum Shape {
+    Circle: u64,
+    Square: u64,
+}
+
+impl Hash for Shape {
+    fn is_hash_trivial() -&gt; bool {
+        // The tag is hashed as a `u8` but stored as a `u64` in memory.
+        false
+    }
+
+    fn hash(self, ref mut state: Hasher) {
+        match self {
+            Shape::Circle(radius) =&gt; {
+                0_u8.hash(state);
+                radius.hash(state);
+            },
+            Shape::Square(side) =&gt; {
+                1_u8.hash(state);
+                side.hash(state);
+            },
+        }
+    }
+}
+</code></pre>
+<p>An enum can be made trivially hashable by hashing the tag as a <code>u64</code> (matching its in-memory representation). The simplest safe case is a <em>tag-only</em> enum, i.e.  an enum whose variants are all unit (zero-sized):</p>
+<pre><code class="language-sway">use std::hash::{Hash, Hasher};
+
+enum Location {
+    Earth: (),
+    Mars: (),
+}
+
+impl Hash for Location {
+    fn is_hash_trivial() -&gt; bool {
+        // The enum consists only of its tag, hashed as a `u64`, which
+        // matches its in-memory representation.
+        true
+    }
+
+    fn hash(self, ref mut state: Hasher) {
+        match self {
+            Location::Earth =&gt; 0_u64.hash(state),
+            Location::Mars =&gt; 1_u64.hash(state),
+        }
+    }
+}
+</code></pre>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../blockchain-development/hashing_and_cryptography.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../blockchain-development/storage.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../blockchain-development/hashing_and_cryptography.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../blockchain-development/storage.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
