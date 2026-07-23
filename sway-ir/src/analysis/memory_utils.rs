@@ -73,9 +73,10 @@ fn gep_shape(context: &Context, ty: Type) -> Option<GepShape> {
         Uint(_) => return None,
         StringArray(n) => GepShape::Leaf(LayoutLeaf::StringArray(*n)),
         // A slice / string slice is a fat pointer, GEP-equivalent to `{ ptr, u64 }`.
-        Slice | TypedSlice(_) | StringSlice => {
-            GepShape::Aggregate(vec![(0, Type::get_ptr(context)), (8, Type::get_uint64(context))])
-        }
+        Slice | TypedSlice(_) | StringSlice => GepShape::Aggregate(vec![
+            (0, Type::get_ptr(context)),
+            (8, Type::get_uint64(context)),
+        ]),
         Array(elem_ty, count) => {
             // Array elements are tightly packed.
             let elem_size = elem_ty.size(context).in_bytes();
@@ -1038,7 +1039,11 @@ mod tests {
         let slice = Type::get_slice(&context); // 16 bytes
         let struct_ptr_u64_u64 = Type::new_struct(&mut context, vec![ptr, u64_ty, u64_ty]); // 24 bytes
 
-        assert!(!types_are_gep_equivalent(&context, slice, struct_ptr_u64_u64));
+        assert!(!types_are_gep_equivalent(
+            &context,
+            slice,
+            struct_ptr_u64_u64
+        ));
     }
 
     #[test]
@@ -1133,7 +1138,10 @@ mod tests {
         let inner = Type::new_array(&mut context, u64_ty, 2); // [u64; 2]
         let nested = Type::new_array(&mut context, inner, 2); // [[u64; 2]; 2]
 
-        assert_eq!(arr4.size(&context).in_bytes(), nested.size(&context).in_bytes());
+        assert_eq!(
+            arr4.size(&context).in_bytes(),
+            nested.size(&context).in_bytes()
+        );
         assert!(!types_are_gep_equivalent(&context, arr4, nested));
     }
 
@@ -1178,7 +1186,11 @@ mod tests {
         let pair = Type::new_struct(&mut context, vec![u64_ty, u64_ty]); // { u64, u64 }
         let nested_struct = Type::new_struct(&mut context, vec![pair, pair]);
 
-        assert!(types_are_gep_equivalent(&context, nested_arr, nested_struct));
+        assert!(types_are_gep_equivalent(
+            &context,
+            nested_arr,
+            nested_struct
+        ));
     }
 
     #[test]
