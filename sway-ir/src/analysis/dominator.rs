@@ -322,9 +322,10 @@ pub fn print_dot(context: &Context, func_name: &str, dom_tree: &DomTree) -> Stri
 pub fn print_dom_fronts(context: &Context, func_name: &str, dom_fronts: &DomFronts) -> String {
     let mut res = format!("Dominance frontiers set for {func_name}:\n");
     for (b, dfs) in dom_fronts.iter() {
-        res += &("\t".to_string() + &b.get_label(context) + ": ");
+        res += &("\t".to_string() + b.get_label(context) + ": ");
         for f in dfs {
-            res += &(f.get_label(context) + " ");
+            res += f.get_label(context);
+            res += " ";
         }
         res += "\n";
     }

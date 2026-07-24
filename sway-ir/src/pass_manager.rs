@@ -158,7 +158,7 @@ impl AnalysisResults {
 
 /// Options when running the `PassManager`.
 ///
-/// # Printint Options
+/// # Printing Options
 ///
 /// Note that states of IR can always be printed by injecting the module printer pass
 /// and just running the passes. That approach however offers less control over the
@@ -187,20 +187,6 @@ impl Default for Options {
             rounds: 2,
         }
     }
-}
-
-/// Options for verifying [Pass]es in case of running them with verifying requested.
-///
-/// Note that states of IR can always be verified by injecting the module verifier pass
-/// and just running the passes. That approach however offers less control over the
-/// verification. E.g., requiring the verification to happen only if the previous passes
-/// modified the IR cannot be done by simply injecting a module verifier.
-#[derive(Debug)]
-pub struct VerifyPassesOpts {
-    pub initial: bool,
-    pub r#final: bool,
-    pub modified_only: bool,
-    pub passes: HashSet<String>,
 }
 
 #[derive(Default)]

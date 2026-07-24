@@ -1,4 +1,4 @@
-// Regression test for an bug that was incorrectly scalarising the local `s` below.
+// Regression test for a bug that was incorrectly scalarising the local `s` below.
 // This test checks if SROA introduces a separate `get_local` for the scalarised field
 // in each block that uses `e`.
 
