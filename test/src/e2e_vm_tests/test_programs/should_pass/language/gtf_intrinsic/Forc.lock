@@ -1,8 +1,0 @@
-[[package]]
-name = "gtf_intrinsic"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "std"
-source = "path+from-root-8FA257A8E02B7AC4"

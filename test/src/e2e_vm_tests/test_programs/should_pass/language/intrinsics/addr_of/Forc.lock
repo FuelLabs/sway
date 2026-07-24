@@ -1,0 +1,8 @@
+[[package]]
+name = "addr_of"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-9E7F7A5F225E077D"

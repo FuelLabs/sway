@@ -365,7 +365,7 @@ where
     A: AbiEncode,
 {
     fn is_encode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_encode_trivial::<A>();
         r
     }
@@ -380,7 +380,7 @@ where
     B: AbiEncode,
 {
     fn is_encode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_encode_trivial::<A>();
         let r = r && is_encode_trivial::<B>();
         r
@@ -398,7 +398,7 @@ where
     C: AbiEncode,
 {
     fn is_encode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_encode_trivial::<A>();
         let r = r && is_encode_trivial::<B>();
         let r = r && is_encode_trivial::<C>();
@@ -419,7 +419,7 @@ where
     D: AbiEncode,
 {
     fn is_encode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_encode_trivial::<A>();
         let r = r && is_encode_trivial::<B>();
         let r = r && is_encode_trivial::<C>();
@@ -443,7 +443,7 @@ where
     E: AbiEncode,
 {
     fn is_encode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_encode_trivial::<A>();
         let r = r && is_encode_trivial::<B>();
         let r = r && is_encode_trivial::<C>();
@@ -470,7 +470,7 @@ where
     F: AbiEncode,
 {
     fn is_encode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_encode_trivial::<A>();
         let r = r && is_encode_trivial::<B>();
         let r = r && is_encode_trivial::<C>();
@@ -500,7 +500,7 @@ where
     G: AbiEncode,
 {
     fn is_encode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_encode_trivial::<A>();
         let r = r && is_encode_trivial::<B>();
         let r = r && is_encode_trivial::<C>();
@@ -533,7 +533,7 @@ where
     H: AbiEncode,
 {
     fn is_encode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_encode_trivial::<A>();
         let r = r && is_encode_trivial::<B>();
         let r = r && is_encode_trivial::<C>();
@@ -569,7 +569,7 @@ where
     I: AbiEncode,
 {
     fn is_encode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_encode_trivial::<A>();
         let r = r && is_encode_trivial::<B>();
         let r = r && is_encode_trivial::<C>();
@@ -608,7 +608,7 @@ where
     J: AbiEncode,
 {
     fn is_encode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_encode_trivial::<A>();
         let r = r && is_encode_trivial::<B>();
         let r = r && is_encode_trivial::<C>();
@@ -650,7 +650,7 @@ where
     K: AbiEncode,
 {
     fn is_encode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_encode_trivial::<A>();
         let r = r && is_encode_trivial::<B>();
         let r = r && is_encode_trivial::<C>();
@@ -695,7 +695,7 @@ where
     L: AbiEncode,
 {
     fn is_encode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_encode_trivial::<A>();
         let r = r && is_encode_trivial::<B>();
         let r = r && is_encode_trivial::<C>();
@@ -743,7 +743,7 @@ where
     M: AbiEncode,
 {
     fn is_encode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_encode_trivial::<A>();
         let r = r && is_encode_trivial::<B>();
         let r = r && is_encode_trivial::<C>();
@@ -794,7 +794,7 @@ where
     N: AbiEncode,
 {
     fn is_encode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_encode_trivial::<A>();
         let r = r && is_encode_trivial::<B>();
         let r = r && is_encode_trivial::<C>();
@@ -848,7 +848,7 @@ where
     O: AbiEncode,
 {
     fn is_encode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_encode_trivial::<A>();
         let r = r && is_encode_trivial::<B>();
         let r = r && is_encode_trivial::<C>();
@@ -905,7 +905,7 @@ where
     P: AbiEncode,
 {
     fn is_encode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_encode_trivial::<A>();
         let r = r && is_encode_trivial::<B>();
         let r = r && is_encode_trivial::<C>();
@@ -965,7 +965,7 @@ where
     Q: AbiEncode,
 {
     fn is_encode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_encode_trivial::<A>();
         let r = r && is_encode_trivial::<B>();
         let r = r && is_encode_trivial::<C>();
@@ -1028,7 +1028,7 @@ where
     R: AbiEncode,
 {
     fn is_encode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_encode_trivial::<A>();
         let r = r && is_encode_trivial::<B>();
         let r = r && is_encode_trivial::<C>();
@@ -1094,7 +1094,7 @@ where
     S: AbiEncode,
 {
     fn is_encode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_encode_trivial::<A>();
         let r = r && is_encode_trivial::<B>();
         let r = r && is_encode_trivial::<C>();
@@ -1163,7 +1163,7 @@ where
     T: AbiEncode,
 {
     fn is_encode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_encode_trivial::<A>();
         let r = r && is_encode_trivial::<B>();
         let r = r && is_encode_trivial::<C>();
@@ -1235,7 +1235,7 @@ where
     U: AbiEncode,
 {
     fn is_encode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_encode_trivial::<A>();
         let r = r && is_encode_trivial::<B>();
         let r = r && is_encode_trivial::<C>();
@@ -1310,7 +1310,7 @@ where
     V: AbiEncode,
 {
     fn is_encode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_encode_trivial::<A>();
         let r = r && is_encode_trivial::<B>();
         let r = r && is_encode_trivial::<C>();
@@ -1388,7 +1388,7 @@ where
     W: AbiEncode,
 {
     fn is_encode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_encode_trivial::<A>();
         let r = r && is_encode_trivial::<B>();
         let r = r && is_encode_trivial::<C>();
@@ -1469,7 +1469,7 @@ where
     X: AbiEncode,
 {
     fn is_encode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_encode_trivial::<A>();
         let r = r && is_encode_trivial::<B>();
         let r = r && is_encode_trivial::<C>();
@@ -1553,7 +1553,7 @@ where
     Y: AbiEncode,
 {
     fn is_encode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_encode_trivial::<A>();
         let r = r && is_encode_trivial::<B>();
         let r = r && is_encode_trivial::<C>();
@@ -1640,7 +1640,7 @@ where
     Z: AbiEncode,
 {
     fn is_encode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_encode_trivial::<A>();
         let r = r && is_encode_trivial::<B>();
         let r = r && is_encode_trivial::<C>();
@@ -1974,7 +1974,7 @@ where
     A: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_decode_trivial::<A>();
         r
     }
@@ -1988,7 +1988,7 @@ where
     B: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_decode_trivial::<A>();
         let r = r && is_decode_trivial::<B>();
         r
@@ -2004,7 +2004,7 @@ where
     C: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_decode_trivial::<A>();
         let r = r && is_decode_trivial::<B>();
         let r = r && is_decode_trivial::<C>();
@@ -2022,7 +2022,7 @@ where
     D: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_decode_trivial::<A>();
         let r = r && is_decode_trivial::<B>();
         let r = r && is_decode_trivial::<C>();
@@ -2047,7 +2047,7 @@ where
     E: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_decode_trivial::<A>();
         let r = r && is_decode_trivial::<B>();
         let r = r && is_decode_trivial::<C>();
@@ -2075,7 +2075,7 @@ where
     F: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_decode_trivial::<A>();
         let r = r && is_decode_trivial::<B>();
         let r = r && is_decode_trivial::<C>();
@@ -2106,7 +2106,7 @@ where
     G: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_decode_trivial::<A>();
         let r = r && is_decode_trivial::<B>();
         let r = r && is_decode_trivial::<C>();
@@ -2140,7 +2140,7 @@ where
     H: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_decode_trivial::<A>();
         let r = r && is_decode_trivial::<B>();
         let r = r && is_decode_trivial::<C>();
@@ -2177,7 +2177,7 @@ where
     I: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_decode_trivial::<A>();
         let r = r && is_decode_trivial::<B>();
         let r = r && is_decode_trivial::<C>();
@@ -2217,7 +2217,7 @@ where
     J: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_decode_trivial::<A>();
         let r = r && is_decode_trivial::<B>();
         let r = r && is_decode_trivial::<C>();
@@ -2260,7 +2260,7 @@ where
     K: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_decode_trivial::<A>();
         let r = r && is_decode_trivial::<B>();
         let r = r && is_decode_trivial::<C>();
@@ -2306,7 +2306,7 @@ where
     L: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_decode_trivial::<A>();
         let r = r && is_decode_trivial::<B>();
         let r = r && is_decode_trivial::<C>();
@@ -2355,7 +2355,7 @@ where
     M: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_decode_trivial::<A>();
         let r = r && is_decode_trivial::<B>();
         let r = r && is_decode_trivial::<C>();
@@ -2407,7 +2407,7 @@ where
     N: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_decode_trivial::<A>();
         let r = r && is_decode_trivial::<B>();
         let r = r && is_decode_trivial::<C>();
@@ -2462,7 +2462,7 @@ where
     O: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_decode_trivial::<A>();
         let r = r && is_decode_trivial::<B>();
         let r = r && is_decode_trivial::<C>();
@@ -2520,7 +2520,7 @@ where
     P: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_decode_trivial::<A>();
         let r = r && is_decode_trivial::<B>();
         let r = r && is_decode_trivial::<C>();
@@ -2581,7 +2581,7 @@ where
     Q: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_decode_trivial::<A>();
         let r = r && is_decode_trivial::<B>();
         let r = r && is_decode_trivial::<C>();
@@ -2645,7 +2645,7 @@ where
     R: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_decode_trivial::<A>();
         let r = r && is_decode_trivial::<B>();
         let r = r && is_decode_trivial::<C>();
@@ -2712,7 +2712,7 @@ where
     S: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_decode_trivial::<A>();
         let r = r && is_decode_trivial::<B>();
         let r = r && is_decode_trivial::<C>();
@@ -2782,7 +2782,7 @@ where
     T: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_decode_trivial::<A>();
         let r = r && is_decode_trivial::<B>();
         let r = r && is_decode_trivial::<C>();
@@ -2855,7 +2855,7 @@ where
     U: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_decode_trivial::<A>();
         let r = r && is_decode_trivial::<B>();
         let r = r && is_decode_trivial::<C>();
@@ -2931,7 +2931,7 @@ where
     V: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_decode_trivial::<A>();
         let r = r && is_decode_trivial::<B>();
         let r = r && is_decode_trivial::<C>();
@@ -3010,7 +3010,7 @@ where
     W: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_decode_trivial::<A>();
         let r = r && is_decode_trivial::<B>();
         let r = r && is_decode_trivial::<C>();
@@ -3092,7 +3092,7 @@ where
     X: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_decode_trivial::<A>();
         let r = r && is_decode_trivial::<B>();
         let r = r && is_decode_trivial::<C>();
@@ -3177,7 +3177,7 @@ where
     Y: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_decode_trivial::<A>();
         let r = r && is_decode_trivial::<B>();
         let r = r && is_decode_trivial::<C>();
@@ -3265,7 +3265,7 @@ where
     Z: AbiDecode,
 {
     fn is_decode_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>();
         let r = r && is_decode_trivial::<A>();
         let r = r && is_decode_trivial::<B>();
         let r = r && is_decode_trivial::<C>();
