@@ -52,8 +52,9 @@ pub enum Intrinsic {
     Transmute, // let dst: B = __transmute::<A, B>(src)
     Dbg,   // __dbg(value)
     Alloc, // __alloc<T>(size: u64) -> raw_ptr
-    RuntimeMemoryId, // __runtime_mem_id::<T>() -> u64
-    EncodingMemoryId, // __encoding_mem_id::<T>() -> u64
+    MemReprIdRuntime, // __mem_repr_id_runtime::<T>() -> b256
+    MemReprIdEncoding, // __mem_repr_id_encoding::<T>() -> b256
+    MemReprIdHashing, // __mem_repr_id_hashing::<T>() -> b256
 }
 
 impl fmt::Display for Intrinsic {
@@ -108,8 +109,9 @@ impl fmt::Display for Intrinsic {
             Intrinsic::Transmute => "transmute",
             Intrinsic::Dbg => "dbg",
             Intrinsic::Alloc => "alloc",
-            Intrinsic::RuntimeMemoryId => "runtime_mem_id",
-            Intrinsic::EncodingMemoryId => "encoding_mem_id",
+            Intrinsic::MemReprIdRuntime => "mem_repr_id_runtime",
+            Intrinsic::MemReprIdEncoding => "mem_repr_id_encoding",
+            Intrinsic::MemReprIdHashing => "mem_repr_id_hashing",
         };
         write!(f, "{s}")
     }
@@ -168,8 +170,9 @@ impl Intrinsic {
             "__transmute" => Transmute,
             "__dbg" => Dbg,
             "__alloc" => Alloc,
-            "__runtime_mem_id" => RuntimeMemoryId,
-            "__encoding_mem_id" => EncodingMemoryId,
+            "__mem_repr_id_runtime" => MemReprIdRuntime,
+            "__mem_repr_id_encoding" => MemReprIdEncoding,
+            "__mem_repr_id_hashing" => MemReprIdHashing,
             _ => return None,
         })
     }

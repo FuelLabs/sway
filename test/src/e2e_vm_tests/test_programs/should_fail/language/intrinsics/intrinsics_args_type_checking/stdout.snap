@@ -1276,6 +1276,113 @@ found:    u32.
 ____
 
 error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/mem_repr_id_intrinsics.sw:4:13
+  |
+2 | 
+3 | pub fn check_args() {
+4 |     let _ = __mem_repr_id_runtime();
+  |             ^^^^^^^^^^^^^^^^^^^^^^^ "__mem_repr_id_runtime" intrinsic expects one type argument, but none are provided.
+5 |     let _ = __mem_repr_id_runtime::<u64, u32>();
+6 |     let _ = __mem_repr_id_runtime::<u64>(42u64);
+  |
+____
+
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/mem_repr_id_intrinsics.sw:5:37
+  |
+3 | pub fn check_args() {
+4 |     let _ = __mem_repr_id_runtime();
+5 |     let _ = __mem_repr_id_runtime::<u64, u32>();
+  |                                     ^^^^^^^^ "__mem_repr_id_runtime" intrinsic expects one type argument, but two are provided.
+6 |     let _ = __mem_repr_id_runtime::<u64>(42u64);
+7 | 
+  |
+____
+
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/mem_repr_id_intrinsics.sw:6:42
+  |
+4 |     let _ = __mem_repr_id_runtime();
+5 |     let _ = __mem_repr_id_runtime::<u64, u32>();
+6 |     let _ = __mem_repr_id_runtime::<u64>(42u64);
+  |                                          ^^^^^ "__mem_repr_id_runtime" intrinsic expects zero arguments, but one is provided.
+7 | 
+8 |     let _ = __mem_repr_id_encoding();
+  |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/mem_repr_id_intrinsics.sw:8:13
+   |
+ 6 |     let _ = __mem_repr_id_runtime::<u64>(42u64);
+ 7 | 
+ 8 |     let _ = __mem_repr_id_encoding();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ "__mem_repr_id_encoding" intrinsic expects one type argument, but none are provided.
+ 9 |     let _ = __mem_repr_id_encoding::<u64, u32>();
+10 |     let _ = __mem_repr_id_encoding::<u64>(42u64);
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/mem_repr_id_intrinsics.sw:9:38
+   |
+ 7 | 
+ 8 |     let _ = __mem_repr_id_encoding();
+ 9 |     let _ = __mem_repr_id_encoding::<u64, u32>();
+   |                                      ^^^^^^^^ "__mem_repr_id_encoding" intrinsic expects one type argument, but two are provided.
+10 |     let _ = __mem_repr_id_encoding::<u64>(42u64);
+11 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/mem_repr_id_intrinsics.sw:10:43
+   |
+ 8 |     let _ = __mem_repr_id_encoding();
+ 9 |     let _ = __mem_repr_id_encoding::<u64, u32>();
+10 |     let _ = __mem_repr_id_encoding::<u64>(42u64);
+   |                                           ^^^^^ "__mem_repr_id_encoding" intrinsic expects zero arguments, but one is provided.
+11 | 
+12 |     let _ = __mem_repr_id_hashing();
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/mem_repr_id_intrinsics.sw:12:13
+   |
+10 |     let _ = __mem_repr_id_encoding::<u64>(42u64);
+11 | 
+12 |     let _ = __mem_repr_id_hashing();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^ "__mem_repr_id_hashing" intrinsic expects one type argument, but none are provided.
+13 |     let _ = __mem_repr_id_hashing::<u64, u32>();
+14 |     let _ = __mem_repr_id_hashing::<u64>(42u64);
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/mem_repr_id_intrinsics.sw:13:37
+   |
+11 | 
+12 |     let _ = __mem_repr_id_hashing();
+13 |     let _ = __mem_repr_id_hashing::<u64, u32>();
+   |                                     ^^^^^^^^ "__mem_repr_id_hashing" intrinsic expects one type argument, but two are provided.
+14 |     let _ = __mem_repr_id_hashing::<u64>(42u64);
+15 | }
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/mem_repr_id_intrinsics.sw:14:42
+   |
+12 |     let _ = __mem_repr_id_hashing();
+13 |     let _ = __mem_repr_id_hashing::<u64, u32>();
+14 |     let _ = __mem_repr_id_hashing::<u64>(42u64);
+   |                                          ^^^^^ "__mem_repr_id_hashing" intrinsic expects zero arguments, but one is provided.
+15 | }
+   |
+____
+
+error
  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/slice_intrinsics.sw:5:21
   |
 3 | // slice cannot be consts
@@ -1311,5 +1418,5 @@ error
   |
 ____
 
-  Aborting due to 97 errors.
+  Aborting due to 106 errors.
 error: Failed to compile intrinsics_args_type_checking

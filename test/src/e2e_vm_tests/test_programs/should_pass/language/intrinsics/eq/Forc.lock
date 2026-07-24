@@ -1,0 +1,8 @@
+[[package]]
+name = "eq"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-B9CA79F7B28E87DF"

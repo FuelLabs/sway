@@ -8,3 +8,4 @@ mod encoding_intrinsics;
 mod slice_intrinsics;
 mod transmute_intrinsic;
 mod dbg_intrinsic;
+mod mem_repr_id_intrinsics;

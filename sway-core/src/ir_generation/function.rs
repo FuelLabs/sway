@@ -30,11 +30,9 @@ use crate::{
 };
 use indexmap::IndexMap;
 use itertools::Itertools;
+use sha2::{Digest, Sha256};
+use std::collections::HashMap;
 use std::convert::TryFrom;
-use std::{
-    collections::HashMap,
-    hash::{DefaultHasher, Hash as _},
-};
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::error::CompileError;
 use sway_ir::{Context, *};
@@ -2100,7 +2098,7 @@ impl<'a> FnCompiler<'a> {
             Intrinsic::Dbg => {
                 unreachable!("__dbg should not exist in the typed tree")
             }
-            Intrinsic::RuntimeMemoryId => {
+            Intrinsic::MemReprIdRuntime => {
                 assert!(type_arguments.len() == 1);
                 assert!(arguments.is_empty());
 
@@ -2114,20 +2112,22 @@ impl<'a> FnCompiler<'a> {
                     arg.type_id,
                     &arg.span,
                 )?;
-                let id = get_memory_id(context, t);
-                let val = ConstantContent::get_uint(context, 64, id);
+                let id = get_runtime_mem_repr_id(context, t);
+                let val = ConstantContent::get_b256(context, id);
                 Ok(TerminatorValue::new(
                     CompiledValue::InRegister(val),
                     context,
                 ))
             }
-            Intrinsic::EncodingMemoryId => {
+            // Both the encoding and the hashing memory representation ids use the
+            // packed memory representation.
+            Intrinsic::MemReprIdEncoding | Intrinsic::MemReprIdHashing => {
                 assert!(type_arguments.len() == 1);
                 assert!(arguments.is_empty());
 
                 let arg = type_arguments[0].as_type_argument().unwrap();
-                let id = get_encoding_id(self.engines, arg.type_id);
-                let val = ConstantContent::get_uint(context, 64, id);
+                let id = get_packed_mem_repr_id(self.engines, arg.type_id);
+                let val = ConstantContent::get_b256(context, id);
                 Ok(TerminatorValue::new(
                     CompiledValue::InRegister(val),
                     context,
@@ -6002,7 +6002,7 @@ impl<'a> FnCompiler<'a> {
 /// If they do, it is possible to trivially encode/decode some types.
 ///
 /// For examples see: test/src/e2e_vm_tests/test_programs/should_pass/language/type_layout/logs.snap
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum MemoryRepresentation {
     /// `pN`. E.g.:
     /// - right padded `u8` in a struct field: `{ b1, p7 }`.
@@ -6024,7 +6024,7 @@ pub enum MemoryRepresentation {
     Array(Box<MemoryRepresentation>, u64),
 }
 
-impl std::fmt::Debug for MemoryRepresentation {
+impl std::fmt::Display for MemoryRepresentation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Padding { len_in_bytes } => f.write_fmt(format_args!("p{}", len_in_bytes)),
@@ -6064,6 +6064,12 @@ impl std::fmt::Debug for MemoryRepresentation {
     }
 }
 
+impl std::fmt::Debug for MemoryRepresentation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        <Self as std::fmt::Display>::fmt(self, f)
+    }
+}
+
 impl MemoryRepresentation {
     pub fn len_in_bytes(&self) -> u64 {
         match self {
@@ -6080,6 +6086,8 @@ impl MemoryRepresentation {
     }
 }
 
+/// Returns the runtime memory representation of the [Type] `t`.
+/// This representation always exist.
 pub fn get_runtime_representation(ctx: &Context, t: Type) -> MemoryRepresentation {
     match t.get_content(ctx) {
         TypeContent::Unit | TypeContent::Never => MemoryRepresentation::And(vec![]),
@@ -6204,31 +6212,59 @@ pub fn get_runtime_representation(ctx: &Context, t: Type) -> MemoryRepresentatio
     }
 }
 
-pub fn get_memory_id(ctx: &Context, t: Type) -> u64 {
-    let r = get_runtime_representation(ctx, t);
-
-    use std::hash::Hasher;
-    let mut state = DefaultHasher::default();
-    r.hash(&mut state);
-
-    // Uncomment here to debug the runtime memory representation
-    // let id = state.finish();
-    // eprintln!("Runtime Repr: {:?} {:?} {id}", t.with_context(ctx), &r);
-    // id
-
-    state.finish()
+/// Computes a collision-resistant `b256` id that uniquely identifies a
+/// [MemoryRepresentation].
+fn mem_repr_id(r: &MemoryRepresentation) -> [u8; 32] {
+    let mut hasher = Sha256::new();
+    // We hash the textual representation of the `MemoryRepresentation`
+    // because it is platform independent. Although a `__mem_repr_id`
+    // is not guaranteed to be stable across Sway compiler versions, for the
+    // same Sway compiler version, we have to guarantee the same id regardless
+    // of the platform on which a Sway code is compiled.
+    //
+    // Relaying on a derived `std::hash::Hash` would not necessarily give us this
+    // cross-platform guarantee.
+    //
+    // The textual representation is obviously equivalent to its `MemoryRepresentation`.
+    hasher.update(format!("{r}"));
+    hasher.finalize().into()
 }
 
-pub fn get_encoding_representation_by_id(
+/// Returns the `b256` id of the runtime memory representation of the [Type] `t`.
+pub fn get_runtime_mem_repr_id(ctx: &Context, t: Type) -> [u8; 32] {
+    let r = get_runtime_representation(ctx, t);
+
+    // Uncomment here to debug the runtime memory representation
+    // eprintln!("Runtime Repr: {:?} {:?}", t.with_context(ctx), &r);
+
+    mem_repr_id(&r)
+}
+
+/// Returns the `b256` id of the packed memory representation of the type,
+/// or `b256::zero()` if the type does not have a packed memory representation.
+pub fn get_packed_mem_repr_id(engines: &Engines, type_id: TypeId) -> [u8; 32] {
+    if let Some(r) = get_packed_representation_by_id(engines, type_id) {
+        // Uncomment here to debug the packed memory representation
+        // eprintln!("Packed Repr: {:?} {:?}", engines.help_out(type_id), &r);
+
+        mem_repr_id(&r)
+    } else {
+        [0u8; 32]
+    }
+}
+
+pub fn get_packed_representation_by_id(
     engines: &Engines,
     type_id: TypeId,
 ) -> Option<MemoryRepresentation> {
-    get_encoding_representation(engines, &engines.te().get(type_id))
+    get_packed_representation(engines, &engines.te().get(type_id))
 }
 
-// Range is None here because we cannot guarantee a buffer that is going to be decoded
-// has the correct bytes
-pub fn get_encoding_representation(
+/// Returns the packed memory representation of the `type_info`.
+/// This representation exists only for non-dynamic Sway types.
+/// Types being or containing, e.g. [TypeInfo::RawUntypedPtr] do not
+/// have a packed memory representation.
+pub fn get_packed_representation(
     engines: &Engines,
     type_info: &TypeInfo,
 ) -> Option<MemoryRepresentation> {
@@ -6254,7 +6290,7 @@ pub fn get_encoding_representation(
         TypeInfo::Tuple(fields) => {
             let items = fields
                 .iter()
-                .map(|field| get_encoding_representation_by_id(engines, field.type_id))
+                .map(|field| get_packed_representation_by_id(engines, field.type_id))
                 .collect::<Option<Vec<_>>>()?;
             Some(MemoryRepresentation::And(items))
         }
@@ -6264,9 +6300,7 @@ pub fn get_encoding_representation(
             let items = decl
                 .fields
                 .iter()
-                .map(|field| {
-                    get_encoding_representation_by_id(engines, field.type_argument.type_id)
-                })
+                .map(|field| get_packed_representation_by_id(engines, field.type_argument.type_id))
                 .collect::<Option<Vec<_>>>()?;
 
             Some(MemoryRepresentation::And(items))
@@ -6278,7 +6312,7 @@ pub fn get_encoding_representation(
                 .variants
                 .iter()
                 .map(|variant| {
-                    get_encoding_representation_by_id(engines, variant.type_argument.type_id)
+                    get_packed_representation_by_id(engines, variant.type_argument.type_id)
                 })
                 .collect::<Option<Vec<_>>>()?;
 
@@ -6302,31 +6336,14 @@ pub fn get_encoding_representation(
         }),
         TypeInfo::StringSlice => None,
         TypeInfo::Array(item, len) => Some(MemoryRepresentation::Array(
-            Box::new(get_encoding_representation_by_id(engines, item.type_id)?),
+            Box::new(get_packed_representation_by_id(engines, item.type_id)?),
             len.extract_literal(engines)?,
         )),
         TypeInfo::RawUntypedPtr => None,
         TypeInfo::RawUntypedSlice => None,
         TypeInfo::Slice(_) => None,
         TypeInfo::Ref { .. } => None,
-        TypeInfo::Alias { ty, .. } => get_encoding_representation_by_id(engines, ty.type_id),
-        x => unreachable!("this `TypeInfo` is not an encoding representable type: {x:#?}"),
-    }
-}
-
-pub fn get_encoding_id(engines: &Engines, type_id: TypeId) -> u64 {
-    use std::hash::Hasher;
-    if let Some(r) = get_encoding_representation_by_id(engines, type_id) {
-        let mut state = DefaultHasher::default();
-        r.hash(&mut state);
-
-        // Uncomment here to debug the encoding memory representation
-        // let id = state.finish();
-        // eprintln!("Encoding Repr: {:?} {:?} {}", engines.help_out(type_id), &r, id);
-        // id
-
-        state.finish()
-    } else {
-        0
+        TypeInfo::Alias { ty, .. } => get_packed_representation_by_id(engines, ty.type_id),
+        x => unreachable!("this `TypeInfo` is not a packed representable type: {x:#?}"),
     }
 }

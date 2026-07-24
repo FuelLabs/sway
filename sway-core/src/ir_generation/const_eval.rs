@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     engine_threading::*,
-    ir_generation::function::{get_encoding_id, get_memory_id},
+    ir_generation::function::{get_packed_mem_repr_id, get_runtime_mem_repr_id},
     language::{
         ty::{self, ProjectionKind, TyConstantDecl, TyIntrinsicFunctionKind},
         CallPath, LazyOp, Literal,
@@ -2045,7 +2045,7 @@ fn const_eval_intrinsic(
         Intrinsic::Dbg => {
             unreachable!("__dbg should not exist in the typed tree")
         }
-        Intrinsic::RuntimeMemoryId => {
+        Intrinsic::MemReprIdRuntime => {
             assert!(intrinsic.type_arguments.len() == 1);
             assert!(intrinsic.arguments.is_empty());
 
@@ -2061,25 +2061,21 @@ fn const_eval_intrinsic(
             )
             .unwrap();
 
-            let id = get_memory_id(lookup.context, t);
-            let c = ConstantContent {
-                ty: Type::get_uint64(lookup.context),
-                value: ConstantValue::Uint(id),
-            };
+            let id = get_runtime_mem_repr_id(lookup.context, t);
+            let c = ConstantContent::new_b256(lookup.context, id);
 
             Ok(Some(Constant::unique(lookup.context, c)))
         }
-        Intrinsic::EncodingMemoryId => {
+        // Both the encoding and the hashing memory representation ids use the
+        // packed memory representation.
+        Intrinsic::MemReprIdEncoding | Intrinsic::MemReprIdHashing => {
             assert!(intrinsic.type_arguments.len() == 1);
             assert!(intrinsic.arguments.is_empty());
 
             let t = intrinsic.type_arguments[0].as_type_argument().unwrap();
 
-            let id = get_encoding_id(lookup.engines, t.type_id);
-            let c = ConstantContent {
-                ty: Type::get_uint64(lookup.context),
-                value: ConstantValue::Uint(id),
-            };
+            let id = get_packed_mem_repr_id(lookup.engines, t.type_id);
+            let c = ConstantContent::new_b256(lookup.context, id);
 
             Ok(Some(Constant::unique(lookup.context, c)))
         }

@@ -54,7 +54,7 @@ generate_tuple_encode() {
         ISTRIVIAL="$ISTRIVIAL let r = r \&\& is_encode_trivial::<$element>();"
     done
 
-    CODE="$CODE{ fn is_encode_trivial() -> bool { let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>(); $ISTRIVIAL r } fn abi_encode(self, buffer: Buffer) -> Buffer { "
+    CODE="$CODE{ fn is_encode_trivial() -> bool { let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>(); $ISTRIVIAL r } fn abi_encode(self, buffer: Buffer) -> Buffer { "
 
     i=0
     for element in ${elements[@]}
@@ -129,7 +129,7 @@ generate_tuple_decode() {
         ISTRIVIAL="$ISTRIVIAL let r = r \&\& is_decode_trivial::<$element>();"
     done
 
-    CODE="$CODE{ fn is_decode_trivial() -> bool { let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>(); $ISTRIVIAL r } fn abi_decode(ref mut buffer: BufferReader) -> Self { ("
+    CODE="$CODE{ fn is_decode_trivial() -> bool { let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_encoding::<Self>(); $ISTRIVIAL r } fn abi_decode(ref mut buffer: BufferReader) -> Self { ("
 
     for element in ${elements[@]}
     do

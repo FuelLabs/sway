@@ -322,15 +322,15 @@ impl Hash for () {
 
 // For tuples, aside from requiring all elements to be trivially hashable,
 // we have to make sure that there are no paddings between the elements.
-// For that, we use here the equality of the `__runtime_mem_id` and the
-// `__encoding_mem_id`.
+// For that, we use here the equality of the `__mem_repr_id_runtime` and the
+// `__mem_repr_id_hashing`.
 
 impl<A> Hash for (A, )
 where
     A: Hash,
 {
     fn is_hash_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_hashing::<Self>();
         let r = r && is_hash_trivial::<A>();
         r
     }
@@ -347,7 +347,7 @@ where
     B: Hash,
 {
     fn is_hash_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_hashing::<Self>();
         let r = r && is_hash_trivial::<A>();
         let r = r && is_hash_trivial::<B>();
         r
@@ -367,7 +367,7 @@ where
     C: Hash,
 {
     fn is_hash_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_hashing::<Self>();
         let r = r && is_hash_trivial::<A>();
         let r = r && is_hash_trivial::<B>();
         let r = r && is_hash_trivial::<C>();
@@ -389,7 +389,7 @@ where
     D: Hash,
 {
     fn is_hash_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_hashing::<Self>();
         let r = r && is_hash_trivial::<A>();
         let r = r && is_hash_trivial::<B>();
         let r = r && is_hash_trivial::<C>();
@@ -414,7 +414,7 @@ where
     E: Hash,
 {
     fn is_hash_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_hashing::<Self>();
         let r = r && is_hash_trivial::<A>();
         let r = r && is_hash_trivial::<B>();
         let r = r && is_hash_trivial::<C>();
@@ -442,7 +442,7 @@ where
     F: Hash,
 {
     fn is_hash_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_hashing::<Self>();
         let r = r && is_hash_trivial::<A>();
         let r = r && is_hash_trivial::<B>();
         let r = r && is_hash_trivial::<C>();
@@ -473,7 +473,7 @@ where
     G: Hash,
 {
     fn is_hash_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_hashing::<Self>();
         let r = r && is_hash_trivial::<A>();
         let r = r && is_hash_trivial::<B>();
         let r = r && is_hash_trivial::<C>();
@@ -507,7 +507,7 @@ where
     H: Hash,
 {
     fn is_hash_trivial() -> bool {
-        let r = __runtime_mem_id::<Self>() == __encoding_mem_id::<Self>();
+        let r = __mem_repr_id_runtime::<Self>() == __mem_repr_id_hashing::<Self>();
         let r = r && is_hash_trivial::<A>();
         let r = r && is_hash_trivial::<B>();
         let r = r && is_hash_trivial::<C>();

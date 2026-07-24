@@ -345,6 +345,26 @@ Runtime bound checks are not generated, and must be done manually when and where
 - `item` is a reference to an array or a slice;
 - when `index` is a literal, it must be smaller than `item` length.
 
+---
+
+```sway
+__mem_repr_id_runtime<T>() -> b256
+__mem_repr_id_encoding<T>() -> b256
+__mem_repr_id_hashing<T>() -> b256
+```
+
+**Description:** Returns an opaque `b256` id that uniquely identifies a particular memory representation of a type. No information is conveyed by this id and it should only be compared for equality.
+
+This id is not guaranteed to be stable on different compiler versions.
+
+`__mem_repr_id_runtime` represents how the type is represented inside the VM's memory. This is the Sway runtime memory representation (e.g., struct fields are aligned to word boundaries). This id is guaranteed to never be `b256::zero()`.
+
+`__mem_repr_id_encoding` represents the canonical, packed memory representation of a type used by the ABI encoding. It returns `b256::zero()` when the type does not have a canonical ABI encoding memory representation. This is the case, e.g, for all dynamic types like `Vec` or `raw_slice`.
+
+`__mem_repr_id_hashing` represents the canonical, packed memory representation of a type used by hashing. It returns `b256::zero()` when the type does not have a canonical hashing memory representation. This is the case, e.g., for all dynamic types like `Vec` or `raw_slice`.
+
+**Constraints:** None.
+
 ## Storage
 
 ---
@@ -512,20 +532,3 @@ __transmute<A, B>(src: A) -> B
 **Description:** Reinterprets the bits of the value `src` of type `A` as another type `B`.
 
 **Constraints:** `A` and `B` must have the exactly same size.
-
----
-
-```sway
-__runtime_mem_id<T>() -> u64
-__encoding_mem_id<T>() -> u64
-```
-
-**Description:** Returns an opaque number that identifies the memory representation of a type. No information is conveyed by this number and it should only be compared for equality.
-
-This number is not guaranteed to be stable on different compiler versions.
-
-`__runtime_mem_id` represents how the type is represented inside the VM's memory.
-
-`__encoding_mem_id` represents how the type is encoded. It returns zero when type does not have encoding representation.
-
-**Constraints:** None.
