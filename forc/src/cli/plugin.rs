@@ -16,7 +16,9 @@ use std::{
 /// E.g. given `foo bar baz` where `foo` is an unrecognized subcommand to `forc`, tries to execute
 /// `forc-foo bar baz`.
 pub(crate) fn execute_external_subcommand(args: &[String]) -> Result<process::Output> {
-    let cmd = args.first().expect("`args` must not be empty");
+    let cmd = args
+        .first()
+        .ok_or_else(|| anyhow::anyhow!("no subcommand provided"))?;
     let args = &args[1..];
     let path = find_external_subcommand(cmd);
     let command = match path {
