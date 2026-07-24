@@ -132,8 +132,8 @@ impl Block {
 
     /// Get the label of this block.  If it wasn't given one upon creation it will be a generated
     /// label.
-    pub fn get_label(&self, context: &Context) -> String {
-        context.blocks[self.0].label.clone()
+    pub fn get_label<'a>(&self, context: &'a Context) -> &'a str {
+        &context.blocks[self.0].label
     }
 
     /// Set the label of this block.  If the label isn't unique it will be made so.
