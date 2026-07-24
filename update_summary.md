@@ -26,6 +26,8 @@ the corresponding versioned generated book.
 - Used in-tree plugins for pre-split releases and exact independent plugin tags
   for Sway `v0.71.2`; unknown post-split release combinations fail closed.
 - Ensured a historical backfill does not move the public `latest` redirect.
+- Added concise guidance for predicate transaction binding, storage access,
+  assembly tradeoffs, and compiler-version-pinned performance measurement.
 
 ## Publication step
 

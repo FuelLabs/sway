@@ -32,3 +32,20 @@ An analogy for predicates is rather than a traditional 12 or 24 word seed phrase
 Predicates may introspect the transaction spending their coins (inputs, outputs, script bytecode, etc.) and may take runtime arguments, either or both of which may affect the evaluation of the predicate.
 
 It is important to note that predicates cannot read or write memory. They may however check the inputs and outputs of a transaction. For example in the [OTC Predicate Swap Example](https://github.com/FuelLabs/sway-applications/tree/master/OTC-swap-predicate), a user may specify they would like to swap `asset1` for `asset2` and with amount of `5`. The user would then send `asset1` to the predicate. Only when the predicate can verify that the outputs include `5` coins of `asset2` being sent to the original user, may `asset1` be transferred out of the predicate.
+
+## Security Design
+
+A predicate returning `true` authorizes the spend, so its transaction checks
+collectively define the security policy. Depending on the application,
+consider binding:
+
+- chain and protocol domain, transaction type, and authorized script;
+- exact controlled input and required output counts and variants;
+- owners, recipients, assets, amounts, and the beneficiary's net gain;
+- nonce or rollover state, policy version, and validity window;
+- authenticated witness content, rather than only its count or index.
+
+If authorization requires mutable global revocation, shared limits, or
+coordinated recovery, use a contract or an explicitly designed hybrid. A
+stateless predicate must instead enforce UTXO rollover and freshness entirely
+from authenticated transaction data.

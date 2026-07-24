@@ -29,6 +29,17 @@ To read a storage variable, you also need to use the `storage` keyword. You may 
 {{#include ../../../../examples/basic_storage_variables/src/main.sw:basic_storage_read}}
 ```
 
+## Performance and Safety
+
+The compiler does not always eliminate duplicate storage operations:
+
+- load an invariant value once before a loop and pass it to helpers;
+- write only changed state and move invariant writes outside loops;
+- do not reuse a cached value across an external call unless the reachable
+  callbacks cannot mutate it;
+- benchmark an ABI entry point, because helper-only gas does not price a
+  storage path that the benchmark never executes.
+
 ## Storing Structs
 
 To store a struct in storage, each variable must be assigned in the `storage` block. This can be either my assigning the fields individually or using a public [constructor](../basics/methods_and_associated_functions.md#constructors) that can be evaluated to a constant during compilation.

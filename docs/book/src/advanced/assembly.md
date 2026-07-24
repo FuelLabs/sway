@@ -46,6 +46,17 @@ Note that in the above example:
 
 An important note is that the `ji` and `jnei` opcodes are not available within an `asm` block. For those looking to introduce control flow to `asm` blocks, it is recommended to surround smaller chunks of `asm` with control flow (`if`, `else`, and `while`).
 
+## Optimization Guidance
+
+Inline assembly is not automatically cheaper than Sway. Measurements with
+Forc `0.71.2` found useful wins mainly when assembly removed fixed-loop or
+branch scaffolding; already straight-line arithmetic was often unchanged.
+
+Compare `forc test --release` gas and release bytecode size independently.
+Preserve checked-overflow behavior, zero-divisor and shift guards, evaluation
+order, memory effects, and reserved-register rules. Revalidate assembly after
+every compiler or FuelVM upgrade.
+
 ## Helpful Links
 
 For examples of assembly in action, check out the [Sway standard library](https://github.com/FuelLabs/sway/tree/master/sway-lib-std).
