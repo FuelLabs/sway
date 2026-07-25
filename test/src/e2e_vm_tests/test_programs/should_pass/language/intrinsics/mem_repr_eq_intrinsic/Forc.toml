@@ -1,7 +1,7 @@
 [project]
 authors = ["Fuel Labs <contact@fuel.sh>"]
 license = "Apache-2.0"
-name = "mem_repr_id_intrinsics"
+name = "mem_repr_eq_intrinsic"
 entry = "main.sw"
 
 [dependencies]

@@ -348,22 +348,20 @@ Runtime bound checks are not generated, and must be done manually when and where
 ---
 
 ```sway
-__mem_repr_id_runtime<T>() -> b256
-__mem_repr_id_encoding<T>() -> b256
-__mem_repr_id_hashing<T>() -> b256
+__mem_repr_eq<T>(repr_a: str, repr_b: str) -> bool
 ```
 
-**Description:** Returns an opaque `b256` id that uniquely identifies a particular memory representation of a type. No information is conveyed by this id and it should only be compared for equality.
+**Description:** Returns `true` if the memory representation `repr_a` of the type `T` is equal to its memory representation `repr_b`, assuming `T` has both memory representations. If `T` does not have any of the representations `repr_a` or `repr_b`, returns `false`.
 
-This id is not guaranteed to be stable on different compiler versions.
+The valid values for `repr_a` and `repr_b` are `"runtime"`, `"encoding"`, and `"hashing"`:
 
-`__mem_repr_id_runtime` represents how the type is represented inside the VM's memory. This is the Sway runtime memory representation (e.g., struct fields are aligned to word boundaries). This id is guaranteed to never be `b256::zero()`.
+- `"runtime"` is how the type is represented inside the VM's memory. This is the Sway runtime memory representation (e.g., struct fields are aligned to word boundaries, arrays are packed, etc.). This memory representation is defined for every type.
+- `"encoding"` is the packed memory representation of a type, as defined by the canonical ABI encoding. Not all types have a canonical ABI encoding defined, e.g., dynamic types like `Vec` or `raw_slice`. In that case, `"encoding"` never compares equal to any other memory representation, __including to itself__.
+- `"hashing"` is the packed memory representation of a type, as defined by the canonical hashing. Not all types have a canonical hashing defined, e.g., dynamic types like `Vec` or `raw_slice`. In that case, `"hashing"` never compares equal to any other memory representation, __including to itself__.
 
-`__mem_repr_id_encoding` represents the canonical, packed memory representation of a type used by the ABI encoding. It returns `b256::zero()` when the type does not have a canonical ABI encoding memory representation. This is the case, e.g, for all dynamic types like `Vec` or `raw_slice`.
+To test if a type `T` has `"encoding"` or `"hashing"` memory representation defined, compare that representation to itself. E.g.: `let has_encoding_repr = __mem_repr_eq<T>("encoding", "encoding");`
 
-`__mem_repr_id_hashing` represents the canonical, packed memory representation of a type used by hashing. It returns `b256::zero()` when the type does not have a canonical hashing memory representation. This is the case, e.g., for all dynamic types like `Vec` or `raw_slice`.
-
-**Constraints:** None.
+**Constraints:** `repr_a` and `repr_b` must be compile-time constant `str`s, whose values are one of `"runtime"`, `"encoding"`, or `"hashing"`. The constant `str`s never end up in the bytecode.
 
 ## Storage
 

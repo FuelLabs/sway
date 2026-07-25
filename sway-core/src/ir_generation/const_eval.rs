@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     engine_threading::*,
-    ir_generation::function::{get_packed_mem_repr_id, get_runtime_mem_repr_id},
+    ir_generation::function::get_mem_repr_by_kind,
     language::{
         ty::{self, ProjectionKind, TyConstantDecl, TyIntrinsicFunctionKind},
         CallPath, LazyOp, Literal,
@@ -2045,12 +2045,18 @@ fn const_eval_intrinsic(
         Intrinsic::Dbg => {
             unreachable!("__dbg should not exist in the typed tree")
         }
-        Intrinsic::MemReprIdRuntime => {
+        Intrinsic::MemReprEq => {
             assert!(intrinsic.type_arguments.len() == 1);
-            assert!(intrinsic.arguments.is_empty());
+            assert!(intrinsic.arguments.len() == 2);
+
+            // `repr_a` and `repr_b` are the already const-evaluated `str`
+            // arguments. They select which memory representations to compare and
+            // never end up in the bytecode.
+            let repr_a = mem_repr_kind_from_const(lookup.context, &args[0])?;
+            let repr_b = mem_repr_kind_from_const(lookup.context, &args[1])?;
 
             let t = &intrinsic.type_arguments[0];
-            let t = convert_resolved_type_id(
+            let ir_type = convert_resolved_type_id(
                 lookup.engines,
                 lookup.context,
                 lookup.md_mgr,
@@ -2059,27 +2065,37 @@ fn const_eval_intrinsic(
                 t.type_id(),
                 &t.span(),
             )
-            .unwrap();
+            .map_err(|_| ConstEvalError::CompileError)?;
 
-            let id = get_runtime_mem_repr_id(lookup.context, t);
-            let c = ConstantContent::new_b256(lookup.context, id);
+            let repr_a =
+                get_mem_repr_by_kind(lookup.engines, lookup.context, repr_a, ir_type, t.type_id());
+            let repr_b =
+                get_mem_repr_by_kind(lookup.engines, lookup.context, repr_b, ir_type, t.type_id());
 
-            Ok(Some(Constant::unique(lookup.context, c)))
-        }
-        // Both the encoding and the hashing memory representation ids use the
-        // packed memory representation.
-        Intrinsic::MemReprIdEncoding | Intrinsic::MemReprIdHashing => {
-            assert!(intrinsic.type_arguments.len() == 1);
-            assert!(intrinsic.arguments.is_empty());
+            let res = match (repr_a, repr_b) {
+                (Some(repr_a), Some(repr_b)) => repr_a == repr_b,
+                _ => false,
+            };
 
-            let t = intrinsic.type_arguments[0].as_type_argument().unwrap();
-
-            let id = get_packed_mem_repr_id(lookup.engines, t.type_id);
-            let c = ConstantContent::new_b256(lookup.context, id);
+            let c = ConstantContent::new_bool(lookup.context, res);
 
             Ok(Some(Constant::unique(lookup.context, c)))
         }
     }
+}
+
+fn mem_repr_kind_from_const(
+    context: &Context,
+    constant: &Constant,
+) -> Result<ty::MemReprKind, ConstEvalError> {
+    let ConstantValue::String(bytes) = &constant.get_content(context).value else {
+        return Err(ConstEvalError::CompileError);
+    };
+
+    std::str::from_utf8(bytes)
+        .ok()
+        .and_then(ty::MemReprKind::from_str)
+        .ok_or(ConstEvalError::CompileError)
 }
 
 #[cfg(test)]

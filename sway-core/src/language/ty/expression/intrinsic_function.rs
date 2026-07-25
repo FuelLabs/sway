@@ -11,6 +11,27 @@ use sway_ast::Intrinsic;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Span, Spanned};
 
+/// The kind of memory representation selected by a [Intrinsic::MemReprEq] `str` argument.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) enum MemReprKind {
+    Runtime,
+    Encoding,
+    Hashing,
+}
+
+impl MemReprKind {
+    pub const KINDS: &[&str] = &["runtime", "encoding", "hashing"];
+
+    pub fn from_str(s: &str) -> Option<MemReprKind> {
+        match s {
+            "runtime" => Some(Self::Runtime),
+            "encoding" => Some(Self::Encoding),
+            "hashing" => Some(Self::Hashing),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TyIntrinsicFunctionKind {
     pub kind: Intrinsic,

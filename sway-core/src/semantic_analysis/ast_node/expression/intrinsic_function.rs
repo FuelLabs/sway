@@ -1,4 +1,5 @@
 use ast_elements::type_argument::GenericTypeArgument;
+use itertools::Itertools;
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::{
     error::CompileError,
@@ -137,10 +138,8 @@ impl ty::TyIntrinsicFunctionKind {
             Intrinsic::Dbg => {
                 unreachable!("__dbg should not exist in the typed tree")
             }
-            Intrinsic::MemReprIdRuntime
-            | Intrinsic::MemReprIdEncoding
-            | Intrinsic::MemReprIdHashing => {
-                type_check_mem_repr_id(arguments, handler, kind, type_arguments, span, ctx)
+            Intrinsic::MemReprEq => {
+                type_check_mem_repr_eq(arguments, handler, kind, type_arguments, span, ctx)
             }
             Intrinsic::Alloc => {
                 type_check_alloc(handler, ctx, kind, arguments, type_arguments, span)
@@ -149,21 +148,21 @@ impl ty::TyIntrinsicFunctionKind {
     }
 }
 
-/// Type checks the `__mem_repr_id_runtime`, `__mem_repr_id_encoding`, and
-/// `__mem_repr_id_hashing` intrinsics. All of them take a single type argument,
-/// no value arguments, and return a `b256`.
-fn type_check_mem_repr_id(
+/// `__mem_repr_eq<T>(repr_a: str, repr_b: str) -> bool`.
+fn type_check_mem_repr_eq(
     arguments: &[Expression],
     handler: &Handler,
     kind: Intrinsic,
     type_arguments: &[GenericArgument],
     span: Span,
-    ctx: TypeCheckContext,
+    mut ctx: TypeCheckContext,
 ) -> Result<(TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
-    if !arguments.is_empty() {
+    let type_engine = ctx.engines.te();
+
+    if arguments.len() != 2 {
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
-            expected: 0,
+            expected: 2,
             actual: arguments.len(),
             span: span_of_arguments(arguments, &span),
         }));
@@ -177,6 +176,17 @@ fn type_check_mem_repr_id(
             span: span_of_type_arguments(type_arguments, &span),
         }));
     }
+
+    // Both `repr_a` and `repr_b` must be `str`s.
+    let mut ctx = ctx
+        .by_ref()
+        .with_help_text("Both `__mem_repr_eq` arguments must be of type \"str\".")
+        .with_type_annotation(type_engine.id_of_string_slice());
+    let repr_a = ty::TyExpression::type_check(handler, ctx.by_ref(), &arguments[0])?;
+    let repr_b = ty::TyExpression::type_check(handler, ctx.by_ref(), &arguments[1])?;
+
+    type_check_mem_repr_eq_arg(handler, kind, &repr_a, "repr_a")?;
+    type_check_mem_repr_eq_arg(handler, kind, &repr_b, "repr_b")?;
 
     let targ = &type_arguments[0];
     let arg = ctx
@@ -193,11 +203,52 @@ fn type_check_mem_repr_id(
 
     let intrinsic_function = ty::TyIntrinsicFunctionKind {
         kind,
-        arguments: vec![],
+        arguments: vec![repr_a, repr_b],
         type_arguments: final_type_arguments,
         span: span.clone(),
     };
-    Ok((intrinsic_function, ctx.engines.te().id_of_b256()))
+    Ok((intrinsic_function, ctx.engines.te().id_of_bool()))
+}
+
+/// `__mem_repr_eq` argument must be a compile-time literal `str`,
+/// and its value must be one of the values from [ty::MemReprKind::KINDS].
+fn type_check_mem_repr_eq_arg(
+    handler: &Handler,
+    kind: Intrinsic,
+    arg: &ty::TyExpression,
+    arg_name: &str,
+) -> Result<(), ErrorEmitted> {
+    let mem_repr_kinds_as_help_str = || ty::MemReprKind::KINDS
+        .iter()
+        .map(|k| format!("\"{k}\""))
+        .collect_vec()
+        .join(", ");
+
+    let ty::TyExpressionVariant::Literal(literal) = &arg.expression else {
+        return Err(handler.emit_err(CompileError::IntrinsicArgNotConstant {
+            intrinsic: kind.to_string(),
+            arg: arg_name.to_string(),
+            expected_type: "str".to_string(),
+            span: arg.span.clone(),
+        }));
+    };
+
+    let Literal::String(span) = literal else {
+        return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
+            name: kind.to_string(),
+            span: arg.span.clone(),
+            hint: format!("Both arguments must be of type \"str\" and have one of these values: {}.", mem_repr_kinds_as_help_str()),
+        }));
+    };
+
+    let repr = ty::MemReprKind::from_str(span.as_str());
+
+    repr.ok_or_else(|| handler.emit_err(CompileError::IntrinsicUnsupportedArgValue {
+        name: kind.to_string(),
+        span: arg.span.clone(),
+        hint: format!("Memory representation must be one of the following: {}.", mem_repr_kinds_as_help_str()),
+    }))
+    .map(|_| ())
 }
 
 fn type_check_alloc(

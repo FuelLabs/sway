@@ -30,7 +30,6 @@ use crate::{
 };
 use indexmap::IndexMap;
 use itertools::Itertools;
-use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use sway_ast::intrinsics::Intrinsic;
@@ -2098,9 +2097,17 @@ impl<'a> FnCompiler<'a> {
             Intrinsic::Dbg => {
                 unreachable!("__dbg should not exist in the typed tree")
             }
-            Intrinsic::MemReprIdRuntime => {
+            Intrinsic::MemReprEq => {
                 assert!(type_arguments.len() == 1);
-                assert!(arguments.is_empty());
+                assert!(arguments.len() == 2);
+
+                // `repr_a` and `repr_b` must be compile-time constant `str`s. They
+                // are used only to select the memory representations to compare and
+                // never end up in the bytecode.
+                let repr_a = 
+                    self.evaluate_mem_repr_eq_kind_arg(context, md_mgr, &arguments[0])?;
+                let repr_b =
+                    self.evaluate_mem_repr_eq_kind_arg(context, md_mgr, &arguments[1])?;
 
                 let arg = type_arguments[0].as_type_argument().unwrap();
                 let t = convert_resolved_type_id(
@@ -2112,28 +2119,61 @@ impl<'a> FnCompiler<'a> {
                     arg.type_id,
                     &arg.span,
                 )?;
-                let id = get_runtime_mem_repr_id(context, t);
-                let val = ConstantContent::get_b256(context, id);
-                Ok(TerminatorValue::new(
-                    CompiledValue::InRegister(val),
-                    context,
-                ))
-            }
-            // Both the encoding and the hashing memory representation ids use the
-            // packed memory representation.
-            Intrinsic::MemReprIdEncoding | Intrinsic::MemReprIdHashing => {
-                assert!(type_arguments.len() == 1);
-                assert!(arguments.is_empty());
 
-                let arg = type_arguments[0].as_type_argument().unwrap();
-                let id = get_packed_mem_repr_id(self.engines, arg.type_id);
-                let val = ConstantContent::get_b256(context, id);
+                let repr_a = get_mem_repr_by_kind(self.engines, context, repr_a, t, arg.type_id);
+                let repr_b = get_mem_repr_by_kind(self.engines, context, repr_b, t, arg.type_id);
+
+                let res = match (repr_a, repr_b) {
+                    (Some(repr_a), Some(repr_b)) => repr_a == repr_b,
+                    _ => false,
+                };
+
+                let val = ConstantContent::get_bool(context, res);
                 Ok(TerminatorValue::new(
                     CompiledValue::InRegister(val),
                     context,
                 ))
             }
         }
+    }
+
+    /// Evaluates a `__mem_repr_eq` `str` argument to a [ty::MemReprKind].
+    ///
+    /// The argument must be a compile-time constant `str` and its value must be one
+    /// of the values from [ty::MemReprKind::KINDS]. Otherwise [CompileError::Internal]
+    /// is emitted, because this must already be checked during the type-checking phase.
+    fn evaluate_mem_repr_eq_kind_arg(
+        &self,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        arg: &TyExpression,
+    ) -> Result<ty::MemReprKind, CompileError> {
+        let err = CompileError::Internal(
+            "`__mem_repr_eq` argument must be a string literal representing a valid memory representation kind. This must be checked at the type-checking phase.",
+            arg.span.clone()
+        );
+
+        let Ok(constant) = compile_constant_expression_to_constant(
+            self.engines,
+            context,
+            md_mgr,
+            self.module,
+            None,
+            None,
+            arg,
+        ) else {
+            return Err(err);
+        };
+
+        let ConstantValue::String(bytes) = &constant.get_content(context).value else {
+            return Err(err);
+        };
+
+        let repr = std::str::from_utf8(bytes)
+            .ok()
+            .and_then(ty::MemReprKind::from_str);
+
+        repr.ok_or_else(|| err)
     }
 
     fn compile_encode_buffer_append(
@@ -6212,48 +6252,24 @@ pub fn get_runtime_representation(ctx: &Context, t: Type) -> MemoryRepresentatio
     }
 }
 
-/// Computes a collision-resistant `b256` id that uniquely identifies a
-/// [MemoryRepresentation].
-fn mem_repr_id(r: &MemoryRepresentation) -> [u8; 32] {
-    let mut hasher = Sha256::new();
-    // We hash the textual representation of the `MemoryRepresentation`
-    // because it is platform independent. Although a `__mem_repr_id`
-    // is not guaranteed to be stable across Sway compiler versions, for the
-    // same Sway compiler version, we have to guarantee the same id regardless
-    // of the platform on which a Sway code is compiled.
-    //
-    // Relaying on a derived `std::hash::Hash` would not necessarily give us this
-    // cross-platform guarantee.
-    //
-    // The textual representation is obviously equivalent to its `MemoryRepresentation`.
-    hasher.update(format!("{r}"));
-    hasher.finalize().into()
-}
-
-/// Returns the `b256` id of the runtime memory representation of the [Type] `t`.
-pub fn get_runtime_mem_repr_id(ctx: &Context, t: Type) -> [u8; 32] {
-    let r = get_runtime_representation(ctx, t);
-
-    // Uncomment here to debug the runtime memory representation
-    // eprintln!("Runtime Repr: {:?} {:?}", t.with_context(ctx), &r);
-
-    mem_repr_id(&r)
-}
-
-/// Returns the `b256` id of the packed memory representation of the type,
-/// or `b256::zero()` if the type does not have a packed memory representation.
-pub fn get_packed_mem_repr_id(engines: &Engines, type_id: TypeId) -> [u8; 32] {
-    if let Some(r) = get_packed_representation_by_id(engines, type_id) {
-        // Uncomment here to debug the packed memory representation
-        // eprintln!("Packed Repr: {:?} {:?}", engines.help_out(type_id), &r);
-
-        mem_repr_id(&r)
-    } else {
-        [0u8; 32]
+/// Returns the memory representation `kind` of a type.
+///
+/// The `ir_type` is the IR [Type] of the type, and `type_id` is its [TypeId].
+pub fn get_mem_repr_by_kind(
+    engines: &Engines,
+    context: &Context,
+    kind: ty::MemReprKind,
+    ir_type: Type,
+    type_id: TypeId,
+) -> Option<MemoryRepresentation> {
+    match kind {
+        ty::MemReprKind::Runtime => Some(get_runtime_representation(context, ir_type)),
+        // Currently, both encoding and hashing use the packed memory representation.
+        ty::MemReprKind::Encoding | ty::MemReprKind::Hashing => get_packed_representation_by_type_id(engines, type_id),
     }
 }
 
-pub fn get_packed_representation_by_id(
+pub fn get_packed_representation_by_type_id(
     engines: &Engines,
     type_id: TypeId,
 ) -> Option<MemoryRepresentation> {
@@ -6290,7 +6306,7 @@ pub fn get_packed_representation(
         TypeInfo::Tuple(fields) => {
             let items = fields
                 .iter()
-                .map(|field| get_packed_representation_by_id(engines, field.type_id))
+                .map(|field| get_packed_representation_by_type_id(engines, field.type_id))
                 .collect::<Option<Vec<_>>>()?;
             Some(MemoryRepresentation::And(items))
         }
@@ -6300,7 +6316,7 @@ pub fn get_packed_representation(
             let items = decl
                 .fields
                 .iter()
-                .map(|field| get_packed_representation_by_id(engines, field.type_argument.type_id))
+                .map(|field| get_packed_representation_by_type_id(engines, field.type_argument.type_id))
                 .collect::<Option<Vec<_>>>()?;
 
             Some(MemoryRepresentation::And(items))
@@ -6312,7 +6328,7 @@ pub fn get_packed_representation(
                 .variants
                 .iter()
                 .map(|variant| {
-                    get_packed_representation_by_id(engines, variant.type_argument.type_id)
+                    get_packed_representation_by_type_id(engines, variant.type_argument.type_id)
                 })
                 .collect::<Option<Vec<_>>>()?;
 
@@ -6336,14 +6352,14 @@ pub fn get_packed_representation(
         }),
         TypeInfo::StringSlice => None,
         TypeInfo::Array(item, len) => Some(MemoryRepresentation::Array(
-            Box::new(get_packed_representation_by_id(engines, item.type_id)?),
+            Box::new(get_packed_representation_by_type_id(engines, item.type_id)?),
             len.extract_literal(engines)?,
         )),
         TypeInfo::RawUntypedPtr => None,
         TypeInfo::RawUntypedSlice => None,
         TypeInfo::Slice(_) => None,
         TypeInfo::Ref { .. } => None,
-        TypeInfo::Alias { ty, .. } => get_packed_representation_by_id(engines, ty.type_id),
+        TypeInfo::Alias { ty, .. } => get_packed_representation_by_type_id(engines, ty.type_id),
         x => unreachable!("this `TypeInfo` is not a packed representable type: {x:#?}"),
     }
 }

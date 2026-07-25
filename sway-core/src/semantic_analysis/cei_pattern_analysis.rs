@@ -685,9 +685,7 @@ fn effects_of_intrinsic(intr: &sway_ast::Intrinsic) -> HashSet<Effect> {
         | Transmute
         | Dbg
         | Alloc
-        | MemReprIdRuntime
-        | MemReprIdEncoding
-        | MemReprIdHashing => HashSet::new(),
+        | MemReprEq => HashSet::new(),
     }
 }
 
