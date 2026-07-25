@@ -2104,10 +2104,8 @@ impl<'a> FnCompiler<'a> {
                 // `repr_a` and `repr_b` must be compile-time constant `str`s. They
                 // are used only to select the memory representations to compare and
                 // never end up in the bytecode.
-                let repr_a = 
-                    self.evaluate_mem_repr_eq_kind_arg(context, md_mgr, &arguments[0])?;
-                let repr_b =
-                    self.evaluate_mem_repr_eq_kind_arg(context, md_mgr, &arguments[1])?;
+                let repr_a = self.evaluate_mem_repr_eq_kind_arg(context, md_mgr, &arguments[0])?;
+                let repr_b = self.evaluate_mem_repr_eq_kind_arg(context, md_mgr, &arguments[1])?;
 
                 let arg = type_arguments[0].as_type_argument().unwrap();
                 let t = convert_resolved_type_id(
@@ -2173,7 +2171,7 @@ impl<'a> FnCompiler<'a> {
             .ok()
             .and_then(ty::MemReprKind::from_str);
 
-        repr.ok_or_else(|| err)
+        repr.ok_or(err)
     }
 
     fn compile_encode_buffer_append(
@@ -6265,7 +6263,9 @@ pub fn get_mem_repr_by_kind(
     match kind {
         ty::MemReprKind::Runtime => Some(get_runtime_representation(context, ir_type)),
         // Currently, both encoding and hashing use the packed memory representation.
-        ty::MemReprKind::Encoding | ty::MemReprKind::Hashing => get_packed_representation_by_type_id(engines, type_id),
+        ty::MemReprKind::Encoding | ty::MemReprKind::Hashing => {
+            get_packed_representation_by_type_id(engines, type_id)
+        }
     }
 }
 
@@ -6316,7 +6316,9 @@ pub fn get_packed_representation(
             let items = decl
                 .fields
                 .iter()
-                .map(|field| get_packed_representation_by_type_id(engines, field.type_argument.type_id))
+                .map(|field| {
+                    get_packed_representation_by_type_id(engines, field.type_argument.type_id)
+                })
                 .collect::<Option<Vec<_>>>()?;
 
             Some(MemoryRepresentation::And(items))

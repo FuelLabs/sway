@@ -218,11 +218,13 @@ fn type_check_mem_repr_eq_arg(
     arg: &ty::TyExpression,
     arg_name: &str,
 ) -> Result<(), ErrorEmitted> {
-    let mem_repr_kinds_as_help_str = || ty::MemReprKind::KINDS
-        .iter()
-        .map(|k| format!("\"{k}\""))
-        .collect_vec()
-        .join(", ");
+    let mem_repr_kinds_as_help_str = || {
+        ty::MemReprKind::KINDS
+            .iter()
+            .map(|k| format!("\"{k}\""))
+            .collect_vec()
+            .join(", ")
+    };
 
     let ty::TyExpressionVariant::Literal(literal) = &arg.expression else {
         return Err(handler.emit_err(CompileError::IntrinsicArgNotConstant {
@@ -237,17 +239,25 @@ fn type_check_mem_repr_eq_arg(
         return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
             name: kind.to_string(),
             span: arg.span.clone(),
-            hint: format!("Both arguments must be of type \"str\" and have one of these values: {}.", mem_repr_kinds_as_help_str()),
+            hint: format!(
+                "Both arguments must be of type \"str\" and have one of these values: {}.",
+                mem_repr_kinds_as_help_str()
+            ),
         }));
     };
 
     let repr = ty::MemReprKind::from_str(span.as_str());
 
-    repr.ok_or_else(|| handler.emit_err(CompileError::IntrinsicUnsupportedArgValue {
-        name: kind.to_string(),
-        span: arg.span.clone(),
-        hint: format!("Memory representation must be one of the following: {}.", mem_repr_kinds_as_help_str()),
-    }))
+    repr.ok_or_else(|| {
+        handler.emit_err(CompileError::IntrinsicUnsupportedArgValue {
+            name: kind.to_string(),
+            span: arg.span.clone(),
+            hint: format!(
+                "Memory representation must be one of the following: {}.",
+                mem_repr_kinds_as_help_str()
+            ),
+        })
+    })
     .map(|_| ())
 }
 
