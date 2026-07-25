@@ -356,8 +356,8 @@ __mem_repr_eq<T>(repr_a: str, repr_b: str) -> bool
 The valid values for `repr_a` and `repr_b` are `"runtime"`, `"encoding"`, and `"hashing"`:
 
 - `"runtime"` is how the type is represented inside the VM's memory. This is the Sway runtime memory representation (e.g., struct fields are aligned to word boundaries, arrays are packed, etc.). This memory representation is defined for every type.
-- `"encoding"` is the packed memory representation of a type, as defined by the canonical ABI encoding. Not all types have a canonical ABI encoding defined, e.g., dynamic types like `Vec` or `raw_slice`. In that case, `"encoding"` never compares equal to any other memory representation, *including to itself*.
-- `"hashing"` is the packed memory representation of a type, as defined by the canonical hashing. Not all types have a canonical hashing defined, e.g., dynamic types like `Vec` or `raw_slice`. In that case, `"hashing"` never compares equal to any other memory representation, *including to itself*.
+- `"encoding"` is the packed memory representation of a type, as defined by the canonical ABI encoding. Not all types have a canonical ABI encoding defined, e.g., dynamic types like `Vec` or `raw_slice`. In that case, `"encoding"` never compares equal to any other memory representation, _including to itself_.
+- `"hashing"` is the packed memory representation of a type, as defined by the canonical hashing. Not all types have a canonical hashing defined, e.g., dynamic types like `Vec` or `raw_slice`. In that case, `"hashing"` never compares equal to any other memory representation, _including to itself_.
 
 To test if a type `T` has `"encoding"` or `"hashing"` memory representation defined, compare that representation to itself. E.g.: `let has_encoding_repr = __mem_repr_eq<T>("encoding", "encoding");`
 
