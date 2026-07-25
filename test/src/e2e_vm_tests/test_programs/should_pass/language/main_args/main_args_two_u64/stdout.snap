@@ -31,33 +31,33 @@ script {
         local { u64, u64 } args
 
         entry():
-        v132v1 = const u64 0, !5
-        v394v1 = gtf v132v1, 10, !11
-        v395v1 = bitcast v394v1 to ptr, !12
-        v444v1 = cast_ptr v395v1 to __ptr { u64, u64 }, !15
-        v484v1 = get_local __ptr { u64, u64 }, __aggr_memcpy_0
-        mem_copy_val v484v1, v444v1
-        v481v1 = get_local __ptr { u64, u64 }, __tmp_block_arg
-        mem_copy_val v481v1, v484v1
-        v140v1 = get_local __ptr { u64, u64 }, args, !16
-        mem_copy_val v140v1, v481v1
-        v167v1 = const u64 0
-        v168v1 = get_elem_ptr v140v1, __ptr u64, v167v1, !17
-        v169v1 = load v168v1
-        v171v1 = const u64 1
-        v172v1 = get_elem_ptr v140v1, __ptr u64, v171v1, !18
-        v173v1 = load v172v1
-        v174v1 = call main_11(v169v1, v173v1), !21
-        v175v1 = get_local __ptr u64, _result, !22
-        store v174v1 to v175v1, !22
-        v185v1 = const u64 8
-        retd v175v1 v185v1, !26
+        v118v1 = const u64 0, !5
+        v352v1 = gtf v118v1, 10, !11
+        v353v1 = bitcast v352v1 to ptr, !12
+        v396v1 = cast_ptr v353v1 to __ptr { u64, u64 }, !15
+        v436v1 = get_local __ptr { u64, u64 }, __aggr_memcpy_0
+        mem_copy_val v436v1, v396v1
+        v431v1 = get_local __ptr { u64, u64 }, __tmp_block_arg
+        mem_copy_val v431v1, v436v1
+        v126v1 = get_local __ptr { u64, u64 }, args, !16
+        mem_copy_val v126v1, v431v1
+        v153v1 = const u64 0
+        v154v1 = get_elem_ptr v126v1, __ptr u64, v153v1, !17
+        v155v1 = load v154v1
+        v157v1 = const u64 1
+        v158v1 = get_elem_ptr v126v1, __ptr u64, v157v1, !18
+        v159v1 = load v158v1
+        v160v1 = call main_10(v155v1, v159v1), !21
+        v161v1 = get_local __ptr u64, _result, !22
+        store v160v1 to v161v1, !22
+        v171v1 = const u64 8
+        retd v161v1 v171v1, !26
     }
 
-    entry_orig fn main_11(mut baba !28: u64, mut keke !29: u64) -> u64, !32 {
+    entry_orig fn main_10(mut baba !28: u64, mut keke !29: u64) -> u64, !32 {
         entry(mut baba: u64, mut keke: u64):
-        v379v1 = add baba, keke, !35
-        ret u64 v379v1
+        v338v1 = add baba, keke, !35
+        ret u64 v338v1
     }
 }
 
@@ -83,18 +83,18 @@ addi $r1 $$locbase i40        ; get offset to local __ptr { u64, u64 }
 mcpi $r1 $r0 i16              ; copy memory
 lw   $r0 $$locbase i5         ; load word
 lw   $r1 $$locbase i6         ; load word
-move $$arg0 $r0               ; [call: main_11]: pass argument 0
-move $$arg1 $r1               ; [call: main_11]: pass argument 1
-jal  $$reta $pc i5            ; [call: main_11]: call function
+move $$arg0 $r0               ; [call: main_10]: pass argument 0
+move $$arg1 $r1               ; [call: main_10]: pass argument 1
+jal  $$reta $pc i5            ; [call: main_10]: call function
 addi $r0 $$locbase i32        ; get offset to local __ptr u64
 sw   $$locbase $$retv i4      ; store word
 movi $r1 i8                   ; initialize constant into register
 retd  $r0 $r1                 ; [entry end: __entry] return slice
-pshh i528384                  ; [fn init: main_11]: push used high registers 40..64
+pshh i528384                  ; [fn init: main_10]: push used high registers 40..64
 add  $r0 $$arg0 $$arg1
-move $$retv $r0               ; [fn end: main_11] set return value
-poph i528384                  ; [fn end: main_11]: restore used high registers 40..64
-jal  $zero $$reta i0          ; [fn end: main_11] return from call
+move $$retv $r0               ; [fn end: main_10] set return value
+poph i528384                  ; [fn end: main_10]: restore used high registers 40..64
+jal  $zero $$reta i0          ; [fn end: main_10] return from call
 .data:
 
 
