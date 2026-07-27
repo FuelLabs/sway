@@ -1094,7 +1094,7 @@ fn load_store_to_memcopy(context: &mut Context, function: Function) -> Result<bo
     Ok(true)
 }
 
-pub const MEMCPYPROP_REVERSE_NAME: &str = "memcpyprop_reverse";
+pub const MEMCPYPROP_REVERSE_NAME: &str = "memcpyprop-reverse";
 
 pub fn create_memcpyprop_reverse_pass() -> Pass {
     Pass {
