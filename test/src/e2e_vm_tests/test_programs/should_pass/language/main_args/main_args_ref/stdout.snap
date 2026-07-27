@@ -31,192 +31,168 @@ script {
         local __ptr { ptr } buffer_0
         local __ptr { ptr } buffer_00
         local __ptr u64 item_
-        local u64 other_
-        local u64 other_0
         local ptr ptr_
         local __ptr { { u64 } } ptr__
         local bool r
         local bool r_
-        local u64 self_
-        local u64 self_0
-        local __ptr { ptr } self_00
-        local __ptr { ptr } self_1
+        local __ptr { ptr } self_
+        local __ptr { ptr } self_0
         local u64 size
         local u64 v
 
         entry():
-        v148v1 = const u64 0, !5
-        v716v1 = gtf v148v1, 10, !11
-        v717v1 = bitcast v716v1 to ptr, !12
-        v719v1 = get_local __ptr ptr, ptr_, !15
-        store v717v1 to v719v1, !16
-        v721v1 = get_local __ptr u64, self_, !23
-        v32v1 = const u64 14333742065139216717
-        store v32v1 to v721v1, !24
-        v723v1 = get_local __ptr u64, other_, !25
-        v33v1 = const u64 14333742065139216717
-        store v33v1 to v723v1, !26
-        v725v1 = get_local __ptr u64, self_, !29
-        v726v1 = load v725v1, !30
-        v727v1 = get_local __ptr u64, other_, !32
-        v728v1 = load v727v1, !33
-        v729v1 = cmp eq v726v1 v728v1, !34
-        v731v1 = get_local __ptr bool, r, !36
-        store v729v1 to v731v1, !37
-        v733v1 = get_local __ptr bool, r, !39
-        v734v1 = load v733v1, !40
-        cbr v734v1, decode_script_data_0_decode_from_raw_ptr_1_is_decode_trivial_2_is_decode_trivial_3_block0(), decode_script_data_0_decode_from_raw_ptr_1_is_decode_trivial_2_is_decode_trivial_3_block1(v734v1), !42
+        v132v1 = const u64 0, !5
+        v590v1 = gtf v132v1, 10, !11
+        v591v1 = bitcast v590v1 to ptr, !12
+        v593v1 = get_local __ptr ptr, ptr_, !15
+        store v591v1 to v593v1, !16
+        v595v1 = get_local __ptr bool, r, !22
+        v20v1 = const bool true
+        store v20v1 to v595v1, !23
+        v597v1 = get_local __ptr bool, r, !25
+        v598v1 = load v597v1, !26
+        cbr v598v1, decode_script_data_0_decode_from_raw_ptr_1_is_decode_trivial_2_is_decode_trivial_3_block0(), decode_script_data_0_decode_from_raw_ptr_1_is_decode_trivial_2_is_decode_trivial_3_block1(v598v1), !28
 
         decode_script_data_0_decode_from_raw_ptr_1_is_decode_trivial_2_is_decode_trivial_3_block0():
-        v736v1 = get_local __ptr u64, self_0, !47
-        v41v1 = const u64 17045370188297990602
-        store v41v1 to v736v1, !48
-        v738v1 = get_local __ptr u64, other_0, !49
-        v42v1 = const u64 17045370188297990602
-        store v42v1 to v738v1, !50
-        v740v1 = get_local __ptr u64, self_0, !51
-        v741v1 = load v740v1, !52
-        v742v1 = get_local __ptr u64, other_0, !53
-        v743v1 = load v742v1, !54
-        v744v1 = cmp eq v741v1 v743v1, !55
-        cbr v744v1, decode_script_data_0_decode_from_raw_ptr_1_is_decode_trivial_2_is_decode_trivial_3_is_decode_trivial_5_is_decode_trivial_6_block0(), decode_script_data_0_decode_from_raw_ptr_1_is_decode_trivial_2_is_decode_trivial_3_is_decode_trivial_5_is_decode_trivial_6_block1(v744v1), !57
+        v27v1 = const bool true
+        cbr v27v1, decode_script_data_0_decode_from_raw_ptr_1_is_decode_trivial_2_is_decode_trivial_3_is_decode_trivial_4_is_decode_trivial_5_block0(), decode_script_data_0_decode_from_raw_ptr_1_is_decode_trivial_2_is_decode_trivial_3_is_decode_trivial_4_is_decode_trivial_5_block1(v27v1), !32
 
-        decode_script_data_0_decode_from_raw_ptr_1_is_decode_trivial_2_is_decode_trivial_3_is_decode_trivial_5_is_decode_trivial_6_block0():
-        v46v1 = const bool true, !58
-        br decode_script_data_0_decode_from_raw_ptr_1_is_decode_trivial_2_is_decode_trivial_3_is_decode_trivial_5_is_decode_trivial_6_block1(v46v1), !59
+        decode_script_data_0_decode_from_raw_ptr_1_is_decode_trivial_2_is_decode_trivial_3_is_decode_trivial_4_is_decode_trivial_5_block0():
+        v30v1 = const bool true, !33
+        br decode_script_data_0_decode_from_raw_ptr_1_is_decode_trivial_2_is_decode_trivial_3_is_decode_trivial_4_is_decode_trivial_5_block1(v30v1), !34
 
-        decode_script_data_0_decode_from_raw_ptr_1_is_decode_trivial_2_is_decode_trivial_3_is_decode_trivial_5_is_decode_trivial_6_block1(mut v703v1: bool):
-        br decode_script_data_0_decode_from_raw_ptr_1_is_decode_trivial_2_is_decode_trivial_3_block1(v703v1), !60
+        decode_script_data_0_decode_from_raw_ptr_1_is_decode_trivial_2_is_decode_trivial_3_is_decode_trivial_4_is_decode_trivial_5_block1(mut v577v1: bool):
+        br decode_script_data_0_decode_from_raw_ptr_1_is_decode_trivial_2_is_decode_trivial_3_block1(v577v1), !35
 
-        decode_script_data_0_decode_from_raw_ptr_1_is_decode_trivial_2_is_decode_trivial_3_block1(mut v706v1: bool):
-        v753v1 = get_local __ptr bool, r_, !62
-        store v706v1 to v753v1, !63
-        v755v1 = get_local __ptr bool, r_, !65
-        v756v1 = load v755v1, !66
-        cbr v756v1, decode_script_data_0_decode_from_raw_ptr_1_block0(), decode_script_data_0_decode_from_raw_ptr_1_block1(), !67
+        decode_script_data_0_decode_from_raw_ptr_1_is_decode_trivial_2_is_decode_trivial_3_block1(mut v580v1: bool):
+        v607v1 = get_local __ptr bool, r_, !37
+        store v580v1 to v607v1, !38
+        v609v1 = get_local __ptr bool, r_, !40
+        v610v1 = load v609v1, !41
+        cbr v610v1, decode_script_data_0_decode_from_raw_ptr_1_block0(), decode_script_data_0_decode_from_raw_ptr_1_block1(), !42
 
         decode_script_data_0_decode_from_raw_ptr_1_block0():
-        v821v1 = get_local __ptr ptr, ptr_, !69
-        v822v1 = load v821v1, !70
-        v823v1 = cast_ptr v822v1 to __ptr { { u64 } }, !71
-        v824v1 = get_local __ptr __ptr { { u64 } }, ptr__, !73
-        store v823v1 to v824v1, !74
-        v826v1 = get_local __ptr __ptr { { u64 } }, ptr__, !76
-        v827v1 = load v826v1, !77
-        v853v1 = get_local __ptr { { u64 } }, __tmp_block_arg1
-        mem_copy_val v853v1, v827v1
-        br decode_script_data_0_decode_from_raw_ptr_1_block2(v853v1), !78
+        v675v1 = get_local __ptr ptr, ptr_, !44
+        v676v1 = load v675v1, !45
+        v677v1 = cast_ptr v676v1 to __ptr { { u64 } }, !46
+        v678v1 = get_local __ptr __ptr { { u64 } }, ptr__, !48
+        store v677v1 to v678v1, !49
+        v680v1 = get_local __ptr __ptr { { u64 } }, ptr__, !51
+        v681v1 = load v680v1, !52
+        v709v1 = get_local __ptr { { u64 } }, __tmp_block_arg1
+        mem_copy_val v709v1, v681v1
+        br decode_script_data_0_decode_from_raw_ptr_1_block2(v709v1), !53
 
         decode_script_data_0_decode_from_raw_ptr_1_block1():
-        v760v1 = get_local __ptr { ptr }, __struct_init_0, !80
-        v761v1 = get_local __ptr ptr, ptr_, !82
-        v210v1 = const u64 0
-        v763v1 = get_elem_ptr v760v1, __ptr ptr, v210v1, !83
-        mem_copy_val v763v1, v761v1
-        v766v1 = get_local __ptr { ptr }, buffer, !85
-        mem_copy_val v766v1, v760v1
-        v768v1 = get_local __ptr { ptr }, buffer, !87
-        v770v1 = get_local __ptr __ptr { ptr }, buffer_, !90
-        store v768v1 to v770v1, !91
-        v772v1 = get_local __ptr { { u64 } }, __tuple_init_0, !93
-        v773v1 = get_local __ptr __ptr { ptr }, buffer_, !95
-        v775v1 = get_local __ptr __ptr { ptr }, buffer_0, !98
-        mem_copy_val v775v1, v773v1
-        v777v1 = get_local __ptr { u64 }, __struct_init_00, !100
-        v778v1 = get_local __ptr __ptr { ptr }, buffer_0, !102
-        v780v1 = get_local __ptr __ptr { ptr }, self_1, !105
-        mem_copy_val v780v1, v778v1
-        v782v1 = get_local __ptr __ptr { ptr }, self_1, !107
-        v784v1 = get_local __ptr __ptr { ptr }, buffer_00, !110
-        mem_copy_val v784v1, v782v1
-        v786v1 = get_local __ptr __ptr { ptr }, buffer_00, !112
-        v788v1 = get_local __ptr __ptr { ptr }, self_00, !115
-        mem_copy_val v788v1, v786v1
-        v790v1 = get_local __ptr __ptr { ptr }, self_00, !117
-        v791v1 = load v790v1, !118
-        v98v1 = const u64 0
-        v792v1 = get_elem_ptr v791v1, __ptr ptr, v98v1, !120
-        v793v1 = load v792v1, !121
-        v794v1 = asm(ptr: v793v1, val) -> u64 val, !123 {
-            lw     val ptr i0, !124
+        v614v1 = get_local __ptr { ptr }, __struct_init_0, !55
+        v615v1 = get_local __ptr ptr, ptr_, !57
+        v194v1 = const u64 0
+        v617v1 = get_elem_ptr v614v1, __ptr ptr, v194v1, !58
+        mem_copy_val v617v1, v615v1
+        v620v1 = get_local __ptr { ptr }, buffer, !60
+        mem_copy_val v620v1, v614v1
+        v622v1 = get_local __ptr { ptr }, buffer, !62
+        v624v1 = get_local __ptr __ptr { ptr }, buffer_, !65
+        store v622v1 to v624v1, !66
+        v626v1 = get_local __ptr { { u64 } }, __tuple_init_0, !68
+        v627v1 = get_local __ptr __ptr { ptr }, buffer_, !70
+        v629v1 = get_local __ptr __ptr { ptr }, buffer_0, !73
+        mem_copy_val v629v1, v627v1
+        v631v1 = get_local __ptr { u64 }, __struct_init_00, !75
+        v632v1 = get_local __ptr __ptr { ptr }, buffer_0, !77
+        v634v1 = get_local __ptr __ptr { ptr }, self_, !80
+        mem_copy_val v634v1, v632v1
+        v636v1 = get_local __ptr __ptr { ptr }, self_, !82
+        v638v1 = get_local __ptr __ptr { ptr }, buffer_00, !85
+        mem_copy_val v638v1, v636v1
+        v640v1 = get_local __ptr __ptr { ptr }, buffer_00, !87
+        v642v1 = get_local __ptr __ptr { ptr }, self_0, !90
+        mem_copy_val v642v1, v640v1
+        v644v1 = get_local __ptr __ptr { ptr }, self_0, !92
+        v645v1 = load v644v1, !93
+        v82v1 = const u64 0
+        v646v1 = get_elem_ptr v645v1, __ptr ptr, v82v1, !95
+        v647v1 = load v646v1, !96
+        v648v1 = asm(ptr: v647v1, val) -> u64 val, !98 {
+            lw     val ptr i0, !99
         }
-        v795v1 = get_local __ptr u64, v, !126
-        store v794v1 to v795v1, !127
-        v797v1 = get_local __ptr __ptr { ptr }, self_00, !129
-        v798v1 = load v797v1, !130
-        v106v1 = const u64 0
-        v799v1 = get_elem_ptr v798v1, __ptr ptr, v106v1, !131
-        v800v1 = load v799v1, !132
-        v104v1 = const u64 1
-        v109v1 = const u64 8, !133
-        v801v1 = mul v104v1, v109v1, !134
-        v802v1 = add v800v1, v801v1, !135
-        v803v1 = get_local __ptr __ptr { ptr }, self_00, !137
-        v804v1 = load v803v1, !138
-        v113v1 = const u64 0
-        v805v1 = get_elem_ptr v804v1, __ptr ptr, v113v1, !139
-        store v802v1 to v805v1, !140
-        v807v1 = get_local __ptr u64, v, !142
-        v216v1 = const u64 0
-        v812v1 = get_elem_ptr v777v1, __ptr u64, v216v1, !143
-        mem_copy_val v812v1, v807v1
-        v845v1 = get_local __ptr { u64 }, __tmp_block_arg
-        mem_copy_val v845v1, v777v1
-        v213v1 = const u64 0
-        v816v1 = get_elem_ptr v772v1, __ptr { u64 }, v213v1, !144
-        mem_copy_val v816v1, v845v1
-        v849v1 = get_local __ptr { { u64 } }, __tmp_block_arg0
-        mem_copy_val v849v1, v772v1
-        v855v1 = get_local __ptr { { u64 } }, __tmp_block_arg1
-        mem_copy_val v855v1, v849v1
-        br decode_script_data_0_decode_from_raw_ptr_1_block2(v855v1), !145
+        v649v1 = get_local __ptr u64, v, !101
+        store v648v1 to v649v1, !102
+        v651v1 = get_local __ptr __ptr { ptr }, self_0, !104
+        v652v1 = load v651v1, !105
+        v90v1 = const u64 0
+        v653v1 = get_elem_ptr v652v1, __ptr ptr, v90v1, !106
+        v654v1 = load v653v1, !107
+        v88v1 = const u64 1
+        v93v1 = const u64 8, !108
+        v655v1 = mul v88v1, v93v1, !109
+        v656v1 = add v654v1, v655v1, !110
+        v657v1 = get_local __ptr __ptr { ptr }, self_0, !112
+        v658v1 = load v657v1, !113
+        v97v1 = const u64 0
+        v659v1 = get_elem_ptr v658v1, __ptr ptr, v97v1, !114
+        store v656v1 to v659v1, !115
+        v661v1 = get_local __ptr u64, v, !117
+        v200v1 = const u64 0
+        v666v1 = get_elem_ptr v631v1, __ptr u64, v200v1, !118
+        mem_copy_val v666v1, v661v1
+        v699v1 = get_local __ptr { u64 }, __tmp_block_arg
+        mem_copy_val v699v1, v631v1
+        v197v1 = const u64 0
+        v670v1 = get_elem_ptr v626v1, __ptr { u64 }, v197v1, !119
+        mem_copy_val v670v1, v699v1
+        v703v1 = get_local __ptr { { u64 } }, __tmp_block_arg0
+        mem_copy_val v703v1, v626v1
+        v707v1 = get_local __ptr { { u64 } }, __tmp_block_arg1
+        mem_copy_val v707v1, v703v1
+        br decode_script_data_0_decode_from_raw_ptr_1_block2(v707v1), !120
 
-        decode_script_data_0_decode_from_raw_ptr_1_block2(mut v851v1: __ptr { { u64 } }):
-        v859v1 = get_local __ptr { { u64 } }, __tmp_block_arg2
-        mem_copy_val v859v1, v851v1
-        v863v1 = get_local __ptr { { u64 } }, __tmp_block_arg3
-        mem_copy_val v863v1, v859v1
-        v156v1 = get_local __ptr { { u64 } }, args, !146
-        mem_copy_val v156v1, v863v1
-        v180v1 = get_local __ptr { { u64 } }, args, !147
-        v181v1 = const u64 0
-        v182v1 = get_elem_ptr v180v1, __ptr { u64 }, v181v1, !148
-        v867v1 = get_local __ptr { u64 }, __tmp_arg
-        mem_copy_val v867v1, v182v1
-        v869v1 = call main_15(v867v1)
-        v185v1 = get_local __ptr u64, _result, !149
-        store v869v1 to v185v1, !149
-        v204v1 = get_local __ptr u64, _result, !150
-        v205v3 = get_local __ptr __ptr u64, item_, !153
-        store v204v1 to v205v3, !153
-        v834v1 = get_local __ptr bool, IS_TRIVIAL, !155
-        v190v1 = const bool true, !156
-        store v190v1 to v834v1, !157
-        v836v1 = get_local __ptr u64, size, !159
-        v195v1 = const u64 8
-        store v195v1 to v836v1, !160
-        v838v1 = get_local __ptr __ptr u64, item_, !162
-        v839v1 = load v838v1, !153
-        v840v1 = get_local __ptr u64, size, !164
-        v841v1 = load v840v1, !153
-        retd v839v1 v841v1, !166
+        decode_script_data_0_decode_from_raw_ptr_1_block2(mut v705v1: __ptr { { u64 } }):
+        v713v1 = get_local __ptr { { u64 } }, __tmp_block_arg2
+        mem_copy_val v713v1, v705v1
+        v717v1 = get_local __ptr { { u64 } }, __tmp_block_arg3
+        mem_copy_val v717v1, v713v1
+        v140v1 = get_local __ptr { { u64 } }, args, !121
+        mem_copy_val v140v1, v717v1
+        v164v1 = get_local __ptr { { u64 } }, args, !122
+        v165v1 = const u64 0
+        v166v1 = get_elem_ptr v164v1, __ptr { u64 }, v165v1, !123
+        v721v1 = get_local __ptr { u64 }, __tmp_arg
+        mem_copy_val v721v1, v166v1
+        v723v1 = call main_14(v721v1)
+        v169v1 = get_local __ptr u64, _result, !124
+        store v723v1 to v169v1, !124
+        v188v1 = get_local __ptr u64, _result, !125
+        v189v3 = get_local __ptr __ptr u64, item_, !128
+        store v188v1 to v189v3, !128
+        v688v1 = get_local __ptr bool, IS_TRIVIAL, !130
+        v174v1 = const bool true, !131
+        store v174v1 to v688v1, !132
+        v690v1 = get_local __ptr u64, size, !134
+        v179v1 = const u64 8
+        store v179v1 to v690v1, !135
+        v692v1 = get_local __ptr __ptr u64, item_, !137
+        v693v1 = load v692v1, !128
+        v694v1 = get_local __ptr u64, size, !139
+        v695v1 = load v694v1, !128
+        retd v693v1 v695v1, !141
     }
 
-    entry_orig fn main_15(mut baba: __ptr { u64 }) -> u64, !170 {
+    entry_orig fn main_14(mut baba: __ptr { u64 }) -> u64, !145 {
         local u64 other_
 
         entry(baba: __ptr { u64 }):
-        v174v1 = const u64 0
-        v175v1 = get_elem_ptr baba, __ptr u64, v174v1, !171
-        v690v1 = get_local __ptr u64, other_, !174
-        v177v1 = const u64 1, !175
-        store v177v1 to v690v1, !174
-        v693v1 = load v175v1, !174
-        v694v1 = get_local __ptr u64, other_, !177
-        v695v1 = load v694v1, !174
-        v696v1 = add v693v1, v695v1, !174
-        ret u64 v696v1
+        v158v1 = const u64 0
+        v159v1 = get_elem_ptr baba, __ptr u64, v158v1, !146
+        v566v1 = get_local __ptr u64, other_, !149
+        v161v1 = const u64 1, !150
+        store v161v1 to v566v1, !149
+        v569v1 = load v159v1, !149
+        v570v1 = get_local __ptr u64, other_, !153
+        v571v1 = load v570v1, !149
+        v572v1 = add v569v1, v571v1, !149
+        ret u64 v572v1
     }
 }
 
-    Finished debug [unoptimized + fuel] target(s) [480 B] in ???
+    Finished debug [unoptimized + fuel] target(s) [400 B] in ???
