@@ -6,7 +6,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 use sway_core::{
-    ir_generation::{get_encoding_representation, get_runtime_representation},
+    ir_generation::{get_packed_representation, get_runtime_representation},
     Engines, Observer, TypeInfo,
 };
 use sway_ir::Type;
@@ -165,7 +165,7 @@ impl Inner {
         let mut scope = rhai::Scope::new();
 
         let runtime_mem_repr = get_runtime_representation(ctx, *ir_type);
-        let encoding_mem_repr = get_encoding_representation(engines, type_info);
+        let encoding_mem_repr = get_packed_representation(engines, type_info);
         let is_trivial = if let Some(encoding_mem_repr) = encoding_mem_repr.as_ref() {
             runtime_mem_repr == *encoding_mem_repr
         } else {

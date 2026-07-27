@@ -708,7 +708,7 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
     }
 
     pub(super) fn insert_block_label(&mut self, block: Block) {
-        if &block.get_label(self.context) != "entry" {
+        if !block.is_entry(self.context) {
             let label = self.block_to_label(&block);
             self.cur_section
                 .as_mut()

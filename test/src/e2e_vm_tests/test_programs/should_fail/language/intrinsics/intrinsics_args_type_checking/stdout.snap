@@ -43,6 +43,18 @@ warning
   |
 ____
 
+warning
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/mem_repr_eq_intrinsic.sw:15:9
+   |
+13 |     let _ = __mem_repr_eq::<u64>("runtime", "invalid");
+14 | 
+15 |     let repr = non_constant_repr(); // TODO-DCA: Fix invalid DCA warning that `repr` is not used.
+   |         ---- This declaration is never used.
+16 |     __mem_repr_eq::<u64>(repr, "encoding");
+17 | }
+   |
+____
+
 error
  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/dbg_intrinsic.sw:4:13
   |
@@ -918,7 +930,7 @@ error
 18 |     let _ = __rsh::<u32>(42, 1);
 19 | 
 20 |     let _ = __eq("hi", "ho");
-   |                  ^^^^ Unsupported argument type to intrinsic "eq".
+   |                  ^^^^ Unsupported argument type to intrinsic "__eq".
 21 |     let _ = __eq(false, 11);
 22 |     let _ = __eq(A { a: 1 }, B { a: 1 });
    |
@@ -957,7 +969,7 @@ error
 21 |     let _ = __eq(false, 11);
 22 |     let _ = __eq(A { a: 1 }, B { a: 1 });
 23 |     let _ = __eq(A { a: 1 }, A { a: 1 });
-   |                  ^^^^^^^^^^ Unsupported argument type to intrinsic "eq".
+   |                  ^^^^^^^^^^ Unsupported argument type to intrinsic "__eq".
 24 |     let _ = __eq((1, 2), (1, 2));
 25 |     let _ = __eq([1, 2], [1, 2]);
    |
@@ -969,7 +981,7 @@ error
 22 |     let _ = __eq(A { a: 1 }, B { a: 1 });
 23 |     let _ = __eq(A { a: 1 }, A { a: 1 });
 24 |     let _ = __eq((1, 2), (1, 2));
-   |                  ^^^^^^ Unsupported argument type to intrinsic "eq".
+   |                  ^^^^^^ Unsupported argument type to intrinsic "__eq".
 25 |     let _ = __eq([1, 2], [1, 2]);
 26 |     let _ = __eq(B::First, B::First);
    |
@@ -981,7 +993,7 @@ error
 23 |     let _ = __eq(A { a: 1 }, A { a: 1 });
 24 |     let _ = __eq((1, 2), (1, 2));
 25 |     let _ = __eq([1, 2], [1, 2]);
-   |                  ^^^^^^ Unsupported argument type to intrinsic "eq".
+   |                  ^^^^^^ Unsupported argument type to intrinsic "__eq".
 26 |     let _ = __eq(B::First, B::First);
 27 |     let _ = __eq(B::Second(1), B::Second(1));
    |
@@ -993,7 +1005,7 @@ error
 24 |     let _ = __eq((1, 2), (1, 2));
 25 |     let _ = __eq([1, 2], [1, 2]);
 26 |     let _ = __eq(B::First, B::First);
-   |                     ^^^^^ Unsupported argument type to intrinsic "eq".
+   |                     ^^^^^ Unsupported argument type to intrinsic "__eq".
 27 |     let _ = __eq(B::Second(1), B::Second(1));
 28 | }
    |
@@ -1005,7 +1017,7 @@ error
 25 |     let _ = __eq([1, 2], [1, 2]);
 26 |     let _ = __eq(B::First, B::First);
 27 |     let _ = __eq(B::Second(1), B::Second(1));
-   |                     ^^^^^^ Unsupported argument type to intrinsic "eq".
+   |                     ^^^^^^ Unsupported argument type to intrinsic "__eq".
 28 | }
    |
 ____
@@ -1158,7 +1170,7 @@ error
 21 | 
 22 |     // Wrong first argument
 23 |     let _ = __slice(0, 0, 0);
-   |                     ^ Unsupported argument type to intrinsic "slice". Hint: Only references to arrays or slices can be used as argument here. Received: {numeric}
+   |                     ^ Unsupported argument type to intrinsic "__slice". Only references to arrays or slices can be used as argument here. Received: {numeric}
 24 | 
 25 |     // Wrong start index
    |
@@ -1200,7 +1212,7 @@ error
 33 | 
 34 |     // Wrong first argument
 35 |     let _ = __elem_at(0, 0);
-   |                       ^ Unsupported argument type to intrinsic "elem_at". Hint: Only references to arrays or slices can be used as argument here. Received: {numeric}
+   |                       ^ Unsupported argument type to intrinsic "__elem_at". Only references to arrays or slices can be used as argument here. Received: {numeric}
 36 | 
 37 |     // Wrong index type
    |
@@ -1276,6 +1288,114 @@ found:    u32.
 ____
 
 error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/mem_repr_eq_intrinsic.sw:4:13
+  |
+2 | 
+3 | pub fn check_args() {
+4 |     let _ = __mem_repr_eq::<u64>();
+  |             ^^^^^^^^^^^^^^^^^^^^^^ "__mem_repr_eq" intrinsic expects two arguments, but none are provided.
+5 |     let _ = __mem_repr_eq::<u64>("runtime");
+6 |     let _ = __mem_repr_eq::<u64>("runtime", "encoding", "hashing");
+  |
+____
+
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/mem_repr_eq_intrinsic.sw:5:34
+  |
+3 | pub fn check_args() {
+4 |     let _ = __mem_repr_eq::<u64>();
+5 |     let _ = __mem_repr_eq::<u64>("runtime");
+  |                                  ^^^^^^^^^ "__mem_repr_eq" intrinsic expects two arguments, but one is provided.
+6 |     let _ = __mem_repr_eq::<u64>("runtime", "encoding", "hashing");
+7 | 
+  |
+____
+
+error
+ --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/mem_repr_eq_intrinsic.sw:6:34
+  |
+4 |     let _ = __mem_repr_eq::<u64>();
+5 |     let _ = __mem_repr_eq::<u64>("runtime");
+6 |     let _ = __mem_repr_eq::<u64>("runtime", "encoding", "hashing");
+  |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ "__mem_repr_eq" intrinsic expects two arguments, but three are provided.
+7 | 
+8 |     let _ = __mem_repr_eq("runtime", "encoding");
+  |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/mem_repr_eq_intrinsic.sw:8:13
+   |
+ 6 |     let _ = __mem_repr_eq::<u64>("runtime", "encoding", "hashing");
+ 7 | 
+ 8 |     let _ = __mem_repr_eq("runtime", "encoding");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ "__mem_repr_eq" intrinsic expects one type argument, but none are provided.
+ 9 |     let _ = __mem_repr_eq::<u64, u32>("runtime", "encoding");
+10 | 
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/mem_repr_eq_intrinsic.sw:9:29
+   |
+ 7 | 
+ 8 |     let _ = __mem_repr_eq("runtime", "encoding");
+ 9 |     let _ = __mem_repr_eq::<u64, u32>("runtime", "encoding");
+   |                             ^^^^^^^^ "__mem_repr_eq" intrinsic expects one type argument, but two are provided.
+10 | 
+11 |     let _ = __mem_repr_eq::<u64>(42u64, "encoding");
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/mem_repr_eq_intrinsic.sw:11:34
+   |
+ 9 |     let _ = __mem_repr_eq::<u64, u32>("runtime", "encoding");
+10 | 
+11 |     let _ = __mem_repr_eq::<u64>(42u64, "encoding");
+   |                                  ^^^^^ Mismatched types.
+expected: str
+found:    u64.
+help: Both `__mem_repr_eq` arguments must be of type "str".
+12 | 
+13 |     let _ = __mem_repr_eq::<u64>("runtime", "invalid");
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/mem_repr_eq_intrinsic.sw:11:34
+   |
+ 9 |     let _ = __mem_repr_eq::<u64, u32>("runtime", "encoding");
+10 | 
+11 |     let _ = __mem_repr_eq::<u64>(42u64, "encoding");
+   |                                  ^^^^^ Unsupported argument type to intrinsic "__mem_repr_eq". Both arguments must be of type "str" and have one of these values: "runtime", "encoding", "hashing".
+12 | 
+13 |     let _ = __mem_repr_eq::<u64>("runtime", "invalid");
+   |
+____
+
+error
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/mem_repr_eq_intrinsic.sw:13:45
+   |
+11 |     let _ = __mem_repr_eq::<u64>(42u64, "encoding");
+12 | 
+13 |     let _ = __mem_repr_eq::<u64>("runtime", "invalid");
+   |                                             ^^^^^^^^^ Unsupported argument value to intrinsic "__mem_repr_eq". Memory representation must be one of the following: "runtime", "encoding", "hashing".
+14 | 
+15 |     let repr = non_constant_repr(); // TODO-DCA: Fix invalid DCA warning that `repr` is not used.
+   |
+____
+
+error: Intrinsic argument is not a compile-time constant
+  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/mem_repr_eq_intrinsic.sw:16:26
+   |
+...
+16 |     __mem_repr_eq::<u64>(repr, "encoding");
+   |                          ^^^^ "__mem_repr_eq" intrinsic's argument "repr_a" must be a constant of type "str".
+   |
+____
+
+error
  --> test/src/e2e_vm_tests/test_programs/should_fail/language/intrinsics/intrinsics_args_type_checking/src/slice_intrinsics.sw:5:21
   |
 3 | // slice cannot be consts
@@ -1311,5 +1431,5 @@ error
   |
 ____
 
-  Aborting due to 97 errors.
+  Aborting due to 106 errors.
 error: Failed to compile intrinsics_args_type_checking

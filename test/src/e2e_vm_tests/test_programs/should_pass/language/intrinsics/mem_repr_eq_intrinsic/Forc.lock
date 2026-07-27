@@ -1,0 +1,8 @@
+[[package]]
+name = "mem_repr_eq_intrinsic"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-849CD3A7C28C1B80"

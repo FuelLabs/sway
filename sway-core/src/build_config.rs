@@ -6,7 +6,7 @@ use std::{
     sync::Arc,
 };
 use strum::{Display, EnumString};
-use sway_ir::{Options, PassManager, VerifyPassesOpts};
+use sway_ir::{Options, PassManager};
 
 #[derive(
     Clone,
@@ -196,17 +196,6 @@ impl From<&IrCli> for Options {
             print_metadata: value.print_metadata,
             print_passes: HashSet::from_iter(value.passes.iter().cloned()),
             ..Default::default()
-        }
-    }
-}
-
-impl From<&IrCli> for VerifyPassesOpts {
-    fn from(value: &IrCli) -> Self {
-        Self {
-            initial: value.initial,
-            r#final: value.r#final,
-            modified_only: value.modified_only,
-            passes: HashSet::from_iter(value.passes.iter().cloned()),
         }
     }
 }

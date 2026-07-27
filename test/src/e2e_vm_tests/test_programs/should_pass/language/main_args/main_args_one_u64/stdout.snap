@@ -30,29 +30,29 @@ script {
         local { u64 } args
 
         entry():
-        v121v1 = const u64 0, !5
-        v393v1 = gtf v121v1, 10, !11
-        v394v1 = bitcast v393v1 to ptr, !12
-        v451v1 = cast_ptr v394v1 to __ptr { u64 }, !15
-        v465v1 = get_local __ptr { u64 }, __aggr_memcpy_0
-        mem_copy_val v465v1, v451v1
-        v129v1 = get_local __ptr { u64 }, args, !16
-        mem_copy_val v129v1, v465v1
-        v152v1 = const u64 0
-        v153v1 = get_elem_ptr v129v1, __ptr u64, v152v1, !17
-        v154v1 = load v153v1
-        v155v1 = call main_11(v154v1), !20
-        v156v1 = get_local __ptr u64, _result, !21
-        store v155v1 to v156v1, !21
-        v166v1 = const u64 8
-        retd v156v1 v166v1, !25
+        v107v1 = const u64 0, !5
+        v351v1 = gtf v107v1, 10, !11
+        v352v1 = bitcast v351v1 to ptr, !12
+        v403v1 = cast_ptr v352v1 to __ptr { u64 }, !15
+        v417v1 = get_local __ptr { u64 }, __aggr_memcpy_0
+        mem_copy_val v417v1, v403v1
+        v115v1 = get_local __ptr { u64 }, args, !16
+        mem_copy_val v115v1, v417v1
+        v138v1 = const u64 0
+        v139v1 = get_elem_ptr v115v1, __ptr u64, v138v1, !17
+        v140v1 = load v139v1
+        v141v1 = call main_10(v140v1), !20
+        v142v1 = get_local __ptr u64, _result, !21
+        store v141v1 to v142v1, !21
+        v152v1 = const u64 8
+        retd v142v1 v152v1, !25
     }
 
-    entry_orig fn main_11(mut baba !27: u64) -> u64, !30 {
+    entry_orig fn main_10(mut baba !27: u64) -> u64, !30 {
         entry(mut baba: u64):
-        v148v1 = const u64 1, !31
-        v379v1 = add baba, v148v1, !34
-        ret u64 v379v1
+        v134v1 = const u64 1, !31
+        v338v1 = add baba, v134v1, !34
+        ret u64 v338v1
     }
 }
 
@@ -75,17 +75,17 @@ mcpi $$locbase $r0 i8         ; copy memory
 addi $r0 $$locbase i16        ; get offset to local __ptr { u64 }
 mcpi $r0 $$locbase i8         ; copy memory
 lw   $r0 $$locbase i2         ; load word
-move $$arg0 $r0               ; [call: main_11]: pass argument 0
-jal  $$reta $pc i5            ; [call: main_11]: call function
+move $$arg0 $r0               ; [call: main_10]: pass argument 0
+jal  $$reta $pc i5            ; [call: main_10]: call function
 addi $r0 $$locbase i8         ; get offset to local __ptr u64
 sw   $$locbase $$retv i1      ; store word
 movi $r1 i8                   ; initialize constant into register
 retd  $r0 $r1                 ; [entry end: __entry] return slice
-pshh i528384                  ; [fn init: main_11]: push used high registers 40..64
+pshh i528384                  ; [fn init: main_10]: push used high registers 40..64
 addi $r0 $$arg0 i1
-move $$retv $r0               ; [fn end: main_11] set return value
-poph i528384                  ; [fn end: main_11]: restore used high registers 40..64
-jal  $zero $$reta i0          ; [fn end: main_11] return from call
+move $$retv $r0               ; [fn end: main_10] set return value
+poph i528384                  ; [fn end: main_10]: restore used high registers 40..64
+jal  $zero $$reta i0          ; [fn end: main_10] return from call
 .data:
 
 

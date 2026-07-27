@@ -1,12 +1,11 @@
 ---
 source: test/src/snapshot/mod.rs
-assertion_line: 124
 ---
 SROA must not eliminate the local tuple `t`
 
 > forc build --path test/src/e2e_vm_tests/test_programs/should_pass/optimisations/sroa_reference_to_field_in_branch --release --ir final | filter-fn sroa_reference_to_field_in_branch main
 
-entry_orig fn main_11(mut sel: u64) -> u64 {
+entry_orig fn main_10(mut sel: u64) -> u64 {
     local { u64, u64, u64 } t
 
     entry(mut sel: u64):
