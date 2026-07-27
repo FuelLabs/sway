@@ -1160,7 +1160,7 @@ fn compile_fn(
         .is_terminated_by_return_or_revert(context);
     if !already_returns
         && (compiler.current_block.num_instructions(context) > 0
-            || compiler.current_block == compiler.function.get_entry_block(context)
+            || compiler.current_block.is_entry(context)
             || compiler.current_block.num_predecessors(context) > 0)
     {
         if ret_type.is_unit(context) {

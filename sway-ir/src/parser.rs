@@ -1245,7 +1245,7 @@ mod ir_builder {
                     if let IrAstOperation::Const(val_ty, val) = const_init {
                         val.value.as_constant(context, val_ty)
                     } else {
-                        unreachable!("BUG! Initializer must be a const value.");
+                        unreachable!("initializer must be a const value");
                     }
                 });
                 let ty = ty.to_ir_type(context);

@@ -877,7 +877,6 @@ fn is_clobbered(
     scrutiny_ptr: &Value,
 ) -> bool {
     let end_block = end_inst.get_instruction(context).unwrap().parent;
-    let entry_block = end_block.get_function(context).get_entry_block(context);
 
     let mut iter = end_block
         .instruction_iter(context)
@@ -928,7 +927,7 @@ fn is_clobbered(
             }
         }
 
-        if entry_block == block {
+        if block.is_entry(context) {
             // We've reached the entry block. If any of the scrutiny_symbols
             // is an argument, then we consider it clobbered.
             if scrutiny_symbols

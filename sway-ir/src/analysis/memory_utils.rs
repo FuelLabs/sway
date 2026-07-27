@@ -164,7 +164,7 @@ fn get_symbols(context: &Context, val: Value, gep_only: bool) -> ReferredSymbols
             gep_only: bool,
             is_complete: &mut bool,
         ) {
-            if arg.block.get_label(context) == "entry" {
+            if arg.block.is_entry(context) {
                 symbols.insert(Symbol::Arg(arg));
             } else {
                 arg.block
@@ -183,7 +183,7 @@ fn get_symbols(context: &Context, val: Value, gep_only: bool) -> ReferredSymbols
             u64_address_arg: BlockArgument,
             is_complete: &mut bool,
         ) {
-            if u64_address_arg.block.get_label(context) == "entry" {
+            if u64_address_arg.block.is_entry(context) {
                 // The u64 address is coming from a function argument.
                 // Same as in the case of a pointer coming from a function argument,
                 // we collect it.
@@ -684,7 +684,7 @@ pub fn combine_indices(context: &Context, val: Value) -> Option<Vec<Value>> {
             Some(base_indices)
         }
         ValueDatum::Argument(arg) => {
-            if arg.block.get_label(context) == "entry" {
+            if arg.block.is_entry(context) {
                 // Entry block arguments are function parameters, and same as locals base
                 // symbols, accessed at offset zero, and contribute no indices.
                 Some(vec![])
