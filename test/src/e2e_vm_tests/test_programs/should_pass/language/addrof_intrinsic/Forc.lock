@@ -1,8 +1,0 @@
-[[package]]
-name = "addrof_intrinsic"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "std"
-source = "path+from-root-B3EAB3022B5FAD04"

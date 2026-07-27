@@ -345,6 +345,24 @@ Runtime bound checks are not generated, and must be done manually when and where
 - `item` is a reference to an array or a slice;
 - when `index` is a literal, it must be smaller than `item` length.
 
+---
+
+```sway
+__mem_repr_eq<T>(repr_a: str, repr_b: str) -> bool
+```
+
+**Description:** Returns `true` if the memory representation `repr_a` of the type `T` is equal to its memory representation `repr_b`, assuming `T` has both memory representations. If `T` does not have any of the representations `repr_a` or `repr_b`, returns `false`.
+
+The valid values for `repr_a` and `repr_b` are `"runtime"`, `"encoding"`, and `"hashing"`:
+
+- `"runtime"` is how the type is represented inside the VM's memory. This is the Sway runtime memory representation (e.g., struct fields are aligned to word boundaries, arrays are packed, etc.). This memory representation is defined for every type.
+- `"encoding"` is the packed memory representation of a type, as defined by the canonical ABI encoding. Not all types have a canonical ABI encoding defined, e.g., dynamic types like `Vec` or `raw_slice`. In that case, `"encoding"` never compares equal to any other memory representation, _including to itself_.
+- `"hashing"` is the packed memory representation of a type, as defined by the canonical hashing. Not all types have a canonical hashing defined, e.g., dynamic types like `Vec` or `raw_slice`. In that case, `"hashing"` never compares equal to any other memory representation, _including to itself_.
+
+To test if a type `T` has `"encoding"` or `"hashing"` memory representation defined, compare that representation to itself. E.g.: `let has_encoding_repr = __mem_repr_eq<T>("encoding", "encoding");`
+
+**Constraints:** `repr_a` and `repr_b` must be compile-time constant `str`s, whose values are one of `"runtime"`, `"encoding"`, or `"hashing"`. The constant `str`s never end up in the bytecode.
+
 ## Storage
 
 ---
@@ -512,20 +530,3 @@ __transmute<A, B>(src: A) -> B
 **Description:** Reinterprets the bits of the value `src` of type `A` as another type `B`.
 
 **Constraints:** `A` and `B` must have the exactly same size.
-
----
-
-```sway
-__runtime_mem_id<T>() -> u64
-__encoding_mem_id<T>() -> u64
-```
-
-**Description:** Returns an opaque number that identifies the memory representation of a type. No information is conveyed by this number and it should only be compared for equality.
-
-This number is not guaranteed to be stable on different compiler versions.
-
-`__runtime_mem_id` represents how the type is represented inside the VM's memory.
-
-`__encoding_mem_id` represents how the type is encoded. It returns zero when type does not have encoding representation.
-
-**Constraints:** None.

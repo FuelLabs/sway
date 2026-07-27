@@ -15,6 +15,8 @@ pub enum Literal {
     U32(u32),
     U64(u64),
     U256(U256),
+    /// The span contains the string without the
+    /// enclosing double-quotes.
     String(span::Span),
     Numeric(u64),
     Boolean(bool),
