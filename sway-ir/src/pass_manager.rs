@@ -196,23 +196,26 @@ pub struct PassManager {
 }
 
 impl PassManager {
-    pub const OPTIMIZATION_PASSES: [&'static str; 16] = [
-        FN_INLINE_NAME,
-        SIMPLIFY_CFG_NAME,
-        SROA_NAME,
+    pub const OPTIMIZATION_PASSES: [&'static str; 19] = [
+        ARG_DEMOTION_NAME,
+        ARG_POINTEE_MUTABILITY_TAGGER_NAME,
+        CCP_NAME,
+        CONST_DEMOTION_NAME,
+        CONST_FOLDING_NAME,
+        CSE_NAME,
         DCE_NAME,
-        GLOBALS_DCE_NAME,
-        FN_DEDUP_RELEASE_PROFILE_NAME,
         FN_DEDUP_DEBUG_PROFILE_NAME,
+        FN_DEDUP_RELEASE_PROFILE_NAME,
+        FN_INLINE_NAME,
+        GLOBALS_DCE_NAME,
+        INIT_AGGR_LOWERING_NAME,
         MEM2REG_NAME,
         MEMCPYOPT_NAME,
         MEMCPYPROP_REVERSE_NAME,
-        CONST_FOLDING_NAME,
-        ARG_DEMOTION_NAME,
-        CONST_DEMOTION_NAME,
-        RET_DEMOTION_NAME,
         MISC_DEMOTION_NAME,
-        INIT_AGGR_LOWERING_NAME,
+        RET_DEMOTION_NAME,
+        SIMPLIFY_CFG_NAME,
+        SROA_NAME,
     ];
 
     /// Register a pass. Should be called only once for each pass.
@@ -562,9 +565,7 @@ pub fn register_known_passes(pm: &mut PassManager) {
 }
 
 pub fn create_o1_pass_group() -> PassGroup {
-    // Create a create_ccp_passo specify which passes we want to run now.
     let mut o1 = PassGroup::default();
-    // Configure to run our passes.
     o1.append_pass(MEM2REG_NAME);
     o1.append_pass(FN_DEDUP_RELEASE_PROFILE_NAME);
     o1.append_pass(FN_INLINE_NAME);

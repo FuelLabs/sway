@@ -13,7 +13,7 @@ pub const CCP_NAME: &str = "ccp";
 pub fn create_ccp_pass() -> Pass {
     Pass {
         name: CCP_NAME,
-        descr: "Conditional constant proparagion",
+        descr: "Conditional constant propagation",
         deps: vec![DOMINATORS_NAME],
         runner: ScopedPass::FunctionPass(PassMutability::Transform(ccp)),
     }
