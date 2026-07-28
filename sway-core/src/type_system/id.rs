@@ -253,6 +253,17 @@ impl MaterializeConstGenerics for TypeId {
                     .insert_ref(engines, *to_mutable_value, referenced_type);
                 has_changes = HasChanges::Yes;
             }
+            TypeInfo::Alias {
+                name: alias_name,
+                ty,
+            } => {
+                let alias_name = alias_name.clone();
+                let mut ty = ty.clone();
+                ty.type_id
+                    .materialize_const_generics(engines, handler, name, value)?;
+
+                *self = engines.te().new_alias(engines, alias_name, ty);
+            }
             _ => {}
         }
 
@@ -605,7 +616,7 @@ impl TypeId {
                 }
             }
             // Primitive types have "implicit" type parameters
-            (TypeInfo::Array(ty, _), TypeInfo::Array(orig_ty, _)) => {
+            (TypeInfo::Array(ty, len), TypeInfo::Array(orig_ty, orig_len)) => {
                 type_parameters.push((ty.type_id, orig_ty.type_id));
                 ty.type_id.extract_type_parameters(
                     handler,
@@ -615,6 +626,13 @@ impl TypeId {
                     const_generic_parameters,
                     orig_ty.type_id,
                 );
+
+                if let ConstGenericExpr::AmbiguousVariableExpression { ident, .. } = &orig_len.0 {
+                    if let ConstGenericExpr::Literal { .. } = &len.0 {
+                        const_generic_parameters
+                            .insert(ident.as_str().to_string(), len.0.to_ty_expression(engines));
+                    }
+                }
             }
             (TypeInfo::Alias { name: _, ty }, _) => {
                 ty.type_id.extract_type_parameters(
