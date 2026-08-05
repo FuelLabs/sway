@@ -1248,7 +1248,29 @@ fn copy_prop_reverse(
         }
     }
 
-    // Abort on cycles
+    // We currently do not optimize cycles
+    //
+    // TODO: https://github.com/FuelLabs/sway/issues/7282#issuecomment-5196527165
+    // It is not entirely true that we cannot optimize cycles.
+    // We currently bail on all cycles because `solve_transitive_copies`
+    // needs every "memcpy chain" to finish with a symbol that is never the
+    // destination of a candidate memcpy, and a cycle does not have that.
+    // But some cycles are in fact optimizable:
+    //
+    // - Self-loops: src_to_dst { x -> x }. A self-copy is a no-op and
+    // can simply be deleted.
+    //
+    // - All items have the same value: src_to_dst { a <- b; c <- a; b <- c }.
+    // To optimize this we need to be aware which value is the true source
+    // (old_b in this case).
+    //
+    // Another possible improvement, once a cycle is detected the fn returns
+    // without analyzing if there is any other possible optimizations on `src_to_dst`.
+    //
+    // This is particularly interesting because if a cycle survives the clobber test above,
+    // it means that this cycle is uniform, all involved symbols converge to one value,
+    // which means we could retain the first memcpy and replace some "uses" by this value
+    // instead of bailing.
     if let Some(node) = find_node_in_cycle(&src_to_dst) {
         if analyses.is_log_enabled {
             let cycle = Cycle::new(&src_to_dst, node);
