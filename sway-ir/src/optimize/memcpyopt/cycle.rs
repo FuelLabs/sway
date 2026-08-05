@@ -69,7 +69,7 @@ impl Cycle {
             .keys()
             .filter(|node| {
                 // check if is outside the cycle
-                if cycle_set.contains(&node) {
+                if cycle_set.contains(node) {
                     return false;
                 }
 
@@ -79,9 +79,9 @@ impl Cycle {
                 // in another cycle. This is a safe in partial functional graphs
                 // because it is an upper bound for how many steps you can take
                 // before you either hit a sink (node without outgoing edge) or find a cycle
-                std::iter::successors(Some(*node), |current| edges.get(&current))
+                std::iter::successors(Some(*node), |current| edges.get(current))
                     .take(edges.len() + 1)
-                    .any(|node| cycle_set.contains(&node))
+                    .any(|node| cycle_set.contains(node))
             })
             .copied()
             .collect::<Vec<_>>();
@@ -102,8 +102,11 @@ pub fn find_node_in_cycle(edges: &FxHashMap<Symbol, Symbol>) -> Option<Symbol> {
     // Nodes we already know are not in a cycle
     let mut not_in_cycle: FxHashSet<Symbol> = FxHashSet::default();
 
+    // SAFETY: Function promises ANY cycle, so the order here
+    // does not matter
+    #[allow(clippy::iter_over_hash_type)]
     for candidate in edges.keys() {
-        if not_in_cycle.contains(&candidate) {
+        if not_in_cycle.contains(candidate) {
             continue;
         }
 

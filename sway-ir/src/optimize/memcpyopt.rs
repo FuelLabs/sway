@@ -1252,7 +1252,7 @@ fn copy_prop_reverse(
     if let Some(node) = find_node_in_cycle(&src_to_dst) {
         if analyses.is_log_enabled {
             let cycle = Cycle::new(&src_to_dst, node);
-            analyses.push_log(&format!(
+            analyses.push_log(format!(
                 "Cycle Detected: {:#?}\n",
                 (function, &cycle).with_context(context)
             ));
@@ -1261,20 +1261,7 @@ fn copy_prop_reverse(
         return Ok(modified);
     }
 
-    // We now know `src_to_dst` is acyclic, so we know that this
-    // fixed-point loop terminates
-    {
-        let mut changed = true;
-        while changed {
-            changed = false;
-            for (src, dst) in src_to_dst.clone().iter() {
-                if let Some(next_dst) = src_to_dst.get(dst) {
-                    src_to_dst.insert(*src, *next_dst);
-                    changed = true;
-                }
-            }
-        }
-    }
+    solve_transitive_copies(&mut src_to_dst);
 
     // Gather the get_local instructions that need to be replaced.
     let mut repl_locals = vec![];
@@ -1353,4 +1340,32 @@ fn copy_prop_reverse(
     function.remove_instructions(context, |v| to_delete.contains(&v));
 
     Ok(modified)
+}
+
+/// Solve all transitive copies. For Example:
+///
+/// Initial: { A -> B, B -> C, C -> D }
+/// Result: { A -> D, B -> D, C -> D }
+///
+/// `src_to_dst` must be acyclic
+fn solve_transitive_copies(
+    src_to_dst: &mut std::collections::HashMap<
+        Symbol,
+        Symbol,
+        std::hash::BuildHasherDefault<rustc_hash::FxHasher>,
+    >,
+) {
+    // SAFETY: it is safe to iter HashMap here because we just need
+    // solve each key once. Order is not important.
+    let sources = src_to_dst.keys().copied().collect::<Vec<_>>();
+    for src in sources {
+        let mut cur = *src_to_dst.get(&src).unwrap();
+
+        // SAFETY: `src_to_dst` is acyclic, so this terminates
+        while let Some(next) = src_to_dst.get(&cur).copied() {
+            cur = next;
+        }
+
+        src_to_dst.insert(src, cur);
+    }
 }
