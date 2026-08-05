@@ -1,3 +1,5 @@
+// TODO: https://github.com/FuelLabs/sway/issues/7282#issuecomment-5196527165
+// This cycle is optimizable.
 script {
     pub entry fn __entry() -> u64, !3 {
         local { u64, u64 } a
