@@ -60,7 +60,6 @@ impl Cycle {
             }
         })
         .collect::<Vec<_>>();
-        assert!(cycle.len() > 1);
 
         // Now we check if this cycle has a tail, a set of nodes outside the cycle that
         // moving forward always reach the cycle.
