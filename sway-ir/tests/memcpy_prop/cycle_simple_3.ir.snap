@@ -25,7 +25,7 @@ script {
 }
 
 --- LOG ---
-Cycle Detected: Cycle::Pure {
+Cycle Detected: Cycle::Simple {
     nodes: [
         "a",
         "c",

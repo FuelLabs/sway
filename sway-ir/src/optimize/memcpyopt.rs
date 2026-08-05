@@ -1348,13 +1348,7 @@ fn copy_prop_reverse(
 /// Result: { A -> D, B -> D, C -> D }
 ///
 /// `src_to_dst` must be acyclic
-fn solve_transitive_copies(
-    src_to_dst: &mut std::collections::HashMap<
-        Symbol,
-        Symbol,
-        std::hash::BuildHasherDefault<rustc_hash::FxHasher>,
-    >,
-) {
+fn solve_transitive_copies(src_to_dst: &mut FxHashMap<Symbol, Symbol>) {
     // SAFETY: it is safe to iter HashMap here because we just need
     // solve each key once. Order is not important.
     let sources = src_to_dst.keys().copied().collect::<Vec<_>>();

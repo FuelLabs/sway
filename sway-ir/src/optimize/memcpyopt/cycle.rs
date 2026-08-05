@@ -29,7 +29,7 @@ impl DebugWithContext for (Function, &Cycle) {
         };
         match self.1 {
             Cycle::Simple { nodes } => formatter
-                .debug_struct("Cycle::Pure")
+                .debug_struct("Cycle::Simple")
                 .field("nodes", &names(nodes))
                 .finish(),
             Cycle::RhoShape { tail, cycle } => formatter
