@@ -20,6 +20,7 @@ use std::{
     path::{Path, PathBuf},
     str::FromStr,
     sync::Once,
+    time::Duration,
 };
 use sway_core::Engines;
 use sway_features::ExperimentalFeatures;
@@ -410,7 +411,9 @@ fn run_cmds(
                     };
 
                     let o = o.env("COLUMNS", "10").unchecked().start().unwrap();
-                    let o = o.wait().unwrap();
+                    let Some(o) = o.wait_timeout(Duration::from_secs(30)).unwrap() else {
+                        panic!("test timeout");
+                    };
                     last_output = Some(clean_output(&format!(
                         "exit status: {}\noutput:\n{}",
                         o.status.code().unwrap(),

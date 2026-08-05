@@ -63,7 +63,7 @@ fn clean_output(output: &str) -> String {
     result.to_string()
 }
 
-fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
+fn run_tests<F: Fn(&str, &mut Context) -> (bool, String)>(sub_dir: &str, opt_fn: F) {
     let mut err: Option<Box<dyn Any + Send>> = None;
 
     let source_engine = SourceEngine::default();
@@ -98,7 +98,7 @@ fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
         let first_line = input.split('\n').next().unwrap();
 
         let before = ir.to_string();
-        let r = opt_fn(first_line, &mut ir);
+        let (r, log) = opt_fn(first_line, &mut ir);
         let after = ir.to_string();
 
         fn run_insta(file: &Path, snapshot: String, r: &mut Option<Box<dyn Any + Send>>) {
@@ -158,6 +158,10 @@ fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
                 }
             }
         }
+        if !log.is_empty() {
+            snapshot.push_str("\n--- LOG ---\n");
+            snapshot.push_str(&log);
+        }
         run_insta(&path, clean_output(&snapshot), &mut err);
 
         ir.verify().unwrap_or_else(|err| {
@@ -195,9 +199,9 @@ fn run_passes_with_verify(
     pass_mgr: &mut PassManager,
     ir: &mut Context,
     passes: &PassGroup,
-) -> bool {
+) -> (bool, String) {
     ir.verify_ssa_dominance = true;
-    pass_mgr
+    let modified = pass_mgr
         .run(
             ir,
             passes,
@@ -208,10 +212,12 @@ fn run_passes_with_verify(
                 print_metadata: false,
                 print_passes: HashSet::default(),
                 force_verify_ir: true,
+                log: true,
                 rounds: 1, // we want to check the effect of the optimization only once
             },
         )
-        .unwrap()
+        .unwrap();
+    (modified, pass_mgr.take_log())
 }
 
 // Utility for finding test files and running IR verifier tests.
@@ -321,9 +327,9 @@ fn inline() {
             // Just inline everything, replacing all CALL instructions.
             let mut changed = false;
             for func in funcs.into_iter() {
-                changed |= opt::inline_all_function_calls(ir, &func).unwrap();
+                changed |= opt::inline_some_function_calls(ir, &func, |_, _, _| true).unwrap();
             }
-            changed
+            (changed, String::new())
         } else {
             // Get the parameters from the first line.  See the inline/README.md for details.  If
             // there aren't any found then there won't be any constraints and it'll be the
@@ -341,20 +347,23 @@ fn inline() {
                         },
                     );
 
-            funcs.into_iter().fold(false, |acc, func| {
-                let predicate = |context: &Context, function: &Function, call_site: &Value| {
-                    let attributed_inline =
-                        metadata_to_inline(context, function.get_metadata(context));
-                    match attributed_inline {
-                        Some(opt::Inline::Never) => false,
-                        Some(opt::Inline::Always) => true,
-                        None => (opt::is_small_fn(max_blocks, max_instrs, max_stack))(
-                            context, function, call_site,
-                        ),
-                    }
-                };
-                opt::inline_some_function_calls(ir, &func, predicate).unwrap() || acc
-            })
+            (
+                funcs.into_iter().fold(false, |acc, func| {
+                    let predicate = |context: &Context, function: &Function, call_site: &Value| {
+                        let attributed_inline =
+                            metadata_to_inline(context, function.get_metadata(context));
+                        match attributed_inline {
+                            Some(opt::Inline::Never) => false,
+                            Some(opt::Inline::Always) => true,
+                            None => (opt::is_small_fn(max_blocks, max_instrs, max_stack))(
+                                context, function, call_site,
+                            ),
+                        }
+                    };
+                    opt::inline_some_function_calls(ir, &func, predicate).unwrap() || acc
+                }),
+                String::new(),
+            )
         }
     })
 }
@@ -611,7 +620,7 @@ fn verify() {
 fn serialize() {
     // This isn't running a pass, it's just confirming that the IR can be loaded and printed, and
     // FileCheck can just confirm certain instructions came out OK.
-    run_tests("serialize", |_, _: &mut Context| true)
+    run_tests("serialize", |_, _: &mut Context| (true, String::new()))
 }
 
 // -------------------------------------------------------------------------------------------------

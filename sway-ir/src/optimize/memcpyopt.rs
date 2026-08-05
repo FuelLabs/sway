@@ -1,6 +1,8 @@
 //! Optimisations related to mem_copy.
 //! - replace a `store` directly from a `load` with a `mem_copy_val`.
 
+mod cycle;
+
 use indexmap::IndexMap;
 use itertools::{Either, Itertools};
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -8,7 +10,9 @@ use sway_types::{FxIndexMap, FxIndexSet};
 
 use crate::{
     get_gep_symbol, get_loaded_symbols, get_referred_symbol, get_referred_symbols,
-    get_stored_symbols, memory_utils, AnalysisResults, Block, Context, EscapedSymbols,
+    get_stored_symbols,
+    memcpyopt::cycle::{find_node_in_cycle, Cycle},
+    memory_utils, AnalysisResults, Block, Context, DebugWithContext, EscapedSymbols,
     FuelVmInstruction, Function, InstOp, Instruction, InstructionInserter, IrError, LocalVar, Pass,
     PassMutability, ReferredSymbols, ScopedPass, Symbol, Type, Value, ValueDatum,
     ESCAPED_SYMBOLS_NAME,
@@ -1107,7 +1111,7 @@ pub fn create_memcpyprop_reverse_pass() -> Pass {
 /// Copy propagation of `memcpy`s, replacing source with destination.
 fn copy_prop_reverse(
     context: &mut Context,
-    _analyses: &AnalysisResults,
+    analyses: &AnalysisResults,
     function: Function,
 ) -> Result<bool, IrError> {
     let mut modified = false;
@@ -1244,27 +1248,31 @@ fn copy_prop_reverse(
         }
     }
 
-    // Take a transitive closure of src_to_dst.
+    // Abort on cycles
+    if let Some(node) = find_node_in_cycle(&src_to_dst) {
+        if analyses.is_log_enabled {
+            let cycle = Cycle::new(&src_to_dst, node);
+            analyses.push_log(&format!(
+                "Cycle Detected: {:#?}\n",
+                (function, &cycle).with_context(context)
+            ));
+        }
+
+        return Ok(modified);
+    }
+
+    // We now know `src_to_dst` is acyclic, so we know that this
+    // fixed-point loop terminates
     {
         let mut changed = true;
-        let mut cycle_detected = false;
         while changed {
             changed = false;
-            src_to_dst.clone().iter().for_each(|(src, dst)| {
+            for (src, dst) in src_to_dst.clone().iter() {
                 if let Some(next_dst) = src_to_dst.get(dst) {
-                    // Cycle detection
-                    if *next_dst == *src {
-                        cycle_detected = true;
-                        return;
-                    }
                     src_to_dst.insert(*src, *next_dst);
                     changed = true;
                 }
-            });
-        }
-        if cycle_detected {
-            // We cannot optimize in presence of cycles.
-            return Ok(modified);
+            }
         }
     }
 

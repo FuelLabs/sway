@@ -1,0 +1,31 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: false
+
+script {
+    pub entry fn __entry() -> u64 {
+        local { u64, u64 } a
+        local { u64, u64 } b
+
+        entry():
+        v1v1 = get_local __ptr { u64, u64 }, b
+        mem_clear_val v1v1
+        v3v1 = get_local __ptr { u64, u64 }, a
+        v4v1 = get_local __ptr { u64, u64 }, b
+        mem_copy_val v3v1, v4v1
+        v6v1 = get_local __ptr { u64, u64 }, b
+        v7v1 = get_local __ptr { u64, u64 }, a
+        mem_copy_val v6v1, v7v1
+        v9v1 = const u64 0
+        ret u64 v9v1
+    }
+}
+
+--- LOG ---
+Cycle Detected: Cycle::Pure {
+    nodes: [
+        "a",
+        "b",
+    ],
+}
