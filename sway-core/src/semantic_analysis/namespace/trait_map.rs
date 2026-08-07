@@ -1009,7 +1009,7 @@ impl TraitMap {
                         .has_changes()
                     {
                         decl_engine
-                            .insert(decl, decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref())
+                            .insert_modified(decl, *decl_ref.id())
                             .with_parent(decl_engine, decl_ref.id().into())
                     } else {
                         decl_ref.clone()
@@ -1029,8 +1029,7 @@ impl TraitMap {
                         ))
                         .has_changes()
                     {
-                        decl_engine
-                            .insert(decl, decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref())
+                        decl_engine.insert_modified(decl, *decl_ref.id())
                     } else {
                         decl_ref.clone()
                     };
@@ -1049,8 +1048,7 @@ impl TraitMap {
                         ))
                         .has_changes()
                     {
-                        decl_engine
-                            .insert(decl, decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref())
+                        decl_engine.insert_modified(decl, *decl_ref.id())
                     } else {
                         decl_ref.clone()
                     };

@@ -303,41 +303,39 @@ impl MaterializeConstGenerics for GenericArgument {
         name: &str,
         value: &crate::language::ty::TyExpression,
     ) -> Result<HasChanges, sway_error::handler::ErrorEmitted> {
-        let mut has_changes = HasChanges::No;
-        match self {
+        let has_changes = match self {
             GenericArgument::Type(arg) => {
-                has_changes |= arg.materialize_const_generics(engines, handler, name, value)?;
+                arg.materialize_const_generics(engines, handler, name, value)?
             }
             GenericArgument::Const(arg) => {
-                arg.expr = match arg.expr.clone() {
-                    ConstGenericExpr::AmbiguousVariableExpression { ident, mut decl } => {
-                        if let Some(decl) = decl.as_mut() {
-                            has_changes |=
-                                decl.materialize_const_generics(engines, handler, name, value)?;
-                        }
-
-                        if ident.as_str() == name {
-                            has_changes = HasChanges::Yes;
-                            ConstGenericExpr::Literal {
-                                val: value
-                                    .extract_literal_value()
-                                    .unwrap()
-                                    .cast_value_to_u64()
-                                    .unwrap() as usize,
-                                span: value.span.clone(),
-                            }
-                        } else {
-                            // If the `decl` got changed, `has_changes` already reflects that.
-                            // Otherwise, this newly created `ConstGenericExpr` is same as
-                            // the original `arg.expr` and there is no need for setting the
-                            // `has_changes` to `Yes`.
-                            ConstGenericExpr::AmbiguousVariableExpression { ident, decl }
-                        }
+                if let ConstGenericExpr::AmbiguousVariableExpression { ident, decl } = &mut arg.expr
+                {
+                    let mut has_changes = HasChanges::No;
+                    if let Some(decl) = decl.as_mut() {
+                        has_changes |=
+                            decl.materialize_const_generics(engines, handler, name, value)?;
                     }
-                    expr => expr,
-                };
+
+                    if ident.as_str() == name {
+                        arg.expr = ConstGenericExpr::Literal {
+                            val: value
+                                .extract_literal_value()
+                                .unwrap()
+                                .cast_value_to_u64()
+                                .unwrap() as usize,
+                            span: value.span.clone(),
+                        };
+
+                        has_changes = HasChanges::Yes;
+                    }
+
+                    has_changes
+                } else {
+                    HasChanges::No
+                }
             }
-        }
+        };
+
         Ok(has_changes)
     }
 }

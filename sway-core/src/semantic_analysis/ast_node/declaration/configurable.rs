@@ -10,9 +10,7 @@ use symbol_collection_context::SymbolCollectionContext;
 
 use crate::{
     ast_elements::{type_argument::GenericTypeArgument, type_parameter::GenericTypeParameter},
-    decl_engine::{
-        parsed_id::ParsedDeclId, DeclEngineGetParsedDeclId, DeclEngineInsert, ReplaceDecls,
-    },
+    decl_engine::{parsed_id::ParsedDeclId, DeclEngineInsert, ReplaceDecls},
     language::{
         parsed::*,
         ty::{self, TyConfigurableDecl, TyExpression},
@@ -155,10 +153,7 @@ impl ty::TyConfigurableDecl {
             {
                 engines
                     .de()
-                    .insert(
-                        decode_fn_decl,
-                        engines.de().get_parsed_decl_id(&decode_fn_id).as_ref(),
-                    )
+                    .insert_modified(decode_fn_decl, decode_fn_id)
                     .with_parent(engines.de(), decode_fn_id.into())
             } else {
                 decode_fn_ref

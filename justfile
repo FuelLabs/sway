@@ -187,6 +187,14 @@ build-highlightjs:
 generate-sway-lib-std:
     cd ./sway-lib-std && ./generate.sh
 
+alias tfmt := test-forc-fmt-check-panic
+# test `forc fmt` for panicking
 [group('test')]
 test-forc-fmt-check-panic:
     cd ./scripts/formatter && ./forc-fmt-check-panic.sh
+
+alias t := run-tests
+# run the full local test suite (pass `--lsp` to also run the sway-lsp tests)
+[group('test')]
+run-tests *args:
+    bash ./scripts/test/run-tests.sh {{args}}

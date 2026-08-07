@@ -1,6 +1,6 @@
 use crate::{
     decl_engine::{
-        engine::{DeclEngineGet, DeclEngineGetParsedDeclId, DeclEngineReplace},
+        engine::{DeclEngineGet, DeclEngineReplace},
         DeclEngineInsert, DeclRefFunction, ReplaceDecls, UpdateConstantExpression,
     },
     language::{
@@ -1056,10 +1056,7 @@ pub(crate) fn monomorphize_method(
     //       For details see: https://github.com/FuelLabs/sway/issues/7658
     let decl_ref = if has_changes.has_changes() {
         decl_engine
-            .insert(
-                func_decl,
-                decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
-            )
+            .insert_modified(func_decl, *decl_ref.id())
             .with_parent(decl_engine, (*decl_ref.id()).into())
     } else {
         decl_ref

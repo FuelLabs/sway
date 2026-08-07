@@ -588,7 +588,7 @@ pub fn item_fn_to_function_declaration(
     let kind = override_kind.unwrap_or(kind);
     let implementing_type = context.implementing_type.clone();
 
-    let mut generic_parameters = generic_params_opt_to_type_parameters_with_parent(
+    let generic_parameters = generic_params_opt_to_type_parameters_with_parent(
         context,
         handler,
         engines,
@@ -597,19 +597,6 @@ pub fn item_fn_to_function_declaration(
         item_fn.fn_signature.where_clause_opt.clone(),
         parent_where_clause_opt,
     )?;
-
-    for p in generic_parameters.iter_mut() {
-        match p {
-            TypeParameter::Type(_) => {}
-            TypeParameter::Const(p) => {
-                p.id = Some(engines.pe().insert(ConstGenericDeclaration {
-                    name: p.name.clone(),
-                    ty: p.ty,
-                    span: p.span.clone(),
-                }));
-            }
-        }
-    }
 
     let fn_decl = FunctionDeclaration {
         purity: attributes.purity(),
@@ -851,26 +838,13 @@ pub fn item_impl_to_impl_declaration(
         .filter_map_ok(|item| item)
         .collect::<Result<_, _>>()?;
 
-    let mut impl_type_parameters = generic_params_opt_to_type_parameters(
+    let impl_type_parameters = generic_params_opt_to_type_parameters(
         context,
         handler,
         engines,
         item_impl.generic_params_opt,
         item_impl.where_clause_opt,
     )?;
-
-    for p in impl_type_parameters.iter_mut() {
-        match p {
-            TypeParameter::Type(_) => {}
-            TypeParameter::Const(p) => {
-                p.id = Some(engines.pe().insert(ConstGenericDeclaration {
-                    name: p.name.clone(),
-                    ty: p.ty,
-                    span: p.span.clone(),
-                }));
-            }
-        }
-    }
 
     match item_impl.trait_opt {
         Some((path_type, _)) => {
@@ -1605,14 +1579,23 @@ fn generic_params_opt_to_type_parameters_with_parent(
                         is_from_parent,
                     })
                 }
-                GenericParam::Const { ident, .. } => TypeParameter::Const(ConstGenericParameter {
-                    span: ident.span().clone(),
-                    name: ident,
-                    ty: type_engine.id_of_u64(),
-                    is_from_parent,
-                    id: None,
-                    expr: None,
-                }),
+                GenericParam::Const { ident, .. } => {
+                    let ty = type_engine.id_of_u64();
+                    let span = ident.span().clone();
+                    let parsed_decl_id = engines.pe().insert(ConstGenericDeclaration {
+                        name: ident.clone(),
+                        ty,
+                        span: span.clone(),
+                    });
+                    TypeParameter::Const(ConstGenericParameter {
+                        span,
+                        name: ident,
+                        ty,
+                        is_from_parent,
+                        parsed_decl_id,
+                        expr: None,
+                    })
+                }
             })
             .collect(),
         None => vec![],
