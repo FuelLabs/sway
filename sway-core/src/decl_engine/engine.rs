@@ -63,8 +63,6 @@ pub struct DeclEngine {
         RwLock<HashMap<DeclId<TyConstGenericDecl>, ParsedDeclId<ConstGenericDeclaration>>>,
     configurable_parsed_decl_id_map:
         RwLock<HashMap<DeclId<TyConfigurableDecl>, ParsedDeclId<ConfigurableDeclaration>>>,
-    const_generics_parsed_decl_id_map:
-        RwLock<HashMap<DeclId<TyConstGenericDecl>, ParsedDeclId<ConstGenericDeclaration>>>,
     enum_parsed_decl_id_map: RwLock<HashMap<DeclId<TyEnumDecl>, ParsedDeclId<EnumDeclaration>>>,
     type_alias_parsed_decl_id_map:
         RwLock<HashMap<DeclId<TyTypeAliasDecl>, ParsedDeclId<TypeAliasDeclaration>>>,
@@ -113,9 +111,6 @@ impl Clone for DeclEngine {
             configurable_parsed_decl_id_map: RwLock::new(
                 self.configurable_parsed_decl_id_map.read().clone(),
             ),
-            const_generics_parsed_decl_id_map: RwLock::new(
-                self.const_generics_parsed_decl_id_map.read().clone(),
-            ),
             enum_parsed_decl_id_map: RwLock::new(self.enum_parsed_decl_id_map.read().clone()),
             type_alias_parsed_decl_id_map: RwLock::new(
                 self.type_alias_parsed_decl_id_map.read().clone(),
@@ -148,22 +143,27 @@ pub trait DeclEngineInsert<T>
 where
     T: Named + Spanned + TyDeclParsedType,
 {
-    fn insert(
-        &self,
-        decl: T,
-        parsed_decl_id: Option<&ParsedDeclId<T::ParsedType>>,
-    ) -> DeclRef<DeclId<T>>;
-}
+    /// Inserts a typed declaration `decl` that corresponds to the parsed declaration
+    /// `parsed_decl_it` into the [DeclEngine] for the first time.
+    ///
+    /// This method is meant to be called **only during the initial type checking**,
+    /// when the typed declaration is created for the first time.
+    fn insert(&self, decl: T, parsed_decl_id: ParsedDeclId<T::ParsedType>) -> DeclRef<DeclId<T>>;
 
-pub trait DeclEngineInsertArc<T>
-where
-    T: Named + Spanned + TyDeclParsedType,
-{
-    fn insert_arc(
-        &self,
-        decl: Arc<T>,
-        parsed_decl_id: Option<&ParsedDeclId<T::ParsedType>>,
-    ) -> DeclRef<DeclId<T>>;
+    /// Inserts a typed declaration `modified_decl` that represents a modified version of
+    /// an `original_decl`. E.g., during monomorphization, we get an original typed declaration
+    /// from the [DeclEngine], modify it, and insert the `modified_decl` into the [DeclEngine].
+    ///
+    /// The `modified_decl` will have the same corresponding parsed declaration as the `original_decl`.
+    ///
+    /// Panics if the `original_decl` does not exist in the [DeclEngine]
+    /// or if it doesn't have its corresponding parsed declaration.
+    ///
+    /// The only typed declarations that legitimately have no corresponding parsed
+    /// declaration are the trait-interface dummy functions inserted via
+    /// [DeclEngine::insert_dummy_func]. For those, [DeclEngineInsert] is implemented
+    /// manually (see the implementation for [ty::TyFunctionDecl]).
+    fn insert_modified(&self, modified_decl: T, original_decl: DeclId<T>) -> DeclRef<DeclId<T>>;
 }
 
 pub trait DeclEngineReplace<T> {
@@ -219,43 +219,67 @@ macro_rules! decl_engine_insert {
             fn insert(
                 &self,
                 decl: $decl,
-                parsed_decl_id: Option<&ParsedDeclId<<$decl as TyDeclParsedType>::ParsedType>>,
+                parsed_decl_id: ParsedDeclId<<$decl as TyDeclParsedType>::ParsedType>,
             ) -> DeclRef<DeclId<$decl>> {
                 let span = decl.span();
                 let decl_name = decl.name().clone();
                 let decl_id = DeclId::new(self.$slab.insert(decl));
-                if let Some(parsed_decl_id) = parsed_decl_id {
-                    self.$parsed_slab
-                        .write()
-                        .insert(decl_id, parsed_decl_id.clone());
-                }
+                self.$parsed_slab.write().insert(decl_id, parsed_decl_id);
                 DeclRef::new(decl_name, decl_id, span)
             }
-        }
-        impl DeclEngineInsertArc<$decl> for DeclEngine {
-            fn insert_arc(
+
+            fn insert_modified(
                 &self,
-                decl: Arc<$decl>,
-                parsed_decl_id: Option<&ParsedDeclId<<$decl as TyDeclParsedType>::ParsedType>>,
+                modified_decl: $decl,
+                original_decl: DeclId<$decl>,
             ) -> DeclRef<DeclId<$decl>> {
-                let span = decl.span();
-                let decl_name = decl.name().clone();
-                let decl_id = DeclId::new(self.$slab.insert_arc(decl));
-                if let Some(parsed_decl_id) = parsed_decl_id {
-                    self.$parsed_slab
-                        .write()
-                        .insert(decl_id, parsed_decl_id.clone());
-                }
-                DeclRef::new(decl_name, decl_id, span)
+                self.insert(
+                    modified_decl,
+                    self.get_parsed_decl_id(&original_decl)
+                        .expect("`original_decl` must have a corresponding parsed declaration"),
+                )
             }
         }
     };
 }
-decl_engine_insert!(
-    function_slab,
-    function_parsed_decl_id_map,
-    ty::TyFunctionDecl
-);
+
+/// [ty::TyFunctionDecl] is intentionally not implemented via the `decl_engine_insert!`
+/// macro. Unlike all other typed declarations, functions have one legitimate case of not
+/// having a corresponding parsed declaration: the trait-interface dummy functions inserted
+/// via [DeclEngine::insert_dummy_func]. `insert_modified` must therefore tolerate a missing
+/// parsed declaration, but **only for such dummy functions**.
+impl DeclEngineInsert<ty::TyFunctionDecl> for DeclEngine {
+    fn insert(
+        &self,
+        decl: ty::TyFunctionDecl,
+        parsed_decl_id: ParsedDeclId<<ty::TyFunctionDecl as TyDeclParsedType>::ParsedType>,
+    ) -> DeclRef<DeclId<ty::TyFunctionDecl>> {
+        let span = decl.span();
+        let decl_name = decl.name().clone();
+        let decl_id = DeclId::new(self.function_slab.insert(decl));
+        self.function_parsed_decl_id_map
+            .write()
+            .insert(decl_id, parsed_decl_id);
+        DeclRef::new(decl_name, decl_id, span)
+    }
+
+    fn insert_modified(
+        &self,
+        modified_decl: ty::TyFunctionDecl,
+        original_decl: DeclId<ty::TyFunctionDecl>,
+    ) -> DeclRef<DeclId<ty::TyFunctionDecl>> {
+        match self.get_parsed_decl_id(&original_decl) {
+            // The `modified_decl` inherits the parsed declaration of the
+            // `original_decl` it was cloned and modified from.
+            Some(parsed_decl_id) => self.insert(modified_decl, parsed_decl_id),
+            // The only functions that legitimately lack a parsed declaration are the
+            // trait-interface dummy functions. If the `original_decl` had no parsed
+            // declaration and was not a dummy function, that is a bug.
+            None => self.insert_dummy_func(modified_decl),
+        }
+    }
+}
+
 decl_engine_insert!(trait_slab, trait_parsed_decl_id_map, ty::TyTraitDecl);
 decl_engine_insert!(trait_fn_slab, trait_fn_parsed_decl_id_map, ty::TyTraitFn);
 decl_engine_insert!(
@@ -283,7 +307,7 @@ decl_engine_insert!(
 );
 decl_engine_insert!(
     const_generics_slab,
-    const_generics_parsed_decl_id_map,
+    const_generic_parsed_decl_id_map,
     ty::TyConstGenericDecl
 );
 decl_engine_insert!(enum_slab, enum_parsed_decl_id_map, ty::TyEnumDecl);
@@ -605,6 +629,38 @@ impl DeclEngine {
             .entry(index)
             .and_modify(|e| e.push(parent.clone()))
             .or_insert_with(|| vec![parent]);
+    }
+
+    /// Inserts a trait-interface **dummy function** into the [DeclEngine].
+    ///
+    /// This is a bit of a maverick compared to the regular [DeclEngineInsert::insert].
+    /// It deliberately inserts a [ty::TyFunctionDecl] **without an associated parsed
+    /// declaration**.
+    ///
+    /// Dummy functions are placeholders created from trait interface methods
+    /// (see [ty::TyTraitFn::to_dummy_func]). They allow the trait's
+    /// provided methods to refer to interface methods before an actual implementation
+    /// exists. Their parsed origin is a [TraitFn] (i.e., a parsed trait function), not a
+    /// [FunctionDeclaration], so there is no [FunctionDeclaration] to associate them with.
+    ///
+    /// This is the only semantically valid case of a [ty::TyFunctionDecl] having no
+    /// corresponding parsed declaration. Everything else must go through
+    /// [DeclEngineInsert::insert] or [DeclEngineInsert::insert_modified], which guarantee
+    /// (and, for `insert_modified`, assert) the presence of a parsed declaration.
+    ///
+    /// Panics if the `decl` is not a trait-interface dummy function.
+    pub fn insert_dummy_func(
+        &self,
+        decl: ty::TyFunctionDecl,
+    ) -> DeclRef<DeclId<ty::TyFunctionDecl>> {
+        assert!(
+            decl.is_trait_method_dummy,
+            "`insert_dummy_func` must only be called with trait-interface dummy functions"
+        );
+        let span = decl.span();
+        let decl_name = decl.name().clone();
+        let decl_id = DeclId::new(self.function_slab.insert(decl));
+        DeclRef::new(decl_name, decl_id, span)
     }
 
     /// Friendly helper method for calling the `get` method from the

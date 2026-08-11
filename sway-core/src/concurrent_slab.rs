@@ -122,7 +122,7 @@ where
         let inner = self.inner.read();
         f(inner.items[index]
             .as_ref()
-            .expect("invalid slab index for ConcurrentSlab::get"))
+            .expect("invalid slab index for ConcurrentSlab::map"))
     }
 
     pub fn retain(&self, predicate: impl Fn(&usize, &mut Arc<T>) -> bool) {

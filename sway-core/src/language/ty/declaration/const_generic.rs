@@ -57,8 +57,7 @@ impl MaterializeConstGenerics for TyConstGenericDecl {
         name: &str,
         value: &TyExpression,
     ) -> Result<HasChanges, ErrorEmitted> {
-        let mut has_changes = HasChanges::No;
-        if self.call_path.suffix.as_str() == name {
+        let has_changes = if self.call_path.suffix.as_str() == name {
             match self.value.as_ref() {
                 // If the const generic already has value,
                 // it must be the same as the `value`.
@@ -75,13 +74,17 @@ impl MaterializeConstGenerics for TyConstGenericDecl {
                                 .unwrap(),
                         "{v:?} {value:?}",
                     );
+                    HasChanges::No
                 }
                 None => {
                     self.value = Some(value.clone());
-                    has_changes = HasChanges::Yes;
+                    HasChanges::Yes
                 }
             }
-        }
+        } else {
+            HasChanges::No
+        };
+
         Ok(has_changes)
     }
 }

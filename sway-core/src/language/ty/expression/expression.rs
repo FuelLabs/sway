@@ -451,7 +451,7 @@ impl MaterializeConstGenerics for TyExpression {
             } => {
                 let mut has_changes = HasChanges::No;
 
-                // Materialize non dummy fns
+                // Materialize a non-dummy function.
                 let fn_decl = engines.de().get(fn_ref.id());
                 if !fn_decl.is_trait_method_dummy {
                     let mut type_subst_map = TypeSubstMap::new();
@@ -469,7 +469,7 @@ impl MaterializeConstGenerics for TyExpression {
                         })
                         .has_changes()
                     {
-                        *fn_ref = engines.de().insert(new_decl, None);
+                        *fn_ref = engines.de().insert_modified(new_decl, *fn_ref.id());
                         has_changes = HasChanges::Yes;
                     }
                 }

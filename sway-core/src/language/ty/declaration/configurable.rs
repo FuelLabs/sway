@@ -25,7 +25,7 @@ pub struct TyConfigurableDecl {
     pub return_type: TypeId,
     pub type_ascription: GenericTypeArgument,
     pub span: Span,
-    // Only encoding v1 has a decode_fn
+    /// `Some` iff encoding is v1, otherwise `None`.
     pub decode_fn: Option<DeclRef<DeclId<TyFunctionDecl>>>,
 }
 

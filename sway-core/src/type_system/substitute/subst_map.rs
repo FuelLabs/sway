@@ -1,6 +1,6 @@
 use crate::{
     ast_elements::type_parameter::ConstGenericExpr,
-    decl_engine::{DeclEngineGetParsedDeclId, DeclEngineInsert, ParsedDeclEngineInsert},
+    decl_engine::{DeclEngineInsert, ParsedDeclEngineInsert},
     engine_threading::{
         DebugWithEngines, Engines, PartialEqWithEngines, PartialEqWithEnginesContext,
     },
@@ -487,8 +487,7 @@ impl TypeSubstMap {
                     }
                 }
                 if need_to_create_new {
-                    let new_decl_ref =
-                        decl_engine.insert(decl, decl_engine.get_parsed_decl_id(&decl_id).as_ref());
+                    let new_decl_ref = decl_engine.insert_modified(decl, decl_id);
                     Some(type_engine.insert_struct(engines, *new_decl_ref.id()))
                 } else {
                     None
@@ -517,8 +516,7 @@ impl TypeSubstMap {
                     }
                 }
                 if need_to_create_new {
-                    let new_decl_ref =
-                        decl_engine.insert(decl, decl_engine.get_parsed_decl_id(&decl_id).as_ref());
+                    let new_decl_ref = decl_engine.insert_modified(decl, decl_id);
                     Some(type_engine.insert_enum(engines, *new_decl_ref.id()))
                 } else {
                     None

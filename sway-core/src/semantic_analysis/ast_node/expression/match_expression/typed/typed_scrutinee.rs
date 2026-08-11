@@ -9,7 +9,7 @@ use sway_error::{
 use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
-    decl_engine::{DeclEngineGetParsedDeclId, DeclEngineInsert, DeclRef},
+    decl_engine::{DeclEngineInsert, DeclRef},
     language::{
         parsed::*,
         ty::{self, StructAccessInfo, TyDecl, TyScrutinee, TyStructDecl, TyStructField},
@@ -423,10 +423,7 @@ fn type_check_struct(
     })?;
 
     let struct_ref = if has_changes.has_changes() {
-        decl_engine.insert(
-            struct_decl,
-            decl_engine.get_parsed_decl_id(&struct_id).as_ref(),
-        )
+        decl_engine.insert_modified(struct_decl, struct_id)
     } else {
         DeclRef::new(struct_decl.name().clone(), struct_id, struct_decl.span())
     };
@@ -539,7 +536,7 @@ fn type_check_enum(
     let typed_value = ty::TyScrutinee::type_check(handler, ctx, value)?;
 
     let enum_ref = if has_changes.has_changes() {
-        decl_engine.insert(enum_decl, decl_engine.get_parsed_decl_id(&enum_id).as_ref())
+        decl_engine.insert_modified(enum_decl, enum_id)
     } else {
         DeclRef::new(enum_decl.name().clone(), enum_id, enum_decl.span())
     };
