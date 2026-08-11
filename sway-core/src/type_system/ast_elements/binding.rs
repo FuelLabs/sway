@@ -1,9 +1,7 @@
 use std::collections::BTreeMap;
 
 use crate::{
-    decl_engine::{
-        parsed_id::ParsedDeclId, DeclEngineGetParsedDeclId, DeclEngineInsert, DeclId, DeclRef,
-    },
+    decl_engine::{parsed_id::ParsedDeclId, DeclEngineInsert, DeclId, DeclRef},
     engine_threading::{EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext},
     language::{
         parsed::{FunctionDeclaration, StructDeclaration},
@@ -335,10 +333,7 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
 
                 let new_fn_ref = if has_changes.has_changes() {
                     decl_engine
-                        .insert(
-                            new_copy,
-                            decl_engine.get_parsed_decl_id(fn_ref.id()).as_ref(),
-                        )
+                        .insert_modified(new_copy, *fn_ref.id())
                         .with_parent(ctx.engines.de(), fn_ref.id().into())
                 } else {
                     fn_ref
@@ -419,12 +414,7 @@ impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
         let span = new_copy.span();
         let decl_name = new_copy.name().clone();
         let new_struct_id = if has_changes.has_changes() {
-            *decl_engine
-                .insert(
-                    new_copy,
-                    decl_engine.get_parsed_decl_id(&struct_id).as_ref(),
-                )
-                .id()
+            *decl_engine.insert_modified(new_copy, struct_id).id()
         } else {
             struct_id
         };
@@ -482,9 +472,7 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
         let span = new_copy.span();
         let decl_name = new_copy.name().clone();
         let new_enum_id = if has_changes.has_changes() {
-            *decl_engine
-                .insert(new_copy, decl_engine.get_parsed_decl_id(&enum_id).as_ref())
-                .id()
+            *decl_engine.insert_modified(new_copy, enum_id).id()
         } else {
             enum_id
         };

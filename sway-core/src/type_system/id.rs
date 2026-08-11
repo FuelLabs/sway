@@ -8,9 +8,7 @@ use sway_error::{
 use sway_types::{BaseIdent, Named, Span, Spanned};
 
 use crate::{
-    decl_engine::{
-        DeclEngineGet, DeclEngineGetParsedDecl, DeclEngineInsert, MaterializeConstGenerics,
-    },
+    decl_engine::{DeclEngineGet, DeclEngineInsert, MaterializeConstGenerics},
     engine_threading::{DebugWithEngines, DisplayWithEngines, Engines, WithEngines},
     language::{
         ty::{StructDecl, TyDecl, TyStructDecl},
@@ -132,14 +130,13 @@ impl MaterializeConstGenerics for TypeId {
         name: &str,
         value: &crate::language::ty::TyExpression,
     ) -> Result<HasChanges, ErrorEmitted> {
-        let mut has_changes = HasChanges::No;
-        match &*engines.te().get(*self) {
+        let has_changes = match &*engines.te().get(*self) {
             TypeInfo::Array(
                 element_type,
                 Length(ConstGenericExpr::AmbiguousVariableExpression { ident, decl }),
             ) => {
                 let mut elem_type = element_type.clone();
-                has_changes |=
+                let mut has_changes =
                     elem_type.materialize_const_generics(engines, handler, name, value)?;
 
                 if ident.as_str() == name {
@@ -155,6 +152,9 @@ impl MaterializeConstGenerics for TypeId {
                         }
                     };
 
+                    // We are always replacing `Length` with a `ConstGenericExpr::Literal`,
+                    // regardless if `elem_type` had changes or not. Therefore, `self` is
+                    // always changed and `has_changes` is always `Yes`.
                     *self = engines.te().insert_array(
                         engines,
                         elem_type,
@@ -171,47 +171,45 @@ impl MaterializeConstGenerics for TypeId {
                             decl.materialize_const_generics(engines, handler, name, value)?;
                     }
 
-                    *self = engines.te().insert_array(
-                        engines,
-                        elem_type,
-                        Length(ConstGenericExpr::AmbiguousVariableExpression {
-                            ident: ident.clone(),
-                            decl,
-                        }),
-                    );
-                    has_changes = HasChanges::Yes;
+                    // In this case, we are replacing `self` only if `elem_type` or
+                    // `decl` had changes.
+                    if has_changes.has_changes() {
+                        *self = engines.te().insert_array(
+                            engines,
+                            elem_type,
+                            Length(ConstGenericExpr::AmbiguousVariableExpression {
+                                ident: ident.clone(),
+                                decl,
+                            }),
+                        );
+                    }
                 }
+                has_changes
             }
             TypeInfo::Enum(id) => {
                 let decl = engines.de().get(id);
                 let mut decl = (*decl).clone();
-                has_changes |= decl.materialize_const_generics(engines, handler, name, value)?;
+                let has_changes = decl.materialize_const_generics(engines, handler, name, value)?;
 
-                let parsed_decl = engines
-                    .de()
-                    .get_parsed_decl(id)
-                    .unwrap()
-                    .to_enum_decl(handler, engines)
-                    .ok();
-                let decl_ref = engines.de().insert(decl, parsed_decl.as_ref());
+                if has_changes.has_changes() {
+                    let decl_ref = engines.de().insert_modified(decl, *id);
 
-                *self = engines.te().insert_enum(engines, *decl_ref.id());
-                has_changes = HasChanges::Yes;
+                    *self = engines.te().insert_enum(engines, *decl_ref.id());
+                }
+
+                has_changes
             }
             TypeInfo::Struct(id) => {
                 let mut decl = TyStructDecl::clone(&engines.de().get(id));
-                has_changes |= decl.materialize_const_generics(engines, handler, name, value)?;
+                let has_changes = decl.materialize_const_generics(engines, handler, name, value)?;
 
-                let parsed_decl = engines
-                    .de()
-                    .get_parsed_decl(id)
-                    .unwrap()
-                    .to_struct_decl(handler, engines)
-                    .ok();
-                let decl_ref = engines.de().insert(decl, parsed_decl.as_ref());
+                if has_changes.has_changes() {
+                    let decl_ref = engines.de().insert_modified(decl, *id);
 
-                *self = engines.te().insert_struct(engines, *decl_ref.id());
-                has_changes = HasChanges::Yes;
+                    *self = engines.te().insert_struct(engines, *decl_ref.id());
+                }
+
+                has_changes
             }
             TypeInfo::StringArray(Length(ConstGenericExpr::AmbiguousVariableExpression {
                 ident,
@@ -236,7 +234,8 @@ impl MaterializeConstGenerics for TypeId {
                         span: value.span.clone(),
                     }),
                 );
-                has_changes = HasChanges::Yes;
+
+                HasChanges::Yes
             }
             TypeInfo::Ref {
                 to_mutable_value,
@@ -244,17 +243,20 @@ impl MaterializeConstGenerics for TypeId {
                 ..
             } => {
                 let mut referenced_type = referenced_type.clone();
-                has_changes |= referenced_type
+                let has_changes = referenced_type
                     .type_id
                     .materialize_const_generics(engines, handler, name, value)?;
 
-                *self = engines
-                    .te()
-                    .insert_ref(engines, *to_mutable_value, referenced_type);
-                has_changes = HasChanges::Yes;
+                if has_changes.has_changes() {
+                    *self = engines
+                        .te()
+                        .insert_ref(engines, *to_mutable_value, referenced_type);
+                }
+
+                has_changes
             }
-            _ => {}
-        }
+            _ => HasChanges::No,
+        };
 
         Ok(has_changes)
     }

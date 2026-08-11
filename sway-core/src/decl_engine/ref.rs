@@ -110,7 +110,7 @@ where
         {
             let mut decl = (*decl_engine.get(&self.id)).clone();
             if decl.subst(ctx).has_changes() {
-                Some(decl_engine.insert(decl, decl_engine.get_parsed_decl_id(&self.id).as_ref()))
+                Some(decl_engine.insert_modified(decl, self.id))
             } else {
                 None
             }
@@ -150,7 +150,7 @@ where
         if decl.subst(ctx).has_changes() {
             Some(
                 decl_engine
-                    .insert(decl, decl_engine.get_parsed_decl_id(&self.id).as_ref())
+                    .insert_modified(decl, self.id)
                     .with_parent(decl_engine, self.id.into()),
             )
         } else {
