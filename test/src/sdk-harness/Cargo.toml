@@ -23,7 +23,7 @@ fuels = { version = "0.77", features = ["fuel-core-lib"] }
 hex = "0.4"
 paste = "1.0"
 pretty_assertions = "1.4"
-rand = "0.8"
+rand = "0.10"
 sha2 = "0.10"
 sha3 = "0.10"
 tai64 = { version = "4.0", features = ["serde"] }
