@@ -1,0 +1,41 @@
+---
+source: sway-ir/tests/tests.rs
+---
+Modified: false
+
+script {
+    fn fmt_49() -> () {
+        local mut { u64, bool } __aggr_memcpy_0
+        local { u64, bool } __struct_init_0
+        local mut { u64, bool } f__
+
+        entry():
+        v1v1 = get_local __ptr { u64, bool }, __struct_init_0
+        mem_clear_val v1v1
+        v3v1 = get_local __ptr { u64, bool }, f__
+        v4v1 = get_local __ptr { u64, bool }, __struct_init_0
+        mem_copy_val v3v1, v4v1
+        br body()
+
+        body():
+        v7v1 = get_local __ptr { u64, bool }, __aggr_memcpy_0
+        v8v1 = get_local __ptr { u64, bool }, f__
+        mem_copy_val v7v1, v8v1
+        v10v1 = get_local __ptr { u64, bool }, f__
+        v11v1 = get_local __ptr { u64, bool }, __aggr_memcpy_0
+        mem_copy_val v10v1, v11v1
+        v13v1 = const unit ()
+        ret () v13v1
+    }
+}
+
+--- LOG ---
+Cycle Detected: Cycle::RhoShape {
+    tail: [
+        "__struct_init_0",
+    ],
+    cycle: [
+        "f__",
+        "__aggr_memcpy_0",
+    ],
+}

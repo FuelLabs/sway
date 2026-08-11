@@ -37,7 +37,7 @@ impl Symbol {
         }
     }
 
-    pub fn _get_name(&self, context: &Context, function: Function) -> String {
+    pub fn get_name(&self, context: &Context, function: Function) -> String {
         match self {
             Symbol::Local(l) => function.lookup_local_name(context, l).unwrap().clone(),
             Symbol::Arg(ba) => format!("{}[{}]", ba.block.get_label(context), ba.idx),

@@ -1,0 +1,16 @@
+cmds = [
+    """
+echo This test generates an indirect self copy:
+    v35v1 = get_local __ptr { u64 }, s
+    ...
+    v76v1 = load v35v1
+    br block0(v76v1)
+
+    block0(mut v71v1: { u64 }):
+    v38v1 = get_local __ptr { u64 }, s
+    store v71v1 to v38v1
+
+This cycle is detected by `copy_prop_reverse` cycle detection and abort the optimization.
+""",
+    "forc build --path {root} --release --ir inline | filter-fn {name} main_0"
+]
