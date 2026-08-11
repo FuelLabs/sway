@@ -13,6 +13,62 @@ library {
 }
 
    Compiling script enum_zero_sized_variants (test/src/e2e_vm_tests/test_programs/should_pass/language/enum_zero_sized_variants)
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
 // IR: Final
 script {
     global enum_zero_sized_variants::GLOBAL_DIFFERENT_TYPES : { u64 } = const { u64 } { u64 1 }

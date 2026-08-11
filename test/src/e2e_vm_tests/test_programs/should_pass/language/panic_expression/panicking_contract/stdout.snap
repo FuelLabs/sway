@@ -8,6 +8,10 @@ output:
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
    Compiling library panicking_lib (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_lib)
    Compiling contract panicking_contract (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_contract)
+   3
+   3
+   3
+   3
     Finished debug [unoptimized + fuel] target(s) [7.872 KB] in ???
      Running 12 tests, filtered 0 tests
 
@@ -142,6 +146,14 @@ output:
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
    Compiling library panicking_lib (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_lib)
    Compiling contract panicking_contract (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_contract)
+   3
+   3
+   3
+   3
+   3
+   3
+   3
+   3
     Finished release [optimized + fuel] target(s) [5.616 KB] in ???
      Running 12 tests, filtered 0 tests
 
