@@ -126,7 +126,7 @@ pub fn fn_inline(
                 None => {}
             }
 
-            // Heuristic to abort inlining if the final funcion would spill
+            // Heuristic to abort inlining if the final function would spill
             // registers
             if will_spill_registers(ctx, &function, callee, call_site, &ssa_liveness) {
                 return false;
