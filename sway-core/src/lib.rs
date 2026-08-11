@@ -853,6 +853,18 @@ pub struct CompiledAsm {
     pub panicking_call_occurrences: PanickingCallOccurrences,
 }
 
+/// The result of compiling an AST to IR, i.e. the optimized IR [Context] together
+/// with the occurrence maps collected during IR generation.
+///
+/// This is the intermediate artifact produced by [ast_to_ir] and consumed by
+/// [ir_to_asm], allowing the "AST to IR" and "IR to ASM" phases to be measured
+/// and driven independently.
+pub struct CompiledIr<'eng> {
+    pub ir: Context<'eng>,
+    pub panic_occurrences: PanicOccurrences,
+    pub panicking_call_occurrences: PanickingCallOccurrences,
+}
+
 #[allow(clippy::result_large_err)]
 #[allow(clippy::too_many_arguments)]
 pub fn parsed_to_ast(
@@ -1463,6 +1475,10 @@ pub fn compile_to_asm(
 
 /// Given an AST compilation result, try compiling to a `CompiledAsm`,
 /// containing the asm in opcode form (not raw bytes/bytecode).
+///
+/// This is a convenience wrapper that runs both compilation phases,
+/// [ast_to_ir] followed by [ir_to_asm]. Callers that want to measure the two
+/// phases independently should call those functions directly.
 pub fn ast_to_asm(
     handler: &Handler,
     engines: &Engines,
@@ -1470,6 +1486,23 @@ pub fn ast_to_asm(
     build_config: &BuildConfig,
     experimental: ExperimentalFeatures,
 ) -> Result<CompiledAsm, ErrorEmitted> {
+    let compiled_ir = ast_to_ir(handler, engines, programs, build_config, experimental)?;
+    ir_to_asm(handler, compiled_ir, build_config)
+}
+
+/// Given an AST compilation result, try compiling to the optimized IR [Context],
+/// wrapped in a [CompiledIr] together with the occurrence maps collected during
+/// IR generation.
+///
+/// This is the first half of [ast_to_asm]; the resulting [CompiledIr] is meant to
+/// be passed to [ir_to_asm].
+pub fn ast_to_ir<'eng>(
+    handler: &Handler,
+    engines: &'eng Engines,
+    programs: &Programs,
+    build_config: &BuildConfig,
+    experimental: ExperimentalFeatures,
+) -> Result<CompiledIr<'eng>, ErrorEmitted> {
     let typed_program = match &programs.typed {
         Ok(typed_program) => typed_program,
         Err(err) => return Err(err.error),
@@ -1478,7 +1511,7 @@ pub fn ast_to_asm(
     let mut panic_occurrences = PanicOccurrences::default();
     let mut panicking_call_occurrences = PanickingCallOccurrences::default();
 
-    let asm = match compile_ast_to_ir_to_asm(
+    let ir = match compile_ast_to_ir(
         handler,
         engines,
         typed_program,
@@ -1494,6 +1527,36 @@ pub fn ast_to_asm(
         }
     };
 
+    Ok(CompiledIr {
+        ir,
+        panic_occurrences,
+        panicking_call_occurrences,
+    })
+}
+
+/// Given the optimized IR produced by [ast_to_ir], compile it to a `CompiledAsm`,
+/// containing the asm in opcode form (not raw bytes/bytecode).
+///
+/// This is the second half of [ast_to_asm].
+pub fn ir_to_asm(
+    handler: &Handler,
+    compiled_ir: CompiledIr<'_>,
+    build_config: &BuildConfig,
+) -> Result<CompiledAsm, ErrorEmitted> {
+    let CompiledIr {
+        ir,
+        panic_occurrences,
+        panicking_call_occurrences,
+    } = compiled_ir;
+
+    let asm = match compile_ir_context_to_finalized_asm(handler, &ir, Some(build_config)) {
+        Ok(res) => res,
+        Err(err) => {
+            handler.dedup();
+            return Err(err);
+        }
+    };
+
     Ok(CompiledAsm {
         finalized_asm: asm,
         panic_occurrences,
@@ -1501,15 +1564,15 @@ pub fn ast_to_asm(
     })
 }
 
-pub(crate) fn compile_ast_to_ir_to_asm(
+pub(crate) fn compile_ast_to_ir<'eng>(
     handler: &Handler,
-    engines: &Engines,
+    engines: &'eng Engines,
     program: &ty::TyProgram,
     panic_occurrences: &mut PanicOccurrences,
     panicking_call_occurrences: &mut PanickingCallOccurrences,
     build_config: &BuildConfig,
     experimental: ExperimentalFeatures,
-) -> Result<FinalizedAsm, ErrorEmitted> {
+) -> Result<Context<'eng>, ErrorEmitted> {
     // The IR pipeline relies on type information being fully resolved.
     // If type information is found to still be generic or unresolved inside of
     // IR, this is considered an internal compiler error. To resolve this situation,
@@ -1632,7 +1695,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     };
     res?;
 
-    compile_ir_context_to_finalized_asm(handler, &ir, Some(build_config))
+    Ok(ir)
 }
 
 /// Given input Sway source code, compile to [CompiledBytecode], containing the asm in bytecode form.

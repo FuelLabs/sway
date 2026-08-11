@@ -322,15 +322,15 @@ impl PanickingFunctionCache {
     }
 }
 
-pub fn compile_program<'a>(
+pub fn compile_program<'eng>(
     program: &ty::TyProgram,
-    panic_occurrences: &'a mut PanicOccurrences,
-    panicking_call_occurrences: &'a mut PanickingCallOccurrences,
+    panic_occurrences: &mut PanicOccurrences,
+    panicking_call_occurrences: &mut PanickingCallOccurrences,
     include_tests: bool,
-    engines: &'a Engines,
+    engines: &'eng Engines,
     experimental: ExperimentalFeatures,
     backtrace: Backtrace,
-) -> Result<Context<'a>, Vec<CompileError>> {
+) -> Result<Context<'eng>, Vec<CompileError>> {
     let declaration_engine = engines.de();
 
     let test_fns = match include_tests {
