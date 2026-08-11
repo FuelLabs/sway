@@ -404,7 +404,7 @@ where
 
         // generate code
         let mut method_names = String::new();
-        for (idx, r) in contract_fns.into_iter().enumerate() {
+        for (idx, r) in contract_fns.iter().enumerate() {
             let decl = engines.de().get(r);
 
             // For contract methods, even if their names are raw identifiers,

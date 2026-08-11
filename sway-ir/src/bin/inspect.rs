@@ -263,7 +263,9 @@ impl Cli {
     }
 
     fn source(&self) -> bool {
-        self.print.iter().any(|item| matches!(item, PrintItem::Source))
+        self.print
+            .iter()
+            .any(|item| matches!(item, PrintItem::Source))
     }
 }
 
@@ -857,7 +859,10 @@ fn parse_metadata_def(line: &str) -> Option<(u64, MdValue)> {
     while i < bytes.len() && bytes[i].is_ascii_digit() {
         i += 1;
     }
-    let num: u64 = std::str::from_utf8(&bytes[num_start..i]).ok()?.parse().ok()?;
+    let num: u64 = std::str::from_utf8(&bytes[num_start..i])
+        .ok()?
+        .parse()
+        .ok()?;
     while i < bytes.len() && (bytes[i] == b' ' || bytes[i] == b'\t') {
         i += 1;
     }
@@ -918,12 +923,9 @@ fn parse_md_value(s: &str) -> MdValue {
     // Struct: `<tag> <field> ...`.  A span-shaped struct has exactly three
     // fields: `!M <int> <int>`.
     let mut tokens = s.split_whitespace();
-    let (Some(tag), Some(file_tok), Some(start_tok), Some(end_tok)) = (
-        tokens.next(),
-        tokens.next(),
-        tokens.next(),
-        tokens.next(),
-    ) else {
+    let (Some(tag), Some(file_tok), Some(start_tok), Some(end_tok)) =
+        (tokens.next(), tokens.next(), tokens.next(), tokens.next())
+    else {
         return MdValue::Other;
     };
     if tokens.next().is_some() {
@@ -933,7 +935,10 @@ fn parse_md_value(s: &str) -> MdValue {
     if tag.starts_with('!') || tag.chars().next().is_some_and(|c| c.is_ascii_digit()) {
         return MdValue::Other;
     }
-    let file = match file_tok.strip_prefix('!').and_then(|n| n.parse::<u64>().ok()) {
+    let file = match file_tok
+        .strip_prefix('!')
+        .and_then(|n| n.parse::<u64>().ok())
+    {
         Some(n) => n,
         None => return MdValue::Other,
     };
