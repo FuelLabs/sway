@@ -132,7 +132,7 @@ devault = "0.2"
 dir_indexer = "0.0"
 dirs = "5.0"
 downcast-rs = "1.2"
-duct = "0.13"
+duct = { version = "1.1", features = ["timeout"] }
 duplicate = "2.0"
 either = "1.9"
 escargot = "0.5"

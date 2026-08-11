@@ -17,7 +17,9 @@ use downcast_rs::{impl_downcast, Downcast};
 use rustc_hash::FxHashMap;
 use std::{
     any::{type_name, TypeId},
+    cell::RefCell,
     collections::{hash_map, HashSet},
+    ops::DerefMut,
 };
 
 /// Result of an analysis. Specific result must be downcasted to.
@@ -94,9 +96,18 @@ pub struct AnalysisResults {
     // Hash from (AnalysisResultT, (PassScope, Scope Identity)) to an actual result.
     results: FxHashMap<(TypeId, (TypeId, slotmap::DefaultKey)), AnalysisResult>,
     name_typeid_map: FxHashMap<&'static str, TypeId>,
+    pub is_log_enabled: bool,
+    /// Amalgamated debug log from all passes
+    log_string: RefCell<String>,
 }
 
 impl AnalysisResults {
+    pub fn push_log(&self, log: impl AsRef<str>) {
+        if self.is_log_enabled {
+            self.log_string.borrow_mut().push_str(log.as_ref());
+        }
+    }
+
     /// Get the results of an analysis.
     /// Example analyses.get_analysis_result::<DomTreeAnalysis>(foo).
     pub fn get_analysis_result<T: AnalysisResultT, S: PassScope + 'static>(&self, scope: S) -> &T {
@@ -173,6 +184,7 @@ pub struct Options {
     pub print_passes: HashSet<String>,
     pub force_verify_ir: bool,
     pub rounds: usize,
+    pub log: bool,
 }
 
 impl Default for Options {
@@ -185,6 +197,7 @@ impl Default for Options {
             print_passes: HashSet::default(),
             force_verify_ir: false,
             rounds: 2,
+            log: false,
         }
     }
 }
@@ -382,6 +395,9 @@ impl PassManager {
             print_initial_or_final_ir(ir, "Initial", options.print_metadata);
         }
 
+        self.analyses.is_log_enabled = options.log;
+        self.analyses.log_string.borrow_mut().clear();
+
         // Verify before we start
         ir.verify()?;
 
@@ -450,6 +466,11 @@ impl PassManager {
     /// Get reference to a registered pass.
     pub fn lookup_registered_pass(&self, name: &str) -> Option<&Pass> {
         self.passes.get(name)
+    }
+
+    pub fn take_log(&self) -> String {
+        let mut log = self.analyses.log_string.borrow_mut();
+        std::mem::take(log.deref_mut())
     }
 
     pub fn help_text(&self) -> String {
