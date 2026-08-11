@@ -404,7 +404,7 @@ where
 
         // generate code
         let mut method_names = String::new();
-        for r in contract_fns {
+        for (idx, r) in contract_fns.into_iter().enumerate() {
             let decl = engines.de().get(r);
 
             // For contract methods, even if their names are raw identifiers,
@@ -465,8 +465,8 @@ where
             let code = arm_by_size.entry(method_name.len()).or_default();
 
             code.push_str(&format!("
-            let is_this_method = asm(r, ptr: _method_name_ptr, name: _method_names_ptr, len: {method_name_len}) {{ addi r name i{offset}; meq r ptr r len; r: bool }};
-            if is_this_method {{\n"));
+            let check_{method_name}_{idx} = asm(r, ptr: _method_name_ptr, name: _method_names_ptr, len: {method_name_len}) {{ addi r name i{offset}; meq r ptr r len; r: bool }};
+            if check_{method_name}_{idx} {{\n"));
 
             if args_types == "()" {
                 code.push_str(&format!(

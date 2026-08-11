@@ -97,40 +97,10 @@ pub fn fn_inline(
                 counts
             });
 
-    let inline_heuristic = |ctx: &Context, func: &Function, _call_site: &Value| {
-        // The encoding code in the `__entry` functions contains pointer patterns that mark
-        // escape analysis and referred symbols as incomplete. This effectively forbids optimizations
-        // like SROA nad DCE. If we inline original entries, like e.g., `main`, the code in them will
-        // also not be optimized. Therefore, we forbid inlining of original entries into `__entry`.
-        if func.is_original_entry(ctx) {
-            return false;
-        }
-
-        let attributed_inline = metadata_to_inline(ctx, func.get_metadata(ctx));
-        match attributed_inline {
-            Some(Inline::Always) => {
-                // TODO: check if inlining of function is possible
-                // return true;
-            }
-            Some(Inline::Never) => {
-                return false;
-            }
-            None => {}
-        }
-
-        // If the function is called only once then definitely inline it.
-        if call_counts.get(func).copied().unwrap_or(0) == 1 {
-            return true;
-        }
-
-        // If the function is (still) small then also inline it.
-        const MAX_INLINE_INSTRS_COUNT: usize = 12;
-        if func.num_instructions_incl_asm_instructions(ctx) <= MAX_INLINE_INSTRS_COUNT {
-            return true;
-        }
-
-        false
-    };
+    let ssa_liveness = module
+        .function_iter(context)
+        .map(|func| (func, SsaLiveness::compute_ssa_liveness(context, &func)))
+        .collect::<HashMap<_, _>>();
 
     let cg =
         call_graph::build_call_graph(context, &module.function_iter(context).collect::<Vec<_>>());
@@ -138,20 +108,54 @@ pub fn fn_inline(
     let mut modified = false;
 
     for function in functions {
+        let inline_heuristic = |ctx: &Context, callee: &Function, call_site: &Value| {
+            if callee.is_original_entry(ctx) {
+                return false;
+            }
+
+            let attributed_inline = metadata_to_inline(ctx, callee.get_metadata(ctx));
+            match attributed_inline {
+                Some(Inline::Always) => {
+                    // TODO: check if inlining of function is possible
+                    // return true;
+                }
+                Some(Inline::Never) => {
+                    eprintln!("   3");
+                    return false;
+                }
+                None => {}
+            }
+
+            // Heuristic to abort inlining if the final funcion would spill
+            // registers
+            if will_spill_registers(ctx, &function, callee, call_site, &ssa_liveness) {
+                return false;
+            }
+
+            // If the merged function becomes too large, we bail
+            let caller_size = function.num_instructions_incl_asm_instructions(ctx);
+            let callee_size = callee.num_instructions_incl_asm_instructions(ctx);
+            if caller_size + callee_size > 2000 {
+                return false;
+            }
+
+            // If the function is called only once then definitely inline it.
+            if call_counts.get(callee).copied().unwrap_or(0) == 1 {
+                return true;
+            }
+
+            // If the function is (still) small then also inline it.
+            const MAX_INLINE_INSTRS_COUNT: usize = 12;
+            if callee.num_instructions_incl_asm_instructions(ctx) <= MAX_INLINE_INSTRS_COUNT {
+                return true;
+            }
+
+            false
+        };
+
         modified |= inline_some_function_calls(context, &function, inline_heuristic)?;
     }
     Ok(modified)
-}
-
-/// Inline all calls made from a specific function, effectively removing all `Call` instructions.
-///
-/// e.g., If this is applied to main() then all calls in the program are removed.  This is
-/// obviously dangerous for recursive functions, in which case this pass would inline forever.
-pub fn inline_all_function_calls(
-    context: &mut Context,
-    function: &Function,
-) -> Result<bool, IrError> {
-    inline_some_function_calls(context, function, |_, _, _| true)
 }
 
 /// Inline function calls based on a provided heuristic predicate.
@@ -184,6 +188,8 @@ pub fn inline_some_function_calls<F: Fn(&Context, &Function, &Value) -> bool>(
         })
         .unzip();
 
+    let mut modified = false;
+
     for call_site in &call_sites {
         let call_site_in = call_data.get(call_site).unwrap();
         let (block, inlined_function) = *call_site_in.borrow();
@@ -201,9 +207,10 @@ pub fn inline_some_function_calls<F: Fn(&Context, &Function, &Value) -> bool>(
             inlined_function,
             &call_data,
         )?;
+        modified = true;
     }
 
-    Ok(!call_data.is_empty())
+    Ok(modified)
 }
 
 /// A utility to get a predicate which can be passed to inline_some_function_calls() based on
@@ -251,6 +258,124 @@ pub fn is_small_fn(
                     <= max_stack_size_count
             })
     }
+}
+
+/// Per-function SSA-liveness registry
+struct SsaLiveness {
+    /// How many live SSA register at each instruction
+    live_at: Vec<usize>,
+    /// Value -> its index map
+    index_of: FxHashMap<Value, usize>,
+}
+
+impl SsaLiveness {
+    /// Maximum number of simultaneously-live SSA registers in the function.
+    fn max_live_ssa_regs(&self) -> usize {
+        self.live_at.iter().copied().max().unwrap_or(0)
+    }
+
+    fn live_at_value(&self, value: &Value) -> usize {
+        let i = match self.index_of.get(value) {
+            Some(&i) => i,
+            None => return 0,
+        };
+        self.live_at.get(i).copied().unwrap_or(0)
+    }
+
+    fn compute_ssa_liveness(context: &Context, function: &Function) -> SsaLiveness {
+        let mut index_of: FxHashMap<Value, usize> = FxHashMap::default();
+        let mut block_start: FxHashMap<Block, usize> = FxHashMap::default();
+        let mut idx = 0usize;
+
+        for block in function.block_iter(context) {
+            block_start.insert(block, idx);
+            for ins in block.instruction_iter(context) {
+                index_of.insert(ins, idx);
+                idx += 1;
+            }
+            let start = block_start[&block];
+            for arg in block.arg_iter(context) {
+                index_of.entry(*arg).or_insert(start);
+            }
+        }
+
+        let n = idx;
+        let mut live_at = vec![0usize; n];
+
+        if n == 0 {
+            return SsaLiveness { live_at, index_of };
+        }
+
+        // Last use of each SSA register is the highest instruction index listing it as an operand.
+        // TODO: This is a over approximation, as it does not consider CFG/dominance
+        let mut last_use: FxHashMap<Value, usize> = FxHashMap::default();
+        for (_, ins) in function.instruction_iter(context) {
+            let i = index_of[&ins];
+            if let Some(instr) = ins.get_instruction(context) {
+                for op in instr.op.get_operands() {
+                    if index_of.contains_key(&op) {
+                        last_use
+                            .entry(op)
+                            .and_modify(|e| *e = (*e).max(i))
+                            .or_insert(i);
+                    }
+                }
+            }
+        }
+
+        // +1 at each definition;
+        // -1 just past each last use;
+        let mut delta = vec![0; n + 1];
+        let last_uses = last_use.iter().map(|(&v, &l)| (v, l)).collect::<Vec<_>>();
+        for (value, last_use_idx) in last_uses {
+            let idx = index_of[&value];
+            delta[idx] += 1;
+            delta[last_use_idx + 1] -= 1;
+        }
+
+        let mut quantity = 0;
+        for (i, &x) in delta.iter().enumerate().take(n) {
+            quantity += x;
+            live_at[i] = quantity as usize;
+        }
+
+        SsaLiveness { live_at, index_of }
+    }
+}
+
+/// Heuristic to determine if the function would spill register
+/// after inlining callee.
+fn will_spill_registers(
+    context: &Context,
+    caller: &Function,
+    callee: &Function,
+    call_site: &Value,
+    liveness_registry: &HashMap<Function, SsaLiveness>,
+) -> bool {
+    // Too many locals check
+    let caller_locals = caller.locals_iter(context).count();
+    let callee_locals = callee.locals_iter(context).count();
+
+    const LOCALS_THRESHOLD: usize = 100;
+    if caller_locals + callee_locals > LOCALS_THRESHOLD {
+        return true;
+    }
+
+    // Too many live SSA registers check
+    let caller_live_at_site = liveness_registry
+        .get(caller)
+        .map(|p| p.live_at_value(call_site))
+        .unwrap_or(0);
+    let callee_peak = liveness_registry
+        .get(callee)
+        .map(|p| p.max_live_ssa_regs())
+        .unwrap_or(0);
+    if caller_live_at_site + callee_peak > 15 {
+        return true;
+    }
+
+    // Will not spill
+    false
 }
 
 /// Inline a function to a specific call site within another function.

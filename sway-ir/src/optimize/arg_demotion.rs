@@ -41,6 +41,8 @@ pub fn arg_demotion(
     Ok(result)
 }
 
+// TODO We can improve this demotion, more at
+// https://github.com/FuelLabs/sway/issues/7282#issuecomment-5242218643
 fn fn_arg_demotion(context: &mut Context, function: Function) -> Result<bool, IrError> {
     // The criteria for now for demotion is whether the arg type is larger than 64-bits or is an
     // aggregate.  This info should be instead determined by a target info analysis pass.

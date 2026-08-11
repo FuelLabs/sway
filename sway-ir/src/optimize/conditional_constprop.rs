@@ -32,9 +32,10 @@ pub fn ccp(
     let mut dom_region_replacements = FxHashMap::default();
 
     for block in function.block_iter(context) {
-        let term = block
-            .get_terminator(context)
-            .expect("Malformed block: no terminator");
+        let Some(term) = block.get_terminator(context) else {
+            continue;
+        };
+
         if let InstOp::ConditionalBranch {
             cond_value,
             true_block,
