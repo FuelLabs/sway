@@ -1770,17 +1770,31 @@ pub fn compile(
         );
     }
 
-    let asm_res = time_expr!(
+    let ir_res = time_expr!(
         pkg.name,
-        "compile ast to asm",
-        "compile_ast_to_asm",
-        sway_core::ast_to_asm(
+        "compile ast to ir",
+        "compile_ast_to_ir",
+        sway_core::ast_to_ir(
             &handler,
             engines,
             &programs,
             &sway_build_config,
             experimental
         ),
+        Some(sway_build_config.clone()),
+        metrics
+    );
+
+    let compiled_ir = match ir_res {
+        Err(_) => return fail(handler),
+        Ok(compiled_ir) => compiled_ir,
+    };
+
+    let asm_res = time_expr!(
+        pkg.name,
+        "compile ir to asm",
+        "compile_ir_to_asm",
+        sway_core::ir_to_asm(&handler, compiled_ir, &sway_build_config),
         Some(sway_build_config.clone()),
         metrics
     );
