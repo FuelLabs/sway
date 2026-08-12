@@ -17,7 +17,8 @@ use crate::{
         CallPath, CallPathType,
     },
     semantic_analysis::*,
-    EnforceTypeArguments, Engines, GenericArgument, SubstTypes, TypeBinding, TypeCheckTypeBinding,
+    EnforceTypeArguments, Engines, GenericArgument, HasChanges, SubstTypes, TypeBinding,
+    TypeCheckTypeBinding,
 };
 
 impl ty::TyConfigurableDecl {
@@ -227,10 +228,11 @@ impl TypeCheckFinalization for TyConfigurableDecl {
         &mut self,
         handler: &Handler,
         ctx: &mut TypeCheckFinalizationContext,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
         if let Some(value) = self.value.as_mut() {
-            value.type_check_finalize(handler, ctx)?;
+            value.type_check_finalize(handler, ctx)
+        } else {
+            Ok(HasChanges::No)
         }
-        Ok(())
     }
 }

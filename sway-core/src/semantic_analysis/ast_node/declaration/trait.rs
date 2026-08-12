@@ -27,7 +27,7 @@ use crate::{
         TypeCheckFinalization, TypeCheckFinalizationContext,
     },
     type_system::*,
-    Engines,
+    Engines, HasChanges,
 };
 
 impl TyTraitItem {
@@ -663,12 +663,13 @@ impl TypeCheckFinalization for TyTraitDecl {
         &mut self,
         handler: &Handler,
         ctx: &mut TypeCheckFinalizationContext,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
         handler.scope(|handler| {
-            for item in self.items.iter_mut() {
-                let _ = item.type_check_finalize(handler, ctx);
-            }
-            Ok(())
+            self.items
+                .iter_mut()
+                .try_fold(HasChanges::No, |has_changes, item| {
+                    Ok(has_changes | item.type_check_finalize(handler, ctx)?)
+                })
         })
     }
 }

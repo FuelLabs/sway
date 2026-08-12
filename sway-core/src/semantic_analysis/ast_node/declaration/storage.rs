@@ -15,7 +15,7 @@ use crate::{
         symbol_collection_context::SymbolCollectionContext, TypeCheckAnalysis,
         TypeCheckAnalysisContext, TypeCheckFinalization, TypeCheckFinalizationContext,
     },
-    Engines,
+    Engines, HasChanges,
 };
 use fuel_vm::fuel_tx::Bytes32;
 use sway_error::{
@@ -188,12 +188,13 @@ impl TypeCheckFinalization for ty::TyStorageDecl {
         &mut self,
         handler: &Handler,
         ctx: &mut TypeCheckFinalizationContext,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
         handler.scope(|handler| {
-            for field in self.fields.iter_mut() {
-                let _ = field.type_check_finalize(handler, ctx);
-            }
-            Ok(())
+            self.fields
+                .iter_mut()
+                .try_fold(HasChanges::No, |has_changes, field| {
+                    Ok(has_changes | field.type_check_finalize(handler, ctx)?)
+                })
         })
     }
 }
@@ -203,7 +204,7 @@ impl TypeCheckFinalization for ty::TyStorageField {
         &mut self,
         handler: &Handler,
         ctx: &mut TypeCheckFinalizationContext,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
         self.initializer.type_check_finalize(handler, ctx)
     }
 }
