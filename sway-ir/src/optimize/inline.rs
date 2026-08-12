@@ -120,7 +120,6 @@ pub fn fn_inline(
                     // return true;
                 }
                 Some(Inline::Never) => {
-                    eprintln!("   3");
                     return false;
                 }
                 None => {}

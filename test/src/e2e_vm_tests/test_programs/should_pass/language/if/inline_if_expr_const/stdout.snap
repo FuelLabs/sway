@@ -7,18 +7,6 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/if/inline_if_expr_const
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert)
    Compiling script inline_if_expr_const (test/src/e2e_vm_tests/test_programs/should_pass/language/if/inline_if_expr_const)
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
     Finished debug [unoptimized + fuel] target(s) [592 B] in ???
      Running 1 test, filtered 0 tests
 

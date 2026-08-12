@@ -11,30 +11,6 @@ library {
 }
 
    Compiling script logging (test/src/e2e_vm_tests/test_programs/should_pass/language/logging)
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
 // IR: Final
 script {
     global __const_global : string<4> = const string<4> "sway"
@@ -1178,30 +1154,6 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/logging
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-vec)
    Compiling script logging (test/src/e2e_vm_tests/test_programs/should_pass/language/logging)
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
-   3
 warning: Returned value is ignored
   --> test/src/e2e_vm_tests/test_programs/should_pass/language/logging/src/main.sw:80:5
    |
