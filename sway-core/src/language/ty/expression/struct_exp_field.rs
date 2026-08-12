@@ -54,7 +54,7 @@ impl TypeCheckFinalization for TyStructExpressionField {
         &mut self,
         handler: &Handler,
         ctx: &mut TypeCheckFinalizationContext,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
         self.value.type_check_finalize(handler, ctx)
     }
 }

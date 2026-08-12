@@ -1,7 +1,10 @@
 use super::*;
-use crate::language::{
-    parsed::CodeBlock,
-    ty::{self, TyAstNodeContent, TyCodeBlock},
+use crate::{
+    language::{
+        parsed::CodeBlock,
+        ty::{self, TyAstNodeContent, TyCodeBlock},
+    },
+    HasChanges,
 };
 
 impl ty::TyCodeBlock {
@@ -177,12 +180,13 @@ impl TypeCheckFinalization for ty::TyCodeBlock {
         &mut self,
         handler: &Handler,
         ctx: &mut TypeCheckFinalizationContext,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
         handler.scope(|handler| {
-            for node in self.contents.iter_mut() {
-                let _ = node.type_check_finalize(handler, ctx);
-            }
-            Ok(())
+            self.contents
+                .iter_mut()
+                .try_fold(HasChanges::No, |has_changes, node| {
+                    Ok(has_changes | node.type_check_finalize(handler, ctx)?)
+                })
         })
     }
 }

@@ -6,7 +6,7 @@ use crate::{
     },
     semantic_analysis::*,
     type_system::*,
-    Engines,
+    Engines, HasChanges,
 };
 use namespace::ResolvedDeclaration;
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -140,7 +140,7 @@ impl TypeCheckFinalization for TyVariableDecl {
         &mut self,
         handler: &Handler,
         ctx: &mut TypeCheckFinalizationContext,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
         self.body.type_check_finalize(handler, ctx)
     }
 }

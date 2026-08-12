@@ -156,7 +156,6 @@ pub enum TyExpressionVariant {
     },
     StorageAccess(TyStorageAccess),
     IntrinsicFunction(TyIntrinsicFunctionKind),
-    /// a zero-sized type-system-only compile-time thing that is used for constructing ABI casts.
     AbiName(AbiName),
     /// grabs the enum tag from the particular enum and variant of the `exp`
     EnumTag {
@@ -799,7 +798,7 @@ impl SubstTypes for TyExpressionVariant {
                 contents.subst(ctx);
             },
             AbiCast { address, .. } => address.subst(ctx),
-            // storage is never generic and cannot be monomorphized
+            // Storage is never generic and cannot be monomorphized.
             StorageAccess { .. } => HasChanges::No,
             IntrinsicFunction(kind) => kind.subst(ctx),
             EnumTag { exp } => exp.subst(ctx),
@@ -1244,129 +1243,104 @@ impl TypeCheckFinalization for TyExpressionVariant {
         &mut self,
         handler: &Handler,
         ctx: &mut TypeCheckFinalizationContext,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
         handler.scope(|handler| {
+            use TyExpressionVariant::*;
             match self {
-                TyExpressionVariant::ConstGenericExpression { .. } => {}
-                TyExpressionVariant::Literal(_) => {}
-                TyExpressionVariant::FunctionApplication { arguments, .. } => {
-                    for (_, arg) in arguments.iter_mut() {
-                        let _ = arg.type_check_finalize(handler, ctx);
-                    }
-                }
-                TyExpressionVariant::LazyOperator { lhs, rhs, .. } => {
+                ConstGenericExpression { .. } => Ok(HasChanges::No),
+                Literal(_) => Ok(HasChanges::No),
+                FunctionApplication { arguments, .. } => arguments
+                    .iter_mut()
+                    .try_fold(HasChanges::No, |has_changes, (_, arg)| {
+                        Ok(has_changes | arg.type_check_finalize(handler, ctx)?)
+                    }),
+                LazyOperator { lhs, rhs, .. } => Ok(has_changes! {
                     lhs.type_check_finalize(handler, ctx)?;
-                    rhs.type_check_finalize(handler, ctx)?
-                }
-                TyExpressionVariant::ConstantExpression { decl, .. } => {
-                    decl.type_check_finalize(handler, ctx)?
-                }
-                TyExpressionVariant::ConfigurableExpression { decl, .. } => {
-                    decl.type_check_finalize(handler, ctx)?
-                }
-                TyExpressionVariant::VariableExpression { .. } => {}
-                TyExpressionVariant::Tuple { fields } => {
-                    for field in fields.iter_mut() {
-                        field.type_check_finalize(handler, ctx)?
-                    }
-                }
-                TyExpressionVariant::ArrayExplicit { contents, .. } => {
-                    for elem in contents.iter_mut() {
-                        elem.type_check_finalize(handler, ctx)?
-                    }
-                }
-                TyExpressionVariant::ArrayRepeat { value, length, .. } => {
+                    rhs.type_check_finalize(handler, ctx)?;
+                }),
+                ConstantExpression { decl, .. } => decl.type_check_finalize(handler, ctx),
+                ConfigurableExpression { decl, .. } => decl.type_check_finalize(handler, ctx),
+                VariableExpression { .. } => Ok(HasChanges::No),
+                Tuple { fields } => fields
+                    .iter_mut()
+                    .try_fold(HasChanges::No, |has_changes, field| {
+                        Ok(has_changes | field.type_check_finalize(handler, ctx)?)
+                    }),
+                ArrayExplicit { contents, .. } => contents
+                    .iter_mut()
+                    .try_fold(HasChanges::No, |has_changes, elem| {
+                        Ok(has_changes | elem.type_check_finalize(handler, ctx)?)
+                    }),
+                ArrayRepeat { value, length, .. } => Ok(has_changes! {
                     value.type_check_finalize(handler, ctx)?;
                     length.type_check_finalize(handler, ctx)?;
-                }
-                TyExpressionVariant::ArrayIndex { prefix, index } => {
+                }),
+                ArrayIndex { prefix, index } => Ok(has_changes! {
                     prefix.type_check_finalize(handler, ctx)?;
                     index.type_check_finalize(handler, ctx)?;
-                }
-                TyExpressionVariant::StructExpression { fields, .. } => {
-                    for field in fields.iter_mut() {
-                        field.type_check_finalize(handler, ctx)?;
-                    }
-                }
-                TyExpressionVariant::CodeBlock(block) => {
-                    block.type_check_finalize(handler, ctx)?;
-                }
-                TyExpressionVariant::FunctionParameter => {}
-                TyExpressionVariant::MatchExp {
+                }),
+                StructExpression { fields, .. } => fields
+                    .iter_mut()
+                    .try_fold(HasChanges::No, |has_changes, field| {
+                        Ok(has_changes | field.type_check_finalize(handler, ctx)?)
+                    }),
+                CodeBlock(block) => block.type_check_finalize(handler, ctx),
+                FunctionParameter => Ok(HasChanges::No),
+                MatchExp {
                     desugared,
                     scrutinees,
                 } => {
-                    desugared.type_check_finalize(handler, ctx)?;
-                    for scrutinee in scrutinees.iter_mut() {
-                        scrutinee.type_check_finalize(handler, ctx)?
-                    }
+                    let has_changes = desugared.type_check_finalize(handler, ctx)?;
+                    scrutinees
+                        .iter_mut()
+                        .try_fold(has_changes, |has_changes, scrutinee| {
+                            Ok(has_changes | scrutinee.type_check_finalize(handler, ctx)?)
+                        })
                 }
-                TyExpressionVariant::IfExp {
+                IfExp {
                     condition,
                     then,
                     r#else,
-                } => {
+                } => Ok(has_changes! {
                     condition.type_check_finalize(handler, ctx)?;
                     then.type_check_finalize(handler, ctx)?;
-                    if let Some(ref mut r#else) = r#else {
-                        r#else.type_check_finalize(handler, ctx)?;
-                    }
-                }
-                TyExpressionVariant::AsmExpression { .. } => {}
-                TyExpressionVariant::StructFieldAccess { prefix, .. } => {
-                    prefix.type_check_finalize(handler, ctx)?;
-                }
-                TyExpressionVariant::TupleElemAccess { prefix, .. } => {
-                    prefix.type_check_finalize(handler, ctx)?;
-                }
-                TyExpressionVariant::EnumInstantiation { contents, .. } => {
-                    for expr in contents.iter_mut() {
-                        expr.type_check_finalize(handler, ctx)?
-                    }
-                }
-                TyExpressionVariant::AbiCast { address, .. } => {
-                    address.type_check_finalize(handler, ctx)?;
-                }
-                TyExpressionVariant::StorageAccess(_) => {
-                    todo!("")
-                }
-                TyExpressionVariant::IntrinsicFunction(kind) => {
-                    for expr in kind.arguments.iter_mut() {
-                        expr.type_check_finalize(handler, ctx)?;
-                    }
-                }
-                TyExpressionVariant::AbiName(_) => {
-                    todo!("")
-                }
-                TyExpressionVariant::EnumTag { exp } => {
-                    exp.type_check_finalize(handler, ctx)?;
-                }
-                TyExpressionVariant::UnsafeDowncast { exp, .. } => {
-                    exp.type_check_finalize(handler, ctx)?;
-                }
-                TyExpressionVariant::WhileLoop { condition, body } => {
+                    r#else
+                        .as_mut()
+                        .map(|r#else| r#else.type_check_finalize(handler, ctx))
+                        .transpose()?
+                        .unwrap_or_default();
+                }),
+                AsmExpression { .. } => Ok(HasChanges::No),
+                StructFieldAccess { prefix, .. } => prefix.type_check_finalize(handler, ctx),
+                TupleElemAccess { prefix, .. } => prefix.type_check_finalize(handler, ctx),
+                EnumInstantiation { contents, .. } => contents
+                    .iter_mut()
+                    .try_fold(HasChanges::No, |has_changes, expr| {
+                        Ok(has_changes | expr.type_check_finalize(handler, ctx)?)
+                    }),
+                AbiCast { address, .. } => address.type_check_finalize(handler, ctx),
+                StorageAccess(_) => Ok(HasChanges::No),
+                IntrinsicFunction(kind) => kind
+                    .arguments
+                    .iter_mut()
+                    .try_fold(HasChanges::No, |has_changes, expr| {
+                        Ok(has_changes | expr.type_check_finalize(handler, ctx)?)
+                    }),
+                AbiName(_) => Ok(HasChanges::No),
+                EnumTag { exp } => exp.type_check_finalize(handler, ctx),
+                UnsafeDowncast { exp, .. } => exp.type_check_finalize(handler, ctx),
+                WhileLoop { condition, body } => Ok(has_changes! {
                     condition.type_check_finalize(handler, ctx)?;
                     body.type_check_finalize(handler, ctx)?;
-                }
-                TyExpressionVariant::ForLoop { desugared } => {
-                    desugared.type_check_finalize(handler, ctx)?;
-                }
-                TyExpressionVariant::Break => {}
-                TyExpressionVariant::Continue => {}
-                TyExpressionVariant::Reassignment(node) => {
-                    node.type_check_finalize(handler, ctx)?;
-                }
-                TyExpressionVariant::ImplicitReturn(exp) | TyExpressionVariant::Return(exp) => {
-                    exp.type_check_finalize(handler, ctx)?;
-                }
-                TyExpressionVariant::Panic(exp) => {
-                    exp.type_check_finalize(handler, ctx)?;
-                }
-                TyExpressionVariant::Ref(exp) | TyExpressionVariant::Deref(exp) => {
-                    exp.type_check_finalize(handler, ctx)?;
-                }
+                }),
+                ForLoop { desugared } => desugared.type_check_finalize(handler, ctx),
+                Break => Ok(HasChanges::No),
+                Continue => Ok(HasChanges::No),
+                Reassignment(node) => node.type_check_finalize(handler, ctx),
+                ImplicitReturn(exp) | Return(exp) => exp.type_check_finalize(handler, ctx),
+                Panic(exp) => exp.type_check_finalize(handler, ctx),
+                Ref(exp) | Deref(exp) => exp.type_check_finalize(handler, ctx),
             }
-            Ok(())
         })
     }
 }

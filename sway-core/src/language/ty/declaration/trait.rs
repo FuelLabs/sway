@@ -1,6 +1,6 @@
 use crate::{
     decl_engine::{
-        DeclEngineReplace, DeclRefConstant, DeclRefFunction, DeclRefTraitFn, DeclRefTraitType,
+        DeclEngineInsert, DeclRefConstant, DeclRefFunction, DeclRefTraitFn, DeclRefTraitType,
         MaterializeConstGenerics, ReplaceFunctionImplementingType,
     },
     engine_threading::*,
@@ -256,24 +256,28 @@ impl TypeCheckFinalization for TyTraitItem {
         &mut self,
         handler: &Handler,
         ctx: &mut TypeCheckFinalizationContext,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
         let decl_engine = ctx.engines.de();
-        match self {
+        let has_changes = match self {
             TyTraitItem::Fn(node) => {
                 let mut item_fn = (*decl_engine.get_function(node)).clone();
-                item_fn.type_check_finalize(handler, ctx)?;
-                decl_engine.replace(*node.id(), item_fn);
+                let has_changes = item_fn.type_check_finalize(handler, ctx)?;
+                if has_changes.has_changes() {
+                    *node = decl_engine.insert_modified(item_fn, *node.id())
+                }
+                has_changes
             }
             TyTraitItem::Constant(node) => {
                 let mut item_const = (*decl_engine.get_constant(node)).clone();
-                item_const.type_check_finalize(handler, ctx)?;
-                decl_engine.replace(*node.id(), item_const);
+                let has_changes = item_const.type_check_finalize(handler, ctx)?;
+                if has_changes.has_changes() {
+                    *node = decl_engine.insert_modified(item_const, *node.id())
+                }
+                has_changes
             }
-            TyTraitItem::Type(_node) => {
-                // Nothing to finalize
-            }
-        }
-        Ok(())
+            TyTraitItem::Type(_node) => HasChanges::No,
+        };
+        Ok(has_changes)
     }
 }
 

@@ -12,7 +12,7 @@ use crate::{
     },
     semantic_analysis::*,
     type_system::*,
-    Engines,
+    Engines, HasChanges,
 };
 use ast_elements::type_parameter::GenericTypeParameter;
 use hashbrown::HashMap;
@@ -376,11 +376,8 @@ impl TypeCheckFinalization for ty::TyFunctionDecl {
         &mut self,
         handler: &Handler,
         ctx: &mut TypeCheckFinalizationContext,
-    ) -> Result<(), ErrorEmitted> {
-        handler.scope(|handler| {
-            let _ = self.body.type_check_finalize(handler, ctx);
-            Ok(())
-        })
+    ) -> Result<HasChanges, ErrorEmitted> {
+        handler.scope(|handler| self.body.type_check_finalize(handler, ctx))
     }
 }
 

@@ -13,7 +13,7 @@ use crate::{
         CallPath,
     },
     semantic_analysis::*,
-    EnforceTypeArguments, Engines, SubstTypes, TypeInfo,
+    EnforceTypeArguments, Engines, HasChanges, SubstTypes, TypeInfo,
 };
 
 impl ty::TyConstantDecl {
@@ -155,10 +155,11 @@ impl TypeCheckFinalization for TyConstantDecl {
         &mut self,
         handler: &Handler,
         ctx: &mut TypeCheckFinalizationContext,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
         if let Some(value) = self.value.as_mut() {
-            value.type_check_finalize(handler, ctx)?;
+            value.type_check_finalize(handler, ctx)
+        } else {
+            Ok(HasChanges::No)
         }
-        Ok(())
     }
 }
