@@ -190,11 +190,12 @@ impl TypeCheckFinalization for ty::TyStorageDecl {
         ctx: &mut TypeCheckFinalizationContext,
     ) -> Result<HasChanges, ErrorEmitted> {
         handler.scope(|handler| {
-            self.fields
+            Ok(self
+                .fields
                 .iter_mut()
-                .try_fold(HasChanges::No, |has_changes, field| {
-                    Ok(has_changes | field.type_check_finalize(handler, ctx)?)
-                })
+                .fold(HasChanges::No, |has_changes, field| {
+                    has_changes | field.type_check_finalize(handler, ctx).unwrap_or_default()
+                }))
         })
     }
 }

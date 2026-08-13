@@ -182,11 +182,12 @@ impl TypeCheckFinalization for ty::TyCodeBlock {
         ctx: &mut TypeCheckFinalizationContext,
     ) -> Result<HasChanges, ErrorEmitted> {
         handler.scope(|handler| {
-            self.contents
+            Ok(self
+                .contents
                 .iter_mut()
-                .try_fold(HasChanges::No, |has_changes, node| {
-                    Ok(has_changes | node.type_check_finalize(handler, ctx)?)
-                })
+                .fold(HasChanges::No, |has_changes, node| {
+                    has_changes | node.type_check_finalize(handler, ctx).unwrap_or_default()
+                }))
         })
     }
 }

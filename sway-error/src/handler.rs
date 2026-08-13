@@ -13,7 +13,7 @@ pub struct Handler {
 }
 
 /// Contains the actual data for `Handler`.
-/// Modelled this way to afford an API using interior mutability.
+/// Modeled this way to afford an API using interior mutability.
 #[derive(Default, Debug, Clone)]
 struct HandlerDiagnostics {
     /// The sink through which errors will be emitted.
@@ -45,7 +45,7 @@ impl Handler {
         ErrorEmitted { _priv: () }
     }
 
-    // Compilation should be cancelled.
+    // Compilation should be canceled.
     pub fn cancel(&self) -> ErrorEmitted {
         ErrorEmitted { _priv: () }
     }
@@ -72,6 +72,47 @@ impl Handler {
         !self.inner.borrow().warnings.is_empty()
     }
 
+    /// Aggregate errors emitted when running `f`.
+    ///
+    /// Runs `f` in a fresh error-collecting scope, returning `f`'s result, or an
+    /// aggregated [ErrorEmitted] if *any* error was emitted while running `f`.
+    ///
+    /// A fresh, scoped [Handler] is passed to `f`. After `f` returns, its errors are
+    /// appended to `self`. If at least one error was emitted into the scoped handler,
+    /// the scope returns `Err(ErrorEmitted)` regardless of what `f` returned; otherwise
+    /// it returns `f`'s result.
+    ///
+    /// # Swallowing errors within a scope is intended
+    ///
+    /// Because the scope aggregates *every* error emitted into the scoped handler, code
+    /// inside `f` should keep going after a failing sub-operation instead of
+    /// short-circuiting on the first error. Swallowing an individual sub-operation's
+    /// [Result] and continuing with the next one is therefore the *intended* pattern.
+    /// Independent sub-operations each get to report their own diagnostics, so the user
+    /// sees all of them at once rather than only the first.
+    ///
+    /// When iterating over a collection, use `fold` together with `unwrap_or_default`
+    /// (rather than `try_fold` with `?`) so that every element is still processed:
+    ///
+    /// ```ignore
+    /// handler.scope(|handler| {
+    ///     // Each element's error is swallowed but stays captured by the scope, so
+    ///     // sibling elements can also report their diagnostics.
+    ///     Ok(items.iter_mut().fold(HasChanges::No, |has_changes, item| {
+    ///         has_changes | item.do_something(handler).unwrap_or_default()
+    ///     }))
+    /// })
+    /// ```
+    ///
+    /// For a fixed set of sub-operations, `sway_core`'s `has_changes_scoped!` macro
+    /// applies the same swallow-and-continue behavior.
+    ///
+    /// Use `?` only when a later step genuinely depends on an earlier step succeeding,
+    /// i.e. when continuing would panic or produce misleading cascade errors.
+    ///
+    /// Note that swallowing an [ErrorEmitted] is only sound *inside* a scope (or with
+    /// a scope somewhere up the call stack). Outside a scope, a swallowed error is lost
+    /// from the returned [Result] even though it was emitted.
     pub fn scope<T>(
         &self,
         f: impl FnOnce(&Handler) -> Result<T, ErrorEmitted>,

@@ -377,7 +377,13 @@ impl TypeCheckFinalization for ty::TyFunctionDecl {
         handler: &Handler,
         ctx: &mut TypeCheckFinalizationContext,
     ) -> Result<HasChanges, ErrorEmitted> {
-        handler.scope(|handler| self.body.type_check_finalize(handler, ctx))
+        handler.scope(|handler| {
+            // Swallow the error: any emitted error is still captured by the scope.
+            Ok(self
+                .body
+                .type_check_finalize(handler, ctx)
+                .unwrap_or_default())
+        })
     }
 }
 

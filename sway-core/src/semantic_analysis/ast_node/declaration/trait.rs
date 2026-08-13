@@ -665,11 +665,12 @@ impl TypeCheckFinalization for TyTraitDecl {
         ctx: &mut TypeCheckFinalizationContext,
     ) -> Result<HasChanges, ErrorEmitted> {
         handler.scope(|handler| {
-            self.items
+            Ok(self
+                .items
                 .iter_mut()
-                .try_fold(HasChanges::No, |has_changes, item| {
-                    Ok(has_changes | item.type_check_finalize(handler, ctx)?)
-                })
+                .fold(HasChanges::No, |has_changes, item| {
+                    has_changes | item.type_check_finalize(handler, ctx).unwrap_or_default()
+                }))
         })
     }
 }
