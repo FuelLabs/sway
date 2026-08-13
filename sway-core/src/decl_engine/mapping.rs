@@ -15,6 +15,13 @@ type DestinationDecl = AssociatedItemDeclId;
 
 /// The [DeclMapping] is used to create a mapping between a [SourceDecl] (LHS)
 /// and a [DestinationDecl] (RHS).
+///
+/// Note that [DeclMapping] is **not a mapping of arbitrary `DeclId`s**.
+/// Its whole domain is [AssociatedItemDeclId], which is only trait/impl associated items:
+/// functions, constants and associated types. [DeclMapping] maps a trait interface
+/// item reference to its concrete impl counterpart.
+/// For concrete swaps of trait interface item references with their concrete impls,
+/// see [find_match], which is the final step of the trait-method monomorphization.
 #[derive(Clone)]
 pub struct DeclMapping {
     pub mapping: Vec<(SourceDecl, DestinationDecl)>,
