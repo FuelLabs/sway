@@ -1,0 +1,290 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Trivial Encoding - The Sway Programming Language</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">The Sway Programming Language</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/FuelLabs/sway" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="trivially-encodable--decodable-types"><a class="header" href="#trivially-encodable--decodable-types">Trivially Encodable &amp; Decodable Types</a></h1>
+<p>When a contract calls another contract, all arguments are <strong>encoded</strong> just before the call is actually executed,
+and the callee <strong>decodes</strong> these arguments right before the target method starts.
+This adds a small but non‑negligible gas cost, from hundreds to thousands of gas depending on the complexity of the arguments.</p>
+<p>The Sway compiler mitigates this overhead for a subset of types that can be <strong>trivially encoded</strong> and/or <strong>trivially decoded</strong> –
+that is, types that their <em>runtime representation</em>, how the type bytes are laid out inside the VM, is <em>identical</em> to their <em>encoded representation</em>,
+how their bytes are laid out in the encoded buffer.</p>
+<p>For such types the compiler can skip the encoding/decoding process entirely, saving gas and simplifying the generated code.</p>
+<blockquote>
+<p><strong>Trivial encoding</strong> – encoding is replaced with a simple "transmute".
+<strong>Trivial decoding</strong> – encoding is replaced with a simple "transmute".</p>
+</blockquote>
+<p>The compiler can skip each individually, but the whole gain comes only when both are skipped together.</p>
+<h2 id="checking-triviality"><a class="header" href="#checking-triviality">Checking Triviality</a></h2>
+<p>Each struct that should be treated as trivially encodable/decodable can be annotated with the <code>#[trivial]</code> attribute:</p>
+<pre><code class="language-sway">#[trivial(encode = "require", decode = "require")]
+pub struct SomeArgument {
+    a: bool,
+    b: SomeEnum,
+}
+</code></pre>
+<ul>
+<li><code>encode = "require"</code> – the compiler will check if the type is trivially encodable; if not, the build fails.</li>
+<li><code>decode = "require"</code> – similarly for decoding.</li>
+</ul>
+<p>Possible values are:</p>
+<ul>
+<li>required: compiler will check and error if the check fails;</li>
+<li>optional: compiler will only warn non-compliance;</li>
+<li>any: nothing will be checked.</li>
+</ul>
+<p>This attributed can be used directly on types, but also on entry points such as "main" function for scripts and predicates; and contract methods for contracts.</p>
+<h2 id="which-types-are-trivial"><a class="header" href="#which-types-are-trivial">Which Types Are Trivial?</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Type</th><th>Trivially Encodable</th><th>Trivially Decodable</th><th>Notes</th></tr></thead><tbody>
+<tr><td><code>bool</code></td><td>✅</td><td>❌</td><td><code>bool</code> encodes to a single byte (<code>0</code> or <code>1</code>), but decoding must validate that the byte is a legal value.</td></tr>
+<tr><td><code>u8</code>, <code>u64</code>, <code>u256</code>, <code>b256</code></td><td>✅</td><td>✅</td><td></td></tr>
+<tr><td><code>u16</code>, <code>u32</code></td><td>❌</td><td>❌</td><td>Their runtime representation is actually a <code>u64</code></td></tr>
+<tr><td>Structs</td><td>✅ If all their members are trivial</td><td>✅ If all their member are trivial</td><td>Recursively evaluated.</td></tr>
+<tr><td>Enums</td><td>✅ If all variants are trivial</td><td>❌</td><td>Enums have an <code>u64</code> discriminant that cannot be trivially decodable.</td></tr>
+<tr><td>Arrays</td><td>✅ If the item type is trivial</td><td>✅ if the item type is trivial</td><td></td></tr>
+<tr><td>String Arrays</td><td>✅ See *</td><td>✅ See *</td><td></td></tr>
+<tr><td>Vec, Dictionary, String, etc.</td><td>❌</td><td>❌</td><td>Data Structures are never trivial</td></tr>
+</tbody></table>
+</div>
+<p>Only when the feature "str_array_no_padding" is turned on. When the feature toggle is off, only string arrays that its length is multiple of 8.</p>
+<h3 id="why-bool-and-enum-are-not-trivially-decodable"><a class="header" href="#why-bool-and-enum-are-not-trivially-decodable">Why <code>bool</code> and <code>enum</code> are not trivially decodable</a></h3>
+<p>Probably the most surprising non trivial base data type is <code>bool</code>. Mainly because <code>bool</code> is obviously trivially encodable. But there is no guarantee
+that buffer does not have a value like <code>2</code>, that being "transmuted" into a bool would be allow its runtime representation to be <code>2</code>, which is <strong>undefined behaviour</strong>.</p>
+<p>The same limitation applies to enums. Enums are implemented as "tagged unions" which means that their runtime representation has a discriminant value as <code>u64</code>. There
+is no guarantee that the buffer  would have a valid value for its discriminant.</p>
+<hr />
+<h2 id="3-workaround-for-nontrivial-types"><a class="header" href="#3-workaround-for-nontrivial-types">3. Workaround for Non‑trivial Types</a></h2>
+<p>If you need to expose a <code>bool</code> or an enum as a public argument, you can either:</p>
+<ol>
+<li><strong>Manual validation</strong> – expose a raw <code>u64</code> (or <code>u8</code>) and check its value in the callee.</li>
+</ol>
+<pre><code class="language-sway">#[trivial(encode = "require", decode = "require")]
+pub struct Flag(u8);  // manually validate that value &lt;= 1
+</code></pre>
+<ol>
+<li>
+<p><strong>Custom wrappers</strong> – Sway ships with <code>TrivialBool</code>, <code>TrivialEnum&lt;T&gt;</code> and <code>TrivialVec&lt;T, N&gt;</code> that enforce the bounds at compile time.</p>
+<pre><code class="language-sway">use sway::codec::TrivialBool;
+use sway::codec::TrivialEnum;
+use sway::codec::TrivialVec;
+
+#[trivial(encode = "require", decode = "require")]
+pub struct SomeArgument {
+    a: TrivialBool,
+    b: TrivialEnum&lt;SomeEnum&gt;,
+    c: TrivialVec&lt;u64, 16&gt;,
+}
+</code></pre>
+<p>These wrappers automatically provide the guard checks and still let the compiler treat them as trivial.
+Their usage is very similar to <code>Option&lt;bool&gt;</code>.</p>
+<pre><code class="language-sway">let a: bool = some_argument.a.unwrap();
+let b: SomeEnum = some_argument.b.unwrap();
+let c: &amp;[u64] = some_argument.c.as_slice();
+</code></pre>
+</li>
+</ol>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../advanced/never_type.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../common-collections/index.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../advanced/never_type.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../common-collections/index.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
