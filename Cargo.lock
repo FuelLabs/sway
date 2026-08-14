@@ -7658,6 +7658,7 @@ name = "sway-ir"
 version = "0.72.0"
 dependencies = [
  "anyhow",
+ "clap",
  "downcast-rs",
  "filecheck",
  "indexmap 2.14.0",
