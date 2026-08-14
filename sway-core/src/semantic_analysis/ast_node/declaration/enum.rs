@@ -3,7 +3,7 @@ use crate::{
     language::{parsed::*, ty, CallPath},
     semantic_analysis::*,
     type_system::*,
-    Engines,
+    Engines, HasChanges,
 };
 use ast_elements::type_parameter::GenericTypeParameter;
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -122,7 +122,7 @@ impl TypeCheckFinalization for ty::TyEnumDecl {
         &mut self,
         _handler: &Handler,
         _ctx: &mut TypeCheckFinalizationContext,
-    ) -> Result<(), ErrorEmitted> {
-        Ok(())
+    ) -> Result<HasChanges, ErrorEmitted> {
+        Ok(HasChanges::No)
     }
 }

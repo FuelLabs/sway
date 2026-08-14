@@ -793,22 +793,29 @@ impl TyImplSelfOrTrait {
                         }
                     }
 
+                    let new_items = &mut impl_trait.items;
                     let mut finalizing_ctx =
                         TypeCheckFinalizationContext::new(ctx.engines, ctx.by_ref());
-                    for item in new_items {
+                    for item in new_items.iter_mut() {
                         match item {
                             TyTraitItem::Fn(decl_ref) => {
                                 let mut fn_decl =
                                     (*decl_engine.get_function(decl_ref.id())).clone();
-                                let _ = fn_decl.type_check_finalize(handler, &mut finalizing_ctx);
-                                decl_engine.replace(*decl_ref.id(), fn_decl);
+                                let has_changes =
+                                    fn_decl.type_check_finalize(handler, &mut finalizing_ctx)?;
+                                if has_changes.has_changes() {
+                                    *decl_ref = decl_engine.insert_modified(fn_decl, *decl_ref.id())
+                                }
                             }
                             TyTraitItem::Constant(decl_ref) => {
                                 let mut const_decl =
                                     (*decl_engine.get_constant(decl_ref.id())).clone();
-                                let _ =
-                                    const_decl.type_check_finalize(handler, &mut finalizing_ctx);
-                                decl_engine.replace(*decl_ref.id(), const_decl);
+                                let has_changes =
+                                    const_decl.type_check_finalize(handler, &mut finalizing_ctx)?;
+                                if has_changes.has_changes() {
+                                    *decl_ref =
+                                        decl_engine.insert_modified(const_decl, *decl_ref.id())
+                                }
                             }
                             _ => {}
                         }
@@ -2032,12 +2039,14 @@ impl TypeCheckFinalization for TyImplSelfOrTrait {
         &mut self,
         handler: &Handler,
         ctx: &mut TypeCheckFinalizationContext,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
         handler.scope(|handler| {
-            for item in self.items.iter_mut() {
-                let _ = item.type_check_finalize(handler, ctx);
-            }
-            Ok(())
+            Ok(self
+                .items
+                .iter_mut()
+                .fold(HasChanges::No, |has_changes, item| {
+                    has_changes | item.type_check_finalize(handler, ctx).unwrap_or_default()
+                }))
         })
     }
 }

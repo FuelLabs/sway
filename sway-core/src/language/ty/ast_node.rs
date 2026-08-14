@@ -127,7 +127,7 @@ impl TypeCheckFinalization for TyAstNode {
         &mut self,
         handler: &Handler,
         ctx: &mut TypeCheckFinalizationContext,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
         self.content.type_check_finalize(handler, ctx)
     }
 }
@@ -473,14 +473,13 @@ impl TypeCheckFinalization for TyAstNodeContent {
         &mut self,
         handler: &Handler,
         ctx: &mut TypeCheckFinalizationContext,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
         match self {
-            TyAstNodeContent::Declaration(node) => node.type_check_finalize(handler, ctx)?,
-            TyAstNodeContent::Expression(node) => node.type_check_finalize(handler, ctx)?,
-            TyAstNodeContent::SideEffect(_) => {}
-            TyAstNodeContent::Error(_, _) => {}
+            TyAstNodeContent::Declaration(node) => node.type_check_finalize(handler, ctx),
+            TyAstNodeContent::Expression(node) => node.type_check_finalize(handler, ctx),
+            TyAstNodeContent::SideEffect(_) => Ok(HasChanges::No),
+            TyAstNodeContent::Error(_, _) => Ok(HasChanges::No),
         }
-        Ok(())
     }
 }
 

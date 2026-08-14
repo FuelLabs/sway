@@ -252,23 +252,24 @@ impl TypeCheckFinalization for TyReassignmentTarget {
         &mut self,
         handler: &Handler,
         ctx: &mut TypeCheckFinalizationContext,
-    ) -> Result<(), ErrorEmitted> {
-        match self {
+    ) -> Result<HasChanges, ErrorEmitted> {
+        let has_changes = match self {
             TyReassignmentTarget::DerefAccess { exp, indices } => {
-                exp.type_check_finalize(handler, ctx)?;
-                indices
-                    .iter_mut()
-                    .map(|i| i.type_check_finalize(handler, ctx))
-                    .collect::<Result<Vec<()>, _>>()
-                    .map(|_| ())?;
+                let mut has_changes = exp.type_check_finalize(handler, ctx)?;
+                for index in indices.iter_mut() {
+                    has_changes |= index.type_check_finalize(handler, ctx)?;
+                }
+                has_changes
             }
-            TyReassignmentTarget::ElementAccess { indices, .. } => indices
-                .iter_mut()
-                .map(|i| i.type_check_finalize(handler, ctx))
-                .collect::<Result<Vec<()>, _>>()
-                .map(|_| ())?,
+            TyReassignmentTarget::ElementAccess { indices, .. } => {
+                let mut has_changes = HasChanges::No;
+                for index in indices.iter_mut() {
+                    has_changes |= index.type_check_finalize(handler, ctx)?;
+                }
+                has_changes
+            }
         };
-        Ok(())
+        Ok(has_changes)
     }
 }
 
@@ -277,11 +278,11 @@ impl TypeCheckFinalization for TyReassignment {
         &mut self,
         handler: &Handler,
         ctx: &mut TypeCheckFinalizationContext,
-    ) -> Result<(), ErrorEmitted> {
-        self.lhs.type_check_finalize(handler, ctx)?;
-        self.rhs.type_check_finalize(handler, ctx)?;
-
-        Ok(())
+    ) -> Result<HasChanges, ErrorEmitted> {
+        Ok(has_changes! {
+            self.lhs.type_check_finalize(handler, ctx)?;
+            self.rhs.type_check_finalize(handler, ctx)?;
+        })
     }
 }
 
@@ -448,11 +449,11 @@ impl TypeCheckFinalization for ProjectionKind {
         &mut self,
         handler: &Handler,
         ctx: &mut TypeCheckFinalizationContext,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
         use ProjectionKind::*;
         match self {
             ArrayIndex { index, .. } => index.type_check_finalize(handler, ctx),
-            _ => Ok(()),
+            _ => Ok(HasChanges::No),
         }
     }
 }

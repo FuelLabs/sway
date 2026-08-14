@@ -8,7 +8,7 @@ use crate::{
         symbol_collection_context::SymbolCollectionContext, TypeCheckFinalization,
         TypeCheckFinalizationContext,
     },
-    Engines,
+    Engines, HasChanges,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
 
@@ -34,7 +34,7 @@ impl TypeCheckFinalization for TyTypeAliasDecl {
         &mut self,
         _handler: &Handler,
         _ctx: &mut TypeCheckFinalizationContext,
-    ) -> Result<(), ErrorEmitted> {
-        Ok(())
+    ) -> Result<HasChanges, ErrorEmitted> {
+        Ok(HasChanges::No)
     }
 }

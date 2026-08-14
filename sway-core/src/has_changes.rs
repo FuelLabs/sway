@@ -56,3 +56,26 @@ macro_rules! has_changes {
         has_changes
     }};
 }
+
+/// Like [`has_changes!`], but for use inside a [`sway_error::handler::Handler::scope`].
+///
+/// Each statement must evaluate to a `Result<HasChanges, ErrorEmitted>`. Errors are
+/// swallowed instead of short-circuiting: they remain captured by the enclosing scope,
+/// which will still report them, so every statement runs and independent sub-operations
+/// each get to emit their diagnostics.
+///
+/// Use this only inside a `Handler::scope` (or with a scope up the call stack). Outside a
+/// scope, a swallowed error would be lost from the returned `Result` even though it was
+/// emitted.
+#[macro_export]
+macro_rules! has_changes_scoped {
+    ($($stmt:expr);* ;) => {{
+        let mut has_changes = $crate::HasChanges::No;
+        $(
+            if let Ok(r) = $stmt {
+                has_changes |= r;
+            }
+        )*
+        has_changes
+    }};
+}

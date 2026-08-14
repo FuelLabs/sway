@@ -87,7 +87,7 @@ impl<T> DeclId<T> {
     }
 
     pub(crate) fn dummy() -> Self {
-        // we assume that `usize::MAX` id is not possible in practice
+        // We assume that `usize::MAX` id is not possible in practice.
         Self(usize::MAX, PhantomData)
     }
 }

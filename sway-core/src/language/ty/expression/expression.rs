@@ -141,13 +141,15 @@ impl TypeCheckFinalization for TyExpression {
         &mut self,
         handler: &Handler,
         ctx: &mut TypeCheckFinalizationContext,
-    ) -> Result<(), ErrorEmitted> {
-        let res = self.expression.type_check_finalize(handler, ctx);
+    ) -> Result<HasChanges, ErrorEmitted> {
+        let mut has_changes = self.expression.type_check_finalize(handler, ctx)?;
         if let TyExpressionVariant::FunctionApplication { fn_ref, .. } = &self.expression {
             let method = ctx.engines.de().get_function(fn_ref);
-            self.return_type = method.return_type.type_id;
+            let new_return_type = method.return_type.type_id;
+            has_changes |= HasChanges::from(self.return_type != new_return_type);
+            self.return_type = new_return_type;
         }
-        res
+        Ok(has_changes)
     }
 }
 

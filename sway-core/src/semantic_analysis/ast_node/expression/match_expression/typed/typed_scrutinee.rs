@@ -17,6 +17,7 @@ use crate::{
     },
     semantic_analysis::{TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext},
     type_system::*,
+    HasChanges,
 };
 
 impl TyScrutinee {
@@ -471,8 +472,8 @@ impl TypeCheckFinalization for TyScrutinee {
         &mut self,
         _handler: &Handler,
         _ctx: &mut TypeCheckFinalizationContext,
-    ) -> Result<(), ErrorEmitted> {
-        Ok(())
+    ) -> Result<HasChanges, ErrorEmitted> {
+        Ok(HasChanges::No)
     }
 }
 
