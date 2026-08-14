@@ -109,6 +109,10 @@ pub fn fn_inline(
 
     for function in functions {
         let inline_heuristic = |ctx: &Context, callee: &Function, call_site: &Value| {
+            // The encoding code in the `__entry` functions contains pointer patterns that mark
+            // escape analysis and referred symbols as incomplete. This effectively forbids optimizations
+            // like SROA and DCE. If we inline original entries, like e.g., `main`, the code in them will
+            // also not be optimized. Therefore, we forbid inlining of original entries into `__entry`.
             if callee.is_original_entry(ctx) {
                 return false;
             }
@@ -263,7 +267,7 @@ pub fn is_small_fn(
 struct SsaLiveness {
     /// How many live SSA register at each instruction
     live_at: Vec<usize>,
-    /// Value -> its index map
+    /// Value/instruction -> its index in `live_at`
     index_of: FxHashMap<Value, usize>,
 }
 
@@ -342,8 +346,8 @@ impl SsaLiveness {
     }
 }
 
-/// Heuristic to determine if the function would spill register
-/// after inlining callee.
+/// Heuristic to determine if the `caller` function would spill registers
+/// after inlining `callee`.
 fn will_spill_registers(
     context: &Context,
     caller: &Function,
