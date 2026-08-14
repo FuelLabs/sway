@@ -936,7 +936,7 @@ impl ReplaceDecls for TyExpressionVariant {
                         .replace_decls(&inner_decl_mapping, handler, ctx)?
                         .has_changes()
                     {
-                        decl_engine.replace(*fn_ref.id(), method);
+                        *fn_ref = decl_engine.insert_modified(method, *fn_ref.id());
                         has_changes = HasChanges::Yes;
                     }
 
