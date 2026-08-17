@@ -90,19 +90,11 @@ addi $r0 $$locbase i32        ; get offset to local __ptr u64
 sw   $$locbase $$retv i4      ; store word
 movi $r1 i8                   ; initialize constant into register
 retd  $r0 $r1                 ; [entry end: __entry] return slice
-<<<<<<< HEAD
-pshh i528384                  ; [fn init: main_10]: push used high registers 40..64
+pshh i264192                  ; [fn init: main_10]: push used high registers 40..64
 add  $r0 $$arg0 $$arg1
 move $$retv $r0               ; [fn end: main_10] set return value
-poph i528384                  ; [fn end: main_10]: restore used high registers 40..64
+poph i264192                  ; [fn end: main_10]: restore used high registers 40..64
 jal  $zero $$reta i0          ; [fn end: main_10] return from call
-=======
-pshh i264192                  ; [fn init: main_11]: push used high registers 40..64
-add  $r0 $$arg0 $$arg1
-move $$retv $r0               ; [fn end: main_11] set return value
-poph i264192                  ; [fn end: main_11]: restore used high registers 40..64
-jal  $zero $$reta i0          ; [fn end: main_11] return from call
->>>>>>> 403287569 (new register pointing to the configurable section to allow access with just one addi)
 .data:
 
 
