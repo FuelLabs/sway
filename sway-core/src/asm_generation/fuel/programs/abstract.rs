@@ -703,15 +703,14 @@ impl AbstractProgram {
                 }
             }
 
-            // Candidates: the functions receiving the most backward calls, in
-            // descending order. Exclude the entry at index 0, which must stay.
+            // Candidates: functions receiving backward calls, excluding the
+            // entry at index 0. Ranked lazily via `select_nth` (worst-first)
+            // so we usually only partition once or twice per iteration.
             let mut candidates: Vec<(usize, usize)> = back_call_count
                 .iter()
                 .filter(|(l, _)| **l != entry_label)
                 .map(|(l, c)| (*l, *c))
                 .collect();
-            candidates.sort_by(|a, b| b.1.cmp(&a.1));
-            candidates.truncate(DEPTH);
 
             if candidates.is_empty() {
                 break; // no movable backward-call target remains
@@ -723,7 +722,10 @@ impl AbstractProgram {
 
             // Try candidates worst-first. The first one that strictly improves
             // the cost is committed; the rest are skipped this iteration.
-            for (target_label, target_count) in candidates {
+            let depth = DEPTH.min(candidates.len());
+            for k in 0..depth {
+                candidates.select_nth_unstable_by(k, |a, b| b.1.cmp(&a.1));
+                let (target_label, target_count) = candidates[k];
                 let target_fi = label_to_fn_idx[&target_label];
                 let cur = fn_idx_to_slot[target_fi];
                 // `cur >= 1` because the entry (index 0) was excluded above.
