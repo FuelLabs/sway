@@ -684,7 +684,13 @@ impl AbstractProgram {
         // much real improvement keeps the greedy descent monotone and stable.
         const MIN_GAIN: usize = 30;
 
+        // Index 0 never moves, so the entry is always original fn 0.
+        debug_assert_eq!(best_order[0], 0);
+        let entry_label = fn_labels[0];
+
         for iter in 0..MAX_ITERS {
+            debug_assert_eq!(best_order[0], 0);
+
             // Count how many backward calls target each label.
             let mut back_call_count: HashMap<usize, usize> = HashMap::new();
             for (current_slot, &caller_fi) in best_order.iter().enumerate() {
@@ -699,8 +705,6 @@ impl AbstractProgram {
 
             // Candidates: the functions receiving the most backward calls, in
             // descending order. Exclude the entry at index 0, which must stay.
-            // Index 0 never moves, so the entry label is always `fn_labels[0]`.
-            let entry_label = fn_labels[best_order[0]];
             let mut candidates: Vec<(usize, usize)> = back_call_count
                 .iter()
                 .filter(|(l, _)| **l != entry_label)
