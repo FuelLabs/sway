@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use super::{AllocatedProgram, FnName, SelectorOpt};
 use crate::{
     asm_generation::{
@@ -13,8 +15,8 @@ use crate::{
     },
     asm_lang::{
         allocated_ops::{AllocatedInstruction, AllocatedRegister},
-        AllocatedAbstractOp, ConstantRegister, ControlFlowOp, JumpType, Label, VirtualImmediate12,
-        VirtualImmediate18, VirtualImmediate24,
+        AllocatedAbstractOp, ConstantRegister, ControlFlowOp, JumpType, Label, Op,
+        VirtualImmediate12, VirtualImmediate18, VirtualImmediate24, VirtualOp,
     },
     decl_engine::DeclRefFunction,
     OptLevel,
@@ -22,6 +24,7 @@ use crate::{
 use either::Either;
 use sway_error::error::CompileError;
 use sway_features::ExperimentalFeatures;
+use sway_types::Span;
 
 /// The entry point of an abstract program.
 pub(crate) struct AbstractEntry {
@@ -121,13 +124,15 @@ impl AbstractProgram {
             .chain(self.non_entries);
 
         // Optimize and then verify abstract functions.
-        let abstract_functions = all_functions
-            .map(|instruction_set| instruction_set.optimize(&self.data_section, opt_level))
+        let mut optimized_fns = all_functions
+            .map(|f| f.optimize(&self.data_section, opt_level))
             .map(AbstractInstructionSet::verify)
             .collect::<Result<Vec<AbstractInstructionSet>, CompileError>>()?;
 
+        Self::optimize_fn_order(&mut optimized_fns);
+
         // Allocate the registers for each function.
-        let allocated_functions = abstract_functions
+        let allocated_functions = optimized_fns
             .into_iter()
             .map(|abstract_instruction_set| {
                 let allocated = abstract_instruction_set.allocate_registers()?;
@@ -213,7 +218,7 @@ impl AbstractProgram {
                 AllocatedAbstractOp {
                     opcode: Either::Right(ControlFlowOp::Jump {
                         to: label,
-                        type_: JumpType::Unconditional,
+                        ty: JumpType::Unconditional,
                     }),
                     comment: String::new(),
                     owning_span: None,
@@ -266,7 +271,7 @@ impl AbstractProgram {
         asm.ops.push(AllocatedAbstractOp {
             opcode: Either::Right(ControlFlowOp::Jump {
                 to: entry.label,
-                type_: JumpType::Unconditional,
+                ty: JumpType::Unconditional,
             }),
             comment: "jump to ABI function selector".into(),
             owning_span: None,
@@ -352,7 +357,7 @@ impl AbstractProgram {
                 // If the comparison result is _not_ equal to 0, then it was indeed equal.
                 opcode: Either::Right(ControlFlowOp::Jump {
                     to: entry.label,
-                    type_: JumpType::NotZero(CMP_RESULT_REG),
+                    ty: JumpType::NotZero(CMP_RESULT_REG),
                 }),
                 comment: "[function selection]: jump to selected contract function".into(),
                 owning_span: None,
@@ -363,7 +368,7 @@ impl AbstractProgram {
             asm.ops.push(AllocatedAbstractOp {
                 opcode: Either::Right(ControlFlowOp::Jump {
                     to: fallback_fn,
-                    type_: JumpType::Call,
+                    ty: JumpType::Call,
                 }),
                 comment: "[function selection]: call contract fallback function".into(),
                 owning_span: None,
@@ -401,6 +406,358 @@ impl AbstractProgram {
                 comment: "allocate stack space for globals".into(),
                 owning_span: None,
             });
+        }
+    }
+
+    fn optimize_fn_order(fns: &mut Vec<AbstractInstructionSet>) {
+        if fns.len() < 2 {
+            return;
+        }
+
+        // Extract the leading label of a function. A function's first op must be a
+        // `Label`; preserve the prior `todo!()` behavior when it isn't.
+        let label_of = |f: &AbstractInstructionSet| -> usize {
+            match f.ops.first() {
+                Some(Op {
+                    opcode: Either::Right(ControlFlowOp::Label(l)),
+                    ..
+                }) => l.0,
+                _ => todo!(),
+            }
+        };
+
+        // Real compiled size of a single op, in instruction units (1 instr = 4
+        // bytes), mirroring `worst_case_instruction_size` from
+        // `allocated_abstract_instruction_set.rs`. Labels/Comments and
+        // zero-stack CFEI/CFSI contribute 0; data-section loads and offset
+        // placeholders cost 2; a `Call` jump reserves 3 (worst case) and other
+        // jumps 2; BLOB is its immediate. PushAll/PopAll are still present
+        // here (lowered only later in `lower_pusha_popa`) and expand to at
+        // most two push/pop-mask instructions, so we charge 2 rather than
+        // panicking like the post-allocation version would.
+        let op_size = |op: &Op| -> u64 {
+            match &op.opcode {
+                Either::Right(ControlFlowOp::Label(_)) => 0,
+                Either::Right(ControlFlowOp::Comment) => 0,
+                Either::Right(ControlFlowOp::Jump { ty, .. }) => match ty {
+                    JumpType::Call => 3,
+                    _ => 2,
+                },
+                Either::Right(ControlFlowOp::JumpToAddr(_)) => 1,
+                Either::Right(ControlFlowOp::ReturnFromCall { .. }) => 1,
+                Either::Right(ControlFlowOp::DataSectionOffsetPlaceholder) => 2,
+                Either::Right(ControlFlowOp::ConfigurablesOffsetPlaceholder) => 2,
+                Either::Right(ControlFlowOp::PushAll(_))
+                | Either::Right(ControlFlowOp::PopAll(_)) => 2,
+                Either::Left(VirtualOp::CFEI(_, ref imm))
+                | Either::Left(VirtualOp::CFSI(_, ref imm))
+                    if imm.value() == 0 =>
+                {
+                    0
+                }
+                Either::Left(VirtualOp::BLOB(ref count)) => count.value() as u64,
+                Either::Left(VirtualOp::LoadDataId(_, _) | VirtualOp::AddrDataId(_, _)) => 2,
+                Either::Left(_) => 1,
+            }
+        };
+
+        // --- Loop detection (gas-oriented weighting) -------------------------
+        // The benchmark measures gas, and a call's gas scales with how often it
+        // executes. A call inside a loop runs once per iteration, so its
+        // execution count grows with loop nesting depth. Loops at the ASM level
+        // are backward intra-function jumps (a back-edge to a label earlier in
+        // the same function); a call is inside a loop when it sits between the
+        // loop header (the back-edge target) and the back-edge site, and its
+        // nesting depth is the number of distinct loops enclosing it. This is
+        // invariant under reordering (functions move as whole units), so we
+        // compute it once on the initial layout and key it by
+        // (caller label, call-site offset within the caller).
+        let call_loop_depth: HashMap<(usize, u64), usize> = {
+            let mut map: HashMap<(usize, u64), usize> = HashMap::new();
+            for f in fns.iter() {
+                let caller = label_of(f);
+                // Index each label in this function to its op position.
+                let mut label_idx: HashMap<usize, usize> = HashMap::new();
+                for (i, op) in f.ops.iter().enumerate() {
+                    if let Either::Right(ControlFlowOp::Label(l)) = &op.opcode {
+                        label_idx.insert(l.0, i);
+                    }
+                }
+                // Back-edges: backward non-call jumps to an earlier label.
+                // Group by header, keeping the furthest latch per header so the
+                // loop body is the contiguous [header, max_latch] range.
+                let mut loops: HashMap<usize, (usize, usize)> = HashMap::new();
+                for (j, op) in f.ops.iter().enumerate() {
+                    if let Either::Right(ControlFlowOp::Jump { to, ty }) = &op.opcode {
+                        match ty {
+                            JumpType::Unconditional | JumpType::NotZero(_) => {
+                                if let Some(&h) = label_idx.get(&to.0) {
+                                    if h < j {
+                                        let e = loops.entry(to.0).or_insert((h, j));
+                                        if j > e.1 {
+                                            e.1 = j;
+                                        }
+                                    }
+                                }
+                            }
+                            JumpType::Call => {}
+                        }
+                    }
+                }
+                if loops.is_empty() {
+                    continue;
+                }
+                let loops: Vec<(usize, usize)> = loops.values().cloned().collect();
+                let mut site_off: u64 = 0;
+                for (i, op) in f.ops.iter().enumerate() {
+                    if let Either::Right(ControlFlowOp::Jump {
+                        ty: JumpType::Call, ..
+                    }) = &op.opcode
+                    {
+                        let depth = loops.iter().filter(|(h, l)| *h <= i && i <= *l).count();
+                        if depth > 0 {
+                            map.insert((caller, site_off), depth);
+                        }
+                    }
+                    site_off += op_size(op);
+                }
+            }
+            map
+        };
+
+        // Commit policy toggle. When `PARETO` is true, a relocation is committed
+        // only if it is a true Pareto improvement: no individual call gets
+        // worse and at least one gets better. This guarantees no per-call
+        // regression at the cost of blocking most trades (almost every useful
+        // move lengthens some call), so it yields fewer but safer improvements.
+        // When false, the aggregate-cost policy with `MIN_GAIN` is used.
+        const PARETO: bool = true;
+        // Gas weight multiplier per loop nesting level: a call at depth `d` is
+        // weighted `LOOP_BOOST^d` times its base instruction cost (depth 0 ->
+        // 1x). 2 models each loop roughly doubling execution count; raise it if
+        // hot loops have large trip counts.
+        const LOOP_BOOST: usize = 4;
+
+        // Per-call weight for the current layout, keyed by
+        // (caller label, call-site offset within the caller). The base weight
+        // is the call's compiled instruction count, mirroring
+        // `compile_call_inner`:
+        //   forward near  -> 1  (JAL)
+        //   backward near -> 2  (SUBI + JAL)
+        //   medium        -> 3  (MOVI +/- + JAL)
+        //   far           -> 6  (data section load + JAL; real count is 4, but
+        //                       inflated to 6 to penalize far calls harder than
+        //                       the medium->near step, so the greedy search
+        //                       breaks near-ties toward eliminating far calls)
+        // The base weight is then multiplied by `LOOP_BOOST^depth`, so calls in
+        // hot loops dominate the cost (gas scales with execution count).
+        // Offsets are in instruction units from `op_size` (Label/Comment and
+        // zero-stack CFEI/CFSI are 0, not 1), matching the resolver's offset
+        // units. Forward near uses the 12-bit JAL immediate directly
+        // (`delta <= TWELVE_BITS`); backward near uses a 12-bit SUBI immediate
+        // holding `delta * 4` bytes, so its near range is 4x smaller. Counting
+        // forward calls too means a move that lengthens a forward call past the
+        // near threshold is penalized (1 -> 3), not free. Self-calls travel
+        // with their function, so they add a position-independent constant and
+        // don't affect which position is chosen.
+        let call_weights = |fns: &Vec<AbstractInstructionSet>| -> HashMap<(usize, u64), usize> {
+            const FWD_NEAR: usize = 1;
+            const BACK_NEAR: usize = 2;
+            const MEDIUM: usize = 3;
+            const FAR: usize = 6;
+
+            // label -> offset of the function's start, in instruction units.
+            let mut label_to_off: HashMap<usize, u64> = HashMap::new();
+            let mut offset: u64 = 0;
+            for f in fns.iter() {
+                label_to_off.insert(label_of(f), offset);
+                offset += f.ops.iter().map(|o| op_size(o)).sum::<u64>();
+            }
+
+            let mut weights: HashMap<(usize, u64), usize> = HashMap::new();
+            let mut func_start: u64 = 0;
+            for f in fns.iter() {
+                let caller = label_of(f);
+                let mut site_off: u64 = 0;
+                for op in f.ops.iter() {
+                    if let Either::Right(ControlFlowOp::Jump {
+                        to,
+                        ty: JumpType::Call,
+                    }) = &op.opcode
+                    {
+                        if let Some(&target_off) = label_to_off.get(&to.0) {
+                            let call_site = func_start + site_off;
+                            let tier = if target_off >= call_site {
+                                // Forward (or self): the 12-bit JAL immediate
+                                // holds `delta` directly.
+                                let delta = target_off - call_site;
+                                if delta <= compiler_constants::TWELVE_BITS {
+                                    FWD_NEAR
+                                } else if delta.saturating_sub(1).saturating_mul(4)
+                                    <= compiler_constants::EIGHTEEN_BITS
+                                {
+                                    MEDIUM
+                                } else {
+                                    FAR
+                                }
+                            } else {
+                                // Backward: the 12-bit SUBI immediate holds
+                                // `delta * 4` bytes, so the near range is 4x
+                                // smaller.
+                                let delta = call_site - target_off;
+                                if delta.saturating_mul(4) <= compiler_constants::TWELVE_BITS {
+                                    BACK_NEAR
+                                } else if delta.saturating_add(1).saturating_mul(4)
+                                    <= compiler_constants::EIGHTEEN_BITS
+                                {
+                                    MEDIUM
+                                } else {
+                                    FAR
+                                }
+                            };
+                            let depth = call_loop_depth
+                                .get(&(caller, site_off))
+                                .copied()
+                                .unwrap_or(0);
+                            weights.insert((caller, site_off), tier * LOOP_BOOST.pow(depth as u32));
+                        }
+                    }
+                    site_off += op_size(op);
+                }
+                func_start += site_off;
+            }
+            weights
+        };
+
+        // Greedy improvement, capped at a small number of iterations. Each
+        // iteration finds the function that is called the most *via a backward
+        // call* and relocates it to the position (1..len) that minimizes the
+        // weighted call cost (forward + backward, see `call_weights`). The
+        // function's original position is always among the candidates, so the
+        // chosen position is never worse than staying put: the cost monotonically
+        // decreases (or stays the same, in which case we stop). Index 0 (the
+        // first entry) never moves.
+        const MAX_ITERS: usize = 128;
+        // When the worst back-jump target can't be improved, fall back to the
+        // 2nd-worst, 3rd-worst, ... up to `DEPTH` candidates per iteration,
+        // committing the first one that strictly improves the call cost.
+        const DEPTH: usize = 10;
+        // Minimum cost improvement (in instruction units) required to commit a
+        // move. Without this, sub-threshold reshuffles whose gain is within the
+        // cost model's rounding (e.g. a call sitting exactly on the near/far
+        // boundary flipping by one instruction) get committed and can churn
+        // across iterations, accumulating model error. Requiring at least this
+        // much real improvement keeps the greedy descent monotone and stable.
+        const MIN_GAIN: usize = 30;
+
+        for iter in 0..MAX_ITERS {
+            // Map each function's leading label to its current index, and count
+            // how many backward calls target each label.
+            let mut label_to_idx: HashMap<usize, usize> = HashMap::new();
+            for (idx, f) in fns.iter().enumerate() {
+                label_to_idx.insert(label_of(f), idx);
+            }
+
+            let mut back_call_count: HashMap<usize, usize> = HashMap::new();
+            for (current_idx, f) in fns.iter().enumerate() {
+                for op in &f.ops {
+                    if let Either::Right(ControlFlowOp::Jump {
+                        to,
+                        ty: JumpType::Call,
+                    }) = &op.opcode
+                    {
+                        if let Some(&target_idx) = label_to_idx.get(&to.0) {
+                            if target_idx < current_idx {
+                                *back_call_count.entry(to.0).or_insert(0) += 1;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Candidates: the functions receiving the most backward calls, in
+            // descending order. Exclude the entry at index 0, which must stay.
+            let entry_label = label_of(&fns[0]);
+            let mut candidates: Vec<(usize, usize)> = back_call_count
+                .iter()
+                .filter(|(l, _)| **l != entry_label)
+                .map(|(l, c)| (*l, *c))
+                .collect();
+            candidates.sort_by(|a, b| b.1.cmp(&a.1));
+            candidates.truncate(DEPTH);
+
+            if candidates.is_empty() {
+                break; // no movable backward-call target remains
+            }
+
+            let before_weights = call_weights(fns);
+            let count_before: usize = before_weights.values().sum();
+            let mut committed = false;
+
+            // Try candidates worst-first. The first one that strictly improves
+            // the cost is committed; the rest are skipped this iteration.
+            for (target_label, target_count) in candidates {
+                let cur = label_to_idx[&target_label];
+                // `cur >= 1` because the entry (index 0) was excluded above.
+
+                // Pull the candidate out and try every position 1..=len (never
+                // index 0). Keep the position that minimizes the weighted cost.
+                let mut func = fns.remove(cur);
+                let mut best_p = cur;
+                let mut best_count = count_before;
+
+                for p in 1..=fns.len() {
+                    fns.insert(p, func);
+                    let w = call_weights(fns);
+                    func = fns.remove(p);
+                    let sum: usize = w.values().sum();
+                    // Under `PARETO`, only accept a position where no individual
+                    // call gets worse and at least one improves (a true Pareto
+                    // improvement). Otherwise accept any lower-aggregate
+                    // position. `before_weights` was computed on the layout
+                    // with this candidate at `cur`, and the candidate is
+                    // present at `p` here, so the call sets match by key.
+                    let acceptable = if PARETO {
+                        w.iter()
+                            .all(|(k, &v)| v <= before_weights.get(k).copied().unwrap_or(0))
+                            && w.iter()
+                                .any(|(k, &v)| v < before_weights.get(k).copied().unwrap_or(0))
+                    } else {
+                        true
+                    };
+                    if acceptable && sum < best_count {
+                        best_count = sum;
+                        best_p = p;
+                    }
+                }
+
+                // Commit iff an improving position was found. Under `PARETO` a
+                // strict aggregate drop is guaranteed whenever a Pareto-safe
+                // improvement exists (some weight strictly decreases, none
+                // increase); otherwise the `MIN_GAIN` threshold guards against
+                // noise-level reshuffles. `cur` is always a candidate position,
+                // so we never worsen the layout.
+                let commit = if PARETO {
+                    best_count < count_before
+                } else {
+                    best_count + MIN_GAIN <= count_before
+                };
+                if commit {
+                    fns.insert(best_p, func);
+                    eprintln!(
+                        "optimize_fn_order iter {iter}: call cost {count_before} -> {best_count} (target {target_label} had {target_count} back calls)"
+                    );
+                    committed = true;
+                    break;
+                }
+
+                // This candidate couldn't improve; restore and try the next.
+                fns.insert(cur, func);
+            }
+
+            if !committed {
+                break; // none of the top-DEPTH candidates could improve; stop.
+            }
         }
     }
 }
