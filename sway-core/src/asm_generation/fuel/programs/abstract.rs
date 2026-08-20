@@ -414,18 +414,6 @@ impl AbstractProgram {
             return;
         }
 
-        // Extract the leading label of a function. A function's first op must be a
-        // `Label`; preserve the prior `todo!()` behavior when it isn't.
-        let label_of = |f: &AbstractInstructionSet| -> usize {
-            match f.ops.first() {
-                Some(Op {
-                    opcode: Either::Right(ControlFlowOp::Label(l)),
-                    ..
-                }) => l.0,
-                _ => todo!(),
-            }
-        };
-
         // Real compiled size of a single op, in instruction units (1 instr = 4
         // bytes), mirroring `worst_case_instruction_size` from
         // `allocated_abstract_instruction_set.rs`. Labels/Comments and
@@ -461,6 +449,60 @@ impl AbstractProgram {
             }
         };
 
+        let n = fns.len();
+
+        // Stable per-function facts. Reordering only permutes whole functions;
+        // leading labels, sizes, and call sites never change. A function's
+        // first op must be a `Label`; preserve the prior `todo!()` behavior.
+        let fn_labels: Vec<usize> = fns
+            .iter()
+            .map(|f| match f.ops.first() {
+                Some(Op {
+                    opcode: Either::Right(ControlFlowOp::Label(l)),
+                    ..
+                }) => l.0,
+                _ => todo!(),
+            })
+            .collect();
+        let mut label_to_fn_idx: HashMap<usize, usize> = HashMap::new();
+        for (idx, &lab) in fn_labels.iter().enumerate() {
+            label_to_fn_idx.insert(lab, idx);
+        }
+        let fn_sizes: Vec<u64> = fns
+            .iter()
+            .map(|f| f.ops.iter().map(|o| op_size(o)).sum())
+            .collect();
+        // Per function: (call-site offset within the function, callee label).
+        let call_sites: Vec<Vec<(u64, usize)>> = fns
+            .iter()
+            .map(|f| {
+                let mut sites = Vec::new();
+                let mut site_off: u64 = 0;
+                for op in f.ops.iter() {
+                    if let Either::Right(ControlFlowOp::Jump {
+                        to,
+                        ty: JumpType::Call,
+                    }) = &op.opcode
+                    {
+                        sites.push((site_off, to.0));
+                    }
+                    site_off += op_size(op);
+                }
+                sites
+            })
+            .collect();
+
+        // Layout state: `best_order[slot] = fn_idx`, `fn_idx_to_slot[fn_idx] = slot`.
+        // Kept in sync on every mutation; `fns` is rewritten from `best_order` at
+        // the end.
+        let mut best_order: Vec<usize> = (0..n).collect();
+        let mut fn_idx_to_slot: Vec<usize> = (0..n).collect();
+        let sync_slots = |order: &[usize], slot_of: &mut [usize]| {
+            for (s, &f) in order.iter().enumerate() {
+                slot_of[f] = s;
+            }
+        };
+
         // --- Loop detection (gas-oriented weighting) -------------------------
         // The benchmark measures gas, and a call's gas scales with how often it
         // executes. A call inside a loop runs once per iteration, so its
@@ -474,8 +516,8 @@ impl AbstractProgram {
         // (caller label, call-site offset within the caller).
         let call_loop_depth: HashMap<(usize, u64), usize> = {
             let mut map: HashMap<(usize, u64), usize> = HashMap::new();
-            for f in fns.iter() {
-                let caller = label_of(f);
+            for (fi, f) in fns.iter().enumerate() {
+                let caller = fn_labels[fi];
                 // Index each label in this function to its op position.
                 let mut label_idx: HashMap<usize, usize> = HashMap::new();
                 for (i, op) in f.ops.iter().enumerate() {
@@ -560,71 +602,63 @@ impl AbstractProgram {
         // near threshold is penalized (1 -> 3), not free. Self-calls travel
         // with their function, so they add a position-independent constant and
         // don't affect which position is chosen.
-        let call_weights = |fns: &Vec<AbstractInstructionSet>| -> HashMap<(usize, u64), usize> {
+        let call_weights = |order: &[usize]| -> HashMap<(usize, u64), usize> {
             const FWD_NEAR: usize = 1;
             const BACK_NEAR: usize = 2;
             const MEDIUM: usize = 3;
             const FAR: usize = 6;
 
-            // label -> offset of the function's start, in instruction units.
-            let mut label_to_off: HashMap<usize, u64> = HashMap::new();
+            // fn_idx -> offset of the function's start, in instruction units.
+            let mut fn_to_off = vec![0u64; n];
             let mut offset: u64 = 0;
-            for f in fns.iter() {
-                label_to_off.insert(label_of(f), offset);
-                offset += f.ops.iter().map(|o| op_size(o)).sum::<u64>();
+            for &fi in order {
+                fn_to_off[fi] = offset;
+                offset += fn_sizes[fi];
             }
 
             let mut weights: HashMap<(usize, u64), usize> = HashMap::new();
-            let mut func_start: u64 = 0;
-            for f in fns.iter() {
-                let caller = label_of(f);
-                let mut site_off: u64 = 0;
-                for op in f.ops.iter() {
-                    if let Either::Right(ControlFlowOp::Jump {
-                        to,
-                        ty: JumpType::Call,
-                    }) = &op.opcode
-                    {
-                        if let Some(&target_off) = label_to_off.get(&to.0) {
-                            let call_site = func_start + site_off;
-                            let tier = if target_off >= call_site {
-                                // Forward (or self): the 12-bit JAL immediate
-                                // holds `delta` directly.
-                                let delta = target_off - call_site;
-                                if delta <= compiler_constants::TWELVE_BITS {
-                                    FWD_NEAR
-                                } else if delta.saturating_sub(1).saturating_mul(4)
-                                    <= compiler_constants::EIGHTEEN_BITS
-                                {
-                                    MEDIUM
-                                } else {
-                                    FAR
-                                }
+            for &caller_fi in order {
+                let caller = fn_labels[caller_fi];
+                let func_start = fn_to_off[caller_fi];
+                for &(site_off, to_label) in &call_sites[caller_fi] {
+                    if let Some(&target_fi) = label_to_fn_idx.get(&to_label) {
+                        let target_off = fn_to_off[target_fi];
+                        let call_site = func_start + site_off;
+                        let tier = if target_off >= call_site {
+                            // Forward (or self): the 12-bit JAL immediate
+                            // holds `delta` directly.
+                            let delta = target_off - call_site;
+                            if delta <= compiler_constants::TWELVE_BITS {
+                                FWD_NEAR
+                            } else if delta.saturating_sub(1).saturating_mul(4)
+                                <= compiler_constants::EIGHTEEN_BITS
+                            {
+                                MEDIUM
                             } else {
-                                // Backward: the 12-bit SUBI immediate holds
-                                // `delta * 4` bytes, so the near range is 4x
-                                // smaller.
-                                let delta = call_site - target_off;
-                                if delta.saturating_mul(4) <= compiler_constants::TWELVE_BITS {
-                                    BACK_NEAR
-                                } else if delta.saturating_add(1).saturating_mul(4)
-                                    <= compiler_constants::EIGHTEEN_BITS
-                                {
-                                    MEDIUM
-                                } else {
-                                    FAR
-                                }
-                            };
-                            let depth = call_loop_depth
-                                .get(&(caller, site_off))
-                                .copied()
-                                .unwrap_or(0);
-                            weights.insert((caller, site_off), tier * LOOP_BOOST.pow(depth as u32));
-                        }
+                                FAR
+                            }
+                        } else {
+                            // Backward: the 12-bit SUBI immediate holds
+                            // `delta * 4` bytes, so the near range is 4x
+                            // smaller.
+                            let delta = call_site - target_off;
+                            if delta.saturating_mul(4) <= compiler_constants::TWELVE_BITS {
+                                BACK_NEAR
+                            } else if delta.saturating_add(1).saturating_mul(4)
+                                <= compiler_constants::EIGHTEEN_BITS
+                            {
+                                MEDIUM
+                            } else {
+                                FAR
+                            }
+                        };
+                        let depth = call_loop_depth
+                            .get(&(caller, site_off))
+                            .copied()
+                            .unwrap_or(0);
+                        weights.insert((caller, site_off), tier * LOOP_BOOST.pow(depth as u32));
                     }
-                    site_off += op_size(op);
                 }
-                func_start += site_off;
             }
             weights
         };
@@ -651,25 +685,13 @@ impl AbstractProgram {
         const MIN_GAIN: usize = 30;
 
         for iter in 0..MAX_ITERS {
-            // Map each function's leading label to its current index, and count
-            // how many backward calls target each label.
-            let mut label_to_idx: HashMap<usize, usize> = HashMap::new();
-            for (idx, f) in fns.iter().enumerate() {
-                label_to_idx.insert(label_of(f), idx);
-            }
-
+            // Count how many backward calls target each label.
             let mut back_call_count: HashMap<usize, usize> = HashMap::new();
-            for (current_idx, f) in fns.iter().enumerate() {
-                for op in &f.ops {
-                    if let Either::Right(ControlFlowOp::Jump {
-                        to,
-                        ty: JumpType::Call,
-                    }) = &op.opcode
-                    {
-                        if let Some(&target_idx) = label_to_idx.get(&to.0) {
-                            if target_idx < current_idx {
-                                *back_call_count.entry(to.0).or_insert(0) += 1;
-                            }
+            for (current_slot, &caller_fi) in best_order.iter().enumerate() {
+                for &(_, to_label) in &call_sites[caller_fi] {
+                    if let Some(&target_fi) = label_to_fn_idx.get(&to_label) {
+                        if fn_idx_to_slot[target_fi] < current_slot {
+                            *back_call_count.entry(to_label).or_insert(0) += 1;
                         }
                     }
                 }
@@ -677,7 +699,8 @@ impl AbstractProgram {
 
             // Candidates: the functions receiving the most backward calls, in
             // descending order. Exclude the entry at index 0, which must stay.
-            let entry_label = label_of(&fns[0]);
+            // Index 0 never moves, so the entry label is always `fn_labels[0]`.
+            let entry_label = fn_labels[best_order[0]];
             let mut candidates: Vec<(usize, usize)> = back_call_count
                 .iter()
                 .filter(|(l, _)| **l != entry_label)
@@ -690,26 +713,30 @@ impl AbstractProgram {
                 break; // no movable backward-call target remains
             }
 
-            let before_weights = call_weights(fns);
+            let before_weights = call_weights(&best_order);
             let count_before: usize = before_weights.values().sum();
             let mut committed = false;
 
             // Try candidates worst-first. The first one that strictly improves
             // the cost is committed; the rest are skipped this iteration.
             for (target_label, target_count) in candidates {
-                let cur = label_to_idx[&target_label];
+                let target_fi = label_to_fn_idx[&target_label];
+                let cur = fn_idx_to_slot[target_fi];
                 // `cur >= 1` because the entry (index 0) was excluded above.
 
                 // Pull the candidate out and try every position 1..=len (never
                 // index 0). Keep the position that minimizes the weighted cost.
-                let mut func = fns.remove(cur);
+                best_order.remove(cur);
+                sync_slots(&best_order, &mut fn_idx_to_slot);
                 let mut best_p = cur;
                 let mut best_count = count_before;
 
-                for p in 1..=fns.len() {
-                    fns.insert(p, func);
-                    let w = call_weights(fns);
-                    func = fns.remove(p);
+                for p in 1..=best_order.len() {
+                    best_order.insert(p, target_fi);
+                    sync_slots(&best_order, &mut fn_idx_to_slot);
+                    let w = call_weights(&best_order);
+                    best_order.remove(p);
+                    sync_slots(&best_order, &mut fn_idx_to_slot);
                     let sum: usize = w.values().sum();
                     // Under `PARETO`, only accept a position where no individual
                     // call gets worse and at least one improves (a true Pareto
@@ -743,7 +770,8 @@ impl AbstractProgram {
                     best_count + MIN_GAIN <= count_before
                 };
                 if commit {
-                    fns.insert(best_p, func);
+                    best_order.insert(best_p, target_fi);
+                    sync_slots(&best_order, &mut fn_idx_to_slot);
                     eprintln!(
                         "optimize_fn_order iter {iter}: call cost {count_before} -> {best_count} (target {target_label} had {target_count} back calls)"
                     );
@@ -752,13 +780,21 @@ impl AbstractProgram {
                 }
 
                 // This candidate couldn't improve; restore and try the next.
-                fns.insert(cur, func);
+                best_order.insert(cur, target_fi);
+                sync_slots(&best_order, &mut fn_idx_to_slot);
             }
 
             if !committed {
                 break; // none of the top-DEPTH candidates could improve; stop.
             }
         }
+
+        // Apply the final layout to `fns`.
+        let mut tmp: Vec<_> = std::mem::take(fns).into_iter().map(Some).collect();
+        *fns = best_order
+            .into_iter()
+            .map(|i| tmp[i].take().unwrap())
+            .collect();
     }
 }
 
