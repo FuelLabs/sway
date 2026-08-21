@@ -419,41 +419,42 @@ impl AbstractProgram {
 
         let mut layout = FnLayout::new(fns);
 
-        for iter in 0..MAX_ITERS {
+        'improve: for iter in 0..MAX_ITERS {
             // Index 0 never moves, so the entry is always original fn 0.
             debug_assert_eq!(layout.order[0], 0);
 
-            let before_weights = layout.call_weights();
-            let count_before: usize = before_weights.values().sum();
-            let mut committed = false;
+            let mut found_improvement = false;
+
+            let before_weights = layout.call_weights(None);
+            let before_weights_sum = before_weights.values().sum();
 
             let mut back_call_count = layout.back_call_count();
             let candidates = &mut back_call_count[1..];
             let depth = DEPTH.min(candidates.len());
-            for k in 0..depth {
+
+            'candidates: for k in 0..depth {
                 let (_, (target_fi, target_count), _) =
                     candidates.select_nth_unstable_by(k, |a, b| b.1.cmp(&a.1));
                 if *target_count == 0 {
-                    break; // remaining ranks are also 0
+                    break 'candidates;
                 }
 
                 let target_fi = *target_fi;
                 let target_count = *target_count;
                 let target_label = layout.fn_labels[target_fi];
-                let cur = layout.fn_idx_to_slot[target_fi];
+                let cur = layout.slot_of(target_fi);
                 // `cur >= 1` because the entry (fn_idx 0) was excluded above.
 
                 // Pull the candidate out and try every position 1..=len (never
                 // index 0). Keep the position that minimizes the weighted cost.
+                // Trials use a virtual insert so `order` is not spliced each try.
                 let removed = layout.remove_at(cur);
                 debug_assert_eq!(removed, target_fi);
                 let mut best_p = cur;
-                let mut best_count = count_before;
+                let mut best_count = before_weights_sum;
 
                 for p in 1..=layout.len() {
-                    layout.insert_at(p, target_fi);
-                    let w = layout.call_weights();
-                    layout.remove_at(p);
+                    let w = layout.call_weights(Some((p, target_fi)));
                     let sum: usize = w.values().sum();
                     // Only accept a position where no individual call gets worse
                     // and at least one improves (a true Pareto improvement).
@@ -479,21 +480,21 @@ impl AbstractProgram {
                 // drop is guaranteed whenever a Pareto-safe improvement exists
                 // (some weight strictly decreases, none increase). `cur` is
                 // always a candidate position, so we never worsen the layout.
-                if best_count < count_before {
+                if best_count < before_weights_sum {
                     layout.insert_at(best_p, target_fi);
                     eprintln!(
-                        "optimize_fn_order iter {iter}: call cost {count_before} -> {best_count} (target {target_label} had {target_count} back calls)"
+                        "optimize_fn_order iter {iter}: call cost {before_weights_sum} -> {best_count} (target {target_label} had {target_count} back calls)"
                     );
-                    committed = true;
-                    break;
+                    found_improvement = true;
+                    break 'candidates;
                 }
 
                 // This candidate couldn't improve; restore and try the next.
                 layout.insert_at(cur, target_fi);
             }
 
-            if !committed {
-                break; // none of the top-DEPTH candidates could improve; stop.
+            if !found_improvement {
+                break 'improve; // none of the top-DEPTH candidates could improve; stop.
             }
         }
 
@@ -530,18 +531,17 @@ struct CallSite {
     callee: usize,
 }
 
-/// `fns` stays in stable fn_idx order until `apply`; `order` / `fn_idx_to_slot`
-/// are the current layout permutation and are updated together by remove/insert.
-/// `fn_labels` / `fn_sizes` / `call_sites` / `call_loop_depth` are stable.
+/// `fns` stays in stable fn_idx order until `apply`; `order` is the current
+/// layout permutation (slot → fn_idx). `fn_labels` / `fn_sizes` / `call_sites` /
+/// `call_loop_depth` are stable.
 struct FnLayout<'a> {
     fns: &'a mut Vec<AbstractInstructionSet>,
-    fn_labels: Vec<usize>,
+    fn_labels: Vec<Label>,
     fn_sizes: Vec<u64>,
     call_sites: Vec<CallSite>,
     /// Keyed by (caller label, call-site offset within the caller).
-    call_loop_depth: HashMap<(usize, u64), usize>,
+    call_loop_depth: HashMap<(Label, u64), usize>,
     order: Vec<usize>,
-    fn_idx_to_slot: Vec<usize>,
 }
 
 impl<'a> FnLayout<'a> {
@@ -549,13 +549,13 @@ impl<'a> FnLayout<'a> {
         let n = fns.len();
         // A function's first op must be a `Label`; preserve the prior
         // `todo!()` behavior when it isn't.
-        let fn_labels: Vec<usize> = fns
+        let fn_labels: Vec<Label> = fns
             .iter()
             .map(|f| match f.ops.first() {
                 Some(Op {
                     opcode: Either::Right(ControlFlowOp::Label(l)),
                     ..
-                }) => l.0,
+                }) => *l,
                 _ => todo!(),
             })
             .collect();
@@ -563,7 +563,7 @@ impl<'a> FnLayout<'a> {
             .iter()
             .map(|f| f.ops.iter().map(|o| o.op_size()).sum())
             .collect();
-        let label_to_fn_idx: HashMap<usize, usize> = fn_labels
+        let label_to_fn_idx: HashMap<Label, usize> = fn_labels
             .iter()
             .enumerate()
             .map(|(idx, &lab)| (lab, idx))
@@ -577,7 +577,7 @@ impl<'a> FnLayout<'a> {
                     ty: JumpType::Call,
                 }) = &op.opcode
                 {
-                    if let Some(&callee) = label_to_fn_idx.get(&to.0) {
+                    if let Some(&callee) = label_to_fn_idx.get(&to) {
                         call_sites.push(CallSite {
                             caller,
                             offset: site_off,
@@ -599,7 +599,7 @@ impl<'a> FnLayout<'a> {
         // of distinct loops enclosing it. This is invariant under reordering
         // (functions move as whole units), so we compute it once and key it by
         // (caller label, call-site offset within the caller).
-        let mut call_loop_depth: HashMap<(usize, u64), usize> = HashMap::new();
+        let mut call_loop_depth: HashMap<(Label, u64), usize> = HashMap::new();
         for (fi, f) in fns.iter().enumerate() {
             let caller = fn_labels[fi];
             // Index each label in this function to its op position.
@@ -656,7 +656,6 @@ impl<'a> FnLayout<'a> {
             call_sites,
             call_loop_depth,
             order: (0..n).collect(),
-            fn_idx_to_slot: (0..n).collect(),
         }
     }
 
@@ -664,14 +663,26 @@ impl<'a> FnLayout<'a> {
         self.order.len()
     }
 
+    /// Slot of `fi` in the current `order`.
+    fn slot_of(&self, fi: usize) -> usize {
+        self.order
+            .iter()
+            .position(|&f| f == fi)
+            .expect("fn_idx present in order")
+    }
+
     /// `(fn_idx, back-call count)` for every function in the current layout.
     /// Indexed by fn_idx while counting; callers typically `select_nth` on
     /// `[1..]` so the entry (fn 0) is never a relocation candidate.
     fn back_call_count(&self) -> Vec<(usize, usize)> {
         let n = self.fn_sizes.len();
+        let mut slot_of = vec![0usize; n];
+        for (slot, &fi) in self.order.iter().enumerate() {
+            slot_of[fi] = slot;
+        }
         let mut counts: Vec<(usize, usize)> = (0..n).map(|fi| (fi, 0)).collect();
         for site in &self.call_sites {
-            if self.fn_idx_to_slot[site.callee] < self.fn_idx_to_slot[site.caller] {
+            if slot_of[site.callee] < slot_of[site.caller] {
                 counts[site.callee].1 += 1;
             }
         }
@@ -699,7 +710,11 @@ impl<'a> FnLayout<'a> {
     /// near threshold is penalized (1 -> 3), not free. Self-calls travel
     /// with their function, so they add a position-independent constant and
     /// don't affect which position is chosen.
-    fn call_weights(&self) -> HashMap<(usize, u64), usize> {
+    ///
+    /// If `virtual_insert` is `Some((p, fi))`, `fi` is treated as occupying
+    /// slot `p` without splicing `order`: slots `< p` read `order[slot]`,
+    /// slot `p` is `fi`, and slots `> p` read `order[slot - 1]`.
+    fn call_weights(&self, virtual_insert: Option<(usize, usize)>) -> HashMap<(Label, u64), usize> {
         // Gas weight multiplier per loop nesting level: a call at depth `d` is
         // weighted `LOOP_BOOST^d` times its base instruction cost (depth 0 ->
         // 1x). 2 models each loop roughly doubling execution count; raise it if
@@ -714,12 +729,30 @@ impl<'a> FnLayout<'a> {
         let n = self.fn_sizes.len();
         let mut fn_to_off = vec![0u64; n];
         let mut offset: u64 = 0;
-        for &fi in &self.order {
-            fn_to_off[fi] = offset;
-            offset += self.fn_sizes[fi];
+        match virtual_insert {
+            None => {
+                for &fi in &self.order {
+                    fn_to_off[fi] = offset;
+                    offset += self.fn_sizes[fi];
+                }
+            }
+            Some((p, fi)) => {
+                let total = self.order.len() + 1;
+                for slot in 0..total {
+                    let f = if slot < p {
+                        self.order[slot]
+                    } else if slot == p {
+                        fi
+                    } else {
+                        self.order[slot - 1]
+                    };
+                    fn_to_off[f] = offset;
+                    offset += self.fn_sizes[f];
+                }
+            }
         }
 
-        let mut weights: HashMap<(usize, u64), usize> = HashMap::new();
+        let mut weights: HashMap<(Label, u64), usize> = HashMap::new();
         for site in &self.call_sites {
             let caller = self.fn_labels[site.caller];
             let func_start = fn_to_off[site.caller];
@@ -763,19 +796,11 @@ impl<'a> FnLayout<'a> {
     }
 
     fn remove_at(&mut self, slot: usize) -> usize {
-        let fi = self.order.remove(slot);
-        for &f in &self.order[slot..] {
-            self.fn_idx_to_slot[f] -= 1;
-        }
-        fi
+        self.order.remove(slot)
     }
 
     fn insert_at(&mut self, slot: usize, fi: usize) {
-        for &f in &self.order[slot..] {
-            self.fn_idx_to_slot[f] += 1;
-        }
         self.order.insert(slot, fi);
-        self.fn_idx_to_slot[fi] = slot;
     }
 
     /// Write `order` back into `fns` in place.
