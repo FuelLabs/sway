@@ -282,3 +282,6 @@ decodable
 encodable
 Vec
 hashable
+revalidate
+revalidated
+executable's
