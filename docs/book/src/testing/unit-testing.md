@@ -49,10 +49,11 @@ the options available for `forc test`.
 Use release builds for comparative gas measurements:
 
 ```console
-forc test --release
+forc test --release --locked
 ```
 
-Pin the Forc version and compare every affected test and ABI-reachable release
+Pin the Forc version, commit `Forc.lock`, and compare every affected test and
+ABI-reachable release
 binary independently. Confirm that the benchmark executes the changed path;
 zero gas in a detached helper test does not show that storage or external calls
 are free. Use an SDK and target-node test for claims about fees, refunds,

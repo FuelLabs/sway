@@ -49,13 +49,16 @@ An important note is that the `ji` and `jnei` opcodes are not available within a
 ## Optimization Guidance
 
 Inline assembly is not automatically cheaper than Sway. Measurements with
-Forc `0.71.2` found useful wins mainly when assembly removed fixed-loop or
-branch scaffolding; already straight-line arithmetic was often unchanged.
+Forc `0.71.2` found wins only when assembly removed fixed-loop or branch
+scaffolding; straight-line arithmetic, and assembly placed inside the original
+Sway loop, were gas-neutral or regressed.
 
 Compare `forc test --release` gas and release bytecode size independently.
 Preserve checked-overflow behavior, zero-divisor and shift guards, evaluation
-order, memory effects, and reserved-register rules. Revalidate assembly after
-every compiler or FuelVM upgrade.
+order, memory effects, and reserved-register rules. Isolate a measured assembly
+kernel behind a small typed Sway function, and retain a readable Sway
+implementation as an oracle to differential-test the assembly against over
+boundary inputs. Revalidate assembly after every compiler or FuelVM upgrade.
 
 ## Helpful Links
 
