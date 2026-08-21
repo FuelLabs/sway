@@ -414,264 +414,28 @@ impl AbstractProgram {
             return;
         }
 
-        let n = fns.len();
+        let mut layout = FnLayout::new(fns);
+        let n = layout.fns.len();
 
-        // Stable per-function facts. Reordering only permutes whole functions;
-        // leading labels, sizes, and call sites never change. A function's
-        // first op must be a `Label`; preserve the prior `todo!()` behavior.
-        let fn_labels: Vec<usize> = fns
-            .iter()
-            .map(|f| match f.ops.first() {
-                Some(Op {
-                    opcode: Either::Right(ControlFlowOp::Label(l)),
-                    ..
-                }) => l.0,
-                _ => todo!(),
-            })
-            .collect();
-        let label_to_fn_idx: HashMap<usize, usize> = fn_labels
-            .iter()
-            .enumerate()
-            .map(|(idx, &lab)| (lab, idx))
-            .collect();
-        let fn_sizes: Vec<u64> = fns
-            .iter()
-            .map(|f| f.ops.iter().map(|o| o.op_size()).sum())
-            .collect();
-
-        // Flat list of inter-function calls. Callee is a fn_idx; calls whose
-        // target label is not a function entry in `fns` are omitted (same as
-        // the former `label_to_fn_idx` miss in `call_weights`).
-        struct CallSite {
-            caller: usize,
-            offset: u64,
-            callee: usize,
-        }
-        let mut call_sites: Vec<CallSite> = Vec::with_capacity(fns.len());
-        for (caller, f) in fns.iter().enumerate() {
-            let mut site_off: u64 = 0;
-            for op in f.ops.iter() {
-                if let Either::Right(ControlFlowOp::Jump {
-                    to,
-                    ty: JumpType::Call,
-                }) = &op.opcode
-                {
-                    if let Some(&callee) = label_to_fn_idx.get(&to.0) {
-                        call_sites.push(CallSite {
-                            caller,
-                            offset: site_off,
-                            callee,
-                        });
-                    }
-                }
-                site_off += op.op_size();
-            }
-        }
-
-        // Layout state: `best_order[slot] = fn_idx`, `fn_idx_to_slot[fn_idx] = slot`.
-        // Kept in sync on every mutation; `fns` is rewritten from `best_order` at
-        // the end.
-        let mut best_order: Vec<usize> = (0..n).collect();
-        let mut fn_idx_to_slot: Vec<usize> = (0..n).collect();
-        let sync_slots = |order: &[usize], slot_of: &mut [usize]| {
-            for (s, &f) in order.iter().enumerate() {
-                slot_of[f] = s;
-            }
-        };
-
-        // --- Loop detection (gas-oriented weighting) -------------------------
-        // The benchmark measures gas, and a call's gas scales with how often it
-        // executes. A call inside a loop runs once per iteration, so its
-        // execution count grows with loop nesting depth. Loops at the ASM level
-        // are backward intra-function jumps (a back-edge to a label earlier in
-        // the same function); a call is inside a loop when it sits between the
-        // loop header (the back-edge target) and the back-edge site, and its
-        // nesting depth is the number of distinct loops enclosing it. This is
-        // invariant under reordering (functions move as whole units), so we
-        // compute it once on the initial layout and key it by
-        // (caller label, call-site offset within the caller).
-        let call_loop_depth: HashMap<(usize, u64), usize> = {
-            let mut map: HashMap<(usize, u64), usize> = HashMap::new();
-            for (fi, f) in fns.iter().enumerate() {
-                let caller = fn_labels[fi];
-                // Index each label in this function to its op position.
-                let mut label_idx: HashMap<usize, usize> = HashMap::new();
-                for (i, op) in f.ops.iter().enumerate() {
-                    if let Either::Right(ControlFlowOp::Label(l)) = &op.opcode {
-                        label_idx.insert(l.0, i);
-                    }
-                }
-                // Back-edges: backward non-call jumps to an earlier label.
-                // Group by header, keeping the furthest latch per header so the
-                // loop body is the contiguous [header, max_latch] range.
-                let mut loops: HashMap<usize, (usize, usize)> = HashMap::new();
-                for (j, op) in f.ops.iter().enumerate() {
-                    if let Either::Right(ControlFlowOp::Jump { to, ty }) = &op.opcode {
-                        match ty {
-                            JumpType::Unconditional | JumpType::NotZero(_) => {
-                                if let Some(&h) = label_idx.get(&to.0) {
-                                    if h < j {
-                                        let e = loops.entry(to.0).or_insert((h, j));
-                                        if j > e.1 {
-                                            e.1 = j;
-                                        }
-                                    }
-                                }
-                            }
-                            JumpType::Call => {}
-                        }
-                    }
-                }
-                if loops.is_empty() {
-                    continue;
-                }
-                let loops: Vec<(usize, usize)> = loops.values().cloned().collect();
-                let mut site_off: u64 = 0;
-                for (i, op) in f.ops.iter().enumerate() {
-                    if let Either::Right(ControlFlowOp::Jump {
-                        ty: JumpType::Call, ..
-                    }) = &op.opcode
-                    {
-                        let depth = loops.iter().filter(|(h, l)| *h <= i && i <= *l).count();
-                        if depth > 0 {
-                            map.insert((caller, site_off), depth);
-                        }
-                    }
-                    site_off += op.op_size();
-                }
-            }
-            map
-        };
-
-        // Commit policy toggle. When `PARETO` is true, a relocation is committed
-        // only if it is a true Pareto improvement: no individual call gets
-        // worse and at least one gets better. This guarantees no per-call
-        // regression at the cost of blocking most trades (almost every useful
-        // move lengthens some call), so it yields fewer but safer improvements.
-        // When false, the aggregate-cost policy with `MIN_GAIN` is used.
         const PARETO: bool = true;
-        // Gas weight multiplier per loop nesting level: a call at depth `d` is
-        // weighted `LOOP_BOOST^d` times its base instruction cost (depth 0 ->
-        // 1x). 2 models each loop roughly doubling execution count; raise it if
-        // hot loops have large trip counts.
-        const LOOP_BOOST: usize = 4;
-
-        // Per-call weight for the current layout, keyed by
-        // (caller label, call-site offset within the caller). The base weight
-        // is the call's compiled instruction count, mirroring
-        // `compile_call_inner`:
-        //   forward near  -> 1  (JAL)
-        //   backward near -> 2  (SUBI + JAL)
-        //   medium        -> 3  (MOVI +/- + JAL)
-        //   far           -> 6  (data section load + JAL; real count is 4, but
-        //                       inflated to 6 to penalize far calls harder than
-        //                       the medium->near step, so the greedy search
-        //                       breaks near-ties toward eliminating far calls)
-        // The base weight is then multiplied by `LOOP_BOOST^depth`, so calls in
-        // hot loops dominate the cost (gas scales with execution count).
-        // Offsets are in instruction units from `Op::op_size` (Label/Comment and
-        // zero-stack CFEI/CFSI are 0, not 1), matching the resolver's offset
-        // units. Forward near uses the 12-bit JAL immediate directly
-        // (`delta <= TWELVE_BITS`); backward near uses a 12-bit SUBI immediate
-        // holding `delta * 4` bytes, so its near range is 4x smaller. Counting
-        // forward calls too means a move that lengthens a forward call past the
-        // near threshold is penalized (1 -> 3), not free. Self-calls travel
-        // with their function, so they add a position-independent constant and
-        // don't affect which position is chosen.
-        let call_weights = |order: &[usize]| -> HashMap<(usize, u64), usize> {
-            const FWD_NEAR: usize = 1;
-            const BACK_NEAR: usize = 2;
-            const MEDIUM: usize = 3;
-            const FAR: usize = 6;
-
-            // fn_idx -> offset of the function's start, in instruction units.
-            let mut fn_to_off = vec![0u64; n];
-            let mut offset: u64 = 0;
-            for &fi in order {
-                fn_to_off[fi] = offset;
-                offset += fn_sizes[fi];
-            }
-
-            let mut weights: HashMap<(usize, u64), usize> = HashMap::new();
-            for site in &call_sites {
-                let caller = fn_labels[site.caller];
-                let func_start = fn_to_off[site.caller];
-                let target_off = fn_to_off[site.callee];
-                let call_site = func_start + site.offset;
-                let tier = if target_off >= call_site {
-                    // Forward (or self): the 12-bit JAL immediate
-                    // holds `delta` directly.
-                    let delta = target_off - call_site;
-                    if delta <= compiler_constants::TWELVE_BITS {
-                        FWD_NEAR
-                    } else if delta.saturating_sub(1).saturating_mul(4)
-                        <= compiler_constants::EIGHTEEN_BITS
-                    {
-                        MEDIUM
-                    } else {
-                        FAR
-                    }
-                } else {
-                    // Backward: the 12-bit SUBI immediate holds
-                    // `delta * 4` bytes, so the near range is 4x
-                    // smaller.
-                    let delta = call_site - target_off;
-                    if delta.saturating_mul(4) <= compiler_constants::TWELVE_BITS {
-                        BACK_NEAR
-                    } else if delta.saturating_add(1).saturating_mul(4)
-                        <= compiler_constants::EIGHTEEN_BITS
-                    {
-                        MEDIUM
-                    } else {
-                        FAR
-                    }
-                };
-                let depth = call_loop_depth
-                    .get(&(caller, site.offset))
-                    .copied()
-                    .unwrap_or(0);
-                weights.insert((caller, site.offset), tier * LOOP_BOOST.pow(depth as u32));
-            }
-            weights
-        };
-
-        // Greedy improvement, capped at a small number of iterations. Each
-        // iteration finds the function that is called the most *via a backward
-        // call* and relocates it to the position (1..len) that minimizes the
-        // weighted call cost (forward + backward, see `call_weights`). The
-        // function's original position is always among the candidates, so the
-        // chosen position is never worse than staying put: the cost monotonically
-        // decreases (or stays the same, in which case we stop). Index 0 (the
-        // first entry) never moves.
         const MAX_ITERS: usize = 128;
-        // When the worst back-jump target can't be improved, fall back to the
-        // 2nd-worst, 3rd-worst, ... up to `DEPTH` candidates per iteration,
-        // committing the first one that strictly improves the call cost.
         const DEPTH: usize = 10;
-        // Minimum cost improvement (in instruction units) required to commit a
-        // move. Without this, sub-threshold reshuffles whose gain is within the
-        // cost model's rounding (e.g. a call sitting exactly on the near/far
-        // boundary flipping by one instruction) get committed and can churn
-        // across iterations, accumulating model error. Requiring at least this
-        // much real improvement keeps the greedy descent monotone and stable.
         const MIN_GAIN: usize = 30;
 
-        // Index 0 never moves, so the entry is always original fn 0.
-        debug_assert_eq!(best_order[0], 0);
-
         for iter in 0..MAX_ITERS {
-            debug_assert_eq!(best_order[0], 0);
+            // Index 0 never moves, so the entry is always original fn 0.
+            debug_assert_eq!(layout.order[0], 0);
 
             // (fn_idx, back-call count). Indexed by fn_idx while counting; then
             // `select_nth` on `[1..]` so the entry (fn 0) is never a candidate.
             let mut back_call_count: Vec<(usize, usize)> = (0..n).map(|fi| (fi, 0)).collect();
-            for site in &call_sites {
-                if fn_idx_to_slot[site.callee] < fn_idx_to_slot[site.caller] {
+            for site in &layout.call_sites {
+                if layout.fn_idx_to_slot[site.callee] < layout.fn_idx_to_slot[site.caller] {
                     back_call_count[site.callee].1 += 1;
                 }
             }
 
-            let before_weights = call_weights(&best_order);
+            let before_weights = layout.call_weights();
             let count_before: usize = before_weights.values().sum();
             let mut committed = false;
 
@@ -686,23 +450,23 @@ impl AbstractProgram {
                     break; // remaining ranks are also 0
                 }
 
-                let target_label = fn_labels[*target_fi];
-                let cur = fn_idx_to_slot[*target_fi];
+                let target_fi = *target_fi;
+                let target_count = *target_count;
+                let target_label = layout.fn_labels[target_fi];
+                let cur = layout.fn_idx_to_slot[target_fi];
                 // `cur >= 1` because the entry (fn_idx 0) was excluded above.
 
                 // Pull the candidate out and try every position 1..=len (never
                 // index 0). Keep the position that minimizes the weighted cost.
-                best_order.remove(cur);
-                sync_slots(&best_order, &mut fn_idx_to_slot);
+                let removed = layout.remove_at(cur);
+                debug_assert_eq!(removed, target_fi);
                 let mut best_p = cur;
                 let mut best_count = count_before;
 
-                for p in 1..=best_order.len() {
-                    best_order.insert(p, *target_fi);
-                    sync_slots(&best_order, &mut fn_idx_to_slot);
-                    let w = call_weights(&best_order);
-                    best_order.remove(p);
-                    sync_slots(&best_order, &mut fn_idx_to_slot);
+                for p in 1..=layout.len() {
+                    layout.insert_at(p, target_fi);
+                    let w = layout.call_weights();
+                    layout.remove_at(p);
                     let sum: usize = w.values().sum();
                     // Under `PARETO`, only accept a position where no individual
                     // call gets worse and at least one improves (a true Pareto
@@ -736,8 +500,7 @@ impl AbstractProgram {
                     best_count + MIN_GAIN <= count_before
                 };
                 if commit {
-                    best_order.insert(best_p, *target_fi);
-                    sync_slots(&best_order, &mut fn_idx_to_slot);
+                    layout.insert_at(best_p, target_fi);
                     eprintln!(
                         "optimize_fn_order iter {iter}: call cost {count_before} -> {best_count} (target {target_label} had {target_count} back calls)"
                     );
@@ -746,8 +509,7 @@ impl AbstractProgram {
                 }
 
                 // This candidate couldn't improve; restore and try the next.
-                best_order.insert(cur, *target_fi);
-                sync_slots(&best_order, &mut fn_idx_to_slot);
+                layout.insert_at(cur, target_fi);
             }
 
             if !committed {
@@ -755,12 +517,7 @@ impl AbstractProgram {
             }
         }
 
-        // Apply the final layout to `fns`.
-        let mut tmp: Vec<_> = std::mem::take(fns).into_iter().map(Some).collect();
-        *fns = best_order
-            .into_iter()
-            .map(|i| tmp[i].take().unwrap())
-            .collect();
+        layout.apply();
     }
 }
 
@@ -781,5 +538,259 @@ impl std::fmt::Display for AbstractProgram {
         }
         writeln!(f, ";; --- Data ---")?;
         write!(f, "{}", self.data_section)
+    }
+}
+
+/// Flat list entry for an inter-function call. Callee is a fn_idx; calls whose
+/// target label is not a function entry in `fns` are omitted (same as the
+/// former `label_to_fn_idx` miss in `call_weights`).
+struct CallSite {
+    caller: usize,
+    offset: u64,
+    callee: usize,
+}
+
+/// `fns` stays in stable fn_idx order until `apply`; `order` / `fn_idx_to_slot`
+/// are the current layout permutation and are updated together by remove/insert.
+/// `fn_labels` / `fn_sizes` / `call_sites` / `call_loop_depth` are stable.
+struct FnLayout<'a> {
+    fns: &'a mut Vec<AbstractInstructionSet>,
+    fn_labels: Vec<usize>,
+    fn_sizes: Vec<u64>,
+    call_sites: Vec<CallSite>,
+    /// Keyed by (caller label, call-site offset within the caller).
+    call_loop_depth: HashMap<(usize, u64), usize>,
+    order: Vec<usize>,
+    fn_idx_to_slot: Vec<usize>,
+}
+
+impl<'a> FnLayout<'a> {
+    fn new(fns: &'a mut Vec<AbstractInstructionSet>) -> Self {
+        let n = fns.len();
+        // A function's first op must be a `Label`; preserve the prior
+        // `todo!()` behavior when it isn't.
+        let fn_labels: Vec<usize> = fns
+            .iter()
+            .map(|f| match f.ops.first() {
+                Some(Op {
+                    opcode: Either::Right(ControlFlowOp::Label(l)),
+                    ..
+                }) => l.0,
+                _ => todo!(),
+            })
+            .collect();
+        let fn_sizes = fns
+            .iter()
+            .map(|f| f.ops.iter().map(|o| o.op_size()).sum())
+            .collect();
+        let label_to_fn_idx: HashMap<usize, usize> = fn_labels
+            .iter()
+            .enumerate()
+            .map(|(idx, &lab)| (lab, idx))
+            .collect();
+        let mut call_sites = Vec::with_capacity(n);
+        for (caller, f) in fns.iter().enumerate() {
+            let mut site_off: u64 = 0;
+            for op in f.ops.iter() {
+                if let Either::Right(ControlFlowOp::Jump {
+                    to,
+                    ty: JumpType::Call,
+                }) = &op.opcode
+                {
+                    if let Some(&callee) = label_to_fn_idx.get(&to.0) {
+                        call_sites.push(CallSite {
+                            caller,
+                            offset: site_off,
+                            callee,
+                        });
+                    }
+                }
+                site_off += op.op_size();
+            }
+        }
+
+        // Loop detection (gas-oriented weighting). The benchmark measures gas,
+        // and a call's gas scales with how often it executes. A call inside a
+        // loop runs once per iteration, so its execution count grows with loop
+        // nesting depth. Loops at the ASM level are backward intra-function
+        // jumps (a back-edge to a label earlier in the same function); a call
+        // is inside a loop when it sits between the loop header (the back-edge
+        // target) and the back-edge site, and its nesting depth is the number
+        // of distinct loops enclosing it. This is invariant under reordering
+        // (functions move as whole units), so we compute it once and key it by
+        // (caller label, call-site offset within the caller).
+        let mut call_loop_depth: HashMap<(usize, u64), usize> = HashMap::new();
+        for (fi, f) in fns.iter().enumerate() {
+            let caller = fn_labels[fi];
+            // Index each label in this function to its op position.
+            let mut label_idx: HashMap<usize, usize> = HashMap::new();
+            for (i, op) in f.ops.iter().enumerate() {
+                if let Either::Right(ControlFlowOp::Label(l)) = &op.opcode {
+                    label_idx.insert(l.0, i);
+                }
+            }
+            // Back-edges: backward non-call jumps to an earlier label.
+            // Group by header, keeping the furthest latch per header so the
+            // loop body is the contiguous [header, max_latch] range.
+            let mut loops: HashMap<usize, (usize, usize)> = HashMap::new();
+            for (j, op) in f.ops.iter().enumerate() {
+                if let Either::Right(ControlFlowOp::Jump { to, ty }) = &op.opcode {
+                    match ty {
+                        JumpType::Unconditional | JumpType::NotZero(_) => {
+                            if let Some(&h) = label_idx.get(&to.0) {
+                                if h < j {
+                                    let e = loops.entry(to.0).or_insert((h, j));
+                                    if j > e.1 {
+                                        e.1 = j;
+                                    }
+                                }
+                            }
+                        }
+                        JumpType::Call => {}
+                    }
+                }
+            }
+            if loops.is_empty() {
+                continue;
+            }
+            let loops: Vec<(usize, usize)> = loops.values().cloned().collect();
+            let mut site_off: u64 = 0;
+            for (i, op) in f.ops.iter().enumerate() {
+                if let Either::Right(ControlFlowOp::Jump {
+                    ty: JumpType::Call, ..
+                }) = &op.opcode
+                {
+                    let depth = loops.iter().filter(|(h, l)| *h <= i && i <= *l).count();
+                    if depth > 0 {
+                        call_loop_depth.insert((caller, site_off), depth);
+                    }
+                }
+                site_off += op.op_size();
+            }
+        }
+
+        Self {
+            fns,
+            fn_labels,
+            fn_sizes,
+            call_sites,
+            call_loop_depth,
+            order: (0..n).collect(),
+            fn_idx_to_slot: (0..n).collect(),
+        }
+    }
+
+    fn len(&self) -> usize {
+        self.order.len()
+    }
+
+    /// Per-call weight for the current layout, keyed by (caller label,
+    /// call-site offset within the caller). The base weight is the call's
+    /// compiled instruction count, mirroring `compile_call_inner`:
+    ///   forward near  -> 1  (JAL)
+    ///   backward near -> 2  (SUBI + JAL)
+    ///   medium        -> 3  (MOVI +/- + JAL)
+    ///   far           -> 6  (data section load + JAL; real count is 4, but
+    ///                       inflated to 6 to penalize far calls harder than
+    ///                       the medium->near step, so the greedy search
+    ///                       breaks near-ties toward eliminating far calls)
+    /// The base weight is then multiplied by `LOOP_BOOST^depth`, so calls in
+    /// hot loops dominate the cost (gas scales with execution count).
+    /// Offsets are in instruction units from `Op::op_size` (Label/Comment and
+    /// zero-stack CFEI/CFSI are 0, not 1), matching the resolver's offset
+    /// units. Forward near uses the 12-bit JAL immediate directly
+    /// (`delta <= TWELVE_BITS`); backward near uses a 12-bit SUBI immediate
+    /// holding `delta * 4` bytes, so its near range is 4x smaller. Counting
+    /// forward calls too means a move that lengthens a forward call past the
+    /// near threshold is penalized (1 -> 3), not free. Self-calls travel
+    /// with their function, so they add a position-independent constant and
+    /// don't affect which position is chosen.
+    fn call_weights(&self) -> HashMap<(usize, u64), usize> {
+        // Gas weight multiplier per loop nesting level: a call at depth `d` is
+        // weighted `LOOP_BOOST^d` times its base instruction cost (depth 0 ->
+        // 1x). 2 models each loop roughly doubling execution count; raise it if
+        // hot loops have large trip counts.
+        const LOOP_BOOST: usize = 4;
+        const FWD_NEAR: usize = 1;
+        const BACK_NEAR: usize = 2;
+        const MEDIUM: usize = 3;
+        const FAR: usize = 6;
+
+        // fn_idx -> offset of the function's start, in instruction units.
+        let n = self.fn_sizes.len();
+        let mut fn_to_off = vec![0u64; n];
+        let mut offset: u64 = 0;
+        for &fi in &self.order {
+            fn_to_off[fi] = offset;
+            offset += self.fn_sizes[fi];
+        }
+
+        let mut weights: HashMap<(usize, u64), usize> = HashMap::new();
+        for site in &self.call_sites {
+            let caller = self.fn_labels[site.caller];
+            let func_start = fn_to_off[site.caller];
+            let target_off = fn_to_off[site.callee];
+            let call_site = func_start + site.offset;
+            let tier = if target_off >= call_site {
+                // Forward (or self): the 12-bit JAL immediate holds `delta`
+                // directly.
+                let delta = target_off - call_site;
+                if delta <= compiler_constants::TWELVE_BITS {
+                    FWD_NEAR
+                } else if delta.saturating_sub(1).saturating_mul(4)
+                    <= compiler_constants::EIGHTEEN_BITS
+                {
+                    MEDIUM
+                } else {
+                    FAR
+                }
+            } else {
+                // Backward: the 12-bit SUBI immediate holds `delta * 4` bytes,
+                // so the near range is 4x smaller.
+                let delta = call_site - target_off;
+                if delta.saturating_mul(4) <= compiler_constants::TWELVE_BITS {
+                    BACK_NEAR
+                } else if delta.saturating_add(1).saturating_mul(4)
+                    <= compiler_constants::EIGHTEEN_BITS
+                {
+                    MEDIUM
+                } else {
+                    FAR
+                }
+            };
+            let depth = self
+                .call_loop_depth
+                .get(&(caller, site.offset))
+                .copied()
+                .unwrap_or(0);
+            weights.insert((caller, site.offset), tier * LOOP_BOOST.pow(depth as u32));
+        }
+        weights
+    }
+
+    fn remove_at(&mut self, slot: usize) -> usize {
+        let fi = self.order.remove(slot);
+        for &f in &self.order[slot..] {
+            self.fn_idx_to_slot[f] -= 1;
+        }
+        fi
+    }
+
+    fn insert_at(&mut self, slot: usize, fi: usize) {
+        for &f in &self.order[slot..] {
+            self.fn_idx_to_slot[f] += 1;
+        }
+        self.order.insert(slot, fi);
+        self.fn_idx_to_slot[fi] = slot;
+    }
+
+    /// Write `order` back into `fns` in place.
+    fn apply(self) {
+        let mut tmp: Vec<_> = std::mem::take(self.fns).into_iter().map(Some).collect();
+        *self.fns = self
+            .order
+            .into_iter()
+            .map(|i| tmp[i].take().unwrap())
+            .collect();
     }
 }
