@@ -686,49 +686,41 @@ impl AbstractProgram {
 
         // Index 0 never moves, so the entry is always original fn 0.
         debug_assert_eq!(best_order[0], 0);
-        let entry_label = fn_labels[0];
 
         for iter in 0..MAX_ITERS {
             debug_assert_eq!(best_order[0], 0);
 
-            // Count how many backward calls target each label.
-            let mut back_call_count: HashMap<usize, usize> = HashMap::new();
+            // (fn_idx, back-call count). Indexed by fn_idx while counting; then
+            // `select_nth` on `[1..]` so the entry (fn 0) is never a candidate.
+            let mut back_call_count: Vec<(usize, usize)> = (0..n).map(|fi| (fi, 0)).collect();
             for (current_slot, &caller_fi) in best_order.iter().enumerate() {
                 for &(_, to_label) in &call_sites[caller_fi] {
                     if let Some(&target_fi) = label_to_fn_idx.get(&to_label) {
                         if fn_idx_to_slot[target_fi] < current_slot {
-                            *back_call_count.entry(to_label).or_insert(0) += 1;
+                            back_call_count[target_fi].1 += 1;
                         }
                     }
                 }
-            }
-
-            // Candidates: functions receiving backward calls, excluding the
-            // entry at index 0. Ranked lazily via `select_nth` (worst-first)
-            // so we usually only partition once or twice per iteration.
-            let mut candidates: Vec<(usize, usize)> = back_call_count
-                .iter()
-                .filter(|(l, _)| **l != entry_label)
-                .map(|(l, c)| (*l, *c))
-                .collect();
-
-            if candidates.is_empty() {
-                break; // no movable backward-call target remains
             }
 
             let before_weights = call_weights(&best_order);
             let count_before: usize = before_weights.values().sum();
             let mut committed = false;
 
-            // Try candidates worst-first. The first one that strictly improves
-            // the cost is committed; the rest are skipped this iteration.
+            // Rank lazily via `select_nth` (worst-first) so we usually only
+            // partition once or twice per iteration.
+            let candidates = &mut back_call_count[1..];
             let depth = DEPTH.min(candidates.len());
             for k in 0..depth {
-                candidates.select_nth_unstable_by(k, |a, b| b.1.cmp(&a.1));
-                let (target_label, target_count) = candidates[k];
-                let target_fi = label_to_fn_idx[&target_label];
-                let cur = fn_idx_to_slot[target_fi];
-                // `cur >= 1` because the entry (index 0) was excluded above.
+                let (_, (target_fi, target_count), _) =
+                    candidates.select_nth_unstable_by(k, |a, b| b.1.cmp(&a.1));
+                if *target_count == 0 {
+                    break; // remaining ranks are also 0
+                }
+
+                let target_label = fn_labels[*target_fi];
+                let cur = fn_idx_to_slot[*target_fi];
+                // `cur >= 1` because the entry (fn_idx 0) was excluded above.
 
                 // Pull the candidate out and try every position 1..=len (never
                 // index 0). Keep the position that minimizes the weighted cost.
@@ -738,7 +730,7 @@ impl AbstractProgram {
                 let mut best_count = count_before;
 
                 for p in 1..=best_order.len() {
-                    best_order.insert(p, target_fi);
+                    best_order.insert(p, *target_fi);
                     sync_slots(&best_order, &mut fn_idx_to_slot);
                     let w = call_weights(&best_order);
                     best_order.remove(p);
@@ -776,7 +768,7 @@ impl AbstractProgram {
                     best_count + MIN_GAIN <= count_before
                 };
                 if commit {
-                    best_order.insert(best_p, target_fi);
+                    best_order.insert(best_p, *target_fi);
                     sync_slots(&best_order, &mut fn_idx_to_slot);
                     eprintln!(
                         "optimize_fn_order iter {iter}: call cost {count_before} -> {best_count} (target {target_label} had {target_count} back calls)"
@@ -786,7 +778,7 @@ impl AbstractProgram {
                 }
 
                 // This candidate couldn't improve; restore and try the next.
-                best_order.insert(cur, target_fi);
+                best_order.insert(cur, *target_fi);
                 sync_slots(&best_order, &mut fn_idx_to_slot);
             }
 
