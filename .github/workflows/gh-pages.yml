@@ -201,7 +201,7 @@ jobs:
         if: steps.docs_target.outputs.tag != ''
 
       - name: Create latest HTML redirect file
-        if: startsWith(github.ref, 'refs/tags')
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
         run: |
           mkdir ./latest
           cat > ./latest/index.html <<EOF
@@ -217,4 +217,4 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./latest/
           destination_dir: ./latest/
-        if: startsWith(github.ref, 'refs/tags')
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
