@@ -16,7 +16,7 @@ use crate::{
     asm_lang::{
         allocated_ops::{AllocatedInstruction, AllocatedRegister},
         AllocatedAbstractOp, ConstantRegister, ControlFlowOp, JumpType, Label, Op,
-        VirtualImmediate12, VirtualImmediate18, VirtualImmediate24, VirtualOp,
+        VirtualImmediate12, VirtualImmediate18, VirtualImmediate24,
     },
     decl_engine::DeclRefFunction,
     OptLevel,
@@ -414,41 +414,6 @@ impl AbstractProgram {
             return;
         }
 
-        // Real compiled size of a single op, in instruction units (1 instr = 4
-        // bytes), mirroring `worst_case_instruction_size` from
-        // `allocated_abstract_instruction_set.rs`. Labels/Comments and
-        // zero-stack CFEI/CFSI contribute 0; data-section loads and offset
-        // placeholders cost 2; a `Call` jump reserves 3 (worst case) and other
-        // jumps 2; BLOB is its immediate. PushAll/PopAll are still present
-        // here (lowered only later in `lower_pusha_popa`) and expand to at
-        // most two push/pop-mask instructions, so we charge 2 rather than
-        // panicking like the post-allocation version would.
-        let op_size = |op: &Op| -> u64 {
-            match &op.opcode {
-                Either::Right(ControlFlowOp::Label(_)) => 0,
-                Either::Right(ControlFlowOp::Comment) => 0,
-                Either::Right(ControlFlowOp::Jump { ty, .. }) => match ty {
-                    JumpType::Call => 3,
-                    _ => 2,
-                },
-                Either::Right(ControlFlowOp::JumpToAddr(_)) => 1,
-                Either::Right(ControlFlowOp::ReturnFromCall { .. }) => 1,
-                Either::Right(ControlFlowOp::DataSectionOffsetPlaceholder) => 2,
-                Either::Right(ControlFlowOp::ConfigurablesOffsetPlaceholder) => 2,
-                Either::Right(ControlFlowOp::PushAll(_))
-                | Either::Right(ControlFlowOp::PopAll(_)) => 2,
-                Either::Left(VirtualOp::CFEI(_, ref imm))
-                | Either::Left(VirtualOp::CFSI(_, ref imm))
-                    if imm.value() == 0 =>
-                {
-                    0
-                }
-                Either::Left(VirtualOp::BLOB(ref count)) => count.value() as u64,
-                Either::Left(VirtualOp::LoadDataId(_, _) | VirtualOp::AddrDataId(_, _)) => 2,
-                Either::Left(_) => 1,
-            }
-        };
-
         let n = fns.len();
 
         // Stable per-function facts. Reordering only permutes whole functions;
@@ -470,7 +435,7 @@ impl AbstractProgram {
         }
         let fn_sizes: Vec<u64> = fns
             .iter()
-            .map(|f| f.ops.iter().map(|o| op_size(o)).sum())
+            .map(|f| f.ops.iter().map(|o| o.op_size()).sum())
             .collect();
         // Per function: (call-site offset within the function, callee label).
         let call_sites: Vec<Vec<(u64, usize)>> = fns
@@ -486,7 +451,7 @@ impl AbstractProgram {
                     {
                         sites.push((site_off, to.0));
                     }
-                    site_off += op_size(op);
+                    site_off += op.op_size();
                 }
                 sites
             })
@@ -561,7 +526,7 @@ impl AbstractProgram {
                             map.insert((caller, site_off), depth);
                         }
                     }
-                    site_off += op_size(op);
+                    site_off += op.op_size();
                 }
             }
             map
@@ -593,7 +558,7 @@ impl AbstractProgram {
         //                       breaks near-ties toward eliminating far calls)
         // The base weight is then multiplied by `LOOP_BOOST^depth`, so calls in
         // hot loops dominate the cost (gas scales with execution count).
-        // Offsets are in instruction units from `op_size` (Label/Comment and
+        // Offsets are in instruction units from `Op::op_size` (Label/Comment and
         // zero-stack CFEI/CFSI are 0, not 1), matching the resolver's offset
         // units. Forward near uses the 12-bit JAL immediate directly
         // (`delta <= TWELVE_BITS`); backward near uses a 12-bit SUBI immediate
