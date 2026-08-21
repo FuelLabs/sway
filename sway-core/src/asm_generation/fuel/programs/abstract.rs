@@ -441,7 +441,6 @@ impl AbstractProgram {
 
                 let target_fi = *target_fi;
                 let target_count = *target_count;
-                let target_label = layout.fn_labels[target_fi];
                 let cur = layout.slot_of(target_fi);
                 // `cur >= 1` because the entry (fn_idx 0) was excluded above.
 
@@ -483,7 +482,7 @@ impl AbstractProgram {
                 if best_count < before_weights_sum {
                     layout.insert_at(best_p, target_fi);
                     eprintln!(
-                        "optimize_fn_order iter {iter}: call cost {before_weights_sum} -> {best_count} (target {target_label} had {target_count} back calls)"
+                        "optimize_fn_order iter {iter}: call cost {before_weights_sum} -> {best_count} (target fn {target_fi} had {target_count} back calls)"
                     );
                     found_improvement = true;
                     break 'candidates;
@@ -532,15 +531,14 @@ struct CallSite {
 }
 
 /// `fns` stays in stable fn_idx order until `apply`; `order` is the current
-/// layout permutation (slot → fn_idx). `fn_labels` / `fn_sizes` / `call_sites` /
+/// layout permutation (slot → fn_idx). `fn_sizes` / `call_sites` /
 /// `call_loop_depth` are stable.
 struct FnLayout<'a> {
     fns: &'a mut Vec<AbstractInstructionSet>,
-    fn_labels: Vec<Label>,
     fn_sizes: Vec<u64>,
     call_sites: Vec<CallSite>,
-    /// Keyed by (caller label, call-site offset within the caller).
-    call_loop_depth: HashMap<(Label, u64), usize>,
+    /// Keyed by (caller fn_idx, call-site offset within the caller).
+    call_loop_depth: HashMap<(usize, u64), usize>,
     order: Vec<usize>,
 }
 
@@ -598,10 +596,9 @@ impl<'a> FnLayout<'a> {
         // target) and the back-edge site, and its nesting depth is the number
         // of distinct loops enclosing it. This is invariant under reordering
         // (functions move as whole units), so we compute it once and key it by
-        // (caller label, call-site offset within the caller).
-        let mut call_loop_depth: HashMap<(Label, u64), usize> = HashMap::new();
+        // (caller fn_idx, call-site offset within the caller).
+        let mut call_loop_depth: HashMap<(usize, u64), usize> = HashMap::new();
         for (fi, f) in fns.iter().enumerate() {
-            let caller = fn_labels[fi];
             // Index each label in this function to its op position.
             let mut label_idx: HashMap<usize, usize> = HashMap::new();
             for (i, op) in f.ops.iter().enumerate() {
@@ -642,7 +639,7 @@ impl<'a> FnLayout<'a> {
                 {
                     let depth = loops.iter().filter(|(h, l)| *h <= i && i <= *l).count();
                     if depth > 0 {
-                        call_loop_depth.insert((caller, site_off), depth);
+                        call_loop_depth.insert((fi, site_off), depth);
                     }
                 }
                 site_off += op.op_size();
@@ -651,7 +648,6 @@ impl<'a> FnLayout<'a> {
 
         Self {
             fns,
-            fn_labels,
             fn_sizes,
             call_sites,
             call_loop_depth,
@@ -689,7 +685,7 @@ impl<'a> FnLayout<'a> {
         counts
     }
 
-    /// Per-call weight for the current layout, keyed by (caller label,
+    /// Per-call weight for the current layout, keyed by (caller fn_idx,
     /// call-site offset within the caller). The base weight is the call's
     /// compiled instruction count, mirroring `compile_call_inner`:
     ///   forward near  -> 1  (JAL)
@@ -714,7 +710,10 @@ impl<'a> FnLayout<'a> {
     /// If `virtual_insert` is `Some((p, fi))`, `fi` is treated as occupying
     /// slot `p` without splicing `order`: slots `< p` read `order[slot]`,
     /// slot `p` is `fi`, and slots `> p` read `order[slot - 1]`.
-    fn call_weights(&self, virtual_insert: Option<(usize, usize)>) -> HashMap<(Label, u64), usize> {
+    fn call_weights(
+        &self,
+        virtual_insert: Option<(usize, usize)>,
+    ) -> HashMap<(usize, u64), usize> {
         // Gas weight multiplier per loop nesting level: a call at depth `d` is
         // weighted `LOOP_BOOST^d` times its base instruction cost (depth 0 ->
         // 1x). 2 models each loop roughly doubling execution count; raise it if
@@ -752,9 +751,8 @@ impl<'a> FnLayout<'a> {
             }
         }
 
-        let mut weights: HashMap<(Label, u64), usize> = HashMap::new();
+        let mut weights: HashMap<(usize, u64), usize> = HashMap::new();
         for site in &self.call_sites {
-            let caller = self.fn_labels[site.caller];
             let func_start = fn_to_off[site.caller];
             let target_off = fn_to_off[site.callee];
             let call_site = func_start + site.offset;
@@ -787,10 +785,10 @@ impl<'a> FnLayout<'a> {
             };
             let depth = self
                 .call_loop_depth
-                .get(&(caller, site.offset))
+                .get(&(site.caller, site.offset))
                 .copied()
                 .unwrap_or(0);
-            weights.insert((caller, site.offset), tier * LOOP_BOOST.pow(depth as u32));
+            weights.insert((site.caller, site.offset), tier * LOOP_BOOST.pow(depth as u32));
         }
         weights
     }
