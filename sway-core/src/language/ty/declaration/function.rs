@@ -441,10 +441,7 @@ impl DeclRefFunction {
             let decl_ref = if has_changes.has_changes() {
                 engines
                     .de()
-                    .insert(
-                        method.clone(),
-                        engines.de().get_parsed_decl_id(self.id()).as_ref(),
-                    )
+                    .insert_modified(method.clone(), *self.id())
                     .with_parent(decl_engine, self.id().into())
             } else {
                 self.clone()

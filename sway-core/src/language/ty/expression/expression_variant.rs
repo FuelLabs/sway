@@ -1,7 +1,7 @@
 use crate::{
     decl_engine::*,
     engine_threading::*,
-    has_changes,
+    has_changes, has_changes_scoped,
     language::{ty::*, *},
     semantic_analysis::{
         TyNodeDepGraphEdge, TyNodeDepGraphEdgeInfo, TypeCheckAnalysis, TypeCheckAnalysisContext,
@@ -156,7 +156,6 @@ pub enum TyExpressionVariant {
     },
     StorageAccess(TyStorageAccess),
     IntrinsicFunction(TyIntrinsicFunctionKind),
-    /// a zero-sized type-system-only compile-time thing that is used for constructing ABI casts.
     AbiName(AbiName),
     /// grabs the enum tag from the particular enum and variant of the `exp`
     EnumTag {
@@ -799,7 +798,7 @@ impl SubstTypes for TyExpressionVariant {
                 contents.subst(ctx);
             },
             AbiCast { address, .. } => address.subst(ctx),
-            // storage is never generic and cannot be monomorphized
+            // Storage is never generic and cannot be monomorphized.
             StorageAccess { .. } => HasChanges::No,
             IntrinsicFunction(kind) => kind.subst(ctx),
             EnumTag { exp } => exp.subst(ctx),
@@ -851,18 +850,22 @@ impl ReplaceDecls for TyExpressionVariant {
 
                     has_changes |= fn_ref.replace_decls(decl_mapping, handler, ctx)?;
 
-                    for (_, arg) in arguments.iter_mut() {
-                        if let Ok(r) = arg.replace_decls(decl_mapping, handler, ctx) {
-                            has_changes |= r;
-                        }
-                    }
+                    has_changes |=
+                        arguments
+                            .iter_mut()
+                            .fold(HasChanges::No, |has_changes, (_, arg)| {
+                                has_changes
+                                    | arg
+                                        .replace_decls(decl_mapping, handler, ctx)
+                                        .unwrap_or_default()
+                            });
 
                     let decl_engine = ctx.engines().de();
                     let mut method = (*decl_engine.get(fn_ref)).clone();
 
                     // Finds method implementation for method dummy and replaces it.
                     // This is required because dummy methods don't have type parameters from impl traits.
-                    // Thus we use the implemented method that already contains all the required type parameters,
+                    // Thus, we use the implemented method that already contains all the required type parameters,
                     // including those from the impl trait.
                     if method.is_trait_method_dummy {
                         if let Some(implementing_for) = method.implementing_for {
@@ -917,7 +920,7 @@ impl ReplaceDecls for TyExpressionVariant {
                     }
 
                     // Handle the trait constraints. This includes checking to see if the trait
-                    // constraints are satisfied and replacing old decl ids based on the
+                    // constraints are satisfied and replacing old decl ids.
                     let mut inner_decl_mapping =
                         GenericTypeParameter::gather_decl_mapping_from_trait_constraints(
                             handler,
@@ -939,11 +942,10 @@ impl ReplaceDecls for TyExpressionVariant {
 
                     Ok(has_changes)
                 }
-                LazyOperator { lhs, rhs, .. } => {
-                    let mut has_changes = (*lhs).replace_decls(decl_mapping, handler, ctx)?;
-                    has_changes |= (*rhs).replace_decls(decl_mapping, handler, ctx)?;
-                    Ok(has_changes)
-                }
+                LazyOperator { lhs, rhs, .. } => Ok(has_changes_scoped! {
+                    lhs.replace_decls(decl_mapping, handler, ctx);
+                    rhs.replace_decls(decl_mapping, handler, ctx);
+                }),
                 ConstantExpression { decl, .. } => decl.replace_decls(decl_mapping, handler, ctx),
                 ConfigurableExpression { decl, .. } => {
                     decl.replace_decls(decl_mapping, handler, ctx)
@@ -951,58 +953,54 @@ impl ReplaceDecls for TyExpressionVariant {
                 ConstGenericExpression { .. } => Ok(HasChanges::No),
                 VariableExpression { .. } => Ok(HasChanges::No),
                 Tuple { fields } => {
-                    let mut has_changes = HasChanges::No;
-                    for item in fields.iter_mut() {
-                        if let Ok(r) = item.replace_decls(decl_mapping, handler, ctx) {
-                            has_changes |= r;
-                        }
-                    }
-                    Ok(has_changes)
+                    Ok(fields.iter_mut().fold(HasChanges::No, |has_changes, item| {
+                        has_changes
+                            | item
+                                .replace_decls(decl_mapping, handler, ctx)
+                                .unwrap_or_default()
+                    }))
                 }
                 ArrayExplicit {
                     elem_type: _,
                     contents,
-                } => {
-                    let mut has_changes = HasChanges::No;
-                    for expr in contents.iter_mut() {
-                        if let Ok(r) = expr.replace_decls(decl_mapping, handler, ctx) {
-                            has_changes |= r;
-                        }
-                    }
-                    Ok(has_changes)
-                }
+                } => Ok(contents
+                    .iter_mut()
+                    .fold(HasChanges::No, |has_changes, expr| {
+                        has_changes
+                            | expr
+                                .replace_decls(decl_mapping, handler, ctx)
+                                .unwrap_or_default()
+                    })),
                 ArrayRepeat {
                     elem_type: _,
                     value,
                     length,
-                } => {
-                    let mut has_changes = (*value).replace_decls(decl_mapping, handler, ctx)?;
-                    has_changes |= (*length).replace_decls(decl_mapping, handler, ctx)?;
-                    Ok(has_changes)
-                }
-                ArrayIndex { prefix, index } => {
-                    let mut has_changes = HasChanges::No;
-                    if let Ok(r) = (*prefix).replace_decls(decl_mapping, handler, ctx) {
-                        has_changes |= r;
-                    }
-                    if let Ok(r) = (*index).replace_decls(decl_mapping, handler, ctx) {
-                        has_changes |= r;
-                    }
-                    Ok(has_changes)
-                }
+                } => Ok(has_changes_scoped! {
+                    value.replace_decls(decl_mapping, handler, ctx);
+                    length.replace_decls(decl_mapping, handler, ctx);
+                }),
+                ArrayIndex { prefix, index } => Ok(has_changes_scoped! {
+                    prefix.replace_decls(decl_mapping, handler, ctx);
+                    index.replace_decls(decl_mapping, handler, ctx);
+                }),
                 StructExpression {
                     struct_id: _,
                     fields,
                     instantiation_span: _,
                     call_path_binding: _,
                 } => {
-                    let mut has_changes = HasChanges::No;
-                    for field in fields.iter_mut() {
-                        if let Ok(r) = field.replace_decls(decl_mapping, handler, ctx) {
-                            has_changes |= r;
-                        }
-                    }
-                    Ok(has_changes)
+                    // The `struct_id` needs no replacement here: `DeclMapping` only maps trait
+                    // associated items (functions, constants, associated types) to their
+                    // implementations, and a struct declaration is never such an item. Substituting
+                    // type parameters into the struct type is handled separately by `SubstTypes`.
+                    Ok(fields
+                        .iter_mut()
+                        .fold(HasChanges::No, |has_changes, field| {
+                            has_changes
+                                | field
+                                    .replace_decls(decl_mapping, handler, ctx)
+                                    .unwrap_or_default()
+                        }))
                 }
                 CodeBlock(block) => block.replace_decls(decl_mapping, handler, ctx),
                 FunctionParameter => Ok(HasChanges::No),
@@ -1011,22 +1009,15 @@ impl ReplaceDecls for TyExpressionVariant {
                     condition,
                     then,
                     r#else,
-                } => {
-                    let mut has_changes = HasChanges::No;
-                    if let Ok(r) = condition.replace_decls(decl_mapping, handler, ctx) {
-                        has_changes |= r;
-                    }
-                    if let Ok(r) = then.replace_decls(decl_mapping, handler, ctx) {
-                        has_changes |= r;
-                    }
-                    if let Some(r) = r#else
+                } => Ok(has_changes_scoped! {
+                    condition.replace_decls(decl_mapping, handler, ctx);
+                    then.replace_decls(decl_mapping, handler, ctx);
+                    r#else
                         .as_mut()
-                        .and_then(|expr| expr.replace_decls(decl_mapping, handler, ctx).ok())
-                    {
-                        has_changes |= r;
-                    }
-                    Ok(has_changes)
-                }
+                        .map(|r#else| r#else.replace_decls(decl_mapping, handler, ctx))
+                        .transpose()
+                        .map(Option::unwrap_or_default);
+                }),
                 AsmExpression { .. } => Ok(HasChanges::No),
                 StructFieldAccess { prefix, .. } => {
                     prefix.replace_decls(decl_mapping, handler, ctx)
@@ -1037,8 +1028,10 @@ impl ReplaceDecls for TyExpressionVariant {
                     contents,
                     ..
                 } => {
-                    // TODO: replace enum decl
-                    //enum_decl.replace_decls(decl_mapping);
+                    // The `enum_ref` needs no replacement here: `DeclMapping` only maps trait
+                    // associated items (functions, constants, associated types) to their
+                    // implementations, and an enum declaration is never such an item. Substituting
+                    // type parameters into the enum type is handled separately by `SubstTypes`.
                     if let Some(ref mut contents) = contents {
                         contents.replace_decls(decl_mapping, handler, ctx)
                     } else {
@@ -1047,31 +1040,24 @@ impl ReplaceDecls for TyExpressionVariant {
                 }
                 AbiCast { address, .. } => address.replace_decls(decl_mapping, handler, ctx),
                 StorageAccess { .. } => Ok(HasChanges::No),
-                IntrinsicFunction(TyIntrinsicFunctionKind { arguments, .. }) => {
-                    let mut has_changes = HasChanges::No;
-                    for expr in arguments.iter_mut() {
-                        if let Ok(r) = expr.replace_decls(decl_mapping, handler, ctx) {
-                            has_changes |= r;
-                        }
-                    }
-                    Ok(has_changes)
-                }
+                IntrinsicFunction(TyIntrinsicFunctionKind { arguments, .. }) => Ok(arguments
+                    .iter_mut()
+                    .fold(HasChanges::No, |has_changes, expr| {
+                        has_changes
+                            | expr
+                                .replace_decls(decl_mapping, handler, ctx)
+                                .unwrap_or_default()
+                    })),
                 EnumTag { exp } => exp.replace_decls(decl_mapping, handler, ctx),
                 UnsafeDowncast { exp, .. } => exp.replace_decls(decl_mapping, handler, ctx),
                 AbiName(_) => Ok(HasChanges::No),
                 WhileLoop {
                     ref mut condition,
                     ref mut body,
-                } => {
-                    let mut has_changes = HasChanges::No;
-                    if let Ok(r) = condition.replace_decls(decl_mapping, handler, ctx) {
-                        has_changes |= r;
-                    }
-                    if let Ok(r) = body.replace_decls(decl_mapping, handler, ctx) {
-                        has_changes |= r;
-                    }
-                    Ok(has_changes)
-                }
+                } => Ok(has_changes_scoped! {
+                    condition.replace_decls(decl_mapping, handler, ctx);
+                    body.replace_decls(decl_mapping, handler, ctx);
+                }),
                 ForLoop { ref mut desugared } => {
                     desugared.replace_decls(decl_mapping, handler, ctx)
                 }
@@ -1244,129 +1230,123 @@ impl TypeCheckFinalization for TyExpressionVariant {
         &mut self,
         handler: &Handler,
         ctx: &mut TypeCheckFinalizationContext,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
+        // In all arms, we intentionally swallow errors,
+        // because any emitted error is still captured by the below scope.
         handler.scope(|handler| {
+            use TyExpressionVariant::*;
             match self {
-                TyExpressionVariant::ConstGenericExpression { .. } => {}
-                TyExpressionVariant::Literal(_) => {}
-                TyExpressionVariant::FunctionApplication { arguments, .. } => {
-                    for (_, arg) in arguments.iter_mut() {
-                        let _ = arg.type_check_finalize(handler, ctx);
-                    }
+                ConstGenericExpression { .. } => Ok(HasChanges::No),
+                Literal(_) => Ok(HasChanges::No),
+                FunctionApplication { arguments, .. } => {
+                    Ok(arguments
+                        .iter_mut()
+                        .fold(HasChanges::No, |has_changes, (_, arg)| {
+                            has_changes | arg.type_check_finalize(handler, ctx).unwrap_or_default()
+                        }))
                 }
-                TyExpressionVariant::LazyOperator { lhs, rhs, .. } => {
-                    lhs.type_check_finalize(handler, ctx)?;
-                    rhs.type_check_finalize(handler, ctx)?
+                LazyOperator { lhs, rhs, .. } => Ok(has_changes_scoped! {
+                    lhs.type_check_finalize(handler, ctx);
+                    rhs.type_check_finalize(handler, ctx);
+                }),
+                ConstantExpression { decl, .. } => decl.type_check_finalize(handler, ctx),
+                ConfigurableExpression { decl, .. } => decl.type_check_finalize(handler, ctx),
+                VariableExpression { .. } => Ok(HasChanges::No),
+                Tuple { fields } => {
+                    Ok(fields
+                        .iter_mut()
+                        .fold(HasChanges::No, |has_changes, field| {
+                            has_changes
+                                | field.type_check_finalize(handler, ctx).unwrap_or_default()
+                        }))
                 }
-                TyExpressionVariant::ConstantExpression { decl, .. } => {
-                    decl.type_check_finalize(handler, ctx)?
+                ArrayExplicit { contents, .. } => {
+                    Ok(contents
+                        .iter_mut()
+                        .fold(HasChanges::No, |has_changes, elem| {
+                            has_changes | elem.type_check_finalize(handler, ctx).unwrap_or_default()
+                        }))
                 }
-                TyExpressionVariant::ConfigurableExpression { decl, .. } => {
-                    decl.type_check_finalize(handler, ctx)?
+                ArrayRepeat { value, length, .. } => Ok(has_changes_scoped! {
+                    value.type_check_finalize(handler, ctx);
+                    length.type_check_finalize(handler, ctx);
+                }),
+                ArrayIndex { prefix, index } => Ok(has_changes_scoped! {
+                    prefix.type_check_finalize(handler, ctx);
+                    index.type_check_finalize(handler, ctx);
+                }),
+                StructExpression { fields, .. } => {
+                    Ok(fields
+                        .iter_mut()
+                        .fold(HasChanges::No, |has_changes, field| {
+                            has_changes
+                                | field.type_check_finalize(handler, ctx).unwrap_or_default()
+                        }))
                 }
-                TyExpressionVariant::VariableExpression { .. } => {}
-                TyExpressionVariant::Tuple { fields } => {
-                    for field in fields.iter_mut() {
-                        field.type_check_finalize(handler, ctx)?
-                    }
-                }
-                TyExpressionVariant::ArrayExplicit { contents, .. } => {
-                    for elem in contents.iter_mut() {
-                        elem.type_check_finalize(handler, ctx)?
-                    }
-                }
-                TyExpressionVariant::ArrayRepeat { value, length, .. } => {
-                    value.type_check_finalize(handler, ctx)?;
-                    length.type_check_finalize(handler, ctx)?;
-                }
-                TyExpressionVariant::ArrayIndex { prefix, index } => {
-                    prefix.type_check_finalize(handler, ctx)?;
-                    index.type_check_finalize(handler, ctx)?;
-                }
-                TyExpressionVariant::StructExpression { fields, .. } => {
-                    for field in fields.iter_mut() {
-                        field.type_check_finalize(handler, ctx)?;
-                    }
-                }
-                TyExpressionVariant::CodeBlock(block) => {
-                    block.type_check_finalize(handler, ctx)?;
-                }
-                TyExpressionVariant::FunctionParameter => {}
-                TyExpressionVariant::MatchExp {
+                CodeBlock(block) => block.type_check_finalize(handler, ctx),
+                FunctionParameter => Ok(HasChanges::No),
+                MatchExp {
                     desugared,
                     scrutinees,
-                } => {
-                    desugared.type_check_finalize(handler, ctx)?;
-                    for scrutinee in scrutinees.iter_mut() {
-                        scrutinee.type_check_finalize(handler, ctx)?
-                    }
-                }
-                TyExpressionVariant::IfExp {
+                } => Ok(scrutinees.iter_mut().fold(
+                    desugared
+                        .type_check_finalize(handler, ctx)
+                        .unwrap_or_default(),
+                    |has_changes, scrutinee| {
+                        has_changes
+                            | scrutinee
+                                .type_check_finalize(handler, ctx)
+                                .unwrap_or_default()
+                    },
+                )),
+                IfExp {
                     condition,
                     then,
                     r#else,
-                } => {
-                    condition.type_check_finalize(handler, ctx)?;
-                    then.type_check_finalize(handler, ctx)?;
-                    if let Some(ref mut r#else) = r#else {
-                        r#else.type_check_finalize(handler, ctx)?;
-                    }
+                } => Ok(has_changes_scoped! {
+                    condition.type_check_finalize(handler, ctx);
+                    then.type_check_finalize(handler, ctx);
+                    r#else
+                        .as_mut()
+                        .map(|r#else| r#else.type_check_finalize(handler, ctx))
+                        .transpose()
+                        .map(Option::unwrap_or_default);
+                }),
+                AsmExpression { .. } => Ok(HasChanges::No),
+                StructFieldAccess { prefix, .. } => prefix.type_check_finalize(handler, ctx),
+                TupleElemAccess { prefix, .. } => prefix.type_check_finalize(handler, ctx),
+                EnumInstantiation { contents, .. } => {
+                    Ok(contents
+                        .iter_mut()
+                        .fold(HasChanges::No, |has_changes, expr| {
+                            has_changes | expr.type_check_finalize(handler, ctx).unwrap_or_default()
+                        }))
                 }
-                TyExpressionVariant::AsmExpression { .. } => {}
-                TyExpressionVariant::StructFieldAccess { prefix, .. } => {
-                    prefix.type_check_finalize(handler, ctx)?;
+                AbiCast { address, .. } => address.type_check_finalize(handler, ctx),
+                StorageAccess(_) => Ok(HasChanges::No),
+                IntrinsicFunction(kind) => {
+                    Ok(kind
+                        .arguments
+                        .iter_mut()
+                        .fold(HasChanges::No, |has_changes, expr| {
+                            has_changes | expr.type_check_finalize(handler, ctx).unwrap_or_default()
+                        }))
                 }
-                TyExpressionVariant::TupleElemAccess { prefix, .. } => {
-                    prefix.type_check_finalize(handler, ctx)?;
-                }
-                TyExpressionVariant::EnumInstantiation { contents, .. } => {
-                    for expr in contents.iter_mut() {
-                        expr.type_check_finalize(handler, ctx)?
-                    }
-                }
-                TyExpressionVariant::AbiCast { address, .. } => {
-                    address.type_check_finalize(handler, ctx)?;
-                }
-                TyExpressionVariant::StorageAccess(_) => {
-                    todo!("")
-                }
-                TyExpressionVariant::IntrinsicFunction(kind) => {
-                    for expr in kind.arguments.iter_mut() {
-                        expr.type_check_finalize(handler, ctx)?;
-                    }
-                }
-                TyExpressionVariant::AbiName(_) => {
-                    todo!("")
-                }
-                TyExpressionVariant::EnumTag { exp } => {
-                    exp.type_check_finalize(handler, ctx)?;
-                }
-                TyExpressionVariant::UnsafeDowncast { exp, .. } => {
-                    exp.type_check_finalize(handler, ctx)?;
-                }
-                TyExpressionVariant::WhileLoop { condition, body } => {
-                    condition.type_check_finalize(handler, ctx)?;
-                    body.type_check_finalize(handler, ctx)?;
-                }
-                TyExpressionVariant::ForLoop { desugared } => {
-                    desugared.type_check_finalize(handler, ctx)?;
-                }
-                TyExpressionVariant::Break => {}
-                TyExpressionVariant::Continue => {}
-                TyExpressionVariant::Reassignment(node) => {
-                    node.type_check_finalize(handler, ctx)?;
-                }
-                TyExpressionVariant::ImplicitReturn(exp) | TyExpressionVariant::Return(exp) => {
-                    exp.type_check_finalize(handler, ctx)?;
-                }
-                TyExpressionVariant::Panic(exp) => {
-                    exp.type_check_finalize(handler, ctx)?;
-                }
-                TyExpressionVariant::Ref(exp) | TyExpressionVariant::Deref(exp) => {
-                    exp.type_check_finalize(handler, ctx)?;
-                }
+                AbiName(_) => Ok(HasChanges::No),
+                EnumTag { exp } => exp.type_check_finalize(handler, ctx),
+                UnsafeDowncast { exp, .. } => exp.type_check_finalize(handler, ctx),
+                WhileLoop { condition, body } => Ok(has_changes_scoped! {
+                    condition.type_check_finalize(handler, ctx);
+                    body.type_check_finalize(handler, ctx);
+                }),
+                ForLoop { desugared } => desugared.type_check_finalize(handler, ctx),
+                Break => Ok(HasChanges::No),
+                Continue => Ok(HasChanges::No),
+                Reassignment(node) => node.type_check_finalize(handler, ctx),
+                ImplicitReturn(exp) | Return(exp) => exp.type_check_finalize(handler, ctx),
+                Panic(exp) => exp.type_check_finalize(handler, ctx),
+                Ref(exp) | Deref(exp) => exp.type_check_finalize(handler, ctx),
             }
-            Ok(())
         })
     }
 }

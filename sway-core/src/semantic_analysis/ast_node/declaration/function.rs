@@ -12,7 +12,7 @@ use crate::{
     },
     semantic_analysis::*,
     type_system::*,
-    Engines,
+    Engines, HasChanges,
 };
 use ast_elements::type_parameter::GenericTypeParameter;
 use hashbrown::HashMap;
@@ -41,7 +41,7 @@ impl ty::TyFunctionDecl {
                 .type_parameters
                 .iter()
                 .filter_map(|x| x.as_const_parameter())
-                .filter_map(|x| x.id.as_ref());
+                .map(|x| &x.parsed_decl_id);
 
             for const_generic_parameter in const_generic_parameters {
                 let const_generic_decl = engines.pe().get(const_generic_parameter);
@@ -120,7 +120,7 @@ impl ty::TyFunctionDecl {
             })
         }
 
-        // create a namespace for the function
+        // Create a namespace for the function.
         ctx.by_ref()
             .with_const_shadowing_mode(ConstShadowingMode::Sequential)
             .disallow_functions()
@@ -139,9 +139,7 @@ impl ty::TyFunctionDecl {
                     .iter()
                     .filter_map(|x| x.as_const_parameter());
                 for const_generic in const_generic_parameters {
-                    let Some(id) = const_generic.id.as_ref() else {
-                        continue;
-                    };
+                    let id = &const_generic.parsed_decl_id;
                     let const_generic_decl = ctx.engines.pe().get(id);
 
                     let decl_ref = ctx.engines.de().insert(
@@ -158,7 +156,7 @@ impl ty::TyFunctionDecl {
                                 .as_ref()
                                 .map(|x| x.to_ty_expression(ctx.engines)),
                         },
-                        Some(id),
+                        *id,
                     );
 
                     if let Some(old) = already_declared
@@ -378,10 +376,13 @@ impl TypeCheckFinalization for ty::TyFunctionDecl {
         &mut self,
         handler: &Handler,
         ctx: &mut TypeCheckFinalizationContext,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
         handler.scope(|handler| {
-            let _ = self.body.type_check_finalize(handler, ctx);
-            Ok(())
+            // Swallow the error: any emitted error is still captured by the scope.
+            Ok(self
+                .body
+                .type_check_finalize(handler, ctx)
+                .unwrap_or_default())
         })
     }
 }

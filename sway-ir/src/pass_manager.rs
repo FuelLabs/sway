@@ -17,7 +17,9 @@ use downcast_rs::{impl_downcast, Downcast};
 use rustc_hash::FxHashMap;
 use std::{
     any::{type_name, TypeId},
+    cell::RefCell,
     collections::{hash_map, HashSet},
+    ops::DerefMut,
 };
 
 /// Result of an analysis. Specific result must be downcasted to.
@@ -94,9 +96,18 @@ pub struct AnalysisResults {
     // Hash from (AnalysisResultT, (PassScope, Scope Identity)) to an actual result.
     results: FxHashMap<(TypeId, (TypeId, slotmap::DefaultKey)), AnalysisResult>,
     name_typeid_map: FxHashMap<&'static str, TypeId>,
+    pub is_log_enabled: bool,
+    /// Amalgamated debug log from all passes
+    log_string: RefCell<String>,
 }
 
 impl AnalysisResults {
+    pub fn push_log(&self, log: impl AsRef<str>) {
+        if self.is_log_enabled {
+            self.log_string.borrow_mut().push_str(log.as_ref());
+        }
+    }
+
     /// Get the results of an analysis.
     /// Example analyses.get_analysis_result::<DomTreeAnalysis>(foo).
     pub fn get_analysis_result<T: AnalysisResultT, S: PassScope + 'static>(&self, scope: S) -> &T {
@@ -158,7 +169,7 @@ impl AnalysisResults {
 
 /// Options when running the `PassManager`.
 ///
-/// # Printint Options
+/// # Printing Options
 ///
 /// Note that states of IR can always be printed by injecting the module printer pass
 /// and just running the passes. That approach however offers less control over the
@@ -173,6 +184,7 @@ pub struct Options {
     pub print_passes: HashSet<String>,
     pub force_verify_ir: bool,
     pub rounds: usize,
+    pub log: bool,
 }
 
 impl Default for Options {
@@ -185,22 +197,9 @@ impl Default for Options {
             print_passes: HashSet::default(),
             force_verify_ir: false,
             rounds: 2,
+            log: false,
         }
     }
-}
-
-/// Options for verifying [Pass]es in case of running them with verifying requested.
-///
-/// Note that states of IR can always be verified by injecting the module verifier pass
-/// and just running the passes. That approach however offers less control over the
-/// verification. E.g., requiring the verification to happen only if the previous passes
-/// modified the IR cannot be done by simply injecting a module verifier.
-#[derive(Debug)]
-pub struct VerifyPassesOpts {
-    pub initial: bool,
-    pub r#final: bool,
-    pub modified_only: bool,
-    pub passes: HashSet<String>,
 }
 
 #[derive(Default)]
@@ -210,23 +209,26 @@ pub struct PassManager {
 }
 
 impl PassManager {
-    pub const OPTIMIZATION_PASSES: [&'static str; 16] = [
-        FN_INLINE_NAME,
-        SIMPLIFY_CFG_NAME,
-        SROA_NAME,
+    pub const OPTIMIZATION_PASSES: [&'static str; 19] = [
+        ARG_DEMOTION_NAME,
+        ARG_POINTEE_MUTABILITY_TAGGER_NAME,
+        CCP_NAME,
+        CONST_DEMOTION_NAME,
+        CONST_FOLDING_NAME,
+        CSE_NAME,
         DCE_NAME,
-        GLOBALS_DCE_NAME,
-        FN_DEDUP_RELEASE_PROFILE_NAME,
         FN_DEDUP_DEBUG_PROFILE_NAME,
+        FN_DEDUP_RELEASE_PROFILE_NAME,
+        FN_INLINE_NAME,
+        GLOBALS_DCE_NAME,
+        INIT_AGGR_LOWERING_NAME,
         MEM2REG_NAME,
         MEMCPYOPT_NAME,
         MEMCPYPROP_REVERSE_NAME,
-        CONST_FOLDING_NAME,
-        ARG_DEMOTION_NAME,
-        CONST_DEMOTION_NAME,
-        RET_DEMOTION_NAME,
         MISC_DEMOTION_NAME,
-        INIT_AGGR_LOWERING_NAME,
+        RET_DEMOTION_NAME,
+        SIMPLIFY_CFG_NAME,
+        SROA_NAME,
     ];
 
     /// Register a pass. Should be called only once for each pass.
@@ -393,6 +395,9 @@ impl PassManager {
             print_initial_or_final_ir(ir, "Initial", options.print_metadata);
         }
 
+        self.analyses.is_log_enabled = options.log;
+        self.analyses.log_string.borrow_mut().clear();
+
         // Verify before we start
         ir.verify()?;
 
@@ -461,6 +466,11 @@ impl PassManager {
     /// Get reference to a registered pass.
     pub fn lookup_registered_pass(&self, name: &str) -> Option<&Pass> {
         self.passes.get(name)
+    }
+
+    pub fn take_log(&self) -> String {
+        let mut log = self.analyses.log_string.borrow_mut();
+        std::mem::take(log.deref_mut())
     }
 
     pub fn help_text(&self) -> String {
@@ -576,9 +586,7 @@ pub fn register_known_passes(pm: &mut PassManager) {
 }
 
 pub fn create_o1_pass_group() -> PassGroup {
-    // Create a create_ccp_passo specify which passes we want to run now.
     let mut o1 = PassGroup::default();
-    // Configure to run our passes.
     o1.append_pass(MEM2REG_NAME);
     o1.append_pass(FN_DEDUP_RELEASE_PROFILE_NAME);
     o1.append_pass(FN_INLINE_NAME);

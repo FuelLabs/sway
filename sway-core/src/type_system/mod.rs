@@ -13,6 +13,8 @@ use std::ops::Deref;
 pub use substitute::subst_types::SubstTypesContext;
 
 #[cfg(test)]
+use crate::decl_engine::parsed_id::ParsedDeclId;
+#[cfg(test)]
 use crate::language::{CallPath, CallPathType};
 #[cfg(test)]
 use crate::{language::ty::TyEnumDecl, transform::Attributes};
@@ -126,7 +128,7 @@ fn generic_enum_resolution() {
             visibility: crate::language::Visibility::Public,
             attributes: Attributes::default(),
         },
-        None,
+        ParsedDeclId::dummy(),
     );
     let ty_1 = engines.te().insert_enum(&engines, *decl_ref_1.id());
 
@@ -168,7 +170,7 @@ fn generic_enum_resolution() {
             visibility: crate::language::Visibility::Public,
             attributes: Attributes::default(),
         },
-        None,
+        ParsedDeclId::dummy(),
     );
     let ty_2 = engines.te().insert_enum(&engines, *decl_ref_2.id());
 

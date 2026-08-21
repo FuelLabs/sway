@@ -63,7 +63,7 @@ impl TyImplSelfOrTrait {
                     .impl_type_parameters
                     .iter()
                     .filter_map(|x| x.as_const_parameter())
-                    .filter_map(|x| x.id.as_ref());
+                    .map(|x| &x.parsed_decl_id);
 
                 for const_generic_parameter in const_generic_parameters {
                     let const_generic_decl = engines.pe().get(const_generic_parameter);
@@ -166,7 +166,7 @@ impl TyImplSelfOrTrait {
                 let const_generic_parameters = impl_type_parameters
                     .iter()
                     .filter_map(|x| x.as_const_parameter())
-                    .filter_map(|x| x.id.as_ref());
+                    .map(|x| &x.parsed_decl_id);
                 for const_generic_decl_id in const_generic_parameters {
                     let const_generic_decl = engines.pe().get(const_generic_decl_id);
 
@@ -181,7 +181,7 @@ impl TyImplSelfOrTrait {
                             return_type: const_generic_decl.ty,
                             value: None,
                         },
-                        Some(const_generic_decl_id),
+                        *const_generic_decl_id,
                     );
 
                     ctx.insert_symbol(
@@ -457,7 +457,7 @@ impl TyImplSelfOrTrait {
                 let const_generic_parameters = impl_type_parameters
                     .iter()
                     .filter_map(|x| x.as_const_parameter())
-                    .filter_map(|x| x.id.as_ref());
+                    .map(|x| &x.parsed_decl_id);
                 for const_generic_decl_id in const_generic_parameters {
                     let const_generic_decl = engines.pe().get(const_generic_decl_id);
 
@@ -472,7 +472,7 @@ impl TyImplSelfOrTrait {
                             return_type: const_generic_decl.ty,
                             value: None,
                         },
-                        Some(const_generic_decl_id),
+                        *const_generic_decl_id,
                     );
 
                     ctx.insert_symbol(
@@ -634,8 +634,7 @@ impl TyImplSelfOrTrait {
                                 ) else {
                                     continue;
                                 };
-                                new_items
-                                    .push(TyImplItem::Fn(decl_engine.insert(fn_decl, Some(id))));
+                                new_items.push(TyImplItem::Fn(decl_engine.insert(fn_decl, *id)));
                             }
                             ImplItem::Constant(decl_id) => {
                                 let const_decl = &*engines.pe().get_constant(decl_id);
@@ -647,7 +646,7 @@ impl TyImplSelfOrTrait {
                                     Ok(res) => res,
                                     Err(_) => continue,
                                 };
-                                let decl_ref = decl_engine.insert(const_decl, Some(decl_id));
+                                let decl_ref = decl_engine.insert(const_decl, *decl_id);
 
                                 ctx.insert_symbol(
                                     handler,
@@ -669,7 +668,7 @@ impl TyImplSelfOrTrait {
                                     Ok(res) => res,
                                     Err(_) => continue,
                                 };
-                                let decl_ref = decl_engine.insert(type_decl, Some(decl_id));
+                                let decl_ref = decl_engine.insert(type_decl, *decl_id);
                                 new_items.push(TyImplItem::Type(decl_ref));
                             }
                         }
@@ -737,7 +736,7 @@ impl TyImplSelfOrTrait {
                     }
 
                     let impl_trait_decl = decl_engine
-                        .insert(impl_trait.clone(), Some(parsed_decl_id))
+                        .insert(impl_trait.clone(), *parsed_decl_id)
                         .into();
 
                     // First lets perform an analysis pass.
@@ -794,22 +793,29 @@ impl TyImplSelfOrTrait {
                         }
                     }
 
+                    let new_items = &mut impl_trait.items;
                     let mut finalizing_ctx =
                         TypeCheckFinalizationContext::new(ctx.engines, ctx.by_ref());
-                    for item in new_items {
+                    for item in new_items.iter_mut() {
                         match item {
                             TyTraitItem::Fn(decl_ref) => {
                                 let mut fn_decl =
                                     (*decl_engine.get_function(decl_ref.id())).clone();
-                                let _ = fn_decl.type_check_finalize(handler, &mut finalizing_ctx);
-                                decl_engine.replace(*decl_ref.id(), fn_decl);
+                                let has_changes =
+                                    fn_decl.type_check_finalize(handler, &mut finalizing_ctx)?;
+                                if has_changes.has_changes() {
+                                    *decl_ref = decl_engine.insert_modified(fn_decl, *decl_ref.id())
+                                }
                             }
                             TyTraitItem::Constant(decl_ref) => {
                                 let mut const_decl =
                                     (*decl_engine.get_constant(decl_ref.id())).clone();
-                                let _ =
-                                    const_decl.type_check_finalize(handler, &mut finalizing_ctx);
-                                decl_engine.replace(*decl_ref.id(), const_decl);
+                                let has_changes =
+                                    const_decl.type_check_finalize(handler, &mut finalizing_ctx)?;
+                                if has_changes.has_changes() {
+                                    *decl_ref =
+                                        decl_engine.insert_modified(const_decl, *decl_ref.id())
+                                }
                             }
                             _ => {}
                         }
@@ -1045,7 +1051,7 @@ fn type_check_trait_implementation(
                 type_checklist.remove(&type_decl_name);
 
                 // Add this type to the "impld decls".
-                let decl_ref = decl_engine.insert(type_decl, Some(decl_id));
+                let decl_ref = decl_engine.insert(type_decl, *decl_id);
                 impld_item_refs.insert(
                     (type_decl_name.clone(), implementing_for),
                     TyTraitItem::Type(decl_ref),
@@ -1115,7 +1121,7 @@ fn type_check_trait_implementation(
                 constant_checklist.remove(&name);
 
                 // Add this constant to the "impld decls".
-                let decl_ref = decl_engine.insert(const_decl, Some(decl_id));
+                let decl_ref = decl_engine.insert(const_decl, *decl_id);
                 impld_item_refs.insert(
                     (name.clone(), implementing_for),
                     TyTraitItem::Constant(decl_ref.clone()),
@@ -1165,7 +1171,7 @@ fn type_check_trait_implementation(
                 method_checklist.remove(&name);
 
                 // Add this method to the "impld items".
-                let decl_ref = decl_engine.insert(impl_method, Some(impl_method_id));
+                let decl_ref = decl_engine.insert(impl_method, *impl_method_id);
                 impld_item_refs.insert((name, implementing_for), TyTraitItem::Fn(decl_ref));
             }
             ImplItem::Constant(_decl_id) => {}
@@ -1187,12 +1193,7 @@ fn type_check_trait_implementation(
 
             let mut const_decl = (*decl_engine.get_constant(interface_decl_ref)).clone();
             let decl_ref = if const_decl.subst(&ctx.subst_ctx(handler)).has_changes() {
-                decl_engine.insert(
-                    const_decl,
-                    decl_engine
-                        .get_parsed_decl_id(interface_decl_ref.id())
-                        .as_ref(),
-                )
+                decl_engine.insert_modified(const_decl, *interface_decl_ref.id())
             } else {
                 interface_decl_ref.clone()
             };
@@ -1294,10 +1295,7 @@ fn type_check_trait_implementation(
 
                 let decl_ref = if has_changes.has_changes() {
                     decl_engine
-                        .insert(
-                            method,
-                            decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
-                        )
+                        .insert_modified(method, *decl_ref.id())
                         .with_parent(decl_engine, (*decl_ref.id()).into())
                 } else {
                     decl_ref.clone()
@@ -1318,10 +1316,7 @@ fn type_check_trait_implementation(
                 };
 
                 let decl_ref = if has_changes.has_changes() {
-                    decl_engine.insert(
-                        const_decl,
-                        decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
-                    )
+                    decl_engine.insert_modified(const_decl, *decl_ref.id())
                 } else {
                     decl_ref.clone()
                 };
@@ -1338,10 +1333,7 @@ fn type_check_trait_implementation(
                 ));
 
                 let decl_ref = if has_changes.has_changes() {
-                    decl_engine.insert(
-                        type_decl.clone(),
-                        decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
-                    )
+                    decl_engine.insert_modified(type_decl.clone(), *decl_ref.id())
                 } else {
                     decl_ref.clone()
                 };
@@ -2047,12 +2039,14 @@ impl TypeCheckFinalization for TyImplSelfOrTrait {
         &mut self,
         handler: &Handler,
         ctx: &mut TypeCheckFinalizationContext,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
         handler.scope(|handler| {
-            for item in self.items.iter_mut() {
-                let _ = item.type_check_finalize(handler, ctx);
-            }
-            Ok(())
+            Ok(self
+                .items
+                .iter_mut()
+                .fold(HasChanges::No, |has_changes, item| {
+                    has_changes | item.type_check_finalize(handler, ctx).unwrap_or_default()
+                }))
         })
     }
 }

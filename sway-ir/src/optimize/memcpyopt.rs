@@ -1,6 +1,8 @@
 //! Optimisations related to mem_copy.
 //! - replace a `store` directly from a `load` with a `mem_copy_val`.
 
+mod cycle;
+
 use indexmap::IndexMap;
 use itertools::{Either, Itertools};
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -8,7 +10,9 @@ use sway_types::{FxIndexMap, FxIndexSet};
 
 use crate::{
     get_gep_symbol, get_loaded_symbols, get_referred_symbol, get_referred_symbols,
-    get_stored_symbols, memory_utils, AnalysisResults, Block, Context, EscapedSymbols,
+    get_stored_symbols,
+    memcpyopt::cycle::{find_node_in_cycle, Cycle},
+    memory_utils, AnalysisResults, Block, Context, DebugWithContext, EscapedSymbols,
     FuelVmInstruction, Function, InstOp, Instruction, InstructionInserter, IrError, LocalVar, Pass,
     PassMutability, ReferredSymbols, ScopedPass, Symbol, Type, Value, ValueDatum,
     ESCAPED_SYMBOLS_NAME,
@@ -877,7 +881,6 @@ fn is_clobbered(
     scrutiny_ptr: &Value,
 ) -> bool {
     let end_block = end_inst.get_instruction(context).unwrap().parent;
-    let entry_block = end_block.get_function(context).get_entry_block(context);
 
     let mut iter = end_block
         .instruction_iter(context)
@@ -928,9 +931,10 @@ fn is_clobbered(
             }
         }
 
-        if entry_block == block {
+        if block.is_entry(context) {
             // We've reached the entry block. If any of the scrutiny_symbols
             // is an argument, then we consider it clobbered.
+            // TODO: We can improve this see https://github.com/FuelLabs/sway/issues/7282#issuecomment-5255059634
             if scrutiny_symbols
                 .iter()
                 .any(|sym| matches!(sym, Symbol::Arg(_)))
@@ -1035,6 +1039,7 @@ fn load_store_to_memcopy(context: &mut Context, function: Function) -> Result<bo
                 dst_ptr,
                 src_ptr,
             }) => {
+                // TODO: We can improve this here. See https://github.com/FuelLabs/sway/issues/7282#issuecomment-5255211110
                 let load_block = load_val.get_instruction(context).unwrap().parent;
                 let temp = function.new_unique_local_var(
                     context,
@@ -1094,7 +1099,7 @@ fn load_store_to_memcopy(context: &mut Context, function: Function) -> Result<bo
     Ok(true)
 }
 
-pub const MEMCPYPROP_REVERSE_NAME: &str = "memcpyprop_reverse";
+pub const MEMCPYPROP_REVERSE_NAME: &str = "memcpyprop-reverse";
 
 pub fn create_memcpyprop_reverse_pass() -> Pass {
     Pass {
@@ -1108,7 +1113,7 @@ pub fn create_memcpyprop_reverse_pass() -> Pass {
 /// Copy propagation of `memcpy`s, replacing source with destination.
 fn copy_prop_reverse(
     context: &mut Context,
-    _analyses: &AnalysisResults,
+    analyses: &AnalysisResults,
     function: Function,
 ) -> Result<bool, IrError> {
     let mut modified = false;
@@ -1245,29 +1250,42 @@ fn copy_prop_reverse(
         }
     }
 
-    // Take a transitive closure of src_to_dst.
-    {
-        let mut changed = true;
-        let mut cycle_detected = false;
-        while changed {
-            changed = false;
-            src_to_dst.clone().iter().for_each(|(src, dst)| {
-                if let Some(next_dst) = src_to_dst.get(dst) {
-                    // Cycle detection
-                    if *next_dst == *src {
-                        cycle_detected = true;
-                        return;
-                    }
-                    src_to_dst.insert(*src, *next_dst);
-                    changed = true;
-                }
-            });
+    // We currently do not optimize cycles
+    //
+    // TODO: https://github.com/FuelLabs/sway/issues/7282#issuecomment-5196527165
+    // It is not entirely true that we cannot optimize cycles.
+    // We currently bail on all cycles because `solve_transitive_copies`
+    // needs every "memcpy chain" to finish with a symbol that is never the
+    // destination of a candidate memcpy, and a cycle does not have that.
+    // But some cycles are in fact optimizable:
+    //
+    // - Self-loops: src_to_dst { x -> x }. A self-copy is a no-op and
+    // can simply be deleted.
+    //
+    // - All items have the same value: src_to_dst { a <- b; c <- a; b <- c }.
+    // To optimize this we need to be aware which value is the true source
+    // (old_b in this case).
+    //
+    // Another possible improvement, once a cycle is detected the fn returns
+    // without analyzing if there is any other possible optimizations on `src_to_dst`.
+    //
+    // This is particularly interesting because if a cycle survives the clobber test above,
+    // it means that this cycle is uniform, all involved symbols converge to one value,
+    // which means we could retain the first memcpy and replace some "uses" by this value
+    // instead of bailing.
+    if let Some(node) = find_node_in_cycle(&src_to_dst) {
+        if analyses.is_log_enabled {
+            let cycle = Cycle::new(&src_to_dst, node);
+            analyses.push_log(format!(
+                "Cycle Detected: {:#?}\n",
+                (function, &cycle).with_context(context)
+            ));
         }
-        if cycle_detected {
-            // We cannot optimize in presence of cycles.
-            return Ok(modified);
-        }
+
+        return Ok(modified);
     }
+
+    solve_transitive_copies(&mut src_to_dst);
 
     // Gather the get_local instructions that need to be replaced.
     let mut repl_locals = vec![];
@@ -1346,4 +1364,26 @@ fn copy_prop_reverse(
     function.remove_instructions(context, |v| to_delete.contains(&v));
 
     Ok(modified)
+}
+
+/// Solve all transitive copies. For Example:
+///
+/// Initial: { A -> B, B -> C, C -> D }
+/// Result: { A -> D, B -> D, C -> D }
+///
+/// `src_to_dst` must be acyclic
+fn solve_transitive_copies(src_to_dst: &mut FxHashMap<Symbol, Symbol>) {
+    // SAFETY: it is safe to iter HashMap here because we just need
+    // solve each key once. Order is not important.
+    let sources = src_to_dst.keys().copied().collect::<Vec<_>>();
+    for src in sources {
+        let mut cur = *src_to_dst.get(&src).unwrap();
+
+        // SAFETY: `src_to_dst` is acyclic, so this terminates
+        while let Some(next) = src_to_dst.get(&cur).copied() {
+            cur = next;
+        }
+
+        src_to_dst.insert(src, cur);
+    }
 }

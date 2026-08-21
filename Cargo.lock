@@ -1927,14 +1927,14 @@ checksum = "4c3cf4824e2d5f025c7b531afcb2325364084a16806f6d47fbc1f5fbd9960590"
 
 [[package]]
 name = "duct"
-version = "0.13.7"
+version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e4ab5718d1224b63252cd0c6f74f6480f9ffeb117438a2e0f5cf6d9a4798929c"
+checksum = "7e66e9c0c03d094e1a0ba1be130b849034aa80c3a2ab8ee94316bc809f3fa684"
 dependencies = [
  "libc",
- "once_cell",
  "os_pipe",
  "shared_child",
+ "shared_thread",
 ]
 
 [[package]]
@@ -2435,7 +2435,7 @@ checksum = "d9c4f5dac5e15c24eb999c26181a6ca40b39fe946cbe4c263c7209467bc83af2"
 
 [[package]]
 name = "forc"
-version = "0.71.2"
+version = "0.72.0"
 dependencies = [
  "annotate-snippets",
  "ansiterm",
@@ -2472,7 +2472,7 @@ dependencies = [
 
 [[package]]
 name = "forc-debug"
-version = "0.71.2"
+version = "0.72.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -2505,7 +2505,7 @@ dependencies = [
 
 [[package]]
 name = "forc-doc"
-version = "0.71.2"
+version = "0.72.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -2533,7 +2533,7 @@ dependencies = [
 
 [[package]]
 name = "forc-fmt"
-version = "0.71.2"
+version = "0.72.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -2551,7 +2551,7 @@ dependencies = [
 
 [[package]]
 name = "forc-lsp"
-version = "0.71.2"
+version = "0.72.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -2562,7 +2562,7 @@ dependencies = [
 
 [[package]]
 name = "forc-migrate"
-version = "0.71.2"
+version = "0.72.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -2583,7 +2583,7 @@ dependencies = [
 
 [[package]]
 name = "forc-pkg"
-version = "0.71.2"
+version = "0.72.0"
 dependencies = [
  "ansiterm",
  "anyhow",
@@ -2628,7 +2628,7 @@ dependencies = [
 
 [[package]]
 name = "forc-publish"
-version = "0.71.2"
+version = "0.72.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -2657,7 +2657,7 @@ dependencies = [
 
 [[package]]
 name = "forc-test"
-version = "0.71.2"
+version = "0.72.0"
 dependencies = [
  "anyhow",
  "forc-pkg",
@@ -2687,7 +2687,7 @@ dependencies = [
 
 [[package]]
 name = "forc-tx"
-version = "0.71.2"
+version = "0.72.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -2703,7 +2703,7 @@ dependencies = [
 
 [[package]]
 name = "forc-util"
-version = "0.71.2"
+version = "0.72.0"
 dependencies = [
  "annotate-snippets",
  "ansiterm",
@@ -7247,6 +7247,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "shared_thread"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "52b86057fcb5423f5018e331ac04623e32d6b5ce85e33300f92c79a1973928b0"
+
+[[package]]
 name = "shell-words"
 version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7566,7 +7572,7 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
 name = "sway-ast"
-version = "0.71.2"
+version = "0.72.0"
 dependencies = [
  "extension-trait",
  "num-bigint",
@@ -7578,7 +7584,7 @@ dependencies = [
 
 [[package]]
 name = "sway-core"
-version = "0.71.2"
+version = "0.72.0"
 dependencies = [
  "clap",
  "dirs",
@@ -7626,7 +7632,7 @@ dependencies = [
 
 [[package]]
 name = "sway-error"
-version = "0.71.2"
+version = "0.72.0"
 dependencies = [
  "either",
  "in_definite",
@@ -7639,7 +7645,7 @@ dependencies = [
 
 [[package]]
 name = "sway-features"
-version = "0.71.2"
+version = "0.72.0"
 dependencies = [
  "clap",
  "paste",
@@ -7649,9 +7655,10 @@ dependencies = [
 
 [[package]]
 name = "sway-ir"
-version = "0.71.2"
+version = "0.72.0"
 dependencies = [
  "anyhow",
+ "clap",
  "downcast-rs",
  "filecheck",
  "indexmap 2.14.0",
@@ -7672,7 +7679,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir-macros"
-version = "0.71.2"
+version = "0.72.0"
 dependencies = [
  "itertools 0.13.0",
  "proc-macro2",
@@ -7682,7 +7689,7 @@ dependencies = [
 
 [[package]]
 name = "sway-lsp"
-version = "0.71.2"
+version = "0.72.0"
 dependencies = [
  "anyhow",
  "assert-json-diff",
@@ -7729,7 +7736,7 @@ dependencies = [
 
 [[package]]
 name = "sway-lsp-test-utils"
-version = "0.71.2"
+version = "0.72.0"
 dependencies = [
  "assert-json-diff",
  "futures",
@@ -7744,7 +7751,7 @@ dependencies = [
 
 [[package]]
 name = "sway-parse"
-version = "0.71.2"
+version = "0.72.0"
 dependencies = [
  "assert_matches",
  "extension-trait",
@@ -7763,7 +7770,7 @@ dependencies = [
 
 [[package]]
 name = "sway-types"
-version = "0.71.2"
+version = "0.72.0"
 dependencies = [
  "fuel-asm",
  "fuel-crypto",
@@ -7782,7 +7789,7 @@ dependencies = [
 
 [[package]]
 name = "sway-utils"
-version = "0.71.2"
+version = "0.72.0"
 dependencies = [
  "serde",
  "walkdir",
@@ -7790,7 +7797,7 @@ dependencies = [
 
 [[package]]
 name = "swayfmt"
-version = "0.71.2"
+version = "0.72.0"
 dependencies = [
  "anyhow",
  "forc-tracing",

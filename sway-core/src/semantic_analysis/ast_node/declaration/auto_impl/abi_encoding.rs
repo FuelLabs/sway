@@ -212,8 +212,7 @@ where
             .fields
             .iter()
             .map(|x| Self::generate_type(engines, &x.type_argument));
-        let mut is_encode_trivial =
-            "__runtime_mem_id::<Self>() == __encoding_mem_id::<Self>()".to_string();
+        let mut is_encode_trivial = "__mem_repr_eq::<Self>(\"runtime\", \"encoding\")".to_string();
         for field_type in fields_types {
             is_encode_trivial.push_str(" && ");
             is_encode_trivial.push_str(&format!("is_encode_trivial::<{}>()", field_type));
@@ -237,8 +236,7 @@ where
             .fields
             .iter()
             .map(|x| Self::generate_type(engines, &x.type_argument));
-        let mut is_decode_trivial =
-            "__runtime_mem_id::<Self>() == __encoding_mem_id::<Self>()".to_string();
+        let mut is_decode_trivial = "__mem_repr_eq::<Self>(\"runtime\", \"encoding\")".to_string();
         for field_type in fields_types {
             is_decode_trivial.push_str(" && ");
             is_decode_trivial.push_str(&format!("is_decode_trivial::<{}>()", field_type));
@@ -283,8 +281,7 @@ where
             .variants
             .iter()
             .map(|x| Self::generate_type(engines, &x.type_argument));
-        let mut is_encode_trivial =
-            "__runtime_mem_id::<Self>() == __encoding_mem_id::<Self>()".to_string();
+        let mut is_encode_trivial = "__mem_repr_eq::<Self>(\"runtime\", \"encoding\")".to_string();
         for variant_type in variant_types {
             is_encode_trivial.push_str(" && ");
             is_encode_trivial.push_str(&format!("is_encode_trivial::<{}>()", variant_type));
@@ -407,7 +404,7 @@ where
 
         // generate code
         let mut method_names = String::new();
-        for r in contract_fns {
+        for (idx, r) in contract_fns.iter().enumerate() {
             let decl = engines.de().get(r);
 
             // For contract methods, even if their names are raw identifiers,
@@ -468,8 +465,8 @@ where
             let code = arm_by_size.entry(method_name.len()).or_default();
 
             code.push_str(&format!("
-            let is_this_method = asm(r, ptr: _method_name_ptr, name: _method_names_ptr, len: {method_name_len}) {{ addi r name i{offset}; meq r ptr r len; r: bool }};
-            if is_this_method {{\n"));
+            let check_{method_name}_{idx} = asm(r, ptr: _method_name_ptr, name: _method_names_ptr, len: {method_name_len}) {{ addi r name i{offset}; meq r ptr r len; r: bool }};
+            if check_{method_name}_{idx} {{\n"));
 
             if args_types == "()" {
                 code.push_str(&format!(

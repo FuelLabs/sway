@@ -1,4 +1,5 @@
 use ast_elements::type_argument::GenericTypeArgument;
+use itertools::Itertools;
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::{
     error::CompileError,
@@ -137,11 +138,8 @@ impl ty::TyIntrinsicFunctionKind {
             Intrinsic::Dbg => {
                 unreachable!("__dbg should not exist in the typed tree")
             }
-            Intrinsic::RuntimeMemoryId => {
-                type_check_runtime_memory_id(arguments, handler, kind, type_arguments, span, ctx)
-            }
-            Intrinsic::EncodingMemoryId => {
-                type_check_encoding_memory_id(arguments, handler, kind, type_arguments, span, ctx)
+            Intrinsic::MemReprEq => {
+                type_check_mem_repr_eq(arguments, handler, kind, type_arguments, span, ctx)
             }
             Intrinsic::Alloc => {
                 type_check_alloc(handler, ctx, kind, arguments, type_arguments, span)
@@ -150,18 +148,21 @@ impl ty::TyIntrinsicFunctionKind {
     }
 }
 
-fn type_check_encoding_memory_id(
+/// `__mem_repr_eq<T>(repr_a: str, repr_b: str) -> bool`.
+fn type_check_mem_repr_eq(
     arguments: &[Expression],
     handler: &Handler,
     kind: Intrinsic,
     type_arguments: &[GenericArgument],
     span: Span,
-    ctx: TypeCheckContext,
+    mut ctx: TypeCheckContext,
 ) -> Result<(TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
-    if !arguments.is_empty() {
+    let type_engine = ctx.engines.te();
+
+    if arguments.len() != 2 {
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
-            expected: 0,
+            expected: 2,
             actual: arguments.len(),
             span: span_of_arguments(arguments, &span),
         }));
@@ -175,6 +176,17 @@ fn type_check_encoding_memory_id(
             span: span_of_type_arguments(type_arguments, &span),
         }));
     }
+
+    // Both `repr_a` and `repr_b` must be `str`s.
+    let mut ctx = ctx
+        .by_ref()
+        .with_help_text("Both `__mem_repr_eq` arguments must be of type \"str\".")
+        .with_type_annotation(type_engine.id_of_string_slice());
+    let repr_a = ty::TyExpression::type_check(handler, ctx.by_ref(), &arguments[0])?;
+    let repr_b = ty::TyExpression::type_check(handler, ctx.by_ref(), &arguments[1])?;
+
+    type_check_mem_repr_eq_arg(handler, kind, &repr_a, "repr_a")?;
+    type_check_mem_repr_eq_arg(handler, kind, &repr_b, "repr_b")?;
 
     let targ = &type_arguments[0];
     let arg = ctx
@@ -191,59 +203,62 @@ fn type_check_encoding_memory_id(
 
     let intrinsic_function = ty::TyIntrinsicFunctionKind {
         kind,
-        arguments: vec![],
+        arguments: vec![repr_a, repr_b],
         type_arguments: final_type_arguments,
         span: span.clone(),
     };
-    Ok((intrinsic_function, ctx.engines.te().id_of_u64()))
+    Ok((intrinsic_function, ctx.engines.te().id_of_bool()))
 }
 
-fn type_check_runtime_memory_id(
-    arguments: &[Expression],
+/// `__mem_repr_eq` argument must be a compile-time literal `str`,
+/// and its value must be one of the values from [ty::MemReprKind::KINDS].
+fn type_check_mem_repr_eq_arg(
     handler: &Handler,
     kind: Intrinsic,
-    type_arguments: &[GenericArgument],
-    span: Span,
-    ctx: TypeCheckContext,
-) -> Result<(TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
-    if !arguments.is_empty() {
-        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
-            name: kind.to_string(),
-            expected: 0,
-            actual: arguments.len(),
-            span: span_of_arguments(arguments, &span),
-        }));
-    }
-
-    if type_arguments.len() != 1 {
-        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
-            name: kind.to_string(),
-            expected: 1,
-            actual: type_arguments.len(),
-            span: span_of_type_arguments(type_arguments, &span),
-        }));
-    }
-
-    let targ = &type_arguments[0];
-    let arg = ctx
-        .resolve_type(
-            handler,
-            targ.type_id(),
-            &targ.span(),
-            EnforceTypeArguments::Yes,
-            None,
-        )
-        .unwrap_or_else(|err| ctx.engines.te().id_of_error_recovery(err));
-    let mut final_type_arguments = type_arguments.to_vec();
-    *final_type_arguments[0].type_id_mut() = arg;
-
-    let intrinsic_function = ty::TyIntrinsicFunctionKind {
-        kind,
-        arguments: vec![],
-        type_arguments: final_type_arguments,
-        span: span.clone(),
+    arg: &ty::TyExpression,
+    arg_name: &str,
+) -> Result<(), ErrorEmitted> {
+    let mem_repr_kinds_as_help_str = || {
+        ty::MemReprKind::KINDS
+            .iter()
+            .map(|k| format!("\"{k}\""))
+            .collect_vec()
+            .join(", ")
     };
-    Ok((intrinsic_function, ctx.engines.te().id_of_u64()))
+
+    let ty::TyExpressionVariant::Literal(literal) = &arg.expression else {
+        return Err(handler.emit_err(CompileError::IntrinsicArgNotConstant {
+            intrinsic: kind.to_string(),
+            arg: arg_name.to_string(),
+            expected_type: "str".to_string(),
+            span: arg.span.clone(),
+        }));
+    };
+
+    let Literal::String(span) = literal else {
+        return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
+            name: kind.to_string(),
+            span: arg.span.clone(),
+            hint: format!(
+                "Both arguments must be of type \"str\" and have one of these values: {}.",
+                mem_repr_kinds_as_help_str()
+            ),
+        }));
+    };
+
+    let repr = ty::MemReprKind::from_str(span.as_str());
+
+    repr.ok_or_else(|| {
+        handler.emit_err(CompileError::IntrinsicUnsupportedArgValue {
+            name: kind.to_string(),
+            span: arg.span.clone(),
+            hint: format!(
+                "Memory representation must be one of the following: {}.",
+                mem_repr_kinds_as_help_str()
+            ),
+        })
+    })
+    .map(|_| ())
 }
 
 fn type_check_alloc(

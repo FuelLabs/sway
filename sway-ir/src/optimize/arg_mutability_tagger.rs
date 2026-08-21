@@ -7,7 +7,7 @@ use crate::{
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 
-pub const ARG_POINTEE_MUTABILITY_TAGGER_NAME: &str = "arg_pointee_mutability_tagger";
+pub const ARG_POINTEE_MUTABILITY_TAGGER_NAME: &str = "arg-mut-tagger";
 
 pub fn create_arg_pointee_mutability_tagger_pass() -> Pass {
     Pass {

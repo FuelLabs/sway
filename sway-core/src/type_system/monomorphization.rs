@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::{engine::DeclEngineGetParsedDeclId, DeclEngineInsert, MaterializeConstGenerics},
+    decl_engine::{DeclEngineInsert, MaterializeConstGenerics},
     language::{
         ty::{self, TyExpression},
         CallPath,
@@ -340,12 +340,7 @@ pub(crate) fn type_decl_opt_to_type_id(
             )?
             .has_changes()
             {
-                *decl_engine
-                    .insert(
-                        new_copy,
-                        decl_engine.get_parsed_decl_id(&original_id).as_ref(),
-                    )
-                    .id()
+                *decl_engine.insert_modified(new_copy, original_id).id()
             } else {
                 original_id
             };
@@ -376,12 +371,7 @@ pub(crate) fn type_decl_opt_to_type_id(
             )?
             .has_changes()
             {
-                *decl_engine
-                    .insert(
-                        new_copy,
-                        decl_engine.get_parsed_decl_id(&original_id).as_ref(),
-                    )
-                    .id()
+                *decl_engine.insert_modified(new_copy, original_id).id()
             } else {
                 original_id
             };

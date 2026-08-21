@@ -86,7 +86,7 @@ impl TypeParameter {
             TypeParameter::Const(ConstGenericParameter {
                 is_from_parent,
                 name,
-                id,
+                parsed_decl_id,
                 span,
                 ty,
                 expr,
@@ -102,7 +102,7 @@ impl TypeParameter {
                         return_type: *ty,
                         value: expr.as_ref().map(|x| x.to_ty_expression(ctx.engines)),
                     },
-                    id.as_ref(),
+                    *parsed_decl_id,
                 );
                 (
                     is_from_parent,
@@ -986,34 +986,30 @@ impl MaterializeConstGenerics for ConstGenericExprTyDecl {
     ) -> Result<HasChanges, sway_error::handler::ErrorEmitted> {
         match self {
             ConstGenericExprTyDecl::ConstGenericDecl(decl) => {
-                let mut decl = TyConstGenericDecl::clone(&*engines.de().get(&decl.decl_id));
-                let mut has_changes =
-                    decl.materialize_const_generics(engines, handler, name, value)?;
+                let decl_id = &decl.decl_id;
+                let mut decl = TyConstGenericDecl::clone(&*engines.de().get(decl_id));
+                let has_changes = decl.materialize_const_generics(engines, handler, name, value)?;
 
-                let decl_ref = engines.de().insert(decl, None); // TODO improve parsed_decl_id
-                *self = ConstGenericExprTyDecl::ConstGenericDecl(ConstGenericDecl {
-                    decl_id: *decl_ref.id(),
-                });
-
-                // TODO: Deliberately using `mut has_changes` above and changing it here.
-                //       This will be changed when we inspect returned `HasChanges` and
-                //       remove additional not needed `DeclEngine::insert` calls.
-                has_changes |= HasChanges::Yes;
+                if has_changes.has_changes() {
+                    let decl_ref = engines.de().insert_modified(decl, *decl_id);
+                    *self = ConstGenericExprTyDecl::ConstGenericDecl(ConstGenericDecl {
+                        decl_id: *decl_ref.id(),
+                    });
+                }
 
                 Ok(has_changes)
             }
             ConstGenericExprTyDecl::ConstantDecl(decl) => {
-                let mut decl = TyConstantDecl::clone(&*engines.de().get(&decl.decl_id));
-                let mut has_changes =
-                    decl.materialize_const_generics(engines, handler, name, value)?;
+                let decl_id = &decl.decl_id;
+                let mut decl = TyConstantDecl::clone(&*engines.de().get(decl_id));
+                let has_changes = decl.materialize_const_generics(engines, handler, name, value)?;
 
-                let decl_ref = engines.de().insert(decl, None); // TODO improve parsed_decl_id
-                *self = ConstGenericExprTyDecl::ConstantDecl(ConstantDecl {
-                    decl_id: *decl_ref.id(),
-                });
-
-                // TODO: See above.
-                has_changes |= HasChanges::Yes;
+                if has_changes.has_changes() {
+                    let decl_ref = engines.de().insert_modified(decl, *decl_id);
+                    *self = ConstGenericExprTyDecl::ConstantDecl(ConstantDecl {
+                        decl_id: *decl_ref.id(),
+                    });
+                }
 
                 Ok(has_changes)
             }
@@ -1247,23 +1243,25 @@ pub struct ConstGenericParameter {
     pub ty: TypeId,
     pub is_from_parent: bool,
     pub span: Span,
-    pub id: Option<ParsedDeclId<ConstGenericDeclaration>>,
+    pub parsed_decl_id: ParsedDeclId<ConstGenericDeclaration>,
     pub expr: Option<ConstGenericExpr>,
 }
 
 impl HashWithEngines for ConstGenericParameter {
     fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let ConstGenericParameter {
-            name, ty, id, expr, ..
+            name,
+            ty,
+            parsed_decl_id: id,
+            expr,
+            ..
         } = self;
         let type_engine = engines.te();
         type_engine.get(*ty).hash(state, engines);
         name.hash(state);
-        if let Some(id) = id.as_ref() {
-            let decl = engines.pe().get(id);
-            decl.name.hash(state);
-            decl.ty.hash(state);
-        }
+        let decl = engines.pe().get(id);
+        decl.name.hash(state);
+        decl.ty.hash(state);
         match &expr {
             Some(expr) => {
                 expr.hash(state);

@@ -98,6 +98,9 @@ pub fn ret_val_demotion(
             .collect::<Vec<_>>();
 
         // Update each `ret` to store the return value to the 'out' arg and then return the pointer.
+        //
+        // TODO: NVRO possible here
+        // see more https://github.com/FuelLabs/sway/issues/7282#issuecomment-5245281840
         for (ret_block, ret_val) in ret_blocks {
             // This is a special case where we're replacing the terminator.  We can just pop it off the
             // end of the block and add new instructions.

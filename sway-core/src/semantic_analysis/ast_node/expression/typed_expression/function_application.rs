@@ -1,7 +1,5 @@
 use crate::{
-    decl_engine::{
-        engine::DeclEngineGetParsedDeclId, DeclEngineInsert, DeclRefFunction, ReplaceDecls,
-    },
+    decl_engine::{DeclEngineInsert, DeclRefFunction, ReplaceDecls},
     language::{
         ty::{self, TyFunctionDecl, TyFunctionSig},
         *,
@@ -113,12 +111,7 @@ pub(crate) fn instantiate_function_application(
                 let method_sig = TyFunctionSig::from_fn_decl(&new_function_decl);
 
                 let new_decl_ref = decl_engine
-                    .insert(
-                        new_function_decl,
-                        decl_engine
-                            .get_parsed_decl_id(function_decl_ref.id())
-                            .as_ref(),
-                    )
+                    .insert_modified(new_function_decl, *function_decl_ref.id())
                     .with_parent(decl_engine, (*function_decl_ref.id()).into());
                 (
                     method_sig,

@@ -233,7 +233,7 @@ impl Function {
     /// > Care must be taken to ensure the block has no predecessors otherwise the function will be
     /// > made invalid.
     pub fn remove_block(&self, context: &mut Context, block: &Block) -> Result<(), IrError> {
-        let label = block.get_label(context);
+        let label = block.get_label(context).to_string();
         let func = context.functions.get_mut(self.0).unwrap();
         let block_idx = func
             .blocks

@@ -132,8 +132,8 @@ impl Block {
 
     /// Get the label of this block.  If it wasn't given one upon creation it will be a generated
     /// label.
-    pub fn get_label(&self, context: &Context) -> String {
-        context.blocks[self.0].label.clone()
+    pub fn get_label<'a>(&self, context: &'a Context) -> &'a str {
+        &context.blocks[self.0].label
     }
 
     /// Set the label of this block.  If the label isn't unique it will be made so.
@@ -551,11 +551,10 @@ impl Block {
             //
             // If self is the entry block then for now we need to rename it from 'entry' and call
             // our new block 'entry'.
-            let new_block_name = (*self == self.get_function(context).get_entry_block(context))
-                .then(|| {
-                    self.set_label(context, None);
-                    "entry".to_owned()
-                });
+            let new_block_name = self.is_entry(context).then(|| {
+                self.set_label(context, None);
+                "entry".to_owned()
+            });
             let new_block = function
                 .create_block_before(context, self, new_block_name)
                 .unwrap();

@@ -27,7 +27,7 @@ use crate::{
         TypeCheckFinalization, TypeCheckFinalizationContext,
     },
     type_system::*,
-    Engines,
+    Engines, HasChanges,
 };
 
 impl TyTraitItem {
@@ -141,7 +141,7 @@ impl TyTraitDecl {
 
                             let type_decl_name = type_decl.name.clone();
 
-                            let decl_ref = decl_engine.insert(type_decl, Some(&decl_id));
+                            let decl_ref = decl_engine.insert(type_decl, decl_id);
                             dummy_interface_surface.push(ty::TyImplItem::Type(decl_ref.clone()));
                             new_interface_surface.push(ty::TyTraitInterfaceItem::Type(decl_ref));
 
@@ -181,12 +181,11 @@ impl TyTraitDecl {
                         TraitItem::TraitFn(decl_id) => {
                             let method = engines.pe().get_trait_fn(decl_id);
                             let method = ty::TyTraitFn::type_check(handler, ctx.by_ref(), &method)?;
-                            let decl_ref = decl_engine.insert(method.clone(), Some(decl_id));
+                            let decl_ref = decl_engine.insert(method.clone(), *decl_id);
                             dummy_interface_surface.push(ty::TyImplItem::Fn(
                                 decl_engine
-                                    .insert(
+                                    .insert_dummy_func(
                                         method.to_dummy_func(AbiMode::NonAbi, Some(self_type)),
-                                        None,
                                     )
                                     .with_parent(decl_engine, (*decl_ref.id()).into()),
                             ));
@@ -197,8 +196,7 @@ impl TyTraitDecl {
                             let const_decl = &*engines.pe().get_constant(decl_id);
                             let const_decl =
                                 ty::TyConstantDecl::type_check(handler, ctx.by_ref(), const_decl)?;
-                            let decl_ref =
-                                ctx.engines.de().insert(const_decl.clone(), Some(decl_id));
+                            let decl_ref = ctx.engines.de().insert(const_decl.clone(), *decl_id);
                             new_interface_surface
                                 .push(ty::TyTraitInterfaceItem::Constant(decl_ref.clone()));
 
@@ -258,7 +256,7 @@ impl TyTraitDecl {
                     )
                     .unwrap_or_else(|_| ty::TyFunctionDecl::error(&method));
                     new_items.push(ty::TyTraitItem::Fn(
-                        decl_engine.insert(method, Some(method_decl_id)),
+                        decl_engine.insert(method, *method_decl_id),
                     ));
                 }
 
@@ -424,10 +422,7 @@ impl TyTraitDecl {
                         .has_changes()
                     {
                         decl_engine
-                            .insert(
-                                method,
-                                decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
-                            )
+                            .insert_modified(method, *decl_ref.id())
                             .with_parent(decl_engine, (*decl_ref.id()).into())
                     } else {
                         decl_ref.clone()
@@ -446,10 +441,7 @@ impl TyTraitDecl {
                         ))
                         .has_changes()
                     {
-                        decl_engine.insert(
-                            const_decl,
-                            decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
-                        )
+                        decl_engine.insert_modified(const_decl, *decl_ref.id())
                     } else {
                         decl_ref.clone()
                     };
@@ -467,8 +459,7 @@ impl TyTraitDecl {
                         ))
                         .has_changes()
                     {
-                        decl_engine
-                            .insert(t, decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref())
+                        decl_engine.insert_modified(t, *decl_ref.id())
                     } else {
                         decl_ref.clone()
                     };
@@ -527,7 +518,7 @@ impl TyTraitDecl {
                     ));
                     all_items.push(TyImplItem::Fn(
                         decl_engine
-                            .insert(method.to_dummy_func(AbiMode::NonAbi, Some(type_id)), None)
+                            .insert_dummy_func(method.to_dummy_func(AbiMode::NonAbi, Some(type_id)))
                             .with_parent(ctx.engines.de(), (*decl_ref.id()).into()),
                     ));
                 }
@@ -562,10 +553,7 @@ impl TyTraitDecl {
                     {
                         ctx.engines
                             .de()
-                            .insert(
-                                method,
-                                decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
-                            )
+                            .insert_modified(method, *decl_ref.id())
                             .with_parent(decl_engine, (*decl_ref.id()).into())
                     } else {
                         decl_ref.clone()
@@ -585,10 +573,7 @@ impl TyTraitDecl {
                     let const_has_value = const_decl.value.is_some();
 
                     let decl_id = if has_changes.has_changes() {
-                        decl_engine.insert(
-                            const_decl,
-                            decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
-                        )
+                        decl_engine.insert_modified(const_decl, *decl_ref.id())
                     } else {
                         decl_ref.clone()
                     };
@@ -616,10 +601,7 @@ impl TyTraitDecl {
                     ));
 
                     let decl_ref = if has_changes.has_changes() {
-                        decl_engine.insert(
-                            type_decl,
-                            decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
-                        )
+                        decl_engine.insert_modified(type_decl, *decl_ref.id())
                     } else {
                         decl_ref.clone()
                     };
@@ -681,12 +663,14 @@ impl TypeCheckFinalization for TyTraitDecl {
         &mut self,
         handler: &Handler,
         ctx: &mut TypeCheckFinalizationContext,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
         handler.scope(|handler| {
-            for item in self.items.iter_mut() {
-                let _ = item.type_check_finalize(handler, ctx);
-            }
-            Ok(())
+            Ok(self
+                .items
+                .iter_mut()
+                .fold(HasChanges::No, |has_changes, item| {
+                    has_changes | item.type_check_finalize(handler, ctx).unwrap_or_default()
+                }))
         })
     }
 }

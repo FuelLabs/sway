@@ -5,17 +5,14 @@ use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     ast_elements::type_parameter::GenericTypeParameter,
-    decl_engine::{
-        parsed_id::ParsedDeclId, DeclEngineGetParsedDeclId, DeclEngineInsert, DeclEngineInsertArc,
-        DeclId,
-    },
+    decl_engine::{parsed_id::ParsedDeclId, DeclEngineInsert, DeclId},
     language::ty::{TyAbiDecl, TyFunctionDecl},
     namespace::{IsExtendingExistingImpl, IsImplInterfaceSurface, IsImplSelf},
     semantic_analysis::{
         symbol_collection_context::SymbolCollectionContext, TypeCheckAnalysis,
         TypeCheckAnalysisContext, TypeCheckFinalization, TypeCheckFinalizationContext,
     },
-    Engines,
+    Engines, HasChanges,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
 
@@ -133,8 +130,8 @@ impl ty::TyAbiDecl {
                     let decl_name = match item {
                         TraitItem::TraitFn(decl_id) => {
                             let method = &*engines.pe().get_trait_fn(decl_id);
-                            // check that a super-trait does not define a method
-                            // with the same name as the current interface method
+                            // Check that a super-trait does not define a method
+                            // with the same name as the current interface method.
                             error_on_shadowing_superabi_method(&method.name, ctx);
                             let method = ty::TyTraitFn::type_check(handler, ctx.by_ref(), method)?;
                             for param in &method.parameters {
@@ -150,7 +147,7 @@ impl ty::TyAbiDecl {
                             let method_name = method.name.clone();
 
                             new_interface_surface.push(ty::TyTraitInterfaceItem::TraitFn(
-                                ctx.engines.de().insert(method, Some(decl_id)),
+                                ctx.engines.de().insert(method, *decl_id),
                             ));
 
                             method_name
@@ -162,7 +159,7 @@ impl ty::TyAbiDecl {
 
                             let const_name = const_decl.call_path.suffix.clone();
 
-                            let decl_ref = ctx.engines.de().insert(const_decl, Some(decl_id));
+                            let decl_ref = ctx.engines.de().insert(const_decl, *decl_id);
                             new_interface_surface
                                 .push(ty::TyTraitInterfaceItem::Constant(decl_ref));
 
@@ -177,7 +174,7 @@ impl ty::TyAbiDecl {
                                 ty::TyTraitType::type_check(handler, ctx.by_ref(), type_decl)?;
 
                             let type_name = type_decl.name.clone();
-                            let decl_ref = ctx.engines().de().insert(type_decl, Some(decl_id));
+                            let decl_ref = ctx.engines().de().insert(type_decl, *decl_id);
                             new_interface_surface.push(ty::TyTraitInterfaceItem::Type(decl_ref));
 
                             type_name
@@ -220,9 +217,7 @@ impl ty::TyAbiDecl {
                             name: (&method.name).into(),
                         });
                     }
-                    new_items.push(TyTraitItem::Fn(
-                        ctx.engines.de().insert(method, Some(method_id)),
-                    ));
+                    new_items.push(TyTraitItem::Fn(ctx.engines.de().insert(method, *method_id)));
                 }
 
                 // Compared to regular traits, we do not insert recursively methods of ABI supertraits
@@ -319,13 +314,10 @@ impl ty::TyAbiDecl {
                         }
                         all_items.push(TyImplItem::Fn(
                             decl_engine
-                                .insert(
-                                    method.to_dummy_func(
-                                        AbiMode::ImplAbiFn(self.name.clone(), Some(self_decl_id)),
-                                        Some(type_id),
-                                    ),
-                                    None,
-                                )
+                                .insert_dummy_func(method.to_dummy_func(
+                                    AbiMode::ImplAbiFn(self.name.clone(), Some(self_decl_id)),
+                                    Some(type_id),
+                                ))
                                 .with_parent(ctx.engines.de(), (*decl_ref.id()).into()),
                         ));
                     }
@@ -378,42 +370,26 @@ impl ty::TyAbiDecl {
                                 }
                             }
                         }
-                        all_items.push(TyImplItem::Fn(
-                            decl_engine
-                                .insert_arc(
-                                    method,
-                                    decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
-                                )
-                                .with_parent(ctx.engines.de(), (*decl_ref.id()).into()),
-                        ));
+                        all_items.push(TyImplItem::Fn(decl_ref.clone()));
                     }
                     ty::TyTraitItem::Constant(decl_ref) => {
-                        let const_decl = decl_engine.get_constant(decl_ref);
-                        let const_name = const_decl.name().clone();
-                        let const_has_value = const_decl.value.is_some();
-                        let decl_id = decl_engine.insert_arc(
-                            const_decl,
-                            decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
-                        );
-                        all_items.push(TyImplItem::Constant(decl_id.clone()));
+                        all_items.push(TyImplItem::Constant(decl_ref.clone()));
 
                         // If this non-interface item has a value, then we want to overwrite the
                         // the previously inserted constant symbol from the interface surface.
+                        let const_decl = decl_engine.get_constant(decl_ref);
+                        let const_has_value = const_decl.value.is_some();
                         if const_has_value {
                             const_symbols.insert(
-                                const_name,
+                                const_decl.name().clone(),
                                 ty::TyDecl::ConstantDecl(ty::ConstantDecl {
-                                    decl_id: *decl_id.id(),
+                                    decl_id: *decl_ref.id(),
                                 }),
                             );
                         }
                     }
                     ty::TyTraitItem::Type(decl_ref) => {
-                        let type_decl = decl_engine.get_type(decl_ref);
-                        all_items.push(TyImplItem::Type(decl_engine.insert_arc(
-                            type_decl,
-                            decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
-                        )));
+                        all_items.push(TyImplItem::Type(decl_ref.clone()));
                     }
                 }
             }
@@ -467,12 +443,14 @@ impl TypeCheckFinalization for TyAbiDecl {
         &mut self,
         handler: &Handler,
         ctx: &mut TypeCheckFinalizationContext,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
         handler.scope(|handler| {
-            for item in self.items.iter_mut() {
-                let _ = item.type_check_finalize(handler, ctx);
-            }
-            Ok(())
+            Ok(self
+                .items
+                .iter_mut()
+                .fold(HasChanges::No, |has_changes, item| {
+                    has_changes | item.type_check_finalize(handler, ctx).unwrap_or_default()
+                }))
         })
     }
 }

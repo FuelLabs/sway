@@ -23,7 +23,7 @@ use crate::{
         TypeCheckFinalization, TypeCheckFinalizationContext,
     },
     type_system::*,
-    Engines,
+    Engines, HasChanges,
 };
 
 impl TyDecl {
@@ -112,8 +112,7 @@ impl TyDecl {
                     Err(err) => return Ok(ty::TyDecl::ErrorRecovery(decl.span.clone(), err)),
                 };
                 let name = const_decl.name().clone();
-                let typed_const_decl: ty::TyDecl =
-                    decl_engine.insert(const_decl, Some(decl_id)).into();
+                let typed_const_decl: ty::TyDecl = decl_engine.insert(const_decl, *decl_id).into();
                 ctx.insert_symbol(handler, name, typed_const_decl.clone())?;
                 typed_const_decl
             }
@@ -123,7 +122,7 @@ impl TyDecl {
                     match ty::TyConfigurableDecl::type_check(handler, ctx.by_ref(), decl) {
                         Ok(config_decl) => {
                             config_decl.forbid_const_generics(handler, engines)?;
-                            ty::TyDecl::from(decl_engine.insert(config_decl, Some(decl_id)))
+                            ty::TyDecl::from(decl_engine.insert(config_decl, *decl_id))
                         }
                         Err(err) => ty::TyDecl::ErrorRecovery(decl.span.clone(), err),
                     };
@@ -137,8 +136,7 @@ impl TyDecl {
                     Err(err) => return Ok(ty::TyDecl::ErrorRecovery(decl.span.clone(), err)),
                 };
                 let name = type_decl.name().clone();
-                let typed_type_decl: ty::TyDecl =
-                    decl_engine.insert(type_decl, Some(decl_id)).into();
+                let typed_type_decl: ty::TyDecl = decl_engine.insert(type_decl, *decl_id).into();
                 ctx.insert_symbol(handler, name, typed_type_decl.clone())?;
                 typed_type_decl
             }
@@ -149,8 +147,7 @@ impl TyDecl {
                     Err(err) => return Ok(ty::TyDecl::ErrorRecovery(decl.span.clone(), err)),
                 };
                 let name = enum_decl.call_path.suffix.clone();
-                let typed_enum_decl: ty::TyDecl =
-                    decl_engine.insert(enum_decl, Some(decl_id)).into();
+                let typed_enum_decl: ty::TyDecl = decl_engine.insert(enum_decl, *decl_id).into();
                 ctx.insert_symbol(handler, name, typed_enum_decl.clone())?;
                 typed_enum_decl
             }
@@ -173,7 +170,7 @@ impl TyDecl {
                 };
 
                 let name = fn_decl.name.clone();
-                let decl: ty::TyDecl = decl_engine.insert(fn_decl, Some(decl_id)).into();
+                let decl: ty::TyDecl = decl_engine.insert(fn_decl, *decl_id).into();
                 let _ = ctx.insert_symbol(handler, name, decl.clone());
                 decl
             }
@@ -207,7 +204,7 @@ impl TyDecl {
                             });
                 }
 
-                let decl: ty::TyDecl = decl_engine.insert(trait_decl.clone(), Some(decl_id)).into();
+                let decl: ty::TyDecl = decl_engine.insert(trait_decl.clone(), *decl_id).into();
 
                 trait_decl
                     .items
@@ -332,7 +329,7 @@ impl TyDecl {
                     IsImplInterfaceSurface::No,
                 )?;
                 let impl_trait_decl: ty::TyDecl =
-                    decl_engine.insert(impl_trait.clone(), Some(decl_id)).into();
+                    decl_engine.insert(impl_trait.clone(), *decl_id).into();
                 impl_trait.items.iter_mut().for_each(|item| {
                     item.replace_implementing_type(engines, impl_trait_decl.clone());
                 });
@@ -348,7 +345,7 @@ impl TyDecl {
                         }
                     };
                 let name = decl.call_path.suffix.clone();
-                let decl: ty::TyDecl = decl_engine.insert(decl, Some(decl_id)).into();
+                let decl: ty::TyDecl = decl_engine.insert(decl, *decl_id).into();
                 ctx.insert_symbol(handler, name, decl.clone())?;
                 decl
             }
@@ -382,7 +379,7 @@ impl TyDecl {
                             });
                 }
 
-                let decl: ty::TyDecl = decl_engine.insert(abi_decl.clone(), Some(decl_id)).into();
+                let decl: ty::TyDecl = decl_engine.insert(abi_decl.clone(), *decl_id).into();
                 abi_decl
                     .items
                     .iter_mut()
@@ -495,7 +492,7 @@ impl TyDecl {
                     storage_keyword: storage_keyword.clone(),
                 };
 
-                let decl_ref = decl_engine.insert(decl, Some(decl_id));
+                let decl_ref = decl_engine.insert(decl, *decl_id);
 
                 // insert the storage declaration into the symbols
                 // if there already was one, return an error that duplicate storage
@@ -535,7 +532,7 @@ impl TyDecl {
                     span,
                 };
 
-                let decl: ty::TyDecl = decl_engine.insert(decl, Some(decl_id)).into();
+                let decl: ty::TyDecl = decl_engine.insert(decl, *decl_id).into();
 
                 ctx.insert_symbol(handler, name, decl.clone())?;
                 decl
@@ -616,61 +613,99 @@ impl TypeCheckFinalization for TyDecl {
         &mut self,
         handler: &Handler,
         ctx: &mut TypeCheckFinalizationContext,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
         let decl_engine = ctx.engines.de();
         match self {
-            TyDecl::VariableDecl(node) => {
-                node.type_check_finalize(handler, ctx)?;
-            }
+            TyDecl::VariableDecl(node) => node.type_check_finalize(handler, ctx),
             TyDecl::ConstantDecl(node) => {
-                let mut const_decl = (*ctx.engines.de().get_constant(&node.decl_id)).clone();
-                const_decl.type_check_finalize(handler, ctx)?;
+                let mut const_decl = (*decl_engine.get_constant(&node.decl_id)).clone();
+                let has_changes = const_decl.type_check_finalize(handler, ctx)?;
+                if has_changes.has_changes() {
+                    node.decl_id = *decl_engine.insert_modified(const_decl, node.decl_id).id();
+                }
+                Ok(has_changes)
             }
             TyDecl::ConfigurableDecl(node) => {
-                let mut config_decl = (*ctx.engines.de().get_configurable(&node.decl_id)).clone();
-                config_decl.type_check_finalize(handler, ctx)?;
+                let mut config_decl = (*decl_engine.get_configurable(&node.decl_id)).clone();
+                let has_changes = config_decl.type_check_finalize(handler, ctx)?;
+                if has_changes.has_changes() {
+                    node.decl_id = *decl_engine.insert_modified(config_decl, node.decl_id).id();
+                }
+                Ok(has_changes)
             }
             TyDecl::ConstGenericDecl(_) => {
                 unreachable!("ConstGenericDecl is not reachable from AstNode")
             }
             TyDecl::FunctionDecl(node) => {
-                let mut fn_decl = (*ctx.engines.de().get_function(&node.decl_id)).clone();
-                fn_decl.type_check_finalize(handler, ctx)?;
+                let mut fn_decl = (*decl_engine.get_function(&node.decl_id)).clone();
+                let has_changes = fn_decl.type_check_finalize(handler, ctx)?;
+                if has_changes.has_changes() {
+                    node.decl_id = *decl_engine.insert_modified(fn_decl, node.decl_id).id();
+                }
+                Ok(has_changes)
             }
             TyDecl::TraitDecl(node) => {
-                let mut trait_decl = (*ctx.engines.de().get_trait(&node.decl_id)).clone();
-                trait_decl.type_check_finalize(handler, ctx)?;
+                let mut trait_decl = (*decl_engine.get_trait(&node.decl_id)).clone();
+                let has_changes = trait_decl.type_check_finalize(handler, ctx)?;
+                if has_changes.has_changes() {
+                    node.decl_id = *decl_engine.insert_modified(trait_decl, node.decl_id).id();
+                }
+                Ok(has_changes)
             }
             TyDecl::StructDecl(node) => {
-                let mut struct_decl = (*ctx.engines.de().get_struct(&node.decl_id)).clone();
-                struct_decl.type_check_finalize(handler, ctx)?;
+                let mut struct_decl = (*decl_engine.get_struct(&node.decl_id)).clone();
+                let has_changes = struct_decl.type_check_finalize(handler, ctx)?;
+                if has_changes.has_changes() {
+                    node.decl_id = *decl_engine.insert_modified(struct_decl, node.decl_id).id();
+                }
+                Ok(has_changes)
             }
             TyDecl::EnumDecl(node) => {
-                let mut enum_decl = (*ctx.engines.de().get_enum(&node.decl_id)).clone();
-                enum_decl.type_check_finalize(handler, ctx)?;
+                let mut enum_decl = (*decl_engine.get_enum(&node.decl_id)).clone();
+                let has_changes = enum_decl.type_check_finalize(handler, ctx)?;
+                if has_changes.has_changes() {
+                    node.decl_id = *decl_engine.insert_modified(enum_decl, node.decl_id).id();
+                }
+                Ok(has_changes)
             }
-            TyDecl::EnumVariantDecl(_) => {}
+            TyDecl::EnumVariantDecl(_) => Ok(HasChanges::No),
             TyDecl::ImplSelfOrTrait(node) => {
                 let mut impl_trait = (*decl_engine.get_impl_self_or_trait(&node.decl_id)).clone();
-                impl_trait.type_check_finalize(handler, ctx)?;
+                let has_changes = impl_trait.type_check_finalize(handler, ctx)?;
+                if has_changes.has_changes() {
+                    node.decl_id = *decl_engine.insert_modified(impl_trait, node.decl_id).id();
+                }
+                Ok(has_changes)
             }
             TyDecl::AbiDecl(node) => {
                 let mut abi_decl = (*decl_engine.get_abi(&node.decl_id)).clone();
-                abi_decl.type_check_finalize(handler, ctx)?;
+                let has_changes = abi_decl.type_check_finalize(handler, ctx)?;
+                if has_changes.has_changes() {
+                    node.decl_id = *decl_engine.insert_modified(abi_decl, node.decl_id).id();
+                }
+                Ok(has_changes)
             }
-            TyDecl::GenericTypeForFunctionScope(_) => {}
-            TyDecl::ErrorRecovery(_, _) => {}
+            TyDecl::GenericTypeForFunctionScope(_) => Ok(HasChanges::No),
+            TyDecl::ErrorRecovery(_, _) => Ok(HasChanges::No),
             TyDecl::StorageDecl(node) => {
                 let mut storage_decl = (*decl_engine.get_storage(&node.decl_id)).clone();
-                storage_decl.type_check_finalize(handler, ctx)?;
+                let has_changes = storage_decl.type_check_finalize(handler, ctx)?;
+                if has_changes.has_changes() {
+                    node.decl_id = *decl_engine.insert_modified(storage_decl, node.decl_id).id();
+                }
+                Ok(has_changes)
             }
             TyDecl::TypeAliasDecl(node) => {
                 let mut type_alias_decl = (*decl_engine.get_type_alias(&node.decl_id)).clone();
-                type_alias_decl.type_check_finalize(handler, ctx)?;
+                let has_changes = type_alias_decl.type_check_finalize(handler, ctx)?;
+                if has_changes.has_changes() {
+                    node.decl_id = *decl_engine
+                        .insert_modified(type_alias_decl, node.decl_id)
+                        .id();
+                }
+                Ok(has_changes)
             }
-            TyDecl::TraitTypeDecl(_node) => {}
+            TyDecl::TraitTypeDecl(_node) => Ok(HasChanges::No),
         }
-
-        Ok(())
     }
 }

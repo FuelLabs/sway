@@ -10,16 +10,15 @@ use symbol_collection_context::SymbolCollectionContext;
 
 use crate::{
     ast_elements::{type_argument::GenericTypeArgument, type_parameter::GenericTypeParameter},
-    decl_engine::{
-        parsed_id::ParsedDeclId, DeclEngineGetParsedDeclId, DeclEngineInsert, ReplaceDecls,
-    },
+    decl_engine::{parsed_id::ParsedDeclId, DeclEngineInsert, ReplaceDecls},
     language::{
         parsed::*,
         ty::{self, TyConfigurableDecl, TyExpression},
         CallPath, CallPathType,
     },
     semantic_analysis::*,
-    EnforceTypeArguments, Engines, GenericArgument, SubstTypes, TypeBinding, TypeCheckTypeBinding,
+    EnforceTypeArguments, Engines, GenericArgument, HasChanges, SubstTypes, TypeBinding,
+    TypeCheckTypeBinding,
 };
 
 impl ty::TyConfigurableDecl {
@@ -155,10 +154,7 @@ impl ty::TyConfigurableDecl {
             {
                 engines
                     .de()
-                    .insert(
-                        decode_fn_decl,
-                        engines.de().get_parsed_decl_id(&decode_fn_id).as_ref(),
-                    )
+                    .insert_modified(decode_fn_decl, decode_fn_id)
                     .with_parent(engines.de(), decode_fn_id.into())
             } else {
                 decode_fn_ref
@@ -232,10 +228,11 @@ impl TypeCheckFinalization for TyConfigurableDecl {
         &mut self,
         handler: &Handler,
         ctx: &mut TypeCheckFinalizationContext,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<HasChanges, ErrorEmitted> {
         if let Some(value) = self.value.as_mut() {
-            value.type_check_finalize(handler, ctx)?;
+            value.type_check_finalize(handler, ctx)
+        } else {
+            Ok(HasChanges::No)
         }
-        Ok(())
     }
 }

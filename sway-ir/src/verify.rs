@@ -244,7 +244,7 @@ impl Context<'_> {
                 function.get_name(self).to_string(),
                 entry_block
                     .pred_iter(self)
-                    .map(|block| block.get_label(self))
+                    .map(|block| block.get_label(self).to_string())
                     .collect(),
             ));
         }
@@ -305,7 +305,7 @@ impl Context<'_> {
     ) -> Result<(), IrError> {
         if cur_block.get_function(self) != cur_function {
             return Err(IrError::InconsistentParent(
-                cur_block.get_label(self),
+                cur_block.get_label(self).into(),
                 cur_function.get_name(self).into(),
                 cur_block.get_function(self).get_name(self).into(),
             ));
@@ -374,12 +374,10 @@ impl Context<'_> {
                     }
                 });
         if !last_is_term {
-            Err(IrError::MissingTerminator(
-                cur_block.get_label(self).clone(),
-            ))
+            Err(IrError::MissingTerminator(cur_block.get_label(self).into()))
         } else if num_terms != 1 {
             Err(IrError::MisplacedTerminator(
-                cur_block.get_label(self).clone(),
+                cur_block.get_label(self).into(),
             ))
         } else {
             Ok(())
@@ -439,8 +437,8 @@ impl InstructionVerifier<'_, '_> {
             if instruction.parent != self.cur_block {
                 return Err(IrError::InconsistentParent(
                     format!("Instr_{:?}", ins.0),
-                    self.cur_block.get_label(self.context),
-                    instruction.parent.get_label(self.context),
+                    self.cur_block.get_label(self.context).into(),
+                    instruction.parent.get_label(self.context).into(),
                 ));
             }
 

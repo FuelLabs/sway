@@ -914,8 +914,14 @@ pub enum CompileError {
     NonConstantDeclValue { span: Span },
     #[error("Declaring storage in a {program_kind} is not allowed.")]
     StorageDeclarationInNonContract { program_kind: String, span: Span },
-    #[error("Unsupported argument type to intrinsic \"{name}\".{}", if hint.is_empty() { "".to_string() } else { format!(" Hint: {hint}") })]
+    #[error("Unsupported argument type to intrinsic \"__{name}\".{}", if hint.is_empty() { "".to_string() } else { format!(" {hint}") })]
     IntrinsicUnsupportedArgType {
+        name: String,
+        span: Span,
+        hint: String,
+    },
+    #[error("Unsupported argument value to intrinsic \"__{name}\".{}", if hint.is_empty() { "".to_string() } else { format!(" {hint}") })]
+    IntrinsicUnsupportedArgValue {
         name: String,
         span: Span,
         hint: String,
@@ -944,7 +950,7 @@ pub enum CompileError {
         actual: usize,
         span: Span,
     },
-    #[error("\"__{intrinsic}\" intrinsic's argument \"{arg}\" must be a constant of type `{expected_type}`.")]
+    #[error("\"__{intrinsic}\" intrinsic's argument \"{arg}\" must be a constant of type \"{expected_type}\".")]
     IntrinsicArgNotConstant {
         intrinsic: String,
         arg: String,
@@ -978,7 +984,7 @@ pub enum CompileError {
     DisallowedControlFlowInstruction { name: String, span: Span },
     #[error("Calling private library method {name} is not allowed.")]
     CallingPrivateLibraryMethod { name: String, span: Span },
-    #[error("Using intrinsic \"{intrinsic}\" in a predicate is not allowed.")]
+    #[error("Using intrinsic \"__{intrinsic}\" in a predicate is not allowed.")]
     DisallowedIntrinsicInPredicate { intrinsic: String, span: Span },
     #[error("Possibly non-zero amount of coins transferred to non-payable contract method \"{fn_name}\".")]
     CoinsPassedToNonPayableMethod { fn_name: Ident, span: Span },
@@ -1428,6 +1434,7 @@ impl Spanned for CompileError {
             NonConstantDeclValue { span, .. } => span.clone(),
             StorageDeclarationInNonContract { span, .. } => span.clone(),
             IntrinsicUnsupportedArgType { span, .. } => span.clone(),
+            IntrinsicUnsupportedArgValue { span, .. } => span.clone(),
             IntrinsicIncorrectNumArgs { span, .. } => span.clone(),
             IntrinsicIncorrectNumTArgs { span, .. } => span.clone(),
             IntrinsicArgNotConstant { span, .. } => span.clone(),
@@ -3484,7 +3491,7 @@ impl ToDiagnostic for CompileError {
                 issue: Issue::error(
                     source_engine,
                     span.clone(),
-                    format!("\"__{intrinsic}\" intrinsic's argument \"{arg}\" must be a constant of type `{expected_type}`."),
+                    format!("\"__{intrinsic}\" intrinsic's argument \"{arg}\" must be a constant of type \"{expected_type}\"."),
                 ),
                 hints: vec![],
                 help: vec![],

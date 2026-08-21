@@ -22,6 +22,7 @@ use crate::{
     Engines, PanicOccurrences, PanickingCallOccurrences, TypeInfo,
 };
 use std::{
+    borrow::Cow,
     cell::Cell,
     collections::{BTreeSet, HashMap},
     sync::Arc,
@@ -963,6 +964,40 @@ pub(super) fn compile_tests(
         .collect()
 }
 
+const FN_NAME_TYPE_SUFFIX_WHITELIST: &[&str] = &["into"];
+
+/// Append args and return types to the function names
+/// to increase their readability. Example: `into_25` -> `into_25_u64_u32`.
+/// Only functions whose names are whitelisted.
+fn function_name_with_type_suffix<'a>(
+    name: &'a str,
+    original_name: &str,
+    args: impl Iterator<Item = String>,
+    ret_type: impl Fn() -> String,
+) -> Cow<'a, str> {
+    if !FN_NAME_TYPE_SUFFIX_WHITELIST.contains(&original_name) {
+        return Cow::Borrowed(name);
+    }
+
+    let mut out = String::from(name);
+
+    for arg in args.chain([ret_type()]) {
+        if !out.ends_with('_') {
+            out.push('_');
+        }
+
+        for c in arg.chars() {
+            if c.is_ascii_alphanumeric() {
+                out.push(c);
+            } else if !out.ends_with('_') {
+                out.push('_');
+            }
+        }
+    }
+
+    Cow::Owned(out)
+}
+
 #[allow(clippy::too_many_arguments)]
 fn compile_fn(
     engines: &Engines,
@@ -1096,10 +1131,20 @@ fn compile_fn(
         metadata = md_combine(context, &metadata, &trace_md_idx);
     }
 
+    let ir_name = function_name_with_type_suffix(
+        name.as_str(),
+        original_name.as_str(),
+        ast_fn_decl
+            .parameters
+            .iter()
+            .map(|x| engines.help_out(x.type_argument.type_id).to_string()),
+        || engines.help_out(return_type.type_id).to_string(),
+    );
+
     let func = Function::new(
         context,
         module,
-        name.as_str().to_owned(),
+        ir_name.into_owned(),
         abi_errors_display,
         args,
         ret_type,
@@ -1160,7 +1205,7 @@ fn compile_fn(
         .is_terminated_by_return_or_revert(context);
     if !already_returns
         && (compiler.current_block.num_instructions(context) > 0
-            || compiler.current_block == compiler.function.get_entry_block(context)
+            || compiler.current_block.is_entry(context)
             || compiler.current_block.num_predecessors(context) > 0)
     {
         if ret_type.is_unit(context) {

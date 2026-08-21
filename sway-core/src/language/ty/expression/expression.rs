@@ -141,13 +141,15 @@ impl TypeCheckFinalization for TyExpression {
         &mut self,
         handler: &Handler,
         ctx: &mut TypeCheckFinalizationContext,
-    ) -> Result<(), ErrorEmitted> {
-        let res = self.expression.type_check_finalize(handler, ctx);
+    ) -> Result<HasChanges, ErrorEmitted> {
+        let mut has_changes = self.expression.type_check_finalize(handler, ctx)?;
         if let TyExpressionVariant::FunctionApplication { fn_ref, .. } = &self.expression {
             let method = ctx.engines.de().get_function(fn_ref);
-            self.return_type = method.return_type.type_id;
+            let new_return_type = method.return_type.type_id;
+            has_changes |= HasChanges::from(self.return_type != new_return_type);
+            self.return_type = new_return_type;
         }
-        res
+        Ok(has_changes)
     }
 }
 
@@ -451,7 +453,7 @@ impl MaterializeConstGenerics for TyExpression {
             } => {
                 let mut has_changes = HasChanges::No;
 
-                // Materialize non dummy fns
+                // Materialize a non-dummy function.
                 let fn_decl = engines.de().get(fn_ref.id());
                 if !fn_decl.is_trait_method_dummy {
                     let mut type_subst_map = TypeSubstMap::new();
@@ -469,7 +471,7 @@ impl MaterializeConstGenerics for TyExpression {
                         })
                         .has_changes()
                     {
-                        *fn_ref = engines.de().insert(new_decl, None);
+                        *fn_ref = engines.de().insert_modified(new_decl, *fn_ref.id());
                         has_changes = HasChanges::Yes;
                     }
                 }
