@@ -35,9 +35,7 @@ It is important to note that predicates cannot read or write memory. They may ho
 
 ## Security Design
 
-A predicate returning `true` authorizes the spend, so its transaction checks
-collectively define the security policy. Depending on the application,
-consider binding:
+A predicate returning `true` authorizes the spend, so its transaction checks collectively define the security policy. Depending on the application, consider binding:
 
 - chain and protocol domain, transaction type, and authorized script;
 - exact controlled input and required output counts and variants;
@@ -45,7 +43,4 @@ consider binding:
 - nonce or rollover state, policy version, and validity window;
 - authenticated witness content, rather than only its count or index.
 
-If authorization requires mutable global revocation, shared limits, or
-coordinated recovery, use a contract or an explicitly designed hybrid. A
-stateless predicate must instead enforce UTXO rollover and freshness entirely
-from authenticated transaction data.
+If authorization requires mutable global revocation, shared limits, or coordinated recovery, use a contract or an explicitly designed hybrid. A stateless predicate must instead enforce UTXO rollover and freshness entirely from authenticated transaction data.

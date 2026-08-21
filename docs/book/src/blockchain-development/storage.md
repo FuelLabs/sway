@@ -35,10 +35,8 @@ The compiler does not always eliminate duplicate storage operations:
 
 - load an invariant value once before a loop and pass it to helpers;
 - write only changed state and move invariant writes outside loops;
-- do not reuse a cached value across an external call unless the reachable
-  callbacks cannot mutate it;
-- benchmark an ABI entry point, because helper-only gas does not price a
-  storage path that the benchmark never executes.
+- do not reuse a cached value across an external call unless the reachable callbacks cannot mutate it;
+- benchmark an ABI entry point, because helper-only gas does not price a storage path that the benchmark never executes.
 
 ## Storing Structs
 

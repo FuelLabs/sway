@@ -2,15 +2,7 @@
 
 Welcome to the Sway programming language book 🌴.
 
-> **Documentation version:** A `vX.Y.Z` URL is built from that exact Sway
-> release tag. The [`latest`](https://fuellabs.github.io/sway/latest/) URL
-> redirects to the most recently published release, while
-> [`master`](https://fuellabs.github.io/sway/master/book/) describes the
-> default branch and may include unreleased behavior. These are documentation
-> versions, not Fuelup channel names. Run `forc --version` to identify the
-> compiler you are using and consult the
-> [Fuelup channel documentation](https://install.fuel.network/master/concepts/channels.html)
-> before choosing tooling for a network.
+> **Documentation version:** A `vX.Y.Z` URL is built from that exact Sway release tag. The [`latest`](https://fuellabs.github.io/sway/latest/) URL redirects to the most recently published release, while [`master`](https://fuellabs.github.io/sway/master/book/) describes the default branch and may include unreleased behavior. These are documentation versions, not Fuelup channel names. Run `forc --version` to identify the compiler you are using and consult the [Fuelup channel documentation](https://install.fuel.network/master/concepts/channels.html) before choosing tooling for a network.
 
 **Q: Hi! What is Sway?**
 

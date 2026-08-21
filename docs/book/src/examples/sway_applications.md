@@ -2,12 +2,7 @@
 
 The [Sway-Applications](https://github.com/FuelLabs/sway-applications) Repository contains end-to-end example applications that are written in Sway in order to demonstrate what can be built.
 
-> **Legacy examples:** These applications are version-pinned snapshots and are
-> not continuously updated for the current Sway release or Fuel network
-> toolchains. Read the repository's
-> [status and toolchain matrix](https://github.com/FuelLabs/sway-applications#project-status-and-toolchains)
-> before using an example. Treat old syntax, dependencies, transaction
-> construction, and security patterns as historical until revalidated.
+> **Legacy examples:** These applications are version-pinned snapshots and are not continuously updated for the current Sway release or Fuel network toolchains. Read the repository's [status and toolchain matrix](https://github.com/FuelLabs/sway-applications#project-status-and-toolchains) before using an example. Treat old syntax, dependencies, transaction construction, and security patterns as historical until revalidated.
 
 ## Asset Management
 
