@@ -1,0 +1,487 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Structs, Tuples, and Enums - The Sway Programming Language</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">The Sway Programming Language</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/FuelLabs/sway" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="structs-tuples-and-enums"><a class="header" href="#structs-tuples-and-enums">Structs, Tuples, and Enums</a></h1>
+<h2 id="structs"><a class="header" href="#structs">Structs</a></h2>
+<!-- This section should explain structs in Sway -->
+<!-- structs:example:start -->
+<p>Structs in Sway are a named grouping of types. You may also be familiar with structs via another name: <em>product types</em>. Sway does not make any significantly unique usages of structs; they are similar to most other languages which have structs. If you're coming from an object-oriented background, a struct is like the data attributes of an object.</p>
+<p>Those data attributes are called <em>fields</em> and can be either public or private.</p>
+<p>Private struct fields can be accessed only within the module in which their struct is declared. Public fields are accessible everywhere where the struct is accessible. This access control on the field level allows more fine grained encapsulation of data.</p>
+<!-- structs:example:end -->
+<p>To explain these concepts, let's take a look at the following example, in which we have a module called <em>data_structures</em>.</p>
+<p>In that module, we declare a struct named <code>Foo</code> with two fields. The first field is named <code>bar</code>, it is public and it accepts values of type <code>u64</code>. The second field is named <code>baz</code>, it is also public and it accepts <code>bool</code> values.</p>
+<p>In a similar way, we define the structs <code>Point</code>, <code>Line</code>, and <code>TupleInStruct</code>. Since all those structs are public, and all their fields are public, they can be instantiated in other modules using the <em>struct instantiation syntax</em> as shown below.</p>
+<p>On the other hand, the struct <code>StructWithPrivateFields</code> can be instantiated only within the <em>data_structures</em> module, because it contains private fields. To be able to create instances of such structs outside of the module in which they are declared, the struct must offer <a href="methods_and_associated_functions.html#constructors">constructor associated functions</a>.</p>
+<pre><code class="language-sway">// the _data_structures_ module
+library;
+
+// Declare a struct type
+pub struct Foo {
+    pub bar: u64,
+    pub baz: bool,
+}
+
+// Struct types for destructuring
+pub struct Point {
+    pub x: u64,
+    pub y: u64,
+}
+
+pub struct Line {
+    pub p1: Point,
+    pub p2: Point,
+}
+
+pub struct TupleInStruct {
+    pub nested_tuple: (u64, (u32, (bool, str))),
+}
+
+// Struct type instantiable only in the module _data_structures_
+pub struct StructWithPrivateFields {
+    pub public_field: u64,
+    private_field: u64,
+    other_private_field: u64,
+}
+</code></pre>
+<!-- This section should explain how to instantiate a struct in Sway -->
+<!-- new_struct:example:start -->
+<p>In order to instantiate the struct we use <em>struct instantiation syntax</em>, which is very similar to the declaration syntax except with expressions in place of types.</p>
+<p>There are three ways to instantiate the struct.</p>
+<ul>
+<li>Hard coding values for the fields</li>
+<li>Passing in variables with names different than the struct fields</li>
+<li>Using a shorthand notation via variables that are the same as the field names</li>
+</ul>
+<!-- new_struct:example:end -->
+<pre><code class="language-sway">library;
+
+mod data_structures;
+use data_structures::{Foo, Line, Point, TupleInStruct};
+
+fn hardcoded_instantiation() -&gt; Foo {
+    // Instantiate `foo` as `Foo`
+    let mut foo = Foo {
+        bar: 42,
+        baz: false,
+    };
+
+    // Access and write to "baz"
+    foo.baz = true;
+
+    // Return the struct
+    foo
+}
+
+fn variable_instantiation() -&gt; Foo {
+    // Declare variables with the same names as the fields in `Foo`
+    let number = 42;
+    let truthness = false;
+
+    // Instantiate `foo` as `Foo`
+    let mut foo = Foo {
+        bar: number,
+        baz: truthness,
+    };
+
+    // Access and write to "baz"
+    foo.baz = true;
+
+    // Return the struct
+    foo
+}
+
+fn shorthand_instantiation() -&gt; Foo {
+    // Declare variables with the same names as the fields in `Foo`
+    let bar = 42;
+    let baz = false;
+
+    // Instantiate `foo` as `Foo`
+    let mut foo = Foo { bar, baz };
+
+    // Access and write to "baz"
+    foo.baz = true;
+
+    // Return the struct
+    foo
+}
+
+fn struct_destructuring() {
+    let point1 = Point { x: 0, y: 0 };
+    // Destructure the values from the struct into variables
+    let Point { x, y } = point1;
+
+    let point2 = Point { x: 1, y: 1 };
+    // If you do not care about specific struct fields then use ".." at the end of your variable list
+    let Point { x, .. } = point2;
+
+    let line = Line {
+        p1: point1,
+        p2: point2,
+    };
+    // Destructure the values from the nested structs into variables
+    let Line {
+        p1: Point { x: x0, y: y0 },
+        p2: Point { x: x1, y: y1 },
+    } = line;
+    // You may also destructure tuples nested in structs and structs nested in tuples
+    let tuple_in_struct = TupleInStruct {
+        nested_tuple: (42u64, (42u32, (true, "ok"))),
+    };
+    let TupleInStruct {
+        nested_tuple: (a, (b, (c, d))),
+    } = tuple_in_struct;
+
+    let struct_in_tuple = (Point { x: 2, y: 4 }, Point { x: 3, y: 6 });
+    let (Point { x: x0, y: y0 }, Point { x: x1, y: y1 }) = struct_in_tuple;
+}
+</code></pre>
+<blockquote>
+<p><strong>Note</strong>
+You can mix and match all 3 ways to instantiate the struct at the same time.
+Moreover, the order of the fields does not matter when instantiating however we encourage declaring the fields in alphabetical order and instantiating them in the same alphabetical order</p>
+</blockquote>
+<p>Furthermore, multiple variables can be extracted from a struct using the destructuring syntax.</p>
+<h3 id="struct-memory-layout"><a class="header" href="#struct-memory-layout">Struct Memory Layout</a></h3>
+<blockquote>
+<p><strong>Note</strong>
+This information is not vital if you are new to the language, or programming in general</p>
+</blockquote>
+<p>Structs have zero memory overhead. What that means is that in memory, each struct field is laid out sequentially. No metadata regarding the struct's name or other properties is preserved at runtime. In other words, structs are compile-time constructs. This is the same in Rust, but different in other languages with runtimes like Java.</p>
+<h2 id="tuples"><a class="header" href="#tuples">Tuples</a></h2>
+<!-- This section should explain what tuples are and how to access tuple values -->
+<!-- tuples:example:start -->
+<p>Tuples are a <a href="./built_in_types.html#tuple-types">basic static-length type</a> which contain multiple different types within themselves. The type of a tuple is defined by the types of the values within it, and a tuple can contain basic types as well as structs and enums.</p>
+<p>You can access values directly by using the <code>.</code> syntax. Moreover, multiple variables can be extracted from a tuple using the destructuring syntax.</p>
+<!-- tuples:example:end -->
+<pre><code class="language-sway">library;
+
+fn tuple() {
+    // You can declare the types yourself
+    let tuple1: (u8, bool, u64) = (100, false, 10000);
+
+    // Or have the types be inferred
+    let mut tuple2 = (5, true, ("Sway", 8));
+
+    // Retrieve values from tuples
+    let number = tuple1.0;
+    let sway = tuple2.2.1;
+
+    // Destructure the values from the tuple into variables
+    let (n1, truthness, n2) = tuple1;
+
+    // If you do not care about specific values then use "_"
+    let (_, truthness, _) = tuple2;
+
+    // Internally mutate the tuple
+    tuple2.1 = false;
+
+    // Or change the values all at once (must keep the same data types)
+    tuple2 = (9, false, ("Fuel", 99));
+}
+</code></pre>
+<h2 id="enums"><a class="header" href="#enums">Enums</a></h2>
+<!-- This section should explain what enums are -->
+<!-- enums:example:start -->
+<p><em>Enumerations</em>, or <em>enums</em>, are also known as <em>sum types</em>. An enum is a type that could be one of several variants. To declare an enum, you enumerate all potential variants.</p>
+<!-- enums:example:end -->
+<p>Here, we have defined five potential colors. Each enum variant is just the color name. As there is no extra data associated with each variant, we say that each variant is of type <code>()</code>, or unit.</p>
+<pre><code class="language-sway">library;
+
+// Declare the enum
+enum Color {
+    Blue: (),
+    Green: (),
+    Red: (),
+    Silver: (),
+    Grey: (),
+}
+
+fn main() {
+    // To instantiate a variable with the value of an enum the syntax is
+    let blue = Color::Blue;
+    let silver = Color::Silver;
+}
+</code></pre>
+<h3 id="enums-of-structs"><a class="header" href="#enums-of-structs">Enums of Structs</a></h3>
+<p>It is also possible to have an enum variant contain extra data. Take a look at this more substantial example, which combines struct declarations with enum variants:</p>
+<pre><code class="language-sway">library;
+
+struct Item {
+    price: u64,
+    amount: u64,
+    id: u64,
+}
+
+enum MyEnum {
+    Item: Item,
+}
+
+fn main() {
+    let my_enum = MyEnum::Item(Item {
+        price: 5,
+        amount: 2,
+        id: 42,
+    });
+}
+</code></pre>
+<h3 id="enums-of-enums"><a class="header" href="#enums-of-enums">Enums of Enums</a></h3>
+<p>It is possible to define enums of enums:</p>
+<pre><code class="language-sway">library;
+
+pub enum Error {
+    StateError: StateError,
+    UserError: UserError,
+}
+
+pub enum StateError {
+    Void: (),
+    Pending: (),
+    Completed: (),
+}
+
+pub enum UserError {
+    InsufficientPermissions: (),
+    Unauthorized: (),
+}
+</code></pre>
+<h4 id="preferred-usage"><a class="header" href="#preferred-usage">Preferred usage</a></h4>
+<p>The preferred way to use enums is to use the individual (not nested) enums directly because they are easy to follow and the lines are short:</p>
+<pre><code class="language-sway">library;
+
+use ::enum_of_enums::{StateError, UserError};
+
+fn preferred() {
+    let error1 = StateError::Void;
+    let error2 = UserError::Unauthorized;
+}
+</code></pre>
+<h4 id="inadvisable"><a class="header" href="#inadvisable">Inadvisable</a></h4>
+<p>If you wish to use the nested form of enums via the <code>Error</code> enum from the example above, then you can instantiate them into variables using the following syntax:</p>
+<pre><code class="language-sway">library;
+
+use ::enum_of_enums::{Error, StateError, UserError};
+
+fn avoid() {
+    let error1 = Error::StateError(StateError::Void);
+    let error2 = Error::UserError(UserError::Unauthorized);
+}
+</code></pre>
+<p>Key points to note:</p>
+<ul>
+<li>You must import all of the enums you need instead of just the <code>Error</code> enum</li>
+<li>The lines may get unnecessarily long (depending on the names)</li>
+<li>The syntax is not the most ergonomic</li>
+</ul>
+<h3 id="enum-memory-layout"><a class="header" href="#enum-memory-layout">Enum Memory Layout</a></h3>
+<blockquote>
+<p><strong>Note</strong>
+This information is not vital if you are new to the language, or programming in general.</p>
+</blockquote>
+<p>Enums do have some memory overhead. To know which variant is being represented, Sway stores a one-word (8-byte) tag for the enum variant. The space reserved after the tag is equivalent to the size of the <em>largest</em> enum variant. So, to calculate the size of an enum in memory, add 8 bytes to the size of the largest variant. For example, in the case of <code>Color</code> above, where the variants are all <code>()</code>, the size would be 8 bytes since the size of the largest variant is 0 bytes.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../basics/functions.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../basics/methods_and_associated_functions.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../basics/functions.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../basics/methods_and_associated_functions.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
