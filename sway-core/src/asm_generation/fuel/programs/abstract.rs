@@ -410,37 +410,26 @@ impl AbstractProgram {
     }
 
     fn optimize_fn_order(fns: &mut Vec<AbstractInstructionSet>) {
-        if fns.len() < 2 {
-            return;
-        }
-
-        let mut layout = FnLayout::new(fns);
-        let n = layout.fns.len();
-
         const PARETO: bool = true;
         const MAX_ITERS: usize = 128;
         const DEPTH: usize = 10;
         const MIN_GAIN: usize = 30;
 
+        if fns.len() < 2 {
+            return;
+        }
+
+        let mut layout = FnLayout::new(fns);
+
         for iter in 0..MAX_ITERS {
             // Index 0 never moves, so the entry is always original fn 0.
             debug_assert_eq!(layout.order[0], 0);
-
-            // (fn_idx, back-call count). Indexed by fn_idx while counting; then
-            // `select_nth` on `[1..]` so the entry (fn 0) is never a candidate.
-            let mut back_call_count: Vec<(usize, usize)> = (0..n).map(|fi| (fi, 0)).collect();
-            for site in &layout.call_sites {
-                if layout.fn_idx_to_slot[site.callee] < layout.fn_idx_to_slot[site.caller] {
-                    back_call_count[site.callee].1 += 1;
-                }
-            }
 
             let before_weights = layout.call_weights();
             let count_before: usize = before_weights.values().sum();
             let mut committed = false;
 
-            // Rank lazily via `select_nth` (worst-first) so we usually only
-            // partition once or twice per iteration.
+            let mut back_call_count = layout.back_call_count();
             let candidates = &mut back_call_count[1..];
             let depth = DEPTH.min(candidates.len());
             for k in 0..depth {
@@ -682,6 +671,20 @@ impl<'a> FnLayout<'a> {
 
     fn len(&self) -> usize {
         self.order.len()
+    }
+
+    /// `(fn_idx, back-call count)` for every function in the current layout.
+    /// Indexed by fn_idx while counting; callers typically `select_nth` on
+    /// `[1..]` so the entry (fn 0) is never a relocation candidate.
+    fn back_call_count(&self) -> Vec<(usize, usize)> {
+        let n = self.fn_sizes.len();
+        let mut counts: Vec<(usize, usize)> = (0..n).map(|fi| (fi, 0)).collect();
+        for site in &self.call_sites {
+            if self.fn_idx_to_slot[site.callee] < self.fn_idx_to_slot[site.caller] {
+                counts[site.callee].1 += 1;
+            }
+        }
+        counts
     }
 
     /// Per-call weight for the current layout, keyed by (caller label,
