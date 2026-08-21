@@ -410,10 +410,8 @@ impl AbstractProgram {
     }
 
     fn optimize_fn_order(fns: &mut Vec<AbstractInstructionSet>) {
-        const PARETO: bool = true;
         const MAX_ITERS: usize = 128;
         const DEPTH: usize = 10;
-        const MIN_GAIN: usize = 30;
 
         if fns.len() < 2 {
             return;
@@ -457,38 +455,31 @@ impl AbstractProgram {
                     let w = layout.call_weights();
                     layout.remove_at(p);
                     let sum: usize = w.values().sum();
-                    // Under `PARETO`, only accept a position where no individual
-                    // call gets worse and at least one improves (a true Pareto
-                    // improvement). Otherwise accept any lower-aggregate
-                    // position. `before_weights` was computed on the layout
-                    // with this candidate at `cur`, and the candidate is
-                    // present at `p` here, so the call sets match by key.
-                    let acceptable = if PARETO {
-                        w.iter()
-                            .all(|(k, &v)| v <= before_weights.get(k).copied().unwrap_or(0))
-                            && w.iter()
-                                .any(|(k, &v)| v < before_weights.get(k).copied().unwrap_or(0))
-                    } else {
-                        true
-                    };
+                    // Only accept a position where no individual call gets worse
+                    // and at least one improves (a true Pareto improvement).
+                    // `before_weights` was computed on the layout with this
+                    // candidate at `cur`, and the candidate is present at `p`
+                    // here, so the call sets match by key.
+                    let no_call_worse = w.iter().all(|(call_key, &new_weight)| {
+                        let old_weight = before_weights.get(call_key).copied().unwrap_or(0);
+                        new_weight <= old_weight
+                    });
+                    let some_call_better = w.iter().any(|(call_key, &new_weight)| {
+                        let old_weight = before_weights.get(call_key).copied().unwrap_or(0);
+                        new_weight < old_weight
+                    });
+                    let acceptable = no_call_worse && some_call_better;
                     if acceptable && sum < best_count {
                         best_count = sum;
                         best_p = p;
                     }
                 }
 
-                // Commit iff an improving position was found. Under `PARETO` a
-                // strict aggregate drop is guaranteed whenever a Pareto-safe
-                // improvement exists (some weight strictly decreases, none
-                // increase); otherwise the `MIN_GAIN` threshold guards against
-                // noise-level reshuffles. `cur` is always a candidate position,
-                // so we never worsen the layout.
-                let commit = if PARETO {
-                    best_count < count_before
-                } else {
-                    best_count + MIN_GAIN <= count_before
-                };
-                if commit {
+                // Commit iff an improving position was found. A strict aggregate
+                // drop is guaranteed whenever a Pareto-safe improvement exists
+                // (some weight strictly decreases, none increase). `cur` is
+                // always a candidate position, so we never worsen the layout.
+                if best_count < count_before {
                     layout.insert_at(best_p, target_fi);
                     eprintln!(
                         "optimize_fn_order iter {iter}: call cost {count_before} -> {best_count} (target {target_label} had {target_count} back calls)"
