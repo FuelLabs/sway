@@ -10,7 +10,9 @@ repository.workspace = true
 
 [dependencies]
 anyhow.workspace = true
+arboard.workspace = true
 clap = { workspace = true, features = ["derive"] }
+crossterm.workspace = true
 downcast-rs.workspace = true
 filecheck.workspace = true
 indexmap = { workspace = true, features = ["rayon"] }
@@ -18,6 +20,7 @@ itertools.workspace = true
 once_cell.workspace = true
 peg.workspace = true
 prettydiff.workspace = true
+ratatui.workspace = true
 rustc-hash.workspace = true
 serde = { version = "1.0", features = ["derive"] }
 slotmap.workspace = true
