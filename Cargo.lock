@@ -2695,6 +2695,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "forc-ir-inspect"
+version = "0.72.0"
+dependencies = [
+ "anyhow",
+ "arboard",
+ "clap",
+ "crossterm",
+ "dirs",
+ "prettydiff",
+ "ratatui",
+ "serde",
+ "serde_json",
+ "walkdir",
+]
+
+[[package]]
 name = "forc-lsp"
 version = "0.72.0"
 dependencies = [
@@ -7992,9 +8008,6 @@ name = "sway-ir"
 version = "0.72.0"
 dependencies = [
  "anyhow",
- "arboard",
- "clap",
- "crossterm",
  "downcast-rs",
  "filecheck",
  "indexmap 2.14.0",
@@ -8003,7 +8016,6 @@ dependencies = [
  "once_cell",
  "peg",
  "prettydiff",
- "ratatui",
  "rustc-hash 1.1.0",
  "serde",
  "slotmap",

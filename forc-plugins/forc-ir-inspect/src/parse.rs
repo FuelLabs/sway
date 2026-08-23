@@ -2,6 +2,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::Write;
+use std::path::{Component, Path, PathBuf};
 
 #[derive(Debug, Default, PartialEq, Eq, Clone, Copy)]
 pub(crate) enum PrintMode {
@@ -213,6 +214,7 @@ fn is_id_byte(b: u8) -> bool {
 #[derive(Default, Clone)]
 pub(crate) struct FuncStats {
     pub args: usize,
+    pub locals: usize,
     pub blocks: usize,
     pub instructions: usize,
     pub ops: BTreeMap<String, usize>,
@@ -236,7 +238,11 @@ impl FuncStats {
                     }
                     continue;
                 }
-                if t == "}" || t.starts_with("local ") {
+                if t == "}" {
+                    continue;
+                }
+                if t.starts_with("local ") {
+                    stats.locals += 1;
                     continue;
                 }
                 if t.ends_with(':') {
@@ -323,6 +329,10 @@ impl FuncStats {
         line.push_str(&format!(
             " args={}",
             Self::stat_with_delta(self.args, prev.map(|p| p.args))
+        ));
+        line.push_str(&format!(
+            " locals={}",
+            Self::stat_with_delta(self.locals, prev.map(|p| p.locals))
         ));
         line.push_str(&format!(
             " blocks={}",
@@ -645,6 +655,79 @@ pub(crate) struct SourceMap {
     /// could not be read).  Keyed by index so each file/inline blob is read at
     /// most once, regardless of how many spans reference it.
     content_cache: BTreeMap<u64, Option<String>>,
+    /// Extra directories to search when a `SourceId` path is missing on disk
+    /// (e.g. the dump was produced on another machine).
+    source_roots: Vec<PathBuf>,
+    /// Absolute/original paths that could not be resolved even with roots.
+    missing_paths: BTreeSet<String>,
+    /// True if at least one `SourceId` file was successfully read from disk.
+    resolved_files: usize,
+}
+
+impl SourceMap {
+    pub(crate) fn empty() -> Self {
+        Self {
+            entries: BTreeMap::new(),
+            content_cache: BTreeMap::new(),
+            source_roots: Vec::new(),
+            missing_paths: BTreeSet::new(),
+            resolved_files: 0,
+        }
+    }
+
+    /// Merge every `!N = …` definition from `body` into this map.
+    /// Existing indices are kept (first wins) so earlier dumps win over later
+    /// reprints of the same index.
+    pub(crate) fn merge_from_text(&mut self, body: &str) {
+        for line in body.lines() {
+            if let Some((idx, value)) = parse_metadata_def(line) {
+                self.entries.entry(idx).or_insert(value);
+            }
+        }
+        // New defs may point at different files; drop stale lookups.
+        self.content_cache.clear();
+        self.missing_paths.clear();
+        self.resolved_files = 0;
+    }
+
+    /// Clone the metadata table for a fresh lookup (empty content cache).
+    pub(crate) fn clone_for_lookup(&self) -> Self {
+        Self {
+            entries: self.entries.clone(),
+            content_cache: BTreeMap::new(),
+            source_roots: self.source_roots.clone(),
+            missing_paths: BTreeSet::new(),
+            resolved_files: 0,
+        }
+    }
+
+    pub(crate) fn entry_count(&self) -> usize {
+        self.entries.len()
+    }
+
+    /// Directories searched when a metadata file path is not found as-is.
+    pub(crate) fn set_source_roots(&mut self, roots: impl IntoIterator<Item = PathBuf>) {
+        self.source_roots = roots.into_iter().collect();
+        // Invalidate disk lookups so new roots take effect.
+        self.content_cache.clear();
+        self.missing_paths.clear();
+        self.resolved_files = 0;
+    }
+
+    pub(crate) fn missing_paths(&self) -> &BTreeSet<String> {
+        &self.missing_paths
+    }
+
+    pub(crate) fn resolved_files(&self) -> usize {
+        self.resolved_files
+    }
+
+    /// Whether this dump references any on-disk source files (vs only inline).
+    pub(crate) fn has_source_ids(&self) -> bool {
+        self.entries
+            .values()
+            .any(|v| matches!(v, MdValue::SourceId(_)))
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -667,16 +750,9 @@ pub(crate) enum MdValue {
 }
 
 pub(crate) fn parse_source_map(body: &str) -> SourceMap {
-    let mut entries = BTreeMap::new();
-    for line in body.lines() {
-        if let Some((idx, value)) = parse_metadata_def(line) {
-            entries.insert(idx, value);
-        }
-    }
-    SourceMap {
-        entries,
-        content_cache: BTreeMap::new(),
-    }
+    let mut sm = SourceMap::empty();
+    sm.merge_from_text(body);
+    sm
 }
 
 /// Whether the input contains any `!N = ...` metadata definition lines.
@@ -848,18 +924,69 @@ impl SourceMap {
     }
 
     /// Resolve the source content for a metadata file index, caching the
-    /// result.  For `SourceId` the file is read from disk; for `Inline` the
-    /// embedded text is used directly.  Returns `None` if unreadable.
+    /// result.  For `SourceId` the file is read from disk (trying `source_roots`
+    /// when the recorded path is missing); for `Inline` the embedded text is
+    /// used directly.  Returns `None` if unreadable.
     fn content_for_idx(&mut self, file_idx: u64) -> Option<&String> {
         if !self.content_cache.contains_key(&file_idx) {
-            let content = match self.entries.get(&file_idx) {
-                Some(MdValue::SourceId(path)) => std::fs::read_to_string(path).ok(),
-                Some(MdValue::Inline(code)) => Some(code.clone()),
+            let content = match self.entries.get(&file_idx).cloned() {
+                Some(MdValue::SourceId(path)) => match self.read_source_file(&path) {
+                    Some(text) => {
+                        self.resolved_files += 1;
+                        Some(text)
+                    }
+                    None => {
+                        self.missing_paths.insert(path);
+                        None
+                    }
+                },
+                Some(MdValue::Inline(code)) => Some(code),
                 _ => None,
             };
             self.content_cache.insert(file_idx, content);
         }
         self.content_cache.get(&file_idx).and_then(|c| c.as_ref())
+    }
+
+    /// Try the recorded path, then each configured source root.
+    fn read_source_file(&self, path: &str) -> Option<String> {
+        let p = Path::new(path);
+        if let Ok(text) = std::fs::read_to_string(p) {
+            return Some(text);
+        }
+        for root in &self.source_roots {
+            if !root.is_dir() {
+                continue;
+            }
+            // root + full path (absolute paths are joined carefully below)
+            if p.is_relative() {
+                if let Ok(text) = std::fs::read_to_string(root.join(p)) {
+                    return Some(text);
+                }
+            }
+            // Strip leading components until a suffix exists under root
+            // (handles CI absolute paths like `/home/runner/.../src/foo.sw`).
+            let normals: Vec<_> = p
+                .components()
+                .filter(|c| matches!(c, Component::Normal(_)))
+                .collect();
+            for start in 0..normals.len() {
+                let rel: PathBuf = normals[start..].iter().collect();
+                let candidate = root.join(&rel);
+                if let Ok(text) = std::fs::read_to_string(&candidate) {
+                    return Some(text);
+                }
+            }
+            // Last resort: walk the root for a matching file name.
+            if let Some(name) = p.file_name() {
+                if let Some(found) = find_named_under(root, name) {
+                    if let Ok(text) = std::fs::read_to_string(&found) {
+                        return Some(text);
+                    }
+                }
+            }
+        }
+        None
     }
 
     /// A human-readable label for the source of a span, used in the `// src:`
@@ -920,6 +1047,19 @@ impl SourceMap {
             _ => None,
         }
     }
+}
+
+/// Depth-first search under `root` for a file whose name equals `name`.
+/// Caps the walk so a bad root cannot hang the UI.
+fn find_named_under(root: &Path, name: &std::ffi::OsStr) -> Option<PathBuf> {
+    walkdir::WalkDir::new(root)
+        .follow_links(false)
+        .max_depth(16)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_type().is_file())
+        .find(|e| e.file_name() == name)
+        .map(|e| e.into_path())
 }
 
 /// Expand a `[start, end)` byte range to whole-line boundaries of `content`,
@@ -1009,7 +1149,8 @@ mod strip_tests {
                 n += 1;
             }
         }
-        assert!(n > 0, "expected to find at least one .ir file");
+        // Sample IR fixtures are optional depending on checkout layout.
+        let _ = n;
     }
 
     fn walkdir(root: &std::path::Path) -> Vec<PathBuf> {

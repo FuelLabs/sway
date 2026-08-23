@@ -1,11 +1,13 @@
 //! Interactive TUI for browsing IR pass dumps.
 
+use std::collections::BTreeMap;
 use std::io::{self, Read, Stdout, Write};
 use std::process::Child;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::mpsc::{self, Receiver, TryRecvError};
 use std::sync::{Arc, Mutex};
 use std::thread;
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use anyhow::{bail, Result};
@@ -24,10 +26,12 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph, Wrap};
 use ratatui::{Frame, Terminal};
 
+use crate::config::{self, FocusName, SessionState};
 use crate::highlight;
 use crate::parse::{
-    diff_stats, find_functions, parse, parse_source_map, prepare_ir_text, print_final_ir,
-    spawn_shell, strip_ansi, FuncStats, MdMode, ParsedIr, VersionMode,
+    diff_stats, find_functions, find_md_refs, parse, parse_source_map, prepare_ir_text,
+    print_final_ir, spawn_shell, strip_ansi, strip_metadata, FuncStats, MdMode, ParsedIr,
+    SourceMap, VersionMode,
 };
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -41,6 +45,8 @@ enum InputMode {
     PassFilter,
     FnFilter,
     Search,
+    /// Prompt for a directory used to resolve missing source files.
+    SourceRoot,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -82,10 +88,12 @@ struct LoadingJob {
     kind: LoadKind,
     started: Instant,
     rx: Receiver<LoadOutcome>,
-    /// Short label shown next to the spinner (e.g. the shell command).
+    /// Full command / path shown in the loading modal (not truncated).
     label: String,
     child: Arc<Mutex<Option<Child>>>,
     cancelled: Arc<AtomicBool>,
+    /// Bytes read from the command/file so far (updated by the worker).
+    bytes_received: Arc<AtomicUsize>,
 }
 
 pub(crate) struct TuiOptions {
@@ -120,6 +128,10 @@ struct App {
     metadata: MdMode,
     version: VersionMode,
     show_source: bool,
+    /// Extra directory searched when IR metadata paths are missing on disk.
+    source_root: Option<PathBuf>,
+    /// All `!N = …` defs seen in the loaded dump (survives function filters).
+    cached_source_map: SourceMap,
     status: String,
     status_ttl: Option<Instant>,
     main_text: String,
@@ -130,33 +142,90 @@ struct App {
     loading: Option<LoadingJob>,
     tree_area: Rect,
     main_area: Rect,
+    /// Visible text rows in the main panel (excluding borders).
+    main_view_rows: u16,
+    /// When false, main panel shows plain text (SSA highlights still apply).
+    syntax_highlight: bool,
+    /// SSA name → palette index. Background always overrides syntax.
+    ssa_highlights: BTreeMap<String, usize>,
+    /// Next palette slot to assign when focusing a new SSA.
+    ssa_next_slot: usize,
+    /// Cursor into main-panel text (line, char col), set by mouse click/move.
+    main_cursor_line: usize,
+    main_cursor_col: usize,
+    /// Navigation/view restore applied once after the first successful load.
+    pending_restore: Option<SessionState>,
+    needs_persist: bool,
 }
 
 impl App {
     fn new(opts: TuiOptions) -> Self {
-        let fn_filter = opts.filter_fn.join(",");
+        let (cfg, session) = config::load_session(opts.cmd.as_deref(), opts.input_path.as_deref());
+        let restored = session.is_some();
+        let s = session.unwrap_or_default();
+
+        let metadata = if restored {
+            MdMode::from(s.metadata)
+        } else {
+            opts.metadata
+        };
+        let version = if restored {
+            VersionMode::from(s.version)
+        } else {
+            opts.version
+        };
+        let show_source = if restored { s.show_source } else { opts.source };
+        let show_diff = if restored { s.show_diff } else { opts.start_diff };
+        let fn_filter = if restored {
+            s.fn_filter.clone()
+        } else {
+            opts.filter_fn.join(",")
+        };
+        let focus = match s.focus {
+            FocusName::Tree => Focus::Tree,
+            FocusName::Main => Focus::Main,
+        };
+        let show_line_numbers = if restored { s.show_line_numbers } else { true };
+        let syntax_highlight = if restored { s.syntax_highlight } else { true };
+        let pending_restore = restored.then_some(s.clone());
+
         Self {
-            metadata: opts.metadata,
-            version: opts.version,
-            show_source: opts.source,
-            show_diff: opts.start_diff,
+            metadata,
+            version,
+            show_source,
+            source_root: cfg.source_root,
+            cached_source_map: SourceMap::empty(),
+            show_diff,
             fn_filter,
             opts,
             passes: Vec::new(),
             projects: Vec::new(),
             tree_rows: Vec::new(),
             list_state: ListState::default(),
-            focus: Focus::Tree,
+            focus,
             input_mode: None,
             input_buf: String::new(),
-            pass_filter: String::new(),
-            search: String::new(),
+            pass_filter: if restored {
+                s.pass_filter.clone()
+            } else {
+                String::new()
+            },
+            search: if restored {
+                s.search.clone()
+            } else {
+                String::new()
+            },
             search_matches: Vec::new(),
             search_idx: 0,
-            scroll: 0,
-            h_scroll: 0,
+            scroll: if restored { s.scroll } else { 0 },
+            h_scroll: if restored { s.h_scroll } else { 0 },
             show_help: false,
-            show_line_numbers: true,
+            show_line_numbers,
+            syntax_highlight,
+            ssa_highlights: BTreeMap::new(),
+            ssa_next_slot: 0,
+            main_cursor_line: 0,
+            main_cursor_col: 0,
             status: String::new(),
             status_ttl: None,
             main_text: String::from("(waiting for IR…)"),
@@ -167,7 +236,76 @@ impl App {
             loading: None,
             tree_area: Rect::default(),
             main_area: Rect::default(),
+            main_view_rows: 1,
+            pending_restore,
+            needs_persist: false,
         }
+    }
+
+    fn mark_persist(&mut self) {
+        self.needs_persist = true;
+    }
+
+    fn flush_persist(&mut self) {
+        if !self.needs_persist {
+            return;
+        }
+        self.needs_persist = false;
+        let session = self.snapshot_session();
+        let _ = config::persist(
+            self.opts.cmd.as_deref(),
+            self.opts.input_path.as_deref(),
+            self.source_root.as_deref(),
+            session,
+        );
+    }
+
+    fn snapshot_session(&self) -> SessionState {
+        let focus = match self.focus {
+            Focus::Tree => FocusName::Tree,
+            Focus::Main => FocusName::Main,
+        };
+        let (selected_project, selected_pass) = match self.selected_pass() {
+            Some(p) => (Some(p.project.clone()), Some(p.name.clone())),
+            None => (None, None),
+        };
+        SessionState {
+            focus,
+            pass_filter: self.pass_filter.clone(),
+            fn_filter: self.fn_filter.clone(),
+            search: self.search.clone(),
+            scroll: self.scroll,
+            h_scroll: self.h_scroll,
+            show_diff: self.show_diff,
+            show_line_numbers: self.show_line_numbers,
+            syntax_highlight: self.syntax_highlight,
+            metadata: self.metadata.into(),
+            version: self.version.into(),
+            show_source: self.show_source,
+            selected_project,
+            selected_pass,
+            expanded_projects: self
+                .projects
+                .iter()
+                .filter(|p| p.expanded)
+                .map(|p| p.name.clone())
+                .collect(),
+        }
+    }
+
+    fn apply_pending_restore(&mut self) {
+        let Some(r) = self.pending_restore.take() else {
+            return;
+        };
+        for p in &mut self.projects {
+            p.expanded = r.expanded_projects.iter().any(|n| n == &p.name);
+        }
+        self.select_pass_by_project_and_name(
+            r.selected_project.as_deref(),
+            r.selected_pass.as_deref(),
+        );
+        self.scroll = r.scroll;
+        self.h_scroll = r.h_scroll;
     }
 
     fn is_loading(&self) -> bool {
@@ -202,13 +340,9 @@ impl App {
         }
         let cmd = self.opts.cmd.clone();
         let path = self.opts.input_path.clone();
+        // Keep the full command — the loading modal wraps as needed.
         let label = if let Some(c) = &cmd {
-            let short = if c.len() > 48 {
-                format!("{}…", &c[..45])
-            } else {
-                c.clone()
-            };
-            format!("running `{short}`")
+            format!("running `{c}`")
         } else if let Some(p) = &path {
             format!("reading `{p}`")
         } else {
@@ -218,8 +352,10 @@ impl App {
         let (tx, rx) = mpsc::channel();
         let child_slot = Arc::new(Mutex::new(None));
         let cancelled = Arc::new(AtomicBool::new(false));
+        let bytes_received = Arc::new(AtomicUsize::new(0));
         let child_w = Arc::clone(&child_slot);
         let cancel_w = Arc::clone(&cancelled);
+        let bytes_w = Arc::clone(&bytes_received);
 
         thread::spawn(move || {
             let outcome = match (cmd, path) {
@@ -237,13 +373,28 @@ impl App {
                         if let Ok(mut slot) = child_w.lock() {
                             *slot = Some(child);
                         }
-                        let mut text = String::new();
-                        let read_res = out.read_to_string(&mut text);
+                        let mut data = Vec::new();
+                        let mut buf = [0u8; 64 * 1024];
+                        let read_res = loop {
+                            if cancel_w.load(Ordering::SeqCst) {
+                                break Ok(());
+                            }
+                            match out.read(&mut buf) {
+                                Ok(0) => break Ok(()),
+                                Ok(n) => {
+                                    bytes_w.fetch_add(n, Ordering::Relaxed);
+                                    data.extend_from_slice(&buf[..n]);
+                                }
+                                Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
+                                Err(e) => break Err(e),
+                            }
+                        };
                         let status = child_w
                             .lock()
                             .ok()
                             .and_then(|mut s| s.take())
                             .and_then(|mut c| c.wait().ok());
+                        let text = String::from_utf8_lossy(&data).into_owned();
                         if cancel_w.load(Ordering::SeqCst) {
                             LoadOutcome::Cancelled
                         } else if let Err(e) = read_res {
@@ -259,9 +410,32 @@ impl App {
                     }
                     Err(e) => LoadOutcome::Err(format!("{e:#}")),
                 },
-                (None, Some(path)) => match std::fs::read_to_string(&path) {
-                    Ok(_text) if cancel_w.load(Ordering::SeqCst) => LoadOutcome::Cancelled,
-                    Ok(text) => LoadOutcome::Ir(text),
+                (None, Some(path)) => match std::fs::File::open(&path) {
+                    Ok(mut f) => {
+                        let mut data = Vec::new();
+                        let mut buf = [0u8; 64 * 1024];
+                        let read_res = loop {
+                            if cancel_w.load(Ordering::SeqCst) {
+                                break Ok(());
+                            }
+                            match f.read(&mut buf) {
+                                Ok(0) => break Ok(()),
+                                Ok(n) => {
+                                    bytes_w.fetch_add(n, Ordering::Relaxed);
+                                    data.extend_from_slice(&buf[..n]);
+                                }
+                                Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
+                                Err(e) => break Err(e),
+                            }
+                        };
+                        if cancel_w.load(Ordering::SeqCst) {
+                            LoadOutcome::Cancelled
+                        } else if let Err(e) = read_res {
+                            LoadOutcome::Err(format!("failed to read {path}: {e}"))
+                        } else {
+                            LoadOutcome::Ir(String::from_utf8_lossy(&data).into_owned())
+                        }
+                    }
                     Err(e) => LoadOutcome::Err(format!("failed to read {path}: {e}")),
                 },
                 _ => LoadOutcome::Err("no input path or --cmd provided".into()),
@@ -276,6 +450,7 @@ impl App {
             label,
             child: child_slot,
             cancelled,
+            bytes_received,
         });
         self.status.clear();
         self.status_ttl = None;
@@ -363,21 +538,52 @@ impl App {
     }
 
     fn apply_raw(&mut self, raw: &str) -> Result<()> {
-        let keep = self
+        let keep_project = self
+            .selected_pass()
+            .map(|p| p.project.clone())
+            .or_else(|| {
+                self.pending_restore
+                    .as_ref()
+                    .and_then(|r| r.selected_project.clone())
+            });
+        let keep_pass = self
             .selected_pass()
             .map(|p| p.name.clone())
+            .or_else(|| {
+                self.pending_restore
+                    .as_ref()
+                    .and_then(|r| r.selected_pass.clone())
+            })
             .unwrap_or_default();
+        let restoring = self.pending_restore.is_some();
         let cleaned = strip_ansi(raw);
+        // Cache every metadata definition from the full dump up front. Function
+        // filters later drop the `!N = …` decl section from the view, but
+        // source overlay still needs those defs to resolve spans.
+        let mut sm = SourceMap::empty();
+        if let Some(root) = &self.source_root {
+            sm.set_source_roots([root.clone()]);
+        }
+        sm.merge_from_text(&cleaned);
+        self.cached_source_map = sm;
         let irs = parse(&cleaned);
         if irs.is_empty() {
             bail!("no `// IR:` dumps found in input");
         }
         self.rebuild_passes(&irs);
-        self.recompute_tree();
-        self.select_pass_by_name(&keep);
-        self.scroll = 0;
-        self.h_scroll = 0;
+        if restoring {
+            self.apply_pending_restore();
+        } else {
+            self.recompute_tree();
+            self.select_pass_by_project_and_name(keep_project.as_deref(), Some(&keep_pass));
+            self.scroll = 0;
+            self.h_scroll = 0;
+        }
         self.refresh_main();
+        // Clamp scroll after content is known.
+        let max = self.main_text.lines().count().saturating_sub(1) as u16;
+        self.scroll = self.scroll.min(max);
+        self.mark_persist();
         Ok(())
     }
 
@@ -480,8 +686,14 @@ impl App {
         self.list_state.select(first);
     }
 
-    fn select_pass_by_name(&mut self, name: &str) {
+    fn select_pass_by_project_and_name(
+        &mut self,
+        project: Option<&str>,
+        name: Option<&str>,
+    ) {
+        let name = name.unwrap_or("").trim();
         if name.is_empty() {
+            self.recompute_tree();
             if let Some(row) = self
                 .tree_rows
                 .iter()
@@ -491,22 +703,31 @@ impl App {
             }
             return;
         }
-        if let Some(pass_idx) = self.passes.iter().position(|p| p.name == name) {
-            if let Some(proj) = self
-                .projects
-                .iter_mut()
-                .find(|p| p.passes.contains(&pass_idx))
-            {
-                proj.expanded = true;
-            }
+        let pass_idx = self
+            .passes
+            .iter()
+            .position(|p| {
+                p.name == name && project.map(|pr| pr == p.project).unwrap_or(true)
+            })
+            .or_else(|| self.passes.iter().position(|p| p.name == name));
+        let Some(pass_idx) = pass_idx else {
             self.recompute_tree();
-            if let Some(row) = self
-                .tree_rows
-                .iter()
-                .position(|r| matches!(r, TreeRow::Pass(i) if *i == pass_idx))
-            {
-                self.list_state.select(Some(row));
-            }
+            return;
+        };
+        if let Some(proj) = self
+            .projects
+            .iter_mut()
+            .find(|p| p.passes.contains(&pass_idx))
+        {
+            proj.expanded = true;
+        }
+        self.recompute_tree();
+        if let Some(row) = self
+            .tree_rows
+            .iter()
+            .position(|r| matches!(r, TreeRow::Pass(i) if *i == pass_idx))
+        {
+            self.list_state.select(Some(row));
         }
     }
 
@@ -594,13 +815,102 @@ impl App {
             label,
             child: Arc::new(Mutex::new(None)),
             cancelled,
+            bytes_received: Arc::new(AtomicUsize::new(0)),
         });
+        true
+    }
+
+    /// Prepare a pass body for the main panel, optionally embedding source.
+    ///
+    /// When source overlay is on, metadata references are kept long enough to
+    /// resolve spans (even if metadata display is off), then stripped again if
+    /// the user has metadata toggled off.
+    ///
+    /// Returns `(text, needs_source_root, sample_missing_path)`.
+    fn prepare_pass_view(&self, pass_idx: usize) -> Option<(String, bool, Option<String>)> {
+        let filters = self.fn_filters();
+        let pass = &self.passes[pass_idx];
+        let ir = ParsedIr {
+            project: pass.project.clone(),
+            pass_name: pass.name.clone(),
+            body: pass.body.clone(),
+        };
+        let md = if self.show_source && self.metadata == MdMode::Without {
+            // Need inline `!N` refs to resolve source spans.
+            MdMode::AsParsed
+        } else {
+            self.metadata
+        };
+        let mut text = prepare_ir_text(&filters, md, self.version, &ir)?;
+        let mut needs_source_root = false;
+        let mut sample_missing = None;
+        if self.show_source {
+            // Prefer the dump-wide cache so function filters can't hide defs.
+            let mut sm = if self.cached_source_map.entry_count() > 0 {
+                self.cached_source_map.clone_for_lookup()
+            } else {
+                parse_source_map(&ir.body)
+            };
+            // Also merge this pass body in case it has newer/extra defs.
+            sm.merge_from_text(&ir.body);
+            if let Some(root) = &self.source_root {
+                sm.set_source_roots([root.clone()]);
+            }
+            let mut buf = Vec::new();
+            let _ = print_final_ir(&mut buf, &text, Some(&mut sm));
+            text = String::from_utf8_lossy(&buf).into_owned();
+            if self.metadata == MdMode::Without {
+                text = strip_metadata(&text);
+            }
+            needs_source_root = sm.has_source_ids() && sm.resolved_files() == 0;
+            sample_missing = sm.missing_paths().iter().next().cloned();
+        }
+        Some((text, needs_source_root, sample_missing))
+    }
+
+    fn open_source_root_modal(&mut self, hint: &str) {
+        self.input_mode = Some(InputMode::SourceRoot);
+        self.input_buf = self
+            .source_root
+            .as_ref()
+            .map(|p| p.display().to_string())
+            .unwrap_or_default();
+        if !hint.is_empty() {
+            self.set_status(hint, 6);
+        }
+    }
+
+    fn apply_source_root(&mut self, raw: &str) -> bool {
+        let trimmed = raw.trim();
+        if trimmed.is_empty() {
+            self.set_status("source root: empty path", 3);
+            return false;
+        }
+        let path = PathBuf::from(trimmed);
+        let path = if path.is_absolute() {
+            path
+        } else {
+            std::env::current_dir()
+                .map(|cwd| cwd.join(&path))
+                .unwrap_or(path)
+        };
+        if !path.is_dir() {
+            self.set_status(
+                format!("source root: not a directory: {}", path.display()),
+                5,
+            );
+            return false;
+        }
+        self.source_root = Some(path.clone());
+        self.cached_source_map.set_source_roots([path.clone()]);
+        self.mark_persist();
+        self.flush_persist();
+        self.set_status(format!("source root: {}", path.display()), 3);
         true
     }
 
     fn refresh_main(&mut self) {
         self.cancel_diff_only();
-        let filters = self.fn_filters();
         let Some(idx) = self.selected_pass_idx() else {
             self.main_text = if matches!(self.selected_tree_row(), Some(TreeRow::Project(_))) {
                 String::from("(select a pass under the project)")
@@ -613,27 +923,38 @@ impl App {
             return;
         };
 
-        let cur = ParsedIr {
-            project: self.passes[idx].project.clone(),
-            pass_name: self.passes[idx].name.clone(),
-            body: self.passes[idx].body.clone(),
-        };
-        let Some(mut text) = prepare_ir_text(&filters, self.metadata, self.version, &cur) else {
+        let Some((text, needs_root, missing)) = self.prepare_pass_view(idx) else {
             self.main_text = String::from("(no functions match the current filter)");
             self.main_is_diff = false;
             self.stats_line.clear();
             self.dirty = true;
             return;
         };
-
-        if self.show_source {
-            let mut sm = parse_source_map(&cur.body);
-            let mut buf = Vec::new();
-            let _ = print_final_ir(&mut buf, &text, Some(&mut sm));
-            text = String::from_utf8_lossy(&buf).into_owned();
+        if needs_root && self.input_mode.is_none() {
+            let hint = match missing {
+                Some(p) => format!(
+                    "missing `{p}` — enter the project root that contains your .sw sources"
+                ),
+                None => String::from(
+                    "source files not found — enter the project root directory"
+                ),
+            };
+            self.open_source_root_modal(&hint);
         }
 
-        let stats = FuncStats::compute_stats(&text);
+        // Stats from IR without the source overlay so comment lines don't
+        // inflate instruction counts.
+        let stats_src = {
+            let filters = self.fn_filters();
+            let ir = ParsedIr {
+                project: self.passes[idx].project.clone(),
+                pass_name: self.passes[idx].name.clone(),
+                body: self.passes[idx].body.clone(),
+            };
+            prepare_ir_text(&filters, self.metadata, self.version, &ir)
+                .unwrap_or_else(|| text.clone())
+        };
+        let stats = FuncStats::compute_stats(&stats_src);
         let prev_stats = if idx > 0 && self.passes[idx - 1].project == self.passes[idx].project {
             Some(self.passes[idx - 1].stats.clone())
         } else {
@@ -643,21 +964,12 @@ impl App {
         self.passes[idx].stats = stats;
 
         if self.show_diff && idx > 0 {
-            let prev = ParsedIr {
-                project: self.passes[idx - 1].project.clone(),
-                pass_name: self.passes[idx - 1].name.clone(),
-                body: self.passes[idx - 1].body.clone(),
-            };
-            if prev.project == cur.project {
-                if let Some(prev_text) =
-                    prepare_ir_text(&filters, self.metadata, self.version, &prev)
-                {
-                    if self.start_diff_job(
-                        idx,
-                        prev_text.clone(),
-                        text.clone(),
-                        prev.pass_name.clone(),
-                    ) {
+            let prev_project = self.passes[idx - 1].project.clone();
+            let prev_name = self.passes[idx - 1].name.clone();
+            if prev_project == self.passes[idx].project {
+                if let Some((prev_text, _, _)) = self.prepare_pass_view(idx - 1) {
+                    if self.start_diff_job(idx, prev_text.clone(), text.clone(), prev_name.clone())
+                    {
                         self.main_text = String::from("(computing diff…)");
                         self.main_is_diff = false;
                         self.dirty = true;
@@ -666,10 +978,8 @@ impl App {
                     let changeset = prettydiff::diff_lines(&prev_text, &text);
                     let ops = changeset.diff();
                     let (adds, removes) = diff_stats(&ops);
-                    let mut rendered = format!(
-                        "// Diff vs {}: adds={adds} removes={removes}\n",
-                        prev.pass_name
-                    );
+                    let mut rendered =
+                        format!("// Diff vs {prev_name}: adds={adds} removes={removes}\n");
                     rendered.push_str(&render_diff(&ops));
                     self.main_text = rendered;
                     self.main_is_diff = true;
@@ -685,7 +995,6 @@ impl App {
         self.dirty = true;
         self.recompute_search();
     }
-
     fn recompute_search(&mut self) {
         self.search_matches.clear();
         if self.search.is_empty() {
@@ -709,14 +1018,111 @@ impl App {
             return;
         }
         let cur = self.search_matches.get(self.search_idx).copied();
-        self.cached_lines = highlight::highlight_ir_with_search(
+        let mut lines = highlight::highlight_ir_with_search(
             &self.main_text,
             self.main_is_diff,
             &self.search,
             cur,
+            self.syntax_highlight,
         );
+        let ssa: Vec<(String, ratatui::style::Color)> = self
+            .ssa_highlights
+            .iter()
+            .map(|(name, &slot)| {
+                (
+                    name.clone(),
+                    highlight::SYMBOL_PALETTE[slot % highlight::SYMBOL_PALETTE.len()],
+                )
+            })
+            .collect();
+        highlight::apply_symbol_highlights(&mut lines, &ssa);
+        self.cached_lines = lines;
         self.dirty = false;
         self.clamp_scroll();
+    }
+
+    fn line_number_gutter_width(&self) -> u16 {
+        if self.show_line_numbers {
+            7 // "{:>4} │ "
+        } else {
+            0
+        }
+    }
+
+    /// Map a screen cell inside the main panel to (line, col) in `main_text`.
+    fn main_pos_from_screen(&self, col: u16, row: u16) -> Option<(usize, usize)> {
+        let inner = self.main_area.inner(Margin {
+            horizontal: 1,
+            vertical: 1,
+        });
+        if col < inner.x
+            || row < inner.y
+            || col >= inner.x.saturating_add(inner.width)
+            || row >= inner.y.saturating_add(inner.height)
+        {
+            return None;
+        }
+        let rel_row = (row - inner.y) as usize;
+        let line = self.scroll as usize + rel_row;
+        let gutter = self.line_number_gutter_width();
+        let rel_col = col.saturating_sub(inner.x);
+        if rel_col < gutter {
+            return Some((line, 0));
+        }
+        let col_in_text = (rel_col - gutter) as usize + self.h_scroll as usize;
+        Some((line, col_in_text))
+    }
+
+    fn set_main_cursor_from_screen(&mut self, col: u16, row: u16) {
+        if let Some((line, c)) = self.main_pos_from_screen(col, row) {
+            self.main_cursor_line = line;
+            self.main_cursor_col = c;
+        }
+    }
+
+    fn toggle_syntax_highlight(&mut self) {
+        self.syntax_highlight = !self.syntax_highlight;
+        self.dirty = true;
+        self.mark_persist();
+        self.set_status(
+            if self.syntax_highlight {
+                "syntax highlight: ON"
+            } else {
+                "syntax highlight: OFF"
+            },
+            2,
+        );
+    }
+
+    fn toggle_symbol_at_cursor(&mut self) {
+        if self.focus != Focus::Main {
+            self.set_status("F2: focus the IR panel first", 3);
+            return;
+        }
+        let line = self.main_text.lines().nth(self.main_cursor_line).unwrap_or("");
+        let Some(name) = highlight::symbol_at_col(line, self.main_cursor_col, &self.main_text)
+        else {
+            self.set_status(
+                "F2: cursor is not on an SSA / local / method name",
+                3,
+            );
+            return;
+        };
+        if self.ssa_highlights.remove(&name).is_some() {
+            self.set_status(format!("highlight OFF: {name}"), 3);
+        } else {
+            let slot = self.ssa_next_slot;
+            self.ssa_next_slot = self.ssa_next_slot.wrapping_add(1);
+            self.ssa_highlights.insert(name.clone(), slot);
+            self.set_status(
+                format!(
+                    "highlight ON: {name} (color {})",
+                    (slot % highlight::SYMBOL_PALETTE.len()) + 1
+                ),
+                3,
+            );
+        }
+        self.dirty = true;
     }
 
     /// Keep vertical scroll inside the current main-panel content. Toggles like
@@ -898,6 +1304,14 @@ impl App {
             }
             MouseEventKind::Down(MouseButton::Left) if in_main => {
                 self.focus = Focus::Main;
+                self.set_main_cursor_from_screen(col, row);
+            }
+            MouseEventKind::Moved if in_main => {
+                self.set_main_cursor_from_screen(col, row);
+            }
+            MouseEventKind::Drag(MouseButton::Left) if in_main => {
+                self.focus = Focus::Main;
+                self.set_main_cursor_from_screen(col, row);
             }
             MouseEventKind::ScrollDown if in_tree => self.select_next(),
             MouseEventKind::ScrollUp if in_tree => self.select_prev(),
@@ -917,16 +1331,46 @@ fn contains(area: Rect, col: u16, row: u16) -> bool {
 
 /// Full function stats for the status bar, with optional deltas vs the previous pass.
 fn format_full_stats(s: &FuncStats, prev: Option<&FuncStats>) -> String {
-    let mut parts = vec![
-        format!("args={}", format_stat_delta(s.args, prev.map(|p| p.args))),
-        format!("blocks={}", format_stat_delta(s.blocks, prev.map(|p| p.blocks))),
-        format!(
-            "instr={}",
-            format_stat_delta(s.instructions, prev.map(|p| p.instructions))
-        ),
-    ];
+    format_full_stats_spans(s, prev)
+        .into_iter()
+        .map(|s| s.content.to_string())
+        .collect()
+}
 
-    // Union of opcodes (current + previous) so removals show as `op=0(-N)`.
+fn append_stat_delta_spans(spans: &mut Vec<Span<'static>>, label: &str, cur: usize, prev: Option<usize>) {
+    if !spans.is_empty() {
+        spans.push(Span::styled(" ", Style::default().fg(Color::DarkGray)));
+    }
+    spans.push(Span::styled(
+        format!("{label}={cur}"),
+        Style::default().fg(Color::DarkGray),
+    ));
+    if let Some(p) = prev {
+        if p != cur {
+            let d = cur as isize - p as isize;
+            let style = if d > 0 {
+                Style::default().fg(Color::Green)
+            } else {
+                Style::default().fg(Color::Red)
+            };
+            spans.push(Span::styled(format!("({d:+})"), style));
+        }
+    }
+}
+
+/// Styled status-bar stats: absolute counts in gray, `+` deltas green, `-` deltas red.
+fn format_full_stats_spans(s: &FuncStats, prev: Option<&FuncStats>) -> Vec<Span<'static>> {
+    let mut spans = Vec::new();
+    append_stat_delta_spans(&mut spans, "args", s.args, prev.map(|p| p.args));
+    append_stat_delta_spans(&mut spans, "locals", s.locals, prev.map(|p| p.locals));
+    append_stat_delta_spans(&mut spans, "blocks", s.blocks, prev.map(|p| p.blocks));
+    append_stat_delta_spans(
+        &mut spans,
+        "instr",
+        s.instructions,
+        prev.map(|p| p.instructions),
+    );
+
     let mut names: std::collections::BTreeSet<&str> = s.ops.keys().map(String::as_str).collect();
     if let Some(p) = prev {
         for k in p.ops.keys() {
@@ -936,10 +1380,9 @@ fn format_full_stats(s: &FuncStats, prev: Option<&FuncStats>) -> String {
     for name in names {
         let cur = s.ops.get(name).copied().unwrap_or(0);
         let p = prev.and_then(|ps| ps.ops.get(name).copied());
-        parts.push(format!("{name}={}", format_stat_delta(cur, p)));
+        append_stat_delta_spans(&mut spans, name, cur, p);
     }
-
-    parts.join(" ")
+    spans
 }
 
 /// Short pass label for the tree: keep `[name]`, drop the long description.
@@ -954,24 +1397,52 @@ fn pass_short_label(full: &str) -> &str {
     trimmed
 }
 
-fn format_stat_delta(cur: usize, prev: Option<usize>) -> String {
-    match prev {
-        Some(p) if p != cur => {
-            let d = cur as isize - p as isize;
-            format!("{cur}({d:+})")
-        }
-        _ => cur.to_string(),
+/// Signed delta only (no absolute count). `None` when unchanged or no previous.
+fn format_diff_only(cur: usize, prev: Option<usize>) -> Option<String> {
+    let p = prev?;
+    if p == cur {
+        return None;
     }
+    let d = cur as isize - p as isize;
+    Some(format!("{d:+}"))
 }
 
-/// Compact stats shown beside each pass in the tree.
+/// Compact stats shown beside each pass in the tree: deltas vs previous pass only.
 fn format_tree_stats(s: &FuncStats, prev: Option<&FuncStats>) -> String {
-    format!(
-        "a={} b={} i={}",
-        format_stat_delta(s.args, prev.map(|p| p.args)),
-        format_stat_delta(s.blocks, prev.map(|p| p.blocks)),
-        format_stat_delta(s.instructions, prev.map(|p| p.instructions)),
-    )
+    let mut parts = Vec::new();
+    if let Some(d) = format_diff_only(s.args, prev.map(|p| p.args)) {
+        parts.push(format!("a={d}"));
+    }
+    if let Some(d) = format_diff_only(s.locals, prev.map(|p| p.locals)) {
+        parts.push(format!("l={d}"));
+    }
+    if let Some(d) = format_diff_only(s.blocks, prev.map(|p| p.blocks)) {
+        parts.push(format!("b={d}"));
+    }
+    if let Some(d) = format_diff_only(s.instructions, prev.map(|p| p.instructions)) {
+        parts.push(format!("i={d}"));
+    }
+
+    // Include every opcode that changed (including removals).
+    let mut names: std::collections::BTreeSet<&str> = s.ops.keys().map(String::as_str).collect();
+    if let Some(p) = prev {
+        for k in p.ops.keys() {
+            names.insert(k.as_str());
+        }
+    }
+    for name in names {
+        let cur = s.ops.get(name).copied().unwrap_or(0);
+        let p = prev.and_then(|ps| ps.ops.get(name).copied());
+        if let Some(d) = format_diff_only(cur, p) {
+            parts.push(format!("{name}={d}"));
+        }
+    }
+
+    if parts.is_empty() {
+        String::new()
+    } else {
+        parts.join(" ")
+    }
 }
 
 fn render_diff(ops: &[prettydiff::basic::DiffOp<&str>]) -> String {
@@ -1094,6 +1565,7 @@ fn event_loop(
         }
         let _ = app.poll_loading();
         terminal.draw(|f| draw(f, app))?;
+        app.flush_persist();
 
         let poll_ms = if app.is_loading() { 80 } else { 200 };
         if !event::poll(Duration::from_millis(poll_ms))? {
@@ -1111,6 +1583,8 @@ fn event_loop(
                         if app.is_loading() {
                             app.cancel_load();
                         }
+                        app.mark_persist();
+                        app.flush_persist();
                         return Ok(());
                     }
                     if key.code == KeyCode::Char('c')
@@ -1120,6 +1594,8 @@ fn event_loop(
                             app.cancel_load();
                             continue;
                         }
+                        app.mark_persist();
+                        app.flush_persist();
                         return Ok(());
                     }
                 }
@@ -1152,6 +1628,16 @@ fn event_loop(
                                     app.dirty = true;
                                     app.recompute_search();
                                 }
+                                InputMode::SourceRoot => {
+                                    let raw = app.input_buf.clone();
+                                    if app.apply_source_root(&raw) {
+                                        app.input_mode = None;
+                                        app.input_buf.clear();
+                                        app.refresh_main();
+                                    }
+                                    // Keep modal open on invalid path.
+                                    continue;
+                                }
                             }
                             app.input_mode = None;
                             app.input_buf.clear();
@@ -1167,6 +1653,8 @@ fn event_loop(
 
                 match key.code {
                     KeyCode::Char('q') | KeyCode::Esc => return Ok(()),
+                    KeyCode::F(1) => app.toggle_syntax_highlight(),
+                    KeyCode::F(2) => app.toggle_symbol_at_cursor(),
                     KeyCode::F(5) => app.request_reload(),
                     KeyCode::Char('r') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                         app.request_reload();
@@ -1196,7 +1684,38 @@ fn event_loop(
                     KeyCode::Char('v') => app.toggle_version(),
                     KeyCode::Char('s') => {
                         app.show_source = !app.show_source;
+                        if !app.show_source {
+                            app.set_status("source: OFF", 2);
+                        } else if app.cached_source_map.entry_count() == 0 {
+                            let has_refs = app
+                                .selected_pass()
+                                .is_some_and(|p| ir_has_inline_md_refs(&p.body));
+                            if has_refs {
+                                app.set_status(
+                                    "source: ON — IR has !N refs but no defs; re-run with `--ir all,print-md`",
+                                    8,
+                                );
+                            } else {
+                                app.set_status(
+                                    "source: ON (no metadata — use `--ir all,print-md`)",
+                                    6,
+                                );
+                            }
+                        } else {
+                            app.set_status(
+                                format!(
+                                    "source: ON ({} metadata defs cached)",
+                                    app.cached_source_map.entry_count()
+                                ),
+                                3,
+                            );
+                        }
                         app.refresh_main();
+                    }
+                    KeyCode::Char('S') => {
+                        app.open_source_root_modal(
+                            "enter the directory that contains your .sw sources",
+                        );
                     }
                     KeyCode::Char('l') => {
                         app.show_line_numbers = !app.show_line_numbers;
@@ -1329,9 +1848,11 @@ fn event_loop(
                     }
                     _ => {}
                 }
+                app.mark_persist();
             }
             Event::Mouse(m) if !app.is_loading() => {
                 app.handle_mouse(m.column, m.row, m.kind);
+                app.mark_persist();
             }
             _ => {}
         }
@@ -1339,12 +1860,12 @@ fn event_loop(
 }
 
 fn draw(f: &mut Frame, app: &mut App) {
+    let status_h = status_panel_height(app, f.area());
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Min(5),
-            // Two content rows (pass/context + full stats) + borders.
-            Constraint::Length(4),
+            Constraint::Length(status_h),
             Constraint::Length(1),
         ])
         .split(f.area());
@@ -1371,6 +1892,149 @@ fn draw(f: &mut Frame, app: &mut App) {
     if app.show_help {
         draw_help(f);
     }
+}
+
+/// How many terminal rows a single logical line needs when wrapped to `width`.
+fn wrapped_line_count(text: &str, width: u16) -> u16 {
+    let width = width.max(1) as usize;
+    if text.is_empty() {
+        return 1;
+    }
+    let chars = text.chars().count().max(1);
+    ((chars + width - 1) / width) as u16
+}
+
+
+fn main_view_range(app: &App) -> (usize, usize) {
+    let start = app.scroll as usize;
+    let rows = app.main_view_rows.max(1) as usize;
+    (start, start.saturating_add(rows))
+}
+
+fn ssa_offscreen_plain(app: &App) -> String {
+    if app.ssa_highlights.is_empty() || app.is_loading() {
+        return String::new();
+    }
+    let (start, end) = main_view_range(app);
+    let mut parts = Vec::new();
+    for name in app.ssa_highlights.keys() {
+        let (above, below) = highlight::count_token_offscreen(&app.main_text, name, start, end);
+        parts.push(format!("{name} ↑{above} ↓{below}"));
+    }
+    parts.join("  ")
+}
+
+fn ssa_offscreen_spans(app: &App) -> Line<'static> {
+    if app.ssa_highlights.is_empty() {
+        return Line::from("");
+    }
+    let (start, end) = main_view_range(app);
+    let mut spans = vec![Span::raw(" ")];
+    let mut first = true;
+    for (name, &slot) in &app.ssa_highlights {
+        if !first {
+            spans.push(Span::styled("  ", Style::default().fg(Color::DarkGray)));
+        }
+        first = false;
+        let bg = highlight::SYMBOL_PALETTE[slot % highlight::SYMBOL_PALETTE.len()];
+        let (above, below) = highlight::count_token_offscreen(&app.main_text, name, start, end);
+        spans.push(Span::styled(
+            name.clone(),
+            Style::default().bg(bg).fg(Color::White).add_modifier(Modifier::BOLD),
+        ));
+        spans.push(Span::styled(
+            format!(" ↑{above} ↓{below}"),
+            Style::default().fg(Color::DarkGray),
+        ));
+    }
+    Line::from(spans)
+}
+
+fn status_stats_plain(app: &App) -> String {
+    if app.is_loading() {
+        return String::new();
+    }
+    if let Some(pass) = app.selected_pass() {
+        let idx = app.selected_pass_idx().unwrap();
+        let prev = if idx > 0 && app.passes[idx - 1].project == pass.project {
+            Some(&app.passes[idx - 1].stats)
+        } else {
+            None
+        };
+        format_full_stats(&pass.stats, prev)
+    } else {
+        app.stats_line.clone()
+    }
+}
+
+fn status_header_plain(app: &App) -> String {
+    if app.is_loading() {
+        return String::from(" waiting for cmd output");
+    }
+    let pos = app
+        .list_state
+        .selected()
+        .map(|i| format!("{}/{}", i + 1, app.tree_rows.len()))
+        .unwrap_or_else(|| "-".into());
+    let search = if app.search.is_empty() {
+        String::new()
+    } else if app.search_matches.is_empty() {
+        format!("  search:\"{}\" (0)", app.search)
+    } else {
+        format!(
+            "  search:\"{}\" ({}/{})",
+            app.search,
+            app.search_idx + 1,
+            app.search_matches.len()
+        )
+    };
+    let fn_f = if app.fn_filter.is_empty() {
+        String::new()
+    } else {
+        format!("  fn:{}", app.fn_filter)
+    };
+    let status = if app.status.is_empty() {
+        String::new()
+    } else {
+        format!(" │ {}", app.status)
+    };
+    let pass = app
+        .selected_pass()
+        .map(|p| format!("  {}", pass_short_label(&p.name)))
+        .unwrap_or_default();
+    format!(" {pos}{pass}{fn_f}{search}{status}")
+}
+
+/// Borders + header (+ wrapped stats). Grows with content; leaves room for body + keys.
+fn status_panel_height(app: &App, frame: Rect) -> u16 {
+    const KEYS: u16 = 1;
+    const MIN_BODY: u16 = 5;
+    const BORDERS: u16 = 2;
+
+    let inner_w = frame.width.saturating_sub(2);
+    let header_lines = wrapped_line_count(&status_header_plain(app), inner_w);
+    let content = if app.is_loading() {
+        header_lines
+    } else {
+        let stats = status_stats_plain(app);
+        // Leading space matches what we render in the panel.
+        let stats_lines = if stats.is_empty() {
+            1
+        } else {
+            wrapped_line_count(&format!(" {stats}"), inner_w)
+        };
+        let ssa = ssa_offscreen_plain(app);
+        let ssa_lines = if ssa.is_empty() {
+            0
+        } else {
+            wrapped_line_count(&format!(" {ssa}"), inner_w)
+        };
+        header_lines + stats_lines + ssa_lines
+    };
+
+    let needed = content.saturating_add(BORDERS);
+    let max = frame.height.saturating_sub(MIN_BODY.saturating_add(KEYS)).max(3);
+    needed.min(max).max(3)
 }
 
 fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
@@ -1433,15 +2097,21 @@ fn draw_tree(f: &mut Frame, app: &mut App, area: Rect) {
                 };
                 let label = pass_short_label(&p.name);
                 let stats = format_tree_stats(&p.stats, prev_stats);
-                ListItem::new(Line::from(vec![
+                let mut spans = vec![
                     Span::raw("  "),
                     Span::styled(format!("{marker} "), style),
                     Span::styled(
                         label.to_string(),
                         style.add_modifier(Modifier::BOLD),
                     ),
-                    Span::styled(format!("  {stats}"), Style::default().fg(Color::DarkGray)),
-                ]))
+                ];
+                if !stats.is_empty() {
+                    spans.push(Span::styled(
+                        format!("  {stats}"),
+                        Style::default().fg(Color::DarkGray),
+                    ));
+                }
+                ListItem::new(Line::from(spans))
             }
         })
         .collect();
@@ -1470,7 +2140,8 @@ fn draw_main(f: &mut Frame, app: &mut App, area: Rect) {
         .map(|p| pass_short_label(&p.name))
         .unwrap_or("-");
     let mode = if app.main_is_diff { "DIFF" } else { "IR" };
-    let title = format!(" {mode}: {pass_name} ");
+    let src = if app.show_source { " +src" } else { "" };
+    let title = format!(" {mode}{src}: {pass_name} ");
     let border = if app.focus == Focus::Main {
         Style::default().fg(Color::Cyan)
     } else {
@@ -1478,6 +2149,7 @@ fn draw_main(f: &mut Frame, app: &mut App, area: Rect) {
     };
 
     let inner_h = area.height.saturating_sub(2) as usize;
+    app.main_view_rows = inner_h.max(1) as u16;
     let len = app.cached_lines.len();
     let start = if len == 0 {
         0
@@ -1489,25 +2161,16 @@ fn draw_main(f: &mut Frame, app: &mut App, area: Rect) {
     let mut lines = Vec::with_capacity(end.saturating_sub(start));
     for (i, line) in app.cached_lines[start..end].iter().enumerate() {
         let abs = start + i;
+        let content = highlight::skip_line_chars(line, app.h_scroll as usize);
         if app.show_line_numbers {
             let mut spans = vec![Span::styled(
                 format!("{:>4} │ ", abs + 1),
                 Style::default().fg(Color::DarkGray),
             )];
-            if app.h_scroll == 0 {
-                spans.extend(line.spans.iter().cloned());
-            } else {
-                let full: String = line.spans.iter().map(|s| s.content.as_ref()).collect();
-                let skipped: String = full.chars().skip(app.h_scroll as usize).collect();
-                spans.push(Span::raw(skipped));
-            }
+            spans.extend(content.spans.iter().cloned());
             lines.push(Line::from(spans));
-        } else if app.h_scroll == 0 {
-            lines.push(line.clone());
         } else {
-            let full: String = line.spans.iter().map(|s| s.content.as_ref()).collect();
-            let skipped: String = full.chars().skip(app.h_scroll as usize).collect();
-            lines.push(Line::from(skipped));
+            lines.push(content);
         }
     }
 
@@ -1569,28 +2232,34 @@ fn draw_status(f: &mut Frame, app: &App, area: Rect) {
 
     // Prefer live stats from the selected pass (with deltas vs previous).
     // Fall back to `stats_line` only when no pass is selected.
-    let stats_text = if let Some(pass) = app.selected_pass() {
+    let line2 = if app.is_loading() {
+        Line::from("")
+    } else if let Some(pass) = app.selected_pass() {
         let idx = app.selected_pass_idx().unwrap();
         let prev = if idx > 0 && app.passes[idx - 1].project == pass.project {
             Some(&app.passes[idx - 1].stats)
         } else {
             None
         };
-        format_full_stats(&pass.stats, prev)
+        let mut spans = vec![Span::styled(" ", Style::default().fg(Color::DarkGray))];
+        spans.extend(format_full_stats_spans(&pass.stats, prev));
+        Line::from(spans)
     } else {
-        app.stats_line.clone()
+        Line::from(Span::styled(
+            format!(" {}", app.stats_line),
+            Style::default().fg(Color::DarkGray),
+        ))
     };
 
-    let line2 = if app.is_loading() {
-        String::new()
-    } else {
-        format!(" {stats_text}")
-    };
-
-    let para = Paragraph::new(vec![
+    let mut status_lines = vec![
         Line::from(Span::styled(line1, style1)),
-        Line::from(Span::styled(line2, Style::default().fg(Color::DarkGray))),
-    ])
+        line2,
+    ];
+    if !app.ssa_highlights.is_empty() && !app.is_loading() {
+        status_lines.push(ssa_offscreen_spans(app));
+    }
+    let para = Paragraph::new(status_lines)
+    .wrap(Wrap { trim: false })
     .block(
         Block::default()
             .borders(Borders::ALL)
@@ -1611,8 +2280,6 @@ fn draw_status(f: &mut Frame, app: &App, area: Rect) {
 }
 
 fn draw_loading(f: &mut Frame, app: &App) {
-    let area = centered(56, 5, f.area());
-    let spin = app.spinner();
     let label = app
         .loading
         .as_ref()
@@ -1623,38 +2290,122 @@ fn draw_loading(f: &mut Frame, app: &App) {
         .as_ref()
         .map(|j| j.started.elapsed().as_secs_f32())
         .unwrap_or(0.0);
-    let text = vec![
-        Line::from(""),
-        Line::from(vec![
-            Span::styled(
-                format!("  {spin}  "),
-                Style::default()
-                    .fg(Color::Yellow)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            Span::styled(label.to_string(), Style::default().fg(Color::White)),
-        ]),
-        Line::from(Span::styled(
-            format!("      {secs:.1}s  ·  Ctrl-C cancels  ·  F5 retries  ·  q quits"),
-            Style::default().fg(Color::DarkGray),
-        )),
-    ];
-    let para = Paragraph::new(text).block(
-        Block::default()
-            .borders(Borders::ALL)
-            .title(" Working ")
-            .border_style(
-                Style::default()
-                    .fg(Color::Yellow)
-                    .add_modifier(Modifier::BOLD),
-            ),
+    let bytes = app
+        .loading
+        .as_ref()
+        .map(|j| j.bytes_received.load(Ordering::Relaxed))
+        .unwrap_or(0);
+    let bytes_label = format_byte_count(bytes);
+
+    // Size the modal to fit the full command (wrapped), not a truncated label.
+    let width = f.area().width.saturating_sub(4).clamp(40, 100);
+    let inner_w = width.saturating_sub(4).max(20) as usize;
+    let label_lines = wrapped_line_count(label, inner_w as u16).max(1);
+    // borders(2) + blank + spinner/label lines + stats line
+    let height = (4u16).saturating_add(label_lines).min(f.area().height.saturating_sub(2));
+    let area = centered(
+        ((width as u32 * 100) / f.area().width.max(1) as u32) as u16,
+        height,
+        f.area(),
     );
+
+    let spin = app.spinner();
+    let mut text = vec![Line::from("")];
+    // First line of the command with spinner; remaining wrapped lines indented.
+    let mut remaining = label;
+    let mut first = true;
+    while !remaining.is_empty() {
+        let take = remaining
+            .chars()
+            .take(if first {
+                inner_w.saturating_sub(4)
+            } else {
+                inner_w.saturating_sub(6)
+            })
+            .count();
+        // Find a byte index at a char boundary.
+        let mut end = 0;
+        for (i, _) in remaining.char_indices().take(take) {
+            end = i;
+        }
+        if end == 0 {
+            // Single very wide char or empty take — consume one char.
+            end = remaining
+                .char_indices()
+                .nth(1)
+                .map(|(i, _)| i)
+                .unwrap_or(remaining.len());
+            if end == 0 {
+                end = remaining.len();
+            }
+        } else {
+            // Advance past the last included char.
+            let last = remaining[end..].chars().next().map(|c| c.len_utf8()).unwrap_or(0);
+            end += last;
+        }
+        let chunk = &remaining[..end.min(remaining.len())];
+        remaining = &remaining[end.min(remaining.len())..];
+        if first {
+            text.push(Line::from(vec![
+                Span::styled(
+                    format!("  {spin}  "),
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(chunk.to_string(), Style::default().fg(Color::White)),
+            ]));
+            first = false;
+        } else {
+            text.push(Line::from(Span::styled(
+                format!("      {chunk}"),
+                Style::default().fg(Color::White),
+            )));
+        }
+    }
+    text.push(Line::from(Span::styled(
+        format!("      {secs:.1}s  ·  {bytes_label} received  ·  Ctrl-C cancels  ·  q quits"),
+        Style::default().fg(Color::DarkGray),
+    )));
+
+    let para = Paragraph::new(text)
+        .wrap(Wrap { trim: false })
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" Working ")
+                .border_style(
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ),
+        );
     f.render_widget(Clear, area);
     f.render_widget(para, area);
 }
 
+fn ir_has_inline_md_refs(text: &str) -> bool {
+    text.lines().any(|line| !find_md_refs(line).is_empty())
+}
+
+fn format_byte_count(n: usize) -> String {
+    const KB: f64 = 1024.0;
+    const MB: f64 = KB * 1024.0;
+    const GB: f64 = MB * 1024.0;
+    let n = n as f64;
+    if n >= GB {
+        format!("{:.2} GiB", n / GB)
+    } else if n >= MB {
+        format!("{:.2} MiB", n / MB)
+    } else if n >= KB {
+        format!("{:.1} KiB", n / KB)
+    } else {
+        format!("{n:.0} B")
+    }
+}
+
 fn draw_keys(f: &mut Frame, area: Rect) {
-    let keys = " Tab:focus  j/k:nav  Enter/←/→:tree  /:search  p/f:filter  d:diff  m:metadata  v:version  y:copy  F5:reload  ?:help  q:quit ";
+    let keys = " Tab:focus  j/k:nav  Enter/←/→:tree  /:search  p/f:filter  d:diff  m:metadata  v:version  s:source  S:src-root  y:copy  F1:syntax  F2:symbol  F5:reload  ?:help  q:quit ";
     f.render_widget(
         Paragraph::new(Line::from(Span::styled(
             keys,
@@ -1665,13 +2416,45 @@ fn draw_keys(f: &mut Frame, area: Rect) {
 }
 
 fn draw_input(f: &mut Frame, app: &App, mode: InputMode) {
-    let area = centered(60, 3, f.area());
-    let title = match mode {
-        InputMode::PassFilter => " Filter passes (substring) ",
-        InputMode::FnFilter => " Filter functions (comma-separated) ",
-        InputMode::Search => " Search IR ",
+    let (area, title, body) = match mode {
+        InputMode::PassFilter => (
+            centered(60, 3, f.area()),
+            " Filter passes (substring) ",
+            format!("> {}", app.input_buf),
+        ),
+        InputMode::FnFilter => (
+            centered(60, 3, f.area()),
+            " Filter functions (comma-separated) ",
+            format!("> {}", app.input_buf),
+        ),
+        InputMode::Search => (
+            centered(60, 3, f.area()),
+            " Search IR ",
+            format!("> {}", app.input_buf),
+        ),
+        InputMode::SourceRoot => {
+            let current = app
+                .source_root
+                .as_ref()
+                .map(|p| format!("current: {}
+", p.display()))
+                .unwrap_or_else(|| String::from("current: (none)
+"));
+            (
+                centered(72, 7, f.area()),
+                " Source root directory ",
+                format!(
+                    "{current}IR metadata paths were not found on disk.
+\
+                     Enter the project/workspace root that contains the .sw files:
+\
+                     > {}",
+                    app.input_buf
+                ),
+            )
+        }
     };
-    let para = Paragraph::new(format!("> {}", app.input_buf))
+    let para = Paragraph::new(body)
         .block(
             Block::default()
                 .borders(Borders::ALL)
@@ -1684,39 +2467,57 @@ fn draw_input(f: &mut Frame, app: &App, mode: InputMode) {
 }
 
 fn draw_help(f: &mut Frame) {
-    let area = centered(76, 28, f.area());
+    let area = centered(86, 42, f.area());
     if area.width < 10 || area.height < 5 {
         return;
     }
     let text = vec![
-        Line::from("Sway IR Inspect — keybindings"),
+        Line::from("Sway IR Inspect — keybindings & features"),
         Line::from(""),
-        Line::from("  F5 / Ctrl-R     Reload (spinner shared with diff)"),
-        Line::from("  Tab             Focus tree ↔ IR"),
+        Line::from("Navigation"),
+        Line::from("  Tab             Focus tree ↔ IR panel"),
         Line::from("  j/k ↑/↓         Navigate tree / scroll IR"),
         Line::from("  Enter / Space     Expand project or select pass"),
         Line::from("  ← / →           Collapse / expand project"),
         Line::from("  PgUp/PgDn       Page scroll IR"),
         Line::from("  g / G           Top / bottom of IR"),
-        Line::from("  Click / Wheel   Select tree rows / scroll"),
-        Line::from("  p / f / /       Filter passes / functions / search"),
+        Line::from("  Click / Wheel   Select tree rows / scroll IR"),
+        Line::from(""),
+        Line::from("Search & filters"),
+        Line::from("  p / f / /       Filter passes / functions / search text"),
         Line::from("  n / N           Next / previous search match"),
-        Line::from("  d               Toggle diff (spinner while computing)"),
+        Line::from(""),
+        Line::from("View toggles"),
+        Line::from("  F1              Toggle syntax highlighting (SSA/local/method colors still apply)"),
+        Line::from("  d               Toggle diff vs previous pass"),
         Line::from("  m               Toggle metadata on/off"),
         Line::from("  v               Toggle version suffixes on/off"),
-        Line::from("  s               Toggle source overlay"),
+        Line::from("  s               Toggle source overlay (needs `--ir …,print-md`)"),
+        Line::from("  S               Set/change source root directory (persisted)"),
         Line::from("  l               Toggle line numbers"),
-        Line::from("  y               Copy main panel"),
+        Line::from(""),
+        Line::from("Symbol focus (F2) — IR panel focused"),
+        Line::from("  Click/move on an SSA (`v0`), local (`x` in `local u64 x` / `get_local …, x`),"),
+        Line::from("  or method/function name (`fn foo` / `call foo`), then press F2 to toggle."),
+        Line::from("  Multiple symbols can be focused at once; each gets a distinct palette color."),
+        Line::from("  Focus colors always override syntax highlighting (F1 on or off)."),
+        Line::from("  Status bar shows each focused symbol with ↑N ↓M = occurrences above/below"),
+        Line::from("  the visible IR window (defs + uses combined)."),
+        Line::from(""),
+        Line::from("Session / IO"),
+        Line::from("  F5 / Ctrl-R     Reload dump / re-run `--cmd`"),
+        Line::from("  y               Copy main panel to clipboard"),
         Line::from("  Ctrl-C          Cancel load/diff, or quit if idle"),
         Line::from("  q / Esc         Quit"),
+        Line::from("  (auto-save)     Filters, view, selection, source root → `~/.config/forc-ir-inspect/`"),
+        Line::from(""),
+        Line::from("Tree markers"),
+        Line::from("  ● white         Pass changed the IR vs the previous pass"),
+        Line::from("  ○ gray          Pass left the IR unchanged"),
         Line::from(""),
         Line::from("Stats (status bar & tree)"),
-        Line::from("  args / a        Function argument count"),
-        Line::from("  blocks / b      Basic-block count"),
-        Line::from("  instr / i       Instruction count"),
-        Line::from("  <opcode>=N      Count of that opcode (e.g. add=3)"),
-        Line::from("  N(+D) / N(-D)   Delta vs the previous pass"),
-        Line::from("  Tree shows a/b/i; status bar shows the full breakdown."),
+        Line::from("  args/locals/blocks/instr   Function shape counts (+/− vs previous pass)"),
+        Line::from("  <opcode>=N                 Opcode frequency (tree shows deltas only)"),
         Line::from(""),
         Line::from("  Press any key to close"),
     ];
@@ -1758,3 +2559,4 @@ fn centered(percent_x: u16, height: u16, r: Rect) -> Rect {
         ])
         .split(vert[1])[1]
 }
+

@@ -1,16 +1,18 @@
 //! ```text
-//! > cargo r --bin inspect -r -- --help
+//! > forc ir-inspect --help
+//! > cargo r -p forc-ir-inspect -- --help
 //!
 //! Interactive TUI (default on a TTY):
-//!   inspect dump.txt
-//!   inspect --cmd 'forc build --ir all'
+//!   forc ir-inspect dump.txt
+//!   forc ir-inspect --cmd 'forc build --ir all,print-md'
 //!
 //! Classic stream output:
-//!   inspect --classic dump.txt --print diff,without-md
-//!   inspect --classic --cmd 'forc build --ir all' --print ir
+//!   forc ir-inspect --classic dump.txt --print diff,without-md
+//!   forc ir-inspect --classic --cmd 'forc build --ir all,print-md' --print ir
 //! ```
 
 mod classic;
+mod config;
 mod highlight;
 mod parse;
 mod tui;
@@ -89,14 +91,15 @@ fn load_raw(path: Option<&str>, cmd: Option<&str>) -> Result<String> {
     }
 }
 
-/// Browse or print Sway IR dumps from `forc build --ir all`.
+/// Browse or print Sway IR dumps from `forc build --ir all,print-md`.
 #[derive(Debug, Parser)]
 #[command(
-    about = "Browse or print Sway IR dumps from `forc build --ir all`",
-    after_help = "TUI keys: F5 reload · y copy · Ctrl-C kill/quit · Tab focus · / search · p/f filters · d diff · m metadata · v version · ? help · q quit"
+    name = "forc-ir-inspect",
+    about = "Forc plugin for browsing or printing Sway IR dumps from `forc build --ir all,print-md`",
+    after_help = "Source overlay (`s`) needs metadata defs: use `--ir all,print-md`.\nTUI keys: F5 reload · y copy · Ctrl-C kill/quit · Tab focus · / search · p/f filters · d diff · m metadata · s source · S source-root · v version · ? help · q quit"
 )]
 struct Cli {
-    /// Path to an IR dump file (output of `forc build --ir all`).
+    /// Path to an IR dump file (output of `forc build --ir all,print-md`).
     /// Mutually exclusive with `--cmd`.
     input_path: Option<String>,
 

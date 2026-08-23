@@ -23,7 +23,7 @@ pub(crate) fn run(
             "warning: `--print source` was requested but the input contains no metadata \
              definitions (`!N = ...`).\n  \
              Regenerate the IR dump with the `print-md` flag, e.g. \
-             `forc build --ir all print-md`, so the span/file metadata is emitted."
+             `forc build --ir all,print-md`, so the span/file metadata is emitted."
         );
     }
 
