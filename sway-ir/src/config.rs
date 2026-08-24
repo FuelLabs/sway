@@ -25,7 +25,8 @@ pub enum ConfigContent {
         ty: Type,
         ptr_ty: Type,
         encoded_bytes: Vec<u8>,
-        decode_fn: Cell<Function>,
+        // `None` when the configurable's type is trivially decodable
+        decode_fn: Cell<Option<Function>>,
         opt_metadata: Option<MetadataIndex>,
     },
 }

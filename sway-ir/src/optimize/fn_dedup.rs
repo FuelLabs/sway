@@ -377,7 +377,9 @@ pub fn dedup_fns(
     // Replace config decode fns
     for config in module.iter_configs(context) {
         if let crate::ConfigContent::V1 { decode_fn, .. } = config.get_content(context) {
-            let f = decode_fn.get();
+            let Some(f) = decode_fn.get() else {
+                continue;
+            };
 
             let Some(callee_hash) = eq_class.function_hash_map.get(&f) else {
                 continue;
@@ -393,8 +395,8 @@ pub fn dedup_fns(
                 continue;
             };
 
-            dups_to_delete.push(decode_fn.get());
-            decode_fn.replace(*callee_rep);
+            dups_to_delete.push(f);
+            decode_fn.replace(Some(*callee_rep));
         }
     }
 
