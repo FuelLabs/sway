@@ -340,7 +340,7 @@ impl DataSection {
     /// prefix and is meant to be used together with `CONFIGURABLE_SECTION_REGISTER`
     /// (`$cs`), which points at the start of the configurable section.
     pub(crate) fn configurable_offset_within_section(&self, id: &DataId) -> usize {
-        debug_assert!(matches!(id.kind, DataIdEntryKind::Configurable));
+        debug_assert!(matches!(id.region, DataSectionRegion::Configurables));
         // `id.idx` indexes into `configurables`; sum the (word-aligned) sizes of the
         // entries that precede it.
         self.configurables
