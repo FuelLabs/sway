@@ -30,6 +30,7 @@ use std::{
 use sway_error::{
     error::{CompileError, TrivialCheckDiagType, TrivialCheckFailedData},
     handler::{ErrorEmitted, Handler},
+    OkOrIceInternal,
 };
 use sway_ir::{metadata::combine as md_combine, *};
 use sway_types::{integer_bits::IntegerBits, Ident, Named, ProgramId, Span, Spanned};
@@ -440,20 +441,57 @@ pub(crate) fn compile_configurables(
                 }
                 assert!(encoded_bytes.len() == buffer_size);
 
-                let decode_fn = engines.de().get(decl.decode_fn.as_ref().unwrap().id());
-                let keyed_decl = KeyedTyFunctionDecl::new(&decode_fn, engines);
-                let decode_fn = compiled_fn_cache.get_compiled_function(
-                    engines,
-                    context,
-                    module,
-                    md_mgr,
-                    &keyed_decl,
-                    logged_types_map,
-                    messages_types_map,
-                    panic_occurrences,
-                    panicking_call_occurrences,
-                    panicking_fn_cache,
-                )?;
+                // Determine whether this configurable is trivially decodable or not
+                let is_trivial = if let Some(expr) = &decl.is_decode_trivial {
+                    super::const_eval::compile_constant_expression_to_constant(
+                        engines, context, md_mgr, module, None, None, expr,
+                    )
+                    .ok()
+                    .and_then(|c| c.get_content(context).as_bool())
+                    .ok_or_ice_internal(
+                        "failed to const-eval is_decode_trivial to a bool",
+                        decl.span.clone(),
+                    )?
+                } else if decl
+                    .type_ascription
+                    .type_id
+                    .get_valid_type_info(engines)
+                    .is_none()
+                {
+                    // Type ascription is ErrorRecovery, so is_decode_trivial was not built.
+                    // Conservatively treat as non-trivial.
+                    false
+                } else {
+                    return Err(CompileError::Internal(
+                        "missing is_decode_trivial for configurable with valid type",
+                        decl.span.clone(),
+                    ));
+                };
+
+                // Trivial configurables do not need a decode function
+                let decode_fn = if is_trivial {
+                    None
+                } else {
+                    let decode_fn_ref = decl.decode_fn.as_ref().ok_or_ice_internal(
+                        "non-trivial configurable missing decode_fn",
+                        decl.span.clone(),
+                    )?;
+                    let decode_fn = engines.de().get(decode_fn_ref.id());
+                    let keyed_decl = KeyedTyFunctionDecl::new(&decode_fn, engines);
+                    let decode_fn = compiled_fn_cache.get_compiled_function(
+                        engines,
+                        context,
+                        module,
+                        md_mgr,
+                        &keyed_decl,
+                        logged_types_map,
+                        messages_types_map,
+                        panic_occurrences,
+                        panicking_call_occurrences,
+                        panicking_fn_cache,
+                    )?;
+                    Some(decode_fn)
+                };
 
                 let name = decl_name.as_str().to_string();
                 module.add_config(
