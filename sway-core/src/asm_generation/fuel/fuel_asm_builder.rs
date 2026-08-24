@@ -29,6 +29,7 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
     warning::CompileWarning,
     warning::Warning,
+    OkOrIceInternal,
 };
 use sway_ir::*;
 use sway_types::{span::Span, Spanned};
@@ -48,7 +49,7 @@ pub struct FuelAsmBuilder<'ir, 'eng> {
     // Maps a configurable name to its DataId in the data section, used by
     // v0 configurables and trivially decodable encoding-v1 configurables.
     // Non-trivial v1 configurables are NOT here, because they live in globals instead.
-    pub(super) configurable_to_data_id: HashMap<String, DataId>,
+    pub(super) trivial_configurable_to_data_id: HashMap<String, DataId>,
 
     // Register sequencer dishes out new registers and labels.
     pub(super) reg_seqr: RegisterSequencer,
@@ -108,7 +109,7 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
                     None,
                 );
                 let dataid = self.data_section.insert_data_value(entry);
-                self.configurable_to_data_id.insert(name.clone(), dataid);
+                self.trivial_configurable_to_data_id.insert(name.clone(), dataid);
             }
             ConfigContent::V1 {
                 name,
@@ -177,7 +178,7 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
                     // so no writable global and no decode call.
                     // get_config resolves this name to AddrDataId, pointing to
                     // the encoded bytes directly.
-                    self.configurable_to_data_id.insert(name.clone(), dataid);
+                    self.trivial_configurable_to_data_id.insert(name.clone(), dataid);
                 }
             }
         }
@@ -332,7 +333,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             program_kind,
             data_section,
             globals_section: GlobalsSection::default(),
-            configurable_to_data_id: HashMap::default(),
+            trivial_configurable_to_data_id: HashMap::default(),
             reg_seqr,
             func_label_map: HashMap::new(),
             block_label_map: HashMap::new(),
@@ -1479,35 +1480,22 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         } else {
             // Otherwise it is a configurable without a writable global: either an
             // encoding v0 configurable or a trivially decodable encoding-v1
-<<<<<<< HEAD
-            // configurable.
-            let dataid = self.configurable_to_data_id.get(name).ok_or_else(|| {
-                CompileError::InternalOwned(
-                    format!("configurable '{name}' missing from data section map"),
-                    self.md_mgr
-                        .val_to_span(self.context, *addr_val)
-                        .unwrap_or_else(Span::dummy),
-                )
-            })?;
-            self.cur_bytecode.push(Op {
-                opcode: either::Either::Left(VirtualOp::AddrDataId(
-                    addr_reg.clone(),
-                    dataid.clone(),
-                )),
-                comment: format!("get address of configurable {name}"),
-                owning_span: self.md_mgr.val_to_span(self.context, *addr_val),
-            });
-=======
             // configurable. Address it through the configurable section register
             // (`$cs`), which points at the start of the configurable section, using an
             // offset measured from there.
-            let dataid = self.trivial_configurable_to_data_id.get(name).unwrap();
-            let offset_within_configurables =
-                self.data_section.configurable_offset_within_section(dataid) as u64;
             let span = self
                 .md_mgr
                 .val_to_span(self.context, *addr_val)
                 .unwrap_or_else(Span::dummy);
+            let dataid = self
+                .trivial_configurable_to_data_id
+                .get(name)
+                .ok_or_ice_internal(
+                    "Trivial configurable referenced by get_config was not registered in the data section.",
+                    span.clone(),
+                )?;
+            let offset_within_configurables =
+                self.data_section.configurable_offset_within_section(dataid) as u64;
             match VirtualImmediate12::try_new(offset_within_configurables, span.clone()) {
                 Ok(imm12) => {
                     // Single op: ADDI addr_reg, $cs, <offset>
@@ -1524,11 +1512,10 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 Err(_) => {
                     // Offset doesn't fit in 12 bits: MOVI addr_reg, <offset>;
                     // ADD addr_reg, addr_reg, $cs
+                    let imm18 =
+                        VirtualImmediate18::try_new(offset_within_configurables, span.clone())?;
                     self.cur_bytecode.push(Op {
-                        opcode: Either::Left(VirtualOp::MOVI(
-                            addr_reg.clone(),
-                            VirtualImmediate18::new(offset_within_configurables),
-                        )),
+                        opcode: Either::Left(VirtualOp::MOVI(addr_reg.clone(), imm18)),
                         comment: format!(
                             "get offset of configurable {name} within configurable section"
                         ),
@@ -1545,7 +1532,6 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     });
                 }
             }
->>>>>>> de3082938 (new register pointing to the configurable section to allow access with just one addi)
             self.reg_map.insert(*addr_val, addr_reg);
         }
 
