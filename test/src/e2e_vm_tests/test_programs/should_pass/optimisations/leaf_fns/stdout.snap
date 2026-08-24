@@ -47,23 +47,23 @@ fn leaf_fn_caller_5() -> () {
 }
 
 
-pshh i524288                  ; [fn init: leaf_fn_0_1]: push used high registers 40..64
-poph i524288                  ; [fn end: leaf_fn_0_1]: restore used high registers 40..64
+pshh i262144                  ; [fn init: leaf_fn_0_1]: push used high registers 40..64
+poph i262144                  ; [fn end: leaf_fn_0_1]: restore used high registers 40..64
 jal  $zero $$reta i0          ; [fn end: leaf_fn_0_1] return from call
 
-pshh i528384                  ; [fn init: leaf_fn_6_2]: push used high registers 40..64
+pshh i264192                  ; [fn init: leaf_fn_6_2]: push used high registers 40..64
 add  $r0 $$arg0 $$arg1
 add  $r0 $r0 $$arg2
 add  $r0 $r0 $$arg3
 add  $r0 $r0 $$arg4
 add  $r0 $r0 $$arg5
 move $$retv $r0               ; [fn end: leaf_fn_6_2] set return value
-poph i528384                  ; [fn end: leaf_fn_6_2]: restore used high registers 40..64
+poph i264192                  ; [fn end: leaf_fn_6_2]: restore used high registers 40..64
 jal  $zero $$reta i0          ; [fn end: leaf_fn_6_2] return from call
 
 
 
-pshh i531456                  ; [fn init: leaf_fn_7_4]: push used high registers 40..64
+pshh i265728                  ; [fn init: leaf_fn_7_4]: push used high registers 40..64
 lw   $r0 $$arg5 i0            ; [fn init: leaf_fn_7_4]: load argument 5 (f) from its stack slot
 lw   $r1 $$arg5 i1            ; [fn init: leaf_fn_7_4]: load argument 6 (g) from its stack slot
 add  $r2 $$arg0 $$arg1
@@ -73,11 +73,11 @@ add  $r2 $r2 $$arg4
 add  $r0 $r2 $r0
 add  $r0 $r0 $r1
 move $$retv $r0               ; [fn end: leaf_fn_7_4] set return value
-poph i531456                  ; [fn end: leaf_fn_7_4]: restore used high registers 40..64
+poph i265728                  ; [fn end: leaf_fn_7_4]: restore used high registers 40..64
 jal  $zero $$reta i0          ; [fn end: leaf_fn_7_4] return from call
 
 
-pshh i528384                  ; [fn init: leaf_fn_caller_5]: push used high registers 40..64
+pshh i264192                  ; [fn init: leaf_fn_caller_5]: push used high registers 40..64
 move $r0 $$reta               ; [fn init: leaf_fn_caller_5]: save return address
 movi $$arg0 i0                ; [call: leaf_fn_6_2]: pass argument 0
 movi $$arg1 i1                ; [call: leaf_fn_6_2]: pass argument 1
@@ -88,5 +88,5 @@ movi $$arg5 i5                ; [call: leaf_fn_6_2]: pass argument 5
 subi $$tmp $pc i116           ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: leaf_fn_6_2]: call function
 move $$reta $r0               ; [fn end: leaf_fn_caller_5] restore return address
-poph i528384                  ; [fn end: leaf_fn_caller_5]: restore used high registers 40..64
+poph i264192                  ; [fn end: leaf_fn_caller_5]: restore used high registers 40..64
 jal  $zero $$reta i0          ; [fn end: leaf_fn_caller_5] return from call

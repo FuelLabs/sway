@@ -98,7 +98,7 @@ mod ir_builder {
                 }
 
             rule init_config() -> IrAstConfig
-                = value_name:value_assign() "config" _ val_ty:ast_ty() _ "," _ decode_fn:id() _ "," _ encoded_bytes:config_encoded_bytes()
+                = value_name:value_assign() "config" _ val_ty:ast_ty() _ "," _ decode_fn:config_decode_fn() _ "," _ encoded_bytes:config_encoded_bytes()
                 metadata:comma_metadata_idx()? {
                     IrAstConfig {
                         value_name,
@@ -108,6 +108,9 @@ mod ir_builder {
                         metadata,
                     }
                 }
+
+            rule config_decode_fn() -> String
+                = id:id() { id } / "<none>" { "<none>".to_string() }
 
             rule storage_key() -> IrAstStorageKey
                 = "storage_key" _ namespaces:path() "." fields:field_access() _ "=" _ slot:constant() _ offset:storage_key_offset()? _ field_id:storage_key_field_id()? {
@@ -1758,7 +1761,7 @@ mod ir_builder {
 
                 if let Some(config) = self.module.get_config(context, &configurable_name) {
                     if let ConfigContent::V1 { decode_fn, .. } = config.get_content(context) {
-                        decode_fn.replace(f);
+                        decode_fn.replace(Some(f));
                     }
                 }
             }
@@ -1862,7 +1865,7 @@ mod ir_builder {
     ) -> BTreeMap<String, String> {
         configs
             .into_iter()
-            .map(|config| {
+            .filter_map(|config| {
                 let opt_metadata = config
                     .metadata
                     .map(|mdi| md_map.get(&mdi).unwrap())
@@ -1870,19 +1873,29 @@ mod ir_builder {
 
                 let ty = config.ty.to_ir_type(context);
 
+                let is_trivial = config.decode_fn == "<none>";
+
                 let config_val = ConfigContent::V1 {
                     name: config.value_name.clone(),
                     ty,
                     ptr_ty: Type::new_typed_pointer(context, ty),
                     encoded_bytes: config.encoded_bytes,
                     // this will point to the correct function after all functions are compiled
-                    decode_fn: Cell::new(Function(KeyData::default().into())),
+                    decode_fn: Cell::new(if is_trivial {
+                        None
+                    } else {
+                        Some(Function(KeyData::default().into()))
+                    }),
                     opt_metadata,
                 };
 
                 module.add_config(context, config.value_name.clone(), config_val.clone());
 
-                (config.value_name.clone(), config.decode_fn.clone())
+                if is_trivial {
+                    None
+                } else {
+                    Some((config.value_name.clone(), config.decode_fn.clone()))
+                }
             })
             .collect()
     }

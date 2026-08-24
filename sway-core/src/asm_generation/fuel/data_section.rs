@@ -228,8 +228,8 @@ pub enum DataIdEntryKind {
 impl fmt::Display for DataIdEntryKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            DataIdEntryKind::NonConfigurable => write!(f, "NonConfigurable"),
-            DataIdEntryKind::Configurable => write!(f, "Configurable"),
+            DataIdEntryKind::NonConfigurable => write!(f, "non_configurable"),
+            DataIdEntryKind::Configurable => write!(f, "configurable"),
         }
     }
 }
@@ -290,6 +290,23 @@ impl DataSection {
     pub(crate) fn data_id_to_offset(&self, id: &DataId) -> usize {
         let idx = self.absolute_idx(id);
         self.absolute_idx_to_offset(idx)
+    }
+
+    /// Given a configurable [DataId], calculate the offset _from the beginning of the
+    /// configurable section_ to the data in bytes. This excludes the non-configurables
+    /// prefix and is meant to be used together with `CONFIGURABLE_SECTION_REGISTER`
+    /// (`$cs`), which points at the start of the configurable section.
+    pub(crate) fn configurable_offset_within_section(&self, id: &DataId) -> usize {
+        debug_assert!(matches!(id.kind, DataIdEntryKind::Configurable));
+        // `id.idx` indexes into `configurables`; sum the (word-aligned) sizes of the
+        // entries that precede it.
+        self.configurables
+            .iter()
+            .take(id.idx as usize)
+            .fold(0, |offset, entry| {
+                // entries must be word aligned
+                size_bytes_round_up_to_word_alignment!(offset + entry.to_bytes().len())
+            })
     }
 
     /// Given an absolute index, calculate the offset _from the beginning of the data section_ to the data
@@ -416,7 +433,10 @@ impl fmt::Display for DataSection {
             writeln!(
                 data_buf,
                 "data_{}_{} {}",
-                entry.name,
+                match &entry.name {
+                    EntryName::NonConfigurable => "non_configurable".to_string(),
+                    EntryName::Configurable(name) => format!("configurable_{}", name),
+                },
                 ix,
                 display_entry(&entry.value)
             )?;
