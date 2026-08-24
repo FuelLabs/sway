@@ -109,7 +109,7 @@ move $$arg0 $r0               ; [call: eq_9]: pass argument 0
 move $$arg1 $r3               ; [call: eq_9]: pass argument 1
 jal  $$reta $pc i33           ; [call: eq_9]: call function
 movi $r0 i1                   ; move parameter from branch to block argument
-jnzf $$retv $zero i27
+jnzf $$retv $zero i25
 addr $r0 data_non_configurable_9; get __const_global0's address in data section
 addi $r3 $$locbase i32        ; get offset to local __ptr { ptr, u64 }
 sw   $$locbase $r0 i4         ; store word
@@ -121,7 +121,7 @@ move $$arg0 $r2               ; [call: eq_9]: pass argument 0
 move $$arg1 $r0               ; [call: eq_9]: pass argument 1
 jal  $$reta $pc i21           ; [call: eq_9]: call function
 movi $r0 i2                   ; move parameter from branch to block argument
-jnzf $$retv $zero i14
+jnzf $$retv $zero i13
 addr $r0 data_non_configurable_10; get __const_global1's address in data section
 addi $r3 $$locbase i64        ; get offset to local __ptr { ptr, u64 }
 sw   $$locbase $r0 i8         ; store word
