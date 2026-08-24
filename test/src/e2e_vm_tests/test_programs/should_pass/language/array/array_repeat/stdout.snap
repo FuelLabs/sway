@@ -423,19 +423,11 @@ eq   $r2 $r0 $r2
 eq   $r2 $r2 $zero
 jnzf $r2 $zero i1
 jmpf $zero i6
-<<<<<<< HEAD
 move $$arg0 $r0               ; [call: log_45]: pass argument 0
 jal  $$reta $pc i119          ; [call: log_45]: call function
 movi $$arg0 i255              ; [call: log_45]: pass argument 0
 jal  $$reta $pc i117          ; [call: log_45]: call function
-load $r0 data_NonConfigurable_0; load constant from data section
-=======
-move $$arg0 $r0               ; [call: log_47]: pass argument 0
-jal  $$reta $pc i119          ; [call: log_47]: call function
-movi $$arg0 i255              ; [call: log_47]: pass argument 0
-jal  $$reta $pc i117          ; [call: log_47]: call function
 load $r0 data_non_configurable_0; load constant from data section
->>>>>>> 550f3480d (new register pointing to the configurable section to allow access with just one addi)
 rvrt $r0
 cfsi i264920                  ; [fn end: main_0] free: locals 264920 byte(s), call args 0 slot(s)
 move $$reta $r1               ; [fn end: main_0] restore return address
@@ -551,15 +543,9 @@ mcpi $$arg1 $$locbase i16     ; copy memory
 cfsi i24                      ; [fn end: to_slice_20] free: locals 24 byte(s), call args 0 slot(s)
 poph i264192                  ; [fn end: to_slice_20]: restore used high registers 40..64
 jal  $zero $$reta i0          ; [fn end: to_slice_20] return from call
-<<<<<<< HEAD
-pshh i531456                  ; [fn init: log_45]: push used high registers 40..64
+pshh i265728                  ; [fn init: log_45]: push used high registers 40..64
 move $$locbase $sp            ; [fn init: log_45]: set locals base register
 cfei i40                      ; [fn init: log_45]: allocate: locals 40 byte(s), call args 0 slot(s)
-=======
-pshh i265728                  ; [fn init: log_47]: push used high registers 40..64
-move $$locbase $sp            ; [fn init: log_47]: set locals base register
-cfei i40                      ; [fn init: log_47]: allocate: locals 40 byte(s), call args 0 slot(s)
->>>>>>> 550f3480d (new register pointing to the configurable section to allow access with just one addi)
 addi $r0 $$locbase i32        ; get offset to local __ptr u8
 sb   $r0 $$arg0 i0            ; store byte
 sw   $$locbase $r0 i0         ; store word
@@ -570,15 +556,9 @@ load $r0 data_non_configurable_2; load constant from data section
 lw   $r1 $$locbase i2         ; load slice pointer for logging data
 lw   $r2 $$locbase i3         ; load slice size for logging data
 logd $zero $r0 $r1 $r2        ; log slice
-<<<<<<< HEAD
 cfsi i40                      ; [fn end: log_45] free: locals 40 byte(s), call args 0 slot(s)
-poph i531456                  ; [fn end: log_45]: restore used high registers 40..64
+poph i265728                  ; [fn end: log_45]: restore used high registers 40..64
 jal  $zero $$reta i0          ; [fn end: log_45] return from call
-=======
-cfsi i40                      ; [fn end: log_47] free: locals 40 byte(s), call args 0 slot(s)
-poph i265728                  ; [fn end: log_47]: restore used high registers 40..64
-jal  $zero $$reta i0          ; [fn end: log_47] return from call
->>>>>>> 550f3480d (new register pointing to the configurable section to allow access with just one addi)
 .data:
 data_non_configurable_0 .word 18446744073709486083
 data_non_configurable_1 .word 262145
