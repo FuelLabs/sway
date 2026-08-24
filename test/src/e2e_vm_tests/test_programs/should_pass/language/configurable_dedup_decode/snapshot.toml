@@ -1,1 +1,4 @@
-cmds = ["forc build --path {root} --release --ir final print-md --asm final"]
+cmds = [
+    "echo WRAPPED and (bool,) should generate the exactly same IR for their decode function, so we should see IR using the same function to decode them.",
+    "forc build --path {root} --release --ir final | sub abi_decode_in_place",
+]
