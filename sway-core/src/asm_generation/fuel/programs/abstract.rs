@@ -418,81 +418,71 @@ impl AbstractProgram {
 
         let mut layout = FnLayout::new(fns);
 
-        'improve: for iter in 0..MAX_ITERS {
+        'improve: for _ in 0..MAX_ITERS {
             // Index 0 never moves, so the entry is always original fn 0.
             debug_assert_eq!(layout.order[0], 0);
 
             let mut found_improvement = false;
 
             let before_weights = layout.call_weights(None);
-            let before_weights_sum = before_weights.values().sum();
+            let before_weights_sum = before_weights.values().sum::<usize>();
 
             let mut back_call_count = layout.back_call_count();
             let candidates = &mut back_call_count[1..];
             let depth = DEPTH.min(candidates.len());
 
             'candidates: for k in 0..depth {
-                let (_, (target_fi, target_count), _) =
+                let (_, (candidate_fn, candidate_count), _) =
                     candidates.select_nth_unstable_by(k, |a, b| b.1.cmp(&a.1));
-                if *target_count == 0 {
+                if *candidate_count == 0 {
                     break 'candidates;
                 }
 
-                let target_fi = *target_fi;
-                let target_count = *target_count;
-                let cur = layout.slot_of(target_fi);
-                // `cur >= 1` because the entry (fn_idx 0) was excluded above.
+                let candidate_fn = *candidate_fn;
+                let candidate_slot = layout.slot_of(candidate_fn);
 
-                // Pull the candidate out and try every position 1..=len (never
-                // index 0). Keep the position that minimizes the weighted cost.
-                // Trials use a virtual insert so `order` is not spliced each try.
-                let removed = layout.remove_at(cur);
-                debug_assert_eq!(removed, target_fi);
-                let mut best_p = cur;
-                let mut best_count = before_weights_sum;
+                // Try candidate in every possible position
+                let mut best_slot = candidate_slot;
+                let mut best_weights_sum = before_weights_sum;
+                for slot_being_tried in 1..layout.len() {
+                    let candidate_weights =
+                        layout.call_weights(Some((candidate_slot, slot_being_tried)));
+                    let candidate_sum = candidate_weights.values().sum();
 
-                for p in 1..=layout.len() {
-                    let w = layout.call_weights(Some((p, target_fi)));
-                    let sum: usize = w.values().sum();
                     // Only accept a position where no individual call gets worse
-                    // and at least one improves (a true Pareto improvement).
-                    // `before_weights` was computed on the layout with this
-                    // candidate at `cur`, and the candidate is present at `p`
-                    // here, so the call sets match by key.
-                    let no_call_worse = w.iter().all(|(call_key, &new_weight)| {
+                    // and at least one improves
+                    let no_call_worse = candidate_weights.iter().all(|(call_key, &new_weight)| {
                         let old_weight = before_weights.get(call_key).copied().unwrap_or(0);
                         new_weight <= old_weight
                     });
-                    let some_call_better = w.iter().any(|(call_key, &new_weight)| {
-                        let old_weight = before_weights.get(call_key).copied().unwrap_or(0);
-                        new_weight < old_weight
-                    });
+                    let some_call_better =
+                        candidate_weights.iter().any(|(call_key, &new_weight)| {
+                            let old_weight = before_weights.get(call_key).copied().unwrap_or(0);
+                            new_weight < old_weight
+                        });
                     let acceptable = no_call_worse && some_call_better;
-                    if acceptable && sum < best_count {
-                        best_count = sum;
-                        best_p = p;
+                    if acceptable && candidate_sum < best_weights_sum {
+                        best_weights_sum = candidate_sum;
+                        best_slot = slot_being_tried;
                     }
                 }
 
-                // Commit iff an improving position was found. A strict aggregate
-                // drop is guaranteed whenever a Pareto-safe improvement exists
-                // (some weight strictly decreases, none increase). `cur` is
-                // always a candidate position, so we never worsen the layout.
-                if best_count < before_weights_sum {
-                    layout.insert_at(best_p, target_fi);
-                    eprintln!(
-                        "optimize_fn_order iter {iter}: call cost {before_weights_sum} -> {best_count} (target fn {target_fi} had {target_count} back calls)"
-                    );
+                // If an improvement was found, accept it
+                if best_weights_sum < before_weights_sum {
+                    layout.relocate(candidate_slot, best_slot);
+
+                    // Uncoment this to log improvements
+                    // eprintln!(
+                    //     "optimize_fn_order iter {iter}: call cost {before_weights_sum} -> {best_count} (target fn {target_fi} had {target_count} back calls)"
+                    // );
+
                     found_improvement = true;
                     break 'candidates;
                 }
-
-                // This candidate couldn't improve; restore and try the next.
-                layout.insert_at(cur, target_fi);
             }
 
             if !found_improvement {
-                break 'improve; // none of the top-DEPTH candidates could improve; stop.
+                break 'improve;
             }
         }
 
@@ -520,18 +510,12 @@ impl std::fmt::Display for AbstractProgram {
     }
 }
 
-/// Flat list entry for an inter-function call. Callee is a fn_idx; calls whose
-/// target label is not a function entry in `fns` are omitted (same as the
-/// former `label_to_fn_idx` miss in `call_weights`).
 struct CallSite {
     caller: usize,
     offset: u64,
     callee: usize,
 }
 
-/// `fns` stays in stable fn_idx order until `apply`; `order` is the current
-/// layout permutation (slot → fn_idx). `fn_sizes` / `call_sites` /
-/// `call_loop_depth` are stable.
 struct FnLayout<'a> {
     fns: &'a mut Vec<AbstractInstructionSet>,
     fn_sizes: Vec<u64>,
@@ -561,6 +545,7 @@ impl<'a> FnLayout<'a> {
 
     fn new(fns: &'a mut Vec<AbstractInstructionSet>) -> Self {
         let n = fns.len();
+
         let fn_labels = fns.iter().map(Self::label_of).collect::<Vec<_>>();
         let fn_sizes = fns
             .iter()
@@ -571,6 +556,7 @@ impl<'a> FnLayout<'a> {
             .enumerate()
             .map(|(idx, &lab)| (lab, idx))
             .collect();
+
         let mut call_sites = Vec::with_capacity(n);
         for (caller, f) in fns.iter().enumerate() {
             let mut site_off: u64 = 0;
@@ -592,38 +578,30 @@ impl<'a> FnLayout<'a> {
             }
         }
 
-        // Loop detection (gas-oriented weighting). The benchmark measures gas,
-        // and a call's gas scales with how often it executes. A call inside a
-        // loop runs once per iteration, so its execution count grows with loop
-        // nesting depth. Loops at the ASM level are backward intra-function
-        // jumps (a back-edge to a label earlier in the same function); a call
-        // is inside a loop when it sits between the loop header (the back-edge
-        // target) and the back-edge site, and its nesting depth is the number
-        // of distinct loops enclosing it. This is invariant under reordering
-        // (functions move as whole units), so we compute it once and key it by
-        // (caller fn_idx, call-site offset within the caller).
-        let mut call_loop_depth: HashMap<(usize, u64), usize> = HashMap::new();
-        for (fi, f) in fns.iter().enumerate() {
+        // use to boost call inside of loops
+        let mut call_loop_depth = HashMap::new();
+        for (idx, f) in fns.iter().enumerate() {
             // Index each label in this function to its op position.
-            let mut label_idx: HashMap<usize, usize> = HashMap::new();
+            let mut label_idx = HashMap::new();
             for (i, op) in f.ops.iter().enumerate() {
                 if let Either::Right(ControlFlowOp::Label(l)) = &op.opcode {
                     label_idx.insert(l.0, i);
                 }
             }
-            // Back-edges: backward non-call jumps to an earlier label.
-            // Group by header, keeping the furthest latch per header so the
-            // loop body is the contiguous [header, max_latch] range.
-            let mut loops: HashMap<usize, (usize, usize)> = HashMap::new();
-            for (j, op) in f.ops.iter().enumerate() {
+
+            // Find loops
+            // Header: The single entry point of a loop that dominates all other nodes within it.
+            // Latch: A node inside the loop that has a jump to the header.
+            let mut loops = HashMap::new();
+            for (latch, op) in f.ops.iter().enumerate() {
                 if let Either::Right(ControlFlowOp::Jump { to, ty }) = &op.opcode {
                     match ty {
                         JumpType::Unconditional | JumpType::NotZero(_) => {
-                            if let Some(&h) = label_idx.get(&to.0) {
-                                if h < j {
-                                    let e = loops.entry(to.0).or_insert((h, j));
-                                    if j > e.1 {
-                                        e.1 = j;
+                            if let Some(&header) = label_idx.get(&to.0) {
+                                if header < latch {
+                                    let entry = loops.entry(to.0).or_insert((header, latch));
+                                    if latch > entry.1 {
+                                        entry.1 = latch;
                                     }
                                 }
                             }
@@ -632,22 +610,30 @@ impl<'a> FnLayout<'a> {
                     }
                 }
             }
+
             if loops.is_empty() {
                 continue;
             }
-            let loops: Vec<(usize, usize)> = loops.values().cloned().collect();
-            let mut site_off: u64 = 0;
+
+            let loops = loops.values().cloned().collect::<Vec<_>>();
+
+            // Calculate each call site loop depth
+            // The more deep a call is, more boost it will gain
+            let mut site_offset: u64 = 0;
             for (i, op) in f.ops.iter().enumerate() {
                 if let Either::Right(ControlFlowOp::Jump {
                     ty: JumpType::Call, ..
                 }) = &op.opcode
                 {
-                    let depth = loops.iter().filter(|(h, l)| *h <= i && i <= *l).count();
+                    let depth = loops
+                        .iter()
+                        .filter(|(header, latch)| *header <= i && i <= *latch)
+                        .count();
                     if depth > 0 {
-                        call_loop_depth.insert((fi, site_off), depth);
+                        call_loop_depth.insert((idx, site_offset), depth);
                     }
                 }
-                site_off += op.op_size();
+                site_offset += op.op_size();
             }
         }
 
@@ -664,88 +650,57 @@ impl<'a> FnLayout<'a> {
         self.order.len()
     }
 
-    /// Slot of `fi` in the current `order`.
-    fn slot_of(&self, fi: usize) -> usize {
+    fn slot_of(&self, fn_idx: usize) -> usize {
         self.order
             .iter()
-            .position(|&f| f == fi)
+            .position(|&f| f == fn_idx)
             .expect("fn_idx present in order")
     }
 
     /// `(fn_idx, back-call count)` for every function in the current layout.
-    /// Indexed by fn_idx while counting; callers typically `select_nth` on
-    /// `[1..]` so the entry (fn 0) is never a relocation candidate.
     fn back_call_count(&self) -> Vec<(usize, usize)> {
         let n = self.fn_sizes.len();
         let mut slot_of = vec![0usize; n];
+
         for (slot, &fi) in self.order.iter().enumerate() {
             slot_of[fi] = slot;
         }
-        let mut counts: Vec<(usize, usize)> = (0..n).map(|fi| (fi, 0)).collect();
+
+        let mut counts = (0..n).map(|fi| (fi, 0)).collect::<Vec<_>>();
         for site in &self.call_sites {
             if slot_of[site.callee] < slot_of[site.caller] {
                 counts[site.callee].1 += 1;
             }
         }
+
         counts
     }
 
-    /// Per-call weight for the current layout, keyed by (caller fn_idx,
-    /// call-site offset within the caller). The base weight is the call's
-    /// compiled instruction count, mirroring `compile_call_inner`:
-    ///   forward near  -> 1  (JAL)
-    ///   backward near -> 2  (SUBI + JAL)
-    ///   medium        -> 3  (MOVI +/- + JAL)
-    ///   far           -> 6  (data section load + JAL; real count is 4, but
-    ///                       inflated to 6 to penalize far calls harder than
-    ///                       the medium->near step, so the greedy search
-    ///                       breaks near-ties toward eliminating far calls)
-    /// The base weight is then multiplied by `LOOP_BOOST^depth`, so calls in
-    /// hot loops dominate the cost (gas scales with execution count).
-    /// Offsets are in instruction units from `Op::op_size` (Label/Comment and
-    /// zero-stack CFEI/CFSI are 0, not 1), matching the resolver's offset
-    /// units. Forward near uses the 12-bit JAL immediate directly
-    /// (`delta <= TWELVE_BITS`); backward near uses a 12-bit SUBI immediate
-    /// holding `delta * 4` bytes, so its near range is 4x smaller. Counting
-    /// forward calls too means a move that lengthens a forward call past the
-    /// near threshold is penalized (1 -> 3), not free. Self-calls travel
-    /// with their function, so they add a position-independent constant and
-    /// don't affect which position is chosen.
-    ///
-    /// If `virtual_insert` is `Some((p, fi))`, `fi` is treated as occupying
-    /// slot `p` without splicing `order`: slots `< p` read `order[slot]`,
-    /// slot `p` is `fi`, and slots `> p` read `order[slot - 1]`.
-    fn call_weights(&self, virtual_insert: Option<(usize, usize)>) -> HashMap<(usize, u64), usize> {
-        // Gas weight multiplier per loop nesting level: a call at depth `d` is
-        // weighted `LOOP_BOOST^d` times its base instruction cost (depth 0 ->
-        // 1x). 2 models each loop roughly doubling execution count; raise it if
-        // hot loops have large trip counts.
+    /// `virtual_move` means (original position, new position).
+    /// Returns per-call weights keyed by `(caller fn_idx, call-site offset)`.
+    fn call_weights(&self, virtual_move: Option<(usize, usize)>) -> HashMap<(usize, u64), usize> {
         const LOOP_BOOST: usize = 4;
-        const FWD_NEAR: usize = 1;
-        const BACK_NEAR: usize = 2;
-        const MEDIUM: usize = 3;
-        const FAR: usize = 6;
 
         // fn_idx -> offset of the function's start, in instruction units.
         let n = self.fn_sizes.len();
         let mut fn_to_off = vec![0u64; n];
         let mut offset: u64 = 0;
-        match virtual_insert {
+        match virtual_move {
             None => {
                 for &fi in &self.order {
                     fn_to_off[fi] = offset;
                     offset += self.fn_sizes[fi];
                 }
             }
-            Some((p, fi)) => {
-                let total = self.order.len() + 1;
-                for slot in 0..total {
-                    let f = if slot < p {
-                        self.order[slot]
-                    } else if slot == p {
+            Some((from, to)) => {
+                let fi = self.order[from];
+                for slot in 0..n {
+                    let f = if slot == to {
                         fi
                     } else {
-                        self.order[slot - 1]
+                        // Compacted index in the post-remove sequence.
+                        let c = if slot < to { slot } else { slot - 1 };
+                        self.order[if c < from { c } else { c + 1 }]
                     };
                     fn_to_off[f] = offset;
                     offset += self.fn_sizes[f];
@@ -753,60 +708,32 @@ impl<'a> FnLayout<'a> {
             }
         }
 
-        let mut weights: HashMap<(usize, u64), usize> = HashMap::new();
+        let mut weights = HashMap::new();
         for site in &self.call_sites {
             let func_start = fn_to_off[site.caller];
             let target_off = fn_to_off[site.callee];
             let call_site = func_start + site.offset;
-            let tier = if target_off >= call_site {
-                // Forward (or self): the 12-bit JAL immediate holds `delta`
-                // directly.
-                let delta = target_off - call_site;
-                if delta <= compiler_constants::TWELVE_BITS {
-                    FWD_NEAR
-                } else if delta.saturating_sub(1).saturating_mul(4)
-                    <= compiler_constants::EIGHTEEN_BITS
-                {
-                    MEDIUM
-                } else {
-                    FAR
-                }
-            } else {
-                // Backward: the 12-bit SUBI immediate holds `delta * 4` bytes,
-                // so the near range is 4x smaller.
-                let delta = call_site - target_off;
-                if delta.saturating_mul(4) <= compiler_constants::TWELVE_BITS {
-                    BACK_NEAR
-                } else if delta.saturating_add(1).saturating_mul(4)
-                    <= compiler_constants::EIGHTEEN_BITS
-                {
-                    MEDIUM
-                } else {
-                    FAR
-                }
-            };
+
+            let jmp_factor = jmp_weight_factor(target_off, call_site);
             let depth = self
                 .call_loop_depth
                 .get(&(site.caller, site.offset))
                 .copied()
                 .unwrap_or(0);
+
             weights.insert(
                 (site.caller, site.offset),
-                tier * LOOP_BOOST.pow(depth as u32),
+                jmp_factor * LOOP_BOOST.pow(depth as u32),
             );
         }
         weights
     }
 
-    fn remove_at(&mut self, slot: usize) -> usize {
-        self.order.remove(slot)
+    fn relocate(&mut self, from: usize, to: usize) {
+        let fi = self.order.remove(from);
+        self.order.insert(to, fi);
     }
 
-    fn insert_at(&mut self, slot: usize, fi: usize) {
-        self.order.insert(slot, fi);
-    }
-
-    /// Write `order` back into `fns` in place.
     fn apply(self) {
         let mut tmp: Vec<_> = std::mem::take(self.fns).into_iter().map(Some).collect();
         *self.fns = self
@@ -814,5 +741,32 @@ impl<'a> FnLayout<'a> {
             .into_iter()
             .map(|i| tmp[i].take().unwrap())
             .collect();
+    }
+}
+
+fn jmp_weight_factor(target_off: u64, call_site: u64) -> usize {
+    const FWD_NEAR: usize = 1;
+    const BACK_NEAR: usize = 2;
+    const MEDIUM: usize = 3;
+    const FAR: usize = 6;
+
+    if target_off >= call_site {
+        let delta = target_off - call_site;
+        if delta <= compiler_constants::TWELVE_BITS {
+            FWD_NEAR
+        } else if delta.saturating_sub(1).saturating_mul(4) <= compiler_constants::EIGHTEEN_BITS {
+            MEDIUM
+        } else {
+            FAR
+        }
+    } else {
+        let delta = call_site - target_off;
+        if delta.saturating_mul(4) <= compiler_constants::TWELVE_BITS {
+            BACK_NEAR
+        } else if delta.saturating_add(1).saturating_mul(4) <= compiler_constants::EIGHTEEN_BITS {
+            MEDIUM
+        } else {
+            FAR
+        }
     }
 }
