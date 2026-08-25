@@ -8,9 +8,6 @@ output:
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
    Compiling library panicking_lib (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_lib)
    Compiling script panicking_script (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_script)
-optimize_fn_order iter 0: call cost 37 -> 36 (target fn 15 had 1 back calls)
-optimize_fn_order iter 1: call cost 36 -> 35 (target fn 17 had 1 back calls)
-optimize_fn_order iter 2: call cost 35 -> 34 (target fn 16 had 1 back calls)
     Finished debug [unoptimized + fuel] target(s) [3.608 KB] in ???
      Running 11 tests, filtered 0 tests
 
@@ -140,9 +137,6 @@ output:
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
    Compiling library panicking_lib (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_lib)
    Compiling script panicking_script (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_script)
-optimize_fn_order iter 0: call cost 37 -> 36 (target fn 15 had 1 back calls)
-optimize_fn_order iter 1: call cost 36 -> 35 (target fn 17 had 1 back calls)
-optimize_fn_order iter 2: call cost 35 -> 34 (target fn 16 had 1 back calls)
     Finished release [optimized + fuel] target(s) [2.744 KB] in ???
      Running 11 tests, filtered 0 tests
 

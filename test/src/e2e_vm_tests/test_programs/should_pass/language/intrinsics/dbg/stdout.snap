@@ -13,22 +13,6 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg
    Compiling library std (sway-lib-std)
    Compiling script dbg (test/src/e2e_vm_tests/test_programs/should_pass/language/intrinsics/dbg)
-optimize_fn_order iter 0: call cost 810 -> 793 (target fn 4 had 10 back calls)
-optimize_fn_order iter 1: call cost 793 -> 786 (target fn 3 had 60 back calls)
-optimize_fn_order iter 2: call cost 786 -> 771 (target fn 39 had 7 back calls)
-optimize_fn_order iter 3: call cost 771 -> 758 (target fn 40 had 7 back calls)
-optimize_fn_order iter 4: call cost 758 -> 724 (target fn 10 had 6 back calls)
-optimize_fn_order iter 5: call cost 724 -> 722 (target fn 3 had 57 back calls)
-optimize_fn_order iter 6: call cost 722 -> 717 (target fn 34 had 4 back calls)
-optimize_fn_order iter 7: call cost 717 -> 705 (target fn 36 had 4 back calls)
-optimize_fn_order iter 8: call cost 705 -> 687 (target fn 61 had 3 back calls)
-optimize_fn_order iter 9: call cost 687 -> 676 (target fn 25 had 2 back calls)
-optimize_fn_order iter 10: call cost 676 -> 673 (target fn 19 had 3 back calls)
-optimize_fn_order iter 11: call cost 673 -> 672 (target fn 30 had 6 back calls)
-optimize_fn_order iter 12: call cost 672 -> 671 (target fn 32 had 6 back calls)
-optimize_fn_order iter 13: call cost 671 -> 669 (target fn 27 had 2 back calls)
-optimize_fn_order iter 14: call cost 669 -> 668 (target fn 44 had 2 back calls)
-optimize_fn_order iter 15: call cost 668 -> 667 (target fn 38 had 1 back calls)
     Finished debug [unoptimized + fuel] target(s) [32.336 KB] in ???
      Running 1 test, filtered 0 tests
 

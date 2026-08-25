@@ -9,6 +9,7 @@ output:
    Compiling library panicking_lib (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_lib)
    Compiling contract panicking_contract (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_contract)
 <<<<<<< HEAD
+<<<<<<< HEAD
     Finished debug [unoptimized + fuel] target(s) [7.776 KB] in ???
 =======
 optimize_fn_order iter 0: call cost 36 -> 35 (target fn 5 had 1 back calls)
@@ -17,6 +18,8 @@ optimize_fn_order iter 2: call cost 34 -> 33 (target fn 7 had 1 back calls)
 optimize_fn_order iter 0: call cost 48 -> 47 (target fn 17 had 1 back calls)
 optimize_fn_order iter 1: call cost 47 -> 46 (target fn 18 had 1 back calls)
 optimize_fn_order iter 2: call cost 46 -> 45 (target fn 19 had 1 back calls)
+=======
+>>>>>>> ab6ae6f7a (update tests)
     Finished debug [unoptimized + fuel] target(s) [7.864 KB] in ???
 >>>>>>> f2b0c42d7 (correctly find fn label)
      Running 12 tests, filtered 0 tests
@@ -153,6 +156,7 @@ output:
    Compiling library panicking_lib (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_lib)
    Compiling contract panicking_contract (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_contract)
 <<<<<<< HEAD
+<<<<<<< HEAD
     Finished release [optimized + fuel] target(s) [5.52 KB] in ???
 =======
 optimize_fn_order iter 0: call cost 35 -> 34 (target fn 3 had 1 back calls)
@@ -161,6 +165,8 @@ optimize_fn_order iter 2: call cost 33 -> 32 (target fn 5 had 1 back calls)
 optimize_fn_order iter 0: call cost 47 -> 46 (target fn 15 had 1 back calls)
 optimize_fn_order iter 1: call cost 46 -> 45 (target fn 17 had 1 back calls)
 optimize_fn_order iter 2: call cost 45 -> 44 (target fn 16 had 1 back calls)
+=======
+>>>>>>> ab6ae6f7a (update tests)
     Finished release [optimized + fuel] target(s) [5.6 KB] in ???
 >>>>>>> f2b0c42d7 (correctly find fn label)
      Running 12 tests, filtered 0 tests

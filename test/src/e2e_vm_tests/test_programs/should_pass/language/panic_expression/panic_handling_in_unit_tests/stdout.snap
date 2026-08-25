@@ -7,12 +7,6 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests
    Compiling library std (sway-lib-std)
    Compiling script panic_handling_in_unit_tests (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests)
-optimize_fn_order iter 0: call cost 90 -> 86 (target fn 31 had 4 back calls)
-optimize_fn_order iter 1: call cost 86 -> 83 (target fn 23 had 3 back calls)
-optimize_fn_order iter 2: call cost 83 -> 82 (target fn 22 had 5 back calls)
-optimize_fn_order iter 3: call cost 82 -> 80 (target fn 27 had 2 back calls)
-optimize_fn_order iter 4: call cost 80 -> 79 (target fn 29 had 1 back calls)
-optimize_fn_order iter 5: call cost 79 -> 78 (target fn 28 had 1 back calls)
 warning: Error message is empty
   --> test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests/src/main.sw:13:17
    |
@@ -50,12 +44,6 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests
    Compiling library std (sway-lib-std)
    Compiling script panic_handling_in_unit_tests (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests)
-optimize_fn_order iter 0: call cost 90 -> 86 (target fn 31 had 4 back calls)
-optimize_fn_order iter 1: call cost 86 -> 83 (target fn 23 had 3 back calls)
-optimize_fn_order iter 2: call cost 83 -> 82 (target fn 22 had 5 back calls)
-optimize_fn_order iter 3: call cost 82 -> 80 (target fn 27 had 2 back calls)
-optimize_fn_order iter 4: call cost 80 -> 79 (target fn 29 had 1 back calls)
-optimize_fn_order iter 5: call cost 79 -> 78 (target fn 28 had 1 back calls)
 warning: Error message is empty
   --> test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panic_handling_in_unit_tests/src/main.sw:13:17
    |

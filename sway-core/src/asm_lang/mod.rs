@@ -125,15 +125,7 @@ pub(crate) struct RealizedOp {
 }
 
 impl Op {
-    // Real compiled size of a single op, in instruction units (1 instr = 4
-    // bytes), mirroring `worst_case_instruction_size` from
-    // `allocated_abstract_instruction_set.rs`. Labels/Comments and
-    // zero-stack CFEI/CFSI contribute 0; data-section loads and offset
-    // placeholders cost 2; a `Call` jump reserves 3 (worst case) and other
-    // jumps 2; BLOB is its immediate. PushAll/PopAll are still present
-    // here (lowered only later in `lower_pusha_popa`) and expand to at
-    // most two push/pop-mask instructions, so we charge 2 rather than
-    // panicking like the post-allocation version would.
+    // Worst case instruction size
     pub(crate) fn op_size(&self) -> u64 {
         match &self.opcode {
             Either::Right(ControlFlowOp::Label(_)) => 0,

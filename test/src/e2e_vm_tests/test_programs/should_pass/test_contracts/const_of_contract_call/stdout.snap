@@ -8,15 +8,6 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-vec)
    Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
-optimize_fn_order iter 0: call cost 95 -> 85 (target fn 7 had 10 back calls)
-optimize_fn_order iter 1: call cost 85 -> 83 (target fn 8 had 2 back calls)
-optimize_fn_order iter 2: call cost 83 -> 82 (target fn 2 had 1 back calls)
-optimize_fn_order iter 0: call cost 206 -> 190 (target fn 47 had 16 back calls)
-optimize_fn_order iter 1: call cost 190 -> 188 (target fn 49 had 2 back calls)
-optimize_fn_order iter 2: call cost 188 -> 186 (target fn 61 had 2 back calls)
-optimize_fn_order iter 3: call cost 186 -> 182 (target fn 37 had 1 back calls)
-optimize_fn_order iter 4: call cost 182 -> 181 (target fn 40 had 1 back calls)
-optimize_fn_order iter 5: call cost 181 -> 180 (target fn 48 had 1 back calls)
     Finished release [optimized + fuel] target(s) [19.08 KB] in ???
      Running 33 tests, filtered 0 tests
 
@@ -289,8 +280,6 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-vec)
    Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
-optimize_fn_order iter 0: call cost 28 -> 26 (target fn 5 had 2 back calls)
-optimize_fn_order iter 1: call cost 26 -> 25 (target fn 4 had 1 back calls)
     Finished release [optimized + fuel] target(s) [1.968 KB] in ???
      Running 1 test, filtered 0 tests
 
@@ -311,8 +300,6 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-vec)
    Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
-optimize_fn_order iter 0: call cost 28 -> 26 (target fn 5 had 2 back calls)
-optimize_fn_order iter 1: call cost 26 -> 25 (target fn 4 had 1 back calls)
     Finished release [optimized + fuel] target(s) [2.264 KB] in ???
      Running 1 test, filtered 0 tests
 
