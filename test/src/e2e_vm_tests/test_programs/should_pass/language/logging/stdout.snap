@@ -1070,6 +1070,9 @@ script {
     }
 }
 
+optimize_fn_order iter 0: call cost 34 -> 28 (target fn 3 had 6 back calls)
+optimize_fn_order iter 1: call cost 28 -> 25 (target fn 4 had 3 back calls)
+optimize_fn_order iter 2: call cost 25 -> 22 (target fn 5 had 3 back calls)
 warning
   --> test/src/e2e_vm_tests/test_programs/should_pass/language/logging/src/main.sw:27:5
    |
@@ -1146,7 +1149,7 @@ warning
 ____
 
   Compiled script "logging" with 6 warnings.
-    Finished release [optimized + fuel] target(s) [2.48 KB] in ???
+    Finished release [optimized + fuel] target(s) [2.432 KB] in ???
 
 > forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/logging --release
 exit status: 0
@@ -1154,6 +1157,9 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/logging
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-vec)
    Compiling script logging (test/src/e2e_vm_tests/test_programs/should_pass/language/logging)
+optimize_fn_order iter 0: call cost 35 -> 29 (target fn 4 had 6 back calls)
+optimize_fn_order iter 1: call cost 29 -> 26 (target fn 5 had 3 back calls)
+optimize_fn_order iter 2: call cost 26 -> 23 (target fn 6 had 3 back calls)
 warning: Returned value is ignored
   --> test/src/e2e_vm_tests/test_programs/should_pass/language/logging/src/main.sw:80:5
    |
@@ -1242,12 +1248,12 @@ warning
 ____
 
   Compiled script "logging" with 7 warnings.
-    Finished release [optimized + fuel] target(s) [2.496 KB] in ???
+    Finished release [optimized + fuel] target(s) [2.448 KB] in ???
      Running 1 test, filtered 0 tests
 
 tested -- logging
 
-      test call_main ... ok (???, 4354 gas)
+      test call_main ... ok (???, 4340 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 

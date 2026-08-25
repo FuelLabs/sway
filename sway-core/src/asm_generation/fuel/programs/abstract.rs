@@ -15,8 +15,8 @@ use crate::{
     },
     asm_lang::{
         allocated_ops::{AllocatedInstruction, AllocatedRegister},
-        AllocatedAbstractOp, ConstantRegister, ControlFlowOp, JumpType, Label, Op,
-        VirtualImmediate12, VirtualImmediate18, VirtualImmediate24,
+        AllocatedAbstractOp, ConstantRegister, ControlFlowOp, JumpType, Label, VirtualImmediate12,
+        VirtualImmediate18, VirtualImmediate24,
     },
     decl_engine::DeclRefFunction,
     OptLevel,
@@ -24,7 +24,6 @@ use crate::{
 use either::Either;
 use sway_error::error::CompileError;
 use sway_features::ExperimentalFeatures;
-use sway_types::Span;
 
 /// The entry point of an abstract program.
 pub(crate) struct AbstractEntry {
@@ -543,20 +542,26 @@ struct FnLayout<'a> {
 }
 
 impl<'a> FnLayout<'a> {
+    /// Entry label of a function.
+    fn label_of(f: &AbstractInstructionSet) -> Label {
+        f.ops
+            .iter()
+            .find_map(|op| match &op.opcode {
+                Either::Right(ControlFlowOp::Label(l)) => Some(*l),
+                _ => None,
+            })
+            .unwrap_or_else(|| {
+                panic!(
+                    "function {:?} has no Label in its ops (len={})",
+                    f.function,
+                    f.ops.len()
+                )
+            })
+    }
+
     fn new(fns: &'a mut Vec<AbstractInstructionSet>) -> Self {
         let n = fns.len();
-        // A function's first op must be a `Label`; preserve the prior
-        // `todo!()` behavior when it isn't.
-        let fn_labels: Vec<Label> = fns
-            .iter()
-            .map(|f| match f.ops.first() {
-                Some(Op {
-                    opcode: Either::Right(ControlFlowOp::Label(l)),
-                    ..
-                }) => *l,
-                _ => todo!(),
-            })
-            .collect();
+        let fn_labels = fns.iter().map(Self::label_of).collect::<Vec<_>>();
         let fn_sizes = fns
             .iter()
             .map(|f| f.ops.iter().map(|o| o.op_size()).sum())
@@ -575,7 +580,7 @@ impl<'a> FnLayout<'a> {
                     ty: JumpType::Call,
                 }) = &op.opcode
                 {
-                    if let Some(&callee) = label_to_fn_idx.get(&to) {
+                    if let Some(&callee) = label_to_fn_idx.get(to) {
                         call_sites.push(CallSite {
                             caller,
                             offset: site_off,
@@ -710,10 +715,7 @@ impl<'a> FnLayout<'a> {
     /// If `virtual_insert` is `Some((p, fi))`, `fi` is treated as occupying
     /// slot `p` without splicing `order`: slots `< p` read `order[slot]`,
     /// slot `p` is `fi`, and slots `> p` read `order[slot - 1]`.
-    fn call_weights(
-        &self,
-        virtual_insert: Option<(usize, usize)>,
-    ) -> HashMap<(usize, u64), usize> {
+    fn call_weights(&self, virtual_insert: Option<(usize, usize)>) -> HashMap<(usize, u64), usize> {
         // Gas weight multiplier per loop nesting level: a call at depth `d` is
         // weighted `LOOP_BOOST^d` times its base instruction cost (depth 0 ->
         // 1x). 2 models each loop roughly doubling execution count; raise it if
@@ -788,7 +790,10 @@ impl<'a> FnLayout<'a> {
                 .get(&(site.caller, site.offset))
                 .copied()
                 .unwrap_or(0);
-            weights.insert((site.caller, site.offset), tier * LOOP_BOOST.pow(depth as u32));
+            weights.insert(
+                (site.caller, site.offset),
+                tier * LOOP_BOOST.pow(depth as u32),
+            );
         }
         weights
     }

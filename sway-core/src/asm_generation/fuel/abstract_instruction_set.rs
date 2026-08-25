@@ -1,8 +1,7 @@
 use super::{
     allocated_abstract_instruction_set::AllocatedAbstractInstructionSet, register_allocator,
 };
-use crate::asm_lang::{allocated_ops::AllocatedOp, ControlFlowOp, Label, Op, RealizedOp};
-use either::Either;
+use crate::asm_lang::{allocated_ops::AllocatedOp, Op, RealizedOp};
 use std::fmt;
 use sway_error::error::CompileError;
 
@@ -19,17 +18,6 @@ pub struct AbstractInstructionSet {
 }
 
 impl AbstractInstructionSet {
-    /// Return the function's label, which is its first op.
-    pub(crate) fn label_of(&self) -> Option<Label> {
-        match self.ops.first() {
-            Some(Op {
-                opcode: Either::Right(ControlFlowOp::Label(l)),
-                ..
-            }) => Some(*l),
-            _ => None,
-        }
-    }
-
     /// Allocate registers.
     pub(crate) fn allocate_registers(
         self,

@@ -8,44 +8,53 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-vec)
    Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
-    Finished release [optimized + fuel] target(s) [19.176 KB] in ???
+optimize_fn_order iter 0: call cost 95 -> 85 (target fn 7 had 10 back calls)
+optimize_fn_order iter 1: call cost 85 -> 83 (target fn 8 had 2 back calls)
+optimize_fn_order iter 2: call cost 83 -> 82 (target fn 2 had 1 back calls)
+optimize_fn_order iter 0: call cost 206 -> 190 (target fn 47 had 16 back calls)
+optimize_fn_order iter 1: call cost 190 -> 188 (target fn 49 had 2 back calls)
+optimize_fn_order iter 2: call cost 188 -> 186 (target fn 61 had 2 back calls)
+optimize_fn_order iter 3: call cost 186 -> 182 (target fn 37 had 1 back calls)
+optimize_fn_order iter 4: call cost 182 -> 181 (target fn 40 had 1 back calls)
+optimize_fn_order iter 5: call cost 181 -> 180 (target fn 48 had 1 back calls)
+    Finished release [optimized + fuel] target(s) [19.08 KB] in ???
      Running 33 tests, filtered 0 tests
 
 tested -- const_of_contract_call
 
-      test cost_of_in_bool ... ok (???, 1742 gas)
-      test cost_of_in_u8 ... ok (???, 1710 gas)
-      test cost_of_in_u16 ... ok (???, 1798 gas)
-      test cost_of_in_u32 ... ok (???, 1882 gas)
-      test cost_of_in_u64 ... ok (???, 1516 gas)
-      test cost_of_in_u256 ... ok (???, 1597 gas)
-      test cost_of_in_b256 ... ok (???, 1587 gas)
-      test cost_of_in_str_0 ... ok (???, 1900 gas)
-      test cost_of_in_str_1 ... ok (???, 2016 gas)
-      test cost_of_in_str_8 ... ok (???, 2023 gas)
-      test cost_of_in_str_16 ... ok (???, 2020 gas)
-      test cost_of_in_str_32 ... ok (???, 2030 gas)
-      test cost_of_in_array_0 ... ok (???, 1544 gas)
-      test cost_of_in_array_1 ... ok (???, 1596 gas)
-      test cost_of_in_array_8 ... ok (???, 2104 gas)
-      test cost_of_in_array_16 ... ok (???, 1636 gas)
-      test cost_of_in_array_32 ... ok (???, 1685 gas)
-      test cost_of_in_array_64 ... ok (???, 1778 gas)
-      test cost_of_in_tuple_0 ... ok (???, 1514 gas)
-      test cost_of_in_tuple_1 ... ok (???, 1631 gas)
-      test cost_of_in_tuple_2 ... ok (???, 1649 gas)
-      test cost_of_in_tuple_3 ... ok (???, 1657 gas)
-      test cost_of_in_tuple_4 ... ok (???, 1644 gas)
-      test in_struct_u64 ... ok (???, 1619 gas)
-      test in_struct_u64_u64 ... ok (???, 1644 gas)
-      test in_struct_u64_u64_u64 ... ok (???, 1659 gas)
-      test in_enum_u64 ... ok (???, 1615 gas)
-      test in_enum_u64_u64 ... ok (???, 1617 gas)
-      test in_enum_u64_u64_u64 ... ok (???, 1629 gas)
-      test in_vec_trivial ... ok (???, 2678 gas)
-      test in_vec_not_trivial ... ok (???, 5862 gas)
-      test order_args_without_trivial_enum ... ok (???, 3043 gas)
-      test order_args_with_trivial_enum ... ok (???, 3221 gas)
+      test cost_of_in_bool ... ok (???, 1741 gas)
+      test cost_of_in_u8 ... ok (???, 1709 gas)
+      test cost_of_in_u16 ... ok (???, 1797 gas)
+      test cost_of_in_u32 ... ok (???, 1881 gas)
+      test cost_of_in_u64 ... ok (???, 1515 gas)
+      test cost_of_in_u256 ... ok (???, 1596 gas)
+      test cost_of_in_b256 ... ok (???, 1586 gas)
+      test cost_of_in_str_0 ... ok (???, 1899 gas)
+      test cost_of_in_str_1 ... ok (???, 2015 gas)
+      test cost_of_in_str_8 ... ok (???, 2022 gas)
+      test cost_of_in_str_16 ... ok (???, 2019 gas)
+      test cost_of_in_str_32 ... ok (???, 2029 gas)
+      test cost_of_in_array_0 ... ok (???, 1543 gas)
+      test cost_of_in_array_1 ... ok (???, 1595 gas)
+      test cost_of_in_array_8 ... ok (???, 2103 gas)
+      test cost_of_in_array_16 ... ok (???, 1635 gas)
+      test cost_of_in_array_32 ... ok (???, 1684 gas)
+      test cost_of_in_array_64 ... ok (???, 1777 gas)
+      test cost_of_in_tuple_0 ... ok (???, 1513 gas)
+      test cost_of_in_tuple_1 ... ok (???, 1630 gas)
+      test cost_of_in_tuple_2 ... ok (???, 1648 gas)
+      test cost_of_in_tuple_3 ... ok (???, 1656 gas)
+      test cost_of_in_tuple_4 ... ok (???, 1643 gas)
+      test in_struct_u64 ... ok (???, 1618 gas)
+      test in_struct_u64_u64 ... ok (???, 1643 gas)
+      test in_struct_u64_u64_u64 ... ok (???, 1658 gas)
+      test in_enum_u64 ... ok (???, 1614 gas)
+      test in_enum_u64_u64 ... ok (???, 1616 gas)
+      test in_enum_u64_u64_u64 ... ok (???, 1628 gas)
+      test in_vec_trivial ... ok (???, 2675 gas)
+      test in_vec_not_trivial ... ok (???, 5850 gas)
+      test order_args_without_trivial_enum ... ok (???, 3035 gas)
+      test order_args_with_trivial_enum ... ok (???, 3213 gas)
 
 test result: OK. 33 passed; 0 failed; finished in ???
 
@@ -280,12 +289,14 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-vec)
    Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
-    Finished release [optimized + fuel] target(s) [1.976 KB] in ???
+optimize_fn_order iter 0: call cost 28 -> 26 (target fn 5 had 2 back calls)
+optimize_fn_order iter 1: call cost 26 -> 25 (target fn 4 had 1 back calls)
+    Finished release [optimized + fuel] target(s) [1.968 KB] in ???
      Running 1 test, filtered 0 tests
 
 tested -- const_of_contract_call
 
-      test order_args_without_trivial_enum ... ok (???, 2818 gas)
+      test order_args_without_trivial_enum ... ok (???, 2815 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 
@@ -300,12 +311,14 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-vec)
    Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
-    Finished release [optimized + fuel] target(s) [2.272 KB] in ???
+optimize_fn_order iter 0: call cost 28 -> 26 (target fn 5 had 2 back calls)
+optimize_fn_order iter 1: call cost 26 -> 25 (target fn 4 had 1 back calls)
+    Finished release [optimized + fuel] target(s) [2.264 KB] in ???
      Running 1 test, filtered 0 tests
 
 tested -- const_of_contract_call
 
-      test order_args_with_trivial_enum ... ok (???, 2979 gas)
+      test order_args_with_trivial_enum ... ok (???, 2976 gas)
 
 test result: OK. 1 passed; 0 failed; finished in ???
 

@@ -7,6 +7,13 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics
    Compiling library std (sway-lib-std)
    Compiling script const_generics (test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics)
+optimize_fn_order iter 0: call cost 217 -> 213 (target fn 13 had 4 back calls)
+optimize_fn_order iter 1: call cost 213 -> 210 (target fn 4 had 3 back calls)
+optimize_fn_order iter 2: call cost 210 -> 197 (target fn 3 had 13 back calls)
+optimize_fn_order iter 3: call cost 197 -> 196 (target fn 21 had 1 back calls)
+optimize_fn_order iter 4: call cost 196 -> 192 (target fn 10 had 1 back calls)
+optimize_fn_order iter 5: call cost 192 -> 191 (target fn 20 had 1 back calls)
+optimize_fn_order iter 6: call cost 191 -> 190 (target fn 22 had 1 back calls)
 warning
   --> test/src/e2e_vm_tests/test_programs/should_pass/language/const_generics/src/main.sw:86:5
    |
@@ -35,12 +42,12 @@ warning
 ____
 
   Compiled script "const_generics" with 2 warnings.
-    Finished debug [unoptimized + fuel] target(s) [8.112 KB] in ???
+    Finished debug [unoptimized + fuel] target(s) [8.024 KB] in ???
      Running 1 test, filtered 0 tests
 
 tested -- const_generics
 
-      test run_main ... ok (???, 18049 gas)
+      test run_main ... ok (???, 18006 gas)
            debug output:
 [src/main.sw:154:13] a = [1, 2]
 [src/main.sw:158:13] [C {}].len() = 1
