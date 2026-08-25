@@ -471,7 +471,7 @@ impl AbstractProgram {
                 if best_weights_sum < before_weights_sum {
                     layout.relocate(candidate_slot, best_slot);
 
-                    // Uncoment this to log improvements
+                    // Uncomment this to log improvements
                     // eprintln!(
                     //     "optimize_fn_order iter {iter}: call cost {before_weights_sum} -> {best_count} (target fn {target_fi} had {target_count} back calls)"
                     // );
