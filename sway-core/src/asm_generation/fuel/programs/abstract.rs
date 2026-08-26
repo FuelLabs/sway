@@ -128,7 +128,10 @@ impl AbstractProgram {
             .map(AbstractInstructionSet::verify)
             .collect::<Result<Vec<AbstractInstructionSet>, CompileError>>()?;
 
-        Self::optimize_fn_order(&mut optimized_fns);
+        // Run only in release, as this increases compilation time considerably.
+        if matches!(opt_level, OptLevel::Opt1) {
+            Self::optimize_fn_order(&mut optimized_fns);
+        }
 
         // Allocate the registers for each function.
         let allocated_functions = optimized_fns
