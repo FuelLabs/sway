@@ -123,10 +123,10 @@ fn to_bytecode_mut(
 ) -> CompiledBytecode {
     fn op_size_in_bytes(data_section: &DataSection, item: &AllocatedOp) -> u64 {
         match &item.opcode {
-            AllocatedInstruction::LoadDataId(_reg, data_label)
+            AllocatedInstruction::LoadDataId(_reg, data_id)
                 if !data_section
-                    .has_copy_type(data_label)
-                    .expect("data label references non existent data -- internal error") =>
+                    .has_copy_type(data_id)
+                    .expect("`data_id` references data non-existent in the data section") =>
             {
                 8
             }
@@ -141,7 +141,6 @@ fn to_bytecode_mut(
             AllocatedInstruction::ConfigurablesOffsetPlaceholder => 8,
             AllocatedInstruction::DataSectionOffsetPlaceholder => 8,
             AllocatedInstruction::BLOB(count) => count.value() as u64 * 4,
-            AllocatedInstruction::CFEI(i) | AllocatedInstruction::CFSI(i) if i.value() == 0 => 0,
             _ => 4,
         }
     }

@@ -72,7 +72,6 @@ CONFIGURABLES_OFFSET[0..32]
 CONFIGURABLES_OFFSET[32..64]
 lw   $$ds $$tmp i1
 add  $$ds $$ds $$tmp
-cfei i0                       ; allocate stack space for globals
 move $$locbase $sp            ; [entry init: __entry]: set locals base register
 cfei i56                      ; [entry init: __entry]: allocate: locals 56 byte(s), call args 0 slot(s)
 gtf  $r0 $zero i10            ; get transaction field

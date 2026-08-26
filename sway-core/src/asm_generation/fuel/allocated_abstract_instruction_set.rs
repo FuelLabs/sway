@@ -72,7 +72,7 @@ impl AllocatedAbstractInstructionSet {
     ///  - does not call any functions that spill arguments to the stack
     ///  - does not spill any registers to the stack when allocating registers
     ///
-    /// This is the cases IFF the function contains `CFEI 0`.
+    /// This is the case IFF the function contains `CFEI 0`.
     fn remove_redundant_sp_move_to_locbase(mut self) -> AllocatedAbstractInstructionSet {
         let Some((_fn_name, is_entry)) = &self.function else {
             // Don't optimize if we are not in a function.
@@ -394,26 +394,18 @@ impl AllocatedAbstractInstructionSet {
         match op.opcode {
             Either::Right(Label(_)) => 0,
 
-            // Loads from data section may take up to 2 instructions
+            // Loads from data section may take up to 2 instructions.
             Either::Left(
                 AllocatedInstruction::LoadDataId(_, _) | AllocatedInstruction::AddrDataId(_, _),
             ) => 2,
 
-            // cfei 0 and cfsi 0 are omitted from asm emission, don't count them for offsets
-            Either::Left(AllocatedInstruction::CFEI(ref op))
-            | Either::Left(AllocatedInstruction::CFSI(ref op))
-                if op.value() == 0 =>
-            {
-                0
-            }
-
             // Another special case for the blob opcode, used for testing.
             Either::Left(AllocatedInstruction::BLOB(ref count)) => count.value() as u64,
 
-            // This is a concrete op, size is fixed
+            // This is a concrete op, size is fixed.
             Either::Left(_) => 1,
 
-            // Worst case for jump is 2 opcodes, and 3 for calls
+            // Worst case for jump is 2 opcodes, and 3 for calls.
             Either::Right(Jump { ref type_, .. }) => match type_ {
                 JumpType::Unconditional => 2,
                 JumpType::NotZero(_) => 2,
@@ -423,13 +415,13 @@ impl AllocatedAbstractInstructionSet {
             Either::Right(ReturnFromCall { .. }) => 1,
             Either::Right(Comment) => 0,
             Either::Right(DataSectionOffsetPlaceholder) => {
-                // If the placeholder is 32 bits, this is 1. if 64, this should be 2. We use LW
+                // If the placeholder is 32 bits, this is 1. If 64, this should be 2. We use LW
                 // to load the data, which loads a whole word, so for now this is 2.
                 2
             }
             Either::Right(ConfigurablesOffsetPlaceholder) => 2,
             Either::Right(PushAll(_)) | Either::Right(PopAll(_)) => unreachable!(
-                "fix me, pushall and popall don't really belong in control flow ops \
+                "`PushAll` and `PopAll` don't belong in control flow ops \
                         since they're not about control flow"
             ),
         }
@@ -465,18 +457,10 @@ impl AllocatedAbstractInstructionSet {
                 }
             }
 
-            // cfei 0 and cfsi 0 are omitted from asm emission, don't count them for offsets
-            Either::Left(AllocatedInstruction::CFEI(ref op))
-            | Either::Left(AllocatedInstruction::CFSI(ref op))
-                if op.value() == 0 =>
-            {
-                0
-            }
-
             // Another special case for the blob opcode, used for testing.
             Either::Left(AllocatedInstruction::BLOB(ref count)) => count.value() as u64,
 
-            // This is a concrete op, size is fixed
+            // This is a concrete op, size is fixed.
             Either::Left(_) => 1,
 
             // Far jumps must be handled separately, as they require two instructions.
@@ -485,7 +469,7 @@ impl AllocatedAbstractInstructionSet {
             Either::Right(Comment) => 0,
 
             Either::Right(DataSectionOffsetPlaceholder) => {
-                // If the placeholder is 32 bits, this is 1. if 64, this should be 2. We use LW
+                // If the placeholder is 32 bits, this is 1. If 64, this should be 2. We use LW
                 // to load the data, which loads a whole word, so for now this is 2.
                 2
             }
@@ -493,7 +477,7 @@ impl AllocatedAbstractInstructionSet {
             Either::Right(ConfigurablesOffsetPlaceholder) => 2,
 
             Either::Right(PushAll(_)) | Either::Right(PopAll(_)) => unreachable!(
-                "fix me, pushall and popall don't really belong in control flow ops \
+                "`PushAll` and `PopAll` don't belong in control flow ops \
                         since they're not about control flow"
             ),
 
