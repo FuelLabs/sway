@@ -388,15 +388,20 @@ impl AbstractProgram {
         });
     }
 
+    /// Allocates stack space for globals.
+    ///
+    /// `cfei` is added to `asm` only if the [Self::globals_section] actually contains globals.
     fn append_globals_allocation(&self, asm: &mut AllocatedAbstractInstructionSet) {
         let len_in_bytes = self.globals_section.len_in_bytes();
-        asm.ops.push(AllocatedAbstractOp {
-            opcode: Either::Left(AllocatedInstruction::CFEI(VirtualImmediate24::new(
-                len_in_bytes,
-            ))),
-            comment: "allocate stack space for globals".into(),
-            owning_span: None,
-        });
+        if len_in_bytes > 0 {
+            asm.ops.push(AllocatedAbstractOp {
+                opcode: Either::Left(AllocatedInstruction::CFEI(VirtualImmediate24::new(
+                    len_in_bytes,
+                ))),
+                comment: "allocate stack space for globals".into(),
+                owning_span: None,
+            });
+        }
     }
 }
 
