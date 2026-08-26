@@ -252,6 +252,17 @@ impl Op {
         }
     }
 
+    pub(crate) fn call(label: Label) -> Self {
+        Op {
+            opcode: Either::Right(OrganizationalOp::Jump {
+                to: label,
+                type_: JumpType::Call,
+            }),
+            comment: String::new(),
+            owning_span: None,
+        }
+    }
+
     pub(crate) fn jump_to_label_comment(label: Label, comment: impl Into<String>) -> Self {
         Op {
             opcode: Either::Right(OrganizationalOp::Jump {

@@ -462,6 +462,10 @@ impl AbstractInstructionSet {
                     match &op.opcode {
                         Either::Left(op) => match op {
                             VirtualOp::ECAL(_, _, _, _) => ResetKnown::All,
+                            VirtualOp::MCP(..)
+                            | VirtualOp::MCPI(..)
+                            | VirtualOp::SB(..)
+                            | VirtualOp::SW(..) => ResetKnown::Defs,
                             // TODO: this constraint can be relaxed
                             _ if op.has_side_effect() => ResetKnown::All,
                             _ => ResetKnown::Defs,
@@ -588,6 +592,8 @@ pub fn checked_nth_root(target: u64, nth_root: u64) -> Option<u64> {
 
 #[cfg(test)]
 pub mod tests {
+    use crate::asm_lang::VirtualImmediate12;
+
     use super::*;
     use expect_test::expect;
 
@@ -985,6 +991,117 @@ pub mod tests {
             eq $r1 $r0 $one                         ; 71
                 None Some(Const(1))
                 Defs
+        "#]]
+        .assert_eq(&str);
+    }
+
+    fn imm12(v: u64) -> VirtualImmediate12 {
+        VirtualImmediate12::new(v)
+    }
+
+    #[test]
+    fn propagate_arg0_mcp_mcpi_sb_sw_add() {
+        let mut str = String::new();
+        optimise(
+            [
+                VirtualOp::r#move("0", ConstantRegister::FuncArg0).into(),
+                VirtualOp::MCP("1".into(), "0".into(), "0".into()).into(),
+                VirtualOp::MCPI("1".into(), "0".into(), imm12(32)).into(),
+                VirtualOp::SB("1".into(), "0".into(), imm12(32)).into(),
+                VirtualOp::SW("1".into(), "0".into(), imm12(32)).into(),
+                VirtualOp::add(ConstantRegister::FuncArg1, "0", ConstantRegister::Zero).into(),
+            ],
+            |ops| ops.constant_propagate(|s| str.push_str(s)),
+        );
+        expect![[r#"
+            move $r0 $$arg0                         ; 0
+                Nothing
+            mcp $r1 $$arg0 $$arg0                   ; 1
+                Defs
+            mcpi $r1 $$arg0 i32                     ; 2
+                Defs
+            sb $r1 $$arg0 i32                       ; 3
+                Defs
+            sw $r1 $$arg0 i32                       ; 4
+                Defs
+            add $$arg1 $$arg0 $zero                 ; 5
+                None Some(Const(0))
+                changed to: move $$arg1 $$arg0                      ; 5
+                Nothing
+        "#]]
+        .assert_eq(&str);
+    }
+
+    #[test]
+    fn arg0_clobbered_before_use() {
+        let mut str = String::new();
+        optimise(
+            [
+                VirtualOp::r#move("0", ConstantRegister::FuncArg0).into(),
+                // Clobber $$arg0
+                VirtualOp::r#move(ConstantRegister::FuncArg0, "5").into(),
+                VirtualOp::add(ConstantRegister::FuncArg1, "0", ConstantRegister::Zero).into(),
+            ],
+            |ops| ops.constant_propagate(|s| str.push_str(s)),
+        );
+        expect![[r#"
+            move $r0 $$arg0                         ; 0
+                Nothing
+            move $$arg0 $r5                         ; 1
+                Nothing
+            add $$arg1 $r0 $zero                    ; 2
+                None Some(Const(0))
+                changed to: move $$arg1 $r0                         ; 2
+                Nothing
+        "#]]
+        .assert_eq(&str);
+    }
+
+    #[test]
+    fn call_throws_all_known_values_away() {
+        let mut str = String::new();
+        optimise(
+            [
+                VirtualOp::r#move("0", ConstantRegister::FuncArg0).into(),
+                Op::call(Label(0)),
+                VirtualOp::add(ConstantRegister::FuncArg1, "0", ConstantRegister::Zero).into(),
+            ],
+            |ops| ops.constant_propagate(|s| str.push_str(s)),
+        );
+        expect![[r#"
+            move $r0 $$arg0                         ; 0
+                Nothing
+            fncall .0                               ; 1
+                All
+            add $$arg1 $r0 $zero                    ; 2
+                None Some(Const(0))
+                changed to: move $$arg1 $r0                         ; 2
+                Nothing
+        "#]]
+        .assert_eq(&str);
+    }
+
+    #[test]
+    fn r0_clobbered_before_use() {
+        let mut str = String::new();
+        optimise(
+            [
+                VirtualOp::r#move("0", ConstantRegister::FuncArg0).into(),
+                // Clobber $r0
+                VirtualOp::movi("0", 1).into(),
+                VirtualOp::add(ConstantRegister::FuncArg1, "0", ConstantRegister::Zero).into(),
+            ],
+            |ops| ops.constant_propagate(|s| str.push_str(s)),
+        );
+        expect![[r#"
+            move $r0 $$arg0                         ; 0
+                Nothing
+            movi $r0 i1                             ; 1
+                Nothing
+            add $$arg1 $one $zero                   ; 2
+                Some(Const(1)) Some(Const(0))
+                changed to: movi $$arg1 i1                          ; 2
+                Nothing
         "#]]
         .assert_eq(&str);
     }
