@@ -1,0 +1,8 @@
+[[package]]
+name = "configurable_data_section_far_jumps"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-E460A376F4BA2F26"
