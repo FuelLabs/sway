@@ -575,25 +575,22 @@ jal  $zero $$reta i0          ; [fn end: check_no_locals_no_call_args_spills_24]
 
 
 
-
-pshh i530432                  ; [fn init: check_no_locals_call_args_no_spills_28]: push used high registers 40..64
+pshh i528384                  ; [fn init: check_no_locals_call_args_no_spills_28]: push used high registers 40..64
 move $$locbase $sp            ; [fn init: check_no_locals_call_args_no_spills_28]: set locals base register
 cfei i24                      ; [fn init: check_no_locals_call_args_no_spills_28]: allocate: locals 0 byte(s), call args 3 slot(s)
-move $r0 $$arg0               ; [fn init: check_no_locals_call_args_no_spills_28]: copy argument 0 (a)
-move $r1 $$reta               ; [fn init: check_no_locals_call_args_no_spills_28]: save return address
+move $r0 $$reta               ; [fn init: check_no_locals_call_args_no_spills_28]: save return address
 addi $$arg5 $$locbase i0      ; [call: need_call_args_on_stack_29]: save address of stack arguments in last argument register
-move $$arg0 $r0               ; [call: need_call_args_on_stack_29]: pass argument 0
-move $$arg1 $r0               ; [call: need_call_args_on_stack_29]: pass argument 1
-move $$arg2 $r0               ; [call: need_call_args_on_stack_29]: pass argument 2
-move $$arg3 $r0               ; [call: need_call_args_on_stack_29]: pass argument 3
-move $$arg4 $r0               ; [call: need_call_args_on_stack_29]: pass argument 4
-sw   $$locbase $r0 i0         ; [call: need_call_args_on_stack_29]: pass argument 5 via its stack slot
-sw   $$locbase $r0 i1         ; [call: need_call_args_on_stack_29]: pass argument 6 via its stack slot
-sw   $$locbase $r0 i2         ; [call: need_call_args_on_stack_29]: pass argument 7 via its stack slot
+move $$arg1 $$arg0            ; [call: need_call_args_on_stack_29]: pass argument 1
+move $$arg2 $$arg0            ; [call: need_call_args_on_stack_29]: pass argument 2
+move $$arg3 $$arg0            ; [call: need_call_args_on_stack_29]: pass argument 3
+move $$arg4 $$arg0            ; [call: need_call_args_on_stack_29]: pass argument 4
+sw   $$locbase $$arg0 i0      ; [call: need_call_args_on_stack_29]: pass argument 5 via its stack slot
+sw   $$locbase $$arg0 i1      ; [call: need_call_args_on_stack_29]: pass argument 6 via its stack slot
+sw   $$locbase $$arg0 i2      ; [call: need_call_args_on_stack_29]: pass argument 7 via its stack slot
 jal  $$reta $pc i5            ; [call: need_call_args_on_stack_29]: call function
 cfsi i24                      ; [fn end: check_no_locals_call_args_no_spills_28] free: locals 0 byte(s), call args 3 slot(s)
-move $$reta $r1               ; [fn end: check_no_locals_call_args_no_spills_28] restore return address
-poph i530432                  ; [fn end: check_no_locals_call_args_no_spills_28]: restore used high registers 40..64
+move $$reta $r0               ; [fn end: check_no_locals_call_args_no_spills_28] restore return address
+poph i528384                  ; [fn end: check_no_locals_call_args_no_spills_28]: restore used high registers 40..64
 jal  $zero $$reta i0          ; [fn end: check_no_locals_call_args_no_spills_28] return from call
 
 
@@ -608,407 +605,398 @@ sw   $$locbase $r0 i3         ; [spill/refill]: spill
 move $r0 $$reta               ; [fn init: check_no_locals_call_args_spills_30]: save return address
 sw   $$locbase $r0 i4         ; [spill/refill]: spill
 addi $$arg5 $$locbase i0      ; [call: need_call_args_on_stack_29]: save address of stack arguments in last argument register
-lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
-move $$arg0 $r0               ; [call: need_call_args_on_stack_29]: pass argument 0
-lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
-move $$arg1 $r0               ; [call: need_call_args_on_stack_29]: pass argument 1
-lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
-move $$arg2 $r0               ; [call: need_call_args_on_stack_29]: pass argument 2
-lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
-move $$arg3 $r0               ; [call: need_call_args_on_stack_29]: pass argument 3
-lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
-move $$arg4 $r0               ; [call: need_call_args_on_stack_29]: pass argument 4
-lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
-sw   $$locbase $r0 i0         ; [call: need_call_args_on_stack_29]: pass argument 5 via its stack slot
-lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
-sw   $$locbase $r0 i1         ; [call: need_call_args_on_stack_29]: pass argument 6 via its stack slot
-lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
-sw   $$locbase $r0 i2         ; [call: need_call_args_on_stack_29]: pass argument 7 via its stack slot
-subi $$tmp $pc i152           ; load far jump target address
+move $$arg1 $$arg0            ; [call: need_call_args_on_stack_29]: pass argument 1
+move $$arg2 $$arg0            ; [call: need_call_args_on_stack_29]: pass argument 2
+move $$arg3 $$arg0            ; [call: need_call_args_on_stack_29]: pass argument 3
+move $$arg4 $$arg0            ; [call: need_call_args_on_stack_29]: pass argument 4
+sw   $$locbase $$arg0 i0      ; [call: need_call_args_on_stack_29]: pass argument 5 via its stack slot
+sw   $$locbase $$arg0 i1      ; [call: need_call_args_on_stack_29]: pass argument 6 via its stack slot
+sw   $$locbase $$arg0 i2      ; [call: need_call_args_on_stack_29]: pass argument 7 via its stack slot
+subi $$tmp $pc i116           ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: need_call_args_on_stack_29]: call function
 move $r0 $$retv               ; [call: need_call_args_on_stack_29]: copy returned value
 sw   $$locbase $r0 i5         ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i288           ; load far jump target address
+subi $$tmp $pc i244           ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i6         ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i312           ; load far jump target address
+subi $$tmp $pc i268           ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i7         ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i336           ; load far jump target address
+subi $$tmp $pc i292           ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i8         ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i360           ; load far jump target address
+subi $$tmp $pc i316           ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i9         ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i384           ; load far jump target address
+subi $$tmp $pc i340           ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i10        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i408           ; load far jump target address
+subi $$tmp $pc i364           ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i11        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i432           ; load far jump target address
+subi $$tmp $pc i388           ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i12        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i456           ; load far jump target address
+subi $$tmp $pc i412           ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i13        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i480           ; load far jump target address
+subi $$tmp $pc i436           ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i14        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i504           ; load far jump target address
+subi $$tmp $pc i460           ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i15        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i528           ; load far jump target address
+subi $$tmp $pc i484           ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i16        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i552           ; load far jump target address
+subi $$tmp $pc i508           ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i17        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i576           ; load far jump target address
+subi $$tmp $pc i532           ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i18        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i600           ; load far jump target address
+subi $$tmp $pc i556           ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i19        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i624           ; load far jump target address
+subi $$tmp $pc i580           ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i20        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i648           ; load far jump target address
+subi $$tmp $pc i604           ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i21        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i672           ; load far jump target address
+subi $$tmp $pc i628           ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i22        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i696           ; load far jump target address
+subi $$tmp $pc i652           ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i23        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i720           ; load far jump target address
+subi $$tmp $pc i676           ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i24        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i744           ; load far jump target address
+subi $$tmp $pc i700           ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i25        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i768           ; load far jump target address
+subi $$tmp $pc i724           ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i26        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i792           ; load far jump target address
+subi $$tmp $pc i748           ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i27        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i816           ; load far jump target address
+subi $$tmp $pc i772           ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i28        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i840           ; load far jump target address
+subi $$tmp $pc i796           ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i29        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i864           ; load far jump target address
+subi $$tmp $pc i820           ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i30        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i888           ; load far jump target address
+subi $$tmp $pc i844           ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i31        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i912           ; load far jump target address
+subi $$tmp $pc i868           ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i32        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i936           ; load far jump target address
+subi $$tmp $pc i892           ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i33        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i960           ; load far jump target address
+subi $$tmp $pc i916           ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i34        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i984           ; load far jump target address
+subi $$tmp $pc i940           ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i35        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i1008          ; load far jump target address
+subi $$tmp $pc i964           ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i36        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i1032          ; load far jump target address
+subi $$tmp $pc i988           ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i37        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i1056          ; load far jump target address
+subi $$tmp $pc i1012          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i38        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i1080          ; load far jump target address
+subi $$tmp $pc i1036          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i39        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i1104          ; load far jump target address
+subi $$tmp $pc i1060          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i40        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i1128          ; load far jump target address
+subi $$tmp $pc i1084          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i41        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i1152          ; load far jump target address
+subi $$tmp $pc i1108          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i42        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i1176          ; load far jump target address
+subi $$tmp $pc i1132          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i43        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i1200          ; load far jump target address
+subi $$tmp $pc i1156          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i44        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i1224          ; load far jump target address
+subi $$tmp $pc i1180          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i45        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i1248          ; load far jump target address
+subi $$tmp $pc i1204          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i46        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i1272          ; load far jump target address
+subi $$tmp $pc i1228          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i47        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i1296          ; load far jump target address
+subi $$tmp $pc i1252          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i48        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i1320          ; load far jump target address
+subi $$tmp $pc i1276          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i49        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i1344          ; load far jump target address
+subi $$tmp $pc i1300          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i50        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i1368          ; load far jump target address
+subi $$tmp $pc i1324          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i51        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i1392          ; load far jump target address
+subi $$tmp $pc i1348          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i52        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i1416          ; load far jump target address
+subi $$tmp $pc i1372          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i53        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i1440          ; load far jump target address
+subi $$tmp $pc i1396          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i54        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i1464          ; load far jump target address
+subi $$tmp $pc i1420          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i55        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i1488          ; load far jump target address
+subi $$tmp $pc i1444          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i56        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i1512          ; load far jump target address
+subi $$tmp $pc i1468          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i57        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i1536          ; load far jump target address
+subi $$tmp $pc i1492          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i58        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i1560          ; load far jump target address
+subi $$tmp $pc i1516          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i59        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i1584          ; load far jump target address
+subi $$tmp $pc i1540          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i60        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i1608          ; load far jump target address
+subi $$tmp $pc i1564          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i61        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i1632          ; load far jump target address
+subi $$tmp $pc i1588          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i62        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i1656          ; load far jump target address
+subi $$tmp $pc i1612          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i63        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i1680          ; load far jump target address
+subi $$tmp $pc i1636          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i64        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i1704          ; load far jump target address
+subi $$tmp $pc i1660          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i65        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i1728          ; load far jump target address
+subi $$tmp $pc i1684          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i66        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i1752          ; load far jump target address
+subi $$tmp $pc i1708          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i67        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i1776          ; load far jump target address
+subi $$tmp $pc i1732          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i68        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i1800          ; load far jump target address
+subi $$tmp $pc i1756          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i69        ; [spill/refill]: spill
@@ -1016,272 +1004,272 @@ lw   $r0 $$locbase i5         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i6         ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i1816          ; load far jump target address
+subi $$tmp $pc i1772          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i7         ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i1836          ; load far jump target address
+subi $$tmp $pc i1792          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i8         ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i1856          ; load far jump target address
+subi $$tmp $pc i1812          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i9         ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i1876          ; load far jump target address
+subi $$tmp $pc i1832          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i10        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i1896          ; load far jump target address
+subi $$tmp $pc i1852          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i11        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i1916          ; load far jump target address
+subi $$tmp $pc i1872          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i12        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i1936          ; load far jump target address
+subi $$tmp $pc i1892          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i13        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i1956          ; load far jump target address
+subi $$tmp $pc i1912          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i14        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i1976          ; load far jump target address
+subi $$tmp $pc i1932          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i15        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i1996          ; load far jump target address
+subi $$tmp $pc i1952          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i16        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2016          ; load far jump target address
+subi $$tmp $pc i1972          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i17        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2036          ; load far jump target address
+subi $$tmp $pc i1992          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i18        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2056          ; load far jump target address
+subi $$tmp $pc i2012          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i19        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2076          ; load far jump target address
+subi $$tmp $pc i2032          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i20        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2096          ; load far jump target address
+subi $$tmp $pc i2052          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i21        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2116          ; load far jump target address
+subi $$tmp $pc i2072          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i22        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2136          ; load far jump target address
+subi $$tmp $pc i2092          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i23        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2156          ; load far jump target address
+subi $$tmp $pc i2112          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i24        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2176          ; load far jump target address
+subi $$tmp $pc i2132          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i25        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2196          ; load far jump target address
+subi $$tmp $pc i2152          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i26        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2216          ; load far jump target address
+subi $$tmp $pc i2172          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i27        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2236          ; load far jump target address
+subi $$tmp $pc i2192          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i28        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2256          ; load far jump target address
+subi $$tmp $pc i2212          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i29        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2276          ; load far jump target address
+subi $$tmp $pc i2232          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i30        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2296          ; load far jump target address
+subi $$tmp $pc i2252          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i31        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2316          ; load far jump target address
+subi $$tmp $pc i2272          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i32        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2336          ; load far jump target address
+subi $$tmp $pc i2292          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i33        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2356          ; load far jump target address
+subi $$tmp $pc i2312          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i34        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2376          ; load far jump target address
+subi $$tmp $pc i2332          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i35        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2396          ; load far jump target address
+subi $$tmp $pc i2352          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i36        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2416          ; load far jump target address
+subi $$tmp $pc i2372          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i37        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2436          ; load far jump target address
+subi $$tmp $pc i2392          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i38        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2456          ; load far jump target address
+subi $$tmp $pc i2412          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i39        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2476          ; load far jump target address
+subi $$tmp $pc i2432          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i40        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2496          ; load far jump target address
+subi $$tmp $pc i2452          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i41        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2516          ; load far jump target address
+subi $$tmp $pc i2472          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i42        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2536          ; load far jump target address
+subi $$tmp $pc i2492          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i43        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2556          ; load far jump target address
+subi $$tmp $pc i2512          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i44        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2576          ; load far jump target address
+subi $$tmp $pc i2532          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i45        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2596          ; load far jump target address
+subi $$tmp $pc i2552          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i46        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2616          ; load far jump target address
+subi $$tmp $pc i2572          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i47        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2636          ; load far jump target address
+subi $$tmp $pc i2592          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i48        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2656          ; load far jump target address
+subi $$tmp $pc i2612          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i49        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2676          ; load far jump target address
+subi $$tmp $pc i2632          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i50        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2696          ; load far jump target address
+subi $$tmp $pc i2652          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i51        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2716          ; load far jump target address
+subi $$tmp $pc i2672          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i52        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2736          ; load far jump target address
+subi $$tmp $pc i2692          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i53        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2756          ; load far jump target address
+subi $$tmp $pc i2712          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i54        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2776          ; load far jump target address
+subi $$tmp $pc i2732          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i55        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2796          ; load far jump target address
+subi $$tmp $pc i2752          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i56        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2816          ; load far jump target address
+subi $$tmp $pc i2772          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i57        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2836          ; load far jump target address
+subi $$tmp $pc i2792          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i58        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2856          ; load far jump target address
+subi $$tmp $pc i2812          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i59        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-subi $$tmp $pc i2876          ; load far jump target address
+subi $$tmp $pc i2832          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 lw   $r0 $$locbase i60        ; [spill/refill]: refill from spill
 add  $r1 $$retv $r0
@@ -1332,15 +1320,14 @@ cfei i24                      ; [fn init: check_locals_call_args_no_spills_32]: 
 move $r0 $$arg0               ; [fn init: check_locals_call_args_no_spills_32]: copy argument 0 (a)
 move $r1 $$reta               ; [fn init: check_locals_call_args_no_spills_32]: save return address
 addi $$arg5 $$locbase i0      ; [call: need_call_args_on_stack_29]: save address of stack arguments in last argument register
-move $$arg0 $r0               ; [call: need_call_args_on_stack_29]: pass argument 0
-move $$arg1 $r0               ; [call: need_call_args_on_stack_29]: pass argument 1
-move $$arg2 $r0               ; [call: need_call_args_on_stack_29]: pass argument 2
-move $$arg3 $r0               ; [call: need_call_args_on_stack_29]: pass argument 3
-move $$arg4 $r0               ; [call: need_call_args_on_stack_29]: pass argument 4
-sw   $$locbase $r0 i0         ; [call: need_call_args_on_stack_29]: pass argument 5 via its stack slot
-sw   $$locbase $r0 i1         ; [call: need_call_args_on_stack_29]: pass argument 6 via its stack slot
-sw   $$locbase $r0 i2         ; [call: need_call_args_on_stack_29]: pass argument 7 via its stack slot
-subi $$tmp $pc i2992          ; load far jump target address
+move $$arg1 $$arg0            ; [call: need_call_args_on_stack_29]: pass argument 1
+move $$arg2 $$arg0            ; [call: need_call_args_on_stack_29]: pass argument 2
+move $$arg3 $$arg0            ; [call: need_call_args_on_stack_29]: pass argument 3
+move $$arg4 $$arg0            ; [call: need_call_args_on_stack_29]: pass argument 4
+sw   $$locbase $$arg0 i0      ; [call: need_call_args_on_stack_29]: pass argument 5 via its stack slot
+sw   $$locbase $$arg0 i1      ; [call: need_call_args_on_stack_29]: pass argument 6 via its stack slot
+sw   $$locbase $$arg0 i2      ; [call: need_call_args_on_stack_29]: pass argument 7 via its stack slot
+subi $$tmp $pc i2952          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: need_call_args_on_stack_29]: call function
 add  $r2 $$retv $r0
 add  $r2 $r2 $r0
@@ -1368,464 +1355,476 @@ sw   $$locbase $r0 i3         ; [spill/refill]: spill
 move $r0 $$reta               ; [fn init: check_locals_call_args_spills_33]: save return address
 sw   $$locbase $r0 i4         ; [spill/refill]: spill
 addi $$arg5 $$locbase i0      ; [call: need_call_args_on_stack_29]: save address of stack arguments in last argument register
-lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
-move $$arg0 $r0               ; [call: need_call_args_on_stack_29]: pass argument 0
-lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
-move $$arg1 $r0               ; [call: need_call_args_on_stack_29]: pass argument 1
-lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
-move $$arg2 $r0               ; [call: need_call_args_on_stack_29]: pass argument 2
-lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
-move $$arg3 $r0               ; [call: need_call_args_on_stack_29]: pass argument 3
-lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
-move $$arg4 $r0               ; [call: need_call_args_on_stack_29]: pass argument 4
-lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
-sw   $$locbase $r0 i0         ; [call: need_call_args_on_stack_29]: pass argument 5 via its stack slot
-lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
-sw   $$locbase $r0 i1         ; [call: need_call_args_on_stack_29]: pass argument 6 via its stack slot
-lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
-sw   $$locbase $r0 i2         ; [call: need_call_args_on_stack_29]: pass argument 7 via its stack slot
-subi $$tmp $pc i3148          ; load far jump target address
+move $$arg1 $$arg0            ; [call: need_call_args_on_stack_29]: pass argument 1
+move $$arg2 $$arg0            ; [call: need_call_args_on_stack_29]: pass argument 2
+move $$arg3 $$arg0            ; [call: need_call_args_on_stack_29]: pass argument 3
+move $$arg4 $$arg0            ; [call: need_call_args_on_stack_29]: pass argument 4
+sw   $$locbase $$arg0 i0      ; [call: need_call_args_on_stack_29]: pass argument 5 via its stack slot
+sw   $$locbase $$arg0 i1      ; [call: need_call_args_on_stack_29]: pass argument 6 via its stack slot
+sw   $$locbase $$arg0 i2      ; [call: need_call_args_on_stack_29]: pass argument 7 via its stack slot
+subi $$tmp $pc i3072          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: need_call_args_on_stack_29]: call function
 move $r0 $$retv               ; [call: need_call_args_on_stack_29]: copy returned value
 sw   $$locbase $r0 i5         ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i3284          ; load far jump target address
+subi $$tmp $pc i3200          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i6         ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i3308          ; load far jump target address
+subi $$tmp $pc i3224          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i7         ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i3332          ; load far jump target address
+subi $$tmp $pc i3248          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i8         ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i3356          ; load far jump target address
+subi $$tmp $pc i3272          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i9         ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i3380          ; load far jump target address
+subi $$tmp $pc i3296          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i10        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i3404          ; load far jump target address
+subi $$tmp $pc i3320          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i11        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i3428          ; load far jump target address
+subi $$tmp $pc i3344          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i12        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i3452          ; load far jump target address
+subi $$tmp $pc i3368          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i13        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i3476          ; load far jump target address
+subi $$tmp $pc i3392          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i14        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i3500          ; load far jump target address
+subi $$tmp $pc i3416          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i15        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i3524          ; load far jump target address
+subi $$tmp $pc i3440          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i16        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i3548          ; load far jump target address
+subi $$tmp $pc i3464          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i17        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i3572          ; load far jump target address
+subi $$tmp $pc i3488          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
-noop                          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i18        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i3600          ; load far jump target address
+subi $$tmp $pc i3512          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
-noop                          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i19        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i3628          ; load far jump target address
+subi $$tmp $pc i3536          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
-noop                          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i20        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i3656          ; load far jump target address
+subi $$tmp $pc i3560          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 noop                          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i21        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i3684          ; load far jump target address
+subi $$tmp $pc i3588          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 noop                          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i22        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i3712          ; load far jump target address
+subi $$tmp $pc i3616          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 noop                          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i23        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i3740          ; load far jump target address
+subi $$tmp $pc i3644          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 noop                          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i24        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i3768          ; load far jump target address
+subi $$tmp $pc i3672          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 noop                          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i25        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i3796          ; load far jump target address
+subi $$tmp $pc i3700          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 noop                          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i26        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i3824          ; load far jump target address
+subi $$tmp $pc i3728          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 noop                          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i27        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i3852          ; load far jump target address
+subi $$tmp $pc i3756          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 noop                          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i28        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i3880          ; load far jump target address
+subi $$tmp $pc i3784          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 noop                          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i29        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i3908          ; load far jump target address
+subi $$tmp $pc i3812          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 noop                          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i30        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i3936          ; load far jump target address
+subi $$tmp $pc i3840          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 noop                          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i31        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i3964          ; load far jump target address
+subi $$tmp $pc i3868          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 noop                          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i32        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i3992          ; load far jump target address
+subi $$tmp $pc i3896          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 noop                          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i33        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i4020          ; load far jump target address
+subi $$tmp $pc i3924          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 noop                          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i34        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i4048          ; load far jump target address
+subi $$tmp $pc i3952          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 noop                          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i35        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-subi $$tmp $pc i4076          ; load far jump target address
+subi $$tmp $pc i3980          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 noop                          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i36        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-movi $$tmp i4108              ; load call target address
-sub  $$tmp $pc $$tmp          ; load call target address
+subi $$tmp $pc i4008          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
+noop                          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i37        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-movi $$tmp i4136              ; load call target address
-sub  $$tmp $pc $$tmp          ; load call target address
+subi $$tmp $pc i4036          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
+noop                          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i38        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-movi $$tmp i4164              ; load call target address
-sub  $$tmp $pc $$tmp          ; load call target address
+subi $$tmp $pc i4064          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
+noop                          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i39        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-movi $$tmp i4192              ; load call target address
-sub  $$tmp $pc $$tmp          ; load call target address
+subi $$tmp $pc i4092          ; load far jump target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
+noop                          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i40        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-movi $$tmp i4220              ; load call target address
+movi $$tmp i4124              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i41        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-movi $$tmp i4248              ; load call target address
+movi $$tmp i4152              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i42        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-movi $$tmp i4276              ; load call target address
+movi $$tmp i4180              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i43        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-movi $$tmp i4304              ; load call target address
+movi $$tmp i4208              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i44        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-movi $$tmp i4332              ; load call target address
+movi $$tmp i4236              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i45        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-movi $$tmp i4360              ; load call target address
+movi $$tmp i4264              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i46        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-movi $$tmp i4388              ; load call target address
+movi $$tmp i4292              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i47        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-movi $$tmp i4416              ; load call target address
+movi $$tmp i4320              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i48        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-movi $$tmp i4444              ; load call target address
+movi $$tmp i4348              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i49        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-movi $$tmp i4472              ; load call target address
+movi $$tmp i4376              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i50        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-movi $$tmp i4500              ; load call target address
+movi $$tmp i4404              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i51        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-movi $$tmp i4528              ; load call target address
+movi $$tmp i4432              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i52        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-movi $$tmp i4556              ; load call target address
+movi $$tmp i4460              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i53        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-movi $$tmp i4584              ; load call target address
+movi $$tmp i4488              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i54        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-movi $$tmp i4612              ; load call target address
+movi $$tmp i4516              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i55        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-movi $$tmp i4640              ; load call target address
+movi $$tmp i4544              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i56        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-movi $$tmp i4668              ; load call target address
+movi $$tmp i4572              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i57        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-movi $$tmp i4696              ; load call target address
+movi $$tmp i4600              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i58        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-movi $$tmp i4724              ; load call target address
+movi $$tmp i4628              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i59        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-movi $$tmp i4752              ; load call target address
+movi $$tmp i4656              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i60        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-movi $$tmp i4780              ; load call target address
+movi $$tmp i4684              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i61        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-movi $$tmp i4808              ; load call target address
+movi $$tmp i4712              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i62        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-movi $$tmp i4836              ; load call target address
+movi $$tmp i4740              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i63        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-movi $$tmp i4864              ; load call target address
+movi $$tmp i4768              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i64        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-movi $$tmp i4892              ; load call target address
+movi $$tmp i4796              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i65        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-movi $$tmp i4920              ; load call target address
+movi $$tmp i4824              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i66        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-movi $$tmp i4948              ; load call target address
+movi $$tmp i4852              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i67        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-movi $$tmp i4976              ; load call target address
+movi $$tmp i4880              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i68        ; [spill/refill]: spill
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: dummy_25]: pass argument 0
-movi $$tmp i5004              ; load call target address
+movi $$tmp i4908              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: dummy_25]: call function
 move $r0 $$retv               ; [call: dummy_25]: copy returned value
 sw   $$locbase $r0 i69        ; [spill/refill]: spill
 lw   $r0 $$locbase i5         ; [spill/refill]: refill from spill
 move $$arg0 $r0               ; [call: add_26]: pass argument 0
+lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
+move $$arg1 $r0               ; [call: add_26]: pass argument 1
+movi $$tmp i4928              ; load call target address
+sub  $$tmp $pc $$tmp          ; load call target address
+jal  $$reta $$tmp i0          ; [call: add_26]: call function
+move $$arg0 $$retv            ; [call: add_26]: pass argument 0
+lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
+move $$arg1 $r0               ; [call: add_26]: pass argument 1
+movi $$tmp i4952              ; load call target address
+sub  $$tmp $pc $$tmp          ; load call target address
+jal  $$reta $$tmp i0          ; [call: add_26]: call function
+move $$arg0 $$retv            ; [call: add_26]: pass argument 0
+lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
+move $$arg1 $r0               ; [call: add_26]: pass argument 1
+movi $$tmp i4976              ; load call target address
+sub  $$tmp $pc $$tmp          ; load call target address
+jal  $$reta $$tmp i0          ; [call: add_26]: call function
+move $$arg0 $$retv            ; [call: add_26]: pass argument 0
+lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
+move $$arg1 $r0               ; [call: add_26]: pass argument 1
+movi $$tmp i5000              ; load call target address
+sub  $$tmp $pc $$tmp          ; load call target address
+jal  $$reta $$tmp i0          ; [call: add_26]: call function
+move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5024              ; load call target address
@@ -1850,351 +1849,327 @@ movi $$tmp i5096              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i6         ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5120              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i7         ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5144              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i8         ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5168              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i3         ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i9         ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5192              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i6         ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i10        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5216              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i7         ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i11        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5240              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i8         ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i12        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5264              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i9         ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i13        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5288              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i10        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i14        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5312              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i11        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i15        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5336              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i12        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i16        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5360              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i13        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i17        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5384              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i14        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i18        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5408              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i15        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i19        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5432              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i16        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i20        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5456              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i17        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i21        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5480              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i18        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i22        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5504              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i19        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i23        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5528              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i20        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i24        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5552              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i21        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i25        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5576              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i22        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i26        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5600              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i23        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i27        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5624              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i24        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i28        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5648              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i25        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i29        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5672              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i26        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i30        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5696              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i27        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i31        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5720              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i28        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i32        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5744              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i29        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i33        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5768              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i30        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i34        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5792              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i31        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i35        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5816              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i32        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i36        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5840              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i33        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i37        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5864              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i34        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i38        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5888              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i35        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i39        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5912              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i36        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i40        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5936              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i37        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i41        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5960              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i38        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i42        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i5984              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i39        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i43        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i6008              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i40        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i44        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i6032              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i41        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i45        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i6056              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i42        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i46        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i6080              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i43        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i47        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i6104              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i44        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i48        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i6128              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i45        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i49        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i6152              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i46        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i50        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i6176              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i47        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i51        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i6200              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i48        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i52        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i6224              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i49        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i53        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i6248              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i50        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i54        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i6272              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i51        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i55        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i6296              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i52        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i56        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i6320              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i53        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i57        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i6344              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i54        ; [spill/refill]: refill from spill
+lw   $r0 $$locbase i58        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
 movi $$tmp i6368              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i55        ; [spill/refill]: refill from spill
-move $$arg1 $r0               ; [call: add_26]: pass argument 1
-movi $$tmp i6392              ; load call target address
-sub  $$tmp $pc $$tmp          ; load call target address
-jal  $$reta $$tmp i0          ; [call: add_26]: call function
-move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i56        ; [spill/refill]: refill from spill
-move $$arg1 $r0               ; [call: add_26]: pass argument 1
-movi $$tmp i6416              ; load call target address
-sub  $$tmp $pc $$tmp          ; load call target address
-jal  $$reta $$tmp i0          ; [call: add_26]: call function
-move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i57        ; [spill/refill]: refill from spill
-move $$arg1 $r0               ; [call: add_26]: pass argument 1
-movi $$tmp i6440              ; load call target address
-sub  $$tmp $pc $$tmp          ; load call target address
-jal  $$reta $$tmp i0          ; [call: add_26]: call function
-move $$arg0 $$retv            ; [call: add_26]: pass argument 0
-lw   $r0 $$locbase i58        ; [spill/refill]: refill from spill
-move $$arg1 $r0               ; [call: add_26]: pass argument 1
-movi $$tmp i6464              ; load call target address
-sub  $$tmp $pc $$tmp          ; load call target address
-jal  $$reta $$tmp i0          ; [call: add_26]: call function
-move $$arg0 $$retv            ; [call: add_26]: pass argument 0
 lw   $r0 $$locbase i59        ; [spill/refill]: refill from spill
 move $$arg1 $r0               ; [call: add_26]: pass argument 1
-movi $$tmp i6488              ; load call target address
+movi $$tmp i6392              ; load call target address
 sub  $$tmp $pc $$tmp          ; load call target address
 jal  $$reta $$tmp i0          ; [call: add_26]: call function
 lw   $r0 $$locbase i60        ; [spill/refill]: refill from spill
