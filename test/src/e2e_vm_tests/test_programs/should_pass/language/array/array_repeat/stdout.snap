@@ -424,9 +424,9 @@ eq   $r2 $r2 $zero
 jnzf $r2 $zero i1
 jmpf $zero i6
 move $$arg0 $r0               ; [call: log_45]: pass argument 0
-jal  $$reta $pc i119          ; [call: log_45]: call function
+jal  $$reta $pc i118          ; [call: log_45]: call function
 movi $$arg0 i255              ; [call: log_45]: pass argument 0
-jal  $$reta $pc i117          ; [call: log_45]: call function
+jal  $$reta $pc i116          ; [call: log_45]: call function
 load $r0 data_NonConfigurable_0; load constant from data section
 rvrt $r0
 cfsi i264920                  ; [fn end: main_0] free: locals 264920 byte(s), call args 0 slot(s)
@@ -514,7 +514,7 @@ sb   $r0 $r3 i0               ; store byte
 addi $r3 $$locbase i24        ; get offset to local __ptr slice
 move $$arg0 $r0               ; [call: to_slice_20]: pass argument 0
 move $$arg1 $r3               ; [call: to_slice_20]: pass argument 1
-jal  $$reta $pc i18           ; [call: to_slice_20]: call function
+jal  $$reta $pc i17           ; [call: to_slice_20]: call function
 addi $r0 $$locbase i72        ; get offset to local __ptr slice
 mcpi $r0 $r3 i16              ; copy memory
 addi $r3 $$locbase i56        ; get offset to local __ptr slice
@@ -523,9 +523,8 @@ addi $r3 $$locbase i40        ; get offset to local __ptr slice
 mcpi $r3 $r0 i16              ; copy memory
 mcpi $$locbase $r0 i16        ; copy memory
 lw   $r0 $$locbase i0         ; load word
-movi $r3 i1                   ; copy ASM block argument's constant initial value to register
 aloc $one                     ; aloc size
-mcp  $hp $r0 $r3              ; mcp hp src size
+mcp  $hp $r0 $one             ; mcp hp src size
 lb   $r0 $hp i0               ; load byte
 sb   $r1 $r0 i0               ; store byte
 cfsi i88                      ; [fn end: decode_array_19] free: locals 88 byte(s), call args 0 slot(s)
@@ -569,7 +568,7 @@ data_NonConfigurable_2 .word 14454674236531057292
 
 0x00000000 MOVE R60 $pc                                    ;; [26, 240, 48, 0]
 0x00000004 JMPF $zero 0x4                                  ;; [116, 0, 0, 4]
-0x00000008                                                 ;; [0, 0, 0, 0, 0, 0, 3, 152]
+0x00000008                                                 ;; [0, 0, 0, 0, 0, 0, 3, 144]
 0x00000010                                                 ;; [0, 0, 0, 0, 0, 0, 0, 0]
 0x00000018 LW R63 R60 0x1                                  ;; [93, 255, 192, 1]
 0x0000001c ADD R63 R63 R60                                 ;; [16, 255, 255, 0]
@@ -659,9 +658,9 @@ data_NonConfigurable_2 .word 14454674236531057292
 0x0000016c JNZF R50 $zero 0x1                              ;; [118, 200, 0, 1]
 0x00000170 JMPF $zero 0x6                                  ;; [116, 0, 0, 6]
 0x00000174 MOVE R58 R52                                    ;; [26, 235, 64, 0]
-0x00000178 JAL R62 $pc 0x77                                ;; [153, 248, 48, 119]
+0x00000178 JAL R62 $pc 0x76                                ;; [153, 248, 48, 118]
 0x0000017c MOVI R58 0xff                                   ;; [114, 232, 0, 255]
-0x00000180 JAL R62 $pc 0x75                                ;; [153, 248, 48, 117]
+0x00000180 JAL R62 $pc 0x74                                ;; [153, 248, 48, 116]
 0x00000184 LW R52 R63 0x0                                  ;; [93, 211, 240, 0]
 0x00000188 RVRT R52                                        ;; [54, 208, 0, 0]
 0x0000018c CFSI 0x40ad8                                    ;; [146, 4, 10, 216]
@@ -749,7 +748,7 @@ data_NonConfigurable_2 .word 14454674236531057292
 0x000002d4 ADDI R49 R59 0x18                               ;; [80, 199, 176, 24]
 0x000002d8 MOVE R58 R52                                    ;; [26, 235, 64, 0]
 0x000002dc MOVE R57 R49                                    ;; [26, 231, 16, 0]
-0x000002e0 JAL R62 $pc 0x12                                ;; [153, 248, 48, 18]
+0x000002e0 JAL R62 $pc 0x11                                ;; [153, 248, 48, 17]
 0x000002e4 ADDI R52 R59 0x48                               ;; [80, 211, 176, 72]
 0x000002e8 MCPI R52 R49 0x10                               ;; [96, 211, 16, 16]
 0x000002ec ADDI R49 R59 0x38                               ;; [80, 199, 176, 56]
@@ -758,47 +757,45 @@ data_NonConfigurable_2 .word 14454674236531057292
 0x000002f8 MCPI R49 R52 0x10                               ;; [96, 199, 64, 16]
 0x000002fc MCPI R59 R52 0x10                               ;; [96, 239, 64, 16]
 0x00000300 LW R52 R59 0x0                                  ;; [93, 211, 176, 0]
-0x00000304 MOVI R49 0x1                                    ;; [114, 196, 0, 1]
-0x00000308 ALOC $one                                       ;; [38, 4, 0, 0]
-0x0000030c MCP $hp R52 R49                                 ;; [40, 31, 76, 64]
-0x00000310 LB R52 $hp 0x0                                  ;; [92, 208, 112, 0]
-0x00000314 SB R51 R52 0x0                                  ;; [94, 207, 64, 0]
-0x00000318 CFSI 0x58                                       ;; [146, 0, 0, 88]
-0x0000031c MOVE R62 R50                                    ;; [26, 251, 32, 0]
-0x00000320 POPH 0x81e00                                    ;; [152, 8, 30, 0]
-0x00000324 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
-0x00000328 PSHH 0x81000                                    ;; [150, 8, 16, 0]
-0x0000032c MOVE R59 $sp                                    ;; [26, 236, 80, 0]
-0x00000330 CFEI 0x18                                       ;; [145, 0, 0, 24]
-0x00000334 ADDI R52 R59 0x10                               ;; [80, 211, 176, 16]
-0x00000338 MCPI R52 R58 0x1                                ;; [96, 211, 160, 1]
-0x0000033c SW R59 R52 0x0                                  ;; [95, 239, 64, 0]
-0x00000340 SW R59 $one 0x1                                 ;; [95, 236, 16, 1]
-0x00000344 MCPI R57 R59 0x10                               ;; [96, 231, 176, 16]
-0x00000348 CFSI 0x18                                       ;; [146, 0, 0, 24]
-0x0000034c POPH 0x81000                                    ;; [152, 8, 16, 0]
-0x00000350 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
-0x00000354 PSHH 0x81c00                                    ;; [150, 8, 28, 0]
-0x00000358 MOVE R59 $sp                                    ;; [26, 236, 80, 0]
-0x0000035c CFEI 0x28                                       ;; [145, 0, 0, 40]
-0x00000360 ADDI R52 R59 0x20                               ;; [80, 211, 176, 32]
-0x00000364 SB R52 R58 0x0                                  ;; [94, 211, 160, 0]
-0x00000368 SW R59 R52 0x0                                  ;; [95, 239, 64, 0]
-0x0000036c SW R59 $one 0x1                                 ;; [95, 236, 16, 1]
-0x00000370 ADDI R52 R59 0x10                               ;; [80, 211, 176, 16]
-0x00000374 MCPI R52 R59 0x10                               ;; [96, 211, 176, 16]
-0x00000378 LW R52 R63 0x2                                  ;; [93, 211, 240, 2]
-0x0000037c LW R51 R59 0x2                                  ;; [93, 207, 176, 2]
-0x00000380 LW R50 R59 0x3                                  ;; [93, 203, 176, 3]
-0x00000384 LOGD $zero R52 R51 R50                          ;; [52, 3, 76, 242]
-0x00000388 CFSI 0x28                                       ;; [146, 0, 0, 40]
-0x0000038c POPH 0x81c00                                    ;; [152, 8, 28, 0]
-0x00000390 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
-0x00000394 NOOP                                            ;; [71, 0, 0, 0]
+0x00000304 ALOC $one                                       ;; [38, 4, 0, 0]
+0x00000308 MCP $hp R52 $one                                ;; [40, 31, 64, 64]
+0x0000030c LB R52 $hp 0x0                                  ;; [92, 208, 112, 0]
+0x00000310 SB R51 R52 0x0                                  ;; [94, 207, 64, 0]
+0x00000314 CFSI 0x58                                       ;; [146, 0, 0, 88]
+0x00000318 MOVE R62 R50                                    ;; [26, 251, 32, 0]
+0x0000031c POPH 0x81e00                                    ;; [152, 8, 30, 0]
+0x00000320 JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x00000324 PSHH 0x81000                                    ;; [150, 8, 16, 0]
+0x00000328 MOVE R59 $sp                                    ;; [26, 236, 80, 0]
+0x0000032c CFEI 0x18                                       ;; [145, 0, 0, 24]
+0x00000330 ADDI R52 R59 0x10                               ;; [80, 211, 176, 16]
+0x00000334 MCPI R52 R58 0x1                                ;; [96, 211, 160, 1]
+0x00000338 SW R59 R52 0x0                                  ;; [95, 239, 64, 0]
+0x0000033c SW R59 $one 0x1                                 ;; [95, 236, 16, 1]
+0x00000340 MCPI R57 R59 0x10                               ;; [96, 231, 176, 16]
+0x00000344 CFSI 0x18                                       ;; [146, 0, 0, 24]
+0x00000348 POPH 0x81000                                    ;; [152, 8, 16, 0]
+0x0000034c JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
+0x00000350 PSHH 0x81c00                                    ;; [150, 8, 28, 0]
+0x00000354 MOVE R59 $sp                                    ;; [26, 236, 80, 0]
+0x00000358 CFEI 0x28                                       ;; [145, 0, 0, 40]
+0x0000035c ADDI R52 R59 0x20                               ;; [80, 211, 176, 32]
+0x00000360 SB R52 R58 0x0                                  ;; [94, 211, 160, 0]
+0x00000364 SW R59 R52 0x0                                  ;; [95, 239, 64, 0]
+0x00000368 SW R59 $one 0x1                                 ;; [95, 236, 16, 1]
+0x0000036c ADDI R52 R59 0x10                               ;; [80, 211, 176, 16]
+0x00000370 MCPI R52 R59 0x10                               ;; [96, 211, 176, 16]
+0x00000374 LW R52 R63 0x2                                  ;; [93, 211, 240, 2]
+0x00000378 LW R51 R59 0x2                                  ;; [93, 207, 176, 2]
+0x0000037c LW R50 R59 0x3                                  ;; [93, 203, 176, 3]
+0x00000380 LOGD $zero R52 R51 R50                          ;; [52, 3, 76, 242]
+0x00000384 CFSI 0x28                                       ;; [146, 0, 0, 40]
+0x00000388 POPH 0x81c00                                    ;; [152, 8, 28, 0]
+0x0000038c JAL $zero R62 0x0                               ;; [153, 3, 224, 0]
 .data_section:
-0x00000398 .word i18446744073709486083, as hex be bytes ([FF, FF, FF, FF, FF, FF, 00, 03])
-0x000003a0 .word i262145, as hex be bytes ([00, 00, 00, 00, 00, 04, 00, 01])
-0x000003a8 .word i14454674236531057292, as hex be bytes ([C8, 99, 51, A2, 4C, 6C, A2, 8C])
+0x00000390 .word i18446744073709486083, as hex be bytes ([FF, FF, FF, FF, FF, FF, 00, 03])
+0x00000398 .word i262145, as hex be bytes ([00, 00, 00, 00, 00, 04, 00, 01])
+0x000003a0 .word i14454674236531057292, as hex be bytes ([C8, 99, 51, A2, 4C, 6C, A2, 8C])
 ;; --- END OF TARGET BYTECODE ---
 
 warning
@@ -898,7 +895,7 @@ warning
 ____
 
   Compiled script "array_repeat" with 8 warnings.
-    Finished release [optimized + fuel] target(s) [944 B] in ???
+    Finished release [optimized + fuel] target(s) [936 B] in ???
 
 > forc test --path test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat --verbose --release
 exit status: 0
@@ -906,10 +903,10 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-assert)
    Compiling script array_repeat (test/src/e2e_vm_tests/test_programs/should_pass/language/array/array_repeat)
-    Finished release [optimized + fuel] target(s) [1.944 KB] in ???
+    Finished release [optimized + fuel] target(s) [1.936 KB] in ???
     script array_repeat
-      Bytecode size: 1944 bytes (1.944 KB)
-      Bytecode hash: 0xd84e1f0af96e64ef4c4c098c44c52e6494d47aa0b5eee14850b62bbde99640fb
+      Bytecode size: 1936 bytes (1.936 KB)
+      Bytecode hash: 0xf5e611ded2c5ac382dcd424b92612d5231b1a803d095eaa8fcd782c44567ab86
      Running 1 test, filtered 0 tests
 
 tested -- array_repeat
