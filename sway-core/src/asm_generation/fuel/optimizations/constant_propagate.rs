@@ -466,6 +466,7 @@ impl AbstractInstructionSet {
                             | VirtualOp::MCLI(..)
                             | VirtualOp::MCP(..)
                             | VirtualOp::MCPI(..)
+                            | VirtualOp::MEQ(..)
                             | VirtualOp::SB(..)
                             | VirtualOp::SW(..) => ResetKnown::Defs,
                             // TODO: this constraint can be relaxed
@@ -1011,6 +1012,7 @@ pub mod tests {
                 VirtualOp::MCLI("0".into(), 32.into()).into(),
                 VirtualOp::MCP("1".into(), "0".into(), "2".into()).into(),
                 VirtualOp::MCPI("1".into(), "0".into(), imm12(32)).into(),
+                VirtualOp::MEQ("3".into(), "0".into(), "1".into(), "2".into()).into(),
                 VirtualOp::SB("1".into(), "0".into(), imm12(32)).into(),
                 VirtualOp::SW("1".into(), "0".into(), imm12(32)).into(),
                 VirtualOp::add(ConstantRegister::FuncArg1, "0", ConstantRegister::Zero).into(),
@@ -1028,13 +1030,15 @@ pub mod tests {
                 Defs
             mcpi $r1 $$arg0 i32                     ; 4
                 Defs
-            sb $r1 $$arg0 i32                       ; 5
+            meq $r3 $$arg0 $r1 $r2                  ; 5
                 Defs
-            sw $r1 $$arg0 i32                       ; 6
+            sb $r1 $$arg0 i32                       ; 6
                 Defs
-            add $$arg1 $$arg0 $zero                 ; 7
+            sw $r1 $$arg0 i32                       ; 7
+                Defs
+            add $$arg1 $$arg0 $zero                 ; 8
                 None Some(Const(0))
-                changed to: move $$arg1 $$arg0                      ; 7
+                changed to: move $$arg1 $$arg0                      ; 8
                 Nothing
         "#]]
         .assert_eq(&str);
