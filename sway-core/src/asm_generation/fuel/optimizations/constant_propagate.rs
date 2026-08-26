@@ -462,7 +462,9 @@ impl AbstractInstructionSet {
                     match &op.opcode {
                         Either::Left(op) => match op {
                             VirtualOp::ECAL(_, _, _, _) => ResetKnown::All,
-                            VirtualOp::MCP(..)
+                            VirtualOp::MCL(..)
+                            | VirtualOp::MCLI(..)
+                            | VirtualOp::MCP(..)
                             | VirtualOp::MCPI(..)
                             | VirtualOp::SB(..)
                             | VirtualOp::SW(..) => ResetKnown::Defs,
@@ -1000,12 +1002,14 @@ pub mod tests {
     }
 
     #[test]
-    fn propagate_arg0_mcp_mcpi_sb_sw_add() {
+    fn propagate_arg0_through_memory_ops_and_add() {
         let mut str = String::new();
         optimise(
             [
                 VirtualOp::r#move("0", ConstantRegister::FuncArg0).into(),
-                VirtualOp::MCP("1".into(), "0".into(), "0".into()).into(),
+                VirtualOp::MCL("0".into(), "2".into()).into(),
+                VirtualOp::MCLI("0".into(), 32.into()).into(),
+                VirtualOp::MCP("1".into(), "0".into(), "2".into()).into(),
                 VirtualOp::MCPI("1".into(), "0".into(), imm12(32)).into(),
                 VirtualOp::SB("1".into(), "0".into(), imm12(32)).into(),
                 VirtualOp::SW("1".into(), "0".into(), imm12(32)).into(),
@@ -1016,17 +1020,21 @@ pub mod tests {
         expect![[r#"
             move $r0 $$arg0                         ; 0
                 Nothing
-            mcp $r1 $$arg0 $$arg0                   ; 1
+            mcl $$arg0 $r2                          ; 1
                 Defs
-            mcpi $r1 $$arg0 i32                     ; 2
+            mcli $$arg0 i32                         ; 2
                 Defs
-            sb $r1 $$arg0 i32                       ; 3
+            mcp $r1 $$arg0 $r2                      ; 3
                 Defs
-            sw $r1 $$arg0 i32                       ; 4
+            mcpi $r1 $$arg0 i32                     ; 4
                 Defs
-            add $$arg1 $$arg0 $zero                 ; 5
+            sb $r1 $$arg0 i32                       ; 5
+                Defs
+            sw $r1 $$arg0 i32                       ; 6
+                Defs
+            add $$arg1 $$arg0 $zero                 ; 7
                 None Some(Const(0))
-                changed to: move $$arg1 $$arg0                      ; 5
+                changed to: move $$arg1 $$arg0                      ; 7
                 Nothing
         "#]]
         .assert_eq(&str);
