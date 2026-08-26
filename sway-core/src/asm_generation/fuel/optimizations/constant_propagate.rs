@@ -468,7 +468,14 @@ impl AbstractInstructionSet {
                             | VirtualOp::MCPI(..)
                             | VirtualOp::MEQ(..)
                             | VirtualOp::SB(..)
-                            | VirtualOp::SW(..) => ResetKnown::Defs,
+                            | VirtualOp::SW(..)
+                            | VirtualOp::WQOP(..)
+                            | VirtualOp::WQML(..)
+                            | VirtualOp::WQDV(..)
+                            | VirtualOp::WQMD(..)
+                            | VirtualOp::WQCM(..)
+                            | VirtualOp::WQAM(..)
+                            | VirtualOp::WQMM(..) => ResetKnown::Defs,
                             // TODO: this constraint can be relaxed
                             _ if op.has_side_effect() => ResetKnown::All,
                             _ => ResetKnown::Defs,
@@ -595,7 +602,7 @@ pub fn checked_nth_root(target: u64, nth_root: u64) -> Option<u64> {
 
 #[cfg(test)]
 pub mod tests {
-    use crate::asm_lang::VirtualImmediate12;
+    use crate::asm_lang::{VirtualImmediate06, VirtualImmediate12};
 
     use super::*;
     use expect_test::expect;
@@ -1002,6 +1009,10 @@ pub mod tests {
         VirtualImmediate12::new(v)
     }
 
+    fn imm06(v: u64) -> VirtualImmediate06 {
+        VirtualImmediate06::new(v)
+    }
+
     #[test]
     fn propagate_arg0_through_memory_ops_and_add() {
         let mut str = String::new();
@@ -1015,6 +1026,13 @@ pub mod tests {
                 VirtualOp::MEQ("3".into(), "0".into(), "1".into(), "2".into()).into(),
                 VirtualOp::SB("1".into(), "0".into(), imm12(32)).into(),
                 VirtualOp::SW("1".into(), "0".into(), imm12(32)).into(),
+                VirtualOp::WQOP("1".into(), "0".into(), "2".into(), imm06(0)).into(),
+                VirtualOp::WQML("1".into(), "0".into(), "2".into(), imm06(0)).into(),
+                VirtualOp::WQDV("1".into(), "0".into(), "2".into(), imm06(0)).into(),
+                VirtualOp::WQMD("1".into(), "0".into(), "2".into(), "4".into()).into(),
+                VirtualOp::WQCM("3".into(), "0".into(), "2".into(), imm06(0)).into(),
+                VirtualOp::WQAM("1".into(), "0".into(), "2".into(), "4".into()).into(),
+                VirtualOp::WQMM("1".into(), "0".into(), "2".into(), "4".into()).into(),
                 VirtualOp::add(ConstantRegister::FuncArg1, "0", ConstantRegister::Zero).into(),
             ],
             |ops| ops.constant_propagate(|s| str.push_str(s)),
@@ -1036,9 +1054,23 @@ pub mod tests {
                 Defs
             sw $r1 $$arg0 i32                       ; 7
                 Defs
-            add $$arg1 $$arg0 $zero                 ; 8
+            wqop $r1 $$arg0 $r2 i0                  ; 8
+                Defs
+            wqml $r1 $$arg0 $r2 i0                  ; 9
+                Defs
+            wqdv $r1 $$arg0 $r2 i0                  ; 10
+                Defs
+            wqmd $r1 $$arg0 $r2 $r4                 ; 11
+                Defs
+            wqcm $r3 $$arg0 $r2 i0                  ; 12
+                Defs
+            wqam $r1 $$arg0 $r2 $r4                 ; 13
+                Defs
+            wqmm $r1 $$arg0 $r2 $r4                 ; 14
+                Defs
+            add $$arg1 $$arg0 $zero                 ; 15
                 None Some(Const(0))
-                changed to: move $$arg1 $$arg0                      ; 8
+                changed to: move $$arg1 $$arg0                      ; 15
                 Nothing
         "#]]
         .assert_eq(&str);
