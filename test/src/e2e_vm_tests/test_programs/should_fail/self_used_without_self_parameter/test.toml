@@ -1,0 +1,7 @@
+category = "fail"
+
+# check: $()let _ = self.x();
+# nextln: $()"self" is not available here because the enclosing function does not have a "self" parameter.
+
+# check: $()let _ = self;
+# nextln: $()"self" is not available here because the enclosing function does not have a "self" parameter.

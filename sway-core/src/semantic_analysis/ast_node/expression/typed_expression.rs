@@ -721,6 +721,15 @@ impl ty::TyExpression {
                     span,
                 }
             }
+            // `self` and `Self` are inserted into the namespace as a generic type parameter
+            // (`GenericTypeForFunctionScope`). When `self` is used as a value but the enclosing
+            // function has no `self` parameter, resolution falls through to that type parameter.
+            // Reporting it as "actually a generic type parameter" is misleading, so emit a
+            // dedicated error pointing at the missing `self` parameter instead.
+            Some(ty::TyDecl::GenericTypeForFunctionScope(_)) if name.as_str() == "self" => {
+                let err = handler.emit_err(CompileError::SelfParameterNotAvailable { span });
+                ty::TyExpression::error(err, name.span(), engines)
+            }
             Some(a) => {
                 let err = handler.emit_err(CompileError::NotAVariable {
                     name: name.clone(),
