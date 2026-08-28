@@ -9,6 +9,8 @@ The Sway Standard Library is the foundation of portable Sway software, a set of 
 
 The entire Sway standard library is a Forc project called `std`, and is available directly [here](https://github.com/FuelLabs/sway/tree/master/sway-lib-std). Navigate to the appropriate tagged release if the latest `master` is not compatible. You can find the latest `std` documentation [here](https://fuellabs.github.io/sway/master/std/).
 
+The full Sway documentation hub, including the Sway Book, Forc reference, and library API docs, is available at [fuellabs.github.io/sway](https://fuellabs.github.io/sway).
+
 ## Using the Standard Library
 
 The standard library is made implicitly available to all Forc projects created using [`forc new`](../forc/commands/forc_new.md). In other words, it is not required to manually specify `std` as an explicit dependency. Forc will automatically use the version of `std` that matches its version.
