@@ -1710,7 +1710,7 @@ pub fn compile_to_bytecode(
     package_name: &str,
     experimental: ExperimentalFeatures,
 ) -> Result<CompiledBytecode, ErrorEmitted> {
-    let mut asm_res = compile_to_asm(
+    let asm_res = compile_to_asm(
         handler,
         engines,
         src,
@@ -1719,13 +1719,7 @@ pub fn compile_to_bytecode(
         package_name,
         experimental,
     )?;
-    asm_to_bytecode(
-        handler,
-        &mut asm_res,
-        source_map,
-        engines.se(),
-        build_config,
-    )
+    asm_to_bytecode(handler, &asm_res, source_map, engines.se(), build_config)
 }
 
 /// Size of the prelude's CONFIGURABLES_OFFSET section, in bytes.
@@ -1750,17 +1744,17 @@ pub fn set_bytecode_configurables_offset(
     }
 }
 
-/// Given the assembly (opcodes), compile to [CompiledBytecode], containing the asm in bytecode form.
+/// Given the assembly (opcodes), compile to [CompiledBytecode], containing the `asm` in bytecode form.
 pub fn asm_to_bytecode(
     handler: &Handler,
-    asm: &mut CompiledAsm,
+    asm: &CompiledAsm,
     source_map: &mut SourceMap,
     source_engine: &SourceEngine,
     build_config: &BuildConfig,
 ) -> Result<CompiledBytecode, ErrorEmitted> {
     let compiled_bytecode =
         asm.finalized_asm
-            .to_bytecode_mut(handler, source_map, source_engine, build_config)?;
+            .to_bytecode(handler, source_map, source_engine, build_config)?;
     Ok(compiled_bytecode)
 }
 
