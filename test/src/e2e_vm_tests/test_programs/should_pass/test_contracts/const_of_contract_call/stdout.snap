@@ -1,5 +1,6 @@
 ---
 source: test/src/snapshot/mod.rs
+assertion_line: 125
 ---
 > forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release
 exit status: 0
@@ -339,7 +340,7 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-vec)
    Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
-    Finished release [optimized + fuel] target(s) [1.16 KB] in ???
+    Finished release [optimized + fuel] target(s) [1.168 KB] in ???
      Running 1 test, filtered 0 tests
 
 tested -- const_of_contract_call
@@ -399,7 +400,7 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-vec)
    Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
-    Finished release [optimized + fuel] target(s) [1.168 KB] in ???
+    Finished release [optimized + fuel] target(s) [1.176 KB] in ???
      Running 1 test, filtered 0 tests
 
 tested -- const_of_contract_call

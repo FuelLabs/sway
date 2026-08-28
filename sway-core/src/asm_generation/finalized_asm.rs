@@ -3,9 +3,10 @@ use super::{
     fuel::{checks, data_section::DataSection},
     ProgramABI, ProgramKind,
 };
-use crate::asm_generation::fuel::compiler_constants::TWELVE_BITS;
-use crate::asm_generation::fuel::data_section::{Datum, Entry, EntryName};
-use crate::asm_lang::allocated_ops::{AllocatedInstruction, AllocatedOp, FuelAsmData};
+use crate::asm_generation::fuel::data_section::{
+    DataId, DataSectionRegion, Datum, Entry, EntryName,
+};
+use crate::asm_lang::allocated_ops::{AllocatedOp, FuelAsmData};
 use crate::decl_engine::DeclRefFunction;
 use crate::source_map::SourceMap;
 use crate::BuildConfig;
@@ -61,7 +62,7 @@ pub struct FinalizedEntry {
     pub test_decl_ref: Option<DeclRefFunction>,
 }
 
-/// The bytecode for a sway program as well as the byte offsets of configuration-time constants in
+/// The bytecode for a Sway program as well as the byte offsets of configuration-time constants in
 /// the bytecode.
 pub struct CompiledBytecode {
     pub bytecode: Vec<u8>,
@@ -69,17 +70,22 @@ pub struct CompiledBytecode {
 }
 
 impl FinalizedAsm {
-    pub(crate) fn to_bytecode_mut(
-        &mut self,
+    /// Serializes the finalized program into bytecode.
+    ///
+    /// This is a pure serialization step. `self` represents the actual final program.
+    /// All the instructions, the data section, and the offsets are complete and fixed
+    /// and generating the bytecode does not further mutate the program in any way.
+    pub(crate) fn to_bytecode(
+        &self,
         handler: &Handler,
         source_map: &mut SourceMap,
         source_engine: &SourceEngine,
         build_config: &BuildConfig,
     ) -> Result<CompiledBytecode, ErrorEmitted> {
         match &self.program_section {
-            InstructionSet::Fuel { ops } => Ok(to_bytecode_mut(
+            InstructionSet::Fuel { ops } => Ok(to_bytecode(
                 ops,
-                &mut self.data_section,
+                &self.data_section,
                 source_map,
                 source_engine,
                 build_config,
@@ -114,81 +120,24 @@ impl fmt::Display for FinalizedAsm {
     }
 }
 
-fn to_bytecode_mut(
+fn to_bytecode(
     ops: &[AllocatedOp],
-    data_section: &mut DataSection,
+    data_section: &DataSection,
     source_map: &mut SourceMap,
     source_engine: &SourceEngine,
     build_config: &BuildConfig,
 ) -> CompiledBytecode {
-    fn op_size_in_bytes(data_section: &DataSection, item: &AllocatedOp) -> u64 {
-        match &item.opcode {
-            AllocatedInstruction::LoadDataId(_reg, data_id)
-                if !data_section
-                    .has_copy_type(data_id)
-                    .expect("`data_id` references data non-existent in the data section") =>
-            {
-                8
-            }
-            AllocatedInstruction::AddrDataId(_, data_id) => {
-                let offset_bytes = data_section.data_id_to_offset(data_id) as u64;
-                if offset_bytes <= TWELVE_BITS {
-                    4
-                } else {
-                    8
-                }
-            }
-            AllocatedInstruction::ConfigurablesOffsetPlaceholder => 8,
-            AllocatedInstruction::DataSectionOffsetPlaceholder => 8,
-            AllocatedInstruction::BLOB(count) => count.value() as u64 * 4,
-            _ => 4,
-        }
-    }
+    // Some instructions are expanded into multiple instructions, so we compute,
+    // using `size_in_bytes`, exactly how many bytes will be generated to calculate the offset.
+    let offset_to_data_section_in_bytes: u64 =
+        ops.iter().map(|op| op.size_in_bytes(data_section)).sum();
 
-    // Some instructions may be omitted or expanded into multiple instructions, so we compute,
-    // using `op_size_in_bytes`, exactly how many ops will be generated to calculate the offset.
-    let mut offset_to_data_section_in_bytes = ops
-        .iter()
-        .fold(0, |acc, item| acc + op_size_in_bytes(data_section, item));
-
-    // A noop is inserted in ASM generation if required, to word-align the data section.
-    let mut ops_padded = Vec::new();
-    let ops = if offset_to_data_section_in_bytes & 7 == 0 {
-        ops
-    } else {
-        ops_padded.reserve(ops.len() + 1);
-        ops_padded.extend(ops.iter().cloned());
-        ops_padded.push(AllocatedOp {
-            opcode: AllocatedInstruction::NOOP,
-            comment: "word-alignment of data section".into(),
-            owning_span: None,
-        });
-        offset_to_data_section_in_bytes += 4;
-        &ops_padded
-    };
-
-    let mut offset_from_instr_start = 0;
-    for op in ops.iter() {
-        match &op.opcode {
-            AllocatedInstruction::LoadDataId(_reg, data_label)
-                if !data_section
-                    .has_copy_type(data_label)
-                    .expect("data label references non existent data -- internal error") =>
-            {
-                // For non-copy type loads, pre-insert pointers into the data_section so that
-                // from this point on, the data_section remains immutable. This is necessary
-                // so that when we take addresses of configurables, that address doesn't change
-                // later on if a non-configurable is added to the data-section.
-                let offset_bytes = data_section.data_id_to_offset(data_label) as u64;
-                // The -4 is because $pc is added in the *next* instruction.
-                let pointer_offset_from_current_instr =
-                    offset_to_data_section_in_bytes - offset_from_instr_start + offset_bytes - 4;
-                data_section.append_pointer(pointer_offset_from_current_instr);
-            }
-            _ => (),
-        }
-        offset_from_instr_start += op_size_in_bytes(data_section, op);
-    }
+    // The data section must be word-aligned; `FinalProgram::finalize` appends a NOOP
+    // to the instructions when needed.
+    assert!(
+        offset_to_data_section_in_bytes.is_multiple_of(8),
+        "data section offset must have been word-aligned in `FinalProgram::finalize`",
+    );
 
     let mut bytecode = Vec::with_capacity(offset_to_data_section_in_bytes as usize);
 
@@ -212,10 +161,10 @@ fn to_bytecode_mut(
             offset_from_instr_start,
             data_section,
         );
-        offset_from_instr_start += op_size_in_bytes(data_section, op);
+        offset_from_instr_start += op.size_in_bytes(data_section);
 
         match fuel_op {
-            FuelAsmData::DatasectionOffset(data) => {
+            FuelAsmData::DataSectionOffset(data) => {
                 if build_config.print_bytecode {
                     print!("{}{:#010x} ", " ".repeat(indentation), bytecode.len());
                     println!("                                                ;; {data:?}");
@@ -243,7 +192,7 @@ fn to_bytecode_mut(
             }
             FuelAsmData::Instructions(instructions) => {
                 for instruction in instructions {
-                    // Print original source span only once
+                    // Print original source span only once.
                     if build_config.print_bytecode_spans {
                         last_span = match (last_span, &span) {
                             (None, Some(span)) => {
@@ -365,19 +314,21 @@ fn to_bytecode_mut(
     assert_eq!(half_word_ix * 4, offset_to_data_section_in_bytes as usize);
     assert_eq!(bytecode.len(), offset_to_data_section_in_bytes as usize);
 
-    let num_nonconfigurables = data_section.non_configurables.len();
     let named_data_section_entries_offsets = data_section
         .configurables
         .iter()
         .enumerate()
         .map(|(id, entry)| {
             let EntryName::Configurable(name) = &entry.name else {
-                panic!("Non-configurable in configurables part of datasection");
+                panic!("non-configurable found in configurables region of the data section");
             };
             (
                 name.clone(),
                 offset_to_data_section_in_bytes
-                    + data_section.absolute_idx_to_offset(id + num_nonconfigurables) as u64,
+                    + data_section.data_id_to_offset(&DataId {
+                        idx: id as u32,
+                        region: DataSectionRegion::Configurables,
+                    }) as u64,
             )
         })
         .collect::<BTreeMap<String, u64>>();
@@ -391,7 +342,7 @@ fn to_bytecode_mut(
     }
 }
 
-// Code to pretty print bytecode
+// Pretty prints registers.
 fn print_reg(r: RegId) -> String {
     match r {
         RegId::BAL => "$bal".to_string(),

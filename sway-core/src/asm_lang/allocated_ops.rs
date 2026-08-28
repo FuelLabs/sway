@@ -675,11 +675,43 @@ impl fmt::Display for AllocatedOp {
 
 pub(crate) enum FuelAsmData {
     ConfigurablesOffset([u8; 8]),
-    DatasectionOffset([u8; 8]),
+    DataSectionOffset([u8; 8]),
     Instructions(Vec<fuel_asm::Instruction>),
 }
 
 impl AllocatedOp {
+    /// The exact number of bytes the `self` occupies in the serialized bytecode.
+    ///
+    /// Some [AllocatedOp]s are realized into multiple instructions (non-copy loads, far
+    /// `AddrDataId`s, placeholders, blobs), so the size is not always 4 bytes.
+    ///
+    /// Note that the sizes, and with them all the instruction offsets, are fixed
+    /// from the moment the jump labels are resolved. The layout of the data section
+    /// is frozen before that so `has_copy_type` and `addr_is_far` can never change
+    /// their answers afterward.
+    pub(crate) fn size_in_bytes(&self, data_section: &DataSection) -> u64 {
+        match &self.opcode {
+            AllocatedInstruction::LoadDataId(_reg, data_id)
+                if !data_section
+                    .has_copy_type(data_id)
+                    .expect("`data_id` references data non-existent in the data section") =>
+            {
+                8
+            }
+            AllocatedInstruction::AddrDataId(_, data_id) => {
+                if data_section.addr_is_far(data_id) {
+                    8
+                } else {
+                    4
+                }
+            }
+            AllocatedInstruction::ConfigurablesOffsetPlaceholder => 8,
+            AllocatedInstruction::DataSectionOffsetPlaceholder => 8,
+            AllocatedInstruction::BLOB(count) => count.value() as u64 * 4,
+            _ => 4,
+        }
+    }
+
     pub(crate) fn to_fuel_asm(
         &self,
         offset_to_data_section: u64,
@@ -922,7 +954,7 @@ impl AllocatedOp {
                 return FuelAsmData::ConfigurablesOffset([0, 0, 0, 0, 0, 0, 0, 0])
             }
             DataSectionOffsetPlaceholder => {
-                return FuelAsmData::DatasectionOffset(offset_to_data_section.to_be_bytes())
+                return FuelAsmData::DataSectionOffset(offset_to_data_section.to_be_bytes())
             }
             LoadDataId(a, b) => {
                 return FuelAsmData::Instructions(realize_load(
@@ -939,7 +971,7 @@ impl AllocatedOp {
     }
 }
 
-/// Address of a data section item
+/// Address of a [DataSection] entry identified by `data_id`.
 fn addr_of(
     dest: &AllocatedRegister,
     data_id: &DataId,
@@ -947,13 +979,16 @@ fn addr_of(
 ) -> Vec<fuel_asm::Instruction> {
     let offset_bytes = data_section.data_id_to_offset(data_id) as u64;
 
-    if offset_bytes <= TWELVE_BITS {
-        vec![fuel_asm::Instruction::ADDI(ADDI::new(
-            dest.to_reg_id(),
-            fuel_asm::RegId::new(DATA_SECTION_REGISTER),
-            Imm12::new(offset_bytes as u16),
-        ))]
-    } else {
+    // Note that the decision between the near (`ADDI`) and the far (`MOVI` + `ADD`)
+    // form must come from `addr_is_far`, and not from testing `offset_bytes` itself.
+    //
+    // The decision defines the size of the instruction, and all the instruction sizes
+    // were fixed when the jump labels were resolved. For configurables the decision is
+    // made against their frozen worst-case offset, so the far form can be chosen even
+    // if the actual offset would fit in 12 bits. The actual offset can never exceed
+    // the worst-case one, so the near form is always emittable when chosen (and the
+    // far form is anyhow always emittable for any offset).
+    if data_section.addr_is_far(data_id) {
         vec![
             fuel_asm::Instruction::MOVI(MOVI::new(
                 dest.to_reg_id(),
@@ -965,6 +1000,16 @@ fn addr_of(
                 fuel_asm::RegId::new(DATA_SECTION_REGISTER),
             )),
         ]
+    } else {
+        assert!(
+            offset_bytes <= TWELVE_BITS,
+            "a near `AddrDataId` has the target offset {offset_bytes} that does not fit in 12 bits",
+        );
+        vec![fuel_asm::Instruction::ADDI(ADDI::new(
+            dest.to_reg_id(),
+            fuel_asm::RegId::new(DATA_SECTION_REGISTER),
+            Imm12::new(offset_bytes as u16),
+        ))]
     }
 }
 
@@ -979,9 +1024,8 @@ fn realize_load(
     offset_to_data_section: u64,
     offset_from_instr_start: u64,
 ) -> Vec<fuel_asm::Instruction> {
-    // if this data is larger than a word, instead of loading the data directly
-    // into the register, we want to load a pointer to the data into the register
-    // this appends onto the data section and mutates it by adding the pointer as a literal
+    // If this data is larger than a word, instead of loading the data directly
+    // into the register, we load a pointer to the data into the register.
     let has_copy_type = data_section.has_copy_type(data_id).expect(
         "Internal miscalculation in data section -- data id did not match up to any actual data",
     );
@@ -990,7 +1034,7 @@ fn realize_load(
         "Internal miscalculation in data section -- data id did not match up to any actual data",
     );
 
-    // all data is word-aligned right now, and `offset_to_id` returns the offset in bytes
+    // All data is word-aligned right now, and `data_id_to_offset` returns the offset in bytes.
     let offset_bytes = data_section.data_id_to_offset(data_id) as u64;
     assert!(
         offset_bytes.is_multiple_of(8),
@@ -1011,17 +1055,17 @@ fn realize_load(
     };
 
     if !has_copy_type {
-        // load the pointer itself into the register. `offset_to_data_section` is in bytes.
+        // Load the pointer itself into the register. `offset_to_data_section` is in bytes.
         // The -4 is because $pc is added in the *next* instruction.
         let pointer_offset_from_current_instr =
             offset_to_data_section - offset_from_instr_start + offset_bytes - 4;
 
-        // insert the pointer as bytes as a new data section entry at the end of the data
+        // Insert the pointer as bytes as a new data section entry at the end of the data.
         let data_id_for_pointer = data_section
             .data_id_of_pointer(pointer_offset_from_current_instr)
             .expect("Pointer offset must be in data_section");
 
-        // now load the pointer we just created into the `dest`ination
+        // Now load the pointer we just created into the `dest`ination.
         let mut buf = Vec::with_capacity(2);
         buf.append(&mut realize_load(
             dest,
@@ -1030,7 +1074,7 @@ fn realize_load(
             offset_to_data_section,
             offset_from_instr_start,
         ));
-        // add $pc to the pointer since it is relative to the current instruction.
+        // Add $pc to the pointer since it is relative to the current instruction.
         buf.push(
             fuel_asm::op::ADD::new(
                 dest.to_reg_id(),
