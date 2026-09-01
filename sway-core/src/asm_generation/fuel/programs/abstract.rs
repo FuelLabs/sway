@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use super::{AllocatedProgram, FnName, SelectorOpt};
 use crate::{
     asm_generation::{
@@ -121,13 +123,18 @@ impl AbstractProgram {
             .chain(self.non_entries);
 
         // Optimize and then verify abstract functions.
-        let abstract_functions = all_functions
-            .map(|instruction_set| instruction_set.optimize(&self.data_section, opt_level))
+        let mut optimized_fns = all_functions
+            .map(|f| f.optimize(&self.data_section, opt_level))
             .map(AbstractInstructionSet::verify)
             .collect::<Result<Vec<AbstractInstructionSet>, CompileError>>()?;
 
+        // Run only in release, as this increases compilation time considerably.
+        if matches!(opt_level, OptLevel::Opt1) {
+            Self::optimize_fn_order(&mut optimized_fns);
+        }
+
         // Allocate the registers for each function.
-        let allocated_functions = abstract_functions
+        let allocated_functions = optimized_fns
             .into_iter()
             .map(|abstract_instruction_set| {
                 let allocated = abstract_instruction_set.allocate_registers()?;
@@ -213,7 +220,7 @@ impl AbstractProgram {
                 AllocatedAbstractOp {
                     opcode: Either::Right(ControlFlowOp::Jump {
                         to: label,
-                        type_: JumpType::Unconditional,
+                        ty: JumpType::Unconditional,
                     }),
                     comment: String::new(),
                     owning_span: None,
@@ -266,7 +273,7 @@ impl AbstractProgram {
         asm.ops.push(AllocatedAbstractOp {
             opcode: Either::Right(ControlFlowOp::Jump {
                 to: entry.label,
-                type_: JumpType::Unconditional,
+                ty: JumpType::Unconditional,
             }),
             comment: "jump to ABI function selector".into(),
             owning_span: None,
@@ -352,7 +359,7 @@ impl AbstractProgram {
                 // If the comparison result is _not_ equal to 0, then it was indeed equal.
                 opcode: Either::Right(ControlFlowOp::Jump {
                     to: entry.label,
-                    type_: JumpType::NotZero(CMP_RESULT_REG),
+                    ty: JumpType::NotZero(CMP_RESULT_REG),
                 }),
                 comment: "[function selection]: jump to selected contract function".into(),
                 owning_span: None,
@@ -363,7 +370,7 @@ impl AbstractProgram {
             asm.ops.push(AllocatedAbstractOp {
                 opcode: Either::Right(ControlFlowOp::Jump {
                     to: fallback_fn,
-                    type_: JumpType::Call,
+                    ty: JumpType::Call,
                 }),
                 comment: "[function selection]: call contract fallback function".into(),
                 owning_span: None,
@@ -403,6 +410,87 @@ impl AbstractProgram {
             });
         }
     }
+
+    fn optimize_fn_order(fns: &mut Vec<AbstractInstructionSet>) {
+        const MAX_ITERS: usize = 128;
+        const DEPTH: usize = 10;
+
+        if fns.len() < 2 {
+            return;
+        }
+
+        let mut layout = FnLayout::new(fns);
+
+        'improve: for _ in 0..MAX_ITERS {
+            // Index 0 never moves, so the entry is always original fn 0.
+            debug_assert_eq!(layout.order[0], 0);
+
+            let mut found_improvement = false;
+
+            let before_weights = layout.call_weights(None);
+            let before_weights_sum = before_weights.values().sum::<usize>();
+
+            let mut back_call_count = layout.back_call_count();
+            let candidates = &mut back_call_count[1..];
+            let depth = DEPTH.min(candidates.len());
+
+            'candidates: for k in 0..depth {
+                let (_, (candidate_fn, candidate_count), _) =
+                    candidates.select_nth_unstable_by(k, |a, b| b.1.cmp(&a.1));
+                if *candidate_count == 0 {
+                    break 'candidates;
+                }
+
+                let candidate_fn = *candidate_fn;
+                let candidate_slot = layout.slot_of(candidate_fn);
+
+                // Try candidate in every possible position
+                let mut best_slot = candidate_slot;
+                let mut best_weights_sum = before_weights_sum;
+                for slot_being_tried in 1..layout.len() {
+                    let candidate_weights =
+                        layout.call_weights(Some((candidate_slot, slot_being_tried)));
+                    let candidate_sum = candidate_weights.values().sum();
+
+                    // Only accept a position where no individual call gets worse
+                    // and at least one improves
+                    let no_call_worse = candidate_weights.iter().all(|(call_key, &new_weight)| {
+                        let old_weight = before_weights.get(call_key).copied().unwrap_or(0);
+                        new_weight <= old_weight
+                    });
+                    let some_call_better =
+                        candidate_weights.iter().any(|(call_key, &new_weight)| {
+                            let old_weight = before_weights.get(call_key).copied().unwrap_or(0);
+                            new_weight < old_weight
+                        });
+                    let acceptable = no_call_worse && some_call_better;
+                    if acceptable && candidate_sum < best_weights_sum {
+                        best_weights_sum = candidate_sum;
+                        best_slot = slot_being_tried;
+                    }
+                }
+
+                // If an improvement was found, accept it
+                if best_weights_sum < before_weights_sum {
+                    layout.relocate(candidate_slot, best_slot);
+
+                    // Uncomment this to log improvements
+                    // eprintln!(
+                    //     "optimize_fn_order iter {iter}: call cost {before_weights_sum} -> {best_count} (target fn {target_fi} had {target_count} back calls)"
+                    // );
+
+                    found_improvement = true;
+                    break 'candidates;
+                }
+            }
+
+            if !found_improvement {
+                break 'improve;
+            }
+        }
+
+        layout.apply();
+    }
 }
 
 impl std::fmt::Display for AbstractProgram {
@@ -422,5 +510,266 @@ impl std::fmt::Display for AbstractProgram {
         }
         writeln!(f, ";; --- Data ---")?;
         write!(f, "{}", self.data_section)
+    }
+}
+
+struct CallSite {
+    caller: usize,
+    offset: u64,
+    callee: usize,
+}
+
+struct FnLayout<'a> {
+    fns: &'a mut Vec<AbstractInstructionSet>,
+    fn_sizes: Vec<u64>,
+    call_sites: Vec<CallSite>,
+    /// Keyed by (caller fn_idx, call-site offset within the caller).
+    call_loop_depth: HashMap<(usize, u64), usize>,
+    order: Vec<usize>,
+}
+
+impl<'a> FnLayout<'a> {
+    /// Entry label of a function.
+    fn label_of(f: &AbstractInstructionSet) -> Label {
+        f.ops
+            .iter()
+            .find_map(|op| match &op.opcode {
+                Either::Right(ControlFlowOp::Label(l)) => Some(*l),
+                _ => None,
+            })
+            .unwrap_or_else(|| {
+                panic!(
+                    "function {:?} has no Label in its ops (len={})",
+                    f.function,
+                    f.ops.len()
+                )
+            })
+    }
+
+    fn new(fns: &'a mut Vec<AbstractInstructionSet>) -> Self {
+        let n = fns.len();
+
+        let fn_labels = fns.iter().map(Self::label_of).collect::<Vec<_>>();
+        let fn_sizes = fns
+            .iter()
+            .map(|f| f.ops.iter().map(|o| o.op_size()).sum())
+            .collect();
+        let label_to_fn_idx: HashMap<Label, usize> = fn_labels
+            .iter()
+            .enumerate()
+            .map(|(idx, &lab)| (lab, idx))
+            .collect();
+
+        let mut call_sites = Vec::with_capacity(n);
+        for (caller, f) in fns.iter().enumerate() {
+            let mut site_off: u64 = 0;
+            for op in f.ops.iter() {
+                if let Either::Right(ControlFlowOp::Jump {
+                    to,
+                    ty: JumpType::Call,
+                }) = &op.opcode
+                {
+                    if let Some(&callee) = label_to_fn_idx.get(to) {
+                        call_sites.push(CallSite {
+                            caller,
+                            offset: site_off,
+                            callee,
+                        });
+                    }
+                }
+                site_off += op.op_size();
+            }
+        }
+
+        // use to boost call inside of loops
+        let mut call_loop_depth = HashMap::new();
+        for (idx, f) in fns.iter().enumerate() {
+            // Index each label in this function to its op position.
+            let mut label_idx = HashMap::new();
+            for (i, op) in f.ops.iter().enumerate() {
+                if let Either::Right(ControlFlowOp::Label(l)) = &op.opcode {
+                    label_idx.insert(l.0, i);
+                }
+            }
+
+            // Find loops
+            // Header: The single entry point of a loop that dominates all other nodes within it.
+            // Latch: A node inside the loop that has a jump to the header.
+            let mut loops = HashMap::new();
+            for (latch, op) in f.ops.iter().enumerate() {
+                if let Either::Right(ControlFlowOp::Jump { to, ty }) = &op.opcode {
+                    match ty {
+                        JumpType::Unconditional | JumpType::NotZero(_) => {
+                            if let Some(&header) = label_idx.get(&to.0) {
+                                if header < latch {
+                                    let entry = loops.entry(to.0).or_insert((header, latch));
+                                    if latch > entry.1 {
+                                        entry.1 = latch;
+                                    }
+                                }
+                            }
+                        }
+                        JumpType::Call => {}
+                    }
+                }
+            }
+
+            if loops.is_empty() {
+                continue;
+            }
+
+            let loops = loops.values().cloned().collect::<Vec<_>>();
+
+            // Calculate each call site loop depth
+            // The more deep a call is, more boost it will gain
+            let mut site_offset: u64 = 0;
+            for (i, op) in f.ops.iter().enumerate() {
+                if let Either::Right(ControlFlowOp::Jump {
+                    ty: JumpType::Call, ..
+                }) = &op.opcode
+                {
+                    let depth = loops
+                        .iter()
+                        .filter(|(header, latch)| *header <= i && i <= *latch)
+                        .count();
+                    if depth > 0 {
+                        call_loop_depth.insert((idx, site_offset), depth);
+                    }
+                }
+                site_offset += op.op_size();
+            }
+        }
+
+        Self {
+            fns,
+            fn_sizes,
+            call_sites,
+            call_loop_depth,
+            order: (0..n).collect(),
+        }
+    }
+
+    fn len(&self) -> usize {
+        self.order.len()
+    }
+
+    fn slot_of(&self, fn_idx: usize) -> usize {
+        self.order
+            .iter()
+            .position(|&f| f == fn_idx)
+            .expect("fn_idx present in order")
+    }
+
+    /// `(fn_idx, back-call count)` for every function in the current layout.
+    fn back_call_count(&self) -> Vec<(usize, usize)> {
+        let n = self.fn_sizes.len();
+        let mut slot_of = vec![0usize; n];
+
+        for (slot, &fi) in self.order.iter().enumerate() {
+            slot_of[fi] = slot;
+        }
+
+        let mut counts = (0..n).map(|fi| (fi, 0)).collect::<Vec<_>>();
+        for site in &self.call_sites {
+            if slot_of[site.callee] < slot_of[site.caller] {
+                counts[site.callee].1 += 1;
+            }
+        }
+
+        counts
+    }
+
+    /// `virtual_move` means (original position, new position).
+    /// Returns per-call weights keyed by `(caller fn_idx, call-site offset)`.
+    fn call_weights(&self, virtual_move: Option<(usize, usize)>) -> HashMap<(usize, u64), usize> {
+        const LOOP_BOOST: usize = 4;
+
+        // fn_idx -> offset of the function's start, in instruction units.
+        let n = self.fn_sizes.len();
+        let mut fn_to_off = vec![0u64; n];
+        let mut offset: u64 = 0;
+        match virtual_move {
+            None => {
+                for &fi in &self.order {
+                    fn_to_off[fi] = offset;
+                    offset += self.fn_sizes[fi];
+                }
+            }
+            Some((from, to)) => {
+                let fi = self.order[from];
+                for slot in 0..n {
+                    let f = if slot == to {
+                        fi
+                    } else {
+                        // Compacted index in the post-remove sequence.
+                        let c = if slot < to { slot } else { slot - 1 };
+                        self.order[if c < from { c } else { c + 1 }]
+                    };
+                    fn_to_off[f] = offset;
+                    offset += self.fn_sizes[f];
+                }
+            }
+        }
+
+        let mut weights = HashMap::new();
+        for site in &self.call_sites {
+            let func_start = fn_to_off[site.caller];
+            let target_off = fn_to_off[site.callee];
+            let call_site = func_start + site.offset;
+
+            let jmp_factor = jmp_weight_factor(target_off, call_site);
+            let depth = self
+                .call_loop_depth
+                .get(&(site.caller, site.offset))
+                .copied()
+                .unwrap_or(0);
+
+            weights.insert(
+                (site.caller, site.offset),
+                jmp_factor * LOOP_BOOST.pow(depth as u32),
+            );
+        }
+        weights
+    }
+
+    fn relocate(&mut self, from: usize, to: usize) {
+        let fi = self.order.remove(from);
+        self.order.insert(to, fi);
+    }
+
+    fn apply(self) {
+        let mut tmp: Vec<_> = std::mem::take(self.fns).into_iter().map(Some).collect();
+        *self.fns = self
+            .order
+            .into_iter()
+            .map(|i| tmp[i].take().unwrap())
+            .collect();
+    }
+}
+
+fn jmp_weight_factor(target_off: u64, call_site: u64) -> usize {
+    const FWD_NEAR: usize = 1;
+    const BACK_NEAR: usize = 2;
+    const MEDIUM: usize = 3;
+    const FAR: usize = 6;
+
+    if target_off >= call_site {
+        let delta = target_off - call_site;
+        if delta <= compiler_constants::TWELVE_BITS {
+            FWD_NEAR
+        } else if delta.saturating_sub(1).saturating_mul(4) <= compiler_constants::EIGHTEEN_BITS {
+            MEDIUM
+        } else {
+            FAR
+        }
+    } else {
+        let delta = call_site - target_off;
+        if delta.saturating_mul(4) <= compiler_constants::TWELVE_BITS {
+            BACK_NEAR
+        } else if delta.saturating_add(1).saturating_mul(4) <= compiler_constants::EIGHTEEN_BITS {
+            MEDIUM
+        } else {
+            FAR
+        }
     }
 }
