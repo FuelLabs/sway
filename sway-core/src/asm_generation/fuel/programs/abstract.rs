@@ -430,14 +430,22 @@ impl AbstractProgram {
             let before_weights = layout.call_weights(None);
             let before_weights_sum = before_weights.values().sum::<usize>();
 
-            let mut back_call_count = layout.back_call_count();
-            let candidates = &mut back_call_count[1..];
+            // Rank functions by the total (hotness-weighted) cost of the call
+            // sites they participate in -- as caller or callee, in either
+            // direction. The "worst" function to relocate is the one involved
+            // in the most expensive calls, not merely the one with the most
+            // back calls. Forward calls are included here: a forward medium/far
+            // call is also worth converting to forward near, and a function
+            // sitting in such a call would never be reached by a back-call-only
+            // ranking.
+            let mut fn_cost = layout.fn_call_cost(&before_weights);
+            let candidates = &mut fn_cost[1..];
             let depth = DEPTH.min(candidates.len());
 
             'candidates: for k in 0..depth {
-                let (_, (candidate_fn, candidate_count), _) =
+                let (_, (candidate_fn, candidate_cost), _) =
                     candidates.select_nth_unstable_by(k, |a, b| b.1.cmp(&a.1));
-                if *candidate_count == 0 {
+                if *candidate_cost == 0 {
                     break 'candidates;
                 }
 
@@ -660,22 +668,24 @@ impl<'a> FnLayout<'a> {
             .expect("fn_idx present in order")
     }
 
-    /// `(fn_idx, back-call count)` for every function in the current layout.
-    fn back_call_count(&self) -> Vec<(usize, usize)> {
+    /// `(fn_idx, call cost)` for every function in the current layout.
+    ///
+    /// The cost of a function is the sum of the hotness-weighted weights of
+    /// every call site it participates in -- as caller or callee, in either
+    /// direction. A call `A -> B` contributes its weight to both `A` and `B`,
+    /// because relocating either endpoint can change that call's distance and
+    /// thus its realization (near / medium / far). Unlike a raw back-call
+    /// count, this accounts for forward calls too.
+    fn fn_call_cost(&self, weights: &HashMap<(usize, u64), usize>) -> Vec<(usize, usize)> {
         let n = self.fn_sizes.len();
-        let mut slot_of = vec![0usize; n];
-
-        for (slot, &fi) in self.order.iter().enumerate() {
-            slot_of[fi] = slot;
-        }
-
-        let mut counts = (0..n).map(|fi| (fi, 0)).collect::<Vec<_>>();
+        let mut counts = (0..n).map(|fi| (fi, 0usize)).collect::<Vec<_>>();
         for site in &self.call_sites {
-            if slot_of[site.callee] < slot_of[site.caller] {
-                counts[site.callee].1 += 1;
+            let w = weights.get(&(site.caller, site.offset)).copied().unwrap_or(0);
+            counts[site.caller].1 = counts[site.caller].1.saturating_add(w);
+            if site.callee != site.caller {
+                counts[site.callee].1 = counts[site.callee].1.saturating_add(w);
             }
         }
-
         counts
     }
 
