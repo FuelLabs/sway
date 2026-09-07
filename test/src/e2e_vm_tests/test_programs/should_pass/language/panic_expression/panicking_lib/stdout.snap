@@ -297,7 +297,7 @@ C(true), log rb: 2721958641300806892
                                └─ at panicking_lib, src/lib.sw:133:5
            decoded log values:
 A(42), log rb: 12408470889216862137
-      test test_panic_with_nested_generic_error_type ... ok (???, 1026 gas)
+      test test_panic_with_nested_generic_error_type ... ok (???, 1025 gas)
            revert code: 8500000000000000
             ├─ panic value:   B(B(C(true)))
             └─ panicked:      in panicking_lib::test_panic_with_nested_generic_error_type
@@ -311,7 +311,7 @@ B(B(C(true))), log rb: 14988555917426256081
                                └─ at panicking_lib, src/lib.sw:143:5
            decoded log values:
 A(42), log rb: 17388243649088655852
-      test test_panic_with_nested_generic_error_type_enum_with_abi_encode ... ok (???, 1026 gas)
+      test test_panic_with_nested_generic_error_type_enum_with_abi_encode ... ok (???, 1025 gas)
            revert code: 8600000000000000
             ├─ panic value:   B(B(C(true)))
             └─ panicked:      in panicking_lib::test_panic_with_nested_generic_error_type_enum_with_abi_encode

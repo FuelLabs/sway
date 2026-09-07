@@ -1,6 +1,5 @@
 ---
 source: test/src/snapshot/mod.rs
-assertion_line: 125
 ---
 > forc test --path test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call --release
 exit status: 0
@@ -8,7 +7,7 @@ output:
     Building test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-vec)
    Compiling contract const_of_contract_call (test/src/e2e_vm_tests/test_programs/should_pass/test_contracts/const_of_contract_call)
-    Finished release [optimized + fuel] target(s) [19.08 KB] in ???
+    Finished release [optimized + fuel] target(s) [19.072 KB] in ???
      Running 33 tests, filtered 0 tests
 
 tested -- const_of_contract_call
@@ -43,7 +42,7 @@ tested -- const_of_contract_call
       test in_enum_u64_u64 ... ok (???, 1616 gas)
       test in_enum_u64_u64_u64 ... ok (???, 1628 gas)
       test in_vec_trivial ... ok (???, 2675 gas)
-      test in_vec_not_trivial ... ok (???, 5850 gas)
+      test in_vec_not_trivial ... ok (???, 5840 gas)
       test order_args_without_trivial_enum ... ok (???, 3035 gas)
       test order_args_with_trivial_enum ... ok (???, 3213 gas)
 
