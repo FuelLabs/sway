@@ -693,7 +693,7 @@ impl SubstTypes for TyExpressionVariant {
                 arguments.subst(ctx);
                 if let Some(new_decl_ref) = fn_ref
                     .clone()
-                    .subst_types_and_insert_new_with_parent(ctx)
+                    .subst_types_and_insert_new(ctx)
                 {
                     fn_ref.replace_id(*new_decl_ref.id());
                     HasChanges::Yes
@@ -788,7 +788,7 @@ impl SubstTypes for TyExpressionVariant {
             } => has_changes! {
                 if let Some(new_enum_ref) = enum_ref
                     .clone()
-                    .subst_types_and_insert_new(ctx)
+                    .subst_types_and_insert_new_if_not_concrete(ctx)
                 {
                     enum_ref.replace_id(*new_enum_ref.id());
                     HasChanges::Yes
@@ -861,7 +861,13 @@ impl ReplaceDecls for TyExpressionVariant {
                             });
 
                     let decl_engine = ctx.engines().de();
-                    let mut method = (*decl_engine.get(fn_ref)).clone();
+                    // The id of the declaration that the `method` is loaded from.
+                    // If the `method` is a trait method dummy, it gets re-resolved
+                    // below to the actual method implementation. In that case the
+                    // `method_decl_id` is updated accordingly, to always point to
+                    // the declaration the `method` is loaded from.
+                    let mut method_decl_id = *fn_ref.id();
+                    let mut method = (*decl_engine.get(&method_decl_id)).clone();
 
                     // Finds method implementation for method dummy and replaces it.
                     // This is required because dummy methods don't have type parameters from impl traits.
@@ -915,7 +921,10 @@ impl ReplaceDecls for TyExpressionVariant {
                                     _ => None,
                                 });
                             let implementing_type_method_ref = r?;
-                            method = (*decl_engine.get(&implementing_type_method_ref)).clone();
+                            // Update the `method_decl_id` to point to the latest
+                            // resolved `method`.
+                            method_decl_id = *implementing_type_method_ref.id();
+                            method = (*decl_engine.get(&method_decl_id)).clone();
                         }
                     }
 
@@ -936,7 +945,17 @@ impl ReplaceDecls for TyExpressionVariant {
                         .replace_decls(&inner_decl_mapping, handler, ctx)?
                         .has_changes()
                     {
-                        *fn_ref = decl_engine.insert_modified(method, *fn_ref.id());
+                        // Insert the modified `method` with the `method_decl_id`
+                        // as the original declaration.
+                        //
+                        // **Note that we must not used the initial `fn_ref`'s id
+                        // as the `original_decl` when calling `insert_modified`.**
+                        //
+                        // If the `method` was re-resolved from a trait method
+                        // dummy to the actual method implementation above, the `fn_ref`
+                        // still points to the dummy, which is not the declaration the
+                        // modified `method` was derived from.
+                        *fn_ref = decl_engine.insert_modified(method, method_decl_id);
                         has_changes = HasChanges::Yes;
                     }
 

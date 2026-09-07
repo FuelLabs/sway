@@ -111,8 +111,7 @@ pub(crate) fn instantiate_function_application(
                 let method_sig = TyFunctionSig::from_fn_decl(&new_function_decl);
 
                 let new_decl_ref = decl_engine
-                    .insert_modified(new_function_decl, *function_decl_ref.id())
-                    .with_parent(decl_engine, (*function_decl_ref.id()).into());
+                    .insert_modified(new_function_decl, *function_decl_ref.id());
                 (
                     method_sig,
                     return_type_id,

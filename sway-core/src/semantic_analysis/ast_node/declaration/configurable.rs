@@ -152,10 +152,7 @@ impl ty::TyConfigurableDecl {
                 .replace_decls(&decl_mapping, handler, &mut ctx)?
                 .has_changes()
             {
-                engines
-                    .de()
-                    .insert_modified(decode_fn_decl, decode_fn_id)
-                    .with_parent(engines.de(), decode_fn_id.into())
+                engines.de().insert_modified(decode_fn_decl, decode_fn_id)
             } else {
                 decode_fn_ref
             };
