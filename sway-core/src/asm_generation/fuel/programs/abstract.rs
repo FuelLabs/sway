@@ -680,7 +680,10 @@ impl<'a> FnLayout<'a> {
         let n = self.fn_sizes.len();
         let mut counts = (0..n).map(|fi| (fi, 0usize)).collect::<Vec<_>>();
         for site in &self.call_sites {
-            let w = weights.get(&(site.caller, site.offset)).copied().unwrap_or(0);
+            let w = weights
+                .get(&(site.caller, site.offset))
+                .copied()
+                .unwrap_or(0);
             counts[site.caller].1 = counts[site.caller].1.saturating_add(w);
             if site.callee != site.caller {
                 counts[site.callee].1 = counts[site.callee].1.saturating_add(w);
