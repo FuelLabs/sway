@@ -20,47 +20,109 @@ if [[ "$output_format" != "md" && "$output_format" != "csv" ]]; then
     exit 2
 fi
 
-# Validate test name order and equality.
-# We trim leading/trailing whitespace on the first column before comparing.
-tmpdiff="$(mktemp)"
-if ! diff -u \
-    --label "names before ($before_file)" --label "names after ($after_file)" \
-    <(awk -F',' '{n=$1; sub(/^[ \t]+/,"",n); sub(/[ \t]+$/,"",n); print n}' "$before_file") \
-    <(awk -F',' '{n=$1; sub(/^[ \t]+/,"",n); sub(/[ \t]+$/,"",n); print n}' "$after_file") \
-    >"$tmpdiff"; then
-    echo "ERROR: Test names differ between:"
-    echo " before: $before_file"
-    echo "  and"
-    echo " after:  $after_file"
-    echo " files."
-    echo "Both files must have the same tests in the same order."
-    echo
-    cat "$tmpdiff"
-    rm -f "$tmpdiff"
-    exit 3
-fi
-rm -f "$tmpdiff"
+# A data row is `<name>,<integer>`. The value must be an integer; the name may
+# contain any characters except a comma.
+# Lines like `test,gas` (the header) have non-integer and are ignored.
+awk -v fmt="$output_format" '
+BEGIN { FS = "," }
+FNR == NR {
+    # ── before file ──
+    if ($0 ~ /^[[:space:]]*Running:[[:space:]]+/) {
+        bsec = $0
+        sub(/^[[:space:]]*Running:[[:space:]]+/, "", bsec)
+        sub(/[[:space:]]+$/, "", bsec)
+        if (!(bsec in bsec_seen)) { bsec_seen[bsec] = 1; bsec_order[++bnsec] = bsec }
+        next
+    }
+    if ($0 ~ /^[^,]+,-?[0-9]+$/) {
+        name = $1
+        if (!(bsec in bsec_seen)) { bsec_seen[bsec] = 1; bsec_order[++bnsec] = bsec }
+        key = bsec SUBSEP name
+        if (!(key in bval)) { brow_count[bsec]++; brow_order[bsec, brow_count[bsec]] = name }
+        bval[key] = $2
+    }
+    next
+}
+{
+    # ── after file ──
+    if ($0 ~ /^[[:space:]]*Running:[[:space:]]+/) {
+        asec = $0
+        sub(/^[[:space:]]*Running:[[:space:]]+/, "", asec)
+        sub(/[[:space:]]+$/, "", asec)
+        if (!(asec in asec_seen)) { asec_seen[asec] = 1; asec_order[++ansec] = asec }
+        next
+    }
+    if ($0 ~ /^[^,]+,-?[0-9]+$/) {
+        name = $1
+        if (!(asec in asec_seen)) { asec_seen[asec] = 1; asec_order[++ansec] = asec }
+        key = asec SUBSEP name
+        if (!(key in aval)) { arow_count[asec]++; arow_order[asec, arow_count[asec]] = name }
+        aval[key] = $2
+    }
+}
+END {
+    if (fmt == "csv") print "Test,Before,After,Percentage"
+    else {
+        print "| Test | Before | After | Percentage |"
+        print "| ---- | -----: | ----: | ---------: |"
+    }
 
-if [ "$output_format" == "csv" ]; then
-    echo "Test,Before,After,Percentage"
-else
-    echo "| Test | Before | After | Percentage |"
-    echo "| ---- | -----: | ----: | ---------: |"
-fi
+    added = 0
+    removed = 0
 
-paste -d, "$before_file" "$after_file" | while IFS=',' read -r test1 before test2 after; do
-    if [ "$before" != "$after" ]; then
-        diff=$((before - after))
-        if [ "$before" -eq 0 ] 2>/dev/null; then
-            percent="NaN"
-        else
-            percent=$(LC_NUMERIC=C awk -v d="$diff" -v b="$before" 'BEGIN { printf "%.2f", (d / b) * 100 }')
-        fi
+    # Sections present in the before file, in before order.
+    for (i = 1; i <= bnsec; i++) {
+        sec = bsec_order[i]
+        nb = brow_count[sec]
+        for (j = 1; j <= nb; j++) {
+            name = brow_order[sec, j]
+            bkey = sec SUBSEP name
+            akey = sec SUBSEP name
+            if (akey in aval) {
+                if (bval[bkey] != aval[akey]) emit(sec, name, bval[bkey], aval[akey], 1)
+            } else {
+                emit(sec, name, bval[bkey], "", 0)
+                removed++
+            }
+        }
+        # Tests that exist only in the after file, in after order.
+        na = arow_count[sec]
+        for (j = 1; j <= na; j++) {
+            an = arow_order[sec, j]
+            if (!((sec SUBSEP an) in bval)) {
+                emit(sec, an, "", aval[sec SUBSEP an], 0)
+                added++
+            }
+        }
+    }
 
-        if [ "$output_format" == "csv" ]; then
-            echo "$test1,$before,$after,$percent"
-        else
-            echo "| $test1 | $before | $after | ${percent}% |"
-        fi
-    fi
-done
+    # Sections that exist only in the after file, in after order.
+    for (i = 1; i <= ansec; i++) {
+        sec = asec_order[i]
+        if (sec in bsec_seen) continue
+        na = arow_count[sec]
+        for (j = 1; j <= na; j++) {
+            an = arow_order[sec, j]
+            emit(sec, an, "", aval[sec SUBSEP an], 0)
+            added++
+        }
+    }
+
+    if (added > 0 || removed > 0) {
+        printf("Note: %d test(s) added, %d test(s) removed; excluded from statistics.\n", added, removed) > "/dev/stderr"
+    }
+}
+function emit(sec, name, bv, av, matched,    disp, diff, pct) {
+    disp = (sec == "" ? name : sec "/" name)
+    if (matched) {
+        diff = bv - av
+        if (bv == 0) pct = "NaN"
+        else pct = sprintf("%.2f", (diff / bv) * 100)
+        if (fmt == "csv") printf("%s,%s,%s,%s\n", disp, bv, av, pct)
+        else printf("| %s | %s | %s | %s%% |\n", disp, bv, av, pct)
+    } else {
+        if (fmt == "csv") printf("%s,%s,%s,\n", disp, bv, av)
+        else printf("| %s | %s | %s |  |\n", disp, bv, av)
+    }
+}
+' "$before_file" "$after_file"

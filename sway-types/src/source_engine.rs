@@ -152,6 +152,10 @@ impl SourceEngine {
             .clone()
     }
 
+    pub fn get_source(&self, source_id: &SourceId) -> Option<span::Source> {
+        self.source_to_buffer_map.read().get(source_id).cloned()
+    }
+
     /// This function provides the [ProgramId] corresponding to a specified manifest file path.
     pub fn get_program_id_from_manifest_path(&self, path: impl AsRef<Path>) -> Option<ProgramId> {
         let manifest_path = sway_utils::find_parent_manifest_dir(&path)

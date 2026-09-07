@@ -44,6 +44,20 @@ The output should look similar to this:
 Visit the [`forc test`](../forc/commands/forc_test.md) command reference to find
 the options available for `forc test`.
 
+## Measuring Performance
+
+Use release builds for comparative gas measurements:
+
+```console
+forc test --release --locked
+```
+
+Pin the Forc version, commit `Forc.lock`, and compare every affected test and
+ABI-reachable release binary independently. Confirm that the benchmark executes the changed path;
+zero gas in a detached helper test does not show that storage or external calls
+are free. Use an SDK and target-node test for claims about fees, refunds,
+receipts, callbacks, persistence, or concurrent transactions.
+
 ## Testing Failure
 
 <!-- This section should explain support for failing unit tests in Sway -->

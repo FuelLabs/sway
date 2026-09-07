@@ -1,5 +1,5 @@
 use crate::{
-    asm_generation::fuel::{compiler_constants::TWELVE_BITS, data_section::EntryName},
+    asm_generation::fuel::data_section::EntryName,
     asm_lang::{
         allocated_ops::{AllocatedInstruction, AllocatedRegister},
         AllocatedAbstractOp, ConstantRegister, ControlFlowOp, JumpType, Label, RealizedOp,
@@ -72,7 +72,7 @@ impl AllocatedAbstractInstructionSet {
     ///  - does not call any functions that spill arguments to the stack
     ///  - does not spill any registers to the stack when allocating registers
     ///
-    /// This is the cases IFF the function contains `CFEI 0`.
+    /// This is the case IFF the function contains `CFEI 0`.
     fn remove_redundant_sp_move_to_locbase(mut self) -> AllocatedAbstractInstructionSet {
         let Some((_fn_name, is_entry)) = &self.function else {
             // Don't optimize if we are not in a function.
@@ -366,7 +366,7 @@ impl AllocatedAbstractInstructionSet {
         Ok((realized_ops, label_offsets))
     }
 
-    /// Resolve jump label offsets.
+    /// Resolves jump label offsets.
     ///
     /// For very large programs the label offsets may be too large to fit in an immediate part
     /// of the jump instruction. In these case we must use a register value as a jump target.
@@ -383,7 +383,7 @@ impl AllocatedAbstractInstructionSet {
     /// This approach is not optimal as it sometimes requires more opcodes than necessary,
     /// but it is simple and quite works well in practice.
     fn resolve_labels(&mut self, data_section: &mut DataSection) -> LabeledBlocks {
-        let far_jump_indices = self.collect_far_jumps();
+        let (far_jump_indices, _) = self.collect_far_jumps();
         self.map_label_offsets(data_section, &far_jump_indices)
     }
 
@@ -394,26 +394,18 @@ impl AllocatedAbstractInstructionSet {
         match op.opcode {
             Either::Right(Label(_)) => 0,
 
-            // Loads from data section may take up to 2 instructions
+            // Loads from data section may take up to 2 instructions.
             Either::Left(
                 AllocatedInstruction::LoadDataId(_, _) | AllocatedInstruction::AddrDataId(_, _),
             ) => 2,
 
-            // cfei 0 and cfsi 0 are omitted from asm emission, don't count them for offsets
-            Either::Left(AllocatedInstruction::CFEI(ref op))
-            | Either::Left(AllocatedInstruction::CFSI(ref op))
-                if op.value() == 0 =>
-            {
-                0
-            }
-
             // Another special case for the blob opcode, used for testing.
             Either::Left(AllocatedInstruction::BLOB(ref count)) => count.value() as u64,
 
-            // This is a concrete op, size is fixed
+            // This is a concrete op, size is fixed.
             Either::Left(_) => 1,
 
-            // Worst case for jump is 2 opcodes, and 3 for calls
+            // Worst case for jump is 2 opcodes, and 3 for calls.
             Either::Right(Jump { ref type_, .. }) => match type_ {
                 JumpType::Unconditional => 2,
                 JumpType::NotZero(_) => 2,
@@ -423,20 +415,21 @@ impl AllocatedAbstractInstructionSet {
             Either::Right(ReturnFromCall { .. }) => 1,
             Either::Right(Comment) => 0,
             Either::Right(DataSectionOffsetPlaceholder) => {
-                // If the placeholder is 32 bits, this is 1. if 64, this should be 2. We use LW
+                // If the placeholder is 32 bits, this is 1. If 64, this should be 2. We use LW
                 // to load the data, which loads a whole word, so for now this is 2.
                 2
             }
             Either::Right(ConfigurablesOffsetPlaceholder) => 2,
             Either::Right(PushAll(_)) | Either::Right(PopAll(_)) => unreachable!(
-                "fix me, pushall and popall don't really belong in control flow ops \
+                "`PushAll` and `PopAll` don't belong in control flow ops \
                         since they're not about control flow"
             ),
         }
     }
 
     // Actual size of an instruction.
-    // Note that this return incorrect values for far jumps, they must be handled separately.
+    //
+    // **Note that this return incorrect values for far jumps, they must be handled separately.**
     // The return value is in concrete instructions, i.e. units of 4 bytes.
     fn instruction_size_not_far_jump(op: &AllocatedAbstractOp, data_section: &DataSection) -> u64 {
         use ControlFlowOp::*;
@@ -456,27 +449,20 @@ impl AllocatedAbstractInstructionSet {
                 }
             }
 
+            // A special case for AddrDataId which may be 1 or 2 ops, depending on
+            // the offset of the data it points to.
             Either::Left(AllocatedInstruction::AddrDataId(_, ref data_id)) => {
-                let offset_bytes = data_section.data_id_to_offset(data_id) as u64;
-                if offset_bytes <= TWELVE_BITS {
-                    1
-                } else {
+                if data_section.addr_is_far(data_id) {
                     2
+                } else {
+                    1
                 }
-            }
-
-            // cfei 0 and cfsi 0 are omitted from asm emission, don't count them for offsets
-            Either::Left(AllocatedInstruction::CFEI(ref op))
-            | Either::Left(AllocatedInstruction::CFSI(ref op))
-                if op.value() == 0 =>
-            {
-                0
             }
 
             // Another special case for the blob opcode, used for testing.
             Either::Left(AllocatedInstruction::BLOB(ref count)) => count.value() as u64,
 
-            // This is a concrete op, size is fixed
+            // This is a concrete op, size is fixed.
             Either::Left(_) => 1,
 
             // Far jumps must be handled separately, as they require two instructions.
@@ -485,7 +471,7 @@ impl AllocatedAbstractInstructionSet {
             Either::Right(Comment) => 0,
 
             Either::Right(DataSectionOffsetPlaceholder) => {
-                // If the placeholder is 32 bits, this is 1. if 64, this should be 2. We use LW
+                // If the placeholder is 32 bits, this is 1. If 64, this should be 2. We use LW
                 // to load the data, which loads a whole word, so for now this is 2.
                 2
             }
@@ -493,7 +479,7 @@ impl AllocatedAbstractInstructionSet {
             Either::Right(ConfigurablesOffsetPlaceholder) => 2,
 
             Either::Right(PushAll(_)) | Either::Right(PopAll(_)) => unreachable!(
-                "fix me, pushall and popall don't really belong in control flow ops \
+                "`PushAll` and `PopAll` don't belong in control flow ops \
                         since they're not about control flow"
             ),
 
@@ -506,12 +492,25 @@ impl AllocatedAbstractInstructionSet {
     /// For far jumps we have to reserve space for an extra opcode to load target address.
     /// For far calls, we need to reserve two extra opcodes.
     /// Also, this will be mark self-jumps, as they require a noop to be inserted before them.
-    pub(crate) fn collect_far_jumps(&self) -> FxHashMap<usize, u64> {
+    ///
+    /// Returns the sizes (in instructions) of the jumps that could require the far form,
+    /// by their op index, together with the worst-case number of jump target words that
+    /// realizing these jumps can still insert into the data section.
+    ///
+    /// The worst-case number of jump target words counts only the jumps whose realization
+    /// actually inserts a word. Those are far conditional and unconditional jumps
+    /// that are not self-jumps (see [compile_jump]), and the rare calls whose
+    /// worst-case distance exceeds even the 18-bit immediate.
+    ///
+    /// Since the actual distances can never exceed the worst-case ones, the count is an upper
+    /// bound of the actual number of inserted words (value deduplication can lower it further).
+    pub(crate) fn collect_far_jumps(&self) -> (FxHashMap<usize, u64>, u64) {
         let mut labelled_blocks = LabeledBlocks::new();
         let mut cur_offset = 0;
         let mut cur_basic_block = None;
 
         let mut far_jump_sizes = FxHashMap::default();
+        let mut worst_case_data_section_words = 0u64;
 
         struct JumpInfo {
             to: Label,
@@ -562,15 +561,24 @@ impl AllocatedAbstractInstructionSet {
             let is_self_jump = rel_offset == 0;
             match type_ {
                 JumpType::Unconditional => {
-                    // Unconditional jumps have 18-bit immidate offset
+                    // Unconditional jumps have 18-bit immediate offset.
                     if is_self_jump || rel_offset > consts::EIGHTEEN_BITS {
                         far_jump_sizes.insert(jump.op_idx, 2);
+                        // Far self-jumps are realized as a NOOP and a backward jump to
+                        // it, all the other far jumps load the target from a word
+                        // inserted into the data section.
+                        if !is_self_jump {
+                            worst_case_data_section_words += 1;
+                        }
                     }
                 }
                 JumpType::NotZero(_) => {
-                    // Conditional jumps have 12-bit immidate offset
+                    // Conditional jumps have 12-bit immediate offset.
                     if is_self_jump || rel_offset > consts::TWELVE_BITS {
                         far_jump_sizes.insert(jump.op_idx, 2);
+                        if !is_self_jump {
+                            worst_case_data_section_words += 1;
+                        }
                     }
                 }
                 JumpType::Call => {
@@ -578,8 +586,9 @@ impl AllocatedAbstractInstructionSet {
                     // This can never generate a number that's too small, but in some
                     // corner cases it leads to reserving an extra opcode.
                     // See `compile_call` that inserts NOOPs to pad the call in these cases.
+                    let mut scratch_data_section = DataSection::default();
                     let len = compile_call_inner(
-                        &mut DataSection::default(),
+                        &mut scratch_data_section,
                         jump.offset,
                         offs,
                         String::new(),
@@ -587,11 +596,18 @@ impl AllocatedAbstractInstructionSet {
                     )
                     .len();
                     far_jump_sizes.insert(jump.op_idx, len as u64);
+                    // If the data section got any entries, it means that the call
+                    // must load the target from the data section.
+                    // Only the calls whose worst-case distance does not fit even into
+                    // the 18-bit immediate load the target from the data section.
+                    if scratch_data_section.num_entries() > 0 {
+                        worst_case_data_section_words += 1;
+                    }
                 }
             };
         }
 
-        far_jump_sizes
+        (far_jump_sizes, worst_case_data_section_words)
     }
 
     /// Map the labels to their offsets in the program.
@@ -868,7 +884,7 @@ pub(crate) fn compile_call_inner(
             ];
         }
 
-        // if the offset is too large for MOVI, use data section to store the full offset.
+        // If the offset is too large for MOVI, use data section to store the full offset.
         let data_id = data_section.insert_data_value(Entry::new_word(
             delta_instr,
             EntryName::NonConfigurable,

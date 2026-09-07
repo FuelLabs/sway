@@ -934,6 +934,7 @@ fn is_clobbered(
         if block.is_entry(context) {
             // We've reached the entry block. If any of the scrutiny_symbols
             // is an argument, then we consider it clobbered.
+            // TODO: We can improve this see https://github.com/FuelLabs/sway/issues/7282#issuecomment-5255059634
             if scrutiny_symbols
                 .iter()
                 .any(|sym| matches!(sym, Symbol::Arg(_)))
@@ -1038,6 +1039,7 @@ fn load_store_to_memcopy(context: &mut Context, function: Function) -> Result<bo
                 dst_ptr,
                 src_ptr,
             }) => {
+                // TODO: We can improve this here. See https://github.com/FuelLabs/sway/issues/7282#issuecomment-5255211110
                 let load_block = load_val.get_instruction(context).unwrap().parent;
                 let temp = function.new_unique_local_var(
                     context,

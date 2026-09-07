@@ -22,11 +22,25 @@ neg_sorted="$(mktemp)"
 # Stash stdin for multiple passes.
 cat > "$tmp_all"
 
-# Extract normalized numeric values from the fourth column.
-awk -F',' -v POS="$posf" -v NEG="$negf" '
+# Extract normalized numeric percentage values.
+# Accepts either:
+#   - CSV (`Test,Before,After,Percentage`) — percentage is the 4th comma-field, or
+#   - a Markdown table (`| Test | Before | After | Percentage |`) — percentage is
+#     the last visible cell (the cell before the trailing `|`).
+# `v += 0` coerces the value, stripping a trailing `%`, surrounding whitespace, and
+# non-numeric sentinels (`NaN`, `—`, header text) to 0, which are then ignored.
+awk -v POS="$posf" -v NEG="$negf" '
+function pct_of(line,   parts, n) {
+  if (line ~ /^[[:space:]]*\|/) {     # Markdown table row.
+    n = split(line, parts, "|")      # trailing "|" -> empty parts[n]
+    return parts[n-1]                # last visible cell = percentage
+  }
+  n = split(line, parts, ",")        # CSV row.
+  return parts[4]
+}
 NR==1 { next }  # skip header
 {
-  v = $4
+  v = pct_of($0)
   v += 0
   if (v > 0) {
     print v >> POS

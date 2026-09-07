@@ -337,7 +337,6 @@ CONFIGURABLES_OFFSET[0..32]
 CONFIGURABLES_OFFSET[32..64]
 lw   $$ds $$tmp i1
 add  $$ds $$ds $$tmp
-cfei i0                       ; allocate stack space for globals
 move $$locbase $sp            ; [entry init: __entry]: set locals base register
 jal  $$reta $pc i2            ; [call: main_0]: call function
 retd  $zero $zero             ; [entry end: __entry] return slice

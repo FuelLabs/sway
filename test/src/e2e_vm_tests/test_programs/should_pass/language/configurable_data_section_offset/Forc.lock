@@ -1,0 +1,8 @@
+[[package]]
+name = "configurable_data_section_offset"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-E4F83B08656B67E7"

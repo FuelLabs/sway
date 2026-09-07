@@ -735,9 +735,7 @@ struct EvmFinalProgram {
 impl EvmFinalProgram {
     fn finalize(self) -> FinalizedAsm {
         FinalizedAsm {
-            data_section: DataSection {
-                ..Default::default()
-            },
+            data_section: DataSection::default(),
             program_section: InstructionSet::Evm { ops: self.ops },
             program_kind: ProgramKind::Script,
             entries: vec![],

@@ -20,8 +20,8 @@ impl fmt::Display for EntryName {
     }
 }
 
-// An entry in the data section.  It's important for the size to be correct, especially for unions
-// where the size could be larger than the represented value.
+/// An entry in the [DataSection]. It's important for the size to be correct, especially for unions
+/// where the size could be larger than the represented value.
 #[derive(Clone, Debug, serde::Serialize)]
 pub struct Entry {
     pub value: Datum,
@@ -201,6 +201,7 @@ impl Entry {
                 (Datum::Byte(l), Datum::Byte(r)) => l == r,
                 (Datum::Word(l), Datum::Word(r)) => l == r,
                 (Datum::ByteArray(l), Datum::ByteArray(r)) => l == r,
+                (Datum::Slice(l), Datum::Slice(r)) => l == r,
                 (Datum::Collection(l), Datum::Collection(r)) => {
                     l.len() == r.len()
                         && l.iter()
@@ -211,77 +212,119 @@ impl Entry {
             }
         }
 
-        // If this corresponds to a configuration-time constants, then the entry names will be
-        // available (i.e. `Some(..)`) and they must be the same before we can merge the two
-        // entries. Otherwise, `self.name` and `entry.name` will be `None` in which case we're also
-        // allowed to merge the two entries (if their values are equivalent of course).
+        // If this corresponds to a configurable, then the entry names will be
+        // available and they must be the same before we can merge the two
+        // entries. Otherwise, `self.name` and `entry.name` will be `None`
+        // in which case we're also allowed to merge the two entries
+        // (if their values are equivalent of course).
         equiv_data(&self.value, &entry.value) && self.name == entry.name
     }
 }
 
+/// [DataSection] consists of three distinguished regions, laid in the
+/// fixed order:
+/// - non-configurables (compile-time constants)
+/// - data section pointers, inserted during ASM compilation
+/// - configurables
 #[derive(Clone, Debug)]
-pub enum DataIdEntryKind {
-    NonConfigurable,
-    Configurable,
+pub enum DataSectionRegion {
+    /// Contains compile-time constants.
+    NonConfigurables,
+    /// Contains hard-coded pointers (addresses) to other entries in the data section.
+    ///
+    /// The size of this section is fixed/reserved during the final program generation
+    /// and the actual pointers are inserted during final program finalization
+    /// (see [DataSection::reserve_pointer_slots] and [DataSection::append_pointer]).
+    Pointers,
+    /// Contains configurables.
+    Configurables,
 }
 
-impl fmt::Display for DataIdEntryKind {
+impl fmt::Display for DataSectionRegion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            DataIdEntryKind::NonConfigurable => write!(f, "NonConfigurable"),
-            DataIdEntryKind::Configurable => write!(f, "Configurable"),
+            // TODO: Intentionally keep display string in singular to keep
+            //       it compatible with the display of `Entry::name`.
+            //       We want to improve displaying of data section entries
+            //       in general to improve readability and troubleshooting.
+            //       Until then, keeping singular here will be sufficient.
+            DataSectionRegion::NonConfigurables => write!(f, "NonConfigurable"),
+            DataSectionRegion::Pointers => write!(f, "Pointer"),
+            DataSectionRegion::Configurables => write!(f, "Configurable"),
         }
     }
 }
 
-/// An address which refers to a value in the data section of the asm.
+/// An address which refers to a value in the [DataSection].
 #[derive(Clone, Debug)]
 pub(crate) struct DataId {
     pub(crate) idx: u32,
-    pub(crate) kind: DataIdEntryKind,
+    pub(crate) region: DataSectionRegion,
 }
 
 impl fmt::Display for DataId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "data_{}_{}", self.kind, self.idx)
+        write!(f, "data_{}_{}", self.region, self.idx)
     }
 }
 
-/// The data to be put in the data section of the asm
+/// The data section of the ASM.
 #[derive(Default, Clone, Debug)]
 pub struct DataSection {
     pub non_configurables: Vec<Entry>,
     pub configurables: Vec<Entry>,
+    /// Hard-coded pointers (addresses) to other entries in the data section.
+    ///
+    /// The pointer slots are reserved upfront (see [Self::reserve_pointer_slots]), one
+    /// slot per non-copy load, before jump labels are resolved, and are only filled
+    /// in-place later on (see [Self::append_pointer]). This way the layout of the data
+    /// section, and with it the sizes of all the instructions, are fixed before any
+    /// instruction offsets or pointer values are calculated.
+    pub(crate) pointers: Vec<Entry>,
     pub(crate) pointer_id: FxHashMap<u64, DataId>,
+    /// The worst-case (largest possible) offset, in bytes, at which the configurables
+    /// region can start, frozen before jump labels are resolved.
+    /// See [Self::freeze_configurables_base_offset].
+    frozen_configurables_base_offset: Option<u64>,
+    /// The precomputed offset, in bytes, of every entry (by its absolute index),
+    /// built once the layout of the data section is final.
+    /// See [Self::freeze_layout].
+    frozen_offsets: Option<Vec<usize>>,
 }
 
 impl DataSection {
     /// Get the number of entries
     pub fn num_entries(&self) -> usize {
-        self.non_configurables.len() + self.configurables.len()
+        self.non_configurables.len() + self.pointers.len() + self.configurables.len()
     }
 
-    /// Iterate over all entries, non-configurables followed by configurables
+    /// Iterate over the all entries in the order of regions:
+    /// non-configurables, then pointers, then configurables.
     pub fn iter_all_entries(&self) -> impl Iterator<Item = Entry> + '_ {
         self.non_configurables
             .iter()
+            .chain(self.pointers.iter())
             .chain(self.configurables.iter())
             .cloned()
     }
 
     /// Get the absolute index of an id
     fn absolute_idx(&self, id: &DataId) -> usize {
-        match id.kind {
-            DataIdEntryKind::NonConfigurable => id.idx as usize,
-            DataIdEntryKind::Configurable => id.idx as usize + self.non_configurables.len(),
+        match id.region {
+            DataSectionRegion::NonConfigurables => id.idx as usize,
+            DataSectionRegion::Pointers => id.idx as usize + self.non_configurables.len(),
+            DataSectionRegion::Configurables => {
+                id.idx as usize + self.non_configurables.len() + self.pointers.len()
+            }
         }
     }
 
     /// Get entry at id
     fn get(&self, id: &DataId) -> Option<&Entry> {
-        match id.kind {
-            DataIdEntryKind::NonConfigurable => self.non_configurables.get(id.idx as usize),
-            DataIdEntryKind::Configurable => self.configurables.get(id.idx as usize),
+        match id.region {
+            DataSectionRegion::NonConfigurables => self.non_configurables.get(id.idx as usize),
+            DataSectionRegion::Configurables => self.configurables.get(id.idx as usize),
+            DataSectionRegion::Pointers => self.pointers.get(id.idx as usize),
         }
     }
 
@@ -295,19 +338,50 @@ impl DataSection {
     /// Given an absolute index, calculate the offset _from the beginning of the data section_ to the data
     /// in bytes.
     pub(crate) fn absolute_idx_to_offset(&self, idx: usize) -> usize {
-        self.iter_all_entries().take(idx).fold(0, |offset, entry| {
-            //entries must be word aligned
-            size_bytes_round_up_to_word_alignment!(offset + entry.to_bytes().len())
-        })
+        if let Some(offsets) = &self.frozen_offsets {
+            offsets[idx]
+        } else {
+            self.iter_all_entries().take(idx).fold(0, |offset, entry| {
+                // Entries must be word aligned.
+                size_bytes_round_up_to_word_alignment!(offset + entry.to_bytes().len())
+            })
+        }
+    }
+
+    /// Freezes the layout of the data section and precomputes the offset of every
+    /// entry, turning every later offset calculation into a simple lookup.
+    ///
+    /// Must be called only once the layout is truly final, i.e., after the jumps are
+    /// realized (realizing a far jump inserts its target word into the data section).
+    ///
+    /// Inserting entries after the freeze is a hard error (see [Self::insert_data_value]).
+    ///
+    /// Note that filling the reserved pointer slots (see [Self::append_pointer]) is
+    /// still possible and expected. It changes the values, but not the layout.
+    ///
+    /// Panics if the layout was already frozen.
+    pub(crate) fn freeze_layout(&mut self) {
+        assert!(
+            self.frozen_offsets.is_none(),
+            "the layout of the data section must be frozen exactly once",
+        );
+        let mut offsets = Vec::with_capacity(self.num_entries());
+        let mut offset = 0;
+        for entry in self.iter_all_entries() {
+            offsets.push(offset);
+            // Entries must be word aligned.
+            offset = size_bytes_round_up_to_word_alignment!(offset + entry.to_bytes().len());
+        }
+        self.frozen_offsets = Some(offsets);
     }
 
     pub(crate) fn serialize_to_bytes(&self) -> Vec<u8> {
-        // not the exact right capacity but serves as a lower bound
+        // Not the exact right capacity but serves as a lower bound.
         let mut buf = Vec::with_capacity(self.num_entries());
         for entry in self.iter_all_entries() {
             buf.append(&mut entry.to_bytes());
 
-            //entries must be word aligned
+            // Entries must be word aligned.
             let aligned_len = size_bytes_round_up_to_word_alignment!(buf.len());
             buf.extend(vec![0u8; aligned_len - buf.len()]);
         }
@@ -326,19 +400,126 @@ impl DataSection {
 
     /// When generating code, sometimes a hard-coded data pointer is needed to reference
     /// static values that have a length longer than one word.
-    /// This method appends pointers to the end of the data section (thus, not altering the data
-    /// offsets of previous data).
-    /// `pointer_value` is in _bytes_ and refers to the offset from instruction start or
-    /// relative to the current (load) instruction.
+    ///
+    /// `pointer_value` is in _bytes_ and refers to the **offset relative to the current (load) instruction**.
     pub(crate) fn append_pointer(&mut self, pointer_value: u64) -> DataId {
+        // Pointers are deduplicated by value and fill the pointer slots reserved by
+        // `reserve_pointer_slots`. Filling a slot in-place never changes the layout of
+        // the data section, so all the entry offsets, and with them the instruction
+        // sizes, stay exactly as they were when the jump labels were resolved.
+        if let Some(data_id) = self.pointer_id.get(&pointer_value) {
+            return data_id.clone();
+        }
+        // Due to the deduplication, the number of the filled slots so far can be smaller
+        // than the number of the reserved slots, but never larger, since exactly one slot
+        // was reserved for each non-copy load. Any remaining unfilled slots stay zeroed.
+        let slot_idx = self.pointer_id.len();
+        assert!(
+            slot_idx < self.pointers.len(),
+            "all reserved data section pointer slots are already filled",
+        );
         // The 'pointer' is just a literal 64 bit address.
-        let data_id = self.insert_data_value(Entry::new_word(
-            pointer_value,
-            EntryName::NonConfigurable,
-            None,
-        ));
+        self.pointers[slot_idx] = Entry::new_word(pointer_value, EntryName::NonConfigurable, None);
+        let data_id = DataId {
+            idx: slot_idx as u32,
+            region: DataSectionRegion::Pointers,
+        };
         self.pointer_id.insert(pointer_value, data_id.clone());
         data_id
+    }
+
+    /// Reserves `count` zeroed pointer slots, one for each non-copy
+    /// `AllocatedInstruction::LoadDataId` in the program.
+    ///
+    /// This method **must be called before jump labels are resolved**,
+    /// so that the layout of the data section is fixed before any
+    /// instruction offsets are calculated.
+    ///
+    /// The slots are later filled in-place by [Self::append_pointer].
+    ///
+    /// The exact pointer values are not known at this point and it can
+    /// be that some of the values will be duplicated. [Self::append_pointer]
+    /// deduplicates them later on, leaving some of the reserved pointer slots unused.
+    ///
+    /// Making the number of slots dependent on the values would make the
+    /// layout dependent on the offsets and vice versa, which is exactly what
+    /// we are avoiding with reserving the fixed number of slots and freezing the layout.
+    ///
+    /// The price are occasional unused, zeroed slots, 8 bytes each,
+    /// in the rare case when two loads share the pointer value.
+    /// Measurements of real-life programs show that this situation is indeed
+    /// very rare and if occurring at all, increases the data section for just
+    /// a handful <5 number of 8 bytes slots.
+    pub(crate) fn reserve_pointer_slots(&mut self, count: usize) {
+        assert!(
+            self.pointers.is_empty() && self.pointer_id.is_empty(),
+            "pointer slots must be reserved exactly once, before any pointers are appended",
+        );
+        self.pointers = vec![Entry::new_word(0, EntryName::NonConfigurable, None); count];
+    }
+
+    /// Freezes the worst-case (largest possible) offset at which the configurables region
+    /// can start. `worst_case_late_insertions_in_bytes` is the total size of the
+    /// non-configurable entries that can still be inserted after this point (e.g., the
+    /// far jump target words inserted while resolved jumps are being realized).
+    ///
+    /// Once frozen, the decision whether an `AddrDataId` pointing to a configurable
+    /// needs one or two instructions (see [Self::addr_is_far]) is derived from this
+    /// worst-case offset and never changes again, even if the actual configurables
+    /// offset ends up smaller. This keeps all the instruction sizes stable from the
+    /// moment the jump labels are resolved until the bytecode is emitted.
+    pub(crate) fn freeze_configurables_base_offset(
+        &mut self,
+        worst_case_late_insertions_in_bytes: u64,
+    ) {
+        assert!(
+            self.frozen_configurables_base_offset.is_none(),
+            "configurables base offset must be frozen exactly once",
+        );
+        let configurables_start =
+            self.absolute_idx_to_offset(self.non_configurables.len() + self.pointers.len()) as u64;
+        self.frozen_configurables_base_offset =
+            Some(configurables_start + worst_case_late_insertions_in_bytes);
+    }
+
+    /// Returns true if the `AddrDataId` instruction for the given [DataId] must be realized
+    /// into the two-instruction far form (`MOVI` + `ADD`), and false if the
+    /// one-instruction near form (`ADDI`) suffices.
+    ///
+    /// For configurables the decision is made against the frozen worst-case offset of
+    /// the configurables region (see [Self::freeze_configurables_base_offset]), because
+    /// their actual offset can still decrease while jumps are being realized. Since the
+    /// actual offset can never exceed the worst-case one, a near decision always stays
+    /// realizable, and the far form is realizable for any offset. For all other entries
+    /// the actual offset is already final and is used directly.
+    ///
+    /// This decision must be perfectly stable: it defines the size of the instruction,
+    /// and all the sizes must remain exactly the same from the moment the jump labels
+    /// are resolved until the bytecode is emitted.
+    ///
+    /// Strictly seeing, this can lead to a pessimistic decision of using a far decision
+    /// where a near one could be sufficient. In practice though, as the measurements confirm,
+    /// this will almost never be the case.
+    pub(crate) fn addr_is_far(&self, id: &DataId) -> bool {
+        let sizing_offset = match id.region {
+            DataSectionRegion::Configurables => {
+                let base = self.frozen_configurables_base_offset.expect(
+                    "configurables base offset must be frozen before sizing `AddrDataId` instructions",
+                );
+                let offset_within_configurables = self
+                    .configurables
+                    .iter()
+                    .take(id.idx as usize)
+                    .fold(0, |offset, entry| {
+                        size_bytes_round_up_to_word_alignment!(offset + entry.to_bytes().len())
+                    }) as u64;
+                base + offset_within_configurables
+            }
+            DataSectionRegion::NonConfigurables | DataSectionRegion::Pointers => {
+                self.data_id_to_offset(id) as u64
+            }
+        };
+        sizing_offset > crate::asm_generation::fuel::compiler_constants::TWELVE_BITS
     }
 
     /// Get the [DataId] for a pointer, if it exists.
@@ -347,40 +528,49 @@ impl DataSection {
         self.pointer_id.get(&pointer_value).cloned()
     }
 
-    /// Given any data in the form of a [Literal] (using this type mainly because it includes type
-    /// information and debug spans), insert it into the data section and return its handle as
-    /// [DataId].
+    /// Insert `new_entry` into the [DataSection] and return its handle as [DataId].
+    ///
+    /// Inserting performs deduplication. If the equivalent [Entry] already exists
+    /// (see [Entry::equiv]) the existing [DataId] is returned.
+    ///
+    /// Panics if the data section layout is frozen (see [Self::freeze_layout]).
     pub(crate) fn insert_data_value(&mut self, new_entry: Entry) -> DataId {
-        // if there is an identical data value, use the same id
+        assert!(
+            self.frozen_offsets.is_none(),
+            "cannot insert entries into the data section once its layout is frozen",
+        );
 
+        // If there is an identical data value, use the same id.
         let (value_pairs, kind) = match new_entry.name {
             EntryName::NonConfigurable => (
                 &mut self.non_configurables,
-                DataIdEntryKind::NonConfigurable,
+                DataSectionRegion::NonConfigurables,
             ),
-            EntryName::Configurable(_) => (&mut self.configurables, DataIdEntryKind::Configurable),
+            EntryName::Configurable(_) => {
+                (&mut self.configurables, DataSectionRegion::Configurables)
+            }
         };
         match value_pairs.iter().position(|entry| entry.equiv(&new_entry)) {
             Some(num) => DataId {
                 idx: num as u32,
-                kind,
+                region: kind,
             },
             None => {
                 value_pairs.push(new_entry);
-                // the index of the data section where the value is stored
                 DataId {
                     idx: (value_pairs.len() - 1) as u32,
-                    kind,
+                    region: kind,
                 }
             }
         }
     }
 
-    // If the stored data is Datum::Word, return the inner value.
+    /// If the stored data is [Datum::Word], return the inner value.
     pub(crate) fn get_data_word(&self, data_id: &DataId) -> Option<u64> {
-        let value_pairs = match data_id.kind {
-            DataIdEntryKind::NonConfigurable => &self.non_configurables,
-            DataIdEntryKind::Configurable => &self.configurables,
+        let value_pairs = match data_id.region {
+            DataSectionRegion::NonConfigurables => &self.non_configurables,
+            DataSectionRegion::Pointers => &self.pointers,
+            DataSectionRegion::Configurables => &self.configurables,
         };
         value_pairs.get(data_id.idx as usize).and_then(|entry| {
             if let Datum::Word(w) = entry.value {

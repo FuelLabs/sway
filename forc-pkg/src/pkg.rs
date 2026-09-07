@@ -1799,7 +1799,7 @@ pub fn compile(
         metrics
     );
 
-    let mut asm = match asm_res {
+    let asm = match asm_res {
         Err(_) => return fail(handler),
         Ok(asm) => asm,
     };
@@ -1875,13 +1875,7 @@ pub fn compile(
         pkg.name,
         "compile asm to bytecode",
         "compile_asm_to_bytecode",
-        sway_core::asm_to_bytecode(
-            &handler,
-            &mut asm,
-            source_map,
-            engines.se(),
-            &sway_build_config
-        ),
+        sway_core::asm_to_bytecode(&handler, &asm, source_map, engines.se(), &sway_build_config),
         Some(sway_build_config.clone()),
         metrics
     );

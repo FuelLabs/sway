@@ -10,6 +10,7 @@ repository.workspace = true
 
 [dependencies]
 anyhow.workspace = true
+clap = { workspace = true, features = ["derive"] }
 downcast-rs.workspace = true
 filecheck.workspace = true
 indexmap = { workspace = true, features = ["rayon"] }

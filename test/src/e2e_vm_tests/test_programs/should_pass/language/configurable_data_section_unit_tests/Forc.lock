@@ -1,0 +1,8 @@
+[[package]]
+name = "configurable_data_section_unit_tests"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-4EB54C3D4D5A34BE"
