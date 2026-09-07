@@ -284,7 +284,7 @@ impl AllocatedAbstractInstructionSet {
                     comment,
                 }),
                 Either::Right(org_op) => match org_op {
-                    ControlFlowOp::Jump { to, type_ } => {
+                    ControlFlowOp::Jump { to, ty: type_ } => {
                         let target_offset = label_offsets.get(&to).unwrap().offs;
                         let ops = if matches!(type_, JumpType::Call) {
                             compile_call(
@@ -405,8 +405,8 @@ impl AllocatedAbstractInstructionSet {
             // This is a concrete op, size is fixed.
             Either::Left(_) => 1,
 
-            // Worst case for jump is 2 opcodes, and 3 for calls.
-            Either::Right(Jump { ref type_, .. }) => match type_ {
+            // Worst case for jump is 2 opcodes, and 3 for calls
+            Either::Right(Jump { ty: ref type_, .. }) => match type_ {
                 JumpType::Unconditional => 2,
                 JumpType::NotZero(_) => 2,
                 JumpType::Call => 3,
@@ -553,13 +553,13 @@ impl AllocatedAbstractInstructionSet {
         for jump in jumps {
             let offs = labelled_blocks.get(&jump.to).unwrap().offs;
             let rel_offset = offs.abs_diff(jump.offset);
-            let Either::Right(ControlFlowOp::Jump { ref type_, .. }) = self.ops[jump.op_idx].opcode
+            let Either::Right(ControlFlowOp::Jump { ref ty, .. }) = self.ops[jump.op_idx].opcode
             else {
                 unreachable!("Jump info should only be collected for jumps");
             };
             // Relative self jumps need a NOOP inserted before it so that we can jump to the NOOP.
             let is_self_jump = rel_offset == 0;
-            match type_ {
+            match ty {
                 JumpType::Unconditional => {
                     // Unconditional jumps have 18-bit immediate offset.
                     if is_self_jump || rel_offset > consts::EIGHTEEN_BITS {

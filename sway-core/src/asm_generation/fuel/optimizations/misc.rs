@@ -19,7 +19,7 @@ impl AbstractInstructionSet {
                 (
                     Either::Right(OrganizationalOp::Jump {
                         to: dst_label,
-                        type_: JumpType::Unconditional | JumpType::NotZero(_),
+                        ty: JumpType::Unconditional | JumpType::NotZero(_),
                         ..
                     }),
                     Either::Right(OrganizationalOp::Label(label)),

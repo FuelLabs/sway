@@ -21,6 +21,7 @@ extend-ignore-identifiers-re = [
     "CONSTS",
     "cpy",
     "Cpy",
+    "implicits",
 ]
 
 extend-ignore-re = [
