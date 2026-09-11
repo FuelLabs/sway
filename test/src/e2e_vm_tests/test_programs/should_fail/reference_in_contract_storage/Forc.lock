@@ -1,0 +1,8 @@
+[[package]]
+name = "reference_in_contract_storage"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-8DD70B98C09F9691"
