@@ -1,0 +1,5 @@
+category = "fail"
+
+# check: $()NeedsU64 { value: x }
+# nextln: $()Trait constraint "Mark" is missing from type "T".
+
