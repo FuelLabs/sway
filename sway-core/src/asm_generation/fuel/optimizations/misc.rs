@@ -29,13 +29,10 @@ impl AbstractInstructionSet {
             })
             .collect();
 
-        // Replace the dead jumps with NOPs, as it's cheaper.
-        for idx in dead_jumps {
-            self.ops[idx] = Op {
-                opcode: Either::Left(VirtualOp::NOOP),
-                comment: "remove redundant jump operation".into(),
-                owning_span: None,
-            };
+        // Remove dead jumps outright. Replacing one with a NOOP would add an
+        // observable `$of`/`$err` clear that the original jump did not perform.
+        for idx in dead_jumps.into_iter().rev() {
+            self.ops.remove(idx);
         }
 
         self
