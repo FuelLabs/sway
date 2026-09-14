@@ -1,0 +1,8 @@
+[[package]]
+name = "associated_const_generic_intrinsic"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-B89315095FF2A0BB"
