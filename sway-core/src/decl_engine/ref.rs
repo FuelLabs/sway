@@ -260,13 +260,14 @@ impl<I> Spanned for DeclRef<I> {
 impl<T> SubstTypes for DeclRef<DeclId<T>>
 where
     DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned + SubstTypes + Clone,
+    DeclEngine: DeclEngineInsert<T>,
+    T: Named + Spanned + SubstTypes + Clone + TyDeclParsedType,
 {
     fn subst_inner(&mut self, ctx: &SubstTypesContext) -> HasChanges {
         let decl_engine = ctx.engines.de();
         let mut decl = (*decl_engine.get(&self.id)).clone();
         if decl.subst(ctx).has_changes() {
-            decl_engine.replace(self.id, decl);
+            *self = decl_engine.insert_modified(decl, self.id);
             HasChanges::Yes
         } else {
             HasChanges::No
