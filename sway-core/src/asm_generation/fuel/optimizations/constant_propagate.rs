@@ -181,7 +181,7 @@ impl AbstractInstructionSet {
             // - "JMP LABEL" if reg is not zero
             if let Either::Right(ControlFlowOp::Jump {
                 to,
-                type_: JumpType::NotZero(reg),
+                ty: JumpType::NotZero(reg),
             }) = &mut op.opcode
             {
                 if let Some(con) = known_values.resolve(reg).and_then(|r| r.value()) {
@@ -198,7 +198,7 @@ impl AbstractInstructionSet {
                     } else {
                         op.opcode = Either::Right(ControlFlowOp::Jump {
                             to: *to,
-                            type_: JumpType::Unconditional,
+                            ty: JumpType::Unconditional,
                         });
                     }
                 }
@@ -474,7 +474,7 @@ impl AbstractInstructionSet {
                                     ResetKnown::Defs
                                 }
                             }
-                            ControlFlowOp::Jump { type_, .. } => match type_ {
+                            ControlFlowOp::Jump { ty: type_, .. } => match type_ {
                                 JumpType::Call => ResetKnown::All,
                                 _ => ResetKnown::Defs,
                             },

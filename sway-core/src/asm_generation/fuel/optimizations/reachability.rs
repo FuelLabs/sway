@@ -27,8 +27,8 @@ impl AbstractInstructionSet {
             let mut op_def = op.def_registers();
             op_def.append(&mut op.def_const_registers());
 
-            if let Either::Right(ControlFlowOp::Jump { type_, .. }) = &op.opcode {
-                if !matches!(type_, JumpType::Call) {
+            if let Either::Right(ControlFlowOp::Jump { ty, .. }) = &op.opcode {
+                if !matches!(ty, JumpType::Call) {
                     // Block boundary. Start afresh.
                     cur_live.clone_from(liveness.get(ix).expect("Incorrect liveness info"));
                     // Add use(op) to cur_live.
