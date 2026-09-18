@@ -1422,16 +1422,16 @@ impl TypeId {
                     trait_constraints, ..
                 } = &*structure_type_info
                 {
-                    let mut generic_trait_constraints_trait_names: Vec<CallPath<BaseIdent>> =
-                        vec![];
-                    for trait_constraint in trait_constraints.iter() {
-                        generic_trait_constraints_trait_names
-                            .push(trait_constraint.trait_name.clone());
-                    }
                     for structure_trait_constraint in structure_trait_constraints {
-                        if !generic_trait_constraints_trait_names
-                            .contains(&structure_trait_constraint.trait_name)
-                        {
+                        if !trait_constraints.iter().any(|trait_constraint| {
+                            Self::trait_constraint_matches(
+                                handler,
+                                ctx.by_ref(),
+                                &trait_constraint.trait_name,
+                                &trait_constraint.type_arguments,
+                                structure_trait_constraint,
+                            )
+                        }) {
                             handler.emit_err(CompileError::TraitConstraintMissing {
                                 param: structure_type_info_with_engines.to_string(),
                                 trait_name: structure_trait_constraint
@@ -1487,7 +1487,6 @@ impl TypeId {
     ) -> bool {
         let engines = ctx.engines();
 
-        let unify_check = UnifyCheck::constraint_subset(engines);
         let mut found_error = false;
         let generic_trait_constraints_trait_names_and_args =
             TraitMap::get_trait_names_and_type_arguments_for_type(
@@ -1496,37 +1495,15 @@ impl TypeId {
                 *structure_type_id,
             );
         for structure_trait_constraint in structure_trait_constraints {
-            let structure_trait_constraint_trait_name = &structure_trait_constraint
-                .trait_name
-                .to_canonical_path(ctx.engines(), ctx.namespace());
-
             if !generic_trait_constraints_trait_names_and_args.iter().any(
                 |(trait_name, trait_args)| {
-                    trait_name == structure_trait_constraint_trait_name
-                        && trait_args.len() == structure_trait_constraint.type_arguments.len()
-                        && trait_args
-                            .iter()
-                            .zip(structure_trait_constraint.type_arguments.iter())
-                            .all(|(t1, t2)| {
-                                unify_check.check(
-                                    ctx.resolve_type(
-                                        handler,
-                                        t1.type_id(),
-                                        &t1.span(),
-                                        EnforceTypeArguments::No,
-                                        None,
-                                    )
-                                    .unwrap_or_else(|err| engines.te().id_of_error_recovery(err)),
-                                    ctx.resolve_type(
-                                        handler,
-                                        t2.type_id(),
-                                        &t2.span(),
-                                        EnforceTypeArguments::No,
-                                        None,
-                                    )
-                                    .unwrap_or_else(|err| engines.te().id_of_error_recovery(err)),
-                                )
-                            })
+                    Self::trait_constraint_matches(
+                        handler,
+                        ctx.by_ref(),
+                        trait_name,
+                        trait_args,
+                        structure_trait_constraint,
+                    )
                 },
             ) {
                 found_error = true;
@@ -1534,6 +1511,46 @@ impl TypeId {
             }
         }
         found_error
+    }
+
+    fn trait_constraint_matches(
+        handler: &Handler,
+        ctx: TypeCheckContext,
+        candidate_name: &CallPath<BaseIdent>,
+        candidate_args: &[GenericArgument],
+        required: &TraitConstraint,
+    ) -> bool {
+        if candidate_name != &required.trait_name.to_canonical_path(ctx.engines(), ctx.namespace())
+            || candidate_args.len() != required.type_arguments.len()
+        {
+            return false;
+        }
+
+        let engines = ctx.engines();
+        let unify_check = UnifyCheck::constraint_subset(engines);
+        candidate_args
+            .iter()
+            .zip(required.type_arguments.iter())
+            .all(|(candidate, required)| {
+                unify_check.check(
+                    ctx.resolve_type(
+                        handler,
+                        candidate.type_id(),
+                        &candidate.span(),
+                        EnforceTypeArguments::No,
+                        None,
+                    )
+                    .unwrap_or_else(|err| engines.te().id_of_error_recovery(err)),
+                    ctx.resolve_type(
+                        handler,
+                        required.type_id(),
+                        &required.span(),
+                        EnforceTypeArguments::No,
+                        None,
+                    )
+                    .unwrap_or_else(|err| engines.te().id_of_error_recovery(err)),
+                )
+            })
     }
 
     pub fn get_type_str(&self, engines: &Engines) -> String {
