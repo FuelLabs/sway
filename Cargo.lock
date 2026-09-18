@@ -2728,7 +2728,6 @@ dependencies = [
  "sway-types",
  "sway-utils",
  "tracing",
- "tracing-subscriber",
  "unicode-xid",
 ]
 

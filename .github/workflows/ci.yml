@@ -41,6 +41,7 @@ jobs:
       - forc-run-benchmarks
       - forc-unit-tests
       - forc-pkg-fuels-deps-check
+      - forc-util-features
       - cargo-test-tools
       - cargo-unused-deps-check
       - pre-publish-check
@@ -525,6 +526,17 @@ jobs:
         run: ./test/src/in_language_tests/run_in_language_tests.sh --experimental dynamic_storage --filter 'storage'
       - name: Run In Language Unit Tests - ['dynamic_storage' enabled] (Release)
         run: ./test/src/in_language_tests/run_in_language_tests.sh --release --experimental dynamic_storage --filter 'storage'
+
+  forc-util-features:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Test isolated forc-util features
+        run: bash .github/workflows/scripts/check-forc-util-features.sh
 
   forc-pkg-fuels-deps-check:
     runs-on: ubuntu-latest
