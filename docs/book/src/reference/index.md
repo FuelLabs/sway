@@ -11,3 +11,4 @@
 - [Contributing to Sway](./contributing_to_sway.md)
 - [Keywords](./keywords.md)
 - [Experimental Features](./experimental_features.md)
+- [Appendix: Operators & Symbols](./appendix_operators_symbols.md)
