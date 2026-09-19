@@ -59,6 +59,8 @@ pub enum ParseErrorKind {
     ExpectedCommaOrCloseParenInTupleOrParenExpression,
     #[error("Expected an expression.")]
     ExpectedExpression,
+    #[error("Struct instantiations in match expressions must be wrapped in parentheses.")]
+    StructInstantiationInMatch,
     #[error("Unexpected token after array length.")]
     UnexpectedTokenAfterArrayLength,
     #[error("Expected a comma, semicolon or closing bracket when parsing this array.")]
