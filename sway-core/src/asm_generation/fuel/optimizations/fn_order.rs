@@ -6,9 +6,7 @@ use std::collections::HashMap;
 use either::Either;
 
 use crate::{
-    asm_generation::fuel::{
-        abstract_instruction_set::AbstractInstructionSet, compiler_constants,
-    },
+    asm_generation::fuel::{abstract_instruction_set::AbstractInstructionSet, compiler_constants},
     asm_lang::{ControlFlowOp, JumpType, Label},
 };
 
@@ -348,7 +346,7 @@ fn jmp_weight_factor(target_off: u64, call_site: u64) -> usize {
     const FWD_NEAR: usize = 1;
     const BACK_NEAR: usize = 2;
     const MEDIUM: usize = 3;
-    const FAR: usize = 6;
+    const FAR: usize = 4;
 
     if target_off >= call_site {
         let delta = target_off - call_site;
