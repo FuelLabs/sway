@@ -558,9 +558,12 @@ impl<'a> FnLayout<'a> {
         let n = fns.len();
 
         let fn_labels = fns.iter().map(Self::label_of).collect::<Vec<_>>();
+        // TODO: We need to measure whether modeling known opts in `worst_case_instruction_size`
+        // (e.g. treating removable zero-`CFEI`/`CFSI` or fallthrough jumps as size 0)
+        // improves these call-cost estimates here.
         let fn_sizes = fns
             .iter()
-            .map(|f| f.ops.iter().map(|o| o.op_size()).sum())
+            .map(|f| f.ops.iter().map(|o| o.worst_case_instruction_size()).sum())
             .collect();
         let label_to_fn_idx: HashMap<Label, usize> = fn_labels
             .iter()
@@ -585,7 +588,7 @@ impl<'a> FnLayout<'a> {
                         });
                     }
                 }
-                site_off += op.op_size();
+                site_off += op.worst_case_instruction_size();
             }
         }
 
@@ -644,7 +647,7 @@ impl<'a> FnLayout<'a> {
                         call_loop_depth.insert((idx, site_offset), depth);
                     }
                 }
-                site_offset += op.op_size();
+                site_offset += op.worst_case_instruction_size();
             }
         }
 

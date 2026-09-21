@@ -114,6 +114,49 @@ pub(crate) struct AllocatedAbstractOp {
     pub(crate) owning_span: Option<Span>,
 }
 
+impl AllocatedAbstractOp {
+    /// Largest size this op can take in concrete Fuel instructions (units of 4 bytes).
+    ///
+    /// See [`Op::worst_case_instruction_size`] for the virtual-op counterpart.
+    pub(crate) fn worst_case_instruction_size(&self) -> u64 {
+        use ControlFlowOp::*;
+        match &self.opcode {
+            Either::Right(Label(_)) => 0,
+
+            // Loads from data section may take up to 2 instructions.
+            Either::Left(
+                AllocatedInstruction::LoadDataId(_, _) | AllocatedInstruction::AddrDataId(_, _),
+            ) => 2,
+
+            // Another special case for the blob opcode, used for testing.
+            Either::Left(AllocatedInstruction::BLOB(ref count)) => count.value() as u64,
+
+            // This is a concrete op, size is fixed.
+            Either::Left(_) => 1,
+
+            // Worst case for jump is 2 opcodes, and 3 for calls.
+            Either::Right(Jump { ty, .. }) => match ty {
+                JumpType::Unconditional => 2,
+                JumpType::NotZero(_) => 2,
+                JumpType::Call => 3,
+            },
+            Either::Right(JumpToAddr(..)) => 1,
+            Either::Right(ReturnFromCall { .. }) => 1,
+            Either::Right(Comment) => 0,
+            Either::Right(DataSectionOffsetPlaceholder) => {
+                // If the placeholder is 32 bits, this is 1. If 64, this should be 2. We use LW
+                // to load the data, which loads a whole word, so for now this is 2.
+                2
+            }
+            Either::Right(ConfigurablesOffsetPlaceholder) => 2,
+            Either::Right(PushAll(_)) | Either::Right(PopAll(_)) => unreachable!(
+                "`PushAll` and `PopAll` don't belong in control flow ops \
+                        since they're not about control flow"
+            ),
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct RealizedOp {
     pub(crate) opcode: AllocatedInstruction,
@@ -125,8 +168,8 @@ pub(crate) struct RealizedOp {
 }
 
 impl Op {
-    // Worst case instruction size
-    pub(crate) fn op_size(&self) -> u64 {
+    /// Largest size this op can take in concrete Fuel instructions (units of 4 bytes).
+    pub(crate) fn worst_case_instruction_size(&self) -> u64 {
         match &self.opcode {
             Either::Right(ControlFlowOp::Label(_)) => 0,
             Either::Right(ControlFlowOp::Comment) => 0,
@@ -139,12 +182,6 @@ impl Op {
             Either::Right(ControlFlowOp::DataSectionOffsetPlaceholder) => 2,
             Either::Right(ControlFlowOp::ConfigurablesOffsetPlaceholder) => 2,
             Either::Right(ControlFlowOp::PushAll(_)) | Either::Right(ControlFlowOp::PopAll(_)) => 2,
-            Either::Left(VirtualOp::CFEI(_, ref imm))
-            | Either::Left(VirtualOp::CFSI(_, ref imm))
-                if imm.value() == 0 =>
-            {
-                0
-            }
             Either::Left(VirtualOp::BLOB(ref count)) => count.value() as u64,
             Either::Left(VirtualOp::LoadDataId(_, _) | VirtualOp::AddrDataId(_, _)) => 2,
             Either::Left(_) => 1,
