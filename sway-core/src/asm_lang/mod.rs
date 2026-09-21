@@ -1404,7 +1404,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             | ConfigurablesOffsetPlaceholder
             | PushAll(_)
             | PopAll(_) => vec![],
-            Jump { ty: type_, .. } => match type_ {
+            Jump { ty, .. } => match ty {
                 JumpType::Unconditional => vec![],
                 JumpType::NotZero(r1) => vec![r1],
                 JumpType::Call => vec![],
@@ -1426,7 +1426,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             | ConfigurablesOffsetPlaceholder
             | PushAll(_)
             | PopAll(_) => vec![],
-            Jump { ty: type_, .. } => match type_ {
+            Jump { ty, .. } => match ty {
                 JumpType::Unconditional => vec![],
                 JumpType::NotZero(r1) => vec![r1],
                 JumpType::Call => vec![],
@@ -1449,7 +1449,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             | ConfigurablesOffsetPlaceholder
             | PushAll(_)
             | PopAll(_) => vec![],
-            Jump { ty: type_, .. } => match type_ {
+            Jump { ty, .. } => match ty {
                 JumpType::Unconditional => vec![],
                 JumpType::NotZero(r1) => vec![r1],
                 JumpType::Call => vec![],
@@ -1478,7 +1478,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
             | ConfigurablesOffsetPlaceholder
             | PushAll(_)
             | PopAll(_) => self.clone(),
-            Jump { to, ty: type_ } => match type_ {
+            Jump { to, ty } => match ty {
                 JumpType::NotZero(r1) => Self::Jump {
                     to: *to,
                     ty: JumpType::NotZero(update_reg(r1)),
@@ -1518,7 +1518,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
                     next_ops.push(index + 1);
                 }
             }
-            Jump { to, ty: type_, .. } => match type_ {
+            Jump { to, ty, .. } => match ty {
                 JumpType::Unconditional => {
                     next_ops.push(label_to_index[to]);
                 }
@@ -1583,9 +1583,9 @@ impl ControlFlowOp<VirtualRegister> {
         match self {
             Label(label) => Label(*label),
             Comment => Comment,
-            Jump { to, ty: type_ } => Jump {
+            Jump { to, ty } => Jump {
                 to: *to,
-                ty: match type_ {
+                ty: match ty {
                     JumpType::NotZero(r1) => JumpType::NotZero(map_reg(r1)),
                     JumpType::Unconditional => JumpType::Unconditional,
                     JumpType::Call => JumpType::Call,

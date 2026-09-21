@@ -284,9 +284,9 @@ impl AllocatedAbstractInstructionSet {
                     comment,
                 }),
                 Either::Right(org_op) => match org_op {
-                    ControlFlowOp::Jump { to, ty: type_ } => {
+                    ControlFlowOp::Jump { to, ty } => {
                         let target_offset = label_offsets.get(&to).unwrap().offs;
-                        let ops = if matches!(type_, JumpType::Call) {
+                        let ops = if matches!(ty, JumpType::Call) {
                             compile_call(
                                 data_section,
                                 curr_offset,
@@ -300,7 +300,7 @@ impl AllocatedAbstractInstructionSet {
                                 data_section,
                                 curr_offset,
                                 target_offset,
-                                match type_ {
+                                match ty {
                                     JumpType::NotZero(cond) => Some(cond),
                                     _ => None,
                                 },
@@ -406,7 +406,7 @@ impl AllocatedAbstractInstructionSet {
             Either::Left(_) => 1,
 
             // Worst case for jump is 2 opcodes, and 3 for calls
-            Either::Right(Jump { ty: ref type_, .. }) => match type_ {
+            Either::Right(Jump { ref ty, .. }) => match ty {
                 JumpType::Unconditional => 2,
                 JumpType::NotZero(_) => 2,
                 JumpType::Call => 3,

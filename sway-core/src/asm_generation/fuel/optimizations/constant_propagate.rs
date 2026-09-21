@@ -474,7 +474,7 @@ impl AbstractInstructionSet {
                                     ResetKnown::Defs
                                 }
                             }
-                            ControlFlowOp::Jump { ty: type_, .. } => match type_ {
+                            ControlFlowOp::Jump { ty, .. } => match ty {
                                 JumpType::Call => ResetKnown::All,
                                 _ => ResetKnown::Defs,
                             },
