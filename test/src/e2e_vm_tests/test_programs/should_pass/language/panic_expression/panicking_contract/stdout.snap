@@ -142,7 +142,7 @@ output:
    Compiling library std (test/src/e2e_vm_tests/reduced_std_libs/sway-lib-std-core)
    Compiling library panicking_lib (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_lib)
    Compiling contract panicking_contract (test/src/e2e_vm_tests/test_programs/should_pass/language/panic_expression/panicking_contract)
-    Finished release [optimized + fuel] target(s) [5.504 KB] in ???
+    Finished release [optimized + fuel] target(s) [5.496 KB] in ???
      Running 12 tests, filtered 0 tests
 
 tested -- panicking_contract
@@ -176,7 +176,7 @@ E([AsciiString { data: "to have" }, AsciiString { data: "strings" }, AsciiString
                                └─ at panicking_lib, src/lib.sw:35:5
            decoded log values:
 E([AsciiString { data: "to have" }, AsciiString { data: "strings" }, AsciiString { data: "in error enum variants" }]), log rb: 5503570629422409978
-      test test_nested_panic_non_inlined ... ok (???, 2280 gas)
+      test test_nested_panic_non_inlined ... ok (???, 2279 gas)
            revert code: 8180000000000000
             ├─ panic message: Error E.
             ├─ panic value:   E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { data: "the best practice" }])
@@ -184,7 +184,7 @@ E([AsciiString { data: "to have" }, AsciiString { data: "strings" }, AsciiString
                                └─ at panicking_lib, src/lib.sw:41:9
            decoded log values:
 E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { data: "the best practice" }]), log rb: 5503570629422409978
-      test test_nested_panic_non_inlined_same_revert_code ... ok (???, 2280 gas)
+      test test_nested_panic_non_inlined_same_revert_code ... ok (???, 2279 gas)
            revert code: 8180000000000000
             ├─ panic message: Error E.
             ├─ panic value:   E([AsciiString { data: "this" }, AsciiString { data: "is not" }, AsciiString { data: "the best practice" }])
