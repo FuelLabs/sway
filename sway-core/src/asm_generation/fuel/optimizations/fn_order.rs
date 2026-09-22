@@ -35,7 +35,7 @@ pub(crate) fn optimize_fn_order(fns: &mut Vec<AbstractInstructionSet>) {
 
     // Seed depends only on `n` so the same program always gets the same layout.
     let mut rng =
-        XorShift64::new(0xC0FFEE_F11E_u64 ^ (n as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15));
+        XorShift64::new(0x00C0_FFEE_F11E_u64 ^ (n as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15));
 
     let mut seeds = Vec::with_capacity(6);
     seeds.push((0..n).collect::<Vec<_>>());
