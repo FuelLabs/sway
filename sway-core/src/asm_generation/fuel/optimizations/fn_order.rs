@@ -1,7 +1,11 @@
 //! Reorder abstract functions to reduce the cost of calls (near vs medium vs far,
 //! with a loop-nesting boost).
+//!
+//! Layout may start from a caller-first DFS of the static call graph, but only
+//! when that seed hard-Pareto-dominates the IR order (no call worse, lower sum).
+//! Then a greedy hard-Pareto polish runs.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use either::Either;
 
@@ -230,13 +234,40 @@ impl<'a> FnLayout<'a> {
             }
         }
 
-        Self {
+        let identity: Vec<usize> = (0..n).collect();
+        let dfs_order = caller_first_order(n, &call_sites);
+
+        // Prefer the DFS seed only when it hard-Pareto-dominates IR order.
+        // Otherwise toxic seeds bake in regressions the polish cannot undo.
+        let mut layout = Self {
             fns,
             fn_sizes,
             call_sites,
             call_loop_depth,
-            order: (0..n).collect(),
+            order: identity,
+        };
+        let id_weights = layout.call_weights(None);
+        let id_sum: usize = id_weights.values().sum();
+
+        layout.order = dfs_order;
+        let dfs_weights = layout.call_weights(None);
+        let dfs_sum: usize = dfs_weights.values().sum();
+
+        let dfs_dominates = dfs_sum < id_sum
+            && dfs_weights.iter().all(|(key, &new_w)| {
+                let old_w = id_weights.get(key).copied().unwrap_or(0);
+                new_w <= old_w
+            })
+            && dfs_weights.iter().any(|(key, &new_w)| {
+                let old_w = id_weights.get(key).copied().unwrap_or(0);
+                new_w < old_w
+            });
+
+        if !dfs_dominates {
+            layout.order = (0..layout.fn_sizes.len()).collect();
         }
+
+        layout
     }
 
     fn len(&self) -> usize {
@@ -342,6 +373,57 @@ impl<'a> FnLayout<'a> {
     }
 }
 
+/// Caller-first preorder DFS of the static call graph.
+///
+/// Emits each function before recursing into its callees so callees tend to
+/// sit after callers (forward-near `JAL`). Starts at fn 0 (pinned entry), then
+/// any remaining roots in original index order (extra entries / unreachable).
+fn caller_first_order(n: usize, call_sites: &[CallSite]) -> Vec<usize> {
+    let mut callees: Vec<Vec<usize>> = vec![Vec::new(); n];
+    let mut seen_edge: Vec<HashSet<usize>> = vec![HashSet::new(); n];
+    for site in call_sites {
+        if site.callee != site.caller && seen_edge[site.caller].insert(site.callee) {
+            callees[site.caller].push(site.callee);
+        }
+    }
+
+    let mut order = Vec::with_capacity(n);
+    let mut visited = vec![false; n];
+
+    fn dfs(fn_idx: usize, callees: &[Vec<usize>], visited: &mut [bool], order: &mut Vec<usize>) {
+        if visited[fn_idx] {
+            return;
+        }
+        visited[fn_idx] = true;
+        order.push(fn_idx);
+        for &c in &callees[fn_idx] {
+            dfs(c, callees, visited, order);
+        }
+    }
+
+    dfs(0, &callees, &mut visited, &mut order);
+    for i in 1..n {
+        if !visited[i] {
+            dfs(i, &callees, &mut visited, &mut order);
+        }
+    }
+
+    debug_assert_eq!(order.len(), n);
+    debug_assert_eq!(order[0], 0);
+    order
+}
+
+/// Weight a call by how expensive its realized form is.
+///
+/// Instruction counts from `compile_call_inner`:
+/// - forward near (`JAL`): 1
+/// - backward near (`SUBI`+`JAL`): 2
+/// - medium (`MOVI`+ALU+`JAL`) and far (data load+ALU+`JAL`): both 3
+///
+/// Far is weighted slightly above medium even though both are 3 ops: a far call
+/// also inserts a data-section word and removes the only remaining distance
+/// gradient inside the long-range bucket. Without that, the search stops caring
+/// about shortening beyond the Imm18 threshold, which empirically regresses gas.
 fn jmp_weight_factor(target_off: u64, call_site: u64) -> usize {
     const FWD_NEAR: usize = 1;
     const BACK_NEAR: usize = 2;
