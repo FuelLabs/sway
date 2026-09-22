@@ -331,10 +331,7 @@ jobs:
         with:
           toolchain: ${{ env.RUST_VERSION }}
       - name: Install Cargo.toml linter
-        uses: baptiste0928/cargo-install@v1
-        with:
-          crate: cargo-toml-lint
-          version: "0.1.0"
+        run: cargo install cargo-toml-lint --version 0.1.0
       - name: Run Cargo.toml linter
         run: git ls-files | grep Cargo.toml$ | grep -v 'templates/' | xargs --verbose -n 1 cargo-toml-lint
 
