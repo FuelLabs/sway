@@ -623,10 +623,7 @@ impl fmt::Display for DataSection {
             writeln!(
                 data_buf,
                 "data_{}_{} {}",
-                match &entry.name {
-                    EntryName::NonConfigurable => "non_configurable".to_string(),
-                    EntryName::Configurable(name) => format!("configurable_{}", name),
-                },
+                entry.name,
                 ix,
                 display_entry(&entry.value)
             )?;
