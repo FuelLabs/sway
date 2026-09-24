@@ -499,6 +499,19 @@ impl DataSection {
             Some(configurables_start + worst_case_late_insertions_in_bytes);
     }
 
+    /// The worst-case configurables-region base offset frozen by
+    /// [Self::freeze_configurables_base_offset], if any.
+    pub(crate) fn frozen_configurables_base_offset(&self) -> Option<u64> {
+        self.frozen_configurables_base_offset
+    }
+
+    /// Byte offset of the configurables region from the start of the data section,
+    /// using the *current* (non-pessimistic) layout. After far-jump target words have
+    /// been inserted this is the final `$cs - $ds` delta.
+    pub(crate) fn configurables_region_byte_offset(&self) -> u64 {
+        self.absolute_idx_to_offset(self.non_configurables.len() + self.pointers.len()) as u64
+    }
+
     /// Returns true if the `AddrDataId` instruction for the given [DataId] must be realized
     /// into the two-instruction far form (`MOVI` + `ADD`), and false if the
     /// one-instruction near form (`ADDI`) suffices.

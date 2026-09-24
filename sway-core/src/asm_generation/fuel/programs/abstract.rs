@@ -198,6 +198,7 @@ impl AbstractProgram {
     ///     -    ADD $ds $ds $scratch
     ///     5    LW $cs $scratch 2          (only if `needs_configurable_register`)
     ///     -    ADD $cs $cs $scratch        (only if `needs_configurable_register`)
+    ///          (later rewritten to `ADDI $cs $ds imm` when Imm12-stable)
     ///     6    .program_start:
     fn build_prologue(&mut self) -> AllocatedAbstractInstructionSet {
         const _: () = assert!(
