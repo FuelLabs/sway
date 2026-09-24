@@ -66,6 +66,54 @@ impl AllocatedAbstractInstructionSet {
             .remove_redundant_ops()
     }
 
+    /// Replace the prologue `LW $cs` / `ADD $cs` pair with a single
+    /// `ADDI $cs, $ds, 0` when the configurables region is known to start within
+    /// Imm12 of `$ds`. The immediate is patched to the final offset after
+    /// far-jump realization (see
+    /// [`RealizedAbstractInstructionSet::patch_cs_addi_immediate`]).
+    ///
+    /// Returns `true` if the rewrite happened (prologue shrank by one instruction).
+    pub(crate) fn try_rewrite_cs_init_to_addi(&mut self) -> bool {
+        let cs = AllocatedRegister::Constant(ConstantRegister::ConfigurableSectionStart);
+        let ds = AllocatedRegister::Constant(ConstantRegister::DataSectionStart);
+        let scratch = AllocatedRegister::Constant(ConstantRegister::Scratch);
+
+        let lw_idx = self.ops.iter().position(|op| {
+            matches!(
+                &op.opcode,
+                Either::Left(AllocatedInstruction::LW(dst, src, imm))
+                    if *dst == cs && *src == scratch && imm.value() == 2
+            )
+        });
+        let Some(lw_idx) = lw_idx else {
+            return false;
+        };
+        let add_idx = lw_idx + 1;
+        let is_add = self.ops.get(add_idx).is_some_and(|op| {
+            matches!(
+                &op.opcode,
+                Either::Left(AllocatedInstruction::ADD(dst, lhs, rhs))
+                    if *dst == cs && *lhs == cs && *rhs == scratch
+            )
+        });
+        if !is_add {
+            return false;
+        }
+
+        // Replace LW with ADDI; remove the following ADD.
+        self.ops[lw_idx] = AllocatedAbstractOp {
+            opcode: Either::Left(AllocatedInstruction::ADDI(
+                cs,
+                ds,
+                VirtualImmediate12::new(0),
+            )),
+            comment: "initialize $cs from $ds".into(),
+            owning_span: None,
+        };
+        self.ops.remove(add_idx);
+        true
+    }
+
     /// Remove the `MOVE $$locbase, $$sp` instruction in non-entry functions, if the function does
     /// not use stack at all. This means the function:
     ///  - does not have any locals

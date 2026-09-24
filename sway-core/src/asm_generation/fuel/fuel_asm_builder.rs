@@ -176,8 +176,8 @@ impl AsmBuilder for FuelAsmBuilder<'_, '_> {
                 } else {
                     // A v1 configurable without a decode fn is trivial,
                     // so no writable global and no decode call.
-                    // get_config resolves this name to AddrDataId, pointing to
-                    // the encoded bytes directly.
+                    // get_config resolves this name via `$cs` + an offset within
+                    // the configurable section (MOVE / ADDI / MOVI+ADD).
                     self.trivial_configurable_to_data_id.insert(name.clone(), dataid);
                 }
 
@@ -1497,40 +1497,58 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 )?;
             let offset_within_configurables =
                 self.data_section.configurable_offset_within_section(dataid) as u64;
-            match VirtualImmediate12::try_new(offset_within_configurables, span.clone()) {
-                Ok(imm12) => {
-                    // Single op: ADDI addr_reg, $cs, <offset>
-                    self.cur_bytecode.push(Op {
-                        opcode: Either::Left(VirtualOp::ADDI(
-                            addr_reg.clone(),
-                            VirtualRegister::Constant(ConstantRegister::ConfigurableSectionStart),
-                            imm12,
-                        )),
-                        comment: format!("get address of configurable {name}"),
-                        owning_span: Some(span),
-                    });
-                }
-                Err(_) => {
-                    // Offset doesn't fit in 12 bits: MOVI addr_reg, <offset>;
-                    // ADD addr_reg, addr_reg, $cs
-                    let imm18 =
-                        VirtualImmediate18::try_new(offset_within_configurables, span.clone())?;
-                    self.cur_bytecode.push(Op {
-                        opcode: Either::Left(VirtualOp::MOVI(addr_reg.clone(), imm18)),
-                        comment: format!(
-                            "get offset of configurable {name} within configurable section"
-                        ),
-                        owning_span: Some(span.clone()),
-                    });
-                    self.cur_bytecode.push(Op {
-                        opcode: Either::Left(VirtualOp::ADD(
-                            addr_reg.clone(),
-                            addr_reg.clone(),
-                            VirtualRegister::Constant(ConstantRegister::ConfigurableSectionStart),
-                        )),
-                        comment: format!("get address of configurable {name}"),
-                        owning_span: Some(span),
-                    });
+            if offset_within_configurables == 0 {
+                // First configurable in the section: just copy `$cs`.
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::MOVE(
+                        addr_reg.clone(),
+                        VirtualRegister::Constant(ConstantRegister::ConfigurableSectionStart),
+                    )),
+                    comment: format!("get address of configurable {name}"),
+                    owning_span: Some(span),
+                });
+            } else {
+                match VirtualImmediate12::try_new(offset_within_configurables, span.clone()) {
+                    Ok(imm12) => {
+                        // Single op: ADDI addr_reg, $cs, <offset>
+                        self.cur_bytecode.push(Op {
+                            opcode: Either::Left(VirtualOp::ADDI(
+                                addr_reg.clone(),
+                                VirtualRegister::Constant(
+                                    ConstantRegister::ConfigurableSectionStart,
+                                ),
+                                imm12,
+                            )),
+                            comment: format!("get address of configurable {name}"),
+                            owning_span: Some(span),
+                        });
+                    }
+                    Err(_) => {
+                        // Offset doesn't fit in 12 bits: MOVI addr_reg, <offset>;
+                        // ADD addr_reg, addr_reg, $cs
+                        let imm18 = VirtualImmediate18::try_new(
+                            offset_within_configurables,
+                            span.clone(),
+                        )?;
+                        self.cur_bytecode.push(Op {
+                            opcode: Either::Left(VirtualOp::MOVI(addr_reg.clone(), imm18)),
+                            comment: format!(
+                                "get offset of configurable {name} within configurable section"
+                            ),
+                            owning_span: Some(span.clone()),
+                        });
+                        self.cur_bytecode.push(Op {
+                            opcode: Either::Left(VirtualOp::ADD(
+                                addr_reg.clone(),
+                                addr_reg.clone(),
+                                VirtualRegister::Constant(
+                                    ConstantRegister::ConfigurableSectionStart,
+                                ),
+                            )),
+                            comment: format!("get address of configurable {name}"),
+                            owning_span: Some(span),
+                        });
+                    }
                 }
             }
             self.reg_map.insert(*addr_val, addr_reg);

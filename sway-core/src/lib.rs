@@ -1731,20 +1731,28 @@ pub const PRELUDE_CONFIGURABLES_OFFSET_IN_BYTES: usize = 16;
 /// `CONFIGURABLES_OFFSET`), and the `LW $ds` / `ADD $ds` pair that initializes the
 /// data-section register.
 pub const PRELUDE_SIZE_IN_BYTES_WITHOUT_CONFIGURABLES: usize = 32;
-/// The optional portion of the prelude, in bytes: the `LW $cs` / `ADD $cs` pair that
-/// initializes the configurable-section register. This is emitted only when the
+/// The optional portion of the prelude, in bytes: the instructions that
+/// initialize the configurable-section register (`$cs`). Emitted only when the
 /// program uses a trivially-addressable configurable (see
 /// [`prelude_size_in_bytes`]).
+///
+/// This is the size of the initial `LW $cs` / `ADD $cs` pair (8 bytes). When the
+/// configurables region is known to start within Imm12 of `$ds`, that pair is
+/// later rewritten to a single `ADDI $cs, $ds, imm` (4 bytes).
 pub const PRELUDE_CONFIGURABLE_REGISTER_INIT_SIZE_IN_BYTES: usize = 8;
 
 /// Total size of the prelude in bytes. Instructions start right after.
 ///
-/// The prelude size is **dynamic**: the two instructions that initialize the
+/// The prelude size is **dynamic**: the instructions that initialize the
 /// configurable-section register (`$cs`) are emitted only when the program uses a
 /// trivially-addressable configurable (`needs_configurable_register`). The prelude
-/// is therefore 40 bytes in that case and 32 bytes otherwise. The fixed metadata
-/// positions (`DATA_START` at byte 8, `CONFIGURABLES_OFFSET` at byte 16) do not
-/// move regardless.
+/// is therefore up to 40 bytes in that case and 32 bytes otherwise. When `$cs` is
+/// needed and the configurables base fits in Imm12, the `LW`/`ADD` pair is further
+/// rewritten to one `ADDI`, shrinking the prelude by another 4 bytes. The fixed
+/// metadata positions (`DATA_START` at byte 8, `CONFIGURABLES_OFFSET` at byte 16)
+/// do not move regardless.
+///
+/// This helper returns the size *before* the Imm12 `ADDI` rewrite (32 or 40).
 pub fn prelude_size_in_bytes(needs_configurable_register: bool) -> usize {
     if needs_configurable_register {
         PRELUDE_SIZE_IN_BYTES_WITHOUT_CONFIGURABLES
